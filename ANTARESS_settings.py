@@ -3047,36 +3047,86 @@ if __name__ == '__main__':
 
 
 
+##################################################################################################
+#%%% Module: persistent peak masking
+##################################################################################################
+
+#%%%% Activating
+gen_dic['mask_permpeak']= False
 
 
+#%%%% Calculating/retrieving 
+gen_dic['calc_permpeak']=True  
 
-    ##################################################################################################
-    #%%% Module: persistent peak masking
-    ##################################################################################################
 
-    #%%%% Activating
+#%%%% Multi-threading
+gen_dic['permpeak_nthreads'] = 14
+
+
+#%%%% Correction settings
+
+#%%%%% Exposures to be corrected
+#    - format inst > vis > exp_list
+#    - leave empty for all exposures to be corrected
+gen_dic['permpeak_exp_corr']={}
+
+#%%%%% Orders to be corrected
+#    - format inst > vis > ord_list
+#    - leave empty for all orders to be corrected
+gen_dic['permpeak_ord_corr']={}
+
+
+#%%%%% Spectral range(s) to be corrected
+#    - inst > order > [[x1,x2],[x3,x4], ..]
+#    - leave undefined or empty to take the full range 
+gen_dic['permpeak_range_corr'] = {}
+
+    
+#%%%%% Non-masking of edges
+#    - in A
+#    - we prevent masking over the edges of the orders, where the continuum is often not well-defined
+gen_dic['permpeak_edges']={}
+
+
+#%%%% Peaks exclusion settings
+
+#%%%%% Spurious peaks threshold 
+#    - set on the residuals from continuum, compared to their error
+gen_dic['permpeak_outthresh']=4
+
+
+#%%%%% Spurious peaks window
+#    - in A
+gen_dic['permpeak_peakwin']={}  
+
+
+#%%%%% Bad consecutive exposures 
+#    - a peak is masked if it is flagged in at least max(permpeak_nbad,3) consecutive exposures
+gen_dic['permpeak_nbad']=3 
+
+
+#%%%% Plots: master and continuum
+#    - to check the flagged pixels use plot_dic['sp_raw'] before/after correction
+plot_dic['permpeak_corr']=''  
+
+
+if __name__ == '__main__':
+
+    #Activating
     gen_dic['mask_permpeak']=True    &  False
     if gen_dic['star_name'] in ['WASP107','WASP156']:gen_dic['mask_permpeak']=True   
     if gen_dic['star_name'] in ['HAT_P11']:gen_dic['mask_permpeak']=False     
     if gen_dic['star_name']in ['WASP76','HD209458']:gen_dic['mask_permpeak']=True   & False  
     
-    #%%%% Calculating/retrieving 
+    #Calculating/retrieving 
     gen_dic['calc_permpeak']=True   & False
 
-    #%%%% Multi-threading
-    gen_dic['permpeak_nthreads'] = 14
+    #Correction settings
 
-    #%%%% Correction settings
-
-    #%%%%% Exposures to be corrected
-    #    - format inst > vis > exp_list
-    #    - leave empty for all exposures to be corrected
+    #Exposures to be corrected
     gen_dic['permpeak_exp_corr']={}
 
-    #%%%%% Orders to be corrected
-    #    - format inst > vis > ord_list
-    #    - leave empty for all orders to be corrected
-    gen_dic['permpeak_ord_corr']={}
+    #Orders to be corrected
     if gen_dic['star_name']=='WASP107':    
         gen_dic['permpeak_ord_corr']={'CARMENES_VIS':{'20180224':list( np.delete( np.arange(61) , [26,27,33,38] )  )}}
     if gen_dic['star_name']=='WASP156':    
@@ -3085,50 +3135,38 @@ if __name__ == '__main__':
                                                       '20191210':list( np.delete( np.arange(61) , [25,37,38,40,44,46,53,58,59] )  ),
                                                       }}
 
-    #%%%%% Spectral range(s) to be corrected
-    #    - inst > order > [[x1,x2],[x3,x4], ..]
-    #    - leave undefined or empty to take the full range 
-    gen_dic['permpeak_range_corr'] = {}
+    #Spectral range(s) to be corrected
     if gen_dic['star_name']=='WASP107':
         gen_dic['permpeak_range_corr']={'CARMENES_VIS':{18:[[6065,6160]]}}
     if gen_dic['star_name']=='WASP156':
         gen_dic['permpeak_range_corr']={'CARMENES_VIS':{6:[[5420.,5470.]]}}
 
         
-    #%%%%% Non-masking of edges
-    #    - in A
-    #    - we prevent masking over the edges of the orders, where the continuum is often not well-defined
-    gen_dic['permpeak_edges']={}
+    #Non-masking of edges
     if gen_dic['star_name'] in ['HAT_P11','WASP156']:gen_dic['permpeak_edges']={'CARMENES_VIS':[2.,2.]}
     gen_dic['permpeak_edges']={'ESPRESSO':[2.,2.]}
 
 
 
-    #%%%% Peaks exclusion settings
+    #Peaks exclusion settings
     
-    #%%%%% Spurious peaks threshold 
-    #    - set on the residuals from continuum, compared to their error
-    gen_dic['permpeak_outthresh']=4
+    #Spurious peaks threshold 
     if gen_dic['star_name'] in ['WASP107']:gen_dic['permpeak_outthresh']=4
     if gen_dic['star_name'] in ['HAT_P11']:gen_dic['permpeak_outthresh']=5
     if gen_dic['star_name'] in ['WASP156']:gen_dic['permpeak_outthresh']=4
     if gen_dic['star_name'] in ['WASP76','HD209458']:gen_dic['permpeak_outthresh']=10
     
-    #%%%%% Spurious peaks window
-    #    - in A
+    #Spurious peaks window
     gen_dic['permpeak_peakwin']={'CARMENES_VIS':0.2,'ESPRESSO':0.2}  
 
 
-    #%%%%% Bad consecutive exposures 
-    #    - a peak is masked if it is flagged in at least max(permpeak_nbad,3) consecutive exposures
-    gen_dic['permpeak_nbad']=3
+    #Bad consecutive exposures 
     if gen_dic['star_name'] in ['WASP107']:gen_dic['permpeak_nbad']=2   
     if gen_dic['star_name'] in ['HAT_P11','WASP156']:gen_dic['permpeak_nbad']=3  
     
-    
 
     
-    #%%%% Plots: master and continuum
+    #Plots: master and continuum
     #    - to check the flagged pixels use plot_dic['sp_raw'] before/after correction
     plot_dic['permpeak_corr']='' #  
 
