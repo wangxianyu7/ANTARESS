@@ -3001,11 +3001,11 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
         gain_inputs_dic = {} 
         minmax_def = {}
         min_edge_ord_all = np.repeat(1e100,data_dic[inst]['nord'])
-        max_edge_ord_all = np.repeat(-1e100,data_dic[inst]['nord'])        
+        max_edge_ord_all = np.repeat(-1e100,data_dic[inst]['nord'])   
+        iexp_glob_groups_vis = {}
         for vis in data_dic[inst]['visit_list']:
             print('           Processing '+vis) 
             data_vis=data_dic[inst][vis]
-            gain_inputs_dic[vis] = np.zeros([data_dic[inst]['nord'],data_vis['n_in_visit']],dtype=object)
             data_com_vis = np.load(data_vis['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item()
             data_gain_all={}
 
@@ -3016,14 +3016,16 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
                 if data_vis['mock']:cst_gain = 1.
                 elif (not gen_dic[inst][vis]['flag_err']):cst_gain = gen_dic['g_err'][inst]
                 data_gain={'gdet_inputs' : {iord : {'par':None,'args':{'constant':cst_gain}} for iord in range(data_dic[inst]['nord'])}}
+                n_glob_groups = data_vis['n_in_visit']
+                iexp_glob_groups_vis[vis] = range(n_glob_groups) 
                 for iexp in range(data_vis['n_in_visit']):data_gain_all[iexp] = data_gain                
     
             else:
                 
                 #Exposure groups
                 iexp_gain_groups = list(range(i,min(i+gen_dic['gain_binN'],data_vis['n_in_visit'])) for i in range(0,data_vis['n_in_visit'],gen_dic['gain_binN']))
-                iexp_glob_groups = range(len(iexp_gain_groups))  
-                iexp_all = range(data_vis['n_in_visit'])
+                n_glob_groups = len(iexp_gain_groups)
+                iexp_glob_groups_vis[vis] = range(n_glob_groups)  
                 gdet_val_all = np.zeros([data_vis['n_in_visit'],data_dic[inst]['nord']],dtype=object)
                 minmax_def[vis] = np.zeros([data_vis['n_in_visit'],data_dic[inst]['nord'],2])*np.nan 
                 data_all_temp = {}
@@ -3075,6 +3077,10 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
                             gdet_val_all[iexp_glob,iord] = bin_ord_dic
                         else:gdet_val_all[iexp_glob,iord] = None
 
+                    ### End of exposure groups
+
+                ### End of orders 
+
                 #Initialize fit structure
                 p_start = Parameters()           
                 p_start.add_many(
@@ -3106,10 +3112,11 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
 
                 #Gain for spectral profiles
                 common_args = (minmax_def[vis],plot_dic,data_dic[inst]['nord'],gdet_val_all,inst,gen_dic['gain_thresh'][inst],gen_dic['gain_edges'],gen_dic['gain_nooutedge'],fixed_args,nfree_gainfit,p_start,data_vis['gain_data_paths'])
-                if gen_dic['gain_nthreads']>1:data_gain_all = para_model_gain(model_gain,gen_dic['gain_nthreads'],len(iexp_all),[iexp_all,iexp_glob_groups],common_args)                           
-                else:data_gain_all = model_gain(iexp_all,iexp_glob_groups,*common_args)  
+                if gen_dic['gain_nthreads']>1:data_gain_all = para_model_gain(model_gain,gen_dic['gain_nthreads'],n_glob_groups,[iexp_glob_groups_vis[vis],iexp_gain_groups],common_args)                           
+                else:data_gain_all = model_gain(iexp_glob_groups_vis[vis],iexp_gain_groups,*common_args)  
 
             #Processing all orders for the visit
+            gain_inputs_dic[vis] = np.zeros([data_dic[inst]['nord'],n_glob_groups],dtype=object)
             for iord in range(data_dic[inst]['nord']): 
 
                 #Widest spectral range over all visits   
@@ -3119,8 +3126,8 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
                 
                 #Retrieve function inputs 
                 #    - defined in the input rest frame
-                for iexp in range(data_vis['n_in_visit']):
-                    gain_inputs_dic[vis][iord,iexp] = data_gain_all[iexp]['gdet_inputs'][iord] 
+                for iexp_glob in iexp_glob_groups_vis[vis]:
+                    gain_inputs_dic[vis][iord,iexp_glob] = data_gain_all[iexp_glob]['gdet_inputs'][iord] 
 
         #Median gain profile over all exposures in the visit
         #    - we assume the median gain is smooth enough that it can be captured with an interpolation function
@@ -3144,9 +3151,9 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
             med_gdet_allvis = np.zeros(nspec_ord,dtype=float)  
             for ivis,vis in enumerate(data_dic[inst]['visit_list']): 
                 mean_gdet_ord = np.zeros([nspec_ord,0],dtype=float)*np.nan 
-                for iexp in range(data_dic[inst][vis]['n_in_visit']):
+                for iexp_glob in iexp_glob_groups_vis[vis]:
                     mean_gdet_ord_loc = np.zeros(nspec_ord,dtype=float)*np.nan
-                    mean_gdet_ord_loc=gain_piecewise_func(gain_inputs_dic[vis][iord,iexp]['par'],cen_bins_ord,args=gain_inputs_dic[vis][iord,iexp]['args'])      
+                    mean_gdet_ord_loc=gain_piecewise_func(gain_inputs_dic[vis][iord,iexp_glob]['par'],cen_bins_ord,args=gain_inputs_dic[vis][iord,iexp_glob]['args'])      
                     mean_gdet_ord = np.append(mean_gdet_ord,mean_gdet_ord_loc[:,None],axis=1)
                 med_gdet_allvis+=np.nanmedian(mean_gdet_ord,axis=1)     
 
@@ -3191,10 +3198,10 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
 '''
 Gain function fitting routines
 '''
-def model_gain(iexp_all,iexp_glob_groups,minmax_def,plot_dic,nord,gdet_val_all,inst,gain_thresh,gain_edges,gain_nooutedge,fixed_args,nfree_gainfit,p_start,gain_data_paths):
+def model_gain(iexp_glob_groups,iexp_gain_groups,minmax_def,plot_dic,nord,gdet_val_all,inst,gain_thresh,gain_edges,gain_nooutedge,fixed_args,nfree_gainfit,p_start,gain_data_paths):
     data_gain_all = {}
-    for iexp,iexp_glob in zip(iexp_all,iexp_glob_groups):
-        data_gain={'gdet_inputs':{},'minmax_def':minmax_def[iexp]}
+    for iexp_glob,iexp_gain_group in zip(iexp_glob_groups,iexp_gain_groups):
+        data_gain={'gdet_inputs':{}}
         if (plot_dic['det_gain']!='') or (plot_dic['det_gain_ord']!=''):
             data_gain['wav_bin_all']=np.zeros(nord,dtype=object)
             data_gain['wav_trans_all']=np.zeros([2,nord],dtype=float)
@@ -3272,11 +3279,11 @@ def model_gain(iexp_all,iexp_glob_groups,minmax_def,plot_dic,nord,gdet_val_all,i
             else:
                 data_gain['gdet_inputs'][iord]={'par':None,'args':{'constant':1.}}
     
-        #Save
-        data_gain_all[iexp]=data_gain 
+        #Save gain for each original exposure associated with current exposure group
+        data_gain_all[iexp_glob]=data_gain 
         if (plot_dic['det_gain']!='') or (plot_dic['det_gain_ord']!=''):
-            np.savez_compressed(gain_data_paths+str(iexp),data=data_gain,allow_pickle=True) 
-        
+            for iexp in iexp_gain_group:np.savez_compressed(gain_data_paths+str(iexp),data=data_gain,allow_pickle=True) 
+            
     return data_gain_all
 
 def para_model_gain(func_input,nthreads,n_elem,y_inputs,common_args): 
