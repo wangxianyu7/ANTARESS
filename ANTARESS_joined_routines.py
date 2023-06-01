@@ -2127,7 +2127,7 @@ def fit_CCFRes_all(data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,
                     fixed_args['t_exp_bjd'][inst][vis] = coord_vis['bjd']
                     
                     # Load light curve and DI prop data
-                    data_LC_vis = np.load(data_vis['scaled_data_paths']+'.npz', allow_pickle=True)['data'].item()
+                    data_LC_vis = dataload_npz(data_vis['scaled_data_paths']+str(iexp))
                     data_DI_prop_vis = np.load(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis+'.npz',  allow_pickle=True)['data'].item()
                     
                     # Load master-out data for current vis

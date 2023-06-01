@@ -3418,12 +3418,11 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
         
     #New paths
     #    - intrinsic and out-of-transit residual profiles are stored separately, contrary to global tables  
-    if gen_dic['flux_sc']:dir_scaled = gen_dic['save_data_dir']+'Scaled_data/CCFfromSpec/'+inst+'_'+vis+'_add'
     if data_type_gen in ['Intr','Atm']:
         dir_mast={}
         for gen in dir_save:dir_mast[gen] = {iexp:dir_save[gen]+'ref_'+str(iexp) for iexp in data_vis['mast_'+gen+'_data_paths']}
     data_vis['proc_com_data_paths'] = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_'+vis+'_com'
-
+    
     #Calculating data
     if gen_dic['calc_'+data_type_gen+'_CCF']:
         print('         Calculating data')         
@@ -3436,7 +3435,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
             gen = deepcopy(data_type_gen)
             iexp_eff = deepcopy(iexp)
             if (data_type_gen=='Intr'):
-                if (iexp in gen_vis['idx_in']):iexp_eff = gen_vis['idx_exp2in'][iexp] 
+                if (iexp in gen_vis['idx_in']):iexp_eff = gen_vis['idx_exp2in'][iexp]    
                 else:gen = 'Res'
             dir_exp = data_vis['proc_'+gen+'_data_paths']+str(iexp_eff)+'.npz' 
             data_load = np.load(dir_exp,allow_pickle=True)['data'].item() 
@@ -3495,10 +3494,10 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
         #    - we compute the equivalent CCF of the broadband scaling for the propagation of broadband spectral scaling from disk-integrated profiles into weights
         #    - global flux scaling is not modified  
         if gen_dic['flux_sc']:
-            data_scaling = np.load(data_vis['scaled_data_paths']+'.npz',allow_pickle=True)['data'].item()
-            loc_flux_scaling_all=data_scaling['loc_flux_scaling']                    
+            data_scaling_all={}
+            for iexp in iexp_list:         
+                data_scaling_all[iexp]=dataload_npz(data_vis['scaled_data_paths']+str(iexp))                 
             loc_flux_scaling_CCF = np.zeros(CCF_all.shape,dtype=float)   
-            loc_flux_scaling = np.zeros([data_vis['n_in_visit'],0],dtype=object)
 
         #Calculate CCF over requested orders in each exposure
         #    - the covariance of CCFs calculated over different orders may have different dimensions, thus we first store them independently before they can be co-added
@@ -3520,7 +3519,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
                     nd_cov_exp_ord[iexp_sub,isub] = np.shape(cov_ord)[0]
 
                     #Compute CCF of spectral scaling
-                    if gen_dic['flux_sc']:loc_flux_scaling_CCF[iexp_sub,0] += new_compute_CCF(data_proc['edge_bins'][iexp_sub,iord],loc_flux_scaling_all[iexp,iord](data_proc['edge_bins'][iexp_sub,iord]),None,gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.)[0]
+                    if gen_dic['flux_sc']:loc_flux_scaling_CCF[iexp_sub,0] += new_compute_CCF(data_proc['edge_bins'][iexp_sub,iord],data_scaling_all[iexp]['loc_flux_scaling'][iord](data_proc['edge_bins'][iexp_sub,iord]),None,gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.)[0]
 
                     #Compute CCF of master disk-integrated spectrum
                     #    - so that it can be used in the weighing profiles
@@ -3565,7 +3564,6 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
                 
             #Saving data for each exposure
             #    - CCF are stored independently of input spectra, so that both can be retrieved
-            #    - telluric field is set to an arbitrary value unity
             data_CCF_exp = {'cen_bins':cen_bins,'edge_bins':edge_bins,'flux':CCF_all[iexp_sub],'cond_def':cond_def_exp,'cov':cov_exp,'nd_cov':nd_cov_exp,'SNRs':data_proc['SNRs'][iexp_sub]}              
             np.savez_compressed(dir_save[gen]+str(iexp) ,data=data_CCF_exp,allow_pickle=True)
             
@@ -3575,37 +3573,25 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
 
             #Redefine spectral scaling table
             if gen_dic['flux_sc']:
-                if not data_scaling['chrom']:loc_flux_scaling[iexp,0] = np.poly1d([loc_flux_scaling_CCF[iexp_sub,0]])                
-                else:loc_flux_scaling[iexp,0] = interp1d(cen_bins,loc_flux_scaling_CCF[iexp_sub,0],fill_value=(loc_flux_scaling_CCF[iexp_sub,0,0],loc_flux_scaling_CCF[iexp_sub,0,-1]), bounds_error=False)
-                
-
-        #Saving CCF flux scaling for all exposures          
-        if gen_dic['flux_sc']:
-            data_scaling['loc_flux_scaling'] = loc_flux_scaling
-            data_scaling['chrom'] = False
-            np.savez_compressed(dir_scaled,data = data_scaling,allow_pickle=True)
+                if not data_scaling_all[iexp]['chrom']:loc_flux_scaling_exp = np.poly1d([loc_flux_scaling_CCF[iexp_sub,0]])                
+                else:loc_flux_scaling_exp = interp1d(cen_bins,loc_flux_scaling_CCF[iexp_sub,0],fill_value=(loc_flux_scaling_CCF[iexp_sub,0,0],loc_flux_scaling_CCF[iexp_sub,0,-1]), bounds_error=False)
+                data_scaling_all[iexp]['loc_flux_scaling'] = [loc_flux_scaling_exp]
+                data_scaling_all[iexp]['chrom'] = False
+                np.savez_compressed(gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_'+vis+'_scaling_'+str(iexp),data=data_scaling_all[iexp],allow_pickle=True)
 
         #Update common tables
         #    - set to the table in the star rest frame, as it is the one that will be used in later operations                
         np.savez_compressed(data_vis['proc_com_data_paths'],data = {'dim_exp':[1,data_vis['nvel']],'nspec':data_vis['nvel'],'cen_bins':np.tile(data_vis['velccf_star'],[1,1]),'edge_bins':np.tile(data_vis['edge_velccf_star'],[1,1])},allow_pickle=True)     
 
     else:
-        
-        #Updating path to processed data and checking it has been calculated
-        data_paths = {}
-        for gen in dir_save:
-            data_vis['proc_'+gen+'_data_paths'] = dir_save[gen]
-            path_loc = {}
-            for iexp in iexp_list:
-                if (data_type_gen=='Intr') and (iexp in gen_vis['idx_in']):iexp_eff = gen_vis['idx_exp2in'][iexp] 
-                else:iexp_eff = iexp
-                path_loc[iexp] = data_vis['proc_'+gen+'_data_paths']+str(iexp_eff)
-            data_paths.update(path_loc)
-        check_data(data_paths)
-    if gen_dic['flux_sc']:data_vis['scaled_data_paths'] = dir_scaled
+        check_data({'path':data_vis['proc_com_data_paths']})
+
+    #Updating path to processed data and checking it has been calculated
+    for gen in dir_save:data_vis['proc_'+gen+'_data_paths'] = dir_save[gen]  
+    if gen_dic['flux_sc']:data_vis['scaled_paths'] = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_'+vis+'_scaling_'
     if data_type_gen in ['Intr','Atm']:
         for gen in dir_save:data_vis['mast_'+gen+'_data_paths'] = dir_mast[gen]
-   
+
     #Convert spectral mode 
     #    - all operations afterwards will be performed on CCFs
     #    - tellurics are not propagated to calculate weights in CCF mode 
@@ -4974,7 +4960,7 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
 
     print('   > Broadband flux scaling') 
     data_vis=data_inst[vis]
-    data_vis['scaled_data_paths'] = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_add'
+    data_vis['scaled_data_paths'] = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_scaling_'
 
     #Calculating rescaled data
     if (gen_dic['calc_flux_sc']):
@@ -5166,7 +5152,12 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
             dic_save['flux_band_all'] = LC_flux_band_all
             dic_save['coord_HR'] = coord_pl_HR
             dic_save['LC_HR'] = LC_HR
-     
+
+
+        #Save for plots
+        if len(dic_save)>0:
+            np.savez_compressed(gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_add', data = dic_save ,allow_pickle=True)        
+
         #------------------------------------------------------------------------
 
         #Upload common spectral table
@@ -5232,13 +5223,6 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
         if data_dic['DI']['scaling_val'] is None:Tflux_ref = np.median(Tflux_all)
         else:Tflux_ref=Tcen_bin_comm*data_dic['DI']['scaling_val']
         norm_exp_glob = Tflux_all/Tflux_ref
-
-        #Save flux scaling 
-        #    - in-transit scaling can be used later to manipulate local profiles from the planet-occulted regions 
-        dic_save.update({'loc_flux_scaling':loc_flux_scaling,'glob_flux_scaling':norm_exp_glob})  
-        if system_prop['nw']>1:dic_save['chrom']=True
-        else:dic_save['chrom']=False
-        np.savez_compressed(data_vis['scaled_data_paths'], data = dic_save ,allow_pickle=True)
             
         #Scaling each exposure
         #    - only defined bins are scaled (the flux in undefined bins remain set to nan), but the scaling spectrum was calculated at all wavelengths so that it can be used later with data for which different bins are defined or not
@@ -5247,11 +5231,22 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
         if data_dic['DI']['rescale_DI']:          
             proc_DI_data_paths_new = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_'
             for iexp in range(data_vis['n_in_visit']):  
+                
+                #Save exposure
                 data_exp = np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item() 
                 for iord in range(data_inst['nord']): 
                     LC_exp_spec_ord = 1.-loc_flux_scaling[iexp,iord](data_exp['cen_bins'][iord])
                     data_exp['flux'][iord],data_exp['cov'][iord] = bind.mul_array(data_exp['flux'][iord],data_exp['cov'][iord],LC_exp_spec_ord/norm_exp_glob[iexp])
                 np.savez_compressed(proc_DI_data_paths_new+str(iexp),data = data_exp,allow_pickle=True) 
+                
+                #Save scaling
+                #    - must be saved for each exposure because (for some reason) the interp1d function cannot be saved once passed out of multiprocessing 
+                #    - in-transit scaling can be used later to manipulate local profiles from the planet-occulted regions 
+                data_scaling = {'loc_flux_scaling':loc_flux_scaling[iexp],'glob_flux_scaling':norm_exp_glob[iexp]}
+                if system_prop['nw']>1:data_scaling['chrom']=True
+                else:data_scaling['chrom']=False
+                np.savez_compressed(data_vis['scaled_data_paths']+str(iexp), data = data_scaling ,allow_pickle=True)                
+                
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
         
     #Updating path to processed data and checking it has been calculated
@@ -5980,9 +5975,6 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
     if gen_dic['intr_rv_corr'] and ('spec' in data_vis['type']) and ('chrom' in data_dic['DI']['system_prop']):intr_rv_corr = True
     else:intr_rv_corr=False
 
-    #Upload flux scaling
-    data_scaling = np.load(data_vis['scaled_data_paths']+'.npz',allow_pickle=True)['data'].item()
-
     #Processing intrinsic data
     if (gen_dic['calc_intr_data']):
         print('         Calculating data')
@@ -6010,6 +6002,9 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
             #Upload local stellar profile
             data_exp = dataload_npz(data_vis['proc_Res_data_paths']+str(iexp))
         
+            #Upload flux scaling
+            data_scaling_exp = dataload_npz(data_vis['scaled_data_paths']+str(iexp))
+        
             #Rescale local stellar profiles to a common flux level
             #    - correcting for LD variation and planetary occultation
             #    - the scaling spectrum is defined at all wavelengths, thus defined bins are unchanged 
@@ -6017,7 +6012,7 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
             for iord in range(data_dic[inst]['nord']):
                 cond_exp_ord = data_exp['cond_def'][iord]
                 resc_ord = np.ones(data_vis['nspec'],dtype=float)
-                resc_ord[cond_exp_ord] = 1./data_scaling['loc_flux_scaling'][iexp,iord](data_exp['cen_bins'][iord,cond_exp_ord])
+                resc_ord[cond_exp_ord] = 1./data_scaling_exp['loc_flux_scaling'][iord](data_exp['cen_bins'][iord,cond_exp_ord])
                 data_exp['flux'][iord],data_exp['cov'][iord] = bind.mul_array(data_exp['flux'][iord],data_exp['cov'][iord],resc_ord)
  
             #Correct for relative chromatic shift
@@ -7751,9 +7746,9 @@ def def_weights_spatiotemp_bin(iord_orig_list,scaled_data_paths,inst,vis,gen_cor
     #Spectral broadband flux scaling 
     #    - includes broadband contribution, unless overwritten by input 
     if bdband_flux_sc:     
-        data_scaling = dataload_npz(scaled_data_paths)        
-        flux_sc = {iord:1. - data_scaling['loc_flux_scaling'][iexp_glob,iord_orig](cen_bins[iord,cond_def_weights[iord]]) for iord,iord_orig in enumerate(iord_orig_list)}
-        if (glob_flux_sc is None):glob_flux_sc = data_scaling['glob_flux_scaling'][iexp_glob]        
+        data_scaling = dataload_npz(scaled_data_paths+str(iexp_glob))        
+        flux_sc = {iord:1. - data_scaling['loc_flux_scaling'][iord_orig](cen_bins[iord,cond_def_weights[iord]]) for iord,iord_orig in enumerate(iord_orig_list)}
+        if (glob_flux_sc is None):glob_flux_sc = data_scaling['glob_flux_scaling']        
     
     #Global flux scaling can still be applied, if provided as input
     else:
@@ -11840,9 +11835,9 @@ def loc_prof_meas(corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_dic):
         #                     = MFstar(w,vis)*(1 - LC(w,t))                    
         #    - the scaling spectrum is defined at all pixels, and thus does not affect undefined pixels in the master (the covariance matrix cannot be sliced)
         if gen_dic['flux_sc']:
-            data_scaling = np.load(data_vis['scaled_data_paths']+'.npz',allow_pickle=True)['data'].item()
+            data_scaling = dataload_npz(data_vis['scaled_data_paths']+str(gen_dic[inst][vis]['idx_in'][i_in]))
             for iord in range(data_inst['nord']):
-                loc_flux_scaling_ord = data_scaling['loc_flux_scaling'][gen_dic[inst][vis]['idx_in'][i_in],iord](data_est_loc['cen_bins'][iord])              
+                loc_flux_scaling_ord = data_scaling['loc_flux_scaling'][iord](data_est_loc['cen_bins'][iord])              
                 data_est_loc['flux'][iord],data_est_loc['cov'][iord] = bind.mul_array(data_est_loc['flux'][iord],data_est_loc['cov'][iord],loc_flux_scaling_ord)
             
         #Saving estimate of local profile for current exposure                   
@@ -11947,9 +11942,6 @@ def loc_prof_indivCCFmod(inst,vis,gen_dic,data_dic):
     data_prop=(np.load(gen_dic['save_data_dir']+'Introrig_prop/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item())['prof_fit_dic']
     idx_aligned = np_where1D(data_prop['cond_detected'])
 
-    #Upload flux scaling function
-    loc_flux_scaling = (np.load(data_vis['scaled_data_paths']+'.npz',allow_pickle=True)['data'].item())['loc_flux_scaling']
-    
     #Processing in-transit exposures
     for i_in in idx_aligned:
      
@@ -11957,7 +11949,8 @@ def loc_prof_indivCCFmod(inst,vis,gen_dic,data_dic):
         data_est_loc={'cen_bins':data_prop[i_in]['cen_bins'],'edge_bins':data_prop[i_in]['edge_bins'],'flux':data_prop[i_in]['flux'][:,None],'cond_def':np.ones(data_dic[inst][vis]['dim_exp'],dtype=bool)}
 
         #Rescaling model intrinsic profile to the level of the local profile
-        data_est_loc['flux'][0] *= loc_flux_scaling[gen_dic[inst][vis]['idx_exp2in'][i_in],0](data_est_loc['cen_bins'][0]) 
+        loc_flux_scaling = dataload_npz(data_vis['scaled_data_paths']+str(gen_dic[inst][vis]['idx_exp2in'][i_in]))['loc_flux_scaling']
+        data_est_loc['flux'][0] *= loc_flux_scaling[0](data_est_loc['cen_bins'][0]) 
 
         #Saving estimate of local profile for current exposure                   
         np.savez_compressed(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['mode_loc_data_corr']+'/'+inst+'_'+vis+'_in'+str(i_in),data=data_est_loc,allow_pickle=True)
@@ -11984,9 +11977,6 @@ def loc_prof_rec(inst,vis,gen_dic,data_dic,coord_dic):
     data_inst = data_dic[inst]
     data_vis = data_inst[vis]
     if not gen_dic['align_Intr']:stop('Intrinsic stellar profiles must have been aligned')
-
-    #Upload flux scaling function
-    loc_flux_scaling = (np.load(data_vis['scaled_data_paths']+'.npz',allow_pickle=True)['data'].item())['loc_flux_scaling']  
 
     #Upload common spectral table for processed visit
     data_com = np.load(data_inst[vis]['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item()  
@@ -12158,7 +12148,8 @@ def loc_prof_rec(inst,vis,gen_dic,data_dic,coord_dic):
         data_est_loc=align_data(data_rec[isub],data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],data_loc_exp['cen_bins'],data_loc_exp['edge_bins'],-surf_shifts,rv_shift_edge = surf_shifts_edge ,nocov=True)
 
         #Rescaling reconstructed intrinsic profile to the level of the local profile
-        for iord in range(data_dic[inst]['nord']):data_est_loc['flux'][iord] *=loc_flux_scaling[gen_dic[inst][vis]['idx_exp2in'][i_in],iord](data_est_loc['cen_bins'][iord]) 
+        loc_flux_scaling = dataload_npz(data_vis['scaled_data_paths']+str(gen_dic[inst][vis]['idx_exp2in'][i_in]))['loc_flux_scaling']
+        for iord in range(data_dic[inst]['nord']):data_est_loc['flux'][iord] *=loc_flux_scaling[iord](data_est_loc['cen_bins'][iord]) 
 
         #Saving estimate of local profile for current exposure                   
         np.savez_compressed(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['mode_loc_data_corr']+'/'+inst+'_'+vis+'_in'+str(i_in),data=data_est_loc,allow_pickle=True)
@@ -12413,7 +12404,6 @@ def conv_2D_to_1D_spec(data_type,inst,vis,gen_dic,data_dic,prop_dic,coord_dic,da
     proc_gen_data_paths_new = gen_dic['save_data_dir']+data_type_gen+'_data_1Dfrom2D/'+gen_dic['add_txt_path'][data_type_gen]+'/spec1D_'+inst+'_'+vis+'_'
     data_vis['proc_com_data_paths'] = gen_dic['save_data_dir']+'Processed_data/spec1D_'+inst+'_'+vis+'_com'
     
-
     #Calculating data
     print('   > Converting 2D '+gen_dic['type_name'][data_type]+' spectra into 1D spectra')
     if calc_check:
@@ -12425,8 +12415,7 @@ def conv_2D_to_1D_spec(data_type,inst,vis,gen_dic,data_dic,prop_dic,coord_dic,da
         edge_bins_1D = prop_dic['spec_1D_prop'][inst]['edge_bins']
 
         #Associated tables   
-        if gen_dic['flux_sc']:
-            data_scaling = np.load(data_dic[inst][vis]['scaled_data_paths']+'.npz',allow_pickle=True)['data'].item()
+        scaling_data_paths = data_vis['scaled_data_paths'] if gen_dic['flux_sc'] else None
         tell_data_paths = data_vis['tell_'+data_type_gen+'_data_paths'] if data_vis['tell_sp'] else None
         if gen_dic['gain_weight'] and data_vis['mean_gdet']:
             proc_weight=True
@@ -12439,17 +12428,11 @@ def conv_2D_to_1D_spec(data_type,inst,vis,gen_dic,data_dic,prop_dic,coord_dic,da
 
         #Processing all exposures
         ifirst = iexp_conv[0]
-        common_args = (data_type_gen,gen_dic['resamp_mode'],proc_gen_data_paths_new,cen_bins_1D,edge_bins_1D,gen_dic['flux_sc'],data_vis['tell_sp'],gen_dic['DImast_weight'],nspec_1D,data_scaling,data_inst['nord'],ifirst,data_vis['proc_com_data_paths'],proc_weight,\
-                       gen_dic[inst][vis]['idx_in2exp'],data_type,data_dic['Intr']['cov_loc_star'],data_vis['proc_'+data_type_gen+'_data_paths'],tell_data_paths,mean_gdet_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],\
+        common_args = (data_type_gen,gen_dic['resamp_mode'],proc_gen_data_paths_new,cen_bins_1D,edge_bins_1D,nspec_1D,data_inst['nord'],ifirst,data_vis['proc_com_data_paths'],proc_weight,\
+                       gen_dic[inst][vis]['idx_in2exp'],data_type,data_dic['Intr']['cov_loc_star'],data_vis['proc_'+data_type_gen+'_data_paths'],tell_data_paths,scaling_data_paths,mean_gdet_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],\
                        gen_dic['save_data_dir'],gen_dic['type'],data_vis['type'],data_vis['dim_exp'])
-        if nthreads>1: loc_flux_scaling_1D_all = para_conv_2D_to_1D_exp(conv_2D_to_1D_exp,nthreads,len(iexp_conv),[iexp_conv],common_args)                           
-        else: loc_flux_scaling_1D_all = conv_2D_to_1D_exp(iexp_conv,*common_args)  
-
-        #Saving 1D flux scaling for all exposures    
-        #    - global flux scaling is not modified
-        if gen_dic['flux_sc']:
-            data_scaling['loc_flux_scaling'][iexp_conv] = loc_flux_scaling_1D_all
-            np.savez_compressed(gen_dic['save_data_dir']+'Scaled_data/'+data_type_gen+'_data_1Dfrom2D_'+inst+'_'+vis+'_add',data = data_scaling,allow_pickle=True)
+        if nthreads>1: para_conv_2D_to_1D_exp(conv_2D_to_1D_exp,nthreads,len(iexp_conv),[iexp_conv],common_args)                           
+        else: conv_2D_to_1D_exp(iexp_conv,*common_args)  
 
         #Frame of original data for traceability
         if (gen_dic['align_'+data_type_gen]):cond_aligned=True           
@@ -12466,7 +12449,7 @@ def conv_2D_to_1D_spec(data_type,inst,vis,gen_dic,data_dic,prop_dic,coord_dic,da
         
     #Updating paths
     data_vis['proc_'+data_type_gen+'_data_paths'] = proc_gen_data_paths_new 
-    if gen_dic['flux_sc']:data_vis['scaled_data_paths'] = gen_dic['save_data_dir']+'Scaled_data/'+data_type_gen+'_data_1Dfrom2D_'+inst+'_'+vis+'_add'
+    if gen_dic['flux_sc']:data_vis['scaled_data_paths'] = proc_gen_data_paths_new+'_scaling'
     if data_vis['tell_sp']:data_vis['tell_'+data_type_gen+'_data_paths'] = {}
     if data_type_gen=='Atm':data_vis['LocEst_Atm_data_paths'] = {}
     for iexp in iexp_conv:
@@ -12487,10 +12470,9 @@ def conv_2D_to_1D_spec(data_type,inst,vis,gen_dic,data_dic,prop_dic,coord_dic,da
 
     return None
 
-def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_new,cen_bins_1D,edge_bins_1D,flux_sc,tell_sp,DImast_weight,nspec_1D,data_scaling,nord,ifirst,proc_com_data_paths,proc_weight,\
-                      idx_in2exp,data_type,cov_loc_star,proc_data_paths,tell_data_paths,mean_gdet_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,\
+def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_new,cen_bins_1D,edge_bins_1D,nspec_1D,nord,ifirst,proc_com_data_paths,proc_weight,\
+                      idx_in2exp,data_type,cov_loc_star,proc_data_paths,tell_data_paths,scaling_data_paths,mean_gdet_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,\
                       save_data_dir,gen_type,data_mode,dim_exp):
-    loc_flux_scaling_1D_all = np.zeros([len(iexp_conv),1],dtype=object)
     
     #Processing each exposure
     for isub,iexp in enumerate(iexp_conv):   
@@ -12500,9 +12482,10 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_ne
         cov_est_loc_exp = None
         SpSstar_spec = None    
         data_exp = dataload_npz(proc_data_paths+str(iexp))
-        if tell_sp:data_exp['tell'] = dataload_npz(tell_data_paths[iexp])['tell'] 
+        if scaling_data_paths is not None:data_scaling_exp = dataload_npz(scaling_data_paths+str(iexp))
+        if tell_data_paths is not None:data_exp['tell'] = dataload_npz(tell_data_paths[iexp])['tell'] 
         if proc_weight:data_exp['mean_gdet'] = dataload_npz(mean_gdet_data_paths[iexp])['mean_gdet'] 
-        if DImast_weight:data_ref = dataload_npz(DImast_weight_data_paths[iexp])
+        if DImast_weight_data_paths is not None:data_ref = dataload_npz(DImast_weight_data_paths[iexp])
         if data_type_gen=='DI':iexp_glob=iexp
         else:                    
             if data_type_gen=='Intr':iexp_glob = idx_in2exp[iexp]                     
@@ -12528,9 +12511,9 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_ne
         cond_def_1D = np.zeros(nspec_1D,dtype=bool) 
         flux_ord_contr=[]
         cov_ord_contr=[] 
-        if flux_sc:loc_flux_scaling_ord_contr= np.zeros(nspec_1D, dtype=float)
-        if tell_sp:tell_ord_contr = np.zeros(nspec_1D, dtype=float)
-        if DImast_weight:
+        if scaling_data_paths is not None:loc_flux_scaling_ord_contr= np.zeros(nspec_1D, dtype=float)
+        if tell_data_paths is not None:tell_ord_contr = np.zeros(nspec_1D, dtype=float)
+        if DImast_weight_data_paths is not None:
             flux_ref_ord_contr=[]
             cov_ref_ord_contr=[] 
         if SpSstar_spec is not None:SpSstar_spec_ord_contr = np.zeros(nspec_1D, dtype=float)
@@ -12556,15 +12539,15 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_ne
             #Apply same steps to complementary spectra
             #    - gain profiles are not consistent in the overlaps between orders, and are not used anymore
             #    - the master has followed the same shifts as the intrinsic or atmospheric profiles, but always remain either defined on the common table, or on a specific table different from the table of its associated exposure
-            if flux_sc: 
-                loc_flux_scaling_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],data_scaling['loc_flux_scaling'][iexp,iord](data_exp['cen_bins'][iord])*weight_exp[iord] ,kind=resamp_mode)
+            if scaling_data_paths is not None: 
+                loc_flux_scaling_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],data_scaling_exp['loc_flux_scaling'][iord](data_exp['cen_bins'][iord])*weight_exp[iord] ,kind=resamp_mode)
                 loc_flux_scaling_temp[~cond_def] = 0.
                 loc_flux_scaling_ord_contr+=loc_flux_scaling_temp
-            if tell_sp:
+            if tell_data_paths is not None:
                 tell_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],  data_exp['tell'][iord]*weight_exp[iord] ,kind=resamp_mode) 
                 tell_temp[~cond_def] = 0.                    
                 tell_ord_contr+=tell_temp                    
-            if DImast_weight:
+            if DImast_weight_data_paths is not None:
                 flux_ref_temp,cov_ref_temp = bind.mul_array( data_ref['flux'][iord], data_ref['cov'][iord] , weight_exp[iord])
                 flux_ref_temp,cov_ref_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], flux_ref_temp , cov = cov_ref_temp, kind=resamp_mode)   
                 flux_ref_temp[~cond_def] = 0.   
@@ -12607,17 +12590,20 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_ne
 
         #Store data with artifical order for consistency with the routines
         #    - gain profile are not used anymore afterward as there is no clear conversion from 2D to 1D for them
+        #    - global flux scaling is not modified
         data_exp1D = {'cen_bins':cen_bins_1D[None,:],'edge_bins':edge_bins_1D[None,:],'flux' : flux_1D[None,:],'cond_def' : cond_def_1D[None,:], 'cov' : [cov_1D]} 
         if SpSstar_spec is not None:data_exp1D['SpSstar_spec'] =  (SpSstar_spec_ord_contr*norm_fact)[None,:]
         np.savez_compressed(proc_gen_data_paths_new+str(iexp),data = data_exp1D,allow_pickle=True) 
-        if flux_sc:
+        if scaling_data_paths is not None:
             loc_flux_scaling_norm = loc_flux_scaling_ord_contr*norm_fact
-            if not data_scaling['chrom']:loc_flux_scaling_1D_all[isub,0] = np.poly1d([loc_flux_scaling_norm[0]])                
-            else:loc_flux_scaling_1D_all[isub,0] = interp1d(cen_bins_1D,loc_flux_scaling_norm,fill_value=(loc_flux_scaling_norm[0],loc_flux_scaling_norm[-1]), bounds_error=False)                
-        if tell_sp:
+            if not data_scaling_exp['chrom']:loc_flux_scaling_1D = np.poly1d([loc_flux_scaling_norm[0]])                
+            else:loc_flux_scaling_1D = interp1d(cen_bins_1D,loc_flux_scaling_norm,fill_value=(loc_flux_scaling_norm[0],loc_flux_scaling_norm[-1]), bounds_error=False)                
+            data_scaling_exp['loc_flux_scaling'] = [loc_flux_scaling_1D]
+            np.savez_compressed(proc_gen_data_paths_new+'_scaling'+str(iexp),data = data_scaling_exp,allow_pickle=True)
+        if tell_data_paths is not None:
             tell_1D = (tell_ord_contr*norm_fact)[None,:]
             np.savez_compressed(proc_gen_data_paths_new+'_tell'+str(iexp),data = {'tell':tell_1D},allow_pickle=True)                 
-        if DImast_weight:
+        if DImast_weight_data_paths is not None:
             flux_ref_1D,cov_ref_1D = bind.sum(flux_ref_ord_contr,cov_ref_ord_contr)
             flux_ref_1D,cov_ref_1D = bind.mul_array(flux_ref_1D,cov_ref_1D,norm_fact)
             flux_ref_1D[~cond_def_1D]=np.nan   
@@ -12638,17 +12624,16 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_ne
         #    - set to the table of first processed exposure
         if iexp==ifirst:np.savez_compressed(proc_com_data_paths,data = {'dim_exp':[1,nspec_1D],'nspec':nspec_1D,'cen_bins':np.tile(cen_bins_1D,[1,1]),'edge_bins':np.tile(edge_bins_1D,[1,1])},allow_pickle=True)        
     
-    return loc_flux_scaling_1D_all
+    return None
 
 def para_conv_2D_to_1D_exp(func_input,nthreads,n_elem,y_inputs,common_args):
     pool_proc = Pool(processes=nthreads)   #cannot be passed through lmfit
     ind_chunk_list=init_parallel_func(nthreads,n_elem)
     chunked_args=[(y_inputs[0][ind_chunk[0]:ind_chunk[1]],)+common_args for ind_chunk in ind_chunk_list]	
     all_results=tuple(tab for tab in pool_proc.starmap(func_input,chunked_args))
-    y_output=np.concatenate(tuple(all_results[i] for i in range(nthreads)),axis=0)
     pool_proc.close()
     pool_proc.join() 	    
-    return y_output
+    return None
 
 
 
