@@ -2739,7 +2739,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
                 #    - we do not use the global master of the flux balance correction because it is defined over all visits 
                 if (not gen_dic['wig_indiv_mast']):
                     for idmer in idx_to_bin_mer:                    
-                        data_mast[idmer] = calc_binned_prof(idx_to_bin_mer[idmer],data_dic[inst]['nord'],dim_exp_com,nspec_com,data_to_bin[idmer],data_dic,inst,len(idx_to_bin_mer[idmer]),data_com['cen_bins'],data_com['edge_bins'])
+                        data_mast[idmer] = calc_binned_prof(idx_to_bin_mer[idmer],data_dic[inst]['nord'],dim_exp_com,nspec_com,data_to_bin[idmer],inst,len(idx_to_bin_mer[idmer]),data_com['cen_bins'],data_com['edge_bins'])
 
             #------------------------------------------------------
 
@@ -2850,7 +2850,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
                                 for key in ['flux','cond_def','cov','weight']:data_to_bin_extract[iexp_off][key] = data_glob[iexp_off][key]
         
                         #Calculate master on current exposure table
-                        data_mast_exp = calc_binned_prof(idx_to_bin,data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin_extract,data_dic,inst,n_in_bin,data_glob[iexp]['cen_bins'],data_glob[iexp]['edge_bins'])
+                        data_mast_exp = calc_binned_prof(idx_to_bin,data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin_extract,inst,n_in_bin,data_glob[iexp]['cen_bins'],data_glob[iexp]['edge_bins'])
     
                     #Processing master and exposure over common pixels, defined and outside of selected range
                     #    - from here on data is processed in nu space
@@ -5990,12 +5990,12 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
             data_dic_exp[vis]['edge_bins']=np.zeros(data_vis['dim_sp']+[data_vis['nspec']+1], dtype=float)*np.nan
             data_dic_exp[vis]['SNRs']=np.zeros([data_vis['n_in_visit'],gen_dic[inst]['norders_instru']],dtype=float)*np.nan
             if data_vis['tell_sp']:data_dic_exp[vis]['tell']=np.zeros(data_vis['dim_all'], dtype=float)
-            for iexp in range(data_vis['n_in_visit']):
+            for iexp in range(data_vis['n_in_visit']):               
                 data_exp = np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item()                  
-                for key in data_dic_exp[vis]:data_dic_exp[vis][key][iexp] = data_exp[key]
+                for key in [key_sub for key_sub in data_dic_exp[vis] if key_sub not in ['mean_gdet','tell']]:data_dic_exp[vis][key][iexp] = data_exp[key]
                 if data_vis['tell_sp']:data_dic_exp[vis]['tell'][iexp] = dataload_npz(data_vis['tell_DI_data_paths'][iexp])['tell']             
-                data_dic_exp[vis]['mean_gdet'][iexp] = dataload_npz(data_vis['mean_gdet_DI_data_paths'][iexp])['mean_gdet']  
-                    
+                data_dic_exp[vis]['mean_gdet'][iexp] = dataload_npz(data_vis['mean_gdet_DI_data_paths'][iexp])['mean_gdet']
+
         #------------------------------------------
 
         #Processing each visit
@@ -6063,7 +6063,7 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
                 data_inst['nord'] = len(idx_ord_kept)  
                 data_inst['nord_spec']=deepcopy(data_inst['nord'])     
                 gen_dic[inst]['order_range'] = np.intersect1d(gen_dic[inst]['order_range'],idx_ord_kept,return_indices=True)[2] 
-                data_inst['idx_ord_ref'] = data_inst['idx_ord_ref'][idx_ord_kept]
+                data_inst['idx_ord_ref'] = np.array(data_inst['idx_ord_ref'])[idx_ord_kept]
                 for key in ['cen_bins','edge_bins']:
                     data_com_inst[key] = np.take(data_com_inst[key],idx_ord_kept,axis=0)    
                 data_inst['dim_exp'][0] = data_inst['nord']  
@@ -6080,7 +6080,7 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
         #Saving modified data and updating paths
         data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_com' 
         np.savez_compressed(data_inst['proc_com_data_path'],data = data_com_inst,allow_pickle=True)    
-        np.savez(gen_dic['save_data_dir']+'Corr_data/Trim/DimTrimmed_'+inst,nord = data_inst['nord'],nspec = data_inst['nspec'],dim_exp = data_inst['dim_exp'],order_range = gen_dic[inst]['order_range'])  
+        np.savez(gen_dic['save_data_dir']+'Corr_data/Trim/DimTrimmed_'+inst,nord = data_inst['nord'],nspec = data_inst['nspec'],dim_exp = data_inst['dim_exp'],order_range = gen_dic[inst]['order_range'],idx_ord_ref=data_inst['idx_ord_ref'],nord_spec=data_inst['nord_spec'])  
         for vis in data_inst['visit_list']:
             data_vis=data_inst[vis]
             data_vis['proc_DI_data_paths'] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_'
@@ -6104,7 +6104,7 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
         data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_com'
         data_load = np.load(gen_dic['save_data_dir']+'Corr_data/Trim/DimTrimmed_'+inst+'.npz')
         data_inst['dim_exp'] = list(data_load['dim_exp'])
-        for key in ['nspec','nord','idx_ord_ref','nord_spec']:data_inst[key]=data_load[key]
+        for key in ['nord','nspec','idx_ord_ref','nord_spec']:data_inst[key]=data_load[key]
         gen_dic[inst]['order_range'] = data_load['order_range']                 
         for vis in data_inst['visit_list']: 
             data_vis=data_inst[vis]
@@ -6120,7 +6120,7 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
             data_load = np.load(gen_dic['save_data_dir']+'Corr_data/Trim/DimTrimmed_'+inst+'_'+vis+'.npz')
             for key in ['dim_all','dim_exp','dim_sp']:data_inst[vis][key] = list(data_load[key])
             data_inst[vis]['nspec']=data_load['nspec']  
-      
+
     return None
 
 

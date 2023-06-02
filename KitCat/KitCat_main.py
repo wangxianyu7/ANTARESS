@@ -521,7 +521,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         wave_tel = np.array(wave_tel)
         depth_tel = np.array(depth_tel)
         Dico['rel_contam'] = depth_tel/Dico['line_depth']
-
+  
         #Store for plotting 
         if plot_tellcont:
             dic_sav.update({'rel_contam':deepcopy(Dico['rel_contam']),'tell_star_depthR_max':tell_star_depthR_max,'weight_rv_tellcont':np.array(Dico[mask_dic['mask_weights']])})
@@ -923,22 +923,26 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
             if mask_dic['nthreads']>1: RV_tab_vis = para_RV_LBL(RV_LBL,mask_dic['nthreads'],len(idx_RV_disp_sel),[idx_RV_disp_sel],common_args)                           
             else: RV_tab_vis = RV_LBL(idx_RV_disp_sel,*common_args)  
             RV_tab = np.append(RV_tab,RV_tab_vis,axis=2)   
-                   
+                 
         #Calculate weighted average of RV, and dispersion/mean error, for each line
         #    - beware in cases where the number of out-of-transit spectra, and thus of RV measurements for each line, is too low to analyze the RV distribution and errors of a single line 
         av_RV_lines = np.ones(nlines,dtype=float)*1e10
         disp_err_RV_lines = np.ones(nlines,dtype=float)*1e10
         for iline in range(nlines):
-            cond_def = ~np.isnan(RV_tab[0,iline,:])
+            cond_def = (~np.isnan(RV_tab[0,iline,:])) & (~np.isnan(RV_tab[1,iline,:])) 
+            if np.sum(cond_def)>0:
             
-            #Weighted average
-            wRV_line = 1./RV_tab[1,iline,cond_def]**2.
-            av_RV_lines[iline] = np.sum(RV_tab[0,iline,cond_def]*wRV_line)/np.sum(wRV_line)
-        
-            #Dispersion to error ratio
-            disp_RV = np.std(RV_tab[0,iline,cond_def])
-            mean_eRV = np.mean(RV_tab[1,iline,cond_def])
-            disp_err_RV_lines[iline] = disp_RV/mean_eRV
+                #Weighted average
+                wRV_line = 1./RV_tab[1,iline,cond_def]**2.
+                av_RV_lines[iline] = np.sum(RV_tab[0,iline,cond_def]*wRV_line)/np.sum(wRV_line)
+            
+                #Dispersion to error ratio
+                disp_RV = np.std(RV_tab[0,iline,cond_def])
+                mean_eRV = np.mean(RV_tab[1,iline,cond_def])
+                disp_err_RV_lines[iline] = disp_RV/mean_eRV
+                
+                if np.isnan(disp_err_RV_lines[iline]):print(disp_RV,mean_eRV)
+
 
         #Dispersion thresholds
         if (inst in mask_dic['absRV_max']):absRV_max = mask_dic['absRV_max'][inst]

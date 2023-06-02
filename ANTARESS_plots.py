@@ -356,9 +356,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             data_pca = np.load(gen_dic['save_data_dir']+'PCA_results/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item() 
                             iexp_plot = data_pca['idx_corr']
                             iexp_orig = iexp_plot
-                            data_path_all = [gen_dic['save_data_dir']+'PCA_results/'+inst+'_'+vis+'_model'+str(iexp)+'.npz' for iexp in iexp_plot]
-                        data_scaling = np.load(gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item()
-                        loc_flux_scaling_plot = data_scaling['loc_flux_scaling']                  
+                            data_path_all = [gen_dic['save_data_dir']+'PCA_results/'+inst+'_'+vis+'_model'+str(iexp)+'.npz' for iexp in iexp_plot]                
                     elif map_mod=='map_Intrbin': 
                         sp_mod = data_dic['Intr']['type'][inst]      
                         if gen_dic['align_Intr']:restframe='local'
@@ -416,13 +414,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     cond_def_map = np.zeros(dim_all_plot,dtype=bool)
                     for isub,(iexp_plot_loc,iexp_orig_loc,data_path_exp) in enumerate(zip(iexp_plot,iexp_orig,data_path_all)):
                         if map_mod in ['map_Intr_prof_est','map_Intr_prof_res','map_pca_prof']:
+                            loc_flux_scaling_plot = dataload_npz(data_vis['scaled_data_paths']+str(iexp_orig_loc))['loc_flux_scaling']  
                             
                             #Estimates for intrinsic stellar profiles
                             #    - models for local stellar profiles are scaled as F_intr(w,t,v) = F_res(w,t,v)/(1 - LC_theo(band,t))
                             #      where loc_flux_scaling = 1 - LC_theo
                             if (map_mod=='map_Intr_prof_est'):  
                                 data_load = np.load(data_path_exp,allow_pickle=True)['data'].item()     #estimated local profile
-                                var_map[isub] = data_load['flux']/loc_flux_scaling_plot[iexp_orig_loc,0](data_load['cen_bins'])           #estimated intrinsic profile
+                                var_map[isub] = data_load['flux']/loc_flux_scaling_plot[0](data_load['cen_bins'])           #estimated intrinsic profile
                             
                             #Residual maps
                             #    - see details in pc_analysis()
@@ -437,7 +436,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 #In-transit profile
                                 if (inout_flag[isub]=='in'):    
                                     data_load = np.load(data_vis['proc_Intr_data_paths']+str(iexp_plot_loc)+'.npz',allow_pickle=True)['data'].item() 
-                                    loc_flux_scaling_exp = loc_flux_scaling_plot[iexp_orig_loc,0](data_load['cen_bins'])
+                                    loc_flux_scaling_exp = loc_flux_scaling_plot[0](data_load['cen_bins'])
                                     
                                     #Correct for local continuum level only
                                     if plot_options['cont_only']:
@@ -1018,10 +1017,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Res_data/'+inst+'_'+vis+'_Indiv_CCFloc/'
                         iexp_plot = data_dic['Res'][inst][vis]['idx_to_extract']
                         iexp_orig=iexp_plot
-                        
-                        #Upload flux scaling
-                        loc_flux_scaling_all = (np.load(gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item())['loc_flux_scaling']   
-                    
+
                         #In-transit exposures with estimates of local stellar profiles 
                         if plot_options['estim_loc']:
                             cond_in_intr_def = (np.load(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item())['cond_in_intr_def']
@@ -1035,7 +1031,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             
                         if plot_options['aligned']:
                             if ((plot_mod=='CCFintr_res') or (plot_options['plot_line_model'] and (plot_mod in ['CCFintr']))):stop('Remove "aligned" options to overplot model')
-                            path_loc = gen_dic['save_dir']+gen_dic['studied_pl']+'_Plots/Aligned_intr_data/'+inst+'_'+vis+suff
+                            path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Aligned_intr_data/'+inst+'_'+vis+suff
                         else:
                             path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Intr_data/'+inst+'_'+vis+suff
                         iexp_plot = data_dic['Intr'][inst][vis]['idx_def']
@@ -1279,8 +1275,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             if plot_options['plot_line_model'] and cond_mod:      
                            
                                 #Plot fit profile
-                                CCF_fit = sc_fact*CCF_prop_exp['flux']/norm_exp
-                                if plot_mod=='CCFloc':CCF_fit*=loc_flux_scaling_all[iexp,0](CCF_prop_exp['cen_bins'])                            
+                                CCF_fit = sc_fact*CCF_prop_exp['flux']/norm_exp                        
+                                loc_flux_scaling = dataload_npz(data_vis['scaled_data_paths']+str(iexp))['loc_flux_scaling']   
+                                if plot_mod=='CCFloc':CCF_fit*=loc_flux_scaling[0](CCF_prop_exp['cen_bins'])                            
                                 plt.plot(CCF_prop_exp['cen_bins'],CCF_fit,color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=-1+15)                       
                               
                                 #Plot fitted pixels
@@ -2234,7 +2231,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 for maink in maink_list:
                 
                     #Calculate common master                       
-                    data_mast[maink] = calc_binned_prof(iexp_mast_list,nord_proc,dim_exp_proc,data_dic[inst]['nspec'],data_proc[maink],data_dic,inst,len(iexp_mast_list),cen_bins_com,edge_bins_com)
+                    data_mast[maink] = calc_binned_prof(iexp_mast_list,nord_proc,dim_exp_proc,data_dic[inst]['nspec'],data_proc[maink],inst,len(iexp_mast_list),cen_bins_com,edge_bins_com)
 
                     #Dispersion tables
                     if plot_options['print_disp']:disp_dic[maink] = np.zeros([2,len(iexp_plot)])*np.nan 
@@ -3624,7 +3621,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             str_name =''
                             for ord_num in gen_dic['order_range'][inst]:str_name+='_'+str(ord_num)
                             data_save = {'disp_err_R':disp_err_R,'disp_from_mean':disp_from_mean,'emean':eval_mean,'delta_mean':np.mean(val_obs[isub_in_plot])-np.mean(val_obs[isub_out_plot])}
-                            np.savez(gen_dic['save_dir']+'Dispersions/'+gen_dic['studied_pl']+'_Raw_'+prop_mode+str_name,data=data_save,allow_pickle=True)    
+                            np.savez(gen_dic['save_dir']+'Dispersions/'+gen_dic['main_pl_text']+'_Raw_'+prop_mode+str_name,data=data_save,allow_pickle=True)    
     
                         #Plot results from common fit to local CCFs
                         if ('plot_fit_comm' in plot_options) and (inst in plot_options['plot_fit_comm']) and (vis in plot_options['plot_fit_comm'][inst]):
@@ -4431,7 +4428,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 y_range_loc[0]-=0.05*dy_range
                 y_range_loc[1]+=0.05*dy_range
                 dy_range=y_range_loc[1]-y_range_loc[0]
-    
+         
             #Thresholds
             x_thresh_name = {
                 'ld':'linedepth_cont_min',
@@ -4493,7 +4490,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             if (thresh_test is not None):
                 n_test = np.sum(cond_sel_test)             
                 axes[1,0].text(x_range_loc[1]+0.2*dx_range,y_range_loc[1]+0.1*dy_range,'Trial = '+str(n_test),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size']-2.,zorder=4,color='gold') 
-
+            
             #Set up the axes
             axes[1,0].set_xlim(x_range_loc)
             axes[1,0].set_ylim(y_range_loc)
@@ -6344,7 +6341,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options[key_plot]['visits_to_plot'][inst]): 
                 
                 #Create directory if required
-                path_loc = gen_dic['save_dir']+gen_dic['studied_pl']+'_Plots/Spec_raw/'+inst+'_'+vis+'_Fringing/'
+                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/'+inst+'_'+vis+'_Fringing/'
                 if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)                 
                 data_vis=data_dic[inst][vis]
 
@@ -7806,9 +7803,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot].update(plot_settings[key_plot]) 
         
         print('-----------------------------------')
-        print('+ Plot spectral light curves')
+        print('+ Effective spectral light curves')
         
-        path_loc = gen_dic['save_dir']+gen_dic['studied_pl']+'_Plots/Light_curves/Spectral/'
+        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Light_curves/Spectral/'
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
         #Visit color
@@ -7830,39 +7827,38 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 data_vis = data_dic[inst][vis]                           
                 plt.ioff()                    
                 fig = plt.figure(figsize=(10, 6))
-            
-                #Upload flux scaling
-                loc_flux_scaling = (np.load(gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item())['loc_flux_scaling']
-      
+
+                #Reference planet for the visit
+                pl_ref=plot_options[key_plot]['pl_ref'][inst][vis]
+
                 #Plot each in-transit observed exposure
                 y_min=1e100
                 y_max=-1e100
-                for i_exp,(ph_loc,ph_dur_loc) in enumerate(zip(coord_vis[pl_ref]['cen_ph'],coord_vis['ph_dur'])):
-                    scaled_data = np.load(gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_'+str(iexp)+'.npz')
+                for i_exp,(ph_loc,ph_dur_loc) in enumerate(zip(coord_vis[pl_ref]['cen_ph'],coord_vis[pl_ref]['ph_dur'])):
+                    scaled_data = dataload_npz(gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_'+str(i_exp))
+                    scaling_data = dataload_npz(gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_scaling_'+str(i_exp))
                 
                     #Plot flux scaling for each requested wavelength
                     for iwLC,wLC_loc in enumerate(plot_options[key_plot]['wav_LC']):
                         
                         #Wavelength closest to request in table of current exposure
                         idx_wLC_loc = closest_Ndim(scaled_data['cen_bins'],wLC_loc)
-                        
+
                         #Theoretical flux value at retrieved wavelength
-                        #    - only for defined pixels
-                        if scaled_data['cond_def'][idx_wLC_loc]==True:
-                            flux_loc = 1. - loc_flux_scaling[i_exp,idx_wLC_loc[0]](scaled_data['cen_bins'][idx_wLC_loc])
-                            plt.errorbar(ph_loc,flux_loc,xerr=0.5*ph_dur_loc,color=color_dic[iwLC],marker='s',markersize=plot_options['markersize'],linestyle='',markerfacecolor='white')                
-                            y_min=min(flux_loc,y_min)
-                            y_max=max(flux_loc,y_max)
+                        flux_loc = 1. - scaling_data['loc_flux_scaling'][idx_wLC_loc[0]](scaled_data['cen_bins'][idx_wLC_loc])    
+                        plt.errorbar(ph_loc,flux_loc,xerr=0.5*ph_dur_loc,color=color_dic[iwLC],marker='s',markersize=plot_options[key_plot]['markersize'],linestyle='',markerfacecolor='white')                
+                        y_min=min(flux_loc,y_min)
+                        y_max=max(flux_loc,y_max)
 
                 #Axis ranges
-                x_range_loc=plot_options[key_plot]['x_range'] if plot_options[key_plot]['x_range'] is not None else np.array([np.min(coord_vis['st_ph'])-0.005,np.max(coord_vis['end_ph'])+0.005])
+                x_range_loc=plot_options[key_plot]['x_range'] if plot_options[key_plot]['x_range'] is not None else np.array([np.min(coord_vis[pl_ref]['st_ph'])-0.005,np.max(coord_vis[pl_ref]['end_ph'])+0.005])
                 y_range_loc=plot_options[key_plot]['y_range'] if plot_options[key_plot]['y_range'] is not None else np.array([0.995*y_min,1.005*y_max]) 
     
                 #Plot requested wavelengths
                 for iwLC,wLC_loc in enumerate(plot_options[key_plot]['wav_LC']):
                     dx_range = x_range_loc[1]-x_range_loc[0]
                     dy_range = y_range_loc[1]-y_range_loc[0]
-                    plt.text(x_range_loc[0]+0.05*dx_range,y_range_loc[0]+(1.+iwLC)*dy_range/(n_wLC+1.),str(wLC_loc),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=4,color=color_dic[iwLC]) 
+                    plt.text(x_range_loc[0]+0.05*dx_range,y_range_loc[0]+(1.+iwLC)*dy_range/(n_wLC+1.),"{0:.0f}".format(wLC_loc),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=4,color=color_dic[iwLC]) 
         
                 #Contacts
                 for cont_ph in contact_phases[pl_ref]:
@@ -8107,7 +8103,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Plot for each visit
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options[key_plot]['visits_to_plot'][inst]): 
                 Res_data_vis = data_dic['Res'][inst][vis]
-                path_loc = gen_dic['save_dir']+gen_dic['studied_pl']+'_Plots/Screen_search'+inst+'_'+vis+'/'
+                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Screen_search'+inst+'_'+vis+'/'
                 if (not os_system.path.exists(path_loc)):os_system.makedirs(path_loc) 
     
                 #--------------------------------------------------------------------
@@ -9004,7 +9000,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('   > Plot range of properties covered by the planet-occulted regions')
         
         #Directory
-        path_loc = gen_dic['save_dir']+gen_dic['studied_pl']+'_Plots/Plocc_prop/' 
+        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Plocc_prop/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
                     
         #Plot for each instrument
@@ -9956,7 +9952,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #Coordinates in the sky-projected star rest frame
         #    - vertical axis is the stellar spin
         #    - yprimperp = y_st_sky_grid si istar = 90
-        cond_in_stphot,nsub_star = calc_st_sky(coord_grid,star_params)  
+        nsub_star = calc_st_sky(coord_grid,star_params)
 
         #Flux emitted by each stellar cell 
         #    - assuming a maximum flux unity for plotting purposed (ie, dS = 1 and GD_max = 1 at the pole)
@@ -10158,12 +10154,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if plot_options[key_plot]['conf_system']=='sky_orb':
                         coord_pl_grid['z_st_sky'] = np.sqrt(1.-coord_pl_grid['x_st_sky']**2.-coord_pl_grid['y_st_sky']**2.)
                         coord_pl_grid['x_st_sky'],coord_pl_grid['x_st_sky'],coord_pl_grid['z_st_sky']=conv_Losframe_to_inclinedStarFrame(lref,coord_pl_grid['x_st_sky'],coord_pl_grid['y_st_sky'],coord_pl_grid['z_st_sky']) 
-                    cond_in_stphot,n_pl_occ = calc_st_sky(coord_pl_grid,star_params)  
+                    n_pl_occ = calc_st_sky(coord_pl_grid,star_params)  
                     if n_pl_occ>0:
                         if plot_options[key_plot]['conf_system']=='sky_orb':                    
-                            coord_pl_grid['x_st_sky'],coord_pl_grid['y_st_sky'],coord_pl_grid['z_st_sky']=conv_inclinedStarFrame_to_Losframe(lref,coord_pl_grid['x_st_sky'][cond_in_stphot],coord_pl_grid['y_st_sky'][cond_in_stphot],coord_pl_grid['z_st_sky'][cond_in_stphot]) 
+                            coord_pl_grid['x_st_sky'],coord_pl_grid['y_st_sky'],coord_pl_grid['z_st_sky']=conv_inclinedStarFrame_to_Losframe(lref,coord_pl_grid['x_st_sky'],coord_pl_grid['y_st_sky'],coord_pl_grid['z_st_sky']) 
                         else:
-                            coord_pl_grid['x_st_sky'],coord_pl_grid['y_st_sky'],coord_pl_grid['z_st_sky'] = coord_pl_grid['x_st_sky'][cond_in_stphot],coord_pl_grid['y_st_sky'][cond_in_stphot],coord_pl_grid['z_st_sky'][cond_in_stphot]
+                            coord_pl_grid['x_st_sky'],coord_pl_grid['y_st_sky'],coord_pl_grid['z_st_sky'] = coord_pl_grid['x_st_sky'],coord_pl_grid['y_st_sky'],coord_pl_grid['z_st_sky']
                         for xcell,ycell in zip(coord_pl_grid['x_st_sky'],coord_pl_grid['y_st_sky']):
                             ax1.add_artist(plt.Rectangle((xcell-0.5*d_sub,ycell-0.5*d_sub), d_sub, d_sub, fc='none',ec=col_grid,lw=lw_st_grid,zorder=40+2*n_pl))
                     

@@ -1414,14 +1414,14 @@ if __name__ == '__main__':
     #Master stellar spectrum
 
     #Calculating/retrieving
-    gen_dic['calc_DImast'] = True   &   False
+    gen_dic['calc_DImast'] = True  # &   False
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:gen_dic['calc_DImast']=True
 
     #Using stellar spectrum  
     gen_dic['DImast_weight'] = True   #   & False
-    if gen_dic['star_name'] in ['WASP76']:
-        gen_dic['DImast_weight']=False
-        print('ATTENTION WEIGHT')
+    # if gen_dic['star_name'] in ['WASP76']:
+    #     gen_dic['DImast_weight']=False
+    #     print('ATTENTION WEIGHT')
 
 
     #Plots: weighing master 
@@ -3178,39 +3178,168 @@ if __name__ == '__main__':
 
 
 
+##################################################################################################
+#%%% Module: ESPRESSO "wiggles"
+#    - run sequentially those steps :
+# + 'wig_exp_init' to identify which ranges to include in the analysis, and which wiggle components are present
+# + 'wig_exp_samp' to sample the frequency and amplitude of each wiggle component with nu, in a representative selection of exposure
+# + 'wig_exp_nu_ana' to fit the sampled frequency and amplitude with polynomials of nu, to evaluate their degree and chromatic coefficients
+# + 'wig_exp_fit' to fit the spectral wiggle model to each exposure individually, initialized by the results of 'wig_exp_nu_ana'   
+# + 'wig_exp_point_ana' to fit the phase, and the chromatic coefficients of frequency and amplitude derived from 'wig_exp_fit', as a function of the telescope pointing coordinates 
+# + 'wig_vis_fit' to fit the spectro-temporal wiggle model to all exposures together, initialized by the results of 'wig_exp_point_ana'
+#    - wiggles are processed in wave_number space nu[1e-10 s-1] = c[m s-1]/w[A]
+#      wiggle frequencies Fnu corresponds to wiggle periods Pw[A] = w[A]^2/(Fnu[1e10 s]*c[m s-1])
+##################################################################################################
 
 
+#%%%% Activating 
+gen_dic['corr_wig']= False
 
 
-    ##################################################################################################
-    #%%% Module: ESPRESSO "wiggles"
-    #    - run sequentially those steps :
-    # + 'wig_exp_init' to identify which ranges to include in the analysis, and which wiggle components are present
-    # + 'wig_exp_samp' to sample the frequency and amplitude of each wiggle component with nu, in a representative selection of exposure
-    # + 'wig_exp_nu_ana' to fit the sampled frequency and amplitude with polynomials of nu, to evaluate their degree and chromatic coefficients
-    # + 'wig_exp_fit' to fit the spectral wiggle model to each exposure individually, initialized by the results of 'wig_exp_nu_ana'   
-    # + 'wig_exp_point_ana' to fit the phase, and the chromatic coefficients of frequency and amplitude derived from 'wig_exp_fit', as a function of the telescope pointing coordinates 
-    # + 'wig_vis_fit' to fit the spectro-temporal wiggle model to all exposures together, initialized by the results of 'wig_exp_point_ana'
-    #    - wiggles are processed in wave_number space nu[1e-10 s-1] = c[m s-1]/w[A]
-    #      wiggle frequencies Fnu corresponds to wiggle periods Pw[A] = w[A]^2/(Fnu[1e10 s]*c[m s-1])
-    ##################################################################################################
+#%%%% Calculating/retrieving
+gen_dic['calc_wig']=True   
+
+
+#%%%% Guide shift reset
+#    - disable automatic reset of wiggle properties following guide star shift, for the chosen list of visits
+gen_dic['wig_no_guidchange'] = []   
+
+
+#%%%% Visits to be processed 
+#    - leave empty to process all visits
+gen_dic['wig_vis'] = []
+
+
+#%%%% Stellar master
+
+#%%%%% Resampling 
+#    - calculate master on the table of each exposure or resample a common master
+#    - using individual masters has a negligible impact 
+gen_dic['wig_indiv_mast'] = False
+
+
+#%%%%% Meridian split
+#    - use different masters before/after meridian 
+#    - a priori using a global master over the night is better to smooth out the wiggles
+gen_dic['wig_merid_diff'] = False
+
+
+#%%%%% Exposure selection
+#    - set to 'all' to use all exposures
+gen_dic['wig_exp_mast'] = {}
     
-    #%%%% Activating 
+    
+#%%%% Fit settings        
+    
+#%%%%% Exposures to be fitted
+#    - instrument > visit
+#    - set to 'all' to use all exposures
+gen_dic['wig_exp_in_fit'] = {}
+
+
+#%%%%% Groups of exposures to be fitted together
+#    - leave empty to perform the fit on individual exposures
+#    - this is useful to boost SNR, especially in the bluest orders, without losing the spectral resolution over orders
+#      beware however that wiggles amplitude and offsets change over time, and will thus be blurred by this average
+gen_dic['wig_exp_groups']={}
+    
+
+#%%%%% Spectral range(s) to be fitted
+#    - if left empty, the full spectrum is used
+#    - units are c/w (10-10 s-1)
+gen_dic['wig_range_fit'] = []
+    
+    
+#%%%%% Spectral bin size
+#    - all spectra are binned prior to the analysis
+#    - in nu space (1e-10 s-1), with dnu[1e10 s1] = c[m s-1]*dw[A]/w[A]^2   
+#    - bin size should be small enough to sample the period of the wiggles, but large enough to limit computing time and remove possible correlations between bins 
+# + for the two dominant wiggle component set dw = 2 A, ie dnu = 0.0166 (mind that it creates strong peaks in the periodograms at F = 60, 120, 180)
+# + for the mini-wiggle component set dw = 0.05 A, ie dnu = 0.0004 (mind that it creates a signal in the periodograms at F = 2400)
+#    - even if the spectra are analyzed at their native resolution it is necessary to resample them to merge overlapping bands at order edges
+gen_dic['wig_bin'] = 0.0166   
+    
+
+#%%%%% Orders to be fitted
+#    - if left empty, all orders are used 
+gen_dic['wig_ord_fit'] = {}
+
+
+#%%%% Fitting steps
+
+#%%%%% Step 1: Screening 
+#    - use 'plot_spec' to identify which ranges / orders are of poor quality and need to be excluded from the fit and/or the correction
+#      use as much of the ESPRESSO range as possible, but exclude the bluest orders where the noise is much larger than the wiggles
+#    - use 'plot_hist' to plot the periodogram from all exposures together, to identify the number and approximate frequency of wiggle components 
+gen_dic['wig_exp_init']={
+    'mode':True  ,
+    'plot_spec':True,
+    'plot_hist':True,
+    'y_range':None
+    }
+
+
+#%%%%% Step 2: Chromatic sampling
+#    - sampling the frequency and amplitude of each wiggle component with nu
+#    - wiggle properties are sampled using a sliding periodogram
+#    - only a representative subset of exposures needs to be sampled, using 'wig_exp_in_fit'
+#    - set 'comp_ids' between 1 and 5
+#      only the component with highest 'comp_ids' is sampled using all shifts in 'sampbands_shifts'
+#      lower components are fitted with a single shift from 'sampbands_shifts', chosen through 'direct_samp'
+#      thus, start by smapling the highest component, and proceed by including lower ones iteratively
+#    - 'freq_guess': define the polynomial coefficients describing the model frequency for each component 
+#                    these models control the definition of the sampling bands 
+#    - 'nsamp' : number of cycles to sample for each component
+#                must not be too high to ensure that the component frequency remains constant within the sampled bands 
+#    - 'sampbands_shifts': oversampling of sampling bands (nu in 1e-10 s-1)
+#                          adjust to the scale of the frequency or amplitude variations of each component
+#                          set to [None] to prevent sampling (the full spectrum is fitted with one model)
+#                          to estimate size of shifts: nu = c/w -> dnu = cdw/w^2 
+#    - 'direct_samp': set direct_samp[comp_id] to the index of sampbands_shifts[comp_id-1] for which the sampling of comp_id should be applied
+#    - 'src_perio': frequency ranges within which periodograms are searched for each component (in 1e-10 s-1). 
+#                       + {'mod':None} : default search range  
+#                       + {'mod':'slide' , 'range':[y,z] } : the range is centered on the frequency calculated with 'freq_guess'        
+#                   the field 'up_bd':bool can be added to further use the frequency of the higher component as upper bound
+#                   if the frequency is fitted rather than fixed, the search range is used as prior
+#    - 'nit': number of fit iterations in each band 
+#    - 'fap_thresh': wiggle in a band is fitted only if its FAP is below this threshold (in %). 
+#                    set to >100 to always fit.
+#    - 'fix_freq2expmod' = [comp_id] fixes the frequency of 'comp_id' using the fit results from 'wig_exp_point_ana'
+#      'fix_freq2vismod' = {comps:[x,y] , vis1:path1, vis2:path2 } fixes the frequency of 'comps' using the fit results from 'wig_vis_fit' at the given path for each visit 
+#    - 'plot': plot sampled transmission spectra and band sampling analyses
+gen_dic['wig_exp_samp']={
+    'mode':False,   
+    'comp_ids':[1,2],          
+    'freq_guess':{1:{ 'c0':3.72, 'c1':0., 'c2':0.},
+                  2:{ 'c0':2.05, 'c1':0., 'c2':0.}},
+    'nsamp':{1:8,2:8}, 
+    'sampbands_shifts':{1:np.arange(16)*0.15,2:np.arange(16)*0.3},
+    'direct_samp' : {2:0},         
+    'nit':40, 
+    'src_perio':{1:{'mod':None}, 2:{'mod':None,'up_bd':True}},  
+    'fap_thresh':5,
+    'fix_freq2expmod':[],
+    'fix_freq2vismod':{},
+    'plot':True
+    }      
+
+
+
+
+    
+if __name__ == '__main__':
+    
+    #Activating 
     gen_dic['corr_wig']=True    &  False    
     if gen_dic['star_name'] in ['HD209458','WASP76','55Cnc','HD29291']:gen_dic['corr_wig']=True  # & False
-
-    #%%%% Calculating/retrieving
-    gen_dic['calc_wig']=True  &  False  
-
     
-    #%%%% Guide shift reset
-    #    - disable automatic reset of wiggle properties following guide star shift, for the chosen list of visits
+    #Calculating/retrieving
+    gen_dic['calc_wig']=True  &  False  
+    
+    #Guide shift reset
     gen_dic['wig_no_guidchange'] = []   
-
-
-
-    #%%%% Visits to be processed 
-    #    - leave empty to process all visits
+    
+    #Visits to be processed 
     gen_dic['wig_vis'] = []
     if gen_dic['star_name']=='HD209458':
         gen_dic['wig_vis'] = ['20190720','20190911'] 
@@ -3224,21 +3353,15 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='HD29291':
         gen_dic['wig_vis'] = ['20201130'] 
 
-    #%%%% Stellar master
+    #Stellar master
 
-    #%%%%% Resampling 
-    #    - calculate master on the table of each exposure or resample a common master
-    #    - using individual masters has a negligible impact 
+    #Resampling 
     gen_dic['wig_indiv_mast'] = True  & False
 
-    #%%%%% Meridian split
-    #    - use different masters before/after meridian 
-    #    - a priori using a global master over the night is better to smooth out the wiggles
+    #Meridian split
     gen_dic['wig_merid_diff'] = True   & False
 
-    #%%%%% Exposure selection
-    #    - set to 'all' to use all exposures
-    gen_dic['wig_exp_mast'] = {}
+    #Exposure selection
     if gen_dic['star_name']=='WASP76':
         
         # gen_dic['wig_exp_mast'] = '2018-09-03':list(range(35)) } 
@@ -3279,20 +3402,11 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='HD29291':
         gen_dic['wig_exp_mast']={'20201130':'all'}
         
-        
-        
 
-
-
-        
-    #%%%% Fit settings        
+    #Fit settings        
         
 
-    #%%%%% Exposures to be fitted
-    #    - instrument > visit
-    #    - set to 'all' to use all exposures
-    gen_dic['wig_exp_in_fit'] = {}
-    gen_dic['wig_exp_in_fit'] = deepcopy(gen_dic['wig_exp_mast'])
+    #Exposures to be fitted
     if gen_dic['star_name']=='HD209458':
         gen_dic['wig_exp_in_fit'] ={    
 
@@ -3346,11 +3460,7 @@ if __name__ == '__main__':
     
 
 
-    #%%%%% Groups of exposures to be fitted together
-    #    - leave empty to perform the fit on individual exposures
-    #    - this is useful to boost SNR, especially in the bluest orders, without losing the spectral resolution over orders
-    #      beware however that wiggles amplitude and offsets change over time, and will thus be blurred by this average
-    gen_dic['wig_exp_groups']={}
+    #Groups of exposures to be fitted together
     # if gen_dic['transit_pl']=='WASP76b':  
     #     gen_dic['wig_exp_groups']={
     #         '2018-09-03':[list(range(i,i+4))  for i in range(0,35,4) ]}
@@ -3369,10 +3479,7 @@ if __name__ == '__main__':
     
     
     
-    #%%%%% Spectral range(s) to be fitted
-    #    - if left empty, the full spectrum is used
-    #    - units are c/w (10-10 s-1)
-    gen_dic['wig_range_fit'] = []
+    #Spectral range(s) to be fitted
     if gen_dic['star_name']=='WASP76':
         gen_dic['wig_range_fit'] =  {
     #     gen_dic['wig_range_fit'] = [ [4450.,5235.], [5250.,6270.], [6300.,6900.], [6930.,7585.], [7615.,9000.] ] 
@@ -3419,22 +3526,13 @@ if __name__ == '__main__':
         # gen_dic['wig_range_fit'] = {'20201130':[[45.6,50.7]]  }       
 
 
-    #%%%%% Spectral bin size
-    #    - all spectra are binned prior to the analysis
-    #    - in nu space (1e-10 s-1), with dnu[1e10 s1] = c[m s-1]*dw[A]/w[A]^2   
-    #    - bin size should be small enough to sample the period of the wiggles, but large enough to limit computing time and remove possible correlations between bins 
-    # + for the two dominant wiggle component set dw = 2 A, ie dnu = 0.0166 (mind that it creates strong peaks in the periodograms at F = 60, 120, 180)
-    # + for the mini-wiggle component set dw = 0.05 A, ie dnu = 0.0004 (mind that it creates a signal in the periodograms at F = 2400)
-    #    - even if the spectra are analyzed at their native resolution it is necessary to resample them to merge overlapping bands at order edges
-    gen_dic['wig_bin'] = 0.0166
+    #Spectral bin size
     # gen_dic['wig_bin'] = 0.0004     #to further correct for the 'mini-wiggles' 
     if gen_dic['star_name'] in ['HD209458','WASP76']:gen_dic['wig_bin'] = 0.0166
     
 
         
-    #%%%%% Orders to be fitted
-    #    - if left empty, all orders are used 
-    gen_dic['wig_ord_fit'] = {}
+    #Orders to be fitted
     if gen_dic['star_name']=='WASP76':
 
         gen_dic['wig_ord_fit'] =  {
@@ -3482,12 +3580,9 @@ if __name__ == '__main__':
 
 
 
-    #%%%% Fitting steps
+    #Fitting steps
 
-    #%%%%% Step 1: Screening 
-    #    - use 'plot_spec' to identify which ranges / orders are of poor quality and need to be excluded from the fit and/or the correction
-    #      use as much of the ESPRESSO range as possible, but exclude the bluest orders where the noise is much larger than the wiggles
-    #    - use 'plot_hist' to plot the periodogram from all exposures together, to identify the number and approximate frequency of wiggle components 
+    #Step 1: Screening 
     gen_dic['wig_exp_init']={
         'mode':False  ,
         'plot_spec':True,
@@ -3496,34 +3591,7 @@ if __name__ == '__main__':
         }
 
 
-    #%%%%% Step 2: Chromatic sampling
-    #    - sampling the frequency and amplitude of each wiggle component with nu
-    #    - wiggle properties are sampled using a sliding periodogram
-    #    - only a representative subset of exposures needs to be sampled, using 'wig_exp_in_fit'
-    #    - set 'comp_ids' between 1 and 5
-    #      only the component with highest 'comp_ids' is sampled using all shifts in 'sampbands_shifts'
-    #      lower components are fitted with a single shift from 'sampbands_shifts', chosen through 'direct_samp'
-    #      thus, start by smapling the highest component, and proceed by including lower ones iteratively
-    #    - 'freq_guess': define the polynomial coefficients describing the model frequency for each component 
-    #                    these models control the definition of the sampling bands 
-    #    - 'nsamp' : number of cycles to sample for each component
-    #                must not be too high to ensure that the component frequency remains constant within the sampled bands 
-    #    - 'sampbands_shifts': oversampling of sampling bands (nu in 1e-10 s-1)
-    #                          adjust to the scale of the frequency or amplitude variations of each component
-    #                          set to [None] to prevent sampling (the full spectrum is fitted with one model)
-    #                          to estimate size of shifts: nu = c/w -> dnu = cdw/w^2 
-    #    - 'direct_samp': set direct_samp[comp_id] to the index of sampbands_shifts[comp_id-1] for which the sampling of comp_id should be applied
-    #    - 'src_perio': frequency ranges within which periodograms are searched for each component (in 1e-10 s-1). 
-    #                       + {'mod':None} : default search range  
-    #                       + {'mod':'slide' , 'range':[y,z] } : the range is centered on the frequency calculated with 'freq_guess'        
-    #                   the field 'up_bd':bool can be added to further use the frequency of the higher component as upper bound
-    #                   if the frequency is fitted rather than fixed, the search range is used as prior
-    #    - 'nit': number of fit iterations in each band 
-    #    - 'fap_thresh': wiggle in a band is fitted only if its FAP is below this threshold (in %). 
-    #                    set to >100 to always fit.
-    #    - 'fix_freq2expmod' = [comp_id] fixes the frequency of 'comp_id' using the fit results from 'wig_exp_point_ana'
-    #      'fix_freq2vismod' = {comps:[x,y] , vis1:path1, vis2:path2 } fixes the frequency of 'comps' using the fit results from 'wig_vis_fit' at the given path for each visit 
-    #    - 'plot': plot sampled transmission spectra and band sampling analyses
+    #Step 2: Chromatic sampling
     gen_dic['wig_exp_samp']={
         'mode':False,   
         # 'comp_ids':[1],
@@ -3967,7 +4035,7 @@ if __name__ == '__main__':
 
     #%%%% Activating
     gen_dic['trim_spec']=True     &  False
-    if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156']:gen_dic['trim_spec']=True #  & False
+    if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156','HD209458']:gen_dic['trim_spec']=True #  & False
 
     #%%%% Calculating/retrieving 
     gen_dic['calc_trim_spec']=True   &  False 
@@ -3997,7 +4065,8 @@ if __name__ == '__main__':
         gen_dic['trim_orders'] = {'CARMENES_VIS':list(range(1,57))}       #remove first, and reddest orders
     if gen_dic['star_name'] in ['HAT_P11','WASP156']:
         gen_dic['trim_orders'] = {'CARMENES_VIS':list(range(57))}       #remove reddest orders        
-
+    if gen_dic['star_name']=='HD209458': 
+        gen_dic['trim_orders'] = {'ESPRESSO':[114,115,116,117,118,119]}    #sodium doublet and surrounding orders
 
 
 
@@ -5769,9 +5838,9 @@ if __name__ == '__main__':
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:
         gen_dic['align_DI']=True    
         gen_dic['calc_align_DI']=True 
-    if gen_dic['star_name'] in ['HD209458']:  
+    if gen_dic['star_name'] in ['HD209458','WASP76']:  
         gen_dic['align_DI']=True    
-        gen_dic['calc_align_DI']=True   & False                   
+        gen_dic['calc_align_DI']=True #  & False                   
 
     
     #%%% Systemic velocity 
@@ -6396,9 +6465,9 @@ if __name__ == '__main__':
         gen_dic['flux_sc']=True        
         gen_dic['calc_flux_sc']=True
 
-    if gen_dic['star_name'] in ['HD209458']:
+    if gen_dic['star_name'] in ['HD209458','WASP76']:
         gen_dic['flux_sc']=True        
-        gen_dic['calc_flux_sc']=True   & False     
+        gen_dic['calc_flux_sc']=True  # & False     
         
 
     #%%% Scaling disk-integrated profiles
@@ -6780,6 +6849,8 @@ if __name__ == '__main__':
         
         data_dic['DI']['transit_prop'].update({
             'ESPRESSO':{'20190720':{'mode':'model','dt':0.1},'20190911':{'mode':'model','dt':0.1}}})
+            # 'nsub_Dstar':501,'ESPRESSO':{'20190720':{'mode':'simu','n_oversamp':2.},'20190911':{'mode':'simu','n_oversamp':2.}}})     #ANTARESS I oblate
+
 
         if gen_dic['mock_data']:    #ANTARESS I multi pl
             data_dic['DI']['transit_prop']={    
@@ -7009,9 +7080,9 @@ if __name__ == '__main__':
     #%%% Calculating/retrieving
     gen_dic['calc_spec_1D_DI']=True    &  False  
     
-    if gen_dic['star_name']=='HD209458':
-        gen_dic['spec_1D_DI']=True
-        gen_dic['calc_spec_1D_DI']= False        
+    # if gen_dic['star_name'] in ['HD209458','WASP76']:
+    #     gen_dic['spec_1D_DI']=True
+    #     gen_dic['calc_spec_1D_DI']= True & False        
         
 
     #%%% Multi-threading
@@ -7077,9 +7148,9 @@ if __name__ == '__main__':
     gen_dic['calc_DIbinmultivis'] = True    #  &  False
    
     
-    if gen_dic['star_name']=='HD209458':
-        gen_dic['DIbinmultivis']=True
-        gen_dic['calc_DIbinmultivis']= False       
+    # if gen_dic['star_name'] in ['HD209458','WASP76']:
+    #     gen_dic['DIbinmultivis']=True
+    #     gen_dic['calc_DIbinmultivis']= True & False       
    
     
     #%%% Visits to be binned    
@@ -7327,7 +7398,7 @@ if __name__ == '__main__':
     data_dic['DI']['mask'] = {}
     
     #%%% Activating
-    gen_dic['def_DImasks'] = True #  &  False
+    gen_dic['def_DImasks'] = True   &  False
 
     #%%% Multi-threading
     data_dic['DI']['mask']['nthreads'] = 14 
@@ -7340,7 +7411,8 @@ if __name__ == '__main__':
     data_dic['DI']['mask']['fwhm_ccf'] = 5. 
     if gen_dic['star_name']=='HD209458':
         data_dic['DI']['mask']['fwhm_ccf'] = 9.45 
-
+    if gen_dic['star_name']=='WASP76':
+        data_dic['DI']['mask']['fwhm_ccf'] = 9.71 
 
     #%%%% Requested line weights
     #    - possibilities:
@@ -7371,7 +7443,9 @@ if __name__ == '__main__':
     data_dic['DI']['mask']['line_rej_range'] = {}
     if gen_dic['star_name']=='HD209458':
         data_dic['DI']['mask']['line_rej_range'] = {'ESPRESSO':[[6276.,6316.],[6930.,6957.],[7705.,7717.]]}        
-        
+    if gen_dic['star_name']=='WASP76':
+        # data_dic['DI']['mask']['line_rej_range'] = {'ESPRESSO':[[6930.,6950.],[7175.,7350.],[7705.,7717.]]}        #strict
+        data_dic['DI']['mask']['line_rej_range'] = {'ESPRESSO':[[6930.,6950.],[7705.,7717.]]}        #relaxed        
      
     #%%% Line selection: depth and width   
     #    - check using plot_dic['DImask_spectra'] with step='sel1'
@@ -7389,7 +7463,11 @@ if __name__ == '__main__':
         #Relaxed criteria
         data_dic['DI']['mask']['linedepth_cont_min'] = {'ESPRESSO':0.03}    #most lines are below this threshold and contribute to about 20% of the total weights
         data_dic['DI']['mask']['linedepth_cont_max'] = {'ESPRESSO':0.98}        
-    
+    if gen_dic['star_name']=='WASP76':
+        #Relaxed criteria (default, strict: linedepth_cont_min = 0.1; linedepth_cont_max = 0.95; linedepth_min = 0.01)       
+        data_dic['DI']['mask']['linedepth_cont_min'] = {'ESPRESSO':0.05}    
+        data_dic['DI']['mask']['linedepth_cont_max'] = {'ESPRESSO':0.98}        
+
 
     #%%%% Minimum depth and width
     #    - selection criteria on minimum line depth and half-width (between minima and closest maxima) to be kept (value > 10^(crit)) 
@@ -7400,7 +7478,11 @@ if __name__ == '__main__':
         #Relaxed criteria (default, strict: line_width_logmin = -1.3; line_depth_logmin = -1.4)
         data_dic['DI']['mask']['line_width_logmin'] = -1.7   
         data_dic['DI']['mask']['line_depth_logmin'] = -2.6  
-
+    if gen_dic['star_name']=='WASP76':
+        #Relaxed criteria (default, strict: line_width_logmin = -1.3; line_depth_logmin = -1.4)
+        data_dic['DI']['mask']['line_width_logmin'] = -1.6   
+        data_dic['DI']['mask']['line_depth_logmin'] = -2.5  
+        
 
     #%%% Line selection: position
     #    - define RV window for line position fit (km/s)
@@ -7408,10 +7490,18 @@ if __name__ == '__main__':
     #    - check using plot_dic['DImask_spectra'] with step='sel2'
     #      use plot_dic['DImask_RVdev_fit'] to adjust
     data_dic['DI']['mask']['win_core_fit'] = 0.7    #yieds fewer outliers than the default 1
-    data_dic['DI']['mask']['abs_RVdev_fit_max'] = 240.
+    data_dic['DI']['mask']['abs_RVdev_fit_max'] = None
     if gen_dic['star_name']=='HD209458':
-        #Relaxed criteria (default 1500, strict: abs_RVdev_fit_max = 300)
+        #Strict criteria (default 1500)
+        data_dic['DI']['mask']['abs_RVdev_fit_max'] = 240.        
+        #Relaxed criteria
         data_dic['DI']['mask']['abs_RVdev_fit_max'] = 600    
+    if gen_dic['star_name']=='WASP76':
+        # #Strict criteria (default 1500)
+        # data_dic['DI']['mask']['abs_RVdev_fit_max'] = 250.        
+        #Relaxed criteria
+        data_dic['DI']['mask']['abs_RVdev_fit_max'] = 600   
+
 
 
 
@@ -7431,15 +7521,23 @@ if __name__ == '__main__':
         #Relaxed criteria (default 0.2, strict: tell_star_depthR_max = 0.15)
         data_dic['DI']['mask']['tell_star_depthR_max'] = 0.35        
         data_dic['DI']['mask']['tell_star_depthR_max_final'] = 0.1    
-    
-    
+    if gen_dic['star_name']=='WASP76':
+        # #Strict criteria (default 0.2, strict: tell_star_depthR_max = 0.1)
+        # data_dic['DI']['mask']['tell_star_depthR_max'] = 0.1             
+        #Relaxed criteria (=default)
+        data_dic['DI']['mask']['tell_star_depthR_max'] = 0.3   
+        data_dic['DI']['mask']['tell_star_depthR_max_final'] = 0.1         
+        
+        
     
     #%%% VALD cross-validation     
 
     #%%%% Path to VALD linelist
     #    - set to None to prevent
     #    - see details in theo_dic['st_atm']
+    data_dic['DI']['mask']['VALD_linelist'] = None
     if gen_dic['star_name']=='HD209458':data_dic['DI']['mask']['VALD_linelist'] = '/Users/bourrier/Travaux/Exoplanet_systems/HD/HD209458b/Star/VALD/VALD_HD209458'
+    if gen_dic['star_name']=='WASP76':data_dic['DI']['mask']['VALD_linelist'] = '/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP76b/Star/VALD/VALD_WASP76'
 
     #%%%% Adjusting VALD line depth
     data_dic['DI']['mask']['VALD_depth_corr'] = True
@@ -7449,22 +7547,44 @@ if __name__ == '__main__':
 
     #%%%% Symmetry
     #    - selection criteria on maximum ratio between normalized continuum difference and relative line depth, and normalized asymetry parameter, to be kept (value < crit) 
-    data_dic['DI']['mask']['diff_cont_rel_max'] = 1.3   #selected to keep 80% of total weights
-    data_dic['DI']['mask']['asym_ddflux_max'] = 0.3    
+    data_dic['DI']['mask']['diff_cont_rel_max'] = None
+    data_dic['DI']['mask']['asym_ddflux_max'] = None    
     if gen_dic['star_name']=='HD209458':
+        #Strict criteria 
+        data_dic['DI']['mask']['diff_cont_rel_max'] = 1.3   #selected to keep 80% of total weights
+        data_dic['DI']['mask']['asym_ddflux_max'] = 0.3           
         #Relaxed criteria 
-        data_dic['DI']['mask']['diff_cont_rel_max'] = 2.5   #selected to keep 90% of total weights
-        data_dic['DI']['mask']['asym_ddflux_max'] = 0.4          
+        data_dic['DI']['mask']['diff_cont_rel_max'] = 5.   #selected to keep 90% of total weights
+        data_dic['DI']['mask']['asym_ddflux_max'] = 0.6          
+    if gen_dic['star_name']=='WASP76':
+        # #Strict criteria 
+        # data_dic['DI']['mask']['diff_cont_rel_max'] = 1.3   #selected to keep 80% of total weights
+        # data_dic['DI']['mask']['asym_ddflux_max'] = 0.3           
+        #Relaxed criteria 
+        data_dic['DI']['mask']['diff_cont_rel_max'] = 5.   #selected to keep 90% of total weights
+        data_dic['DI']['mask']['asym_ddflux_max'] = 0.6  
+
     
     
     #%%%% Width and depth
     #    - selection criteria on minimum line depth (value > crit) and maximum line width (value < crit) to be kept
-    data_dic['DI']['mask']['width_max'] = 12.0 
-    data_dic['DI']['mask']['diff_depth_min'] = 0.1
+    data_dic['DI']['mask']['width_max'] = None 
+    data_dic['DI']['mask']['diff_depth_min'] = None
     if gen_dic['star_name']=='HD209458':
+        #Strict
+        data_dic['DI']['mask']['width_max'] = 12.0 
+        data_dic['DI']['mask']['diff_depth_min'] = 0.1
         #Relaxed criteria 
         data_dic['DI']['mask']['width_max'] = 15.0 
         data_dic['DI']['mask']['diff_depth_min'] = 0.05
+    if gen_dic['star_name']=='WASP76':
+        # #Strict
+        # data_dic['DI']['mask']['width_max'] = 10.0 
+        # data_dic['DI']['mask']['diff_depth_min'] = 0.1
+        #Relaxed criteria 
+        data_dic['DI']['mask']['width_max'] = 15.0 
+        data_dic['DI']['mask']['diff_depth_min'] = 0.05
+
         
     
     #%%% Line selection: RV dispersion 
@@ -7483,7 +7603,11 @@ if __name__ == '__main__':
         data_dic['DI']['mask']['absRV_max'] = {'ESPRESSO':3.}
         #Relaxed criteria 
         data_dic['DI']['mask']['absRV_max'] = {'ESPRESSO':10.}
-
+    if gen_dic['star_name']=='WASP76':
+        #Strict criteria 
+        # data_dic['DI']['mask']['absRV_max'] = {'ESPRESSO':10.}
+        #Relaxed criteria 
+        data_dic['DI']['mask']['absRV_max'] = {'ESPRESSO':20.}
 
 
     #%%%% Dispersion deviation
@@ -7494,35 +7618,41 @@ if __name__ == '__main__':
         data_dic['DI']['mask']['RVdisp2err_max'] = {'ESPRESSO':1.5}
         #Relaxed criteria 
         data_dic['DI']['mask']['RVdisp2err_max'] = {'ESPRESSO':2.}
+    if gen_dic['star_name']=='WASP76':
+        #Strict criteria
+        # data_dic['DI']['mask']['RVdisp2err_max'] = {'ESPRESSO':1.5}
+        #Relaxed criteria 
+        data_dic['DI']['mask']['RVdisp2err_max'] = {'ESPRESSO':2.}
+
 
     #%%% Plot settings 
     
     #%%%% Mask at successive steps
-    plot_dic['DImask_spectra'] = 'pdf'
+    plot_dic['DImask_spectra'] = ''
 
     #%%%% Depth range selection
-    plot_dic['DImask_ld'] = 'pdf'
+    plot_dic['DImask_ld'] = ''
 
     #%%%% Minimum depth and width selection
-    plot_dic['DImask_ld_lw'] = 'pdf'
+    plot_dic['DImask_ld_lw'] = ''
 
     #%%%% Position selection
-    plot_dic['DImask_RVdev_fit'] = 'pdf'
+    plot_dic['DImask_RVdev_fit'] = ''
 
     #%%%% Telluric selection
-    plot_dic['DImask_tellcont'] = 'pdf'
+    plot_dic['DImask_tellcont'] = ''
 
     #%%%% VALD selection
-    plot_dic['DImask_vald_depthcorr'] = 'pdf'
+    plot_dic['DImask_vald_depthcorr'] = ''
 
     #%%%% Morphological (asymmetry) selection
-    plot_dic['DImask_morphasym'] = 'pdf'
+    plot_dic['DImask_morphasym'] = ''
 
     #%%%% Morphological (shape) selection
-    plot_dic['DImask_morphshape'] = 'pdf'
+    plot_dic['DImask_morphshape'] = ''
 
     #%%%% RV dispersion selection
-    plot_dic['DImask_RVdisp'] = 'pdf'
+    plot_dic['DImask_RVdisp'] = ''
 
 
 
@@ -7547,11 +7677,14 @@ if __name__ == '__main__':
 
     #%%% Activating
     gen_dic['res_data'] = True    &  False
-    if (gen_dic['star_name'] in ['WASP76','HD209458','55Cnc']) and (gen_dic['type']['ESPRESSO']=='spec2D'):gen_dic['res_data'] = False   
+    if (gen_dic['star_name'] in ['WASP76','HD209458','55Cnc']) and (gen_dic['type']['ESPRESSO']=='spec2D'):gen_dic['res_data'] = True   
     if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214']:gen_dic['res_data']=True
 
     #%%% Calculating/retrieving 
-    gen_dic['calc_res_data'] = True  # &  False
+    gen_dic['calc_res_data'] = True   &  False
+
+    #%%% Multi-threading
+    gen_dic['nthreads_res_data']= 14
 
     #%%% In-transit restriction
     #    - limit the extraction of residual profiles to in-transit exposures
@@ -7617,10 +7750,10 @@ if __name__ == '__main__':
 #        data_dic['Res']['cont_range']=[[-300.,-60.],[60.,300.]]     #Mask F + atmo
     elif gen_dic['transit_pl']=='Kelt9b':
         data_dic['Res']['cont_range']=[[-300.,-130.],[130.,300.]]  
-    elif gen_dic['star_name']=='WASP76':
-        data_dic['Res']['cont_range']=[[-350.,-40.],[40.,350.]]  
-        data_dic['Res']['cont_range_MCCF']=[[-200.,-60.],[60.,200.]]   
-        # data_dic['Res']['cont_range']=[[-80.,-30.],[30.,80.]]     
+    # elif gen_dic['star_name']=='WASP76':
+    #     data_dic['Res']['cont_range']=[[-350.,-40.],[40.,350.]]  
+    #     data_dic['Res']['cont_range_MCCF']=[[-200.,-60.],[60.,200.]]   
+    #     # data_dic['Res']['cont_range']=[[-80.,-30.],[30.,80.]]     
     elif gen_dic['transit_pl']=='WASP127b':
         data_dic['Res']['cont_range']=[[-150.,-10.],[10.,150.]]     
     elif gen_dic['star_name']=='HD209458':data_dic['Res']['cont_range']=[[-150.,-13.],[13.,150.]]     
