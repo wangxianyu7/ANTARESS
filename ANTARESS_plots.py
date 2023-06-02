@@ -1276,7 +1276,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                            
                                 #Plot fit profile
                                 CCF_fit = sc_fact*CCF_prop_exp['flux']/norm_exp                        
-                                loc_flux_scaling = dataload_npz(data_vis['scaled_data_paths']+str(iexp))['loc_flux_scaling']   
+                                loc_flux_scaling = dataload_npz(data_dic[inst][vis]['scaled_data_paths']+str(iexp))['loc_flux_scaling']   
                                 if plot_mod=='CCFloc':CCF_fit*=loc_flux_scaling[0](CCF_prop_exp['cen_bins'])                            
                                 plt.plot(CCF_prop_exp['cen_bins'],CCF_fit,color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=-1+15)                       
                               

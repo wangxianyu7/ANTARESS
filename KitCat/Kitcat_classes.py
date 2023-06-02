@@ -19,7 +19,7 @@ from   matplotlib.collections        import LineCollection
 from   scipy.interpolate             import interp1d
 from   statsmodels.stats.weightstats import DescrStatsW
 
-np.warnings.filterwarnings('ignore', category=RuntimeWarning)
+#np.warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 ###
 ### CLASSES

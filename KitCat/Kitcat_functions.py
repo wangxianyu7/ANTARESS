@@ -16,7 +16,7 @@ import pickle
 from scipy.signal        import savgol_filter
 from scipy.stats         import norm
 
-np.warnings.filterwarnings('ignore', category=RuntimeWarning)
+#np.warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 ###
 ### FUNCTIONS

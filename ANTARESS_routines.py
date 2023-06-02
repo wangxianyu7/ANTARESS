@@ -21,7 +21,7 @@ import scipy.linalg
 from minim_routines import call_MCMC,init_fit,postMCMCwrapper_1,fit_merit,postMCMCwrapper_2,save_fit_results,fit_minimization,ln_prob_func_lmfit
 import pandas as pd
 from pathos.multiprocessing import cpu_count,Pool
-from dace.spectroscopy import Spectroscopy
+from dace_query.spectroscopy import Spectroscopy
 from scipy import stats
 from numpy.polynomial import Polynomial
 from pysme.synthesize import synthesize_spectrum
@@ -1559,12 +1559,12 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
             gen_dic[inst]['norders_instru'] = 1
         else:
             data_inst['idx_ord_ref']=deepcopy(np.arange(gen_dic['norders_instru'][inst]))      #to keep track of the original orders
+            idx_ord_kept = list(np.arange(gen_dic['norders_instru'][inst]))
             if (data_inst['type'] in ['spec1D','CCF']):
                 data_inst['nord'] = 1
                 gen_dic[inst]['wav_ord_inst'] = gen_dic['wav_ord_inst'][inst]
                 gen_dic[inst]['norders_instru']=gen_dic['norders_instru'][inst]
             elif (data_inst['type']=='spec2D'):
-                idx_ord_kept = list(np.arange(gen_dic['norders_instru'][inst]))
                 if inst in gen_dic['del_orders']:
                     idx_ord_kept = list(np.delete(np.arange(gen_dic['norders_instru'][inst]),gen_dic['del_orders'][inst]))
                     gen_dic[inst]['wav_ord_inst'] = gen_dic['wav_ord_inst'][inst][idx_ord_kept]
@@ -4360,7 +4360,7 @@ def corr_line_prof(corr_line_prof_dic,data_dic,coord_dic,inst,vis,CCF_dic,data_p
                     #Correcting for FWHM variation 
                     if corr_FWHM:                 
                         glob_corr=np.repeat(glob_corr_FWHM[iexp],data_vis['nspec']+1)
-                        bins_cen,bins_edge,data_exp['flux'][0],data_exp['cov'][0] = corr_line_prof_FWHM(data_exp['flux'][0],bins_edge,glob_corr,coord_dic[inst][vis]['RV_star_solCDM'][iexp],gen_dic,in_cov=data_exp['cov'][0],comm_sp_tab=data_vis['comm_sp_tab'])
+                        bins_cen,bins_edge,data_exp['flux'][0],data_exp['cov'][0] = corr_line_prof_FWHM(data_exp['flux'][0],bins_cen,bins_edge,glob_corr,coord_dic[inst][vis]['RV_star_solCDM'][iexp],gen_dic,in_cov=data_exp['cov'][0],comm_sp_tab=data_vis['comm_sp_tab'])
 
                 #---------------------------------  
                 #Custom correction
@@ -4494,7 +4494,7 @@ Sub-function to force a line FWHM to an input value
     - corrected data are resampled on common visit table if relevant (if a common table is used then all original tables poin toward this common table)
     - this operation must be performed on velocity tables symmetrical with respect to the CCF center, ie for CCFs that have been aligned on the null velocity    
 '''
-def corr_line_prof_FWHM(in_CCF,bins_edge,FWHM_corr,RV_star_solCDM,gen_dic,in_cov=None,comm_sp_tab=False):
+def corr_line_prof_FWHM(in_CCF,bins_cen,bins_edge,FWHM_corr,RV_star_solCDM,gen_dic,in_cov=None,comm_sp_tab=False):
 
     #Temporary spectral table
     #    - stretched by the FWHM correction
@@ -4505,7 +4505,7 @@ def corr_line_prof_FWHM(in_CCF,bins_edge,FWHM_corr,RV_star_solCDM,gen_dic,in_cov
     #Resampling on common table
     if comm_sp_tab:
         if in_cov is not None:corr_line_prof,corr_cov = bind.resampling(edge_bins_shift, edge_bins_stretch, in_CCF , cov = in_cov, kind=gen_dic['resamp_mode'])                       
-        else:corr_line_prof = bind.resampling(edge_bins_shift, edge_bins_stretch, in_CCF, kind=gen_dic['resamp_mode'])         
+        else:corr_line_prof = bind.resampling(edge_bins_shift, edge_bins_stretch, in_CCF, kind=gen_dic['resamp_mode'])   
     else:
         bins_edge=edge_bins_stretch+RV_star_solCDM
         bins_cen=0.5*(bins_edge[0:-1]+bins_edge[1::])
