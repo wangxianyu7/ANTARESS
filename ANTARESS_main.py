@@ -56,7 +56,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
         for vis in data_dic[inst]['visit_list']:
             print('  -----------------')
             print('  Processing visit: '+vis)  
-
+ 
             #Reset data mode to input
             data_dic[inst]['nord'] = deepcopy(data_dic[inst]['nord_spec'])
 
@@ -98,10 +98,10 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
             #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
             if gen_dic['DImast_weight']:              
                 process_bin_prof('','DI',gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDI=True)
-
+    
             #Processing 2D disk-integrated spectra into new 1D spectra
             if gen_dic['spec_1D_DI'] and (data_dic[inst][vis]['type']=='spec2D'): 
-                conv_2D_to_1D_spec('DI',inst,vis,gen_dic,data_dic,data_dic['DI'],coord_dic,data_prop,system_param,theo_dic)  
+                conv_2D_to_1D_spec('DI',inst,vis,gen_dic,data_dic,data_dic['DI'])  
 
             #Processing binned disk-integrated profiles
             if gen_dic['bin']:
@@ -114,7 +114,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
             #Extracting residual profiles
             if (gen_dic['res_data']):
                 extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
-
+           
             #Extracting intrinsic stellar profiles
             if gen_dic['intr_data']:
                 extract_intr_profiles(data_dic,gen_dic,inst,vis,system_param['star'],coord_dic,theo_dic,plot_dic)
@@ -137,8 +137,8 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
 
             #Processing 2D intrinsic spectra into new 1D spectra
             if gen_dic['spec_1D_Intr'] and (data_dic[inst][vis]['type']=='spec2D'): 
-                conv_2D_to_1D_spec('Intr',inst,vis,gen_dic,data_dic,data_dic['Intr'],None,None,None,None)  
-            
+                conv_2D_to_1D_spec('Intr',inst,vis,gen_dic,data_dic,data_dic['Intr'])  
+
             #Processing binned intrinsic profiles
             if gen_dic['bin']:
                 bin_gen_functions('Intr','',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
@@ -146,7 +146,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
             #Building estimates for complete local stellar profiles
             if gen_dic['loc_data_corr']:
                 def_local_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,)
-
+        
             #--------------------------------------------------------------------------------------------------
             #Processing atmospheric profiles
             #--------------------------------------------------------------------------------------------------
@@ -169,7 +169,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
 
             #Processing 2D atmospheric spectra into new 1D spectra
             if gen_dic['spec_1D_Atm'] and (data_dic[inst][vis]['type']=='spec2D'): 
-                conv_2D_to_1D_spec(data_dic['Atm']['pl_atm_sign'],inst,vis,gen_dic,data_dic,data_dic['Atm'],None,None,None,None)                        
+                conv_2D_to_1D_spec(data_dic['Atm']['pl_atm_sign'],inst,vis,gen_dic,data_dic,data_dic['Atm'])                        
 
             #Analyzing atmospheric profiles
             if gen_dic['ana_Atm']:             

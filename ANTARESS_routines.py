@@ -5,7 +5,7 @@ from scipy import interpolate,special
 import lmfit
 from lmfit import Parameters
 import batman # Fast Mandel-Agol (last release from L. Kreidberg)
-from utils import stop,closest,np_where1D,npint,np_interp,closest_arr,init_parallel_func,planck,np_poly,is_odd,dataload_npz
+from utils import stop,closest,np_where1D,npint,np_interp,closest_arr,init_parallel_func,planck,np_poly,is_odd,dataload_npz,datasave_npz
 from scipy.signal import savgol_filter
 from astropy.io import fits #to read .fits
 from itertools import product as it_product
@@ -26,7 +26,6 @@ from scipy import stats
 from numpy.polynomial import Polynomial
 from pysme.synthesize import synthesize_spectrum
 from KitCat_main import kitcat_mask
-import pyfits
 
 ##########################
 #General values
@@ -1026,6 +1025,7 @@ def init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_
     gen_dic['main_pl_text'] = ''
     for pl_loc in gen_dic['studied_pl']:gen_dic['main_pl_text']+=pl_loc
     gen_dic['save_data_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Saved_data/'
+    gen_dic['save_plot_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'
     gen_dic['add_txt_path']={'DI':'','Intr':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
     gen_dic['data_type_gen']={'DI':'DI','Res':'Res','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
     gen_dic['type_name']={'DI':'disk-integrated','Res':'residual','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
@@ -3409,8 +3409,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
     elif mode=='Intr':
         print('   > Calculating CCFs from OT residual and intrinsic stellar spectra')
         iexp_list= range(data_vis['n_in_visit'])
-        dir_save['Res'] = gen_dic['save_data_dir']+'Res_data/CCFfromSpec/'+inst+'_'+vis+'_'
-        dir_save['Intr'] = gen_dic['save_data_dir']+'Intr_data/CCFfromSpec/'+inst+'_'+vis+'_'
+        for key in ['Res','Intr']:dir_save[key] = gen_dic['save_data_dir']+key+'_data/CCFfromSpec/'+inst+'_'+vis+'_'
     elif mode in ['Absorption','Emission']: 
         iexp_list = data_dic['Atm'][inst][vis]['idx_atm']
         print('   > Calculating CCFs from atmospheric '+mode+' spectra')
@@ -3437,9 +3436,12 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
             if (data_type_gen=='Intr'):
                 if (iexp in gen_vis['idx_in']):iexp_eff = gen_vis['idx_exp2in'][iexp]    
                 else:gen = 'Res'
-            dir_exp = data_vis['proc_'+gen+'_data_paths']+str(iexp_eff)+'.npz' 
-            data_load = np.load(dir_exp,allow_pickle=True)['data'].item() 
+            data_load = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
             
+            #Check that planetary ranges were not yet excluded
+            if (data_type_gen=='Intr') and (iexp in gen_vis['idx_in']) and ('Intr' in data_dic['Atm']['no_plrange']) and (iexp in data_dic['Atm'][inst][vis]['iexp_no_plrange']) and data_load['plrange_exc']:
+                stop('    Planetary ranges excluded too soon: re-run gen_dic["intr_data"] with gen_dic["Intr_CCF"]')
+                
             #Upload data
             if iexp_sub==0:
                 data_proc['edge_bins'] = np.zeros([n_exp]+list(data_load['edge_bins'].shape),dtype=float)
@@ -3493,7 +3495,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
         #Upload flux scaling
         #    - we compute the equivalent CCF of the broadband scaling for the propagation of broadband spectral scaling from disk-integrated profiles into weights
         #    - global flux scaling is not modified  
-        if gen_dic['flux_sc']:
+        if gen_dic['flux_sc'] and data_type_gen in ['Intr','Atm']:
             data_scaling_all={}
             for iexp in iexp_list:         
                 data_scaling_all[iexp]=dataload_npz(data_vis['scaled_data_paths']+str(iexp))                 
@@ -3536,6 +3538,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
             gen = deepcopy(data_type_gen)
             iexp_eff = deepcopy(iexp)
             cond_def_exp = (~np.isnan(CCF_all[iexp_sub,0]))[None,:] 
+            data_CCF_exp={}
             if (data_type_gen=='Intr'):
                 if (iexp in gen_vis['idx_in']):
                     iexp_eff = gen_vis['idx_exp2in'][iexp] 
@@ -3546,6 +3549,8 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
                         cond_in_pl = ~(np.ones(data_vis['nvel'],dtype=bool) & excl_plrange(cond_def_exp[0],data_dic['Atm'][inst][vis]['exclu_rangestar'],iexp,edge_bins[0],'CCF'))
                         CCF_all[iexp_sub,0,cond_in_pl]=np.nan
                         cond_def_exp[0,cond_in_pl]=False  
+                        data_CCF_exp['plrange_exc'] = True
+                    else:data_CCF_exp['plrange_exc'] = False
                         
                 else:gen = 'Res'
                 
@@ -3564,7 +3569,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
                 
             #Saving data for each exposure
             #    - CCF are stored independently of input spectra, so that both can be retrieved
-            data_CCF_exp = {'cen_bins':cen_bins,'edge_bins':edge_bins,'flux':CCF_all[iexp_sub],'cond_def':cond_def_exp,'cov':cov_exp,'nd_cov':nd_cov_exp,'SNRs':data_proc['SNRs'][iexp_sub]}              
+            data_CCF_exp.update({'cen_bins':cen_bins,'edge_bins':edge_bins,'flux':CCF_all[iexp_sub],'cond_def':cond_def_exp,'cov':cov_exp,'nd_cov':nd_cov_exp,'SNRs':data_proc['SNRs'][iexp_sub]})              
             np.savez_compressed(dir_save[gen]+str(iexp) ,data=data_CCF_exp,allow_pickle=True)
             
             #Processing disk-integrated masters
@@ -3996,6 +4001,7 @@ def init_visit(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic):
         for pl_loc in data_vis['transit_pl']:
             plrange_star[pl_loc] = np.vstack((np.repeat(1e10,data_vis['n_in_visit']),np.repeat(-1e10,data_vis['n_in_visit'])))
             plrange_star[pl_loc][:,iexp_no_plrange] = data_dic['Atm']['plrange'][:,None] + coord_vis[pl_loc]['rv_pl'][iexp_no_plrange] 
+            if (True in np.isnan(coord_vis[pl_loc]['rv_pl'])):stop('  Run gen_dic["calc_proc_data"] again to calculate "rv_pl"')
     
             #Planet exclusion range
             #    - we define the lower/upper wavelength boundaries of excluded ranges for each planetary mask line in each requested exposure
@@ -4004,8 +4010,8 @@ def init_visit(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic):
             #      if input data is in CCF mode, ranges are only defined in RV   
             plAtm_vis['exclu_rangestar']['CCF'][pl_loc] = plrange_star[pl_loc]
             plAtm_vis['exclu_range']['CCF'][pl_loc] =  plrange_star[pl_loc] + coord_vis['RV_star_solCDM'][None,:]
-                
-            if ('spec' in data_dic[inst]['type']): 
+            if ('spec' in data_dic[inst]['type']):
+
                 plAtm_vis['exclu_rangestar']['spec'][pl_loc] = np.zeros([len(data_dic['Atm']['CCF_mask_wav']),2,data_vis['n_in_visit']])*np.nan
                 plAtm_vis['exclu_rangestar']['spec'][pl_loc][:,:,iexp_no_plrange] = data_dic['Atm']['CCF_mask_wav'][:,None,None]*spec_dopshift(-plrange_star[pl_loc][:,iexp_no_plrange])  
 
@@ -4082,11 +4088,11 @@ def excl_plrange(cond_def,range_star_in,iexp,edge_bins,data_type):
         for pl_loc in range_star:
             cond_keepL = (range_star[pl_loc][:,1,iexp]>=edge_bins[idx_def_exp_pl[0]]) &  (range_star[pl_loc][:,0,iexp]<=edge_bins[idx_def_exp_pl[-1]+1])
             if np.sum(cond_keepL)>0:
-            
+
                 #Indexes of first and last defined bins in the exposure table that overlap with the line range
                 #    - see method in resample_func()
-                idx_first_overpix =np.searchsorted(edge_bins[idx_def_exp_pl],range_star[pl_loc][cond_keepL,0],side='right')-1
-                idx_last_overpix =np.searchsorted(edge_bins[idx_def_exp_pl+1],range_star[pl_loc][cond_keepL,1],side='left')
+                idx_first_overpix =np.searchsorted(edge_bins[idx_def_exp_pl],range_star[pl_loc][cond_keepL,0,iexp],side='right')-1
+                idx_last_overpix =np.searchsorted(edge_bins[idx_def_exp_pl+1],range_star[pl_loc][cond_keepL,1,iexp],side='left')
                 idx_first_overpix[idx_first_overpix==-1]=0        
                 idx_last_overpix[idx_last_overpix==n_idx_def_loc]=n_idx_def_loc-1         
         
@@ -4717,7 +4723,7 @@ def def_surf_shift(align_mode,dic_rv,i_in,data_exp,pl_ref,data_type,system_prop,
             for iord in range(nord):
                 surf_shifts[iord] = np_interp(data_exp['cen_bins'][iord],system_prop['chrom']['w'],RV_shift_pl,left=RV_shift_pl[0],right=RV_shift_pl[-1])
                 surf_shifts_edge[iord] = np_interp(data_exp['edge_bins'][iord],system_prop['chrom']['w'],RV_shift_pl,left=RV_shift_pl[0],right=RV_shift_pl[-1])
-
+            
         #Achromatic RV defined for the nominal transit properties
         else:
             surf_shifts = dic_rv['achrom'][pl_ref]['rv'][0,i_in]  
@@ -4778,14 +4784,17 @@ def align_data(data_exp,rout_mode,nord,dim_exp_resamp,resamp_mode,cen_bins_resam
     if ('spec' in rout_mode):
     
         #Achromatic shift
-        if (rv_shift_edge is None):dop_shift = spec_dopshift(rv_shift_cen)                        
+        if (rv_shift_edge is None):
+            dop_shift = spec_dopshift(rv_shift_cen) 
+            edge_bins_rest = data_exp['edge_bins']*dop_shift
+            cen_bins_rest = data_exp['cen_bins']*dop_shift                         
             
         #Chromatic shift
         #    - in this case the bin edges and center are shifted using the rv calculated at their exact wavelength, to keep the new bins contiguous
-        else:dop_shift = spec_dopshift(rv_shift_edge)
-            
-        edge_bins_rest = data_exp['edge_bins']*dop_shift
-        cen_bins_rest = data_exp['cen_bins']*dop_shift  
+        else:
+            edge_bins_rest = data_exp['edge_bins']*spec_dopshift(rv_shift_edge)
+            cen_bins_rest = data_exp['cen_bins']*spec_dopshift(rv_shift_cen)  
+
             
     #Shift velocity tables to star rest frame
     #    - for disk-integrated data: RV(M/star) = RV(M/sun) - RV(CDM_star/sun) - RV(star/CDM_star)
@@ -4946,7 +4955,7 @@ Scale data to the correct flux level
     - note that the measured light curve corresponds to 
  LC(band,t) = int(w over band, Fin(w,t)*dw )/int(w over band, Fstar(w,vis)*dw )
             = 1 - int(w over band, fp(w)*( Sthick(band,t) + Sthin(w,t) )/<Fstar(w in band,vis)> 
-      the theoretical light curves fitted to the measured one assume a constant, uniform stellar flux and limb-darkening law, and a constant average radius
+      the theoretical light curves fitted to the measured one assume a constant, uniform stellar flux and limb-darkening law, and a constant average radius over the band
  LC_theo(band,t) = TF_theo_band(t) / TFstar_theo(band) 
                  = F_theo_band(t) / Fstar_theo(band) 
                  = 1 - I_theo(band)*LD(band,t)*Sp(band,t)/sum(k , I_theo(band)*LDk(band)*Sk) 
@@ -5272,33 +5281,65 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
 """
 Sub-function to calculate a single binned profile from a sample of input profiles, over a fixed spectral table
 """
+def pre_calc_binned_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_bin,edge_bins_resamp):
+    
+    #Pre-processing
+    #    - it is necessary to do this operation first to process undefined flux and weight values
+    weight_exp_all = np.zeros([n_in_bin]+dim_sec,dtype=float)     
+    flux_exp_all = np.zeros([n_in_bin]+dim_sec,dtype=float)*np.nan 
+    cov_exp_all = np.zeros(n_in_bin,dtype=object)
+    cond_def_all = np.zeros([n_in_bin]+dim_sec,dtype=bool) 
+    cond_undef_weights = np.zeros(dim_sec,dtype=bool)  
+    for isub,idx in enumerate(idx_to_bin):
+        
+        #Resampling
+        if resamp_mode is not None:
+            flux_exp_all[isub],cov_exp_all[isub] = bind.resampling(edge_bins_resamp, data_to_bin['edge_bins'][isub], data_to_bin['flux'][isub] , cov = data_to_bin['cov'][isub] , kind=resamp_mode)   
+            weight_exp_all[isub] = bind.resampling(edge_bins_resamp, data_to_bin['edge_bins'][isub], data_to_bin['weights'][isub], kind=resamp_mode)  
+            cond_def_all[isub] = ~np.isnan(flux_exp_all[isub])            
+        else:
+            flux_exp_all[isub]= data_to_bin[idx]['flux']
+            cov_exp_all[isub]= data_to_bin[idx]['cov']
+            weight_exp_all[isub]= data_to_bin[idx]['weight']
+            cond_def_all[isub]  = data_to_bin[idx]['cond_def']
+
+        #Set undefined pixels to 0 so that they do not contribute to the binned spectrum
+        #    - corresponding weight is set to 0 as well so that it does not mess up the binning if it was undefined
+        flux_exp_all[isub,~cond_def_all[isub]] = 0.        
+        weight_exp_all[isub,~cond_def_all[isub]] = 0.
+
+        #Pixels where at least one exposure has an undefined weight for a defined flux value
+        cond_undef_weights |= ( np.isnan(weight_exp_all[isub]) & cond_def_all[isub] )
+
+    #Defined bins in binned spectrum
+    #    - a bin is defined if at least one bin is defined in any of the contributing profiles
+    cond_def_binned = np.sum(cond_def_all,axis=0)>0  
+
+    #Disable weighing for pixels where at least one contributing profile has an undefined weight for a defined flux value, and for pixels with null weights at all defined flux values 
+    #    - pixels with undefined flux values do not matter as they are set to 0
+    #    - if a defined pixel has an undefined weight it will mess up with the binning, and we thus set all weights to a common value (ie, now weighing is applied)
+    cond_null_weights = (np.sum(weight_exp_all,axis=0)==0.) & cond_def_binned
+    weight_exp_all[:,cond_undef_weights | cond_null_weights] = 1.
+
+    #Global weight table
+    #    - pixels that do not contribute to the binning (eg due to planetary range masking) have null flux and weight values, and thus do not contribute to the total weight
+    #    - weight tables only depend on each original exposure but their weight is specific to the new exposures and the original exposures it contains
+    dx_ov = np.ones([n_in_bin]+dim_sec,dtype=float) if dx_ov_in is None else dx_ov_in[:,None,None] 
+    glob_weight_all = dx_ov*weight_exp_all
+
+    #Total weight per pixel
+    #    - normalization is done along the bin dimension, for each pixel with at least one defined contributing exposure
+    glob_weight_tot = np.sum(glob_weight_all,axis=0)
+    glob_weight_all[:,cond_def_binned]/=glob_weight_tot[cond_def_binned]
+
+
+    return flux_exp_all,cov_exp_all,weight_exp_all,cond_def_all,glob_weight_all,cond_def_binned
+
 def calc_binned_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,cen_bins_exp,edge_bins_exp,dx_ov_in=None):
 
-    #Initialize global weight table
+    #Clean weights
     #    - in all calls to the routine, exposures contributing to the master are already defined / have been resampled on a common spectral table
-    glob_weight_spec = np.zeros([n_in_bin]+dim_exp,dtype=float)  
-    dx_ov = np.ones(n_in_bin) if dx_ov_in is None else deepcopy(dx_ov_in) 
-    data_to_bin = deepcopy(data_to_bin_in)          
-    for isub,iexp in enumerate(idx_to_bin): 
-        
-        #Set as undefined pixels with undefined weights
-        #    - weights can be undefined if some contributors were undefined
-        data_to_bin[iexp]['cond_def'][np.isnan(data_to_bin[iexp]['weight'])]  =False 
-        
-        #Contributions to global weights
-        #    - remains null for undefined bins (eg due to planetary range masking), so that they do not contribute to the bin 
-        #    - weight tables only depend on each original exposure but their weight is specific to the new exposures and the original exposures it contains
-        cond_def_exp = data_to_bin[iexp]['cond_def']
-        glob_weight_spec[isub,cond_def_exp] = dx_ov[isub]*data_to_bin[iexp]['weight'][cond_def_exp]
-
-        #Set to 0 undefined pixels so that they do not mess up co-additions
-        data_to_bin[iexp]['flux'][~cond_def_exp] = 0.
-
-    #Normalized global weights
-    #    - normalization is done along the bin dimension, for each pixel with at least one defined contributing exposure
-    glob_weight_tot=np.sum(glob_weight_spec,axis=0)
-    cond_def_ov = (glob_weight_tot>0.)
-    glob_weight_spec[:,cond_def_ov]/=glob_weight_tot[cond_def_ov]
+    flux_exp_all,cov_exp_all,weight_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_binned_prof(n_in_bin,dim_exp,idx_to_bin,None,dx_ov_in,data_to_bin_in,None)
 
     #Tables for new exposure
     data_bin={'cen_bins':cen_bins_exp,'edge_bins':edge_bins_exp} 
@@ -5331,17 +5372,17 @@ def calc_binned_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,
             #         = sum(exp i, w_glob(i,p))^2 /sum(exp i, w_glob(i,p) )   
             #         = sum(exp i, w_glob(i,p)) 
             #       where only the variance is considered when defining the spectral weight profiles
-            if (True in data_to_bin[iexp]['cond_def'][iord]):                
+            if (True in cond_def_all[isub,iord]):                
 
                 #Weighted profiles
                 #    - undefined pixels have null weights and have been set to 0, thus their weighted value is set to 0 and do not contribute to the master
-                flux_temp,cov_temp = bind.mul_array(data_to_bin[iexp]['flux'][iord],data_to_bin[iexp]['cov'][iord],glob_weight_spec[isub,iord])
+                flux_temp,cov_temp = bind.mul_array(flux_exp_all[isub,iord],cov_exp_all[isub][iord],glob_weight_all[isub,iord])
                 flux_ord_contr+=[flux_temp]
                 cov_ord_contr+=[cov_temp]
                 
                 #Defined bins in master
                 #    - a bin is defined if at least one bin is defined in any of the contributing exposures
-                data_bin['cond_def'][iord] |= data_to_bin[iexp]['cond_def'][iord]
+                data_bin['cond_def'][iord] |= cond_def_all[isub,iord]
  
         #Co-addition of weighted profiles from all contributing exposures
         if len(flux_ord_contr)>0:data_bin['flux'][iord],data_bin['cov'][iord] = bind.sum(flux_ord_contr,cov_ord_contr)
@@ -5666,10 +5707,11 @@ Routine to extract local residual stellar profiles
  + w the absolute wavelength in the stellar rest frame, within a given spectral band 
  + F the flux received from the star - planet system [erg s-1 A-1 cm-2] at a given distance
    Fi(w,v) = fi(w,v)*Si is the flux emitted by the region i of surface Si
- + the surface density flux can be written as fi(w,v) = Ii(w)*LDi(w) 
+ + the surface density flux can be written as fi(w,v) = Ii(w)*LDi(w)*GDi(w) 
    Ii(w) is the specific intensity in the direction of the LOS [erg cm-2 s-1 A-1 sr-1]
          can be written as I0(w-wstar(t)) if the local stellar emission is constant over the stellar disk, and simply shifted by wstar(t) because of surface velocity
    LDi(w) is the spectral limb-darkening law
+   GDi(w) the gravity-darkening law
  + Fp(w,t) is the flux emitted or reflected by the planet                
    the planet and its atmosphere occult a surface Socc(t), time-dependent because of partial occultation at ingress/egress    
    Sthick(band,t) is the equivalent surface of the planet disk opaque to light in the local spectral band 
@@ -5994,7 +6036,7 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
     for i_in,iexp in enumerate(gen_vis['idx_in']):
         if gen_dic['DImast_weight']:data_vis['mast_Intr_data_paths'][i_in] = data_vis['mast_Res_data_paths'][iexp]
         if data_vis['tell_sp']:data_vis['tell_Intr_data_paths'][i_in] = data_vis['tell_Res_data_paths'][iexp]
-        if data_vis['mean_gdet']:data_vis['mean_gdet_Intr_data_paths'][i_in] = data_vis['mean_gdet_Intr_data_paths'][iexp]
+        if data_vis['mean_gdet']:data_vis['mean_gdet_Intr_data_paths'][i_in] = data_vis['mean_gdet_Res_data_paths'][iexp]
 
     #Initialize in-transit indexes of defined intrinsic profiles
     data_dic['Intr'][inst][vis]['idx_def'] = np.arange(data_vis['n_in_tr'],dtype=int) 
@@ -6023,7 +6065,7 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
                 data_com = dataload_npz(data_vis['proc_com_data_paths'])
                 cen_bins_resamp, edge_bins_resamp = data_com['cen_bins'],data_com['edge_bins']
             else:cen_bins_resamp, edge_bins_resamp = None,None  
- 
+
         #Definition of intrinsic stellar profiles
         for i_in,iexp in enumerate(gen_vis['idx_in']):
                                
@@ -6050,8 +6092,8 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
                 surf_shifts,surf_shifts_edge = def_surf_shift('theo_rel',dic_rv,i_in,data_exp,ref_pl,data_vis['type'],data_dic['DI']['system_prop'],data_dic[inst][vis]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec']) 
 
                 #Spectral RV correction of current exposure and complementary tables
-                if data_vis['tell_sp']:data_exp['tell'] = dataload_npz(data_vis['tell_Res_data_paths']+str(iexp))['tell'] 
-                if data_vis['mean_gdet']:data_exp['mean_gdet'] = dataload_npz(data_vis['mean_gdet_Res_data_paths']+str(iexp))['mean_gdet'] 
+                if data_vis['tell_sp']:data_exp['tell'] = dataload_npz(data_vis['tell_Res_data_paths'][iexp])['tell'] 
+                if data_vis['mean_gdet']:data_exp['mean_gdet'] = dataload_npz(data_vis['mean_gdet_Res_data_paths'][iexp] )['mean_gdet'] 
                 data_exp=align_data(data_exp,data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],cen_bins_resamp,edge_bins_resamp,surf_shifts,rv_shift_edge = surf_shifts_edge)
 
                 #Saving aligned exposure and complementary tables
@@ -6080,7 +6122,11 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
                     cond_out_pl[iord] &= excl_plrange(data_exp['cond_def'][iord],plAtm_vis['exclu_rangestar'],iexp,data_exp['edge_bins'][iord],data_vis['type'])
                 cond_in_pl = ~cond_out_pl
                 data_exp['flux'][cond_in_pl]=np.nan
-                data_exp['cond_def'][cond_in_pl]=False                
+                data_exp['cond_def'][cond_in_pl]=False    
+
+                #Saving exclusion flag
+                data_exp['plrange_exc'] = True
+            else:data_exp['plrange_exc'] = False
 
             #Saving data using in-transit indexes              
             np.savez_compressed(proc_gen_data_paths_new+'_in'+str(i_in),data=data_exp,allow_pickle=True)
@@ -6091,6 +6137,7 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
 
     #Continuum of intrinsic CCFs
     #    - see ResIntr_CCF_from_spec for details
+    #    - applied to intrinsic profiles derived from CCF data, thus planetary ranges have been excluded if requested
     if data_vis['type']=='CCF':
         cond_def_cont_all  = np.zeros([data_vis['n_in_tr'],data_vis['nspec']],dtype=bool)
         for i_in in range(data_vis['n_in_tr']):
@@ -6108,7 +6155,6 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
             cont_intr[i_in] = np.mean(data_exp['flux'][0][cond_cont_com])
             wcont_intr[i_in] = 1./np.sum( data_exp['cov'][0][0,cond_cont_com] )
         data_dic['Intr']['mean_cont']=np.sum(cont_intr*wcont_intr)/np.sum(wcont_intr)            
-
 
     return None
 
@@ -7271,7 +7317,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
     #Identifier for saved file
     if mode=='multivis':vis_save = 'binned'      
     else:vis_save = vis_in 
-        
+
     if data_type_gen=='DI':   
         data_type='DI'
         prop_dic = deepcopy(data_dic['DI']) 
@@ -7320,6 +7366,16 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
     if (calc_check):
         print('         Calculating data') 
 
+        #Set default binning properties to calculate single master
+        if (inst not in prop_dic['prop_bin']):prop_dic['prop_bin'][inst] = {}
+        if (vis_save not in list(prop_dic['prop_bin'][inst].keys())):
+            if prop_dic['dim_bin']=='phase':prop_dic['prop_bin'][inst]={vis_save:{'bin_low':[-0.5],'bin_high':[0.5]}} 
+            elif prop_dic['dim_bin']=='r_proj':prop_dic['prop_bin'][inst]={vis_save:{'bin_low':[0.],'bin_high':[1.]}}             
+            else:stop('Undefined')
+            
+        #Bin properties
+        bin_prop = prop_dic['prop_bin'][inst][vis_save]
+               
         #Several visits are binned together
         #    - common table and dimensions are shared between visits
         #    - new coordinates are relative to a planet chosen as reference for the binned coordinates, which must be present in all binned visits 
@@ -7333,10 +7389,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
    
             #Visits to include in the binning
             vis_to_bin = prop_dic['vis_in_bin'][inst] if ((inst in data_dic[data_type_gen]['vis_in_bin']) and (len(data_dic[data_type_gen]['vis_in_bin'][inst])>0)) else data_dic[inst]['visit_list']
-        
-            #Bin properties
-            bin_prop = prop_dic['prop_bin'][inst]['binned']
-    
+
             #Planets associated with the binned visits
             data_inst.update({vis_save:{'transit_pl':[]}})
             for vis_bin in vis_to_bin:data_inst[vis_save]['transit_pl']+=data_inst[vis_bin]['transit_pl']
@@ -7357,7 +7410,6 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             dim_exp_com = data_inst[vis_in]['dim_exp']
             nspec_com = data_inst['nspec']
             vis_to_bin=[vis_in]
-            bin_prop = prop_dic['prop_bin'][inst][vis_in]
             sysvel = data_dic['DI']['sysvel'][inst][vis_in]
             data_mode = data_inst[vis_in]['type']
  
@@ -7372,7 +7424,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
 
         #Initialize binning
         new_x_cen,new_x_low,new_x_high,_,n_in_bin_all,idx_to_bin_all,dx_ov_all,n_bin,idx_bin2orig,idx_bin2vis,idx_to_bin_unik = init_bin_rout(data_type,bin_prop,prop_dic['idx_in_bin'],prop_dic['dim_bin'],coord_dic,inst,vis_to_bin,data_dic,gen_dic)
-        
+
         #Retrieving data that will be used in the binning
         #    - original data is associated with its original index, so that it can be retrieved easily by the binning routine
         #      for each new bin, the binning routine is called with the list of original index that it will use
@@ -7505,12 +7557,12 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             if (data_type_gen=='DI') and ('DI_Mast' in data_dic['Atm']['no_plrange']) and (iexp_glob in data_dic['Atm'][inst][vis_bin]['iexp_no_plrange']):
                 for iord in range(data_inst['nord']):                        
                     data_to_bin[iexp_off]['cond_def'][iord] &= excl_plrange(data_to_bin[iexp_off]['cond_def'][iord],data_dic['Atm'][inst][vis_bin]['exclu_rangestar'],iexp_glob,data_com['edge_bins'][iord],data_mode)
-         
+
             #Weight definition
             #    - the profiles must be specific to a given data type so that earlier types can still be called in the multi-visit binning, after the type of profile has evolved in a given visit
             #    - at this stage of the pipeline broadband flux scaling has been defined, if requested 
             data_to_bin[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_mode,dim_exp_com,tell_exp,mean_gdet_exp,data_com['cen_bins'],flux_ref_exp,cov_ref_exp,flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,bdband_flux_sc = gen_dic['flux_sc'])                          
-
+    
         #----------------------------------------------------------------------------------------------
 
         #Processing and analyzing each new exposure 
@@ -7773,6 +7825,7 @@ def def_weights_spatiotemp_bin(iord_orig_list,scaled_data_paths,inst,vis,gen_cor
 
     #Spectral broadband flux scaling 
     #    - includes broadband contribution, unless overwritten by input 
+    #    - flux_sc = 1 with no occultation, 0 with full occultation
     if bdband_flux_sc:     
         data_scaling = dataload_npz(scaled_data_paths+str(iexp_glob))        
         flux_sc = {iord:1. - data_scaling['loc_flux_scaling'][iord_orig](cen_bins[iord,cond_def_weights[iord]]) for iord,iord_orig in enumerate(iord_orig_list)}
@@ -7848,7 +7901,7 @@ def def_weights_spatiotemp_bin(iord_orig_list,scaled_data_paths,inst,vis,gen_cor
         # intrinsic profiles in their local rest frame
         elif data_type=='Intr': 
             for iord in range(nord):
-                weight_spec[iord,cond_def_weights[iord]] = (1. - flux_sc[iord])**2. / calc_EFres2(flux_ref_exp[iord,cond_def_weights[iord]],cov_ref_exp[iord][0,cond_def_weights[iord]],flux_sc[iord],spec_corr[iord])
+                weight_spec[iord,cond_def_weights[iord]] =(1. - flux_sc[iord])**2. / calc_EFres2(flux_ref_exp[iord,cond_def_weights[iord]],cov_ref_exp[iord][0,cond_def_weights[iord]],flux_sc[iord],spec_corr[iord])
 
         #--------------------------------------------------------        
         #Atmospheric spectra
@@ -8036,19 +8089,19 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
         else:DRS_waves = mask_waves
     
         #Create data columns
-        c1 = pyfits.Column(name='lambda', array=DRS_waves, format='1D')
-        c2 = pyfits.Column(name='contrast', array=mask_weights, format='1E')
-        t = pyfits.BinTableHDU.from_columns([c1, c2])
+        c1 = fits.Column(name='lambda', array=DRS_waves, format='1D')
+        c2 = fits.Column(name='contrast', array=mask_weights, format='1E')
+        t = fits.BinTableHDU.from_columns([c1, c2])
         
         #Create header columns
-        hdr = pyfits.Header()
+        hdr = fits.Header()
         hdr['HIERARCH ESO PRO CATG'] = 'MASK_TABLE'
         inst_ref = inst.split('_')[0]
         hdr['INSTRUME'] = inst_ref
-        p = pyfits.PrimaryHDU(header=hdr)
+        p = fits.PrimaryHDU(header=hdr)
         
         #Saving
-        hdulist = pyfits.HDUList([p,t])
+        hdulist = fits.HDUList([p,t])
         mask_name = 'CCF_mask_'+data_type_gen+'_'+gen_dic['star_name']+'_'+inst_ref+mask_info
         hdulist.writeto(save_data_paths+mask_name+'.fits',clobber=True,output_verify='ignore')
         np.savetxt(save_data_paths+mask_name+'_'+gen_dic['sp_frame']+'.txt', np.column_stack((mask_waves,mask_weights)),fmt=('%15.10f','%15.10f') )
@@ -8060,7 +8113,7 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
 
     #Save for plotting
     if (plot_dic[data_type_gen+'mask_spectra']!='') | (plot_dic[data_type_gen+'mask_ld_lw']!='') | (plot_dic[data_type_gen+'mask_RVdev_fit']!=''):
-        np.savez_compressed(save_data_paths+'Plot_info',data=dic_sav,allow_pickle=True)
+        datasave_npz(save_data_paths+'Plot_info',dic_sav)
 
     return None
 
@@ -11863,7 +11916,7 @@ def loc_prof_meas(corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_dic):
         #                     = MFstar(w,vis)*(1 - LC(w,t))                    
         #    - the scaling spectrum is defined at all pixels, and thus does not affect undefined pixels in the master (the covariance matrix cannot be sliced)
         if gen_dic['flux_sc']:
-            data_scaling = dataload_npz(data_vis['scaled_data_paths']+str(gen_dic[inst][vis]['idx_in'][i_in]))
+            data_scaling = dataload_npz(data_vis['scaled_data_paths']+str(gen_dic[inst][vis]['idx_in2exp'][i_in]))
             for iord in range(data_inst['nord']):
                 loc_flux_scaling_ord = data_scaling['loc_flux_scaling'][iord](data_est_loc['cen_bins'][iord])              
                 data_est_loc['flux'][iord],data_est_loc['cov'][iord] = bind.mul_array(data_est_loc['flux'][iord],data_est_loc['cov'][iord],loc_flux_scaling_ord)
@@ -11977,7 +12030,7 @@ def loc_prof_indivCCFmod(inst,vis,gen_dic,data_dic):
         data_est_loc={'cen_bins':data_prop[i_in]['cen_bins'],'edge_bins':data_prop[i_in]['edge_bins'],'flux':data_prop[i_in]['flux'][:,None],'cond_def':np.ones(data_dic[inst][vis]['dim_exp'],dtype=bool)}
 
         #Rescaling model intrinsic profile to the level of the local profile
-        loc_flux_scaling = dataload_npz(data_vis['scaled_data_paths']+str(gen_dic[inst][vis]['idx_exp2in'][i_in]))['loc_flux_scaling']
+        loc_flux_scaling = dataload_npz(data_vis['scaled_data_paths']+str(gen_dic[inst][vis]['idx_in2exp'][i_in]))['loc_flux_scaling']
         data_est_loc['flux'][0] *= loc_flux_scaling[0](data_est_loc['cen_bins'][0]) 
 
         #Saving estimate of local profile for current exposure                   
@@ -12176,7 +12229,7 @@ def loc_prof_rec(inst,vis,gen_dic,data_dic,coord_dic):
         data_est_loc=align_data(data_rec[isub],data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],data_loc_exp['cen_bins'],data_loc_exp['edge_bins'],-surf_shifts,rv_shift_edge = surf_shifts_edge ,nocov=True)
 
         #Rescaling reconstructed intrinsic profile to the level of the local profile
-        loc_flux_scaling = dataload_npz(data_vis['scaled_data_paths']+str(gen_dic[inst][vis]['idx_exp2in'][i_in]))['loc_flux_scaling']
+        loc_flux_scaling = dataload_npz(data_vis['scaled_data_paths']+str(gen_dic[inst][vis]['idx_in2exp'][i_in]))['loc_flux_scaling']
         for iord in range(data_dic[inst]['nord']):data_est_loc['flux'][iord] *=loc_flux_scaling[iord](data_est_loc['cen_bins'][iord]) 
 
         #Saving estimate of local profile for current exposure                   
@@ -12420,7 +12473,7 @@ Conversion of 2D spectra into 1D spectra
     - conversion is applied to the latest processed data of each type
     - converted data is saved independently, but used as default data in all modules following the conversion
 '''
-def conv_2D_to_1D_spec(data_type,inst,vis,gen_dic,data_dic,prop_dic,coord_dic,data_prop,system_param,theo_dic):
+def conv_2D_to_1D_spec(data_type,inst,vis,gen_dic,data_dic,prop_dic):
     data_inst = data_dic[inst]
     data_vis = data_dic[inst][vis]
     calc_check = gen_dic['calc_spec_1D_'+data_type]
@@ -12503,6 +12556,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_ne
                       save_data_dir,gen_type,data_mode,dim_exp):
     
     #Processing each exposure
+    #    - the conversion can be seen as the binning of all orders after they are resampled on a common table
     for isub,iexp in enumerate(iexp_conv):   
 
         #Upload spectra and associated tables in star or local frame
@@ -12514,8 +12568,11 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_ne
         if tell_data_paths is not None:data_exp['tell'] = dataload_npz(tell_data_paths[iexp])['tell'] 
         if proc_weight:data_exp['mean_gdet'] = dataload_npz(mean_gdet_data_paths[iexp])['mean_gdet'] 
         if DImast_weight_data_paths is not None:data_ref = dataload_npz(DImast_weight_data_paths[iexp])
-        if data_type_gen=='DI':iexp_glob=iexp
-        else:                    
+        if data_type_gen=='DI':
+            iexp_glob=iexp
+            bdband_flux_sc = False
+        else:
+            bdband_flux_sc = True                    
             if data_type_gen=='Intr':iexp_glob = idx_in2exp[iexp]                     
             elif data_type_gen=='Atm':
                 data_est_loc=dataload_npz(LocEst_Atm_data_paths[iexp])
@@ -12524,19 +12581,20 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_ne
                 if data_type=='Emission':iexp_glob=iexp
                 elif data_type=='Absorption':
                     SpSstar_spec = data_exp['SpSstar_spec']
-                    iexp_glob = idx_in2exp[iexp]                      
+                    iexp_glob = idx_in2exp[iexp]  
 
         #Weight definition
-        #    - since here we bin profiles defined on the same spectral table no resampling is required
         #    - cannot be parallelized as functions cannot be pickled
         #    - here the binning is performed between overlapping orders of the same exposure 
-        #      all profiles that are the same for overlapping orders are thus not used in the weighing
+        #      all profiles that are the same for overlapping orders (tellurics, disk-integrated stellar spectrum, global flux scaling, ...) are thus not used in the weighing 
         #      they are however processed in the same way as the exposure if used later on in the pipeline 
-        weight_exp = def_weights_spatiotemp_bin(range(nord),None,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,None,data_exp['mean_gdet'], data_exp['cen_bins'],np.ones(dim_exp),None,corr_Fbal=False)
+        #    - for intrinsic and atmospheric profiles we provide the broadband flux scaling, even if does not matter to the weighing, because it is otherwise set to 0 and messes up with weights definition
+        data_exp['weights'] = def_weights_spatiotemp_bin(range(nord),scaling_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,None,data_exp['mean_gdet'], data_exp['cen_bins'],np.ones(dim_exp),np.zeros([dim_exp[0],1,dim_exp[1]]),corr_Fbal=False,bdband_flux_sc=bdband_flux_sc)
+
+        #Resample spectra and weights on 1D table in each order, and clean weights
+        flux_exp_all,cov_exp_all,weight_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_binned_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_exp,edge_bins_1D)
 
         #Processing each order
-        tot_weight = np.zeros(nspec_1D,dtype=float) 
-        cond_def_1D = np.zeros(nspec_1D,dtype=bool) 
         flux_ord_contr=[]
         cov_ord_contr=[] 
         if scaling_data_paths is not None:loc_flux_scaling_ord_contr= np.zeros(nspec_1D, dtype=float)
@@ -12549,108 +12607,85 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_ne
             flux_est_loc_ord_contr=[]
             if cov_est_loc_exp is not None:cov_est_loc_ord_contr=[]            
         for iord in range(nord):
-
-            #Multiply by order weight
-            #    - we perform the operation before resampling because the weights are defined with the same structure as the profiles
-            flux_temp,cov_temp = bind.mul_array( data_exp['flux'][iord] , data_exp['cov'][iord] , weight_exp[iord])
-
-            #Resample on 1D table
-            flux_ord,cov_ord = bind.resampling(edge_bins_1D, data_exp['edge_bins'][iord], flux_temp , cov = cov_temp, kind=resamp_mode)                        
-            weight_ord = bind.resampling(edge_bins_1D, data_exp['edge_bins'][iord], weight_exp[iord], kind=resamp_mode)                        
-            cond_def = (~np.isnan(flux_ord)) & (~np.isnan(weight_ord))
-
-            #Set undefined pixels to 0 so that they do not contribute to the 1D spectrum
-            flux_ord[~cond_def] = 0.            
+         
+            #Multiply by order weight and store
+            flux_ord,cov_ord = bind.mul_array(flux_exp_all[iord] , cov_exp_all[iord] , glob_weight_all[iord])          
             flux_ord_contr+=[flux_ord]
             cov_ord_contr+=[cov_ord]
+            cond_def = cond_def_all[iord]
 
             #Apply same steps to complementary spectra
             #    - gain profiles are not consistent in the overlaps between orders, and are not used anymore
             #    - the master has followed the same shifts as the intrinsic or atmospheric profiles, but always remain either defined on the common table, or on a specific table different from the table of its associated exposure
             if scaling_data_paths is not None: 
-                loc_flux_scaling_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],data_scaling_exp['loc_flux_scaling'][iord](data_exp['cen_bins'][iord])*weight_exp[iord] ,kind=resamp_mode)
+                loc_flux_scaling_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],data_scaling_exp['loc_flux_scaling'][iord](data_exp['cen_bins'][iord]),kind=resamp_mode)
                 loc_flux_scaling_temp[~cond_def] = 0.
-                loc_flux_scaling_ord_contr+=loc_flux_scaling_temp
+                loc_flux_scaling_ord_contr+=loc_flux_scaling_temp*weight_exp_all[iord]
             if tell_data_paths is not None:
-                tell_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],  data_exp['tell'][iord]*weight_exp[iord] ,kind=resamp_mode) 
+                tell_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],  data_exp['tell'][iord] ,kind=resamp_mode)
                 tell_temp[~cond_def] = 0.                    
-                tell_ord_contr+=tell_temp                    
+                tell_ord_contr+=tell_temp*weight_exp_all[iord]                     
             if DImast_weight_data_paths is not None:
-                flux_ref_temp,cov_ref_temp = bind.mul_array( data_ref['flux'][iord], data_ref['cov'][iord] , weight_exp[iord])
-                flux_ref_temp,cov_ref_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], flux_ref_temp , cov = cov_ref_temp, kind=resamp_mode)   
+                flux_ref_temp,cov_ref_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], data_ref['flux'][iord] , cov = data_ref['cov'][iord] , kind=resamp_mode)  
+                flux_ref_temp,cov_ref_temp = bind.mul_array(flux_ref_temp,cov_ref_temp ,weight_exp_all[iord]      )
                 flux_ref_temp[~cond_def] = 0.   
                 flux_ref_ord_contr+=[flux_ref_temp]
                 cov_ref_ord_contr+=[cov_ref_temp]
             if SpSstar_spec is not None:
-                SpSstar_spec_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],SpSstar_spec[iord](data_exp['cen_bins'][iord])*weight_exp[iord] ,kind=resamp_mode)
+                SpSstar_spec_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],SpSstar_spec[iord](data_exp['cen_bins'][iord]) ,kind=resamp_mode)
                 SpSstar_spec_temp[~cond_def] = 0.
-                SpSstar_spec_ord_contr+=SpSstar_spec_temp
+                SpSstar_spec_ord_contr+=SpSstar_spec_temp*weight_exp_all[iord]
             if flux_est_loc_exp is not None:  
                 if cov_est_loc_exp is None:                    
-                    flux_est_loc_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], flux_est_loc_exp[iord]*weight_exp[iord] , kind=resamp_mode)   
+                    flux_est_loc_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], flux_est_loc_exp[iord] , kind=resamp_mode)   
                     flux_est_loc_temp[~cond_def] = 0.   
-                    flux_est_loc_ord_contr+=flux_est_loc_temp                  
+                    flux_est_loc_ord_contr+=flux_est_loc_temp*weight_exp_all[iord]                  
                 else:
-                    flux_est_loc_temp,cov_est_loc_temp = bind.mul_array( flux_est_loc_exp[iord], cov_est_loc_exp[iord] , weight_exp[iord])
-                    flux_est_loc_temp,cov_est_loc_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], flux_est_loc_temp , cov = cov_est_loc_temp, kind=resamp_mode)   
+                    flux_est_loc_temp,cov_est_loc_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], flux_est_loc_exp[iord] , cov = cov_est_loc_exp[iord], kind=resamp_mode)   
+                    flux_est_loc_temp,cov_est_loc_temp = bind.mul_array( flux_est_loc_temp, cov_est_loc_temp , weight_exp_all[iord])
                     flux_est_loc_temp[~cond_def] = 0.   
                     flux_est_loc_ord_contr+=[flux_est_loc_temp]
                     cov_est_loc_ord_contr+=[cov_est_loc_temp]
 
-            #Update total weight per pixel
-            tot_weight[cond_def] += weight_ord[cond_def]
-            
-            #Defined bins in 1D spectrum
-            #    - a bin is defined if at least one bin is defined in any of the contributing orders
-            cond_def_1D |= cond_def
-
         #Co-addition of spectra from all orders
         flux_1D,cov_1D = bind.sum(flux_ord_contr,cov_ord_contr)
 
-        #Normalization of defined pixels
-        #    - the normalization factor is set to 1 for undefined pixels to avoid warnings, and their value is set to nan afterward
-        norm_fact = np.ones(nspec_1D,dtype=float)
-        norm_fact[cond_def_1D] = 1./tot_weight[cond_def_1D]
-        flux_1D,cov_1D = bind.mul_array(flux_1D,cov_1D,norm_fact)
-
         #Reset undefined pixels to nan
-        flux_1D[~cond_def_1D]=np.nan        
+        flux_1D[~cond_def_binned]=np.nan        
 
         #Store data with artifical order for consistency with the routines
         #    - gain profile are not used anymore afterward as there is no clear conversion from 2D to 1D for them
         #    - global flux scaling is not modified
-        data_exp1D = {'cen_bins':cen_bins_1D[None,:],'edge_bins':edge_bins_1D[None,:],'flux' : flux_1D[None,:],'cond_def' : cond_def_1D[None,:], 'cov' : [cov_1D]} 
-        if SpSstar_spec is not None:data_exp1D['SpSstar_spec'] =  (SpSstar_spec_ord_contr*norm_fact)[None,:]
-        np.savez_compressed(proc_gen_data_paths_new+str(iexp),data = data_exp1D,allow_pickle=True) 
+        #      flux scaling tables are always called with global indexes
+        data_exp1D = {'cen_bins':cen_bins_1D[None,:],'edge_bins':edge_bins_1D[None,:],'flux' : flux_1D[None,:],'cond_def' : cond_def_binned[None,:], 'cov' : [cov_1D]} 
+        if SpSstar_spec is not None:data_exp1D['SpSstar_spec'] =  SpSstar_spec_ord_contr[None,:]
+        datasave_npz(proc_gen_data_paths_new+str(iexp),data_exp1D)
         if scaling_data_paths is not None:
-            loc_flux_scaling_norm = loc_flux_scaling_ord_contr*norm_fact
-            if not data_scaling_exp['chrom']:loc_flux_scaling_1D = np.poly1d([loc_flux_scaling_norm[0]])                
-            else:loc_flux_scaling_1D = interp1d(cen_bins_1D,loc_flux_scaling_norm,fill_value=(loc_flux_scaling_norm[0],loc_flux_scaling_norm[-1]), bounds_error=False)                
+            if not data_scaling_exp['chrom']:loc_flux_scaling_1D = np.poly1d([loc_flux_scaling_ord_contr[0]])                
+            else:loc_flux_scaling_1D = interp1d(cen_bins_1D,loc_flux_scaling_ord_contr,fill_value=(loc_flux_scaling_ord_contr[0],loc_flux_scaling_ord_contr[-1]), bounds_error=False)                
             data_scaling_exp['loc_flux_scaling'] = [loc_flux_scaling_1D]
-            np.savez_compressed(proc_gen_data_paths_new+'_scaling'+str(iexp),data = data_scaling_exp,allow_pickle=True)
+            datasave_npz(proc_gen_data_paths_new+'_scaling'+str(iexp_glob),data_scaling_exp)
         if tell_data_paths is not None:
-            tell_1D = (tell_ord_contr*norm_fact)[None,:]
-            np.savez_compressed(proc_gen_data_paths_new+'_tell'+str(iexp),data = {'tell':tell_1D},allow_pickle=True)                 
+            tell_1D = tell_ord_contr[None,:]
+            datasave_npz(proc_gen_data_paths_new+'_tell'+str(iexp), {'tell':tell_1D})                 
         if DImast_weight_data_paths is not None:
             flux_ref_1D,cov_ref_1D = bind.sum(flux_ref_ord_contr,cov_ref_ord_contr)
-            flux_ref_1D,cov_ref_1D = bind.mul_array(flux_ref_1D,cov_ref_1D,norm_fact)
-            flux_ref_1D[~cond_def_1D]=np.nan   
-            np.savez_compressed(proc_gen_data_paths_new+'ref_'+str(iexp),data={'edge_bins':data_exp1D['edge_bins'],'flux':flux_ref_1D[None,:],'cov':[cov_1D]},allow_pickle=True)           
+            flux_ref_1D[~cond_def_binned]=np.nan   
+            datasave_npz(proc_gen_data_paths_new+'ref_'+str(iexp),{'edge_bins':data_exp1D['edge_bins'],'flux':flux_ref_1D[None,:],'cov':[cov_1D]})           
         if flux_est_loc_exp is not None:
             if cov_est_loc_exp is None:
-                flux_est_loc_1D = flux_est_loc_ord_contr*norm_fact
-                flux_est_loc_1D[~cond_def_1D]=np.nan 
+                flux_est_loc_1D = flux_est_loc_ord_contr
+                flux_est_loc_1D[~cond_def_binned]=np.nan 
                 dic_sav_estloc = {'edge_bins':data_exp1D['edge_bins'],'flux':flux_est_loc_1D[None,:]}
             else:
                 flux_est_loc_1D,cov_est_loc_1D = bind.sum(flux_est_loc_ord_contr,cov_est_loc_ord_contr)
-                flux_est_loc_1D,cov_est_loc_1D = bind.mul_array(flux_est_loc_1D,cov_est_loc_1D,norm_fact)
-                flux_est_loc_1D[~cond_def_1D]=np.nan   
+                flux_est_loc_1D[~cond_def_binned]=np.nan   
                 dic_sav_estloc = {'edge_bins':data_exp1D['edge_bins'],'flux':flux_est_loc_1D[None,:],'cov':[cov_est_loc_1D]}
-            np.savez_compressed(proc_gen_data_paths_new+'estloc_'+str(iexp),data=dic_sav_estloc,allow_pickle=True)           
+            datasave_npz(proc_gen_data_paths_new+'estloc_'+str(iexp),dic_sav_estloc)
 
         #Update common table for the visit
         #    - set to the table of first processed exposure
-        if iexp==ifirst:np.savez_compressed(proc_com_data_paths,data = {'dim_exp':[1,nspec_1D],'nspec':nspec_1D,'cen_bins':np.tile(cen_bins_1D,[1,1]),'edge_bins':np.tile(edge_bins_1D,[1,1])},allow_pickle=True)        
+        if iexp==ifirst:datasave_npz(proc_com_data_paths, {'dim_exp':[1,nspec_1D],'nspec':nspec_1D,'cen_bins':np.tile(cen_bins_1D,[1,1]),'edge_bins':np.tile(edge_bins_1D,[1,1])})      
     
     return None
 

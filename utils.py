@@ -44,6 +44,8 @@ np_poly = np.polynomial.Polynomial
 
 def dataload_npz(path):
     return np.load(path+'.npz',allow_pickle=True)['data'].item()
+def datasave_npz(path,data):
+    return np.savez_compressed(path,data=data,allow_pickle=True)
 
 def np_where1D(cond):
     return np.where(cond)[0]

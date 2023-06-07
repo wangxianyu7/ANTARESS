@@ -2710,6 +2710,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
 
                         #Weight definition 
                         #    - at this stage of the pipeline no broadband flux scaling was applied
+                        #    - weights with at least one undefined pixels are set to 1 for all binned exposures (ie, no weighing is applied) within calc_binned_prof()    
                         weight_mean_gdet_exp = data_glob[iexp]['mean_gdet'] if gen_dic['gain_weight'] else None 
                         data_glob[iexp]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp,'DI',data_inst['type'],data_vis['dim_exp'],data_glob[iexp]['tell'],weight_mean_gdet_exp,data_glob[iexp]['cen_bins'],flux_ref,None,glob_flux_sc=1./flux_glob)            
     
@@ -2848,7 +2849,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
                                 data_to_bin_extract[iexp_off]['cond_def'] = ~np.isnan(data_to_bin_extract[iexp_off]['flux'])   
                             else:
                                 for key in ['flux','cond_def','cov','weight']:data_to_bin_extract[iexp_off][key] = data_glob[iexp_off][key]
-        
+
                         #Calculate master on current exposure table
                         data_mast_exp = calc_binned_prof(idx_to_bin,data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin_extract,inst,n_in_bin,data_glob[iexp]['cen_bins'],data_glob[iexp]['edge_bins'])
     

@@ -218,10 +218,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             if (data_dic['Atm']['exc_plrange']):
                 plrange_star_HR[pl_loc] = data_dic['Atm']['plrange'][:,None] + rv_pl_HR[pl_loc]               
             if ('CCF_mask_wav' in data_dic['Atm']):
-                wlines_star_HR = data_dic['Atm']['CCF_mask_wav']*np.sqrt(1. + (rv_pl_HR[pl_loc][:,None]/c_light) )/np.sqrt(1. - (rv_pl_HR[pl_loc][:,None]/c_light) ) 
+                wlines_star_HR[pl_loc] = data_dic['Atm']['CCF_mask_wav']*np.sqrt(1. + (rv_pl_HR[pl_loc][:,None]/c_light) )/np.sqrt(1. - (rv_pl_HR[pl_loc][:,None]/c_light) ) 
                 wmin_lines_star_HR[pl_loc] = np.min(wlines_star_HR[pl_loc],axis=0)
                 wmax_lines_star_HR[pl_loc] = np.max(wlines_star_HR[pl_loc],axis=0) 
-
+            
                 #Lower/upper wavelength boundaries of excluded ranges for each planetary mask line
                 if (data_dic['Atm']['exc_plrange']):
                     wlow_lines_star_HR[pl_loc] = data_dic['Atm']['CCF_mask_wav'][:,None] * np.sqrt(1. + (plrange_star_HR[pl_loc][0,:]/c_light) )/np.sqrt(1. - (plrange_star_HR[pl_loc][0,:]/c_light) )
@@ -246,36 +246,36 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         def sub_2D_map(map_mod,save_res_map,plot_options):
             if map_mod=='map_DI_prof':
                 data_type_gen = 'DI'
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/DI_data/Maps/'
+                path_loc = gen_dic['save_plot_dir']+'DI_data/Maps/'
             elif map_mod=='map_DIbin':
                 data_type_gen = 'DI'
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Binned_DI_data/Maps/'
-            elif map_mod=='map_res_prof':path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Res_data/Maps/'
+                path_loc = gen_dic['save_plot_dir']+'Binned_DI_data/Maps/'
+            elif map_mod=='map_res_prof':path_loc = gen_dic['save_plot_dir']+'Res_data/Maps/'
             elif map_mod=='map_Intr_prof':
                 data_type_gen = 'Intr'
-                if plot_options['aligned']:path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Aligned_Intr_data/Maps/'
-                else:path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Intr_data/Maps/'
+                if plot_options['aligned']:path_loc = gen_dic['save_plot_dir']+'Aligned_Intr_data/Maps/'
+                else:path_loc = gen_dic['save_plot_dir']+'Intr_data/Maps/'
             elif map_mod in ['map_Intr_prof_est','map_Intr_prof_res']:
                 data_type_gen = 'Intr'
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Theo_Intr_data/Maps/'                
+                path_loc = gen_dic['save_plot_dir']+'Theo_Intr_data/Maps/'                
             elif map_mod=='map_pca_prof':
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Res_data/PCA/Maps_theo/' 
+                path_loc = gen_dic['save_plot_dir']+'Res_data/PCA/Maps_theo/' 
             elif map_mod=='map_Intrbin':
                 data_type_gen = 'Intr'
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Binned_intr_data/Maps/'
+                path_loc = gen_dic['save_plot_dir']+'Binned_intr_data/Maps/'
             elif map_mod=='map_Intr_1D':
                 data_type_gen = 'Intr'
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/1D_Intr_data/Maps/'
+                path_loc = gen_dic['save_plot_dir']+'1D_Intr_data/Maps/'
             elif map_mod in ['map_Atm_prof']:
                 data_type_gen = 'Atm'
-                if plot_options['aligned']:path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Aligned_atm_data/Maps/'
-                else:path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Atm_data/Maps/'                                
+                if plot_options['aligned']:path_loc = gen_dic['save_plot_dir']+'Aligned_atm_data/Maps/'
+                else:path_loc = gen_dic['save_plot_dir']+'Atm_data/Maps/'                                
             elif map_mod=='map_Atmbin':
                 data_type_gen = 'Atm'
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Binned_atm_data/Maps/'
+                path_loc = gen_dic['save_plot_dir']+'Binned_atm_data/Maps/'
             elif map_mod=='map_Atm_1D':
                 data_type_gen = 'Atm'
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/1D_Atm_data/Maps/'
+                path_loc = gen_dic['save_plot_dir']+'1D_Atm_data/Maps/'
             if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)   
             sc_fact=10**plot_options['sc_fact10']
 
@@ -521,13 +521,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Processing each order 
                     for iord in order_list:
 
-                        #Axis                           
-                        plt.ioff()  
-                        if plot_options['reverse_2D']: plt.figure(figsize=(10, 6))
-                        else:plt.figure(figsize=(10, 9))                                                
-                        ax=plt.gca() 
-                        fig = plt.gcf()                       
-
                         #Data to be plotted
                         low_ordi_tab_loc = deepcopy(low_ordi_tab)
                         high_ordi_tab_loc = deepcopy(high_ordi_tab)
@@ -569,383 +562,395 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             else:y_range_loc=ordi_range
 
                         #Limiting tables to plot ranges, if imposed
+                        cond_plot = True
                         if False in cond_ph_in:
-                            if (True not in cond_ph_in):stop('No data in selected '+ordi_name+' range')
-                            var_loc = var_loc[cond_ph_in,:]
-                            low_ordi_tab_loc = low_ordi_tab_loc[cond_ph_in]
-                            high_ordi_tab_loc=high_ordi_tab_loc[cond_ph_in]
-                            low_sp_loc=low_sp_loc[cond_ph_in,:]
-                            high_sp_loc=high_sp_loc[cond_ph_in,:]
+                            if (True not in cond_ph_in):cond_plot = False
+                            else:
+                                var_loc = var_loc[cond_ph_in,:]
+                                low_ordi_tab_loc = low_ordi_tab_loc[cond_ph_in]
+                                high_ordi_tab_loc=high_ordi_tab_loc[cond_ph_in]
+                                low_sp_loc=low_sp_loc[cond_ph_in,:]
+                                high_sp_loc=high_sp_loc[cond_ph_in,:]
                         if False in cond_sp_in: 
-                            if (True not in cond_sp_in):stop('No data in selected spectral range')
-                            cond_sp_in = np.sum(cond_sp_in,axis=0,dtype=bool) 
-                            var_loc = var_loc[:,cond_sp_in]
-                            low_sp_loc=low_sp_loc[:,cond_sp_in]
-                            high_sp_loc=high_sp_loc[:,cond_sp_in] 
+                            if (True not in cond_sp_in):cond_plot = False
+                            else:
+                                cond_sp_in = np.sum(cond_sp_in,axis=0,dtype=bool) 
+                                var_loc = var_loc[:,cond_sp_in]
+                                low_sp_loc=low_sp_loc[:,cond_sp_in]
+                                high_sp_loc=high_sp_loc[:,cond_sp_in] 
                
                         #------------------------------------                            
+                        if cond_plot:
 
-                        #Plot data for each exposure   
-                        for iexp,(var_exp,low_phase_exp,high_phase_exp) in enumerate(zip(var_loc,low_ordi_tab_loc,high_ordi_tab_loc)):
-                            low_sp_exp=low_sp_loc[iexp]
-                            high_sp_exp = high_sp_loc[iexp] 
-                  
-                            #Defined pixels
-                            cond_def_exp = ~np.isnan(var_exp)
-                            ng_exp = 2*np.sum(cond_def_exp)
-                            if ng_exp>0:
+                            #Axis                           
+                            plt.ioff()  
+                            if plot_options['reverse_2D']: plt.figure(figsize=(10, 6))
+                            else:plt.figure(figsize=(10, 9))                                                
+                            ax=plt.gca() 
+                            fig = plt.gcf()  
                             
-                                #Creating continuous grid in X and Y
-                                #    - artificial, empty bins added in between the upper boundary of a bin and the lower boundary of the next bin, are set to nan
-                                #    - see online how grid must be defined for pcolormesh                                              
-                                if plot_options['reverse_2D']: #Xplot = phase, Yplot = spectral, i = Yplot, j = Xplot
-                                    x_grid = np.hstack( (np.tile(low_phase_exp,[ng_exp,1]),np.tile(high_phase_exp,[ng_exp,1])) ) 
-                                    y_grid = np.zeros([ng_exp,2])*np.nan
-                                    y_grid[0::2,:]=low_sp_exp[cond_def_exp]
-                                    y_grid[1::2,:]=high_sp_exp[cond_def_exp]                              
-                                else:                #Xplot = spectral, Yplot = phase, i = Yplot, j = Xplot
-                                    x_grid = np.zeros([2,ng_exp])*np.nan
-                                    x_grid[:,0::2]=low_sp_exp[cond_def_exp]
-                                    x_grid[:,1::2]=high_sp_exp[cond_def_exp]    
-                                    y_grid = np.vstack( (np.repeat(low_phase_exp,ng_exp),np.repeat(high_phase_exp,ng_exp)) )  
-                                val_grid = np.zeros(ng_exp-1)*np.nan                                       
-                                val_grid[0::2] = var_exp[cond_def_exp]
-                                  
-                                #Mask nan values
-                                val_grid_mask=[np.ma.masked_invalid(val_grid)]
-                                cmap = plt.get_cmap(cmap_2D)       
-                                cmap.set_bad(color = 'black')       
-                                
-                                #Plot current row or column
-                                plt.pcolormesh(x_grid, y_grid, val_grid_mask,cmap=cmap,vmin=v_range[0], vmax=v_range[1],rasterized=True,zorder=0,linewidth=0.5,edgecolors='face')
+                            #Plot data for each exposure   
+                            for iexp,(var_exp,low_phase_exp,high_phase_exp) in enumerate(zip(var_loc,low_ordi_tab_loc,high_ordi_tab_loc)):
+                                low_sp_exp=low_sp_loc[iexp]
+                                high_sp_exp = high_sp_loc[iexp] 
                       
+                                #Defined pixels
+                                cond_def_exp = ~np.isnan(var_exp)
+                                ng_exp = 2*np.sum(cond_def_exp)
+                                if ng_exp>0:
                                 
-                            elif iexp==0:print('No data in order ',iord)
-                                
-                        #------------------------------------                            
-
-                        #Levels
-                        if plot_options['plot_zermark']:
-                            if plot_options['reverse_2D']:
-                                if ordi_name == 'phase':plt.plot(x_range_loc,[0,0],color='black',linestyle='--',lw=0.8,zorder=10)
-                                if (sp_mod == 'CCF') :plt.plot([0,0],y_range_loc,color='black',linestyle='--',lw=0.8,zorder=10)
-                            else:
-                                if ordi_name == 'phase':plt.plot([0,0],y_range_loc,color='black',linestyle='--',lw=0.8,zorder=10)
-                                if (sp_mod == 'CCF') :plt.plot(x_range_loc,[0,0],color='black',linestyle='--',lw=0.8,zorder=10)                            
+                                    #Creating continuous grid in X and Y
+                                    #    - artificial, empty bins added in between the upper boundary of a bin and the lower boundary of the next bin, are set to nan
+                                    #    - see online how grid must be defined for pcolormesh                                              
+                                    if plot_options['reverse_2D']: #Xplot = phase, Yplot = spectral, i = Yplot, j = Xplot
+                                        x_grid = np.hstack( (np.tile(low_phase_exp,[ng_exp,1]),np.tile(high_phase_exp,[ng_exp,1])) ) 
+                                        y_grid = np.zeros([ng_exp,2])*np.nan
+                                        y_grid[0::2,:]=low_sp_exp[cond_def_exp]
+                                        y_grid[1::2,:]=high_sp_exp[cond_def_exp]                              
+                                    else:                #Xplot = spectral, Yplot = phase, i = Yplot, j = Xplot
+                                        x_grid = np.zeros([2,ng_exp])*np.nan
+                                        x_grid[:,0::2]=low_sp_exp[cond_def_exp]
+                                        x_grid[:,1::2]=high_sp_exp[cond_def_exp]    
+                                        y_grid = np.vstack( (np.repeat(low_phase_exp,ng_exp),np.repeat(high_phase_exp,ng_exp)) )  
+                                    val_grid = np.zeros(ng_exp-1)*np.nan                                       
+                                    val_grid[0::2] = var_exp[cond_def_exp]
+                                      
+                                    #Mask nan values
+                                    val_grid_mask=[np.ma.masked_invalid(val_grid)]
+                                    cmap = plt.get_cmap(cmap_2D)       
+                                    cmap.set_bad(color = 'black')       
                                     
-                        #Contacts for planets transiting in the visit
-                        if ordi_name == 'phase':
-                            lw_cont = 2.5
-                            if plot_options['cmap'] in ['afmhot_r']:
-                                if map_mod in ['map_Intr_prof_res','map_pca_prof']:
-                                    col_loc='lime'
-                                    if plot_options['reverse_2D']:Twin = x_range_loc[1]-x_range_loc[0]
-                                    else:Twin = y_range_loc[1]-y_range_loc[0]
-                                    T14_Twin = system_param[pl_ref]['TLength']/(Twin*system_param[pl_ref]['period'])
-                                    if T14_Twin<0.5:lw_cont = 2   
-                                    else:lw_cont = 3   
-                                else:col_loc='limegreen'
-                            else:col_loc='white'
-                            for ipl,pl_loc in enumerate(data_dic[inst][vis]['transit_pl']):
-                                if pl_loc==pl_ref:contact_phases_vis = contact_phases[pl_ref]
+                                    #Plot current row or column
+                                    plt.pcolormesh(x_grid, y_grid, val_grid_mask,cmap=cmap,vmin=v_range[0], vmax=v_range[1],rasterized=True,zorder=0,linewidth=0.5,edgecolors='face')
+                          
+                                    
+                                elif iexp==0:print('No data in order ',iord)
+                                    
+                            #------------------------------------                            
+    
+                            #Levels
+                            if plot_options['plot_zermark']:
+                                if plot_options['reverse_2D']:
+                                    if ordi_name == 'phase':plt.plot(x_range_loc,[0,0],color='black',linestyle='--',lw=0.8,zorder=10)
+                                    if (sp_mod == 'CCF') :plt.plot([0,0],y_range_loc,color='black',linestyle='--',lw=0.8,zorder=10)
                                 else:
-                                    contact_times = coord_dic[inst][vis][pl_loc]['Tcenter']+contact_phases[pl_loc]*system_param[pl_loc]["period"]
-                                    contact_phases_vis = (contact_times-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"]
-                                ls_pl = {0:':',1:'--'}[ipl]
-                                for cont_ph in contact_phases_vis:
-                                    if plot_options['reverse_2D']:plt.plot([cont_ph,cont_ph],y_range_loc,color=col_loc,linestyle='--',lw=lw_cont,zorder=10)
-                                    else:plt.plot(x_range_loc,[cont_ph,cont_ph],color=col_loc,linestyle=ls_pl,lw=lw_cont,zorder=10)
-
-                        #Plot global and in-transit indexes
-                        if plot_options['plot_idx']:
-                            for isub,iexp in enumerate(iexp_orig):
-                                plt.text(x_range_loc[0]+0.05*(x_range_loc[1]-x_range_loc[0]),0.5*(low_ordi_tab+high_ordi_tab)[isub],str(iexp),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=15,color='black') 
-                                plt.text(x_range_loc[0]+0.1*(x_range_loc[1]-x_range_loc[0]),0.5*(low_ordi_tab+high_ordi_tab)[isub],str(gen_dic[inst][vis]['idx_exp2in'][iexp]),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=15,color='black') 
-  
-                        #------------------------------------  
-
-                        #Lines of stellar CCF masks
-                        if (restframe=='star') and (map_mod in ['map_DI_prof','map_res_prof']) and ('spec' in sp_mod) and plot_options['CCF_mask_star']:
-                            col_loc='white'
-                            if plot_options['reverse_2D']:
-                                cond_lines_in = np_where1D((gen_dic['CCF_mask_wav'][inst]>=y_range_loc[0]) & (gen_dic['CCF_mask_wav'][inst]<=y_range_loc[1])) 
-                                for iline in cond_lines_in:plt.plot(x_range_loc,np.repeat(gen_dic['CCF_mask_wav'][inst][iline],2),color=col_loc,linestyle='-',lw=1.5,zorder=10)
-                            else:  
-                                cond_lines_in = np_where1D((gen_dic['CCF_mask_wav'][inst]>=x_range_loc[0]) & (gen_dic['CCF_mask_wav'][inst]<=x_range_loc[1])) 
-                                for iline in cond_lines_in:plt.plot(np.repeat(gen_dic['CCF_mask_wav'][inst][iline],2),y_range_loc,color=col_loc,linestyle='-',lw=1.5,zorder=10) 
-                            
-
-                        #------------------------------------  
-                  
-                        #Planetary orbital model
-                        if (restframe in ['star','planet']) and (ordi_name == 'phase') and (map_mod in ['map_DI_prof','map_res_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_Atm_prof']):
-
-                            #Order high-resolution curves
-                            if (plot_options['theoRVpl_HR']) or (plot_options['plot_plexc']):
-                                if plot_options['reverse_2D']:w_sorted=ph_tab_HRpl.argsort()
-                                else:w_sorted=rv_pl_HR[pl_ref].argsort() 
-
-                            #Colors
-                            if map_mod=='map_Atm_prof': col_loc='limegreen'
-                            else:col_loc='magenta'
-
-                            #In RV space
-                            if (sp_mod == 'CCF'):                            
-
-                                #High-resolution orbital model of planet in star rest frame
-                                if (plot_options['theoRVpl_HR']):                                    
-                                    if (restframe=='star'):rv_mod_loc = rv_pl_HR[pl_ref]
-                                    else:rv_mod_loc = np.repeat(0.,nph_HRpl)
-                                    if plot_options['reverse_2D']:plt.plot(ph_tab_HRpl[w_sorted],rv_mod_loc[w_sorted],color=col_loc,linestyle='-',lw=2,zorder=10) 
-                                    else:plt.plot(rv_mod_loc[w_sorted],ph_tab_HRpl[w_sorted] ,color=col_loc,linestyle='-',lw=2,zorder=10)                              
-
-                                #Excluded ranges for each planetary mask line
-                                if (plot_options['plot_plexc']) and (data_dic['Atm']['exc_plrange']): 
-                                    if (restframe=='star'):plrange_loc = plrange_star_HR[pl_ref]
-                                    else:plrange_loc = plrange_pl_HR
-                                    if plot_options['reverse_2D']:plt.fill_between(ph_tab_HRpl[w_sorted],plrange_loc[0,w_sorted], plrange_loc[1,w_sorted],zorder=9,color='white',alpha=0.2)
-                                    else:plt.fill_betweenx(ph_tab_HRpl[w_sorted],plrange_loc[0,w_sorted], plrange_loc[1,w_sorted],zorder=9,color='white',alpha=0.2)
-
-                            #In spectral space, for each studied planetary line in plot range
-                            elif ('spec' in sp_mod) and ('CCF_mask_wav' in data_dic['Atm']): 
-
-                                #High-resolution orbital model of planet in star rest frame
-                                if (plot_options['theoRVpl_HR']): 
-                                    if (restframe=='star'):
-                                        wmax_lines_loc_HR = wmax_lines_star_HR[pl_ref]
-                                        wmin_lines_loc_HR = wmin_lines_star_HR[pl_ref]
-                                        wlines_loc_HR = wlines_star_HR[pl_ref]
-                                    else:
-                                        wmax_lines_loc_HR = wmax_lines_pl_HR
-                                        wmin_lines_loc_HR = wmin_lines_pl_HR
-                                        wlines_loc_HR = wlines_pl_HR
-
-                                    if plot_options['reverse_2D']:
-                                        cond_lines_in = (wmax_lines_loc_HR>=y_range_loc[0]) & (wmin_lines_loc_HR<=y_range_loc[1])  
-                                        wlines_HR_plot = wlines_loc_HR[:,cond_lines_in][w_sorted]
-                                        for iline in range(np.sum(cond_lines_in)):plt.plot(ph_tab_HRpl[w_sorted],wlines_HR_plot[:,iline],color=col_loc,linestyle='-',lw=1.5,zorder=10)
-                                    else:  
-                                        cond_lines_in = (wmax_lines_loc_HR>=x_range_loc[0]) & (wmin_lines_loc_HR<=x_range_loc[1]) 
-                                        wlines_HR_plot = wlines_loc_HR[:,cond_lines_in][w_sorted]
-                                        for iline in range(np.sum(cond_lines_in)):plt.plot(wlines_HR_plot[:,iline],ph_tab_HRpl[w_sorted],color=col_loc,linestyle='-',lw=1.5,zorder=10) 
-
-                                #Excluded ranges for each planetary mask line
-                                if (plot_options['plot_plexc']) and (data_dic['Atm']['exc_plrange']):  
-
-                                    #Create condition for high-resolution points within exposures without exclusion
-                                    #    - by setting to false those points without exposures with exclusion, so that they are not masked
-                                    cond_exp_excl = np.ones([len(data_dic['Atm']['CCF_mask_wav']),nph_HRpl],dtype=bool)
-                                    for iexp in np.intersect1d(data_dic['Atm'][inst][vis]['iexp_no_plrange'],iexp_plot):
-                                        sub_cond_HR = (ph_tab_HRpl>=coord_dic[inst][vis]['st_ph'][iexp]) & (ph_tab_HRpl<=coord_dic[inst][vis]['end_ph'][iexp])
-                                        if True in sub_cond_HR:cond_exp_excl[:,sub_cond_HR]=False
-                                            
-                                    if (restframe=='star'):
-                                        max_wlow_lines_loc_HR = max_wlow_lines_star_HR[pl_ref]
-                                        min_wlow_lines_loc_HR = min_wlow_lines_star_HR[pl_ref]
-                                        wlow_lines_loc_HR = wlow_lines_star_HR[pl_ref]
-                                        whigh_lines_loc_HR = whigh_lines_star_HR[pl_ref]
-                                    else:  
-                                        max_wlow_lines_loc_HR = max_wlow_lines_pl_HR
-                                        min_wlow_lines_loc_HR = min_wlow_lines_pl_HR
-                                        wlow_lines_loc_HR = wlow_lines_pl_HR
-                                        whigh_lines_loc_HR = whigh_lines_pl_HR                                  
+                                    if ordi_name == 'phase':plt.plot([0,0],y_range_loc,color='black',linestyle='--',lw=0.8,zorder=10)
+                                    if (sp_mod == 'CCF') :plt.plot(x_range_loc,[0,0],color='black',linestyle='--',lw=0.8,zorder=10)                            
                                         
-                                    if plot_options['reverse_2D']:cond_lines_in = (max_wlow_lines_loc_HR>=y_range_loc[0]) & (min_wlow_lines_loc_HR<=y_range_loc[1]) 
-                                    else:cond_lines_in = (max_wlow_lines_loc_HR>=x_range_loc[0]) & (min_wlow_lines_loc_HR<=x_range_loc[1]) 
-                                        
-                                    wlow_lines_HR_plot = wlow_lines_loc_HR[cond_lines_in][:,w_sorted]
-                                    whigh_lines_HR_plot = whigh_lines_loc_HR[cond_lines_in][:,w_sorted]
-                                    cond_exp_excl = cond_exp_excl[cond_lines_in][:,w_sorted]
-                                    wlow_lines_HR_plot = ma.masked_where(cond_exp_excl, wlow_lines_HR_plot)
-                                    whigh_lines_HR_plot = ma.masked_where(cond_exp_excl, whigh_lines_HR_plot) 
-                                    
-                                    if plot_options['reverse_2D']:
-                                        for iline in range(np.sum(cond_lines_in)):
-                                            plt.fill_between(ph_tab_HRpl[w_sorted],wlow_lines_HR_plot[iline,:], whigh_lines_HR_plot[iline,:],zorder=9,color=col_loc,alpha=0.3)
-                                    else:                                  
-                                        for iline in range(np.sum(cond_lines_in)):
-                                            plt.fill_betweenx(ph_tab_HRpl[w_sorted], wlow_lines_HR_plot[iline,:], whigh_lines_HR_plot[iline,:],zorder=9,color=col_loc,alpha=0.3)
-
-                        #------------------------------------  
-                                  
-                        #Modelled and measured local stellar surface RVs
-                        if (sp_mod == 'CCF'):
-
-                            #Local stellar residual profiles
-                            if (map_mod in ['map_res_prof','map_Intr_prof_est','map_Intr_prof_res','map_Intrbin']) or ((map_mod in ['map_Intr_prof']) and (not plot_options['aligned'])):
-                            
-                                #Model at each exposure                        
-                                if plot_options['plot_theoRV']:
-                                    ph_theoRV=np.vstack((coord_dic[inst][vis][pl_ref]['cen_ph'][gen_dic[inst][vis]['idx_in']],RV_plocc))
-                                    if plot_options['reverse_2D']:
-                                        w_sorted=ph_theoRV[0].argsort() 
-                                        xtheoRV=ph_theoRV[0,w_sorted]
-                                        ytheoRV=ph_theoRV[1,w_sorted]
-                                    else:  
-                                        w_sorted=ph_theoRV[1].argsort() 
-                                        xtheoRV=ph_theoRV[1,w_sorted]
-                                        ytheoRV=ph_theoRV[0,w_sorted]
-                                    plt.plot(xtheoRV,ytheoRV,color='black',linestyle='-',lw=1.,zorder=10,marker='o',markersize=1.5)
-                   
-                                #High-resolution model 
-                                if plot_options['theoRV_HR'] or plot_options['theoRV_HR_align']:
-                                    if plot_options['cmap'] in ['afmhot_r']:
-                                        col_loc='limegreen'
-                                        ls_loc='-'
-                                        lw_mod = 3 
+                            #Contacts for planets transiting in the visit
+                            if ordi_name == 'phase':
+                                lw_cont = 2.5
+                                if plot_options['cmap'] in ['afmhot_r']:
+                                    if map_mod in ['map_Intr_prof_res','map_pca_prof']:
+                                        col_loc='lime'
+                                        if plot_options['reverse_2D']:Twin = x_range_loc[1]-x_range_loc[0]
+                                        else:Twin = y_range_loc[1]-y_range_loc[0]
+                                        T14_Twin = system_param[pl_ref]['TLength']/(Twin*system_param[pl_ref]['period'])
+                                        if T14_Twin<0.5:lw_cont = 2   
+                                        else:lw_cont = 3   
+                                    else:col_loc='limegreen'
+                                else:col_loc='white'
+                                for ipl,pl_loc in enumerate(data_dic[inst][vis]['transit_pl']):
+                                    if pl_loc==pl_ref:contact_phases_vis = contact_phases[pl_ref]
                                     else:
-                                        col_loc='black'  #'white'
-                                        ls_loc='--'   
-                                        lw_mod = 2                                 
-                                    for pl_loc in data_dic[inst][vis]['transit_pl']:
-                                        if plot_options['theoRV_HR']:
-                                            cond_def_HR = ~np.isnan(theo_HR_prop_plocc[pl_loc]['rv'][0])
-                                            ph_HR_loc = theo_HR_prop_plocc[pl_ref]['phase'][cond_def_HR]
-                                            rv_HR_loc = theo_HR_prop_plocc[pl_loc]['rv'][0,cond_def_HR]
-                                        elif plot_options['theoRV_HR_align']:
-                                            cond_def_HR = ~np.isnan(theo_HR_prop_plocc_align[pl_loc]['rv'][0])
-                                            ph_HR_loc = theo_HR_prop_plocc_align[pl_ref]['phase'][cond_def_HR]
-                                            rv_HR_loc = theo_HR_prop_plocc_align[pl_loc]['rv'][0,cond_def_HR]
-                                        if plot_options['reverse_2D']:
-                                            w_sorted=ph_HR_loc.argsort() 
-                                            xtheoRV_HR=ph_HR_loc[w_sorted]
-                                            if plot_options['theoRV_HR']:
-                                                ytheoRV_HR=rv_HR_loc[w_sorted]
-                                                plt.plot(xtheoRV_HR,ytheoRV_HR,color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10) 
-                                            if plot_options['theoRV_HR_align']:
-                                                plt.plot(xtheoRV_HR,theo_HR_prop_plocc_align[pl_ref]['rv'][0,cond_def_HR][w_sorted],color=col_loc,linestyle='--',lw=lw_mod,zorder=10) 
-                                        else:  
-                                            w_sorted=rv_HR_loc.argsort() 
-                                            ytheoRV_HR=ph_HR_loc[w_sorted] 
-                                            if plot_options['theoRV_HR']:
-                                                xtheoRV_HR=rv_HR_loc[w_sorted]
-                                                plt.plot(xtheoRV_HR,ytheoRV_HR,color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10) 
-                                            if plot_options['theoRV_HR_align']:
-                                                plt.plot(theo_HR_prop_plocc_align[pl_ref]['rv'][0,cond_def_HR][w_sorted] ,ytheoRV_HR,color=col_loc,linestyle='--',lw=lw_mod,zorder=10) 
-
-                                    
-
-                                    # #Save/replot manually  
-                                    # save_path = '/Users/bourrier/Travaux/ANTARESS/En_cours/HAT_P33b_Plots/Intr_data/Maps/RMR_fits/HAT_P33_RVsurf_CB1.dat'
-                                    # # np.savetxt(save_path, np.column_stack((xtheoRV_HR,ytheoRV_HR)),fmt=('%15.10f','%15.10f') )
-                                    # xtheoRV_HR_sav,ytheoRV_HR_sav=np.loadtxt(save_path).T
-                                    # plt.plot(xtheoRV_HR_sav,ytheoRV_HR_sav,color=col_loc,linestyle=':',lw=lw_mod,zorder=10)                                      
-                                    
-                                    
-                            #Measured RV 
-                            #    - plot_measRV = 1 : only detected CCFs are plotted
-                            #    - plot_measRV = 2 : all CCFs are plotted, but non-detected CCFs are plotted with empty symbols
-                            if (plot_options['plot_measRV'] in ['det','all']):
-                                msize_RV=4
-                                mew_RV=0.8
-                                i_in=0
-                                for iexp in range(data_dic[inst][vis]['n_in_visit']):
-                                    col_face_symb='magenta'  #'black'
-                                    col_symb='magenta'
-                                    RV_rest = 0.
-                                    plot_rv = False
-                                    
-                                    #Local stellar residual or atmospheric profiles
-                                    if (map_mod=='map_res_prof') and ('prof_fit_dic' in data_dic['Res'][inst][vis]) and (iexp in gen_dic[inst][vis]['idx_in']): 
-                                        CCF_fit_loc = data_dic['Res'][inst][vis]['prof_fit_dic'][i_in] 
-                                        plot_rv = True
-                                    if map_mod=='map_Atm_prof':
-                                        if (data_dic['Atm']['pl_atm_sign']=='Absorption') and (iexp in gen_dic[inst][vis]['idx_in']):CCF_fit_loc = data_dic['Atm'][inst][vis]['prof_fit_dic'][i_in]
-                                        if data_dic['Atm']['pl_atm_sign']=='Emission':CCF_fit_loc = data_dic['Atm'][inst][vis]['prof_fit_dic'][iexp]
-                                        if (restframe=='star'):RV_rest = coord_dic[inst][vis]['rv_pl'][iexp] 
-                                        plot_rv = True
-                                    if (iexp in gen_dic[inst][vis]['idx_in']):i_in+=1 
-                                                                    
-                                    #Plot
-                                    if (plot_rv == True) and (((plot_options['plot_measRV']=='det') and (CCF_fit_loc['detected'])) or (plot_options['plot_measRV']=='all')):
-                                        ph_loc=coord_dic[inst][vis][pl_ref]['cen_ph'][iexp]
-                                        RV_loc=CCF_fit_loc['rv']+RV_rest
-                                        eRV_loc=[CCF_fit_loc['err_rv'][0],CCF_fit_loc['err_rv'][1]]
-                                        if (plot_options['plot_measRV']=='all') and (not CCF_fit_loc['detected']):col_face_symb='none' 
-                                        if plot_options['reverse_2D']:plt.errorbar(ph_loc,RV_loc,yerr=eRV_loc,color=col_symb,linestyle='',markeredgewidth=mew_RV,zorder=15,marker='|',markersize=msize_RV,markerfacecolor=col_face_symb,markeredgecolor=col_symb,elinewidth=1)
-                                        else: plt.errorbar(RV_loc,ph_loc,xerr=eRV_loc,color=col_symb,linestyle='',markeredgewidth=mew_RV,zorder=15,marker='|',markersize=msize_RV,markerfacecolor=col_face_symb,markeredgecolor=col_symb,elinewidth=1)
- 
-                                                
-                        #----------------------------------------------
-                                    
-                        #Plot frame 
-                        ordi_title={
-                                'phase':'Orbital phase',
-                                'xp_abs':'Distance from normal',
-                                'r_proj':'Distance from center'}[ordi_name]
-                        if plot_options['reverse_2D']:
-                            x_title=ordi_title                          
-                            if (sp_mod == 'CCF'):
-                                y_title='Velocity in '+restframe+' rest frame (km s$^{-1}$)'
-                            elif ('spec' in sp_mod):
-                                y_title='Wavelength in '+restframe+' frame (A)' 
-                                ymajor_form='%i'  
-                        else:    
-                            if (sp_mod == 'CCF'):
-                                x_title='Velocity in '+restframe+' rest frame (km s$^{-1}$)'
-                            elif ('spec' in sp_mod):
-                                x_title='Wavelength in '+restframe+' frame (A)'        
-                            y_title=ordi_title                           
-
-                        xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
-                        ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0])                        
-
-                        #Suppress ticks if exposures were plotted sequentially
-                        no_xticks,no_yticks=False,False
-                        if (map_mod in ['map_Intr_prof','map_Intr_1D','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Atm_prof','map_Atm_1D']) and (ordi_name!='phase'):
-                            if plot_options['reverse_2D']:no_xticks=True
-                            else:
-                                no_yticks=True
+                                        contact_times = coord_dic[inst][vis][pl_loc]['Tcenter']+contact_phases[pl_loc]*system_param[pl_loc]["period"]
+                                        contact_phases_vis = (contact_times-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"]
+                                    ls_pl = {0:':',1:'--'}[ipl]
+                                    for cont_ph in contact_phases_vis:
+                                        if plot_options['reverse_2D']:plt.plot([cont_ph,cont_ph],y_range_loc,color=col_loc,linestyle='--',lw=lw_cont,zorder=10)
+                                        else:plt.plot(x_range_loc,[cont_ph,cont_ph],color=col_loc,linestyle=ls_pl,lw=lw_cont,zorder=10)
+    
+                            #Plot global and in-transit indexes
+                            if plot_options['plot_idx']:
                                 for isub,iexp in enumerate(iexp_orig):
-                                    plt.text(x_range_loc[0]-0.2*(x_range_loc[1]-x_range_loc[0]),0.5*(low_ordi_tab+high_ordi_tab)[isub],'['+"{0:.2f}".format(low_ordi_tab_ref[isub])+' ; '+"{0:.2f}".format(high_ordi_tab_ref[isub])+']',verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=15) 
-                              
-                        #Frame    
-                        custom_axis(plt,ax=ax,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
-                                    dir_x='out',dir_y='out',xmajor_length=6,ymajor_length=6,
-                                    xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
-                                    xmajor_form=xmajor_form,ymajor_form=ymajor_form,
-                                    x_title=x_title,y_title=y_title,no_xticks=no_xticks,no_yticks=no_yticks,
-                                    colback='black',
-                                    font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
-
-                        #----------------------------------------------	
-                        #Colorbar
-                        #    - position in add_axes are left, bottom (between 0 and 1), width, height in fraction of the plot size
-                        if plot_options['reverse_2D']:cbar_pos=fig.add_axes([plot_options['margins'][0],plot_options['margins'][3]+0.01,(plot_options['margins'][2]-plot_options['margins'][0]),0.03])   
-                        else:cbar_pos=fig.add_axes([plot_options['margins'][2]+0.01,plot_options['margins'][1],0.015,(plot_options['margins'][3]-plot_options['margins'][1])])   
-                    						
-                        #Values	
-                        cb = plt.cm.ScalarMappable(cmap=cmap_2D,norm=plt.Normalize(vmin=v_range[0], vmax=v_range[1]))										
-                        cb.set_array(v_range) 	
-                    
-                        if map_mod in ['map_DIbin','map_DI_prof','map_res_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin','map_Intr_1D']:cbar_txt='flux'
-                        elif map_mod in ['map_Atm_prof','map_Atmbin','map_Atm_1D']:cbar_txt=plot_options['pl_atm_sign']
-                        cbar_txt = scaled_title(plot_options['sc_fact10'],cbar_txt)  
-                        if plot_options['reverse_2D']:
-                            cbar=fig.colorbar(cb,cax=cbar_pos,format="%.1f", orientation='horizontal')
-                            cbar.set_label(cbar_txt,labelpad=-55,fontsize=plot_options['font_size']-2)	
-                            cbar.ax.tick_params(labelsize=plot_options['font_size']-2,labeltop='on')
-                            cbar.ax.xaxis.set_ticks_position('top')
-                    
-        #                        #Fixed labels
-        #                        labels = np.array([-0.5e-2,0.,0.5e-2,1e-2,1.5e-2,2e-2])
-        #                        cbar.set_ticks(labels)
-        #                        cbar.ax.set_xticklabels(labels)
-                        else:	
-                            cbar=fig.colorbar(cb,cax=cbar_pos) #,format="%i")															
-                            cbar.set_label(cbar_txt,rotation=270,labelpad=25,fontsize=plot_options['font_size']-2)	
-                            cbar.ax.tick_params(labelsize=plot_options['font_size']-2)
-                            			
-                        #----------------------------------------------
-                        #Saving plot
-                        plt.gcf().set_rasterized(plot_options['rasterized'])
-                        add_str='' if sp_mod == 'CCF' else '_iord'+str(iord)                          
-                        if map_mod=='map_Intr_prof_est':add_str+='_'+plot_options['mode_loc_data_corr']
-                        if map_mod=='map_Intr_prof_res':add_str+='_'+plot_options['mode_loc_data_corr']+'_res'
-                        if ('bin' in map_mod):add_str+='_'+plot_options['dim_plot'] 
-                        plt.savefig(path_loc+sp_mod+'_'+inst+'_'+vis+add_str+'.'+save_res_map)                        
-                        plt.close() 
+                                    plt.text(x_range_loc[0]+0.05*(x_range_loc[1]-x_range_loc[0]),0.5*(low_ordi_tab+high_ordi_tab)[isub],str(iexp),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=15,color='black') 
+                                    plt.text(x_range_loc[0]+0.1*(x_range_loc[1]-x_range_loc[0]),0.5*(low_ordi_tab+high_ordi_tab)[isub],str(gen_dic[inst][vis]['idx_exp2in'][iexp]),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=15,color='black') 
+      
+                            #------------------------------------  
+    
+                            #Lines of stellar CCF masks
+                            if (restframe=='star') and (map_mod in ['map_DI_prof','map_res_prof']) and ('spec' in sp_mod) and plot_options['CCF_mask_star']:
+                                col_loc='white'
+                                if plot_options['reverse_2D']:
+                                    cond_lines_in = np_where1D((gen_dic['CCF_mask_wav'][inst]>=y_range_loc[0]) & (gen_dic['CCF_mask_wav'][inst]<=y_range_loc[1])) 
+                                    for iline in cond_lines_in:plt.plot(x_range_loc,np.repeat(gen_dic['CCF_mask_wav'][inst][iline],2),color=col_loc,linestyle='-',lw=1.5,zorder=10)
+                                else:  
+                                    cond_lines_in = np_where1D((gen_dic['CCF_mask_wav'][inst]>=x_range_loc[0]) & (gen_dic['CCF_mask_wav'][inst]<=x_range_loc[1])) 
+                                    for iline in cond_lines_in:plt.plot(np.repeat(gen_dic['CCF_mask_wav'][inst][iline],2),y_range_loc,color=col_loc,linestyle='-',lw=1.5,zorder=10) 
+                                
+    
+                            #------------------------------------  
+                      
+                            #Planetary orbital model
+                            if (restframe in ['star','planet']) and (ordi_name == 'phase') and (map_mod in ['map_DI_prof','map_res_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_Atm_prof']):
+    
+                                #Order high-resolution curves
+                                if (plot_options['theoRVpl_HR']) or (plot_options['plot_plexc']):
+                                    if plot_options['reverse_2D']:w_sorted=ph_tab_HRpl.argsort()
+                                    else:w_sorted=rv_pl_HR[pl_ref].argsort() 
+    
+                                #Colors
+                                if map_mod=='map_Atm_prof': col_loc='limegreen'
+                                else:col_loc='magenta'
+    
+                                #In RV space
+                                if (sp_mod == 'CCF'):                            
+    
+                                    #High-resolution orbital model of planet in star rest frame
+                                    if (plot_options['theoRVpl_HR']):                                    
+                                        if (restframe=='star'):rv_mod_loc = rv_pl_HR[pl_ref]
+                                        else:rv_mod_loc = np.repeat(0.,nph_HRpl)
+                                        if plot_options['reverse_2D']:plt.plot(ph_tab_HRpl[w_sorted],rv_mod_loc[w_sorted],color=col_loc,linestyle='-',lw=2,zorder=10) 
+                                        else:plt.plot(rv_mod_loc[w_sorted],ph_tab_HRpl[w_sorted] ,color=col_loc,linestyle='-',lw=2,zorder=10)                              
+    
+                                    #Excluded ranges for each planetary mask line
+                                    if (plot_options['plot_plexc']) and (data_dic['Atm']['exc_plrange']): 
+                                        if (restframe=='star'):plrange_loc = plrange_star_HR[pl_ref]
+                                        else:plrange_loc = plrange_pl_HR
+                                        if plot_options['reverse_2D']:plt.fill_between(ph_tab_HRpl[w_sorted],plrange_loc[0,w_sorted], plrange_loc[1,w_sorted],zorder=9,color='white',alpha=0.2)
+                                        else:plt.fill_betweenx(ph_tab_HRpl[w_sorted],plrange_loc[0,w_sorted], plrange_loc[1,w_sorted],zorder=9,color='white',alpha=0.2)
+    
+                                #In spectral space, for each studied planetary line in plot range
+                                elif ('spec' in sp_mod) and ('CCF_mask_wav' in data_dic['Atm']): 
+    
+                                    #High-resolution orbital model of planet in star rest frame
+                                    if (plot_options['theoRVpl_HR']): 
+                                        if (restframe=='star'):
+                                            wmax_lines_loc_HR = wmax_lines_star_HR[pl_ref]
+                                            wmin_lines_loc_HR = wmin_lines_star_HR[pl_ref]
+                                            wlines_loc_HR = wlines_star_HR[pl_ref]
+                                        else:
+                                            wmax_lines_loc_HR = wmax_lines_pl_HR
+                                            wmin_lines_loc_HR = wmin_lines_pl_HR
+                                            wlines_loc_HR = wlines_pl_HR
+    
+                                        if plot_options['reverse_2D']:
+                                            cond_lines_in = (wmax_lines_loc_HR>=y_range_loc[0]) & (wmin_lines_loc_HR<=y_range_loc[1])  
+                                            wlines_HR_plot = wlines_loc_HR[:,cond_lines_in][w_sorted]
+                                            for iline in range(np.sum(cond_lines_in)):plt.plot(ph_tab_HRpl[w_sorted],wlines_HR_plot[:,iline],color=col_loc,linestyle='-',lw=1.5,zorder=10)
+                                        else:  
+                                            cond_lines_in = (wmax_lines_loc_HR>=x_range_loc[0]) & (wmin_lines_loc_HR<=x_range_loc[1]) 
+                                            wlines_HR_plot = wlines_loc_HR[:,cond_lines_in][w_sorted]
+                                            for iline in range(np.sum(cond_lines_in)):plt.plot(wlines_HR_plot[:,iline],ph_tab_HRpl[w_sorted],color=col_loc,linestyle='-',lw=1.5,zorder=10) 
+    
+                                    #Excluded ranges for each planetary mask line
+                                    if (plot_options['plot_plexc']) and (data_dic['Atm']['exc_plrange']):  
+    
+                                        #Create condition for high-resolution points within exposures without exclusion
+                                        #    - by setting to false those points without exposures with exclusion, so that they are not masked
+                                        cond_exp_excl = np.ones([len(data_dic['Atm']['CCF_mask_wav']),nph_HRpl],dtype=bool)
+                                        for iexp in np.intersect1d(data_dic['Atm'][inst][vis]['iexp_no_plrange'],iexp_plot):
+                                            sub_cond_HR = (ph_tab_HRpl>=coord_dic[inst][vis]['st_ph'][iexp]) & (ph_tab_HRpl<=coord_dic[inst][vis]['end_ph'][iexp])
+                                            if True in sub_cond_HR:cond_exp_excl[:,sub_cond_HR]=False
+                                                
+                                        if (restframe=='star'):
+                                            max_wlow_lines_loc_HR = max_wlow_lines_star_HR[pl_ref]
+                                            min_wlow_lines_loc_HR = min_wlow_lines_star_HR[pl_ref]
+                                            wlow_lines_loc_HR = wlow_lines_star_HR[pl_ref]
+                                            whigh_lines_loc_HR = whigh_lines_star_HR[pl_ref]
+                                        else:  
+                                            max_wlow_lines_loc_HR = max_wlow_lines_pl_HR
+                                            min_wlow_lines_loc_HR = min_wlow_lines_pl_HR
+                                            wlow_lines_loc_HR = wlow_lines_pl_HR
+                                            whigh_lines_loc_HR = whigh_lines_pl_HR                                  
+                                            
+                                        if plot_options['reverse_2D']:cond_lines_in = (max_wlow_lines_loc_HR>=y_range_loc[0]) & (min_wlow_lines_loc_HR<=y_range_loc[1]) 
+                                        else:cond_lines_in = (max_wlow_lines_loc_HR>=x_range_loc[0]) & (min_wlow_lines_loc_HR<=x_range_loc[1]) 
+                                            
+                                        wlow_lines_HR_plot = wlow_lines_loc_HR[cond_lines_in][:,w_sorted]
+                                        whigh_lines_HR_plot = whigh_lines_loc_HR[cond_lines_in][:,w_sorted]
+                                        cond_exp_excl = cond_exp_excl[cond_lines_in][:,w_sorted]
+                                        wlow_lines_HR_plot = ma.masked_where(cond_exp_excl, wlow_lines_HR_plot)
+                                        whigh_lines_HR_plot = ma.masked_where(cond_exp_excl, whigh_lines_HR_plot) 
+                                        
+                                        if plot_options['reverse_2D']:
+                                            for iline in range(np.sum(cond_lines_in)):
+                                                plt.fill_between(ph_tab_HRpl[w_sorted],wlow_lines_HR_plot[iline,:], whigh_lines_HR_plot[iline,:],zorder=9,color=col_loc,alpha=0.3)
+                                        else:                                  
+                                            for iline in range(np.sum(cond_lines_in)):
+                                                plt.fill_betweenx(ph_tab_HRpl[w_sorted], wlow_lines_HR_plot[iline,:], whigh_lines_HR_plot[iline,:],zorder=9,color=col_loc,alpha=0.3)
+    
+                            #------------------------------------  
+                                      
+                            #Modelled and measured local stellar surface RVs
+                            if (sp_mod == 'CCF'):
+    
+                                #Local stellar residual profiles
+                                if (map_mod in ['map_res_prof','map_Intr_prof_est','map_Intr_prof_res','map_Intrbin']) or ((map_mod in ['map_Intr_prof']) and (not plot_options['aligned'])):
+                                
+                                    #Model at each exposure                        
+                                    if plot_options['plot_theoRV']:
+                                        ph_theoRV=np.vstack((coord_dic[inst][vis][pl_ref]['cen_ph'][gen_dic[inst][vis]['idx_in']],RV_plocc))
+                                        if plot_options['reverse_2D']:
+                                            w_sorted=ph_theoRV[0].argsort() 
+                                            xtheoRV=ph_theoRV[0,w_sorted]
+                                            ytheoRV=ph_theoRV[1,w_sorted]
+                                        else:  
+                                            w_sorted=ph_theoRV[1].argsort() 
+                                            xtheoRV=ph_theoRV[1,w_sorted]
+                                            ytheoRV=ph_theoRV[0,w_sorted]
+                                        plt.plot(xtheoRV,ytheoRV,color='black',linestyle='-',lw=1.,zorder=10,marker='o',markersize=1.5)
+                       
+                                    #High-resolution model 
+                                    if plot_options['theoRV_HR'] or plot_options['theoRV_HR_align']:
+                                        if plot_options['cmap'] in ['afmhot_r']:
+                                            col_loc='limegreen'
+                                            ls_loc='-'
+                                            lw_mod = 3 
+                                        else:
+                                            col_loc='black'  #'white'
+                                            ls_loc='--'   
+                                            lw_mod = 2                                 
+                                        for pl_loc in data_dic[inst][vis]['transit_pl']:
+                                            if plot_options['theoRV_HR']:
+                                                cond_def_HR = ~np.isnan(theo_HR_prop_plocc[pl_loc]['rv'][0])
+                                                ph_HR_loc = theo_HR_prop_plocc[pl_ref]['phase'][cond_def_HR]
+                                                rv_HR_loc = theo_HR_prop_plocc[pl_loc]['rv'][0,cond_def_HR]
+                                            elif plot_options['theoRV_HR_align']:
+                                                cond_def_HR = ~np.isnan(theo_HR_prop_plocc_align[pl_loc]['rv'][0])
+                                                ph_HR_loc = theo_HR_prop_plocc_align[pl_ref]['phase'][cond_def_HR]
+                                                rv_HR_loc = theo_HR_prop_plocc_align[pl_loc]['rv'][0,cond_def_HR]
+                                            if plot_options['reverse_2D']:
+                                                w_sorted=ph_HR_loc.argsort() 
+                                                xtheoRV_HR=ph_HR_loc[w_sorted]
+                                                if plot_options['theoRV_HR']:
+                                                    ytheoRV_HR=rv_HR_loc[w_sorted]
+                                                    plt.plot(xtheoRV_HR,ytheoRV_HR,color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10) 
+                                                if plot_options['theoRV_HR_align']:
+                                                    plt.plot(xtheoRV_HR,theo_HR_prop_plocc_align[pl_ref]['rv'][0,cond_def_HR][w_sorted],color=col_loc,linestyle='--',lw=lw_mod,zorder=10) 
+                                            else:  
+                                                w_sorted=rv_HR_loc.argsort() 
+                                                ytheoRV_HR=ph_HR_loc[w_sorted] 
+                                                if plot_options['theoRV_HR']:
+                                                    xtheoRV_HR=rv_HR_loc[w_sorted]
+                                                    plt.plot(xtheoRV_HR,ytheoRV_HR,color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10) 
+                                                if plot_options['theoRV_HR_align']:
+                                                    plt.plot(theo_HR_prop_plocc_align[pl_ref]['rv'][0,cond_def_HR][w_sorted] ,ytheoRV_HR,color=col_loc,linestyle='--',lw=lw_mod,zorder=10) 
+    
+                                        
+    
+                                        # #Save/replot manually  
+                                        # save_path = '/Users/bourrier/Travaux/ANTARESS/En_cours/HAT_P33b_Plots/Intr_data/Maps/RMR_fits/HAT_P33_RVsurf_CB1.dat'
+                                        # # np.savetxt(save_path, np.column_stack((xtheoRV_HR,ytheoRV_HR)),fmt=('%15.10f','%15.10f') )
+                                        # xtheoRV_HR_sav,ytheoRV_HR_sav=np.loadtxt(save_path).T
+                                        # plt.plot(xtheoRV_HR_sav,ytheoRV_HR_sav,color=col_loc,linestyle=':',lw=lw_mod,zorder=10)                                      
+                                        
+                                        
+                                #Measured RV 
+                                #    - plot_measRV = 1 : only detected CCFs are plotted
+                                #    - plot_measRV = 2 : all CCFs are plotted, but non-detected CCFs are plotted with empty symbols
+                                if (plot_options['plot_measRV'] in ['det','all']):
+                                    msize_RV=4
+                                    mew_RV=0.8
+                                    i_in=0
+                                    for iexp in range(data_dic[inst][vis]['n_in_visit']):
+                                        col_face_symb='magenta'  #'black'
+                                        col_symb='magenta'
+                                        RV_rest = 0.
+                                        plot_rv = False
+                                        
+                                        #Local stellar residual or atmospheric profiles
+                                        if (map_mod=='map_res_prof') and ('prof_fit_dic' in data_dic['Res'][inst][vis]) and (iexp in gen_dic[inst][vis]['idx_in']): 
+                                            CCF_fit_loc = data_dic['Res'][inst][vis]['prof_fit_dic'][i_in] 
+                                            plot_rv = True
+                                        if map_mod=='map_Atm_prof':
+                                            if (data_dic['Atm']['pl_atm_sign']=='Absorption') and (iexp in gen_dic[inst][vis]['idx_in']):CCF_fit_loc = data_dic['Atm'][inst][vis]['prof_fit_dic'][i_in]
+                                            if data_dic['Atm']['pl_atm_sign']=='Emission':CCF_fit_loc = data_dic['Atm'][inst][vis]['prof_fit_dic'][iexp]
+                                            if (restframe=='star'):RV_rest = coord_dic[inst][vis]['rv_pl'][iexp] 
+                                            plot_rv = True
+                                        if (iexp in gen_dic[inst][vis]['idx_in']):i_in+=1 
+                                                                        
+                                        #Plot
+                                        if (plot_rv == True) and (((plot_options['plot_measRV']=='det') and (CCF_fit_loc['detected'])) or (plot_options['plot_measRV']=='all')):
+                                            ph_loc=coord_dic[inst][vis][pl_ref]['cen_ph'][iexp]
+                                            RV_loc=CCF_fit_loc['rv']+RV_rest
+                                            eRV_loc=[CCF_fit_loc['err_rv'][0],CCF_fit_loc['err_rv'][1]]
+                                            if (plot_options['plot_measRV']=='all') and (not CCF_fit_loc['detected']):col_face_symb='none' 
+                                            if plot_options['reverse_2D']:plt.errorbar(ph_loc,RV_loc,yerr=eRV_loc,color=col_symb,linestyle='',markeredgewidth=mew_RV,zorder=15,marker='|',markersize=msize_RV,markerfacecolor=col_face_symb,markeredgecolor=col_symb,elinewidth=1)
+                                            else: plt.errorbar(RV_loc,ph_loc,xerr=eRV_loc,color=col_symb,linestyle='',markeredgewidth=mew_RV,zorder=15,marker='|',markersize=msize_RV,markerfacecolor=col_face_symb,markeredgecolor=col_symb,elinewidth=1)
                             
+                            #----------------------------------------------
+                                        
+                            #Plot frame 
+                            ordi_title={
+                                    'phase':'Orbital phase',
+                                    'xp_abs':'Distance from normal',
+                                    'r_proj':'Distance from center'}[ordi_name]
+                            if plot_options['reverse_2D']:
+                                x_title=ordi_title                          
+                                if (sp_mod == 'CCF'):
+                                    y_title='Velocity in '+restframe+' rest frame (km s$^{-1}$)'
+                                elif ('spec' in sp_mod):
+                                    y_title='Wavelength in '+restframe+' frame (A)' 
+                                    ymajor_form='%i'  
+                            else:    
+                                if (sp_mod == 'CCF'):
+                                    x_title='Velocity in '+restframe+' rest frame (km s$^{-1}$)'
+                                elif ('spec' in sp_mod):
+                                    x_title='Wavelength in '+restframe+' frame (A)'        
+                                y_title=ordi_title                           
+    
+                            xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
+                            ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0])                        
+    
+                            #Suppress ticks if exposures were plotted sequentially
+                            no_xticks,no_yticks=False,False
+                            if (map_mod in ['map_Intr_prof','map_Intr_1D','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Atm_prof','map_Atm_1D']) and (ordi_name!='phase'):
+                                if plot_options['reverse_2D']:no_xticks=True
+                                else:
+                                    no_yticks=True
+                                    for isub,iexp in enumerate(iexp_orig):
+                                        plt.text(x_range_loc[0]-0.2*(x_range_loc[1]-x_range_loc[0]),0.5*(low_ordi_tab+high_ordi_tab)[isub],'['+"{0:.2f}".format(low_ordi_tab_ref[isub])+' ; '+"{0:.2f}".format(high_ordi_tab_ref[isub])+']',verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=15) 
+                                  
+                            #Frame    
+                            custom_axis(plt,ax=ax,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
+                                        dir_x='out',dir_y='out',xmajor_length=6,ymajor_length=6,
+                                        xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
+                                        xmajor_form=xmajor_form,ymajor_form=ymajor_form,
+                                        x_title=x_title,y_title=y_title,no_xticks=no_xticks,no_yticks=no_yticks,
+                                        colback='black',
+                                        font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
+    
+                            #----------------------------------------------	
+                            #Colorbar
+                            #    - position in add_axes are left, bottom (between 0 and 1), width, height in fraction of the plot size
+                            if plot_options['reverse_2D']:cbar_pos=fig.add_axes([plot_options['margins'][0],plot_options['margins'][3]+0.01,(plot_options['margins'][2]-plot_options['margins'][0]),0.03])   
+                            else:cbar_pos=fig.add_axes([plot_options['margins'][2]+0.01,plot_options['margins'][1],0.015,(plot_options['margins'][3]-plot_options['margins'][1])])   
+                        						
+                            #Values	
+                            cb = plt.cm.ScalarMappable(cmap=cmap_2D,norm=plt.Normalize(vmin=v_range[0], vmax=v_range[1]))										
+                            cb.set_array(v_range) 	
+                        
+                            if map_mod in ['map_DIbin','map_DI_prof','map_res_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin','map_Intr_1D']:cbar_txt='flux'
+                            elif map_mod in ['map_Atm_prof','map_Atmbin','map_Atm_1D']:cbar_txt=plot_options['pl_atm_sign']
+                            cbar_txt = scaled_title(plot_options['sc_fact10'],cbar_txt)  
+                            if plot_options['reverse_2D']:
+                                cbar=fig.colorbar(cb,cax=cbar_pos,format="%.1f", orientation='horizontal')
+                                cbar.set_label(cbar_txt,labelpad=-55,fontsize=plot_options['font_size']-2)	
+                                cbar.ax.tick_params(labelsize=plot_options['font_size']-2,labeltop='on')
+                                cbar.ax.xaxis.set_ticks_position('top')
+                        
+            #                        #Fixed labels
+            #                        labels = np.array([-0.5e-2,0.,0.5e-2,1e-2,1.5e-2,2e-2])
+            #                        cbar.set_ticks(labels)
+            #                        cbar.ax.set_xticklabels(labels)
+                            else:	
+                                cbar=fig.colorbar(cb,cax=cbar_pos) #,format="%i")															
+                                cbar.set_label(cbar_txt,rotation=270,labelpad=25,fontsize=plot_options['font_size']-2)	
+                                cbar.ax.tick_params(labelsize=plot_options['font_size']-2)
+                                			
+                            #----------------------------------------------
+                            #Saving plot
+                            plt.gcf().set_rasterized(plot_options['rasterized'])
+                            add_str='' if sp_mod == 'CCF' else '_iord'+str(iord)                          
+                            if map_mod=='map_Intr_prof_est':add_str+='_'+plot_options['mode_loc_data_corr']
+                            if map_mod=='map_Intr_prof_res':add_str+='_'+plot_options['mode_loc_data_corr']+'_res'
+                            if ('bin' in map_mod):add_str+='_'+plot_options['dim_plot'] 
+                            plt.savefig(path_loc+sp_mod+'_'+inst+'_'+vis+add_str+'.'+save_res_map)                        
+                            plt.close() 
+               
+                            ### End of order                          
+           
             return None
 
 
@@ -980,8 +985,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 if plot_mod in ['DI_prof','DI_prof_res']: 
                     data_type = data_dic['DI']['type'][inst]             
                     if ('spec' in gen_dic['type'][inst]) and (data_type=='CCF'):txt_conv='CCFfromSpec'         
-                    if plot_mod=='DI_prof':path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/CCFraw/'+inst+'_'+vis+'_Indiv_CCFraw/'
-                    if plot_mod=='DI_prof_res':path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/CCFraw/'+inst+'_'+vis+'_Indiv_CCFraw_res/'
+                    if plot_mod=='DI_prof':path_loc = gen_dic['save_plot_dir']+'CCFraw/'+inst+'_'+vis+'_Indiv_CCFraw/'
+                    if plot_mod=='DI_prof_res':path_loc = gen_dic['save_plot_dir']+'CCFraw/'+inst+'_'+vis+'_Indiv_CCFraw_res/'
                     iexp_plot=range(data_dic[inst][vis]['n_in_visit'])
                     iexp_orig=iexp_plot
 
@@ -999,7 +1004,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if plot_mod=='CCF_DIbin':suff = '_Indiv_CCF_DIbin/'
                     elif plot_mod=='CCF_DIbin_res':suff = '_Indiv_CCF_DIbin_res/'
                         
-                    path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Binned_DI_data/'+inst+'_'+vis+suff+plot_options['dim_plot']+'/'
+                    path_loc = gen_dic['save_plot_dir']+'Binned_DI_data/'+inst+'_'+vis+suff+plot_options['dim_plot']+'/'
                     data_bin = np.load(gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot']+'_add.npz',allow_pickle=True)['data'].item()
                     iexp_plot = np.arange(data_bin['n_exp'],dtype=int)                     
                     
@@ -1014,7 +1019,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if plot_mod=='CCFloc':
                         data_type = data_dic['Res']['type'][inst]    
                         if ('spec' in gen_dic['type'][inst]) and (data_type=='CCF'):txt_conv='CCFfromSpec/' 
-                        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Res_data/'+inst+'_'+vis+'_Indiv_CCFloc/'
+                        path_loc = gen_dic['save_plot_dir']+'Res_data/'+inst+'_'+vis+'_Indiv_CCFloc/'
                         iexp_plot = data_dic['Res'][inst][vis]['idx_to_extract']
                         iexp_orig=iexp_plot
 
@@ -1031,9 +1036,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             
                         if plot_options['aligned']:
                             if ((plot_mod=='CCFintr_res') or (plot_options['plot_line_model'] and (plot_mod in ['CCFintr']))):stop('Remove "aligned" options to overplot model')
-                            path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Aligned_intr_data/'+inst+'_'+vis+suff
+                            path_loc = gen_dic['save_plot_dir']+'Aligned_intr_data/'+inst+'_'+vis+suff
                         else:
-                            path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Intr_data/'+inst+'_'+vis+suff
+                            path_loc = gen_dic['save_plot_dir']+'Intr_data/'+inst+'_'+vis+suff
                         iexp_plot = data_dic['Intr'][inst][vis]['idx_def']
                         iexp_orig = gen_dic[inst][vis]['idx_in']
                     
@@ -1047,7 +1052,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if plot_mod=='CCF_Intrbin':suff = '_Indiv_CCF_Intrbin/'
                     elif plot_mod=='CCF_Intrbin_res':suff = '_Indiv_CCF_Intrbin_res/'
                         
-                    path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Binned_intr_data/'+inst+'_'+vis+suff+plot_options['dim_plot']+'/'
+                    path_loc = gen_dic['save_plot_dir']+'Binned_intr_data/'+inst+'_'+vis+suff+plot_options['dim_plot']+'/'
                     data_bin = np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot']+'_add.npz',allow_pickle=True)['data'].item()
                     iexp_plot = np.arange(data_bin['n_exp'],dtype=int)                    
 
@@ -1070,7 +1075,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     iexp_plot = data_dic['Atm'][inst][vis]['idx_def']
                     if (plot_options['pl_atm_sign']=='Absorption'):iexp_orig = np.array(gen_dic[inst][vis]['idx_in'])[iexp_plot]                      
                     elif (plot_options['pl_atm_sign']=='Emission'):iexp_orig = iexp_plot
-                    path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Atm_data'+suff_frame+'/'+plot_options['pl_atm_sign']+'/'+inst+'_'+vis+suff
+                    path_loc = gen_dic['save_plot_dir']+'Atm_data'+suff_frame+'/'+plot_options['pl_atm_sign']+'/'+inst+'_'+vis+suff
 
                 elif plot_mod in ['CCF_Atmbin','CCF_Atmbin_res']: 
                     data_type = data_dic['Atm']['type'][inst]                    
@@ -1082,7 +1087,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if plot_mod=='CCF_Atmbin':suff = '_Indiv_CCF_Atmbin/'
                     elif plot_mod=='CCF_Atmbin_res':suff = '_Indiv_CCF_Atmbin_res/'
                         
-                    path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Binned_atm_data/'+inst+'_'+vis+suff+plot_options['pl_atm_sign']+'/'+plot_options['dim_plot']+'/'
+                    path_loc = gen_dic['save_plot_dir']+'Binned_atm_data/'+inst+'_'+vis+suff+plot_options['pl_atm_sign']+'/'+plot_options['dim_plot']+'/'
                     data_bin = np.load(gen_dic['save_data_dir']+'Atmbin_data/'+plot_options['pl_atm_sign']+'/'+inst+'_'+vis+'_'+plot_options['dim_plot']+'_add.npz',allow_pickle=True)['data'].item()
                     iexp_plot = np.arange(data_bin['n_exp'],dtype=int)  
 
@@ -1276,7 +1281,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                            
                                 #Plot fit profile
                                 CCF_fit = sc_fact*CCF_prop_exp['flux']/norm_exp                        
-                                loc_flux_scaling = dataload_npz(data_dic[inst][vis]['scaled_data_paths']+str(iexp))['loc_flux_scaling']   
+                                loc_flux_scaling = dataload_npz(data_dic[inst][vis]['scaled_data_paths']+str(iexp_or))['loc_flux_scaling']   
                                 if plot_mod=='CCFloc':CCF_fit*=loc_flux_scaling[0](CCF_prop_exp['cen_bins'])                            
                                 plt.plot(CCF_prop_exp['cen_bins'],CCF_fit,color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=-1+15)                       
                               
@@ -1584,82 +1589,80 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if gen_dic['sp_frame']=='air': 
                         wave_tell_lines[molec]/=air_index(wave_tell_lines[molec], t=15., p=760.)
 
+            if 'DI' in plot_mod:data_type_gen = 'DI'
+            elif plot_mod=='Res':data_type_gen = 'Res'
+            elif 'Intr' in plot_mod:data_type_gen = 'Intr'
+            elif 'Atm' in plot_mod:data_type_gen = 'Atm'    
+
             #Plot for each visit
             for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst]): 
                 print('      - visit '+vis)
 
                 #Create plot directory
-                if 'DI' in plot_mod:
-                    if plot_mod=='DI_raw':                       
-                        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/'+inst+'_'+vis+'_Indiv_sp/'
-                        
-                        #Exposures to plot
-                        if ('iexp_plot' in plot_options) and (inst in plot_options['iexp_plot']) and (vis in plot_options['iexp_plot'][inst]) and (len(plot_options['iexp_plot'][inst][vis])>0):iexp_plot = plot_options['iexp_plot'][inst][vis]
-                        else:iexp_plot=range(data_dic[inst][vis]['n_in_visit'])
-                        iexp_orig = iexp_plot
-    
-                        #Cosmics
-                        if (plot_options['plot_pre']!='cosm') and (plot_options['plot_post']!='cosm'):plot_options['det_cosm']=False
-    
-                        #Persistent peak correction data
-                        if (plot_options['plot_pre']=='permpeak') or (plot_options['plot_post']=='permpeak'):
-                            data_permpeak = np.load(gen_dic['save_data_dir']+'Corr_data/Permpeak/'+inst+'_'+vis+'_add.npz', allow_pickle=True)['data'].item()
-                        else:
-                            data_permpeak = None
-                            plot_options['det_permpeak']=False
-    
-                    elif plot_mod in ['DIbin','DImast']:
-                        dim_plot = 'phase'
-                        if plot_mod=='DIbin': 
-                            path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Binned_DI_data/'+inst+'_'+vis+'_Indiv_sp/'+dim_plot+'/'   
-                            data_bin = np.load(gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_'+dim_plot+'_add.npz',allow_pickle=True)['data'].item()           
-                        elif plot_mod=='DImast': 
-                            path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Weighing_master/'+inst+'_'+vis+'/'
-                            data_bin = np.load(gen_dic['save_data_dir']+'DI_data/Master/'+inst+'_'+vis+'_'+dim_plot+'_add.npz',allow_pickle=True)['data'].item()
-                            iexp_plot = [0]
+                if ('bin' in plot_mod):
+                    path_loc = gen_dic['save_plot_dir']+'Binned_'+data_type_gen+'_data/'+add_txt_path[data_type_gen]+inst+'_'+vis+'_Indiv_sp/'+plot_options['dim_plot']+'/'  
+                    data_bin = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+add_txt_path[data_type_gen]+inst+'_'+vis+'_'+plot_options['dim_plot']+'_add')
+                    iexp_plot = np.arange(data_bin['n_exp'],dtype=int)                  
+                else:
+                    if '_1D' in plot_mod: 
+                        path_loc = gen_dic['save_plot_dir']+data_type_gen+'_data_1Dfrom2D/'+inst+'_'+vis+'_Indiv_sp/'
+                        data_add = np.load(gen_dic['save_data_dir']+data_type_gen+'_data_1Dfrom2D/'+add_txt_path[data_type_gen]+'/spec1D_'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item()
+                        iexp_plot = data_add['iexp_conv']
+                    else:
+                        if 'DI' in plot_mod:
+                            if plot_mod=='DI_raw':                       
+                                path_loc = gen_dic['save_plot_dir']+'Spec_raw/'+inst+'_'+vis+'_Indiv_sp/'
+                                
+                                #Exposures to plot
+                                if ('iexp_plot' in plot_options) and (inst in plot_options['iexp_plot']) and (vis in plot_options['iexp_plot'][inst]) and (len(plot_options['iexp_plot'][inst][vis])>0):iexp_plot = plot_options['iexp_plot'][inst][vis]
+                                else:iexp_plot=range(data_dic[inst][vis]['n_in_visit'])
 
-                elif plot_mod=='Res':
-                    path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Res_data/'+inst+'_'+vis+'_Indiv_sp/'
-                    iexp_plot = data_dic['Res'][inst][vis] ['idx_to_extract']
-                    iexp_orig = iexp_plot
-                    
-                    #In-transit exposures with estimates of local stellar profiles 
-                    if plot_options['estim_loc']:
-                        cond_in_intr_def = (np.load(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item())['cond_in_intr_def']
+                                #Cosmics
+                                if (plot_options['plot_pre']!='cosm') and (plot_options['plot_post']!='cosm'):plot_options['det_cosm']=False
+            
+                                #Persistent peak correction data
+                                if (plot_options['plot_pre']=='permpeak') or (plot_options['plot_post']=='permpeak'):
+                                    data_permpeak = np.load(gen_dic['save_data_dir']+'Corr_data/Permpeak/'+inst+'_'+vis+'_add.npz', allow_pickle=True)['data'].item()
+                                else:
+                                    data_permpeak = None
+                                    plot_options['det_permpeak']=False
+            
+                            elif plot_mod in ['DIbin','DImast']:
+                                dim_plot = 'phase'
+                                if plot_mod=='DImast': 
+                                    path_loc = gen_dic['save_plot_dir']+'Weighing_master/'+inst+'_'+vis+'/'
+                                    data_bin = np.load(gen_dic['save_data_dir']+'DI_data/Master/'+inst+'_'+vis+'_'+dim_plot+'_add.npz',allow_pickle=True)['data'].item()
+                                    iexp_plot = [0]
+        
+                        elif plot_mod=='Res':
+                            path_loc = gen_dic['save_plot_dir']+'Res_data/'+inst+'_'+vis+'_Indiv_sp/'
+                            iexp_plot = data_dic['Res'][inst][vis] ['idx_to_extract']
 
-                elif 'Intr' in plot_mod:
-                    if plot_mod=='Intr':
-                        if plot_options['aligned']:
-                            path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Aligned_Intr_data/'+inst+'_'+vis+'_Indiv_sp/'
-                        else:
-                            path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Intr_data/'+inst+'_'+vis+'_Indiv_sp/'
-                        iexp_plot = data_dic['Intr'][inst][vis]['idx_def']
-                        iexp_orig = np.array(gen_dic[inst][vis]['idx_in'])[iexp_plot] 
-                    elif plot_mod=='Intrbin': 
-                        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Binned_intr_data/'+inst+'_'+vis+'_Indiv_sp/'+plot_options['dim_plot']+'/'
-                        data_bin = np.load(gen_dic['save_data_dir']+plot_mod+'_data/'+inst+'_'+vis+'_'+plot_options['dim_plot']+'_add.npz',allow_pickle=True)['data'].item()
-                
-                elif 'Atm' in plot_mod:                
-                    if plot_mod=='Atm':
-                        if plot_options['aligned']:suff='_pl' 
-                        else:suff=''
-                        iexp_plot = data_dic['Atm'][inst][vis]['idx_def']
-                        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Atm_data'+suff+'/'+plot_options['pl_atm_sign']+'/'+inst+'_'+vis+'_Indiv_sp/'
+                            #In-transit exposures with estimates of local stellar profiles 
+                            if plot_options['estim_loc']:
+                                cond_in_intr_def = (np.load(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item())['cond_in_intr_def']
+        
+                        elif 'Intr' in plot_mod:
+                            if plot_mod=='Intr':
+                                if plot_options['aligned']:
+                                    path_loc = gen_dic['save_plot_dir']+'Aligned_Intr_data/'+inst+'_'+vis+'_Indiv_sp/'
+                                else:
+                                    path_loc = gen_dic['save_plot_dir']+'Intr_data/'+inst+'_'+vis+'_Indiv_sp/'
+                                iexp_plot = data_dic['Intr'][inst][vis]['idx_def']
+
+                        elif 'Atm' in plot_mod:               
+                            if plot_mod=='Atm':
+                                if plot_options['aligned']:suff='_pl' 
+                                else:suff=''
+                                iexp_plot = data_dic['Atm'][inst][vis]['idx_def']
+                                path_loc = gen_dic['save_plot_dir']+'Atm_data'+suff+'/'+plot_options['pl_atm_sign']+'/'+inst+'_'+vis+'_Indiv_sp/'
+
+                    if 'DI' in plot_mod:iexp_orig = iexp_plot
+                    elif plot_mod=='Res':iexp_orig = iexp_plot
+                    elif 'Intr' in plot_mod:iexp_orig = np.array(gen_dic[inst][vis]['idx_in'])[iexp_plot] 
+                    elif 'Atm' in plot_mod:               
                         if (plot_options['pl_atm_sign']=='Absorption'):iexp_orig = np.array(gen_dic[inst][vis]['idx_in'])[iexp_plot]                      
                         elif (plot_options['pl_atm_sign']=='Emission'):iexp_orig = iexp_plot
-                    elif plot_mod=='Atmbin': 
-                        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Binned_atm_data/'+plot_options['pl_atm_sign']+'/'+inst+'_'+vis+'_Indiv_sp/'+plot_options['dim_plot']+'/'
-                        data_bin = np.load(gen_dic['save_data_dir']+plot_mod+'_data/'+plot_options['pl_atm_sign']+'/'+data_dic['Atm']['type'][inst]+'_'+inst+'_'+vis+'_'+plot_options['dim_plot']+'_add.npz',allow_pickle=True)['data'].item()                
-
-                if '_1D' in plot_mod: 
-                    data_type_gen = 'DI'
-                    path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'+data_type_gen+'_data_1Dfrom2D/'+inst+'_'+vis+'_Indiv_sp/'
-                    data_add = np.load(gen_dic['save_data_dir']+data_type_gen+'_data_1Dfrom2D/'+add_txt_path[data_type_gen]+'/spec1D_'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item()
-                    iexp_plot = data_add['iexp_conv']
-                    iexp_orig = iexp_plot  
-                
-                if ('bin' in plot_mod):
-                    iexp_plot = np.arange(data_bin['n_exp'],dtype=int)         
 
                 if (not os_system.path.exists(path_loc)):os_system.makedirs(path_loc)                  
                 n_exp_plot = len(iexp_plot)
@@ -1763,13 +1766,19 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         if plot_options['x_range'] is not None:
                             if (cen_bins_loc[cond_def_loc][-1]<plot_options['x_range'][0]) or (cen_bins_loc[cond_def_loc][0]>plot_options['x_range'][1]):plot_ord&=False
                             else:cond_def_loc[ (cen_bins_loc<plot_options['x_range'][0]) | (cen_bins_loc>plot_options['x_range'][1]) ]=False
-                            x_range_loc = deepcopy(plot_options['x_range'])
+                            x_range_loc = deepcopy(plot_options['x_range']) 
                         else:
                             xmin = cen_bins_loc[cond_def_loc][0]
                             xmax = cen_bins_loc[cond_def_loc][-1]
                             dx_range = xmax-xmin
                             x_range_loc = [xmin-0.05*dx_range,xmax+0.05*dx_range]  
-                
+ 
+                        #Resampling
+                        if plot_options['resample'] is not None:
+                            n_reg = int(np.ceil((x_range_loc[1]-x_range_loc[0])/plot_options['resample']))
+                            edge_bins_reg = np.linspace(x_range_loc[0],x_range_loc[1],n_reg)
+                            cen_bins_reg = 0.5*(edge_bins_reg[0:-1]+edge_bins_reg[1::])                                    
+ 
                         if plot_mod=='DI_raw':
                             
                             #Only plot order if cosmics were detected
@@ -1818,9 +1827,15 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         col_exp_err =  'lightblue'   
                                         col_exp_err = col_exp
                                         all_ax[iord].errorbar(data_precorr['cen_bins'][iord],var_loc,yerr = sc_fact*np.sqrt(data_precorr['cov'][iord][0,:])/mean_flux_raw,color=col_exp_err,linestyle='',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=0,alpha=plot_options['alpha_err'],figure = all_figs[iord]) 
-                                    all_ax[iord].plot(data_precorr['cen_bins'][iord],var_loc,color=col_exp,linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=1,drawstyle=plot_options['drawstyle'],figure = all_figs[iord])   
+                                    all_ax[iord].plot(data_precorr['cen_bins'][iord],var_loc,color=col_exp,linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=1,alpha=plot_options['alpha_symb'],drawstyle=plot_options['drawstyle'],figure = all_figs[iord])   
                                     if plot_options['y_range'] is None:y_range_loc[iord] = [min(np.nanmin(var_loc),y_range_loc[iord][0]),max(np.nanmax(var_loc),y_range_loc[iord][1])]
-                                                                 
+
+                                    #Resampling
+                                    if plot_options['resample'] is not None:
+                                        var_resamp = bind.resampling(edge_bins_reg, data_precorr['edge_bins'][iord],var_loc, kind=gen_dic['resamp_mode'])   
+                                        all_ax[iord].plot(cen_bins_reg,var_resamp,color=col_exp,linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=2,drawstyle=plot_options['drawstyle'],figure = all_figs[iord])                      
+                            
+
                                 #Plot spectrum after correction   
                                 if plot_options['plot_post'] is not None:        
                                     var_loc = sc_fact*data_exp['flux'][iord]/mean_flux
@@ -1830,7 +1845,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         all_ax[iord].errorbar(cen_bins_loc,var_loc,yerr = sc_fact*np.sqrt(data_exp['cov'][iord][0,:])/mean_flux,color=col_exp_err,linestyle='',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=2,alpha=plot_options['alpha_err'],figure = all_figs[iord]) 
                                     all_ax[iord].plot(cen_bins_loc,var_loc,color=col_exp_sec,linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=3,drawstyle=plot_options['drawstyle'],figure = all_figs[iord])   
                                     if plot_options['y_range'] is None:y_range_loc[iord] = [min(np.nanmin(var_loc),y_range_loc[iord][0]),max(np.nanmax(var_loc),y_range_loc[iord][1])]
-                              
+
+                                    #Resampling
+                                    if plot_options['resample'] is not None:
+                                        var_resamp = bind.resampling(edge_bins_reg, data_exp['edge_bins'][iord],var_loc, kind=gen_dic['resamp_mode'])   
+                                        all_ax[iord].plot(cen_bins_reg,var_resamp,color=col_exp_sec,linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=2,drawstyle=plot_options['drawstyle'],figure = all_figs[iord])                      
+                                                          
                                     #Telluric spectrum
                                     if plot_options['plot_tell']:
                                         tell_loc = tell_exp[iord]
@@ -1859,8 +1879,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                 if (1.-tell_loc[idx_tell])>plot_options['telldepth_min']:
                                                     plt.plot([wave_tell_loc,wave_tell_loc],y_range_loc[iord],linestyle='--',color='limegreen',lw=plot_options['lw_plot'])
                                                     plt.text(wave_tell_loc,y_range_loc[iord][1]+0.02*(y_range_loc[iord][1]-y_range_loc[iord][0]),str(molec),verticalalignment='center', horizontalalignment='center',fontsize=6.,zorder=10,color='green')
-                                            
-
 
                                 #Plot flux balance master
                                 #    - reset to the level of the current spectrum for comparison
@@ -1886,11 +1904,16 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                                     
                                 
                             #Plot other types of spectra
-                            elif plot_mod in ['sp_DI_1D','DIbin','DImast','Res','Intr','Intrbin','sp_1D_intr','atm','Atmbin','sp_1D_atm']:
+                            elif plot_mod in ['sp_DI_1D','DIbin','DImast','Res','Intr','Intrbin','sp_Intr_1D','atm','Atmbin','sp_1D_atm']:
                                 var_loc = sc_fact*data_exp['flux'][iord]/mean_flux
                                 if plot_options['plot_err']:all_ax[iord].errorbar(cen_bins_loc,var_loc,yerr = sc_fact*np.sqrt(data_exp['cov'][iord][0,:])/mean_flux,color=col_exp,linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=1,alpha=plot_options['alpha_err']) 
-                                else:all_ax[iord].plot(cen_bins_loc,var_loc,color=col_exp,linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=1,drawstyle=plot_options['drawstyle'],figure = all_figs[iord])   
+                                else:all_ax[iord].plot(cen_bins_loc,var_loc,color=col_exp,linestyle='-',lw=plot_options['lw_plot'],alpha=plot_options['alpha_symb'],rasterized=plot_options['rasterized'],zorder=1,drawstyle=plot_options['drawstyle'],figure = all_figs[iord])   
                                 if plot_options['y_range'] is None:y_range_loc[iord] = [min(np.nanmin(var_loc),y_range_loc[iord][0]),max(np.nanmax(var_loc),y_range_loc[iord][1])]
+
+                                #Resampling
+                                if plot_options['resample'] is not None:
+                                    var_resamp = bind.resampling(edge_bins_reg, data_exp['edge_bins'][iord],var_loc, kind=gen_dic['resamp_mode'])   
+                                    all_ax[iord].plot(cen_bins_reg,var_resamp,color=col_exp,linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=2,drawstyle=plot_options['drawstyle'],figure = all_figs[iord])                      
         
                                 #Plotting estimate for local stellar profile
                                 if (plot_mod=='Res') and plot_loc_star:
@@ -1917,10 +1940,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                     y_title='Flux'
                                     xt_str='star'
                                     title_name='Aligned '+title_name 
-                                elif plot_mod=='sp_DI_1D':
+                                elif plot_mod in ['sp_DI_1D','sp_Intr_1D']:
                                     title_name='1D '+gen_dic['type_name'][data_type_gen]
                                     y_title='Flux'
-                                    if gen_dic['align_DI']:
+                                    if gen_dic['align_'+data_type_gen]:
                                         title_name='Aligned '+title_name 
                                         xt_str='local'
                                     else:xt_str='star'
@@ -1942,15 +1965,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         xt_str='star'
                                     else:
                                         xt_str='local'
-                                        title_name='Aligned '+title_name                                   
-                                elif plot_mod=='sp_1D_intr':
-                                    title_name='1D intrinsic'
-                                    y_title='Flux'
-                                    if (plot_options['dim_plot']=='orig') or ((plot_options['dim_plot']=='bin') and (dim_bin_1D=='phase')): 
-                                        xt_str='star'
-                                    else:
-                                        xt_str='local'
-                                        title_name='Aligned '+title_name                                  
+                                        title_name='Aligned '+title_name                                                                   
                                 elif plot_mod=='atm':
                                     title_name='Atmospheric '+plot_options['pl_atm_sign']
                                     xt_str='star'
@@ -1984,9 +1999,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 elif (plot_mod in ['Intrbin','Atmbin']):
                                     ref_name = plot_options['dim_plot']
                                     ref_val=data_bin['cen_bindim'][iexp]
-                                elif (plot_mod in ['sp_1D_intr','sp_1D_atm']) and (plot_options['dim_plot']=='bin'):
-                                    ref_name = dim_bin_1D
-                                    ref_val=data_bin['cen_bindim'][iexp]
+                                # elif (plot_mod in ['sp_Intr_1D','sp_1D_atm']) and (plot_options['dim_plot']=='bin'):
+                                #     ref_name = dim_bin_1D
+                                #     ref_val=data_bin['cen_bindim'][iexp]
                                 else:
                                     ref_name = 'phase'
                                     ref_val=coord_dic[inst][vis][plot_options['pl_ref'][inst][vis]]['cen_ph'][iexp_orig[isub]] 
@@ -2060,7 +2075,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 if vis not in plot_options['color_dic_bin_sec'][inst]:plot_options['color_dic_bin_sec'][inst][vis] ='orange' 
   
                 #Create directory if required
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/DI_trans/'+inst+'_'+vis+'/'
+                path_loc = gen_dic['save_plot_dir']+'Spec_raw/DI_trans/'+inst+'_'+vis+'/'
                 if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
                 #Data
@@ -2501,7 +2516,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
     '''
     Sub-function to plot all profiles from a given visit together
-        - for aligned disk-integrated and intrinsic data
+        - for disk-integrated and intrinsic data
     '''
     def sub_plot_all_prof(plot_options,plot_mod,plot_ext):
         sc_fact=10**plot_options['sc_fact10']
@@ -2525,7 +2540,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 title_name='atmospheric '+plot_options['pl_atm_sign']   
                 if plot_options['pl_atm_sign']=='Absorption':y_title='Absorption'
                 elif plot_options['pl_atm_sign']=='Emission':y_title='Flux'
-            
+        add_txt_path = {'DI':'','Intr':'','Atm':plot_options['pl_atm_sign']+'/'}[plot_mod]
+        suff_txt_path = {'DI':'_','Intr':'_in','Atm':'_'}[plot_mod]
         
         #Plot for each instrument
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())):   
@@ -2536,13 +2552,20 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options['visits_to_plot'][inst]): 
                 print('     - visit '+vis)
                 data_vis = data_dic[inst][vis]
-                if (plot_ext in ['ps','png','pdf','jpg']):
-                    if plot_mod=='glob_mast':path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/FluxBalance/Global_master/'+inst+'_'+vis+'/' 
-                    elif plot_mod=='DI':path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Aligned_'+plot_mod+'_data/'+inst+'_'+vis+'/'  
-                    elif plot_mod=='Intr':path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Aligned_'+plot_mod+'_data/'+inst+'_'+vis+'/'
-                    elif plot_mod=='Atm':path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Aligned_'+plot_mod+'_data/'+plot_options['pl_atm_sign']+'/'+inst+'_'+vis+'/'
-                    if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)   
-    
+                if plot_mod=='glob_mast':
+                    path_loc = gen_dic['save_plot_dir']+'Spec_raw/FluxBalance/Global_master/'+inst+'_'+vis+'/' 
+                    al_txt = 'Aligned '
+                    sav_txt = ''
+                elif plot_mod in ['DI','Intr','Atm']:
+                    if plot_options['aligned']:
+                        sav_txt = 'Aligned_'
+                        al_txt = 'Aligned '
+                    else:
+                        sav_txt = ''
+                        al_txt = '' 
+                    path_loc = gen_dic['save_plot_dir']+sav_txt+plot_mod+'_data/'+add_txt_path+inst+'_'+vis+'_All/'                     
+                if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)   
+ 
                 #Exposures to plot
                 if (plot_mod=='glob_mast'):
                     if plot_options['plot_input']:iexp_plot = range(data_vis['n_in_visit'])
@@ -2565,9 +2588,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #------------------------------------------------------------------------------------------
                         
                 #Paths
-                if plot_mod=='DI':path_exp = gen_dic['save_data_dir']+'Aligned_'+plot_mod+'_data/'+inst+'_'+vis+'_'                  
-                elif plot_mod=='Intr':path_exp = gen_dic['save_data_dir']+'Aligned_'+plot_mod+'_data/'+inst+'_'+vis+'_in' 
-                elif plot_mod=='Atm':path_exp = gen_dic['save_data_dir']+'Aligned_'+plot_mod+'_data/'+plot_options['pl_atm_sign']+'/'+inst+'_'+vis+'_'   
+                if plot_mod in['DI','Intr','Atm']:path_exp = gen_dic['save_data_dir']+sav_txt+plot_mod+'_data/'+add_txt_path+inst+'_'+vis+suff_txt_path    
 
                 #Plotting CCF profiles
                 if data_type=='CCF':
@@ -2602,8 +2623,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #    - only pixels within the requested range common to all exposures after planetary ranges are excluded are kept
                             # if plot_options['plot_cont']:plt.plot(data_exp['cen_bins'][0][cond_cont],var_loc[cond_cont],color='black',linestyle='',marker='d',markersize=1,zorder=10,rasterized=plot_options['rasterized'])      
                             
-                    #Plot frame
-                    if plot_options['plot_title']:plt.title('Aligned '+title_name+' CCFs in '+xt_str+' rest frame',fontsize=plot_options['font_size'])
+                    #Plot frame               
+                    if plot_options['plot_title']:plt.title(al_txt+title_name+' CCFs in '+xt_str+' rest frame',fontsize=plot_options['font_size'])
                     y_title = scaled_title(plot_options['sc_fact10'],y_title)                       
                     dx_range=x_range_loc[1]-x_range_loc[0]
                     dy_range=y_range_loc[1]-y_range_loc[0]
@@ -2617,7 +2638,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
                   						
 
-                    plt.savefig(path_loc+'Aligned_'+plot_mod+'_'+data_type+'.'+plot_ext) 
+                    plt.savefig(path_loc+data_type+'.'+plot_ext) 
                     plt.close()    
                                 
                 #------------------------------------------------------------------------------------------
@@ -2630,15 +2651,16 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         data_mast_vis = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_meas.npz',allow_pickle=True)['data'].item()   
                         path_exp = data_mast_vis['proc_DI_data_paths']
                         if plot_options['glob_mast_all']=='meas':data_mast_vis_all = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_meas.npz',allow_pickle=True)['data'].item()  
-                        elif plot_options['glob_mast_all']=='theo':data_mast_vis_all = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_theo.npz',allow_pickle=True)['data'].item()   
-                          
+                        elif plot_options['glob_mast_all']=='theo':data_mast_vis_all = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_theo.npz',allow_pickle=True)['data'].item()        
                     cond_def_exp_all={}
                     wav_exp_all={}
+                    edge_bins_exp_all={}
                     sp_exp_all={}
                     for iexp in iexp_plot:                    
                         data_exp=np.load(path_exp+str(iexp)+'.npz',allow_pickle=True)['data'].item()    
                         cond_def_exp_all[iexp] = data_exp['cond_def']
                         wav_exp_all[iexp] = data_exp['cen_bins']
+                        edge_bins_exp_all[iexp] = data_exp['edge_bins']
                         sp_exp_all[iexp] = data_exp['flux']                                
 
                     #Order list
@@ -2649,8 +2671,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                         #Plot order if it overlaps with the requested window
                         plot_ord=False
-                        min_wav = np.min([wav_exp_all[iexp][iord][cond_def_exp_all[iexp][iord]][0] for iexp in iexp_plot])
-                        max_wav = np.max([wav_exp_all[iexp][iord][cond_def_exp_all[iexp][iord]][-1] for iexp in iexp_plot])
+                        min_wav = np.min([edge_bins_exp_all[iexp][iord][0:-1][cond_def_exp_all[iexp][iord]][0] for iexp in iexp_plot])
+                        max_wav = np.max([edge_bins_exp_all[iexp][iord][1::][cond_def_exp_all[iexp][iord]][-1] for iexp in iexp_plot])
                         if plot_options['x_range'] is not None:
                             if (max_wav>=plot_options['x_range'][0]) and (min_wav<=plot_options['x_range'][1]):plot_ord=True
                             x_range_loc = deepcopy(plot_options['x_range'])
@@ -2662,15 +2684,27 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             plt.ioff()                    
                             plt.figure(figsize=(10, 6))
                             y_range_loc=sc_fact*np.array(plot_options['y_range']) if plot_options['y_range'] is not None else [1e100,-1e100] 
-                          
+
+                            #Resampling
+                            if plot_options['resample'] is not None:
+                                n_reg = int(np.ceil((x_range_loc[1]-x_range_loc[0])/plot_options['resample']))
+                                edge_bins_reg = np.linspace(x_range_loc[0],x_range_loc[1],n_reg)
+                                cen_bins_reg = 0.5*(edge_bins_reg[0:-1]+edge_bins_reg[1::])
+
                             #Plot all exposures
                             if plot_options['plot_input']:
                                 for isub,iexp in enumerate(iexp_plot):
                                     cond_def_tab = cond_def_exp_all[iexp][iord] & (wav_exp_all[iexp][iord]>x_range_loc[0]) & (wav_exp_all[iexp][iord]<x_range_loc[1])
                                     wav_tab = wav_exp_all[iexp][iord][cond_def_tab]
                                     var_loc=sc_fact*sp_exp_all[iexp][iord][cond_def_tab]
-                                    plt.plot(wav_tab,var_loc,color=col_visit[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=1) 
+                                    plt.plot(wav_tab,var_loc,color=col_visit[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=1,alpha=plot_options['alpha_symb']) 
                                     if plot_options['y_range'] is None:y_range_loc = [0.99*min(sc_fact*np.nanmin(var_loc),y_range_loc[0]),1.01*max(sc_fact*np.nanmax(var_loc),y_range_loc[1])]                        
+
+                                    #Resampling
+                                    if plot_options['resample'] is not None:
+                                        var_resamp = bind.resampling(edge_bins_reg, edge_bins_exp_all[iexp][iord], sc_fact*sp_exp_all[iexp][iord], kind=gen_dic['resamp_mode'])   
+                                        plt.plot(cen_bins_reg,var_resamp,color=col_visit[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=2)                            
+                            
                             
                             #Plot master
                             if plot_mod=='glob_mast':
@@ -2687,12 +2721,16 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                     plt.plot(data_mast_vis_all['cen_bins'][iord,cond_in_plot],sc_fact*data_mast_vis_all['flux'][iord,cond_in_plot],color='dimgrey',linestyle='-',lw=plot_options['lw_plot']+1,rasterized=False,zorder=2) 
                                     if plot_options['y_range'] is None:y_range_loc = [0.99*min(sc_fact*np.nanmin(data_mast_vis_all['flux'][iord,cond_in_plot]),y_range_loc[0]),1.01*max(sc_fact*np.nanmax(data_mast_vis_all['flux'][iord,cond_in_plot]),y_range_loc[1])] 
 
+                            #Overplot stellar lines
+                            if len(plot_options['st_lines_wav'])>0:
+                                st_lines_wav = np.array(plot_options['st_lines_wav'])
+                                cond_in_plot = (st_lines_wav>x_range_loc[0]) & (st_lines_wav<x_range_loc[1])
+                                for st_line_wav in st_lines_wav[cond_in_plot]:plt.axvline(x=st_line_wav,color='black',ls='--',lw=1,alpha=0.6)  
+
                             #Plot frame  
                             if data_type=='spec1D':str_add=''
                             elif data_type=='spec2D':str_add=' (iord = '+str(iord)+')'                        
-                            if plot_options['plot_title']:
-                                if plot_mod=='glob_mast':plt.title('Aligned '+title_name+' spectra in '+xt_str+' rest frame'+str_add)
-                                else:plt.title('Raw '+title_name+' spectra in '+xt_str+' rest frame'+str_add)
+                            if plot_options['plot_title']:plt.title(al_txt+title_name+' spectra in '+xt_str+' rest frame'+str_add)
                             y_title='Flux'
                             y_title = scaled_title(plot_options['sc_fact10'],y_title)
                             dx_range=x_range_loc[1]-x_range_loc[0]
@@ -2707,7 +2745,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             
                             if (data_type=='spec2D'):str_add='_iord'+str(iord)
                             else:str_add=''
-                            plt.savefig(path_loc+'Aligned_'+plot_mod+'_'+data_type+str_add+'.'+plot_ext) 
+                            plt.savefig(path_loc+data_type+str_add+'.'+plot_ext) 
                             plt.close() 
       
         return None    
@@ -2730,7 +2768,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Plot for each visit
             for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst]): 
                 print('     - Visit : '+vis)
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Compa_DI_intr_series/'+inst+'_'+vis+'/' 
+                path_loc = gen_dic['save_plot_dir']+'Compa_DI_intr_series/'+inst+'_'+vis+'/' 
                 if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)   
    
                 #Exposures to plot
@@ -2862,7 +2900,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     Sub-function to plot chi2 of fitted property series
     '''
     def sub_plot_chi2_prop(plot_options,plot_ext):
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/CCFloc_prop/' 
+        path_loc = gen_dic['save_plot_dir']+'CCFloc_prop/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)                                        
         plt.ioff()                    
         plt.figure(figsize=(10, 6))
@@ -2957,8 +2995,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         return x_min,x_max,y_min,y_max
 
     def sub_plot_CCF_prop(prop_mode,key_plot,plot_options,data_mode): 
-        if data_mode=='raw':path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/DI_prop/'  
-        elif data_mode=='loc': path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Loc_Prop/' 
+        if data_mode=='raw':path_loc = gen_dic['save_plot_dir']+'DI_prop/'  
+        elif data_mode=='loc': path_loc = gen_dic['save_plot_dir']+'Loc_Prop/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)
 
         plt.ioff()        
@@ -4087,7 +4125,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
     def sub_plot_propCCF_mcmc_PDFs(plot_options,plot_prop,plot_type):    
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/CCF_'+plot_options['data_mode']+'_prop/MCMC/'
+        path_loc = gen_dic['save_plot_dir']+'CCF_'+plot_options['data_mode']+'_prop/MCMC/'
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
                     
         #Plot for each instrument
@@ -4309,7 +4347,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             data_paths = 'CCF_masks_'+data_type_gen+'/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis_det+'/'
 
             #Create directory if required
-            path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'+data_paths
+            path_loc = gen_dic['save_plot_dir']+data_paths
             if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)                 
             plt.ioff()        
             fig = plt.figure(figsize=plot_options['fig_size'])
@@ -4388,7 +4426,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             data_paths = 'CCF_masks_'+data_type_gen+'/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis_det+'/'
     
             #Create directory if required
-            path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'+data_paths
+            path_loc = gen_dic['save_plot_dir']+data_paths
             if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)                 
             plt.ioff()        
             fig, axes = plt.subplots(2,2,figsize=plot_options['fig_size'])
@@ -4590,6 +4628,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
       
         #Transparency of error bars (0 = void)
         plot_options[key_plot]['alpha_err']=0.5
+
+        #Spectral resampling
+        plot_options[key_plot]['resample'] = None
+        
+        #List of stellar lines to plot
+        plot_options[key_plot]['st_lines_wav'] = []
 
         #--------------------------------------
 
@@ -4955,7 +4999,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 data_vis = data_dic[inst][vis]
 
                 #Create directory if required
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/General/Det_gain/'+inst+'/'+vis+'/'
+                path_loc = gen_dic['save_plot_dir']+'General/Det_gain/'+inst+'/'+vis+'/'
                 if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
                 #Orders to process
@@ -5220,7 +5264,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 if vis not in plot_options[key_plot]['color_dic_sec'][inst]:plot_options[key_plot]['color_dic_sec'][inst][vis]='dodgerblue'
                 
                 #Create directory if required
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/Tell_corr/'+inst+'_'+vis+'/Tell_CCF/'
+                path_loc = gen_dic['save_plot_dir']+'Spec_raw/Tell_corr/'+inst+'_'+vis+'/Tell_CCF/'
                 if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
                 #Exposures to plot
@@ -5358,7 +5402,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 cen_ph_vis = coord_dic[inst][vis][plot_options[key_plot]['pl_ref'][inst][vis]]['cen_ph']
                 
                 #Create directory if required
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/Tell_corr/'+inst+'_'+vis+'/Tell_prop/'
+                path_loc = gen_dic['save_plot_dir']+'Spec_raw/Tell_corr/'+inst+'_'+vis+'/Tell_prop/'
                 if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
                 #Exposures to plot
@@ -5498,7 +5542,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('+ Global flux balance (exposures)')
         
         #Create directory if required
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/FluxBalance/'
+        path_loc = gen_dic['save_plot_dir']+'Spec_raw/FluxBalance/'
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
         #Process original visits        
@@ -5658,7 +5702,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('   > Plotting flux balance correction from DRS')
                         
         #Create directory if required
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/FluxBalance/'
+        path_loc = gen_dic['save_plot_dir']+'Spec_raw/FluxBalance/'
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
         
         #Process original visits        
@@ -5742,7 +5786,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('+ Global flux balance (visits)')
         
         #Create directory if required
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/FluxBalance/'
+        path_loc = gen_dic['save_plot_dir']+'Spec_raw/FluxBalance/'
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
         #Process original visits        
@@ -5890,7 +5934,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('   > Plotting intra-order flux balance correction')
         
         #Create directory if required
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/FluxBalance/Orders/'
+        path_loc = gen_dic['save_plot_dir']+'Spec_raw/FluxBalance/Orders/'
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
         
         #Process original visits        
@@ -6001,7 +6045,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('   > Plotting temporal flux correction')
             
         #Create directory if required
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/Ftemp_corr/'
+        path_loc = gen_dic['save_plot_dir']+'Spec_raw/Ftemp_corr/'
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
         
         #Process original visits        
@@ -6094,7 +6138,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Process each visit
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options[key_plot]['visits_to_plot'][inst]): 
                 print('     - Visit : '+vis)
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/Cosmics/'+inst+'_'+vis+'/'
+                path_loc = gen_dic['save_plot_dir']+'Spec_raw/Cosmics/'+inst+'_'+vis+'/'
                 if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)                 
                 data_vis=data_dic[inst][vis]
 
@@ -6235,7 +6279,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options[key_plot]['visits_to_plot'][inst]): 
                 
                 #Create directory if required
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/'+inst+'_'+vis+'_Permpeaks/'
+                path_loc = gen_dic['save_plot_dir']+'Spec_raw/'+inst+'_'+vis+'_Permpeaks/'
                 if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)                 
                 data_vis=data_dic[inst][vis]
 
@@ -6341,7 +6385,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options[key_plot]['visits_to_plot'][inst]): 
                 
                 #Create directory if required
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/'+inst+'_'+vis+'_Fringing/'
+                path_loc = gen_dic['save_plot_dir']+'Spec_raw/'+inst+'_'+vis+'_Fringing/'
                 if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)                 
                 data_vis=data_dic[inst][vis]
 
@@ -6711,7 +6755,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             data_paths = 'CCF_masks_'+data_type_gen+'/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis_det+'/'
 
             #Create directory if required
-            path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'+data_paths
+            path_loc = gen_dic['save_plot_dir']+data_paths
             if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)                 
             plt.ioff()        
             fig = plt.figure(figsize=(10, 6))
@@ -7042,7 +7086,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             data_paths = 'CCF_masks_'+data_type_gen+'/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis_det+'/'
 
             #Create directory if required
-            path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'+data_paths
+            path_loc = gen_dic['save_plot_dir']+data_paths
             if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)                 
             
             #Retrieve plot dictionary
@@ -7656,7 +7700,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('-----------------------------------')
         print('+ Input light curves')
                      
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Light_curves/Input/'
+        path_loc = gen_dic['save_plot_dir']+'Light_curves/Input/'
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
             
         #Plot for each spectral band
@@ -7805,7 +7849,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('-----------------------------------')
         print('+ Effective spectral light curves')
         
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Light_curves/Spectral/'
+        path_loc = gen_dic['save_plot_dir']+'Light_curves/Spectral/'
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
         #Visit color
@@ -7978,7 +8022,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot].update(plot_settings[key_plot]) 
         
         print('-----------------------------------')
-        print('+ Plotting 2D maps of 1D disk-integrated stellar profiles') 
+        print('+ 2D maps of 1D disk-integrated stellar profiles') 
 
         #Plot map
         sub_2D_map(key_plot,plot_dic[key_plot],plot_options[key_plot])
@@ -8001,7 +8045,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot].update(plot_settings[key_plot])         
         
         print('-----------------------------------')
-        print('+ Plotting 2D maps of residual profiles')    
+        print('+ 2D maps of residual profiles')    
 
         #Plot map
         sub_2D_map(key_plot,plot_dic[key_plot],plot_options[key_plot])
@@ -8103,7 +8147,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Plot for each visit
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options[key_plot]['visits_to_plot'][inst]): 
                 Res_data_vis = data_dic['Res'][inst][vis]
-                path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Screen_search'+inst+'_'+vis+'/'
+                path_loc = gen_dic['save_plot_dir']+'Screen_search'+inst+'_'+vis+'/'
                 if (not os_system.path.exists(path_loc)):os_system.makedirs(path_loc) 
     
                 #--------------------------------------------------------------------
@@ -8375,7 +8419,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('   > Plotting PCA')
       
         #Create directory if required
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Res_data/PCA/'
+        path_loc = gen_dic['save_plot_dir']+'Res_data/PCA/'
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
         
         #Process original visits        
@@ -8715,7 +8759,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot].update(plot_settings[key_plot])  
 
         print('-----------------------------------')
-        print('+ Plotting all intrinsic profiles in each visit')
+        print('+ All intrinsic profiles')
         sub_plot_all_prof(plot_options[key_plot],'Intr',plot_dic[key_plot])             
                         
 
@@ -8826,7 +8870,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot].update(plot_settings[key_plot])  
     
         print('-----------------------------------')
-        print('+ Plotting individual binned intrinsic spectra for each visit')
+        print('+ Individual binned intrinsic spectra')
         sub_plot_spec(plot_options[key_plot],'Intrbin',plot_dic['sp_Intrbin'])             
                         
 
@@ -8906,8 +8950,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     '''
     Plotting individual 1D intrinsic stellar profiles
     '''
-    if ('spec' in data_dic['Res']['type'].values()) and (plot_dic['sp_1D_intr']!=''):
-        key_plot = 'sp_1D_intr'
+    if (any('spec' in s for s in data_dic['Intr']['type'].values())) and (plot_dic['sp_Intr_1D']!=''):
+        key_plot = 'sp_Intr_1D'
         
         #Default settings
         plot_options=gen_plot_default(plot_options,key_plot)          
@@ -8916,8 +8960,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot].update(plot_settings[key_plot])  
 
         print('-----------------------------------')
-        print('   > Plotting individual 1D intrinsic spectra for each visit')
-        sub_plot_spec(plot_options,'sp_1D_intr',plot_dic['sp_1D_intr'])             
+        print('+ Individual 1D intrinsic spectra')
+        sub_plot_spec(plot_options[key_plot],key_plot,plot_dic[key_plot])             
           
 
 
@@ -9000,7 +9044,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('   > Plot range of properties covered by the planet-occulted regions')
         
         #Directory
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Plocc_prop/' 
+        path_loc = gen_dic['save_plot_dir']+'Plocc_prop/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
                     
         #Plot for each instrument
@@ -9378,7 +9422,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('-----------------------------------')
         print('+ Plot planet-occulted regions')
 
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Plocc_prop/' 
+        path_loc = gen_dic['save_plot_dir']+'Plocc_prop/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
         #Plot CCFs per instrument
@@ -9611,7 +9655,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #Overwrite default settings
         plot_options[key_plot].update(plot_settings[key_plot]) 
 
-        path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/System_view/' 
+        path_loc = gen_dic['save_plot_dir']+'System_view/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
          
         #--------------------------------------------

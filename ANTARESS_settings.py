@@ -15,6 +15,8 @@ from ANTARESS_systems import all_system_params
 #    - each module can be activated independently 
 #      in most modules the user can choose to calculate data (in which case it will then be automatically saved on disk) or to retrieve it (in which case the pipeline will check these data already exists)
 #      keeping all data in memory is not possible when processing e2ds, which is why the pipeline works in each module by retrieving the relevant data from the disk
+#   Required packages:
+#    - scipy, lmfit, batman-package, astropy, emcee, pathos, pandas, dace_query, statsmodels, PyAstronomy        
 #    - resampling routine: 
 # + https://obswww.unige.ch/~delisle/staging/bindensity/doc/
 #   pip install --extra-index-url https://vincent:cestpasfaux@obswww.unige.ch/~delisle/staging bindensity --upgrade
@@ -1414,7 +1416,7 @@ if __name__ == '__main__':
     #Master stellar spectrum
 
     #Calculating/retrieving
-    gen_dic['calc_DImast'] = True  # &   False
+    gen_dic['calc_DImast'] = True   &   False
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:gen_dic['calc_DImast']=True
 
     #Using stellar spectrum  
@@ -1680,7 +1682,10 @@ if __name__ == '__main__':
     #gen_dic['CCF_mask'] = '/Travaux/Radial_velocity/RV_masks/ESPRESSO_F9.fits'        #in the air 
     # gen_dic['CCF_mask'] = '/Travaux/ANTARESS/Method/Masks/Na_doublet_air.txt'        
     
-    # if gen_dic['star_name']=='WASP76':gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP76b/ESPRESSO/Analyse_David/ESPRESSO_F9.fits'
+    if gen_dic['star_name']=='WASP76':
+        # gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP76b/ESPRESSO/Analyse_David/ESPRESSO_F9.fits'
+        gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/CCF_masks_DI/ESPRESSO_binned/Relaxed_selection/CCF_mask_DI_WASP76_ESPRESSO_t10.0_air.txt'        
+        
 
     if 'HD3167_b' in gen_dic['transit_pl']:
         gen_dic['CCF_mask']['ESPRESSO']='/Travaux/Radial_velocity/RV_masks/Old_HARPN/K5_sqrt.txt'                              #in the air, old mask, unorm, w=contraste dans l'ancienne DRS
@@ -1963,7 +1968,10 @@ if __name__ == '__main__':
         if gen_dic['mock_data']:theo_dic['nsub_Dstar']=201   #201 
     if gen_dic['star_name']=='HD209458': 
         if gen_dic['mock_data']:theo_dic['nsub_Dstar']=101
-
+    # if gen_dic['star_name']=='WASP76':theo_dic['nsub_Dstar']=201
+        
+        
+        
             
     #Stellar macroturbulence
     theo_dic['mac_mode'] = None
@@ -1994,7 +2002,7 @@ if __name__ == '__main__':
         # theo_dic['nsub_Dpl']={'HD209458b':101.}    #ANTARESS I, mock, precision
         # theo_dic['nsub_Dpl']={'HD209458b':101.,'HD209458c':101.}     #ANTARESS I, mock, multi-pl
     elif gen_dic['star_name']=='WASP76':
-        theo_dic['nsub_Dpl']={'WASP76b':51.}         
+        theo_dic['nsub_Dpl']={'WASP76b':151.}    #pour gen_dic['intr_rv_corr'] assez precis      
     elif gen_dic['star_name']=='TIC61024636':theo_dic['nsub_Dpl']={'TIC61024636b':51.} 
     elif gen_dic['star_name']=='GJ436':theo_dic['nsub_Dpl']={'GJ436_b':51.} 
     elif gen_dic['star_name']=='HIP41378':theo_dic['nsub_Dpl']={'HIP41378d':51.}         
@@ -2734,6 +2742,9 @@ if __name__ == '__main__':
         gen_dic['Fbal_smooth'] = {'ESPRESSO':{'20190720':7e-5  ,'20190911':7e-5  }}    #ANTARESS I, fit vs nu, weight 0.25     
 
 
+        gen_dic['Fbal_smooth'] = {'ESPRESSO':{'20190720':2e-4  ,'20190911':3e-4  }}
+        print('ATTENTION TEST')
+
           
     elif gen_dic['star_name']=='55Cnc':          
         gen_dic['Fbal_smooth'] = {'ESPRESSO':{'20210121':8e-4,'20210124':8e-4}}        
@@ -2974,7 +2985,7 @@ if __name__ == '__main__':
     if gen_dic['star_name'] in ['WASP76','HD209458','WASP107','HAT_P11','WASP156','GJ3090','HD29291','55Cnc']:gen_dic['corr_cosm']=True # & False
 
     #Calculating/retrieving
-    gen_dic['calc_cosm']=True   &  False  
+    gen_dic['calc_cosm']=True #  &  False  
 
     #Alignment mode
     gen_dic['al_cosm']={
@@ -3324,6 +3335,143 @@ gen_dic['wig_exp_samp']={
     }      
 
 
+#%%%%% Step 3: Chromatic analysis
+#    - fitting the sampled frequency and amplitude with polynomials of nu
+#    - use this step to determine 'wig_deg_Freq' and 'wig_deg_Amp' for each component
+#    - 'comp_ids': component properties to analyze, among those sampled in 'wig_exp_samp'
+#    - 'thresh': threshold for automatic exclusion of outliers
+#    - 'plot': plot properties and their fit in each exposure
+gen_dic['wig_exp_nu_ana']={
+    'mode':False  ,     
+    'comp_ids':[1,2], 
+    'thresh':3.,  
+    'plot':True
+    } 
+
+
+#%%%%%% Frequency degree
+#    - maximum degree of polynomial frequency variations with nu
+#    - for some datasets the second order component may not be constrained by the blue bands and remain consistent with 0
+gen_dic['wig_deg_Freq'] = {comp_id:1 for comp_id in range(1,6)}
+
+
+#%%%%%% Amplitude degree
+#    - maximum degree of polynomial amplitude variations with nu
+#    - defined for each component
+gen_dic['wig_deg_Amp'] = {comp_id:2 for comp_id in range(1,6)}
+
+
+#%%%%% Step 4: Exposure fit 
+#    - fitting the spectral wiggle model to each exposure individually
+#    - 'comp_ids': components to include in the model
+#    - 'init_chrom': initialize the fit using the results of 'wig_exp_nu_ana' on the closest exposure sampled in 'wig_exp_samp'
+#                    running 'wig_exp_samp' on a selection of representative exposures sampling the wiggle variations is thus sufficient
+#                    beware to run 'wig_exp_nu_ana' with the same components used in 'wig_exp_fit'
+#    - 'freq_guess': define for each component the polynomial coefficients describing the model frequency 
+#                    used to initialize frequency values if 'init_chrom' is False
+#    - 'nit': number of fit iterations 
+#    - 'fit_method': optimization method. 
+#                    if the initialization is correct, setting to 'leastsq' is sufficient and fast
+#                    if convergence is more difficult to reach, set to 'nelder'
+#    - 'use': set to False to retrieve fits 
+#             useful to analyze their results using 'wig_exp_point_ana', and periodograms automatically produced for each exposure
+#    - 'fixed_pointpar': fix values of chosen properties ( > vis > [prop1,prop2,..]) to their model from 'wig_exp_point_ana'
+#    - 'prior_par: bound properties with a uniform prior on the chosen range (common to all exposures) informed by 'wig_exp_point_ana'
+#    - 'model_par': initialize property to its exposure value v(t) from the 'wig_exp_point_ana' model, and set a uniform prior in [ v(t)-model_par[par][0] ; v(t)+model_par[par][1] ]
+#    - 'plot': plot transmission spectra with their models, residuals, associated periodograms, and overall rms
+gen_dic['wig_exp_fit']={
+    'mode':False, 
+    'comp_ids':[1,2],  
+    'init_chrom':True,
+    'freq_guess':{
+        1:{ 'c0':3.72077571, 'c1':0., 'c2':0.},
+        2:{ 'c0':2.0, 'c1':0., 'c2':0.}},
+    'nit':20, 
+    'fit_method':'leastsq', 
+    'use':True,
+    'fixed_pointpar':{},
+    'prior_par':{},
+    'model_par':{},
+    'plot':True,
+    }     
+
+
+#%%%%% Step 5: Pointing analysis
+#    - fitting the phase, and the chromatic coefficients of frequency and amplitude, as a function of the telescope pointing coordinates  
+#    - 'source': fitting coefficients derived from the sampling ('samp') or spectral ('glob') fits 
+#    - 'thresh': threshold for automatic outlier exclusion (set to None to prevent automatic exclusion)
+#    - 'fit_range': custom fit ranges for each vis > parameter
+#    - 'stable_pointpar': parameters fitted with a constant value
+#    - 'conv_amp_phase': automatically adjust amplitude sign and phase value, which can be degenerate 
+#    - 'plot': plot properties and their fit 
+gen_dic['wig_exp_point_ana']={
+    'mode':False ,    
+    'source':'glob',
+    'thresh':3.,   
+    'fit_range':{},
+    'fit_undef':False,
+    'stable_pointpar':[],
+    'conv_amp_phase':False ,
+    'plot':True
+    } 
+
+#%%%%% Step 6: Global fit 
+#    - fitting spectro-temporal model to all exposures together
+#    - by default the model is initialized using the results from 'wig_exp_point_ana'
+#    - options:
+#    - 'fit_method': optimization method. 
+#                    if the initialization is correct, setting to 'leastsq' is sufficient and fast
+#                    if convergence is more difficult to reach, set to 'nelder'
+# + 'nit': number of fit iterations 
+# + 'comp_ids': components to include in the model
+# + 'fixed': model is fixed to the initialization or previous fit results
+# + 'reuse': set to {}, or set to given path to retrieve fit file and post-process it (fixed=True) or use it as guess (fixed=False)  
+# + 'fixed_pointpar': list of pointing parameters to be kept fixed in the fit
+# + 'fixed_par': list of parameters to be kept fixed in the fit    
+# + 'fixed_amp' and 'fixed_freq': keep amplitude or frequency models fixed for the chosen list of components
+# + 'stable_pointpar': pointing parameters fitted with a constant value
+# + 'n_save_it': save fit results every 'n_save_it' iterations
+# + 'plot_hist': cumulated periodogram over all exposures
+# + 'plot_rms': rms of pre/post-corrected data over the visit
+gen_dic['wig_vis_fit']={
+    'mode':False ,
+    'fit_method':'leastsq',   
+    'wig_fit_ratio': False,
+    'wig_conv_rel_thresh':1e-5,
+    'nit':15,
+    'comp_ids':[1,2],
+    'fixed':False, 
+    'reuse':{},
+    'fixed_pointpar':[],      
+    'fixed_par':[],
+    'fixed_amp' : [] ,
+    'fixed_freq' : [] ,
+    'stable_pointpar':[],
+    'n_save_it':1,
+    'plot_mod':True    ,
+    'plot_par_chrom':True  ,
+    'plot_chrompar_point':True  ,
+    'plot_pointpar_conv':True    ,
+    'plot_hist':True,
+    'plot_rms':True ,
+    } 
+
+#%%%% Correction
+#    - 'mode': apply correction
+#    - 'path': path to correction for each visit; leave empty to use last result from 'wig_vis_fit'
+#    - 'exp_list: exposures to be corrected for each visit; leave empty to correct all exposures 
+#    - 'comp_ids': components to include in the model; must be present in the 'wig_vis_fit' model
+#    - 'range': define the spectral range(s) over which correction should be applied (in A); leave empty to apply to the full spectrum
+#    - use plot_dic['trans_sp'] to assess the correction
+gen_dic['wig_corr'] = {
+    'mode':True   ,
+    'path':{},
+    'exp_list':{},
+    'comp_ids':[1,2],
+    'range':{},
+}
+
+
 
 
     
@@ -3334,7 +3482,7 @@ if __name__ == '__main__':
     if gen_dic['star_name'] in ['HD209458','WASP76','55Cnc','HD29291']:gen_dic['corr_wig']=True  # & False
     
     #Calculating/retrieving
-    gen_dic['calc_wig']=True  &  False  
+    gen_dic['calc_wig']=True  #&  False  
     
     #Guide shift reset
     gen_dic['wig_no_guidchange'] = []   
@@ -3641,12 +3789,7 @@ if __name__ == '__main__':
         #         }
 
 
-    #%%%%% Step 3: Chromatic analysis
-    #    - fitting the sampled frequency and amplitude with polynomials of nu
-    #    - use this step to determine 'wig_deg_Freq' and 'wig_deg_Amp' for each component
-    #    - 'comp_ids': component properties to analyze, among those sampled in 'wig_exp_samp'
-    #    - 'thresh': threshold for automatic exclusion of outliers
-    #    - 'plot': plot properties and their fit in each exposure
+    #Step 3: Chromatic analysis
     gen_dic['wig_exp_nu_ana']={
         'mode':False  ,     
         'comp_ids':[1,2], 
@@ -3656,10 +3799,7 @@ if __name__ == '__main__':
         'plot':True
         } 
 
-    #%%%%%% Frequency degree
-    #    - maximum degree of polynomial frequency variations with nu
-    #    - for some datasets the second order component may not be constrained by the blue bands and remain consistent with 0
-    gen_dic['wig_deg_Freq'] = {comp_id:2 for comp_id in range(1,6)}
+    #Frequency degree
     if gen_dic['star_name']=='55Cnc':
         gen_dic['wig_deg_Freq'][1] = 1
         gen_dic['wig_deg_Freq'][2] = 1
@@ -3672,10 +3812,7 @@ if __name__ == '__main__':
         gen_dic['wig_deg_Freq'][1] = 1  #final
         gen_dic['wig_deg_Freq'][2] = 1  #final
 
-    #%%%%%% Amplitude degree
-    #    - maximum degree of polynomial amplitude variations with nu
-    #    - defined for each component
-    gen_dic['wig_deg_Amp'] = {comp_id:3 for comp_id in range(1,6)}
+    #Amplitude degree
     if gen_dic['star_name']=='HD209458':
         # gen_dic['wig_deg_Amp'][1]=3
         gen_dic['wig_deg_Amp'][1]=2   #final
@@ -3689,24 +3826,7 @@ if __name__ == '__main__':
     
 
 
-    #%%%%% Step 4: Exposure fit 
-    #    - fitting the spectral wiggle model to each exposure individually
-    #    - 'comp_ids': components to include in the model
-    #    - 'init_chrom': initialize the fit using the results of 'wig_exp_nu_ana' on the closest exposure sampled in 'wig_exp_samp'
-    #                    running 'wig_exp_samp' on a selection of representative exposures sampling the wiggle variations is thus sufficient
-    #                    beware to run 'wig_exp_nu_ana' with the same components used in 'wig_exp_fit'
-    #    - 'freq_guess': define for each component the polynomial coefficients describing the model frequency 
-    #                    used to initialize frequency values if 'init_chrom' is False
-    #    - 'nit': number of fit iterations 
-    #    - 'fit_method': optimization method. 
-    #                    if the initialization is correct, setting to 'leastsq' is sufficient and fast
-    #                    if convergence is more difficult to reach, set to 'nelder'
-    #    - 'use': set to False to retrieve fits 
-    #             useful to analyze their results using 'wig_exp_point_ana', and periodograms automatically produced for each exposure
-    #    - 'fixed_pointpar': fix values of chosen properties ( > vis > [prop1,prop2,..]) to their model from 'wig_exp_point_ana'
-    #    - 'prior_par: bound properties with a uniform prior on the chosen range (common to all exposures) informed by 'wig_exp_point_ana'
-    #    - 'model_par': initialize property to its exposure value v(t) from the 'wig_exp_point_ana' model, and set a uniform prior in [ v(t)-model_par[par][0] ; v(t)+model_par[par][1] ]
-    #    - 'plot': plot transmission spectra with their models, residuals, associated periodograms, and overall rms
+    #Step 4: Exposure fit 
     gen_dic['wig_exp_fit']={
         'mode':False, 
         'comp_ids':[1,2],  
@@ -3857,14 +3977,7 @@ if __name__ == '__main__':
 
 
 
-    #%%%%% Step 5: Pointing analysis
-    #    - fitting the phase, and the chromatic coefficients of frequency and amplitude, as a function of the telescope pointing coordinates  
-    #    - 'source': fitting coefficients derived from the sampling ('samp') or spectral ('glob') fits 
-    #    - 'thresh': threshold for automatic outlier exclusion (set to None to prevent automatic exclusion)
-    #    - 'fit_range': custom fit ranges for each vis > parameter
-    #    - 'stable_pointpar': parameters fitted with a constant value
-    #    - 'conv_amp_phase': automatically adjust amplitude sign and phase value, which can be degenerate 
-    #    - 'plot': plot properties and their fit 
+    #Step 5: Pointing analysis
     gen_dic['wig_exp_point_ana']={
         'mode':False ,    
         # 'source':'samp',
@@ -3902,24 +4015,7 @@ if __name__ == '__main__':
 
 
 
-    #%%%%% Step 6: Global fit 
-    #    - fitting spectro-temporal model to all exposures together
-    #    - by default the model is initialized using the results from 'wig_exp_point_ana'
-    #    - options:
-    #    - 'fit_method': optimization method. 
-    #                    if the initialization is correct, setting to 'leastsq' is sufficient and fast
-    #                    if convergence is more difficult to reach, set to 'nelder'
-    # + 'nit': number of fit iterations 
-    # + 'comp_ids': components to include in the model
-    # + 'fixed': model is fixed to the initialization or previous fit results
-    # + 'reuse': set to {}, or set to given path to retrieve fit file and post-process it (fixed=True) or use it as guess (fixed=False)  
-    # + 'fixed_pointpar': list of pointing parameters to be kept fixed in the fit
-    # + 'fixed_par': list of parameters to be kept fixed in the fit    
-    # + 'fixed_amp' and 'fixed_freq': keep amplitude or frequency models fixed for the chosen list of components
-    # + 'stable_pointpar': pointing parameters fitted with a constant value
-    # + 'n_save_it': save fit results every 'n_save_it' iterations
-    # + 'plot_hist': cumulated periodogram over all exposures
-    # + 'plot_rms': rms of pre/post-corrected data over the visit
+    #Step 6: Global fit 
     gen_dic['wig_vis_fit']={
         'mode':False ,
         'fit_method':'leastsq',  
@@ -3964,13 +4060,7 @@ if __name__ == '__main__':
 
 
 
-    #%%%% Correction
-    #    - 'mode': apply correction
-    #    - 'path': path to correction for each visit; leave empty to use last result from 'wig_vis_fit'
-    #    - 'exp_list: exposures to be corrected for each visit; leave empty to correct all exposures 
-    #    - 'comp_ids': components to include in the model; must be present in the 'wig_vis_fit' model
-    #    - 'range': define the spectral range(s) over which correction should be applied (in A); leave empty to apply to the full spectrum
-    #    - use plot_dic['trans_sp'] to assess the correction
+    #Correction
     gen_dic['wig_corr'] = {
         'mode':True   ,
         'path':{},
@@ -4006,21 +4096,39 @@ if __name__ == '__main__':
 
 
 
-    ##################################################################################################
-    #%%% Module: fringing
-    ##################################################################################################
+##################################################################################################
+#%%% Module: fringing
+##################################################################################################
 
-    #%%%% Activating
+#%%%% Activating
+gen_dic['corr_fring']=False
+
+
+#%%%% Calculating/retrieving
+gen_dic['calc_fring']=True  
+
+
+#%%%% Spectral range(s) to be corrected
+gen_dic['fring_range']=[]
+
+ 
+#%%%% Plots: correction
+plot_dic['fring_corr']=''   
+
+
+if __name__ == '__main__':
+
+    #Activating
     gen_dic['corr_fring']=True    &  False    
 
-    #%%%% Calculating/retrieving
+    #Calculating/retrieving
     gen_dic['calc_fring']=True    &  False  
     
-    #%%%% Spectral range(s) to be corrected
+    #Spectral range(s) to be corrected
     gen_dic['fring_range']=[6000.,8000.]
     
  
-    #%%%% Plots: correction
+    #Plots: correction
     plot_dic['fring_corr']=''   #pdf      
     
     
@@ -4028,37 +4136,58 @@ if __name__ == '__main__':
     
     
     
+    
+    
+    
+##################################################################################################
+#%%% Module: trimming 
+##################################################################################################
 
-    ##################################################################################################
-    #%%% Module: trimming 
-    ##################################################################################################
+#%%%% Activating
+gen_dic['trim_spec']=False
 
-    #%%%% Activating
+
+#%%%% Calculating/retrieving 
+gen_dic['calc_trim_spec']=True  
+
+
+#%%%% Spectral ranges to be kept
+#    - define the spectral range(s) and orders over which spectra should be used in the pipeline
+#    - relevant if spectra are used as input
+#    - adapt the range to the steps that are activated in the pipeline. For example:
+# + spectra will usually need to be kept whole if used to compute CCFs on stellar line profiles
+# + spectra can be limited to specific regions that contain the mask lines used to compute CCFs on stellar / planetary spectra
+# + spectra can be limited to a narrow band if only a few stellar or planetary lines are studied
+#      this module should thus be used to limit spectra to the analysis range while benefitting from corrections derived from the full spectrum in previous modules
+#    - removing specific orders can be useful in complement of selecting specific spectral ranges (that can encompass several orders)
+#    - if left empty, no selection is applied  
+gen_dic['trim_range'] = []
+
+
+#%%%% Orders to be kept    
+gen_dic['trim_orders'] = {}
+
+    
+
+if __name__ == '__main__':    
+
+    #Activating
     gen_dic['trim_spec']=True     &  False
-    if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156','HD209458']:gen_dic['trim_spec']=True #  & False
+    if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156','HD209458']:gen_dic['trim_spec']=True   & False
 
-    #%%%% Calculating/retrieving 
+    #Calculating/retrieving 
     gen_dic['calc_trim_spec']=True   &  False 
 
-    #%%%% Spectral ranges to be kept
-    #    - define the spectral range(s) and orders over which spectra should be used in the pipeline
-    #    - relevant if spectra are used as input
-    #    - adapt the range to the steps that are activated in the pipeline. For example:
-    # + spectra will usually need to be kept whole if used to compute CCFs on stellar line profiles
-    # + spectra can be limited to specific regions that contain the mask lines used to compute CCFs on stellar / planetary spectra
-    # + spectra can be limited to a narrow band if only a few stellar or planetary lines are studied
-    #      this module should thus be used to limit spectra to the analysis range while benefitting from corrections derived from the full spectrum in previous modules
-    #    - removing specific orders can be useful in complement of selecting specific spectral ranges (that can encompass several orders)
-    #    - if left empty, no selection is applied  
-    gen_dic['trim_range'] = []
+
+    #Spectral ranges to be kept
     # gen_dic['trim_range'] = [ [3200.,5160.],[5250.,6800.],[6950.,7150.],[7300.,7550.],[7700.,8500.] ]
     # gen_dic['trim_range'] = [ [4500.,4600.] ] 
     # gen_dic['trim_range'] = [ [3700.,3850.] ]
     # gen_dic['trim_range'] = [ [5700.,6100.] ]  #Na doublet
     # gen_dic['trim_range'] = [ [5875.,5897.] ]
 
-    #%%%% Orders to be kept    
-    gen_dic['trim_orders'] = {}
+
+    #Orders to be kept    
     # if gen_dic['star_name']=='HD3167': 
     #     gen_dic['trim_orders'] = {'ESPRESSO':list(range(20,170))}       #remove bluest orders
     if gen_dic['star_name'] in ['WASP107']:
@@ -4083,28 +4212,42 @@ if __name__ == '__main__':
 
 
 
+##################################################################################################
+#%% Module: CCF conversion for disk-integrated spectra
+#    - before spectra are aligned, but after they have been corrected for systematics, to get data comparable to standard DRS outputs  
+#    - every operation afterwards will be performed on those profiles 
+#    - applied to input data in spectral mode
+##################################################################################################        
 
-    ##################################################################################################
-    #%% Module: CCF conversion for disk-integrated spectra
-    #    - before spectra are aligned, but after they have been corrected for systematics, to get data comparable to standard DRS outputs  
-    #    - every operation afterwards will be performed on those profiles 
-    #    - applied to input data in spectral mode
-    ##################################################################################################        
+#%%% Activating
+gen_dic['DI_CCF'] = False
 
-    #%%% Activating
+    
+#%%% Calculating/retrieving
+gen_dic['calc_DI_CCF']= False    
+
+
+#%%% Radial velocity table
+#    - define for raw CCFs in the original rest frame
+#      the table will be shifted automatically into the star rest frame, and used for local and atmospheric CCFs
+#    - set dRV to None to use instrumental resolution
+#      these CCFs will not be screened, so be careful about the selected resolution (lower than instrumental will introduce correlations)
+gen_dic['start_RV']=-100.    
+gen_dic['end_RV']=100.
+gen_dic['dRV']=None  
+
+
+
+if __name__ == '__main__':   
+
+    #Activating
     gen_dic['DI_CCF'] = True   &  False
     if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156','GJ3090','55Cnc']:gen_dic['DI_CCF'] = True  # & False
         
-    #%%% Calculating/retrieving
+    #Calculating/retrieving
     gen_dic['calc_DI_CCF']=True  &  False      
 
-    #%%% Radial velocity table
-    #    - define for raw CCFs in the original rest frame
-    #      the table will be shifted automatically into the star rest frame, and used for local and atmospheric CCFs
-    #    - set dRV to None to use instrumental resolution
-    #      these CCFs will not be screened, so be careful about the selected resolution (lower than instrumental will introduce correlations)
-    gen_dic['start_RV']=-100.    
-    gen_dic['end_RV']=100.
+    #Radial velocity table
     # gen_dic['dRV']=0.5    #res. ESPRESSO, EXPRES
     # gen_dic['dRV']=0.82   #res. HARPN 
     if gen_dic['star_name']=='HD3167':   
@@ -4144,7 +4287,6 @@ if __name__ == '__main__':
 
 
 
-
     
 
 
@@ -4158,7 +4300,7 @@ if __name__ == '__main__':
     gen_dic['corr_line_prof']=True   &   False
     if gen_dic['star_name'] in ['Kepler68','HAT_P33','HD89345','HAT_P49','WASP107','WASP166','HAT_P11','WASP156','Kepler25','55Cnc']:gen_dic['corr_line_prof']=True   
     # if gen_dic['star_name'] in ['HD189733']:gen_dic['corr_line_prof']=True 
-    if gen_dic['star_name'] in ['WASP43']:gen_dic['corr_line_prof']=True 
+    # if gen_dic['star_name'] in ['WASP43']:gen_dic['corr_line_prof']=True 
     
     # gen_dic['corr_line_prof']= False  
     # print('ATTENTION')
@@ -4703,7 +4845,7 @@ if __name__ == '__main__':
         data_dic['DI']['cont_range']['ESPRESSO']=[[sysguess-80.,sysguess-25.],[sysguess+25.,sysguess+80.]]        
     #NIRPS
     elif gen_dic['star_name']=='WASP43':
-        sysguess = -13.58810
+        sysguess = 30.
         data_dic['DI']['cont_range']['NIRPS_HE']=[[sysguess-100.,sysguess-7.],[sysguess+7.,sysguess+100.]]      
     elif gen_dic['star_name']=='L98_59':
         sysguess = -15.834
@@ -5840,7 +5982,7 @@ if __name__ == '__main__':
         gen_dic['calc_align_DI']=True 
     if gen_dic['star_name'] in ['HD209458','WASP76']:  
         gen_dic['align_DI']=True    
-        gen_dic['calc_align_DI']=True #  & False                   
+        gen_dic['calc_align_DI']=True  # & False                   
 
     
     #%%% Systemic velocity 
@@ -6323,8 +6465,8 @@ if __name__ == '__main__':
         data_dic['DI']['sysvel']['NIRPS_HA']={'20221202':0.}
         data_dic['DI']['sysvel']['NIRPS_HE']={'20221201':0.}
     elif gen_dic['star_name']=='WASP43':
-        data_dic['DI']['sysvel']['NIRPS_HE']={'20230119':-13.590977}  #From RVres
-        data_dic['DI']['sysvel']['NIRPS_HE']={'20230119':-13.6597+2.13964e-2}  #From RVres, trend-corr
+        data_dic['DI']['sysvel']['NIRPS_HE']={'20230119':-13.590977*0.}  #From RVres
+        data_dic['DI']['sysvel']['NIRPS_HE']={'20230119':(-13.6597+2.13964e-2)*0.}  #From RVres, trend-corr
     elif gen_dic['star_name']=='L98_59':
         data_dic['DI']['sysvel']['NIRPS_HE']={'20230411':-15.843245}  #From RVres
     elif gen_dic['star_name']=='GJ1214':
@@ -6467,7 +6609,7 @@ if __name__ == '__main__':
 
     if gen_dic['star_name'] in ['HD209458','WASP76']:
         gen_dic['flux_sc']=True        
-        gen_dic['calc_flux_sc']=True  # & False     
+        gen_dic['calc_flux_sc']=True #  & False     
         
 
     #%%% Scaling disk-integrated profiles
@@ -7681,10 +7823,12 @@ if __name__ == '__main__':
     if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214']:gen_dic['res_data']=True
 
     #%%% Calculating/retrieving 
-    gen_dic['calc_res_data'] = True   &  False
+    gen_dic['calc_res_data'] = True  # &  False
+    if gen_dic['star_name'] in ['HD209458','WASP76']:gen_dic['calc_res_data']=True    #&False
+
 
     #%%% Multi-threading
-    gen_dic['nthreads_res_data']= 14
+    gen_dic['nthreads_res_data']= 2
 
     #%%% In-transit restriction
     #    - limit the extraction of residual profiles to in-transit exposures
@@ -7857,15 +8001,16 @@ if __name__ == '__main__':
 
     #%%% Calculating
     gen_dic['intr_data'] = True    &  False
-    # if (gen_dic['star_name'] in ['WASP76','HD209458','55Cnc']) and (gen_dic['type']['ESPRESSO']=='spec2D'):gen_dic['intr_data'] = False 
+    if (gen_dic['star_name'] in ['WASP76','HD209458']) and (gen_dic['type']['ESPRESSO']=='spec2D'):gen_dic['intr_data'] = True  #& False
     if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214']:gen_dic['intr_data']=True
     
     #%%% Calculating/retrieving
-    gen_dic['calc_intr_data'] = True #  &  False  
+    gen_dic['calc_intr_data'] = True  # &  False  
 
     #%%% Correcting for relative chromatic shift
     #    - for spectral data and chromatic occultation
-    gen_dic['intr_rv_corr'] = True #  &  False  
+    #    - negligible, except maybe for planets with strong variations in broadband radius around fast rotators
+    gen_dic['intr_rv_corr'] = True   &  False  
 
 
     #%%% Plot settings
@@ -8041,10 +8186,10 @@ if __name__ == '__main__':
 
     #%%% Activating
     #    - required for some of the operations afterwards
-    gen_dic['align_Intr'] = True   &  False
+    gen_dic['align_Intr'] = True #  &  False
  
     #%%% Calculating/retrieving
-    gen_dic['calc_align_Intr'] = True  # &  False  
+    gen_dic['calc_align_Intr'] = True #  &  False  
 
     #%%% Alignment mode
     #    - align profiles by their measured ('meas') or theoretical ('theo') RVs 
@@ -8052,8 +8197,8 @@ if __name__ == '__main__':
     #    - if several planets are transiting in a given visit, use data_dic['Intr']['align_ref_pl']={inst:{vis}:{ref_pl}} to indicate which planet should be used
     data_dic['Intr']['align_mode']='theo'
     
-    #%%% Plots: all aligned profiles 
-    #    - plotting aligned intrinsic stellar profiles together
+    #%%% Plots: all profiles 
+    #    - plotting intrinsic stellar profiles together
     plot_dic['all_intr_data']=''   #pdf
 
 
@@ -8071,20 +8216,20 @@ if __name__ == '__main__':
     ##################################################################################################
 
     #%%% Activating
-    gen_dic['spec_1D_Intr']=True  & False
+    gen_dic['spec_1D_Intr']=True # & False
 
     #%%% Calculating/retrieving 
-    gen_dic['calc_spec_1D_Intr']=True   # &  False   
+    gen_dic['calc_spec_1D_Intr']=True  #  &  False   
 
 
     #%%% Multi-threading
-    gen_dic['nthreads_spec_1D_Intr']= 14
+    gen_dic['nthreads_spec_1D_Intr']= 4
 
 
     #%%% 1D spectral table
     #    - see DI module for details
     data_dic['Intr']['spec_1D_prop']={
-        'ESPRESSO':{'dlnw':1./5000.,'w_st':3000.,'w_end':8000.}}    
+        'ESPRESSO':{'dlnw':0.01/6000.,'w_st':3000.,'w_end':9000.}}   
 
     #%%% Plot settings
     
@@ -8092,7 +8237,7 @@ if __name__ == '__main__':
     plot_dic['map_Intr_1D']=''   #'png
 
     #%%%% Individual spectra
-    plot_dic['sp_1D_intr']=''     #pdf         
+    plot_dic['sp_Intr_1D']='pdf'     #pdf         
     
     
     
@@ -8119,13 +8264,16 @@ if __name__ == '__main__':
     gen_dic['calc_Intrbin']=True  #  &  False 
     gen_dic['calc_Intrbinmultivis']=True  #  &  False 
 
+    if gen_dic['star_name'] in ['HD209458','WASP76']:
+        gen_dic['Intrbinmultivis']=True #& False    
+        gen_dic['calc_Intrbinmultivis']= True # & False    
+
 
     #Visits to be binned
     #    - for the 'Intrbinmultivis' option
     #    - leave empty to use all visits
     data_dic['Intr']['vis_in_bin']={}  
-    if gen_dic['transit_pl']=='WASP76b':data_dic['Intr']['vis_in_bin']={'ESPRESSO':['2018-09-03','2018-10-31']} 
-    elif gen_dic['transit_pl']=='GJ9827d':data_dic['Intr']['vis_in_bin']={'HARPS':['2018-08-18','2018-09-18']} 
+    if gen_dic['transit_pl']=='GJ9827d':data_dic['Intr']['vis_in_bin']={'HARPS':['2018-08-18','2018-09-18']} 
     elif gen_dic['transit_pl']=='GJ9827b':data_dic['Intr']['vis_in_bin']={'HARPS':[' 2018-08-04','2018-08-15','2018-09-18','2018-09-19']} 
 
     #Exposures to be binned
@@ -8179,9 +8327,11 @@ if __name__ == '__main__':
                 '20120315':range(1,25),
             },            
             }
-    
-    elif gen_dic['transit_pl']=='WASP76b':
-        data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'2018-09-03':range(1,21),'2018-10-31':range(1,38)}}
+
+    if gen_dic['star_name']=='HD209458':
+        print('idx_in_bin TBD')
+    if gen_dic['star_name']=='WASP76':
+        data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20180902':range(1,20),'20181030':range(3,35)}}    #for mask generation
     if gen_dic['star_name']=='HD3167': 
         data_dic['Intr']['idx_in_bin']['ESPRESSO']={'2019-10-09':range(1,16)}
 
@@ -8229,8 +8379,8 @@ if __name__ == '__main__':
     data_dic['Intr']['dim_bin']='phase' 
     if gen_dic['star_name'] in ['HAT_P3','Kepler25','Kepler68','HAT_P33','K2_105','HD89345','Kepler63','HAT_P49','WASP47','WASP107','WASP166','HAT_P11','WASP156','HD106315']:
         data_dic['Intr']['dim_bin']='r_proj'
-
-    
+    if gen_dic['star_name'] in ['HD209458','WASP76']:
+        data_dic['Intr']['dim_bin']='r_proj'    
     
     
     
@@ -8239,30 +8389,32 @@ if __name__ == '__main__':
     #    - bins are defined for each instrument/visit
     #    - bins can be defined
     # + manually: indicate lower/upper bin boundaries (ordered)
-    # + automatically : indicate total range and number of bins   
-    if gen_dic['transit_pl']=='WASP76b':   
-        data_dic['Intr']['prop_bin']={
+    # + automatically : indicate total range and number of bins  
+    #    - leave empty for a single master to be calculated over all selected exposures
+    data_dic['Intr']['prop_bin']={}
+    # if gen_dic['transit_pl']=='WASP76b':     #leave undefined for default value and CCF mask generation 
+    #     data_dic['Intr']['prop_bin']={
    
-            'ESPRESSO':{'2018-09-03':{'bin_low':np.arange(-0.03,0.03,0.01),'bin_high':np.arange(-0.03,0.03,0.01)+0.01},
-                        '2018-10-31':{'bin_low':np.arange(0.,0.03,0.01),'bin_high':np.arange(0.,0.03,0.01)+0.01},
-                        'binned':{'bin_low':np.arange(0.,0.03,0.01),'bin_high':np.arange(0.,0.03,0.01)+0.01}}
+    #         'ESPRESSO':{'2018-09-03':{'bin_low':np.arange(-0.03,0.03,0.01),'bin_high':np.arange(-0.03,0.03,0.01)+0.01},
+    #                     '2018-10-31':{'bin_low':np.arange(0.,0.03,0.01),'bin_high':np.arange(0.,0.03,0.01)+0.01},
+    #                     'binned':{'bin_low':np.arange(0.,0.03,0.01),'bin_high':np.arange(0.,0.03,0.01)+0.01}}
             
 
-            # 'ESPRESSO':{'2018-09-03':{'bin_range':[-0.035,0.036],'nbins':3},
-            #             '2018-10-31':{'bin_range':[0.,0.036],'nbins':3}} 
+    #         # 'ESPRESSO':{'2018-09-03':{'bin_range':[-0.035,0.036],'nbins':3},
+    #         #             '2018-10-31':{'bin_range':[0.,0.036],'nbins':3}} 
             
-            #For master DI / intr comparison, phase
-            #     # 'ESPRESSO':{'2018-09-03':{'bin_low':np.arange(-0.05,0.05,0.0125),'bin_high':np.arange(-0.05,0.05,0.0125)+0.0125},
-            #     #             '2018-10-31':{'bin_low':np.arange(-0.05,0.05,0.0125),'bin_high':np.arange(-0.05,0.05,0.0125)+0.0125}}       
-            #     # 'ESPRESSO':{'2018-09-03':{'bin_low':[-0.05,0.],'bin_high':[0.,0.05]},
-            #     #             '2018-10-31':{'bin_low':[-0.05,0.],'bin_high':[0.,0.05]}}    
-            #     # 'ESPRESSO':{'2018-09-03':{'bin_low':[-0.05],'bin_high':[0.05]},
-            #     #             '2018-10-31':{'bin_low':[-0.05],'bin_high':[0.05]}}     
+    #         #For master DI / intr comparison, phase
+    #         #     # 'ESPRESSO':{'2018-09-03':{'bin_low':np.arange(-0.05,0.05,0.0125),'bin_high':np.arange(-0.05,0.05,0.0125)+0.0125},
+    #         #     #             '2018-10-31':{'bin_low':np.arange(-0.05,0.05,0.0125),'bin_high':np.arange(-0.05,0.05,0.0125)+0.0125}}       
+    #         #     # 'ESPRESSO':{'2018-09-03':{'bin_low':[-0.05,0.],'bin_high':[0.,0.05]},
+    #         #     #             '2018-10-31':{'bin_low':[-0.05,0.],'bin_high':[0.,0.05]}}    
+    #         #     # 'ESPRESSO':{'2018-09-03':{'bin_low':[-0.05],'bin_high':[0.05]},
+    #         #     #             '2018-10-31':{'bin_low':[-0.05],'bin_high':[0.05]}}     
             
-            #For master DI / intr comparison, xp_abs           
-            #     # 'ESPRESSO':{'2018-09-03':{'bin_low':[0.],'bin_high':[1.]},'2018-10-31':{'bin_low':[0.],'bin_high':[1.]}} 
-            #     'ESPRESSO':{'2018-09-03':{'bin_low':[0.,0.5],'bin_high':[0.5,1.]},'2018-10-31':{'bin_low':[0.,0.5],'bin_high':[0.5,1.]}}             
-            }
+    #         #For master DI / intr comparison, xp_abs           
+    #         #     # 'ESPRESSO':{'2018-09-03':{'bin_low':[0.],'bin_high':[1.]},'2018-10-31':{'bin_low':[0.],'bin_high':[1.]}} 
+    #         #     'ESPRESSO':{'2018-09-03':{'bin_low':[0.,0.5],'bin_high':[0.5,1.]},'2018-10-31':{'bin_low':[0.,0.5],'bin_high':[0.5,1.]}}             
+    #         }
 
     if gen_dic['star_name']=='HD3167':  
         data_dic['Intr']['prop_bin']={
@@ -8274,7 +8426,7 @@ if __name__ == '__main__':
             'ESPRESSO':{'2019-10-09':{'bin_range':[-0.05,0.05],'nbins':1}},   #phase
             # 'ESPRESSO':{'2019-10-09':{'bin_range':[-0.1,0.25],'nbins':1}}   #xp_abs
             # 'ESPRESSO':{'2019-10-09':{'bin_range':[0.3,1.],'nbins':1}}   #xp_abs
-            # 'ESPRESSO':{'2019-10-09':{'bin_range':[0.,1.],'nbins':1}}     #rproj, xp_abs 
+            # 'ESPRESSO':{'2019-10-09':{'bin_range':[0.,1.],'nbins':1}}     #r_proj, xp_abs 
 
             'HARPN':{'2016-10-01':{'bin_range':[-0.5,0.5],'nbins':1}}   #phase
             
@@ -12318,8 +12470,8 @@ if __name__ == '__main__':
     # + Intr: for the definition of intrinsic stellar profiles and associated properties (CCF continuum for fits and errors)
     #    - planetary ranges can be excluded even if calc_pl_atm = False and no atmospheric signal is extracted
     data_dic['Atm']['no_plrange']=[]    
-    if gen_dic['transit_pl']=='WASP121b':data_dic['Atm']['no_plrange']=['DI_CCF','DI_Mast','Res_CCF','Intr']
-    elif gen_dic['transit_pl']=='WASP76b':data_dic['Atm']['no_plrange']=['DI_CCF','DI_Mast','Res_CCF','Intr']
+    if gen_dic['star_name']=='WASP121':data_dic['Atm']['no_plrange']=['DI_CCF','DI_Mast','Res_CCF','Intr']
+    elif gen_dic['star_name']=='WASP76':data_dic['Atm']['no_plrange']=['DI_CCF','DI_Mast','Res_CCF','Intr']
     elif gen_dic['star_name']=='HAT_P49':
         data_dic['Atm']['no_plrange']=['DI_CCF','DI_Mast','Intr']
         data_dic['Atm']['no_plrange']=['Intr']
@@ -12400,7 +12552,7 @@ if __name__ == '__main__':
     #    - can be defined for the purpose of the plots (set to None to prevent upload)
     data_dic['Atm']['CCF_mask'] = None
     # data_dic['Atm']['CCF_mask'] = '/Travaux/ANTARESS/WASP76b/Data/mask_different_alement_WASP76/mask_WASP76_Fe_2.csv'     #in the air 
-    # if gen_dic['star_name']=='WASP76':data_dic['Atm']['CCF_mask'] = '/Travaux/Radial_velocity/RV_masks/New_meanC2unity/ESPRESSO_new_F9.fits'        #in the air, new mask   
+    if gen_dic['star_name']=='WASP76':data_dic['Atm']['CCF_mask'] = '/Users/bourrier/Travaux/Radial_velocity/RV_masks/ESPRESSO/New_meanC2unity/ESPRESSO_new_F9.fits'        #in the air, new mask   ; ANTARESS I exlusion
     # data_dic['Atm']['CCF_mask']  = '/Travaux/ANTARESS/Method/Masks/Na_doublet_air.txt'
 
     #Use mask weights on atmospheric CCF
