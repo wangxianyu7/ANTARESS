@@ -11,7 +11,7 @@ from PyAstronomy import pyasl
 import bindensity as bind
 import matplotlib.pyplot as plt
 from ANTARESS_routines import par_formatting,model_par_names,check_data,def_weights_spatiotemp_bin,resample_func,calc_binned_prof,sub_def_bins,sub_calc_bins,def_edge_tab,\
-    return_resolv,spec_dopshift,return_FWHM_inst,get_timeorbit,new_compute_CCF,def_contacts,check_CCF_mask_lines,convol_prof,calc_spectral_cont,air_index
+    return_resolv,spec_dopshift,return_FWHM_inst,get_timeorbit,new_compute_CCF,def_contacts,check_CCF_mask_lines,convol_prof,calc_spectral_cont,air_index,pre_calc_binned_prof
 from astropy.io import fits
 from scipy.interpolate import interp1d,UnivariateSpline,CubicSpline
 import pickle
@@ -1154,6 +1154,9 @@ Flux balance correction
       finally we apply a global correction based on the ratio between the visit master and a reference, measured at lower resolution than with the visit master
       this is because deriving directly the correction from the ratio between exposure and instrument master introduces local variations (possibly due to the changes in 
  line shape between epochs) that bias the fitted model. The two-step approach above, where the visit-to-reference correction is measured at low-resolution and high SNR, is more stable
+    - measuring the stellar continuum on the master and individual spectra, to then do their ratio and measure the flux balance, is not a better solution because to capture well enough the 
+ continuum profile the rollin pin has to be small enough, in whihc case it becomes sensitive to the wiggles. They could then be smoothed out in the continuum ratio, or through a fit with a smoothed or low-order 
+ polynomial, but then it becomes equivalent to the present solution
 '''
 def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
     txt_print = '   > Correcting spectra for'
@@ -1405,7 +1408,7 @@ def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,
 
                 #Defining bins
                 var_ord = data_exp['cov'][iord][0][::-1]/mean_gdet_exp[iord]**2. 
-                bin_bd,raw_loc_dic = sub_def_bins(Fbal_bin_nu_loc,cond_fit_all[iord][::-1],low_nu_exp[iord],high_nu_exp[iord],dnu_exp[iord],nu_bins_exp[iord],count_exp[iord],Mstar_loc=count_mast_exp[iord],var1D_loc=var_ord)
+                bin_bd,raw_loc_dic = sub_def_bins(Fbal_bin_nu_loc,np_where1D(cond_fit_all[iord][::-1]),low_nu_exp[iord],high_nu_exp[iord],dnu_exp[iord],nu_bins_exp[iord],count_exp[iord],Mstar_loc=count_mast_exp[iord],var1D_loc=var_ord)
       
                 #Process bins
                 nfilled_bins=0
@@ -1416,7 +1419,6 @@ def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,
 
                 #Store index of order to which the bin belongs to
                 bin_exp_dic['idx_ord_bin'] = np.append(bin_exp_dic['idx_ord_bin'],np.repeat(iord,nfilled_bins))
-
 
             #Fitted values
             #    - we divide by the exposure-to-master flux ratio C(t), so that only the relative flux balance around the mean exposure flux is corrected for 
@@ -2068,7 +2070,7 @@ def mask_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop):
                                                              gen_dic['contin_smooth_win'][inst],gen_dic['contin_locmax_win'][inst],gen_dic['contin_stretch'][inst],gen_dic['contin_pinR'][inst],data_com['min_edge_ord'][0],dic_sav,gen_dic['permpeak_nthreads'])
 
             #Flag pixels with spurious positive flux
-            common_args = (nord_corr_list,data_vis['nspec'],data_vis['proc_DI_data_paths'],ord_corr_list,permpeak_edges,inst,gen_dic['permpeak_range_corr'],gen_dic['permpeak_outthresh'],gen_dic['contin_peakwin'][inst],range_proc_ord,mean_flux_mast,data_inst['nord'],cont_func_dic)
+            common_args = (nord_corr_list,data_vis['nspec'],data_vis['proc_DI_data_paths'],ord_corr_list,permpeak_edges,inst,gen_dic['permpeak_range_corr'],gen_dic['permpeak_outthresh'],gen_dic['permpeak_peakwin'][inst],range_proc_ord,mean_flux_mast,data_inst['nord'],cont_func_dic)
             if gen_dic['permpeak_nthreads']>1:cond_bad_all,cond_undef_all,tot_Fr_all=para_permpeak_flag(permpeak_flag,gen_dic['permpeak_nthreads'],len(exp_corr_list),[exp_corr_list,data_prop[inst][vis]['BERV'][exp_corr_list]],common_args)                           
             else:cond_bad_all,cond_undef_all,tot_Fr_all=permpeak_flag(exp_corr_list,data_prop[inst][vis]['BERV'][exp_corr_list],*common_args) 
             if (plot_dic['permpeak_corr']!='') or (plot_dic['sp_raw']!=''):
@@ -2155,7 +2157,7 @@ def para_permpeak_flag(func_input,nthreads,n_elem,y_inputs,common_args):
     pool_proc.join() 				
     return y_output
 
-def permpeak_flag(iexp_group,BERV_group,nord_corr_list,nspec,proc_DI_data_paths,ord_corr_list,permpeak_edges,inst,permpeak_range_corr,permpeak_outthresh,contin_peakwin,range_proc_ord,mean_flux_mast,nord,cont_func_dic):
+def permpeak_flag(iexp_group,BERV_group,nord_corr_list,nspec,proc_DI_data_paths,ord_corr_list,permpeak_edges,inst,permpeak_range_corr,permpeak_outthresh,permpeak_peakwin,range_proc_ord,mean_flux_mast,nord,cont_func_dic):
     dim_all = [len(iexp_group),nord_corr_list,nspec]
     cond_bad_all = np.zeros(dim_all,dtype=bool)
     cond_undef_all = np.zeros(dim_all,dtype=bool)
@@ -2201,7 +2203,7 @@ def permpeak_flag(iexp_group,BERV_group,nord_corr_list,nspec,proc_DI_data_paths,
             #Identify pixels deviating from continuum beyond threshold and chosen range around them
             #    - only for positive deviations, or it would flag telluric and stellar absorption lines
             cond_bad_ord = (res_cont_ord > permpeak_outthresh*np.sqrt(data_exp['cov'][iord][0,cond_proc_ord]))        
-            hn_exc = int(np.round(0.5*(contin_peakwin/np.mean(dcen_bins))))
+            hn_exc = int(np.round(0.5*(permpeak_peakwin/np.mean(dcen_bins))))
             cond_badrange_ord = deepcopy(cond_bad_ord)
             for j in range(1,hn_exc):cond_badrange_ord  |= np.roll(cond_bad_ord,-j) | np.roll(cond_bad_ord,j)
             cond_bad_all[isub_exp,isub_ord,np_where1D(cond_proc_ord)[cond_badrange_ord]] = True 
@@ -5989,7 +5991,6 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
             data_dic_exp[vis]['cond_def']=np.zeros(data_vis['dim_all'], dtype=bool)
             data_dic_exp[vis]['cov'] = np.zeros(data_vis['dim_sp'], dtype=object)
             data_dic_exp[vis]['edge_bins']=np.zeros(data_vis['dim_sp']+[data_vis['nspec']+1], dtype=float)*np.nan
-            data_dic_exp[vis]['SNRs']=np.zeros([data_vis['n_in_visit'],gen_dic[inst]['norders_instru']],dtype=float)*np.nan
             if data_vis['tell_sp']:data_dic_exp[vis]['tell']=np.zeros(data_vis['dim_all'], dtype=float)
             for iexp in range(data_vis['n_in_visit']):               
                 data_exp = np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item()                  
@@ -6052,18 +6053,18 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
                 data_inst['dim_exp'][1] = data_inst['nspec']   
         
         elif (data_inst['type']=='spec2D'):
-            cond_ord_kept = np.repeat(True,data_inst['nord'])
+            cond_ord_kept = np.repeat(True,data_inst['nord'])    #condition relative to current tables
         
         #Reduce 2D tables to common defined, and selected, orders over all visits
         #    - an order has been kept if it is defined in at least one visit
         if (data_inst['type']=='spec2D'):
-            idx_ord_kept = np_where1D(cond_ord_kept)
+            idx_ord_kept = np_where1D(cond_ord_kept)             #indexes relative to current tables
             if (inst in gen_dic['trim_orders']) and (len(gen_dic['trim_orders'][inst])>0):
                 idx_ord_kept = np.intersect1d(idx_ord_kept,gen_dic['trim_orders'][inst])
             if len(idx_ord_kept)<data_inst['nord']:
                 data_inst['nord'] = len(idx_ord_kept)  
                 data_inst['nord_spec']=deepcopy(data_inst['nord'])     
-                gen_dic[inst]['order_range'] = np.intersect1d(gen_dic[inst]['order_range'],idx_ord_kept,return_indices=True)[2] 
+                gen_dic[inst]['orders4ccf'] = gen_dic[inst]['orders4ccf'][idx_ord_kept]
                 data_inst['idx_ord_ref'] = np.array(data_inst['idx_ord_ref'])[idx_ord_kept]
                 for key in ['cen_bins','edge_bins']:
                     data_com_inst[key] = np.take(data_com_inst[key],idx_ord_kept,axis=0)    
@@ -6081,7 +6082,7 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
         #Saving modified data and updating paths
         data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_com' 
         np.savez_compressed(data_inst['proc_com_data_path'],data = data_com_inst,allow_pickle=True)    
-        np.savez(gen_dic['save_data_dir']+'Corr_data/Trim/DimTrimmed_'+inst,nord = data_inst['nord'],nspec = data_inst['nspec'],dim_exp = data_inst['dim_exp'],order_range = gen_dic[inst]['order_range'],idx_ord_ref=data_inst['idx_ord_ref'],nord_spec=data_inst['nord_spec'])  
+        np.savez(gen_dic['save_data_dir']+'Corr_data/Trim/DimTrimmed_'+inst,nord = data_inst['nord'],nspec = data_inst['nspec'],dim_exp = data_inst['dim_exp'],orders4ccf = gen_dic[inst]['orders4ccf'],idx_ord_ref=data_inst['idx_ord_ref'],nord_spec=data_inst['nord_spec'])  
         for vis in data_inst['visit_list']:
             data_vis=data_inst[vis]
             data_vis['proc_DI_data_paths'] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_'
@@ -6106,7 +6107,7 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
         data_load = np.load(gen_dic['save_data_dir']+'Corr_data/Trim/DimTrimmed_'+inst+'.npz')
         data_inst['dim_exp'] = list(data_load['dim_exp'])
         for key in ['nord','nspec','idx_ord_ref','nord_spec']:data_inst[key]=data_load[key]
-        gen_dic[inst]['order_range'] = data_load['order_range']                 
+        gen_dic[inst]['orders4ccf'] = data_load['orders4ccf']                 
         for vis in data_inst['visit_list']: 
             data_vis=data_inst[vis]
             data_vis['proc_com_data_paths'] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_com'

@@ -187,8 +187,8 @@ if __name__ == '__main__':
     # gen_dic['star_name']='WASP121'
     #gen_dic['star_name']='KELT9'
     # gen_dic['star_name']='WASP127' 
-    gen_dic['star_name']='HD209458' 
-    # gen_dic['star_name']='WASP76'        
+    # gen_dic['star_name']='HD209458' 
+    gen_dic['star_name']='WASP76'        
     # gen_dic['star_name']='Corot7' 
     # gen_dic['star_name']='Nu2Lupi' 
     # gen_dic['star_name']='GJ9827' 
@@ -749,7 +749,7 @@ gen_dic['DACE_sp'] = False
 #    - if available
 #    - for each visit set the field to 'all' for all orders to be replaced by their sky-corrected version, or by a list of orders otherwise
 #      leave empty to use fiber-A data
-#    - format is {inst:{vis:[iexp] or 'all'}}
+#    - format is {inst:{vis:[iord] or 'all'}} where iord are original order indexes
 gen_dic['fibB_corr']={}
     
 
@@ -842,8 +842,8 @@ plot_dic['DImast']=''
 
 #----------------------------------------------
 #%%% Continuum settings  
-#    - continuum of disk-integrated stellar spectrum
-#    - used in order normalization and persistent peak masking
+#    - continuum of stellar spectrum
+#    - used in persistent peak masking and CCF mask generation
 #----------------------------------------------
 
 #%%%% Rolling window for peak exclusion
@@ -1438,24 +1438,32 @@ if __name__ == '__main__':
 
     #Rolling window for peak exclusion
     gen_dic['contin_roll_win'] = {'CARMENES_VIS':5}  
-    if gen_dic['star_name'] in ['WASP76','HD209458']:gen_dic['contin_roll_win'] = {'ESPRESSO':2}  
+    if gen_dic['star_name'] in ['WASP76','HD209458']:
+        gen_dic['contin_roll_win'] = {'ESPRESSO':2}  
         
     #Smoothing window
     gen_dic['contin_smooth_win']={'CARMENES_VIS':0.5}
-    if gen_dic['star_name'] in ['WASP76','HD209458']:gen_dic['contin_smooth_win'] = {'ESPRESSO':0.3}  
-    
+    if gen_dic['star_name'] in ['WASP76','HD209458']:
+        gen_dic['contin_smooth_win'] = {'ESPRESSO':0.3}  
+        gen_dic['contin_smooth_win'] = {'ESPRESSO':15.}   #Test Intr CCF masks : lower than 0.3 is worse, 15 smoohts a lot but works best on the lower S/R data
+        
     #Local maxima window
     gen_dic['contin_locmax_win']={'CARMENES_VIS':0.3}
-    if gen_dic['star_name'] in ['WASP76','HD209458']:gen_dic['contin_locmax_win'] = {'ESPRESSO':0.1}  
-    
+    if gen_dic['star_name'] in ['WASP76','HD209458']:
+        gen_dic['contin_locmax_win'] = {'ESPRESSO':0.1}  
+        # gen_dic['contin_locmax_win'] = {'ESPRESSO':0.05}   #Test Intr CCF masks  : 0.5 worse than 0.1, 0.05 no clear change
+        
     #Flux/wavelength stretching
     gen_dic['contin_stretch']={'CARMENES_VIS':10}    
-    if gen_dic['star_name'] in ['WASP76','HD209458']:gen_dic['contin_stretch'] = {'ESPRESSO':15}  
-    
+    if gen_dic['star_name'] in ['WASP76','HD209458']:
+        gen_dic['contin_stretch'] = {'ESPRESSO':15}  
+        # gen_dic['contin_stretch'] = {'ESPRESSO':5}   #Test Intr CCF masks 
+        
     #Rolling pin radius
     gen_dic['contin_pinR']={'CARMENES_VIS':5}  
-    if gen_dic['star_name'] in ['WASP76','HD209458']:gen_dic['contin_pinR'] = {'ESPRESSO':15}  
-
+    if gen_dic['star_name'] in ['WASP76','HD209458']:
+        gen_dic['contin_pinR'] = {'ESPRESSO':15}     #DI CCF masks
+        # gen_dic['contin_pinR'] = {'ESPRESSO':5}      #Intr CCF masks
 
 
 
@@ -1619,15 +1627,16 @@ gen_dic['CCF_mask'] = {}
 
 #%%% Orders
 #    - define orders over which the order-dependent CCFs should be coadded into a single CCF
-#    - applied to all CCFs calculated from spectra in the routine
-#      beware that orders removed because of spectral range exclusion will not be used
+#    - data in CCF format are co-added from the CCFs of selected orders
+#      data in spectral format are cross-correlated over the selected orders only
+#    - beware that orders removed because of spectral range exclusion will not be used
 #    - leave empty to calculate the CCF over all of the specrograph orders
-#      otherwise select for each instrument the indices of the orders as an array
+#      otherwise select for each instrument the indices of the orders as an array (with indexes relative to the original instrument orders)
 #    - HARPS: i=0 to 71
 #      HARPN: i=0 to 68
 #      SOPHIE: i=0 to 38  
 #      ESPRESSO: i=0 to 169  
-gen_dic['order_range']={}
+gen_dic['orders4ccf']={}
 
 
 #%%% Screening
@@ -1684,8 +1693,9 @@ if __name__ == '__main__':
     
     if gen_dic['star_name']=='WASP76':
         # gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP76b/ESPRESSO/Analyse_David/ESPRESSO_F9.fits'
-        gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/CCF_masks_DI/ESPRESSO_binned/Relaxed_selection/CCF_mask_DI_WASP76_ESPRESSO_t10.0_air.txt'        
-        
+        # gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/CCF_masks_DI/ESPRESSO_binned/Relaxed_selection/CCF_mask_DI_WASP76_ESPRESSO_t10.0_air.txt'        
+        gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/CCF_masks_DI/ESPRESSO_binned/Strict_selection/CCF_mask_DI_WASP76_ESPRESSO_t2.5_air.txt'        
+               
 
     if 'HD3167_b' in gen_dic['transit_pl']:
         gen_dic['CCF_mask']['ESPRESSO']='/Travaux/Radial_velocity/RV_masks/Old_HARPN/K5_sqrt.txt'                              #in the air, old mask, unorm, w=contraste dans l'ancienne DRS
@@ -1727,48 +1737,48 @@ if __name__ == '__main__':
         
         
     #Orders
-    #gen_dic['order_range']={'HARPS':np.arange(36),'HARPN':np.arange(36)}
-    #gen_dic['order_range']={'HARPS':[36,71],'HARPN':[36,68]}
-    #gen_dic['order_range']={'HARPS':[45,71],'HARPN':[45,68]}
-    #gen_dic['order_range']={'HARPN':range(35)}
-    #gen_dic['order_range']={'HARPN':range(35,69)}
-    #gen_dic['order_range']={'HARPS':range(45)}   #< 530 nm environ
-    #gen_dic['order_range']={'HARPS':range(45,69)}
-    #gen_dic['order_range']={'HARPN':range(20,40)}
-#    gen_dic['order_range']={'ESPRESSO':[50]}    
+    #gen_dic['orders4ccf']={'HARPS':np.arange(36),'HARPN':np.arange(36)}
+    #gen_dic['orders4ccf']={'HARPS':[36,71],'HARPN':[36,68]}
+    #gen_dic['orders4ccf']={'HARPS':[45,71],'HARPN':[45,68]}
+    #gen_dic['orders4ccf']={'HARPN':range(35)}
+    #gen_dic['orders4ccf']={'HARPN':range(35,69)}
+    #gen_dic['orders4ccf']={'HARPS':range(45)}   #< 530 nm environ
+    #gen_dic['orders4ccf']={'HARPS':range(45,69)}
+    #gen_dic['orders4ccf']={'HARPN':range(20,40)}
+#    gen_dic['orders4ccf']={'ESPRESSO':[50]}    
     # if gen_dic['transit_pl']=='Nu2Lupi_c':
-    #     gen_dic['order_range']={'ESPRESSO':range(90)}     #Blue detector   
-    #     gen_dic['order_range']={'ESPRESSO':range(90,170)} #Red detector      
+    #     gen_dic['orders4ccf']={'ESPRESSO':range(90)}     #Blue detector   
+    #     gen_dic['orders4ccf']={'ESPRESSO':range(90,170)} #Red detector      
     # if gen_dic['transit_pl']=='55Cnc_e':
-    #     gen_dic['order_range']={'ESPRESSO':range(43)}       
-    #     gen_dic['order_range']={'ESPRESSO':range(43,85)}      
-    #     gen_dic['order_range']={'ESPRESSO':range(85,128)}      
-    #     gen_dic['order_range']={'ESPRESSO':range(129,170)}     
-    #     gen_dic['order_range']={'ESPRESSO':range(85)}   
-    #     gen_dic['order_range']={'ESPRESSO':range(91,170)} 
-    #     gen_dic['order_range']={'ESPRESSO':range(0,1)} 
-    #     # gen_dic['order_range']={'ESPRESSO':range(90,170)} 
-    #     gen_dic['order_range']={'ESPRESSO':list(range(108,170))} 
-    #     # gen_dic['order_range']={'ESPRESSO':range(108,170)} 
-    #     # gen_dic['order_range']={'ESPRESSO':[168,169]} 
+    #     gen_dic['orders4ccf']={'ESPRESSO':range(43)}       
+    #     gen_dic['orders4ccf']={'ESPRESSO':range(43,85)}      
+    #     gen_dic['orders4ccf']={'ESPRESSO':range(85,128)}      
+    #     gen_dic['orders4ccf']={'ESPRESSO':range(129,170)}     
+    #     gen_dic['orders4ccf']={'ESPRESSO':range(85)}   
+    #     gen_dic['orders4ccf']={'ESPRESSO':range(91,170)} 
+    #     gen_dic['orders4ccf']={'ESPRESSO':range(0,1)} 
+    #     # gen_dic['orders4ccf']={'ESPRESSO':range(90,170)} 
+    #     gen_dic['orders4ccf']={'ESPRESSO':list(range(108,170))} 
+    #     # gen_dic['orders4ccf']={'ESPRESSO':range(108,170)} 
+    #     # gen_dic['orders4ccf']={'ESPRESSO':[168,169]} 
 
     # if gen_dic['transit_pl']=='HD3167_b':
 
     #     #Dispersed orders removed
-    #     gen_dic['order_range']={'ESPRESSO':list(range(170))}  
-    #     for islice in [86,87,90,91,92,93,94,95,96,97,98,99,100,101,104,105,106,107]:gen_dic['order_range']['ESPRESSO'].remove(islice)
+    #     gen_dic['orders4ccf']={'ESPRESSO':list(range(170))}  
+    #     for islice in [86,87,90,91,92,93,94,95,96,97,98,99,100,101,104,105,106,107]:gen_dic['orders4ccf']['ESPRESSO'].remove(islice)
         
     #     # #Dispersed orders removed + blue orders removed (final solution)
-    #     # gen_dic['order_range']={'ESPRESSO':list(range(20,170))}  
-    #     # for islice in [86,87,90,91,92,93,94,95,96,97,98,99,100,101,104,105,106,107]:gen_dic['order_range']['ESPRESSO'].remove(islice)
+    #     # gen_dic['orders4ccf']={'ESPRESSO':list(range(20,170))}  
+    #     # for islice in [86,87,90,91,92,93,94,95,96,97,98,99,100,101,104,105,106,107]:gen_dic['orders4ccf']['ESPRESSO'].remove(islice)
 
     #     # #blue orders removed 
-    #     # gen_dic['order_range']={'ESPRESSO':list(range(20,170))}  
+    #     # gen_dic['orders4ccf']={'ESPRESSO':list(range(20,170))}  
 
         
     # if gen_dic['transit_pl']=='HD3167_c':
-    #     gen_dic['order_range']={'HARPN':list(range(4,69))}  
-    #     for islice in [43,44,47,48]:gen_dic['order_range']['HARPN'].remove(islice)      
+    #     gen_dic['orders4ccf']={'HARPN':list(range(4,69))}  
+    #     for islice in [43,44,47,48]:gen_dic['orders4ccf']['HARPN'].remove(islice)      
         
 
     #Screening
@@ -2421,6 +2431,10 @@ if __name__ == '__main__':
     
     #Calculating/retrieving
     gen_dic['calc_glob_mast']=True   &  False    
+
+    
+    #Multi-threading
+    gen_dic['Fbal_nthreads'] = 1   
     
     #Measured masters
     
@@ -2740,12 +2754,7 @@ if __name__ == '__main__':
         gen_dic['Fbal_smooth_vis'] = {'ESPRESSO':{'20190720':1e-5  ,'20190911':2e-5  }}   #ANTARESS I, final    
         gen_dic['Fbal_smooth'] = {'ESPRESSO':{'20190720':2e-4  ,'20190911':3e-4  }}  
         gen_dic['Fbal_smooth'] = {'ESPRESSO':{'20190720':7e-5  ,'20190911':7e-5  }}    #ANTARESS I, fit vs nu, weight 0.25     
-
-
-        gen_dic['Fbal_smooth'] = {'ESPRESSO':{'20190720':2e-4  ,'20190911':3e-4  }}
-        print('ATTENTION TEST')
-
-          
+  
     elif gen_dic['star_name']=='55Cnc':          
         gen_dic['Fbal_smooth'] = {'ESPRESSO':{'20210121':8e-4,'20210124':8e-4}}        
 
@@ -2985,7 +2994,7 @@ if __name__ == '__main__':
     if gen_dic['star_name'] in ['WASP76','HD209458','WASP107','HAT_P11','WASP156','GJ3090','HD29291','55Cnc']:gen_dic['corr_cosm']=True # & False
 
     #Calculating/retrieving
-    gen_dic['calc_cosm']=True #  &  False  
+    gen_dic['calc_cosm']=True   &  False  
 
     #Alignment mode
     gen_dic['al_cosm']={
@@ -3482,7 +3491,7 @@ if __name__ == '__main__':
     if gen_dic['star_name'] in ['HD209458','WASP76','55Cnc','HD29291']:gen_dic['corr_wig']=True  # & False
     
     #Calculating/retrieving
-    gen_dic['calc_wig']=True  #&  False  
+    gen_dic['calc_wig']=True  &  False  
     
     #Guide shift reset
     gen_dic['wig_no_guidchange'] = []   
@@ -4164,7 +4173,8 @@ gen_dic['calc_trim_spec']=True
 gen_dic['trim_range'] = []
 
 
-#%%%% Orders to be kept    
+#%%%% Orders to be kept   
+#    - indexes are relative to order list after exclusion with gen_dic['del_orders'] 
 gen_dic['trim_orders'] = {}
 
     
@@ -4498,6 +4508,7 @@ if __name__ == '__main__':
 
     #%%%% SNR orders             
     #    - indexes of orders to be used to define the SNR, for corrections of correlations with snr
+    #    - order indexes are relative to original instrumental orders
     corr_line_prof_dic['SNRorders']={'HARPS':[49],'HARPN':[46],'ESPRESSO_MR':[39],'ESPRESSO':[102,103],'CARMENES_VIS':[40],
                                'NIRPS_HA':[57],'NIRPS_HE':[57]}    #Bande H, 1.63 mic, ordre pas affecte par tellurique donc stable pour mesure SNR, et ref. reduction apero
     if gen_dic['star_name']=='55Cnc':corr_line_prof_dic['SNRorders']['EXPRES']=[14]   #562 nm, index specific to the chosen order removal
@@ -5982,7 +5993,7 @@ if __name__ == '__main__':
         gen_dic['calc_align_DI']=True 
     if gen_dic['star_name'] in ['HD209458','WASP76']:  
         gen_dic['align_DI']=True    
-        gen_dic['calc_align_DI']=True  # & False                   
+        gen_dic['calc_align_DI']=True   & False                   
 
     
     #%%% Systemic velocity 
@@ -6609,7 +6620,7 @@ if __name__ == '__main__':
 
     if gen_dic['star_name'] in ['HD209458','WASP76']:
         gen_dic['flux_sc']=True        
-        gen_dic['calc_flux_sc']=True #  & False     
+        gen_dic['calc_flux_sc']=True   & False     
         
 
     #%%% Scaling disk-integrated profiles
@@ -7216,7 +7227,7 @@ if __name__ == '__main__':
     ##################################################################################################
 
     #%%% Activating
-    gen_dic['spec_1D_DI']=True    & False
+    gen_dic['spec_1D_DI']=True #   & False
     if gen_dic['star_name'] in ['WASP76']:gen_dic['spec_1D_DI']=True   & False
     
     #%%% Calculating/retrieving
@@ -7540,7 +7551,7 @@ if __name__ == '__main__':
     data_dic['DI']['mask'] = {}
     
     #%%% Activating
-    gen_dic['def_DImasks'] = True   &  False
+    gen_dic['def_DImasks'] = True  &  False
 
     #%%% Multi-threading
     data_dic['DI']['mask']['nthreads'] = 14 
@@ -7824,7 +7835,7 @@ if __name__ == '__main__':
 
     #%%% Calculating/retrieving 
     gen_dic['calc_res_data'] = True  # &  False
-    if gen_dic['star_name'] in ['HD209458','WASP76']:gen_dic['calc_res_data']=True    #&False
+    if gen_dic['star_name'] in ['HD209458','WASP76']:gen_dic['calc_res_data']=True  &False
 
 
     #%%% Multi-threading
@@ -7894,13 +7905,13 @@ if __name__ == '__main__':
 #        data_dic['Res']['cont_range']=[[-300.,-60.],[60.,300.]]     #Mask F + atmo
     elif gen_dic['transit_pl']=='Kelt9b':
         data_dic['Res']['cont_range']=[[-300.,-130.],[130.,300.]]  
-    # elif gen_dic['star_name']=='WASP76':
-    #     data_dic['Res']['cont_range']=[[-350.,-40.],[40.,350.]]  
+    elif gen_dic['star_name']=='WASP76':
+        # data_dic['Res']['cont_range']=[[-350.,-40.],[40.,350.]]  
     #     data_dic['Res']['cont_range_MCCF']=[[-200.,-60.],[60.,200.]]   
-    #     # data_dic['Res']['cont_range']=[[-80.,-30.],[30.,80.]]     
+        data_dic['Res']['cont_range']['ESPRESSO']=[[-80.,-30.],[30.,80.]]     
     elif gen_dic['transit_pl']=='WASP127b':
         data_dic['Res']['cont_range']=[[-150.,-10.],[10.,150.]]     
-    elif gen_dic['star_name']=='HD209458':data_dic['Res']['cont_range']=[[-150.,-13.],[13.,150.]]     
+    elif gen_dic['star_name']=='HD209458':data_dic['Res']['cont_range']['ESPRESSO']=[[-150.,-13.],[13.,150.]]     
      
     elif gen_dic['transit_pl']=='Corot7b':
         data_dic['Res']['cont_range']=[[-150.,-10.],[10.,150.]]  
@@ -8005,25 +8016,19 @@ if __name__ == '__main__':
     if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214']:gen_dic['intr_data']=True
     
     #%%% Calculating/retrieving
-    gen_dic['calc_intr_data'] = True  # &  False  
-
-    #%%% Correcting for relative chromatic shift
-    #    - for spectral data and chromatic occultation
-    #    - negligible, except maybe for planets with strong variations in broadband radius around fast rotators
-    gen_dic['intr_rv_corr'] = True   &  False  
-
+    gen_dic['calc_intr_data'] = True  &  False  
 
     #%%% Plot settings
 
     #%%%% 2D maps of intrinsic stellar profiles
     #    - aligned or not
-    plot_dic['map_Intr_prof']=''   #'png 
+    plot_dic['map_Intr_prof']='pdf'   #'png 
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:plot_dic['map_Intr_prof']='png'
 
     #%%%% Individual intrinsic stellar profiles
     #    - aligned or not
     plot_dic['sp_intr']=''  
-    plot_dic['CCFintr']=''   #pdf  
+    plot_dic['CCFintr']='pdf'   #pdf  
 
     #%%%% Residuals from intrinsic stellar profiles
     #    - choose within the routine whether to plot fit to individual or to global profiles
@@ -8050,10 +8055,10 @@ if __name__ == '__main__':
     ##################################################################################################   
  
     #%%% Activating
-    gen_dic['Intr_CCF'] = True    &  False
+    gen_dic['Intr_CCF'] = True  #  &  False
  
     #%%% Calculating/retrieving 
-    gen_dic['calc_Intr_CCF'] = True   #&  False
+    gen_dic['calc_Intr_CCF'] = True   &  False
 
     #%%% Error definition
     #    - force errors on out-of-transit residual and intrinsic CCFs to their continuum dispersion
@@ -8186,10 +8191,10 @@ if __name__ == '__main__':
 
     #%%% Activating
     #    - required for some of the operations afterwards
-    gen_dic['align_Intr'] = True #  &  False
+    gen_dic['align_Intr'] = True   &  False
  
     #%%% Calculating/retrieving
-    gen_dic['calc_align_Intr'] = True #  &  False  
+    gen_dic['calc_align_Intr'] = True   &  False  
 
     #%%% Alignment mode
     #    - align profiles by their measured ('meas') or theoretical ('theo') RVs 
@@ -8216,10 +8221,10 @@ if __name__ == '__main__':
     ##################################################################################################
 
     #%%% Activating
-    gen_dic['spec_1D_Intr']=True # & False
+    gen_dic['spec_1D_Intr']=True  & False
 
     #%%% Calculating/retrieving 
-    gen_dic['calc_spec_1D_Intr']=True  #  &  False   
+    gen_dic['calc_spec_1D_Intr']=True   &  False   
 
 
     #%%% Multi-threading
@@ -8237,7 +8242,7 @@ if __name__ == '__main__':
     plot_dic['map_Intr_1D']=''   #'png
 
     #%%%% Individual spectra
-    plot_dic['sp_Intr_1D']='pdf'     #pdf         
+    plot_dic['sp_Intr_1D']=''     #pdf         
     
     
     
@@ -8265,8 +8270,8 @@ if __name__ == '__main__':
     gen_dic['calc_Intrbinmultivis']=True  #  &  False 
 
     if gen_dic['star_name'] in ['HD209458','WASP76']:
-        gen_dic['Intrbinmultivis']=True #& False    
-        gen_dic['calc_Intrbinmultivis']= True # & False    
+        gen_dic['Intrbinmultivis']=True & False    
+        gen_dic['calc_Intrbinmultivis']= True  & False    
 
 
     #Visits to be binned
@@ -8329,7 +8334,7 @@ if __name__ == '__main__':
             }
 
     if gen_dic['star_name']=='HD209458':
-        print('idx_in_bin TBD')
+        data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20190720':range(6,56),'20190911':range(6,56)}}    #for mask generation
     if gen_dic['star_name']=='WASP76':
         data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20180902':range(1,20),'20181030':range(3,35)}}    #for mask generation
     if gen_dic['star_name']=='HD3167': 
@@ -8554,6 +8559,30 @@ if __name__ == '__main__':
 
     #%%% Copying disk-integrated settings
     data_dic['Intr']['mask'] = deepcopy(data_dic['DI']['mask'])
+
+    #%%%% Estimate of line width 
+    data_dic['Intr']['mask']['fwhm_ccf'] = 5. 
+    if gen_dic['star_name']=='HD209458':
+        data_dic['Intr']['mask']['fwhm_ccf'] = 8.5 
+
+    # #%%%% Oversampling 
+    # if gen_dic['star_name']=='HD209458':
+    #     data_dic['Intr']['mask']['dw_reg'] = {'ESPRESSO':0.008}
+
+    #%%%% Smoothing window   
+    if gen_dic['star_name']=='HD209458':
+        data_dic['Intr']['mask']['kernel_smooth']={'ESPRESSO':30}
+        data_dic['Intr']['mask']['kernel_smooth_deriv2']={'ESPRESSO':30}
+
+    #%%% Line selection: rejection ranges
+    data_dic['Intr']['mask']['line_rej_range'] = {}
+    if gen_dic['star_name']=='HD209458':
+        data_dic['Intr']['mask']['line_rej_range'] = {'ESPRESSO':[[3000.,3800.],[6276.,6316.],[6930.,6957.],[7705.,7717.]]} 
+
+
+    
+    #%%% Line selection: RV dispersion 
+    data_dic['Intr']['mask']['RV_disp_sel'] = False
 
 
     #%%% Plot settings 
@@ -12994,7 +13023,7 @@ if __name__ == '__main__':
         #     # if iord not in [59,76,77,78,82]:    
         #         print('--------------------------------------------')
         #         print('Order :',iord,'(slices = ',2*iord,2*iord+1,')')
-        #         gen_dic['order_range']['ESPRESSO'] = [2*iord,2*iord+1] 
+        #         gen_dic['orders4ccf']['ESPRESSO'] = [2*iord,2*iord+1] 
                 
         #         ANTARESS_main(data_dic,mock_dic,gen_dic,data_dic['Res'],data_dic['DI'],data_dic['Atm'],theo_dic,plot_dic,data_dic['Intr'],glob_fit_dic['PropLoc'],glob_fit_dic['IntrProf'],corr_line_prof_dic,PropAtm_fit_dic,AtmProf_fit_dic, corr_spot_dic, glob_fit_dic['ResProf'],stars_params,planets_params)
                               
@@ -13005,7 +13034,7 @@ if __name__ == '__main__':
             print('Order ',str(iord))
             # if iord not in [54,63,68]:  #Old masks
             if iord not in [53,54,60,63,64]:   #New masks
-                gen_dic['order_range']['HARPN']=[iord] 
+                gen_dic['orders4ccf']['HARPN']=[iord] 
             
                 ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_line_prof_dic,PropAtm_fit_dic,AtmProf_fit_dic, corr_spot_dic,all_system_params[gen_dic['star_name']])
                           

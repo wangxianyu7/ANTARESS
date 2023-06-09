@@ -2125,11 +2125,7 @@ def fit_CCFRes_all(data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,
                     coord_vis = coord_dic[inst][vis]
                     fixed_args['phase'][inst][vis] = np.vstack((coord_vis[pl_loc]['st_ph'],coord_vis[pl_loc]['cen_ph'],coord_vis[pl_loc]['end_ph'])) 
                     fixed_args['t_exp_bjd'][inst][vis] = coord_vis['bjd']
-                    
-                    # Load light curve and DI prop data
-                    data_LC_vis = dataload_npz(data_vis['scaled_data_paths']+str(iexp))
-                    data_DI_prop_vis = np.load(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis+'.npz',  allow_pickle=True)['data'].item()
-                    
+
                     # Load master-out data for current vis
                     data_mast_vis = np.load(data_dic[inst][vis]['mast_DI_data_paths'][0]+'.npz',allow_pickle=True)['data'].item()
 
@@ -2142,7 +2138,11 @@ def fit_CCFRes_all(data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,
                     
                     # Retrieving fitted exposures data :
                     for i_count, iexp in enumerate(  fixed_args['idx_calc'][inst][vis]  ) :
-                        
+                    
+                        # Load light curve and DI prop data
+                        data_LC_vis = dataload_npz(data_vis['scaled_data_paths']+str(iexp))
+                        data_DI_prop_vis = np.load(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis+'.npz',  allow_pickle=True)['data'].item()
+                                                
                         #Upload latest processed intrinsic data
                         data_exp = np.load(data_vis['proc_Res_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item()
                                                 
@@ -2334,8 +2334,7 @@ def joined_CCFs_res(param,args):
                                                1,   
                                                [1,nspec] ,
                                                nspec,  
-                                               data_to_bin,      
-                                               {},
+                                               data_to_bin, 
                                                inst,      
                                                len(args['data_mast'][inst][vis]['idx_to_bin']),  
                                                args['cen_bins'] [inst][vis],   

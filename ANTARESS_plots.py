@@ -328,7 +328,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             data_path = gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis+'_in'  
                             restframe='local'
                         else:
-                            data_path = gen_dic['save_data_dir']+'Intr_data/'+inst+'_'+vis+'_in'  
+                            if ('spec' in gen_dic['type'][inst]) and (sp_mod=='CCF'):data_path = gen_dic['save_data_dir']+'Intr_data/CCFfromSpec/'+inst+'_'+vis+'_' 
+                            else:data_path = gen_dic['save_data_dir']+'Intr_data/'+inst+'_'+vis+'_in'  
                             restframe='star'
                         iexp_plot = data_dic['Intr'][inst][vis]['idx_def']
                         iexp_orig = np.array(gen_dic[inst][vis]['idx_in'])[iexp_plot]
@@ -385,12 +386,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         data_path_all = [gen_dic['save_data_dir']+'Atmbin_data/'+plot_options['pl_atm_sign']+'/'+inst+'_'+vis+'_'+plot_options['dim_plot']+str(iexp)+'.npz' for iexp in iexp_plot]
                     elif ('_1D' in map_mod): 
                         sp_mod = data_dic[data_type_gen]['type'][inst]     
-                        data_add = np.load(gen_dic['save_data_dir']+data_type_gen+'_data_1Dfrom2D/'+gen_dic['add_txt_path'][data_type_gen]+'/spec1D_'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item()
+                        data_add = np.load(gen_dic['save_data_dir']+data_type_gen+'_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type_gen]+'/spec1D_'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item()
                         if data_add['cond_aligned']:restframe='local' 
                         else:restframe='star'
                         iexp_plot = data_add['iexp_conv']
                         iexp_orig = iexp_plot
-                        data_path_all = [gen_dic['save_data_dir']+data_type_gen+'_data_1Dfrom2D/'+gen_dic['add_txt_path'][data_type_gen]+'/spec1D_'+inst+'_'+vis+'_'+str(iexp)+'.npz' for iexp in iexp_plot]
+                        data_path_all = [gen_dic['save_data_dir']+data_type_gen+'_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type_gen]+'/spec1D_'+inst+'_'+vis+'_'+str(iexp)+'.npz' for iexp in iexp_plot]
 
                     #High-resolution RV model 
                     #    - achromatic
@@ -415,7 +416,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     for isub,(iexp_plot_loc,iexp_orig_loc,data_path_exp) in enumerate(zip(iexp_plot,iexp_orig,data_path_all)):
                         if map_mod in ['map_Intr_prof_est','map_Intr_prof_res','map_pca_prof']:
                             loc_flux_scaling_plot = dataload_npz(data_vis['scaled_data_paths']+str(iexp_orig_loc))['loc_flux_scaling']  
-                            
+                       
                             #Estimates for intrinsic stellar profiles
                             #    - models for local stellar profiles are scaled as F_intr(w,t,v) = F_res(w,t,v)/(1 - LC_theo(band,t))
                             #      where loc_flux_scaling = 1 - LC_theo
@@ -468,7 +469,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             cond_def_map[isub] = data_load['cond_def']
                         low_sp_map[isub] = data_load['edge_bins'][:,0:-1]
                         high_sp_map[isub]=data_load['edge_bins'][:,1::]
-                       
+
+                    #Normalization to set CCFs to a mean unity  
+                    if plot_options['norm_prof']:       
+                        if map_mod in ['map_Intr_prof']:norm_exp = data_dic['Intr']['mean_cont']
+                        else:stop()
+                    else:norm_exp = 1.                        
+                    var_map/=norm_exp
+                    
                     #Ordina tables in the visit along chosen dimension
                     if map_mod in ['map_DIbin','map_Intr_prof','map_Intrbin','map_Intr_1D','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Atmbin','map_Atm_1D']: 
                         ordi_name = plot_options['dim_plot'] 
@@ -1124,8 +1132,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     
                     #Intrinsic CCF
                     elif plot_mod in ['CCFintr','CCFintr_res']:
-                        if (plot_mod=='CCFintr') and (plot_options['aligned']):data_path = gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis+'_in'+str(iexp)+'.npz' 
-                        else:data_path = gen_dic['save_data_dir']+'Intr_data/'+txt_conv+inst+'_'+vis+'_in'+str(iexp)+'.npz' 
+                        # if (plot_mod=='CCFintr') and (plot_options['aligned']):data_path = gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis+'_in'+str(iexp)+'.npz' 
+                        # else:data_path = gen_dic['save_data_dir']+'Intr_data/'+txt_conv+inst+'_'+vis+'_in'+str(iexp)+'.npz' 
+
+                        if plot_options['aligned']:data_path = gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis+'_in'+str(iexp)+'.npz' 
+                        else:
+                            if ('spec' in gen_dic['type'][inst]) and (data_type=='CCF'):data_path = gen_dic['save_data_dir']+'Intr_data/CCFfromSpec/'+inst+'_'+vis+'_'+str(iexp)+'.npz' 
+                            else:data_path = gen_dic['save_data_dir']+'Intr_data/'+inst+'_'+vis+'_in'+str(iexp)+'.npz' 
+
 
                     #Binned intrinsic CCF
                     elif plot_mod in ['CCF_Intrbin','CCF_Intrbin_res']:
@@ -1238,14 +1252,18 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #----------------------------------------------------------     
                     
 
-                    #Approximate normalization to set CCFs to comparable levels for the plot or to a mean unity                       
-                    if (plot_mod in ['DI_prof','CCF_DIbin']):                    
-                        if len(data_dic['DI']['scaling_range'])>0:
-                            cond_def_scal=False 
-                            for bd_int in data_dic['DI']['scaling_range']:cond_def_scal |= (data_load['edge_bins'][0,0:-1]>=bd_int[0]) & (data_load['edge_bins'][0,1:]<=bd_int[1])   
-                        else:cond_def_scal=True                                               
-                        cond_def_scal&=data_load['cond_def'][0]
-                        norm_exp=np.nanmean(CCF_exp[cond_def_scal])                      
+                    #Normalization to set CCFs to comparable levels for the plot or to a mean unity  
+                    if plot_options['norm_prof']:       
+                        if (plot_mod in ['DI_prof','CCF_DIbin']):                    
+                            if len(data_dic['DI']['scaling_range'])>0:
+                                cond_def_scal=False 
+                                for bd_int in data_dic['DI']['scaling_range']:cond_def_scal |= (data_load['edge_bins'][0,0:-1]>=bd_int[0]) & (data_load['edge_bins'][0,1:]<=bd_int[1])   
+                            else:cond_def_scal=True                                               
+                            cond_def_scal&=data_load['cond_def'][0]
+                            norm_exp=np.nanmean(CCF_exp[cond_def_scal]) 
+                        elif plot_mod in ['CCFintr']:
+                            norm_exp = data_dic['Intr']['mean_cont']
+                    else:norm_exp = 1.
              
                     #----------------------------------------------------------        
                     if do_plot:                        
@@ -1274,7 +1292,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                             #Continuum level
                             if (plot_mod=='CCFintr'):
-                                plt.plot(x_range_loc,[data_dic['Intr']['mean_cont'],data_dic['Intr']['mean_cont']],linestyle='-',color='black',lw=plot_options['lw_plot'])                  
+                                plt.plot(x_range_loc,[sc_fact*data_dic['Intr']['mean_cont']/norm_exp,sc_fact*data_dic['Intr']['mean_cont']/norm_exp],linestyle='-',color='black',lw=plot_options['lw_plot'])                  
 
                             #Plot fit 
                             if plot_options['plot_line_model'] and cond_mod:      
@@ -1605,8 +1623,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     iexp_plot = np.arange(data_bin['n_exp'],dtype=int)                  
                 else:
                     if '_1D' in plot_mod: 
-                        path_loc = gen_dic['save_plot_dir']+data_type_gen+'_data_1Dfrom2D/'+inst+'_'+vis+'_Indiv_sp/'
-                        data_add = np.load(gen_dic['save_data_dir']+data_type_gen+'_data_1Dfrom2D/'+add_txt_path[data_type_gen]+'/spec1D_'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item()
+                        path_loc = gen_dic['save_plot_dir']+data_type_gen+'_data/1Dfrom2D/'+inst+'_'+vis+'_Indiv_sp/'
+                        data_add = np.load(gen_dic['save_data_dir']+data_type_gen+'_data/1Dfrom2D/'+add_txt_path[data_type_gen]+'/spec1D_'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item()
                         iexp_plot = data_add['iexp_conv']
                     else:
                         if 'DI' in plot_mod:
@@ -1754,7 +1772,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             data_exp = np.load(gen_dic['save_data_dir']+'Atmbin_data/'+plot_options['pl_atm_sign']+'/'+data_dic['Atm']['type'][inst]+'_'+inst+'_'+vis+'_'+plot_options['dim_plot']+str(iexp)+'.npz' ,allow_pickle=True)['data'].item() 
 
                     if '_1D' in plot_mod:
-                        data_exp = np.load(gen_dic['save_data_dir']+data_type_gen+'_data_1Dfrom2D/'+add_txt_path[data_type_gen]+'/spec1D_'+inst+'_'+vis+'_'+str(iexp)+'.npz',allow_pickle=True)['data'].item()                
+                        data_exp = np.load(gen_dic['save_data_dir']+data_type_gen+'_data/1Dfrom2D/'+add_txt_path[data_type_gen]+'/spec1D_'+inst+'_'+vis+'_'+str(iexp)+'.npz',allow_pickle=True)['data'].item()                
 
                     #Plot each order                    
                     for isub_ord,iord in enumerate(order_list):
@@ -1795,7 +1813,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             col_exp_sec = plot_options['color_dic_sec'][inst][vis][isub]
                             
                             #Normalisation
-                            if plot_options['norm_spec']:
+                            if plot_options['norm_prof']:
                                 dcen_bins = data_exp['edge_bins'][iord][1:] - data_exp['edge_bins'][iord][0:-1]
                                 mean_flux=np.sum(data_exp['flux'][iord,cond_def_loc]*dcen_bins[cond_def_loc])/np.sum(dcen_bins[cond_def_loc])
                             else:mean_flux=1.
@@ -1818,7 +1836,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 
                                 #Plot spectrum before correction   
                                 if plot_options['plot_pre'] is not None:
-                                    if plot_options['norm_spec']:
+                                    if plot_options['norm_prof']:
                                         dcen_bins_raw = data_precorr['edge_bins'][iord][1:] - data_precorr['edge_bins'][iord][0:-1]
                                         mean_flux_raw=np.sum(data_precorr['flux'][iord,data_precorr['cond_def'][iord]]*dcen_bins_raw[data_precorr['cond_def'][iord]])/np.sum(dcen_bins_raw[data_precorr['cond_def'][iord]])
                                     else:mean_flux_raw=1.     
@@ -1898,7 +1916,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 #Plot continuum for persistent peak masking
                                 if (data_permpeak is not None) and plot_options['plot_contmax']: 
                                     mean_flux_cont=np.sum(data_permpeak['cont_func_dic'][iord](cen_bins_loc[cond_def_loc])*dcen_bins[cond_def_loc])/np.sum(dcen_bins[cond_def_loc])
-                                    if plot_options['norm_spec']:var_loc=sc_fact*data_permpeak['cont_func_dic'][iord](cen_bins_loc)/mean_flux_cont
+                                    if plot_options['norm_prof']:var_loc=sc_fact*data_permpeak['cont_func_dic'][iord](cen_bins_loc)/mean_flux_cont
                                     else:var_loc = sc_fact*data_permpeak['cont_func_dic'][iord](cen_bins_loc)*mean_flux/mean_flux_cont
                                     all_ax[iord].plot(cen_bins_loc,var_loc,color='black',linestyle='-',lw=1,rasterized=plot_options['rasterized'],zorder=10,figure = all_figs[iord])                                 
                                                                     
@@ -3353,7 +3371,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if data_mode=='raw':iexp_plot = range(n_exp_vis)
                     elif data_mode=='loc':iexp_plot = gen_dic[inst][vis]['idx_in']  
                     for isub,iexp in enumerate(iexp_plot): 
-                        SNRS_loc = (np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item())['SNRs']
+                        SNRS_loc = data_prop[inst][vis]['SNRs'][iexp]
                         if isub==0:SNR_obs = np.zeros([len(iexp_plot)]+list(SNRS_loc.shape))*np.nan
                         SNR_obs[isub] = SNRS_loc
     
@@ -3656,10 +3674,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                   
                         #Save dispersion values for analysis in external routine
                         if plot_options['save_disp']:
-                            str_name =''
-                            for ord_num in gen_dic['order_range'][inst]:str_name+='_'+str(ord_num)
                             data_save = {'disp_err_R':disp_err_R,'disp_from_mean':disp_from_mean,'emean':eval_mean,'delta_mean':np.mean(val_obs[isub_in_plot])-np.mean(val_obs[isub_out_plot])}
-                            np.savez(gen_dic['save_dir']+'Dispersions/'+gen_dic['main_pl_text']+'_Raw_'+prop_mode+str_name,data=data_save,allow_pickle=True)    
+                            np.savez(gen_dic['save_dir']+'Dispersions/'+gen_dic['main_pl_text']+'_Raw_'+prop_mode,data=data_save,allow_pickle=True)    
     
                         #Plot results from common fit to local CCFs
                         if ('plot_fit_comm' in plot_options) and (inst in plot_options['plot_fit_comm']) and (vis in plot_options['plot_fit_comm'][inst]):
@@ -4748,7 +4764,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     
         #Normalize spectra to integrated flux unity
         #    - to allow for comparison
-        plot_options[key_plot]['norm_spec'] = False  
+        plot_options[key_plot]['norm_prof'] = False  
 
         #Absorption signal type
         plot_options[key_plot]['pl_atm_sign']='Absorption'  
@@ -6719,7 +6735,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 plot_options=gen_plot_default(plot_options,key_plot)       
 
                 #Plot master spectrum and mask at chosen step
-                plot_options[key_plot]['step']='cont'           
+                plot_options[key_plot]['step']='cont'      
+                
+                #Plot various spectra
+                plot_options[key_plot]['plot_raw'] = True
+                plot_options[key_plot]['plot_norm'] = True
+                plot_options[key_plot]['plot_norm_reg'] = True
 
                 #Print number of line selected in step
                 plot_options[key_plot]['print_nl']=True   
@@ -6787,29 +6808,55 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 y_range_loc[1]+=0.05*dy_range
                 dy_range=y_range_loc[1]-y_range_loc[0]
 
+            #Resampling
+            if plot_options[key_plot]['resample'] is not None:
+                n_reg = int(np.ceil((x_range_loc[1]-x_range_loc[0])/plot_options[key_plot]['resample']))
+                edge_bins_reg = np.linspace(x_range_loc[0],x_range_loc[1],n_reg)
+                cen_bins_reg = 0.5*(edge_bins_reg[0:-1]+edge_bins_reg[1::]) 
+
             #Smoothed regular spectrum
-            ax.plot(plot_info['cen_bins_reg'][cond_in_range],plot_info['flux_norm_reg'][cond_in_range],color='black',linestyle='-',lw=plot_options[key_plot]['lw_plot'],zorder=3,rasterized=plot_options[key_plot]['rasterized'])  
+            if plot_options[key_plot]['plot_norm_reg']:
+                ax.plot(plot_info['cen_bins_reg'][cond_in_range],plot_info['flux_norm_reg'][cond_in_range],color='black',linestyle='-',lw=plot_options[key_plot]['lw_plot'],zorder=10,rasterized=plot_options[key_plot]['rasterized'],alpha = plot_options[key_plot]['alpha_symb'])  
+
+                #Resampled spectrum
+                if plot_options[key_plot]['resample'] is not None:
+                    dbins_loc = plot_info['cen_bins_reg'][1]-plot_info['cen_bins_reg'][0]
+                    edge_bins_loc = np.concatenate(([plot_info['cen_bins_reg'][0]-0.5*dbins_loc], 0.5*(plot_info['cen_bins_reg'][0:-1]+plot_info['cen_bins_reg'][1::]),[plot_info['cen_bins_reg'][-1]+0.5*dbins_loc])) 
+                    var_resamp = bind.resampling(edge_bins_reg,edge_bins_loc,plot_info['flux_norm_reg'], kind=gen_dic['resamp_mode'])   
+                    ax.plot(cen_bins_reg,var_resamp,color='black',linestyle='-',lw=plot_options[key_plot]['lw_plot'],rasterized=plot_options[key_plot]['rasterized'],zorder=11,drawstyle=plot_options[key_plot]['drawstyle'])                      
+                          
             
             #--------------------------------------------------------                            
             #Continuum normalization
             if key_step=='cont':
    
-                #Original spectrum
-                data_mast = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+data_dic[data_type_gen]['dim_bin']+str(0))
-                cond_def = data_mast['cond_def'][0]
-                cen_bins = data_mast['cen_bins'][0,cond_def]
-                flux_mast = data_mast['flux'][0,cond_def]
-                ax.plot(cen_bins,flux_mast,color='dodgerblue',linestyle='-',lw=plot_options[key_plot]['lw_plot'],zorder=0,rasterized=plot_options[key_plot]['rasterized'])  
-                       
-                #Continuum
-                cont_norm = plot_info['cont_func_dic'](cen_bins)
-                ax.plot(cen_bins,cont_norm,color='red',linestyle='-',lw=plot_options[key_plot]['lw_plot']+0.5,zorder=1,rasterized=plot_options[key_plot]['rasterized']) 
+                #Original spectrum with continuum
+                if plot_options[key_plot]['plot_raw']:
+                    data_mast = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+data_dic[data_type_gen]['dim_bin']+str(0))
+                    cond_def = data_mast['cond_def'][0]
+                    cen_bins = data_mast['cen_bins'][0,cond_def]
+                    flux_mast = data_mast['flux'][0,cond_def]
+                    ax.plot(cen_bins,flux_mast,color='dodgerblue',linestyle='-',lw=plot_options[key_plot]['lw_plot'],zorder=0,rasterized=plot_options[key_plot]['rasterized'],alpha = plot_options[key_plot]['alpha_symb'])    
+
+                    #Resampled spectrum
+                    if plot_options[key_plot]['resample'] is not None:
+                        var_resamp = bind.resampling(edge_bins_reg, data_mast['edge_bins'][0],data_mast['flux'][0], kind=gen_dic['resamp_mode'])   
+                        ax.plot(cen_bins_reg,var_resamp,color='dodgerblue',linestyle='-',lw=plot_options[key_plot]['lw_plot'],rasterized=plot_options[key_plot]['rasterized'],zorder=1,drawstyle=plot_options[key_plot]['drawstyle'])                      
+                                                
+                    #Continuum
+                    cont_norm = plot_info['cont_func_dic'](cen_bins)
+                    ax.plot(cen_bins,cont_norm,color='red',linestyle='-',lw=plot_options[key_plot]['lw_plot']+0.5,zorder=7,rasterized=plot_options[key_plot]['rasterized']) 
 
                 #Normalized spectrum
-                flux_mast_norm=flux_mast/cont_norm
-                ax.plot(cen_bins,flux_mast_norm,color='grey',linestyle='-',lw=plot_options[key_plot]['lw_plot'],zorder=2,rasterized=plot_options[key_plot]['rasterized'])               
+                if plot_options[key_plot]['plot_norm']:
+                    flux_mast_norm=flux_mast/cont_norm
+                    ax.plot(cen_bins,flux_mast_norm,color='grey',linestyle='-',lw=plot_options[key_plot]['lw_plot'],zorder=3,rasterized=plot_options[key_plot]['rasterized'],alpha = plot_options[key_plot]['alpha_symb'])              
 
-
+                    #Resampled spectrum
+                    if plot_options[key_plot]['resample'] is not None:
+                        var_resamp = bind.resampling(edge_bins_reg, data_mast['edge_bins'][0],flux_mast_norm, kind=gen_dic['resamp_mode'])   
+                        ax.plot(cen_bins_reg,var_resamp,color='grey',linestyle='-',lw=plot_options[key_plot]['lw_plot'],rasterized=plot_options[key_plot]['rasterized'],zorder=4,drawstyle=plot_options[key_plot]['drawstyle'])                      
+                          
             #--------------------------------------------------------
             else:
                 plot_info_step = plot_info[key_step]
