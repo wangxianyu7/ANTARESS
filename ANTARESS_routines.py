@@ -557,12 +557,12 @@ def init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_
             if ('calc_' in key) and (gen_dic[key]):gen_dic[key] = False 
 
     #Deactivate spectral corrections in CCF mode
-    sp_corr_list = ['corr_tell','corr_FbalOrd','corr_Fbal','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig','corr_fring','trim_spec','glob_mast','gain_weight','det_gain']
+    sp_corr_list = ['corr_tell','corr_FbalOrd','corr_Fbal','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig','corr_fring','trim_spec','glob_mast','cal_weight','gcal']
     if (not gen_dic['specINtype']):
         for key in sp_corr_list:gen_dic[key]=False
     else:
-        #Activate spectral gain calculation
-        gen_dic['det_gain'] = True
+        #Activate spectral calibration calculation
+        gen_dic['gcal'] = True
         
         #Deactivate spectral balance correction over orders if not 2D spectra
         if ('spec2D' not in gen_dic['all_types']): 
@@ -1033,7 +1033,8 @@ def init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_
 
     if (not os_system.path.exists(gen_dic['save_data_dir']+'Processed_data/Global/')):os_system.makedirs(gen_dic['save_data_dir']+'Processed_data/Global/')  
     if gen_dic['specINtype']:
-        if gen_dic['det_gain'] and (not os_system.path.exists(gen_dic['save_data_dir']+'Processed_data/Gains/')):os_system.makedirs(gen_dic['save_data_dir']+'Processed_data/Gains/')  
+        if gen_dic['gcal'] and (not os_system.path.exists(gen_dic['save_data_dir']+'Processed_data/Calibration/')):os_system.makedirs(gen_dic['save_data_dir']+'Processed_data/Calibration/')  
+        if gen_dic['CCF_from_sp'] and (not os_system.path.exists(gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/')):os_system.makedirs(gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/')  
         if (gen_dic['corr_data']):
             corr_path = gen_dic['save_data_dir']+'Corr_data/'
             if (not os_system.path.exists(corr_path)):os_system.makedirs(corr_path)
@@ -1055,8 +1056,6 @@ def init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_
                 if gen_dic['wig_corr']['mode'] and (not os_system.path.exists(corr_path+'Wiggles/Data/')):os_system.makedirs(corr_path+'Wiggles/Data/')
             if (gen_dic['corr_fring']) and (not os_system.path.exists(corr_path+'Fring/')):os_system.makedirs(corr_path+'Fring/')        
             if (gen_dic['trim_spec']) and (not os_system.path.exists(corr_path+'Trim/')):os_system.makedirs(corr_path+'Trim/')         
-        if gen_dic['DI_CCF']:
-            if (not os_system.path.exists(gen_dic['save_data_dir']+'Processed_data/Gains/CCFfromSpec/')):os_system.makedirs(gen_dic['save_data_dir']+'Processed_data/Gains/CCFfromSpec/') 
     if gen_dic['ccfINtype'] and (gen_dic['corr_line_prof']) and (not os_system.path.exists(gen_dic['save_data_dir']+'corr_line_prof/')):os_system.makedirs(gen_dic['save_data_dir']+'corr_line_prof/') 
     if (gen_dic['flux_sc']) and (not os_system.path.exists(gen_dic['save_data_dir']+'Scaled_data/')):os_system.makedirs(gen_dic['save_data_dir']+'Scaled_data/')
     if gen_dic['DImast_weight'] and (not os_system.path.exists(gen_dic['save_data_dir']+'DI_data/Master/')):os_system.makedirs(gen_dic['save_data_dir']+'DI_data/Master/')
@@ -1079,7 +1078,7 @@ def init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_
         if gen_dic[data_type+'_CCF']:
             if (not os_system.path.exists(gen_dic['save_data_dir']+data_type+'_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])):os_system.makedirs(gen_dic['save_data_dir']+data_type+'_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])    
             if (data_type=='Intr') and (not os_system.path.exists(gen_dic['save_data_dir']+'Res_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])):os_system.makedirs(gen_dic['save_data_dir']+'Res_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type]) 
-    
+
     if (gen_dic['fit_DI'] or gen_dic['sav_keywords']) and (not os_system.path.exists(gen_dic['save_data_dir']+'DIorig_prop/')):os_system.makedirs(gen_dic['save_data_dir']+'DIorig_prop/')        
     if ((gen_dic['fit_Intr']) or (gen_dic['theoPlOcc'])) and (not os_system.path.exists(gen_dic['save_data_dir']+'Introrig_prop/')):os_system.makedirs(gen_dic['save_data_dir']+'Introrig_prop/')
     if (gen_dic['fit_Atm']) and (not os_system.path.exists(gen_dic['save_data_dir']+'Atmorig_prop/'+data_dic['Atm']['pl_atm_sign']+'/')):os_system.makedirs(gen_dic['save_data_dir']+'Atmorig_prop/'+data_dic['Atm']['pl_atm_sign']+'/')
@@ -1492,13 +1491,13 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
 
     #Error definition
     if not gen_dic['mock_data']:
-        if (not gen_dic['flag_err_inst'][inst]) and gen_dic['det_gain']:stop('Error table must be available to estimate gain')
+        if (not gen_dic['flag_err_inst'][inst]) and gen_dic['gcal']:stop('Error table must be available to estimate calibration')
         if (inst in gen_dic['force_flag_err']):gen_dic['flag_err_inst'][inst]=False
         if gen_dic['flag_err_inst'][inst]:print('   > Errors propagated from raw data')
         else:print('   > Beware: custom definition of errors')
 
     #Mask used to compute CCF on stellar lines
-    if inst in gen_dic['CCF_mask']:
+    if (gen_dic['CCF_from_sp']) and (inst in gen_dic['CCF_mask']):
         
         #Upload CCF mask
         ext = gen_dic['CCF_mask'][inst].split('.')[-1]
@@ -1589,7 +1588,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
         if ('spec' in data_inst['type']) and gen_dic['tell_weight'] or gen_dic['corr_tell']:data_inst['tell_sp'] = True
         else:data_inst['tell_sp'] = False
 
-        #Gain condition
+        #Calibration condition
         #    - must be calculated even if not needed for weights, but can be deactivated if conversion into CCFs or 2D->1D
         if ('spec' in data_inst['type']):data_inst['mean_gdet'] = True
         else:data_inst['mean_gdet'] = False
@@ -1597,8 +1596,8 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
         #Initialize flag that exposures in all visits of the instrument share a common spectral table
         data_inst['comm_sp_tab'] = True 
         
-        #Gain settings
-        if (inst not in gen_dic['gain_nooutedge']):gen_dic['gain_nooutedge'][inst] = [0.,0.]
+        #Calibration settings
+        if (inst not in gen_dic['gcal_nooutedge']):gen_dic['gcal_nooutedge'][inst] = [0.,0.]
         
         #Processing each visit
         if gen_dic['mock_data']:vis_list=list(mock_dic['visit_def'][inst].keys())
@@ -2105,10 +2104,11 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                         #Convolution, conversion and resampling 
                         DI_prof_exp = conv_st_prof_tab(inst,vis,0,fixed_args,args_exp,DI_prof_exp,FWHM_inst)
 
-                        #Define number of photons received during exposure
-                        #   - the model represents the density of photons per unit of time
-                        #   - the continuum is proportional to the mock continuum level
-                        DI_prof_exp_Ntrue = DI_prof_exp*coord_dic[inst][vis]['t_dur'][iexp]   
+                        #Define number of photoelectrons extracted during the exposure
+                        #   - the model is a density of photoelectrons per unit of time, with continuum set to the input mean flux density
+                        if (inst in mock_dic['gcal']):mock_gcal = mock_dic['gcal'][inst]
+                        else:mock_gcal = 1.
+                        DI_prof_exp_Ftrue = mock_gcal*DI_prof_exp*coord_dic[inst][vis]['t_dur'][iexp]   
 
                         #Keplerian motion and systemic shift of the disk-integrated profile 
                         #    - including systematic variations if requested
@@ -2118,22 +2118,21 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                         if ('spec' in data_inst[vis]['type']):data_dic_temp['cen_bins'][iexp,0]=fixed_args['cen_bins'][inst][vis][0]*spec_dopshift(-rv_mock)
                         else:data_dic_temp['cen_bins'][iexp,0] = fixed_args['cen_bins'][inst][vis][0] + rv_mock        
                    
-                        #Defining flux and noise table     
-                        #    - see def_weights_bin(), the measured flux can be defined as:
-                        # F_meas(t,w) = g(band) Nmeas(t,w)
-                        #      where Nmeas(t,w) is drawn from a Poisson distribution with number of events Ntrue(t,w)
-                        #      the estimate of the error is then
-                        # EF_meas(t,w) = sqrt(g(band) F_meas(t,w))
+                        #Defining flux and error table     
+                        #    - see def_weights_bin(), the measured (total, not density) flux can be defined as:
+                        # F_meas(t,w) = gcal(band) Nmeas(t,w)
+                        #      where Nmeas(t,w), drawn from a Poisson distribution with number of events Ntrue(t,w), is the number of photo-electrons measured durint texp
+                        #      the estimate of the error is
+                        # EF_meas(t,w) = sqrt(gcal(band) F_meas(t,w))
                         #      which is a biased estimate of the true error but corresponds to what is returned by DRS
-                        #    - the S/N of the mock profiles is F_meas(t,w)/EF_meas(t,w) = sqrt(F_meas(t,w)/g(band)) = sqrt(Nmeas(t,w)) = sqrt(C*texp*cont)
-                        #      errors in the continuum of the normalized profiles is 1/sqrt(C*texp*cont) 
+                        #    - the S/N of the mock profiles is F_meas(t,w)/EF_meas(t,w) = sqrt(F_meas(t,w)/gcal(band)) = sqrt(Nmeas(t,w)) proportional to sqrt(texp*cont)
+                        #      errors in the continuum of the normalized profiles are proportional to 1/sqrt(texp*cont) 
                         #      beware that this error does not necessarily match the flux dispersion
-                        if (inst in mock_dic['gain']) and (vis in mock_dic['gain'][inst]):
-                            DI_prof_exp_Nmeas = np.array(list(map(np.random.poisson, DI_prof_exp_Ntrue,  data_inst[vis]['nspec']*[1]))).flatten()
-                            DI_prof_exp_Fmeas = mock_dic['gain'][inst][vis]*DI_prof_exp_Nmeas
-                            DI_err_exp_Emeas = np.sqrt(mock_dic['gain'][inst][vis]*DI_prof_exp_Fmeas)
+                        if (inst in mock_dic['set_err']) and (vis in mock_dic['set_err'][inst]) and mock_dic['set_err'][inst][vis]:
+                            DI_prof_exp_Fmeas = np.array(list(map(np.random.poisson, DI_prof_exp_Ftrue,  data_inst[vis]['nspec']*[1]))).flatten()
+                            DI_err_exp_Emeas = np.sqrt(mock_gcal*DI_prof_exp_Fmeas)
                         else:
-                            DI_prof_exp_Fmeas = DI_prof_exp_Ntrue
+                            DI_prof_exp_Fmeas = DI_prof_exp_Ftrue
                             DI_err_exp_Emeas = np.zeros(data_inst[vis]['nspec'],dtype=float)
                         data_dic_temp['flux'][iexp,0] = DI_prof_exp_Fmeas                      
                         data_dic_temp['cov'][iexp,0] = (DI_err_exp_Emeas**2.)[None,:]                        
@@ -2209,7 +2208,6 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                                               
                             #1D spectra
                             if data_inst['type']=='spec1D':
-            
                                 if inst in ['HARPS','ESPRESSO','ESPRESSO_MR','HARPN','NIRPS_HA','NIRPS_HE']:
                                     
                                     #Replacing single order with sky-corrected data
@@ -2221,6 +2219,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                                     elif gen_dic['sp_frame']=='vacuum':data_dic_temp['cen_bins'][iexp] = data_loc['wavelength']                             
                                     
                                     #Spectra
+                                    #    - flux and errors are per unit of wavelength but not per unit of time, ie that they correspond to the number of photoelectrons measured during the exposure
                                     data_dic_temp['flux'][iexp] = data_loc['flux']
                                     err_raw = data_loc['error']
 
@@ -2259,6 +2258,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                                     #    - the overall flux level is changed in the sky-corrected data, messing up with the flux balance corrections if only some orders were corrected
                                     #      we thus roughly rescale the flux in the corrected orders to their original level (assuming constant resolution over the order to calculate the mean flux)   
                                     #    - the flux is per unit of pixel, and must be divided by the pixel spectral size stored in dll to be passed in units of wavelength
+                                    #    - the flux is not per unit of time, but corresponds to the number of photoelectrons measured during the exposure corrected for the blaze function
                                     data_dic_temp['flux'][iexp] = (hdulist_dat[1].data)[idx_ord_kept]/dll
                                     err_raw = (hdulist_dat[2].data)[idx_ord_kept]/dll  
                                     if (vis_path_skysub_exp is not None) and (len(idxsub_ord_skysub)>0):
@@ -2315,7 +2315,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
 
                                 elif inst=='EXPRES':              
                                     if (vis_path_skysub_exp is not None):stop('No sky-corrected data available')
-                                    stop('Check if flux is per pixel like ESPRESSO')
+                                    
                                     #Bin centers
                                     #    - dimension norder x nbins
                                     #    - we use the chromatic-barycentric-corrected Excalibur wavelengths 
@@ -2328,7 +2328,8 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                                     data_dic_temp['cen_bins'][iexp][cond_def_wav] = bary_excalibur[cond_def_wav]                                                                        
                                     if gen_dic['sp_frame']=='air':data_dic_temp['cen_bins'][iexp]/=air_index(data_dic_temp['cen_bins'][iexp], t=15., p=760.)
 
-                                    #Spectra   
+                                    #Spectra 
+                                    #    - the flux is not per unit of time, but corresponds to the number of photoelectrons measured during the exposure corrected for the blaze function   
                                     data_dic_temp['flux'][iexp] = (hdulist_dat[1].data)['spectrum'][idx_ord_kept]
                                     err_raw = (hdulist_dat[1].data)['uncertainty'][idx_ord_kept]
 
@@ -2357,7 +2358,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                         if gen_dic['bad2nan']:cond_bad_exp |= (qualdata_exp > 0.) 
                         if True in cond_bad_exp:data_dic_temp['flux'][iexp][cond_bad_exp] = np.nan
 
-                        #Set undefined errors to squareroot of flux as first-order approximation
+                        #Set undefined errors to square-root of flux as first-order approximation
                         #    - errors will be redefined for local CCF using their continuum dispersion
                         #    - pixels with negative values are set to undefined, as there is no simple way to attribute errors to them
                         if not gen_dic[inst][vis]['flag_err']:
@@ -2980,33 +2981,32 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
 
 
 '''
-Estimate of detector gain 
+Estimate of instrumental calibration 
     - see def_weights_spatiotemp_bin()
-    - the gain is used as weight or to scale back profiles approximatively from flux to count units during CCF calculations (this allows artifically increasing errors when combining spectral regions with different SNRs)
-      spectra must however always be kept in flux units, as the stellar spectrum shifts over time in the detector rest frame
+    - the calibration is used as weight or to scale back profiles approximatively to their raw photoelectron counts during CCF calculations (this allows artifically increasing errors when combining spectral regions with different SNRs)
+      spectra must however be kept to their extracted flux units througout ANTARESS processing, as the stellar spectrum shifts over time in the instrument rest frame
       the same region of the spectrum thus sees different instrumental responses over time and is measured with different flux levels
-      shifted stellar spectra with the same profile would thus have a different color balance after being converted in count units, preventing in particular the correct calculation of binned spectra 
-    - weights are used for temporal binning, and are relevant only if the weight of a given pixel change over time, the gain is thus not defined for CCFs
-    - a median gain profile over all visits of an instrument is calculated in spectral mode 
-      we first fit a model to the gain for each exposure, so that it can be extrapolated over a larger, common range for all visits 
-      then we calculate the median of these extrapolated model, interpolate it as a function, and use it to define the common gain profile over the specific table of each exposure
-    - overall the estimated gains are stable between exposures but low count levels ten to yield larger gains - hence the independent calculation of gain per exposure, before taking the median over the visit
-      this may come from additional noise sources: if E = Ewhite + Ered = sqrt(gdet_true)*sqrt(F) + Er then gdet_true = (E-Er)^2/F < E^2/F = gdet_meas (since Er < 2*E), so that we underestimate the actual gain. 
-      in this case our assumptions to estimate gdet do not hold anymore, but for the purpose of weighing the exposures and scaling to equivalent count levels we still use the measured gain
-      since g_meas = (Ew + Er)^2/F this factor accounts for the true gain but also for additional noise sources        
-    - spectra are typically provided in the solar barycentric rest frame, and are thus not defined here in the detector rest frame, so that the gain profiles in different epochs may be shifted by the Earth barycentric RV difference   
-      we nonetheless use a single gain profile, constant in time and common to all processed exposures of an instrument, so that the relative color balance between spectra is not modified when converting them back to counts 
-      for the same reason the gain must be applied uniformely (ie, in the same rest frame) to spectra in different exposures, and their master, so that it does not affect their combinations - even if the original count-to-flux
- conversion is applied in the input rest frame
+      shifted stellar spectra with the same profile would thus have a different color balance after being converted in raw count units, preventing in particular the correct calculation of binned spectra 
+    - weights are used for temporal binning, and are relevant only if the weight of a given pixel change over time, the calibration is thus not defined for CCFs
+    - a median calibration profile over all visits of an instrument is calculated in spectral mode 
+      we first fit a model to the calibration for each exposure, so that it can be extrapolated over a larger, common range for all visits 
+      then we calculate the median of these extrapolated model, interpolate it as a function, and use it to define the common calibration profile over the specific table of each exposure
+    - overall the estimated calibrations are stable between exposures but low count levels ten to yield larger calibrations - hence the independent calculation of calibration per exposure, before taking the median over the visit
+      this may come from additional noise sources: if E = Ewhite + Ered = sqrt(gdet_true)*sqrt(F) + Er then gdet_true = (E-Er)^2/F < E^2/F = gdet_meas (since Er < 2*E), so that we underestimate the actual calibration. 
+      in this case our assumptions to estimate gdet do not hold anymore, but for the purpose of weighing the exposures and scaling to raw count levels we still use the measured calibration
+      since g_meas = (Ew + Er)^2/F this factor accounts for the true calibration but also for additional noise sources        
+    - spectra are typically provided in the solar barycentric rest frame, and are thus not defined here in the detector rest frame, so that the calibration profiles in different epochs may be shifted by the Earth barycentric RV difference   
+      we nonetheless use a single calibration profile, constant in time and common to all processed exposures of an instrument, so that the relative color balance between spectra is not modified when converting them back to counts 
+      for the same reason the calibration must be applied uniformely (ie, in the same rest frame) to spectra in different exposures, and their master, so that it does not affect their combinations - even if the original calibration to flux units is applied in the input rest frame
 '''
-def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
-    print('   > Estimating detector gain')
+def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic):
+    print('   > Estimating instrumental calibration')
     data_inst = data_dic[inst] 
         
     #Calculating data
-    if gen_dic['calc_det_gain']:
+    if gen_dic['calc_gcal']:
         print('         Calculating data')        
-        gain_inputs_dic = {} 
+        cal_inputs_dic = {} 
         minmax_def = {}
         min_edge_ord_all = np.repeat(1e100,data_dic[inst]['nord'])
         max_edge_ord_all = np.repeat(-1e100,data_dic[inst]['nord'])   
@@ -3017,9 +3017,9 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
             data_com_vis = np.load(data_vis['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item()
             data_gain_all={}
 
-            #Estimate of detector flux gain
+            #Estimate of instrumental calibration
             #    - set to the requested scaling if error tables are not available as input, or derived from sum(s[F]^2)/sum(F^2) summed over larger bins
-            data_vis['gain_data_paths'] = gen_dic['save_data_dir']+'Processed_data/Gains/'+inst+'_'+vis+'_'
+            data_vis['cal_data_paths'] = gen_dic['save_data_dir']+'Processed_data/Calibration/'+inst+'_'+vis+'_'
             if data_vis['mock'] or (not gen_dic[inst][vis]['flag_err']):
                 if data_vis['mock']:cst_gain = 1.
                 elif (not gen_dic[inst][vis]['flag_err']):cst_gain = gen_dic['g_err'][inst]
@@ -3031,7 +3031,7 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
             else:
                 
                 #Exposure groups
-                iexp_gain_groups = list(range(i,min(i+gen_dic['gain_binN'],data_vis['n_in_visit'])) for i in range(0,data_vis['n_in_visit'],gen_dic['gain_binN']))
+                iexp_gain_groups = list(range(i,min(i+gen_dic['gcal_binN'],data_vis['n_in_visit'])) for i in range(0,data_vis['n_in_visit'],gen_dic['gcal_binN']))
                 n_glob_groups = len(iexp_gain_groups)
                 iexp_glob_groups_vis[vis] = range(n_glob_groups)  
                 gdet_val_all = np.zeros([data_vis['n_in_visit'],data_dic[inst]['nord']],dtype=object)
@@ -3051,11 +3051,13 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
                             if iexp not in data_all_temp:data_all_temp[iexp] = np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item()
                       
                             #Defined bins
-                            #    - we further exclude ranges that were found to display abnormal gain estimates
+                            #    - we further exclude ranges that were found to display abnormal calibration estimates
                             cond_def_ord = data_all_temp[iexp]['cond_def'][iord]
                             if inst=='HARPN':
                                 if data_inst['idx_ord_ref'][iord]==51:cond_def_ord[data_all_temp[iexp]['cen_bins'][iord]<5742.] = False
                                 elif data_inst['idx_ord_ref'][iord]==64:cond_def_ord[(data_all_temp[iexp]['cen_bins'][iord]>6561.) & (data_all_temp[iexp]['cen_bins'][iord]<6564.)] = False    
+                            elif inst=='HARPS': 
+                                if data_inst['idx_ord_ref'][iord]==66:cond_def_ord[(data_all_temp[iexp]['cen_bins'][iord]>6558.) & (data_all_temp[iexp]['cen_bins'][iord]<6569.)] = False
                             idx_def_exp_ord = np_where1D(cond_def_ord)
                     
                             #Concatenate tables so that they are binned together
@@ -3072,7 +3074,7 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
 
                         #Initialize binned tables from grouped exposures
                         if np.sum(idx_def_group)>0:
-                            bin_bd,raw_loc_dic = sub_def_bins(gen_dic['gain_binw'],idx_def_group,low_wav_group,high_wav_group,high_wav_group-low_wav_group,wav_group,flux_group,var1D_loc=var_group)
+                            bin_bd,raw_loc_dic = sub_def_bins(gen_dic['gcal_binw'],idx_def_group,low_wav_group,high_wav_group,high_wav_group-low_wav_group,wav_group,flux_group,var1D_loc=var_group)
 
                             #Adding progressively bins that will be used to fit the correction
                             bin_ord_dic={}
@@ -3104,27 +3106,27 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
                           ('c3',0., True   , None , None , None),
                           ('c4',0., True   , None , None , None)) 
                 for key in ['blue','mid','red']:
-                    if (gen_dic['gain_deg'][key]<2) or (gen_dic['gain_deg'][key]>4):stop('Degrees must be between 2 and 4')
-                for ideg in range(gen_dic['gain_deg']['mid']+1,5):p_start['b'+str(ideg)].vary = False                             
-                for ideg in range(gen_dic['gain_deg']['blue']+1,5):p_start['a'+str(ideg)].vary = False                                   
-                for ideg in range(gen_dic['gain_deg']['red']+1,5):p_start['c'+str(ideg)].vary = False   
-                nfree_gainfit =  gen_dic['gain_deg']['blue']+gen_dic['gain_deg']['red']+1+gen_dic['gain_deg']['mid']-2                                     
+                    if (gen_dic['gcal_deg'][key]<2) or (gen_dic['gcal_deg'][key]>4):stop('Degrees must be between 2 and 4')
+                for ideg in range(gen_dic['gcal_deg']['mid']+1,5):p_start['b'+str(ideg)].vary = False                             
+                for ideg in range(gen_dic['gcal_deg']['blue']+1,5):p_start['a'+str(ideg)].vary = False                                   
+                for ideg in range(gen_dic['gcal_deg']['red']+1,5):p_start['c'+str(ideg)].vary = False   
+                nfree_gainfit =  gen_dic['gcal_deg']['blue']+gen_dic['gcal_deg']['red']+1+gen_dic['gcal_deg']['mid']-2                                     
 
                 fixed_args={
                     'use_cov':False,
-                    'deg_low':gen_dic['gain_deg']['blue'],
-                    'deg_mid':gen_dic['gain_deg']['mid'],
-                    'deg_high':gen_dic['gain_deg']['red'],
+                    'deg_low':gen_dic['gcal_deg']['blue'],
+                    'deg_mid':gen_dic['gcal_deg']['mid'],
+                    'deg_high':gen_dic['gcal_deg']['red'],
                     'constant':None                                                
                     }                                           
 
-                #Gain for spectral profiles
-                common_args = (minmax_def[vis],plot_dic,data_dic[inst]['nord'],gdet_val_all,inst,gen_dic['gain_thresh'][inst],gen_dic['gain_edges'],gen_dic['gain_nooutedge'],fixed_args,nfree_gainfit,p_start,data_vis['gain_data_paths'])
-                if gen_dic['gain_nthreads']>1:data_gain_all = para_model_gain(model_gain,gen_dic['gain_nthreads'],n_glob_groups,[iexp_glob_groups_vis[vis],iexp_gain_groups],common_args)                           
+                #Calibration for spectral profiles
+                common_args = (minmax_def[vis],plot_dic,data_dic[inst]['nord'],gdet_val_all,inst,gen_dic['gcal_thresh'][inst],gen_dic['gcal_edges'],gen_dic['gcal_nooutedge'],fixed_args,nfree_gainfit,p_start,data_vis['cal_data_paths'])
+                if gen_dic['gcal_nthreads']>1:data_gain_all = para_model_gain(model_gain,gen_dic['gcal_nthreads'],n_glob_groups,[iexp_glob_groups_vis[vis],iexp_gain_groups],common_args)                           
                 else:data_gain_all = model_gain(iexp_glob_groups_vis[vis],iexp_gain_groups,*common_args)  
 
             #Processing all orders for the visit
-            gain_inputs_dic[vis] = np.zeros([data_dic[inst]['nord'],n_glob_groups],dtype=object)
+            cal_inputs_dic[vis] = np.zeros([data_dic[inst]['nord'],n_glob_groups],dtype=object)
             for iord in range(data_dic[inst]['nord']): 
 
                 #Widest spectral range over all visits   
@@ -3135,50 +3137,50 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
                 #Retrieve function inputs 
                 #    - defined in the input rest frame
                 for iexp_glob in iexp_glob_groups_vis[vis]:
-                    gain_inputs_dic[vis][iord,iexp_glob] = data_gain_all[iexp_glob]['gdet_inputs'][iord] 
+                    cal_inputs_dic[vis][iord,iexp_glob] = data_gain_all[iexp_glob]['gdet_inputs'][iord] 
 
-        #Median gain profile over all exposures in the visit
-        #    - we assume the median gain is smooth enough that it can be captured with an interpolation function
-        #    - we assume the spectral tables are always more resolved than the typical variations of the gain profiles
-        #    - the gain profile is defined in the input rest frame, over a regular table in log oversampled compared to the instrument resolution (dlnw_inst = dw/w = 1/R)
+        #Median calibration profile over all exposures in the visit
+        #    - we assume the median calibration is smooth enough that it can be captured with an interpolation function
+        #    - we assume the spectral tables are always more resolved than the typical variations of the calibration profiles
+        #    - the calibration profile is defined in the input rest frame, over a regular table in log oversampled compared to the instrument resolution (dlnw_inst = dw/w = 1/R)
         mean_gdet_func = {} 
         gain_grid_dlnw = 0.5/return_resolv(inst)
         for iord in range(data_dic[inst]['nord']): 
 
-            #Table of definition of mean gain profile over each order
+            #Table of definition of mean calibration profile over each order
             #    - over the widest range covered by the inst visits, and at the oversampled instrumental resolution
             #    - tables are uniformely spaced in ln(w)
             #      d[ln(w)] = sc*dw/w = sc*dv/c = sc/R             
             nspec_ord = 1+int( np.ceil(   np.log(max_edge_ord_all[iord]/min_edge_ord_all[iord])/np.log( gain_grid_dlnw + 1. ) )  ) 
             cen_bins_ord = min_edge_ord_all[iord]*( gain_grid_dlnw + 1. )**np.arange(nspec_ord)     
         
-            #Median gain over all exposures in the visit
-            #    - interp1d is more stable at the edges than CubicSpline, and capture better the gain variations than polynomials
-            #    - the small variations in measured gain between orders may result in two slices having different profiles
+            #Median calibration over all exposures in the visit
+            #    - interp1d is more stable at the edges than CubicSpline, and capture better the calibration variations than polynomials
+            #    - the small variations in measured calibration between orders may result in two slices having different profiles
             #      however this is not an issue for the eventual weighing of the flux profiles
             med_gdet_allvis = np.zeros(nspec_ord,dtype=float)  
             for ivis,vis in enumerate(data_dic[inst]['visit_list']): 
                 mean_gdet_ord = np.zeros([nspec_ord,0],dtype=float)*np.nan 
                 for iexp_glob in iexp_glob_groups_vis[vis]:
                     mean_gdet_ord_loc = np.zeros(nspec_ord,dtype=float)*np.nan
-                    mean_gdet_ord_loc=gain_piecewise_func(gain_inputs_dic[vis][iord,iexp_glob]['par'],cen_bins_ord,args=gain_inputs_dic[vis][iord,iexp_glob]['args'])      
+                    mean_gdet_ord_loc=cal_piecewise_func(cal_inputs_dic[vis][iord,iexp_glob]['par'],cen_bins_ord,args=cal_inputs_dic[vis][iord,iexp_glob]['args'])      
                     mean_gdet_ord = np.append(mean_gdet_ord,mean_gdet_ord_loc[:,None],axis=1)
                 med_gdet_allvis+=np.nanmedian(mean_gdet_ord,axis=1)     
 
             #Mean over all visits
-            #    - we limit the gain below the chosen global outlier threshold
-            #    - we do not extrapolate beyond the range of definition of the median gain profile to avoid spurious behaviour
+            #    - we limit the calibration below the chosen global outlier threshold
+            #    - we do not extrapolate beyond the range of definition of the median calibration profile to avoid spurious behaviour
             med_gdet_ord = 1e3*med_gdet_allvis/gen_dic[inst]['n_visits'] 
-            med_gdet_ord[med_gdet_ord>gen_dic['gain_thresh'][inst]['global']] = gen_dic['gain_thresh'][inst]['global']
+            med_gdet_ord[med_gdet_ord>gen_dic['gcal_thresh'][inst]['global']] = gen_dic['gcal_thresh'][inst]['global']
             med_gdet_ord[med_gdet_ord<=0.]=np.min(med_gdet_ord[med_gdet_ord>0.])
             mean_gdet_func[iord] = interp1d(cen_bins_ord,med_gdet_ord,bounds_error=False,fill_value=(med_gdet_ord[0],med_gdet_ord[-1]))  
 
-        #Store mean gain function
-        np.savez_compressed(gen_dic['save_data_dir']+'Processed_data/Gains/'+inst+'_mean_gdet',data = {'func':mean_gdet_func},allow_pickle=True)  
+        #Store mean calibration function
+        np.savez_compressed(gen_dic['save_data_dir']+'Processed_data/Calibration/'+inst+'_mean_gdet',data = {'func':mean_gdet_func},allow_pickle=True)  
 
-        #Define gain tables for each exposure
+        #Define calibration tables for each exposure
         #    - the profile is the same, but defined over the table of the exposure
-        #    - the path is made specific to a visit and a type of profile so that the gain function can still be called in the multi-visit routines for any type of profile,
+        #    - the path is made specific to a visit and a type of profile so that the calibration function can still be called in the multi-visit routines for any type of profile,
         # even after the type of profile has changed in a given visit
         for vis in data_inst['visit_list']: 
             data_vis=data_inst[vis]
@@ -3193,7 +3195,7 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
            
     else: 
         for vis in data_inst['visit_list']: 
-            data_inst[vis]['gain_data_paths'] = gen_dic['save_data_dir']+'Processed_data/Gains/'+inst+'_'+vis+'_'
+            data_inst[vis]['cal_data_paths'] = gen_dic['save_data_dir']+'Processed_data/Calibration/'+inst+'_'+vis+'_'
             data_inst[vis]['mean_gdet_DI_data_paths'] = {}
             for iexp in range(data_inst[vis]['n_in_visit']):data_inst[vis]['mean_gdet_DI_data_paths'][iexp] = data_inst[vis]['proc_DI_data_paths']+'mean_gdet_'+str(iexp)
             check_data(data_inst[vis]['mean_gdet_DI_data_paths'],vis=vis)                    
@@ -3204,13 +3206,13 @@ def calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic):
 
 
 '''
-Gain function fitting routines
+Calibration function fitting routines
 '''
-def model_gain(iexp_glob_groups,iexp_gain_groups,minmax_def,plot_dic,nord,gdet_val_all,inst,gain_thresh,gain_edges,gain_nooutedge,fixed_args,nfree_gainfit,p_start,gain_data_paths):
+def model_gain(iexp_glob_groups,iexp_gain_groups,minmax_def,plot_dic,nord,gdet_val_all,inst,gcal_thresh,gcal_edges,gcal_nooutedge,fixed_args,nfree_gainfit,p_start,cal_data_paths):
     data_gain_all = {}
     for iexp_glob,iexp_gain_group in zip(iexp_glob_groups,iexp_gain_groups):
         data_gain={'gdet_inputs':{}}
-        if (plot_dic['det_gain']!='') or (plot_dic['det_gain_ord']!=''):
+        if (plot_dic['gcal']!='') or (plot_dic['gcal_ord']!=''):
             data_gain['wav_bin_all']=np.zeros(nord,dtype=object)
             data_gain['wav_trans_all']=np.zeros([2,nord],dtype=float)
             data_gain['cond_fit_all']=np.zeros(nord,dtype=object)
@@ -3223,7 +3225,7 @@ def model_gain(iexp_glob_groups,iexp_gain_groups,minmax_def,plot_dic,nord,gdet_v
                
                 #Fitting positive values below global threshold
                 bin_ord_dic = gdet_val_all[iexp_glob,iord] 
-                cond_fit = (bin_ord_dic['gdet']>0.) & (bin_ord_dic['gdet']<gain_thresh['global']/1e3)
+                cond_fit = (bin_ord_dic['gdet']>0.) & (bin_ord_dic['gdet']<gcal_thresh['global']/1e3)
     
                 #Remove extreme outliers
                 med_prop = np.median(bin_ord_dic['gdet'][cond_fit])
@@ -3234,11 +3236,11 @@ def model_gain(iexp_glob_groups,iexp_gain_groups,minmax_def,plot_dic,nord,gdet_v
                 low_edge = bin_ord_dic['cen_bins'][0]
                 high_edge = bin_ord_dic['cen_bins'][-1]
                 drange =  high_edge-low_edge    
-                fixed_args.update({'w_lowedge':low_edge+gain_edges['blue']*drange,
-                                   'w_highedge':high_edge-gain_edges['red']*drange,
+                fixed_args.update({'w_lowedge':low_edge+gcal_edges['blue']*drange,
+                                   'w_highedge':high_edge-gcal_edges['red']*drange,
                                    'wref':0.5*(low_edge+high_edge)})  
                 
-                #Fit binned gain profile and define complete gain profile
+                #Fit binned calibration profile and define complete calibration profile
                 #    - if enough bins are defined, otherwise a single measured value is used for the order
                 if (np.sum(cond_fit)>nfree_gainfit):
     
@@ -3252,23 +3254,23 @@ def model_gain(iexp_glob_groups,iexp_gain_groups,minmax_def,plot_dic,nord,gdet_v
                     p_start.add_many(('c1',0, False   , None , None , 'dPred_wmax-(2*c2*wmax+3*c3*wmax**2.+4*c4*wmax**3.)')) 
                                                           
                     #Temporary fit to identify outliers
-                    #    - sigma-clipping applied to the inner parts of the order to prevent excluding edges where gain can vary sharply
+                    #    - sigma-clipping applied to the inner parts of the order to prevent excluding edges where calibration can vary sharply
                     #    - negative values are removed
-                    #    - weights are used to prevent point with large gains (associated with low fluxes) biasing the simple polynomial fit
+                    #    - weights are used to prevent point with large calibrations (associated with low fluxes) biasing the simple polynomial fit
                     cond_check = deepcopy(cond_fit) 
-                    if inst in gain_nooutedge:cond_check = cond_fit & (bin_ord_dic['cen_bins']>=bin_ord_dic['cen_bins'][0]+gain_nooutedge[inst][0]) & (bin_ord_dic['cen_bins']<=bin_ord_dic['cen_bins'][-1]-gain_nooutedge[inst][1]) 
+                    if inst in gcal_nooutedge:cond_check = cond_fit & (bin_ord_dic['cen_bins']>=bin_ord_dic['cen_bins'][0]+gcal_nooutedge[inst][0]) & (bin_ord_dic['cen_bins']<=bin_ord_dic['cen_bins'][-1]-gcal_nooutedge[inst][1]) 
                     if (np.sum(cond_check)>nfree_gainfit):
                         var_fit = bin_ord_dic['gdet'][cond_check]
-                        _,merit,_ = fit_minimization(ln_prob_func_lmfit,p_start,bin_ord_dic['cen_bins'][cond_check],bin_ord_dic['gdet'][cond_check],np.array([var_fit]),gain_piecewise_func,verbose=False,fixed_args=fixed_args)  
+                        _,merit,_ = fit_minimization(ln_prob_func_lmfit,p_start,bin_ord_dic['cen_bins'][cond_check],bin_ord_dic['gdet'][cond_check],np.array([var_fit]),cal_piecewise_func,verbose=False,fixed_args=fixed_args)  
                         res_gdet = bin_ord_dic['gdet'][cond_check] - merit['fit']
-                        cond_fit[cond_check] = np.abs(res_gdet)<=gain_thresh['outliers']*np.std(res_gdet)
+                        cond_fit[cond_check] = np.abs(res_gdet)<=gcal_thresh['outliers']*np.std(res_gdet)
     
                         #Model fit
                         #    - errors are scaled with the reduced chi2 from the preliminary fit                           
                         if (np.sum(cond_fit)>nfree_gainfit):
                             fit_done = True
                             var_fit = bin_ord_dic['gdet'][cond_fit]*merit['chi2r'] 
-                            _,merit,p_best = fit_minimization(ln_prob_func_lmfit,p_start,bin_ord_dic['cen_bins'][cond_fit],bin_ord_dic['gdet'][cond_fit],np.array([var_fit]),gain_piecewise_func,verbose=False,fixed_args=fixed_args)                                              
+                            _,merit,p_best = fit_minimization(ln_prob_func_lmfit,p_start,bin_ord_dic['cen_bins'][cond_fit],bin_ord_dic['gdet'][cond_fit],np.array([var_fit]),cal_piecewise_func,verbose=False,fixed_args=fixed_args)                                              
                             data_gain['gdet_inputs'][iord] = {'par':deepcopy(p_best),'args':deepcopy(fixed_args)}
     
                 #Fit could not be performed
@@ -3276,21 +3278,21 @@ def model_gain(iexp_glob_groups,iexp_gain_groups,minmax_def,plot_dic,nord,gdet_v
                     data_gain['gdet_inputs'][iord]={'par':None,'args':{'constant':np.median(bin_ord_dic['gdet'])}}
     
                 #Save
-                if (plot_dic['det_gain']!='') or (plot_dic['det_gain_ord']!=''):
+                if (plot_dic['gcal']!='') or (plot_dic['gcal_ord']!=''):
                     data_gain['wav_bin_all'][iord] = bin_ord_dic['cen_bins']
                     data_gain['wav_trans_all'][:,iord] = [fixed_args['w_lowedge'],fixed_args['w_highedge']]
                     data_gain['cond_fit_all'][iord] = cond_fit
                     data_gain['gdet_bin_all'][iord] = bin_ord_dic['gdet']
     
             #Order fully undefined
-            #    - no gain is applied
+            #    - no calibration is applied
             else:
                 data_gain['gdet_inputs'][iord]={'par':None,'args':{'constant':1.}}
     
-        #Save gain for each original exposure associated with current exposure group
+        #Save calibration for each original exposure associated with current exposure group
         data_gain_all[iexp_glob]=data_gain 
-        if (plot_dic['det_gain']!='') or (plot_dic['det_gain_ord']!=''):
-            for iexp in iexp_gain_group:np.savez_compressed(gain_data_paths+str(iexp),data=data_gain,allow_pickle=True) 
+        if (plot_dic['gcal']!='') or (plot_dic['gcal_ord']!=''):
+            for iexp in iexp_gain_group:np.savez_compressed(cal_data_paths+str(iexp),data=data_gain,allow_pickle=True) 
             
     return data_gain_all
 
@@ -3311,9 +3313,9 @@ def para_model_gain(func_input,nthreads,n_elem,y_inputs,common_args):
 
 
 '''
-Joined polynomials to model gain functions
+Joined polynomials to model calibration functions
 '''
-def gain_piecewise_func(param_in,wav_in,args=None):
+def cal_piecewise_func(param_in,wav_in,args=None):
     if isinstance(param_in,lmfit.parameter.Parameters):params={par:param_in[par].value for par in param_in}
     else:params=deepcopy(param_in)                                                   
     #P_low(w) = sum(0:nlow,ai*w^i)
@@ -3439,7 +3441,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
         ord_coadd = gen_dic[inst]['orders4ccf'] 
         nord_coadd = len(ord_coadd)
         
-        #Gain profile
+        #Calibration profile
         if data_vis['mean_gdet']:
             data_com = np.load(data_vis['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item()  
             mean_gdet_com = np.zeros([nord_coadd,data_com['dim_exp'][1]],dtype=float)
@@ -3471,9 +3473,9 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
                 data_proc[key][iexp_sub] = data_load[key]  
             if gen_dic['flux_sc']:data_proc['cen_bins'][iexp_sub] = data_load['cen_bins']  
             
-            #Mean gain profile over processed exposures
-            #    - due to the various shifts of the processed spectra from the input rest frame, gain profiles are not equivalent for a given line between exposure
-            #      to maintain the relative flux balance between lines when computing CCFs, we calculate a common gain profile to all processes exposures
+            #Mean calibration profile over processed exposures
+            #    - due to the various shifts of the processed spectra from the input rest frame, calibration profiles are not equivalent for a given line between exposure
+            #      to maintain the relative flux balance between lines when computing CCFs, we calculate a common calibration profile to all processes exposures
             if data_vis['mean_gdet']:
                 mean_gdet_exp = dataload_npz(data_vis['mean_gdet_'+gen+'_data_paths'][iexp_eff])['mean_gdet'] 
                 for isub,iord in enumerate(ord_coadd):mean_gdet_com[isub]+=bind.resampling(data_com['edge_bins'][iord], data_proc['edge_bins'][iexp_sub,iord],mean_gdet_exp[iord], kind=gen_dic['resamp_mode'])/n_exp 
@@ -3482,7 +3484,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
             #    - the master is always remain either defined on the common table, or on a specific table different from the table of its associated exposure
             #    - the master is computed after DI spectra have been converted into CCFs, and thus need conversion only for later profile types
             if data_type_gen in ['Intr','Atm']:
-                data_ref = np.load(data_vis['mast_'+gen+'_data_paths'][iexp_eff]+'.npz',allow_pickle=True)['data'].item() 
+                data_ref = dataload_npz(data_vis['mast_'+gen+'_data_paths'][iexp_eff])
                 if iexp_sub==0:
                     data_proc['edge_bins_ref'] = np.zeros([n_exp]+list(data_ref['edge_bins'].shape),dtype=float)
                     data_proc['flux_ref'] = np.zeros([n_exp]+list(data_ref['flux'].shape),dtype=float)
@@ -3522,7 +3524,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
         if gen_dic['flux_sc'] and data_type_gen in ['Intr','Atm']:
             data_scaling_all={}
             for iexp in iexp_list:         
-                data_scaling_all[iexp]=dataload_npz(data_vis['scaled_data_paths']+str(iexp))                 
+                data_scaling_all[iexp]=dataload_npz(data_vis['scaled_'+data_type_gen+'_data_paths']+str(iexp))                 
             loc_flux_scaling_CCF = np.zeros(CCF_all.shape,dtype=float)   
 
         #Calculate CCF over requested orders in each exposure
@@ -3540,18 +3542,18 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
                 ord_coadd_eff+=[isub]
                 if data_vis['mean_gdet']:gdet_ord = bind.resampling(data_proc['edge_bins'][iexp_sub,iord],data_com['edge_bins'][iord],mean_gdet_com[isub], kind=gen_dic['resamp_mode'])       
                 for iexp_sub,iexp in enumerate(iexp_list):                      
-                    flux_ord,cov_ord = new_compute_CCF(data_proc['edge_bins'][iexp_sub,iord],data_proc['flux'][iexp_sub,iord],data_proc['cov'][iexp_sub,iord],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,gain = gdet_ord)
+                    flux_ord,cov_ord = new_compute_CCF(data_proc['edge_bins'][iexp_sub,iord],data_proc['flux'][iexp_sub,iord],data_proc['cov'][iexp_sub,iord],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gdet_ord)
                     CCF_all[iexp_sub,0]+=flux_ord
                     cov_exp_ord[iexp_sub,isub] = cov_ord 
                     nd_cov_exp_ord[iexp_sub,isub] = np.shape(cov_ord)[0]
 
                     #Compute CCF of spectral scaling
-                    if gen_dic['flux_sc']:loc_flux_scaling_CCF[iexp_sub,0] += new_compute_CCF(data_proc['edge_bins'][iexp_sub,iord],data_scaling_all[iexp]['loc_flux_scaling'][iord](data_proc['cen_bins'][iexp_sub,iord]),None,gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,gain = gdet_ord)[0]
+                    if gen_dic['flux_sc']:loc_flux_scaling_CCF[iexp_sub,0] += new_compute_CCF(data_proc['edge_bins'][iexp_sub,iord],data_scaling_all[iexp]['loc_flux_scaling'][iord](data_proc['cen_bins'][iexp_sub,iord]),None,gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gdet_ord)[0]
 
                     #Compute CCF of master disk-integrated spectrum
                     #    - so that it can be used in the weighing profiles
                     if data_type_gen in ['Intr','Atm']:
-                        flux_temp,cov_temp = new_compute_CCF(data_proc['edge_bins_ref'][iexp_sub,iord],data_proc['flux_ref'][iexp_sub,iord],data_proc['cov_ref'][iexp_sub,iord],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,gain = gdet_ord)
+                        flux_temp,cov_temp = new_compute_CCF(data_proc['edge_bins_ref'][iexp_sub,iord],data_proc['flux_ref'][iexp_sub,iord],data_proc['cov_ref'][iexp_sub,iord],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gdet_ord)
                         CCF_ref[iexp_sub,0]+=flux_temp
                         cov_ref_ord[iexp_sub,isub] = cov_temp 
                         nd_cov_ref_ord[iexp_sub,isub] = np.shape(cov_temp)[0]
@@ -3601,7 +3603,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
             
             #Processing disk-integrated masters
             if data_type_gen in ['Intr','Atm']:
-                np.savez_compressed(dir_mast[gen][iexp_eff],data={'edge_bins':edge_bins,'flux':CCF_ref[iexp_sub],'cov':cov_ref},allow_pickle=True)
+                np.savez_compressed(dir_mast[gen][iexp_eff],data={'cen_bins':cen_bins,'edge_bins':edge_bins,'flux':CCF_ref[iexp_sub],'cov':cov_ref},allow_pickle=True)
 
             #Redefine spectral scaling table
             if gen_dic['flux_sc']:
@@ -3609,7 +3611,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
                 else:loc_flux_scaling_exp = interp1d(cen_bins[0],loc_flux_scaling_CCF[iexp_sub,0],fill_value=(loc_flux_scaling_CCF[iexp_sub,0,0],loc_flux_scaling_CCF[iexp_sub,0,-1]), bounds_error=False)
                 data_scaling_all[iexp]['loc_flux_scaling'] = [loc_flux_scaling_exp]
                 data_scaling_all[iexp]['chrom'] = False
-                np.savez_compressed(gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_'+vis+'_scaling_'+str(iexp),data=data_scaling_all[iexp],allow_pickle=True)
+                datasave_npz(dir_save[gen]+'_scaling_'+str(iexp),data_scaling_all[iexp])
 
         #Update common tables
         #    - set to the table in the star rest frame, as it is the one that will be used in later operations                
@@ -3620,15 +3622,15 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
 
     #Updating path to processed data and checking it has been calculated
     data_vis['proc_com_data_paths'] = proc_com_data_paths_new
-    for gen in dir_save:data_vis['proc_'+gen+'_data_paths'] = dir_save[gen]  
-    if gen_dic['flux_sc']:data_vis['scaled_paths'] = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_'+vis+'_scaling_'
-    if data_type_gen in ['Intr','Atm']:
-        for gen in dir_save:data_vis['mast_'+gen+'_data_paths'] = dir_mast[gen]
+    for gen in dir_save:
+        data_vis['proc_'+gen+'_data_paths'] = dir_save[gen]  
+        if gen_dic['flux_sc']:data_vis['scaled_'+gen+'_data_paths'] = dir_save[gen]+'_scaling_'
+        if gen in ['Intr','Atm']:data_vis['mast_'+gen+'_data_paths'] = dir_mast[gen]
 
     #Convert spectral mode 
     #    - all operations afterwards will be performed on CCFs
     #    - tellurics are not propagated to calculate weights in CCF mode 
-    #    - no spectral gain is applied
+    #    - no spectral calibration is applied
     print('         ANTARESS switched to CCF processing')
     data_vis['comm_sp_tab']=True
     data_vis['tell_sp'] = False 
@@ -3833,7 +3835,7 @@ def check_CCF_mask_lines(n_exp,edge_wav_all,cond_def_all,wav_mask,edge_velccf):
 '''
 Compute the Cross Correlation Function with covariance
 '''
-def new_compute_CCF(edge_wav,flux,cov,resamp_mode,edge_velccf,wght_mask,wav_mask,nthreads,gain = None):
+def new_compute_CCF(edge_wav,flux,cov,resamp_mode,edge_velccf,wght_mask,wav_mask,nthreads,cal = None):
 
     #Check for discontinuous input table
     low_pix_wav = edge_wav[0:-1]
@@ -3848,7 +3850,7 @@ def new_compute_CCF(edge_wav,flux,cov,resamp_mode,edge_velccf,wght_mask,wav_mask
     #Call to parallelized function   
     if (nthreads>1) and (nthreads<=len(wght_mask)):
         pool_proc = Pool(processes=nthreads)                
-        common_args=(n_RV,edge_wav,flux,cov,gain,resamp_mode)
+        common_args=(n_RV,edge_wav,flux,cov,cal,resamp_mode)
         chunkable_args=[edge_mask_lines,wght_mask]
         fluxCCF,covCCF_line,nd_covCCF_line=parallel_new_compute_CCF(pool_proc,sub_new_compute_CCF,nthreads,len(wght_mask),chunkable_args,common_args)                           
         pool_proc.close()
@@ -3856,7 +3858,7 @@ def new_compute_CCF(edge_wav,flux,cov,resamp_mode,edge_velccf,wght_mask,wav_mask
         
     #Regular routine
     else:
-        fluxCCF,covCCF_line,nd_covCCF_line=sub_new_compute_CCF(edge_mask_lines,wght_mask,n_RV,edge_wav,flux,cov,gain,resamp_mode)
+        fluxCCF,covCCF_line,nd_covCCF_line=sub_new_compute_CCF(edge_mask_lines,wght_mask,n_RV,edge_wav,flux,cov,cal,resamp_mode)
 
     #Computing final covariance matrix
     #    - maximum dimension of covariance matrix from all contributing orders
@@ -3871,7 +3873,7 @@ def new_compute_CCF(edge_wav,flux,cov,resamp_mode,edge_velccf,wght_mask,wav_mask
     return fluxCCF,covCCF
 
 
-def sub_new_compute_CCF(edge_mask,wght_mask,n_RV,edge_wav,flux,cov,gain,resamp_mode):
+def sub_new_compute_CCF(edge_mask,wght_mask,n_RV,edge_wav,flux,cov,cal,resamp_mode):
   
     #Loop on selected lines
     #    - for each line in the line list, we co-add the contribution to the CCF
@@ -3883,13 +3885,13 @@ def sub_new_compute_CCF(edge_mask,wght_mask,n_RV,edge_wav,flux,cov,gain,resamp_m
     for isub,(edge_mask_line,wght_mask_line) in enumerate(zip(edge_mask,wght_mask)):
 
         #Spectrum around current line brought back from flux to count units
-        #    - if a gain profile is provided as input we take its mean value in the local line range and use it to scale the input spectrum
+        #    - if a calibration profile is provided as input we take its mean value in the local line range and use it to scale the input spectrum
         #      this is to get the spectrum as close as possible to its original count level, so that regions of the spectrum with comparable flux levels but different count levels do not contribute in the same way to the CCF
-        #      the use of a constant estimated gain rather than the actual profile is to keep the color balance of the spectrum intact, and avoid biasing the CCF
-        if gain is not None:
+        #      the use of a constant estimated calibration rather than the actual profile is to keep the color balance of the spectrum intact, and avoid biasing the CCF
+        if cal is not None:
             idxCCF_sub = np_where1D((edge_wav>=edge_mask_line[0]) & (edge_wav<=edge_mask_line[-1]))    #indexes where spectrum falls within mask line range
             idxCCF_sub_max = min([len(edge_wav)-1,idxCCF_sub[-1]])                                     
-            mean_gainCCF_sub = np.mean(gain[idxCCF_sub[0]:idxCCF_sub_max+1])
+            mean_gainCCF_sub = np.mean(cal[idxCCF_sub[0]:idxCCF_sub_max+1])
         else:mean_gainCCF_sub =  1.
 
         #Spectrum around current line resampled in RV space on the CCF table
@@ -4107,7 +4109,7 @@ def excl_plrange(cond_def,range_star_in,iexp,edge_bins,data_type):
         range_star = range_star_in['spec']
         
         #Defined bins in spectrum
-        #    - we do not check pixels already undefined to gain time
+        #    - we do not check pixels already undefined to calibration time
         idx_def_exp_pl = np_where1D(cond_def)                             
         n_idx_def_loc = len(idx_def_exp_pl)
         
@@ -4202,6 +4204,12 @@ def corr_line_prof(corr_line_prof_dic,data_dic,coord_dic,inst,vis,CCF_dic,data_p
                 print('           Correcting for trends')
                 corr_prop = corr_line_prof_dic['prop'][inst][vis]
             
+                #Default orders for SNR
+                if (inst in corr_line_prof_dic['SNRorders']):SNRorders_inst = corr_line_prof_dic['SNRorders'][inst]
+                else:SNRorders_inst = {'HARPS':[49],'HARPN':[46],'ESPRESSO_MR':[39],'ESPRESSO':[102,103],'CARMENES_VIS':[40],
+                                       'NIRPS_HA':[57],'NIRPS_HE':[57],    #H band, 1.63 mic, order not affected by tellurics thus stable for SNR measurement
+                                       'EXPRES':[14]}[inst]                #562 nm
+
                 #Initialize corrections
                 corr_list = list(corr_prop.keys())
                 prop_corr = [corr_loc.split('_')[0] for corr_loc in corr_list]
@@ -4223,11 +4231,11 @@ def corr_line_prof(corr_line_prof_dic,data_dic,coord_dic,inst,vis,CCF_dic,data_p
                 for iexp in range(data_vis['n_in_visit']):
     
                     #SNR in chosen spectral orders
-                    #    - SNRs are relative to original orders
+                    #    - indexes relative to original orders
                     if np.any(['snr' in corr_loc for corr_loc in var_corr]):
                         SNR_exp_ord = data_prop_vis['SNRs'][iexp] 
-                        SNR_exp =np.mean(SNR_exp_ord[corr_line_prof_dic['SNRorders'][inst]])
-                        if np.any([corr_loc=='snrQ' for corr_loc in var_corr]):SNRQ_exp =np.sqrt(np.sum(SNR_exp_ord[corr_line_prof_dic['SNRorders'][inst]]**2.))                 
+                        SNR_exp =np.mean(SNR_exp_ord[SNRorders_inst])
+                        if np.any([corr_loc=='snrQ' for corr_loc in var_corr]):SNRQ_exp =np.sqrt(np.sum(SNR_exp_ord[SNRorders_inst]**2.))                 
                         
                     #Orbital phase
                     if np.any([corr_loc=='phase' for corr_loc in var_corr]):
@@ -4343,9 +4351,6 @@ def corr_line_prof(corr_line_prof_dic,data_dic,coord_dic,inst,vis,CCF_dic,data_p
                 #PCA results
                 pca_results = np.load(corr_line_prof_dic['PC_model'][inst][vis]['all'],allow_pickle=True)['data'].item() 
 
-                #Upload flux scaling 
-                data_scaling = (np.load(gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_add'+'.npz',allow_pickle=True)['data'].item())
-
                 #Joint intrinsic fit
                 if 'in' in corr_line_prof_dic['PC_model'][inst][vis]:
                     jointfit_results = np.load(corr_line_prof_dic['PC_model'][inst][vis]['in'],allow_pickle=True)['data'].item() 
@@ -4411,6 +4416,9 @@ def corr_line_prof(corr_line_prof_dic,data_dic,coord_dic,inst,vis,CCF_dic,data_p
                     
                     #Correct exposure if included in PCA module or joint intrinsic fit
                     if (iexp in pca_results['idx_corr']) or ((jointfit_results is not None) and (i_in in jointfit_results['idx_in_fit'][inst][vis])):
+        
+                        #Upload flux scaling 
+                        data_scaling = dataload_npz(data_vis['scaled_DI_paths']+str(iexp))
 
                         #Switch PCA spectrum into RV space
                         if ('spec' in data_dic[inst][vis]['type']):
@@ -4441,7 +4449,7 @@ def corr_line_prof(corr_line_prof_dic,data_dic,coord_dic,inst,vis,CCF_dic,data_p
                         if plot_dic['map_pca_prof']!='':
                             np.savez_compressed(gen_dic['save_data_dir']+'PCA_results/'+inst+'_'+vis+'_model'+str(iexp) ,data = {'flux':np.array([pc_mod_exp]),'edge_bins' :np.array([bins_edge_PCA]),'cond_def':np.ones(data_dic[inst][vis]['dim_exp'],dtype=bool) },allow_pickle=True)
                 
-                        #Scale to the level of disk-integrated flux
+                        #Scale to the level of disk-integrated flux density
                         pc_mod_exp*=data_scaling['glob_flux_scaling'][iexp]
   
                         #Temporary exposure table centered in star rest frame
@@ -4635,7 +4643,7 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
         for isub,iexp in enumerate(prop_dic[inst][vis]['idx_def']):    
 
             #Upload latest processed data
-            data_exp = np.load(data_dic[inst][vis]['proc_'+data_type+'_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item()
+            data_exp = dataload_npz(data_dic[inst][vis]['proc_'+data_type+'_data_paths']+str(iexp))
 
             #Achromatic planet-occulted surface rv
             if data_type=='Intr':rv_shift_cen = def_surf_shift(prop_dic['align_mode'],dic_rv,iexp,data_exp,ref_pl,data_vis['type'],data_dic['DI']['system_prop'],data_dic[inst][vis]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'])[0]
@@ -4643,9 +4651,9 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
             rv_shift_mean[iexp] = np.nanmean(rv_shift_cen)
 
             #Aligning exposure profile and complementary tables
-            #    - the gain profile is common to all exposures of a processed instrument, and is originally sampled over the table of each exposure in the detector rest frame
-            #    - the gain profile is then used as weight in temporal binning, or to scale back profiles from flux to count units
-            #      in both cases the gain profile must follow the same shifts as the exposure
+            #    - the calibration profile is common to all exposures of a processed instrument, and is originally sampled over the table of each exposure in the detector rest frame
+            #    - the calibration profile is then used as weight in temporal binning, or to scale back profiles from flux to count units
+            #      in both cases the calibration profile must follow the same shifts as the exposure
             if data_vis['tell_sp']:data_exp['tell'] = dataload_npz(data_vis['tell_'+data_type+'_data_paths'][iexp])['tell'] 
             if data_vis['mean_gdet']:data_exp['mean_gdet'] = dataload_npz(data_vis['mean_gdet_'+data_type+'_data_paths'][iexp])['mean_gdet'] 
             data_align=align_data(data_exp,data_vis['type'],data_dic[inst]['nord'],dim_exp_resamp,gen_dic['resamp_mode'],cen_bins_resamp, edge_bins_resamp,rv_shift_cen)
@@ -4669,7 +4677,7 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
             #   the master table thus becomes specific to each exposure, but is still different from the table of the exposure
             #    - path to the master associated with current profile is updated
             if proc_mast:
-                data_ref = np.load(data_vis['mast_'+data_type+'_data_paths'][iexp]+'.npz',allow_pickle=True)['data'].item()
+                data_ref = dataload_npz(data_vis['mast_'+data_type+'_data_paths'][iexp])
                 data_ref_align=align_data(data_ref,data_vis['type'],data_dic[inst]['nord'],dim_exp_resamp,gen_dic['resamp_mode'],cen_bins_resamp,edge_bins_resamp,rv_shift_cen)
                 np.savez_compressed(proc_gen_data_paths_new+'_ref'+str(iexp),data={'edge_bins':data_ref_align['edge_bins'],'flux':data_ref_align['flux'],'cov':data_ref_align['cov']},allow_pickle=True)           
 
@@ -4866,7 +4874,7 @@ def align_data(data_exp,rout_mode,nord,dim_exp_resamp,resamp_mode,cen_bins_resam
             data_align['tell']=np.zeros(dim_exp_resamp, dtype=float)*np.nan
             for iord in range(nord):data_align['tell'][iord] = bind.resampling(data_align['edge_bins'][iord], edge_bins_rest[iord], data_exp['tell'][iord], kind=resamp_mode)            
         
-        #Processing gain profile
+        #Processing calibration profile
         if ('mean_gdet' in data_exp):
             data_align['mean_gdet']=np.zeros(dim_exp_resamp, dtype=float)*np.nan
             for iord in range(nord):data_align['mean_gdet'][iord] = bind.resampling(data_align['edge_bins'][iord], edge_bins_rest[iord], data_exp['mean_gdet'][iord], kind=resamp_mode)             
@@ -4922,7 +4930,8 @@ Scale data to the correct flux level
       Fcorr(w,t,v) = Fstar(w,v)*Cref(w,v)*L(t)
       where Cref(w in band,v) ~ Cref(band,v) represents a possible low-frequency deviation from the true stellar spectrum
             L(t) represents the global flux deviation from the true stellar spectrum, not corrected for in previous modules 
-    - we first correct for L(t) by dividing the profiles by globF(v,t) = TFcorr(v,t)/med(tk, TFcorr(v,tk) ) or TFcorr(v,t)/(Fsc*int(w in full_band, dw )) 
+    - we first convert all spectra from flux to (temporal) flux density units, so that they are equivalent except for flux variations 
+    - we then correct for L(t) by dividing the profiles by globF(v,t) = TFcorr(v,t)/med(tk, TFcorr(v,tk) ) or TFcorr(v,t)/(Fsc*int(w in full_band, dw )) 
       where TFcorr(v,t) = int(w in full_band, Fcorr(w,t,v)*dw ) = C*L(t) 
       the exact value of the (unocculted) global flux level does not matter within a visit and is set to the median flux of all spectra, unless the user choses to impose a common flux density for all visits (in case disk-integrated data needs to be combined between visits)          
     - we then need to rescale spectrally the data so that 
@@ -5002,7 +5011,8 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
 
     print('   > Broadband flux scaling') 
     data_vis=data_inst[vis]
-    data_vis['scaled_data_paths'] = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_scaling_'
+    proc_DI_data_paths_new = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_'
+    data_vis['scaled_DI_data_paths'] = proc_DI_data_paths_new+'scaling_'         
 
     #Calculating rescaled data
     if (gen_dic['calc_flux_sc']):
@@ -5197,8 +5207,7 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
 
 
         #Save for plots
-        if len(dic_save)>0:
-            np.savez_compressed(gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_add', data = dic_save ,allow_pickle=True)        
+        if len(dic_save)>0:datasave_npz(proc_DI_data_paths_new+'add',dic_save)        
 
         #------------------------------------------------------------------------
 
@@ -5215,8 +5224,10 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
         for iexp in range(data_vis['n_in_visit']): 
             
             #Latest processed DI data
-            #    - if data were kept on independent tables they need to be resampled on a common one to calculate equivalent fluxes
             data_exp = np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item()  
+
+            #Resampling and conversion to temporal flux density
+            #    - if data were kept on independent tables they need to be resampled on a common one to calculate equivalent fluxes
             if (not data_vis['comm_sp_tab']):
                 for iord in range(data_inst['nord']): 
                     flux_all[iexp,iord] = bind.resampling(edge_bins_com[iord], data_exp['edge_bins'][iord], data_exp['flux'][iord] , kind=gen_dic['resamp_mode'])                                                        
@@ -5224,6 +5235,7 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
             else:
                 flux_all[iexp] = data_exp['flux']
                 cond_def_all[iexp] = data_exp['cond_def']
+            flux_all[iexp]/=coord_dic[inst][vis]['t_dur'][iexp]
 
             #Spectral scaling table                                        
             #    - scale to the expected flux level at all wavelengths, using the broadband flux interpolated over the full spectrum range, unless a single band is used
@@ -5256,6 +5268,7 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
         #      it might thus be more accurate to rescale them using their own flux rather than the flux of the original spectra
         #      furthermore masters afterward will be calculated from these profiles, scaled, thus they do not need to be set to the level of the original global master
         #      we thus use the total flux summed over the full range of the current profiles, with their median taken as reference
+        #    - defined on temporal flux density (not cumulated photoelectrons counts)
         Tflux_all = np.zeros(data_vis['n_in_visit'],dtype=float)
         dcen_bin_comm = (edge_bins_com[:,1::] - edge_bins_com[:,0:-1])
         Tcen_bin_comm = 0.
@@ -5271,14 +5284,13 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
         #    - all defined bins remain defined 
         #    - operation depends on condition 'rescale_DI' because flux scaling tbales may be required even if data needs not be scaled
         if data_dic['DI']['rescale_DI']:          
-            proc_DI_data_paths_new = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_'
             for iexp in range(data_vis['n_in_visit']):  
                 
                 #Save exposure
                 data_exp = np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item() 
                 for iord in range(data_inst['nord']): 
                     LC_exp_spec_ord = 1.-loc_flux_scaling[iexp,iord](data_exp['cen_bins'][iord])
-                    data_exp['flux'][iord],data_exp['cov'][iord] = bind.mul_array(data_exp['flux'][iord],data_exp['cov'][iord],LC_exp_spec_ord/norm_exp_glob[iexp])
+                    data_exp['flux'][iord],data_exp['cov'][iord] = bind.mul_array(data_exp['flux'][iord],data_exp['cov'][iord],LC_exp_spec_ord/(coord_dic[inst][vis]['t_dur'][iexp]*norm_exp_glob[iexp]))
                 np.savez_compressed(proc_DI_data_paths_new+str(iexp),data = data_exp,allow_pickle=True) 
                 
                 #Save scaling
@@ -5287,14 +5299,12 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
                 data_scaling = {'loc_flux_scaling':loc_flux_scaling[iexp],'glob_flux_scaling':norm_exp_glob[iexp]}
                 if system_prop['nw']>1:data_scaling['chrom']=True
                 else:data_scaling['chrom']=False
-                np.savez_compressed(data_vis['scaled_data_paths']+str(iexp), data = data_scaling ,allow_pickle=True)                
-                
-            data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
+                datasave_npz(data_vis['scaled_DI_data_paths']+str(iexp),data_scaling)                
         
     #Updating path to processed data and checking it has been calculated
-    else: 
-        data_vis['proc_DI_data_paths']=gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_'    
-        check_data({'path':data_vis['proc_DI_data_paths']+str(0)})   
+    else:   
+        check_data({'path':proc_DI_data_paths_new+str(0)})   
+    data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
 
     return None
     
@@ -5314,7 +5324,7 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
 """
 Sub-function to calculate a single binned profile from a sample of input profiles, over a fixed spectral table
 """
-def pre_calc_binned_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_bin,edge_bins_resamp,nocov=False):
+def pre_calc_binned_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_bin,edge_bins_resamp,nocov=False,tab_delete=None):
     
     #Pre-processing
     #    - it is necessary to do this operation first to process undefined flux and weight values
@@ -5343,16 +5353,19 @@ def pre_calc_binned_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_t
         flux_exp_all[isub,~cond_def_all[isub]] = 0.        
         weight_exp_all[isub,~cond_def_all[isub]] = 0.
 
-        #Pixels where at least one exposure has an undefined weight for a defined flux value
-        cond_undef_weights |= ( np.isnan(weight_exp_all[isub]) & cond_def_all[isub] )
+        #Pixels where at least one profile has an undefined or negative weight (due to interpolation) for a defined flux value
+        cond_undef_weights |= ( (np.isnan(weight_exp_all[isub]) | (weight_exp_all[isub]<0) ) & cond_def_all[isub] )
 
     #Defined bins in binned spectrum
     #    - a bin is defined if at least one bin is defined in any of the contributing profiles
     cond_def_binned = np.sum(cond_def_all,axis=0)>0  
 
-    #Disable weighing for pixels where at least one contributing profile has an undefined weight for a defined flux value, and for pixels with null weights at all defined flux values 
-    #    - pixels with undefined flux values do not matter as they are set to 0
-    #    - if a defined pixel has an undefined weight it will mess up with the binning, and we thus set all weights to a common value (ie, now weighing is applied)
+    #Disable weighing in all binned profiles for pixels validating at least one of these conditions:
+    # + 'cond_null_weights' : pixel has null weights at all defined flux values (weight_exp_all is null at undefined flux values, so if its sum is null in a pixel 
+    # fulfilling cond_def_binned it implies it is null at all defined flux values for this pixel)
+    # + 'cond_undef_weights' : if at least one profile has an undefined weight for a defined flux value, it messes up with the weighted average     
+    #    - in both cases we thus set all weights to a common value (arbitrarily set to unity for the pixel), ie no weighing is applied
+    #    - pixels with undefined flux values do not matter as their flux has been set to 0, so they can be attributed an arbitrary weight
     cond_null_weights = (np.sum(weight_exp_all,axis=0)==0.) & cond_def_binned
     weight_exp_all[:,cond_undef_weights | cond_null_weights] = 1.
 
@@ -5362,18 +5375,18 @@ def pre_calc_binned_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_t
     dx_ov = np.ones([n_in_bin]+dim_sec,dtype=float) if dx_ov_in is None else dx_ov_in[:,None,None] 
     glob_weight_all = dx_ov*weight_exp_all
 
-    #Total weight per pixel
+    #Total weight per pixel and normalization
     #    - normalization is done along the bin dimension, for each pixel with at least one defined contributing exposure
     glob_weight_tot = np.sum(glob_weight_all,axis=0)
     glob_weight_all[:,cond_def_binned]/=glob_weight_tot[cond_def_binned]
 
-    return flux_exp_all,cov_exp_all,weight_exp_all,cond_def_all,glob_weight_all,cond_def_binned
+    return flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned
 
 def calc_binned_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,cen_bins_exp,edge_bins_exp,dx_ov_in=None):
 
     #Clean weights
     #    - in all calls to the routine, exposures contributing to the master are already defined / have been resampled on a common spectral table
-    flux_exp_all,cov_exp_all,weight_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_binned_prof(n_in_bin,dim_exp,idx_to_bin,None,dx_ov_in,data_to_bin_in,None)
+    flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_binned_prof(n_in_bin,dim_exp,idx_to_bin,None,dx_ov_in,data_to_bin_in,None,tab_delete=cen_bins_exp)
 
     #Tables for new exposure
     data_bin={'cen_bins':cen_bins_exp,'edge_bins':edge_bins_exp} 
@@ -5388,14 +5401,15 @@ def calc_binned_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,
         for isub,iexp in enumerate(idx_to_bin):   
  
             #Co-addition to binned profile                       
-            #    - binned flux writes as 
+            #    - binned flux density writes as 
             # fnew(p) = sum(exp i, f(i,p)*w_glob(i,p) )/sum(exp i, w_glob(i,p))
             #      the corresponding error (when there is no covariance) writes as
             # enew(p) = sqrt(sum(exp i,  e(i,p)^2*w_glob(i,p)^2 ) )/sum(exp i, w_glob(i,p))                               
             #      for exposure i, we define the weight on all bins p in a given order as 
             # w_glob(i,p) = weights(i,p)*ov(i)   
             #      where weights are specific to the type of profiles that are binned
-            #            ov is the fraction covered by exposure i in the new exposure along the bin dimension
+            #            ov(i), in units of x, is the fraction covered by exposure i in the new exposure along the bin dimension
+            #      the binned flux density can thus be seen as the weighted number of contributing counts from each exposure, f(i,p)*ov(i), divided by the cumulated width of the contributing fractions of bins, sum(ov(i))
             #    - undefined pixels have w(i,p) = 0 so that they do not contribute to the new exposure
             #    - weights approximate the true error on the profiles
             # w_glob(i,p)  = a(p)/e_true(i,p)^2
@@ -5406,6 +5420,7 @@ def calc_binned_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,
             #         = sum(exp i, w_glob(i,p))^2 /sum(exp i, w_glob(i,p) )   
             #         = sum(exp i, w_glob(i,p)) 
             #       where only the variance is considered when defining the spectral weight profiles
+            #    - weights account for an original exposure duration (which is independent of the overlap Dxi) through e_true(i,p), ie that the same flux density measured over a longer exposure will weigh more     
             if (True in cond_def_all[isub,iord]):                
 
                 #Weighted profiles
@@ -5643,13 +5658,12 @@ def resample_func(x_bd_low_in,x_bd_high_in,x_low_in_all,x_high_in_all,flux_in_al
     
                         #Add contribution of original overlapping pixels to new pixel
                         #    - flux (=spectral photon density) is assumed to be constant over a given pixel:
-                        # F(pix) = g* N(pix) / dpix = N(dx)/dx
-                        #      where g is the gain between flux and number of photons
-                        #    - the flux in a bin is the total number of photons from the overlapping fractions of all pixels, divided by the effective overlapping surface (see below)
-                        # F(bin) = g*sum( overlapping pixels, N(pixel overlap) )/sum( overlapping pixels, dx(pixel overlap) )
-                        #       since F(pixel) = g*N(pixel overlap)/dx(pixel overlap) we obtain
+                        # F(pix) = gcal* N(pix) / dpix = N(dx)/dx
+                        #      where gcal is the instrumental calibration of photoelectrons
+                        #    - the flux density in a bin is the total number of photons from the overlapping fractions of all pixels, divided by the effective overlapping surface (see below)
+                        # F(bin) = gcal*sum( overlapping pixels, N(pixel overlap) )/sum( overlapping pixels, dx(pixel overlap) )
+                        #       since F(pixel) = gcal*N(pixel overlap)/dx(pixel overlap) we obtain
                         # F(bin) = sum( overlapping pixels, F(pixel)*dx(pixel overlap) )/sum( overlapping pixels, dx(pixel overlap) )
-                        #    - error : TBD
                         #    - because there can be gaps between two original pixels, we average their contributed number of photons by the effective width they cover
                         #      imagine a new pixel between x=0 and x=1, covered by two original pixels extending up to x=1/3 for the first one, and starting from x=2/3 for the second one
                         #      both original pixels have a flux of 1, and thus contribute 1/3 photons over their overlapping range
@@ -5830,7 +5844,7 @@ def extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
         iexp_no_plrange_vis = {}
         exclu_rangestar_vis = {}
         for vis_bin in vis_to_bin:
-            if gen_dic['flux_sc']:scaled_data_paths_vis[vis_bin] = data_dic[inst][vis_bin]['scaled_data_paths']
+            if gen_dic['flux_sc']:scaled_data_paths_vis[vis_bin] = data_dic[inst][vis_bin]['scaled_DI_data_paths']
             else:scaled_data_paths_vis[vis_bin] = None
             if ('DI_Mast' in data_dic['Atm']['no_plrange']):iexp_no_plrange_vis[vis_bin] = data_dic['Atm'][inst][vis_bin]['iexp_no_plrange']
             else:iexp_no_plrange_vis[vis_bin] = {}
@@ -5841,7 +5855,7 @@ def extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
         #    - here the binned profiles must be defined on the table of each processed exposure, so the components of the weight profile are retrieved here and then either copied or resampled if necessary for each exposure
         #      here a single binned profile (the master) is calculated, thus 'idx_to_bin_unik' is the same as idx_to_bin_all, which contains a single element
         data_to_bin_gen={}    
-        gdet4weight = gen_dic['gain_weight'] & data_vis['mean_gdet']
+        gdet4weight = gen_dic['cal_weight'] & data_vis['mean_gdet']
         for iexp_off in idx_to_bin_unik:
             data_to_bin_gen[iexp_off]={}
 
@@ -5873,7 +5887,7 @@ def extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             #    - the master spectrum should be processed in the star rest frame, so that the stellar lines do not contribute to weighing         
             if ((mode=='') and data_vis['comm_sp_tab']) or ((mode=='multivis') and data_inst['comm_sp_tab']):
                 flux_ref_exp = np.ones(data_dic[inst][vis_bin]['dim_exp'])  
-                data_to_bin_gen[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,'DI',data_vis['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['mean_gdet'],data_to_bin_gen[iexp_off]['cen_bins'],flux_ref_exp,None,bdband_flux_sc = gen_dic['flux_sc'])
+                data_to_bin_gen[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,'DI',data_vis['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['mean_gdet'],data_to_bin_gen[iexp_off]['cen_bins'],1.,flux_ref_exp,None,bdband_flux_sc = gen_dic['flux_sc'])
  
         #Processing each exposure of current visit selected for extraction
         iexp_proc = data_dic['Res'][inst][vis]['idx_to_extract']
@@ -5887,13 +5901,14 @@ def extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
         data_paths={iexp:proc_gen_data_paths_new+str(iexp) for iexp in range(data_vis['n_in_visit'])}
         check_data(data_paths)            
 
-    #Path to weighing master and gain profile
+    #Path to weighing master and calibration profile
     #    - residual profiles are extracted in the same rest frame as the disk-integrated master, so that it can directly be used
     #    - at this stage a single master has been defined over the common spectral table, it will be resampled in the binning routine
-    #    - gain paths are updated even if they are not used as weights, to be used in flux/count scalings
+    #    - calibration paths are updated even if they are not used as weights, to be used in flux/count scalings
     data_vis['proc_Res_data_paths']=proc_gen_data_paths_new
     if gen_dic['DImast_weight']:data_vis['mast_Res_data_paths'] = data_vis['mast_DI_data_paths']
     if data_vis['tell_sp']:data_vis['tell_Res_data_paths'] = data_vis['tell_DI_data_paths']
+    if gen_dic['flux_sc']:data_vis['scaled_Res_data_paths'] = data_vis['scaled_DI_data_paths']
     if data_vis['mean_gdet']:data_vis['mean_gdet_Res_data_paths'] = data_vis['mean_gdet_DI_data_paths']
 
     return None
@@ -5945,7 +5960,7 @@ def sub_extract_res_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,c
 
                     #Weight definition         
                     flux_ref_exp = np.ones(dim_exp,dtype=float)
-                    data_to_bin[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(nord),scaled_data_paths_vis[vis_bin],inst,vis_bin,corr_Fbal,corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,'DI',vis_type,dim_exp,tell_exp,mean_gdet_exp,data_exp['cen_bins'],flux_ref_exp,None,bdband_flux_sc = flux_sc)
+                    data_to_bin[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(nord),scaled_data_paths_vis[vis_bin],inst,vis_bin,corr_Fbal,corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,'DI',vis_type,dim_exp,tell_exp,mean_gdet_exp,data_exp['cen_bins'],1.,flux_ref_exp,None,bdband_flux_sc = flux_sc)
 
                 #Weighing components and current exposure are defined on the same table common to the visit 
                 else:data_to_bin[iexp_off] = deepcopy(data_to_bin_gen[iexp_off])  
@@ -6052,7 +6067,7 @@ Routine to process individual intrinsic stellar profiles
     ideally though, one should keep processing spectra rather than convert residual profiles into CCFs
 '''
 def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_dic,plot_dic):
-    print('   > Calculating intrinsic stellar profiles')  
+    print('   > Extracting intrinsic stellar profiles')  
     data_vis=data_dic[inst][vis]
     gen_vis = gen_dic[inst][vis]
 
@@ -6061,9 +6076,10 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
 
     #Updating paths
     #    - if no shifts are applied the associated profiles remain the same as those of the residual profiles, and their paths are not updated
-    #    - gain paths are updated even if they are not used as weights, to be used in flux/count scalings
+    #    - calibration paths are updated even if they are not used as weights, to be used in flux/count scalings
     #    - paths are defined for each exposure for associated tables, to avoid copying tables from residual profiles and simply point from in-transit to global residual profiles
-    data_vis['proc_Intr_data_paths']=proc_gen_data_paths_new+'_in'  
+    data_vis['proc_Intr_data_paths']=proc_gen_data_paths_new+'_in' 
+    if gen_dic['flux_sc']:data_vis['scaled_Intr_data_paths'] = data_vis['scaled_Res_data_paths']
     if gen_dic['DImast_weight']:data_vis['mast_Intr_data_paths'] = {}
     if data_vis['tell_sp']:data_vis['tell_Intr_data_paths'] = {}
     if data_vis['mean_gdet']:data_vis['mean_gdet_Intr_data_paths'] = {} 
@@ -6102,12 +6118,12 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
 
         #Definition of intrinsic stellar profiles
         for i_in,iexp in enumerate(gen_vis['idx_in']):
-                               
+
             #Upload local stellar profile
             data_exp = dataload_npz(data_vis['proc_Res_data_paths']+str(iexp))
         
             #Upload flux scaling
-            data_scaling_exp = dataload_npz(data_vis['scaled_data_paths']+str(iexp))
+            data_scaling_exp = dataload_npz(data_vis['scaled_Res_data_paths']+str(iexp))
         
             #Rescale local stellar profiles to a common flux level
             #    - correcting for LD variation and planetary occultation
@@ -7397,8 +7413,6 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         if data_type_gen=='Atm':save_pref+=data_dic['Atm']['pl_atm_sign']+'/'
         save_pref+=inst+'_'+vis_save+'_'+prop_dic['dim_bin']
 
-        
-
     if (calc_check):
         print('         Calculating data') 
 
@@ -7485,13 +7499,13 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             SpSstar_spec = None
             data_exp = dataload_npz(data_inst[vis_bin]['proc_'+data_type_gen+'_data_paths']+str(iexp))
             data_glob_new['vis_iexp_in_bin'][vis_bin][iexp]['data_path'] = data_inst[vis_bin]['proc_'+data_type_gen+'_data_paths']+str(iexp)
-            if gen_dic['flux_sc']:scaled_data_paths = data_dic[inst][vis_bin]['scaled_data_paths']
+            if gen_dic['flux_sc']:scaled_data_paths = data_dic[inst][vis_bin]['scaled_'+data_type_gen+'_data_paths']
             else:scaled_data_paths = None
             if data_inst[vis_bin]['tell_sp']:
                 data_exp['tell'] = dataload_npz(data_inst[vis_bin]['tell_'+data_type_gen+'_data_paths'][iexp])['tell']  
                 data_glob_new['vis_iexp_in_bin'][vis_bin][iexp]['tell_path'] = data_inst[vis_bin]['tell_'+data_type_gen+'_data_paths'][iexp]
             else:data_exp['tell'] = None
-            if gen_dic['gain_weight'] and data_inst[vis_bin]['mean_gdet']:data_exp['mean_gdet'] = dataload_npz(data_inst[vis_bin]['mean_gdet_'+data_type_gen+'_data_paths'][iexp])['mean_gdet'] 
+            if gen_dic['cal_weight'] and data_inst[vis_bin]['mean_gdet']:data_exp['mean_gdet'] = dataload_npz(data_inst[vis_bin]['mean_gdet_'+data_type_gen+'_data_paths'][iexp])['mean_gdet'] 
             else:data_exp['mean_gdet'] = None
             if data_type_gen=='DI': 
                 iexp_glob=iexp
@@ -7539,8 +7553,11 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #      the master must in any case be calculated from stellar spectra aligned in the star rest frame, where stellar lines will not contribute to the weighing
             if masterDI:
                 flux_ref_exp=np.ones(dim_exp_com,dtype=float)
-                cov_ref_exp = None            
-            else:data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp])
+                cov_ref_exp = None   
+                dt_exp = 1.   
+            else:
+                data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp])         
+                dt_exp = coord_dic[inst][vis_bin]['t_dur'][iexp]
             if ((mode=='') and (not data_inst[vis_bin]['comm_sp_tab'])) or ((mode=='multivis') and (not data_inst['comm_sp_tab']) and (vis_bin!=data_inst['com_vis'])):
 
                 #Resampling exposure profile
@@ -7550,14 +7567,14 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     flux_ref_exp=np.zeros(dim_exp_com,dtype=float)*np.nan
                     cov_ref_exp=np.zeros(data_inst['nord'],dtype=object)
                 tell_exp=np.ones(dim_exp_com,dtype=float) if data_inst[vis_bin]['tell_sp'] else None
-                mean_gdet_exp=np.ones(dim_exp_com,dtype=float) if gen_dic['gain_weight'] and data_inst[vis_bin]['mean_gdet'] else None                
+                mean_gdet_exp=np.ones(dim_exp_com,dtype=float) if gen_dic['cal_weight'] and data_inst[vis_bin]['mean_gdet'] else None                
                 for iord in range(data_inst['nord']): 
                     data_to_bin[iexp_off]['flux'][iord],data_to_bin[iexp_off]['cov'][iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['flux'][iord] , cov = data_exp['cov'][iord], kind=gen_dic['resamp_mode'])                                                        
                     if not masterDI:
                         if data_type_gen=='DI':flux_ref_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_ref['edge_bins'][iord], data_ref['flux'][iord], kind=gen_dic['resamp_mode'])                                                                            
                         else:flux_ref_exp[iord],cov_ref_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_ref['edge_bins'][iord], data_ref['flux'][iord] , cov = data_ref['cov'][iord], kind=gen_dic['resamp_mode'])                                                        
                     if data_inst[vis_bin]['tell_sp']:tell_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['tell'][iord] , kind=gen_dic['resamp_mode']) 
-                    if gen_dic['gain_weight'] and data_inst[vis_bin]['mean_gdet'] :mean_gdet_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['mean_gdet'][iord] , kind=gen_dic['resamp_mode'])                    
+                    if gen_dic['cal_weight'] and data_inst[vis_bin]['mean_gdet'] :mean_gdet_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['mean_gdet'][iord] , kind=gen_dic['resamp_mode'])                    
                 data_to_bin[iexp_off]['cond_def'] = ~np.isnan(data_to_bin[iexp_off]['flux'])  
                 
                 #Resample local stellar profile estimate
@@ -7597,8 +7614,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #Weight definition
             #    - the profiles must be specific to a given data type so that earlier types can still be called in the multi-visit binning, after the type of profile has evolved in a given visit
             #    - at this stage of the pipeline broadband flux scaling has been defined, if requested 
-            data_to_bin[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_mode,dim_exp_com,tell_exp,mean_gdet_exp,data_com['cen_bins'],flux_ref_exp,cov_ref_exp,flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,bdband_flux_sc = gen_dic['flux_sc'])                          
-    
+            data_to_bin[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_mode,dim_exp_com,tell_exp,mean_gdet_exp,data_com['cen_bins'],dt_exp,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,bdband_flux_sc = gen_dic['flux_sc'])                          
+
         #----------------------------------------------------------------------------------------------
 
         #Processing and analyzing each new exposure 
@@ -7637,8 +7654,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         data_glob_new['edge_bins'] = data_com['edge_bins']
  
         #---------------------------------------------------------------------------
-        #Calculating theoretical properties of planet-occulted regions
-        #    - only possible if data binned over phase
+        #Calculating associated properties 
+        #    - calculation of theoretical properties of planet-occulted regions is only possible if data binned over phase
         #    - new coordinates are relative to the planet chosen as reference for the binned coordinates 
         #---------------------------------------------------------------------------
         data_glob_new.update({'st_bindim':new_x_low,'end_bindim':new_x_high,'cen_bindim':new_x_cen,'n_exp':n_bin,'dim_all':[n_bin]+dim_exp_com,'dim_exp':dim_exp_com,'nspec':nspec_com})
@@ -7708,117 +7725,133 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
 
 '''
 Function to define weights when binning profiles temporally/spatially
-    - weights should only be defined using the inverse squared error if the weighted values are comparable
+    - weights should only be defined using the inverse squared error if the weighted values are comparable, so that all spectra should have been scaled to comparable flux levels prior to binning
+    - spectra must be defined on the same spectral table to be averaged in time/space     
 '''
-def def_weights_spatiotemp_bin(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,mean_gdet,cen_bins,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True):
+def def_weights_spatiotemp_bin(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,mean_gdet,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True):
 
     #Weight definition
-    #    - reminder on fluxes and photon counts
-    #      in case of photon noise the error on photons counts writes as E(N) = sqrt(N) where N is the number of photons received during a time interval dt over a spectral bin dw
-    #      the flux density, per unit of time and wavelength, can be written as F = g*N where g is a gain factor from photons to energies and N the photon density per unit of time and wavelength       
-    #      the corresponding error on the flux density is E = E[ g N ] = g*E(N) = g*sqrt(N), assuming no other noise sources
-    #      if two independent measurements are made, eg related as N2 = a*N1, then E(N2) = sqrt(a*N1) = sqr(a)*E(N1) and the same with flux errors
-    #      if the same measurement is manipulated, eg with N' = a*N1, then the rules of error propagation apply and E(N') = a*E(N1)
-    #    - the true flux measured in a given exposure, and its error, can be expressed as:
-    # F_true(t,w) = g(band) Ntrue(t,w)  
-    # E[ F_true(t,w) ] = g(band) sqrt( Ntrue(t,w) )
-    # EF_true(t,w) = g(band) sqrt( Ntrue(t,w) ) 
-    #              = g(band) sqrt( F_true(t,w) / g(band) )
-    #              = sqrt( g(band) F_true(t,w))
-    #      where g represents unit and instrumental conversion, assumed constant over time 
-    #      our estimate of the true measured flux is F_meas(t,w) = g(band) Nmeas(t,w), where Nmeas(t,w) follows a Poisson distribution with number of events Ntrue(t,w)
-    #      if enough photons are measured the Poisson distribution on Nmeas(t,w) and thus F_meas(t,w) can be approximated by a normal distribution with mean F_true(t,w) and standard deviation EF_true(t,w) 
+    #    - in case of photon noise the error on photons counts writes as E(n) = sqrt(N) where N is the number of photons received during a time interval dt over a spectral bin dw
+    # + if the same measurement is manipulated, eg with N' = a*N1, then the rules of error propagation apply and E(N') = a*E(N1)
+    # + if two independent measurements are made, eg related as N2 = a*N1, then E(N2) = sqrt(a*N1) = sqrt(a)*sqrt(N1) = sqrt(a)*E(N1) 
+    #      if measurements are provided as a density, eg over time with n = N/dt
+    # + if the same measurement is manipulated, eg with n = N/dt, then the rules of error propagation apply and E(n) = E(N)/dt
+    # + if two independent measurements are made, eg with dt2 = a*dt1, then N2 = a*N1 and n2 = a*N1/(a*dt1) = n1 but E[n2] = E[N2/dt2] = E[N2]/dt2 = sqrt(N2)/dt2 = sqrt(a*N1)/(a*dt1) = E[N1]/sqrt(a) 
+    #    - standard pipelines return spectral flux density, ie the number of photoelectrons measured over an entire exposure per unit of wavelength (but not per unit of time):
+    # + F_meas(t,w) = gcal(band) N_meas(t,w)  
+    # + EF_meas(t,w) = E[ F_meas(t,w) ]
+    #                = gcal(band) sqrt( N_meas(t,w) )               assuming no other noise sources
+    #                = gcal(band) sqrt( F_meas(t,w)/gcal(band) )
+    #                = sqrt( gcal(band)*F_meas(t,w))       
+    #      where gcal represents corrections of raw measured photoelectrons for the instrumental response (typically the blaze function, ie the transmission of the grating, with gcal = 1/blaze), assumed constant for an instrument (see below) 
+    #      if fluxes were converted into temporal densities:
+    # + f_meas(t,w) = F_meas(t,w)/dt = gcal(band) N_meas(t,w) / dt
+    # + Ef_meas(t,w) = EF_meas(t,w)/dt = gcal(band) sqrt( N_meas(t,w) ) /dt =  sqrt( gcal(band) f_meas(t,w) / dt) 
+    #    - our estimate of the true measured flux is F_meas(t,w) = g(band) N_meas(t,w), where N_meas(t,w) follows a Poisson distribution with number of events N_true(t,w)
+    #      if enough photons are measured the Poisson distribution on N_meas(t,w) and thus F_meas(t,w) can be approximated by a normal distribution with mean F_true(t,w) and standard deviation EF_true(t,w) 
     #      the issue with using the errors on individual bins to define their weights is that EF_meas(t,w) = sqrt(g(band) F_meas(t,w)) is a biased estimate of the true error
     #      for a bin where F_meas(t,w) < F_true(w) because of statistical variations, we indeed get EF_meas(t,w) < EF_true(w) (and the reverse where F_meas(t,w) > F_true(w)) 
     #      bins with lower flux values than the true flux will have larger weights, resulting in a weighted mean that is underestimated compared to the true flux (mathematically speaking, we do a harmonic mean rather than an arithmetic mean).    
     #      the average flux measured over a large band (such as an order) is closer to the true flux over the band than in the case of a single bin, and thus its error is a better estimate of the true error, so we can assume:
     # EF_meas(t,band) ~ EF_true(t,band)
-    #    - for all cases below, bands are defined as orders for e2ds, and as the full spectral range for CCFs and s1d    
+    #    - for all cases below, bands are defined as orders for e2ds, and as the full spectral range for CCFs and s1d   
+    #    - assuming that the flux spectra provided by pipelines are well corrected for this response, we do not want to introduce biases between exposures by using specific calibration files
+    #      a given calibration file (eg the blaze) may indeed not include all possible corrections for the instrumental response, and furthermore the flux calibration is not necessarily available for all instruments
+    #      we thus use the input flux and error tables to estimate gcal(band,t,v) and derive a profile common to all exposures processed for a given instrument (the goal being to approximate the instrumental response without introducing biases)
+    #      at the stage of the workflow where calibration is estimated, fluxes are still in number of photoelectrons, so that:
+    #      the flux in a given pixel verifies:
+    # F_true(w,t,v) = gcal(w,t,v)*N_true(w,t,v)
+    # EF_true(w,t,v) = gcal(w,t,v)*sqrt(N_true(w,t,v))
+    #      summing the fluxes over a large band yields 
+    # TF_meas(t,v) ~ TF_true(t,v) = sum(w, F_true(w,t,v) ) = gcal(band,t,v)*sum(w over band, N_true(w,t,v) )
+    #      thus
+    # ETF_meas(t,v) ~ E[ TF_true(t,v) ]
+    #               = E[ gcal(band,t,v)*sum(w over band, N_true(w,t,v) ) ]
+    #               = gcal(band,t,v)*E[ sum(w over band, N_true(w,t,v) ) ]
+    #               = gcal(band,t,v)*sqrt( sum(w over band, E[ N_true(w,t,v) )]^2 )
+    #               = gcal(band,t,v)*sqrt( sum(w over band, N_true(w,t,v) ) ) 
+    #      and thus 
+    # gcal(band,t,v) = TF_meas(t,v)*(dt*dw)/sum(w over band, N_true(w,t,v) )
+    # gcal(band,t,v) = TF_meas(t,v)*gcal(band,t,v)^2/ETF_meas(t,v)^2
+    # gcal(band,t,v) = ETF_meas(t,v)^2 / TF_meas(t,v)
+    #      we estimate gcal over each order for S2D and the full spectral range for S1D
+    #      summing the flux densities over a large band yields 
+    # TF_meas(t,v) ~ TF_true(t,v) = sum(w, F_true(w,t,v) ) = gcal(band,t,v)*sum(w over band, N_true(w,t,v) ) 
+    #      thus
+    # ETF_meas(t,v) ~ E[ TF_true(t,v) ]
+    #               = E[ gcal(band,t,v)*sum(w over band, N_true(w,t,v) ) ]
+    #               = gcal(band,t,v)*E[ sum(w over band, N_true(w,t,v) ) ]
+    #               = gcal(band,t,v)*sqrt( sum(w over band, E[ N_true(w,t,v) )]^2 )
+    #               = gcal(band,t,v)*sqrt( sum(w over band, N_true(w,t,v) ) )  
+    #      and thus 
+    # gcal(band,t,v) = TF_meas(t,v)/sum(w over band, N_true(w,t,v) )
+    # gcal(band,t,v) = TF_meas(t,v)*gcal(band,t,v)^2/ETF_meas(t,v)^2
+    # gcal(band,t,v) = ETF_meas(t,v)^2 / TF_meas(t,v)
+    #      we estimate gcal over each order and all exposures, and define gcal(band) as < t, v :  gcal(band,t,v) > 
     #    - what matters for the weighing is the change in the precision on the flux over time in a given pixel:
     # + low-frequency variations linked to the overall flux level of the data (eg due to atmospheric diffusion)
     # + high-frequency variations linked to variations in the spectral flux distribution at the specific wavelength of the pixel
     #   for example when averaging the same spectra in their own rest frame, spectral features do not change and there is no need to weigh
     #   however if there are additional features, such as telluric absorption or stellar lines in transmission spectra, then a given pixel can see large flux variations and weighing is required.  
     #    - extreme care must be taken about the rest frame in which the different elements involved in the weighing profiles are defined
-    # + low-frequency components are assumed constant over an order and are not aligned / resampled (eg detector gain, global flux scaling, flux balance and light curve scaling)
+    # + low-frequency components are assumed constant over an order and are not aligned / resampled (eg instrumental calibration, global flux scaling, flux balance and light curve scaling)
     # + high-frequency components must have followed the same shifts and resampling as the weighed profile (eg telluric or master stellar spectrum) 
     #    - weights are normalized within the binning function, so that any factor constant over time will not contribute to the weighing
     #    - planetary signatures are not accounted for when binning disk-integrated and intrinsic stellar spectra because they have been excluded from the data or are considered negligible
     #    - weights are necessarily spectral for intrinsic and atmospheric spectra because of the master 
     #    - the weighing due to integration time is accounted for in the binning routine directly, not through errors but through the fraction of an exposure duration that overlaps with the new bin time window 
     weight_spec = np.zeros(dim_exp,dtype=float)*np.nan
-
+    
     #--------------------------------------------------------    
     #Definition of errors on disk-integrated spectra
     #--------------------------------------------------------     
     #    - we calculate the mean of a time-series of disk-integrated spectra while accounting for variations in the noise of the pixels between different exposures
     #    - at the latest processing stage those spectra are defined from rescale_data() as:
-    # Fsc(w,t,v) = LC_theo(band,t,v)*Fcorr(w,t,v)/globF(t,v)    
+    # Fsc(w,t,v) = LC_theo(band,t,v)*Fcorr(w,t,v)/(dt*globF(t,v))    
     #      with the corrected spectra linked to the measured spectra as (see spec_corr() function above for the corrections that are included):
     # Fcorr(w,t,v) = F_meas(w,t,v)*Ccorr(w,t,v)  
-    #      the measured spectrum is the one read from the input files of the instruments DRS, which links the counts and flux spectrum as:
-    # F_meas(w,t,v) = gdet(band,v)*N_meas(w,t,v) 
-    #      where gdet(band,v) = g(band)*Cdet(band,v) 
-    #            g converts counts in flux and is assumed constant for a given instrument
-    #            Cdet are the detector corrections for the flat field and blaze, assumed constant for a visit and with low-frequency variations
+    #      the measured spectrum is the one read from the input files of the instruments DRS as:
+    # F_meas(w,t,v) = gcal(band)*N_meas(w,t,v)
+    #      where gcal(band) represents corrections of measured spectral density of photoelectron N_meas for instrumental response (flat field, blaze, etc) assumed to have low-frequency variations
+    #            for the purpose of weighing and to avoid biases between the estimated N_meas we assume a constant conversion for all exposures
     #      thus
-    # Fsc(w,t,v) = LC_theo(band,t,v)*gdet(band,v)*N_meas(w,t,v)*Ccorr(w,t,v)/globF(t,v) 
-    # or
-    # Nsc(w,t,v) = LC_theo(band,t,v)*N_meas(w,t,v)*Ccorr(w,t,v)/globF(t,v) 
+    # Fsc(w,t,v) = LC_theo(band,t,v)*gcal(band)*N_meas(w,t,v)*Ccorr(w,t,v)/(dt*globF(t,v)) 
+    #      or in terms of photoelectons cumulated over the exposure
+    # N_sc(w,t,v) = LC_theo(band,t,v)*N_meas(w,t,v)*Ccorr(w,t,v)/globF(t,v) 
     #    - as explained above we want to use as weights the errors on the true measured flux, ie : 
-    # EFsc_true(w,t,v) = E( LC_theo(band,t,v)*gdet(band,v)*N_true(w,t,v)*Ccorr(w,t,v)/globF(t,v) )
-    #                  = LC_theo(band,t,v)*gdet(band,v)*Ccorr(w,t,v)*E( N_true(w,t,v)/globF(t,v) )
-    #                  = LC_theo(band,t,v)*gdet(band,v)*Ccorr(w,t,v)*sqrt( N_true(w,t,v) )/globF(t,v)
-    #      since the master spectrum is measured with a high SNR we can assume MFstar(w,v) ~ MFstar_true(w,v)     
-    # Fsc_true(w,t,v) = LC_theo(band,t,v)*MFstar_true(w,v) 
-    #                 ~ LC_theo(band,t,v)*MFstar(w,v)      
-    # gdet(band,v)*Nsc_true(w,t,v) = LC_theo(band,t,v)*MFstar(w,v)    
-    # gdet(band,v)*LC_theo(band,t,v)*N_true(w,t,v)*Ccorr(w,t,v)/globF(t,v) = LC_theo(band,t,v)*MFstar(w,v)  
-    # N_true(w,t,v) = MFstar(w,v)*globF(t,v)*dt/(Ccorr(w,t,v)*gdet(band,v))  
-    #     and the corresponding error on the scaled flux writes as: 
-    # EFsc_true(w,t,v) = LC_theo(band,t,v)*gdet(band,v)*Ccorr(w,t,v)*sqrt( MFstar(w,v)*globF(t,v)/(Ccorr(w,t,v)*gdet(band,v))  )/globF(t,v)
-    #                  = LC_theo(band,t,v)*sqrt(gdet(band,v)*Ccorr(w,t,v)*MFstar(w,v)*dt/globF(t,v)  )   
-    #      we note that the spectra Fsc_true(w,t,v)/LC_theo(band,t,v) have the same flux density profile as the master spectrum of the unocculted star MFstar_true(w,v), but the latter 
-    # is measured during dt_ref over a much larger number of photons than an exposure spectrum. We should thus rescale the master spectrum by dt/dt_ref to get a number of photons comparable to that of the exposure, 
-    # however we can ignore dt_ref, since it will be common to all exposures and be removed when normalizing the weight profiles over all exposures
-    #      we also note that we neglected the differences between the Fsc_true and MFstar profiles that are due to the occulted local stellar lines and planetary atmospheric lines
-    #    - the flux gain and detector correction are not necessarily available for all instruments
-    #      we thus use the input flux and error tables to estimate gdet(band,v) 
-    #      the flux density in a given pixel verifies:
-    # F_true(w,t,v) = gdet(w,v)*N_true(w,t,v)
-    # EF_true(w,t,v) = gdet(w,v)*sqrt(N_true(w,t,v))
-    #      summing the flux densities over a large band yields 
-    # TF_meas(t,v) ~ TF_true(t,v) = sum(w, F_true(w,t,v) ) = gdet(band,v)*sum(w over band, N_true(w,t,v) ) 
+    # EFsc_true(w,t,v) = E( LC_theo(band,t,v)*gcal(band)*N_true(w,t,v)*Ccorr(w,t,v)/(dt*globF(t,v)) )
+    #                  = LC_theo(band,t,v)*gcal(band)*Ccorr(w,t,v)*E( N_true(w,t,v) )/(dt*globF(t,v))
+    #                  = LC_theo(band,t,v)*gcal(band)*Ccorr(w,t,v)*sqrt( N_true(w,t,v) )/(dt*globF(t,v))
+    #      the spectra Fsc_true(w,t,v)/LC_theo(band,t,v) have the same flux density profile as the master of the unocculted star MFstar_true(w,v), so that 
+    # gcal(band)*N_true(w,t,v)*Ccorr(w,t,v)/(dt*globF(t,v)) ~ MFstar_true(w,v)
+    # N_true(w,t,v) = MFstar_true(w,v)*(dt*globF(t,v))/(gcal(band)*Ccorr(w,t,v))
+    #      since the master spectrum of the unocculted star is measured with a high SNR we can assume: 
+    # MFstar_true(w,v) ~ MFstar_meas(w,v)
     #      thus
-    # ETF_meas(t,v) ~ E[ TF_true(t,v) ]
-    #               = E[ gdet(band,v)*sum(w over band, N_true(w,t,v) ) ]
-    #               = gdet(band,v)*E[ sum(w over band, N_true(w,t,v) ) ]
-    #               = gdet(band,v)*sqrt( sum(w over band, E[ N_true(w,t,v) )]^2 )
-    #               = gdet(band,v)*sqrt( sum(w over band, N_true(w,t,v) ) )  
-    #      and thus 
-    # gdet(band,v) = TF_meas(t,v)/sum(w over band, N_true(w,t,v) )
-    # gdet(band,v) = TF_meas(t,v)*gdet(band,v)^2/ETF_meas(t,v)^2
-    # gdet(band,v) = ETF_meas(t,v)^2 / TF_meas(t,v)
-    #      we estimate gdet over each order for S2D and the full spectral range for S1D
+    # sqrt(N_true(w,t,v)) = sqrt( MFstar_meas(w,v)*dt*globF(t,v))/(gcal(band)*Ccorr(w,t,v)) )    
+    #      and
+    # EFsc_true(w,t,v) = LC_theo(band,t,v)*gcal(band)*Ccorr(w,t,v)*sqrt( MFstar_meas(w,v)*dt*globF(t,v)/(gcal(band)*Ccorr(w,t,v)) )/(dt*globF(t,v))    
+    #                  = LC_theo(band,t,v)*sqrt(gcal(band)*Ccorr(w,t,v)* MFstar_meas(w,v)/(dt*globF(t,v)) )    
     #    - final weights are defined as:    
     # weight(w,t,v) = 1/EFsc_true(w,t,v)^2  
-    #               = 1/(LC_theo(band,t,v)^2*gdet(band,v)*Ccorr(w,t,v)*MFstar(w,v)/globF(t,v))  
-    #    - spectra must be defined on the same spectral table to be averaged in time/space
-    #      in the star rest frame, spectral features from the disk-integrated spectrum remain fixed over time , ie that a given pixel see no variations in flux from MFstar(w,v) in a given visit and the contribution of the master spectrum can be ignored
-    #    - even if the gain remains constant in time and does not contribute to the weighing of disk-integrated spectra, it must always be set to a value consistent with error definitions in the pipeline,
+    #               = dt*globF(t,v)/(LC_theo(band,t,v)^2*gcal(band)*Ccorr(w,t,v)*MFstar_meas(w,v))      
+    #      we note that the spectral normalization of counts by dw is ignored since all profiles are defined over the same spectra table
+    #    - in the star rest frame, spectral features from the disk-integrated spectrum remain fixed over time , ie that a given pixel sees no variations in flux from MFstar(w,v) in a given visit and the contribution of the master spectrum can be ignored    
+    #      we note that we neglected the differences between the Fsc_true and MFstar profiles that are due to the occulted local stellar lines and planetary atmospheric lines
+    #    - even if the calibration remains constant in time and does not contribute to the weighing of disk-integrated spectra, it must always be set to a value consistent with error definitions in the pipeline,
     # so that EFsc_true is comparable with other error tables in the weighing of intrinsic and planetary profiles
-    #      gain profiles are thus always estimated by default by the pipeline, either from the input error tables when available or from the imposed error table for consistency    
+    #      calibration profiles are thus always estimated by default by the pipeline, either from the input error tables when available or from the imposed error table for consistency    
     #--------------------------------------------------------     
-    
-    #Calculate weights at pixels where the master stellar spectrum is defined
-    cond_def_weights = (~np.isnan(flux_ref_exp)) & (flux_ref_exp!=0.)
+
+    #Calculate weights at pixels where the master stellar spectrum is defined and positive
+    cond_def_weights = (~np.isnan(flux_ref_exp)) & (flux_ref_exp>0.)
         
     #Spectral corrections
     #    - all corrections that are applied between the input spectra and the spectra processed per visit should be included in this function:
-    # > detector gain: uploaded from 'gdet_inputs' for every type of data
-    #   for original 2D or 1D spectra, it returns the estimated spectral gain profiles for each exposure 
-    #   for original CCFs or after conversion into CCFs or from 2D/1D it returns a global gain
-    #   if original 2D or 1D spectra were converted back into count-equivalent values and are still in their original format, gain profiles are rescaled by the mean gain profile over the visit
+    # > instrumental calibration: uploaded from 'gcal_inputs' for every type of data
+    #   for original 2D or 1D spectra, it returns the estimated spectral calibration profiles for each exposure 
+    #   for original CCFs or after conversion into CCFs or from 2D/1D it returns a global calibration
+    #   if original 2D or 1D spectra were converted back into count-equivalent values and are still in their original format, calibration profiles are rescaled by the mean calibration profile over the visit
     # > tellurics: Ccorr(w,t,v) = 1/T(w,t,v)
     #   with T=1 if not telluric absorption, 0 if maximum absorption
     #   telluric profiles for each exposure are contained in the data upload specific to the exposure, and have been aligned and set to the same rest frame  
@@ -7874,15 +7907,15 @@ def def_weights_spatiotemp_bin(iord_orig_list,scaled_data_paths,inst,vis,gen_cor
 
     #Sub-function defining the squared error on scaled disk-integrated profiles
     def calc_EFsc2(flux_sc_ord,flux_ref_ord,spec_corr_ord):
-        return (flux_sc_ord**2.)*flux_ref_ord*spec_corr_ord/glob_flux_sc
+        return (flux_sc_ord**2.)*flux_ref_ord*spec_corr_ord/(dt*glob_flux_sc)
 
     #Weights on disk-integrated spectra
     if data_type=='DI': 
         for iord in range(nord):
             weight_spec[iord,cond_def_weights[iord]] = 1./calc_EFsc2(flux_sc[iord],flux_ref_exp[iord,cond_def_weights[iord]],spec_corr[iord])  
-     
+
     else:
-        
+
         #Function defining the squared error on local stellar profiles
         def calc_EFres2(flux_ref_ord,err_ref_ord2,flux_sc_ord,spec_corr_ord):
             return err_ref_ord2 + calc_EFsc2(flux_sc_ord,flux_ref_ord,spec_corr_ord)
@@ -7892,10 +7925,11 @@ def def_weights_spatiotemp_bin(iord_orig_list,scaled_data_paths,inst,vis,gen_cor
         #-------------------------------------------------------- 
         #    - see rescale_data(), extract_res_profiles(), the profiles are defined as:
         # Fres(w,t,v) = ( MFstar(w,v) - Fsc(w,t,v) )
+        #      where profiles have been scaled to comparable levels and can be seen as (temporal) flux densities
         #    - we want to use as weights the errors on the true residual flux:
         # EFres_true(w,t,v) = E[  MFstar_true(w,v) - Fsc_true(w,t,v) ]
         #                   = sqrt( EMFstar_true(w,v)^2 + EFsc_true(w,t,v)^2 )  
-        #      we assume that the error on the master flux averaged over several exposures approximates well the error on the true flux, even within a single bin, so that:          
+        #      where we assume that the two profiles are independent, and that the error on the master flux averaged over several exposures approximates well the error on the true flux, even within a single bin, so that:          
         # EFres_true(w,t,v) = sqrt( EMFstar_meas(w,v)^2 + EFsc_true(w,t,v)^2 )  
         #    - final weights are defined as:
         # weight(w,t,v) = 1/EFres_true(w,t,v)^2
@@ -7930,10 +7964,10 @@ def def_weights_spatiotemp_bin(iord_orig_list,scaled_data_paths,inst,vis,gen_cor
         #      the weight is inversely proportional to MFstar(w_shifted,v), so that weights in intrinsic line are lower when it is located at high rv in the disk-integrated line, compared to being located at its center
         #      while it may appear counter-intuitive, this is because the disk-integrated stellar line acts only as a background flux (and thus noise) level, so that it brings less noise in its deep core than its wings
         #      another way to see it is as:
-        # Fintr_estimated(w,t,v) = (Fstar(w,v) - F(w,t,v))/(1 - LC_theo(band,t))
-        #                        = (Fstar(w,v) - (Fstar(w,t,v) - Fintr_meas(w,t,v)))/(1 - LC_theo(band,t))
+        # Fintr_estimated(w,t,v) = (MFstar(w,v) - F(w,t,v))/(1 - LC_theo(band,t))
+        #                        = (MFstar(w,v) - (MFstar(w,t,v) - Fintr_meas(w,t,v)))/(1 - LC_theo(band,t))
         #                        = (dFstar(w,t,v) + Fintr_meas(w,t,v)))/(1 - LC_theo(band,t))
-        #      if Fstar(w,v) is a good estimate of Fstar(w,t,v) we will retrieve the correct intrinsic profile, but its uncertainties will be affected by the errors on Fstar(w,t,v) - which will dominate the weighing when binning the retrieved 
+        #      if MFstar(w,v) is a good estimate of MFstar(w,t,v) we will retrieve the correct intrinsic profile, but its uncertainties will be affected by the errors on MFstar(w,t,v) - which will dominate the weighing when binning the retrieved 
         # intrinsic profiles in their local rest frame
         elif data_type=='Intr': 
             for iord in range(nord):
@@ -10397,7 +10431,7 @@ def custom_DI_prof(param,x,args=None):
     DI_flux_norm = np.sum(flux_DI_sum,axis=0)
 
     #Scaling disk-integrated profile to requested continuum
-    #    - returned by the function normalized to unity  
+    #    - DI_flux_norm is returned by the function normalized to unity  
     DI_flux_cont = param['cont']*DI_flux_norm
 
     #Polynomial continuum level
@@ -11889,13 +11923,13 @@ def loc_prof_meas(corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_dic):
             #Original index and visit of contributing exposure
             iexp_bin = idx_bin2orig[iexp_off]
             vis_bin = idx_bin2vis[iexp_off]
-            if gen_dic['flux_sc']: scaled_data_paths = data_dic[inst][vis_bin]['scaled_data_paths']  
-            else:scaled_data_paths=None
             
             #Upload latest processed disk-integrated data         
             if corr_mode=='DIbin':
                 iexp_bin_glob = iexp_bin
                 data_exp_bin = np.load(data_inst[vis_bin]['proc_DI_data_paths']+str(iexp_bin)+'.npz',allow_pickle=True)['data'].item() 
+                if gen_dic['flux_sc']: scaled_data_paths = data_dic[inst][vis_bin]['scaled_DI_data_paths']  
+                else:scaled_data_paths=None
                 
                 #Exclude planet-contaminated bins 
                 #    - here we set to nan the flux (rather than just the defined bins) when profiles are still aligned in the star rest frame, to avoid having to shift for every exposure the planet-excluded ranges
@@ -11906,6 +11940,7 @@ def loc_prof_meas(corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_dic):
                 if data_dic[inst][vis_bin]['tell_sp']:data_exp_bin['tell'] = dataload_npz(data_dic[inst][vis_bin]['tell_DI_data_paths'][iexp_bin])['tell']             
                 if data_dic[inst][vis_bin]['mean_gdet']:data_exp_bin['mean_gdet'] = dataload_npz(data_dic[inst][vis_bin]['mean_gdet_DI_data_paths'][iexp_bin])['mean_gdet']             
                 data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_bin])
+                
                 
             #Upload intrinsic stellar profiles aligned in their local frame
             #    - we use intrinsic profiles already aligned in a null rest frame (still defined on their original tables unless a common table was used)     
@@ -11919,7 +11954,9 @@ def loc_prof_meas(corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_dic):
                 if data_dic[inst][vis_bin]['tell_sp']:data_exp_bin['tell'] = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_tell'+str(iexp_bin))['tell']             
                 if data_dic[inst][vis_bin]['mean_gdet']:data_exp_bin['mean_gdet'] = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_mean_gdet'+str(iexp_bin))['mean_gdet']             
                 data_ref = np.load(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_ref'+str(iexp_bin)+'.npz',allow_pickle=True)['data'].item() 
-
+                if gen_dic['flux_sc']: scaled_data_paths = data_dic[inst][vis_bin]['scaled_Intr_data_paths']  
+                else:scaled_data_paths=None
+                
             #Radial velocity shifts set to the opposite of the planet-occulted surface rv associated with current exposure
             surf_shifts,surf_shifts_edge = def_surf_shift(data_dic['Intr']['align_mode'],dic_rv,i_in,data_exp_bin,ref_pl,data_vis['type'],data_dic['DI']['system_prop'],data_dic[inst][vis_bin]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis_bin]['nspec'])
             if surf_shifts_edge is not None:surf_shifts_edge*= -1.
@@ -11934,7 +11971,7 @@ def loc_prof_meas(corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_dic):
             data_ref_align=align_data(data_ref,data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],data_loc_exp['cen_bins'], data_loc_exp['edge_bins'],-surf_shifts,rv_shift_edge = surf_shifts_edge)
 
             #Weight profile
-            data_to_bin[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_bin_glob,in_type,data_vis['type'],data_vis['dim_exp'],data_to_bin[iexp_off]['tell'],data_to_bin[iexp_off]['mean_gdet'],data_to_bin[iexp_off]['cen_bins'],data_ref_align['flux'],data_ref_align['cov'],bdband_flux_sc = gen_dic['flux_sc'])            
+            data_to_bin[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_bin_glob,in_type,data_vis['type'],data_vis['dim_exp'],data_to_bin[iexp_off]['tell'],data_to_bin[iexp_off]['mean_gdet'],data_to_bin[iexp_off]['cen_bins'],coord_dic[inst][vis_bin]['t_dur'][iexp],data_ref_align['flux'],data_ref_align['cov'],bdband_flux_sc = gen_dic['flux_sc'])            
             
         #Calculating binned profile
         data_est_loc = calc_binned_prof(idx_to_bin_all[i_bin],data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin,inst,n_in_bin_all[i_bin],data_loc_exp['cen_bins'],data_loc_exp['edge_bins'],dx_ov_in = dx_ov_all[i_bin])
@@ -11954,7 +11991,7 @@ def loc_prof_meas(corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_dic):
         #                     = MFstar(w,vis)*(1 - LC(w,t))                    
         #    - the scaling spectrum is defined at all pixels, and thus does not affect undefined pixels in the master (the covariance matrix cannot be sliced)
         if gen_dic['flux_sc']:
-            data_scaling = dataload_npz(data_vis['scaled_data_paths']+str(gen_dic[inst][vis]['idx_in2exp'][i_in]))
+            data_scaling = dataload_npz(data_vis['scaled_Intr_data_paths']+str(gen_dic[inst][vis]['idx_in2exp'][i_in]))
             for iord in range(data_inst['nord']):
                 loc_flux_scaling_ord = data_scaling['loc_flux_scaling'][iord](data_est_loc['cen_bins'][iord])              
                 data_est_loc['flux'][iord],data_est_loc['cov'][iord] = bind.mul_array(data_est_loc['flux'][iord],data_est_loc['cov'][iord],loc_flux_scaling_ord)
@@ -12068,7 +12105,7 @@ def loc_prof_indivCCFmod(inst,vis,gen_dic,data_dic):
         data_est_loc={'cen_bins':data_prop[i_in]['cen_bins'],'edge_bins':data_prop[i_in]['edge_bins'],'flux':data_prop[i_in]['flux'][:,None],'cond_def':np.ones(data_dic[inst][vis]['dim_exp'],dtype=bool)}
 
         #Rescaling model intrinsic profile to the level of the local profile
-        loc_flux_scaling = dataload_npz(data_vis['scaled_data_paths']+str(gen_dic[inst][vis]['idx_in2exp'][i_in]))['loc_flux_scaling']
+        loc_flux_scaling = dataload_npz(data_vis['scaled_Intr_data_paths']+str(gen_dic[inst][vis]['idx_in2exp'][i_in]))['loc_flux_scaling']
         data_est_loc['flux'][0] *= loc_flux_scaling[0](data_est_loc['cen_bins'][0]) 
 
         #Saving estimate of local profile for current exposure                   
@@ -12267,7 +12304,7 @@ def loc_prof_rec(inst,vis,gen_dic,data_dic,coord_dic):
         data_est_loc=align_data(data_rec[isub],data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],data_loc_exp['cen_bins'],data_loc_exp['edge_bins'],-surf_shifts,rv_shift_edge = surf_shifts_edge ,nocov=True)
 
         #Rescaling reconstructed intrinsic profile to the level of the local profile
-        loc_flux_scaling = dataload_npz(data_vis['scaled_data_paths']+str(gen_dic[inst][vis]['idx_in2exp'][i_in]))['loc_flux_scaling']
+        loc_flux_scaling = dataload_npz(data_vis['scaled_Intr_data_paths']+str(gen_dic[inst][vis]['idx_in2exp'][i_in]))['loc_flux_scaling']
         for iord in range(data_dic[inst]['nord']):data_est_loc['flux'][iord] *=loc_flux_scaling[iord](data_est_loc['cen_bins'][iord]) 
 
         #Saving estimate of local profile for current exposure                   
@@ -12534,9 +12571,9 @@ def conv_2D_to_1D_spec(data_type,inst,vis,gen_dic,data_dic,prop_dic):
         edge_bins_1D = prop_dic['spec_1D_prop'][inst]['edge_bins']
 
         #Associated tables   
-        scaling_data_paths = data_vis['scaled_data_paths'] if gen_dic['flux_sc'] else None
+        scaling_data_paths = data_vis['scaled_'+data_type_gen+'_data_paths'] if gen_dic['flux_sc'] else None
         tell_data_paths = data_vis['tell_'+data_type_gen+'_data_paths'] if data_vis['tell_sp'] else None
-        if gen_dic['gain_weight'] and data_vis['mean_gdet']:
+        if gen_dic['cal_weight'] and data_vis['mean_gdet']:
             proc_weight=True
             mean_gdet_data_paths = data_vis['mean_gdet_'+data_type_gen+'_data_paths']
         else:
@@ -12568,7 +12605,7 @@ def conv_2D_to_1D_spec(data_type,inst,vis,gen_dic,data_dic,prop_dic):
         
     #Updating paths
     data_vis['proc_'+data_type_gen+'_data_paths'] = proc_gen_data_paths_new 
-    if gen_dic['flux_sc']:data_vis['scaled_data_paths'] = proc_gen_data_paths_new+'_scaling'
+    if gen_dic['flux_sc']:data_vis['scaled_'+data_type_gen+'_data_paths'] = proc_gen_data_paths_new+'_scaling'
     if data_vis['tell_sp']:data_vis['tell_'+data_type_gen+'_data_paths'] = {}
     if data_type_gen=='Atm':data_vis['LocEst_Atm_data_paths'] = {}
     for iexp in iexp_conv:
@@ -12627,10 +12664,10 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_ne
         #      all profiles that are the same for overlapping orders (tellurics, disk-integrated stellar spectrum, global flux scaling, ...) are thus not used in the weighing 
         #      they are however processed in the same way as the exposure if used later on in the pipeline 
         #    - for intrinsic and atmospheric profiles we provide the broadband flux scaling, even if does not matter to the weighing, because it is otherwise set to 0 and messes up with weights definition
-        data_exp['weights'] = def_weights_spatiotemp_bin(range(nord),scaling_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,None,data_exp['mean_gdet'], data_exp['cen_bins'],np.ones(dim_exp),np.zeros([dim_exp[0],1,dim_exp[1]]),corr_Fbal=False,bdband_flux_sc=bdband_flux_sc)
+        data_exp['weights'] = def_weights_spatiotemp_bin(range(nord),scaling_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,None,data_exp['mean_gdet'], data_exp['cen_bins'],1.,np.ones(dim_exp),np.zeros([dim_exp[0],1,dim_exp[1]]),corr_Fbal=False,bdband_flux_sc=bdband_flux_sc)
 
         #Resample spectra and weights on 1D table in each order, and clean weights
-        flux_exp_all,cov_exp_all,weight_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_binned_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_exp,edge_bins_1D)
+        flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_binned_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_exp,edge_bins_1D)
 
         #Processing each order
         flux_ord_contr=[]
@@ -12653,34 +12690,34 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_ne
             cond_def = cond_def_all[iord]
 
             #Apply same steps to complementary spectra
-            #    - gain profiles are not consistent in the overlaps between orders, and are not used anymore
+            #    - calibration profiles are not consistent in the overlaps between orders, and are not used anymore
             #    - the master has followed the same shifts as the intrinsic or atmospheric profiles, but always remain either defined on the common table, or on a specific table different from the table of its associated exposure
             if scaling_data_paths is not None: 
                 loc_flux_scaling_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],data_scaling_exp['loc_flux_scaling'][iord](data_exp['cen_bins'][iord]),kind=resamp_mode)
                 loc_flux_scaling_temp[~cond_def] = 0.
-                loc_flux_scaling_ord_contr+=loc_flux_scaling_temp*weight_exp_all[iord]
+                loc_flux_scaling_ord_contr+=loc_flux_scaling_temp*glob_weight_all[iord]
             if tell_data_paths is not None:
                 tell_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],  data_exp['tell'][iord] ,kind=resamp_mode)
                 tell_temp[~cond_def] = 0.                    
-                tell_ord_contr+=tell_temp*weight_exp_all[iord]                     
+                tell_ord_contr+=tell_temp*glob_weight_all[iord]                     
             if DImast_weight_data_paths is not None:
                 flux_ref_temp,cov_ref_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], data_ref['flux'][iord] , cov = data_ref['cov'][iord] , kind=resamp_mode)  
-                flux_ref_temp,cov_ref_temp = bind.mul_array(flux_ref_temp,cov_ref_temp ,weight_exp_all[iord]      )
+                flux_ref_temp,cov_ref_temp = bind.mul_array(flux_ref_temp,cov_ref_temp ,glob_weight_all[iord]      )
                 flux_ref_temp[~cond_def] = 0.   
                 flux_ref_ord_contr+=[flux_ref_temp]
                 cov_ref_ord_contr+=[cov_ref_temp]
             if SpSstar_spec is not None:
                 SpSstar_spec_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],SpSstar_spec[iord](data_exp['cen_bins'][iord]) ,kind=resamp_mode)
                 SpSstar_spec_temp[~cond_def] = 0.
-                SpSstar_spec_ord_contr+=SpSstar_spec_temp*weight_exp_all[iord]
+                SpSstar_spec_ord_contr+=SpSstar_spec_temp*glob_weight_all[iord]
             if flux_est_loc_exp is not None:  
                 if cov_est_loc_exp is None:                    
                     flux_est_loc_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], flux_est_loc_exp[iord] , kind=resamp_mode)   
                     flux_est_loc_temp[~cond_def] = 0.   
-                    flux_est_loc_ord_contr+=flux_est_loc_temp*weight_exp_all[iord]                  
+                    flux_est_loc_ord_contr+=flux_est_loc_temp*glob_weight_all[iord]                  
                 else:
                     flux_est_loc_temp,cov_est_loc_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], flux_est_loc_exp[iord] , cov = cov_est_loc_exp[iord], kind=resamp_mode)   
-                    flux_est_loc_temp,cov_est_loc_temp = bind.mul_array( flux_est_loc_temp, cov_est_loc_temp , weight_exp_all[iord])
+                    flux_est_loc_temp,cov_est_loc_temp = bind.mul_array( flux_est_loc_temp, cov_est_loc_temp , glob_weight_all[iord])
                     flux_est_loc_temp[~cond_def] = 0.   
                     flux_est_loc_ord_contr+=[flux_est_loc_temp]
                     cov_est_loc_ord_contr+=[cov_est_loc_temp]
@@ -12692,7 +12729,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,proc_gen_data_paths_ne
         flux_1D[~cond_def_binned]=np.nan        
 
         #Store data with artifical order for consistency with the routines
-        #    - gain profile are not used anymore afterward as there is no clear conversion from 2D to 1D for them
+        #    - calibration profile are not used anymore afterward as there is no clear conversion from 2D to 1D for them
         #    - global flux scaling is not modified
         #      flux scaling tables are always called with global indexes
         data_exp1D = {'cen_bins':cen_bins_1D[None,:],'edge_bins':edge_bins_1D[None,:],'flux' : flux_1D[None,:],'cond_def' : cond_def_binned[None,:], 'cov' : [cov_1D]} 

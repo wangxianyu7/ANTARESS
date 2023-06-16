@@ -132,13 +132,13 @@ gen_dic['use_cov']=True
 #%%%% Manual variance table 
 #    - set instrument in list for its error tables to be considered undefined 
 #    - for spectral profiles errors are set to sqrt(F) for disk-integrated profiles and propagated afterwards
-#      the error gain can be adjusted with 'g_err'
+#      error can be scaled with 'g_err'
 #    - for CCFs the same is done for disk-integrated profiles, but errors on local profiles are set to their continuum dispersion (and propagated afterwards)
 gen_dic['force_flag_err']=[]
 
 
 #%%%% Error scaling 
-#    - all error bars will be scaled by this factor upon retrieval/definition, as sigma = sqrt(sc_err*F)
+#    - all error bars will be multiplied by sqrt(g_err) upon retrieval/definition
 #    - format is 'g_err' = {inst : value}
 #    - leave empty to prevent scaling
 gen_dic['g_err']={}
@@ -539,21 +539,26 @@ mock_dic['intr_prof']={}
     
 
 
-#%%%% Count continuum level
-#    - mean count level of the unocculted star over the 'DI_range' band (specific to each visit), for an exposure time of 1s
+#%%%% Continuum level
+#    - mean flux density of the unocculted star over the 'DI_range' band (specific to each visit), ie number of photoelectrons received for an exposure time of 1s
 #    - format is {inst:{vis:value}}
 mock_dic['flux_cont']={}
+
+#%%%% Instrumental gain
+#    - the final count level is proportional to 'flux_cont' x 'gcal' but we separate the two fields to control separately the stellar emission and instrumental gain
+#    - set to 1 if undefined
+#    - format is {inst:{value}}
+mock_dic['gcal']={}
    
 
 #%%% Noise settings
 
-#%%%% Instrumental gain
-#    - defining error calculation
-#    - noise value is drawn for each pixel based on gain
+#%%%% Flux errors
+#    - controls error calculation
+#    - noise value is drawn for each pixel based on number of measured counts
 #    - leave undefined to prevent noise being defined
-#      in that case the count-to-flux and gain are both defined through 'flux_cont'
-#    - format is {inst:{vis:value}}
-mock_dic['gain'] = {}    
+#    - format is {inst:{vis:bool}}
+mock_dic['set_err'] = {}    
  
  
 #%%%% Jitter on intrinsic profile properties
@@ -690,11 +695,11 @@ if __name__ == '__main__':
      
     #Noise settings
     
-    #Instrumental gain
+    #Instrumental calibration
     if gen_dic['star_name'] == 'V1298tau' : 
-        mock_dic['gain'] = {'HARPN' : {'mock_vis'  : 20}}
+        mock_dic['gcal'] = {'HARPN' : {'mock_vis'  : 20}}
     if gen_dic['star_name'] == 'HD209458' : 
-        mock_dic['gain'] = {'ESPRESSO' : {'mock_vis'  : 1.}}   #ANTARESS I, mock, precisions             
+        mock_dic['gcal'] = {'ESPRESSO' : {'mock_vis'  : 1.}}   #ANTARESS I, mock, precisions             
             
     
     #Jitter on intrinsic profile properties
@@ -789,6 +794,7 @@ gen_dic['del_orders'] = {}
 #      exposures index relate to time-ordered tables after 'used_exp' has been applied, leave empty to mask all exposures 
 #      define position as [ [x1,x2] , [x3,x4] .. ] in the input rest frame
 #    - only relevant if part of the order is masked, otherwise remove the full order 
+#    - order indexes are relative to the effective order list, after orders are possibly excluded
 gen_dic['masked_pix'] = {}
 
      
@@ -801,13 +807,13 @@ gen_dic['bad2nan'] = False
 #---------------------------------------------------------------------------------------------
 #%%% Weighing settings 
 #    - controls the weight profiles used for temporal/spatial resampling:
-# + mean gain profile (choice to use calculated profile)
+# + mean calibration profile (choice to use calculated profile)
 # + telluric profile (choice to use input/calculated profiles)
 # + master stellar spectrum (calculation/retrieval and choice to use)
 #---------------------------------------------------------------------------------------------
 
-#%%%% Using detector gain models
-gen_dic['gain_weight'] = True    
+#%%%% Using instrumental calibration models
+gen_dic['cal_weight'] = True    
 
 
 #%%%% Using telluric spectra
@@ -1404,8 +1410,8 @@ if __name__ == '__main__':
     #Weighing settings 
     #---------------------------------------------------------------------------------------------
 
-    #Using detector gain models
-    gen_dic['gain_weight'] = True #   & False   
+    #Using instrumental calibration models
+    gen_dic['cal_weight'] = True #   & False   
 
 
     #Using telluric spectra
@@ -1480,55 +1486,55 @@ if __name__ == '__main__':
 
 
 ##################################################################################################
-#%% Module: detector gain
-#    - always activated in spectral mode, to be used in some modules for flux-to-count scaling (and if requested, for temporal weighing)
-#      rescaling spectra from flux to count-equivalent levels in CCF calculation avoids amplifying artificially errors in regions of lower flux
-#    - detector gain is measured directly from the input data using the flux and error tables
-#      if error tables are not provided with input data, gain is still measured for consistency with the assumed error set to sc_err*sqrt(F)
+#%% Module: instrumental calibration
+#    - always activated in spectral mode, to be used in some modules for photoelectron rescaling (and if requested, for temporal weighing)
+#      rescaling spectra to their original photoelectron levels in CCF calculation avoids amplifying artificially errors in regions of lower flux
+#    - instrumental calibration is measured directly from the input data using the flux and error tables
+#      if error tables are not provided with input data, instrumental calibration is still measured for consistency with the assumed error set to E = sqrt(g_err*F)
 #    - disabled in CCF mode
 ##################################################################################################
 
 #%%% Calculating/retrieving
-gen_dic['calc_det_gain']=True  
+gen_dic['calc_gcal']=True  
 
 
 #%%% Multi-threading
-gen_dic['gain_nthreads'] =  14   
+gen_dic['gcal_nthreads'] =  14   
 
 
 #%%% Bin size
 
 #%%%% Spectral bin size (in A)
 #    - applied over each order independently
-#    - if set to a larger value than an order width, gain will not be fitted but set to the measured value over each order
-#      binw should be large enough to smoot out sharp variations in the model gain profile
+#    - if set to a larger value than an order width, calibration will not be fitted but set to the measured value over each order
+#      binw should be large enough to smoot out sharp variations in the model calibration profile
 #    - format is : value
-gen_dic['gain_binw'] = 0.5
+gen_dic['gcal_binw'] = 0.5
 
 
 #%%%% Temporal bin size
-#    - with low-SNR data it might be necessary to group exposures to perform the gain estimates
+#    - with low-SNR data it might be necessary to group exposures to perform the calibration estimates
 #    - format is : value
-gen_dic['gain_binN'] = 1    
+gen_dic['gcal_binN'] = 1    
 
 
 #%%% Edge polynomials
 #    - model is made of a blue, a central, and a red polynomial
 #    - set the fraction (in 0-1) of the order width that define the blue and red ranges
 #    - set the order of the polynomials (between 2 and 4)
-#    - beware that this gain model will propagate into the weighing and the flux/count scaling, and thus sharp variations should be avoided 
-#    - if input data are CCFs or 'gain_binw' is larger than the spectral order width, gain is set to a constant value  
+#    - beware that this calibration model will propagate into the weighing and the photoelectron rescaling, and thus sharp variations should be avoided 
+#    - if input data are CCFs or 'gcal_binw' is larger than the spectral order width, calibration is set to a constant value  
 #    - format is : {prop : value}    
-gen_dic['gain_edges']={'blue':0.3,'red':0.3}    
-gen_dic['gain_deg']={'blue':4,'mid':2,'red':4}
+gen_dic['gcal_edges']={'blue':0.3,'red':0.3}    
+gen_dic['gcal_deg']={'blue':4,'mid':2,'red':4}
 
     
 #%%% Outliers     
     
 #%%%% Threshold
-#    - gain values above the global threshold, or outliers in the residuals from a preliminary fit, are sigma-clipped and not fitted
+#    - calibration values above the global threshold, or outliers in the residuals from a preliminary fit, are sigma-clipped and not fitted
 #    - format is : {inst : {prop : value} }   
-gen_dic['gain_thresh']={}
+gen_dic['gcal_thresh']={}
 
 
 #%%%% Non-exclusion range
@@ -1536,60 +1542,59 @@ gen_dic['gain_thresh']={}
 #    - outliers are automatically excluded before fitting the final model
 #      we prevent this exclusion over the edges of the orders, where sharp variations are not well captured and can be attributed to outliers
 #    - format is : {inst : [x1,x2] }  
-gen_dic['gain_nooutedge']={}
+gen_dic['gcal_nooutedge']={}
 
 
-#%%% Plots: detector gain estimates
+#%%% Plots: instrumental calibration
 #    - over each order and over time
-plot_dic['det_gain']=''
-plot_dic['det_gain_ord']=''
+plot_dic['gcal']=''
+plot_dic['gcal_ord']=''
 
 
 
 if __name__ == '__main__':
 
     #Calculating/retrieving
-    gen_dic['calc_det_gain']=True  &  False 
+    gen_dic['calc_gcal']=True  &  False 
 
     #Bin size
 
     #Spectral bin size (in A)
-    if gen_dic['star_name'] in ['WASP76','HD209458','HD29291']:gen_dic['gain_binw'] = 1.
-    if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156']:gen_dic['gain_binw'] = 2.
-    if gen_dic['star_name']=='GJ3090':gen_dic['gain_binw'] = 2.
-    if gen_dic['star_name']=='55Cnc':gen_dic['gain_binw'] = 0.2
+    if gen_dic['star_name'] in ['WASP76','HD209458','HD29291']:gen_dic['gcal_binw'] = 1.
+    if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156']:gen_dic['gcal_binw'] = 2.
+    if gen_dic['star_name']=='GJ3090':gen_dic['gcal_binw'] = 2.
+    if gen_dic['star_name']=='55Cnc':gen_dic['gcal_binw'] = 0.2
     
     #Temporal bin size   
-    if gen_dic['star_name']=='WASP156':gen_dic['gain_binN'] = 2 
+    if gen_dic['star_name']=='WASP156':gen_dic['gcal_binN'] = 2 
 
 
     #Edge polynomials 
     if gen_dic['star_name'] in ['GJ3090']:      
-        gen_dic['gain_edges']={'blue':0.3,'red':0.3}    
-        gen_dic['gain_deg']={'blue':4,'mid':2,'red':4}
+        gen_dic['gcal_edges']={'blue':0.3,'red':0.3}    
+        gen_dic['gcal_deg']={'blue':4,'mid':2,'red':4}
     if gen_dic['star_name'] in ['55Cnc']:      
-        gen_dic['gain_edges']={'blue':0.08,'red':0.03}    
-        gen_dic['gain_deg']={'blue':4,'mid':4,'red':4}
+        gen_dic['gcal_edges']={'blue':0.08,'red':0.03}    
+        gen_dic['gcal_deg']={'blue':4,'mid':4,'red':4}
         
     #Outliers     
         
     #Threshold
-    if gen_dic['star_name'] in ['HD209458']:gen_dic['gain_thresh'] = {'ESPRESSO':{'outliers':5.,'global':3e6}}
-    elif gen_dic['star_name'] in ['WASP76']:gen_dic['gain_thresh'] = {'ESPRESSO':{'outliers':5.,'global':1.5e7}}
-    elif gen_dic['star_name'] in ['HD29291']:gen_dic['gain_thresh'] = {'ESPRESSO':{'outliers':5.,'global':1000}}
-    if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156']:gen_dic['gain_thresh'] = {'ESPRESSO':{'outliers':3.,'global':1000}}
-    if gen_dic['star_name'] in ['GJ3090']:gen_dic['gain_thresh'] = {'NIRPS_HA':{'outliers':3.,'global':1000},'NIRPS_HE':{'outliers':3.,'global':3000}}
-    if gen_dic['star_name'] in ['55Cnc']:gen_dic['gain_thresh'] = {'EXPRES':{'outliers':5.,'global':1.}}
+    if gen_dic['star_name'] in ['HD209458']:gen_dic['gcal_thresh'] = {'ESPRESSO':{'outliers':5.,'global':3e6}}
+    elif gen_dic['star_name'] in ['WASP76']:gen_dic['gcal_thresh'] = {'ESPRESSO':{'outliers':5.,'global':1.5e7}}
+    elif gen_dic['star_name'] in ['HD29291']:gen_dic['gcal_thresh'] = {'ESPRESSO':{'outliers':5.,'global':1000}}
+    if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156']:gen_dic['gcal_thresh'] = {'ESPRESSO':{'outliers':3.,'global':1000}}
+    if gen_dic['star_name'] in ['GJ3090']:gen_dic['gcal_thresh'] = {'NIRPS_HA':{'outliers':3.,'global':1000},'NIRPS_HE':{'outliers':3.,'global':3000}}
+    if gen_dic['star_name'] in ['55Cnc']:gen_dic['gcal_thresh'] = {'EXPRES':{'outliers':5.,'global':1.}}
     
     #Non-exclusion range
-    if gen_dic['star_name'] in ['WASP76','HD209458','HD29291']:gen_dic['gain_nooutedge']={'ESPRESSO':[2.,0.]}
-    if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156']:gen_dic['gain_nooutedge']={'CARMENES_VIS':[2.,2.]}
-    if gen_dic['star_name'] in ['55Cnc']:gen_dic['gain_nooutedge']={'EXPRES':[2.,2.]}
+    if gen_dic['star_name'] in ['WASP76','HD209458','HD29291']:gen_dic['gcal_nooutedge']={'ESPRESSO':[2.,0.]}
+    if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156']:gen_dic['gcal_nooutedge']={'CARMENES_VIS':[2.,2.]}
+    if gen_dic['star_name'] in ['55Cnc']:gen_dic['gcal_nooutedge']={'EXPRES':[2.,2.]}
     
-    #Plots: detector gain estimates
-    #    - over each order and over time
-    plot_dic['det_gain']=''
-    plot_dic['det_gain_ord']=''
+    #Plots: instrumental calibration
+    plot_dic['gcal']=''
+    plot_dic['gcal_ord']=''
 
 
 
@@ -1693,8 +1698,8 @@ if __name__ == '__main__':
     
     if gen_dic['star_name']=='WASP76':
         # gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP76b/ESPRESSO/Analyse_David/ESPRESSO_F9.fits'
-        # gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/CCF_masks_DI/ESPRESSO_binned/Relaxed_selection/CCF_mask_DI_WASP76_ESPRESSO_t10.0_air.txt'        
-        gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/CCF_masks_DI/ESPRESSO_binned/Strict_selection/CCF_mask_DI_WASP76_ESPRESSO_t2.5_air.txt'        
+        gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/CCF_masks_DI/ESPRESSO_binned/Relaxed_selection/CCF_mask_DI_WASP76_ESPRESSO_t10.0_air.txt'        
+        # gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/CCF_masks_DI/ESPRESSO_binned/Strict_selection/CCF_mask_DI_WASP76_ESPRESSO_t2.5_air.txt'        
                
 
     if 'HD3167_b' in gen_dic['transit_pl']:
@@ -2012,7 +2017,7 @@ if __name__ == '__main__':
         # theo_dic['nsub_Dpl']={'HD209458b':101.}    #ANTARESS I, mock, precision
         # theo_dic['nsub_Dpl']={'HD209458b':101.,'HD209458c':101.}     #ANTARESS I, mock, multi-pl
     elif gen_dic['star_name']=='WASP76':
-        theo_dic['nsub_Dpl']={'WASP76b':151.}    #pour gen_dic['intr_rv_corr'] assez precis      
+        theo_dic['nsub_Dpl']={'WASP76b':151.}    #pour gen_dic['intr_rv_corr'] assez precis    
     elif gen_dic['star_name']=='TIC61024636':theo_dic['nsub_Dpl']={'TIC61024636b':51.} 
     elif gen_dic['star_name']=='GJ436':theo_dic['nsub_Dpl']={'GJ436_b':51.} 
     elif gen_dic['star_name']=='HIP41378':theo_dic['nsub_Dpl']={'HIP41378d':51.}         
@@ -4297,16 +4302,92 @@ if __name__ == '__main__':
 
 
 
+
+
+
+
+##################################################################################################
+#%% Module: correcting disk-integrated line profiles
+#    - must be applied to CCFs or a single line profile
+##################################################################################################
+
+#%%% Activating
+gen_dic['corr_line_prof'] = False
+
+
+#%%% Calculating/retrieving 
+gen_dic['calc_corr_line_prof']=True  
+
+
+#%%% Transition wavelength
+#    - in the star rest frame
+#    - only relevant in spectral mode
+corr_line_prof_dic['line_trans']=None
+
+
+#%%% Trend correction
+
+#%%%% Activating 
+corr_line_prof_dic['corr_trend'] = False
+
+
+#%%%% Settings     
+#    - structure is : inst > vis > correction > coefficients
+#    - define correction as 'prop_var': 
+# with 'prop' among: 'RV', 'ctrst', 'FWHM' 
+#      'var' among: 'phase', 'snr', 'AM', 'ha', 'na', 'ca', 's', 'rhk'
+#      use '_snrQ' for the SNR of orders provided as input to be summed quadratically (useful to combine ESPRESSO slices) rather than being averaged
+#    - contrast and FWHM corrections are defined as
+# F(x) = a0*(1 + c1*x + c2*x^2 + ... )*(1+A*sin((x-xref)/P))
+#    - RV correction is defined as
+# F(x) = a0 + a1*x + a2*x^2 + ... + A*sin((x-xref)/P)) 
+#      with ai and A in m/s
+#    - the polynomial coefficients are used if defined via 'pol'
+#      the sinusoidal coefficients are used if defined via 'sin'
+#    - the constant level a0 is left undedefined :  for contrast and FWHM models are normalized to their mean, and for RVs the level is controlled by the alignment module and sys_vel
+#    - RV correction must be done in the input rest frame, as CCFs are corrected before being aligned
+corr_line_prof_dic['prop']={}    
+
+        
+#%%%% SNR orders             
+#    - indexes of orders to be used to define the SNR, for corrections of correlations with snr
+#    - order indexes are relative to original instrumental orders
+corr_line_prof_dic['SNRorders']={}   
+
+
+#%%% PC correction 
+
+#%%%% Activating
+#    - PCA module must have been ran first to generate the correction
+corr_line_prof_dic['corr_PC'] = False
+
+
+#%%%% PC coefficients from RMR
+#    - for each instrument and visit
+#    - indicate path to 'pca_ana' file to correct all profiles, using the PC profiles and coefficients derived in the module
+#    - the PC model fitted to intrinsic profiles in the PCA module can however absorb the RM signal
+#      if specified, the path to the 'fit_IntrProf' file will overwrite the PC coefficients from the 'pca_ana' fit and use those derived from the joint RMR + PC fit
+#      beware that the routine will still use the PC profiles from the 'pc_ana' file, which should thus be the same used for the 'fit_IntrProf' fit (defined with 'PC_model')
+corr_line_prof_dic['PC_model']={}
+
+        
+#%%%% PC profiles
+#    - indexes of PC profiles to apply
+#    - by default should be left undefined, so that all PC fitted to the residual and intrinsic profiles are used
+#    - this option is however useful to visualize each PC contribution through plot_dic['map_pca_prof']
+corr_line_prof_dic['idx_PC']={}
+
+
+#%%%% Plots: 2D PC noise model 
+#    - using the model generated with the above options
+plot_dic['map_pca_prof']=''   
+
     
 
 
+if __name__ == '__main__':  
 
-    ##################################################################################################
-    #%% Module: correcting disk-integrated line profiles
-    #    - must be applied to CCFs or a single line profile
-    ##################################################################################################
-
-    #%%% Activating
+    #Activating
     gen_dic['corr_line_prof']=True   &   False
     if gen_dic['star_name'] in ['Kepler68','HAT_P33','HD89345','HAT_P49','WASP107','WASP166','HAT_P11','WASP156','Kepler25','55Cnc']:gen_dic['corr_line_prof']=True   
     # if gen_dic['star_name'] in ['HD189733']:gen_dic['corr_line_prof']=True 
@@ -4315,37 +4396,19 @@ if __name__ == '__main__':
     # gen_dic['corr_line_prof']= False  
     # print('ATTENTION')
 
-    #%%% Calculating/retrieving 
+    #Calculating/retrieving 
     gen_dic['calc_corr_line_prof']=True  #  &  False   
 
-    #%%% Transition wavelength
-    #    - in the star rest frame
-    #    - only relevant in spectral mode
+    #Transition wavelength
     corr_line_prof_dic['line_trans']=None
 
 
-    #%%% Trend correction
+    #Trend correction
     
-    #%%%% Activating 
+    #Activating 
     corr_line_prof_dic['corr_trend'] = True #   & False
 
-    #%%%% Settings     
-    #    - structure is : inst > vis > correction > coefficients
-    #    - define correction as 'prop_var': 
-    # with 'prop' among: 'RV', 'ctrst', 'FWHM' 
-    #      'var' among: 'phase', 'snr', 'AM', 'ha', 'na', 'ca', 's', 'rhk'
-    #      use '_snrQ' for the SNR of orders provided as input to be summed quadratically (useful to combine ESPRESSO slices) rather than being averaged
-    #    - contrast and FWHM corrections are defined as
-    # F(x) = a0*(1 + c1*x + c2*x^2 + ... )*(1+A*sin((x-xref)/P))
-    #    - RV correction is defined as
-    # F(x) = a0 + a1*x + a2*x^2 + ... + A*sin((x-xref)/P)) 
-    #      with ai and A in m/s
-    #    - the polynomial coefficients are used if defined via 'pol'
-    #      the sinusoidal coefficients are used if defined via 'sin'
-    #    - the constant level a0 is left undedefined :  for contrast and FWHM models are normalized to their mean, and for RVs the level is controlled by the alignment module and sys_vel
-    #    - RV correction must be done in the input rest frame, as CCFs are corrected before being aligned
-  
-    
+    #Settings     
     # if gen_dic['transit_pl']=='WASP_8b':
     #     corr_line_prof_dic['prop']={'HARPS':{'2008-10-04':{}}}  
     # elif gen_dic['transit_pl']=='WASP121b':
@@ -4501,31 +4564,17 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='WASP43':
         corr_line_prof_dic['prop']={'NIRPS_HE':
                 {'20230119':{'RV_phase':{'pol':1e-3*np.array([1.422554e+03])},'FWHM_phase':{'pol':np.array([-8.521608e-02])},'ctrst_phase':{'pol':np.array([1.957026e-01])}}}}
-            
-            
-            
-            
 
-    #%%%% SNR orders             
-    #    - indexes of orders to be used to define the SNR, for corrections of correlations with snr
-    #    - order indexes are relative to original instrumental orders
-    corr_line_prof_dic['SNRorders']={'HARPS':[49],'HARPN':[46],'ESPRESSO_MR':[39],'ESPRESSO':[102,103],'CARMENES_VIS':[40],
-                               'NIRPS_HA':[57],'NIRPS_HE':[57]}    #Bande H, 1.63 mic, ordre pas affecte par tellurique donc stable pour mesure SNR, et ref. reduction apero
-    if gen_dic['star_name']=='55Cnc':corr_line_prof_dic['SNRorders']['EXPRES']=[14]   #562 nm, index specific to the chosen order removal
+    #SNR orders             
+    corr_line_prof_dic['SNRorders']={}
 
 
-    #%%% PC correction 
+    #PC correction 
     
-    #%%%% Activating
-    #    - PCA module must have been ran first to generate the correction
+    #Activating
     corr_line_prof_dic['corr_PC'] = True  & False
 
-    #%%%% PC coefficients from RMR
-    #    - for each instrument and visit
-    #    - indicate path to 'pca_ana' file to correct all profiles, using the PC profiles and coefficients derived in the module
-    #    - the PC model fitted to intrinsic profiles in the PCA module can however absorb the RM signal
-    #      if specified, the path to the 'fit_IntrProf' file will overwrite the PC coefficients from the 'pca_ana' fit and use those derived from the joint RMR + PC fit
-    #      beware that the routine will still use the PC profiles from the 'pc_ana' file, which should thus be the same used for the 'fit_IntrProf' fit (defined with 'PC_model')
+    #PC coefficients from RMR
     if gen_dic['star_name']=='55Cnc':
         nPC=1
         corr_line_prof_dic['PC_model']={
@@ -4628,17 +4677,13 @@ if __name__ == '__main__':
         
         }
             
-    #%%%% PC profiles
-    #    - indexes of PC profiles to apply
-    #    - by default should be left undefined, so that all PC fitted to the residual and intrinsic profiles are used
-    #    - this option is however useful to visualize each PC contribution through plot_dic['map_pca_prof']
+    #PC profiles
     corr_line_prof_dic['idx_PC']={}
     # if gen_dic['star_name']=='55Cnc':
     #     corr_line_prof_dic['idx_PC']={
     #         'ESPRESSO':{'20210121':[2]}}
 
-    #%%%% Plots: 2D PC noise model 
-    #    - using the model generated with the above options
+    #Plots: 2D PC noise model 
     plot_dic['map_pca_prof']=''   #'png 
 
 
@@ -7835,7 +7880,7 @@ if __name__ == '__main__':
 
     #%%% Calculating/retrieving 
     gen_dic['calc_res_data'] = True  # &  False
-    if gen_dic['star_name'] in ['HD209458','WASP76']:gen_dic['calc_res_data']=True  &False
+    if gen_dic['star_name'] in ['HD209458','WASP76']:gen_dic['calc_res_data']=True &False
 
 
     #%%% Multi-threading
@@ -7906,9 +7951,8 @@ if __name__ == '__main__':
     elif gen_dic['transit_pl']=='Kelt9b':
         data_dic['Res']['cont_range']=[[-300.,-130.],[130.,300.]]  
     elif gen_dic['star_name']=='WASP76':
-        # data_dic['Res']['cont_range']=[[-350.,-40.],[40.,350.]]  
-    #     data_dic['Res']['cont_range_MCCF']=[[-200.,-60.],[60.,200.]]   
-        data_dic['Res']['cont_range']['ESPRESSO']=[[-80.,-30.],[30.,80.]]     
+        data_dic['Res']['cont_range']['ESPRESSO']=[[-350.,-80.],[80.,350.]]    #to avoid planet-excluded ranges  
+    #     data_dic['Res']['cont_range_MCCF']=[[-200.,-60.],[60.,200.]]       
     elif gen_dic['transit_pl']=='WASP127b':
         data_dic['Res']['cont_range']=[[-150.,-10.],[10.,150.]]     
     elif gen_dic['star_name']=='HD209458':data_dic['Res']['cont_range']['ESPRESSO']=[[-150.,-13.],[13.,150.]]     
@@ -8022,13 +8066,13 @@ if __name__ == '__main__':
 
     #%%%% 2D maps of intrinsic stellar profiles
     #    - aligned or not
-    plot_dic['map_Intr_prof']='pdf'   #'png 
+    plot_dic['map_Intr_prof']=''   #'png 
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:plot_dic['map_Intr_prof']='png'
 
     #%%%% Individual intrinsic stellar profiles
     #    - aligned or not
     plot_dic['sp_intr']=''  
-    plot_dic['CCFintr']='pdf'   #pdf  
+    plot_dic['CCFintr']=''   #pdf  
 
     #%%%% Residuals from intrinsic stellar profiles
     #    - choose within the routine whether to plot fit to individual or to global profiles
@@ -8055,7 +8099,7 @@ if __name__ == '__main__':
     ##################################################################################################   
  
     #%%% Activating
-    gen_dic['Intr_CCF'] = True  #  &  False
+    gen_dic['Intr_CCF'] = True   # &  False
  
     #%%% Calculating/retrieving 
     gen_dic['calc_Intr_CCF'] = True   &  False
@@ -8067,7 +8111,7 @@ if __name__ == '__main__':
     #%%% Continuum correction
     #    - the continuum of CCFs calculated from local spectra might show differences between exposures because of imprecisions on the flux balance correction
     #      this option correct for these deviations and update the flux scaling values accordingly
-    data_dic['Intr']['cont_norm'] = True   &   False
+    data_dic['Intr']['cont_norm'] = True  # &   False
 
 
 
@@ -8191,10 +8235,10 @@ if __name__ == '__main__':
 
     #%%% Activating
     #    - required for some of the operations afterwards
-    gen_dic['align_Intr'] = True   &  False
+    gen_dic['align_Intr'] = True  # &  False
  
     #%%% Calculating/retrieving
-    gen_dic['calc_align_Intr'] = True   &  False  
+    gen_dic['calc_align_Intr'] = True  &  False  
 
     #%%% Alignment mode
     #    - align profiles by their measured ('meas') or theoretical ('theo') RVs 
@@ -8262,7 +8306,7 @@ if __name__ == '__main__':
     ##################################################################################################
 
     #%%% Activating
-    gen_dic['Intrbin'] = True   &  False
+    gen_dic['Intrbin'] = True #  &  False
     gen_dic['Intrbinmultivis'] = True   &  False
 
     #%%% Calculating/retrieving
@@ -8337,6 +8381,7 @@ if __name__ == '__main__':
         data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20190720':range(6,56),'20190911':range(6,56)}}    #for mask generation
     if gen_dic['star_name']=='WASP76':
         data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20180902':range(1,20),'20181030':range(3,35)}}    #for mask generation
+        data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20180902':range(1,21),'20181030':range(1,38)}}    #for resampling
     if gen_dic['star_name']=='HD3167': 
         data_dic['Intr']['idx_in_bin']['ESPRESSO']={'2019-10-09':range(1,16)}
 
@@ -8397,8 +8442,8 @@ if __name__ == '__main__':
     # + automatically : indicate total range and number of bins  
     #    - leave empty for a single master to be calculated over all selected exposures
     data_dic['Intr']['prop_bin']={}
-    # if gen_dic['transit_pl']=='WASP76b':     #leave undefined for default value and CCF mask generation 
-    #     data_dic['Intr']['prop_bin']={
+    if gen_dic['star_name']=='WASP76':     #leave undefined for default value and CCF mask generation 
+        data_dic['Intr']['prop_bin']={
    
     #         'ESPRESSO':{'2018-09-03':{'bin_low':np.arange(-0.03,0.03,0.01),'bin_high':np.arange(-0.03,0.03,0.01)+0.01},
     #                     '2018-10-31':{'bin_low':np.arange(0.,0.03,0.01),'bin_high':np.arange(0.,0.03,0.01)+0.01},
@@ -8420,6 +8465,17 @@ if __name__ == '__main__':
     #         #     # 'ESPRESSO':{'2018-09-03':{'bin_low':[0.],'bin_high':[1.]},'2018-10-31':{'bin_low':[0.],'bin_high':[1.]}} 
     #         #     'ESPRESSO':{'2018-09-03':{'bin_low':[0.,0.5],'bin_high':[0.5,1.]},'2018-10-31':{'bin_low':[0.,0.5],'bin_high':[0.5,1.]}}             
     #         }
+    
+            #Bin of visit 2 for ANTARESS I, resampling section, r_proj
+            'ESPRESSO':{'20180902':{'bin_low': [0.335,0.5715,0.7490,0.9425],'bin_high':[0.393,0.6300,0.8045,0.9700]},
+                        '20181030':{'bin_low': [0.335,0.5715,0.7490,0.9425],'bin_high':[0.393,0.6300,0.8045,0.9700]}}
+            }
+            # 'ESPRESSO':{'20180902':{'bin_low': [0.335],'bin_high':[0.393]},
+            #             '20181030':{'bin_low': [0.335],'bin_high':[0.393]}}
+            # }
+
+
+
 
     if gen_dic['star_name']=='HD3167':  
         data_dic['Intr']['prop_bin']={
@@ -8523,7 +8579,7 @@ if __name__ == '__main__':
     
     #%%%% Individual binned profiles
     plot_dic['sp_Intrbin']=''  
-    plot_dic['CCF_Intrbin']=''   #pdf
+    plot_dic['CCF_Intrbin']='pdf'   #pdf
 
     #%%%% Residuals from binned profiles
     plot_dic['CCF_Intrbin_res']=''  # pdf

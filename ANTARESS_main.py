@@ -2,7 +2,7 @@
 ANTARESS : Advocating a Neat Technique for the Accurate Retrieval of Exoplanetary and Stellar Spectra
 """
 
-from ANTARESS_routines import extract_intr_profiles,fit_prof,calc_plocc_prop,calc_spots_prop,def_local_profiles,calc_det_gain,\
+from ANTARESS_routines import extract_intr_profiles,fit_prof,calc_plocc_prop,calc_spots_prop,def_local_profiles,calc_gcal,\
                                 rescale_data,extract_pl_profiles,CCF_from_spec,corr_line_prof,ResIntr_CCF_from_spec,\
                                 init_prop,init_visit,update_data_inst,align_profiles,init_data_instru,extract_res_profiles,\
                                 process_bin_prof,conv_2D_to_1D_spec,analyze_prof, corr_spot,pc_analysis,def_masks
@@ -42,9 +42,9 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
         #Initialize instrument tables and dictionaries
         init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system_param,plot_dic)
 
-        #Estimating detector gain
-        if gen_dic['det_gain']:
-            calc_det_gain(gen_dic,data_dic,inst,plot_dic,coord_dic)
+        #Estimating instrumental calibration
+        if gen_dic['gcal']:
+            calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic)
 
         #Global corrections of spectral data
         #    - performed before the loop on individual visits because some corrections exploit information from all visits and require the full range of the data
@@ -56,7 +56,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
         for vis in data_dic[inst]['visit_list']:
             print('  -----------------')
             print('  Processing visit: '+vis)  
- 
+
             #Reset data mode to input
             data_dic[inst]['nord'] = deepcopy(data_dic[inst]['nord_spec'])
 
@@ -90,7 +90,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
             # #Correcting for spot contamination 
             # if gen_dic['correct_spots'] : 
             #     corr_spot(corr_spot_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo_dic, system_param)
-                
+              
             #Rescaling profiles to their correct flux level                  
             if gen_dic['flux_sc']:                   
                 rescale_data(data_dic[inst],inst,vis,data_dic,coord_dic,coord_dic[inst][vis]['t_dur_d'],gen_dic,plot_dic,system_param,theo_dic)   
@@ -130,7 +130,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
             #Fitting intrinsic stellar profiles in the star rest frame
             if gen_dic['fit_Intr']:
                 fit_prof('','Introrig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
-
+            
             #Aligning intrinsic stellar profiles to their local rest frame
             if gen_dic['align_Intr']: 
                 align_profiles('Intr',data_dic,inst,vis,gen_dic,coord_dic)

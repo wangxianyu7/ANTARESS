@@ -51,7 +51,7 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
 # 	plt.rc('text', usetex=True)
     plt.rcParams['pdf.fonttype'] = 42
 
-      #Axis
+    #Axis
     if ax==None:
         ax=plt.gca()
 
@@ -61,7 +61,7 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
         if fig is None:plt.subplots_adjust(left=position[0],bottom=position[1],right=position[2],top=position[3]) 
         else:fig.subplots_adjust(left=position[0],bottom=position[1],right=position[2],top=position[3]) 
 
-      #Set axis to log mode if required
+    #Set axis to log mode if required
     if x_mode=='log':ax.set_xscale('log')
     if y_mode=='log':ax.set_yscale('log')
 
@@ -76,7 +76,7 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
     # else:z_range = ax.get_zlim()
     # dz_range = z_range[1]-z_range[0]
 
-      #Axis titles	
+    #Axis titles	
     xfont_size_loc=xfont_size if xfont_size is not None else 10.
     yfont_size_loc=yfont_size if yfont_size is not None else 10. 
     zfont_size_loc=zfont_size if zfont_size is not None else 10. 
@@ -90,12 +90,12 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
     if z_title is not None:   
             ax.set_zlabel(z_title,fontsize=zfont_size_loc,weight=font_thick_loc)
                 
-      #Axis title distance
+    #Axis title distance
     if x_title_dist is not None:ax.xaxis.labelpad = x_title_dist
     if y_title_dist is not None:ax.yaxis.labelpad = y_title_dist
     if z_title_dist is not None:ax.zaxis.labelpad = z_title_dist
     	
-      #Axis background color
+    #Axis background color
     if colback is not None:ax.set_facecolor(colback)
 
     #Axis thickness
@@ -113,8 +113,7 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
     if (right_yticks=='on'):
          ax.yaxis.tick_right()
          ax.yaxis.set_label_position('right')
-
-         
+  
     #------------------------------------------------------------------------
     #X ticks (on by default)		
     if (no_xticks==False):
@@ -160,36 +159,42 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
     #Y ticks (on by default)	
     if (no_yticks==False):
 
+		#Direction of ticks
+        if dir_y==None:dir_y='in'         
+
         #Interval between major ticks		
         if ymajor_int is not None:
             n_ticks = int(dy_range/ymajor_int)
             if n_ticks>100:ymajor_int = dy_range/100.
             ax.yaxis.set_major_locator(MultipleLocator(ymajor_int))	
 
-		#Direction of ticks
-        if dir_y==None:dir_y='in' 
+    	    #Major ticks length	
+            ymajor_length_loc=ymajor_length if ymajor_length is not None else 7
+            ymajor_thick_loc=ymajor_thick if ymajor_thick is not None else 1.5		
+            ytick_pad_loc=ytick_pad if ytick_pad is not None else 5 		
+            ax.tick_params('y', length=ymajor_length_loc, which='major',width=ymajor_thick_loc,
+    					  direction=dir_y, pad=ytick_pad_loc,labelsize=yfont_size_loc, right=True)
 
-	    #Major ticks length	
-        ymajor_length_loc=ymajor_length if ymajor_length is not None else 7
-        ymajor_thick_loc=ymajor_thick if ymajor_thick is not None else 1.5		
-        ytick_pad_loc=ytick_pad if ytick_pad is not None else 5 		
-        ax.tick_params('y', length=ymajor_length_loc, which='major',width=ymajor_thick_loc,
-					  direction=dir_y, pad=ytick_pad_loc,labelsize=yfont_size_loc, right=True)
+    	    #Major ticks label format		
+            if ymajor_form is not None:ax.yaxis.set_major_formatter(FormatStrFormatter(ymajor_form))	
+            
+    	    #Interval between minor ticks			
+            if yminor_int is not None:
+                n_ticks = int(ymajor_int/yminor_int)
+                if n_ticks>50:yminor_int = ymajor_int/50.
+                ax.yaxis.set_minor_locator(MultipleLocator(yminor_int))
 
-	    #Minor ticks length	
-        yminor_length_loc=yminor_length if yminor_length is not None else ymajor_length_loc/2.
-        yminor_thick_loc=yminor_thick if yminor_thick is not None else 1.5			
-        ax.tick_params('y', length=yminor_length_loc, which='minor',width=yminor_thick_loc,
-					  direction=dir_y,labelsize=yfont_size_loc, right=True)
-	
-	    #Major ticks label format		
-        if ymajor_form is not None:ax.yaxis.set_major_formatter(FormatStrFormatter(ymajor_form))		
-			
-	    #Interval between minor ticks			
-        if yminor_int is not None:
-            n_ticks = int(ymajor_int/yminor_int)
-            if n_ticks>50:yminor_int = ymajor_int/50.
-            ax.yaxis.set_minor_locator(MultipleLocator(yminor_int))
+        	    #Minor ticks length	
+                yminor_length_loc=yminor_length if yminor_length is not None else ymajor_length_loc/2.
+                yminor_thick_loc=yminor_thick if yminor_thick is not None else 1.5			
+                ax.tick_params('y', length=yminor_length_loc, which='minor',width=yminor_thick_loc,
+        					  direction=dir_y,labelsize=yfont_size_loc, right=True)
+    
+            else:
+                ax.tick_params('y', which='minor',left=False,labelleft=False)
+
+        else:
+            ax.tick_params('y', which='both',left=False,labelleft=False)
 
 	    #Ticks labels color
         if ylab_col is not None:[i_col.set_color(ylab_col) for i_col in ax.get_yticklabels()]

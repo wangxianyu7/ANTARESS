@@ -11,7 +11,7 @@ from PyAstronomy import pyasl
 import bindensity as bind
 import matplotlib.pyplot as plt
 from ANTARESS_routines import par_formatting,model_par_names,check_data,def_weights_spatiotemp_bin,resample_func,calc_binned_prof,sub_def_bins,sub_calc_bins,def_edge_tab,\
-    return_resolv,spec_dopshift,return_FWHM_inst,get_timeorbit,new_compute_CCF,def_contacts,check_CCF_mask_lines,convol_prof,calc_spectral_cont,air_index,pre_calc_binned_prof
+    return_resolv,spec_dopshift,return_FWHM_inst,get_timeorbit,new_compute_CCF,def_contacts,check_CCF_mask_lines,convol_prof,calc_spectral_cont,air_index
 from astropy.io import fits
 from scipy.interpolate import interp1d,UnivariateSpline,CubicSpline
 import pickle
@@ -455,10 +455,10 @@ def telluric_model(params,velccf,args=None):
                 #Compute CCFs
                 #    - multiprocessing not efficient for these calculations
                 edge_velccf_fit = args['edge_velccf'][args['mol_fit_idx_edge']]
-                ccf_uncorr_ord,    cov_ccf_uncorr_ord      = new_compute_CCF(edge_bins_ord,flux_ord,cov_ord,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,gain = gdet_ord)
+                ccf_uncorr_ord,    cov_ccf_uncorr_ord      = new_compute_CCF(edge_bins_ord,flux_ord,cov_ord,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gdet_ord)
                 cov_uncorr_ord[isub_ord] = cov_ccf_uncorr_ord 
                 nd_cov_uncorr_ord[isub_ord] = np.shape(cov_ccf_uncorr_ord)[0]
-                if args['ccf_corr']:ccf_corr_ord = new_compute_CCF(edge_bins_ord,flux_corr_ord,None,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,gain = gdet_ord)[0]
+                if args['ccf_corr']:ccf_corr_ord = new_compute_CCF(edge_bins_ord,flux_corr_ord,None,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gdet_ord)[0]
                 ccf_model_conv_ord = new_compute_CCF(edge_bins_mod,telluric_spectrum_conv,None,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1)[0]
                
                 #Normalize CCFs and co-add
@@ -875,7 +875,7 @@ def run_ATC_vis(iexp_group,airmass_group,IWV_airmass_group,temp_group,press_grou
             edge_bins = deepcopy(data_exp['edge_bins'])
             cen_bins = deepcopy(data_exp['cen_bins'])
             
-            #Retrieve gain profile
+            #Retrieve calibration profile
             #    - defined in the same frame and over the same table as the exposure spectrum
             mean_gdet_exp = dataload_npz(mean_gdet_DI_data_paths[iexp])['mean_gdet'] 
 
@@ -996,7 +996,7 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
             #Visit master calculated over defined bins
             #    - the co-addition is done over defined bins, to leave at nan those bins where no exposure is defined (otherwise np.nansum returns 0 if only nan are summed)
             #    - bins on the edges of the 1D master over all visits might be undefined if nigthly masters were defined on different ranges  
-            #    - we neglect possible changes in instrumental gain over time, tellurics, and color balance since they are not corrected for yet 
+            #    - we neglect possible changes in instrumental calibration over time, tellurics, and color balance since they are not corrected for yet 
             if gen_dic['glob_mast_mode']=='mean':      
 
                 #Calculate mean of spectra
@@ -1005,7 +1005,7 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
                 #      after normalizing spectra to the same global flux level, the correct weights would be (see def_weights_spatiotemp_bin):
                 # wi = 1/ci, with Fi_norm = ci*Fi 
                 #      then Fmast = sum( Fi_norm*wi )/sum(wi) = sum( ci*Fi/ci )/sum(1/ci) = sum(Fi)/sum(ci)
-                #      since the overal level of the master does not matter, we can thus simply calculate a mean or median of the unweighted flux
+                #      since the overal level of the master does not matter, we can thus simply calculate a mean of the unweighted flux
                 for iord in range(data_inst['nord']):
                     for ipix in np_where1D(cond_def_Mstar_vis[iord]):Mstar_vis_all[ivisit][iord,ipix] = np.mean(flux_vis[cond_def_vis[:,iord,ipix],iord,ipix])  
                     
@@ -1013,6 +1013,7 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
                 
                 #Calculate median of spectra                    
                 #     - the use of the median allows mitigating the impact of such features (such as cosmic rays), but it requires that the spectra have comparable flux levels
+                #       we apply an empirical normalization to account for all possible source of variations between exposures (duration, stellar variability, earth diffusion, ..)
                 for iord in range(data_inst['nord']):
 
                     #Set each order to same flux level in all exposures, set to average over the visit
@@ -1126,18 +1127,18 @@ Flux balance correction
       theoretically we would obtain a cleaner estimate of 'a' by first calculating the spectral ratio between each exposure and the reference, and then binning the spectral ratio
       in practice however the dispersion of the flux in low-SNR regions leads to spurious variations when calculating this ratio on individual pixels
       we thus first bin the exposure and master spectra, and then calculate the ratio between those binned spectra
-    - rather than binning the data in flux units we first scale it back to count units, to avoid artificially increasing the uncertainty and dispersion in a given bin
+    - rather than binning the data in flux units we first scale it back to raw count units, to avoid artificially increasing the uncertainty and dispersion in a given bin
       this does not bias the measurement of 'a', considering that:
- Nobs(wbin,t) = sum(wbin,Fobs(w,t)*dt*dw/g(w)) 
-              ~ sum(wbin,a(wbin,t)*Fstar(w,v)*dt*dw/g(w))
-              ~ a(wbin,t)*delt_p(wbin,v,t)*dt*sum(wbin,Fstar(w,v)/g(w))       
- Nref(wbin,t) = sum(wbin,Fref(w,t)*dw/g(w))      
-              = sum(wbin,Cref(wbin)*Fstar(w,v)*dw/g(w))      
-              = Cref(wbin)*sum(wbin,Fstar(w,v)*dw/g(w)) 
+ Nobs(wbin,t) = sum(wbin,Fobs(w,t)*dt*dw/gcal(w)) 
+              ~ sum(wbin,a(wbin,t)*Fstar(w,v)*dt*dw/gcal(w))
+              ~ a(wbin,t)*delt_p(wbin,v,t)*dt*sum(wbin,Fstar(w,v)/gcal(w))       
+ Nref(wbin,t) = sum(wbin,Fref(w,t)*dw/gcal(w))      
+              = sum(wbin,Cref(wbin)*Fstar(w,v)*dw/gcal(w))      
+              = Cref(wbin)*sum(wbin,Fstar(w,v)*dw/gcal(w)) 
       where we scale the master AFTER its calculation in the star rest frame and shift to the exposure rest frame, to prevent introducing biases
     - we fit a polynomial to the ratio between the binned exposure spectra and the stellar reference, scaled
       P[wbin] is thus an estimate of 
- Nobs(wbin,t)/Nref(wbin,t) = a(wbin,t)*delt_p(wbin,v,t)*dt*sum(wbin,Fstar(w,v)/g(w)) / Cref(wbin)*sum(wbin,Fstar(w,v)*dw/g(w))  
+ Nobs(wbin,t)/Nref(wbin,t) = a(wbin,t)*delt_p(wbin,v,t)*dt*sum(wbin,Fstar(w,v)/gcal(w)) / Cref(wbin)*sum(wbin,Fstar(w,v)*dw/gcal(w))  
                            = a(wbin,t) * delt_p(wbin,vis,t)*dt / Cref(wbin) 
       assuming that Cref is dominated by low-frequency variations, we obtain P[wbin] ~ a(wbin,t)*delt_p(wbin,vis,t)/Cref(wbin)
       we then extrapolate P[wbin] at all wavelengths w, and correct spectra using P(w), resulting in :
@@ -1183,8 +1184,8 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
             #Deviation between current visit and reference
             if gen_dic['Fbal_vis'] is not None:
 
-                #Gain profile function
-                mean_gdet_func = dataload_npz(gen_dic['save_data_dir']+'Processed_data/Gains/'+inst+'_mean_gdet')['func'] 
+                #Calibration profile function
+                mean_gdet_func = dataload_npz(gen_dic['save_data_dir']+'Processed_data/Calibration/'+inst+'_mean_gdet')['func'] 
 
                 #Set reference to average of measured visit masters
                 if gen_dic['Fbal_vis']=='meas':  
@@ -1271,7 +1272,7 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
                     for iord in iord_fit_list_def:  
                         
                         #Scaling masters back to counts over their common defined pixels in order  
-                        #    - median gain profile must be calculated in solar barycentric rest frame with the function, but defined over the same table that is used in the star rest frame for all masters
+                        #    - median calibration profile must be calculated in solar barycentric rest frame with the function, but defined over the same table that is used in the star rest frame for all masters
                         mean_gdet_Mstar_ord = mean_gdet_func[iord](cen_wav_Mstar_solbar[iord,cond_def_Mast[iord]])[::-1]
                         count_Mstar_vis_ord = data_Mast_vis['flux'][iord,cond_def_Mast[iord]][::-1] /mean_gdet_Mstar_ord                      
                         count_Mstar_ref_ord = data_Mast_ref['flux'][iord,cond_def_Mast[iord]][::-1]/mean_gdet_Mstar_ord
@@ -1373,7 +1374,7 @@ def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,
             for bd_band_loc in range_fit:cond_sel|=(data_exp['edge_bins'][:,0:-1]>bd_band_loc[0]) & (data_exp['edge_bins'][:,1::]<bd_band_loc[1])
             cond_fit_all &= cond_sel                
 
-        #Retrieve gain profile associated with current exposure in nu space
+        #Retrieve calibration profile associated with current exposure in nu space
         #    - defined in the same frame and over the same table as the exposure spectrum
         mean_gdet_exp = dataload_npz(mean_gdet_DI_data_paths[iexp])['mean_gdet'][:,::-1] 
 
@@ -2271,9 +2272,9 @@ Correcting for ESPRESSO wiggles
       where W(w,t) represents the wiggles and we can ignore Cref(w,v) and L(t) as they will be removed when normalizing Fcorr(w,t,v) by the visit master
     - the approach is the same as with the flux balance module: spectra are first scaled back to count units and binned to smooth out noise, with a bin size
  short enough that it does not dilute the wiggles
-      when spectra are shifted into the star rest frame their gain profile is shifted as well, so that a given exposure and its master are scaled using the same profile
-      in this way the contribution from the stellar spectrum and gain profile is removed when calculating the ratio between the binned exposure and master count spectra, and 
- all low-resolution transmission spectra are comparable, even if they involved gain profiles shifted to different positions
+      when spectra are shifted into the star rest frame their calibration profile is shifted as well, so that a given exposure and its master are scaled using the same profile
+      in this way the contribution from the stellar spectrum and calibration profile is removed when calculating the ratio between the binned exposure and master count spectra, and 
+ all low-resolution transmission spectra are comparable, even if they involved calibration profiles shifted to different positions
 '''
 def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
     print('   > Correcting ESPRESSO spectra for wiggles') 
@@ -2648,7 +2649,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
 
                 #No flux scaling and master are defined at this stage for the weighing
                 #    - the wiggle master spectrum is in any case processed in the star rest frame, so that the stellar line do not contribute to weighing 
-                flux_ref = np.ones(data_vis['dim_exp'])  
+                flux_ref = np.ones(data_vis['dim_exp'])
     
                 #Retrieving data that will be used in the binning to calculate a master profile
                 #    - in the process_bin_prof() routine dedicated to the analysis of binned profiles, original exposures are resampled on a common table after 
@@ -2713,8 +2714,8 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
                         #Weight definition 
                         #    - at this stage of the pipeline no broadband flux scaling was applied
                         #    - weights with at least one undefined pixels are set to 1 for all binned exposures (ie, no weighing is applied) within calc_binned_prof()    
-                        weight_mean_gdet_exp = data_glob[iexp]['mean_gdet'] if gen_dic['gain_weight'] else None 
-                        data_glob[iexp]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp,'DI',data_inst['type'],data_vis['dim_exp'],data_glob[iexp]['tell'],weight_mean_gdet_exp,data_glob[iexp]['cen_bins'],flux_ref,None,glob_flux_sc=1./flux_glob)            
+                        weight_mean_gdet_exp = data_glob[iexp]['mean_gdet'] if gen_dic['cal_weight'] else None 
+                        data_glob[iexp]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp,'DI',data_inst['type'],data_vis['dim_exp'],data_glob[iexp]['tell'],weight_mean_gdet_exp,data_glob[iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc=1./flux_glob)            
     
                         #Resampling if a common master is used
                         #    - if exposures do not share a common table they were kept on individual exposures; here we only resample those involved in the master calculation
@@ -5746,7 +5747,7 @@ def corr_fring(inst,gen_dic,data_inst,plot_dic,data_dic):
         print('         Calculating data')    
     
     
-        stop('Adapter selon la meme approche que wiggles; notamment scaler par gain')
+        stop('Adapter selon la meme approche que wiggles; notamment scaler par cal.')
         print('reflechir a faire guess adapte automatiquement a chaque ordre')
         print('faire selection de modeles selon inst (GIARPS, STIS, ..)')
       
