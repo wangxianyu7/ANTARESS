@@ -3443,7 +3443,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
         
         #Calibration profile
         if data_vis['mean_gdet']:
-            data_com = np.load(data_vis['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item()  
+            data_com = dataload_npz(data_vis['proc_com_data_paths'])
             mean_gdet_com = np.zeros([nord_coadd,data_com['dim_exp'][1]],dtype=float)
         else:gdet_ord=None
     
@@ -3481,7 +3481,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
                 for isub,iord in enumerate(ord_coadd):mean_gdet_com[isub]+=bind.resampling(data_com['edge_bins'][iord], data_proc['edge_bins'][iexp_sub,iord],mean_gdet_exp[iord], kind=gen_dic['resamp_mode'])/n_exp 
 
             #Upload weighing disk-integrated master 
-            #    - the master is always remain either defined on the common table, or on a specific table different from the table of its associated exposure
+            #    - the master always remains either defined on the common table, or on a specific table different from the table of its associated exposure
             #    - the master is computed after DI spectra have been converted into CCFs, and thus need conversion only for later profile types
             if data_type_gen in ['Intr','Atm']:
                 data_ref = dataload_npz(data_vis['mast_'+gen+'_data_paths'][iexp_eff])
@@ -3519,7 +3519,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
         edge_bins = np.tile(edge_velccf,[1,1])  
         
         #Upload flux scaling
-        #    - we compute the equivalent CCF of the broadband scaling for the propagation of broadband spectral scaling from disk-integrated profiles into weights
+        #    - we compute the equivalent CCF of the broadband scaling for the propagation of broadband spectral scaling on disk-integrated profiles into weights
         #    - global flux scaling is not modified  
         if gen_dic['flux_sc'] and data_type_gen in ['Intr','Atm']:
             data_scaling_all={}
@@ -3599,11 +3599,11 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
             #Saving data for each exposure
             #    - CCF are stored independently of input spectra, so that both can be retrieved
             data_CCF_exp.update({'cen_bins':cen_bins,'edge_bins':edge_bins,'flux':CCF_all[iexp_sub],'cond_def':cond_def_exp,'cov':cov_exp,'nd_cov':nd_cov_exp})              
-            np.savez_compressed(dir_save[gen]+str(iexp_eff) ,data=data_CCF_exp,allow_pickle=True)
+            datasave_npz(dir_save[gen]+str(iexp_eff),data_CCF_exp)
             
             #Processing disk-integrated masters
             if data_type_gen in ['Intr','Atm']:
-                np.savez_compressed(dir_mast[gen][iexp_eff],data={'cen_bins':cen_bins,'edge_bins':edge_bins,'flux':CCF_ref[iexp_sub],'cov':cov_ref},allow_pickle=True)
+                datasave_npz(dir_mast[gen][iexp_eff],{'cen_bins':cen_bins,'edge_bins':edge_bins,'flux':CCF_ref[iexp_sub],'cov':cov_ref})
 
             #Redefine spectral scaling table
             if gen_dic['flux_sc']:
@@ -3615,7 +3615,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
 
         #Update common tables
         #    - set to the table in the star rest frame, as it is the one that will be used in later operations                
-        np.savez_compressed(proc_com_data_paths_new,data = {'dim_exp':[1,data_vis['nvel']],'nspec':data_vis['nvel'],'cen_bins':np.tile(data_vis['velccf_star'],[1,1]),'edge_bins':np.tile(data_vis['edge_velccf_star'],[1,1])},allow_pickle=True)     
+        datasave_npz(proc_com_data_paths_new,{'dim_exp':[1,data_vis['nvel']],'nspec':data_vis['nvel'],'cen_bins':np.tile(data_vis['velccf_star'],[1,1]),'edge_bins':np.tile(data_vis['edge_velccf_star'],[1,1])})
 
     else:
         check_data({'path':proc_com_data_paths_new})
@@ -3843,7 +3843,8 @@ def new_compute_CCF(edge_wav,flux,cov,resamp_mode,edge_velccf,wght_mask,wav_mask
     if np.any(low_pix_wav[1:]-high_pix_wav[0:-1]):
         stop('Spectral bins must be continuous')
     
-    #Conversion from wavelengths in star rest rame (lines transitions) to wavelength in the spectrum rest frame
+    #Line wavelength at each requested RV
+    #    - for each line, the rest wavelength of its transition is shifted to all trial wavelengths of the spectrum rest frame associated with the CCF RVs
     n_RV=len(edge_velccf)-1
     edge_mask_lines=wav_mask[:,None]*(1.+(edge_velccf/c_light))
 
@@ -3884,7 +3885,7 @@ def sub_new_compute_CCF(edge_mask,wght_mask,n_RV,edge_wav,flux,cov,cal,resamp_mo
     nd_covCCF_line = np.zeros(nL_kept,dtype=int)
     for isub,(edge_mask_line,wght_mask_line) in enumerate(zip(edge_mask,wght_mask)):
 
-        #Spectrum around current line brought back from flux to count units
+        #Spectrum around current line brought back from extracted to raw count units
         #    - if a calibration profile is provided as input we take its mean value in the local line range and use it to scale the input spectrum
         #      this is to get the spectrum as close as possible to its original count level, so that regions of the spectrum with comparable flux levels but different count levels do not contribute in the same way to the CCF
         #      the use of a constant estimated calibration rather than the actual profile is to keep the color balance of the spectrum intact, and avoid biasing the CCF
@@ -3894,7 +3895,7 @@ def sub_new_compute_CCF(edge_mask,wght_mask,n_RV,edge_wav,flux,cov,cal,resamp_mo
             mean_gainCCF_sub = np.mean(cal[idxCCF_sub[0]:idxCCF_sub_max+1])
         else:mean_gainCCF_sub =  1.
 
-        #Spectrum around current line resampled in RV space on the CCF table
+        #Spectrum around current line resampled on the CCF table
         if cov is None:
             fluxCCF_sub = bind.resampling(edge_mask_line,edge_wav, flux, kind=resamp_mode)/mean_gainCCF_sub                        
         else:
@@ -5824,8 +5825,8 @@ def extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             transit_pl = []
             for vis_bin in vis_to_bin:
                 transit_pl+=data_inst[vis_bin]['transit_pl']
-                if data_dic[vis_bin]['type']!=data_vis['type']:stop('Binned disk-integrated profiles must be of the same type as processed visit')
-            transit_pl = inst(np.unique(transit_pl))            
+                if data_dic[inst][vis_bin]['type']!=data_vis['type']:stop('Binned disk-integrated profiles must be of the same type as processed visit')
+            transit_pl = list(np.unique(transit_pl))            
             
         else:
             mode=''
