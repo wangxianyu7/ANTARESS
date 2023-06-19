@@ -55,8 +55,8 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
         #Processing all visits for current instrument
         for vis in data_dic[inst]['visit_list']:
             print('  -----------------')
-            print('  Processing visit: '+vis)  
-
+            print('  Processing visit: '+vis) 
+           
             #Reset data mode to input
             data_dic[inst]['nord'] = deepcopy(data_dic[inst]['nord_spec'])
 
@@ -86,7 +86,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
             #Aligning disk-integrated profiles to star rest frame
             if (gen_dic['align_DI']):
                 align_profiles('DI',data_dic,inst,vis,gen_dic,coord_dic)
-                
+               
             # #Correcting for spot contamination 
             # if gen_dic['correct_spots'] : 
             #     corr_spot(corr_spot_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo_dic, system_param)
@@ -98,11 +98,11 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
             #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
             if gen_dic['DImast_weight']:              
                 process_bin_prof('','DI',gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDI=True)
-    
+   
             #Processing 2D disk-integrated spectra into new 1D spectra
             if gen_dic['spec_1D_DI'] and (data_dic[inst][vis]['type']=='spec2D'): 
                 conv_2D_to_1D_spec('DI',inst,vis,gen_dic,data_dic,data_dic['DI'])  
-
+            
             #Processing binned disk-integrated profiles
             if gen_dic['bin']:
                 bin_gen_functions('DI','',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)

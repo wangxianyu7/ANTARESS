@@ -999,7 +999,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if plot_mod=='DI_prof_res':path_loc = gen_dic['save_plot_dir']+'CCFraw/'+inst+'_'+vis+'_Indiv_CCFraw_res/'
                     iexp_plot=range(data_dic[inst][vis]['n_in_visit'])
                     iexp_orig=iexp_plot
-
+                
                     #Upload fit results
                     if (gen_dic['fit_DI']):
                         CCF_fit_vis=np.load(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item()
@@ -1116,7 +1116,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                   
                     #Disk-integrated raw CCFs
                     if plot_mod in ['DI_prof','DI_prof_res']:
-                        data_path = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'+str(iexp)+'.npz'  
+                        if ('spec' in gen_dic['type'][inst]) and (data_type=='CCF'):data_path =  gen_dic['save_data_dir']+'/DI_data/CCFfromSpec/'+inst+'_'+vis+'_'+str(iexp)+'.npz'  
+                        else:data_path = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'+str(iexp)+'.npz'  
                     
                     #Disk-integrated master CCF
                     elif plot_mod in ['CCF_DIbin','CCF_DIbin_res']:      
@@ -1162,7 +1163,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     vel_CCF_tab = data_load['cen_bins'][0]
                     CCF_exp = data_load['flux'][0]
                     eCCF_exp = np.sqrt(data_load['cov'][0][0,:])   
-                
+        
                     #CCF and models
                     cond_mod = False
                     do_plot=True
@@ -4417,14 +4418,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             n_sel = np.sum(cond_sel)
             xpos_txt = x_range_loc[1]-0.5*dx_range
             ytxt = 10**(np.log10(y_range_loc[0])+0.8*dy_range)     if plot_options['x_log_hist'] else y_range_loc[0]+0.8*dy_range
-            plt.text(xpos_txt,ytxt,'All lines = '+str(n_all),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size']-2.,zorder=4,color='black') 
+            plt.text(xpos_txt,ytxt,'All lines = '+str(n_all),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=4,color='black') 
             ytxt = 10**(np.log10(y_range_loc[0])+0.7*dy_range)     if plot_options['x_log_hist'] else y_range_loc[0]+0.7*dy_range
-            plt.text(xpos_txt,ytxt,'Selected = '+str(n_sel),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size']-2.,zorder=4,color='magenta') 
+            plt.text(xpos_txt,ytxt,'Selected = '+str(n_sel),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=4,color='magenta') 
             if x_thresh_name in plot_options:
                 cond_sel_test = (var<plot_options[x_thresh_name] )  
                 n_test = np.sum(cond_sel_test)  
                 ytxt = 10**(np.log10(y_range_loc[0])+0.6*dy_range)     if plot_options['x_log_hist'] else y_range_loc[0]+0.6*dy_range
-                plt.text(xpos_txt,ytxt,'Trial = '+str(n_test),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size']-2.,zorder=4,color='gold') 
+                plt.text(xpos_txt,ytxt,'Trial = '+str(n_test),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=4,color='gold') 
 
             #Frame
             x_lab_name = {
@@ -4432,6 +4433,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 'tellcont':r'Telluric/Line depth',
                 'tellcont_final':r'Telluric/Line depth'}[prop_type]
             ax.set_xlabel(x_lab_name,fontsize=plot_options['font_size'])
+            ax.tick_params('x',labelsize=plot_options['font_size'])
+            ax.tick_params('y',labelsize=plot_options['font_size'])
             plt.savefig(path_loc+prop_type+'_'+plot_options['dist_info']+'.'+plot_ext)                       
             plt.close() 
           
@@ -4451,7 +4454,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)                 
             plt.ioff()        
             fig, axes = plt.subplots(2,2,figsize=plot_options['fig_size'])
-            fig.subplots_adjust(left=0.1, bottom=0.1, right=0.9, top=0.9,wspace=plot_options['wspace'] , hspace=plot_options['hspace']  )
+            fig.subplots_adjust(left=0.15, bottom=0.1, right=0.95, top=0.9,wspace=plot_options['wspace'] , hspace=plot_options['hspace']  )
     
             #Retrieve plot dictionary
             plot_info = dataload_npz(gen_dic['save_data_dir']+data_paths+'Plot_info')
@@ -4538,21 +4541,25 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             elif prop_type in ['morphshape']:                
                 cond_sel = (x_var<x_var_thresh)&(y_var>y_var_thresh)
                 if (thresh_test is not None):cond_sel_test = (x_var<x_var_thresh_test)&(y_var>y_var_thresh_test)                 
-            axes[1,0].plot(x_var[~cond_sel],y_var[~cond_sel],markersize=plot_options['markersize'],color='red',markeredgecolor='white',zorder=0,marker='o',ls='',markeredgewidth=0.5)
-            axes[1,0].plot(x_var[cond_sel],y_var[cond_sel],markersize=plot_options['markersize'],color='limegreen',markeredgecolor='white',zorder=0,marker='o',ls='',markeredgewidth=0.5)
+            axes[1,0].plot(x_var[~cond_sel],y_var[~cond_sel],markersize=plot_options['markersize'],color='red',markeredgecolor='white',zorder=0,marker='o',ls='',markeredgewidth=0.5,rasterized = plot_options['rasterized'])
+            axes[1,0].plot(x_var[cond_sel],y_var[cond_sel],markersize=plot_options['markersize'],color='limegreen',markeredgecolor='white',zorder=0,marker='o',ls='',markeredgewidth=0.5,rasterized = plot_options['rasterized'])
     
             #Print number of lines before selection, aftr pipeline selection, after test selection
             n_all = len(x_var)
             n_sel = np.sum(cond_sel)
-            axes[1,0].text(x_range_loc[1]+0.2*dx_range,y_range_loc[1]+0.5*dy_range,'All lines = '+str(n_all),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size']-2.,zorder=4,color='black') 
-            axes[1,0].text(x_range_loc[1]+0.2*dx_range,y_range_loc[1]+0.3*dy_range,'Selected = '+str(n_sel),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size']-2.,zorder=4,color='magenta') 
+            axes[1,0].text(x_range_loc[1]+0.2*dx_range,y_range_loc[1]+0.5*dy_range,'All lines = '+str(n_all),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=4,color='black') 
+            axes[1,0].text(x_range_loc[1]+0.2*dx_range,y_range_loc[1]+0.3*dy_range,'Selected = '+str(n_sel),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=4,color='magenta') 
             if (thresh_test is not None):
                 n_test = np.sum(cond_sel_test)             
-                axes[1,0].text(x_range_loc[1]+0.2*dx_range,y_range_loc[1]+0.1*dy_range,'Trial = '+str(n_test),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size']-2.,zorder=4,color='gold') 
+                axes[1,0].text(x_range_loc[1]+0.2*dx_range,y_range_loc[1]+0.1*dy_range,'Trial = '+str(n_test),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=4,color='gold') 
             
             #Set up the axes
             axes[1,0].set_xlim(x_range_loc)
             axes[1,0].set_ylim(y_range_loc)
+            xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
+            ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+            axes[1,0].xaxis.set_major_locator(MultipleLocator(xmajor_int))
+            axes[1,0].yaxis.set_major_locator(MultipleLocator(ymajor_int))
             x_lab_name = {
                 'ld':'Continuum depth',
                 'ld_lw':r'$log_{10}$(Width)',
@@ -4613,6 +4620,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         
         #Font size
         plot_options[key_plot]['font_size']=14
+        plot_options[key_plot]['font_size_txt'] = deepcopy(plot_options[key_plot]['font_size'])
 
         #Linewidth
         plot_options[key_plot]['lw_plot']=0.5
@@ -6871,10 +6879,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     ax.text(x_range_loc[0]+0.1*dx_range,y_range_loc[0]+0.1*dy_range,'Mask lines pre/post ='+str(plot_info_step['nl_mask_pre'])+'/'+str(plot_info_step['nl_mask_post']),verticalalignment='bottom', horizontalalignment='left',fontsize=plot_options[key_plot]['font_size']-2.,zorder=4,color='black') 
 
                 #Extrema
-                ax.plot(plot_info_step['w_lines'],plot_info_step['f_minima'],markersize=plot_options[key_plot]['markersize'],color='green',markeredgecolor='white',zorder=100,marker='o',ls='',markeredgewidth=0.5,rasterized=plot_options[key_plot]['rasterized'])
-                ax.plot(plot_info_step['w_maxima_left'],plot_info_step['f_maxima_left'],markersize=plot_options[key_plot]['markersize'],color='dodgerblue',markeredgecolor='white',zorder=100,marker='o',ls='',markeredgewidth=0.5,rasterized=plot_options[key_plot]['rasterized'])
-                ax.plot(plot_info_step['w_maxima_right'],plot_info_step['f_maxima_right'],markersize=plot_options[key_plot]['markersize'],color='red',markeredgecolor='white',zorder=102,marker='o',ls='',markeredgewidth=0.5,rasterized=plot_options[key_plot]['rasterized'])
-
+                cond_in_plot = (plot_info_step['w_maxima_left']>x_range_loc[0])  & (plot_info_step['w_maxima_right']<x_range_loc[1])
+                if True in cond_in_plot:
+                    ax.plot(plot_info_step['w_lines'][cond_in_plot],plot_info_step['f_minima'][cond_in_plot],markersize=plot_options[key_plot]['markersize'],color='green',markeredgecolor='white',zorder=100,marker='o',ls='',markeredgewidth=0.5,rasterized=plot_options[key_plot]['rasterized'])
+                    ax.plot(plot_info_step['w_maxima_left'][cond_in_plot],plot_info_step['f_maxima_left'][cond_in_plot],markersize=plot_options[key_plot]['markersize'],color='dodgerblue',markeredgecolor='white',zorder=100,marker='o',ls='',markeredgewidth=0.5,rasterized=plot_options[key_plot]['rasterized'])
+                    ax.plot(plot_info_step['w_maxima_right'][cond_in_plot],plot_info_step['f_maxima_right'][cond_in_plot],markersize=plot_options[key_plot]['markersize'],color='red',markeredgecolor='white',zorder=102,marker='o',ls='',markeredgewidth=0.5,rasterized=plot_options[key_plot]['rasterized'])
+            
                 #Line selection with depth and width criteria
                 if key_step=='sel1':
 
@@ -6904,18 +6914,22 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Line ranges
                     if plot_options[key_plot]['line_ranges']:
                         for iline,(wl_loc,hrange_loc) in enumerate(zip(plot_info_step['w_lines'],plot_info_step['line_hrange'])):
-                            ax.axvline(x=wl_loc,color='k',alpha=0.6)
-                            ax.axvspan(xmin=wl_loc-hrange_loc,xmax=wl_loc+hrange_loc,color='grey',alpha=0.2,ls='')     
+                            ax.axvline(x=wl_loc,color='limegreen',alpha=0.6,ls='--',lw=1)
+                            ax.axvspan(xmin=wl_loc-hrange_loc,xmax=wl_loc+hrange_loc,color='grey',alpha=0.1,ls='')     
 
                     #Matching VALD lines
                     if plot_options[key_plot]['vald_sp']:
                         f_minima_vald = 1.-plot_info['depth_vald_corr']
                         cond_match = (~np.isnan(plot_info['wave_vald'])) & (plot_info['wave_vald']>x_range_loc[0]) & (plot_info['wave_vald']<x_range_loc[1])
                         for wave_vald,f_min_vald,spec_vald in zip(plot_info['wave_vald'][cond_match],f_minima_vald[cond_match],plot_info['species'][cond_match]):
-                            ax.plot(wave_vald,f_min_vald,marker='o',markersize=plot_options[key_plot]['markersize'],color='magenta',markeredgecolor='white',markeredgewidth=0.5,rasterized=plot_options[key_plot]['rasterized'])
-                            # ax.plot([wave_vald,wave_vald],y_range_loc,linestyle=':',color='gold') 
-                            sp_name = spec_vald if type(spec_vald)==str else '?'
-                            ax.text(wave_vald,1.01,sp_name,verticalalignment='center', horizontalalignment='center',fontsize=plot_options[key_plot]['font_size']-1.,zorder=20,color='magenta',rasterized=plot_options[key_plot]['rasterized']) 
+                            
+                            #Closest line
+                            #    - matching was performed before last selection steps
+                            idx_stl = closest(plot_info_step['w_lines'],wave_vald)
+                            if abs(wave_vald-plot_info_step['w_lines'][idx_stl])<plot_info_step['line_hrange'][idx_stl]:
+                                ax.plot(wave_vald,f_min_vald,marker='o',markersize=plot_options[key_plot]['markersize'],color='goldenrod',markeredgecolor='white',markeredgewidth=0.5,rasterized=plot_options[key_plot]['rasterized'])
+                                sp_name = spec_vald if type(spec_vald)==str else '?'
+                                ax.text(wave_vald,1.03,sp_name,verticalalignment='center', horizontalalignment='center',fontsize=plot_options[key_plot]['font_size']-1.,zorder=100,color='goldenrod',rasterized=plot_options[key_plot]['rasterized']) 
                                                     
 
             #--------------------------------------------------------  
@@ -6928,7 +6942,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range) 
             if data_type_gen=='DI':txt_rest='star'                 
             elif data_type_gen=='Intr':txt_rest='surface'    
-            custom_axis(plt,ax=ax,position=plot_options[key_plot]['margins'] ,x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
+            custom_axis(plt,ax=ax,position=plot_options[key_plot]['margins'] ,x_range=x_range_loc,y_range=y_range_loc,dir_y='out',dir_x='out', 
             		    xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
             		    ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
                         x_title='Wavelength in '+txt_rest+' rest frame (A)',y_title='Normalized flux',
@@ -7028,7 +7042,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     if ((plot_dic['DImask_RVdev_fit']!='') or (plot_dic['Intrmask_RVdev_fit']!='')):
         for key_plot in ['DImask_RVdev_fit','Intrmask_RVdev_fit']:
             if plot_dic[key_plot]!='':
-                plot_options=gen_plot_default(plot_options,key_plot)       
+                plot_options=gen_plot_default(plot_options,key_plot)   
 
                 #Number of bins in histograms
                 plot_options[key_plot]['dist_info'] ='hist'

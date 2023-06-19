@@ -2817,9 +2817,8 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                             tup_save+=(col_loc,)
                     np.savetxt(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis+'_keywords.dat', np.column_stack(tup_save),fmt=form_save) 
 
-         
                 #------------------------------------------------------------------------------------
-                       
+                      
                 #Automatic continuum and fit range
                 for key in ['DI','Intr','Atm']:
                     if gen_dic['fit_'+key+'_gen']:
@@ -2886,6 +2885,8 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                                 if inst not in data_dic[key]['fit_range']:data_dic[key]['fit_range'][inst]={}
                                 data_dic[key]['fit_range'][inst][vis] = [[min_contfit,max_contfit]]
 
+            ### End of visits
+
         #Saving general information
         np.savez_compressed(gen_dic['save_data_dir']+'Processed_data/Global/'+inst,gen_inst_add=gen_dic[inst],data_inst_add=data_dic[inst],allow_pickle=True) 
         
@@ -2915,8 +2916,11 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
     #Final processing
     if (not data_dic[inst]['comm_sp_tab']):print('         Visits do not share a common spectral table')      
     else:print('         All visits share a common spectral table')    
-    for vis in data_dic[inst]['visit_list']:         
-        if (not data_dic[inst][vis]['comm_sp_tab']):print('           Exposures in '+vis+' do not share a common spectral table')      
+    for vis in data_dic[inst]['visit_list']:   
+        data_vis = data_dic[inst][vis]
+        coord_vis = coord_dic[inst][vis]
+        gen_vis = gen_dic[inst][vis] 
+        if (not data_vis['comm_sp_tab']):print('           Exposures in '+vis+' do not share a common spectral table')      
         else:print('           All exposures in '+vis+' share a common spectral table')   
 
         #Define CCF resolution, range, and sysvel here so that spectral data needs not be uploaded again after processing
@@ -2926,22 +2930,47 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
             if gen_dic['dRV'] is None:dvelccf= gen_dic['pix_size_v'][inst]
             else:dvelccf= gen_dic['dRV']  
             n_vel = int((gen_dic['end_RV']-gen_dic['start_RV'])/dvelccf)+1
-            data_dic[inst][vis]['nvel'] = n_vel
-            data_dic[inst][vis]['velccf'] = gen_dic['start_RV']+dvelccf*np.arange(n_vel)
+            data_vis['nvel'] = n_vel
+            data_vis['velccf'] = gen_dic['start_RV']+dvelccf*np.arange(n_vel)
 
             #Bin edges in velocity space
-            data_dic[inst][vis]['edge_velccf'] = np.append(data_dic[inst][vis]['velccf']-0.5*dvelccf,data_dic[inst][vis]['velccf'][-1]+0.5*dvelccf)
+            data_vis['edge_velccf'] = np.append(data_vis['velccf']-0.5*dvelccf,data_vis['velccf'][-1]+0.5*dvelccf)
 
             #Shifting the CCFs velocity table by RV(CDM_star/CDM_sun)
-            for key in ['velccf','edge_velccf']:data_dic[inst][vis][key+'_star']=data_dic[inst][vis][key]-data_dic['DI']['sysvel'][inst][vis]  
+            for key in ['velccf','edge_velccf']:data_vis[key+'_star']=data_vis[key]-data_dic['DI']['sysvel'][inst][vis]  
     
         #Keplerian motion relative to the stellar CDM and the Sun (km/s)
         for iexp in range(data_dic[inst][vis]['n_in_visit']):
-            coord_dic[inst][vis]['RV_star_stelCDM'][iexp],coord_dic[inst][vis]['RV_star_solCDM'][iexp] = calc_orb_motion(coord_dic,inst,vis,system_param,gen_dic,coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic['DI']['sysvel'][inst][vis])
+            coord_vis['RV_star_stelCDM'][iexp],coord_vis['RV_star_solCDM'][iexp] = calc_orb_motion(coord_dic,inst,vis,system_param,gen_dic,coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic['DI']['sysvel'][inst][vis])
 
         #Using sky-corrected data for current visit
         if (inst in gen_dic['fibB_corr']) and (vis in gen_dic['fibB_corr'][inst]):print('          ',vis,'is sky-corrected') 
 
+        #Indices of in/out exposures in global tables
+        print('   > '+str(data_vis['n_in_visit'])+' exposures')  
+        if ('in' in data_dic['DI']['idx_ecl']) and (inst in data_dic['DI']['idx_ecl']['in']) and (vis in data_dic['DI']['idx_ecl']['in'][inst]):
+            for iexp in data_dic['DI']['idx_ecl']['in'][inst][vis]:
+                for pl_loc in data_vis['transit_pl']:coord_vis[pl_loc]['ecl'][iexp] = 3*np.sign(coord_vis[pl_loc]['ecl'][iexp]) 
+        if ('out' in data_dic['DI']['idx_ecl']) and (inst in data_dic['DI']['idx_ecl']['out']) and (vis in data_dic['DI']['idx_ecl']['out'][inst]):
+            for iexp in data_dic['DI']['idx_ecl']['out'][inst][vis]:
+                for pl_loc in data_vis['transit_pl']:coord_vis[pl_loc]['ecl'][iexp] = 1*np.sign(coord_vis[pl_loc]['ecl'][iexp]) 
+        cond_in = np.zeros(data_vis['n_in_visit'],dtype=bool)
+        cond_pre = np.ones(data_vis['n_in_visit'],dtype=bool) 
+        cond_post = np.ones(data_vis['n_in_visit'],dtype=bool) 
+        for pl_loc in data_vis['transit_pl']:
+            cond_in|=(np.abs(coord_vis[pl_loc]['ecl'])>1) 
+            cond_pre&=(coord_vis[pl_loc]['ecl']==-1.)
+            cond_post&=(coord_vis[pl_loc]['ecl']==1.)
+        gen_vis['idx_in']=np_where1D(cond_in)
+        gen_vis['idx_out']=np_where1D(~cond_in)  
+        gen_vis['idx_pretr']=np_where1D(cond_pre)  
+        gen_vis['idx_posttr']=np_where1D(cond_post) 
+        data_vis['n_in_tr'] = len(gen_vis['idx_in'])
+        data_vis['n_out_tr'] = len(gen_vis['idx_out'])
+        gen_vis['idx_exp2in'] = np.zeros(data_vis['n_in_visit'],dtype=int)-1
+        gen_vis['idx_exp2in'][gen_vis['idx_in']]=np.arange(data_vis['n_in_tr'])
+        gen_vis['idx_in2exp'] = np.arange(data_vis['n_in_visit'],dtype=int)[gen_vis['idx_in']]        
+        
     #Total number of visits for current instrument
     gen_dic[inst]['n_visits'] = len(data_dic[inst]['visit_list'])
     data_dic[inst]['n_visits_inst']=len(data_dic[inst]['visit_list'])
@@ -3432,7 +3461,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
         dir_mast={}
         for gen in dir_save:dir_mast[gen] = {iexp_eff:dir_save[gen]+'ref_'+str(iexp_eff) for iexp_eff in data_vis['mast_'+gen+'_data_paths']}
     proc_com_data_paths_new = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_'+vis+'_com'
-    
+
     #Calculating data
     if gen_dic['calc_'+data_type_gen+'_CCF']:
         print('         Calculating data')         
@@ -3457,40 +3486,46 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
                 if (iexp in gen_vis['idx_in']):iexp_eff = gen_vis['idx_exp2in'][iexp]    
                 else:gen = 'Res'
             data_load = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
-            
+         
             #Check that planetary ranges were not yet excluded
             if (data_type_gen=='Intr') and (iexp in gen_vis['idx_in']) and ('Intr' in data_dic['Atm']['no_plrange']) and (iexp in data_dic['Atm'][inst][vis]['iexp_no_plrange']) and data_load['plrange_exc']:
                 stop('    Planetary ranges excluded too soon: re-run gen_dic["intr_data"] with gen_dic["Intr_CCF"]')
                 
             #Upload data
             if iexp_sub==0:
-                if gen_dic['flux_sc']:data_proc['cen_bins'] = np.zeros([n_exp]+list(data_load['cen_bins'].shape),dtype=float)
-                data_proc['edge_bins'] = np.zeros([n_exp]+list(data_load['edge_bins'].shape),dtype=float)
-                data_proc['flux'] = np.zeros([n_exp]+list(data_load['flux'].shape),dtype=float)
-                data_proc['cov'] = np.zeros([n_exp,data_dic[inst]['nord']],dtype=object)
-                data_proc['cond_def'] = np.zeros([n_exp]+list(data_load['cond_def'].shape),dtype=bool)             
+                if gen_dic['flux_sc']:data_proc['cen_bins'] = np.zeros([n_exp,nord_coadd,data_vis['nspec']],dtype=float)
+                data_proc['edge_bins'] = np.zeros([n_exp,nord_coadd,data_vis['nspec']+1],dtype=float)
+                data_proc['flux'] = np.zeros([n_exp,nord_coadd,data_vis['nspec']],dtype=float)
+                data_proc['cov'] = np.zeros([n_exp,nord_coadd],dtype=object)
+                data_proc['cond_def'] = np.zeros([n_exp,nord_coadd,data_vis['nspec']],dtype=bool)             
             for key in ['edge_bins','flux','cov','cond_def']:
-                data_proc[key][iexp_sub] = data_load[key]  
-            if gen_dic['flux_sc']:data_proc['cen_bins'][iexp_sub] = data_load['cen_bins']  
-            
+                data_proc[key][iexp_sub] = data_load[key][ord_coadd]  
+            if gen_dic['flux_sc']:data_proc['cen_bins'][iexp_sub] = data_load['cen_bins'][ord_coadd]  
+
             #Mean calibration profile over processed exposures
             #    - due to the various shifts of the processed spectra from the input rest frame, calibration profiles are not equivalent for a given line between exposure
             #      to maintain the relative flux balance between lines when computing CCFs, we calculate a common calibration profile to all processes exposures
             if data_vis['mean_gdet']:
                 mean_gdet_exp = dataload_npz(data_vis['mean_gdet_'+gen+'_data_paths'][iexp_eff])['mean_gdet'] 
-                for isub,iord in enumerate(ord_coadd):mean_gdet_com[isub]+=bind.resampling(data_com['edge_bins'][iord], data_proc['edge_bins'][iexp_sub,iord],mean_gdet_exp[iord], kind=gen_dic['resamp_mode'])/n_exp 
-
+                for isub_ord,iord in enumerate(ord_coadd):
+                    mean_gdet_com_ord=bind.resampling(data_com['edge_bins'][iord], data_proc['edge_bins'][iexp_sub,isub_ord],mean_gdet_exp[iord], kind=gen_dic['resamp_mode'])/n_exp 
+                    idx_def_loc = np_where1D(~np.isnan(mean_gdet_com_ord))
+                    mean_gdet_com_ord[0:idx_def_loc[0]+1]=mean_gdet_com_ord[idx_def_loc[0]]
+                    mean_gdet_com_ord[idx_def_loc[-1]:]=mean_gdet_com_ord[idx_def_loc[-1]]
+                    mean_gdet_com[isub_ord]+=mean_gdet_com_ord
+                    
             #Upload weighing disk-integrated master 
             #    - the master always remains either defined on the common table, or on a specific table different from the table of its associated exposure
             #    - the master is computed after DI spectra have been converted into CCFs, and thus need conversion only for later profile types
             if data_type_gen in ['Intr','Atm']:
                 data_ref = dataload_npz(data_vis['mast_'+gen+'_data_paths'][iexp_eff])
                 if iexp_sub==0:
-                    data_proc['edge_bins_ref'] = np.zeros([n_exp]+list(data_ref['edge_bins'].shape),dtype=float)
-                    data_proc['flux_ref'] = np.zeros([n_exp]+list(data_ref['flux'].shape),dtype=float)
-                    data_proc['cov_ref'] = np.zeros([n_exp,data_dic[inst]['nord']],dtype=object)                
+                    nspec_mast = (data_ref['edge_bins'].shape)[1]
+                    data_proc['edge_bins_ref'] = np.zeros([n_exp,nord_coadd,nspec_mast+1],dtype=float)
+                    data_proc['flux_ref'] = np.zeros([n_exp,nord_coadd,nspec_mast],dtype=float)
+                    data_proc['cov_ref'] = np.zeros([n_exp,nord_coadd],dtype=object)                
                 for key in ['edge_bins','flux','cov']:
-                    data_proc[key+'_ref'][iexp_sub] = data_ref[key]               
+                    data_proc[key+'_ref'][iexp_sub] = data_ref[key][ord_coadd]               
 
         #Initialize CCF tables
         CCF_all = np.zeros([n_exp,1,data_vis['nvel']],dtype=float)
@@ -3534,26 +3569,30 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
         for isub,iord in enumerate(ord_coadd):
  
             #Identify lines that can contribute to all exposures for current order
-            idx_maskL_kept = check_CCF_mask_lines(n_exp,data_proc['edge_bins'][:,iord],data_proc['cond_def'][:,iord],CCF_mask_wav,edge_velccf)
+            idx_maskL_kept = check_CCF_mask_lines(n_exp,data_proc['edge_bins'][:,isub],data_proc['cond_def'][:,isub],CCF_mask_wav,edge_velccf)
 
             #Calculating CCF for current order in each exposure with contributing lines
             #    - parallelisation is disabled, as it is inefficient given the size of the tables to process
             if len(idx_maskL_kept)>0:
                 ord_coadd_eff+=[isub]
-                if data_vis['mean_gdet']:gdet_ord = bind.resampling(data_proc['edge_bins'][iexp_sub,iord],data_com['edge_bins'][iord],mean_gdet_com[isub], kind=gen_dic['resamp_mode'])       
+                if data_vis['mean_gdet']:
+                    gdet_ord = bind.resampling(data_proc['edge_bins'][iexp_sub,isub],data_com['edge_bins'][iord],mean_gdet_com[isub], kind=gen_dic['resamp_mode'])  
+                    idx_def_loc = np_where1D(~np.isnan(gdet_ord))
+                    gdet_ord[0:idx_def_loc[0]+1]=gdet_ord[idx_def_loc[0]]
+                    gdet_ord[idx_def_loc[-1]:]=gdet_ord[idx_def_loc[-1]]
                 for iexp_sub,iexp in enumerate(iexp_list):                      
-                    flux_ord,cov_ord = new_compute_CCF(data_proc['edge_bins'][iexp_sub,iord],data_proc['flux'][iexp_sub,iord],data_proc['cov'][iexp_sub,iord],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gdet_ord)
+                    flux_ord,cov_ord = new_compute_CCF(data_proc['edge_bins'][iexp_sub,isub],data_proc['flux'][iexp_sub,isub],data_proc['cov'][iexp_sub,isub],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gdet_ord)
                     CCF_all[iexp_sub,0]+=flux_ord
                     cov_exp_ord[iexp_sub,isub] = cov_ord 
                     nd_cov_exp_ord[iexp_sub,isub] = np.shape(cov_ord)[0]
 
                     #Compute CCF of spectral scaling
-                    if gen_dic['flux_sc']:loc_flux_scaling_CCF[iexp_sub,0] += new_compute_CCF(data_proc['edge_bins'][iexp_sub,iord],data_scaling_all[iexp]['loc_flux_scaling'][iord](data_proc['cen_bins'][iexp_sub,iord]),None,gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gdet_ord)[0]
+                    if gen_dic['flux_sc']:loc_flux_scaling_CCF[iexp_sub,0] += new_compute_CCF(data_proc['edge_bins'][iexp_sub,isub],data_scaling_all[iexp]['loc_flux_scaling'][iord](data_proc['cen_bins'][iexp_sub,isub]),None,gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gdet_ord)[0]
 
                     #Compute CCF of master disk-integrated spectrum
                     #    - so that it can be used in the weighing profiles
                     if data_type_gen in ['Intr','Atm']:
-                        flux_temp,cov_temp = new_compute_CCF(data_proc['edge_bins_ref'][iexp_sub,iord],data_proc['flux_ref'][iexp_sub,iord],data_proc['cov_ref'][iexp_sub,iord],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gdet_ord)
+                        flux_temp,cov_temp = new_compute_CCF(data_proc['edge_bins_ref'][iexp_sub,isub],data_proc['flux_ref'][iexp_sub,isub],data_proc['cov_ref'][iexp_sub,isub],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gdet_ord)
                         CCF_ref[iexp_sub,0]+=flux_temp
                         cov_ref_ord[iexp_sub,isub] = cov_temp 
                         nd_cov_ref_ord[iexp_sub,isub] = np.shape(cov_temp)[0]
@@ -3595,7 +3634,7 @@ def CCF_from_spec(mode,inst,vis,data_dic,gen_dic):
             for isub in ord_coadd_eff:
                 cov_exp[0][0:nd_cov_exp_ord[iexp_sub,isub],:] +=  cov_exp_ord[iexp_sub,isub]   
                 if data_type_gen in ['Intr','Atm']:cov_ref[0][0:nd_cov_ref_ord[iexp_sub,isub],:] +=  cov_ref_ord[iexp_sub,isub]   
-                
+      
             #Saving data for each exposure
             #    - CCF are stored independently of input spectra, so that both can be retrieved
             data_CCF_exp.update({'cen_bins':cen_bins,'edge_bins':edge_bins,'flux':CCF_all[iexp_sub],'cond_def':cond_def_exp,'cov':cov_exp,'nd_cov':nd_cov_exp})              
@@ -3974,30 +4013,8 @@ def init_visit(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic):
 
     #Indices of in/out exposures in global tables
     print('   > '+str(data_vis['n_in_visit'])+' exposures')  
-    if ('in' in data_dic['DI']['idx_ecl']) and (inst in data_dic['DI']['idx_ecl']['in']) and (vis in data_dic['DI']['idx_ecl']['in'][inst]):
-        for iexp in data_dic['DI']['idx_ecl']['in'][inst][vis]:
-            for pl_loc in data_vis['transit_pl']:coord_vis[pl_loc]['ecl'][iexp] = 3*np.sign(coord_vis[pl_loc]['ecl'][iexp]) 
-    if ('out' in data_dic['DI']['idx_ecl']) and (inst in data_dic['DI']['idx_ecl']['out']) and (vis in data_dic['DI']['idx_ecl']['out'][inst]):
-        for iexp in data_dic['DI']['idx_ecl']['out'][inst][vis]:
-            for pl_loc in data_vis['transit_pl']:coord_vis[pl_loc]['ecl'][iexp] = 1*np.sign(coord_vis[pl_loc]['ecl'][iexp]) 
-    cond_in = np.zeros(data_vis['n_in_visit'],dtype=bool)
-    cond_pre = np.ones(data_vis['n_in_visit'],dtype=bool) 
-    cond_post = np.ones(data_vis['n_in_visit'],dtype=bool) 
-    for pl_loc in data_vis['transit_pl']:
-        cond_in|=(np.abs(coord_vis[pl_loc]['ecl'])>1) 
-        cond_pre&=(coord_vis[pl_loc]['ecl']==-1.)
-        cond_post&=(coord_vis[pl_loc]['ecl']==1.)
-    gen_vis['idx_in']=np_where1D(cond_in)
-    gen_vis['idx_out']=np_where1D(~cond_in)  
-    gen_vis['idx_pretr']=np_where1D(cond_pre)  
-    gen_vis['idx_posttr']=np_where1D(cond_post) 
-    data_vis['n_in_tr'] = len(gen_vis['idx_in'])
-    data_vis['n_out_tr'] = len(gen_vis['idx_out'])
     print('        ',data_vis['n_in_tr'],'in-transit')
     print('        ',data_vis['n_out_tr'],'out-of-transit ('+str(len(gen_vis['idx_pretr']))+' pre / '+str(len(gen_vis['idx_posttr']))+' post)')
-    gen_vis['idx_exp2in'] = np.zeros(data_vis['n_in_visit'],dtype=int)-1
-    gen_vis['idx_exp2in'][gen_vis['idx_in']]=np.arange(data_vis['n_in_tr'])
-    gen_vis['idx_in2exp'] = np.arange(data_vis['n_in_visit'],dtype=int)[gen_vis['idx_in']]
     data_vis['dim_in'] = [data_vis['n_in_tr']]+data_vis['dim_exp']
 
     #Exposures for which local profiles will be extracted
@@ -6750,7 +6767,7 @@ def fit_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plo
             if len(fit_range)==0:fit_dic['cond_def_fit_all'][isub] = True    
             else:
                 for bd_int in fit_range:fit_dic['cond_def_fit_all'][isub] |= (data_fit[isub]['edge_bins'][0:-1]>=bd_int[0]) & (data_fit[isub]['edge_bins'][1:]<=bd_int[1])        
-
+            
             #Accounting for undefined pixels
             fit_dic['cond_def_cont_all'][isub] &= data_fit[isub]['cond_def']            
             fit_dic['cond_def_fit_all'][isub] &= data_fit[isub]['cond_def']   
@@ -8059,7 +8076,6 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
 
     #Retrieve binning information
     data_bin = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+prop_dic['dim_bin']+'_add')
-    nspec = data_bin['nspec']
 
     #Retrieve master spectrum
     if data_bin['n_exp']>1:stop('Bin data into a single master spectrum')
@@ -8078,15 +8094,23 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
     if (data_type_gen in ['DI','Intr']):
         if data_dic['DI']['mask']['verbose']:print('           Continuum-normalization')
         
+        #Limit master to minimum definition range
+        idx_def_mast = np_where1D(data_mast['cond_def'][0])
+        flux_mast = data_mast['flux'][:,idx_def_mast[0]:idx_def_mast[-1]+1]
+        cen_bins_mast = data_mast['cen_bins'][:,idx_def_mast[0]:idx_def_mast[-1]+1]
+        cond_def_mast = data_mast['cond_def'][:,idx_def_mast[0]:idx_def_mast[-1]+1]
+        edge_bins_mast = data_mast['edge_bins'][:,idx_def_mast[0]:idx_def_mast[-1]+2]
+        nspec = len(flux_mast[0])
+        
         #Stellar continuum
-        min_edge_ord = data_mast['cen_bins'][0][data_mast['cond_def'][0]][0]
-        _,cont_func_dic,_ = calc_spectral_cont(1,[0],data_mast['flux'],data_mast['cen_bins'],data_mast['edge_bins'],data_mast['cond_def'],None,None,inst,gen_dic['contin_roll_win'][inst],gen_dic['contin_smooth_win'][inst],gen_dic['contin_locmax_win'][inst],\
+        min_edge_ord = cen_bins_mast[0,0]
+        _,cont_func_dic,_ = calc_spectral_cont(1,[0],flux_mast,cen_bins_mast,edge_bins_mast,cond_def_mast,None,None,inst,gen_dic['contin_roll_win'][inst],gen_dic['contin_smooth_win'][inst],gen_dic['contin_locmax_win'][inst],\
                                                          gen_dic['contin_stretch'][inst],gen_dic['contin_pinR'][inst],min_edge_ord,dic_sav,1)
 
         #Continuum-normalisation
-        flux_mast_norm = data_mast['flux'][0]
-        flux_mast_norm[~data_mast['cond_def'][0]] = 0.
-        flux_mast_norm[data_mast['cond_def'][0]] /=cont_func_dic[0](data_mast['cen_bins'][0,data_mast['cond_def'][0]])
+        flux_mast_norm = flux_mast[0]
+        flux_mast_norm[~cond_def_mast[0]] = 0.
+        flux_mast_norm[cond_def_mast[0]] /=cont_func_dic[0](cen_bins_mast[0,cond_def_mast[0]])
 
         #Store for plotting
         if (plot_dic[data_type_gen+'mask_spectra']!=''):
@@ -8128,7 +8152,7 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
                     tell_exp = dataload_npz(data_bin['vis_iexp_in_bin'][vis_bin][iexp]['tell_path'])['tell'][0]      
                     tell_exp[~cond_def_exp] = np.nan
                     edge_bins_earth=data_exp['edge_bins'][0]*spec_dopshift(rv_earth_mast_exp)/(1.+1.55e-8)                    
-                    tell_exp = bind.resampling(data_mast['edge_bins'][0],edge_bins_earth,tell_exp, kind=gen_dic['resamp_mode'])
+                    tell_exp = bind.resampling(edge_bins_mast[0],edge_bins_earth,tell_exp, kind=gen_dic['resamp_mode'])
                 
                     #Co-add
                     cond_def_tell = ~np.isnan(tell_exp)
@@ -8147,7 +8171,7 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
 
         #Mask generation
         #    - defined in the stellar (for disk-integrated profiles) or surface (for intrinsic profiles) rest frames
-        mask_waves,mask_weights,mask_info = kitcat_mask(mask_dic,mask_dic['fwhm_ccf'],data_mast['cen_bins'][0],inst,data_mast['edge_bins'][0],flux_mast_norm,gen_dic,save_data_paths,tell_spec,data_dic['DI']['sysvel'][inst][vis_bin],min_rv_earth_mast,
+        mask_waves,mask_weights,mask_info = kitcat_mask(mask_dic,mask_dic['fwhm_ccf'],cen_bins_mast[0],inst,edge_bins_mast[0],flux_mast_norm,gen_dic,save_data_paths,tell_spec,data_dic['DI']['sysvel'][inst][vis_bin],min_rv_earth_mast,
                                                         max_rv_earth_mast,system_param['star']['Tpole'],dic_sav,plot_dic[data_type_gen+'mask_spectra'],plot_dic[data_type_gen+'mask_ld'],plot_dic[data_type_gen+'mask_ld_lw'],plot_dic[data_type_gen+'mask_RVdev_fit'],cont_func_dic,
                                                         data_bin['vis_iexp_in_bin'],data_type_gen,data_dic,plot_dic[data_type_gen+'mask_tellcont'],plot_dic[data_type_gen+'mask_vald_depthcorr'],plot_dic[data_type_gen+'mask_morphasym'],
                                                         plot_dic[data_type_gen+'mask_morphshape'],plot_dic[data_type_gen+'mask_RVdisp'])
@@ -8178,7 +8202,7 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
         np.savetxt(save_data_paths+mask_name+'_'+gen_dic['sp_frame']+'.txt', np.column_stack((mask_waves,mask_weights)),fmt=('%15.10f','%15.10f') )
 
     else:
-        flux_mast_norm = data_mast['flux'][0]
+        flux_mast_norm = flux_mast[0]
 
         stop('Code Atmospheric mask routine based on expected species in the planet')
 

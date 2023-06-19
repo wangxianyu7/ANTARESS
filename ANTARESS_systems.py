@@ -718,6 +718,11 @@ all_system_params={
 #            'alpha_rot':0.3292, 
 
         # 'veq':5.8582384629e-01,
+        
+        #Properties for theoretical atmosphere grid
+        'Tpole':6316.,
+        'logg':4.13,
+        'vmic':1.38,        
             },
   
     #------------------------------
@@ -872,21 +877,24 @@ all_system_params={
             # 'lambda_proj':0.4158672165556291,    
       
         
+        # #ANTARESS I, mock, oblate
+        # 'lambda_proj':40.
+        
         # #ANTARESS I, mock, multi-tr
         # 'lambda_proj':0.   
 
         },
-    'HD209458c':{      #Mock planet, multi-tr
-        'period':3.52474859*2.,
-        'ecc':0.,       
-        'omega_deg':90, 
-        'Kstar':84.27,         
-        'TLength':0.12408*3.,      
-        'TCenter':2454560.806755574 + (1.2/24.),
-        'inclination':86.,     
-        'aRs':(8.903744503359597*2)**(2./3.),        
-        'lambda_proj':70.         
-    },
+    # 'HD209458c':{      #Mock planet, multi-tr
+    #     'period':3.52474859*2.,
+    #     'ecc':0.,       
+    #     'omega_deg':90, 
+    #     'Kstar':84.27,         
+    #     'TLength':0.12408*3.,      
+    #     'TCenter':2454560.806755574 + (1.2/24.),
+    #     'inclination':86.,     
+    #     'aRs':(8.903744503359597*2)**(2./3.),        
+    #     'lambda_proj':70.         
+    # },
     },
 
     #------------------------------
@@ -1822,33 +1830,55 @@ all_system_params={
         }, 
         },      
     'WASP107':{
-        'star':{ 'Rstar':0.67,
+        'star':{ 
+              #'Rstar':0.67,
               # 'istar':90,'veq':0.45,  
               # 'istar':90,'veq':5.0781969591e-01,       #BEST RMR 
               'istar':15.1,'veq':5.0781969591e-01/np.sin(1.4848928519e+01*np.pi/180.),         #BEST RMR, istar  
+              
+              #Allart+
+              'Rstar':0.66,
         }, 
     
     'WASP107b':{
-            'period':5.7214742, 
-            'TCenter':2457584.329897,
-            'ecc':0.,
-            'omega_deg':90.0,
-            # 'ecc':0.06,
-            # 'omega_deg':40.0,
-            'Kstar':14.1,
-            'aRs':18.02,
-            'inclination':89.56,
-            'TLength':2.7528/24.,
-            # 'lambda_proj':118.1,  
-            'lambda_proj':-1.5803260704e+02        #BEST RMR               
+            # 'period':5.7214742, 
+            # 'TCenter':2457584.329897,
+            # 'ecc':0.,
+            # 'omega_deg':90.0,
+            # # 'ecc':0.06,
+            # # 'omega_deg':40.0,
+            # 'Kstar':14.1,
+            # 'aRs':18.02,
+            # 'inclination':89.56,
+            # 'TLength':2.7528/24.,             
             
+            #Allart+
+            'period':5.72148836, 
+            'TCenter':2458574.147242,
+            'ecc':0.152,
+            'omega_deg':43.575,
+            'Kstar':14.344,
+            'aRs':17.289,
+            'inclination':89.61,
+            'TLength':2.751/24.,
+            
+            # 'lambda_proj':118.1,  
+            'lambda_proj':-1.5803260704e+02        #BEST RMR             
         }, 
     'WASP107c':{
-            'period':1088., 
-            'TCenter':2458520., 
-            'ecc':0.28,
-            'omega_deg':-120.,
-            'Kstar':9.6,
+            # 'period':1088., 
+            # 'TCenter':2458520., 
+            # 'ecc':0.28,
+            # 'omega_deg':-120.,
+            # 'Kstar':9.6,
+ 
+            #Allart+
+            'period':1105.56, 
+            'TCenter':2458484.3757, 
+            'ecc':0.24,
+            'omega_deg':246.93,
+            'Kstar':10.65,            
+            
         }, 
         },      
     'WASP166':{
