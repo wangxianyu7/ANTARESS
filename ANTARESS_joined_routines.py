@@ -7,15 +7,15 @@ Created on Sun Apr 26 00:05:29 2020
 """
 
 from utils import stop,np_where1D,npint,np_interp
-from ANTARESS_routines import sub_calc_plocc_prop,calc_pl_coord,return_FWHM_inst,convol_prof,dispatch_func_prof,model_par_names,polycoeff_def,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab,model_st_prof_tab,\
-                            par_formatting,conv_cosistar,conv_CF_intr_meas,occ_region_grid,calc_polymodu,compute_deviation_profile, calc_binned_prof,init_custom_DI_prof,init_custom_DI_par,ref_inst_convol
+from ANTARESS_routines import sub_calc_plocc_prop,calc_pl_coord,return_FWHM_inst,convol_prof,dispatch_func_prof,model_par_names,polycoeff_def,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab,resamp_model_st_prof_tab,\
+                            par_formatting,conv_cosistar,conv_CF_intr_meas,occ_region_grid,compute_deviation_profile, calc_binned_prof,init_custom_DI_prof,init_custom_DI_par,ref_inst_convol
 from copy import deepcopy
 from lmfit import Parameters
 import lmfit
 import numpy as np
 from minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,save_fit_results,fit_merit,ln_prob_func_lmfit,fit_minimization
 import scipy.linalg
-from constant_data import Rsun,c_light
+from constant_data import Rsun
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 
@@ -91,7 +91,7 @@ def prior_contrast(p_step_loc,args_in,prior_func_prop):
             args['vis']=vis
             pl_vis = args['transit_pl'][inst][vis][0]
             system_param_loc,coord_pl = calc_plocc_coord(inst,vis,[args['coord_line']],args,p_step_loc,[pl_vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
-            surf_prop_dic = sub_calc_plocc_prop(args['chrom_mode'],args,[args['coord_line']],[pl_vis],system_param_loc,args['theo_dic'],args['system_prop'],p_step_loc,args['coord_pl_fit'][inst][vis],args['nexp_fit_all'][inst][vis])
+            surf_prop_dic = sub_calc_plocc_prop(args['chrom_mode'],args,[args['coord_line']],[pl_vis],system_param_loc,args['theo_dic'],args['system_prop'],p_step_loc,args['coord_pl_fit'][inst][vis],args['nexp_fit_all'][inst][vis],False)
             ctrst_vis = surf_prop_dic[pl_vis]['ctrst'][0]       
             break_cond = (ctrst_vis<0.) | (ctrst_vis>1.)
             if True in break_cond:
@@ -111,7 +111,7 @@ def prior_FWHM_vsini(p_step_loc,args,prior_func_prop):
 
             #Width of disk-integrated profile, rotationally broadened, after instrumental convolution
             FWHM_intr = p_step_loc[args['name_prop2input']['FWHM_ord0__IS'+inst+'_VS'+vis]]
-            FWHM_DI_mod2 = FWHM_intr**2. + return_FWHM_inst(inst,c_light)**2. + vsini**2.
+            FWHM_DI_mod2 = FWHM_intr**2. + args['FWHM_inst'][inst]**2. + vsini**2.
             
             #Width must be smaller than width of measured disk-integrated profile
             if FWHM_DI_mod2>prior_func_prop['FWHM_DI']**2.:
@@ -809,7 +809,7 @@ def post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
         if 'c0' in modif_list: 
             print('     + Adding c0(CB)')
             if fit_dic['fit_mod']=='chi2': 
-                theo_par = sub_calc_plocc_prop(['achrom'],None,['c0_CB'],None,fixed_args['system_prop'],p_final,None,None,None,0)            
+                theo_par = sub_calc_plocc_prop(['achrom'],None,['c0_CB'],None,fixed_args['system_prop'],p_final,None,None,None,0,False)            
                 p_final['c0_CB']=theo_par['c0_CB'][0,:]
                 sig_loc=np.nan  
                 fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]) )     
@@ -824,7 +824,7 @@ def post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
                         if len(fixed_args['linked_par_expr'])>0:exec(str(par)+'='+str(p_final_loc[par]))
                     for par in fixed_args['linked_par_expr']:
                         p_final_loc[par]=eval(fixed_args['linked_par_expr'][par])
-                    theo_par = sub_calc_plocc_prop(['achrom'],None,['c0_CB'],None,fixed_args['system_prop'],p_final,None,None,None,0)                      
+                    theo_par = sub_calc_plocc_prop(['achrom'],None,['c0_CB'],None,fixed_args['system_prop'],p_final,None,None,None,0,False)                      
                     chain_loc=np.append(chain_loc,theo_par['c0_CB'][0,:])
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)   
             fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'c0_CB')
@@ -984,8 +984,10 @@ def common_fit_rout(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,t
     #    - they must be set to different values for each walker
     #    - for simplicity we define randomly for each walker 
     #    - parameters must be defined in the same order as in 'p_start'
-    fixed_args,p_start = init_custom_DI_par(fixed_args,gen_dic,data_dic['DI']['system_prop'],theo_dic,fixed_args['system_param']['star'],p_start,[0.,None,None],True)
+    fixed_args,p_start = init_custom_DI_par(fixed_args,gen_dic,data_dic['DI']['system_prop'],fixed_args['system_param']['star'],p_start,[0.,None,None])
+    fixed_args['cond_init'] = True
     fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],theo_dic,fixed_args['system_param']['star'],p_start)
+    fixed_args['cond_init'] = False
                         
     #Condition to calculate CB
     if ('c1_CB' in fit_prop_dic['mod_prop']) or ('c2_CB' in fit_prop_dic['mod_prop'])  or ('c3_CB' in fit_prop_dic['mod_prop']):fixed_args['par_list']+=['CB_RV']
@@ -1045,6 +1047,7 @@ def common_fit_rout(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,t
 
     #Fit by chi2 minimization
     if fit_dic['fit_mod']=='chi2':
+        fixed_args['fit'] = True
         print('     ----------------------------------')
         print('     Chi2 calculation')   
         p_final = fit_minimization(ln_prob_func_lmfit,p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=fit_prop_dic['verbose'],fixed_args=fixed_args)[2]
@@ -1053,6 +1056,7 @@ def common_fit_rout(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,t
     ########################################################################################################    
     #Fit par emcmc 
     elif fit_prop_dic['fit_mod']=='mcmc':  
+        fixed_args['fit'] = True
         print('     ----------------------------------')
         print('     MCMC calculation')
 
@@ -1197,6 +1201,7 @@ def common_fit_rout(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,t
     ########################################################################################################  
     #No fit is performed: guess parameters are kept
     else:
+        fixed_args['fit'] = False
         print('     ----------------------------------')
         print('     Fixed model')
         p_final = deepcopy(p_start)   
@@ -1241,7 +1246,6 @@ def init_joined_routines(gen_dic,system_param,theo_dic,data_dic,save_dir,fit_pro
     fixed_args={
             
         #Global model properties
-        'fit_star_grid':False,
         'DI_grid':False,
         'coord_line':fit_prop_dic['dim_fit'],
         'pol_mode':fit_prop_dic['pol_mode'],
@@ -1432,10 +1436,8 @@ def fit_IntrProf_all(data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_di
                     fixed_args['dcen_bins'][inst][vis][isub] = fixed_args['edge_bins'][inst][vis][isub][1::]-fixed_args['edge_bins'][inst][vis][isub][0:-1]  
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]  # *0.6703558343325438
 
-                    # print('ATTENTION')
-
-                    #Line profile model table
-                    model_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis])
+                    #Oversampled line profile model table
+                    if fixed_args['resamp']:resamp_model_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis])
 
                     #Initializing ranges in the relevant rest frame
                     if len(cont_range)==0:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] = True    
@@ -1471,9 +1473,9 @@ def fit_IntrProf_all(data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_di
                             else:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-1.,1.]
                             fit_prop_dic['priors'][pc_name]={'low':-100. ,'high':100.,'mod':'uf'}
                             
-                #Reference point for instrumental convolution
-                #    - in RV space for analytical model, in wavelength space for theoretical profiles
-                if ('ref_conv' not in fixed_args):ref_inst_convol(fixed_args,fixed_args['cen_bins'][inst][vis][0])
+                #instrumental convolution
+                if (inst not in fixed_args['FWHM_inst']):                
+                    fixed_args['FWHM_inst'][inst] = ref_inst_convol(inst,fixed_args,fixed_args['cen_bins'][inst][vis][0])
 
                 #Continuum common to all processed profiles
                 #    - collapsed along temporal axis
@@ -1517,7 +1519,6 @@ def fit_IntrProf_all(data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_di
 
     #Model fit and calculation
     fit_save={}
-    fixed_args['fit'] = True
     merged_chain,p_final = common_fit_rout('IntrProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)            
 
     #PC correction
@@ -1651,11 +1652,11 @@ def joined_CCFs(param,args):
                 args_exp = def_st_prof_tab(inst,vis,isub,args)
 
                 #Intrinsic profile for current exposure
-                surf_prop_dic = sub_calc_plocc_prop(args['chrom_mode'],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['theo_dic'],args['system_prop'],param,coord_pl,1)
+                surf_prop_dic = sub_calc_plocc_prop(args['chrom_mode'],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['theo_dic'],args['system_prop'],param,coord_pl,1,args['fit'])
                 sp_line_model = surf_prop_dic[args['chrom_mode']]['line_prof'][:,isub]
 
                 #Conversion and resampling 
-                mod_dic[inst][vis][isub] = conv_st_prof_tab(inst,vis,isub,args,args_exp,sp_line_model,return_FWHM_inst(inst,args['ref_conv']))
+                mod_dic[inst][vis][isub] = conv_st_prof_tab(inst,vis,isub,args,args_exp,sp_line_model,args['FWHM_inst'][inst])
 
                 #Add PC noise model
                 #    - added to the convolved profiles since PC are derived from observed data
@@ -1844,7 +1845,6 @@ def fit_CCFintr_prop(fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_d
     fixed_args['use_cov'] = False   
 
     #Model fit and calculation
-    fixed_args['fit'] = True
     merged_chain,p_final = common_fit_rout('IntrProp',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)   
 
     #Best-fit model and properties
@@ -1900,7 +1900,7 @@ def joined_prop(param,args):
 
             #Calculate coordinates and properties of occulted regions 
             system_param_loc,coord_pl = calc_plocc_coord(inst,vis,args['par_list'],args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
-            surf_prop_dic = sub_calc_plocc_prop(args['chrom_mode'],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['theo_dic'],args['system_prop'],param,args['coord_pl_fit'][inst][vis],args['nexp_fit_all'][inst][vis])
+            surf_prop_dic = sub_calc_plocc_prop(args['chrom_mode'],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['theo_dic'],args['system_prop'],param,args['coord_pl_fit'][inst][vis],args['nexp_fit_all'][inst][vis],args['fit'])
 
             #Properties associated with the transiting planet in the visit 
             theo_vis = surf_prop_dic[args['transit_pl'][inst][vis][0]]      
@@ -2204,10 +2204,8 @@ def fit_CCFRes_all(data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,
     fixed_args['fit_func'] = MAIN_joined_CCFs_res
     
     #Model fit and calculation
-    fixed_args['fit'] = True
     merged_chain,p_final = common_fit_rout('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)     
     
-
     #Best-fit model and properties
     fit_save={}
 
