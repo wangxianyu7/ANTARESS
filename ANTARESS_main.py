@@ -3,9 +3,9 @@ ANTARESS : Advocating a Neat Technique for the Accurate Retrieval of Exoplanetar
 """
 
 from ANTARESS_routines import extract_intr_profiles,ana_prof,calc_plocc_prop,calc_spots_prop,def_local_profiles,calc_gcal,\
-                                rescale_data,extract_pl_profiles,CCF_from_spec,corr_line_prof,ResIntr_CCF_from_spec,\
+                                rescale_data,extract_pl_profiles,CCF_from_spec,detrend_prof,ResIntr_CCF_from_spec,\
                                 init_prop,init_visit,update_data_inst,align_profiles,init_data_instru,extract_res_profiles,\
-                                process_bin_prof,conv_2D_to_1D_spec, corr_spot,pc_analysis,def_masks
+                                process_bin_prof,conv_2D_to_1D_spec, corr_spot,pc_analysis,def_masks,process_spectral_cont
 from ANTARESS_sp_reduc import red_sp_data_instru
 from ANTARESS_joined_routines import fit_intr_funcs,fit_atm_funcs
 from ANTARESS_plots import ANTARESS_plot_functions
@@ -15,7 +15,7 @@ from utils import stop
 """
 Main ANTARESS routines
 """
-def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_line_prof_dic,PropAtm_fit_dic,AtmProf_fit_dic, corr_spot_dic,system_param):
+def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,PropAtm_fit_dic,AtmProf_fit_dic, corr_spot_dic,system_param):
 
     print('****************************************')
     print('Launching ANTARESS')
@@ -27,7 +27,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
     ##############################################################################
     #Initializations
     ##############################################################################
-    coord_dic,data_prop = init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_dic,PropAtm_fit_dic)
+    coord_dic,data_prop = init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_dic,PropAtm_fit_dic,detrend_prof_dic)
    
     ####################################################################################################################
     #Processing datasets for each visit of each instrument
@@ -57,32 +57,33 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
             print('  -----------------')
             print('  Processing visit: '+vis) 
 
-            #Reset data mode to input
-            data_dic[inst]['nord'] = deepcopy(data_dic[inst]['nord_spec'])
+            #Initialization of visit properties
+            init_visit(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic)             
             
             #-------------------------------------------------  
             #Processing disk-integrated stellar profiles
             curr_type = 'DI'
             #------------------------------------------------- 
-            
-            #Converting DI stellar spectra into CCFs
-            if gen_dic[curr_type+'_CCF'] and ('spec' in data_dic[inst][vis]['type']):
-                CCF_from_spec(curr_type,inst,vis,data_dic,gen_dic)
 
-            #Initialization of visit properties
-            init_visit(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic) 
+            #Spectral detrending   
+            if gen_dic['detrend_prof'] and (detrend_prof_dic['full_spec']):
+                detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
+
+            #Converting DI stellar spectra into CCFs
+            if gen_dic[curr_type+'_CCF']:
+                CCF_from_spec(curr_type,inst,vis,data_dic,gen_dic)
+     
+            #Single line detrending    
+            if gen_dic['detrend_prof'] and (not detrend_prof_dic['full_spec']):
+                detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
 
             #Calculating theoretical properties of the planet occulted-regions 
             if (gen_dic['theoPlOcc']): 
                 calc_plocc_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'])
-
+                
             #Calculating theoretical properties of the planet occulted-regions 
             if (gen_dic['theo_spots']): 
                 calc_spots_prop(gen_dic,system_param['star'],theo_dic,inst,data_dic)
-
-            #Corrections of single line profiles    
-            if gen_dic['corr_line_prof']:
-                corr_line_prof(corr_line_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
 
             #Analyzing original disk-integrated profiles
             if gen_dic['fit_'+curr_type]:
@@ -107,7 +108,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,corr_
             #Processing converted 2D disk-integrated profiles
             if gen_dic['spec_1D']:                
                 conv_2D_to_1D_gen_functions(curr_type,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
-            
+ 
             #Processing binned disk-integrated profiles
             if gen_dic['bin']:
                 bin_gen_functions(curr_type,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
@@ -254,6 +255,10 @@ def bin_gen_functions(data_type,mode,inst,gen_dic,data_dic,coord_dic,data_prop,s
     #Analyzing binned profiles
     if gen_dic['fit_'+data_type+'bin'+mode]: 
         ana_prof(mode,data_type+'bin',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])                        
+
+    #Calculating generic stellar continuum from binned master spectrum
+    if (data_type in ['DI','Intr']) and gen_dic[data_type+'_stcont']:
+        process_spectral_cont(mode,data_type,inst,data_dic,gen_dic,vis)
 
     #Defining CCF mask
     #    - over all visits if possible, or over the single processed visit

@@ -1081,7 +1081,7 @@ def common_fit_rout(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,t
         elif fit_prop_dic['mcmc_run_mode']=='reuse':
             print('     Retrieving MCMC') 
             if len(fit_prop_dic['mcmc_reuse'])==0:
-                walker_chains=np.load(fit_dic['save_dir']+'raw_chains_walk'+np.str(fit_dic['nwalkers'])+'_steps'+np.str(fit_dic['nsteps'])+fit_dic['run_name']+'.npz')['walker_chains']  #(nwalkers, nsteps, n_free)
+                walker_chains=np.load(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name']+'.npz')['walker_chains']  #(nwalkers, nsteps, n_free)
             else:
                 walker_chains = np.empty([fit_dic['nwalkers'],0,fit_dic['n_free'] ],dtype=float)
                 fit_dic['nsteps'] = 0
@@ -1756,6 +1756,7 @@ def fit_CCFintr_prop(fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_d
     #    - fit is performed on achromatic average properties
     #    - the full stellar line profile are not calculated, since we only fit the average properties of the occulted regions
     fixed_args.update({
+        'system_param':system_param,
         'coord_line':fit_prop_dic['dim_fit'],
         'inst_list':[],
         'prior_func':fit_prop_dic['prior_func'], 
@@ -1764,6 +1765,7 @@ def fit_CCFintr_prop(fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_d
         'transit_pl':{},
         'chrom_mode':['achrom'],
         'precision':'low',
+        'bin_mode':{},
         'prop_fit':fit_prop_dic['prop']})
 
     #Coordinate and property to calculate for the fit
@@ -1785,7 +1787,7 @@ def fit_CCFintr_prop(fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_d
         fit_prop_dic[inst]={}
         fixed_args['inst_list']+=[inst]
         fixed_args['inst_vis_list'][inst]=[]  
-        for key in ['coord_pl_fit','ph_fit','nexp_fit_all','transit_pl']:fixed_args[key][inst]={}
+        for key in ['coord_pl_fit','ph_fit','nexp_fit_all','transit_pl','bin_mode']:fixed_args[key][inst]={}
         idx_fit2vis[inst] = {}
             
         for vis in data_dic[inst]['visit_list']:
@@ -2180,7 +2182,7 @@ def fit_CCFRes_all(data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,
                         fixed_args['cont_DI_obs'] [inst][vis][iexp] = data_DI_prop_vis[iexp]['cont']
                         
                         # Rescaling factor calculated in the 'broadband flux scaling' module, to go from DI CCF to rescaled CCF
-                        LC_exp, scaling_exp  =  1-data_LC_vis['loc_flux_scaling'][iexp,0](cen_bins)  ,  data_LC_vis['glob_flux_scaling'][iexp]
+                        LC_exp, scaling_exp  =  1-data_LC_vis['loc_flux_scaling'][iexp](cen_bins)  ,  data_LC_vis['glob_flux_scaling'][iexp]
                         fixed_args['rescaling'][inst][vis][iexp] = (LC_exp / scaling_exp) [cond_in_model]
 
                     # Store useful data for computing the master-out (in particular, weights !)

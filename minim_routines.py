@@ -7,7 +7,7 @@ Created on Wed Oct 18 11:21:31 2017
 
 import numpy as np
 from utils import np_where1D,stop,npint,init_parallel_func
-from utils_plots import custom_axis
+from utils_plots import custom_axis,autom_y_tick_prop
 import matplotlib.pyplot as plt
 import time as time
 import emcee
@@ -518,10 +518,10 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
 
     #By default use variance
     if 'use_cov' not in fixed_args:fixed_args['use_cov']=False
-    
+
     #Save temporary walkers in case of crash
     if ('monitor' in fit_dic) and fit_dic['monitor']:
-        backend = emcee.backends.HDFBackend(fit_dic['save_dir']+'monitor'+np.str(fit_dic['nwalkers'])+'_steps'+np.str(fit_dic['nsteps'])+run_name+'.h5')
+        backend = emcee.backends.HDFBackend(fit_dic['save_dir']+'monitor'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name+'.h5')
         backend.reset(fit_dic['nwalkers'], fit_dic['n_free'])
     else:backend=None
 
@@ -530,7 +530,7 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
     n_free=np.shape(fit_dic['initial_distribution'])[1]
     sampler = emcee.EnsembleSampler(fit_dic['nwalkers'],            #Number of walkers
                                     n_free,                         #Number of free parameters in the model
-                                    ln_prob_func_mcmc,                   #Log-probability function 
+                                    ln_prob_func_mcmc,              #Log-probability function 
                                     args=[fixed_args],              #Fixed arguments for the calculation of the likelihood and priors
                                     threads=nthreads,               #Number of threads on computer
                                     backend=backend)                #Monitor chain progress 
@@ -549,10 +549,10 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
     #Save raw MCMC results 
     if save_raw:
         if (not os_system.path.exists(fit_dic['save_dir'])):os_system.makedirs(fit_dic['save_dir'])
-        np.savez(fit_dic['save_dir']+'raw_chains_walk'+np.str(fit_dic['nwalkers'])+'_steps'+np.str(fit_dic['nsteps'])+run_name,walker_chains=walker_chains, initial_distribution=fit_dic['initial_distribution'])
+        np.savez(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name,walker_chains=walker_chains, initial_distribution=fit_dic['initial_distribution'])
 
     #Delete temporary chains after final walkers are saved
-    if backend is not None:os_system.remove(fit_dic['save_dir']+'monitor'+np.str(fit_dic['nwalkers'])+'_steps'+np.str(fit_dic['nsteps'])+run_name+'.h5')
+    if backend is not None:os_system.remove(fit_dic['save_dir']+'monitor'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name+'.h5')
 
     return walker_chains
 
@@ -1176,7 +1176,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
 
     #Save merged chains for derived parameters and various estimates
     data_save = {'merged_chain':merged_chain,'HDI_interv':fit_dic['HDI_interv'],'sig_parfinal_val':fit_dic['sig_parfinal_val']['1s'],'var_par_list':fixed_args['var_par_list'],'var_par_names':fixed_args['var_par_names'],'med_parfinal':fit_dic['med_parfinal']}
-    np.savez(fit_dic['save_dir']+'merged_deriv_chains_walk'+np.str(fit_dic['nwalkers'])+'_steps'+np.str(fit_dic['nsteps'])+fit_dic['run_name'],data=data_save,allow_pickle=True)
+    np.savez(fit_dic['save_dir']+'merged_deriv_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name'],data=data_save,allow_pickle=True)
 
     #Plot correlation diagram for all param    
     if fit_dic['save_MCMC_corner']!='':      
@@ -1243,7 +1243,7 @@ def fit_merit(p_final_in,fixed_args,fit_dic,verbose):
     #Merit values     
     fit_dic['dof']=fit_dic['nx_fit']-fit_dic['n_free']
     res_tab = fixed_args['y_val'] - fit_dic['y_mod']
-    if fit_dic['fit_mod'] =='chi2': fit_dic['chi2']=np.sum(ln_prob_func_lmfit(p_final, fixed_args['x_val'], fixed_args=fixed_args)**2.)
+    if fit_dic['fit_mod'] in ['','chi2']: fit_dic['chi2']=np.sum(ln_prob_func_lmfit(p_final, fixed_args['x_val'], fixed_args=fixed_args)**2.)
     elif fit_dic['fit_mod'] =='mcmc': fit_dic['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1] 
     fit_dic['red_chi2']=fit_dic['chi2']/fit_dic['dof']
     fit_dic['BIC']=fit_dic['chi2']+fit_dic['n_free']*np.log(fit_dic['nx_fit'])      
@@ -1417,10 +1417,14 @@ def plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,burnt_c
         
         #Plot frame  
         plt.title('Chain for param '+partxt)
+        y_min = np.min(chain[:,:,ipar])
+        y_max = np.max(chain[:,:,ipar])
+        dy_range = y_max-y_min
+        y_range = [y_min-0.05*dy_range,y_max+0.05*dy_range]    
+        ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
         custom_axis(plt,position=margins,
-                    #x_range=x_range,y_range=y_range,dir_y='out', 
-                    #		    xmajor_int=1.,xminor_int=0.5,
-                    #xmajor_form='%.1f',ymajor_form='%.3f',
+                    y_range=y_range,dir_y='out', 
+                    ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
                     x_title='Steps',y_title=partxt,
                     font_size=font_size,xfont_size=font_size,yfont_size=font_size)
 
@@ -1463,8 +1467,15 @@ def plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,merged
         #Plot frame  
         parname_txt=parname.replace('_','-')
         plt.title('Merged chain for param '+parname_txt)
+        y_min = np.min(merged_chain[x_tab,ipar])
+        y_max = np.max(merged_chain[x_tab,ipar])
+        dy_range = y_max-y_min
+        y_range = [y_min-0.05*dy_range,y_max+0.05*dy_range]    
+        ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
         custom_axis(plt,position=margins,
-                    #x_range=x_range,y_range=y_range,dir_y='out', 
+                    # x_range=x_range,
+                    y_range=y_range,dir_y='out', 
+                    ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
                     #		    xmajor_int=1.,xminor_int=0.5,
                     #xmajor_form='%.1f',ymajor_form='%.3f',
                     x_title='Steps',y_title=parname_txt,

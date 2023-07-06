@@ -22,13 +22,13 @@ import ANTARESS_routines as Arouts
 import bindensity as bind
 from copy import deepcopy
 from pathos.multiprocessing import Pool
-import calculate_RV_line_by_line3 as calculate_RV_line_by_line
+import calculate_RV_line_by_line3 as calculate_RV_line_by_line 
 
 
 def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_norm,gen_dic,save_data_paths,tell_spec,rv_sys,min_rv_earth_mast,max_rv_earth_mast,Teff_star,dic_sav,plot_spec,plot_ld,plot_ld_lw,plot_RVdev_fit,cont_func_dic,vis_iexp_in_bin,
                 data_type_gen,data_dic,plot_tellcont,plot_vald_depthcorr,plot_morphasym,plot_morphshape,plot_RVdisp):
     mask_info=''
-    
+       
     #=============================================================================
     #Spectra preparation    
     #=============================================================================
@@ -65,21 +65,24 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     # EXTREMA LOCALISATION
     #=============================================================================
     if mask_dic['verbose']:print('           Finding extrema')
-    
+
     #Vicinity window for the local extrema algorithm
-    #    - in pixels
-    if inst=='ESPRESSO':
-        if fwhm_ccf<15:vicinity = 5 
-        else:vicinity = 1000
-    else:stop('Define vicinity window')   
-                 
+    #    - in pixels of the oversampled regular grid
+    if (inst in mask_dic['vicinity_fwhm']):vicinity_fwhm = mask_dic['vicinity_fwhm'][inst]    
+    else:
+        vicinity_fwhm={'ESPRESSO':20.}[inst]      
+    vicinity_rv = fwhm_ccf/vicinity_fwhm
+    vicinity_spec = vicinity_rv*cen_bins_reg/c_light
+    vicinity_reg = int(np.min(vicinity_spec/dw_reg))
+    if vicinity_reg<5:stop('Vicinity window ='+str(vicinity_reg)+' < 5 pixels: decrease "vicinity_fwhm"')
+
     #Minima
-    index_minima, f_minima = myf.local_max(-flux_norm_reg,vicinity)
+    index_minima, f_minima = myf.local_max(-flux_norm_reg,vicinity_reg)
     index_minima = index_minima.astype('int')
     wave_minima = cen_bins_reg[index_minima]
    
     #Minima    
-    index_maxima, flux_maxima = myf.local_max(flux_norm_reg,vicinity)
+    index_maxima, flux_maxima = myf.local_max(flux_norm_reg,vicinity_reg)
     index_maxima = index_maxima.astype('int')
     wave_maxima = cen_bins_reg[index_maxima]
        
@@ -184,8 +187,9 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #RV weights 
     #    - weights do not include a contribution from the flux errors because they are used to compute CCFs in count-equivalent units (it would otherwise account twice for this ponderation)
     #=============================================================================
+    det_noise = {'ESPRESSO':1e-3}[inst]
     flux_gradient = np.gradient(flux_norm_reg)/dw_reg
-    weight_vec = cen_bins_reg**2 * flux_gradient**2/(flux_norm_reg+1e-6)
+    weight_vec = cen_bins_reg**2 * flux_gradient**2/(flux_norm_reg+det_noise**2.)
     fwhm_pix = np.round(np.array(Dico['w_minima'])*(fwhm_ccf/c_light)*(1./dw_reg)).astype('int')  #maximum window for weight computation
     idx_maxima_left_max = np.array(Dico['idx_minima'])-fwhm_pix
     idx_maxima_right_min = np.array(Dico['idx_minima'])+fwhm_pix
@@ -197,6 +201,13 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         weight_rv.append(np.sum(weight_vec[indice_left:indice_right+1]))
         weight_rv_sym.append(np.sum(weight_vec[idx_maxima_left_max_loc:idx_maxima_right_min_loc+1]))
 
+    #Final weights
+    #    - see Bouchy+2001 Eq 8, weight is defined as the squared inverse of the error on a line RV 
+    # W[i] = w[i]^2* (df/dw)^2 / (f[i]+sD^2) 
+    #      = weight_vec with sD = 1e-3 
+    #      and
+    # W[line] = sum(W[i])
+    #      the weight is defined here as sqrt(W[line]) but is put to the square by pipelines before computing CCFs
     weight_rv = np.array(weight_rv)
     weight_rv /= np.nanpercentile(weight_rv,95)
     weight_rv[weight_rv<=0] = np.min(abs(weight_rv[weight_rv!=0]))
@@ -387,7 +398,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     deriv2_flux = bind.resampling(edge_bins_reg, edge_bins_mast,deriv2_flux_norm, kind=gen_dic['resamp_mode'])            
     
     #Kernel smoothing length
-    if (inst in mask_dic['kernel_smooth_deriv2']):kernel_smooth = mask_dic['kernel_smooth_deriv2'][inst]
+    if (inst in mask_dic['kernel_smooth_deriv2']):kernel_smooth_deriv2 = mask_dic['kernel_smooth_deriv2'][inst]
     else:
         if inst=='ESPRESSO':kernel_smooth_deriv2 = 15  
         else:stop('Define kernel_smooth_deriv2')     
@@ -444,7 +455,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         
         #Minima of telluric spectrum in the Earth rest frame
         #    - only telluric deeper than threshold are considered
-        indext_minima, fluxt_minima = myf.local_max(-spectre_t,vicinity)
+        indext_minima, fluxt_minima = myf.local_max(-spectre_t,vicinity_reg)
         fluxt_minima = -fluxt_minima
         indext_minima = indext_minima.astype('int')
         if mask_dic['tell_depth_min'] is None:tell_depth_min = 0.001

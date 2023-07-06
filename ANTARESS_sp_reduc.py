@@ -455,7 +455,7 @@ def telluric_model(params,velccf,args=None):
                 #Compute CCFs
                 #    - multiprocessing not efficient for these calculations
                 edge_velccf_fit = args['edge_velccf'][args['mol_fit_idx_edge']]
-                ccf_uncorr_ord,    cov_ccf_uncorr_ord      = new_compute_CCF(edge_bins_ord,flux_ord,cov_ord,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gdet_ord)
+                ccf_uncorr_ord,    cov_ccf_uncorr_ord      = new_compute_CCF(edge_bins_ord,flux_ord,cov_ord,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gdet_ord)[0:2]
                 cov_uncorr_ord[isub_ord] = cov_ccf_uncorr_ord 
                 nd_cov_uncorr_ord[isub_ord] = np.shape(cov_ccf_uncorr_ord)[0]
                 if args['ccf_corr']:ccf_corr_ord = new_compute_CCF(edge_bins_ord,flux_corr_ord,None,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gdet_ord)[0]
@@ -2912,11 +2912,12 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
                             #    - in cases the color balance is not perfectly corrected at order level
                             #      we assume the measurement of the total flux is precise enough that it does not need fitting
                             #    - this normalization assumes that the wiggle does not modify the average flux over the slice, which is not true if the slice contains few wiggle periods
-                            #      however small differences in the level of the fitted flux do not bias the derived sinusoidal parameters                                 
-                            delta_bin_ord = (bin_ord_dic['high_nu']-bin_ord_dic['low_nu'])
-                            corr_Fr = np.sum(delta_bin_ord)/np.sum(bin_ord_dic['Fr']*delta_bin_ord)  
-                            bin_ord_dic['Fr']*=corr_Fr
-                            bin_ord_dic['varFr']*=corr_Fr**2.
+                            #      however small differences in the level of the fitted flux do not bias the derived sinusoidal parameters  
+                            if gen_dic['wig_norm_ord']:                            
+                                delta_bin_ord = (bin_ord_dic['high_nu']-bin_ord_dic['low_nu'])
+                                corr_Fr = np.sum(delta_bin_ord)/np.sum(bin_ord_dic['Fr']*delta_bin_ord)  
+                                bin_ord_dic['Fr']*=corr_Fr
+                                bin_ord_dic['varFr']*=corr_Fr**2.
     
                             #Shift transmission spectrum from star to Earth rest frame
                             #    - once stellar lines have been removed by dividing exposure and master in the star rest frame, we align transmission spectra in the 

@@ -2078,6 +2078,32 @@ all_system_params={
     },                     
         },      
     
+    #------------------------------
+    
+    'WASP189':{
+        
+        'star':{
+            'Rstar':2.36 , # solar radii # Lendl et al. 2020
+            'veq':93.1,    # km/s # Lendl et al. 2020
+            'istar':90, 
+            },
+        'WASP189b':{
+            'period':2.7240330,         # days # Lendl et al. 2020
+            'TCenter':2458926.5416960,  # days # Lendl et al. 2020
+            'TLength':4.3336/24 ,       # days # Lendl et al. 2020
+            'ecc':0.,
+            'omega_deg':90.,
+            'inclination':84.03,        # deg # Lendl et al. 2020
+            'Kstar':182.0,	            #  m/s # Lendl et al. 2020
+            'aRs':10.856,               # R_star # a*R_star # Lendl et al. 2020
+            'lambda_proj':0.
+            
+            },
+        
+    },
+    
+    #------------------------------
+
 
 }
 
