@@ -2099,7 +2099,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
         
 
     ##################################################################################################
-    #%%% Properties of raw data and disk-integrated CCFs
+    #%% Properties of raw data and disk-integrated CCFs
     #    - possibility to plot them as a function of many variable to search for correlations
     ##################################################################################################
     if (plot_dic['prop_raw']!=''):
@@ -3402,7 +3402,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
     
     
     ################################################################################################################    
-    #%%% Input light curves
+    #%% Input light curves
     #    - used to rescale the flux
     #    - one plot for each band, each instrument, all visits
     #    - overplotting all visits together is useful to quickly compare the exposure ranges, the detection of their local stellar profiles, and determine binning windows
@@ -3625,7 +3625,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
 
 
     ##################################################################################################
-    #%%% Effective scaling light curves     
+    #%% Effective scaling light curves     
     #   - plotting effective light curves used to rescale the flux
     #   - for input spectra only
     #   - one plot for each instrument, each visit, for all wavelengths in a given list
@@ -3668,10 +3668,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
         
         
         
-    '''
-    2D maps of disk-integrated profiles in star rest frame 
-        - allows visualizing the exposures used to build the master, and the ranges excluded because of planetary contamination
-    '''
+    ##################################################################################################
+    #%% 2D maps of disk-integrated profiles in star rest frame 
+    #    - allows visualizing the exposures used to build the master, and the ranges excluded because of planetary contamination
+    ##################################################################################################
     if (plot_dic['map_DI_prof']!=''):  
         key_plot = 'map_DI_prof'
         plot_settings[key_plot]={}      
@@ -3823,7 +3823,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
 
 
     ################################################################################################################  
-    #%%% 2D maps of residual profiles 
+    #%% 2D maps of residual profiles 
     #    - in stellar rest frame
     ################################################################################################################  
     if (plot_dic['map_res_prof']!=''):
@@ -4209,7 +4209,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
 
         #Choose mode for estimates of local stellar profiles
         #    - data must have been calculated for the requested mode:
-        # 'DIbin', 'Intrbin', 'glob_mod', 'indiv_mod', 'rec_prof', 'theo'
+        # 'DIbin', 'Intrbin', 'glob_mod', 'indiv_mod', 'rec_prof'
         plot_settings[key_plot]['mode_loc_data_corr'] = 'DIbin'
         
         #Instruments and visits to plot
@@ -4328,7 +4328,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
         
         #Choose mode to retrieve for estimates
         #    - data must have been calculated for the requested mode:
-        # 'DIbin', 'Intrbin', 'glob_mod', 'indiv_mod', 'rec_prof', 'theo'
+        # 'DIbin', 'Intrbin', 'glob_mod', 'indiv_mod', 'rec_prof'
         plot_settings[key_plot]['mode_loc_data_corr'] = 'DIbin'
 
 
@@ -4473,7 +4473,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
 
 
     ##################################################################################################
-    #%%% Standard deviation with bin size for out-of-transit residual CCFs
+    #%% Standard deviation with bin size for out-of-transit residual CCFs
     #    - one plot per exposure
     ##################################################################################################
     if (plot_dic['scr_search']!=''):
@@ -4826,7 +4826,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
 
                 #Choose mode to retrieve
                 #    - estimates for the local stellar profiles must have been calculated for the requested mode:
-                # 'DIbin', 'Intrbin', 'glob_mod', 'indiv_mod', 'rec_prof', 'theo'
+                # 'DIbin', 'Intrbin', 'glob_mod', 'indiv_mod', 'rec_prof'
                 #    - not required for residual map if only continuum level is subtracted
                 plot_settings[key_plot]['mode_loc_data_corr'] = 'glob_mod'
 
@@ -5019,7 +5019,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
             plot_settings[key_plot]['show_outres']=True # & False
 
             #Correct only for continuum level
-            plot_settings[key_plot]['cont_only']=True # & False
+            plot_settings[key_plot]['cont_only']=True  & False
             if gen_dic['star_name'] in ['Kepler68','WASP47']:plot_settings[key_plot]['cont_only']=True  #non-detection
             if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214']:plot_settings[key_plot]['cont_only']=True  #non-detection
 
@@ -6008,11 +6008,11 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
 
 
 
-    '''
-    Plotting chi2 values for each fitted local property
-    '''
-    if (plot_dic['chi2_fit_loc_prop']!=''):
-        key_plot = 'chi2_fit_loc_prop'
+    ##################################################################################################
+    #%%% Chi2 per fitted local property value
+    ##################################################################################################
+    if (plot_dic['chi2_fit_IntrProp']!=''):
+        key_plot = 'chi2_fit_IntrProp'
         plot_settings[key_plot]={}   
 
         #Ranges specific to each band
@@ -6024,12 +6024,13 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
         plot_settings[key_plot]['chi2_thresh']=3.  
 
         #Property
-        plot_settings[key_plot]['prop'] = 'rv'
+        plot_settings[key_plot]['prop'] = 'FWHM'
 
         #General path to the best-fit model to property series
         plot_settings[key_plot]['IntrProp_path']=None
         if gen_dic['star_name']=='HAT_P3':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HAT_P3b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
         elif gen_dic['star_name']=='HAT_P33':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HAT_P33b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
+        elif gen_dic['star_name']=='HD209458':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/Intr_prop/chi2/'
 
         #Visits to plot
         if gen_dic['studied_pl']=='WASP76b':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2018-10-31','2018-09-03']} 
@@ -6039,8 +6040,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
         #Colors
         if gen_dic['studied_pl']=='WASP76b':            
             plot_settings[key_plot]['color_dic']={'ESPRESSO':{'2018-10-31':'dodgerblue','2018-09-03':'red'}}
-        elif gen_dic['studied_pl']=='HD209458b':plot_settings[key_plot]['color_dic']={'ESPRESSO':{'2019-07-20':'dodgerblue','2019-09-11':'red'}}
+        elif gen_dic['star_name']=='HD209458':plot_settings[key_plot]['color_dic']={'ESPRESSO':{'20190720':'dodgerblue','20190911':'red'}}
         elif gen_dic['studied_pl']=='GJ9827d':plot_settings[key_plot]['color_dic']={'ESPRESSO':['2019-08-25']} 
+        
         
 
 
@@ -6115,8 +6117,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
     ################################################################################################################
     #%%% 1D PDFs from analysis of individual profiles
     ################################################################################################################
-    if (plot_dic['propCCF_DI_mcmc_PDFs']!='') or (plot_dic['propCCFloc_mcmc_PDFs']!=''):
-        for key_plot in ['propCCF_DI_mcmc_PDFs','propCCFloc_mcmc_PDFs']:
+    if (plot_dic['prop_DI_mcmc_PDFs']!='') or (plot_dic['prop_Intr_mcmc_PDFs']!=''):
+        for key_plot in ['prop_DI_mcmc_PDFs','prop_Intr_mcmc_PDFs']:
             if plot_dic[key_plot]!='':
                 plot_settings[key_plot]={} 
                 
@@ -6390,9 +6392,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
 
 
     ##################################################################################################
-    #%%% Properties of intrinsic CCFs
+    #%%% Properties of planet-occulted stellar CCFs
     ##################################################################################################
-    if (plot_dic['prop_loc']!=''):
+    if (plot_dic['prop_Intr']!=''):
 
         #Choose values to plot in ordina (list of properties) 
         #    - properties:
@@ -6404,11 +6406,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
         # + 'FWHM_l2c': FWHM(lobe)/FWHM(core) of double gaussian components
         # + 'amp_l2c': contrast(lobe)/contrast(core) of double gaussian components
         plot_settings['prop_ordin']=['rv','rv_res','FWHM','ctrst'] 
-        plot_settings['prop_ordin']=['rv','FWHM','ctrst'] 
-        # plot_settings['prop_ordin']=['ctrst'] 
+        # plot_settings['prop_ordin']=['rv','FWHM','ctrst']  
         # plot_settings['prop_ordin']=['rv']
-        # plot_settings['prop_ordin']=['ctrst']
-        # plot_settings['prop_ordin']=['FWHM']
+        plot_settings['prop_ordin']=['ctrst']
+        plot_settings['prop_ordin']=['FWHM']
         # plot_settings['prop_ordin']=['ctrst','FWHM']
         # plot_settings['prop_ordin']=['rv','rv_res']
         # plot_settings['prop_ordin']=['rv_l2c','FWHM_l2c','amp_l2c'] 
@@ -6791,6 +6792,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
             elif gen_dic['star_name']=='WASP166':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP166b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
             # elif gen_dic['star_name']=='HAT_P11':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HAT_P11b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
             elif gen_dic['star_name']=='WASP156':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP156b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
+            elif gen_dic['star_name']=='HD209458':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/Intr_prop/chi2/'
     
                     
             #General path to the best-fit model to profile series
@@ -6816,19 +6818,19 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
                 plot_settings[key_plot]['plot_ref']=True
     
                 #Plot data-equivalent model from property fit 
-                plot_settings[key_plot]['theo_obs_prop'] = True & False
+                plot_settings[key_plot]['theo_obs_prop'] = True  # & False
     
                 #Plot data-equivalent model from profile fit 
                 plot_settings[key_plot]['theo_obs_prof'] = False
     
                 #Plot high-resolution model from property fit
-                plot_settings[key_plot]['theo_HR_prop'] = True    & False
+                plot_settings[key_plot]['theo_HR_prop'] = True #   & False
     
                 #Plot high-resolution model from profile fit
-                plot_settings[key_plot]['theo_HR_prof'] = True    # &  False
+                plot_settings[key_plot]['theo_HR_prof'] = True     &  False
                 
                 #Plot high-resolution model from nominal values in ANTARESS_systems.py
-                plot_settings[key_plot]['theo_HR_nom'] = True  # &   False            
+                plot_settings[key_plot]['theo_HR_nom'] = True   &   False            
                 
                 #Overplot the different contributions
                 plot_settings[key_plot]['contrib_theo_HR_nom']=True       &   False
@@ -6923,6 +6925,14 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
             #RV residual plot (m/s)
             if (plot_prop=='rv_res' ):
 
+                #Plot residuals from high-resolution  model from property fit 
+                #    - overwrites the residuals calculated in the intrinsic profile analysis module using default system properties
+                plot_settings[key_plot]['theo_HR_prop'] = True #& False
+    
+                #Plot residuals from high-resolution model from profile fit 
+                #    - overwrites the residuals calculated in the intrinsic profile analysis module using default system properties
+                plot_settings[key_plot]['theo_HR_prof'] = False                
+
                 #Plot null reference
                 plot_settings[key_plot]['plot_ref']=True
             
@@ -6945,10 +6955,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
                 plot_settings[key_plot]['theo_obs_prof'] = False
     
                 #Plot high-resolution model from property fit
-                plot_settings[key_plot]['theo_HR_prop'] = True  & False
+                plot_settings[key_plot]['theo_HR_prop'] = True # & False
     
                 #Plot high-resolution model from profile fit
-                plot_settings[key_plot]['theo_HR_prof'] = True   #&  False
+                plot_settings[key_plot]['theo_HR_prof'] = True   &  False
     
                 #Bornes du plot
                 plot_settings[key_plot]['y_range']=None
@@ -6992,10 +7002,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
                 plot_settings[key_plot]['theo_obs_prof'] = False
     
                 #Plot high-resolution model from property fit
-                plot_settings[key_plot]['theo_HR_prop'] = True  & False
+                plot_settings[key_plot]['theo_HR_prop'] = True # & False
     
                 #Plot high-resolution model from profile fit
-                plot_settings[key_plot]['theo_HR_prof'] = True   #&  False
+                plot_settings[key_plot]['theo_HR_prof'] = True   &  False
 
                 #Bornes du plot  
                 if gen_dic['studied_pl']=='WASP_8b':
@@ -7774,7 +7784,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
 
         #-------------------------------------
         #Plot residuals between the atmospheric CCFs and their fit
-        if (plot_dic['CCFatm_res']!='') and ((gen_dic['fit_atm_all'])):
+        if (plot_dic['CCFatm_res']!='') and ((gen_dic['fit_AtmProf'])):
             key_plot='CCFatm_res'
 
             #Print dispersions of residuals in various ranges
@@ -7975,8 +7985,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic):
     '''
     Plotting chi2 values for the properties of the atmospheric profiles fitted in each exposure
     '''
-    if (plot_dic['chi2_fit_atm_prop']!=''):
-        key_plot = 'chi2_fit_atm_prop'  
+    if (plot_dic['chi2_fit_AtmProp']!=''):
+        key_plot = 'chi2_fit_AtmProp'  
         plot_settings[key_plot]={} 
         
         #Ranges

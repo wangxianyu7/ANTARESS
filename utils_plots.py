@@ -317,11 +317,22 @@ def scaled_title(sc_fact10,y_title):
         y_title='10$^{'+sc_sign+'%i' % abs(sc_fact10)+'}$ '+y_title
     return y_title                        
 
+'''
+Automatic range extension
+'''
+def autom_range_ext(ax_range_in,ax_min,ax_max,ext_fact=0.05):  
+    if ax_range_in is None:
+        ax_range = np.array([ax_min,ax_max])   
+        dx_range=ax_range[1]-ax_range[0]
+        ax_range[0]-=ext_fact*dx_range
+        ax_range[1]+=ext_fact*dx_range
+        dx_range=ax_range[1]-ax_range[0]
+    else:ax_range=ax_range_in
+    return ax_range
 
 '''
 Automatic tick definition
 '''
-
 def autom_x_tick_prop(dax_range):   
     if dax_range>1000.1:axmajor_int,axminor_int,axmajor_form=500.,100.,'%i' 
     elif dax_range>200.1:axmajor_int,axminor_int,axmajor_form=100.,10.,'%i'     

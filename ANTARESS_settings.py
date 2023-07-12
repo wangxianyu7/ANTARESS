@@ -1,8 +1,3 @@
-
-
-
-
-
 import numpy as np
 from utils import stop
 from constant_data import Rjup,Rearth,AU_1,Rsun,c_light
@@ -34,19 +29,19 @@ from ANTARESS_systems import all_system_params
 gen_dic={}
 plot_dic={}
 data_dic={
-    'DI':{'fit_prof':{}},
+    'DI':{'fit_prof':{},'mask':{}},
     'Res':{},
+    'PCA':{},
     'Intr':{'fit_prof':{}},
     'Atm':{'fit_prof':{}}}
 mock_dic={}
 theo_dic={}
 detrend_prof_dic={}
 glob_fit_dic={
-    'PropLoc':{},
+    'IntrProp':{},
     'ResProf':{},
     'IntrProf':{},
-    }
-
+    } 
 
 
 
@@ -523,12 +518,15 @@ mock_dic['sysvel']= {}
 
 #%%%%% Intrinsic stellar spectra
 #    - we detail here the options and settings used throughout the pipeline (in gen_dic['mock_data'], gen_dic['fit_DI'], gen_dic['fit_IntrProf'], and gen_dic['loc_data_corr']) to define intrinsic profiles
-#    - 'mode' = 'glob_mod': intrinsic profiles are calculated analytically from input properties 
+#    - 'mode' = 'ana': intrinsic profiles are calculated analytically from input properties 
 # + set line_trans = None for the analytical model to be generated in RV space (CCF mode), or set it to the rest wavelength of the considered transition in the star rest frame (spectral mode)
 # + models are calculated directly on the 'DI_table', which is defined in RV space even in spectral mode to facilitate line profile calculation
 #   the model table table can be oversampled using the theo_dic['rv_osamp_line_mod'] field 
 # + line properties can be specific to each instrument/visit
-# + line properties can vary as a polynomial along the chosen dimension 'coord_line' 
+# + line properties can vary as a polynomial along the chosen dimension 'coord_line'
+#   the role of the coefficients depends on the polynomial mode (absolute or polynomial) 
+#   'pol_mode' = 'abs' : coeff_pol[n]*x^n + coeff_pol[n-1]*x^(n-1) .. + coeff_pol[0]*x^0
+#   'pol_mode' = 'modu': (coeff_pol[n]*x^n + coeff_pol[n-1]*x^(n-1) .. + 1)*coeff_pol[0]
 # + lines properties can be derived from the fit to disk-integrated or intrinsic line profiles 
 # + line properties are defined through 'mod_prop', with the suffix "__IS__VS_" to keep the structure of the fit routine while defining properties visit per visit here   
 # + mactroturbulence is included if theo_dic['mac_mode'] is enabled               
@@ -661,7 +659,7 @@ if __name__ == '__main__':
     #Intrinsic stellar spectra     
     if gen_dic['star_name'] in ['V1298tau'] :
         mock_dic['intr_prof']={'HARPN':{
-            'mode':'glob_mod',        
+            'mode':'ana',        
             'coord_line':'r_proj',
             'func_prof_name': 'gauss',             
             'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,
@@ -677,7 +675,7 @@ if __name__ == '__main__':
             'pol_mode' : 'modu'}}   
     elif gen_dic['star_name'] == 'HD209458' : 
         mock_dic['intr_prof']={'ESPRESSO' :
-            {'mode':'glob_mod',        
+            {'mode':'ana',        
             'coord_line':'mu',
             'func_prof_name': 'gauss', 
             'line_trans':5889.95094,     #w(Na_air) = 5889.95094
@@ -1888,6 +1886,8 @@ if __name__ == '__main__':
 
     #Precision
     theo_dic['precision'] = 'high'
+    theo_dic['precision'] = 'medium'
+
 
     #Star discretization      
     if gen_dic['star_name']=='TOI-3362':theo_dic['nsub_Dstar']=201  
@@ -4941,6 +4941,7 @@ data_dic['DI']['conv_model']=False
 # + 'gauss': inverted gaussian, possibly skewed, absorbing polynomial continuum
 # + 'gauss_poly': inverted gaussian , absorbing flat continuum with 6th-order polynomial at line center
 # + 'dgauss': gaussian continuum added to inverted gaussian (very well suited to M dwarf CCFs),  absorbing polynomial continuum
+# + 'voigt': voigt profile, absorbing polynomial continuum
 # + 'custom': a model star (grid set through 'theo_dic') is tiled using intrinsic profiles set through 'mod_def'
 #    - it is possible to fix the value, for each instrument and visit, of given parameters of the fit model
 #      if a field is given in 'mod_prop', the corresponding field in the model will be fixed to the given value     
@@ -5052,7 +5053,7 @@ data_dic['DI']['conf_limits']={}
 #%%%% Plot settings
 
 #%%%%% 1D PDF from mcmc
-plot_dic['propCCF_DI_mcmc_PDFs']=''                 
+plot_dic['prop_DI_mcmc_PDFs']=''                 
     
 
 #%%%%% Individual disk-integrated profiles
@@ -5438,7 +5439,7 @@ if __name__ == '__main__':
         
         #Define intrinsic stellar profile
         #    - see gen_dic['mock_data'] for options and settings (comments given here are specific to this module)
-        #    - 'mode' = 'glob_mod' 
+        #    - 'mode' = 'ana' 
         # + analytical model properties can be fixed and/or fitted 
         # + mactroturbulence, if enabled, can be fitted for the corresponding properties 
         # + set 'conv_model' to True as the properties describe the unconvolved intrinsic line 
@@ -5451,7 +5452,7 @@ if __name__ == '__main__':
             # 'mode':'imp',
             # 'path':{inst:{vis:'XXX.dat'}},
     
-            'mode':'glob_mod',        
+            'mode':'ana',        
             'coord_line':'mu',
             'func_prof_name':'gauss',    
 
@@ -5465,7 +5466,7 @@ if __name__ == '__main__':
 
     elif gen_dic['star_name']=='V1298tau': 
         data_dic['DI']['mod_def']['HARPN']={
-            'mode':'glob_mod','coord_line':'mu','func_prof_name':'gauss'} 
+            'mode':'ana','coord_line':'mu','func_prof_name':'gauss'} 
         
     elif gen_dic['star_name']=='HD209458': 
         if gen_dic['trim_spec'] and gen_dic['fit_DIbinmultivis']:
@@ -5474,7 +5475,7 @@ if __name__ == '__main__':
             } 
         else:
             data_dic['DI']['mod_def']['ESPRESSO']={
-            'mode':'glob_mod','coord_line':'mu','func_prof_name':'gauss'} 
+            'mode':'ana','coord_line':'mu','func_prof_name':'gauss'} 
 
         
     elif gen_dic['star_name']=='55Cnc':
@@ -5482,7 +5483,7 @@ if __name__ == '__main__':
             if (inst in data_dic['DI']['model']) and (data_dic['DI']['model'][inst])=='custom':
 
                 #Fit DI with Intr model 
-                data_dic['DI']['mod_def'][inst]={'mode':'glob_mod','coord_line':'mu','pol_mode':'abs','func_prof_name':'gauss'} 
+                data_dic['DI']['mod_def'][inst]={'mode':'ana','coord_line':'mu','pol_mode':'abs','func_prof_name':'gauss'} 
                 data_dic['DI']['conv_model'] = True 
             
                 # #Fit DI with Intr profile
@@ -5497,7 +5498,7 @@ if __name__ == '__main__':
             if (inst in data_dic['DI']['model']) and (data_dic['DI']['model'][inst])=='custom':
           
                 #Fit DI with Intr model 
-                data_dic['DI']['mod_def'][inst]={'mode':'glob_mod','coord_line':'r_proj','pol_mode':'abs'}
+                data_dic['DI']['mod_def'][inst]={'mode':'ana','coord_line':'r_proj','pol_mode':'abs'}
                 if inst in ['HARPS','HARPN']:data_dic['DI']['mod_def'][inst]['func_prof_name'] = 'gauss' 
                 elif inst=='CARMENES_VIS':data_dic['DI']['mod_def'][inst]['func_prof_name'] = 'voigt'   
                 data_dic['DI']['conv_model'] = True 
@@ -6261,7 +6262,7 @@ if __name__ == '__main__':
     #Plot settings
     
     #1D PDF from mcmc
-    plot_dic['propCCF_DI_mcmc_PDFs']=''                 
+    plot_dic['prop_DI_mcmc_PDFs']=''                 
         
     #Individual disk-integrated profiles
     plot_dic['DI_prof']=''  #pdf   
@@ -6290,7 +6291,7 @@ if __name__ == '__main__':
     #         data_dic['DI']['fit_range']['HARPN']= { 'mock_vis' : [[-50, 50]]  }
     
 
-    #         data_dic['DI']['mod_def']['HARPN']={'mode':'glob_mod','coord_line':'mu','func_prof_name':'gauss'} 
+    #         data_dic['DI']['mod_def']['HARPN']={'mode':'ana','coord_line':'mu','func_prof_name':'gauss'} 
     #         data_dic['DI']['mod_prop']={}
     #         data_dic['DI']['mod_prop'].update({
     #                                         'rv':{'vary':True     ,'HARPN':{'mock_vis':{'guess':0,'bd':[-10.,10.]}}},
@@ -6945,7 +6946,7 @@ if __name__ == '__main__':
     # if gen_dic['star_name'] in ['V1298tau'] :
         
     #     corr_spot_dic['intr_prof']={
-    #         'mode':'glob_mod',        
+    #         'mode':'ana',        
     #         'coord_line':'mu',
     #         'func_prof_name': {'HARPN' : 'gauss'},             
     #         'mod_prop':{'ctrst_ord0__ISHARPN_VSmock_vis' : 0.7,
@@ -8037,75 +8038,213 @@ if __name__ == '__main__':
 #    - the mask is saved as a .txt file in air or vacuum (depending on the pipeline process) and as a .fits file in air to be read by ESPRESSO-like DRS
 ##################################################################################################
 
-    data_dic['DI']['mask'] = {}
+
+#%%%% Activating
+gen_dic['def_DImasks'] = False
+
+
+#%%%% Multi-threading
+data_dic['DI']['mask']['nthreads'] = 14 
+
+
+#%%%% Print status
+data_dic['DI']['mask']['verbose'] = False
+
+
+#%%%% Estimate of line width 
+#    - in km/s
+data_dic['DI']['mask']['fwhm_ccf'] = 5. 
+
+
+#%%%%% Vicinity window
+#    - in fraction of 'fwhm_ccf'
+#    - window for extrema localization in pixels of the regular grid = int(min(fwhm_ccf*w_reg/(vicinity_fwhm*c_light*dw_reg)))
+data_dic['DI']['mask']['vicinity_fwhm'] = {} 
+
+
+#%%%%% Requested line weights
+#    - possibilities:
+# + 'weight_rv_sym' (default): based on line profile gradient over symetrical window
+# + 'weight_rv': based on line profile gradient over assymetrical window
+data_dic['DI']['mask']['mask_weights'] = 'weight_rv_sym'  
+
+
+#%%%% Master spectrum
+
+#%%%%% Oversampling
+#    - binwidth of regular grid over which the master spectrum is resampled, in A
+#    - choose a fine enough sampling, as mask lines are set to the centers of resampled bins 
+#    - format: {inst:value}    
+data_dic['DI']['mask']['dw_reg'] = {}
+
+
+#%%%%% Smoothing window   
+#    - in pixels, used for spectrum and derivative 
+#    - format: {inst:value}
+data_dic['DI']['mask']['kernel_smooth']={}
+data_dic['DI']['mask']['kernel_smooth_deriv2']={}
+
+
+#%%%% Line selection: rejection ranges
+#    - lines within these ranges are excluded (check using plot_dic['DImask_spectra'] with step='cont')
+#    - defined in the star rest frame
+#    - format is {inst:[[w1,w2],[w3,w4],..]}
+data_dic['DI']['mask']['line_rej_range'] = {}
+
+ 
+#%%%% Line selection: depth and width   
+#    - check using plot_dic['DImask_spectra'] with step='sel1'
+
+#%%%%% Depth range
+#    - minimum/maximum line depths to be considered in the stellar mask (counted from the continuum, and from the local maxima)
+#    - use plot_dic['DImask_ld'] to adjust
+#    - between 0 and 1, per instrument
+data_dic['DI']['mask']['linedepth_cont_min'] = {}   
+data_dic['DI']['mask']['linedepth_min'] = {}  
+data_dic['DI']['mask']['linedepth_cont_max'] = {} 
+
+
+#%%%%% Minimum depth and width
+#    - selection criteria on minimum line depth and half-width (between minima and closest maxima) to be kept (value > 10^(crit)) 
+#    - use plot_dic['DImask_ld_lw'] to adjust
+data_dic['DI']['mask']['line_width_logmin'] = None
+data_dic['DI']['mask']['line_depth_logmin'] = None
+
+
+#%%%% Line selection: position
+#    - define RV window for line position fit (km/s)
+#    - set maximum RV deviation of fitted minimum from line minimum in resampled grid (m/s)
+#    - check using plot_dic['DImask_spectra'] with step='sel2'
+#      use plot_dic['DImask_RVdev_fit'] to adjust
+data_dic['DI']['mask']['win_core_fit'] = 1
+data_dic['DI']['mask']['abs_RVdev_fit_max'] = None
+
+
+#%%%% Line selection: tellurics
+
+#%%%%% Threshold on telluric line depth 
+#    - minimum depth above which to consider tellurics for exclusion
+data_dic['DI']['mask']['tell_depth_min'] = 0.001
+
+
+#%%%%% Thresholds on telluric/stellar lines depth ratio
+#    - telluric lines with ratio larger than minimum threshold are considered for exclusion
+#    - stellar lines with ratio larger than maximum threshold are excluded (the final threshold is applied after the VALD and morphological analysis)
+data_dic['DI']['mask']['tell_star_depthR_min'] = None
+
+
+#%%%% VALD cross-validation     
+
+#%%%%% Path to VALD linelist
+#    - set to None to prevent
+#    - see details in theo_dic['st_atm']
+data_dic['DI']['mask']['VALD_linelist'] = None
+
+
+#%%%%% Adjusting VALD line depth
+data_dic['DI']['mask']['VALD_depth_corr'] = True
+
+
+#%%%% Line selection: morphological 
+
+#%%%%% Symmetry
+#    - selection criteria on maximum ratio between normalized continuum difference and relative line depth, and normalized asymetry parameter, to be kept (value < crit) 
+data_dic['DI']['mask']['diff_cont_rel_max'] = None
+data_dic['DI']['mask']['asym_ddflux_max'] = None    
+
+
+#%%%%% Width and depth
+#    - selection criteria on minimum line depth (value > crit) and maximum line width (value < crit) to be kept
+data_dic['DI']['mask']['width_max'] = None 
+data_dic['DI']['mask']['diff_depth_min'] = None
+
     
-    #%%%% Activating
+#%%%% Line selection: RV dispersion 
+#    - set to True to activate 
+data_dic['DI']['mask']['RV_disp_sel'] = True
+
+
+#%%%%% Exposures selection
+#    - indexes of exposures from which RV are derived
+#    - indexes are relative to the global table in each visit, but only exposures used to build the master spectrum will be considered (used by default if left empty)
+data_dic['DI']['mask']['idx_RV_disp_sel']={}
+
+
+#%%%%% RV deviation
+#    - lines with absolute RVs beyond this value are excluded (in m/s)
+data_dic['DI']['mask']['absRV_max'] = {}
+
+
+#%%%%% Dispersion deviation
+#    - lines with RV dispersion/mean error over the exposure series beyond this value are excluded
+#    - beware not to use this criterion when there are too few exposures
+data_dic['DI']['mask']['RVdisp2err_max'] = {}
+
+
+#%%%% Plot settings 
+
+#%%%%% Mask at successive steps
+plot_dic['DImask_spectra'] = ''
+
+
+#%%%%% Depth range selection
+plot_dic['DImask_ld'] = ''
+
+
+#%%%%% Minimum depth and width selection
+plot_dic['DImask_ld_lw'] = ''
+
+
+#%%%%% Position selection
+plot_dic['DImask_RVdev_fit'] = ''
+
+
+#%%%%% Telluric selection
+plot_dic['DImask_tellcont'] = ''
+
+
+#%%%%% VALD selection
+plot_dic['DImask_vald_depthcorr'] = ''
+
+
+#%%%%% Morphological (asymmetry) selection
+plot_dic['DImask_morphasym'] = ''
+
+
+#%%%%% Morphological (shape) selection
+plot_dic['DImask_morphshape'] = ''
+
+
+#%%%%% RV dispersion selection
+plot_dic['DImask_RVdisp'] = ''
+
+
+
+
+
+if __name__ == '__main__':
+
+    #Activating
     gen_dic['def_DImasks'] = True  &  False
 
-    #%%%% Multi-threading
-    data_dic['DI']['mask']['nthreads'] = 14 
-
-    #%%%% Print status
+    #Print status
     data_dic['DI']['mask']['verbose'] = True
 
-    #%%%%% Estimate of line width 
-    #    - in km/s
-    data_dic['DI']['mask']['fwhm_ccf'] = 5. 
+    #Estimate of line width 
     if gen_dic['star_name']=='HD209458':
         data_dic['DI']['mask']['fwhm_ccf'] = 9.45 
     if gen_dic['star_name']=='WASP76':
         data_dic['DI']['mask']['fwhm_ccf'] = 9.71 
 
-
-    #%%%%% Vicinity window
-    #    - in fraction of 'fwhm_ccf'
-    #    - window for extrema localization in pixels of the regular grid = int(min(fwhm_ccf*w_reg/(vicinity_fwhm*c_light*dw_reg)))
-    data_dic['DI']['mask']['vicinity_fwhm'] = {}    
-
-        
-    #%%%%% Requested line weights
-    #    - possibilities:
-    # + 'weight_rv_sym' (default): based on line profile gradient over symetrical window
-    # + 'weight_rv': based on line profile gradient over assymetrical window
-    data_dic['DI']['mask']['mask_weights'] = 'weight_rv_sym'    
-    
-
-    #%%%% Master spectrum
-    
-    #%%%%% Oversampling
-    #    - binwidth of regular grid over which the master spectrum is resampled, in A
-    #    - choose a fine enough sampling, as mask lines are set to the centers of resampled bins 
-    #    - format: {inst:value}    
-    data_dic['DI']['mask']['dw_reg'] = {}
-
-    #%%%%% Smoothing window   
-    #    - in pixels, used for spectrum and derivative 
-    #    - format: {inst:value}
-    data_dic['DI']['mask']['kernel_smooth']={}
-    data_dic['DI']['mask']['kernel_smooth_deriv2']={}
-
-
-    #%%%% Line selection: rejection ranges
-    #    - lines within these ranges are excluded (check using plot_dic['DImask_spectra'] with step='cont')
-    #    - defined in the star rest frame
-    #    - format is {inst:[[w1,w2],[w3,w4],..]}
-    data_dic['DI']['mask']['line_rej_range'] = {}
+    #Line selection: rejection ranges
     if gen_dic['star_name']=='HD209458':
         data_dic['DI']['mask']['line_rej_range'] = {'ESPRESSO':[[6276.,6316.],[6930.,6957.],[7705.,7717.]]}        
     if gen_dic['star_name']=='WASP76':
         data_dic['DI']['mask']['line_rej_range'] = {'ESPRESSO':[[6930.,6950.],[7175.,7350.],[7705.,7717.]]}        #strict
         # data_dic['DI']['mask']['line_rej_range'] = {'ESPRESSO':[[6930.,6950.],[7705.,7717.]]}        #relaxed        
-     
-    #%%%% Line selection: depth and width   
-    #    - check using plot_dic['DImask_spectra'] with step='sel1'
+
     
-    #%%%%% Depth range
-    #    - minimum/maximum line depths to be considered in the stellar mask (counted from the continuum, and from the local maxima)
-    #    - use plot_dic['DImask_ld'] to adjust
-    #    - between 0 and 1, per instrument
-    data_dic['DI']['mask']['linedepth_cont_min'] = {}   
-    data_dic['DI']['mask']['linedepth_min'] = {}  
-    data_dic['DI']['mask']['linedepth_cont_max'] = {}     
+    #Depth range    
     if gen_dic['star_name']=='HD209458':
         #Strict criteria (default 0.1, strict: linedepth_cont_min = 0.1; linedepth_cont_max = 0.95; linedepth_min = 0.01) 
         data_dic['DI']['mask']['linedepth_cont_min'] = {'ESPRESSO':0.06}         
@@ -8118,11 +8257,7 @@ if __name__ == '__main__':
     #     data_dic['DI']['mask']['linedepth_cont_max'] = {'ESPRESSO':0.98}        
 
 
-    #%%%%% Minimum depth and width
-    #    - selection criteria on minimum line depth and half-width (between minima and closest maxima) to be kept (value > 10^(crit)) 
-    #    - use plot_dic['DImask_ld_lw'] to adjust
-    data_dic['DI']['mask']['line_width_logmin'] = None
-    data_dic['DI']['mask']['line_depth_logmin'] = None
+    #Minimum depth and width
     # if gen_dic['star_name']=='HD209458':
     #     #Relaxed criteria (default, strict: line_width_logmin = -1.3; line_depth_logmin = -1.4)
     #     data_dic['DI']['mask']['line_width_logmin'] = -1.7   
@@ -8133,13 +8268,8 @@ if __name__ == '__main__':
     #     data_dic['DI']['mask']['line_depth_logmin'] = -2.5  
         
 
-    #%%%% Line selection: position
-    #    - define RV window for line position fit (km/s)
-    #    - set maximum RV deviation of fitted minimum from line minimum in resampled grid (m/s)
-    #    - check using plot_dic['DImask_spectra'] with step='sel2'
-    #      use plot_dic['DImask_RVdev_fit'] to adjust
+    #Line selection: position
     data_dic['DI']['mask']['win_core_fit'] = 0.7    #yieds fewer outliers than the default 1
-    data_dic['DI']['mask']['abs_RVdev_fit_max'] = None
     if gen_dic['star_name']=='HD209458':
         #Strict criteria (default 1500)
         data_dic['DI']['mask']['abs_RVdev_fit_max'] = 225.        
@@ -8152,18 +8282,10 @@ if __name__ == '__main__':
         # data_dic['DI']['mask']['abs_RVdev_fit_max'] = 600   
 
 
-
-
-    #%%%% Line selection: tellurics
-
-    #%%%%% Threshold on telluric line depth 
-    #    - minimum depth above which to consider tellurics for exclusion
+    #Threshold on telluric line depth 
     data_dic['DI']['mask']['tell_depth_min'] = 0.001
 
-    #%%%%% Thresholds on telluric/stellar lines depth ratio
-    #    - telluric lines with ratio larger than minimum threshold are considered for exclusion
-    #    - stellar lines with ratio larger than maximum threshold are excluded (the final threshold is applied after the VALD and morphological analysis)
-    data_dic['DI']['mask']['tell_star_depthR_min'] = None
+    #Thresholds on telluric/stellar lines depth ratio
     if gen_dic['star_name']=='HD209458':
         #Strict criteria 
         data_dic['DI']['mask']['tell_star_depthR_max'] = 0.15
@@ -8179,27 +8301,16 @@ if __name__ == '__main__':
         # data_dic['DI']['mask']['tell_star_depthR_max'] = 0.3   
         # data_dic['DI']['mask']['tell_star_depthR_max_final'] = 0.1         
         
-        
-    
-    #%%%% VALD cross-validation     
 
-    #%%%%% Path to VALD linelist
-    #    - set to None to prevent
-    #    - see details in theo_dic['st_atm']
-    data_dic['DI']['mask']['VALD_linelist'] = None
+    #Path to VALD linelist
     if gen_dic['star_name']=='HD209458':data_dic['DI']['mask']['VALD_linelist'] = '/Users/bourrier/Travaux/Exoplanet_systems/HD/HD209458b/Star/VALD/VALD_HD209458'
     if gen_dic['star_name']=='WASP76':data_dic['DI']['mask']['VALD_linelist'] = '/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP76b/Star/VALD/VALD_WASP76'
 
-    #%%%%% Adjusting VALD line depth
+    #Adjusting VALD line depth
     data_dic['DI']['mask']['VALD_depth_corr'] = True
 
 
-    #%%%% Line selection: morphological 
-
-    #%%%%% Symmetry
-    #    - selection criteria on maximum ratio between normalized continuum difference and relative line depth, and normalized asymetry parameter, to be kept (value < crit) 
-    data_dic['DI']['mask']['diff_cont_rel_max'] = None
-    data_dic['DI']['mask']['asym_ddflux_max'] = None    
+    #Symmetry   
     if gen_dic['star_name']=='HD209458':
         #Strict criteria 
         data_dic['DI']['mask']['diff_cont_rel_max'] = 1.3   #selected to keep 80% of total weights
@@ -8217,10 +8328,7 @@ if __name__ == '__main__':
 
     
     
-    #%%%%% Width and depth
-    #    - selection criteria on minimum line depth (value > crit) and maximum line width (value < crit) to be kept
-    data_dic['DI']['mask']['width_max'] = None 
-    data_dic['DI']['mask']['diff_depth_min'] = None
+    #Width and depth
     if gen_dic['star_name']=='HD209458':
         #Strict
         data_dic['DI']['mask']['width_max'] = 12.0 
@@ -8236,20 +8344,14 @@ if __name__ == '__main__':
         # data_dic['DI']['mask']['width_max'] = 15.0 
         # data_dic['DI']['mask']['diff_depth_min'] = 0.05
 
-        
     
-    #%%%% Line selection: RV dispersion 
-    #    - set to True to activate 
+    #Line selection: RV dispersion 
     data_dic['DI']['mask']['RV_disp_sel'] = True
 
-    #%%%%% Exposures selection
-    #    - indexes of exposures from which RV are derived
-    #    - indexes are relative to the global table in each visit, but only exposures used to build the master spectrum will be considered (used by default if left empty)
+    #Exposures selection
     data_dic['DI']['mask']['idx_RV_disp_sel']={}
 
-    #%%%%% RV deviation
-    #    - lines with absolute RVs beyond this value are excluded (in m/s)
-    data_dic['DI']['mask']['absRV_max'] = {}
+    #RV deviation
     if gen_dic['star_name']=='HD209458':
         data_dic['DI']['mask']['absRV_max'] = {'ESPRESSO':3.}
         # #Relaxed criteria 
@@ -8261,10 +8363,7 @@ if __name__ == '__main__':
         # data_dic['DI']['mask']['absRV_max'] = {'ESPRESSO':20.}
 
 
-    #%%%%% Dispersion deviation
-    #    - lines with RV dispersion/mean error over the exposure series beyond this value are excluded
-    #    - beware not to use this criterion when there are too few exposures
-    data_dic['DI']['mask']['RVdisp2err_max'] = {}
+    #Dispersion deviation
     if gen_dic['star_name']=='HD209458':
         data_dic['DI']['mask']['RVdisp2err_max'] = {'ESPRESSO':1.5}
         # #Relaxed criteria 
@@ -8276,33 +8375,31 @@ if __name__ == '__main__':
         # data_dic['DI']['mask']['RVdisp2err_max'] = {'ESPRESSO':2.}
 
 
-    #%%%% Plot settings 
-    
-    #%%%%% Mask at successive steps
+    # Mask at successive steps
     plot_dic['DImask_spectra'] = ''
 
-    #%%%%% Depth range selection
+    # Depth range selection
     plot_dic['DImask_ld'] = ''
 
-    #%%%%% Minimum depth and width selection
+    # Minimum depth and width selection
     plot_dic['DImask_ld_lw'] = ''
 
-    #%%%%% Position selection
+    # Position selection
     plot_dic['DImask_RVdev_fit'] = ''
 
-    #%%%%% Telluric selection
+    # Telluric selection
     plot_dic['DImask_tellcont'] = ''
 
-    #%%%%% VALD selection
+    # VALD selection
     plot_dic['DImask_vald_depthcorr'] = ''
 
-    #%%%%% Morphological (asymmetry) selection
+    # Morphological (asymmetry) selection
     plot_dic['DImask_morphasym'] = ''
 
-    #%%%%% Morphological (shape) selection
+    # Morphological (shape) selection
     plot_dic['DImask_morphshape'] = ''
 
-    #%%%%% RV dispersion selection
+    # RV dispersion selection
     plot_dic['DImask_RVdisp'] = ''
 
 
@@ -8316,52 +8413,109 @@ if __name__ == '__main__':
 
 
 
-    ##################################################################################################
-    #%% Residual and intrinsic profiles
-    ##################################################################################################  
+##################################################################################################
+#%% Residual and intrinsic profiles
+##################################################################################################  
 
 
 
-    ##################################################################################################
-    #%%% Module: extracting residual profiles
-    #    - potentially affected by the planetary atmosphere
-    ##################################################################################################   
+##################################################################################################
+#%%% Module: extracting residual profiles
+#    - potentially affected by the planetary atmosphere
+##################################################################################################   
 
-    #%%%% Activating
+#%%%% Activating
+gen_dic['res_data'] = False
+
+
+#%%%% Calculating/retrieving 
+gen_dic['calc_res_data'] = True 
+
+
+#%%%% Multi-threading
+gen_dic['nthreads_res_data']= 14
+
+
+#%%%% In-transit restriction
+#    - limit the extraction of residual profiles to in-transit exposures
+#    - this is only relevant when a specific master is calculated for each exposure (ie, when requesting the extraction of local profiles from 
+# spectral data that are not defined on common bins), otherwise it does not cost time to extract local profiles from all exposures using a common master
+#    - this will prevent plotting and analyzing local residuals outside of the transit
+data_dic['Res']['extract_in'] = False
+
+
+#%%%% Master visits
+#    - visits to be included in the calculation of the master, for each instrument
+#    - leave empty for the master to be calculated with the exposures of the considered visit only
+#      otherwise this option can be used to boost the SNR of the master and/or smooth out variations in its shape
+#      in that case aligned, scaled disk-integrated profiles must have been first calculated for all chosen visits
+#    - which exposures contribute to the master in each visit is set through data_dic['Res']['idx_in_bin']
+#    - if multiple planets are transiting in binned visits, set the planet to be used as reference for the phase (ie, the dimension along which exposures are binned) via data_dic['DI']['pl_in_bin']={inst:XX} 
+data_dic['Res']['vis_in_bin']={}  
+
+
+#%%%% Master exposures
+#    - indexes of exposures that contribute to the master
+#    - set to out-of-transit exposures if left undefined
+data_dic['Res']['idx_in_bin']={}
+        
+
+#%%%% Continuum range
+#    - used to set errors on local CCFs from dispersion in their continuum, to set the continuum level or perform continuum correction of intrinsic CCFs
+#    - define [ [rv1,rv2] , [rv3,rv4] , [rv5,rv6] , ... ] 
+#    - rv are defined in the star rest frame
+#      the ranges are common to all local CCFs, ie that they must be large enough to cover the full range of RVs (with the width of the stellar
+# line) from the regions along the transit chord    
+#      the range does not need to be as large as defined for the raw CCFs, which can be broadened by rotation   
+data_dic['Res']['cont_range']={}
+
+
+#%%%% Error definition
+#    - force errors on CCFs to their continuum dispersion
+#    - if input data have no errors, error tables have already been set to C*sqrt(F) and propagated
+#      if activated, the present option will override these tables (whether the input data had error table or not originally)
+data_dic['Res']['disp_err']=False
+
+
+#%%%% Plot settings
+
+#%%%%% 2D maps of residual profiles
+#    - in stellar rest frame
+#    - can be used to check for spurious variations in all exposures: to do so, apply the local profile extraction after having aligned (and potentially corrected)
+# all profiles, but without transit scaling (if flux balance correction has been applied) or after having applied a light curve unity
+plot_dic['map_res_prof']=''   
+
+
+#%%%%% Individual residual profiles
+plot_dic['sp_loc']=''    
+plot_dic['CCFloc']=''      
+
+
+
+
+if __name__ == '__main__':
+
+    #Activating
     gen_dic['res_data'] = True    &  False
     if (gen_dic['star_name'] in ['WASP76','HD209458','55Cnc']) and (gen_dic['type']['ESPRESSO']=='spec2D'):gen_dic['res_data'] = True   #  &  False
     if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214']:gen_dic['res_data']=True
 
-    #%%%% Calculating/retrieving 
+    #Calculating/retrieving 
     gen_dic['calc_res_data'] = True   &  False
     if gen_dic['star_name'] in ['HD209458','WASP76']:gen_dic['calc_res_data']=True &False
 
 
-    #%%%% Multi-threading
+    #Multi-threading
     gen_dic['nthreads_res_data']= 2
 
-    #%%%% In-transit restriction
-    #    - limit the extraction of residual profiles to in-transit exposures
-    #    - this is only relevant when a specific master is calculated for each exposure (ie, when requesting the extraction of local profiles from 
-    # spectral data that are not defined on common bins), otherwise it does not cost time to extract local profiles from all exposures using a common master
-    #    - this will prevent plotting and analyzing local residuals outside of the transit
+    #In-transit restriction
     data_dic['Res']['extract_in']=True  &  False
     
-    #%%%% Master visits
-    #    - visits to be included in the calculation of the master, for each instrument
-    #    - leave empty for the master to be calculated with the exposures of the considered visit only
-    #      otherwise this option can be used to boost the SNR of the master and/or smooth out variations in its shape
-    #      in that case aligned, scaled disk-integrated profiles must have been first calculated for all chosen visits
-    #    - which exposures contribute to the master in each visit is set through data_dic['Res']['idx_in_bin']
-    #    - if multiple planets are transiting in binned visits, set the planet to be used as reference for the phase (ie, the dimension along which exposures are binned) via data_dic['DI']['pl_in_bin']={inst:XX} 
-    data_dic['Res']['vis_in_bin']={}  
+    #Master visits
     # if gen_dic['transit_pl']=='WASP76b':
     #     data_dic['Res']['vis_in_bin']={'ESPRESSO':['2018-09-03','2018-10-31']}  
 
-    #%%%% Master exposures
-    #    - indexes of exposures that contribute to the master
-    #    - set to out-of-transit exposures if left undefined
-    data_dic['Res']['idx_in_bin']={}
+    #Master exposures
     if gen_dic['star_name']=='HAT_P11':
         data_dic['Res']['idx_in_bin'] ={'CARMENES_VIS':{
             '20170807':list(np.arange(31,dtype=int)),
@@ -8375,17 +8529,8 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='HAT_P49':    
         data_dic['Res']['idx_in_bin']={'HARPN':{'20200730':list(np.arange(7,22))}} 
     
-    
-            
 
-    #%%%% Continuum range
-    #    - used to set errors on local CCFs from dispersion in their continuum, to set the continuum level or perform continuum correction of intrinsic CCFs
-    #    - define [ [rv1,rv2] , [rv3,rv4] , [rv5,rv6] , ... ] 
-    #    - rv are defined in the star rest frame
-    #      the ranges are common to all local CCFs, ie that they must be large enough to cover the full range of RVs (with the width of the stellar
-    # line) from the regions along the transit chord    
-    #      the range does not need to be as large as defined for the raw CCFs, which can be broadened by rotation   
-    data_dic['Res']['cont_range']={}
+    #Continuum range
     if 'GJ436_b' in gen_dic['transit_pl']:data_dic['Res']['cont_range']=[[-60.,-13.],[13.,60.]] 
     if gen_dic['star_name']=='55Cnc':
         data_dic['Res']['cont_range'] = {
@@ -8396,9 +8541,7 @@ if __name__ == '__main__':
          'SOPHIE':[[-200.,-20.],[20.,200.]],        #to match the pca analysis
          'EXPRES':[[-200.,-65.],[-42.,-37.],[20.,200.]]}        #to match the pca analysis
         
-        
-        
-        
+
     elif gen_dic['transit_pl']=='WASP121b':
         data_dic['Res']['cont_range']=[[-100.,-60.],[60.,100.]]     #Mask F
 #        data_dic['Res']['cont_range']=[[-300.,-60.],[60.,300.]]     #Mask F + atmo
@@ -8464,24 +8607,14 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='GJ1214':data_dic['Res']['cont_range']['NIRPS_HE']=[[-100.,-10.],[+10.,+100.]]   
     
 
-
-
-    #%%%% Error definition
-    #    - force errors on CCFs to their continuum dispersion
-    #    - if input data have no errors, error tables have already been set to C*sqrt(F) and propagated
-    #      if activated, the present option will override these tables (whether the input data had error table or not originally)
+    #Error definition
     data_dic['Res']['disp_err']=False
 
 
-    #%%%% Plot settings
-
-    #%%%%% 2D maps of residual profiles
-    #    - in stellar rest frame
-    #    - can be used to check for spurious variations in all exposures: to do so, apply the local profile extraction after having aligned (and potentially corrected)
-    # all profiles, but without transit scaling (if flux balance correction has been applied) or after having applied a light curve unity
+    #2D maps of residual profiles
     plot_dic['map_res_prof']=''   #png 
 
-    #%%%%% Individual residual profiles
+    #Individual residual profiles
     plot_dic['sp_loc']=''    #png
     plot_dic['CCFloc']=''   #pdf    
     
@@ -8502,33 +8635,56 @@ if __name__ == '__main__':
     
 
 
-    ##################################################################################################
-    #%%% Module: extracting intrinsic profiles
-    #    - derived from the local profiles (in-transit), reset to the same broadband flux level, with planetary contamination excluded 
-    ##################################################################################################    
+##################################################################################################
+#%%% Module: extracting intrinsic profiles
+#    - derived from the local profiles (in-transit), reset to the same broadband flux level, with planetary contamination excluded 
+##################################################################################################    
 
-    #%%%% Calculating
+#%%%% Calculating
+gen_dic['intr_data'] = False
+
+
+#%%%% Calculating/retrieving
+gen_dic['calc_intr_data'] = True  
+ 
+
+#%%%% Plot settings
+
+#%%%%% 2D maps of intrinsic stellar profiles
+#    - aligned or not
+plot_dic['map_Intr_prof']=''   
+
+
+#%%%%% Individual intrinsic stellar profiles
+#    - aligned or not
+plot_dic['sp_intr']=''  
+plot_dic['CCFintr']=''    
+
+
+#%%%%% Residuals from intrinsic stellar profiles
+#    - choose within the routine whether to plot fit to individual or to global profiles
+plot_dic['CCFintr_res']=''  
+
+
+if __name__ == '__main__':
+
+    #Calculating
     gen_dic['intr_data'] = True    &  False
     if (gen_dic['star_name'] in ['WASP76','HD209458']) and (gen_dic['type']['ESPRESSO']=='spec2D'):gen_dic['intr_data'] = True  #& False
     if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214']:gen_dic['intr_data']=True
     
-    #%%%% Calculating/retrieving
+    #Calculating/retrieving
     gen_dic['calc_intr_data'] = True  &  False  
 
-    #%%%% Plot settings
-
-    #%%%%% 2D maps of intrinsic stellar profiles
-    #    - aligned or not
+    #2D maps of intrinsic stellar profiles
     plot_dic['map_Intr_prof']=''   #'png 
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:plot_dic['map_Intr_prof']='png'
 
-    #%%%%% Individual intrinsic stellar profiles
-    #    - aligned or not
+    #Individual intrinsic stellar profiles
     plot_dic['sp_intr']=''  
     plot_dic['CCFintr']=''   #pdf  
 
-    #%%%%% Residuals from intrinsic stellar profiles
-    #    - choose within the routine whether to plot fit to individual or to global profiles
+    #Residuals from intrinsic stellar profiles
     plot_dic['CCFintr_res']=''  #pdf
     
 
@@ -8543,27 +8699,46 @@ if __name__ == '__main__':
 
 
 
-    ##################################################################################################
-    #%%% Module: CCF conversion for residual & intrinsic spectra 
-    #    - calculating CCFs from OT residual and intrinsic stellar spectra
-    #    - for analysis purpose, ie do not apply if atmospheric extraction is later requested
-    #    - every analysis afterwards will be performed on those CCFs
-    #    - ANTARESS will stop if intrinsic profiles are simultaneously required to extract atmospheric spectra 
-    ##################################################################################################   
+##################################################################################################
+#%%% Module: CCF conversion for residual & intrinsic spectra 
+#    - calculating CCFs from OT residual and intrinsic stellar spectra
+#    - for analysis purpose, ie do not apply if atmospheric extraction is later requested
+#    - every analysis afterwards will be performed on those CCFs
+#    - ANTARESS will stop if intrinsic profiles are simultaneously required to extract atmospheric spectra 
+##################################################################################################   
  
-    #%%%% Activating
+
+#%%%% Activating
+gen_dic['Intr_CCF'] = False
+
+ 
+#%%%% Calculating/retrieving 
+gen_dic['calc_Intr_CCF'] = True 
+
+
+#%%%% Error definition
+#    - force errors on out-of-transit residual and intrinsic CCFs to their continuum dispersion
+data_dic['Intr']['disp_err']=False
+
+
+#%%%% Continuum correction
+#    - the continuum of CCFs calculated from local spectra might show differences between exposures because of imprecisions on the flux balance correction
+#      this option correct for these deviations and update the flux scaling values accordingly
+data_dic['Intr']['cont_norm'] = False
+
+
+if __name__ == '__main__':    
+ 
+    #Activating
     gen_dic['Intr_CCF'] = True #  &  False
  
-    #%%%% Calculating/retrieving 
+    #Calculating/retrieving 
     gen_dic['calc_Intr_CCF'] = True   &  False
 
-    #%%%% Error definition
-    #    - force errors on out-of-transit residual and intrinsic CCFs to their continuum dispersion
+    #Error definition
     data_dic['Intr']['disp_err']=False
 
-    #%%%% Continuum correction
-    #    - the continuum of CCFs calculated from local spectra might show differences between exposures because of imprecisions on the flux balance correction
-    #      this option correct for these deviations and update the flux scaling values accordingly
+    #Continuum correction
     data_dic['Intr']['cont_norm'] = True   &   False
     if gen_dic['star_name']=='HD209458':
         data_dic['Intr']['cont_norm'] = True
@@ -8586,26 +8761,87 @@ if __name__ == '__main__':
 
 
 
-    ##################################################################################################
-    #%%% Module: PCA of out-of-transit residual profiles
-    #    - for now only coded for CCF data type
-    #    - use this module to derive PC and match their combination to residual and intrinsic profiles in the fit module
-    #      correction is then applied through the CCF correction module
-    #    - pca is applied to the pre-transit, post-transit, and out-of-transit data independently
-    #      the noise model is fitted using the out-PC
-    ##################################################################################################
-    data_dic['PCA']={}   
+##################################################################################################
+#%%% Module: PCA of out-of-transit residual profiles
+#    - for now only coded for CCF data type
+#    - use this module to derive PC and match their combination to residual and intrinsic profiles in the fit module
+#      correction is then applied through the CCF correction module
+#    - pca is applied to the pre-transit, post-transit, and out-of-transit data independently
+#      the noise model is fitted using the out-PC
+##################################################################################################
+
+
+#%%%% Activating
+gen_dic['pca_ana'] = False
+
+
+#%%%% Calculating/retrieving
+gen_dic['calc_pca_ana'] = True     
+
+
+#%%%% Visits to be processed
+#    - instruments are processed if set
+#    - set visit field to 'all' to process all visits
+data_dic['PCA']['vis_list']={}  
+
+
+#%%%% Exposures contributing to the PCA
+#    - global indexes
+#    - all out-of-transit exposures are used if undefined
+data_dic['PCA']['idx_pca']={}
+
+#%%%% Spectral range to determine PCs
+data_dic['PCA']['ana_range']={}
+  
+
+#%%%% Noise model
+
+#%%%%% Number of PC
+#    - use the fraction of variance explained and the BIC of the fits (to individual exposures, and in the RMR) to determine the number of PC to use in the noise model
+data_dic['PCA']['n_pc']={}
+
     
-    #%%%% Activating
+#%%%%% Fitted exposures
+#    - global indexes
+#    - all exposures are fitted if left undefined
+data_dic['PCA']['idx_corr']={}
+
+
+#%%%%% Fitted spectral range
+#    - here the band is common as we want to fit the PC to the noise within the doppler track, in the in-transit profiles
+#    - leave undefined for fit_range to be set to 'ana_range'
+data_dic['PCA']['fit_range'] = {}
+
+
+#%%%% Corrected data
+
+#%%%%% Bootstrap analysis
+#    - number of bootstrap iterations for FFT analysis of corrected data
+data_dic['PCA']['nboot'] = 500
+
+
+#%%%%% Residuals histograms
+#    - number of bins to compute residual histograms of corrected data
+data_dic['PCA']['nbins'] = 50
+
+
+#%%%% Plots: PCA results
+plot_dic['pca_ana'] = ''
+
+
+
+
+if __name__ == '__main__':
+
+
+    
+    #Activating
     gen_dic['pca_ana'] = True  &  False
     
-    #%%%% Calculating/retrieving
+    #Calculating/retrieving
     gen_dic['calc_pca_ana'] = True # &  False      
     
-    #%%%% Visits to be processed
-    #    - instruments are processed if set
-    #    - set visit field to 'all' to process all visits
-    data_dic['PCA']['vis_list']={}  
+    #Visits to be processed
     if gen_dic['star_name']=='55Cnc':
         data_dic['PCA']['vis_list']={
             'ESPRESSO':'all',
@@ -8614,9 +8850,7 @@ if __name__ == '__main__':
             'EXPRES':'all',
             }  
 
-    #%%%% Exposures contributing to the PCA
-    #    - global indexes
-    #    - all out-of-transit exposures are used if undefined
+    #Exposures contributing to the PCA
     data_dic['PCA']['idx_pca']={}
     
     #Define spectral range over which PC are determined 
@@ -8629,10 +8863,7 @@ if __name__ == '__main__':
         }    
             
 
-    #%%%% Noise model
-
-    #%%%%% Number of PC
-    #    - use the fraction of variance explained and the BIC of the fits (to individual exposures, and in the RMR) to determine the number of PC to use in the noise model
+    #Number of PC
     n_PC = 10
     data_dic['PCA']['n_pc'] = {
         'ESPRESSO':{'20200205':6,'20210121':6,'20210124':6},
@@ -8641,31 +8872,23 @@ if __name__ == '__main__':
         'EXPRES':{'20220131':n_PC,'20220406':n_PC}, 
         }
         
-    #%%%%% Fitted exposures
-    #    - global indexes
-    #    - all exposures are fitted if left undefined
+    #Fitted exposures
     data_dic['PCA']['idx_corr']={}
 
-    #%%%%% Fitted spectral range
-    #    - here the band is common as we want to fit the PC to the noise within the doppler track, in the in-transit profiles
-    #    - leave undefined for fit_range to be set to 'ana_range'
+    #Fitted spectral range
     data_dic['PCA']['fit_range'] = {
           # 'EXPRES':{'20220131':[[-200.,-37.],[-22.,-8.],[8.,200.]]}, 
           # 'EXPRES':{'20220131':[[-200.,-8.],[8.,200.]]}, 
         }
 
-    #%%%% Corrected data
-    
-    #%%%%% Bootstrap analysis
-    #    - number of bootstrap iterations for FFT analysis of corrected data
+    #Bootstrap analysis
     data_dic['PCA']['nboot'] = 500
 
-    #%%%%% Residuals histograms
-    #    - number of bins to compute residual histograms of corrected data
+    #Residuals histograms
     data_dic['PCA']['nbins'] = 50
 
 
-    #%%%% Plots: PCA results
+    #Plots: PCA results
     plot_dic['pca_ana'] = ''
 
 
@@ -9276,7 +9499,7 @@ if __name__ == '__main__':
 
     #%%%%% Transition wavelength
     #    - in the star rest frame
-    #    - used to center the line model
+    #    - used to center the line analytical model
     #    - only relevant in spectral mode
     #    - do not use if the spectral fit is performed on more than a single line
     data_dic['Intr']['line_trans']=None
@@ -9994,11 +10217,11 @@ if __name__ == '__main__':
     #%%%% Plot settings
     
     #%%%%% 1D PDF from mcmc
-    plot_dic['propCCFloc_mcmc_PDFs']=''     
+    plot_dic['prop_Intr_mcmc_PDFs']=''     
 
     #%%%%% Derived properties
     #    - from original or binned data
-    plot_dic['prop_loc']='png'  
+    plot_dic['prop_Intr']=''  
 
 
 
@@ -10065,23 +10288,20 @@ if __name__ == '__main__':
     ##################################################################################################       
     
     #%%%% Activating 
-    gen_dic['fit_loc_prop'] = True  # &  False
+    gen_dic['fit_IntrProp'] = True   &  False
 
     #%%%% Multi-threading
-    glob_fit_dic['PropLoc']['nthreads'] = 14 
+    glob_fit_dic['IntrProp']['nthreads'] = 14 
 
 
     #%%%% Fitted data
 
-    #%%%%% Original / binned
-    #    - fit properties derived from original ('orig') or binned ('bin') intrinsic profiles
-    #    - the second possibility is only available if profiles were binned over phase
-    #      it can be justified when surface RVs cannot be derived from unbinned profiles
-    glob_fit_dic['PropLoc']['data']='orig'
-
     #%%%%% Exposures to be fitted
     #    - indexes are relative to in-transit tables
-    #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to []), set their value to 'all' for all in-transit exposures to be fitted
+    #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to [], which is the default value), set their value to 'all' for all in-transit exposures to be fitted
+    #    - add '_bin' at the end of a visit name for its binned exposures to be fitted instead of the original ones (must have been calculated with the binning module); it can be justified when surface RVs cannot be derived from unbinned profiles
+    #      all other mentions of the visit (eg in parameter names) can still refer to the original visit name
+    glob_fit_dic['IntrProp']['idx_in_fit'] = {}
     # if gen_dic['star_name']=='HD3167':
 
     #     if list(gen_dic['transit_pl'].keys())==['HD3167_c']:
@@ -10105,34 +10325,34 @@ if __name__ == '__main__':
             
         # #     #Pour faire le fit avec toujours la même série de points
         # #     cond_fit_dic['ESPRESSO'][vis] &= ((data_load[inst][vis]['cen_ph']> -0.017)   &  (data_load[inst][vis]['cen_ph']< 0.017 ) )
-        glob_fit_dic['PropLoc']['idx_in_fit']={'ESPRESSO':{'20190720':range(2,46),'20190911':range(2,46)}}
+        glob_fit_dic['IntrProp']['idx_in_fit']={'ESPRESSO':{'20190720':range(2,46),'20190911':range(2,46)}}
 
 
 
     if gen_dic['star_name']=='GJ436':
-        glob_fit_dic['PropLoc']['idx_in_fit']={
+        glob_fit_dic['IntrProp']['idx_in_fit']={
             # 'ESPRESSO':{'20190228':range(1,9),'20190429':range(1,9)},
             'HARPS':{'20070509':range(3,9)},
             'HARPN':{'20160318':range(1,8),'20160411':range(1,8)}
             }
     if gen_dic['star_name']=='MASCARA1':
-        glob_fit_dic['PropLoc']['idx_in_fit']={'ESPRESSO':{'20190714':range(3,69),'20190811':range(2,68)}}
+        glob_fit_dic['IntrProp']['idx_in_fit']={'ESPRESSO':{'20190714':range(3,69),'20190811':range(2,68)}}
     #RM survey
-    if gen_dic['star_name']=='HAT_P3':glob_fit_dic['PropLoc']['idx_in_fit']={'HARPN':{'20200130':range(1,8)}}
-    elif gen_dic['star_name']=='HAT_P33':glob_fit_dic['PropLoc']['idx_in_fit']={'HARPN':{'20191204':range(1,33)}}
-    elif gen_dic['star_name']=='WASP107':glob_fit_dic['PropLoc']['idx_in_fit']={'CARMENES_VIS':{'20180224':range(1,9)},'HARPS':{'20140406':range(1,11),'20180201':range(1,12),'20180313':range(1,12)}}
-    elif gen_dic['star_name']=='WASP166':glob_fit_dic['PropLoc']['idx_in_fit']={'HARPS':{'20170114':range(1,39),'20170304':range(1,37),'20170315':range(1,33)}}
-    elif gen_dic['star_name']=='HAT_P11':glob_fit_dic['PropLoc']['idx_in_fit']={'HARPN':{'20150913':range(2,26),'20151101':range(2,25)},'CARMENES_VIS':{'20170807':range(1,17),'20170812':range(2,18)}}
-    elif gen_dic['star_name']=='WASP156':glob_fit_dic['PropLoc']['idx_in_fit']={'CARMENES_VIS':{'20190928':range(1,7),'20191025':range(1,6)}}
+    if gen_dic['star_name']=='HAT_P3':glob_fit_dic['IntrProp']['idx_in_fit']={'HARPN':{'20200130':range(1,8)}}
+    elif gen_dic['star_name']=='HAT_P33':glob_fit_dic['IntrProp']['idx_in_fit']={'HARPN':{'20191204':range(1,33)}}
+    elif gen_dic['star_name']=='WASP107':glob_fit_dic['IntrProp']['idx_in_fit']={'CARMENES_VIS':{'20180224':range(1,9)},'HARPS':{'20140406':range(1,11),'20180201':range(1,12),'20180313':range(1,12)}}
+    elif gen_dic['star_name']=='WASP166':glob_fit_dic['IntrProp']['idx_in_fit']={'HARPS':{'20170114':range(1,39),'20170304':range(1,37),'20170315':range(1,33)}}
+    elif gen_dic['star_name']=='HAT_P11':glob_fit_dic['IntrProp']['idx_in_fit']={'HARPN':{'20150913':range(2,26),'20151101':range(2,25)},'CARMENES_VIS':{'20170807':range(1,17),'20170812':range(2,18)}}
+    elif gen_dic['star_name']=='WASP156':glob_fit_dic['IntrProp']['idx_in_fit']={'CARMENES_VIS':{'20190928':range(1,7),'20191025':range(1,6)}}
 
 
 
 
     #%%%% Fitted property
-    #    - adapt glob_fit_dic['PropLoc']['mod_prop'] to the chosen property
+    #    - adapt glob_fit_dic['IntrProp']['mod_prop'] to the chosen property
     # + 'rv': fitted using surface RV model
     # + 'ctrst', 'FWHM': fitted using polynomial models
-    glob_fit_dic['PropLoc']['prop'] = 'rv'
+    glob_fit_dic['IntrProp']['prop'] = 'FWHM'
 
 
     #%%%% Line property fit
@@ -10144,14 +10364,14 @@ if __name__ == '__main__':
     # +'r_proj': distance from star center projected in the sky plane      
     # +'abs_y_st' : sky-projected distance parallel to spin axis, absolute value   
     # +'y_st2' : sky-projected distance parallel to spin axis, squared
-    glob_fit_dic['PropLoc']['dim_fit']='mu'
-    if gen_dic['star_name']=='MASCARA1':glob_fit_dic['PropLoc']['dim_fit']='phase'  
-    if gen_dic['star_name']=='HD209458':glob_fit_dic['PropLoc']['dim_fit']='r_proj'  
+    glob_fit_dic['IntrProp']['dim_fit']='mu'
+    if gen_dic['star_name']=='MASCARA1':glob_fit_dic['IntrProp']['dim_fit']='phase'  
+    if gen_dic['star_name']=='HD209458':glob_fit_dic['IntrProp']['dim_fit']='r_proj'  
 
     #%%%%% Variation
     #    - fit line property as absolute ('abs') or modulated ('modu') polynomial
-    glob_fit_dic['PropLoc']['pol_mode']='abs'  
-    if gen_dic['star_name'] in ['WASP107','HAT_P11','HD209458']:glob_fit_dic['PropLoc']['pol_mode']='modu'    
+    glob_fit_dic['IntrProp']['pol_mode']='abs'  
+    if gen_dic['star_name'] in ['WASP107','HAT_P11','HD209458']:glob_fit_dic['IntrProp']['pol_mode']='modu'    
     
 
     
@@ -10165,7 +10385,11 @@ if __name__ == '__main__':
     
 
     #%%%%% Fixed/variable properties
-    glob_fit_dic['PropLoc']['mod_prop']={}
+    #    - structure is different from data_dic['DI']['mod_prop'], where properties are fitted independently for each instrument and visit
+    #    - here the names of properties must be defined as 'prop__ISinst_VSvis'  
+    # + 'inst' is the name of the instrument, which should be set to '_' for the property to be common to all instruments and their visits
+    # + 'vis' is the name of the visit, which should be set to '_' for the property to be common to all visits of this instrument   
+    glob_fit_dic['IntrProp']['mod_prop']={}
     
 
 #     if gen_dic['main_pl']=='WASP_8b':        
@@ -10343,34 +10567,33 @@ if __name__ == '__main__':
         #                 ('cos_istar',np.cos(90.*np.pi/180.), True & False, -1. , 1., None),  
         #                 # ('cos_istar',np.cos(90.*np.pi/180.), True , -1. , 1., None),   
 
-        # if fit_dic['fit_mod']=='mcmc':
-        #     fixed_args['varpar_priors'].update({
-        #         'veq':{'mod':'uf','low':0.,'high':1e4}, 
-        #         'cos_istar':{'mod':'uf','low':-1.,'high':1.},
-        #         # 'alpha_rot':{'mod':'uf','low':-1.,'high':1.}, 
-        #         'alpha_rot':{'mod':'uf','low':-1.,'high':0.}, 
-        #         'lambda_rad__'+pl_loc:{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
-        #           }) 
-
-        #     fit_dic['uf_bd'].update({
-        #         'veq':[4.,5.],
-        #         # 'cos_istar':[-0.9,0.9],
-        #         # 'alpha_rot':[-0.9,0.9],
-        #         'cos_istar':[-0.7,-0.25],
-        #         'alpha_rot':[-0.5,-0.1],
-        #         'lambda_rad__'+pl_loc:[0.,0.02]
-        #           })
-
-        if glob_fit_dic['PropLoc']['prop'] == 'rv':glob_fit_dic['PropLoc']['mod_prop']={
-                        'veq':{'vary':True,'guess':0.2,'bd':[0.1,0.4]},
-                        'lambda_rad__HD209458b':{'vary':True,'guess':100.*np.pi/180.,'bd':[-90.*np.pi/180.,90.*np.pi/180.]}}           
-        # if glob_fit_dic['PropLoc']['prop'] == 'ctrst':glob_fit_dic['PropLoc']['mod_prop']={
-        #                 'ctrst_ord0__ISHARPN_VS20200128':{'vary':True ,'guess':0.47629,'bd':[0.1,0.6]},
-        #                 'ctrst_ord0__ISHARPN_VS20201207':{'vary':True ,'guess':0.39768,'bd':[0.1,0.6]}}
-        # if glob_fit_dic['PropLoc']['prop'] == 'FWHM':glob_fit_dic['PropLoc']['mod_prop']={
-        #                 'FWHM_ord0__ISHARPN_VS20200128':{'vary':True ,'guess':0.47629,'bd':[0.1,0.6]},
-        #                 'FWHM_ord0__ISHARPN_VS20201207':{'vary':True ,'guess':0.39768,'bd':[0.1,0.6]}}
-
+        if glob_fit_dic['IntrProp']['prop'] == 'rv':
+            glob_fit_dic['IntrProp']['mod_prop']={
+                        'veq':{'vary':True,'guess':4.,'bd':[3.,5.]},
+                        'lambda_rad__plHD209458b':{'vary':True,'guess':0.*np.pi/180.,'bd':[-5.*np.pi/180.,5.*np.pi/180.]},
+                        # 'c1_CB':{'vary':True,'guess':0.,'bd':[-1.,1.]}, 
+                        # 'c2_CB':{'vary':True,'guess':0.,'bd':[-1.,1.]}, 
+                        'alpha_rot':{'vary':True,'guess':0.,'bd':[0. , 1.]},  
+                        'cos_istar':{'vary':True,'guess':np.cos(90.*np.pi/180.),'bd':[ -1. , 1.]},
+                        }           
+        if glob_fit_dic['IntrProp']['prop'] == 'ctrst':
+            glob_fit_dic['IntrProp']['mod_prop']={
+                        'ctrst_ord0__ISESPRESSO_VS20190720':{'vary':True ,'guess':0.48,'bd':[0.1,0.6]},
+                        'ctrst_ord0__ISESPRESSO_VS20190911':{'vary':True ,'guess':0.4,'bd':[0.1,0.6]},
+                        # 'ctrst_ord1__ISESPRESSO_VS20190720':{'vary':True ,'guess':0.,'bd':[0.1,0.6]},
+                        # 'ctrst_ord1__ISESPRESSO_VS20190911':{'vary':True ,'guess':0.,'bd':[0.1,0.6]}
+                        'ctrst_ord1__ISESPRESSO_VS_':{'vary':True ,'guess':0.,'bd':[0.1,0.6]}
+                        }
+        if glob_fit_dic['IntrProp']['prop'] == 'FWHM':
+            glob_fit_dic['IntrProp']['mod_prop']={
+                        'FWHM_ord0__ISESPRESSO_VS20190720':{'vary':True ,'guess':8.,'bd':[7.,9.]},
+                        'FWHM_ord0__ISESPRESSO_VS20190911':{'vary':True ,'guess':8.,'bd':[7.,9.]},
+                        # 'FWHM_ord1__ISESPRESSO_VS20190720':{'vary':True ,'guess':0.,'bd':[0.1,0.2]},
+                        # 'FWHM_ord1__ISESPRESSO_VS20190911':{'vary':True ,'guess':0.,'bd':[0.1,0.2]}
+                        'FWHM_ord1__ISESPRESSO_VS_':{'vary':True ,'guess':0.,'bd':[0.1,0.2]},
+                        'FWHM_ord2__ISESPRESSO_VS_':{'vary':True ,'guess':0.,'bd':[0.1,0.2]}
+                        }            
+            
 
 #     elif gen_dic['main_pl']=='Corot7b':    
     
@@ -10510,7 +10733,7 @@ if __name__ == '__main__':
 #                  })         
     
     if gen_dic['star_name']=='GJ436':
-        glob_fit_dic['PropLoc']['mod_prop']={'veq':{'vary':True,'guess':100.,'bd':[0.1,0.4]},
+        glob_fit_dic['IntrProp']['mod_prop']={'veq':{'vary':True,'guess':100.,'bd':[0.1,0.4]},
                                      'lambda_rad__GJ436_b':{'vary':True,'guess':100.*np.pi/180.,'bd':[70.*np.pi/180.,140.*np.pi/180.]},   
                                      'alpha_rot':{'vary':True & False,'guess':0.,'bd':[0.,1.]},           
                                      'cos_istar':{'vary':True & False,'guess':0.,'bd':[-1.,1.]},   
@@ -10520,12 +10743,12 @@ if __name__ == '__main__':
                                      }
 
     if gen_dic['star_name']=='MASCARA1':
-        if glob_fit_dic['PropLoc']['prop'] == 'rv':        
-            glob_fit_dic['PropLoc']['mod_prop']={'veq':{'vary':True,'guess':0.2,'bd':[0.1,0.4]},
+        if glob_fit_dic['IntrProp']['prop'] == 'rv':        
+            glob_fit_dic['IntrProp']['mod_prop']={'veq':{'vary':True,'guess':0.2,'bd':[0.1,0.4]},
                                          'lambda_rad__MASCARA1b':{'vary':True,'guess':100.*np.pi/180.,'bd':[70.*np.pi/180.,140.*np.pi/180.]}}           
 
-        if glob_fit_dic['PropLoc']['prop'] == 'ctrst':
-            glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'ctrst':
+            glob_fit_dic['IntrProp']['mod_prop']={
                         'ctrst_ord0__ISESPRESSO_VS20190714':{'vary':True ,'guess':0.47629,'bd':[0.1,0.6]},
                         'ctrst_ord1__ISESPRESSO_VS20190714':{'vary':True ,'guess':0.,'bd':[-1.,1.]},
                         'ctrst_ord2__ISESPRESSO_VS20190714':{'vary':True ,'guess':0.,'bd':[-1.,1.]},
@@ -10537,8 +10760,8 @@ if __name__ == '__main__':
                         'ctrst_ord3__ISESPRESSO_VS20190811':{'vary':True ,'guess':0.,'bd':[-1.,1.]},
                         'ctrst_ord4__ISESPRESSO_VS20190811':{'vary':True ,'guess':0.,'bd':[-1.,1.]}
                             }
-        if glob_fit_dic['PropLoc']['prop'] == 'FWHM':
-            glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'FWHM':
+            glob_fit_dic['IntrProp']['mod_prop']={
                         'FWHM_ord0__ISESPRESSO_VS20190714':{'vary':True ,'guess':20.,'bd':[0.1,0.6]},
                         'FWHM_ord1__ISESPRESSO_VS20190714':{'vary':True ,'guess':0.,'bd':[-1.,1.]},
                         'FWHM_ord2__ISESPRESSO_VS20190714':{'vary':True ,'guess':0.,'bd':[-1.,1.]},
@@ -10552,28 +10775,28 @@ if __name__ == '__main__':
                             }
 
     elif gen_dic['star_name']=='V1298tau':
-        if glob_fit_dic['PropLoc']['prop'] == 'rv':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'rv':glob_fit_dic['IntrProp']['mod_prop']={
                         'veq':{'vary':True,'guess':0.2,'bd':[0.1,0.4]},
                         'lambda_rad__V1298tau_b':{'vary':True,'guess':100.*np.pi/180.,'bd':[70.*np.pi/180.,140.*np.pi/180.]}}           
-        if glob_fit_dic['PropLoc']['prop'] == 'ctrst':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'ctrst':glob_fit_dic['IntrProp']['mod_prop']={
                         'ctrst_ord0__ISHARPN_VS20200128':{'vary':True ,'guess':0.47629,'bd':[0.1,0.6]},
                         'ctrst_ord0__ISHARPN_VS20201207':{'vary':True ,'guess':0.39768,'bd':[0.1,0.6]}}
-        if glob_fit_dic['PropLoc']['prop'] == 'FWHM':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'FWHM':glob_fit_dic['IntrProp']['mod_prop']={
                         'FWHM_ord0__ISHARPN_VS20200128':{'vary':True ,'guess':0.47629,'bd':[0.1,0.6]},
                         'FWHM_ord0__ISHARPN_VS20201207':{'vary':True ,'guess':0.39768,'bd':[0.1,0.6]}}
 
     #RM survey
     elif gen_dic['star_name']=='HAT_P3':
-        if glob_fit_dic['PropLoc']['prop'] == 'rv':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'rv':glob_fit_dic['IntrProp']['mod_prop']={
                         'veq':{'vary':True,'guess':0.2,'bd':[0.1,0.4],'physical':True},
                         'lambda_rad__plHAT_P3b':{'vary':True,'guess':90.*np.pi/180.,'bd':[-180.*np.pi/180.,180.*np.pi/180.],'physical':True}}           
-        if glob_fit_dic['PropLoc']['prop'] == 'ctrst':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'ctrst':glob_fit_dic['IntrProp']['mod_prop']={
                         'ctrst_ord0__ISHARPN_VS20200130':{'vary':True ,'guess':0.39768,'bd':[0.1,0.6]},
                         'ctrst_ord1__ISHARPN_VS20200130':{'vary':True ,'guess':0.,'bd':[-1.,1.]},    
                         'ctrst_ord2__ISHARPN_VS20200130':{'vary':True ,'guess':0.,'bd':[-1.,1.]},      #best
                         # 'ctrst_ord3__ISHARPN_VS20200130':{'vary':True ,'guess':0.,'bd':[-1.,1.]},                      
                         }
-        if glob_fit_dic['PropLoc']['prop'] == 'FWHM':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'FWHM':glob_fit_dic['IntrProp']['mod_prop']={
                         'FWHM_ord0__ISHARPN_VS20200130':{'vary':True ,'guess':7.,'bd':[0.,10.]},
                         'FWHM_ord1__ISHARPN_VS20200130':{'vary':True ,'guess':0.,'bd':[-1.,1.]}, 
                         'FWHM_ord2__ISHARPN_VS20200130':{'vary':True ,'guess':0.,'bd':[-1.,1.]}, 
@@ -10581,31 +10804,31 @@ if __name__ == '__main__':
                         }
         
     elif gen_dic['star_name']=='HAT_P33':
-        if glob_fit_dic['PropLoc']['prop'] == 'rv':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'rv':glob_fit_dic['IntrProp']['mod_prop']={
                         'veq':{'vary':True,'guess':16.,'bd':[0.1,0.4],'physical':True},
                         'lambda_rad__plHAT_P33b':{'vary':True,'guess':0.*np.pi/180.,'bd':[-180.*np.pi/180.,180.*np.pi/180.],'physical':True}}          
         
-        if glob_fit_dic['PropLoc']['prop'] == 'ctrst':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'ctrst':glob_fit_dic['IntrProp']['mod_prop']={
                         'ctrst_ord0__ISHARPN_VS20191204':{'vary':True ,'guess':0.39768,'bd':[0.1,0.6]}, 
                         'ctrst_ord1__ISHARPN_VS20191204':{'vary':True ,'guess':0.,'bd':[-1.,1.]},   
                         'ctrst_ord2__ISHARPN_VS20191204':{'vary':True ,'guess':0.,'bd':[-1.,1.]},   
                         # 'ctrst_ord3__ISHARPN_VS20191204':{'vary':True ,'guess':0.,'bd':[-1.,1.]},                 
                         }
     
-        if glob_fit_dic['PropLoc']['prop'] == 'FWHM':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'FWHM':glob_fit_dic['IntrProp']['mod_prop']={
                         'FWHM_ord0__ISHARPN_VS20191204':{'vary':True ,'guess':7.,'bd':[0.,10.]}, 
                         'FWHM_ord1__ISHARPN_VS20191204':{'vary':True ,'guess':0.,'bd':[-1.,1.]},  
                         # 'FWHM_ord2__ISHARPN_VS20191204':{'vary':True ,'guess':0.,'bd':[-1.,1.]},                 
                         }    
 
     elif gen_dic['star_name']=='WASP107':
-        if glob_fit_dic['PropLoc']['prop'] == 'rv':glob_fit_dic['PropLoc']['mod_prop']={       
+        if glob_fit_dic['IntrProp']['prop'] == 'rv':glob_fit_dic['IntrProp']['mod_prop']={       
                         'veq':{'vary':True ,'guess':4.9381378895e-01,'bd':[0.1,10.],'physical':True},
                         'lambda_rad__plWASP107b':{'vary':True ,'guess':-1.5864e+02*np.pi/180.,'bd':[-180.*np.pi/180.,180.*np.pi/180.],'physical':True},
                         # 'c1_CB':{'vary':True,'guess':0.1,'bd':[-1.,1.],'physical':True},
                         }   
 
-        if glob_fit_dic['PropLoc']['prop'] == 'ctrst':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'ctrst':glob_fit_dic['IntrProp']['mod_prop']={
                         # #Independent C for each dataset
                         # 'ctrst_ord0__ISCARMENES_VIS_VS20180224':{'vary':True ,'guess':0.5,'bd':[0.1,0.6]},
                         # # 'ctrst_ord1__ISCARMENES_VIS_VS20180224':{'vary':True ,'guess':0.,'bd':[-1.,1.]},
@@ -10639,7 +10862,7 @@ if __name__ == '__main__':
                         }  
 
 
-        if glob_fit_dic['PropLoc']['prop'] == 'FWHM':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'FWHM':glob_fit_dic['IntrProp']['mod_prop']={
                         #Common C for HARPS datasets
                         'FWHM_ord0__ISCARMENES_VIS_VS20180224':{'vary':True ,'guess':7.,'bd':[0.1,10.]},
                         # 'FWHM_ord1__ISCARMENES_VIS_VS20180224':{'vary':True ,'guess':0.,'bd':[-1.,1.]},
@@ -10649,12 +10872,12 @@ if __name__ == '__main__':
 
         
     elif gen_dic['star_name']=='WASP166':
-        if glob_fit_dic['PropLoc']['prop'] == 'rv':glob_fit_dic['PropLoc']['mod_prop']={       
+        if glob_fit_dic['IntrProp']['prop'] == 'rv':glob_fit_dic['IntrProp']['mod_prop']={       
                         'veq':{'vary':True ,'guess':5.,'bd':[0.1,10.],'physical':True},
                         'lambda_rad__plWASP166b':{'vary':True ,'guess':0.*np.pi/180.,'bd':[-180.*np.pi/180.,180.*np.pi/180.],'physical':True},
                         }          
         
-        if glob_fit_dic['PropLoc']['prop'] == 'ctrst':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'ctrst':glob_fit_dic['IntrProp']['mod_prop']={
                         # #Independent C for each dataset
                         # 'ctrst_ord0__ISHARPS_VS20170114':{'vary':True ,'guess':0.5,'bd':[0.1,0.6]},                 
                         # # 'ctrst_ord1__ISHARPS_VS20170114':{'vary':True ,'guess':0.,'bd':[-1.,1.]},
@@ -10670,7 +10893,7 @@ if __name__ == '__main__':
                         'ctrst_ord2__ISHARPS_VS_':{'vary':True ,'guess':0.,'bd':[-1.,1.]},
                         }
 
-        if glob_fit_dic['PropLoc']['prop'] == 'FWHM':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'FWHM':glob_fit_dic['IntrProp']['mod_prop']={
                         #Common for HARPS datasets
                         'FWHM_ord0__ISHARPS_VS_':{'vary':True ,'guess':0.5,'bd':[0.1,0.6]},
                         # 'FWHM_ord1__ISHARPS_VS_':{'vary':True ,'guess':0.,'bd':[-1.,1.]},
@@ -10678,12 +10901,12 @@ if __name__ == '__main__':
                         }        
         
     elif gen_dic['star_name']=='HAT_P11':
-        if glob_fit_dic['PropLoc']['prop'] == 'rv':glob_fit_dic['PropLoc']['mod_prop']={       
+        if glob_fit_dic['IntrProp']['prop'] == 'rv':glob_fit_dic['IntrProp']['mod_prop']={       
                         'veq':{'vary':True ,'guess':5.,'bd':[0.1,10.],'physical':True},
                         'lambda_rad__plHAT_P11b':{'vary':True ,'guess':0.*np.pi/180.,'bd':[-180.*np.pi/180.,180.*np.pi/180.],'physical':True},
                         }    
 
-        if glob_fit_dic['PropLoc']['prop'] == 'ctrst':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'ctrst':glob_fit_dic['IntrProp']['mod_prop']={
                 
                         # #Independent C for each dataset
                         # 'ctrst_ord0__ISCARMENES_VIS_VS20170807':{'vary':True ,'guess':0.5,'bd':[0.1,0.6]},
@@ -10728,7 +10951,7 @@ if __name__ == '__main__':
                         # }
 
 
-        if glob_fit_dic['PropLoc']['prop'] == 'FWHM':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'FWHM':glob_fit_dic['IntrProp']['mod_prop']={
                 
                         # #Independent for each dataset
                         # 'FWHM_ord0__ISCARMENES_VIS_VS20170807':{'vary':True ,'guess':7.,'bd':[0.1,0.6]},
@@ -10753,12 +10976,12 @@ if __name__ == '__main__':
 
     elif gen_dic['star_name']=='WASP156'  :
     
-        if glob_fit_dic['PropLoc']['prop'] == 'rv':glob_fit_dic['PropLoc']['mod_prop']={       
+        if glob_fit_dic['IntrProp']['prop'] == 'rv':glob_fit_dic['IntrProp']['mod_prop']={       
                         'veq':{'vary':True ,'guess':2.,'bd':[0.1,10.],'physical':True},
                         'lambda_rad__plWASP156b':{'vary':True ,'guess':0.*np.pi/180.,'bd':[-180.*np.pi/180.,180.*np.pi/180.],'physical':True},
                         }    
         
-        if glob_fit_dic['PropLoc']['prop'] == 'ctrst':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'ctrst':glob_fit_dic['IntrProp']['mod_prop']={
                 
                         # #Independent for each dataset
                         # 'ctrst_ord0__ISCARMENES_VIS_VS20190928':{'vary':True ,'guess':0.5,'bd':[0.1,0.6]},
@@ -10774,7 +10997,7 @@ if __name__ == '__main__':
                         'ctrst_ord1__IS__VS_':{'vary':True ,'guess':0.,'bd':[0.1,0.6]}, 
                         }
 
-        if glob_fit_dic['PropLoc']['prop'] == 'FWHM':glob_fit_dic['PropLoc']['mod_prop']={
+        if glob_fit_dic['IntrProp']['prop'] == 'FWHM':glob_fit_dic['IntrProp']['mod_prop']={
                 
                         # #Independent for each dataset
                         # 'FWHM_ord0__ISCARMENES_VIS_VS20190928':{'vary':True ,'guess':7.,'bd':[0.1,0.6]},
@@ -10793,20 +11016,20 @@ if __name__ == '__main__':
 
     #%%%%% Fitting mode 
     #    - 'chi2', 'mcmc', ''
-    glob_fit_dic['PropLoc']['fit_mod']='mcmc'  # 'mcmc' 
-    glob_fit_dic['PropLoc']['fit_mod']='chi2'  
-    # glob_fit_dic['PropLoc']['fit_mod']='' 
+    glob_fit_dic['IntrProp']['fit_mod']='mcmc'  # 'mcmc' 
+    glob_fit_dic['IntrProp']['fit_mod']='chi2'  
+    # glob_fit_dic['IntrProp']['fit_mod']='' 
 
     #%%%%% Printing fits results
-    glob_fit_dic['PropLoc']['verbose']=True & False
+    glob_fit_dic['IntrProp']['verbose']=True & False
     
 
 
     #%%%%% Priors on variable properties
     #    - see gen_dic['fit_DI'] for details
-    glob_fit_dic['PropLoc']['priors']={}  
+    glob_fit_dic['IntrProp']['priors']={}  
     if gen_dic['star_name']=='GJ436':    
-        glob_fit_dic['PropLoc']['priors'].update({
+        glob_fit_dic['IntrProp']['priors'].update({
             'veq':{'mod':'uf','low':0.,'high':10.},  
             'lambda_rad__GJ36_b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
     
@@ -10814,24 +11037,33 @@ if __name__ == '__main__':
             # 'cos_istar':{'mod':'uf','low':-1.,'high':1.},        
             
             })    
-
+    elif gen_dic['star_name']=='HD209458':    
+        glob_fit_dic['IntrProp']['priors'].update({
+            'veq':{'mod':'uf','low':0.,'high':10.},  
+            'lambda_rad__plHD209458b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
+            'alpha_rot':{'mod':'uf','low':0.,'high':1.},  
+            'cos_istar':{'mod':'uf','low':-1.,'high':1.},    
+            })  
+        
+        
+        
 
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    if glob_fit_dic['PropLoc']['prop'] == 'rv':
-        glob_fit_dic['PropLoc']['modif_list'] = ['vsini','psi','om','b','ip','istar_deg_conv','lambda_deg','c0','CB_ms']
-        glob_fit_dic['PropLoc']['modif_list'] = ['vsini','lambda_deg','b','ip']  
-        glob_fit_dic['PropLoc']['modif_list'] = ['vsini','lambda_deg','istar_deg_conv']   
-        glob_fit_dic['PropLoc']['modif_list'] = ['vsini','lambda_deg']        
+    if glob_fit_dic['IntrProp']['prop'] == 'rv':
+        glob_fit_dic['IntrProp']['modif_list'] = ['vsini','psi','om','b','ip','istar_deg_conv','lambda_deg','c0','CB_ms']
+        glob_fit_dic['IntrProp']['modif_list'] = ['vsini','lambda_deg','b','ip']  
+        glob_fit_dic['IntrProp']['modif_list'] = ['vsini','lambda_deg','istar_deg_conv']   
+        glob_fit_dic['IntrProp']['modif_list'] = ['vsini','lambda_deg']        
 
 
     #%%%%% MCMC settings
     
     #%%%%%% Calculating/retrieving
-    glob_fit_dic['PropLoc']['mcmc_run_mode']='use'
+    glob_fit_dic['IntrProp']['mcmc_run_mode']='use'
 
     #%%%%%% Walkers 
-    glob_fit_dic['PropLoc']['mcmc_set']={}
+    glob_fit_dic['IntrProp']['mcmc_set']={}
     #     if gen_dic['main_pl']==['HD3167_c']:  
     #         fit_dic['nwalkers'] = 12      #walkers              #HD3167c     vsini & lambda: 1.7 min pour 600 steps
     #         fit_dic['nsteps'] = 2000    #number of steps       
@@ -10858,10 +11090,8 @@ if __name__ == '__main__':
     # #        fit_dic['nsteps'] = 4000  #number of steps       
     # #        fit_dic['nburn'] = 1000   #burn-in 
 
-    #     elif gen_dic['main_pl']=='HD209458b':        #10 x 100 = 3s
-    #         fit_dic['nwalkers'] = 30
-    #         fit_dic['nsteps'] = 5000         
-    #         fit_dic['nburn'] = 1000
+    if gen_dic['star_name']=='HD209458':   
+        glob_fit_dic['IntrProp']['mcmc_set']={'nwalkers':10,'nsteps':500,'nburn':100} 
 
     #     elif gen_dic['main_pl']=='GJ436_b':      #1000 = 10s      
     #         fit_dic['nwalkers'] = 30
@@ -10873,50 +11103,55 @@ if __name__ == '__main__':
     #         fit_dic['nsteps'] = 1000         
     #         fit_dic['nburn'] = 100   
 
-    if gen_dic['star_name']=='GJ436':     
-        glob_fit_dic['PropLoc']['mcmc_set']={'nwalkers':20,'nsteps':2000,'nburn':500}  
-        glob_fit_dic['PropLoc']['mcmc_set']={'nwalkers':10,'nsteps':1000,'nburn':500}  
-        # glob_fit_dic['PropLoc']['mcmc_set']={'nwalkers':20,'nsteps':100,'nburn':0}  
+    elif gen_dic['star_name']=='GJ436':     
+        glob_fit_dic['IntrProp']['mcmc_set']={'nwalkers':20,'nsteps':2000,'nburn':500}  
+        glob_fit_dic['IntrProp']['mcmc_set']={'nwalkers':10,'nsteps':1000,'nburn':500}  
+        # glob_fit_dic['IntrProp']['mcmc_set']={'nwalkers':20,'nsteps':100,'nburn':0}  
 
 
     #%%%%%% Complex priors
-    glob_fit_dic['PropLoc']['prior_func']={}  
+    glob_fit_dic['IntrProp']['prior_func']={}  
     if 'GJ436_b' in gen_dic['transit_pl']:
         
         #Prior sur le parametre donne par Maxted+
-        if ('inclin_rad__GJ436_b' in glob_fit_dic['PropLoc']['mod_prop']) and (glob_fit_dic['PropLoc']['mod_prop']['inclin_rad__GJ436_b']['vary']):
-            glob_fit_dic['PropLoc']['prior_func']={'sini_pr':{'val':0.99843,'sig':0.00003,'pl':'GJ436_b'}}
+        if ('inclin_rad__GJ436_b' in glob_fit_dic['IntrProp']['mod_prop']) and (glob_fit_dic['IntrProp']['mod_prop']['inclin_rad__GJ436_b']['vary']):
+            glob_fit_dic['IntrProp']['prior_func']={'sini_pr':{'val':0.99843,'sig':0.00003,'pl':'GJ436_b'}}
 
         
       
  
     #%%%%%% Walkers exclusion  
-    glob_fit_dic['PropLoc']['exclu_walk']=True     & False       
+    #    - define conditions within routine
+    glob_fit_dic['IntrProp']['exclu_walk']=True     & False       
+
+    #%%%%%% Automatic exclusion of outlying chains
+    #    - set to None, or exclusion threshold
+    glob_fit_dic['IntrProp']['exclu_walk_autom']=None  #  5.
 
     #%%%%%% Derived errors
     #    - 'quant' or 'HDI'
-    glob_fit_dic['PropLoc']['out_err_mode']='HDI'
-    glob_fit_dic['PropLoc']['HDI']='1s'   #None   #'3s'   
+    glob_fit_dic['IntrProp']['out_err_mode']='HDI'
+    glob_fit_dic['IntrProp']['HDI']='1s'   #None   #'3s'   
 #        fit_dic['HDI_nbins']={'veq':310,'vsini':310,'inclin_rad__'+pl_loc:300,'lambda_rad__'+pl_loc:230,'lambda_deg':230,'ip_deg':250,'b':220}   #fit WASP121b SB        
 #        fit_dic['HDI_nbins']={'veq':180,'inclin_rad__'+pl_loc:200,'lambda_rad__'+pl_loc:200,'lambda_deg':200,'ip_deg':200,'b':200,'cos_istar':50,'alpha_rot':300,'istar':50,'psi':100}   #fit WASP121b DR  low istar      
 #        fit_dic['HDI_nbins']={'veq':100,'inclin_rad__'+pl_loc:100,'lambda_rad__'+pl_loc:200,'lambda_deg':200,'ip_deg':100,'b':100,'cos_istar':35,'alpha_rot':150,'istar':50,'psi':100}   #fit WASP121b DR  high istar
 #        fit_dic['HDI_nbins']={'veq':50}   #pour l'intervalle a 3s
-    glob_fit_dic['PropLoc']['HDI_nbins']= {}   
+    glob_fit_dic['IntrProp']['HDI_nbins']= {}   
 
     
     
     #%%%%%% Derived lower/upper limits
-    # glob_fit_dic['PropLoc']['conf_limits']={'ecc_pl1':{'bound':0.,'type':'upper','level':['1s','3s']}}  
+    # glob_fit_dic['IntrProp']['conf_limits']={'ecc_pl1':{'bound':0.,'type':'upper','level':['1s','3s']}}  
 
 
     #%%%% Plot settings
     
     #%%%%% MCMC chains
-    glob_fit_dic['PropLoc']['save_MCMC_chains']='png'   #png      
+    glob_fit_dic['IntrProp']['save_MCMC_chains']='png'   #png      
     
     #%%%%% MCMC orner plot
     #    - see function for options
-    glob_fit_dic['PropLoc']['corner_options']={    
+    glob_fit_dic['IntrProp']['corner_options']={    
 #            'bins_1D_par':[50,50,50,50],       #vsini, ip, lambda, b
 #            'bins_2D_par':[30,30,30,30], 
 #            'range_par':[(0.,320.),(88.,90.),(86.,91.),(0.,0.13)], 
@@ -10943,7 +11178,7 @@ if __name__ == '__main__':
 
     #%%%%% Chi2 values
     #    - plot chi2 values for each datapoint
-    plot_dic['chi2_fit_loc_prop']='png'   #pdf      
+    plot_dic['chi2_fit_IntrProp']=''   #pdf      
   
     
      
@@ -10962,7 +11197,7 @@ if __name__ == '__main__':
     
     
     ##################################################################################################       
-    #%%% Module: fitting residual profiles    
+    #%%% Module: fitting joined residual profiles    
     ##################################################################################################     
     
     # '''
@@ -11164,14 +11399,14 @@ if __name__ == '__main__':
     
     
     ##################################################################################################       
-    #%%% Module: fitting intrinsic profiles  
+    #%%% Module: fitting joined intrinsic profiles  
     # - fitting joined intrinsic stellar profiles from combined (unbinned) instruments and visits 
     # - currently defined for CCF only
     # - use 'idx_in_fit' to choose which visits to fit (can be a single one)
     # - the contrast and FWHM of the intrinsic stellar lines (before instrumental convolution) are fitted as polynomials of the chosen coordinate
     #   surface RVs are fitted using the reloaded RM model  
     # - several options need to be controlled from within the function
-    # - use plot_dic['prop_loc']='' to plot the properties of the derived profiles
+    # - use plot_dic['prop_Intr']='' to plot the properties of the derived profiles
     #   use plot_dic['CCF_Intrbin']='' to plot the derived profiles
     #   use gen_dic['loc_data_corr'] to visualize the derived profiles
     # - to derive the stellar inclination from Rstar and Peq, use them as model parameters alongside cosistar, instead of veq  
@@ -11180,10 +11415,10 @@ if __name__ == '__main__':
     ##################################################################################################     
         
     #%%%% Activating 
-    gen_dic['fit_IntrProf'] = True  &  False
+    gen_dic['fit_IntrProf'] = True  #&  False
     
     #%%%% Multi-threading
-    glob_fit_dic['IntrProf']['nthreads'] = 14 
+    glob_fit_dic['IntrProf']['nthreads'] = 6
 
     #%%%% Fitted data
     
@@ -11240,13 +11475,10 @@ if __name__ == '__main__':
             'HARPS':{'20070509':range(3,9)},
             'HARPN':{'20160318':range(1,8),'20160411':range(1,8)}}   
         
-        
     if gen_dic['star_name']=='HIP41378':          
         glob_fit_dic['IntrProf']['idx_in_fit']={'HARPN':{'20191218':range(18)}  }  
-
     elif gen_dic['star_name'] == 'V1298tau' :        
         glob_fit_dic['IntrProf']['idx_in_fit']={'HARPN':{'mock_vis':range(1,19)}} 
-
     elif gen_dic['star_name']=='55Cnc':          
         glob_fit_dic['IntrProf']['idx_in_fit']={
             'ESPRESSO':{
@@ -11302,6 +11534,9 @@ if __name__ == '__main__':
         glob_fit_dic['IntrProf']['idx_in_fit']={'HARPS':{'20170114':range(1,39),'20170304':range(1,37),'20170315':range(1,33)}} 
         # glob_fit_dic['IntrProf']['idx_in_fit']={'HARPS':{'20170114_bin':range(1,19),'20170304_bin':range(1,19),'20170315_bin':range(1,19)}} 
     elif gen_dic['star_name']=='WASP47':glob_fit_dic['IntrProf']['idx_in_fit']={'HARPN':{'20210730':[]}}         
+
+    if gen_dic['star_name']=='HD209458':
+        glob_fit_dic['IntrProf']['idx_in_fit'] = deepcopy(glob_fit_dic['IntrProp']['idx_in_fit'])
     
 
     #%%%%% Trimming
@@ -11349,9 +11584,11 @@ if __name__ == '__main__':
     glob_fit_dic['IntrProf']['line_trans']=None        
 
     #%%%%% Model type
-    glob_fit_dic['IntrProf']['mode'] = 'glob_mod'  
+    glob_fit_dic['IntrProf']['mode'] = 'ana'  
 
     #%%%%% Analytical profile
+    #    - default: 'gauss' 
+    glob_fit_dic['IntrProf']['func_prof_name'] = {}
     if gen_dic['star_name']=='GJ436':glob_fit_dic['IntrProf']['func_prof_name']={'ESPRESSO':'dgauss'}    
     elif gen_dic['star_name'] in ['HAT_P3','Kepler25','Kepler68','HAT_P33','K2_105','HD89345','Kepler63','HAT_P49','HIP41378','WASP47']:glob_fit_dic['IntrProf']['func_prof_name']={'HARPN':'gauss'}        
     elif gen_dic['star_name']=='WASP107':glob_fit_dic['IntrProf']['func_prof_name']={'HARPS':'gauss','CARMENES_VIS':'voigt'}
@@ -11370,556 +11607,21 @@ if __name__ == '__main__':
         
     #%%%%% Analytical profile coordinate
     #    - fit coordinate for the line properties of analytical profiles
-    #    - see possibilities in gen_dic['fit_loc_prop']
+    #    - see possibilities in gen_dic['fit_IntrProp']
     glob_fit_dic['IntrProf']['dim_fit']='mu'
+    if gen_dic['star_name']=='HD209458':glob_fit_dic['IntrProf']['dim_fit']='r_proj'
+
 
     #%%%%% Analytical profile variation
     #    - fit line property as absolute ('abs') or modulated ('modu') polynomial        
     glob_fit_dic['IntrProf']['pol_mode']='abs'  
-    if gen_dic['star_name'] in ['HD106315','WASP107','HAT_P11']:glob_fit_dic['IntrProf']['pol_mode']='modu'  
+    if gen_dic['star_name'] in ['HD106315','WASP107','HAT_P11','HD209458']:glob_fit_dic['IntrProf']['pol_mode']='modu'  
 
-
-
-
-    #%%%% Fit settings 
-        
-    #%%%%% Fitting mode
-    #    - 'chi2', 'mcmc', or ''
-    glob_fit_dic['IntrProf']['fit_mod']='mcmc' 
-
-
-
-    #%%%%% Priors on variable properties
-    #    - see gen_dic['fit_DI'] for details
-    glob_fit_dic['IntrProf']['priors']={}
-    if gen_dic['star_name']=='WASP76':  
-        glob_fit_dic['IntrProf']['priors'].update({
-            'ctrst0':{'mod':'uf','low':-1e5,'high':1e5},  
-            'ctrst1':{'mod':'uf','low':-1e5,'high':1e5},  
-            'ctrst2':{'mod':'uf','low':-1e5,'high':1e5},  
-            'FWHM0':{'mod':'uf','low':-1e5,'high':1e5},  
-            'FWHM1':{'mod':'uf','low':-1e5,'high':1e5},  
-            'FWHM2':{'mod':'uf','low':-1e5,'high':1e5}}) 
-    elif list(gen_dic['transit_pl'].keys())==['HD3167_b']:  
-        glob_fit_dic['IntrProf']['priors'].update({
-            # 'ctrst0':{'mod':'uf','low':-2.,'high':2.},  
-            'FWHM0':{'mod':'uf','low':0.,'high':20.},
-
-        # fixed_args['varpar_priors'].update({
-            'ctrst0':{'mod':'uf','low':-1e5,'high':1e5},  
-            'ctrst1':{'mod':'uf','low':-1e5,'high':1e5}})  
-            # 'ctrst2':{'mod':'uf','low':-1e5,'high':1e5}})  
-            # 'FWHM0':{'mod':'uf','low':-1e5,'high':1e5}})  
-            # 'FWHM1':{'mod':'uf','low':-1e5,'high':1e5}})  
-            # 'FWHM2':{'mod':'uf','low':-1e5,'high':1e5}})                 
-        
-    elif list(gen_dic['transit_pl'].keys())==['HD3167_c']: 
-        glob_fit_dic['IntrProf']['priors'].update({
-        #     'ctrst0':{'mod':'uf','low':-10.,'high':10.},  
-            'FWHM0':{'mod':'uf','low':0.,'high':20.}}) 
-
-        glob_fit_dic['IntrProf']['priors'].update({
-            'ctrst0':{'mod':'uf','low':-1e5,'high':1e5},  
-            'ctrst1':{'mod':'uf','low':-1e5,'high':1e5},  
-            # 'ctrst2':{'mod':'uf','low':-1e5,'high':1e5},  
-            # 'FWHM0':{'mod':'uf','low':-1e5,'high':1e5},  
-            # 'FWHM1':{'mod':'uf','low':-1e5,'high':1e5},  
-            # 'FWHM2':{'mod':'uf','low':-1e5,'high':1e5}
-            }) 
-
-    elif ('HD3167_b' in gen_dic['transit_pl']) and ('HD3167_c' in gen_dic['transit_pl']):
-        glob_fit_dic['IntrProf']['priors'].update({
-            'ctrst0':{'mod':'uf','low':-1e5,'high':1e5},  
-            'ctrst1':{'mod':'uf','low':-1e5,'high':1e5},  
-            'ctrst2':{'mod':'uf','low':-1e5,'high':1e5},  
-            'FWHM0':{'mod':'uf','low':-1e5,'high':1e5}})
-            # 'FWHM1':{'mod':'uf','low':-1e5,'high':1e5}})
-
-        # glob_fit_dic['IntrProf']['priors'].update({
-        #     'ctrst0':{'mod':'uf','low':-2.,'high':2.},  
-        #     'FWHM0':{'mod':'uf','low':0.,'high':20.}})
-
-    elif 'Corot7b' in gen_dic['transit_pl']:  
-        glob_fit_dic['IntrProf']['priors'].update({
-            'ctrst0':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM0':{'mod':'uf','low':0.,'high':10.}}) 
-    elif 'GJ9827d' in gen_dic['transit_pl']:  
-        glob_fit_dic['IntrProf']['priors'].update({
-            'ctrst0':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM0':{'mod':'uf','low':0.,'high':15.}}) 
-    elif 'GJ9827b' in gen_dic['transit_pl']:  
-        glob_fit_dic['IntrProf']['priors'].update({
-            'ctrst0':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM0':{'mod':'uf','low':0.,'high':15.}}) 
-
-    elif 'TOI858b' in gen_dic['transit_pl']:
-        # glob_fit_dic['IntrProf']['priors'].update({
-        #     'ctrst0':{'mod':'uf','low':-2.,'high':2.},  
-        #     'FWHM0':{'mod':'uf','low':0.,'high':30.}})
-
-        glob_fit_dic['IntrProf']['priors'].update({
-            'ctrst0__ISCORALIE_VS20191205':{'mod':'uf','low':-2.,'high':2.},  
-            'FWHM0__ISCORALIE_VS20191205':{'mod':'uf','low':0.,'high':30.},
-            'ctrst0__ISCORALIE_VS20210118':{'mod':'uf','low':-2.,'high':2.},  
-            'FWHM0__ISCORALIE_VS20210118':{'mod':'uf','low':0.,'high':30.}})        
-
-        
-    elif 'GJ436_b' in gen_dic['transit_pl']:
-        glob_fit_dic['IntrProf']['priors'].update({
-            'veq':{'mod':'uf','low':0.,'high':10.},  
-            'lambda_rad__GJ36_b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
-            
-        
-        # glob_fit_dic['IntrProf']['priors'].update({
-        #     'RV_l2c__ISESPRESSO_VS20190228':{'mod':'uf','low':-10.,'high':10.},  
-        #     'amp_l2c__ISESPRESSO_VS20190228':{'mod':'uf','low':0.,'high':2.},
-        #     'FWHM_l2c__ISESPRESSO_VS20190228':{'mod':'uf','low':0.,'high':10.},  
-        #     'RV_l2c__ISESPRESSO_VS20190429':{'mod':'uf','low':-10.,'high':10.},
-        #     'amp_l2c__ISESPRESSO_VS20190429':{'mod':'uf','low':0.,'high':2.},
-        #     'FWHM_l2c__ISESPRESSO_VS20190429':{'mod':'uf','low':0.,'high':10.}})    
-
-        # glob_fit_dic['IntrProf']['priors'].update({
-        #     'RV_l2c__IS__VS_':{'mod':'uf','low':-10.,'high':10.},  
-        #     'amp_l2c__IS__VS_':{'mod':'uf','low':0.,'high':2.},
-        #     'FWHM_l2c__IS__VS_':{'mod':'uf','low':0.,'high':10.}})  
-
-        glob_fit_dic['IntrProf']['priors'].update({
-            'ctrst_ord0__IS__VS_':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__IS__VS_':{'mod':'uf','low':0.,'high':10.},            
-            'ctrst_ord0__ISESPRESSO_VS20190228':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__ISESPRESSO_VS20190228':{'mod':'uf','low':0.,'high':10.},
-            'ctrst_ord0__ISESPRESSO_VS20190429':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__ISESPRESSO_VS20190429':{'mod':'uf','low':0.,'high':6.},
-            'ctrst_ord0__ISESPRESSO_VS_':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__ISESPRESSO_VS_':{'mod':'uf','low':0.,'high':10.},
-            'ctrst_ord0__ISHARPN_VS20160318':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__ISHARPN_VS20160318':{'mod':'uf','low':0.,'high':10.},  
-            'ctrst_ord0__ISHARPN_VS20160411':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__ISHARPN_VS20160411':{'mod':'uf','low':0.,'high':10.},  
-            'ctrst_ord0__ISHARPN_VS_':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__ISHARPN_VS_':{'mod':'uf','low':0.,'high':10.},
-            'ctrst_ord0__ISHARPS_VS20070509':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__ISHARPS_VS20070509':{'mod':'uf','low':0.,'high':10.}})      
-
-
-        # glob_fit_dic['IntrProf']['priors'].update({ 
-        #     'aRs__GJ436_b':{'mod':'gauss','val':14.46,'s_val':0.08}})         #j'ai mis un prior sur sini (le parametre donne dans Maxted+) par l'intermediaire de la fonction de prior   
-        
-            
-        
-    elif 'HIP41378d' in gen_dic['transit_pl']:
-        glob_fit_dic['IntrProf']['priors'].update({
-            'veq':{'mod':'uf','low':0.,'high':20.},  
-            'lambda_rad__plHIP41378d':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
-            'ctrst_ord0__IS__VS_':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__IS__VS_':{'mod':'uf','low':0.,'high':30.}})
-
-    #RM survey
-    elif gen_dic['star_name']=='HAT_P3': 
-        glob_fit_dic['IntrProf']['priors'].update({
-            # 'veq':{'mod':'uf','low':0.,'high':20.},  
-            'lambda_rad__plHAT_P3b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
-
-        glob_fit_dic['IntrProf']['priors'].update({         
-            'ctrst_ord0__IS__VS_':{'mod':'uf','low':0.,'high':1.}, 
-            'FWHM_ord0__IS__VS_':{'mod':'uf','low':0.,'high':30.},       
-            })
-
-        # glob_fit_dic['IntrProf']['priors'].update({ 
-        #     'inclin_rad__plHAT_P3b':{'mod':'gauss','val':86.31*np.pi/180.,'s_val':0.19*np.pi/180.},     
-        #     'aRs__plHAT_P3b':{'mod':'gauss','val':9.8105,'s_val':0.2667}})     
-
-        glob_fit_dic['IntrProf']['priors'].update({         
-            'Rstar':{'mod':'gauss','val':0.85,'s_val':0.021}, 
-            'Peq':{'mod':'gauss','val':19.9,'s_val':1.5},       
-            'cos_istar':{'mod':'uf','low':-1.,'high':1.},     
-            })
-
-    elif gen_dic['star_name']=='Kepler25': 
-        glob_fit_dic['IntrProf']['priors'].update({
-            # 'veq':{'mod':'uf','low':0.,'high':30.},  
-            # 'veq':{'mod':'dgauss','val':9.34,'s_val_low':0.39,'s_val_high':0.37},       #de Benomar+2014 sur vsini (ici istar = 90 donc equivalent de mettre le prior sur veq)
-            'veq':{'mod':'dgauss','val':9.13,'s_val_low':0.69,'s_val_high':0.60},       #de Benomar+2014 sur vsini astero pure (ici istar = 90 donc equivalent de mettre le prior sur veq)
-            'lambda_rad__plKepler25c':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
-            'ctrst_ord0__ISHARPN_VS20190614':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__ISHARPN_VS20190614':{'mod':'uf','low':0.,'high':30.},  
-            
-            })
-
-    elif gen_dic['star_name']=='Kepler68': 
-        glob_fit_dic['IntrProf']['priors'].update({
-            'veq':{'mod':'uf','low':0.,'high':2.},  
-            # 'veq':{'mod':'gauss','val':0.5,'s_val':0.5},                  
-            'lambda_rad__plKepler68b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
-            'ctrst_ord0__ISHARPN_VS20190803':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__ISHARPN_VS20190803':{'mod':'uf','low':0.,'high':30.},  
-            
-            })
-
-    elif gen_dic['star_name']=='HAT_P33': 
-        glob_fit_dic['IntrProf']['priors'].update({
-            'veq':{'mod':'uf','low':0.,'high':40.},  
-            'lambda_rad__plHAT_P33b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
-
-        glob_fit_dic['IntrProf']['priors'].update({         
-            'FWHM_ord0__ISHARPN_VS20191204':{'mod':'uf','low':0.,'high':30.},       
-            })
-        
-        # glob_fit_dic['IntrProf']['priors'].update({         
-        #     'alpha_rot':{'mod':'uf','low':0.,'high':1.},        
-        #     'cos_istar':{'mod':'uf','low':-1.,'high':1.},
-        #     })
-        
-        # glob_fit_dic['IntrProf']['priors'].update({ 
-        #     'inclin_rad__plHAT_P33b':{'mod':'gauss','val':88.2*np.pi/180.,'s_val':1.3*np.pi/180.},     
-        #     'aRs__plHAT_P33b':{'mod':'gauss','val':5.69,'s_val':0.59}})             
-
-
-
-
-    elif gen_dic['star_name']=='K2_105':
-        glob_fit_dic['IntrProf']['priors'].update({
-            'veq':{'mod':'uf','low':0.,'high':5.},  
-            # 'veq':{'mod':'gauss','val':1.76,'s_val':0.86}, 
-            'lambda_rad__plK2_105b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
-            'ctrst_ord0__ISHARPN_VS20200118':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__ISHARPN_VS20200118':{'mod':'uf','low':0.,'high':30.},  
-            })
-
-    elif gen_dic['star_name']=='HD89345': 
-        glob_fit_dic['IntrProf']['priors'].update({
-            'veq':{'mod':'uf','low':0.,'high':40.},  
-            # 'veq':{'mod':'gauss','val':2.6,'s_val':0.5},   
-            'lambda_rad__plHD89345b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
-
-        # glob_fit_dic['IntrProf']['priors'].update({         
-        #     'alpha_rot':{'mod':'uf','low':0.,'high':1.},        
-        #     'cos_istar':{'mod':'uf','low':-1.,'high':1.},
-        #     })
-
-        # glob_fit_dic['IntrProf']['priors'].update({ 
-        #     'inclin_rad__plHD89345b':{'mod':'gauss','val':87.68*np.pi/180.,'s_val':0.1*np.pi/180.},     
-        #     'aRs__plHD89345b':{'mod':'gauss','val':13.625,'s_val':0.027}}) 
-
-    elif gen_dic['star_name']=='Kepler63': 
-        glob_fit_dic['IntrProf']['priors'].update({
-            # 'veq':{'mod':'uf','low':0.,'high':30.},    
-            'lambda_rad__plKepler63b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
-            'ctrst_ord0__ISHARPN_VS20200513':{'mod':'uf','low':0.,'high':1.},  
-            # 'FWHM_ord0__ISHARPN_VS20200513':{'mod':'uf','low':0.,'high':20.}})
-            # 'FWHM_ord0__ISHARPN_VS20200513':{'mod':'gauss','val':7.0,'s_val':0.64}})            
-            'FWHM_ord0__ISHARPN_VS20200513':{'mod':'gauss','val':9.5,'s_val':4.}})           
-
-        glob_fit_dic['IntrProf']['priors'].update({         
-            'Rstar':{'mod':'dgauss','val':0.901,'s_val_high':0.027,'s_val_low':0.022}, 
-            'Peq':{'mod':'gauss','val':5.401,'s_val':0.014},       
-            'cos_istar':{'mod':'uf','low':-1.,'high':0.},   #to keep southern solution     
-            })
-        
-
-    elif gen_dic['star_name']=='HAT_P49': 
-        glob_fit_dic['IntrProf']['priors'].update({
-            'veq':{'mod':'uf','low':0.,'high':30.},    
-            'lambda_rad__plHAT_P49b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
-
-        glob_fit_dic['IntrProf']['priors'].update({
-            'ctrst_ord0__ISHARPN_VS20200730':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__ISHARPN_VS20200730':{'mod':'uf','low':0.,'high':40.}})
-
-        # glob_fit_dic['IntrProf']['priors'].update({         
-        #     'alpha_rot':{'mod':'uf','low':0.,'high':1.},        
-        #     'cos_istar':{'mod':'uf','low':-1.,'high':1.},
-        #     })
-
-        # glob_fit_dic['IntrProf']['priors'].update({ 
-        #     'inclin_rad__plHAT_P49b':{'mod':'gauss','val':86.2*np.pi/180.,'s_val':1.7*np.pi/180.},     
-        #     'aRs__plHAT_P49b':{'mod':'dgauss','val':5.13,'s_val_low':0.30,'s_val_high':0.19}}) 
-        
-
-    elif gen_dic['star_name']=='WASP107': 
-        glob_fit_dic['IntrProf']['priors'].update({
-            'veq':{'mod':'uf','low':0.,'high':30.},    
-            'lambda_rad__plWASP107b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
-            # 'a_damp__ISCARMENES_VIS_VS20180224':{'mod':'uf','low':0.,'high':50.},                
-            'FWHM_ord0__ISCARMENES_VIS_VS20180224':{'mod':'uf','low':0.,'high':20.},
-            'FWHM_ord0__ISHARPS_VS_':{'mod':'uf','low':0.,'high':20.},            
-            })
-
-        # glob_fit_dic['IntrProf']['priors'].update({         
-        #     'alpha_rot':{'mod':'uf','low':0.,'high':1.},        
-        #     'cos_istar':{'mod':'uf','low':-1.,'high':1.},
-        #     })
-
-
-        # glob_fit_dic['IntrProf']['priors'].update({ 
-        #     'inclin_rad__plWASP107b':{'mod':'gauss','val':89.56*np.pi/180.,'s_val':0.078*np.pi/180.},     
-        #     'aRs__plWASP107b':{'mod':'dgauss','val':18.02,'s_val_low':0.27,'s_val_high':0.27}}) 
-
-        glob_fit_dic['IntrProf']['priors'].update({         
-            'Rstar':{'mod':'gauss','val':0.67,'s_val':0.02}, 
-            'Peq':{'mod':'gauss','val':17.1,'s_val':1.},       
-            'cos_istar':{'mod':'uf','low':-1.,'high':1.},  
-            })
-
-    elif gen_dic['star_name']=='WASP166': 
-
-        glob_fit_dic['IntrProf']['priors'].update({
-            #'veq':{'mod':'uf','low':0.,'high':30.},    
-            'lambda_rad__plWASP166b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})        
-
-        # glob_fit_dic['IntrProf']['priors'].update({
-        #     'FWHM_ord0__ISHARPS_VS20170114':{'mod':'uf','low':0.,'high':50.}, 
-        #     'FWHM_ord0__ISHARPS_VS20170304':{'mod':'uf','low':0.,'high':50.},
-        #     'FWHM_ord0__ISHARPS_VS20170315':{'mod':'uf','low':0.,'high':50.}})
-
-        glob_fit_dic['IntrProf']['priors'].update({
-            'ctrst_ord0__ISHARPS_VS_':{'mod':'uf','low':0.,'high':1.}, 
-            'FWHM_ord0__ISHARPS_VS_':{'mod':'uf','low':0.,'high':20.}
-            }) 
-            
-        # glob_fit_dic['IntrProf']['priors'].update({
-        #     'ctrst_ord0__ISHARPS_VS20170114':{'mod':'uf','low':0.,'high':1.}, 
-        #     'ctrst_ord0__ISHARPS_VS20170304':{'mod':'uf','low':0.,'high':1.},
-        #     'ctrst_ord0__ISHARPS_VS20170315':{'mod':'uf','low':0.,'high':1.}})
-
-        # glob_fit_dic['IntrProf']['priors'].update({
-        #     'alpha_rot':{'mod':'uf','low':-1.,'high':1.},
-        #     'cos_istar':{'mod':'uf','low':-1.,'high':1.},
-        #     })
-
-        # glob_fit_dic['IntrProf']['priors'].update({
-        # 'inclin_rad__plWASP166b':{'mod':'dgauss','val':87.95*np.pi/180.,'s_val_low':0.62*np.pi/180.,'s_val_high':0.59*np.pi/180.},
-        # 'aRs__plWASP166b':{'mod':'dgauss','val':11.14,'s_val_low':0.50,'s_val_high':0.42}}) 
-
-        glob_fit_dic['IntrProf']['priors'].update({         
-            'Rstar':{'mod':'gauss','val':1.22,'s_val':0.06}, 
-            'Peq':{'mod':'gauss','val':12.3,'s_val':1.9},       
-            'cos_istar':{'mod':'uf','low':-1.,'high':1.},  
-            })
-
-    elif gen_dic['star_name']=='HAT_P11': 
-        glob_fit_dic['IntrProf']['priors'].update({
-            'veq':{'mod':'uf','low':0.,'high':4.},    
-            'lambda_rad__plHAT_P11b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
-
-        glob_fit_dic['IntrProf']['priors'].update({
-            'FWHM_ord0__ISCARMENES_VIS_VS_':{'mod':'uf','low':0.,'high':15.},  
-            'FWHM_ord0__ISHARPN_VS_':{'mod':'uf','low':0.,'high':15.}})
-
-
-        glob_fit_dic['IntrProf']['priors'].update({
-            'a_damp__ISCARMENES_VIS_VS_':{'mod':'uf','low':0.,'high':10.}}) 
-
-
-    elif gen_dic['star_name']=='HD106315': 
-        glob_fit_dic['IntrProf']['priors'].update({
-            'veq':{'mod':'uf','low':0.,'high':100.},    
-            'lambda_rad__plHD106315c':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
-
-        # glob_fit_dic['IntrProf']['priors'].update({
-        #     'ctrst_ord0__ISHARPS_VS20170309':{'mod':'uf','low':0.,'high':1.},
-        #     'ctrst_ord0__ISHARPS_VS20170330':{'mod':'uf','low':0.,'high':1.},
-        #     'ctrst_ord0__ISHARPS_VS20180323':{'mod':'uf','low':0.,'high':1.}})
-
-        glob_fit_dic['IntrProf']['priors'].update({
-            'ctrst_ord0__ISHARPS_VS_':{'mod':'uf','low':0.,'high':1.},
-            'FWHM_ord0__ISHARPS_VS_':{'mod':'uf','low':0.,'high':40.}})
-                                              
-
-        glob_fit_dic['IntrProf']['priors'].update({
-        #     # 'FWHM_ord0__ISHARPS_VS20170309':{'mod':'uf','low':0.,'high':40.},
-        #     # 'FWHM_ord0__ISHARPS_VS20170330':{'mod':'uf','low':0.,'high':40.},
-        #     # 'FWHM_ord0__ISHARPS_VS20180323':{'mod':'uf','low':0.,'high':40.}})   
-            'FWHM_ord0__ISHARPS_VS_':{'mod':'uf','low':0.,'high':40.}})          
-
-        glob_fit_dic['IntrProf']['priors'].update({
-            'alpha_rot':{'mod':'uf','low':0.,'high':1.},
-            'cos_istar':{'mod':'uf','low':-1.,'high':1.},
-            })
-
-
-
-    elif gen_dic['star_name']=='WASP156':
-        glob_fit_dic['IntrProf']['priors'].update({
-            # 'veq':{'mod':'uf','low':0.,'high':100.}, 
-            'veq':{'mod':'gauss','val':3.8,'s_val':0.91},   
-            'lambda_rad__plWASP156b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})        
-        
-        glob_fit_dic['IntrProf']['priors'].update({
-            'ctrst_ord0__ISCARMENES_VIS_VS20190928':{'mod':'uf','low':0.,'high':1.},
-            'ctrst_ord0__ISCARMENES_VIS_VS20191025':{'mod':'uf','low':0.,'high':1.}
-            })
-
-        glob_fit_dic['IntrProf']['priors'].update({
-            'FWHM_ord0__ISCARMENES_VIS_VS20190928':{'mod':'uf','low':0.,'high':40.},
-            'FWHM_ord0__ISCARMENES_VIS_VS20191025':{'mod':'uf','low':0.,'high':40.}
-            })          
-        
-        glob_fit_dic['IntrProf']['priors'].update({
-            'a_damp__ISCARMENES_VIS_VS20190928':{'mod':'uf','low':0.,'high':10.},
-            # 'a_damp__ISCARMENES_VIS_VS20191025':{'mod':'uf','low':0.,'high':10.}
-            }) 
-
-    elif gen_dic['star_name']=='WASP47': 
-        glob_fit_dic['IntrProf']['priors'].update({
-            # 'veq':{'mod':'uf','low':0.,'high':6.},  
-            'veq':{'mod':'dgauss','val':1.8,'s_val_low':0.16,'s_val_high':0.24},
-            'lambda_rad__plWASP47d':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
-            'ctrst_ord0__ISHARPN_VS20210730':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__ISHARPN_VS20210730':{'mod':'uf','low':0.,'high':30.},  
-            
-            })
-
-    elif gen_dic['star_name']=='55Cnc': 
-        glob_fit_dic['IntrProf']['priors'].update({
-            #  'lambda_rad__pl55Cnc_e__ISESPRESSO_VS20200205':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-            # 'lambda_rad__pl55Cnc_e__ISESPRESSO_VS20210121':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-            # 'lambda_rad__pl55Cnc_e__ISESPRESSO_VS20210124':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-
-            # 'lambda_rad__pl55Cnc_e__ISHARPS_VS20120127':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-            # 'lambda_rad__pl55Cnc_e__ISHARPS_VS20120213':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-            # 'lambda_rad__pl55Cnc_e__ISHARPS_VS20120227':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-            # 'lambda_rad__pl55Cnc_e__ISHARPS_VS20120315':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-            
-            # 'lambda_rad__pl55Cnc_e__ISHARPN_VS20131114':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-            # 'lambda_rad__pl55Cnc_e__ISHARPN_VS20131128':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-            # 'lambda_rad__pl55Cnc_e__ISHARPN_VS20140101':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-            # 'lambda_rad__pl55Cnc_e__ISHARPN_VS20140126':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-            # 'lambda_rad__pl55Cnc_e__ISHARPN_VS20140226':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-            # 'lambda_rad__pl55Cnc_e__ISHARPN_VS20140329':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},  
-
-            'lambda_rad__pl55Cnc_e__ISEXPRES_VS20220131':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-            'lambda_rad__pl55Cnc_e__ISEXPRES_VS20220406':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-                
-            # 'ctrst_ord0__ISESPRESSO_VS20200205':{'mod':'uf','low':0.,'high':1.},  
-            # 'FWHM_ord0__ISESPRESSO_VS20200205':{'mod':'uf','low':0.,'high':30.},              
-            # 'ctrst_ord0__ISESPRESSO_VS20210121':{'mod':'uf','low':0.,'high':1.},  
-            # 'FWHM_ord0__ISESPRESSO_VS20210121':{'mod':'uf','low':0.,'high':30.},              
-            # 'ctrst_ord0__ISESPRESSO_VS20210124':{'mod':'uf','low':0.,'high':1.},  
-            # 'FWHM_ord0__ISESPRESSO_VS20210124':{'mod':'uf','low':0.,'high':30.}, 
-              # 'ctrst_ord0__ISHARPS_VS20120127':{'mod':'uf','low':0.,'high':1.},  
-              # 'FWHM_ord0__ISHARPS_VS20120127':{'mod':'uf','low':0.,'high':15.}, 
-              # 'ctrst_ord0__ISHARPS_VS20120213':{'mod':'uf','low':0.,'high':1.},  
-              # 'FWHM_ord0__ISHARPS_VS20120213':{'mod':'uf','low':0.,'high':15.},                                  
-              # 'ctrst_ord0__ISHARPS_VS20120227':{'mod':'uf','low':0.,'high':1.},  
-              # 'FWHM_ord0__ISHARPS_VS20120227':{'mod':'uf','low':0.,'high':15.}, 
-              # 'ctrst_ord0__ISHARPS_VS20120315':{'mod':'uf','low':0.,'high':1.},  
-              # 'FWHM_ord0__ISHARPS_VS20120315':{'mod':'uf','low':0.,'high':15.}, 
-              #   'ctrst_ord0__ISHARPN_VS20131114':{'mod':'uf','low':0.,'high':1.},  
-              #   'FWHM_ord0__ISHARPN_VS20131114':{'mod':'uf','low':0.,'high':15.}, 
-              #   'ctrst_ord0__ISHARPN_VS20131128':{'mod':'uf','low':0.,'high':1.},  
-              #   'FWHM_ord0__ISHARPN_VS20131128':{'mod':'uf','low':0.,'high':15.}, 
-                 # 'ctrst_ord0__ISHARPN_VS20140101':{'mod':'uf','low':0.,'high':1.},  
-                 # 'FWHM_ord0__ISHARPN_VS20140101':{'mod':'uf','low':0.,'high':15.}, 
-              #   'ctrst_ord0__ISHARPN_VS20140126':{'mod':'uf','low':0.,'high':1.},  
-              #   'FWHM_ord0__ISHARPN_VS20140126':{'mod':'uf','low':0.,'high':15.},                                     
-              #   'ctrst_ord0__ISHARPN_VS20140226':{'mod':'uf','low':0.,'high':1.},    
-              #   'FWHM_ord0__ISHARPN_VS20140226':{'mod':'uf','low':0.,'high':15.}, 
-              #   'ctrst_ord0__ISHARPN_VS20140329':{'mod':'uf','low':0.,'high':1.},      
-              #   'FWHM_ord0__ISHARPN_VS20140329':{'mod':'uf','low':0.,'high':15.},        
-
-            # 'ctrst_ord0__ISEXPRES_VS20220131':{'mod':'uf','low':0.,'high':1.},  
-            # 'FWHM_ord0__ISEXPRES_VS20220131':{'mod':'uf','low':0.,'high':30.},              
-            # 'ctrst_ord0__ISEXPRES_VS20220406':{'mod':'uf','low':0.,'high':1.},  
-            # 'FWHM_ord0__ISEXPRES_VS20220406':{'mod':'uf','low':0.,'high':30.},  
-
-            'ctrst_ord0__IS__VS_':{'mod':'uf','low':0.,'high':1.},  
-            'FWHM_ord0__IS__VS_':{'mod':'uf','low':0.,'high':15.}, 
-
-            'veq':{'mod':'uf','low':0.,'high':10.},  
-            'lambda_rad__pl55Cnc_e':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
-        
-            # 'veq':{'mod':'uf','low':2.6099460026e+00-2.*3.0271648816e-01,'high':2.6099460026e+00+2.*3.0271648816e-01},      #from HARPS > All_vis > Corr_trend > Comm_line            
-            # 'ctrst_ord0__IS__VS_':{'mod':'uf','low':6.7739034862e-01-2.*3.4580162765e-02,'high':6.7739034862e-01+2.*3.4580162765e-02},    #from HARPS > All_vis > Corr_trend > Comm_line
-            # 'FWHM_ord0__IS__VS_':{'mod':'uf','low':4.6510963685e+00-2.*3.3033396495e-01,'high':4.6510963685e+00+2.*3.3033396495e-01},   #from HARPS > All_vis > Corr_trend > Comm_line
-
-            # 'veq':{'mod':'uf','low':1.21095752e+00,'high':1.38584791e+00},      #from HARPScorrtrend_ESPRESSOcorrPC_HARPNcorrPCnoV4
-            # 'ctrst_ord0__IS__VS_':{'mod':'uf','low':6.97764243e-01 ,'high': 7.17962302e-01},    #from HARPScorrtrend_ESPRESSOcorrPC_HARPNcorrPCnoV4
-            # 'FWHM_ord0__IS__VS_':{'mod':'uf','low':4.51249435e+00 ,'high': 4.68518061e+00},   #from HARPScorrtrend_ESPRESSOcorrPC_HARPNcorrPCnoV4
-            # 'veq':{'mod':'dgauss','val':1.295232959,'s_val_low':0.084275439,'s_val_high':0.090614950600000},    #from HARPScorrtrend_ESPRESSOcorrPC_HARPNcorrPCnoV4
-            # 'ctrst_ord0__IS__VS_':{'mod':'dgauss','val':7.0640591115e-01,'s_val_low':0.0086416681500000,'s_val_high':0.01155639085},   #from HARPScorrtrend_ESPRESSOcorrPC_HARPNcorrPCnoV4
-            # 'FWHM_ord0__IS__VS_':{'mod':'dgauss','val':4.5943537966,'s_val_low':-0.0818594,'s_val_high':0.0908268},   #from HARPScorrtrend_ESPRESSOcorrPC_HARPNcorrPCnoV4
-            })
-
-
-
-
- 
-
-
-    # Stage Théo
-
-    if gen_dic['star_name'] == 'V1298tau' : 
-        glob_fit_dic['IntrProf']['priors'].update({
-            'veq':{'mod':'uf','low':0.,'high':30.},    
-            'lambda_rad__plV1298tau_b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},       
-            'FWHM_ord0__ISHARPN_VSmock_vis':{'mod':'uf','low':0.,'high':10.},
-            'ctrst_ord0__ISHARPN_VSmock_vis':{'mod':'uf','low':0.,'high':1.},
-            })
-
-
-
-
-
-
-
-
-
-
-
-
-        
-        
-    #Include PC noise model
-    #    - indicate for each visit:
-    # + the path to the PC matrix, already reduced to the PC requested to correct the visit in the PCA module
-    #   beware that the correction will be applied only over the range of definition of the PC set in the PCA
-    #   beware that one PC adds the number of fitted intrinsic profiles to the free parameters of the joint fit
-    # + whether to account or not (idx_out = []) for the PCA fit in the calculation of the fit merit values, using all out exposures (idx_out = 'all') or a selection
-    # + set noPC = True to account for the chi2 of the null hypothesis (no noise) on the out-of-transit data, without including PC to the RMR fit
-    glob_fit_dic['IntrProf']['PC_model']={}  
-    # if gen_dic['star_name']=='55Cnc':
-    #     glob_fit_dic['IntrProf']['PC_model']={
-    #         'ESPRESSO':{
-    #             # '20200205':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/5PC/ESPRESSO_20200205_aligned.npz'}}},
-    #             '20200205':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/5PC/ESPRESSO_20200205_mooncorr_aligned.npz'},           
-    #             '20210121':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/6PC/ESPRESSO_20210121_aligned.npz'},    
-    #             '20210124':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/3PC/ESPRESSO_20210124_aligned.npz'},
-    #             },
-    #         # 'HARPS':{
-    #         #     # '20120127':{'noPC':True,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPS/Range200/1PC/Aligned/HARPS_20120127.npz'},           
-    #         #     '20120213':{'noPC':True,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPS/Range200/1PC/Aligned/HARPS_20120213.npz'},    
-    #         # #     # '20120227':{'noPC':True,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPS/Range200/1PC/Aligned/HARPS_20120227.npz'},
-    #         # #     '20120315':{'noPC':True,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPS/Range200/1PC/Aligned/HARPS_20120315.npz'},
-    #         #     } ,    
-            
-    #         'HARPN':{
-    #             '20131114':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/1PC/Aligned/HARPN_20131114.npz'},   #FINAL
-    #             '20131128':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/1PC/Aligned/HARPN_20131128.npz'},   #FINAL
-    #             '20140101':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/8PC/Aligned/HARPN_20140101.npz'},   #FINAL
-    #             '20140126':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/4PC/Aligned/HARPN_20140126.npz'},   #FINAL
-    #             '20140226':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/5PC/Aligned/HARPN_20140226.npz'},   #FINAL
-    #             '20140329':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/3PC/Aligned/HARPN_20140329.npz'},   #FINAL
-    #             }, 
-
-    #         'EXPRES':{
-    #             '20220131':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/EXPRES/Range200_clean/10PC/Aligned/EXPRES_20220131.npz'},   
-    #             '20220406':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/EXPRES/Range200_clean/10PC/Aligned/EXPRES_20220406.npz'},   
-    #             } 
-
-    #         }    
 
     
-
-    
-    #Model properties
-    #    - we define here coefficients specific to the line model:
-    # + polynomial coefficients to describe the line contrast and FWHM (km/s) variations with a chosen dimension
-    # + core/lobe relations for double-gaussian models
-    #    - properties names must be defined as 'prop__ISinst_VSvis'  
-    # + 'inst' is the name of the instrument, which should be set to '_' for the property to be common to all instruments and their visits
-    # + 'vis' is the name of the visit, which should be set to '_' for the property to be common to all visits of this instrument
-    # + the properties set here define the lines before instrumental convolution, which is then applied automatically for each instrument 
+    #%%%%% Fixed/variable properties
+    #    - structure is the same as glob_fit_dic['IntrProp']['mod_prop']
+    #    - intrinsic properties define the lines before instrumental convolution, which can then be applied specifically to each instrument  
     glob_fit_dic['IntrProf']['mod_prop']={}
     
    #     #Parametres associes
@@ -12506,21 +12208,580 @@ if __name__ == '__main__':
                                         'FWHM_ord0__IS__VS_':{'vary':True   ,'guess':4.59,'bd':[4.,5.]},
                                         }
 
+    if gen_dic['star_name']=='HD209458':  
+        glob_fit_dic['IntrProf']['mod_prop']={
+                    'veq':{'vary':True,'guess':4.3,'bd':[4.,5.]},
+                    'lambda_rad__plHD209458b':{'vary':True,'guess':0.*np.pi/180.,'bd':[0.*np.pi/180.,2.*np.pi/180.]},
+                    'ctrst_ord0__ISESPRESSO_VS20190720':{'vary':True ,'guess':0.65,'bd':[0.6,0.7]},
+                    'ctrst_ord0__ISESPRESSO_VS20190911':{'vary':True ,'guess':0.65,'bd':[0.6,0.7]},
+                    'ctrst_ord1__ISESPRESSO_VS_':{'vary':True ,'guess':-0.2,'bd':[-0.5,0.]},
+                    'FWHM_ord0__ISESPRESSO_VS20190720':{'vary':True ,'guess':5.5,'bd':[5.,6.]},
+                    'FWHM_ord0__ISESPRESSO_VS20190911':{'vary':True ,'guess':5.5,'bd':[5.,6.]},                        
+                    'FWHM_ord1__ISESPRESSO_VS_':{'vary':True ,'guess':0.5,'bd':[0.,1.]}
+                    }                        
+                    
+
+
+
         
         
+    #%%%%% PC noise model
+    #    - indicate for each visit:
+    # + the path to the PC matrix, already reduced to the PC requested to correct the visit in the PCA module
+    #   beware that the correction will be applied only over the range of definition of the PC set in the PCA
+    #   beware that one PC adds the number of fitted intrinsic profiles to the free parameters of the joint fit
+    # + whether to account or not (idx_out = []) for the PCA fit in the calculation of the fit merit values, using all out exposures (idx_out = 'all') or a selection
+    # + set noPC = True to account for the chi2 of the null hypothesis (no noise) on the out-of-transit data, without including PC to the RMR fit
+    glob_fit_dic['IntrProf']['PC_model']={}  
+    # if gen_dic['star_name']=='55Cnc':
+    #     glob_fit_dic['IntrProf']['PC_model']={
+    #         'ESPRESSO':{
+    #             # '20200205':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/5PC/ESPRESSO_20200205_aligned.npz'}}},
+    #             '20200205':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/5PC/ESPRESSO_20200205_mooncorr_aligned.npz'},           
+    #             '20210121':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/6PC/ESPRESSO_20210121_aligned.npz'},    
+    #             '20210124':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/3PC/ESPRESSO_20210124_aligned.npz'},
+    #             },
+    #         # 'HARPS':{
+    #         #     # '20120127':{'noPC':True,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPS/Range200/1PC/Aligned/HARPS_20120127.npz'},           
+    #         #     '20120213':{'noPC':True,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPS/Range200/1PC/Aligned/HARPS_20120213.npz'},    
+    #         # #     # '20120227':{'noPC':True,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPS/Range200/1PC/Aligned/HARPS_20120227.npz'},
+    #         # #     '20120315':{'noPC':True,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPS/Range200/1PC/Aligned/HARPS_20120315.npz'},
+    #         #     } ,    
+            
+    #         'HARPN':{
+    #             '20131114':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/1PC/Aligned/HARPN_20131114.npz'},   #FINAL
+    #             '20131128':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/1PC/Aligned/HARPN_20131128.npz'},   #FINAL
+    #             '20140101':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/8PC/Aligned/HARPN_20140101.npz'},   #FINAL
+    #             '20140126':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/4PC/Aligned/HARPN_20140126.npz'},   #FINAL
+    #             '20140226':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/5PC/Aligned/HARPN_20140226.npz'},   #FINAL
+    #             '20140329':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/3PC/Aligned/HARPN_20140329.npz'},   #FINAL
+    #             }, 
+
+    #         'EXPRES':{
+    #             '20220131':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/EXPRES/Range200_clean/10PC/Aligned/EXPRES_20220131.npz'},   
+    #             '20220406':{'noPC':False,'idx_out':'all','PC_path':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/EXPRES/Range200_clean/10PC/Aligned/EXPRES_20220406.npz'},   
+    #             } 
+
+    #         }    
+
+    
+
+
+                        
+                        
+    #%%%% Fit settings 
         
+    #%%%%% Fitting mode
+    #    - 'chi2', 'mcmc', or ''
+    glob_fit_dic['IntrProf']['fit_mod']='mcmc' 
+
+    #%%%%% Printing fits results
+    glob_fit_dic['IntrProf']['verbose']=True & False
+    
+
+    #%%%%% Priors on variable properties
+    #    - see gen_dic['fit_DI'] for details
+    glob_fit_dic['IntrProf']['priors']={}
+    if gen_dic['star_name']=='WASP76':  
+        glob_fit_dic['IntrProf']['priors'].update({
+            'ctrst0':{'mod':'uf','low':-1e5,'high':1e5},  
+            'ctrst1':{'mod':'uf','low':-1e5,'high':1e5},  
+            'ctrst2':{'mod':'uf','low':-1e5,'high':1e5},  
+            'FWHM0':{'mod':'uf','low':-1e5,'high':1e5},  
+            'FWHM1':{'mod':'uf','low':-1e5,'high':1e5},  
+            'FWHM2':{'mod':'uf','low':-1e5,'high':1e5}}) 
+    elif list(gen_dic['transit_pl'].keys())==['HD3167_b']:  
+        glob_fit_dic['IntrProf']['priors'].update({
+            # 'ctrst0':{'mod':'uf','low':-2.,'high':2.},  
+            'FWHM0':{'mod':'uf','low':0.,'high':20.},
+
+        # fixed_args['varpar_priors'].update({
+            'ctrst0':{'mod':'uf','low':-1e5,'high':1e5},  
+            'ctrst1':{'mod':'uf','low':-1e5,'high':1e5}})  
+            # 'ctrst2':{'mod':'uf','low':-1e5,'high':1e5}})  
+            # 'FWHM0':{'mod':'uf','low':-1e5,'high':1e5}})  
+            # 'FWHM1':{'mod':'uf','low':-1e5,'high':1e5}})  
+            # 'FWHM2':{'mod':'uf','low':-1e5,'high':1e5}})                 
         
+    elif list(gen_dic['transit_pl'].keys())==['HD3167_c']: 
+        glob_fit_dic['IntrProf']['priors'].update({
+        #     'ctrst0':{'mod':'uf','low':-10.,'high':10.},  
+            'FWHM0':{'mod':'uf','low':0.,'high':20.}}) 
+
+        glob_fit_dic['IntrProf']['priors'].update({
+            'ctrst0':{'mod':'uf','low':-1e5,'high':1e5},  
+            'ctrst1':{'mod':'uf','low':-1e5,'high':1e5},  
+            # 'ctrst2':{'mod':'uf','low':-1e5,'high':1e5},  
+            # 'FWHM0':{'mod':'uf','low':-1e5,'high':1e5},  
+            # 'FWHM1':{'mod':'uf','low':-1e5,'high':1e5},  
+            # 'FWHM2':{'mod':'uf','low':-1e5,'high':1e5}
+            }) 
+
+    elif ('HD3167_b' in gen_dic['transit_pl']) and ('HD3167_c' in gen_dic['transit_pl']):
+        glob_fit_dic['IntrProf']['priors'].update({
+            'ctrst0':{'mod':'uf','low':-1e5,'high':1e5},  
+            'ctrst1':{'mod':'uf','low':-1e5,'high':1e5},  
+            'ctrst2':{'mod':'uf','low':-1e5,'high':1e5},  
+            'FWHM0':{'mod':'uf','low':-1e5,'high':1e5}})
+            # 'FWHM1':{'mod':'uf','low':-1e5,'high':1e5}})
+
+        # glob_fit_dic['IntrProf']['priors'].update({
+        #     'ctrst0':{'mod':'uf','low':-2.,'high':2.},  
+        #     'FWHM0':{'mod':'uf','low':0.,'high':20.}})
+
+    elif 'Corot7b' in gen_dic['transit_pl']:  
+        glob_fit_dic['IntrProf']['priors'].update({
+            'ctrst0':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM0':{'mod':'uf','low':0.,'high':10.}}) 
+    elif 'GJ9827d' in gen_dic['transit_pl']:  
+        glob_fit_dic['IntrProf']['priors'].update({
+            'ctrst0':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM0':{'mod':'uf','low':0.,'high':15.}}) 
+    elif 'GJ9827b' in gen_dic['transit_pl']:  
+        glob_fit_dic['IntrProf']['priors'].update({
+            'ctrst0':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM0':{'mod':'uf','low':0.,'high':15.}}) 
+
+    elif 'TOI858b' in gen_dic['transit_pl']:
+        # glob_fit_dic['IntrProf']['priors'].update({
+        #     'ctrst0':{'mod':'uf','low':-2.,'high':2.},  
+        #     'FWHM0':{'mod':'uf','low':0.,'high':30.}})
+
+        glob_fit_dic['IntrProf']['priors'].update({
+            'ctrst0__ISCORALIE_VS20191205':{'mod':'uf','low':-2.,'high':2.},  
+            'FWHM0__ISCORALIE_VS20191205':{'mod':'uf','low':0.,'high':30.},
+            'ctrst0__ISCORALIE_VS20210118':{'mod':'uf','low':-2.,'high':2.},  
+            'FWHM0__ISCORALIE_VS20210118':{'mod':'uf','low':0.,'high':30.}})        
+
         
+    elif 'GJ436_b' in gen_dic['transit_pl']:
+        glob_fit_dic['IntrProf']['priors'].update({
+            'veq':{'mod':'uf','low':0.,'high':10.},  
+            'lambda_rad__GJ36_b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
+            
         
+        # glob_fit_dic['IntrProf']['priors'].update({
+        #     'RV_l2c__ISESPRESSO_VS20190228':{'mod':'uf','low':-10.,'high':10.},  
+        #     'amp_l2c__ISESPRESSO_VS20190228':{'mod':'uf','low':0.,'high':2.},
+        #     'FWHM_l2c__ISESPRESSO_VS20190228':{'mod':'uf','low':0.,'high':10.},  
+        #     'RV_l2c__ISESPRESSO_VS20190429':{'mod':'uf','low':-10.,'high':10.},
+        #     'amp_l2c__ISESPRESSO_VS20190429':{'mod':'uf','low':0.,'high':2.},
+        #     'FWHM_l2c__ISESPRESSO_VS20190429':{'mod':'uf','low':0.,'high':10.}})    
+
+        # glob_fit_dic['IntrProf']['priors'].update({
+        #     'RV_l2c__IS__VS_':{'mod':'uf','low':-10.,'high':10.},  
+        #     'amp_l2c__IS__VS_':{'mod':'uf','low':0.,'high':2.},
+        #     'FWHM_l2c__IS__VS_':{'mod':'uf','low':0.,'high':10.}})  
+
+        glob_fit_dic['IntrProf']['priors'].update({
+            'ctrst_ord0__IS__VS_':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__IS__VS_':{'mod':'uf','low':0.,'high':10.},            
+            'ctrst_ord0__ISESPRESSO_VS20190228':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__ISESPRESSO_VS20190228':{'mod':'uf','low':0.,'high':10.},
+            'ctrst_ord0__ISESPRESSO_VS20190429':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__ISESPRESSO_VS20190429':{'mod':'uf','low':0.,'high':6.},
+            'ctrst_ord0__ISESPRESSO_VS_':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__ISESPRESSO_VS_':{'mod':'uf','low':0.,'high':10.},
+            'ctrst_ord0__ISHARPN_VS20160318':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__ISHARPN_VS20160318':{'mod':'uf','low':0.,'high':10.},  
+            'ctrst_ord0__ISHARPN_VS20160411':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__ISHARPN_VS20160411':{'mod':'uf','low':0.,'high':10.},  
+            'ctrst_ord0__ISHARPN_VS_':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__ISHARPN_VS_':{'mod':'uf','low':0.,'high':10.},
+            'ctrst_ord0__ISHARPS_VS20070509':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__ISHARPS_VS20070509':{'mod':'uf','low':0.,'high':10.}})      
+
+
+        # glob_fit_dic['IntrProf']['priors'].update({ 
+        #     'aRs__GJ436_b':{'mod':'gauss','val':14.46,'s_val':0.08}})         #j'ai mis un prior sur sini (le parametre donne dans Maxted+) par l'intermediaire de la fonction de prior   
         
+            
         
+    elif 'HIP41378d' in gen_dic['transit_pl']:
+        glob_fit_dic['IntrProf']['priors'].update({
+            'veq':{'mod':'uf','low':0.,'high':20.},  
+            'lambda_rad__plHIP41378d':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
+            'ctrst_ord0__IS__VS_':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__IS__VS_':{'mod':'uf','low':0.,'high':30.}})
+
+    #RM survey
+    elif gen_dic['star_name']=='HAT_P3': 
+        glob_fit_dic['IntrProf']['priors'].update({
+            # 'veq':{'mod':'uf','low':0.,'high':20.},  
+            'lambda_rad__plHAT_P3b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
+
+        glob_fit_dic['IntrProf']['priors'].update({         
+            'ctrst_ord0__IS__VS_':{'mod':'uf','low':0.,'high':1.}, 
+            'FWHM_ord0__IS__VS_':{'mod':'uf','low':0.,'high':30.},       
+            })
+
+        # glob_fit_dic['IntrProf']['priors'].update({ 
+        #     'inclin_rad__plHAT_P3b':{'mod':'gauss','val':86.31*np.pi/180.,'s_val':0.19*np.pi/180.},     
+        #     'aRs__plHAT_P3b':{'mod':'gauss','val':9.8105,'s_val':0.2667}})     
+
+        glob_fit_dic['IntrProf']['priors'].update({         
+            'Rstar':{'mod':'gauss','val':0.85,'s_val':0.021}, 
+            'Peq':{'mod':'gauss','val':19.9,'s_val':1.5},       
+            'cos_istar':{'mod':'uf','low':-1.,'high':1.},     
+            })
+
+    elif gen_dic['star_name']=='Kepler25': 
+        glob_fit_dic['IntrProf']['priors'].update({
+            # 'veq':{'mod':'uf','low':0.,'high':30.},  
+            # 'veq':{'mod':'dgauss','val':9.34,'s_val_low':0.39,'s_val_high':0.37},       #de Benomar+2014 sur vsini (ici istar = 90 donc equivalent de mettre le prior sur veq)
+            'veq':{'mod':'dgauss','val':9.13,'s_val_low':0.69,'s_val_high':0.60},       #de Benomar+2014 sur vsini astero pure (ici istar = 90 donc equivalent de mettre le prior sur veq)
+            'lambda_rad__plKepler25c':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
+            'ctrst_ord0__ISHARPN_VS20190614':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__ISHARPN_VS20190614':{'mod':'uf','low':0.,'high':30.},  
+            
+            })
+
+    elif gen_dic['star_name']=='Kepler68': 
+        glob_fit_dic['IntrProf']['priors'].update({
+            'veq':{'mod':'uf','low':0.,'high':2.},  
+            # 'veq':{'mod':'gauss','val':0.5,'s_val':0.5},                  
+            'lambda_rad__plKepler68b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
+            'ctrst_ord0__ISHARPN_VS20190803':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__ISHARPN_VS20190803':{'mod':'uf','low':0.,'high':30.},  
+            
+            })
+
+    elif gen_dic['star_name']=='HAT_P33': 
+        glob_fit_dic['IntrProf']['priors'].update({
+            'veq':{'mod':'uf','low':0.,'high':40.},  
+            'lambda_rad__plHAT_P33b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
+
+        glob_fit_dic['IntrProf']['priors'].update({         
+            'FWHM_ord0__ISHARPN_VS20191204':{'mod':'uf','low':0.,'high':30.},       
+            })
         
+        # glob_fit_dic['IntrProf']['priors'].update({         
+        #     'alpha_rot':{'mod':'uf','low':0.,'high':1.},        
+        #     'cos_istar':{'mod':'uf','low':-1.,'high':1.},
+        #     })
+        
+        # glob_fit_dic['IntrProf']['priors'].update({ 
+        #     'inclin_rad__plHAT_P33b':{'mod':'gauss','val':88.2*np.pi/180.,'s_val':1.3*np.pi/180.},     
+        #     'aRs__plHAT_P33b':{'mod':'gauss','val':5.69,'s_val':0.59}})             
+
+
+
+
+    elif gen_dic['star_name']=='K2_105':
+        glob_fit_dic['IntrProf']['priors'].update({
+            'veq':{'mod':'uf','low':0.,'high':5.},  
+            # 'veq':{'mod':'gauss','val':1.76,'s_val':0.86}, 
+            'lambda_rad__plK2_105b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
+            'ctrst_ord0__ISHARPN_VS20200118':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__ISHARPN_VS20200118':{'mod':'uf','low':0.,'high':30.},  
+            })
+
+    elif gen_dic['star_name']=='HD89345': 
+        glob_fit_dic['IntrProf']['priors'].update({
+            'veq':{'mod':'uf','low':0.,'high':40.},  
+            # 'veq':{'mod':'gauss','val':2.6,'s_val':0.5},   
+            'lambda_rad__plHD89345b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
+
+        # glob_fit_dic['IntrProf']['priors'].update({         
+        #     'alpha_rot':{'mod':'uf','low':0.,'high':1.},        
+        #     'cos_istar':{'mod':'uf','low':-1.,'high':1.},
+        #     })
+
+        # glob_fit_dic['IntrProf']['priors'].update({ 
+        #     'inclin_rad__plHD89345b':{'mod':'gauss','val':87.68*np.pi/180.,'s_val':0.1*np.pi/180.},     
+        #     'aRs__plHD89345b':{'mod':'gauss','val':13.625,'s_val':0.027}}) 
+
+    elif gen_dic['star_name']=='Kepler63': 
+        glob_fit_dic['IntrProf']['priors'].update({
+            # 'veq':{'mod':'uf','low':0.,'high':30.},    
+            'lambda_rad__plKepler63b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
+            'ctrst_ord0__ISHARPN_VS20200513':{'mod':'uf','low':0.,'high':1.},  
+            # 'FWHM_ord0__ISHARPN_VS20200513':{'mod':'uf','low':0.,'high':20.}})
+            # 'FWHM_ord0__ISHARPN_VS20200513':{'mod':'gauss','val':7.0,'s_val':0.64}})            
+            'FWHM_ord0__ISHARPN_VS20200513':{'mod':'gauss','val':9.5,'s_val':4.}})           
+
+        glob_fit_dic['IntrProf']['priors'].update({         
+            'Rstar':{'mod':'dgauss','val':0.901,'s_val_high':0.027,'s_val_low':0.022}, 
+            'Peq':{'mod':'gauss','val':5.401,'s_val':0.014},       
+            'cos_istar':{'mod':'uf','low':-1.,'high':0.},   #to keep southern solution     
+            })
+        
+
+    elif gen_dic['star_name']=='HAT_P49': 
+        glob_fit_dic['IntrProf']['priors'].update({
+            'veq':{'mod':'uf','low':0.,'high':30.},    
+            'lambda_rad__plHAT_P49b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
+
+        glob_fit_dic['IntrProf']['priors'].update({
+            'ctrst_ord0__ISHARPN_VS20200730':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__ISHARPN_VS20200730':{'mod':'uf','low':0.,'high':40.}})
+
+        # glob_fit_dic['IntrProf']['priors'].update({         
+        #     'alpha_rot':{'mod':'uf','low':0.,'high':1.},        
+        #     'cos_istar':{'mod':'uf','low':-1.,'high':1.},
+        #     })
+
+        # glob_fit_dic['IntrProf']['priors'].update({ 
+        #     'inclin_rad__plHAT_P49b':{'mod':'gauss','val':86.2*np.pi/180.,'s_val':1.7*np.pi/180.},     
+        #     'aRs__plHAT_P49b':{'mod':'dgauss','val':5.13,'s_val_low':0.30,'s_val_high':0.19}}) 
+        
+
+    elif gen_dic['star_name']=='WASP107': 
+        glob_fit_dic['IntrProf']['priors'].update({
+            'veq':{'mod':'uf','low':0.,'high':30.},    
+            'lambda_rad__plWASP107b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
+            # 'a_damp__ISCARMENES_VIS_VS20180224':{'mod':'uf','low':0.,'high':50.},                
+            'FWHM_ord0__ISCARMENES_VIS_VS20180224':{'mod':'uf','low':0.,'high':20.},
+            'FWHM_ord0__ISHARPS_VS_':{'mod':'uf','low':0.,'high':20.},            
+            })
+
+        # glob_fit_dic['IntrProf']['priors'].update({         
+        #     'alpha_rot':{'mod':'uf','low':0.,'high':1.},        
+        #     'cos_istar':{'mod':'uf','low':-1.,'high':1.},
+        #     })
+
+
+        # glob_fit_dic['IntrProf']['priors'].update({ 
+        #     'inclin_rad__plWASP107b':{'mod':'gauss','val':89.56*np.pi/180.,'s_val':0.078*np.pi/180.},     
+        #     'aRs__plWASP107b':{'mod':'dgauss','val':18.02,'s_val_low':0.27,'s_val_high':0.27}}) 
+
+        glob_fit_dic['IntrProf']['priors'].update({         
+            'Rstar':{'mod':'gauss','val':0.67,'s_val':0.02}, 
+            'Peq':{'mod':'gauss','val':17.1,'s_val':1.},       
+            'cos_istar':{'mod':'uf','low':-1.,'high':1.},  
+            })
+
+    elif gen_dic['star_name']=='WASP166': 
+
+        glob_fit_dic['IntrProf']['priors'].update({
+            #'veq':{'mod':'uf','low':0.,'high':30.},    
+            'lambda_rad__plWASP166b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})        
+
+        # glob_fit_dic['IntrProf']['priors'].update({
+        #     'FWHM_ord0__ISHARPS_VS20170114':{'mod':'uf','low':0.,'high':50.}, 
+        #     'FWHM_ord0__ISHARPS_VS20170304':{'mod':'uf','low':0.,'high':50.},
+        #     'FWHM_ord0__ISHARPS_VS20170315':{'mod':'uf','low':0.,'high':50.}})
+
+        glob_fit_dic['IntrProf']['priors'].update({
+            'ctrst_ord0__ISHARPS_VS_':{'mod':'uf','low':0.,'high':1.}, 
+            'FWHM_ord0__ISHARPS_VS_':{'mod':'uf','low':0.,'high':20.}
+            }) 
+            
+        # glob_fit_dic['IntrProf']['priors'].update({
+        #     'ctrst_ord0__ISHARPS_VS20170114':{'mod':'uf','low':0.,'high':1.}, 
+        #     'ctrst_ord0__ISHARPS_VS20170304':{'mod':'uf','low':0.,'high':1.},
+        #     'ctrst_ord0__ISHARPS_VS20170315':{'mod':'uf','low':0.,'high':1.}})
+
+        # glob_fit_dic['IntrProf']['priors'].update({
+        #     'alpha_rot':{'mod':'uf','low':-1.,'high':1.},
+        #     'cos_istar':{'mod':'uf','low':-1.,'high':1.},
+        #     })
+
+        # glob_fit_dic['IntrProf']['priors'].update({
+        # 'inclin_rad__plWASP166b':{'mod':'dgauss','val':87.95*np.pi/180.,'s_val_low':0.62*np.pi/180.,'s_val_high':0.59*np.pi/180.},
+        # 'aRs__plWASP166b':{'mod':'dgauss','val':11.14,'s_val_low':0.50,'s_val_high':0.42}}) 
+
+        glob_fit_dic['IntrProf']['priors'].update({         
+            'Rstar':{'mod':'gauss','val':1.22,'s_val':0.06}, 
+            'Peq':{'mod':'gauss','val':12.3,'s_val':1.9},       
+            'cos_istar':{'mod':'uf','low':-1.,'high':1.},  
+            })
+
+    elif gen_dic['star_name']=='HAT_P11': 
+        glob_fit_dic['IntrProf']['priors'].update({
+            'veq':{'mod':'uf','low':0.,'high':4.},    
+            'lambda_rad__plHAT_P11b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
+
+        glob_fit_dic['IntrProf']['priors'].update({
+            'FWHM_ord0__ISCARMENES_VIS_VS_':{'mod':'uf','low':0.,'high':15.},  
+            'FWHM_ord0__ISHARPN_VS_':{'mod':'uf','low':0.,'high':15.}})
+
+
+        glob_fit_dic['IntrProf']['priors'].update({
+            'a_damp__ISCARMENES_VIS_VS_':{'mod':'uf','low':0.,'high':10.}}) 
+
+
+    elif gen_dic['star_name']=='HD106315': 
+        glob_fit_dic['IntrProf']['priors'].update({
+            'veq':{'mod':'uf','low':0.,'high':100.},    
+            'lambda_rad__plHD106315c':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})
+
+        # glob_fit_dic['IntrProf']['priors'].update({
+        #     'ctrst_ord0__ISHARPS_VS20170309':{'mod':'uf','low':0.,'high':1.},
+        #     'ctrst_ord0__ISHARPS_VS20170330':{'mod':'uf','low':0.,'high':1.},
+        #     'ctrst_ord0__ISHARPS_VS20180323':{'mod':'uf','low':0.,'high':1.}})
+
+        glob_fit_dic['IntrProf']['priors'].update({
+            'ctrst_ord0__ISHARPS_VS_':{'mod':'uf','low':0.,'high':1.},
+            'FWHM_ord0__ISHARPS_VS_':{'mod':'uf','low':0.,'high':40.}})
+                                              
+
+        glob_fit_dic['IntrProf']['priors'].update({
+        #     # 'FWHM_ord0__ISHARPS_VS20170309':{'mod':'uf','low':0.,'high':40.},
+        #     # 'FWHM_ord0__ISHARPS_VS20170330':{'mod':'uf','low':0.,'high':40.},
+        #     # 'FWHM_ord0__ISHARPS_VS20180323':{'mod':'uf','low':0.,'high':40.}})   
+            'FWHM_ord0__ISHARPS_VS_':{'mod':'uf','low':0.,'high':40.}})          
+
+        glob_fit_dic['IntrProf']['priors'].update({
+            'alpha_rot':{'mod':'uf','low':0.,'high':1.},
+            'cos_istar':{'mod':'uf','low':-1.,'high':1.},
+            })
+
+
+
+    elif gen_dic['star_name']=='WASP156':
+        glob_fit_dic['IntrProf']['priors'].update({
+            # 'veq':{'mod':'uf','low':0.,'high':100.}, 
+            'veq':{'mod':'gauss','val':3.8,'s_val':0.91},   
+            'lambda_rad__plWASP156b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}})        
+        
+        glob_fit_dic['IntrProf']['priors'].update({
+            'ctrst_ord0__ISCARMENES_VIS_VS20190928':{'mod':'uf','low':0.,'high':1.},
+            'ctrst_ord0__ISCARMENES_VIS_VS20191025':{'mod':'uf','low':0.,'high':1.}
+            })
+
+        glob_fit_dic['IntrProf']['priors'].update({
+            'FWHM_ord0__ISCARMENES_VIS_VS20190928':{'mod':'uf','low':0.,'high':40.},
+            'FWHM_ord0__ISCARMENES_VIS_VS20191025':{'mod':'uf','low':0.,'high':40.}
+            })          
+        
+        glob_fit_dic['IntrProf']['priors'].update({
+            'a_damp__ISCARMENES_VIS_VS20190928':{'mod':'uf','low':0.,'high':10.},
+            # 'a_damp__ISCARMENES_VIS_VS20191025':{'mod':'uf','low':0.,'high':10.}
+            }) 
+
+    elif gen_dic['star_name']=='WASP47': 
+        glob_fit_dic['IntrProf']['priors'].update({
+            # 'veq':{'mod':'uf','low':0.,'high':6.},  
+            'veq':{'mod':'dgauss','val':1.8,'s_val_low':0.16,'s_val_high':0.24},
+            'lambda_rad__plWASP47d':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
+            'ctrst_ord0__ISHARPN_VS20210730':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__ISHARPN_VS20210730':{'mod':'uf','low':0.,'high':30.},  
+            
+            })
+
+    elif gen_dic['star_name']=='55Cnc': 
+        glob_fit_dic['IntrProf']['priors'].update({
+            #  'lambda_rad__pl55Cnc_e__ISESPRESSO_VS20200205':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+            # 'lambda_rad__pl55Cnc_e__ISESPRESSO_VS20210121':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+            # 'lambda_rad__pl55Cnc_e__ISESPRESSO_VS20210124':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+
+            # 'lambda_rad__pl55Cnc_e__ISHARPS_VS20120127':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+            # 'lambda_rad__pl55Cnc_e__ISHARPS_VS20120213':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+            # 'lambda_rad__pl55Cnc_e__ISHARPS_VS20120227':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+            # 'lambda_rad__pl55Cnc_e__ISHARPS_VS20120315':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+            
+            # 'lambda_rad__pl55Cnc_e__ISHARPN_VS20131114':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+            # 'lambda_rad__pl55Cnc_e__ISHARPN_VS20131128':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+            # 'lambda_rad__pl55Cnc_e__ISHARPN_VS20140101':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+            # 'lambda_rad__pl55Cnc_e__ISHARPN_VS20140126':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+            # 'lambda_rad__pl55Cnc_e__ISHARPN_VS20140226':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+            # 'lambda_rad__pl55Cnc_e__ISHARPN_VS20140329':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},  
+
+            'lambda_rad__pl55Cnc_e__ISEXPRES_VS20220131':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+            'lambda_rad__pl55Cnc_e__ISEXPRES_VS20220406':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+                
+            # 'ctrst_ord0__ISESPRESSO_VS20200205':{'mod':'uf','low':0.,'high':1.},  
+            # 'FWHM_ord0__ISESPRESSO_VS20200205':{'mod':'uf','low':0.,'high':30.},              
+            # 'ctrst_ord0__ISESPRESSO_VS20210121':{'mod':'uf','low':0.,'high':1.},  
+            # 'FWHM_ord0__ISESPRESSO_VS20210121':{'mod':'uf','low':0.,'high':30.},              
+            # 'ctrst_ord0__ISESPRESSO_VS20210124':{'mod':'uf','low':0.,'high':1.},  
+            # 'FWHM_ord0__ISESPRESSO_VS20210124':{'mod':'uf','low':0.,'high':30.}, 
+              # 'ctrst_ord0__ISHARPS_VS20120127':{'mod':'uf','low':0.,'high':1.},  
+              # 'FWHM_ord0__ISHARPS_VS20120127':{'mod':'uf','low':0.,'high':15.}, 
+              # 'ctrst_ord0__ISHARPS_VS20120213':{'mod':'uf','low':0.,'high':1.},  
+              # 'FWHM_ord0__ISHARPS_VS20120213':{'mod':'uf','low':0.,'high':15.},                                  
+              # 'ctrst_ord0__ISHARPS_VS20120227':{'mod':'uf','low':0.,'high':1.},  
+              # 'FWHM_ord0__ISHARPS_VS20120227':{'mod':'uf','low':0.,'high':15.}, 
+              # 'ctrst_ord0__ISHARPS_VS20120315':{'mod':'uf','low':0.,'high':1.},  
+              # 'FWHM_ord0__ISHARPS_VS20120315':{'mod':'uf','low':0.,'high':15.}, 
+              #   'ctrst_ord0__ISHARPN_VS20131114':{'mod':'uf','low':0.,'high':1.},  
+              #   'FWHM_ord0__ISHARPN_VS20131114':{'mod':'uf','low':0.,'high':15.}, 
+              #   'ctrst_ord0__ISHARPN_VS20131128':{'mod':'uf','low':0.,'high':1.},  
+              #   'FWHM_ord0__ISHARPN_VS20131128':{'mod':'uf','low':0.,'high':15.}, 
+                 # 'ctrst_ord0__ISHARPN_VS20140101':{'mod':'uf','low':0.,'high':1.},  
+                 # 'FWHM_ord0__ISHARPN_VS20140101':{'mod':'uf','low':0.,'high':15.}, 
+              #   'ctrst_ord0__ISHARPN_VS20140126':{'mod':'uf','low':0.,'high':1.},  
+              #   'FWHM_ord0__ISHARPN_VS20140126':{'mod':'uf','low':0.,'high':15.},                                     
+              #   'ctrst_ord0__ISHARPN_VS20140226':{'mod':'uf','low':0.,'high':1.},    
+              #   'FWHM_ord0__ISHARPN_VS20140226':{'mod':'uf','low':0.,'high':15.}, 
+              #   'ctrst_ord0__ISHARPN_VS20140329':{'mod':'uf','low':0.,'high':1.},      
+              #   'FWHM_ord0__ISHARPN_VS20140329':{'mod':'uf','low':0.,'high':15.},        
+
+            # 'ctrst_ord0__ISEXPRES_VS20220131':{'mod':'uf','low':0.,'high':1.},  
+            # 'FWHM_ord0__ISEXPRES_VS20220131':{'mod':'uf','low':0.,'high':30.},              
+            # 'ctrst_ord0__ISEXPRES_VS20220406':{'mod':'uf','low':0.,'high':1.},  
+            # 'FWHM_ord0__ISEXPRES_VS20220406':{'mod':'uf','low':0.,'high':30.},  
+
+            'ctrst_ord0__IS__VS_':{'mod':'uf','low':0.,'high':1.},  
+            'FWHM_ord0__IS__VS_':{'mod':'uf','low':0.,'high':15.}, 
+
+            'veq':{'mod':'uf','low':0.,'high':10.},  
+            'lambda_rad__pl55Cnc_e':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+        
+            # 'veq':{'mod':'uf','low':2.6099460026e+00-2.*3.0271648816e-01,'high':2.6099460026e+00+2.*3.0271648816e-01},      #from HARPS > All_vis > Corr_trend > Comm_line            
+            # 'ctrst_ord0__IS__VS_':{'mod':'uf','low':6.7739034862e-01-2.*3.4580162765e-02,'high':6.7739034862e-01+2.*3.4580162765e-02},    #from HARPS > All_vis > Corr_trend > Comm_line
+            # 'FWHM_ord0__IS__VS_':{'mod':'uf','low':4.6510963685e+00-2.*3.3033396495e-01,'high':4.6510963685e+00+2.*3.3033396495e-01},   #from HARPS > All_vis > Corr_trend > Comm_line
+
+            # 'veq':{'mod':'uf','low':1.21095752e+00,'high':1.38584791e+00},      #from HARPScorrtrend_ESPRESSOcorrPC_HARPNcorrPCnoV4
+            # 'ctrst_ord0__IS__VS_':{'mod':'uf','low':6.97764243e-01 ,'high': 7.17962302e-01},    #from HARPScorrtrend_ESPRESSOcorrPC_HARPNcorrPCnoV4
+            # 'FWHM_ord0__IS__VS_':{'mod':'uf','low':4.51249435e+00 ,'high': 4.68518061e+00},   #from HARPScorrtrend_ESPRESSOcorrPC_HARPNcorrPCnoV4
+            # 'veq':{'mod':'dgauss','val':1.295232959,'s_val_low':0.084275439,'s_val_high':0.090614950600000},    #from HARPScorrtrend_ESPRESSOcorrPC_HARPNcorrPCnoV4
+            # 'ctrst_ord0__IS__VS_':{'mod':'dgauss','val':7.0640591115e-01,'s_val_low':0.0086416681500000,'s_val_high':0.01155639085},   #from HARPScorrtrend_ESPRESSOcorrPC_HARPNcorrPCnoV4
+            # 'FWHM_ord0__IS__VS_':{'mod':'dgauss','val':4.5943537966,'s_val_low':-0.0818594,'s_val_high':0.0908268},   #from HARPScorrtrend_ESPRESSOcorrPC_HARPNcorrPCnoV4
+            })
+
+    if gen_dic['star_name']=='HD209458':  
+        glob_fit_dic['IntrProf']['priors'].update({
+                    'veq':{'mod':'uf','low':0.,'high':10.},  
+                    'lambda_rad__plHD209458b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
+                    'ctrst_ord0__ISESPRESSO_VS20190720':{'mod':'uf','low':0.,'high':1.},  
+                    'ctrst_ord0__ISESPRESSO_VS20190911':{'mod':'uf','low':0.,'high':1.},  
+                    'ctrst_ord1__ISESPRESSO_VS_':{'mod':'uf','low':-1.,'high':1.},  
+                    'FWHM_ord0__ISESPRESSO_VS20190720':{'mod':'uf','low':0.,'high':15.}, 
+                    'FWHM_ord0__ISESPRESSO_VS20190911':{'mod':'uf','low':0.,'high':15.},                       
+                    'FWHM_ord1__ISESPRESSO_VS_':{'mod':'uf','low':-1.,'high':1.}, 
+                    })    
+
+
+ 
+
+
+    # Stage Théo
+
+    if gen_dic['star_name'] == 'V1298tau' : 
+        glob_fit_dic['IntrProf']['priors'].update({
+            'veq':{'mod':'uf','low':0.,'high':30.},    
+            'lambda_rad__plV1298tau_b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},       
+            'FWHM_ord0__ISHARPN_VSmock_vis':{'mod':'uf','low':0.,'high':10.},
+            'ctrst_ord0__ISHARPN_VSmock_vis':{'mod':'uf','low':0.,'high':1.},
+            })
+
+
+    #%%%%% Derived properties
+    #    - each field calls a specific function (see routine for more details)
+    glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','psi','om','b','ip','istar_deg_conv','fold_istar','lambda_deg','c0','CB_ms']
+    glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg']
+    # glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg','istar_deg_conv','Peq_veq']
+    #glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','lambda_deg','istar_deg_conv','fold_istar','psi']
+    # glob_fit_dic['IntrProf']['modif_list'] = []
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','psi'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','Peq_vsini'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini','psi_lambda'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','istar_Peq','psi'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','ip'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_meas_conv'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_DG_conv'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_meas_add','b','ip'] 
+
 
     
     #%%%%% MCMC settings
     
     #%%%%%% Calculating/retrieving
     glob_fit_dic['IntrProf']['mcmc_run_mode']='use'
+
 
     #%%%%%% Runs to re-use
     #    - list of mcmc runs to reuse
@@ -12541,8 +12802,6 @@ if __name__ == '__main__':
     #     # glob_fit_dic['IntrProf']['mcmc_reboot']='/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/mcmc/20210121_temp2/raw_chains_walk250_steps5000.npz'
     #     # glob_fit_dic['IntrProf']['mcmc_reboot']='/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/mcmc/20210124/run3/raw_chains_walk250_steps1000.npz'
     #     glob_fit_dic['IntrProf']['mcmc_reboot']='/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/mcmc/All_visits/run3/raw_chains_walk400_steps1000.npz'
-
-
 
 
     #%%%%%% Walkers
@@ -12622,7 +12881,8 @@ if __name__ == '__main__':
         # glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':20,'nsteps':100,'nburn':0}     #Test   
         glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':50,'nsteps':1000,'nburn':300}     #Fit RM alone, PC or trend-corrected
 
-
+    elif gen_dic['star_name']=='HD209458': 
+        glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':80,'nsteps':400,'nburn':0}     #2000 steps = 25 min
         
     # Stage Théo  
     
@@ -12631,17 +12891,7 @@ if __name__ == '__main__':
 
 
 
-
-
-
-
-
-
-
-
-
-    
-    #Use complex prior function
+    #%%%%%% Complex priors
     glob_fit_dic['IntrProf']['prior_func']={}        
     if gen_dic['transit_pl']==['HD3167_b']:  
         glob_fit_dic['IntrProf']['prior_func']={'contrast':{}}
@@ -12658,56 +12908,35 @@ if __name__ == '__main__':
     #     glob_fit_dic['IntrProf']['prior_func']={'FWHM_vsini':{'FWHM_DI':6.329}}            
         
         
-        
-
-    #Excluding manually some of the walkers
+    #%%%%%% Walkers exclusion  
     #    - define conditions within routine
     glob_fit_dic['IntrProf']['exclu_walk']=True     & False       
     
 
-    #Automatic exclusion of outlying chains
+    #%%%%%% Automatic exclusion of outlying chains
     #    - set to None, or exclusion threshold
     glob_fit_dic['IntrProf']['exclu_walk_autom']=None  #  5.
 
-    #Define lower/upper limits to be calculated
-    # glob_fit_dic['IntrProf']['conf_limits']={'ecc_pl1':{'bound':0.,'type':'upper','level':['1s','3s']}} 
-
-    #Plot chains for MCMC parameters
-    glob_fit_dic['IntrProf']['save_MCMC_chains']='png'   #png  
-
-
-    #Choose list of modifications to be made to the final chains 
-    #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','psi','om','b','ip','istar_deg_conv','fold_istar','lambda_deg','c0','CB_ms']
-    glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg']
-    # glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg','istar_deg_conv','Peq_veq']
-    #glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','lambda_deg','istar_deg_conv','fold_istar','psi']
-    # glob_fit_dic['IntrProf']['modif_list'] = []
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','psi'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','Peq_vsini'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini','psi_lambda'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','istar_Peq','psi'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','ip'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_meas_conv'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_DG_conv'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_meas_add','b','ip'] 
-
-
-
-    #Define HDI interval to be calculated 
+    #%%%%%% Derived errors
+    #    - 'quant' or 'HDI'
+    glob_fit_dic['IntrProf']['out_err_mode']='HDI'
     glob_fit_dic['IntrProf']['HDI']='1s'   #None   #'3s'   
     # glob_fit_dic['IntrProf']['HDI']='3s'   #None   #'3s' 
         # fit_dic['HDI_nbins']={'veq':50,'lambda_rad__'+pl_loc:50}   #pour l'intervalle a 1s
-    if gen_dic['star_name']=='GJ436': glob_fit_dic['IntrProf']['HDI_nbins']= {'lambda_deg__GJ436_b':40}   
-
-
-
-
-
-
+    if gen_dic['star_name']=='GJ436': glob_fit_dic['IntrProf']['HDI_nbins']= {'lambda_deg__GJ436_b':40}  
     
-    #Options for corner plot
+    
+    #%%%%%% Derived lower/upper limits
+    # glob_fit_dic['IntrProf']['conf_limits']={'ecc_pl1':{'bound':0.,'type':'upper','level':['1s','3s']}} 
+
+
+
+    #%%%% Plot settings
+    
+    #%%%%% MCMC chains
+    glob_fit_dic['IntrProf']['save_MCMC_chains']='png'   #png  
+
+    #%%%%% MCMC orner plot
     #    - see function for options
     glob_fit_dic['IntrProf']['corner_options']={
 #            'bins_1D_par':[50,50,50,50],       #vsini, ip, lambda, b
@@ -12737,9 +12966,6 @@ if __name__ == '__main__':
 #            'plot1s_1D':False
         }    
 
-
-    #Print on-screen fit information
-    glob_fit_dic['IntrProf']['verbose']=True  &  False
 
 
     
@@ -12788,19 +13014,25 @@ if __name__ == '__main__':
 
     
     ##################################################################################################       
-    #%%% Module: estimates for local stellar profiles 
-    #    - use local profiles module to plot estimates with measured profiles
+    #%%% Module: best estimates for planet-occulted stellar profiles 
+    #    - use the module to generate:
+    # + local profiles that are then used to correct residual profiles from stellar contamination
+    # + intrinsic profiles that are corrected from measured ones to assess the quality of the estimates 
     #    - the choice to use measured ('meas') or theoretical ('theo') stellar surface RVs to shift local profiles is set by data_dic['Intr']['align_mode']
     ##################################################################################################     
     
-    #Estimating local stellar profiles 
+    #Estimating stellar profiles 
     #    - for original and binned exposures in each visit
-    gen_dic['loc_data_corr']=True   &  False
+    gen_dic['loc_data_corr']=True  # &  False
     gen_dic['loc_data_corr_bin']=True    &  False
     
     #Calculating/retrieving
     gen_dic['calc_loc_data_corr']=True  #  &  False   
     gen_dic['calc_loc_data_corr_bin']=True  #  &  False  
+    
+    #Reconstruct local ('Res') or intrinsic ('Intr') profiles
+    #    - local profiles cannot be reconstructed for spectral data converted into CCFs, as in-transit residual CCFs are not calculated
+    data_dic['Intr']['plocc_prof_type']='Intr'         
     
     #Method and options to define the local stellar flux profiles
     #    - these options partly differ from those defining intrinsic profiles (see gen_dic['mock_data']) because local profiles are associated with observed exposures
@@ -12982,14 +13214,22 @@ if __name__ == '__main__':
                            '20220406':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/mcmc/All_visits/EXPRES/Corr_trends/Commline/Fit_results.npz',
                              }},
                 }       
+    elif gen_dic['star_name']=='HD209458':
+        data_dic['Intr']['opt_loc_data_corr']['glob_mod']={        
+            'dim_fit':'mu',
+            'IntrProf_prop_path':
+                {'ESPRESSO':{'20190720':'/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProf/chi2/Fit_results',
+                             '20190911':'/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProf/chi2/Fit_results'}}}     
+
+
 
     #Plot 2D maps of theoretical intrinsic stellar profiles
     #    - for original and binned exposures
-    plot_dic['map_Intr_prof_est']=''   #'png
+    plot_dic['map_Intr_prof_est']='png'   #'png
     
     #Plotting 2D maps of residuals from theoretical intrinsic stellar profiles
     #    - for original and binned exposures
-    plot_dic['map_Intr_prof_res']=''   #'png    
+    plot_dic['map_Intr_prof_res']='png'   #'png    
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:plot_dic['map_Intr_prof_res']='png'
 
 
@@ -13476,15 +13716,11 @@ if __name__ == '__main__':
     PropAtm_fit_dic={}
     
     #Activate 
-    gen_dic['fit_atm_prop'] = True    &  False
+    gen_dic['fit_AtmProp'] = True    &  False
     
     #Instrument and visits to be fitted
     if gen_dic['transit_pl']=='WASP76b':
         PropAtm_fit_dic['fit_sel']={'ESPRESSO':['2018-09-03','2018-10-31']}
-        
-    #Fit properties derived from original ('orig') or binned ('bin') profiles
-    #    - the second possibility is only available if profiles were binned over phase
-    PropAtm_fit_dic['data']='orig'
         
     #Fit mode
     #    - 'chi2' or 'mcmc'
@@ -13494,7 +13730,7 @@ if __name__ == '__main__':
     PropAtm_fit_dic['verbose']=True
     
     #Plot chi2 values for each datapoint
-    plot_dic['chi2_fit_atm_prop']=''   #pdf      
+    plot_dic['chi2_fit_AtmProp']=''   #pdf      
   
     
      
@@ -13515,7 +13751,7 @@ if __name__ == '__main__':
     AtmProf_fit_dic={}
 
     #Activate 
-    gen_dic['fit_atm_all'] = True   &  False
+    gen_dic['fit_AtmProf'] = True   &  False
 
     #Indexes of in-transit exposures to be fitted, in each visit
     #    - indexes are relative to in-transit or global tables depending on the signal type
@@ -13579,7 +13815,7 @@ if __name__ == '__main__':
         #         print('Order :',iord,'(slices = ',2*iord,2*iord+1,')')
         #         gen_dic['orders4ccf']['ESPRESSO'] = [2*iord,2*iord+1] 
                 
-        #         ANTARESS_main(data_dic,mock_dic,gen_dic,data_dic['Res'],data_dic['DI'],data_dic['Atm'],theo_dic,plot_dic,data_dic['Intr'],glob_fit_dic['PropLoc'],glob_fit_dic['IntrProf'],detrend_prof_dic,PropAtm_fit_dic,AtmProf_fit_dic, corr_spot_dic, glob_fit_dic['ResProf'],stars_params,planets_params)
+        #         ANTARESS_main(data_dic,mock_dic,gen_dic,data_dic['Res'],data_dic['DI'],data_dic['Atm'],theo_dic,plot_dic,data_dic['Intr'],glob_fit_dic['IntrProp'],glob_fit_dic['IntrProf'],detrend_prof_dic,PropAtm_fit_dic,AtmProf_fit_dic, corr_spot_dic, glob_fit_dic['ResProf'],stars_params,planets_params)
                               
             
             

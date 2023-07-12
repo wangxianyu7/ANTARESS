@@ -363,7 +363,7 @@ Generic function to calculate the merit factor of the telluric fit
 '''
 def MAIN_telluric_model(param,velccf,args=None):
 
-    #Models over fitted spectral ranges
+    #Models over full spectral range
     ccf_uncorr_master,cov_uncorr,ccf_model_conv_master,_=telluric_model(param,velccf,args=args)
     
     #Merit table
@@ -371,8 +371,9 @@ def MAIN_telluric_model(param,velccf,args=None):
     if args['use_cov_eff']:
         L_mat = scipy.linalg.cholesky_banded(cov_uncorr, lower=True)
         chi = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True) 
+        chi = chi[args['cond_def_fit']]
     else:
-        chi = res/np.sqrt( cov_uncorr[0]) 
+        chi = res[args['cond_def_fit']]/np.sqrt( cov_uncorr[0][args['cond_def_fit']]) 
 
     return chi    
 
@@ -454,7 +455,7 @@ def telluric_model(params,velccf,args=None):
 
                 #Compute CCFs
                 #    - multiprocessing not efficient for these calculations
-                edge_velccf_fit = args['edge_velccf'][args['mol_fit_idx_edge']]
+                edge_velccf_fit = args['edge_velccf'][args['idx_mod']]
                 ccf_uncorr_ord,    cov_ccf_uncorr_ord      = new_compute_CCF(edge_bins_ord,flux_ord,cov_ord,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gdet_ord)[0:2]
                 cov_uncorr_ord[isub_ord] = cov_ccf_uncorr_ord 
                 nd_cov_uncorr_ord[isub_ord] = np.shape(cov_ccf_uncorr_ord)[0]
@@ -658,9 +659,11 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
         #Continuum and fit range
         if (molec in fixed_args['tell_cont_range']):fixed_args['mol_cont_range'] = fixed_args['tell_cont_range'][molec]
         else:fixed_args['mol_cont_range'] = [-15.,15.]
-        if (molec in fixed_args['tell_fit_range']):fixed_args['mol_fit_idx'] = np_where1D((fixed_args['edge_velccf'][0:-1]>fixed_args['tell_fit_range'][molec][0]) & (fixed_args['edge_velccf'][1::]<=fixed_args['tell_fit_range'][molec][1]))
-        else:fixed_args['mol_fit_idx'] = np.arange(fixed_args['n_ccf'],dtype=int)
-        fixed_args['mol_fit_idx_edge'] = np.append(fixed_args['mol_fit_idx'],fixed_args['mol_fit_idx'][-1]+1)
+        if (molec in fixed_args['tell_fit_range']):cond_def_fit = np_where1D((fixed_args['edge_velccf'][0:-1]>fixed_args['tell_fit_range'][molec][0]) & (fixed_args['edge_velccf'][1::]<=fixed_args['tell_fit_range'][molec][1]))
+        else:cond_def_fit = np.arange(fixed_args['n_ccf'],dtype=int)
+        idx_def_fit = np_where1D(cond_def_fit)
+        fixed_args['idx_mod'] = range(idx_def_fit[0],idx_def_fit[-1]+1)
+        fixed_args['cond_def_fit'] = cond_def_fit[fixed_args['idx_mod']]
  
         #Continuum of CCF   
         if fixed_args['CCFcont_deg'][molec]>0:
@@ -668,7 +671,9 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
                 params.add('cont'+str(ideg_CCFcont), value= 0.,  vary=True  )
 
         #Fit minimization for current molecule, through comparison between telluric CCF from data and model
-        param_molecules[molec] = fit_minimization(ln_prob_func_lmfit,params,fixed_args['velccf'][fixed_args['mol_fit_idx']],fixed_args['y_val'][fixed_args['mol_fit_idx']],np.array([fixed_args['cov_val'][0][fixed_args['mol_fit_idx']]]),fixed_args['fit_func'],verbose=False,fixed_args=fixed_args)[2]
+        #    - unfitted pixels are removed from the chi2 table passed to residual() , so that they are then summed over the full tables
+        fixed_args['idx_fit'] = np.ones(len(fixed_args['idx_mod']),dtype=bool)   
+        param_molecules[molec] = fit_minimization(ln_prob_func_lmfit,params,fixed_args['velccf'][fixed_args['idx_mod']],fixed_args['y_val'][fixed_args['idx_mod']],fixed_args['cov_val'][0,fixed_args['idx_mod']],fixed_args['fit_func'],verbose=False,fixed_args=fixed_args)[2]
                 
         #Store results for plotting
         if (tell_prop!=''):
@@ -688,7 +693,7 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
             fixed_args['lines_fit'] = tell_mol_dic['lines_fit_molecules'][molec]
             fixed_args['qt_molec'] = {molec:tell_mol_dic['qt_molec'][molec]}
             fixed_args['Nx_molec'] = {molec:tell_mol_dic['Nx_molec'][molec]}
-            fixed_args['mol_fit_idx_edge'] = np.arange(fixed_args['n_ccf']+1,dtype=int)
+            fixed_args['idx_mod'] = np.arange(fixed_args['n_ccf']+1,dtype=int)
             outputs[molec]['ccf_uncorr_master'],_,outputs[molec]['ccf_model_conv_master'],outputs[molec]['ccf_corr_master']=telluric_model(param_molecules[molec],fixed_args['velccf'],args=fixed_args)
 
     return tell_spec_exp,corr_flux_exp,corr_cov_exp,outputs
@@ -3018,6 +3023,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
             
                             #Fitting
                             fit_func_wig = wig_mod_cst
+                            fixed_args['idx_fit'] = np.ones(len(Fr_bin_fit['nu']),dtype=bool)
                             _,merit ,p_ord_best = fit_minimization(ln_prob_func_lmfit,p_start,Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.array([Fr_bin_fit['varFr']]),fit_func_wig,verbose=False,fixed_args=fixed_args)
     
                             #Save results of sampling fit for current exposure
@@ -3100,6 +3106,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
                             fit_dic['run_name'] = '_'+inst+'_'+vis+'_'+str(iexp_glob_bin)
                             fixed_args_loc = deepcopy(fixed_args) 
                             fixed_args_loc['nsamp'] = gen_dic['wig_exp_samp']['nsamp'] 
+                            fixed_args_loc['idx_fit'] = np.ones(len(Fr_bin_fit['nu']),dtype=bool)
                                             
                             #Fit iterations
                             #    - the minimization fails to converge in a single run, possibly stopping after considering that the improvement in fit quality is sufficient enough (decreasing the fit tolerance does not help)
@@ -3507,6 +3514,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
                                     #Fit
                                     p_best = params_fit   
                                     fit_prop = False
+                                    fixed_args['idx_fit'] = np.ones(np.sum(cond_fit_all),dtype=bool)
                                     if np.sum(cond_fit_all)>6:   
                                         fit_prop = True
                                         _,_,p_best = fit_minimization(ln_prob_func_lmfit,p_best,nu_samp[cond_fit_all],prop_samp[cond_fit_all],var_fit,main_fit_func,verbose=False ,fixed_args=fixed_args)
@@ -3533,6 +3541,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
                                             if (len(nu_samp[cond_fit_all])>5) and (np.max(np.abs(res[cond_fit_all]))>0):
                                                 if nan_err:var_fit = np.array([np.repeat(np.std(res[cond_fit_all]),np.sum(cond_fit_all))])                                                  
                                                 else:var_fit = np.array([eprop_samp[cond_fit_all]])**2. 
+                                                fixed_args['idx_fit'] = np.ones(np.sum(cond_fit_all),dtype=bool)
                                                 _,merit,p_best = fit_minimization(ln_prob_func_lmfit,p_best,nu_samp[cond_fit_all],prop_samp[cond_fit_all],var_fit,main_fit_func,verbose=False ,fixed_args=fixed_args)
                                   
                                         #Save results of current hyperparameter fit
@@ -3552,7 +3561,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
                                         path_hyper_plot = path_dic['plotpath_Chrom']+'ExpGroup'+str(iexp_glob_bin)+'/'
                                         if not os_system.path.exists(path_hyper_plot):os_system.makedirs(path_hyper_plot)  
                                         plt.ioff()        
-                                        fig, ax = plt.subplots(2, 1, figsize=(20, 10),height_ratios=[70,30.])
+                                        fig, ax = plt.subplots(2, 1, figsize=(20, 10),gridspec_kw = {'height_ratios':[70.,30.]})
                                         fontsize = 35
                                         
                                         #Plot data
@@ -3998,6 +4007,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
                     var_fit,fixed_args_loc = sub_prep(fixed_args_loc,cond_fit_all,y_var,sy_var)
        
                     #Fitting
+                    fixed_args_loc['idx_fit'] = np.ones(np.sum(cond_fit_all),dtype=bool)
                     _,merit,p_best = fit_minimization(ln_prob_func_lmfit,p_best,x_var[cond_fit_all],y_var[cond_fit_all],np.array([var_fit])**2.,main_fit_func,verbose=False ,fixed_args=fixed_args_loc)
                       
                     #Successive fits with automatic identification and exclusion of outliers
@@ -4352,6 +4362,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
 
                         #Run fit over several iteration to converge
                         p_best_curr = deepcopy(p_best_pre)
+                        fixed_args_loc['idx_fit'] = np.ones(len(nu_all),dtype=bool)
                         for it in range(gen_dic['wig_vis_fit']['nit']):
                             print('               Iteration:',it+1,'/',gen_dic['wig_vis_fit']['nit'])
                             p_best_curr = fit_minimization(ln_prob_func_lmfit,p_best_curr,nu_all,Fr_all,np.array([varFr_all]),fixed_args_loc['fit_func'],verbose=True,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method=gen_dic['wig_vis_fit']['fit_method'])[2]
@@ -5202,6 +5213,7 @@ def wig_perio_sampling(comp_id_proc,plot_samp,samp_fit_dic,shift_off,ishift_comp
 
                 #Run fit over several iteration to converge, using the robust 'nelder' method
                 args['comp_mod'] = [comp_id]
+                args['idx_fit'] = np.ones(len(samp_fit_dic['nu'][comp_id]),dtype=bool)
                 for it in range(args['nit']):
                     _,_ ,p_temp_best = fit_minimization(ln_prob_func_lmfit,p_temp_best,samp_fit_dic['nu'][comp_id],samp_fit_dic['flux'][comp_id],np.array([samp_fit_dic['var'][comp_id]]),MAIN_calc_wig_mod_nu,verbose=False ,fixed_args=args,maxfev = args['max_nfev'],method='nelder')
 
@@ -5865,8 +5877,6 @@ def corr_fring(inst,gen_dic,data_inst,plot_dic,data_dic):
                                 
                                 #Ratio between current (most affected by fringing in its overlapping red part) and next (least affected by fringing in its overlapping blue part) order over overlap       
                                 ratio_ov,cov_ratio_ov = bind.div(sp_ov_loc , data_exp['cov'][iord][:,idx_ov_loc_ord], sp_ov_next , cov_ov_next)
-                                ratio_ov = ratio_ov[cond_def_ov]
-                                cov_ratio_ov = cov_ratio_ov[:,cond_def_ov]
                         
                                 #-------------------------------------------------------------------------------  
     
@@ -5882,8 +5892,8 @@ def corr_fring(inst,gen_dic,data_inst,plot_dic,data_dic):
                                 p_use['wper_sin'].value =1e6
     
                                 #Fitting
-                                idx_ov_loc_ord_def = idx_ov_loc_ord[cond_def_ov]
-                                wav_ov = data_exp['cen_bins'][iord,idx_ov_loc_ord_def]
+                                wav_ov = data_exp['cen_bins'][iord]
+                                args['idx_fit'] = idx_ov_loc_ord[cond_def_ov]
                                 result, merit,p_best= fit_minimization(ln_prob_func_lmfit,p_use,wav_ov,ratio_ov,cov_ratio_ov,fit_func,verbose=False,fixed_args=fixed_args)
                                 if (plot_dic['fring_corr']!=''):
                                     dic_fit['exp_ord_defring_all'][iord]=True

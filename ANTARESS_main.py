@@ -2,7 +2,7 @@
 ANTARESS : Advocating a Neat Technique for the Accurate Retrieval of Exoplanetary and Stellar Spectra
 """
 
-from ANTARESS_routines import extract_intr_profiles,ana_prof,calc_plocc_prop,calc_spots_prop,def_local_profiles,calc_gcal,\
+from ANTARESS_routines import extract_intr_profiles,ana_prof,calc_plocc_prop,calc_spots_prop,def_plocc_profiles,calc_gcal,\
                                 rescale_data,extract_pl_profiles,CCF_from_spec,detrend_prof,ResIntr_CCF_from_spec,\
                                 init_prop,init_visit,update_data_inst,align_profiles,init_data_instru,extract_res_profiles,\
                                 process_bin_prof,conv_2D_to_1D_spec, corr_spot,pc_analysis,def_masks,process_spectral_cont
@@ -152,7 +152,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
 
             #Building estimates for complete local stellar profiles
             if gen_dic['loc_data_corr']:
-                def_local_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,)
+                def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic)
         
             #--------------------------------------------------------------------------------------------------
             #Processing atmospheric profiles
@@ -210,11 +210,11 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
         print('Processing combined instruments')        
     
         #Wrap-up function to fit intrinsic stellar profiles and surface RVs   
-        if gen_dic['fit_IntrProf'] or gen_dic['fit_loc_prop'] or gen_dic['fit_ResProf'] :
+        if gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_ResProf'] :
             fit_intr_funcs(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic)
     
         #Wrap-up function to fit atmospheric profiles and their properties
-        if gen_dic['fit_atm_all'] or gen_dic['fit_atm_prop']:
+        if gen_dic['fit_AtmProf'] or gen_dic['fit_AtmProp']:
             fit_atm_funcs(PropAtm_fit_dic,gen_dic)
 
  

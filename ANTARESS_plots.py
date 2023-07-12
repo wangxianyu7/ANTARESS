@@ -10,7 +10,7 @@ Plot routines for ANTARESS
 """
 import numpy as np
 import os as os_system
-from utils_plots import custom_axis,autom_x_tick_prop,autom_y_tick_prop,stackrel,scaled_title
+from utils_plots import custom_axis,autom_x_tick_prop,autom_y_tick_prop,stackrel,scaled_title,autom_range_ext
 from utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz
 from ANTARESS_routines import calc_pl_coord,sub_calc_plocc_prop,def_plotorbite,LD_coeff_func,orb_motion_theoRV,return_FWHM_inst,conv_inclinedStarFrame_to_StarFrame,\
                                 gauss_intr_prop,conv_Losframe_to_inclinedStarFrame,conv_inclinedStarFrame_to_Losframe,LD_mu_func,calc_CB_RV,occ_region_grid,\
@@ -69,7 +69,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         - the HR phase table is common to all models
         - the coordinates and stellar surface properties calculated here use the nominal system properties given as input of the pipeline, unless otherwise specified
     '''
-    if (plot_dic['occulted_regions']!='') or any('map_' in key for key in list(plot_dic.keys())) or (plot_dic['prop_loc']!='') or (plot_dic['prop_raw']!='') or (plot_dic['input_LC']!='') or (plot_dic['pca_ana']!=''): 
+    if (plot_dic['occulted_regions']!='') or any('map_' in key for key in list(plot_dic.keys())) or (plot_dic['prop_Intr']!='') or (plot_dic['prop_raw']!='') or (plot_dic['input_LC']!='') or (plot_dic['pca_ana']!=''): 
 
         #Contacts
         contact_phases={}
@@ -83,7 +83,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     
         #Function to calculate coordinates of planets and occulted regions in a given visit
         #    - in achromatic mode
-        def calc_occ_plot(inst,vis,genpar_instvis,param_loc,args,system_param_loc):
+        def calc_occ_plot(theo_dic_loc,inst,vis,genpar_instvis,param_loc,args,system_param_loc,par_list = ['rv','CB_RV','mu','xp_abs','r_proj','y_st','lat']):
         
             #Generate high-resolution time table covering all planet transits   
             min_bjd = 1e100
@@ -99,11 +99,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #-------------------------------------
 
             coord_pl_in={}
-            system_param_loc = deepcopy(system_param)
-            theo_dic_loc = deepcopy(theo_dic)
             theo_dic_loc['d_oversamp']={}
             system_prop_loc = deepcopy(data_dic['DI']['system_prop'])
-            par_list = ['rv','CB_RV','mu','xp_abs','r_proj','y_st','lat']
             cond_occ_HR = np.zeros(plot_dic['nph_HR'],dtype=bool)
             for pl_loc in gen_dic['studied_pl']:
 
@@ -123,7 +120,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 
                 #Calculate coordinates
                 #    - start/end phase have been set to None if no oversampling is requested, in which case start/end positions are not calculated
-                xp_HR,yp_HR,_,Dprojplanet_HR,_,_,_,ecl_pl_HR = calc_pl_coord(system_param_loc[pl_loc]['ecc'],system_param_loc[pl_loc]['omega_rad'],system_param_loc[pl_loc]['aRs'],system_param_loc[pl_loc]['inclin_rad'],phase_pl,system_prop_loc['achrom'][pl_loc][0],system_param_loc[pl_loc]['lambda_rad'],system_param['star'])
+                xp_HR,yp_HR,_,Dprojplanet_HR,_,_,_,ecl_pl_HR = calc_pl_coord(system_param_loc[pl_loc]['ecc'],system_param_loc[pl_loc]['omega_rad'],system_param_loc[pl_loc]['aRs'],system_param_loc[pl_loc]['inclin_rad'],phase_pl,system_prop_loc['achrom'][pl_loc][0],system_param_loc[pl_loc]['lambda_rad'],system_param_loc['star'])
             
                 #Coordinates and properties of planet-occulted regions
                 coord_pl_in[pl_loc] = {'ecl':ecl_pl_HR,'cen_pos':np.vstack((xp_HR,yp_HR)),'phase':phase_pl}
@@ -131,10 +128,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #Keep exposures where at least one planet transits
                 #    - coordinates are normalized by Rstar, corresponding to the equatorial radius (and thus largest for an oblate star), so that the condition below is always conservative 
                 cond_occ_HR |= Dprojplanet_HR <= (1.+data_dic['DI']['system_prop']['RpRs_max'][pl_loc])
-       
+        
             #Planet-occulted properties
             coord_pl_in['nph_HR'] =  np.sum(cond_occ_HR)   
             bjd_HR = bjd_HR[cond_occ_HR]
+            args['inst'] = inst
+            args['vis'] = vis
             for pl_loc in gen_dic['studied_pl']:
                 coord_pl_in[pl_loc]['cen_pos'] = coord_pl_in[pl_loc]['cen_pos'][:,cond_occ_HR]
                 coord_pl_in[pl_loc]['phase'] = coord_pl_in[pl_loc]['phase'][cond_occ_HR]     
@@ -309,13 +308,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         elif plot_options['step']=='scaled':
                             data_path = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_' 
                             restframe='star'
-                        data_path_all = [data_path+str(iexp)+'.npz' for iexp in iexp_plot]
+                        data_path_all = [data_path+str(iexp) for iexp in iexp_plot]
                     elif map_mod=='map_DIbin':
                         sp_mod = data_dic['DI']['type'][inst]                          
                         restframe='star'
                         data_bin = np.load(gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot']+'_add.npz',allow_pickle=True)['data'].item()
                         iexp_plot = np.arange(data_bin['n_exp'],dtype=int)     
-                        data_path_all = [gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot']+str(iexp)+'.npz' for iexp in iexp_plot]                  
+                        data_path_all = [gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot']+str(iexp) for iexp in iexp_plot]                  
                     elif map_mod=='map_res_prof': 
                         sp_mod = data_dic['Res']['type'][inst]
                         restframe='star'                        
@@ -346,7 +345,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             else:
                                 iexp_plot = np.arange(data_dic[inst][vis]['n_in_tr'])
                                 iexp_orig = np.array(gen_dic[inst][vis]['idx_in'])
-                            data_path_all = [gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp)+'.npz' for iexp in iexp_plot]
+                            data_path_all = [gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
                             if (map_mod=='map_Intr_prof_res'):
                                 inout_flag=np.repeat('in',len(iexp_plot))
                                 if plot_options['show_outres']:
@@ -401,11 +400,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     params = deepcopy(system_param['star'])
                     params.update({'rv':0.,'cont':1.})  
                     if plot_options['theoRV_HR']:
-                        theo_HR_prop_plocc = calc_occ_plot(inst,vis,{},params,{},deepcopy(system_param))
+                        theo_HR_prop_plocc = calc_occ_plot(deepcopy(theo_dic),inst,vis,{},params,{},deepcopy(system_param))
                     if plot_options['theoRV_HR_align']:
                         system_param_align = deepcopy(system_param)
                         system_param_align[pl_ref]['lambda_rad'] = 0.
-                        theo_HR_prop_plocc_align = calc_occ_plot(inst,vis,{},params,{},system_param_align)
+                        theo_HR_prop_plocc_align = calc_occ_plot(deepcopy(theo_dic),inst,vis,{},params,{},system_param_align)
                
                     #Retrieving data
                     nexp_plot = len(iexp_plot)
@@ -423,9 +422,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #    - models for local stellar profiles are scaled as F_intr(w,t,v) = F_res(w,t,v)/(1 - LC_theo(band,t))
                             #      where loc_flux_scaling = 1 - LC_theo
                             if (map_mod=='map_Intr_prof_est'):  
-                                loc_flux_scaling_plot = dataload_npz(data_vis['scaled_Intr_data_paths']+str(iexp_orig_loc))['loc_flux_scaling'] 
-                                data_load = dataload_npz(data_path_exp)                                                     #estimated local profile
-                                for iord in range(dim_exp_plot[0]):var_map[isub,iord] = data_load['flux'][iord]/loc_flux_scaling_plot(data_load['cen_bins'][iord])     #estimated intrinsic profile
+                                data_load = dataload_npz(data_path_exp)                                                                        
+                                if data_dic['Intr']['plocc_prof_type']=='Res':loc_flux_scaling_plot = dataload_npz(data_vis['scaled_Intr_data_paths']+str(iexp_orig_loc))['loc_flux_scaling'] 
+                                for iord in range(dim_exp_plot[0]):                                
+                                    var_map[isub,iord] = data_load['flux'][iord] 
+                                    if data_dic['Intr']['plocc_prof_type']=='Res':var_map[isub,iord]/=loc_flux_scaling_plot(data_load['cen_bins'][iord])    
                             
                             #Residual maps
                             #    - see details in pc_analysis()
@@ -454,11 +455,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         data_load_est = dataload_npz(data_path_exp)
                                         loc_flux_est = data_load_est['flux']
                                     
-                                    for iord in range(dim_exp_plot[0]):
+                                    for iord in range(dim_exp_plot[0]):        
                                         loc_flux_scaling_exp_ord = loc_flux_scaling_plot(data_load['cen_bins'][iord])
-                                        loc_flux_meas = loc_flux_scaling_exp_ord*data_load['flux']
-                                        var_map[isub,iord] =  (loc_flux_meas - loc_flux_est[iord])/(1. - loc_flux_scaling_exp_ord)
-                                 
+                                        intr2res_sc = loc_flux_scaling_exp_ord/(1. - loc_flux_scaling_exp_ord)
+                                        if data_dic['Intr']['plocc_prof_type']=='Res':                                    
+                                            var_map[isub,iord] =  (data_load['flux'] - (loc_flux_est[iord]/loc_flux_scaling_exp_ord))*intr2res_sc
+                                        else:
+                                            var_map[isub,iord] =  (data_load['flux'] - loc_flux_est[iord])*intr2res_sc  
+
                                 #Out-of-transit profile
                                 else:
                                     data_load = dataload_npz(data_path_exp)
@@ -1083,7 +1087,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Upload fit results
                     if (plot_options['fit_type']=='indiv') and gen_dic['ana_atm']:
                         prof_fit_vis=(np.load(gen_dic['save_data_dir']+'Atmorig_prop/'+plot_options['pl_atm_sign']+'/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item())['prof_fit_dic']
-                    elif (plot_options['fit_type']=='global') and (gen_dic['fit_atm_all']) and (inst in PropAtm_fit_dic['idx_in_glob_fit']) and (vis in PropAtm_fit_dic['idx_in_glob_fit'][inst]):
+                    elif (plot_options['fit_type']=='global') and (gen_dic['fit_AtmProf']) and (inst in PropAtm_fit_dic['idx_in_glob_fit']) and (vis in PropAtm_fit_dic['idx_in_glob_fit'][inst]):
                         prof_fit_vis=(np.load(gen_dic['save_data_dir']+'Atmorig_prop/'+plot_options['pl_atm_sign']+'/Fit/Atm_glob_fit_'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item())['prof_fit_dic'] 
                         
                     if plot_options['aligned']:
@@ -1242,7 +1246,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             mod_prop_exp=prof_fit_vis[iexp]
 
                         #Fit to global profiles
-                        if (gen_dic['fit_atm_all']) and (plot_options['fit_type']=='global') and (iexp in prof_fit_vis):   
+                        if (gen_dic['fit_AtmProf']) and (plot_options['fit_type']=='global') and (iexp in prof_fit_vis):   
                             cond_mod=True 
                             mod_prop_exp=prof_fit_vis[iexp]
                             cond_fit_exp=mod_prop_exp['cond_def_fit'] 
@@ -3022,7 +3026,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     Sub-function to plot chi2 of fitted property series
     '''
     def sub_plot_chi2_prop(plot_options,plot_ext):
-        path_loc = gen_dic['save_plot_dir']+'CCFloc_prop/' 
+        path_loc = gen_dic['save_plot_dir']+'Intr_prop/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)                                        
         plt.ioff()                    
         plt.figure(figsize=plot_options['fig_size'])
@@ -3033,18 +3037,19 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         y_max=-1e100  
 
         #Upload fit results
-        data_upload = np.load(plot_options['IntrProp_path']+plot_options['prop']+'/Fit_results.npz', allow_pickle=True)['data'].item()
+        if plot_options['IntrProp_path'] is None:stop('Define path to fit')
+        data_upload =dataload_npz(plot_options['IntrProp_path']+plot_options['prop']+'/Fit_results')
 
         #Plot independently each visit
         for inst in np.intersect1d(list(data_upload['prop_fit'].keys()),list(plot_options['visits_to_plot'].keys())): 
             if inst not in plot_options['color_dic']:plot_options['color_dic'][inst]={}
             for vis in np.intersect1d(list(data_upload['prop_fit'][inst].keys()),plot_options['visits_to_plot'][inst]):    
-                if vis not in plot_options['color_dic']:plot_options['color_dic'][inst][vis]='dodgerblue'
+                if vis not in plot_options['color_dic'][inst]:plot_options['color_dic'][inst][vis]='dodgerblue'
                 
                 #Chi2 values
                 chi2_vis= ( (data_upload['prop_fit'][inst][vis] - data_upload['prop_mod'][inst][vis])/data_upload['err_prop_fit'][inst][vis])**2.
               
-                #Phase table
+                #X table
                 x_plot=data_upload['coord_mod'][inst][vis]
                
                 #Outliers
@@ -3059,18 +3064,19 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         
                 #Plot chi2 values        
                 plt.plot(x_plot,chi2_vis,marker='o',linestyle='',markersize=plot_options['markersize'],markerfacecolor=plot_options['color_dic'][inst][vis],markeredgecolor=plot_options['color_dic'][inst][vis])
-
-        #Contacts
-        y_range_loc=plot_options['y_range'] if plot_options['y_range'] is not None else np.array([0.,y_max]) 
-
+            
         #---------------------------------------------------------------------------------------- 
 
         #Plot frame 
-        x_range_loc=plot_options['x_range'] if plot_options['x_range'] is not None else np.array([x_min,x_max])     
-        if plot_options['plot_title']:plt.title('$\Chi^2$ per exposure',fontsize=plot_options['font_size'])                             
+        x_range_loc=autom_range_ext(plot_options['x_range'],x_min,x_max)
+        y_range_loc=autom_range_ext(plot_options['y_range'],0.,y_max)
+        if plot_options['plot_title']:plt.title('$\Chi^2$ per exposure',fontsize=plot_options['font_size'])     
+        xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
+        ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0])                          
         custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
-                    xmajor_form='%.3f',ymajor_form='%.1f',
-        		    x_title=glob_fit_dic['PropLoc']['coord_line'],y_title='$\chi^2$',
+    		        xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
+                    ymajor_form=ymajor_form,ymajor_int=ymajor_int,yminor_int=yminor_int,     
+        		    x_title=data_upload['coord_line'],y_title='$\chi^2$',
                     font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
         plt.savefig(path_loc+'Chi2_per_exp.'+plot_ext)                        
         plt.close() 
@@ -3118,7 +3124,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
     def sub_plot_CCF_prop(prop_mode,key_plot,plot_options,data_mode): 
         if data_mode=='raw':path_loc = gen_dic['save_plot_dir']+'DI_prop/'  
-        elif data_mode=='loc': path_loc = gen_dic['save_plot_dir']+'Loc_Prop/' 
+        elif data_mode=='loc': path_loc = gen_dic['save_plot_dir']+'Intr_Prop/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)
 
         plt.ioff()        
@@ -3176,12 +3182,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         if data_mode=='loc':    
             data_fit_prop=None  
             data_fit_prof=None
-            if prop_mode in ['rv','FWHM','ctrst','true_FWHM','true_FWHM']:
+            if prop_mode in ['rv','rv_res','FWHM','ctrst','true_FWHM','true_FWHM']:
                 if plot_options['IntrProp_path'] is not None:
-                    data_fit_prop = np.load(plot_options['IntrProp_path']+prop_mode+'/Fit_results.npz',allow_pickle=True)['data'].item()          
+                    if prop_mode=='rv_res':prop_mode_get = 'rv'
+                    else:prop_mode_get = prop_mode
+                    data_fit_prop = np.load(plot_options['IntrProp_path']+prop_mode_get+'/Fit_results.npz',allow_pickle=True)['data'].item()          
                 if plot_options['IntrProf_path'] is not None:
                     data_fit_prof = np.load(plot_options['IntrProf_path']+'Fit_results.npz',allow_pickle=True)['data'].item()       
-
+          
         #Plot for each instrument
         i_visit=-1
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
@@ -3227,7 +3235,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 if (data_mode=='loc') and (prop_mode=='rv') and plot_options['theo_HR_nom'] : 
                     params = deepcopy(system_param['star'])
                     params.update({'rv':0.,'cont':1.})                 
-                    theo_HR_prop_plocc = calc_occ_plot(inst,vis,{},params,{},deepcopy(system_param))
+                    theo_HR_prop_plocc = calc_occ_plot(deepcopy(theo_dic),inst,vis,{},params,{},deepcopy(system_param))
                     if plot_options['prop_absc']=='phase':xvar_HR=deepcopy(theo_HR_prop_plocc[pl_ref]['phase'])  
                     elif plot_options['prop_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']:xvar_HR=deepcopy(theo_HR_prop_plocc[pl_ref][plot_options['prop_absc']][0])  
                     elif plot_options['prop_absc']=='y_st2':xvar_HR=theo_HR_prop_plocc[pl_ref]['y_st'][0]**2.  
@@ -3240,9 +3248,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     # #Save/replot manually 
                     # # save_path = '/Travaux/ANTARESS/En_cours/Fit/SB_aligned.dat'
                     # # save_path = '/Travaux/ANTARESS/En_cours/RVloc_model_WASP121_Vincent.dat'
-                    # # save_path = '/Users/bourrier/Travaux/ANTARESS/En_cours/GJ436_b_Plots/CCFloc_prop/RRM_RV_model.dat' 
-                    # # save_path = '/Users/bourrier/Travaux/ANTARESS/En_cours/TIC257527578b_Plots/CCFloc_prop/RRM_RV_model_DR0.2_lambda0.dat' 
-                    # save_path = '/Users/bourrier/Travaux/ANTARESS/En_cours/TIC257527578b_Plots/CCFloc_prop/RRM_RV_model_DR0.2_lambda90.dat' 
+                    # # save_path = '/Users/bourrier/Travaux/ANTARESS/En_cours/GJ436_b_Plots/Intr_prop/RRM_RV_model.dat' 
+                    # # save_path = '/Users/bourrier/Travaux/ANTARESS/En_cours/TIC257527578b_Plots/Intr_prop/RRM_RV_model_DR0.2_lambda0.dat' 
+                    # save_path = '/Users/bourrier/Travaux/ANTARESS/En_cours/TIC257527578b_Plots/Intr_prop/RRM_RV_model_DR0.2_lambda90.dat' 
                     # # np.savetxt(save_path, np.column_stack((xvar_HR[wsort],theo_HR_prop_plocc[pl_ref]['rv'][wsort])),fmt=('%15.10f','%15.10f') )
                     # xvar_al,RV_stsurf_al=np.loadtxt(save_path).T
                     # plt.plot(xvar_al,RV_stsurf_al,color='black',linestyle=':',lw=plot_options['lw_plot'],zorder=-1) 
@@ -3359,53 +3367,46 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                         #Models from fits 
                         if (data_fit_prop is not None) or (data_fit_prof is not None): 
-                
+            
                             #High-resolution models
                             if plot_options['theo_HR_prop'] or plot_options['theo_HR_prof']:  
                                 def sub_plot_HR(mode_loc,input_dic,col_loc):
                                     if mode_loc =='from_prop':data_fit_loc=data_fit_prop
                                     if mode_loc =='from_prof':data_fit_loc=data_fit_prof
-                                 
+                               
                                     #Coordinates and properties associated with planet-occulted regions
                                     par_list_HR = ['mu','xp_abs','r_proj','y_st','lat']
                                     theo_dic_in = deepcopy(theo_dic)
-                                    if prop_mode=='rv':par_list_HR+=['rv']
+                                    if prop_mode in ['rv','rv_res']:par_list_HR+=['rv']
                                     elif prop_mode in ['ctrst','FWHM']: 
-                                        theo_dic_in['pol_mode']=data_fit_loc['pol_mode']
-                                        theo_dic_in['coord_line']=data_fit_loc['coord_line']
                                         if plot_options['theo_HR_prop']:par_list_HR+=[prop_mode]
                                         elif plot_options['theo_HR_prof']:par_list_HR+=['ctrst','FWHM']
-                                        theo_dic_in['coeff_line'] =  data_fit_loc['coeff_line_dic'][inst][vis]
-                                        
-                                    theo_HR_prop_loc = plot_plocc_prop(inst,vis,data_fit_loc['genpar_instvis'],pl_ref,deepcopy(system_param),theo_HR_prop_plocc[pl_ref]['phase'],par_list_HR,deepcopy(data_dic['DI']['system_prop']),deepcopy(data_fit_loc['p_final']),theo_dic_in)       
-                                    
-                                    
-                                    
-                                    
-                                    
+                                        data_fit_loc['coeff_line'] =  data_fit_loc['coeff_line_dic'][inst][vis]
+                                    theo_HR_prop_loc = calc_occ_plot(theo_dic_in,inst,vis,data_fit_loc['genpar_instvis'],data_fit_loc['p_final'],data_fit_loc,deepcopy(system_param),par_list = par_list_HR)[pl_ref]
                                     if plot_options['prop_absc']=='phase':xvar_HR_loc=deepcopy(theo_HR_prop_loc['phase'])  
-                                    elif plot_options['prop_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']:xvar_HR_loc=deepcopy(theo_HR_prop_loc[plot_options['prop_absc']])  
-                                    elif plot_options['prop_absc']=='y_st2':xvar_HR_loc=theo_HR_prop_loc['y_st']**2.  
-                                    elif plot_options['prop_absc']=='abs_y_st':xvar_HR_loc=np.abs(theo_HR_prop_loc['y_st'])
+                                    elif plot_options['prop_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']:xvar_HR_loc=deepcopy(theo_HR_prop_loc[plot_options['prop_absc']][0])  
+                                    elif plot_options['prop_absc']=='y_st2':xvar_HR_loc=theo_HR_prop_loc['y_st'][0]**2.  
+                                    elif plot_options['prop_absc']=='abs_y_st':xvar_HR_loc=np.abs(theo_HR_prop_loc['y_st'][0])
                                     wdefHR = np_where1D(~np.isnan(xvar_HR_loc))
                                     wsort_sub=xvar_HR_loc[wdefHR].argsort() 
-                                    wsort = wdefHR[wsort_sub]                               
+                                    wsort = wdefHR[wsort_sub]   
+                                    xvar_HR_loc = xvar_HR_loc[wsort]
                                     
                                     #Property
-                                    if prop_mode=='rv':
-                                        yvar_HR_loc = theo_HR_prop_loc['rv'][wsort]
+                                    if prop_mode in ['rv','rv_res']:
+                                        yvar_HR_loc = theo_HR_prop_loc['rv'][0][wsort]
 
                                     else:
 
                                         #FWHM and contrast of single property measurements 
                                         if (mode_loc =='from_prop'):
-                                            yvar_HR_loc = theo_HR_prop_loc[prop_mode][wsort] 
+                                            yvar_HR_loc = theo_HR_prop_loc[prop_mode][0][wsort] 
                                             
                                         if mode_loc =='from_prof':
                                             
                                             #FWHM and contrast of unconvolved intrinsic stellar profiles / of single property measurements 
-                                            raw_FWHM_mod_HR = theo_HR_prop_loc['FWHM'][wsort] 
-                                            raw_ctrst_mod_HR = theo_HR_prop_loc['ctrst'][wsort]
+                                            raw_FWHM_mod_HR = theo_HR_prop_loc['FWHM'][0][wsort] 
+                                            raw_ctrst_mod_HR = theo_HR_prop_loc['ctrst'][0][wsort]
                                      
                                             #FWHM and contrast equivalent to observed profiles
                                             if data_fit_loc['func_prof_name'][inst]=='gauss':
@@ -3426,14 +3427,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                             if (prop_mode in ['true_ctrst','ctrst']):yvar_HR_loc = ctrst_mod_HR
                   
                                     #Plot
-                                    plt.plot(xvar_HR_loc[wsort],yvar_HR_loc,color=col_loc,linestyle='--',lw=1,zorder=-1)   
+                                    plt.plot(xvar_HR_loc,yvar_HR_loc,color=col_loc,linestyle='--',lw=1,zorder=-1)   
                                 
-                                    return None
+                                    return xvar_HR_loc,yvar_HR_loc
                                 
                         #-------------------------------------------------------                             
                         #Model from property fit
                         if (data_fit_prop is not None):
-                     
+                          
                             #Data-equivalent model
                             if plot_options['theo_obs_prop']:
                                 if data_fit_prop['coord_line']!=plot_options['prop_absc']:stop('Plot and fit coordinates must match')
@@ -3441,7 +3442,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                             #High-resolution model
                             if plot_options['theo_HR_prop']:
-                                sub_plot_HR('from_prop',None,'orange')
+                                xvar_HR_loc,yvar_HR_loc = sub_plot_HR('from_prop',None,'orange')
 
                         #------------------------------------------------------- 
                         #Model from profile fit
@@ -3474,7 +3475,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                             #High-resolution model
                             if plot_options['theo_HR_prof']:  
-                                sub_plot_HR('from_prof',input_dic,'black')
+                                xvar_HR_loc,yvar_HR_loc = sub_plot_HR('from_prof',input_dic,'black')
                                 
                     if vis=='binned':
                         n_exp_vis = data_bin['n_exp']
@@ -3571,12 +3572,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Vertical property
                     #    - values are put in tables covering all exposures if necessary 
                     if vis not in plot_options['idx_noplot'][inst]:plot_options['idx_noplot'][inst][vis]=[]
+                    val_unit = {'rv':'km/s','rv_res':'m/s','FWHM':'km/s','ctrst':''}[prop_mode]
                     if plot_options['plot_data']:
                         val_obs = np.zeros(n_exp_vis)*np.nan
                         eval_obs= np.zeros([2,n_exp_vis])
+                        rv_mod_obs = np.zeros(n_exp_vis)*np.nan
                         if prop_mode in ['rv','rv_res','rv_pip_res','FWHM','ctrst','amp','rv_l2c','amp_l2c','FWHM_l2c','RV_lobe','amp_lobe','FWHM_lobe','true_ctrst','cont','c1_pol','c2_pol','c3_pol','c4_pol','vsini',\
                                          'ctrst_ord0__IS__VS_','FWHM_ord0__IS__VS_','FWHM_voigt','area','EW','biss_span']:
-                            if (data_mode=='raw') and (vis=='binned') and (prop_mode=='rv_res'):                            
+                            if (prop_mode=='rv_res') and (((data_mode=='raw') and (vis=='binned')) or ((data_mode=='loc') and (plot_options['theo_HR_prop'] or plot_options['theo_HR_prof']))):                            
                                 prop_loc = 'rv'
                                 err_prop_loc = 'err_rv'                            
                             else:
@@ -3585,9 +3588,18 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 else:err_prop_loc = 'err_'+prop_mode
                             val_obs=np.array([prof_fit_vis[idx_loc][prop_loc] for idx_loc in range(prof_fit_vis['n_exp'])])
                             if err_prop_loc is not None:eval_obs=np.vstack((  [prof_fit_vis[idx_loc][err_prop_loc][0] for idx_loc in range(prof_fit_vis['n_exp'])],[prof_fit_vis[idx_loc][err_prop_loc][1] for idx_loc in range(prof_fit_vis['n_exp'])]   ))
-                            if prop_mode in ['rv_res','rv_pip_res']:
-                                val_obs*=1e3
+                            if (prop_mode in ['rv_res','rv_pip_res']):                               
                                 eval_obs*=1e3
+                                val_obs*=1e3
+                                if (data_mode=='raw'):
+                                    for idx_loc in range(prof_fit_vis['n_exp']):rv_mod_obs[idx_loc] = prof_fit_vis[idx_loc]['RVmod']*1e3
+                                    
+                                #Redefine residual from surface RVs using model
+                                elif (data_mode=='loc') and (plot_options['theo_HR_prop'] or plot_options['theo_HR_prof']):
+                                    for idx_loc in range(prof_fit_vis['n_exp']):
+                                        rv_mod_obs[idx_loc] = np.mean(yvar_HR_loc[ (xvar_HR_loc>=st_x_obs[idx_loc]) & (xvar_HR_loc<=end_x_obs[idx_loc])])*1e3
+                                    val_obs -= rv_mod_obs 
+
                         elif prop_mode in ['rv_pip','FWHM_pip','ctrst_pip']:
                             val_obs = data_dic['DI'][inst][vis][prop_mode] 
                             eval_obs = np.tile(data_dic['DI'][inst][vis]['e'+prop_mode],[2,n_exp_vis]) 
@@ -3647,6 +3659,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         end_x_obs=end_x_obs[idx_in_plot] 
                         val_obs=val_obs[idx_in_plot]
                         eval_obs=eval_obs[:,idx_in_plot]
+                        rv_mod_obs = rv_mod_obs[idx_in_plot]
                         marker_obs=np.repeat(mark_tr,len(idx_in_plot))
                         idx_in_plot_det=prof_fit_vis['cond_detected'][idx_in_plot]
                             
@@ -3664,7 +3677,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         col_loc = plot_options['color_dic'][inst][vis]
             
                     #-------------------------------------------------------
-    
+
                     #Out-of-transit normalisation value
                     if data_mode=='raw':
                         isub_out_plot=[isub for isub in range(len(val_obs)) if idx_in_plot[isub] in idx_out] 
@@ -3702,7 +3715,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
  
                     #-------------------------------------------------------
                     #Plot value
-                    if (not plot_options['no_orig']) and (plot_options['plot_data']):
+                    if (not plot_options['no_orig']) and (plot_options['plot_data']): 
                         HDIval_obs = np.empty(0,dtype=float)
                         for i_loc,iexp_eff in enumerate(idx_in_plot):
                             if plot_options['plot_err']:
@@ -3714,7 +3727,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 yerr_sub_minmax = [1e100,-1e100]
                                 for HDI_sub in data_exp['HDI_interv'][ipar]:
                                     yerr_sub = [HDI_sub[0],HDI_sub[1]]
-                                    if prop_mode=='rv_res':yerr_sub = (np.array(yerr_sub)-prof_fit_vis[iexp_eff]['RVmod'])*1e3
+                                    if prop_mode=='rv_res':yerr_sub = np.array(yerr_sub)*1e3-rv_mod_obs[i_loc]
                                     plt.plot([x_obs[i_loc],x_obs[i_loc]],yerr_sub,color=col_obs[i_loc],marker='',linestyle='-',zorder=0,alpha=plot_options['alpha_err'])
                                     yerr_sub_minmax = [np.min([yerr_sub_minmax[0],yerr_sub[0]]),np.max([yerr_sub_minmax[1],yerr_sub[1]])]                                  
                                 HDIval_obs=np.append(HDIval_obs,[[val_obs[i_loc]-yerr_sub_minmax[0]],[yerr_sub_minmax[1]-val_obs[i_loc]]])
@@ -3779,7 +3792,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     
                         #Print mean value over selected points, with dispersion from mean
                         if (plot_options['print_disp']):
-                            plt.text(0.2,1.1+dytxt,'w. mean['+prop_mode+'] ='+"{0:.5e}".format(mean_val_plot)+' +-'+"{0:.2e}".format(disp_from_mean),verticalalignment='center', horizontalalignment='center',fontsize=10.,zorder=10,color=col_loc,transform=plt.gca().transAxes) 
+                            plt.text(0.2,1.1+dytxt,'w. mean['+prop_mode+'] ='+"{0:.5e}".format(mean_val_plot)+' +-'+"{0:.2e}".format(disp_from_mean)+' '+val_unit,verticalalignment='center', horizontalalignment='center',fontsize=10.,zorder=10,color=col_loc,transform=plt.gca().transAxes) 
                         
                         if plot_options['plot_disp'] and (((data_mode=='raw') and (prop_mode not in ['rv','rv_pip'])) or (data_mode=='loc')):
                             x_tab = plot_options['x_range'] if plot_options['x_range'] is not None else [min(x_obs),max(x_obs)]
@@ -4108,7 +4121,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Reference level
         if plot_options['plot_ref']:
-           if ((data_mode=='raw') and (prop_mode in ['rv_res','rv_pip_res'])) or ((data_mode=='loc') and (prop_mode in ['rv'])):val_ref = 0.
+           if ((data_mode=='raw') and (prop_mode in ['rv_res','rv_pip_res'])) or ((data_mode=='loc') and (prop_mode in ['rv','rv_res'])):val_ref = 0.
            elif plot_options['norm_ref']:val_ref = 1.
            else:val_ref = None
            plt.plot(x_range_loc,[val_ref,val_ref],color='black',linestyle=':',lw=plot_options['lw_plot'],zorder=0)    
@@ -4260,7 +4273,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     x_title=x_title_dic[plot_options['prop_absc']],y_title=y_title_dic[prop_mode],
                     font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
         if data_mode=='raw':sub_key = 'raw'
-        elif data_mode=='loc':sub_key = 'loc'
+        elif data_mode=='loc':sub_key = 'Intr'
         plt.savefig(path_loc+prop_mode+'_'+plot_options['prop_absc']+'.'+plot_dic['prop_'+sub_key]) 
         plt.close()
         print('   ---------------')
@@ -4936,7 +4949,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             plot_options[key_plot]['plot_input']=True
             
         #--------------------------------------              
-        if (key_plot in ['Fbal_corr','input_LC','plocc_ranges','propCCF_DI_mcmc_PDFs','propCCFloc_mcmc_PDFs']):
+        if (key_plot in ['Fbal_corr','input_LC','plocc_ranges','prop_DI_mcmc_PDFs','prop_Intr_mcmc_PDFs']):
 
             #Plot exposure indexes
             plot_options[key_plot]['plot_expid'] = True
@@ -4997,6 +5010,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             plot_options[key_plot]['idx_num_SNR']={'HARPN':[46]}
             plot_options[key_plot]['idx_den_SNR']={'HARPN':[46]}              
  
+            #Save a text file of residual RVs vs phase
+            plot_options[key_plot]['save_RVres'] = False
+    
         #--------------------------------------
         if 'atm' in key_plot:
           
@@ -7573,9 +7589,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             
             #Plot in-transit symbols in a different color
             plot_options[key_plot]['col_in']=''
-            
-            #Save a text file of residual RVs vs phase
-            plot_options[key_plot]['save_RVres'] = False
 
             #Overplot transit duration from system properties 
             plot_options[key_plot]['plot_T14'] = False
@@ -8474,30 +8487,28 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 plot_options[key_plot]['mode_loc_data_corr'] = 'glob_mod'
 
 
-        if (plot_dic['map_Intr_prof_est']!=''):
-            key_plot = 'map_Intr_prof_est'
-            
-            print('-----------------------------------')
-            print('+ 2D maps: theoretical intrinsic stellar profiles') 
-
-        if (plot_dic['map_Intr_prof_res']!=''):
-            key_plot = 'map_Intr_prof_res'
-
-            #Include out-of-transit residual profiles to the plot
-            plot_options[key_plot]['show_outres']=True
-
-            #Correct only for continuum level
-            plot_options[key_plot]['cont_only']=True
-            
-            print('-----------------------------------')
-            print('+ 2D map: residuals from intrinsic stellar profiles') 
-          
-        #------------------------------------
-        #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+                if key_plot == 'map_Intr_prof_est':
+                    
+                    print('-----------------------------------')
+                    print('+ 2D maps: theoretical intrinsic stellar profiles') 
         
-        #Plot map
-        sub_2D_map(key_plot,plot_dic[key_plot],plot_options[key_plot])    
+                if key_plot == 'map_Intr_prof_res':
+        
+                    #Include out-of-transit residual profiles to the plot
+                    plot_options[key_plot]['show_outres']=True
+        
+                    #Correct only for continuum level
+                    plot_options[key_plot]['cont_only']=True
+                    
+                    print('-----------------------------------')
+                    print('+ 2D map: residuals from intrinsic stellar profiles') 
+                  
+                #------------------------------------
+                #Overwrite default settings
+                plot_options[key_plot].update(plot_settings[key_plot]) 
+                
+                #Plot map
+                sub_2D_map(key_plot,plot_dic[key_plot],plot_options[key_plot])    
 
 
 
@@ -9203,8 +9214,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     '''
     Plotting chi2 values for each fitted local property
     '''
-    if (plot_dic['chi2_fit_loc_prop']!=''):
-        key_plot = 'chi2_fit_loc_prop'
+    if (plot_dic['chi2_fit_IntrProp']!=''):
+        key_plot = 'chi2_fit_IntrProp'
         
         #Default settings
         plot_options=gen_plot_default(plot_options,key_plot)          
@@ -9222,9 +9233,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot].update(plot_settings[key_plot])  
 
         print('-----------------------------------')
-        print('+ Plotting chi2 per fitted local property value')
-
-        sub_plot_chi2_prop(plot_options[key_plot],plot_dic['chi2_fit_loc_prop'])             
+        print('+ Chi2 per fitted local property value')
+        sub_plot_chi2_prop(plot_options[key_plot],plot_dic['chi2_fit_IntrProp'])             
 
 
 
@@ -9376,8 +9386,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     '''
     Plotting 1D PDFs from analysis of individual profiles
     '''
-    if (plot_dic['propCCF_DI_mcmc_PDFs']!='') or (plot_dic['propCCFloc_mcmc_PDFs']!=''):
-        for key_plot in ['propCCF_DI_mcmc_PDFs','propCCFloc_mcmc_PDFs']:
+    if (plot_dic['prop_DI_mcmc_PDFs']!='') or (plot_dic['prop_Intr_mcmc_PDFs']!=''):
+        for key_plot in ['prop_DI_mcmc_PDFs','prop_Intr_mcmc_PDFs']:
             if plot_dic[key_plot]!='':
 
                 #Default settings
@@ -9407,7 +9417,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 plot_options[key_plot]['xrange_all'] = {}
         
                 ##############################################################################
-                if (key_plot=='propCCF_DI_mcmc_PDFs'):
+                if (key_plot=='prop_DI_mcmc_PDFs'):
                     plot_options[key_plot]['data_mode'] = 'DI'
                     plot_options[key_plot]['data_dic_idx'] = 'DI'
                     
@@ -9415,7 +9425,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     print('+ Plotting 1D PDF of disk-integrated stellar profiles properties')
         
                 ##############################################################################
-                if (key_plot=='propCCFloc_mcmc_PDFs'):
+                if (key_plot=='prop_Intr_mcmc_PDFs'):
                     plot_options[key_plot]['data_mode'] = 'Intr'
                     plot_options[key_plot]['data_dic_idx'] = 'Res'
                     
@@ -9471,7 +9481,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     '''
     Plotting properties of intrinsic stellar CCFs
     '''
-    if (plot_dic['prop_loc']!=''):
+    if (plot_dic['prop_Intr']!=''):
         print('-----------------------------------')
         print('+ Properties of planet-occulted stellar CCFs')
         for plot_prop in plot_settings['prop_ordin']:
@@ -10948,7 +10958,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         ##############################################################################
         #Plot residuals between the atmospheric CCFs and their fit
-        if (plot_dic['CCFatm_res']!='') and ((gen_dic['ana_atm']) or (gen_dic['fit_atm_all'])):
+        if (plot_dic['CCFatm_res']!='') and ((gen_dic['ana_atm']) or (gen_dic['fit_AtmProf'])):
             key_plot='CCFatm_res'
 
             print('-----------------------------------')
@@ -11069,8 +11079,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     '''
     Plotting chi2 values for the properties of the atmospheric profiles fitted in each exposure
     '''
-    if (plot_dic['chi2_fit_atm_prop']!=''):
-        key_plot = 'chi2_fit_atm_prop'  
+    if (plot_dic['chi2_fit_AtmProp']!=''):
+        key_plot = 'chi2_fit_AtmProp'  
 
         #Default settings
         plot_options=gen_plot_default(plot_options,key_plot)   

@@ -117,22 +117,28 @@ def ln_lkhood_func_mcmc(p_step,fixed_args):
     #Residuals from data
     res = y_step-fixed_args['y_val'] 
     
+    #Fitted pixels
+    idx_fit = fixed_args['idx_fit']
+    
     #Use of covariance matrix
     #    - chi2 = r^t C^-1 r = r^t L^-1^t L^-1 r = chi^t chi avec chi = L^-1 r 
     if fixed_args['use_cov']:
         L_mat = scipy.linalg.cholesky_banded(fixed_args['cov_val'],lower=True)
-        chi2_step = np.sum(np.power(scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True),2.))        
-        ln_lkhood = - np.sum(np.log(np.sqrt(2.*np.pi)*L_mat[0])) - (chi2_step/2.)   
+        chi = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)
+
+        #Remove chi of unfitted pixels
+        chi2_step = np.sum(np.power(chi[idx_fit],2.)) 
+        ln_lkhood = - np.sum(np.log(np.sqrt(2.*np.pi)*L_mat[0][idx_fit])) - (chi2_step/2.)   
         
     #Use of variance alone
     else:
         
         #Modification of error bars on fitted values in case of jitter used as free parameter
-        if (fixed_args['jitter']):sn_val=np.sqrt(fixed_args['cov_val'][0,:] + p_step['jitter']**2.)
-        else:sn_val=np.sqrt(fixed_args['cov_val'][0,:])
+        if (fixed_args['jitter']):sn_val=np.sqrt(fixed_args['cov_val'][0,idx_fit] + p_step['jitter']**2.)
+        else:sn_val=np.sqrt(fixed_args['cov_val'][0,idx_fit])
             
         #Chi2
-        chi2_step=np.sum(  np.power( res/sn_val,2.) )
+        chi2_step=np.sum(  np.power( res[idx_fit]/sn_val,2.) )
 
         #Ln likelihood
         ln_lkhood = - np.sum(np.log(np.sqrt(2.*np.pi)*sn_val)) - (chi2_step/2.)   
@@ -206,14 +212,22 @@ def ln_prob_func_lmfit(p_step, x_val, fixed_args=None):
     
     #Residuals from data    
     res = y_step - fixed_args['y_val']
+    
+    #Fitted pixels
+    idx_fit = fixed_args['idx_fit']
 
     #Likelihood
     #    - normalisation factor of Likelihood is ignored to retrieve the equivalent of chi2 
     if fixed_args['use_cov']:
         L_mat = scipy.linalg.cholesky_banded(fixed_args['cov_val'],lower=True)
         chi = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)       
+        
+        #Remove chi2 of unfitted pixels
+        chi = chi[idx_fit]
     else:
-        chi = res/np.sqrt(fixed_args['cov_val'][0,:])
+        
+        #Limit residuals and error table to fitted pixels
+        chi = res[idx_fit]/np.sqrt(fixed_args['cov_val'][0,idx_fit])
         
     # chi2_step=np.sum(  np.power( chi,2.) )
     # ln_lkhood =  - (chi2_step/2.)   
