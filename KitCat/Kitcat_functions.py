@@ -99,6 +99,7 @@ def local_max(spectre,vicinity):
     flux = spectre[index]       
     return np.array([index,flux])
 
+
 def mad(array,axis=0,sigma_conv=True):
     """"""
     if axis == 0:

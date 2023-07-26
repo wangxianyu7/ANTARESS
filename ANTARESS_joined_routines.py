@@ -233,7 +233,7 @@ def post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
                 veq_chain=deepcopy(merged_chain[:,iveq])            
                 merged_chain[:,iveq]=veq_chain*np.sqrt(1.-cosistar_chain*cosistar_chain)
             fixed_args['var_par_list'][iveq]='vsini'            
-            fixed_args['var_par_names'][iveq]='v$_\mathrm{eq}$sin i$_{*}$ (km/s)'          
+            fixed_args['var_par_names'][iveq]=model_par_names()['vsini']             
     
             
         #-------------------------------------------------            
@@ -369,7 +369,7 @@ def post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
                 
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
             fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'istar_deg')
-            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],'i$_{*}(^{\circ}$)')
+            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],model_par_names()['istar_deg'])
     
         #-------------------------------------------------
         #Add Peq using the value derived from veq and independent measurement of Rstar
@@ -400,7 +400,7 @@ def post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
                 chain_loc=(2.*np.pi*Rstar_chain)/(np.squeeze(merged_chain[:,iveq])*3600.*24.)
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
             fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'Peq')
-            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],'P$_{eq}$(d)')
+            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],model_par_names()['Peq'])
     
         #-------------------------------------------------
         #Add Peq using the value derived from vsini and independent measurement of Rstar and istar
@@ -441,7 +441,7 @@ def post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
                 chain_loc=(2.*np.pi*Rstar_chain*sinistar_chain)/(np.squeeze(merged_chain[:,ivsini])*3600.*24.)
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
             fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'Peq')
-            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],'P$_{eq}$(d)')    
+            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],model_par_names()['Peq'])   
     
         #-------------------------------------------------
                 
@@ -765,8 +765,6 @@ def post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
                         #    - choose final range so that the best-fit is not close to a boundary
                         #    - we want lambda in x+[-180;180] ie lambda-x+180 in 0;360
                         #      we fold over 0;360 and then get back to the final range
-                        x_mid=np.median(merged_chain[:,ilamb])
-                        # x_mid=110. 
                         if pl_loc=='GJ436_b':x_mid=70.
                         elif pl_loc=='HD3167_b':x_mid=80.
                         elif pl_loc=='HD3167_c':x_mid=-110.                
@@ -776,8 +774,9 @@ def post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
                         elif pl_loc=='WASP107b':x_mid=-160. 
                         elif pl_loc=='Kepler25c':x_mid=80. 
                         elif pl_loc=='WASP156b':x_mid=80. 
-                        elif pl_loc=='55Cnc_e' and ('20140226' in lamb_name):
-                            x_mid = -100.
+                        elif pl_loc=='55Cnc_e' and ('20140226' in lamb_name):x_mid = -100.
+                        elif pl_loc=='WASP76b':x_mid=-75. 
+                        else:x_mid=np.median(merged_chain[:,ilamb])
         
                         print('     + Folding '+lamb_name+' around ',x_mid)
                         mid_shift = x_mid-180.
@@ -1671,14 +1670,14 @@ def MAIN_joined_intr_prof(param,x_tab,args=None):
     if args['use_cov_eff']:
         for inst in args['inst_list']:
             for vis in args['inst_vis_list'][inst]:    
-                for isub in range(args['nexp_fit_all'][inst][vis]):
-                    cond_fit = args['cond_fit'][inst][vis][isub]
-                    L_mat = scipy.linalg.cholesky_banded(args['cov'][inst][vis][isub], lower=True)
-                    res = args['flux'][inst][vis][isub]-mod_dic[inst][vis][isub]
-                    chi2_loc =scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True) 
+                for iexp in range(args['nexp_fit_all'][inst][vis]):
+                    cond_fit = args['cond_fit'][inst][vis][iexp]
+                    L_mat = scipy.linalg.cholesky_banded(args['cov'][inst][vis][iexp], lower=True)
+                    res = args['flux'][inst][vis][iexp]-mod_dic[inst][vis][iexp]
+                    res[~cond_fit] = 0.  
+                    chi_exp  = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)
+                    chi = np.append( chi, chi_exp[cond_fit] )                     
 
-                    #Remove chi2 of unfit pixels so that they do not contribute to the fit
-                    chi = np.append( chi, chi2_loc[cond_fit]) 
     else:
         for inst in args['inst_list']:
             for vis in args['inst_vis_list'][inst]:    
@@ -2261,24 +2260,25 @@ def MAIN_joined_intr_prof_res(param,x_tab,args=None):
         for inst in args['inst_list']:
             for vis in args['inst_vis_list'][inst]:    
                 for iexp in args['idx_in_fit'][inst][vis]:
-                    cond_fit = args['cond_def'][inst][vis][iexp] & args['cond_fit'] [inst][vis]
+                    cond_fit = args['cond_def'][inst][vis][iexp] & args['cond_fit'][inst][vis]
                     L_mat = scipy.linalg.cholesky_banded(args['cov'][inst][vis][iexp], lower=True)
-                    res = args['flux'][inst][vis][iexp][cond_fit]-model_prof[inst][vis][iexp][cond_fit]
-                    chi = np.append( chi, scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)) 
+                    res = args['flux'][inst][vis][iexp]-model_prof[inst][vis][iexp]
+                    res[~cond_fit] = 0.  
+                    chi_exp  = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)
+                    chi = np.append( chi, chi_exp[cond_fit] ) 
     else:
         for inst in args['inst_list']:
             for vis in args['inst_vis_list'][inst]:    
                 for iexp in args['idx_in_fit'][inst][vis]:
-                    cond_fit = args['cond_def'][inst][vis][iexp] & args['cond_fit'] [inst][vis]
+                    cond_fit = args['cond_def'][inst][vis][iexp] & args['cond_fit'][inst][vis]
                     res = args['flux'][inst][vis][iexp][cond_fit]-model_prof[inst][vis][iexp][cond_fit]
                     chi = np.append( chi, res/np.sqrt( args['cov'][inst][vis][iexp][0][cond_fit]) )
-                    
                         
     return chi
 
 
 
-##
+
     
 """
 Function which computes the model for residual profiles

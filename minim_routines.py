@@ -67,9 +67,9 @@ def ln_prior_func(p_step,fixed_args):
             #Gaussian prior with different halves
             elif parprior['mod']=='dgauss':
                 if (parval <= parprior['val']): 
-                    ln_p += -0.5*( (parval - parprior['val'])/parprior['s_val_low']  )**2.
+                    ln_p += -0.5*( (parval - parprior['val'])/parprior['low']  )**2.
                 else: 
-                    ln_p += -0.5*( (parval - parprior['val'])/parprior['s_val_high']  )**2.
+                    ln_p += -0.5*( (parval - parprior['val'])/parprior['high']  )**2.
     
             #Undefined prior
             else:
@@ -111,16 +111,19 @@ Calculation of ln(likelihood)
 '''
 def ln_lkhood_func_mcmc(p_step,fixed_args):
 
-    #Model for current set of parameter values    
-    y_step=fixed_args['fit_func'](p_step,fixed_args['x_val'],args=fixed_args)    
-        
-    #Residuals from data
-    res = y_step-fixed_args['y_val'] 
+    #Model for current set of parameter values  
+    y_step = fixed_args['fit_func'](p_step, fixed_args['x_val'],args=fixed_args)
     
     #Fitted pixels
     idx_fit = fixed_args['idx_fit']
     
+    #Residuals from data    
+    #    - unfitted (and possibly undefined) residual values are replaced by 0, so that they do not contribute to the chi2
+    res = np.zeros(len(y_step),dtype=float)
+    res[idx_fit] = y_step[idx_fit] - fixed_args['y_val'][idx_fit]
+
     #Use of covariance matrix
+    #    - must be calculated with the contiguous covariance matrix    
     #    - chi2 = r^t C^-1 r = r^t L^-1^t L^-1 r = chi^t chi avec chi = L^-1 r 
     if fixed_args['use_cov']:
         L_mat = scipy.linalg.cholesky_banded(fixed_args['cov_val'],lower=True)
@@ -210,14 +213,17 @@ def ln_prob_func_lmfit(p_step, x_val, fixed_args=None):
     #Model for current set of parameter values  
     y_step = fixed_args['fit_func'](p_step, fixed_args['x_val'],args=fixed_args)
     
-    #Residuals from data    
-    res = y_step - fixed_args['y_val']
-    
     #Fitted pixels
     idx_fit = fixed_args['idx_fit']
+    
+    #Residuals from data    
+    #    - unfitted (and possibly undefined) residual values are replaced by 0, so that they do not contribute to the chi2
+    res = np.zeros(len(y_step),dtype=float)
+    res[idx_fit] = y_step[idx_fit] - fixed_args['y_val'][idx_fit]
 
     #Likelihood
     #    - normalisation factor of Likelihood is ignored to retrieve the equivalent of chi2 
+    #    - must be calculated with the contiguous covariance matrix
     if fixed_args['use_cov']:
         L_mat = scipy.linalg.cholesky_banded(fixed_args['cov_val'],lower=True)
         chi = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)       
@@ -410,7 +416,7 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
 
         #MCMC monitoring
         fit_dic['monitor']=False if ('monitor' not in fit_prop_dic) else fit_prop_dic['monitor']  
-
+        
     return None
 
 '''
@@ -538,7 +544,7 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
         backend = emcee.backends.HDFBackend(fit_dic['save_dir']+'monitor'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name+'.h5')
         backend.reset(fit_dic['nwalkers'], fit_dic['n_free'])
     else:backend=None
-
+   
     #Call to MCMC
     st0=time.time()
     n_free=np.shape(fit_dic['initial_distribution'])[1]
@@ -870,7 +876,7 @@ def sub_calc_HDI(dbin_par,dens_par,frac_search):
     return jumpind,bins_in_HDI,sorted_binnumber
 
 
-def calc_HDI(chain_par,nbins_par,dbins_par,bw_fact,frac_search,HDI_interv_par,HDI_interv_txt_par):
+def calc_HDI(chain_par,nbins_par,dbins_par,bw_fact,frac_search,HDI_interv_par,HDI_interv_txt_par,HDI_sig_txt_par,med_par):
     
     #Perform preliminary calculation with default smoothed density profile  
     dbin_par,dens_par,bin_edges_par = calc_HDI_smooth(chain_par,1.)
@@ -895,7 +901,8 @@ def calc_HDI(chain_par,nbins_par,dbins_par,bw_fact,frac_search,HDI_interv_par,HD
         HDI_sub=[np.min(bin_edges_par[bins_in_HDI]),np.max(bin_edges_par[bins_in_HDI+1])]
         HDI_interv_par+=[HDI_sub]
         HDI_interv_txt_par+='['+"{0:.8e}".format(HDI_sub[0])+' ; '+"{0:.8e}".format(HDI_sub[1])+']'
-  
+        HDI_sig_txt_par+='[-'+"{0:.8e}".format(med_par-HDI_sub[0])+' +'+"{0:.3e}".format(HDI_sub[1]-med_par)+']'
+    
     #Multiple intervals
     else:        
         for i_int in range(len(jumpind)+1):
@@ -905,7 +912,8 @@ def calc_HDI(chain_par,nbins_par,dbins_par,bw_fact,frac_search,HDI_interv_par,HD
             else:jf=jumpind[i_int]
             HDI_sub=[bin_edges_par[sorted_binnumber[ji]],bin_edges_par[sorted_binnumber[jf]+1]]
             HDI_interv_par+=[HDI_sub]
-            HDI_interv_txt_par+='['+"{0:.8e}".format(HDI_sub[0])+' ; '+"{0:.8e}".format(HDI_sub[1])+']'  
+            HDI_interv_txt_par+='['+"{0:.8e}".format(HDI_sub[0])+' ; '+"{0:.8e}".format(HDI_sub[1])+']' 
+            HDI_sig_txt_par+='[-'+"{0:.8e}".format(med_par-HDI_sub[0])+' +'+"{0:.3e}".format(HDI_sub[1]-med_par)+']' 
    
     #Convert into array
     HDI_interv_par=np.array(HDI_interv_par)            
@@ -914,7 +922,7 @@ def calc_HDI(chain_par,nbins_par,dbins_par,bw_fact,frac_search,HDI_interv_par,HD
     HDI_frac_par=np.sum(dens_par[bins_in_HDI],dtype=float)/np.sum(dens_par,dtype=float)
     HDI_interv_txt_par+=' ('+"{0:.2f}".format(100.*HDI_frac_par)+' %)'    
 
-    return HDI_interv_txt_par,HDI_frac_par
+    return HDI_interv_txt_par,HDI_frac_par,HDI_sig_txt_par
     
     
 '''  
@@ -1016,6 +1024,7 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,c
         #Process variable parameters
         HDI_interv=[ [] for i in range(n_par) ]
         HDI_interv_txt=np.zeros(n_par,dtype='U100')   #np.zeros(n_par,dtype='S100')
+        HDI_sig_txt_par=np.zeros(n_par,dtype='U100')   #np.zeros(n_par,dtype='S100')
         HDI_frac=np.zeros(n_par)
         for ipar,parname in enumerate(fixed_args['var_par_list']):
             
@@ -1025,7 +1034,7 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,c
             bw_fact=None if (('HDI_bwf' not in fit_dic) or (parname not in fit_dic['HDI_bwf'])) else fit_dic['HDI_bwf'][parname]
             
             #HDI intervals
-            HDI_interv_txt[ipar],HDI_frac[ipar]=calc_HDI(merged_chain[:,ipar],nbins_par,dbins_par,bw_fact,frac_search,HDI_interv[ipar],HDI_interv_txt[ipar])
+            HDI_interv_txt[ipar],HDI_frac[ipar],HDI_sig_txt_par[ipar]=calc_HDI(merged_chain[:,ipar],nbins_par,dbins_par,bw_fact,frac_search,HDI_interv[ipar],HDI_interv_txt[ipar],HDI_sig_txt_par[ipar],med_par[ipar])
             
         #Convert into array
         HDI_interv=np.array(HDI_interv,dtype=object)   
@@ -1033,6 +1042,7 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,c
     else:
         HDI_interv=None
         HDI_interv_txt=None
+        HDI_sig_txt_par = None
             
     #----------------------------------------------------        
 
@@ -1052,12 +1062,13 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,c
                 print('  > '+sig+' err : -'+"{0:.3e}".format(sig_par_err[sig][0,ipar])+' +'+"{0:.3e}".format(sig_par_err[sig][1,ipar]))  
                 print('  > '+sig+' int : ['+"{0:.3e}".format(sig_par_val[sig][0,ipar])+' ; '+"{0:.3e}".format(sig_par_val[sig][1,ipar])+']')  
             if fit_dic['HDI'] is not None:
-                print('  > HDI '+fit_dic['HDI']+' : '+str(HDI_interv_txt[ipar]))
+                print('  > HDI '+fit_dic['HDI']+' err: '+str(HDI_sig_txt_par[ipar]))
+                print('  > HDI '+fit_dic['HDI']+' int : '+str(HDI_interv_txt[ipar]))
             if parname in fit_dic['conf_limits']:
                 for lev in fit_dic['conf_limits'][parname]['level']: 
                     print('  > '+fit_dic['conf_limits'][parname]['limits'][lev] )
 
-    return p_best,med_par,sig_par_val,sig_par_err,HDI_interv,HDI_interv_txt  
+    return p_best,med_par,sig_par_val,sig_par_err,HDI_interv,HDI_interv_txt,HDI_sig_txt_par  
     
     
 
@@ -1161,7 +1172,7 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbos
         fit_dic['nsteps_pb_all'],merged_chain=MCMC_thin_chains(corr_length,merged_chain)
 
     #Best-fit parameters for model calculations
-    p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=verbose,print_par=verbose,calc_quant=fit_dic['calc_quant'])
+    p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=verbose,print_par=verbose,calc_quant=fit_dic['calc_quant'])
 
     #Plot merged chains for MCMC parameters
     if (fit_dic['save_MCMC_chains']!=''):
@@ -1186,7 +1197,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
     #    - define confidence levels to be printed
     #    - use the modified chains that can contain different parameters than those used in the model
     #      the best-fit model will not be modified, but the PDFs, best-fit parameters and associated uncertainties will be derived from the modified chains
-    p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=False,print_par=False,calc_quant=fit_dic['calc_quant'])
+    p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=False,print_par=False,calc_quant=fit_dic['calc_quant'])
 
     #Save merged chains for derived parameters and various estimates
     data_save = {'merged_chain':merged_chain,'HDI_interv':fit_dic['HDI_interv'],'sig_parfinal_val':fit_dic['sig_parfinal_val']['1s'],'var_par_list':fixed_args['var_par_list'],'var_par_names':fixed_args['var_par_names'],'med_parfinal':fit_dic['med_parfinal']}
@@ -1329,14 +1340,14 @@ def save_fit_results(part,fixed_args,fit_dic,fit_mod,p_final):
             #Calculation of null model hypothesis
             #    - to calculate chi2 (=BIC) with respect to a null level for comparison of best-fit model with null hypothesis
             if 'p_null' in fit_dic:
-                if fit_dic['fit_mod'] =='chi2': chi2_null=np.sum(ln_prob_func_lmfit(fit_dic['p_null'], fixed_args['x_val'], fixed_args=fixed_args)**2.)
+                if fit_dic['fit_mod'] in ['','chi2']: chi2_null=np.sum(ln_prob_func_lmfit(fit_dic['p_null'], fixed_args['x_val'], fixed_args=fixed_args)**2.)
                 elif fit_dic['fit_mod'] =='mcmc':chi2_null=ln_lkhood_func_mcmc(fit_dic['p_null'],fixed_args)[1]        
                 np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
                 np.savetxt(file_path,[['Null chi2 : '+str(chi2_null)]],delimiter='\t',fmt=['%s']) 
                 np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
                 np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
                 
-        np.savetxt(file_path,[['Parameters','mean','-1s','+1s','mean-1s','mean+1s']],delimiter='\t',fmt=['%s']*6)
+        np.savetxt(file_path,[['Parameters','med','-1s','+1s','med-1s','med+1s']],delimiter='\t',fmt=['%s']*6)
         for ipar,parname in enumerate(fixed_args['var_par_list']):    
             nom_val = p_final[parname]
             if 'sig_parfinal_err' in fit_dic:
@@ -1350,7 +1361,8 @@ def save_fit_results(part,fixed_args,fit_dic,fit_mod,p_final):
             np.savetxt(file_path,[data_save],delimiter='\t',fmt=['%s']) 
             if (fit_mod=='mcmc') and (part=='derived'):
                 if (fit_dic['HDI'] is not None):
-                    np.savetxt(file_path,['     HDI '+fit_dic['HDI']+' : '+fit_dic['HDI_interv_txt'][ipar]],delimiter='\t',fmt=['%s'])
+                    np.savetxt(file_path,['     HDI '+fit_dic['HDI']+' int : '+fit_dic['HDI_interv_txt'][ipar]],delimiter='\t',fmt=['%s'])
+                    np.savetxt(file_path,['     HDI '+fit_dic['HDI']+' err: '+fit_dic['HDI_sig_txt'][ipar]],delimiter='\t',fmt=['%s'])
                 if parname in fit_dic['conf_limits']:
                     for lev in fit_dic['conf_limits'][parname]['level']: 
                         np.savetxt(file_path,['     '+fit_dic['conf_limits'][parname]['limits'][lev]],delimiter='\t',fmt=['%s'])            
@@ -1406,13 +1418,13 @@ def plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,burnt_c
           
     #----------------------------------------------------------------
     #Loop on parameters
-    mean_par=np.median(burnt_chains, axis=(0,1))
+    med_par=np.median(burnt_chains, axis=(0,1))
     for ipar,(parname,partxt) in enumerate(zip(var_par_list,var_par_names)): 
         plt.ioff()        
         plt.figure(figsize=(10, 6))
        
         #Median value       
-        plt.plot([0,nsteps],[mean_par[ipar],mean_par[ipar]],color='black',linestyle='--',zorder=10)               
+        plt.plot([0,nsteps],[med_par[ipar],med_par[ipar]],color='black',linestyle='--',zorder=10)               
 
         #Chains with burn-in phase, and removed chains
         for iwalk,keep_chain_loc in enumerate(keep_chain):
@@ -1465,14 +1477,14 @@ def plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,merged
           
     #----------------------------------------------------------------
     #Loop on parameters
-    mean_par=np.median(merged_chain, axis=0)
+    med_par=np.median(merged_chain, axis=0)
     for ipar,(parname,partxt) in enumerate(zip(var_par_list,var_par_names)):  
         plt.ioff()
         plt.figure(figsize=(10, 6))
        
         #Median value
         x_tab=[0,nsteps_pb_all]
-        plt.plot(x_tab,[mean_par[ipar],mean_par[ipar]],color='black',linestyle='--',zorder=10)               
+        plt.plot(x_tab,[med_par[ipar],med_par[ipar]],color='black',linestyle='--',zorder=10)               
 
         #Post-burn-in merged chain
         x_tab=range(int(nsteps_pb_all))
@@ -1677,7 +1689,8 @@ def plot_MCMC_corner(save_mode,save_dir_MCMC,
                                  .format(", ".join(map(
                                      "{0}".format, np.arange(len(m))[m]))))
 
-    else:
+    elif type(range_par)==list:
+
         # If any of the extents are percentiles, convert them to ranges.
         # Also make sure it's a normal list.
         range_par = list(range_par)
@@ -1687,6 +1700,17 @@ def plot_MCMC_corner(save_mode,save_dir_MCMC,
             except TypeError:
                 q = [0.5 - 0.5*range_par[i], 0.5 + 0.5*range_par[i]]
                 range_par[i] = quantile(xs[i], q, weights=weights)
+
+    elif type(range_par)==dict:
+        if labels is None:raise ValueError("Parameters must be named to be set in `range_par`")
+        range_par_in = deepcopy(range_par)
+        range_par = [[] for i in range(xs.shape[0])]
+        for par in range_par_in:
+            idx_par = np_where1D(labels==par)
+            if len(idx_par)>0:
+                range_par[idx_par[0]] = range_par_in[par]
+        for i,x in enumerate(xs):
+            if len(range_par[i])==0:range_par[i] = [x.min(), x.max()]
 
     if len(range_par) != xs.shape[0]:
         raise ValueError("Dimension mismatch between samples and range_par")

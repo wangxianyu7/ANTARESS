@@ -477,7 +477,35 @@ def mscatter(plt ,x, y, ax=None, m=None, **kw):
 	
 	return sc
 
-
+'''
+Sub-function to shade ranges
+'''
+def plot_shade_range(ax,shade_range,x_range_loc,y_range_loc,mode='fill',facecolor='grey',zorder=-1,alpha=0.2,compl=False):
+    for i_int,bd_int in enumerate(shade_range):
+        if compl:
+            if (i_int==0 and bd_int[0]>x_range_loc[0]):
+                bd_int_loc=[x_range_loc[0],bd_int[0]] #shade area before first interval                 
+                if mode=='span':ax.axvspan(bd_int_loc[0],bd_int_loc[1], facecolor=facecolor, alpha=alpha,zorder=zorder)
+                elif mode=='fill':ax.fill([bd_int_loc[0],bd_int_loc[1],bd_int_loc[1],bd_int_loc[0]],[y_range_loc[0],y_range_loc[0],y_range_loc[1],y_range_loc[1]], fill=True,color='dodgerblue',alpha=alpha,zorder=zorder,ls='')  
+                elif mode=='hatch':ax.fill([bd_int_loc[0],bd_int_loc[1],bd_int_loc[1],bd_int_loc[0]],[y_range_loc[0],y_range_loc[0],y_range_loc[1],y_range_loc[1]], fill=False, hatch='\\',color=facecolor,zorder=zorder)         
+            if (i_int==len(shade_range)-1 and bd_int[1]<x_range_loc[1]):
+                bd_int_loc=[bd_int[1],x_range_loc[1]] #shade area after last interval
+                if mode=='span':ax.axvspan(bd_int_loc[0],bd_int_loc[1], facecolor=facecolor, alpha=alpha,zorder=zorder)
+                elif mode=='fill':ax.fill([bd_int_loc[0],bd_int_loc[1],bd_int_loc[1],bd_int_loc[0]],[y_range_loc[0],y_range_loc[0],y_range_loc[1],y_range_loc[1]], fill=True,color='dodgerblue',alpha=alpha,zorder=zorder,ls='')
+                elif mode=='hatch':ax.fill([bd_int_loc[0],bd_int_loc[1],bd_int_loc[1],bd_int_loc[0]],[y_range_loc[0],y_range_loc[0],y_range_loc[1],y_range_loc[1]], fill=False, hatch='\\',color=facecolor,zorder=zorder)      
+            if i_int>0:
+                bd_int_loc=[shade_range[i_int-1][1],bd_int[0]]          #shade area between current and previous interval
+                if mode=='span':ax.axvspan(bd_int_loc[0],bd_int_loc[1], facecolor=facecolor, alpha=alpha,zorder=zorder)
+                elif mode=='fill':ax.fill([bd_int_loc[0],bd_int_loc[1],bd_int_loc[1],bd_int_loc[0]],[y_range_loc[0],y_range_loc[0],y_range_loc[1],y_range_loc[1]], fill=True,color='dodgerblue',alpha=alpha,zorder=zorder,ls='')
+                elif mode=='hatch':ax.fill([bd_int_loc[0],bd_int_loc[1],bd_int_loc[1],bd_int_loc[0]],[y_range_loc[0],y_range_loc[0],y_range_loc[1],y_range_loc[1]], fill=False, hatch='\\',color=facecolor,zorder=zorder)        
+        else:
+            if (bd_int[1]>x_range_loc[0]) & (bd_int[0]<x_range_loc[1]):
+                bd_int_loc=[np.max([x_range_loc[0],bd_int[0]]),np.min([x_range_loc[1],bd_int[1]])]
+                if mode=='span':ax.axvspan(bd_int_loc[0],bd_int_loc[1], facecolor=facecolor, alpha=alpha,zorder=zorder)
+                elif mode=='fill':ax.fill([bd_int_loc[0],bd_int_loc[1],bd_int_loc[1],bd_int_loc[0]],[y_range_loc[0],y_range_loc[0],y_range_loc[1],y_range_loc[1]], fill=True,color='dodgerblue',alpha=alpha,zorder=zorder,ls='')  
+                elif mode=='hatch':ax.fill([bd_int_loc[0],bd_int_loc[1],bd_int_loc[1],bd_int_loc[0]],[y_range_loc[0],y_range_loc[0],y_range_loc[1],y_range_loc[1]], fill=False, hatch='\\',color=facecolor,zorder=zorder)         
+  
+    return None
 
 
 

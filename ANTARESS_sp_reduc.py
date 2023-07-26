@@ -170,6 +170,7 @@ def open_resolution_map(instrument,time_science,ins_mode,bin_x):
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/NIRPS/r.NIRPS.2022-11-28T20_47_51.815_resolution_map.fits')         
 
     #Resolution map
+    #    - defined as a function of detector pixels
     resolution_map = instrumental_function[1].data
     nord,npix = resolution_map.shape
     for iord in range(nord):
@@ -182,7 +183,7 @@ def open_resolution_map(instrument,time_science,ins_mode,bin_x):
                 if idx_def_min>0:resolution_map[iord,0:idx_def_min-1]=resolution_map[iord,idx_def_min]
                 idx_def_max = idx_def[-1]
                 if idx_def_max<npix-1:resolution_map[iord,idx_def_max+1::]=resolution_map[iord,idx_def_max]                    
-   
+    
     return resolution_map
    
 
@@ -370,10 +371,10 @@ def MAIN_telluric_model(param,velccf,args=None):
     res = ccf_uncorr_master-ccf_model_conv_master
     if args['use_cov_eff']:
         L_mat = scipy.linalg.cholesky_banded(cov_uncorr, lower=True)
-        chi = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True) 
-        chi = chi[args['cond_def_fit']]
+        chi = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)
+        chi = chi[args['idx_sub_fit']]
     else:
-        chi = res[args['cond_def_fit']]/np.sqrt( cov_uncorr[0][args['cond_def_fit']]) 
+        chi = res[args['idx_sub_fit']]/np.sqrt( cov_uncorr[0][args['idx_sub_fit']]) 
 
     return chi    
 
@@ -437,7 +438,8 @@ def telluric_model(params,velccf,args=None):
             if args['fixed_res']:
                 telluric_spectrum_conv = convol_prof(telluric_spectrum,cen_bins_mod,args['resolution_map'](args['inst'],cen_bins_mod[int(len(cen_bins_mod)/2)]))
             else:
-                telluric_spectrum_conv = var_convol_tell_sp(telluric_spectrum,edge_bins_ord,edge_bins_mod,args['resolution_map'][iord],nbins_mod,cen_bins_mod)
+                resolution_map_ord = args['resolution_map'][iord,idx_def_ord[0]:idx_def_ord[-1]+1]        
+                telluric_spectrum_conv = var_convol_tell_sp(telluric_spectrum,edge_bins_ord,edge_bins_mod,resolution_map_ord,nbins_mod,cen_bins_mod)
 
             #Keep lines fully within spectrum range without nan
             flux_ord = args['flux'][iord,idx_def_ord[0]:idx_def_ord[-1]+1]        
@@ -455,7 +457,7 @@ def telluric_model(params,velccf,args=None):
 
                 #Compute CCFs
                 #    - multiprocessing not efficient for these calculations
-                edge_velccf_fit = args['edge_velccf'][args['idx_mod']]
+                edge_velccf_fit = args['edge_velccf'][args['idx_mod'][0]:args['idx_mod'][-1]+2]
                 ccf_uncorr_ord,    cov_ccf_uncorr_ord      = new_compute_CCF(edge_bins_ord,flux_ord,cov_ord,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gdet_ord)[0:2]
                 cov_uncorr_ord[isub_ord] = cov_ccf_uncorr_ord 
                 nd_cov_uncorr_ord[isub_ord] = np.shape(cov_ccf_uncorr_ord)[0]
@@ -663,7 +665,7 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
         else:cond_def_fit = np.arange(fixed_args['n_ccf'],dtype=int)
         idx_def_fit = np_where1D(cond_def_fit)
         fixed_args['idx_mod'] = range(idx_def_fit[0],idx_def_fit[-1]+1)
-        fixed_args['cond_def_fit'] = cond_def_fit[fixed_args['idx_mod']]
+        fixed_args['idx_sub_fit'] = np_where1D(cond_def_fit[fixed_args['idx_mod']])
  
         #Continuum of CCF   
         if fixed_args['CCFcont_deg'][molec]>0:
@@ -673,7 +675,7 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
         #Fit minimization for current molecule, through comparison between telluric CCF from data and model
         #    - unfitted pixels are removed from the chi2 table passed to residual() , so that they are then summed over the full tables
         fixed_args['idx_fit'] = np.ones(len(fixed_args['idx_mod']),dtype=bool)   
-        param_molecules[molec] = fit_minimization(ln_prob_func_lmfit,params,fixed_args['velccf'][fixed_args['idx_mod']],fixed_args['y_val'][fixed_args['idx_mod']],fixed_args['cov_val'][0,fixed_args['idx_mod']],fixed_args['fit_func'],verbose=False,fixed_args=fixed_args)[2]
+        param_molecules[molec] = fit_minimization(ln_prob_func_lmfit,params,fixed_args['velccf'][fixed_args['idx_mod']],fixed_args['y_val'][fixed_args['idx_mod']],np.array([fixed_args['cov_val'][0,fixed_args['idx_mod']]]),fixed_args['fit_func'],verbose=False,fixed_args=fixed_args)[2]
                 
         #Store results for plotting
         if (tell_prop!=''):
@@ -1225,6 +1227,10 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
             #Global flux balance
             if gen_dic['corr_Fbal']:
 
+                #Default options
+                if (vis not in gen_dic['Fbal_deg_vis'][inst]):gen_dic['Fbal_deg_vis'][inst][vis] = 4
+                if (vis not in gen_dic['Fbal_smooth_vis'][inst]):gen_dic['Fbal_smooth_vis'][inst][vis] = 1e-4                  
+
                 #Fitted orders
                 if (inst in gen_dic['Fbal_ord_fit']) and (vis in gen_dic['Fbal_ord_fit'][inst]) and (len(gen_dic['Fbal_ord_fit'][inst][vis])>0):
                     iord_fit_list = np.intersect1d(iord_fit_Fbal,gen_dic['Fbal_ord_fit'][inst][vis]) 
@@ -1318,9 +1324,7 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
 
             #Default options       
             if (vis not in gen_dic['Fbal_deg'][inst]):gen_dic['Fbal_deg'][inst][vis] = 4
-            if (vis not in gen_dic['Fbal_smooth'][inst]):gen_dic['Fbal_smooth'][inst][vis] = 1e-4    
-            if (vis not in gen_dic['Fbal_deg_vis'][inst]):gen_dic['Fbal_deg_vis'][inst][vis] = 4
-            if (vis not in gen_dic['Fbal_smooth_vis'][inst]):gen_dic['Fbal_smooth_vis'][inst][vis] = 1e-4   
+            if (vis not in gen_dic['Fbal_smooth'][inst]):gen_dic['Fbal_smooth'][inst][vis] = 1e-4     
             if (vis not in gen_dic['Fbal_deg_ord'][inst]):gen_dic['Fbal_deg_ord'][inst][vis] = 4                
 
             #--------------------------------------------------------
@@ -1804,11 +1808,13 @@ def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
     
     #Calculating data
     if (gen_dic['calc_cosm']):
-        print('         Calculating data')    
+        print('         Calculating data') 
+        if (inst not in gen_dic['cosm_thresh']):gen_dic['cosm_thresh'][inst]={}
 
         #Process each visit independently
         for ivisit,vis in enumerate(data_inst['visit_list']):
             data_vis=data_inst[vis]
+            if (vis not in gen_dic['cosm_thresh'][inst]):gen_dic['cosm_thresh'][inst][vis] = 10
             
             #RV used for spectra alignment set to keplerian model
             #    - RV relative to CDM are used since the correction is performed per visit, so that the systemic RV does not need to be set                
@@ -4044,7 +4050,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
                     #Plotting
                     if gen_dic['wig_exp_point_ana']['plot']:  
                         plt.ioff()        
-                        fig, ax = plt.subplots(2, 1, figsize=(20, 10),height_ratios=[70,30.],gridspec_kw = {'wspace':0, 'hspace':0.05})
+                        fig, ax = plt.subplots(2, 1, figsize=(20, 10),gridspec_kw = {'wspace':0, 'hspace':0.05, 'height_ratios':[70,30.]})
                         fontsize = 25
                         plot_contact = False
                         plot_modHR = True #& False
@@ -5401,7 +5407,7 @@ Plot function for wiggle RMS
 '''
 def plot_rms_wig(cen_ph_plot,rms_precorr,rms_postcorr,median_err,save_path):
     plt.ioff()        
-    fig, ax = plt.subplots(2, 1, figsize=(10, 9),height_ratios=[2./3.,1./3.],squeeze=True,gridspec_kw={"bottom": 0.15,"top": 0.7,"left": 0.15,"right": 0.95})
+    fig, ax = plt.subplots(2, 1, figsize=(10, 9),squeeze=True,gridspec_kw={"bottom": 0.15,"top": 0.7,"left": 0.15,"right": 0.95, 'height_ratios':[2./3.,1./3.]}) 
 
     #Automatic range
     dx_range = np.max(cen_ph_plot)-np.min(cen_ph_plot)

@@ -92,7 +92,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Aligning disk-integrated profiles to star rest frame
             if (gen_dic['align_'+curr_type]):
                 align_profiles(curr_type,data_dic,inst,vis,gen_dic,coord_dic)
-               
+
             # #Correcting for spot contamination 
             # if gen_dic['correct_spots'] : 
             #     corr_spot(corr_spot_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo_dic, system_param)
@@ -121,7 +121,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Extracting residual profiles
             if (gen_dic['res_data']):
                 extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
-           
+         
             #Extracting intrinsic stellar profiles
             if gen_dic['intr_data']:
                 extract_intr_profiles(data_dic,gen_dic,inst,vis,system_param['star'],coord_dic,theo_dic,plot_dic)
@@ -129,7 +129,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Converting out-of-transit residual and intrinsic spectra into CCFs
             if gen_dic[curr_type+'_CCF'] and ('spec' in data_dic[inst][vis]['type']):
                 ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
-
+         
             #Applying PCA to out-of transit residual profiles
             if (gen_dic['pca_ana']):
                 pc_analysis(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
