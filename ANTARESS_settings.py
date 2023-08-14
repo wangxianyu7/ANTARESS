@@ -185,8 +185,8 @@ if __name__ == '__main__':
     # gen_dic['star_name']='WASP121'
     #gen_dic['star_name']='KELT9'
     # gen_dic['star_name']='WASP127' 
-    # gen_dic['star_name']='HD209458' 
-    gen_dic['star_name']='WASP76'        
+    gen_dic['star_name']='HD209458' 
+    # gen_dic['star_name']='WASP76'        
     # gen_dic['star_name']='Corot7' 
     # gen_dic['star_name']='Nu2Lupi' 
     # gen_dic['star_name']='GJ9827' 
@@ -527,7 +527,7 @@ mock_dic['sysvel']= {}
 # + line properties can vary as a polynomial along the chosen dimension 'coord_line'
 #   the role of the coefficients depends on the polynomial mode (absolute or polynomial) 
 #   'pol_mode' = 'abs' : coeff_pol[n]*x^n + coeff_pol[n-1]*x^(n-1) .. + coeff_pol[0]*x^0
-#   'pol_mode' = 'modu': (coeff_pol[n]*x^n + coeff_pol[n-1]*x^(n-1) .. + 1)*coeff_pol[0]
+#   'pol_mode' = 'modul': (coeff_pol[n]*x^n + coeff_pol[n-1]*x^(n-1) .. + 1)*coeff_pol[0]
 # + lines properties can be derived from the fit to disk-integrated or intrinsic line profiles 
 # + line properties are defined through 'mod_prop', with the suffix "__IS__VS_" to keep the structure of the fit routine while defining properties visit per visit here   
 # + mactroturbulence is included if theo_dic['mac_mode'] is enabled               
@@ -677,7 +677,7 @@ if __name__ == '__main__':
                         'a_damp__ISHARPN_VSmock_vis' : 0.5,
                         'slope__ISHARPN_VSmock_vis' : 0,
                         },
-            'pol_mode' : 'modu'}}   
+            'pol_mode' : 'modul'}}   
     elif gen_dic['star_name'] == 'HD209458' : 
         mock_dic['intr_prof']={'ESPRESSO' :
             {'mode':'ana',        
@@ -686,12 +686,12 @@ if __name__ == '__main__':
             'line_trans':5889.95094,     #w(Na_air) = 5889.95094
             'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,
                         'FWHM_ord0__IS__VS_'  : 4 },
-            'pol_mode' : 'modu'}
+            'pol_mode' : 'modul'}
             
             # {'mode':'theo',                     
             }        
     elif gen_dic['star_name'] == 'WASP107' : 
-         mock_dic['intr_prof']={'HARPS' :{'mode':'ana','coord_line':'mu','func_prof_name': 'gauss', 'line_trans':None,'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,'FWHM_ord0__IS__VS_'  : 4 },'pol_mode' : 'modu'}}         
+         mock_dic['intr_prof']={'HARPS' :{'mode':'ana','coord_line':'mu','func_prof_name': 'gauss', 'line_trans':None,'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,'FWHM_ord0__IS__VS_'  : 4 },'pol_mode' : 'modul'}}         
 
     #Count continuum level
     if gen_dic['star_name'] == 'HD209458' : 
@@ -973,7 +973,8 @@ if __name__ == '__main__':
             gen_dic['data_dir_list']={'ESPRESSO':{'20180902':'/Users/bourrier/Travaux/Exoplanet_systems/WASP76b/ESPRESSO/Data/S1D/Red2.2.8/2018-09-03/','20181030':'/Users/bourrier/Travaux/Exoplanet_systems/WASP76b/ESPRESSO/Data/S1D/Red2.2.8/2018-10-31/'}}         
         elif gen_dic['type']['ESPRESSO']=='spec2D':
             gen_dic['data_dir_list']={'ESPRESSO':{'20180902':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP76b/ESPRESSO/Data/S2D/Red3.3.0/2018-09-02/','20181030':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP76b/ESPRESSO/Data/S2D/Red3.3.0/2018-10-30/'}}
-    
+            gen_dic['data_dir_list']={'ESPRESSO':{'20180902':'/Volumes/T7/SAVE_TEMP_VINCENT/Travaux/Exoplanet_systems/WASP/WASP76b/ESPRESSO/Data/S2D/Red3.3.0/2018-09-02/','20181030':'/Volumes/T7/SAVE_TEMP_VINCENT/Travaux/Exoplanet_systems/WASP/WASP76b/ESPRESSO/Data/S2D/Red3.3.0/2018-10-30/'}}
+        
     elif gen_dic['star_name']=='HD209458':
         if gen_dic['type']['ESPRESSO']=='CCF':
             # gen_dic['data_dir_list']={'ESPRESSO':{'20190720':'/Travaux/ANTARESS/HD209458b/Data/ESPRESSO/2019-07-20/','20190911':'/Travaux/ANTARESS/HD209458b/Data/ESPRESSO/2019-09-11/'}} 
@@ -984,6 +985,9 @@ if __name__ == '__main__':
             gen_dic['data_dir_list']={'ESPRESSO':{'20190720':'/Users/bourrier/Travaux/Exoplanet_systems/HD/HD209458b/ESPRESSO/Data/S2D/Red3.3.0/2019-07-19/','20190911':'/Users/bourrier/Travaux/Exoplanet_systems/HD/HD209458b/ESPRESSO/Data/S2D/Red3.3.0/2019-09-10/'}}
             # gen_dic['data_dir_list']={'ESPRESSO':{'20190720':'/Users/bourrier/Travaux/Exoplanet_systems/HD/HD209458b/ESPRESSO/Data/S2D/Red3.3.0/2019-07-19/'}}
             # gen_dic['data_dir_list']={}
+            gen_dic['data_dir_list']={'ESPRESSO':{'20190720':'/Volumes/T7/SAVE_TEMP_VINCENT/Travaux/Exoplanet_systems/HD/HD209458b/ESPRESSO/Data/S2D/Red3.3.0/2019-07-19/','20190911':'/Volumes/T7/SAVE_TEMP_VINCENT/Travaux/Exoplanet_systems/HD/HD209458b/ESPRESSO/Data/S2D/Red3.3.0/2019-09-10/'}}
+        
+
             
     elif gen_dic['transit_pl']=='WASP127b':
         gen_dic['data_dir_list']={'HARPS':'/Travaux/ANTARESS/WASP127b/Data/HARPS/'}  
@@ -1625,6 +1629,10 @@ if __name__ == '__main__':
         gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/Radial_velocity/RV_masks/ESPRESSO/New_meanC2unity/ESPRESSO_new_F9.fits'
         # gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/CCF_masks_DI/ESPRESSO_binned/Relaxed_selection/CCF_mask_DI_HD209458_ESPRESSO_t10.0_air.txt'       
         # gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/CCF_masks_DI/ESPRESSO_binned/Strict_selection/CCF_mask_DI_HD209458_ESPRESSO_t2.5_air.txt'
+        
+        # gen_dic['CCF_mask']['ESPRESSO'] = '/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/CCF_masks_DI/CCF_mask_Na_air.txt'
+        # print('ATTENTION MASQUE')
+
               
 
     if gen_dic['star_name']=='WASP76':
@@ -1716,6 +1724,9 @@ if __name__ == '__main__':
     # if gen_dic['transit_pl']=='HD3167_c':
     #     gen_dic['orders4ccf']={'HARPN':list(range(4,69))}  
     #     for islice in [43,44,47,48]:gen_dic['orders4ccf']['HARPN'].remove(islice)      
+
+    
+
         
 
     #Screening
@@ -1894,7 +1905,7 @@ if __name__ == '__main__':
     gen_dic['theoPlOcc'] = True #  &  False
 
     #Calculating/retrieving
-    gen_dic['calc_theoPlOcc']=True  # &  False  
+    gen_dic['calc_theoPlOcc']=True   &  False  
 
     #Precision
     theo_dic['precision'] = 'high'
@@ -1911,6 +1922,8 @@ if __name__ == '__main__':
     if gen_dic['star_name']=='HD209458': 
         if gen_dic['mock_data']:theo_dic['nsub_Dstar']=101
         theo_dic['nsub_Dstar']=101    #Fit stellar grid
+        
+        
     # if gen_dic['star_name']=='WASP76':theo_dic['nsub_Dstar']=201
     if gen_dic['star_name']=='WASP107':theo_dic['nsub_Dstar']=1001    
         
@@ -2009,7 +2022,7 @@ if __name__ == '__main__':
         theo_dic['n_oversamp']={'V1298tau_b':5.}  
     elif gen_dic['star_name']=='HD209458':
         theo_dic['n_oversamp']={'HD209458b':5.}    #ANTARESS I, mock, precisions  
-        theo_dic['n_oversamp']={'HD209458b':5.,'HD209458c':50.}   #ANTARESS I, mock, multi-tr  
+        # theo_dic['n_oversamp']={'HD209458b':5.,'HD209458c':50.}   #ANTARESS I, mock, multi-tr  
     elif gen_dic['star_name']=='WASP76':
         theo_dic['n_oversamp']={'WASP76b':5.}          
         
@@ -2066,7 +2079,7 @@ if __name__ == '__main__':
     plot_dic['occulted_regions']=''
     
     #Planetary system architecture
-    plot_dic['system_view']='png'   #png
+    plot_dic['system_view']=''   #png
   
 
 
@@ -4263,7 +4276,7 @@ gen_dic['trim_orders'] = {}
 if __name__ == '__main__':    
 
     #Activating
-    gen_dic['trim_spec']=True     &  False
+    gen_dic['trim_spec']=True    &  False
     if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156','HD209458']:gen_dic['trim_spec']=True   & False
 
     #Calculating/retrieving 
@@ -4287,7 +4300,8 @@ if __name__ == '__main__':
         gen_dic['trim_orders'] = {'CARMENES_VIS':list(range(57))}       #remove reddest orders        
     if gen_dic['star_name']=='HD209458': 
         gen_dic['trim_orders'] = {'ESPRESSO':[114,115,116,117,118,119]}    #sodium doublet and surrounding orders
-
+    if gen_dic['star_name']=='WASP76': 
+        gen_dic['trim_orders'] = {'ESPRESSO':[114,115,116,117,118,119]}    #sodium doublet and surrounding orders
 
 
 
@@ -4404,6 +4418,7 @@ gen_dic['calc_detrend_prof']=True
 
 #%%%% Spectral correction
 #    - only relevant in spectral mode
+#    - will be applied before spectra are converted into CCFs
 
 #%%%%% Full spectrum
 detrend_prof_dic['full_spec']=False
@@ -4494,7 +4509,7 @@ if __name__ == '__main__':
     # print('ATTENTION')
 
     #Calculating/retrieving 
-    gen_dic['calc_detrend_prof']=True    &  False   
+    gen_dic['calc_detrend_prof']=True  &  False   
 
     
     #Full spectrum
@@ -4713,7 +4728,7 @@ if __name__ == '__main__':
             #     '20210121':{'all':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/'+str(nPC)+'PC/ESPRESSO_20210121.npz'},            
             #     '20210124':{'all':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/'+str(nPC)+'PC/ESPRESSO_20210124.npz'}
 
-            # #Pour correction res + fit joint CCFintr vis indiv
+            # #Pour correction res + fit joint CCF_Intr vis indiv
             #   'ESPRESSO':{
             #       '20200205':{'all':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/1PC/ESPRESSO_20200205_mooncorr_aligned.npz',
             #                   'in':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/mcmc/20200205_mooncorr_1PC/Fit_results.npz'},
@@ -4722,7 +4737,7 @@ if __name__ == '__main__':
             #       '20210124':{'all':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/2PC/ESPRESSO_20210124_aligned.npz',
             #                   'in':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/mcmc/20210124_2PC/run3/Fit_results.npz'}
 
-            #Pour correction res + fit joint CCFintr all visits
+            #Pour correction res + fit joint CCF_Intr all visits
             # 'ESPRESSO':{
             #       '20200205':{'all':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/1PC/ESPRESSO_20200205_mooncorr_aligned.npz',
             #                     'in':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/chi2/ESPRESSO/All_vis/Intr_only/1PC2PC3PC/Fit_results.npz'},
@@ -4733,7 +4748,7 @@ if __name__ == '__main__':
 
             #  },
 
-            #Pour correction res + fit joint CCFintr all visits (UPDATE)
+            #Pour correction res + fit joint CCF_Intr all visits (UPDATE)
             'ESPRESSO':{
                   '20200205':{'all':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/ESPRESSO/Range200/5PC/ESPRESSO_20200205_mooncorr_aligned.npz',
                                 'in':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/chi2/HARPS_ESPRESSO_HARPN/HARPScorrtrend_ESPRESSOwithOutPC_HARPNwithOutPCnoV4/Fit_results.npz'},
@@ -4771,7 +4786,7 @@ if __name__ == '__main__':
             #     '20140329':{'all':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/'+str(nPC)+'PC/HARPN_20140329.npz'},
             #     },
 
-            #Pour correction res + fit joint CCFintr vis indiv
+            #Pour correction res + fit joint CCF_Intr vis indiv
             'HARPN':{
                 '20131114':{'all':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/HARPN/Range200/1PC/Aligned/HARPN_20131114.npz',
                             'in':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/chi2/HARPS_ESPRESSO_HARPN/HARPScorrtrend_ESPRESSOwithOutPC_HARPNwithOutPCnoV4/Fit_results.npz'},
@@ -4792,7 +4807,7 @@ if __name__ == '__main__':
             #     '20220131':{'all':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/EXPRES/Range200_clean/'+str(nPC)+'PC/EXPRES_20220131.npz'},
             #     '20220406':{'all':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/EXPRES/Range200_clean/'+str(nPC)+'PC/EXPRES_20220406.npz'},            
             #   }, 
-            #Pour correction res + fit joint CCFintr all visits            
+            #Pour correction res + fit joint CCF_Intr all visits            
             'EXPRES':{
                 '20220131':{'all':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/PCA_results/EXPRES/Range200_clean/10PC/Aligned/EXPRES_20220131.npz',
                 #             # 'in':'/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/chi2/EXPRES/Indiv_vis/With_outPC/PCA_200_clean/20220131/'+str(nPC)+'PC/Fit_results.npz'},
@@ -4862,9 +4877,15 @@ gen_dic['calc_fit_DIbinmultivis']=True
 #    - ESPRESSO/HARPS(N) pipeline fits are performed with constant errors, to mitigate the impact of large residuals from a gaussian fit in the line core or wing (as a gaussian can not be the correct physical model for the lines)
 #    - by default, ANTARESS fits are performed using the propagated error table (if available, or the sqrt(flux) otherwise).
 #      this option will set all errors in a fitted profile to the sqrt() of its average continuum flux
-#    - errors, original or constant, can be scaled using gen_dic['g_err'] and re-running 'calc_proc_data'
+#    - errors, original or constant, can be scaled from input using gen_dic['g_err'] and re-running 'calc_proc_data', or locally for the module using data_dic['DI']['sc_err']
 data_dic['DI']['cst_err']=False
 data_dic['DI']['cst_errbin']= False
+
+
+#%%%%% Scaled data errors
+#    - local scaling of data errors
+#    - scale by sqrt(reduced chi2 of original fit) to ensure a reduced chi2 unity
+data_dic['DI']['sc_err']={}
 
 
 #%%%%% Occulted line exclusion
@@ -5105,8 +5126,8 @@ if __name__ == '__main__':
     gen_dic['fit_DIbin']=True   &  False
     gen_dic['fit_DIbinmultivis']=True    &  False
     if ((gen_dic['star_name'] in ['WASP76','HD209458','55Cnc']) and (gen_dic['type']['ESPRESSO']=='spec2D')): 
-        # gen_dic['fit_DI'] = False   #temporaire
-        gen_dic['fit_DIbin']=  False
+        gen_dic['fit_DI'] = False   #temporaire
+        # gen_dic['fit_DIbin']=  True
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:
         gen_dic['fit_DI'] = True
         gen_dic['fit_DIbin']=True
@@ -5114,7 +5135,7 @@ if __name__ == '__main__':
 
     #Calculating/Retrieving
     gen_dic['calc_fit_DI']=True  #   &  False   
-    gen_dic['calc_fit_DIbin']=True  #  &  False  
+    gen_dic['calc_fit_DIbin']=True  # &  False  
     gen_dic['calc_fit_DIbinmultivis']=True    &  False  
 
     #Fitted data
@@ -5123,6 +5144,8 @@ if __name__ == '__main__':
     data_dic['DI']['cst_err']=True   &  False
     data_dic['DI']['cst_errbin']=True   &  False
 
+    #Scaled data errors
+    if (gen_dic['star_name']=='WASP76') and gen_dic['fit_DIbin'] and not gen_dic['fit_DI']:data_dic['DI']['sc_err']={'ESPRESSO':{'20180902':np.sqrt(2240.8611793620207),'20181030':np.sqrt(3915.852685385398)}}
 
     #Occulted line exclusion
     if gen_dic['star_name']=='MASCARA1':data_dic['DI']['occ_range']['ESPRESSO']=[-25.,25.] 
@@ -5138,7 +5161,9 @@ if __name__ == '__main__':
     # data_dic['DI']['fit_prof']['order']={'ESPRESSO':85} 
     data_dic['DI']['fit_prof']['order']={} 
     # data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}   #mock dataset     
-        
+    if (gen_dic['star_name']=='WASP76') and gen_dic['trim_spec']:data_dic['DI']['fit_prof']['order']={'ESPRESSO':2}
+
+
 
     #Continuum range
     if gen_dic['transit_pl']=='WASP_8b':data_dic['DI']['cont_range']=[[-50,-1.5-10.],[-1.5+10.,50.]]  
@@ -5164,10 +5189,24 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='HD209458': 
         data_dic['DI']['cont_range']['ESPRESSO']=[[5800.,5889.55],[5890.35,5900.]]    #ANTARESS I, mock, multi-tr
         data_dic['DI']['cont_range']['ESPRESSO']=-14.8+np.array([[-80.,-20.],[20.,80.]])    #ANTARESS I, CCF fit
-        # data_dic['DI']['cont_range']['ESPRESSO'] = np.array([[ 5883. , 5885.],[5901., 5903. ]])/1.000049    #ANTARESS fit sodium doublet        
+        if gen_dic['trim_spec']:data_dic['DI']['cont_range']['ESPRESSO'] = np.array([[ 5883. , 5885.],[5901., 5903. ]])/1.000049    #ANTARESS fit sodium doublet        
     elif gen_dic['star_name']=='WASP76':
         data_dic['DI']['cont_range']['ESPRESSO']=[[-120.,-80.],[80.,120.]]     #to have a symmetrical range accounting for the widest planetary exclusion
-        
+        if gen_dic['fit_DIbin'] and not gen_dic['fit_DI']:data_dic['DI']['cont_range']['ESPRESSO']=[[-60.,-20.],[20.,60.]]     #master is fully defined
+        if gen_dic['trim_spec']:
+            data_dic['DI']['cont_range']['ESPRESSO'] = np.array([[ 5885.6 , 5888.5],[5891.5, 5894.5 ]])    #ANTARESS fit NaID2     
+            data_dic['DI']['cont_range']['ESPRESSO'] = np.array([[5847.3 , 5847.82],[5848.38 , 5848.75]])    
+            data_dic['DI']['cont_range']['ESPRESSO'] = np.array([[5851.45 , 5851.86],[5852.55 ,5852.94]])  
+            data_dic['DI']['cont_range']['ESPRESSO'] = np.array([[5852.5 ,5852.95],[5853.94,5854.11],[ 5854.55,5854.8]])              
+            data_dic['DI']['cont_range']['ESPRESSO'] = np.array( [[5854.54 , 5854.82],[5855.33 , 5855.70]])             
+            data_dic['DI']['cont_range']['ESPRESSO'] = np.array( [[5855.36 , 5855.72],[5856.30 , 5856.77]])            
+            data_dic['DI']['cont_range']['ESPRESSO'] = np.array( [[5861.33 , 5861.83],[5863.04 , 5863.57]])               
+            data_dic['DI']['cont_range']['ESPRESSO'] = np.array([[5865.22 , 5865.96],[5866.68 ,5866.83]])               
+            data_dic['DI']['cont_range']['ESPRESSO'] = np.array([[5929.04 ,5929.45],[5930.46 ,5931.]])   
+
+
+
+            
     elif gen_dic['star_name']=='HD3167': 
         data_dic['DI']['cont_range']=[[19.403622-30.-40.,19.403622-30.],[19.403622+30.,19.403622+30.+40.]] 
         # data_dic['DI']['cont_range']=[[19.403622-30.-40.-160.,19.403622-30.-160],[19.403622+30.-160,19.403622+30.+40.-160]]    #continu bleu
@@ -5318,11 +5357,24 @@ if __name__ == '__main__':
  
         data_dic['DI']['fit_range']['ESPRESSO']={'mock_vis':[[5000.,6000.]] }      #ANTARESS I, mock, multi-tr 
         data_dic['DI']['fit_range']['ESPRESSO']={'20190720':-14.8+np.array([[-80.,80.]]),'20190911':-14.8+np.array([[-80.,80.]])}       #ANTARESS I, CCF fit
-        # data_dic['DI']['fit_range']['ESPRESSO']['binned'] = np.array([[ 5885.6 ,5890.95 ],[5891.45,5892.55],[5893.1 ,5897. ],[5897.45, 5899.2 ],[5900.,5901.]])/1.000049   #Na doublet + continuum
+        if gen_dic['trim_spec']:data_dic['DI']['fit_range']['ESPRESSO']['binned'] = np.array([[ 5885.6 ,5890.95 ],[5891.45,5892.55],[5893.1 ,5897. ],[5897.45, 5899.2 ],[5900.,5901.]])/1.000049   #Na doublet + continuum
     elif gen_dic['star_name']=='WASP76':
-        data_dic['DI']['fit_range']['ESPRESSO']={'20180902':np.array([[-120.,120.]]),'20181030':np.array([[-120.,120.]])}       #ANTARESS I, CCF fit
-    
-    
+        data_dic['DI']['fit_range']['ESPRESSO']={'20180902':np.array([[-120.,120.]]),'20181030':np.array([[-120.,120.]]),'binned':np.array([[-120.,120.]])}       #ANTARESS I, CCF fit
+        if gen_dic['fit_DIbin'] and not gen_dic['fit_DI']:data_dic['DI']['fit_range']['ESPRESSO']={'20180902':np.array([[-60.,60.]]),'20181030':np.array([[-60.,60.]])}    #master is fully defined
+        if gen_dic['trim_spec']:
+            for vis in data_dic['DI']['fit_range']['ESPRESSO']:
+                data_dic['DI']['fit_range']['ESPRESSO'][vis] = np.array([[ 5885.6 ,5890.95 ],[5891.45,5892.55],[5893.1 ,5894.5 ]])   #NaID2 line 
+                data_dic['DI']['fit_range']['ESPRESSO'][vis] = np.array([[5847.3 , 5848.75]])   
+                data_dic['DI']['fit_range']['ESPRESSO'][vis] = np.array([[5851.45 , 5852.94]])  
+                data_dic['DI']['fit_range']['ESPRESSO'][vis] = np.array([[5852.5 ,5852.95],[5853.5,5854.11],[ 5854.55,5854.8]])  
+                data_dic['DI']['fit_range']['ESPRESSO'][vis] = np.array([[5854.54 , 5855.70]]) 
+                data_dic['DI']['fit_range']['ESPRESSO'][vis] = np.array([[5855.36 , 5856.77]]) 
+                data_dic['DI']['fit_range']['ESPRESSO'][vis] = np.array([[5861.33 , 5862.46],[5863.04 , 5863.57]]) 
+                data_dic['DI']['fit_range']['ESPRESSO'][vis] = np.array([[5865.22 , 5865.96],[5866.34 , 5866.83]]) 
+                data_dic['DI']['fit_range']['ESPRESSO'][vis] = np.array([[5929.04 ,5929.45],[5929.91 ,5931.]]) 
+
+
+
     elif gen_dic['transit_pl']=='HAT_P3b':data_dic['DI']['fit_range']=[[-30.,17]] 
     elif gen_dic['star_name']=='HD3167': 
         data_dic['DI']['fit_range']=[[19.403622-30.-40.,19.403622+30.+40.]] 
@@ -5409,7 +5461,18 @@ if __name__ == '__main__':
     
     #Transition wavelength
     data_dic['DI']['line_trans']=None
-    # data_dic['DI']['line_trans']=5889.95094   #mock dataset     
+    # data_dic['DI']['line_trans']=5889.95094   #mock dataset    
+    if (gen_dic['star_name']=='WASP76') and gen_dic['trim_spec']:
+        # data_dic['DI']['line_trans']=5889.95094   #NaID2
+        #Lines from relaxed mask
+        # data_dic['DI']['line_trans']=5848.1155771291    
+        # data_dic['DI']['line_trans']=5852.2195772402   
+        # data_dic['DI']['line_trans']=5853.6825772798   
+        # data_dic['DI']['line_trans']=5855.0785773176   
+        # data_dic['DI']['line_trans']=5856.0915773451   
+        # data_dic['DI']['line_trans']=5862.3625775149   
+        # data_dic['DI']['line_trans']=5866.4565776258      
+        data_dic['DI']['line_trans']=5930.1875793517   
 
 
    
@@ -5440,7 +5503,7 @@ if __name__ == '__main__':
         data_dic['DI']['model']='custom'
     elif gen_dic['star_name']=='V1298tau':
         data_dic['DI']['model']['HARPN']='custom'
-    elif gen_dic['star_name'] in ['WASP_8','55Cnc','WASP76','WASP127','Corot7','Nu2Lupi','GJ9827','HIP41378']:
+    elif gen_dic['star_name'] in ['WASP_8','55Cnc','WASP127','Corot7','Nu2Lupi','GJ9827','HIP41378']:
         for inst in ['ESPRESSO','HARPS','HARPN']:data_dic['DI']['model'][inst]='gauss'  
     #RM survey
     elif gen_dic['star_name'] in ['HAT_P3','Kepler25','Kepler68','HAT_P33','K2_105','HD89345','Kepler63','HAT_P49','WASP47','WASP107','WASP166','HAT_P11','WASP156','HD106315']:
@@ -5465,6 +5528,13 @@ if __name__ == '__main__':
             
             #Fit DI with Intr
             data_dic['DI']['model']['ESPRESSO']='custom'  
+
+    elif (gen_dic['star_name']=='WASP76'):
+        data_dic['DI']['model']['ESPRESSO']='gauss'
+        
+        #Fit DI with Intr ana
+        data_dic['DI']['model']['ESPRESSO']='custom'  
+
 
 
     #Intrinsic line properties  
@@ -5501,6 +5571,11 @@ if __name__ == '__main__':
                 'mode':'ana','coord_line':'r_proj','func_prof_name':'gauss','pol_mode':'modul'
                 } 
             data_dic['DI']['conv_model'] = True 
+
+    elif (gen_dic['star_name']=='WASP76') and (data_dic['DI']['model']['ESPRESSO']=='custom'): 
+        data_dic['DI']['mod_def']['ESPRESSO']={'mode':'ana','coord_line':'r_proj','func_prof_name':'gauss','pol_mode':'modul'} 
+        data_dic['DI']['conv_model'] = True 
+
 
         
     elif gen_dic['star_name']=='55Cnc':
@@ -6111,13 +6186,24 @@ if __name__ == '__main__':
 
              
     if (gen_dic['star_name']=='WASP76'):
-        
-        data_dic['DI']['mod_prop']={
-            'cont':{'vary':False },
-            'rv':{'vary':True ,'ESPRESSO':{'20180902':{'guess':-1.15,'bd':[-1.27,-1.14]},'20181030':{'guess':-1.15,'bd':[-1.27,-1.14]}}},
-            'FWHM':{'vary':True ,'ESPRESSO':{'20180902':{'guess':8.8,'bd':[8.78,8.83]},'20181030':{'guess':8.8,'bd':[8.78,8.83]}}},
-            'ctrst':{'vary':True ,'ESPRESSO':{'20180902':{'guess':0.57,'bd':[0.5713,0.5733]},'20181030':{'guess':0.57,'bd':[0.572,0.574]}}},
-            }    
+        if (data_dic['DI']['model']['ESPRESSO']=='custom'):
+            data_dic['DI']['mod_prop']={
+            'rv':{'vary':False,'ESPRESSO':{'20180902':{'guess':-1.2006343405,'bd':[-10.,10.]},'20181030':{'guess':-1.2060707814,'bd':[-10.,10.]}}},   #rv defined in input rest frame (F9 mask, from RVres , corr trend, fit chi2   )
+            'veq':{'vary':True ,'ESPRESSO':{'20180902':{'guess':1.,'bd':[0.,1.]},'20181030':{'guess':1.,'bd':[0.,1.]}}},                             
+            'ctrst_ord0__IS__VS_':{'vary':True  & False ,'ESPRESSO':{'20180902':{'guess':6.5445646911e-01,'bd':[0.2,0.4]},'20181030':{'guess':6.6192786469e-01,'bd':[0.2,0.4]}}},
+            'ctrst_ord1__IS__VS_':{'vary':True  & False ,'ESPRESSO':{'20180902':{'guess':-9.0882410087e-02,'bd':[0.2,0.4]},'20181030':{'guess':-9.0882410087e-02,'bd':[0.2,0.4]}}},
+            'ctrst_ord2__IS__VS_':{'vary':True  & False ,'ESPRESSO':{'20180902':{'guess':-9.7508515532e-02,'bd':[0.2,0.4]},'20181030':{'guess':-9.7508515532e-02,'bd':[0.2,0.4]}}},
+            'FWHM_ord0__IS__VS_':{'vary':True  & False ,'ESPRESSO':{'20180902':{'guess':7.5922402630e+00,'bd':[20.,30.]},'20181030':{'guess':7.6510927098e+00,'bd':[20.,30.]}}},
+            'FWHM_ord1__IS__VS_':{'vary':True  & False ,'ESPRESSO':{'20180902':{'guess':-1.0736694900e-01,'bd':[20.,30.]},'20181030':{'guess':-1.0736694900e-01,'bd':[20.,30.]}}},
+            'FWHM_ord2__IS__VS_':{'vary':True  & False ,'ESPRESSO':{'20180902':{'guess':4.2046450519e-01,'bd':[20.,30.]},'20181030':{'guess':4.2046450519e-01,'bd':[20.,30.]}}},
+            'cont':{'vary':False}}            
+        else:
+            data_dic['DI']['mod_prop']={
+                'cont':{'vary':False },
+                'rv':{'vary':True ,'ESPRESSO':{'20180902':{'guess':-1.15,'bd':[-1.27,-1.14]},'20181030':{'guess':-1.15,'bd':[-1.27,-1.14]}}},
+                'FWHM':{'vary':True ,'ESPRESSO':{'20180902':{'guess':8.8,'bd':[8.78,8.83]},'20181030':{'guess':8.8,'bd':[8.78,8.83]}}},
+                'ctrst':{'vary':True ,'ESPRESSO':{'20180902':{'guess':0.57,'bd':[0.5713,0.5733]},'20181030':{'guess':0.57,'bd':[0.572,0.574]}}},
+                }    
 
     
     
@@ -6129,7 +6215,7 @@ if __name__ == '__main__':
     
     #Fitting mode 
     data_dic['DI']['fit_mod']='chi2'   
-    # data_dic['DI']['fit_mod']='mcmc' 
+    data_dic['DI']['fit_mod']='mcmc' 
     # data_dic['DI']['fit_mod']=''  
     
     #Printing fits results
@@ -6208,10 +6294,15 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='GJ1214':
         data_dic['DI']['line_fit_priors']={'veq':{'mod': 'uf', 'low':0.,'high':20.}}          
     elif gen_dic['star_name']=='WASP76':
-        data_dic['DI']['line_fit_priors']={        
-            'rv':{'mod': 'uf', 'low':-1.27,'high':-1.14},       
-            'FWHM':{'mod': 'uf', 'low':8.77,'high':8.83},
-            'ctrst':{'mod': 'uf', 'low':0.571,'high':0.574}}
+        # data_dic['DI']['line_fit_priors']={        
+        #     'rv':{'mod': 'uf', 'low':-1.27,'high':-1.14},       
+        #     'FWHM':{'mod': 'uf', 'low':8.77,'high':8.83},
+        #     'ctrst':{'mod': 'uf', 'low':0.571,'high':0.574}}
+
+        if (data_dic['DI']['model']['ESPRESSO']=='custom'):
+            data_dic['DI']['line_fit_priors']={'veq':{'mod': 'uf', 'low':0.,'high':6.}}
+
+
     # elif gen_dic['star_name']=='HD209458':
     #     data_dic['DI']['line_fit_priors']={   
     #         'offset':{'mod': 'uf', 'low':-1e10,'high':1e10}, 
@@ -6282,7 +6373,9 @@ if __name__ == '__main__':
                                     'nburn':{'HARPS':{'binned':400}}}   
     elif gen_dic['star_name']=='WASP76':
         # data_dic['DI']['mcmc_set']={'nwalkers':{'ESPRESSO':{'20180902':20,'20181030':20}},'nsteps':{'ESPRESSO':{'20180902':500,'20181030':500}},'nburn':{'ESPRESSO':{'20180902':150,'20181030':150}}}
-            data_dic['DI']['mcmc_set']={'nwalkers':{'ESPRESSO':{'20180902':30,'20181030':30}},'nsteps':{'ESPRESSO':{'20180902':1500,'20181030':1500}},'nburn':{'ESPRESSO':{'20180902':400,'20181030':400}}}
+        data_dic['DI']['mcmc_set']={'nwalkers':{'ESPRESSO':{'20180902':30,'20181030':30}},'nsteps':{'ESPRESSO':{'20180902':1500,'20181030':1500}},'nburn':{'ESPRESSO':{'20180902':400,'20181030':400}}}
+        if (data_dic['DI']['model']['ESPRESSO']=='custom'):
+            data_dic['DI']['mcmc_set']={'nwalkers':{'ESPRESSO':{'20180902':10,'20181030':10}},'nsteps':{'ESPRESSO':{'20180902':200,'20181030':200}},'nburn':{'ESPRESSO':{'20180902':50,'20181030':50}}}
     elif gen_dic['star_name']=='HD209458':
             data_dic['DI']['mcmc_set']={'nwalkers':{'ESPRESSO':{'20190720':30,'20190911':30}},'nsteps':{'ESPRESSO':{'20190720':1500,'20190911':1500}},'nburn':{'ESPRESSO':{'20190720':400,'20190911':400}}}
 
@@ -6394,7 +6487,7 @@ plot_dic['all_DI_data']=''
 if __name__ == '__main__': 
 
     #Activating
-    gen_dic['align_DI'] = True  #  &  False      
+    gen_dic['align_DI'] = True    &  False      
     if ((gen_dic['star_name'] in ['55Cnc']) and (gen_dic['type']['ESPRESSO']=='spec2D')) or \
        ((gen_dic['star_name'] in ['GJ3090']) and ((gen_dic['type']['NIRPS_HA']=='spec2D') or (gen_dic['type']['NIRPS_HE']=='spec2D'))):
         gen_dic['align_DI'] = False   
@@ -6407,7 +6500,7 @@ if __name__ == '__main__':
         gen_dic['align_DI']=True    
         gen_dic['calc_align_DI']=True 
     if gen_dic['star_name'] in ['HD209458','WASP76']:  
-        gen_dic['align_DI']=True    # & False  
+        gen_dic['align_DI']=True  #   & False  
         gen_dic['calc_align_DI']=True  & False                   
 
     
@@ -6503,6 +6596,8 @@ if __name__ == '__main__':
 
     elif gen_dic['transit_pl']=='WASP127b':
         data_dic['DI']['sysvel']={'HARPS':{'2017-02-28':-9.193537,'2017-03-20':-9.195641,'2018-02-13':-9.196316,'2018-03-31':-9.201588}}   
+    
+    
     elif gen_dic['star_name']=='HD209458':
         data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.762032,'20190911':-14.760520}}     #From fit to master out CCF  ; no sky-corr
         data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.762240,'20190911':-14.760934}}     #From fit to master out CCF  ;sky-corr, param. Nuria
@@ -6525,25 +6620,41 @@ if __name__ == '__main__':
         else:data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.761894 -3.54030778e-2,'20190911':-14.760615 - 3.42603e-2}}  #F9 mask taken as final reference
     
     elif gen_dic['star_name']=='WASP76':
-        if (gen_dic['type']['ESPRESSO']=='CCF'):data_dic['DI']['sysvel']={ 
+        if (gen_dic['type']['ESPRESSO']=='CCF'):
+            data_dic['DI']['sysvel']={ 
                 'ESPRESSO':{'20181030':-1.180597,'20180902':-1.172899}}    #measured from input CCFs  
-        if (gen_dic['type']['ESPRESSO']=='spec2D'):data_dic['DI']['sysvel']={
+        elif (gen_dic['type']['ESPRESSO']=='spec2D'):
+            # data_dic['DI']['sysvel']={
                 # 'ESPRESSO':{'2018-10-31':-1.17911,'2018-09-03':-1.17911}}  
                 # 'ESPRESSO':{'2018-10-31':-1.14,'2018-09-03':-1.14}}    #measured from CCFs on input spectra
-                'ESPRESSO':{'20181030':-1.142014+0.000015,'20180902':-1.135829-0.000006}}    #measured from CCFs on input spectra   
+                # 'ESPRESSO':{'20181030':-1.142014+0.000015,'20180902':-1.135829-0.000006}}    #measured from CCFs on input spectra   
                 # 'ESPRESSO':{'20180902':0.,'20181030':0.}} 
-        if gen_dic['DI_CCF']:
-            if ('new_F9' in gen_dic['CCF_mask']['ESPRESSO']): 
-                data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.141999 -0.0574565799 ,'20181030':-1.135835 -0.070238130}}      #From RVres
-                data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.141999 -0.0586287599 ,'20181030':-1.135835 -0.070238130}}      #From RVres
-            elif ('Relaxed' in gen_dic['CCF_mask']['ESPRESSO']): 
-                data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.142014 -0.01677219,'20181030':-1.135829 -0.03050356}}      #From RVres       , corr trend              
-                data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.142014 -0.01782769,'20181030':-1.135829 -0.03050356}}      #From RVres, corr trend     
-            elif ('Strict' in gen_dic['CCF_mask']['ESPRESSO']): 
-                data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.142014 + 0.00857479,'20181030':-1.135829 -0.0049743}}      #From RVres      
-                data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.142014 + 0.00738557,'20181030':-1.135829 -0.0049743}}        #From RVres, corr trend                 
-                
-        
+            if gen_dic['DI_CCF']:
+                if ('new_F9' in gen_dic['CCF_mask']['ESPRESSO']): 
+                    data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.141999 -0.0574565799 ,'20181030':-1.135835 -0.070238130}}      #From RVres
+                    data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.141999 -0.0586287599 ,'20181030':-1.135835 -0.070238130}}      #From RVres , corr trend    
+    
+                    data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.2006343405 ,'20181030':-1.2060707814}}      #From RVres , corr trend, fit chi2   
+                    # data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.2003378388 ,'20181030':-1.2058374293}}      #From master out , corr trend, fit chi2   
+                 
+                    # data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':0.,'20181030':0.}}  
+    
+                    
+                elif ('Relaxed' in gen_dic['CCF_mask']['ESPRESSO']): 
+                    data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.142014 -0.01677219,'20181030':-1.135829 -0.03050356}}      #From RVres                
+                    data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.142014 -0.01782769,'20181030':-1.135829 -0.03050356}}      #From RVres, corr trend     
+                elif ('Strict' in gen_dic['CCF_mask']['ESPRESSO']): 
+                    data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.142014 + 0.00857479,'20181030':-1.135829 -0.0049743}}      #From RVres      
+                    data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.142014 + 0.00738557,'20181030':-1.135829 -0.0049743}}        #From RVres, corr trend   
+                    
+            else:
+                if gen_dic['trim_spec']:   #Na D2
+                    data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-3.4729213437e-01,'20181030':-3.4601561907e-01}}      #From master out NaID2 , corr trend, fit chi2  
+                    data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':0.,'20181030':0.}}                    
+                else:
+                    data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.2006343405,'20181030':-1.2060707814}}  #F9 mask taken as final reference From RVres , corr trend, fit chi2                  
+
+
     if gen_dic['star_name']=='HD3167':
         data_dic['DI']['sysvel']['ESPRESSO']={'2019-10-09':0.}
         
@@ -6854,7 +6965,7 @@ if __name__ == '__main__':
         if ('HARPN' in gen_dic['data_dir_list']):           
             if 'new' in gen_dic['data_dir_list']['HARPN']['20150913']:
                 data_dic['DI']['sysvel']['HARPN']={'20150913':-63.419840,'20151101':-63.413375}               #from master
-                data_dic['DI']['sysvel']['HARPN']={'20150913':-6.34193e+01  ,'20151101':-6.34129e+01}         #from RVres (voigt model)
+                data_dic['DI']['sysvel']['HARPN']={'20150913':-63.4193  ,'20151101':-63.4129}         #from RVres (voigt model)
                 
                 data_dic['DI']['sysvel']['HARPN']={'20150913': -63.420517,'20151101':-63.414324}   #gaussian fit, masters, no skycorr, no correction / correction C and FWHM
                 # data_dic['DI']['sysvel']['HARPN']={'20150913': -63.422370,'20151101':-63.416884}   #gaussian fit, masters, skycorr, no correction
@@ -7157,7 +7268,7 @@ if __name__ == '__main__':
         gen_dic['calc_flux_sc']=True
 
     if gen_dic['star_name'] in ['HD209458','WASP76']:
-        gen_dic['flux_sc']=True  # & False     
+        gen_dic['flux_sc']=True#  & False     
         gen_dic['calc_flux_sc']=True   & False     
         
 
@@ -7832,13 +7943,11 @@ plot_dic['map_DIbin']=''
 
 
 #%%%%% Individual binned profiles
-plot_dic['DIbin']=''  
-plot_dic['CCF_DIbin']=''   
+plot_dic['DIbin']=''    
 
 
 #%%%%% Residuals from binned profiles
 plot_dic['DIbin_res']=''  
-plot_dic['CCF_DIbin_res']=''  
 
 
 
@@ -7856,7 +7965,7 @@ if __name__ == '__main__':
     
     
     #Calculating/retrieving
-    gen_dic['calc_DIbin']=True  # &  False  
+    gen_dic['calc_DIbin']=True   &  False  
     gen_dic['calc_DIbinmultivis'] = True      &  False
     if gen_dic['star_name'] in ['HD209458','WASP76']:
         gen_dic['DIbinmultivis']=True & False  
@@ -8054,12 +8163,10 @@ if __name__ == '__main__':
     
     #Individual binned profiles
     plot_dic['DIbin']=''  
-    plot_dic['CCF_DIbin']=''   #pdf  
-    if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:plot_dic['CCF_DIbin']='png'
+    if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:plot_dic['DIbin']='png'
 
     #Residuals from binned profiles
     plot_dic['DIbin_res']=''  #pdf
-    plot_dic['CCF_DIbin_res']=''  #pdf
 
 
 
@@ -8510,10 +8617,10 @@ data_dic['Res']['idx_in_bin']={}
         
 
 #%%%% Continuum range
-#    - used to set errors on local CCFs from dispersion in their continuum, to set the continuum level or perform continuum correction of intrinsic CCFs
-#    - define [ [rv1,rv2] , [rv3,rv4] , [rv5,rv6] , ... ] 
-#    - rv are defined in the star rest frame
-#      the ranges are common to all local CCFs, ie that they must be large enough to cover the full range of RVs (with the width of the stellar
+#    - format inst > ord > [ [x1,x2] , [x3,x4] , ... ] 
+#    - used to set errors on local profiles from dispersion in their continuum, to set the continuum level or perform continuum correction of intrinsic profiles
+#    - x are defined in the star rest frame
+#      the ranges are common to all local profiles, ie that they must be large enough to cover the full range of RVs (with the width of the stellar
 # line) from the regions along the transit chord    
 #      the range does not need to be as large as defined for the raw CCFs, which can be broadened by rotation   
 data_dic['Res']['cont_range']={}
@@ -8532,12 +8639,12 @@ data_dic['Res']['disp_err']=False
 #    - in stellar rest frame
 #    - can be used to check for spurious variations in all exposures: to do so, apply the local profile extraction after having aligned (and potentially corrected)
 # all profiles, but without transit scaling (if flux balance correction has been applied) or after having applied a light curve unity
-plot_dic['map_res_prof']=''   
+plot_dic['map_Res_prof']=''   
 
 
 #%%%%% Individual residual profiles
 plot_dic['sp_loc']=''    
-plot_dic['CCFloc']=''      
+plot_dic['CCF_Res']=''      
 
 
 
@@ -8545,17 +8652,17 @@ plot_dic['CCFloc']=''
 if __name__ == '__main__':
 
     #Activating
-    gen_dic['res_data'] = True  #  &  False
+    gen_dic['res_data'] = True #  &  False
     if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214']:gen_dic['res_data']=True
     if gen_dic['star_name']=='GJ436':gen_dic['res_data']=False
 
     #Calculating/retrieving 
     gen_dic['calc_res_data'] = True   &  False
-    if gen_dic['star_name'] in ['HD209458','WASP76']:gen_dic['calc_res_data']=True &False
+    if gen_dic['star_name'] in ['HD209458','WASP76']:gen_dic['calc_res_data']=True#  &False
 
 
     #Multi-threading
-    gen_dic['nthreads_res_data']= 2
+    gen_dic['nthreads_res_data']= 1
 
     #In-transit restriction
     data_dic['Res']['extract_in']=True  &  False
@@ -8595,14 +8702,9 @@ if __name__ == '__main__':
         data_dic['Res']['cont_range']=[[-100.,-60.],[60.,100.]]     #Mask F
 #        data_dic['Res']['cont_range']=[[-300.,-60.],[60.,300.]]     #Mask F + atmo
     elif gen_dic['transit_pl']=='Kelt9b':
-        data_dic['Res']['cont_range']=[[-300.,-130.],[130.,300.]]  
-    elif gen_dic['star_name']=='WASP76':
-        data_dic['Res']['cont_range']['ESPRESSO']=[[-150.,-80.],[80.,150.]]    #to avoid planet-excluded ranges  
-    #     data_dic['Res']['cont_range_MCCF']=[[-200.,-60.],[60.,200.]]       
+        data_dic['Res']['cont_range']=[[-300.,-130.],[130.,300.]]       
     elif gen_dic['transit_pl']=='WASP127b':
-        data_dic['Res']['cont_range']=[[-150.,-10.],[10.,150.]]     
-    elif gen_dic['star_name']=='HD209458':
-        data_dic['Res']['cont_range']['ESPRESSO']=[[-80.,-20.],[20.,80.]]     
+        data_dic['Res']['cont_range']=[[-150.,-10.],[10.,150.]]      
     elif gen_dic['transit_pl']=='Corot7b':
         data_dic['Res']['cont_range']=[[-150.,-10.],[10.,150.]]  
         data_dic['Res']['cont_range']=[[10.+14.,21.+14.]]     #analyse continu bleu
@@ -8653,7 +8755,12 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='HD189733':data_dic['Res']['cont_range']['ESPRESSO']=[[-80.,-25.],[+25.,+80.]]        
     elif gen_dic['star_name']=='WASP43':data_dic['Res']['cont_range']['NIRPS_HE']=[[-100.,-7.],[+7.,+100.]]      
     elif gen_dic['star_name']=='L98_59':data_dic['Res']['cont_range']['NIRPS_HE']=[[-100.,-5.],[+5.,+100.]]   
-    elif gen_dic['star_name']=='GJ1214':data_dic['Res']['cont_range']['NIRPS_HE']=[[-100.,-10.],[+10.,+100.]]   
+    elif gen_dic['star_name']=='GJ1214':data_dic['Res']['cont_range']['NIRPS_HE']=[[-100.,-10.],[+10.,+100.]]  
+    elif gen_dic['star_name']=='WASP76':
+        data_dic['Res']['cont_range']['ESPRESSO']={0:[[-150.,-80.],[80.,150.]]}    #to avoid planet-excluded ranges  
+    #     data_dic['Res']['cont_range_MCCF']=[[-200.,-60.],[60.,200.]]    
+    elif gen_dic['star_name']=='HD209458':
+        data_dic['Res']['cont_range']['ESPRESSO']={0:[[-80.,-20.],[20.,80.]]}   
     
 
     #Error definition
@@ -8661,11 +8768,11 @@ if __name__ == '__main__':
 
 
     #2D maps of residual profiles
-    plot_dic['map_res_prof']=''   #png 
+    plot_dic['map_Res_prof']=''   #png 
 
     #Individual residual profiles
     plot_dic['sp_loc']=''    #png
-    plot_dic['CCFloc']=''   #pdf    
+    plot_dic['CCF_Res']=''   #pdf    
     
 
 
@@ -8697,6 +8804,16 @@ gen_dic['intr_data'] = False
 gen_dic['calc_intr_data'] = True  
  
 
+#%%%%% Continuum range
+data_dic['Intr']['cont_range'] = {}
+
+
+#%%%% Continuum correction
+#    - the continuum might show differences between exposures because of imprecisions on the flux balance correction
+#      this option correct for these deviations and update the flux scaling values accordingly
+data_dic['Intr']['cont_norm'] = False
+
+
 #%%%% Plot settings
 
 #%%%%% 2D map: intrinsic stellar profiles
@@ -8707,12 +8824,12 @@ plot_dic['map_Intr_prof']=''
 #%%%%% Individual intrinsic stellar profiles
 #    - aligned or not
 plot_dic['sp_intr']=''  
-plot_dic['CCFintr']=''    
+plot_dic['CCF_Intr']=''    
 
 
 #%%%%% Residuals from intrinsic stellar profiles
 #    - choose within the routine whether to plot fit to individual or to global profiles
-plot_dic['CCFintr_res']=''  
+plot_dic['CCF_Intr_res']=''  
 
 
 if __name__ == '__main__':
@@ -8725,16 +8842,35 @@ if __name__ == '__main__':
     #Calculating/retrieving
     gen_dic['calc_intr_data'] = True  &  False  
 
+
+    #Continuum range
+    data_dic['Intr']['cont_range'] = deepcopy(data_dic['Res']['cont_range'])
+    if gen_dic['star_name']=='HD209458':
+        data_dic['Intr']['cont_range']['ESPRESSO']={0:[[-120.,-50.],[50.,120.]]}    #Na CCF
+        if gen_dic['trim_spec']:
+            data_dic['Intr']['cont_range']['ESPRESSO']={}
+            for iord in range(4):data_dic['Intr']['cont_range']['ESPRESSO'][iord] = np.array([[ 5883. , 5885.],[5901., 5903. ]])    #ANTARESS fit sodium doublet
+
+
+    #Continuum correction
+    data_dic['Intr']['cont_norm'] = True   &   False
+    # if gen_dic['star_name'] in ['HD209458','WASP76']:
+    #     data_dic['Intr']['cont_norm'] = True   #activate if CCF intr are generated
+
+
+
+
+
     #2D maps of intrinsic stellar profiles
     plot_dic['map_Intr_prof']=''   #'png 
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:plot_dic['map_Intr_prof']='png'
 
     #Individual intrinsic stellar profiles
     plot_dic['sp_intr']=''  
-    plot_dic['CCFintr']=''   #pdf  
+    plot_dic['CCF_Intr']=''   #pdf  
 
     #Residuals from intrinsic stellar profiles
-    plot_dic['CCFintr_res']=''  #pdf
+    plot_dic['CCF_Intr_res']=''  #pdf
     
 
 
@@ -8770,16 +8906,10 @@ gen_dic['calc_Intr_CCF'] = True
 data_dic['Intr']['disp_err']=False
 
 
-#%%%% Continuum correction
-#    - the continuum of CCFs calculated from local spectra might show differences between exposures because of imprecisions on the flux balance correction
-#      this option correct for these deviations and update the flux scaling values accordingly
-data_dic['Intr']['cont_norm'] = False
-
-
 if __name__ == '__main__':    
  
     #Activating
-    gen_dic['Intr_CCF'] = True #  &  False
+    gen_dic['Intr_CCF'] = True   &  False
     if gen_dic['star_name']=='GJ436':gen_dic['Intr_CCF'] =  False
  
     #Calculating/retrieving 
@@ -8787,13 +8917,6 @@ if __name__ == '__main__':
 
     #Error definition
     data_dic['Intr']['disp_err']=False
-
-    #Continuum correction
-    data_dic['Intr']['cont_norm'] = True   &   False
-    if gen_dic['star_name'] in ['HD209458','WASP76']:
-        data_dic['Intr']['cont_norm'] = True
-
-
 
 
 
@@ -9016,7 +9139,7 @@ if __name__ == '__main__':
 
     
 ##################################################################################################
-#%%% Module: 2D->1D conversion for intrinsic spectra
+#%%% Module: 2D->1D conversion for residual & intrinsic spectra
 #    - every analysis afterwards will be performed on those profiles
 ##################################################################################################
 
@@ -9043,8 +9166,10 @@ data_dic['Intr']['spec_1D_prop']={}
 plot_dic['map_Intr_1D']=''   
 
 #%%%%% Individual spectra
-plot_dic['sp_Intr_1D']=''     
+plot_dic['sp_Intr_1D']=''
 
+#%%%%% Residuals from model     
+plot_dic['sp_Intr_1D_res']='' 
 
  
 
@@ -9058,19 +9183,26 @@ if __name__ == '__main__':
 
 
     #Multi-threading
-    gen_dic['nthreads_spec_1D_Intr']= 4
+    gen_dic['nthreads_spec_1D_Intr']=  4
 
 
     #1D spectral table
     data_dic['Intr']['spec_1D_prop']={
         'ESPRESSO':{'dlnw':0.01/6000.,'w_st':3000.,'w_end':9000.}}   
+    if (gen_dic['star_name']=='HD209458') and gen_dic['trim_spec']:data_dic['Intr']['spec_1D_prop']={'ESPRESSO':{'dlnw':0.01/6000.,'w_st':5780.,'w_end':6005.}}
+
+    #Redefining continuum range
+    if gen_dic['star_name']=='HD209458':
+        if gen_dic['trim_spec']:
+            data_dic['Intr']['cont_range']['ESPRESSO']={}
+            data_dic['Intr']['cont_range']['ESPRESSO'][0] = np.array([[ 5883. , 5885.],[5901., 5903. ]])    #ANTARESS fit sodium doublet
 
     #2D maps
     plot_dic['map_Intr_1D']=''   #'png
 
     #Individual spectra
-    plot_dic['sp_Intr_1D']=''     #pdf         
-    
+    plot_dic['sp_Intr_1D']=''     #pdf           
+    plot_dic['sp_Intr_1D_res']=''     
     
     
 
@@ -9165,7 +9297,7 @@ if __name__ == '__main__':
 
     if gen_dic['star_name'] in ['HD209458','WASP76']:
         gen_dic['Intrbinmultivis']=True & False    
-        gen_dic['calc_Intrbinmultivis']= True  & False    
+        gen_dic['calc_Intrbinmultivis']= True #& False    
 
 
     #Visits to be binned
@@ -9223,6 +9355,8 @@ if __name__ == '__main__':
 
     if gen_dic['star_name']=='HD209458':
         data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20190720':range(6,56),'20190911':range(6,56)}}    #for mask generation
+        data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20190720':range(3,44),'20190911':range(3,44)}}    #for resampling the Na series 
+
     if gen_dic['star_name']=='WASP76':
         data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20180902':range(1,20),'20181030':range(3,35)}}    #for mask generation
         data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20180902':range(1,21),'20181030':range(1,38)}}    #for resampling
@@ -9268,7 +9402,6 @@ if __name__ == '__main__':
     if gen_dic['star_name'] in ['HD209458','WASP76']:
         data_dic['Intr']['dim_bin']='r_proj'    
 
-
     #Bin definition
     if gen_dic['star_name']=='WASP76':     #leave undefined for default value and CCF mask generation 
         data_dic['Intr']['prop_bin']={
@@ -9302,8 +9435,16 @@ if __name__ == '__main__':
             #             '20181030':{'bin_low': [0.335],'bin_high':[0.393]}}
             # }
 
-
-
+    elif gen_dic['star_name']=='HD209458':     
+        data_dic['Intr']['prop_bin']={
+            #Bin of both visits, to illustrate change in line shape
+            # 'ESPRESSO':{'binned':{'bin_low': [0.50,0.60,0.90],'bin_high':[0.60,0.90,1.00]}}}
+            # 'ESPRESSO':{'binned':{'bin_low': [0.50,0.75],'bin_high':[0.75,1.00]}}}
+            'ESPRESSO':{'binned':{'bin_low': [0.50,0.65],'bin_high':[0.65,1.00]}}}
+            # 'ESPRESSO':{'binned':{'bin_low': [0.50,0.55,0.60,0.70,0.82],
+            #                       'bin_high':[0.55,0.60,0.70,0.82,0.97]}}}
+            
+            
 
     if gen_dic['star_name']=='HD3167':  
         data_dic['Intr']['prop_bin']={
@@ -9550,6 +9691,10 @@ data_dic['Intr']['cst_err']= False
 data_dic['Intr']['cst_errbin']= False
 
 
+#%%%%% Scaled data errors
+data_dic['Intr']['sc_err']={}
+
+
 #%%%%% Trimming
 data_dic['Intr']['fit_prof']['trim_range']={}
 
@@ -9557,11 +9702,6 @@ data_dic['Intr']['fit_prof']['trim_range']={}
 #%%%%% Order to be fitted
 #    - relevant for 2D spectra only
 data_dic['Intr']['fit_prof']['order']={}     
-
-
-#%%%%% Continuum range
-data_dic['Intr']['cont_range'] = {}
-
 
 #%%%%% Spectral range(s) to be fitted
 #   - leave empty to fit over the entire range of definition of the CCF
@@ -9703,13 +9843,13 @@ plot_dic['prop_Intr']=''
 if __name__ == '__main__':
 
     #Activating
-    gen_dic['fit_Intr'] = True #  &  False
+    gen_dic['fit_Intr'] = True   &  False
     gen_dic['fit_Intr_1D'] = True   &  False
     gen_dic['fit_Intrbin']=True     &  False
     gen_dic['fit_Intrbinmultivis']=True     &  False
 
     #Calculating/Retrieving
-    gen_dic['calc_fit_Intr']=True   &  False   
+    gen_dic['calc_fit_Intr']=True #  &  False   
     gen_dic['calc_fit_Intr_1D']=True #  &  False   
     gen_dic['calc_fit_Intrbin']=True  #  &  False    
     gen_dic['calc_fit_Intrbinmultivis']=True  #  &  False  
@@ -9718,9 +9858,6 @@ if __name__ == '__main__':
     data_dic['Intr']['cst_err']=True   &  False
     data_dic['Intr']['cst_errbin']=True   &  False
 
-    #Continuum range
-    data_dic['Intr']['cont_range'] = deepcopy(data_dic['Res']['cont_range'])
-    
     #Spectral range(s) to be fitted
     if gen_dic['transit_pl']=='WASP_8b':
         data_dic['Intr']['fit_range']=[[-50.,50.]]
@@ -9799,6 +9936,7 @@ if __name__ == '__main__':
         data_dic['Intr']['fit_range']['ESPRESSO']={'20180902':fit_range,'20181030':fit_range}        
     if gen_dic['star_name']=='HD209458':
         fit_range = [[-80.,80.]]
+        fit_range = [[-100.,100.]]   #CCF Na
         data_dic['Intr']['fit_range']['ESPRESSO']={'20190720':fit_range,'20190911':fit_range}
 
     #Model type  
@@ -10171,7 +10309,7 @@ if __name__ == '__main__':
     #Fitting mode 
     data_dic['Intr']['fit_mod']=''
     data_dic['Intr']['fit_mod']='chi2'
-    data_dic['Intr']['fit_mod']='mcmc'
+    # data_dic['Intr']['fit_mod']='mcmc'
 
 
     #Printing fits results
@@ -10194,10 +10332,15 @@ if __name__ == '__main__':
             'FWHM':{'mod': 'uf', 'low':6.,'high':13.},
             'ctrst':{'mod': 'uf', 'low':0.4,'high':0.75}}  
     elif gen_dic['star_name']=='HD209458':
-        data_dic['Intr']['line_fit_priors']={       #priors defined by looking at the 1D PDFs and time-series properties, after exclusion of noisiest exposures        
-            'rv':{'mod': 'uf', 'low':-7.,'high':7.},           
-            'FWHM':{'mod': 'uf', 'low':6.,'high':9.},
-            'ctrst':{'mod': 'uf', 'low':0.5,'high':0.7}}   
+        # data_dic['Intr']['line_fit_priors']={       #priors defined by looking at the 1D PDFs and time-series properties, after exclusion of noisiest exposures        
+        #     'rv':{'mod': 'uf', 'low':-7.,'high':7.},           
+        #     'FWHM':{'mod': 'uf', 'low':6.,'high':9.},
+        #     'ctrst':{'mod': 'uf', 'low':0.5,'high':0.7}}   
+
+        data_dic['Intr']['line_fit_priors']={       #priors for Na CCF fit   
+            'rv':{'mod': 'uf', 'low':-10.,'high':10.},           
+            'FWHM':{'mod': 'uf', 'low':0.,'high':30.},
+            'ctrst':{'mod': 'uf', 'low':0.,'high':1.}} 
         
         
     
@@ -10456,7 +10599,7 @@ if __name__ == '__main__':
     plot_dic['prop_Intr_mcmc_PDFs']=''     
 
     #Derived properties
-    plot_dic['prop_Intr']='pdf'  
+    plot_dic['prop_Intr']=''  
 
 
 
@@ -10520,7 +10663,7 @@ glob_fit_dic['IntrProp']['dim_fit']='mu'
   
 
 #%%%%% Variation
-#    - fit line property as absolute ('abs') or modulated ('modu') polynomial
+#    - fit line property as absolute ('abs') or modulated ('modul') polynomial
 glob_fit_dic['IntrProp']['pol_mode']='abs'     
 
 
@@ -10647,9 +10790,12 @@ if __name__ == '__main__':
             
         # #     #Pour faire le fit avec toujours la même série de points
         # #     cond_fit_dic['ESPRESSO'][vis] &= ((data_load[inst][vis]['cen_ph']> -0.017)   &  (data_load[inst][vis]['cen_ph']< 0.017 ) )
-        glob_fit_dic['IntrProp']['idx_in_fit']={'ESPRESSO':{'20190720':range(2,46),'20190911':range(2,46)}}
+        glob_fit_dic['IntrProp']['idx_in_fit']={'ESPRESSO':{'20190720':range(2,46),'20190911':range(2,46)}}   #White CCFs
+        glob_fit_dic['IntrProp']['idx_in_fit']={'ESPRESSO':{'20190720':range(3,44),'20190911':range(3,44)}}   #Na CCF        
+        
+        
     if gen_dic['star_name']=='WASP76':
-        glob_fit_dic['IntrProp']['idx_in_fit']={'ESPRESSO':{'20180902':list(np.delete(np.arange(21),[0,10,11,12,13,20])),'20181030':list(np.delete(np.arange(38),[0,1,18,19,20,21,22,23,24,25,37]))}}
+        glob_fit_dic['IntrProp']['idx_in_fit']={'ESPRESSO':{'20180902':list(np.delete(np.arange(21),[0,10,11,12,13,20])),'20181030':list(np.delete(np.arange(39),[0,1,18,19,20,21,22,23,24,25,37,38]))}}
 
 
 
@@ -10657,7 +10803,7 @@ if __name__ == '__main__':
 
 
     #Fitted property
-    glob_fit_dic['IntrProp']['prop'] = 'rv'
+    glob_fit_dic['IntrProp']['prop'] = 'ctrst'
 
 
     #Coordinate
@@ -10666,7 +10812,7 @@ if __name__ == '__main__':
 
 
     #Variation
-    if gen_dic['star_name'] in ['WASP107','HAT_P11','HD209458','WASP76']:glob_fit_dic['IntrProp']['pol_mode']='modu'    
+    if gen_dic['star_name'] in ['WASP107','HAT_P11','HD209458','WASP76']:glob_fit_dic['IntrProp']['pol_mode']='modul'    
     
 
 
@@ -11233,29 +11379,34 @@ if __name__ == '__main__':
 
         if glob_fit_dic['IntrProp']['prop'] == 'rv':
             glob_fit_dic['IntrProp']['mod_prop']={
-                        'veq':{'vary':True,'guess':4.,'bd':[3.,5.]},
-                        'lambda_rad__plHD209458b':{'vary':True,'guess':0.*np.pi/180.,'bd':[-5.*np.pi/180.,5.*np.pi/180.]},
-                        # 'c1_CB':{'vary':True,'guess':0.,'bd':[-1.,1.]}, 
+                        'veq':{'vary':False,'guess':4.2721415478,'bd':[3.,5.]},
+                        'lambda_rad__plHD209458b':{'vary':False,'guess':1.0699092308*np.pi/180.,'bd':[-5.*np.pi/180.,5.*np.pi/180.]},
+                        'c1_CB':{'vary':True,'guess':2.,'bd':[-1.,1.]}, 
                         # 'c2_CB':{'vary':True,'guess':0.,'bd':[-1.,1.]}, 
-                        'alpha_rot':{'vary':True,'guess':0.,'bd':[0. , 1.]},  
-                        'cos_istar':{'vary':True,'guess':np.cos(90.*np.pi/180.),'bd':[ -1. , 1.]},
+                        # 'alpha_rot':{'vary':True,'guess':0.,'bd':[0. , 1.]},  
+                        # 'cos_istar':{'vary':True,'guess':np.cos(90.*np.pi/180.),'bd':[ -1. , 1.]},
+                        'rv':{'vary':True,'guess':0.,'bd':[3.,5.]},
+                        # 'rv_line_ord0__ISESPRESSO_VS20190720':{'vary':True,'guess':0.,'bd':[3.,5.]},
+                        # 'rv_line_ord0__ISESPRESSO_VS20190911':{'vary':True,'guess':0.,'bd':[3.,5.]},
                         }           
         if glob_fit_dic['IntrProp']['prop'] == 'ctrst':
             glob_fit_dic['IntrProp']['mod_prop']={
+                        # 'ctrst_ord0__IS__VS_':{'vary':True ,'guess':0.48,'bd':[0.1,0.6]},
                         'ctrst_ord0__ISESPRESSO_VS20190720':{'vary':True ,'guess':0.48,'bd':[0.1,0.6]},
                         'ctrst_ord0__ISESPRESSO_VS20190911':{'vary':True ,'guess':0.4,'bd':[0.1,0.6]},
                         # 'ctrst_ord1__ISESPRESSO_VS20190720':{'vary':True ,'guess':0.,'bd':[0.1,0.6]},
                         # 'ctrst_ord1__ISESPRESSO_VS20190911':{'vary':True ,'guess':0.,'bd':[0.1,0.6]}
-                        'ctrst_ord1__ISESPRESSO_VS_':{'vary':True ,'guess':0.,'bd':[0.1,0.6]}
+                        'ctrst_ord1__IS__VS_':{'vary':True ,'guess':0.,'bd':[0.1,0.6]}
                         }
         if glob_fit_dic['IntrProp']['prop'] == 'FWHM':
             glob_fit_dic['IntrProp']['mod_prop']={
-                        'FWHM_ord0__ISESPRESSO_VS20190720':{'vary':True ,'guess':8.,'bd':[7.,9.]},
-                        'FWHM_ord0__ISESPRESSO_VS20190911':{'vary':True ,'guess':8.,'bd':[7.,9.]},
+                        # 'FWHM_ord0__IS__VS_':{'vary':True ,'guess':15,'bd':[10.,20.]},   
+                        'FWHM_ord0__ISESPRESSO_VS20190720':{'vary':True ,'guess':5.6752543392e+00,'bd':[7.,9.]},    #Best-fit RMR
+                        'FWHM_ord0__ISESPRESSO_VS20190911':{'vary':True ,'guess':5.6428910034e+00,'bd':[7.,9.]},    #Best-fit RMR
                         # 'FWHM_ord1__ISESPRESSO_VS20190720':{'vary':True ,'guess':0.,'bd':[0.1,0.2]},
                         # 'FWHM_ord1__ISESPRESSO_VS20190911':{'vary':True ,'guess':0.,'bd':[0.1,0.2]}
-                        'FWHM_ord1__ISESPRESSO_VS_':{'vary':True ,'guess':0.,'bd':[0.1,0.2]},
-                        'FWHM_ord2__ISESPRESSO_VS_':{'vary':True ,'guess':0.,'bd':[0.1,0.2]}
+                        'FWHM_ord1__IS__VS_':{'vary':False ,'guess':3.8883520955e-01,'bd':[0.1,0.2]},    #Best-fit RMR
+                        # 'FWHM_ord2__IS__VS_':{'vary':True ,'guess':0.,'bd':[0.1,0.2]}
                         }            
             
 
@@ -11321,7 +11472,7 @@ if __name__ == '__main__':
     #Fitting mode 
     glob_fit_dic['IntrProp']['fit_mod']='mcmc'  # 'mcmc' 
     glob_fit_dic['IntrProp']['fit_mod']='chi2'  
-    glob_fit_dic['IntrProp']['fit_mod']='' 
+    # glob_fit_dic['IntrProp']['fit_mod']='' 
 
 
     #Printing fits results
@@ -11339,13 +11490,13 @@ if __name__ == '__main__':
             # 'cos_istar':{'mod':'uf','low':-1.,'high':1.},        
             
             })    
-    elif gen_dic['star_name']=='HD209458':    
-        glob_fit_dic['IntrProp']['priors'].update({
-            'veq':{'mod':'uf','low':0.,'high':10.},  
-            'lambda_rad__plHD209458b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
-            'alpha_rot':{'mod':'uf','low':0.,'high':1.},  
-            'cos_istar':{'mod':'uf','low':-1.,'high':1.},    
-            })     
+    # elif gen_dic['star_name']=='HD209458':    
+    #     glob_fit_dic['IntrProp']['priors'].update({
+    #         'veq':{'mod':'uf','low':0.,'high':10.},  
+    #         'lambda_rad__plHD209458b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi},
+    #         'alpha_rot':{'mod':'uf','low':0.,'high':1.},  
+    #         'cos_istar':{'mod':'uf','low':-1.,'high':1.},    
+    #         })     
     elif gen_dic['star_name']=='WASP76':    
         glob_fit_dic['IntrProp']['priors'].update({
             'veq':{'mod':'uf','low':0.,'high':10.},  
@@ -11364,6 +11515,8 @@ if __name__ == '__main__':
         glob_fit_dic['IntrProp']['modif_list'] = ['vsini','lambda_deg','b','ip']  
         glob_fit_dic['IntrProp']['modif_list'] = ['vsini','lambda_deg','istar_deg_conv']   
         glob_fit_dic['IntrProp']['modif_list'] = ['vsini','lambda_deg']        
+        glob_fit_dic['IntrProp']['modif_list'] = ['c0']    
+        glob_fit_dic['IntrProp']['modif_list'] = [] 
 
 
     #Calculating/retrieving
@@ -11542,7 +11695,7 @@ if __name__ == '__main__':
 
 
 
-    # #Fit line property as absolute ('abs') or modulated ('modu') polynomial        
+    # #Fit line property as absolute ('abs') or modulated ('modul') polynomial        
     # glob_fit_dic['ResProf']['pol_mode']='abs'  
         
     # #Model properties
@@ -11701,10 +11854,10 @@ if __name__ == '__main__':
 ##################################################################################################       
 #%%% Module: fitting joined intrinsic profiles  
 # - fitting joined intrinsic stellar profiles from combined (unbinned) instruments and visits 
-# - currently defined for CCF only
 # - use 'idx_in_fit' to choose which visits to fit (can be a single one)
 # - the contrast and FWHM of the intrinsic stellar lines (before instrumental convolution) are fitted as polynomials of the chosen coordinate
 #   surface RVs are fitted using the reloaded RM model  
+#   beware that the disk-integrated and intrinsic stellar profile have the same continuum, but it is not necessarily unity as set in the analytical and theoretical models, whose continuum must thus let free to vary 
 # - several options need to be controlled from within the function
 # - use plot_dic['prop_Intr']='' to plot the properties of the derived profiles
 #   use plot_dic['CCF_Intrbin']='' to plot the derived profiles
@@ -11770,7 +11923,7 @@ glob_fit_dic['IntrProf']['dim_fit']='mu'
 
 
 #%%%%% Analytical profile variation
-#    - fit line property as absolute ('abs') or modulated ('modu') polynomial        
+#    - fit line property as absolute ('abs') or modulated ('modul') polynomial        
 glob_fit_dic['IntrProf']['pol_mode']='abs'  
 
 
@@ -11874,7 +12027,7 @@ if __name__ == '__main__':
 
 
     #Activating 
-    gen_dic['fit_IntrProf'] = True  #&  False
+    gen_dic['fit_IntrProf'] = True  &  False
 
 
     #Exposures to be fitted
@@ -11985,10 +12138,13 @@ if __name__ == '__main__':
     elif gen_dic['star_name'] in ['HD209458','WASP76']:
         glob_fit_dic['IntrProf']['idx_in_fit'] = deepcopy(glob_fit_dic['IntrProp']['idx_in_fit'])
 
+        print('TEST')
+        glob_fit_dic['IntrProf']['idx_in_fit']={'ESPRESSO':{'20190720':[15,30],'20190911':[15,30]}}   #Na CCF   
 
     #Trimming
     glob_fit_dic['IntrProf']['trim_range'] = deepcopy(data_dic['Intr']['fit_prof']['trim_range'])
-
+    if gen_dic['star_name']=='HD209458': 
+        if gen_dic['trim_spec']:glob_fit_dic['IntrProf']['trim_range'] = {'ESPRESSO':[5882.9,5903.1]}
 
 
     #Continuum range
@@ -12006,7 +12162,8 @@ if __name__ == '__main__':
             # 'EXPRES':[[-100.,-20.],[20.,100.]],
             'EXPRES':[[-100.,-65.],[-42.,-37.],[20.,100.]]
             } 
-
+    elif gen_dic['star_name']=='HD209458': 
+        if gen_dic['trim_spec']:glob_fit_dic['IntrProf']['cont_range']['ESPRESSO'] = np.array([[ 5883. , 5885.],[5901., 5903. ]])    #ANTARESS fit sodium doublet  
 
 
             
@@ -12021,8 +12178,15 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='55Cnc':
         glob_fit_dic['IntrProf']['fit_range'] = {inst:{vis:[[-100.,100.]] for vis in glob_fit_dic['IntrProf']['idx_in_fit'][inst]} for inst in ['ESPRESSO','HARPS','HARPN']}
         glob_fit_dic['IntrProf']['fit_range']['EXPRES'] = {'20220131':[[-100.,-37.],[-22.,100.]],'20220406':[[-100.,-65.],[-42.,100.]]}
-            
+    elif gen_dic['star_name']=='HD209458':             
+        if gen_dic['trim_spec']:
+            fit_range = np.array([[ 5885.6 ,5890.95 ],[5891.45,5892.55],[5893.1 ,5897. ],[5897.45, 5899.2 ],[5900.,5901.]])
+            glob_fit_dic['IntrProf']['fit_range'] = {'ESPRESSO':{'20190720':fit_range,'20190911':fit_range}}  #Na doublet + continuum
         
+        
+    #Model type
+    if gen_dic['star_name']=='HD209458': 
+        if gen_dic['trim_spec']:glob_fit_dic['IntrProf']['mode'] = 'theo'         
         
  
     #Analytical profile
@@ -12047,7 +12211,7 @@ if __name__ == '__main__':
 
 
     #Analytical profile variation
-    if gen_dic['star_name'] in ['HD106315','WASP107','HAT_P11','HD209458','WASP76']:glob_fit_dic['IntrProf']['pol_mode']='modu'  
+    if gen_dic['star_name'] in ['HD106315','WASP107','HAT_P11','HD209458','WASP76']:glob_fit_dic['IntrProf']['pol_mode']='modul'  
 
 
     
@@ -12630,15 +12794,22 @@ if __name__ == '__main__':
 
     if gen_dic['star_name']=='HD209458':  
         glob_fit_dic['IntrProf']['mod_prop']={
-                    'veq':{'vary':True,'guess':4.3,'bd':[4.,5.]},
-                    'lambda_rad__plHD209458b':{'vary':True,'guess':0.*np.pi/180.,'bd':[0.*np.pi/180.,2.*np.pi/180.]},
-                    'ctrst_ord0__ISESPRESSO_VS20190720':{'vary':True ,'guess':0.65,'bd':[0.6,0.7]},
-                    'ctrst_ord0__ISESPRESSO_VS20190911':{'vary':True ,'guess':0.65,'bd':[0.6,0.7]},
-                    'ctrst_ord1__ISESPRESSO_VS_':{'vary':True ,'guess':-0.2,'bd':[-0.5,0.]},
-                    'FWHM_ord0__ISESPRESSO_VS20190720':{'vary':True ,'guess':5.5,'bd':[5.,6.]},
-                    'FWHM_ord0__ISESPRESSO_VS20190911':{'vary':True ,'guess':5.5,'bd':[5.,6.]},                        
-                    'FWHM_ord1__ISESPRESSO_VS_':{'vary':True ,'guess':0.5,'bd':[0.,1.]}
-                    }                        
+                    'cont':{'vary':True ,'guess':1.3,'bd':[0.9,1.1]},                
+                    'veq':{'vary':False,'guess':4.2721415478,'bd':[4.,5.]},
+                    'lambda_rad__plHD209458b':{'vary':False,'guess':1.0699092308*np.pi/180.,'bd':[0.*np.pi/180.,2.*np.pi/180.]},
+                    # 'ctrst_ord0__ISESPRESSO_VS20190720':{'vary':True ,'guess':0.65,'bd':[0.6,0.7]},
+                    # 'ctrst_ord0__ISESPRESSO_VS20190911':{'vary':True ,'guess':0.65,'bd':[0.6,0.7]},
+                    # 'ctrst_ord1__ISESPRESSO_VS_':{'vary':True ,'guess':-0.2,'bd':[-0.5,0.]},
+                    # 'FWHM_ord0__ISESPRESSO_VS20190720':{'vary':True ,'guess':5.5,'bd':[5.,6.]},
+                    # 'FWHM_ord0__ISESPRESSO_VS20190911':{'vary':True ,'guess':5.5,'bd':[5.,6.]},                        
+                    # 'FWHM_ord1__ISESPRESSO_VS_':{'vary':True ,'guess':0.5,'bd':[0.,1.]}
+
+                    #Best fit Mout over both visits
+                    'rv':{'vary':True,'guess':7.4590634981e-01,'bd':[0.,2.]},    
+                    'abund_Na':{'vary':True ,'guess':6.19,'bd':[6.,6.2]},      #Init SME grid
+                    # 'abund_Na':{'vary':False ,'guess':6.0450212411e+00,'bd':[4.,10.]},  #Best-fit DI  
+                    }   
+        
     if gen_dic['star_name']=='WASP76':  
         glob_fit_dic['IntrProf']['mod_prop']={
                     'veq':{'vary':True,'guess':3.,'bd':[0.5,4.]},
@@ -12691,7 +12862,9 @@ if __name__ == '__main__':
 
     
     #Fitting mode
+    glob_fit_dic['IntrProf']['fit_mod']='chi2' 
     glob_fit_dic['IntrProf']['fit_mod']='mcmc' 
+
 
     #Printing fits results
     glob_fit_dic['IntrProf']['verbose']=True# & False
@@ -13140,6 +13313,7 @@ if __name__ == '__main__':
 
     if gen_dic['star_name']=='HD209458':  
         glob_fit_dic['IntrProf']['priors'].update({
+                    'cont':{'mod':'uf','low':0.,'high':10.},  
                     'veq':{'mod':'uf','low':0.,'high':10.},  
                     'lambda_rad__plHD209458b':{'mod':'uf','low':-2.*np.pi,'high':2.*np.pi}, 
                     'ctrst_ord0__ISESPRESSO_VS20190720':{'mod':'uf','low':0.,'high':1.},  
@@ -13148,7 +13322,11 @@ if __name__ == '__main__':
                     'FWHM_ord0__ISESPRESSO_VS20190720':{'mod':'uf','low':0.,'high':15.}, 
                     'FWHM_ord0__ISESPRESSO_VS20190911':{'mod':'uf','low':0.,'high':15.},                       
                     'FWHM_ord1__ISESPRESSO_VS_':{'mod':'uf','low':-1.,'high':1.}, 
-                    })    
+                    'rv':{'mod':'uf','low':-5.,'high':5.},                     
+                    'abund_Na':{'mod':'uf','low':4.,'high':10.},                     
+                    })  
+   
+        
     if gen_dic['star_name']=='WASP76':  
         glob_fit_dic['IntrProf']['priors'].update({
                     'veq':{'mod':'uf','low':0.,'high':10.},  
@@ -13182,9 +13360,10 @@ if __name__ == '__main__':
     #Derived properties
     glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','psi','om','b','ip','istar_deg_conv','fold_istar','lambda_deg','c0','CB_ms']
     glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg']
+    glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','ip']
     # glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg','istar_deg_conv','Peq_veq']
     #glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','lambda_deg','istar_deg_conv','fold_istar','psi']
-    # glob_fit_dic['IntrProf']['modif_list'] = []
+    glob_fit_dic['IntrProf']['modif_list'] = []
     # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','psi'] 
     # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','Peq_vsini'] 
     # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini'] 
@@ -13209,9 +13388,9 @@ if __name__ == '__main__':
     #         'nburn':[0,0]}    
     # if gen_dic['star_name']=='WASP76': 
     #     glob_fit_dic['IntrProf']['mcmc_reuse']={
-    #         'paths':['/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProf/mcmc_V2a/raw_chains_walk140_steps1000.npz',\
-    #                  '/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProf/mcmc_V2b/raw_chains_walk140_steps200.npz'],
-    #         'nburn':[800,0]}   
+    #         'paths':['/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProf/mcmc_a/raw_chains_walk150_steps1600.npz',\
+    #                   '/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProf/mcmc_b/raw_chains_walk150_steps350.npz'],
+    #         'nburn':[1200,0]}   
 
 
     #Runs to re-start
@@ -13219,9 +13398,9 @@ if __name__ == '__main__':
     #     # glob_fit_dic['IntrProf']['mcmc_reboot']='/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/mcmc/20210121_temp2/raw_chains_walk250_steps5000.npz'
     #     # glob_fit_dic['IntrProf']['mcmc_reboot']='/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/mcmc/20210124/run3/raw_chains_walk250_steps1000.npz'
     #     glob_fit_dic['IntrProf']['mcmc_reboot']='/Users/bourrier/Travaux/ANTARESS/En_cours/55Cnc_e_Saved_data/Joined_fits/Intr_prof/mcmc/All_visits/run3/raw_chains_walk400_steps1000.npz'
-    if gen_dic['star_name']=='WASP76':     
-        glob_fit_dic['IntrProf']['mcmc_reboot']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProf/mcmc_V3a/raw_chains_walk150_steps300.npz'
-
+    # if gen_dic['star_name']=='WASP76':     
+    #     # glob_fit_dic['IntrProf']['mcmc_reboot']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProf/mcmc_V3a/raw_chains_walk150_steps300.npz'
+    #     glob_fit_dic['IntrProf']['mcmc_reboot']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProf/mcmc_a/raw_chains_walk150_steps1600.npz'
 
     #Walkers
     if gen_dic['star_name']=='Corot7':     #38 s for 1000 pts 
@@ -13299,11 +13478,11 @@ if __name__ == '__main__':
 
     elif gen_dic['star_name']=='HD209458': 
         glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':80,'nsteps':400,'nburn':200}     #2000 steps = 25 min
+        glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':30,'nsteps':10,'nburn':0}         #
     elif gen_dic['star_name']=='WASP76':     
         # glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':30,'nsteps':10,'nburn':0}         #20 x 10 steps = 2.6 min en medium precision
-        # glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':140,'nsteps':1000,'nburn':700}                  
-        # glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':140,'nsteps':200,'nburn':0}    #restart
-        glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':150,'nsteps':1200,'nburn':0}    
+        glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':150,'nsteps':1600,'nburn':800}                   
+        glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':150,'nsteps':350,'nburn':0}    #restart 
 
         
     # Stage Théo  
@@ -13378,13 +13557,13 @@ if __name__ == '__main__':
 #            'minor_int':[0.1,10.],
         'color_levels':['deepskyblue','lime'],
         # 'fontsize':15,
-        'fontsize':8,
+        'fontsize':10,
 #            'smooth2D':[0.05,5.] 
 #            'plot1s_1D':False
         }    
-    # if gen_dic['star_name']=='WASP76': glob_fit_dic['IntrProf']['corner_options']['range_par'] = {'v$_\mathrm{eq}$sin i$_{*}$ (km/s)':  [0.,5.], '$\lambda$[WASP76b]($^{\circ}$)':[-90,40] }
-
-
+    if gen_dic['star_name']=='WASP76': 
+        glob_fit_dic['IntrProf']['corner_options']['range_par'] = {'v$_\mathrm{eq}$sin i$_{*}$ (km/s)':  [0.5,2.5], '$\lambda$[WASP76b]($^{\circ}$)':[-90,90] }
+        glob_fit_dic['IntrProf']['corner_options']['bins_1D_par'] = 40. #{'v$_\mathrm{eq}$sin i$_{*}$ (km/s)': 50, '$\lambda$[WASP76b]($^{\circ}$)':50 }
     
     
     
@@ -13472,7 +13651,7 @@ data_dic['Intr']['plocc_prof_type']='Intr'
 # + see possible bin table definition in data_dic['Intr']['prop_bin']
 #    - 'glob_mod': analytical models derived from global fit to intrinsic profiles
 # + can be specific to the visit or common to all, depending on the fit
-# + see possible fit dimensions in glob_fit_dic['IntrProf']['dim_fit']  
+# + line coordinate choice is retrieved automatically 
 # + indicate path to saved properties determining the line property variations in the processed dataset
 # + default options are used if left undefined
 #    - 'indiv_mod': using models fitted to each individual intrinsic profile in each visit
@@ -13487,7 +13666,24 @@ data_dic['Intr']['mode_loc_data_corr']='glob_mod'
 
 
 #%%%%% Options
-data_dic['Intr']['opt_loc_data_corr']={'nthreads':14}
+#    - 'def_iord': reconstructed order
+#    - 'def_range': define the range over which profiles are reconstructed
+data_dic['Intr']['opt_loc_data_corr']={'nthreads':14,'def_range':[],'def_iord':0}
+
+
+#%%%% Plot settings
+
+#%%%%% 2D maps : theoretical intrinsic stellar profiles
+#    - for original and binned exposures
+#    - data to which the reconstruction was applied to is automatically used for this plot
+plot_dic['map_Intr_prof_est']=''   
+
+
+#%%%%% 2D maps : residuals from theoretical intrinsic stellar profiles
+#    - same format as 'map_Intr_prof_est'
+plot_dic['map_Intr_prof_res']=''   
+
+
 
 
 if __name__ == '__main__':
@@ -13497,7 +13693,7 @@ if __name__ == '__main__':
     gen_dic['loc_data_corr_bin']=True    &  False
     
     #Calculating/retrieving
-    gen_dic['calc_loc_data_corr']=True  #  &  False   
+    gen_dic['calc_loc_data_corr']=True   &  False   
     gen_dic['calc_loc_data_corr_bin']=True  #  &  False  
     
     #Profile type
@@ -13656,21 +13852,34 @@ if __name__ == '__main__':
                              }},
                 }       
     elif gen_dic['star_name']=='HD209458':
+        
+        ##White CCFs
+        # data_dic['Intr']['opt_loc_data_corr']['glob_mod']={        
+        #     'mode':'ana',
+        #     'IntrProf_prop_path':
+        #         {'ESPRESSO':{'20190720':'/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProf/mcmc_rproj_deg1_comm/Fit_results',
+        #                      '20190911':'/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProf/mcmc_rproj_deg1_comm/Fit_results'}}}     
+
+        #Na doublet 1D
+        data_dic['Intr']['opt_loc_data_corr']['def_range']=[5883.,5903.]
         data_dic['Intr']['opt_loc_data_corr']['glob_mod']={        
-            'dim_fit':'mu',
+            'mode':'theo',
+            'IntrProf_prop_path':
+                {'ESPRESSO':{'20190720':'/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProf/Na_doublet/chi2/Fit_results',
+                             '20190911':'/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProf/Na_doublet/chi2/Fit_results'}}}   
+
+    elif gen_dic['star_name']=='WASP76':
+        data_dic['Intr']['opt_loc_data_corr']['glob_mod']={        
             'mode':'ana',
             'IntrProf_prop_path':
-                {'ESPRESSO':{'20190720':'/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProf/mcmc_rproj_deg1_comm/Fit_results',
-                             '20190911':'/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProf/mcmc_rproj_deg1_comm/Fit_results'}}}     
-
+                {'ESPRESSO':{'20180902':'/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProf/mcmc_V3b_final/Fit_results',
+                             '20181030':'/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProf/mcmc_V3b_final/Fit_results'}}}  
 
 
     #Plot 2D maps of theoretical intrinsic stellar profiles
-    #    - for original and binned exposures
     plot_dic['map_Intr_prof_est']=''   #'png
     
     #Plotting 2D maps of residuals from theoretical intrinsic stellar profiles
-    #    - for original and binned exposures
     plot_dic['map_Intr_prof_res']=''   #'png    
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:plot_dic['map_Intr_prof_res']='png'
 
@@ -13704,10 +13913,10 @@ if __name__ == '__main__':
     
     
     
-    
-    ##################################################################################################
-    #%% Atmospheric profiles
-    ##################################################################################################  
+
+##################################################################################################
+#%% Atmospheric profiles
+##################################################################################################  
     
     
     ##############################################################################################################################

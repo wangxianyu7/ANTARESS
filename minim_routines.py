@@ -212,10 +212,10 @@ def ln_prob_func_lmfit(p_step, x_val, fixed_args=None):
 
     #Model for current set of parameter values  
     y_step = fixed_args['fit_func'](p_step, fixed_args['x_val'],args=fixed_args)
-    
+
     #Fitted pixels
     idx_fit = fixed_args['idx_fit']
-    
+
     #Residuals from data    
     #    - unfitted (and possibly undefined) residual values are replaced by 0, so that they do not contribute to the chi2
     res = np.zeros(len(y_step),dtype=float)
@@ -226,8 +226,8 @@ def ln_prob_func_lmfit(p_step, x_val, fixed_args=None):
     #    - must be calculated with the contiguous covariance matrix
     if fixed_args['use_cov']:
         L_mat = scipy.linalg.cholesky_banded(fixed_args['cov_val'],lower=True)
-        chi = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)       
-        
+        chi = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)   
+     
         #Remove chi2 of unfitted pixels
         chi = chi[idx_fit]
     else:
@@ -298,7 +298,7 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
                     vis_par  = inst_vis_par.split('_VS')[1]       
                     if ('__pl' in par):pl_name = (par.split('__IS')[0]).split('__pl')[1]
                 else:
-                    pl_name = par.split('__')[1]                                                                 
+                    pl_name = par.split('__pl')[1]                                                                 
                 if pl_name is not None:par_name_loc+='['+pl_name+']'                             
                 if inst_par != '_':
                     par_name_loc+='['+inst_par+']'
@@ -329,8 +329,8 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
         fixed_args['fixed_par_val_noexp_list']=[par for par in fixed_args['fixed_par_val'] if par not in fixed_args['linked_par_expr']]
 
     #Number of free parameters    
-    if fit_dic['fit_mod']=='':fit_dic['n_free'] = 0.
-    else:fit_dic['n_free'] = len(var_par_list) 
+    if fit_dic['fit_mod']=='':fit_dic['merit']['n_free'] = 0.
+    else:fit_dic['merit']['n_free'] = len(var_par_list) 
 
     #Initialize save file
     fit_dic['save_outputs']=True if ('save_outputs' not in fit_prop_dic) else fit_prop_dic['save_outputs'] 
@@ -520,7 +520,7 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
         if par not in fixed_args['varpar_priors']:fixed_args['varpar_priors'][par]={'mod':'uf','low':-1e10,'high':1e10}
     
     #Set initial parameter distribution
-    fit_dic['initial_distribution'] = np.zeros((fit_dic['nwalkers'],fit_dic['n_free']))
+    fit_dic['initial_distribution'] = np.zeros((fit_dic['nwalkers'],fit_dic['merit']['n_free']))
     if (len(fit_dic['mcmc_reboot'])>0):
         
         #Reboot MCMC from end of previous run
@@ -542,7 +542,7 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
     #Save temporary walkers in case of crash
     if ('monitor' in fit_dic) and fit_dic['monitor']:
         backend = emcee.backends.HDFBackend(fit_dic['save_dir']+'monitor'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name+'.h5')
-        backend.reset(fit_dic['nwalkers'], fit_dic['n_free'])
+        backend.reset(fit_dic['nwalkers'], fit_dic['merit']['n_free'])
     else:backend=None
    
     #Call to MCMC
@@ -1180,7 +1180,7 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbos
  
     #Save 1-sigma and envelope samples for plot in ANTARESS_main
     if fit_dic['calc_envMCMC']:
-        par_sample_sig1,par_sample=MCMC_retrieve_sample(fixed_args,fixed_args['fix_par_list'],fixed_args['exp_par_list'],fixed_args['iexp_par_list'],fixed_args['ifix_par_list'],par_names,fixed_args['fixed_par_val'],fit_dic['calc_envMCMC'],merged_chain,fit_dic['n_free'],fit_dic['nsteps_pb_all'],
+        par_sample_sig1,par_sample=MCMC_retrieve_sample(fixed_args,fixed_args['fix_par_list'],fixed_args['exp_par_list'],fixed_args['iexp_par_list'],fixed_args['ifix_par_list'],par_names,fixed_args['fixed_par_val'],fit_dic['calc_envMCMC'],merged_chain,fit_dic['merit']['n_free'],fit_dic['nsteps_pb_all'],
                                                         p_final,fixed_args['var_par_list'],fixed_args['ivar_par_list'],fit_dic['calc_sampMCMC'],fixed_args['linked_par_expr'],fit_dic,st_samp=fit_dic['st_samp'],end_samp=fit_dic['end_samp'],n_samp=fit_dic['n_samp'])
         print('Saved ',len(par_sample_sig1),'1-sigma samples and ',len(par_sample),' random samples')
         np.savez(fit_dic['save_dir']+'Sample_dics',par_sample_sig1=[par_sample_sig1],par_sample=[par_sample])    
@@ -1255,7 +1255,7 @@ def fit_merit(p_final_in,fixed_args,fit_dic,verbose):
         p_final={}
         for par in p_final_in:p_final[par]=p_final_in[par].value   
         if fit_dic['fit_mod']=='chi2':
-            fit_dic['sig_parfinal_err']={'1s':np.zeros([2,fit_dic['n_free']])}            
+            fit_dic['sig_parfinal_err']={'1s':np.zeros([2,fit_dic['merit']['n_free']])}            
             for ipar,par in enumerate(fixed_args['var_par_list']): 
                 p_final[par]=p_final_in[par].value
                 fit_dic['sig_parfinal_err']['1s'][:,ipar]=p_final_in[par].stderr  
@@ -1265,23 +1265,25 @@ def fit_merit(p_final_in,fixed_args,fit_dic,verbose):
     if verbose:print('     Calculating final model') 
     fit_dic['y_mod']=fixed_args['fit_func'](p_final,fixed_args['x_val'],args=fixed_args)    
 
-    #Merit values     
-    fit_dic['dof']=fit_dic['nx_fit']-fit_dic['n_free']
+    #Merit values 
+    if fit_dic['fit_mod'] =='':fit_dic['merit']['mode']='forward'    
+    else:fit_dic['merit']['mode']='fit'    
+    fit_dic['merit']['dof']=fit_dic['nx_fit']-fit_dic['merit']['n_free']
     res_tab = fixed_args['y_val'] - fit_dic['y_mod']
-    if fit_dic['fit_mod'] in ['','chi2']: fit_dic['chi2']=np.sum(ln_prob_func_lmfit(p_final, fixed_args['x_val'], fixed_args=fixed_args)**2.)
-    elif fit_dic['fit_mod'] =='mcmc': fit_dic['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1] 
-    fit_dic['red_chi2']=fit_dic['chi2']/fit_dic['dof']
-    fit_dic['BIC']=fit_dic['chi2']+fit_dic['n_free']*np.log(fit_dic['nx_fit'])      
-    fit_dic['AIC']=fit_dic['chi2']+2.*fit_dic['n_free']
-    fit_dic['rms']=1e3*res_tab.std()       
+    if fit_dic['fit_mod'] in ['','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
+    elif fit_dic['fit_mod'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1] 
+    fit_dic['merit']['red_chi2']=fit_dic['merit']['chi2']/fit_dic['merit']['dof']
+    fit_dic['merit']['BIC']=fit_dic['merit']['chi2']+fit_dic['merit']['n_free']*np.log(fit_dic['nx_fit'])      
+    fit_dic['merit']['AIC']=fit_dic['merit']['chi2']+2.*fit_dic['merit']['n_free']
+    fit_dic['merit']['rms']=1e3*res_tab.std()       
     if verbose:
         print('     + Npts = ',fit_dic['nx_fit'])
-        print('     + Nfree = ',fit_dic['n_free'])
-        print('     + d.o.f =',fit_dic['dof'])
-        print('     + Best chi2 = '+str(fit_dic['chi2']))
-        print('     + Reduced Chi2 ='+str(fit_dic['red_chi2']))
-        print('     + RMS of residuals = '+str(fit_dic['rms'])) 
-        print('     + BIC ='+str(fit_dic['BIC']))       
+        print('     + Nfree = ',fit_dic['merit']['n_free'])
+        print('     + d.o.f =',fit_dic['merit']['dof'])
+        print('     + Best chi2 = '+str(fit_dic['merit']['chi2']))
+        print('     + Reduced Chi2 ='+str(fit_dic['merit']['red_chi2']))
+        print('     + RMS of residuals = '+str(fit_dic['merit']['rms'])) 
+        print('     + BIC ='+str(fit_dic['merit']['BIC']))       
         print('     + Parameters :')
         for par in fixed_args['fixed_par_val']:print('        ',par,'=',"{0:.10e}".format(p_final[par]))                   
         if fit_dic['fit_mod'] =='':
@@ -1312,13 +1314,13 @@ def save_fit_results(part,fixed_args,fit_dic,fit_mod,p_final):
         np.savetxt(file_path,[['----------------------------------']],fmt=['%s']) 
         np.savetxt(file_path,[['Duration : '+str(fit_dic['fit_dur'])+' s']],delimiter='\t',fmt=['%s']) 
         np.savetxt(file_path,[['Npts : '+str(fit_dic['nx_fit'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['Nfree : '+str(fit_dic['n_free'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['d.o.f : '+str(fit_dic['dof'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['Best chi2 : '+str(fit_dic['chi2'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['Reduced chi2 : '+str(fit_dic['red_chi2'])]],delimiter='\t',fmt=['%s'])
-        np.savetxt(file_path,[['RMS of residuals : '+str(fit_dic['rms'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['BIC : '+str(fit_dic['BIC'])]],delimiter='\t',fmt=['%s'])
-        np.savetxt(file_path,[['AIC : '+str(fit_dic['AIC'])]],delimiter='\t',fmt=['%s'])
+        np.savetxt(file_path,[['Nfree : '+str(fit_dic['merit']['n_free'])]],delimiter='\t',fmt=['%s']) 
+        np.savetxt(file_path,[['d.o.f : '+str(fit_dic['merit']['dof'])]],delimiter='\t',fmt=['%s']) 
+        np.savetxt(file_path,[['Best chi2 : '+str(fit_dic['merit']['chi2'])]],delimiter='\t',fmt=['%s']) 
+        np.savetxt(file_path,[['Reduced chi2 : '+str(fit_dic['merit']['red_chi2'])]],delimiter='\t',fmt=['%s'])
+        np.savetxt(file_path,[['RMS of residuals : '+str(fit_dic['merit']['rms'])]],delimiter='\t',fmt=['%s']) 
+        np.savetxt(file_path,[['BIC : '+str(fit_dic['merit']['BIC'])]],delimiter='\t',fmt=['%s'])
+        np.savetxt(file_path,[['AIC : '+str(fit_dic['merit']['AIC'])]],delimiter='\t',fmt=['%s'])
         np.savetxt(file_path,[['----------------------------------']],fmt=['%s']) 
         np.savetxt(file_path,[['']],fmt=['%s']) 
     
@@ -1707,8 +1709,7 @@ def plot_MCMC_corner(save_mode,save_dir_MCMC,
         range_par = [[] for i in range(xs.shape[0])]
         for par in range_par_in:
             idx_par = np_where1D(labels==par)
-            if len(idx_par)>0:
-                range_par[idx_par[0]] = range_par_in[par]
+            if len(idx_par)>0:range_par[idx_par[0]] = range_par_in[par]
         for i,x in enumerate(xs):
             if len(range_par[i])==0:range_par[i] = [x.min(), x.max()]
 
@@ -1718,6 +1719,13 @@ def plot_MCMC_corner(save_mode,save_dir_MCMC,
     #Define bin sizes
     #    - if given as number, converted into array of relevant dimension
     if type(bins_1D_par) in [int,float]:bins_1D_par=np.repeat(bins_1D_par,npar).astype(int)
+    elif type(bins_1D_par)==dict:
+        if labels is None:raise ValueError("Parameters must be named to be set in `range_par`")
+        bins_1D_par_in = deepcopy(bins_1D_par)
+        bins_1D_par = np.repeat(20,npar).astype(int)
+        for par in bins_1D_par_in:
+            idx_par = np_where1D(labels==par)
+            if len(idx_par)>0:bins_1D_par[idx_par[0]] = bins_1D_par_in[par]       
     if type(bins_2D_par) in [int,float]:bins_2D_par=np.repeat(bins_2D_par,npar).astype(int)
 
     #Ticks interval undefined

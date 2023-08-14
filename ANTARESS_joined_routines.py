@@ -7,8 +7,8 @@ Created on Sun Apr 26 00:05:29 2020
 """
 
 from utils import stop,np_where1D,npint,np_interp,dataload_npz
-from ANTARESS_routines import sub_calc_plocc_prop,calc_pl_coord,return_FWHM_inst,convol_prof,model_par_names,polycoeff_def,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab,resamp_model_st_prof_tab,\
-                            par_formatting,conv_cosistar,conv_CF_intr_meas,occ_region_grid,compute_deviation_profile, calc_binned_prof,init_custom_DI_prof,init_custom_DI_par,ref_inst_convol
+from ANTARESS_routines import sub_calc_plocc_prop,calc_pl_coord,return_FWHM_inst,convol_prof,model_par_names,polycoeff_def,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab,resamp_model_st_prof_tab,gen_theo_intr_prof,\
+                            par_formatting,conv_cosistar,conv_CF_intr_meas,occ_region_grid,compute_deviation_profile, calc_binned_prof,init_custom_DI_prof,init_custom_DI_par,ref_inst_convol,calc_CB_RV,LD_coeff_func
 from copy import deepcopy
 from lmfit import Parameters
 import lmfit
@@ -84,14 +84,14 @@ def prior_vsini_deriv(p_step_loc,fixed_args,prior_func_prop):
 def prior_contrast(p_step_loc,args_in,prior_func_prop):
     ln_p_loc = 0.
     args = deepcopy(args_in)
-    args['theo_dic']['precision']='low'
+    args['grid_dic']['precision']='low'
     for inst in args['inst_list']:
         args['inst']=inst
         for vis in args['inst_vis_list'][inst]:   
             args['vis']=vis
             pl_vis = args['transit_pl'][inst][vis][0]
             system_param_loc,coord_pl,param_val = calc_plocc_coord(inst,vis,[args['coord_line']],args,p_step_loc,[pl_vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
-            surf_prop_dic = sub_calc_plocc_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['theo_dic'],args['system_prop'],param_val,args['coord_pl_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
+            surf_prop_dic = sub_calc_plocc_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_pl_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
             ctrst_vis = surf_prop_dic[pl_vis]['ctrst'][0]       
             break_cond = (ctrst_vis<0.) | (ctrst_vis>1.)
             if True in break_cond:
@@ -808,8 +808,7 @@ def post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
         if 'c0' in modif_list: 
             print('     + Adding c0(CB)')
             if fit_dic['fit_mod']=='chi2': 
-                theo_par = sub_calc_plocc_prop(['achrom'],None,['c0_CB'],None,fixed_args['system_prop'],p_final,None,None,None,[0],False)            
-                p_final['c0_CB']=theo_par['c0_CB'][0,:]
+                p_final['c0_CB'] = calc_CB_RV(LD_coeff_func(fixed_args['system_prop']['achrom'],0),fixed_args['system_prop']['achrom']['LD'][0],p_final['c1_CB'],p_final['c2_CB'],p_final['c3_CB'],fixed_args['system_param']['star'])[0]            
                 sig_loc=np.nan  
                 fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]) )     
                           
@@ -823,11 +822,11 @@ def post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
                         if len(fixed_args['linked_par_expr'])>0:exec(str(par)+'='+str(p_final_loc[par]))
                     for par in fixed_args['linked_par_expr']:
                         p_final_loc[par]=eval(fixed_args['linked_par_expr'][par])
-                    theo_par = sub_calc_plocc_prop(['achrom'],None,['c0_CB'],None,fixed_args['system_prop'],p_final,None,None,None,[0],False)                      
-                    chain_loc=np.append(chain_loc,theo_par['c0_CB'][0,:])
+                    c0_CB = calc_CB_RV(LD_coeff_func(fixed_args['system_prop']['achrom'],0),fixed_args['system_prop']['achrom']['LD'][0],p_final['c1_CB'],p_final['c2_CB'],p_final['c3_CB'],fixed_args['system_param']['star'])[0]            
+                    chain_loc=np.append(chain_loc,c0_CB)
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)   
             fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'c0_CB')
-            fixed_args['var_par_names']+=['CB$_{0}$']           
+            fixed_args['var_par_names'] = np.append(fixed_args['var_par_names'],'CB$_{0}$')           
     
     
         #-------------------------------------------------            
@@ -992,8 +991,15 @@ def common_fit_rout(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,t
     p_start = par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['priors'],fit_dic,fixed_args,'','')
 
     #Initializing stellar profiles
-    if rout_mode!='IntrProp':fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],theo_dic,fixed_args['system_param']['star'],p_start)
-                    
+    if rout_mode!='IntrProp':
+        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],theo_dic,fixed_args['system_param']['star'],p_start)
+    else:
+        fixed_args['grid_dic'] = deepcopy(theo_dic)
+        fixed_args['grid_dic']['precision'] = 'low'      #to calculate intensity-weighted properties
+    
+    #Stellar grid properties
+    fixed_args['grid_dic'].update({'Ssub_Sstar_pl':theo_dic['Ssub_Sstar_pl'],'x_st_sky_grid_pl':theo_dic['x_st_sky_grid_pl'],'y_st_sky_grid_pl':theo_dic['y_st_sky_grid_pl'],'nsub_Dpl':theo_dic['nsub_Dpl'],'d_oversamp':theo_dic['d_oversamp'],'Istar_norm_achrom':theo_dic['Istar_norm_achrom']})             
+    
     #Determine if orbital and light curve properties are fitted or whether nominal values are used
     #    - this depends on whether parameters required to calculate coordinates of planet-occulted regions are fitted  
     par_orb=['inclin_rad','aRs','lambda_rad']
@@ -1082,7 +1088,7 @@ def common_fit_rout(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,t
             if len(fit_prop_dic['mcmc_reuse'])==0:
                 walker_chains=np.load(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name']+'.npz')['walker_chains']  #(nwalkers, nsteps, n_free)
             else:
-                walker_chains = np.empty([fit_dic['nwalkers'],0,fit_dic['n_free'] ],dtype=float)
+                walker_chains = np.empty([fit_dic['nwalkers'],0,fit_dic['merit']['n_free'] ],dtype=float)
                 fit_dic['nsteps'] = 0
                 fit_dic['nburn'] = 0
                 for mcmc_path,nburn in zip(fit_prop_dic['mcmc_reuse']['paths'],fit_prop_dic['mcmc_reuse']['nburn']):
@@ -1163,7 +1169,8 @@ def common_fit_rout(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,t
                 elif gen_dic['star_name'] == '55Cnc':
                     wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='veq')],axis=1)>0.5) )
 
-
+                elif gen_dic['star_name'] == 'WASP76':
+                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='lambda_rad__plWASP76b')],axis=1)<-1.1) )
 
 
 
@@ -1209,8 +1216,7 @@ def common_fit_rout(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,t
 
     #Merit values     
     p_final=fit_merit(p_final,fixed_args,fit_dic,fit_prop_dic['verbose'])                
-    
-    
+
     return merged_chain,p_final
 
 
@@ -1232,6 +1238,7 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
 
     #Fit dictionary
     fit_dic={
+        'merit':{},
         'fit_mod':fit_prop_dic['fit_mod'],
         'uf_bd':{},
         'nx_fit':0,
@@ -1249,8 +1256,6 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'DI_grid':False,
         'coord_line':fit_prop_dic['dim_fit'],
         'pol_mode':fit_prop_dic['pol_mode'],
-        'theo_dic':{'Ssub_Sstar_pl':theo_dic['Ssub_Sstar_pl'],'x_st_sky_grid_pl':theo_dic['x_st_sky_grid_pl'],'y_st_sky_grid_pl':theo_dic['y_st_sky_grid_pl'],'nsub_Dpl':theo_dic['nsub_Dpl'],'d_oversamp':theo_dic['d_oversamp'],
-                    'Istar_norm_achrom':theo_dic['Istar_norm_achrom']},
 
         #Fit parameters
         'par_list':[],
@@ -1272,7 +1277,7 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'bin_mode':{},
         'fit' : {'chi2':True,'':False,'mcmc':True}[fit_prop_dic['fit_mod']],     
         }
-
+   
     #Checks
     if len(fit_prop_dic['idx_in_fit'])==0:stop('No exposures are included in the fit')
 
@@ -1367,6 +1372,8 @@ Routine to fit intrinsic stellar profiles with a joined model
     - shapes of the profiles, when analytical, are linked across the transit chord by polynomial laws as a function of a chosen dimension
       polynomial coefficients can depend on the visit and their associated instrument, to account for possible variations in the line shape between visits
     - stellar line profiles are defined before instrumental convolution, so that data from all instruments and visits can be fitted together
+    - beware that the intrinsic and disk-integrated profiles have the same continuum, but that it is not necessarily unity
+      thus the continuum of analytical and theoretical model profiles must be let free to vary
 '''
 def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):
     print('   > Fitting joined intrinsic profiles')
@@ -1391,14 +1398,11 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
         'cov':{},
         'nexp_fit':0,
         'FWHM_inst':{},
-        'cond_cont_com':{},
-        'mean_cont':{},
         'n_pc':{},
         'chrom_mode':data_dic['DI']['system_prop']['chrom_mode'],
         'conv2intr':True,
         'mac_mode':theo_dic['mac_mode'],
         })
-    fixed_args['theo_dic']['precision']=theo_dic['precision']
     if len(fit_prop_dic['PC_model'])>0:
         fixed_args.update({
             'eig_res_matr':{},
@@ -1406,6 +1410,7 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
             'n_free_PCout':0.,
             'chi2_PCout':0.,
             })
+    fit_save={'idx_trim_kept':{}}
         
     #Stellar surface coordinate required to calculate spectral line profiles
     #    - other required properties are automatically added in the sub_calc_plocc_prop() function
@@ -1414,7 +1419,8 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
         if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
         else:fixed_args['coord_line']=fit_prop_dic['dim_fit']
         fixed_args['par_list']+=[fixed_args['coord_line']]
-    else:fixed_args['par_list']+=['mu']
+    else:
+        fixed_args['par_list']+=['mu']
 
     #Activation of spectral conversion and resampling 
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_dic[data_dic['instrum_list'][0]]['type'])                           
@@ -1423,10 +1429,13 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
     for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):  
         init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
-        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','mean_cont','cond_def','n_pc','dim_exp','ncen_bins','cond_cont_com']:fixed_args[key][inst]={}
+        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         cont_range = fit_prop_dic['cont_range'][inst]
-        trim_range = fit_prop_dic['trim_range'][inst] if (inst in fit_prop_dic['trim_range']) else None 
+        if (inst in fit_prop_dic['trim_range']):trim_range = fit_prop_dic['trim_range'][inst]
+        else:trim_range = None 
+            
+        fit_save['idx_trim_kept'][inst] = {}
         if (fixed_args['mode']=='ana') and (inst not in fixed_args['func_prof_name']):fixed_args['func_prof_name'][inst] = 'gauss'
         
         for vis in data_dic[inst]['visit_list']:
@@ -1439,17 +1448,19 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
                 
                 #Trimming data
                 #    - the trimming is applied to the common table, so that all processed profiles keep the same dimension after trimming
-                fixed_args['dim_exp'][inst][vis] = data_dic[inst][vis]['dim_exp']
                 iord_sel = 0
                 if (trim_range is not None):
-                    data_com = np.load(data_dic[inst][vis]['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item()  
+                    data_com = dataload_npz(data_dic[inst][vis]['proc_com_data_paths'])
                     idx_range_kept = np_where1D((data_com['edge_bins'][iord_sel,0:-1]>=trim_range[0]) & (data_com['edge_bins'][iord_sel,1::]<=trim_range[1]))
                     ncen_bins = len(idx_range_kept)
                     if ncen_bins==0:stop('Empty trimmed range')   
                 else:
                     ncen_bins = data_dic[inst][vis]['nspec']
                     idx_range_kept = np.arange(ncen_bins,dtype=int)
-                fixed_args['ncen_bins'][inst][vis] = ncen_bins   
+                fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
+                fit_prop_dic[inst][vis]['']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
+                fixed_args['ncen_bins'][inst][vis] = ncen_bins  
+                fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
 
                 #Enable PC noise model
                 if (inst in fit_prop_dic['PC_model']) and (vis in fit_prop_dic['PC_model'][inst]):
@@ -1492,7 +1503,7 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
                 fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
                 fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
-         
+              
                     #Upload latest processed intrinsic data
                     if fixed_args['bin_mode'][inst][vis]=='_bin':data_exp = dataload_npz(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis+'_phase'+str(i_in))               
                     else:data_exp = dataload_npz(data_dic[inst][vis]['proc_Intr_data_paths']+str(i_in))
@@ -1504,7 +1515,7 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]  # *0.6703558343325438
 
                     #Oversampled line profile model table
-                    if fixed_args['resamp']:resamp_model_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis])
+                    if fixed_args['resamp']:resamp_model_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
 
                     #Initializing ranges in the relevant rest frame
                     if len(cont_range)==0:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] = True    
@@ -1544,21 +1555,6 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
                 if (inst not in fixed_args['FWHM_inst']):                
                     fixed_args['FWHM_inst'][inst] = ref_inst_convol(inst,fixed_args,fixed_args['cen_bins'][inst][vis][0])
 
-                #Continuum common to all processed profiles
-                #    - collapsed along temporal axis
-                #    - each exposure may still be defined on its own spectral table, but all tables have the same number of pixels and we assume than in a 
-                # given pixels their central wavelengths are close enough that we can define a common continuum
-                cond_cont_com  = np.all(fit_prop_dic[inst][vis]['cond_def_cont_all'],axis=0)
-                if np.sum(cond_cont_com)==0.:stop('No pixels in common continuum')  
-                cont_intr = np.zeros(fixed_args['nexp_fit_all'][inst][vis])*np.nan
-                wcont_intr = np.zeros(fixed_args['nexp_fit_all'][inst][vis])*np.nan
-                for isub in range(fixed_args['nexp_fit_all'][inst][vis]): 
-                    dcen_bins_intr = fixed_args['dcen_bins'][inst][vis][isub][cond_cont_com]  
-                    cont_intr[isub] = np.sum(dcen_bins_intr*fixed_args['flux'][inst][vis][isub][cond_cont_com])/np.sum(dcen_bins_intr)
-                    wcont_intr[isub] = 1./np.sum(fixed_args['cov'][inst][vis][isub][0,cond_cont_com] )        
-                fixed_args['mean_cont'][inst][vis]=np.sum(cont_intr*wcont_intr)/np.sum(wcont_intr)       
-                fixed_args['cond_cont_com'][inst][vis] = cond_cont_com
-                
                 #Number of fitted exposures
                 fixed_args['nexp_fit']+=fixed_args['nexp_fit_all'][inst][vis]
 
@@ -1570,6 +1566,7 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
     #Artificial observation table
     #    - covariance condition is set to False so that chi2 values calculated here are not further modified within the residual() function
     #    - unfitted pixels are removed from the chi2 table passed to residual() , so that they are then summed over the full tables
+    if fit_dic['nx_fit']==0:stop('No points in fitted ranges')
     fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)   
     fixed_args['x_val']=range(fit_dic['nx_fit'])
     fixed_args['y_val'] = np.zeros(fit_dic['nx_fit'],dtype=float)  
@@ -1580,7 +1577,6 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
     fixed_args['fit_func'] = MAIN_joined_intr_prof
 
     #Model fit and calculation
-    fit_save={}
     merged_chain,p_final = common_fit_rout('IntrProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)            
 
     #PC correction
@@ -1593,9 +1589,9 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
         if fixed_args['nx_fit_PCout']>0:
             fit_dic_PCout = {}
             fit_dic_PCout['nx_fit'] = fit_dic['nx_fit'] + fixed_args['nx_fit_PCout']
-            fit_dic_PCout['n_free']  = fit_dic['n_free'] + fixed_args['n_free_PCout']
+            fit_dic_PCout['n_free']  = fit_dic['merit']['n_free'] + fixed_args['n_free_PCout']
             fit_dic_PCout['dof'] = fit_dic_PCout['nx_fit'] - fit_dic_PCout['n_free']
-            fit_dic_PCout['chi2'] = fit_dic['chi2'] + fixed_args['chi2_PCout']          
+            fit_dic_PCout['chi2'] = fit_dic['merit']['chi2'] + fixed_args['chi2_PCout']          
             fit_dic_PCout['red_chi2'] = fit_dic_PCout['chi2']/fit_dic_PCout['dof']
             fit_dic_PCout['BIC']=fit_dic_PCout['chi2']+fit_dic_PCout['n_free']*np.log(fit_dic_PCout['nx_fit'])      
             fit_dic_PCout['AIC']=fit_dic_PCout['chi2']+2.*fit_dic_PCout['n_free']  
@@ -1620,14 +1616,16 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
 
     #Save best-fit properties
     #    - with same structure as fit to individual profiles 
-    fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'func_prof':fixed_args['func_prof'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],
+    fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par']})
-
+    if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
-    if (plot_dic['CCFintr']!='') or (plot_dic['CCFintr_res']!='') or (plot_dic['prop_Intr']!=''):
+    if (plot_dic['CCF_Intr']!='') or (plot_dic['CCF_Intr_res']!='') or (plot_dic['prop_Intr']!='') or (plot_dic['sp_Intr_1D']!=''):
         for inst in fixed_args['inst_list']:
             for vis in fixed_args['inst_vis_list'][inst]:
-                prof_fit_dic={}
+                prof_fit_dic={'fit_range':fit_prop_dic['fit_range'][inst][vis]}
+                if fixed_args['bin_mode'][inst][vis]=='_bin':prof_fit_dic['loc_data_corr_path'] = gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis+'_phase'          
+                else:prof_fit_dic['loc_data_corr_path'] = data_dic[inst][vis]['proc_Intr_data_paths']
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
                     prof_fit_dic[i_in]={
                         'cen_bins':fixed_args['cen_bins'][inst][vis][isub],
@@ -1646,7 +1644,6 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
     post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
 
     return None
-
 
 
 
@@ -1696,11 +1693,21 @@ def joined_intr_prof(param,args):
     mod_dic = {}
     mod_prop_dic = {}
     coeff_line_dic = {}
+    
+    #Updating theoretical line profile series
+    #    - we assume abundance is common to all instruments and visits
+    if (args['mode']=='theo') and (args['var_line']):  
+        for sp in args['abund_sp']:args['grid_dic']['sme_grid']['abund'][sp]=param['abund_'+sp]
+        gen_theo_intr_prof(args['grid_dic']['sme_grid'])
+
+    #Processing instruments
     for inst in args['inst_list']:
         args['inst']=inst
         mod_dic[inst]={}
         coeff_line_dic[inst]={}
         mod_prop_dic[inst]={}
+
+        #Processing visits
         for vis in args['inst_vis_list'][inst]:   
             args['vis']=vis
 
@@ -1708,13 +1715,16 @@ def joined_intr_prof(param,args):
             if not args['fit']:
 
                 #Coefficients describing the polynomial variation of spectral line properties as a function of the chosen coordinate
-                coeff_line_dic[inst][vis] = args['coeff_line']                
+                if ('coeff_line' in args):coeff_line_dic[inst][vis] = args['coeff_line']  
+                else:coeff_line_dic[inst][vis] = None              
 
                 #Properties of all planet-occulted regions used to calculate spectral line profiles
                 mod_prop_dic[inst][vis]={} 
+                linevar_par_list = ['rv']
+                if (len(args['linevar_par'])>0):linevar_par_list+=args['linevar_par'][inst][vis]
                 for pl_loc in args['transit_pl'][inst][vis]:
                     mod_prop_dic[inst][vis][pl_loc]={}   
-                    for prop_loc in ['rv']+args['linevar_par'][inst][vis]:mod_prop_dic[inst][vis][pl_loc][prop_loc] = np.zeros(len(args['idx_in_fit'][inst][vis]))*np.nan  
+                    for prop_loc in linevar_par_list:mod_prop_dic[inst][vis][pl_loc][prop_loc] = np.zeros(len(args['idx_in_fit'][inst][vis]))*np.nan  
                 
             #-----------------------------------------------------------
             #Calculate coordinates of occulted regions or use imported values
@@ -1730,9 +1740,9 @@ def joined_intr_prof(param,args):
 
                 #Table for model calculation
                 args_exp = def_st_prof_tab(inst,vis,isub,args)
-                
+
                 #Intrinsic profile for current exposure
-                surf_prop_dic = sub_calc_plocc_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['theo_dic'],args['system_prop'],param_val,coord_pl,[isub],args['fit'])
+                surf_prop_dic = sub_calc_plocc_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,[isub],args['fit'])
                 sp_line_model = surf_prop_dic[args['chrom_mode']]['line_prof'][:,0]
                 
                 #Conversion and resampling 
@@ -1745,7 +1755,9 @@ def joined_intr_prof(param,args):
 
                 #Set to continuum level
                 #    - profiles are internally calculated with a continuum unity
-                mod_dic[inst][vis][isub]*=args['mean_cont'][inst][vis]
+                #    - intrinsic profiles have the same continuum level as out-of-transit disk-integrated profiles, but since the observed profile 
+                # continuum may not be well defined or has been scaled on a different range than the fitted one, it is difficult to measure its value
+                mod_dic[inst][vis][isub]*=param['cont']
                 
                 #Properties of all planet-occulted regions used to calculate spectral line profiles
                 if not args['fit']:
@@ -1828,17 +1840,12 @@ def fit_IntrProp_all(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot_d
         'chrom_mode':'achrom',
         'mode':'ana',  #to activate the calculation of line profile properties
         'prop_fit':fit_prop_dic['prop']})
-    fixed_args['theo_dic']['precision'] = 'low'      #to calculate intensity-weighted properties
     
     #Coordinate and property to calculate for the fit
-    #    - surface RV model defined as a function of orbital phase  
     fixed_args['par_list']+=[fixed_args['prop_fit']]
-    if fixed_args['prop_fit']=='rv':
-        fixed_args['coord_line']='phase'     
-    else:
-        if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
-        else:fixed_args['coord_line']=fit_prop_dic['dim_fit']
-        fixed_args['par_list']+=[fixed_args['coord_line']]
+    if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
+    else:fixed_args['coord_line']=fit_prop_dic['dim_fit']
+    fixed_args['par_list']+=[fixed_args['coord_line']]
 
     #Construction of the fit tables
     for par in ['s_val','y_val']:fixed_args[par]=np.zeros(0,dtype=float)
@@ -1882,10 +1889,11 @@ def fit_IntrProp_all(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot_d
     #Best-fit model and properties
     fit_save={}
     fixed_args['fit'] = False
-    mod_tab,coeff_line_dic,fit_save['prop_mod'],fit_save['coord_mod']= joined_prop(p_final,fixed_args)
+    mod_tab,coeff_line_dic,fit_save['prop_mod']= joined_prop(p_final,fixed_args)
   
     #Save best-fit properties
-    fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'pol_mode':fit_prop_dic['pol_mode'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par']})
+    fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'pol_mode':fit_prop_dic['pol_mode'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
+                     'merit':fit_dic['merit']})
     if (plot_dic['prop_Intr']!='') or (plot_dic['chi2_fit_IntrProp']!=''):
         key_list = ['prop_fit','err_prop_fit']
         for key in key_list:fit_save[key] = {}
@@ -1934,7 +1942,7 @@ def joined_prop(param,args):
             
             #Calculate coordinates and properties of occulted regions 
             system_param_loc,coord_pl,param_val = calc_plocc_coord(inst,vis,args['par_list'],args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
-            surf_prop_dic = sub_calc_plocc_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['theo_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]),args['fit'])
+            surf_prop_dic = sub_calc_plocc_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]),args['fit'])
             
             #Properties associated with the transiting planet in the visit 
             pl_vis = args['transit_pl'][inst][vis][0]
@@ -1942,13 +1950,8 @@ def joined_prop(param,args):
 
             #Fit coordinate
             #    - only used for plots
-            if not args['fit']:
-                if args['prop_fit']=='rv':mod_coord_dic[inst][vis] = args['ph_fit'][inst][vis][pl_vis][1]
-                else:
-                    coeff_line_dic[inst][vis] = args['coeff_line']
-                    mod_coord_dic[inst][vis] = theo_vis[args['coord_line']][0] 
-                    if args['coord_line']=='abs_y_st':mod_coord_dic[inst][vis] = np.abs(mod_coord_dic[inst][vis])
-                    elif args['coord_line']=='y_st2':mod_coord_dic[inst][vis] = mod_coord_dic[inst][vis]**2.  
+            if (not args['fit']) and ('coeff_line' in args):coeff_line_dic[inst][vis] = args['coeff_line']
+            else:coeff_line_dic[inst][vis] = None
 
             #Model property for the visit 
             mod_prop_dic[inst][vis] = theo_vis[args['prop_fit']][0] 
@@ -1956,7 +1959,7 @@ def joined_prop(param,args):
             #Appending over all visits
             mod_tab=np.append(mod_tab,mod_prop_dic[inst][vis])
  
-    return mod_tab,coeff_line_dic,mod_prop_dic,mod_coord_dic
+    return mod_tab,coeff_line_dic,mod_prop_dic
     
 
 
@@ -1990,7 +1993,7 @@ def calc_plocc_coord(inst,vis,par_list,args,param_in,transit_pl,nexp_fit,ph_fit,
         #Recalculate planet grid if relevant
         if args['fit_RpRs'] and ('RpRs__pl'+pl_loc in args['var_par_list']):
             args['system_prop']['achrom'][pl_loc][0]=param['RpRs__pl'+pl_loc] 
-            args['theo_dic']['Ssub_Sstar_pl'][pl_loc],args['theo_dic']['x_st_sky_grid_pl'][pl_loc],args['theo_dic']['y_st_sky_grid_pl'][pl_loc],r_sub_pl2=occ_region_grid(args['system_prop']['achrom'][pl_loc][0],args['theo_dic']['nsub_Dpl'][pl_loc])  
+            args['grid_dic']['Ssub_Sstar_pl'][pl_loc],args['grid_dic']['x_st_sky_grid_pl'][pl_loc],args['grid_dic']['y_st_sky_grid_pl'][pl_loc],r_sub_pl2=occ_region_grid(args['system_prop']['achrom'][pl_loc][0],args['grid_dic']['nsub_Dpl'][pl_loc])  
             args['system_prop']['achrom'],['cond_in_RpRs'][pl_loc] = [(r_sub_pl2<args['system_prop']['achrom'],[pl_loc][0]**2.)]        
 
         #Recalculate planet coordinates if relevant        
@@ -2007,10 +2010,10 @@ def calc_plocc_coord(inst,vis,par_list,args,param_in,transit_pl,nexp_fit,ph_fit,
             
             #Calculate coordinates
             #    - start/end phase have been set to None if no oversampling is requested, in which case start/end positions are not calculated
-            if args['theo_dic']['d_oversamp'] is not None:phases = ph_fit[pl_loc]
+            if args['grid_dic']['d_oversamp'] is not None:phases = ph_fit[pl_loc]
             else:phases = ph_fit[pl_loc][1]
             x_pos_pl,y_pos_pl,_,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phases,args['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param_loc['star'])
-            if args['theo_dic']['d_oversamp'] is not None:
+            if args['grid_dic']['d_oversamp'] is not None:
                 coord_pl[pl_loc]['st_pos'] = np.vstack((x_pos_pl[0],y_pos_pl[0]))
                 coord_pl[pl_loc]['cen_pos'] = np.vstack((x_pos_pl[1],y_pos_pl[1]))
                 coord_pl[pl_loc]['end_pos'] = np.vstack((x_pos_pl[2],y_pos_pl[2]))
@@ -2096,7 +2099,6 @@ def fit_ResProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_di
         'data_mast'  : {},
         'cont_DI_obs' : {},
         'rescaling' : {},
-        'grid_dic'  : theo_dic,
         'planet_params' : system_param[pl_loc],
         'print_exp':False, 
         'calc_pl_flux' : True,
@@ -2390,97 +2392,3 @@ def joined_intr_prof_res(param,args):
     
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-
-'''
-Stage Théo : new version of the fit_IntrProf_all function, which allows to modify the way intrinsic profile are calculated.
-'''
-def fit_IntrProf_all2(data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):
-    
-
-    #Arguments to be passed to the fit function
-    fixed_args.update({
-
-        
-        # Théo : new fields
-        
-        't_exp_bjd' : {},
-        'phase'     : {},
-        'pl_loc' : pl_loc, 
-        'grid_dic'  : theo_dic,
-        'planet_params' : system_param[pl_loc],
-        'print_exp':False, 
-        'calc_pl_flux' : True,
-        'calc_pl_mean_prop' : False,
-        'pol_mode': fit_prop_dic['pol_mode']
-        })
-        
-        
-    
-    """ Théo : Add the list of cells within planetary disk """
-    fixed_args['grid_dic']['cond_in_RpRs'] = {pl_loc : data_dic['DI']['system_prop']['achrom']['cond_in_RpRs'][pl_loc]}
-        
-    
-    #Construction of the fit tables
-    for inst in data_dic['instrum_list']:
-        
-        #Instrument is fitted
-        if (inst in fit_prop_dic['idx_in_fit']):
-            for vis in data_dic[inst]['visit_list']:
-                if vis is not None: 
-                
-                    for isub,i_in in enumerate(fit_prop_dic['idx_in_fit'][inst][vis]):
-                        
-                        #Upload latest processed intrinsic data
-                        data_exp = np.load(data_vis['proc_Intr_data_paths']+str(i_in)+'.npz',allow_pickle=True)['data'].item()
-                        
-                        """ Théo : we assume bin range is common to all the visit (to match with the 'compute_deviation_profile' args structure) """
-                        if isub == 0 :
-                            fixed_args['cen_bins'][inst][vis]  = data_exp['cen_bins']  [iord_sel,idx_range_kept]
-                            fixed_args['dcen_bins'][inst][vis]  = fixed_args['cen_bins'][inst][vis][1] - fixed_args['cen_bins'][inst][vis][0]
-
-                    """ Théo : we store phase and time coordinates of fitted exposures """
-                    sub_idx_in_fit = gen_dic[inst][vis]['idx_in'][fit_prop_dic['idx_in_fit'][inst][vis]]
-                    coord_vis = coord_dic[inst][vis]
-                    fixed_args['phase'][inst][vis] = np.vstack((coord_vis[pl_loc]['st_ph' ][sub_idx_in_fit],
-                                                                coord_vis[pl_loc]['cen_ph'][sub_idx_in_fit],
-                                                                coord_vis[pl_loc]['end_ph'][sub_idx_in_fit])) 
-                    fixed_args['t_exp_bjd'][inst][vis] = coord_vis['bjd'][sub_idx_in_fit]
-
-                    
-                    
-                      
-
-    #Best-fit model and properties
-    """ Théo : we change the mode so that compute_deviation_profile calculates the mean properties of planet-occulted regions """
-    fit_save={}
-    fixed_args['calc_pl_mean_prop'] = True
-    fixed_args['fit'] = False
-    mod_dic,coeff_line_dic,mod_prop_dic = joined_intr_prof2(p_final,fixed_args)
-
-
-    return None
-
-    
-    
-    
-    
-
-
-
-
-  
-  
-  
-

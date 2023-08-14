@@ -56,13 +56,13 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
         for vis in data_dic[inst]['visit_list']:
             print('  -----------------')
             print('  Processing visit: '+vis) 
-
+    
             #Initialization of visit properties
             init_visit(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic)             
             
             #-------------------------------------------------  
             #Processing disk-integrated stellar profiles
-            curr_type = 'DI'
+            data_type_gen = 'DI'
             #------------------------------------------------- 
 
             #Spectral detrending   
@@ -70,8 +70,8 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
 
             #Converting DI stellar spectra into CCFs
-            if gen_dic[curr_type+'_CCF']:
-                CCF_from_spec(curr_type,inst,vis,data_dic,gen_dic)
+            if gen_dic[data_type_gen+'_CCF']:
+                CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,data_dic[data_type_gen])
      
             #Single line detrending    
             if gen_dic['detrend_prof'] and (not detrend_prof_dic['full_spec']):
@@ -86,12 +86,12 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 calc_spots_prop(gen_dic,system_param['star'],theo_dic,inst,data_dic)
 
             #Analyzing original disk-integrated profiles
-            if gen_dic['fit_'+curr_type]:
-                ana_prof('',curr_type+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
+            if gen_dic['fit_'+data_type_gen]:
+                ana_prof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
 
             #Aligning disk-integrated profiles to star rest frame
-            if (gen_dic['align_'+curr_type]):
-                align_profiles(curr_type,data_dic,inst,vis,gen_dic,coord_dic)
+            if (gen_dic['align_'+data_type_gen]):
+                align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)
 
             # #Correcting for spot contamination 
             # if gen_dic['correct_spots'] : 
@@ -103,31 +103,31 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
 
             #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
             if gen_dic['DImast_weight']:              
-                process_bin_prof('',curr_type,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDI=True)
-
+                process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDI=True)
+     
             #Processing converted 2D disk-integrated profiles
             if gen_dic['spec_1D']:                
-                conv_2D_to_1D_gen_functions(curr_type,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
+                conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
  
             #Processing binned disk-integrated profiles
             if gen_dic['bin']:
-                bin_gen_functions(curr_type,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
+                bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
 
             #--------------------------------------------------------------------------------------------------
             #Processing residual and intrinsic stellar profiles
-            curr_type = 'Intr'
+            data_type_gen = 'Intr'
             #--------------------------------------------------------------------------------------------------
 
             #Extracting residual profiles
             if (gen_dic['res_data']):
                 extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
-         
+            stop()
             #Extracting intrinsic stellar profiles
             if gen_dic['intr_data']:
                 extract_intr_profiles(data_dic,gen_dic,inst,vis,system_param['star'],coord_dic,theo_dic,plot_dic)
 
             #Converting out-of-transit residual and intrinsic spectra into CCFs
-            if gen_dic[curr_type+'_CCF'] and ('spec' in data_dic[inst][vis]['type']):
+            if gen_dic[data_type_gen+'_CCF']:
                 ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
          
             #Applying PCA to out-of transit residual profiles
@@ -135,20 +135,20 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 pc_analysis(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
 
             #Fitting intrinsic stellar profiles in the star rest frame
-            if gen_dic['fit_'+curr_type]:
-                ana_prof('',curr_type+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
+            if gen_dic['fit_'+data_type_gen]:
+                ana_prof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
             
             #Aligning intrinsic stellar profiles to their local rest frame
-            if gen_dic['align_'+curr_type]: 
-                align_profiles(curr_type,data_dic,inst,vis,gen_dic,coord_dic)
+            if gen_dic['align_'+data_type_gen]: 
+                align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)
 
-            #Processing converted 2D intrinsic profiles
+            #Processing converted 2D intrinsic and residual profiles
             if gen_dic['spec_1D']:                
-                conv_2D_to_1D_gen_functions(curr_type,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
+                conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
 
             #Processing binned intrinsic profiles
             if gen_dic['bin']:
-                bin_gen_functions(curr_type,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
+                bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
 
             #Building estimates for complete local stellar profiles
             if gen_dic['loc_data_corr']:
@@ -156,7 +156,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
         
             #--------------------------------------------------------------------------------------------------
             #Processing atmospheric profiles
-            curr_type = 'Atm'
+            data_type_gen = 'Atm'
             #--------------------------------------------------------------------------------------------------
 
             #Extracting atmospheric profiles
@@ -164,24 +164,24 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 extract_pl_profiles(data_dic,inst,vis,gen_dic)
 
             #Converting atmospheric spectra into CCFs
-            if gen_dic[curr_type+'_CCF'] and ('spec' in data_dic[inst][vis]['type']):
-                CCF_from_spec(data_dic['Atm']['pl_atm_sign'],inst,vis,data_dic,gen_dic)
+            if gen_dic[data_type_gen+'_CCF'] and ('spec' in data_dic[inst][vis]['type']):
+                CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,data_dic[data_type_gen])
 
             #Fitting atmospheric profiles in the star rest frame
-            if gen_dic['fit_'+curr_type]:
-                ana_prof('',curr_type+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
+            if gen_dic['fit_'+data_type_gen]:
+                ana_prof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
       
             #Aligning atmospheric profiles to the planet rest frame
-            if gen_dic['align_'+curr_type]:   
-                align_profiles(curr_type,data_dic,inst,vis,gen_dic,coord_dic)      
+            if gen_dic['align_'+data_type_gen]:   
+                align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)      
 
             #Processing converted 2D intrinsic profiles
             if gen_dic['spec_1D']:                
-                conv_2D_to_1D_gen_functions(curr_type,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
+                conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
 
             #Processing binned atmospheric profiles
             if gen_dic['bin']:
-                bin_gen_functions(curr_type,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
+                bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
 
         ### end of visits 
 
@@ -195,8 +195,8 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
         if (data_dic[inst]['n_visits_inst']>1) and (gen_dic['binmultivis']):
             print('--------------------------------')
             print('  Processing combined visits')         
-            for data_type in ['DI','Intr','Atm']:
-                bin_gen_functions(data_type,'multivis',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic)
+            for data_type_gen in ['DI','Intr','Atm']:
+                bin_gen_functions(data_type_gen,'multivis',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic)
 
     ### end of instruments  
 
@@ -231,40 +231,40 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
 '''
 Wrap-up function for 2D->1D visits
 '''
-def conv_2D_to_1D_gen_functions(data_type,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param):
+def conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param):
 
-    #Processing 2D disk-integrated spectra into new 1D spectra
-    if gen_dic['spec_1D_'+data_type] and (data_dic[inst][vis]['type']=='spec2D'): 
-        conv_2D_to_1D_spec(data_type,inst,vis,gen_dic,data_dic,data_dic[data_type])  
+    #Processing 2D spectra into new 1D spectra
+    if gen_dic['spec_1D_'+data_type_gen] and (data_dic[inst][vis]['type']=='spec2D'): 
+        conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,data_dic[data_type_gen])  
 
     #Analyzing converted profiles
-    if gen_dic['fit_'+data_type+'_1D']: 
-        ana_prof('',data_type+'_1D',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])   
+    if gen_dic['fit_'+data_type_gen+'_1D']: 
+        ana_prof('',data_type_gen+'_1D',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])   
 
     return None
 
 '''
 Wrap-up function for binned visits
 '''
-def bin_gen_functions(data_type,mode,inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=None):
+def bin_gen_functions(data_type_gen,mode,inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=None):
 
     #Binning profiles for analysis purpose 
-    if gen_dic[data_type+'bin'+mode]: 
-        process_bin_prof(mode,data_type,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic)
+    if gen_dic[data_type_gen+'bin'+mode]: 
+        process_bin_prof(mode,data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic)
 
     #Analyzing binned profiles
-    if gen_dic['fit_'+data_type+'bin'+mode]: 
-        ana_prof(mode,data_type+'bin',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])                        
+    if gen_dic['fit_'+data_type_gen+'bin'+mode]: 
+        ana_prof(mode,data_type_gen+'bin',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])                        
 
     #Calculating generic stellar continuum from binned master spectrum
-    if (data_type in ['DI','Intr']) and gen_dic[data_type+'_stcont']:
-        process_spectral_cont(mode,data_type,inst,data_dic,gen_dic,vis)
+    if (data_type_gen in ['DI','Intr']) and gen_dic[data_type_gen+'_stcont']:
+        process_spectral_cont(mode,data_type_gen,inst,data_dic,gen_dic,vis)
 
     #Defining CCF mask
     #    - over all visits if possible, or over the single processed visit
-    if (data_type in ['DI','Intr']) and gen_dic['def_'+data_type+'masks']:
+    if (data_type_gen in ['DI','Intr']) and gen_dic['def_'+data_type_gen+'masks']:
         if (mode=='' and (data_dic[inst]['n_visits_inst']==1)) or (mode=='multivis'):
-            def_masks(mode,gen_dic,data_type,inst,vis,data_dic,plot_dic,system_param,data_prop)
+            def_masks(mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_param,data_prop)
 
     return None
 

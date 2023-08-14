@@ -24,3 +24,12 @@ ANTARESS_plot_settings.py
 ANTARESS_joined_routines.py
 ANTARESS_joined_routines.py
 ANTARESS_main.py
+ANTARESS_systems.py
+KitCat/build/lib.macosx-10.9-x86_64-cpython-311/calculate_RV_line_by_line3.cpython-311-darwin.so
+KitCat/build/temp.macosx-10.9-x86_64-cpython-311/calculate_RV_line_by_line_Bouchy.o
+KitCat/.gitkeep
+KitCat/calculate_RV_line_by_line3.cpython-311-darwin.so
+KitCat/calculate_RV_line_by_line_Bouchy.c
+KitCat/setup_lbl_fit.py
+KitCat/calculate_RV_line_by_line_Bouchy.c
+Telluric_processing/Static_resolution/.DS_Store

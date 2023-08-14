@@ -100,9 +100,9 @@ def voigt_em(x, HWHM=0.5, gamma=1, center=0):
 """
 Open static resolution map. It depends on the instrumental mode of the science frame and on the epoch where it was acquired ==> technical intervention
 """
-def open_resolution_map(instrument,time_science,ins_mode,bin_x):
+def open_resolution_map(instrument,time_science,ins_mod,bin_x):
     if instrument =='ESPRESSO':
-        if ins_mode == 'SINGLEUHR':
+        if ins_mod == 'SINGLEUHR':
             if time_science < 58421.5:
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/ESPRESSO/r.ESPRE.2018-09-09T12:18:49.369_resolution_map.fits')
                 #period = 'UHR_1x1_pre_october_2018'
@@ -113,7 +113,7 @@ def open_resolution_map(instrument,time_science,ins_mode,bin_x):
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/ESPRESSO/r.ESPRE.2019-11-06T11:06:36.913_resolution_map.fits')
                 #period = 'UHR_1x1_post_june_2019'
             
-        elif (ins_mode == 'MULTIMR') and (bin_x == 4):
+        elif (ins_mod == 'MULTIMR') and (bin_x == 4):
             if time_science < 58421.5:
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/ESPRESSO/r.ESPRE.2018-07-08T14:51:53.873_resolution_map.fits')
                 #period = 'MR_4x2_pre_october_2018'
@@ -124,7 +124,7 @@ def open_resolution_map(instrument,time_science,ins_mode,bin_x):
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/ESPRESSO/r.ESPRE.2019-11-05T12:23:45.139_resolution_map.fits')
                 #period = 'MR_4x2_post_june_2019'
         
-        elif (ins_mode == 'MULTIMR') and (bin_x == 8):
+        elif (ins_mod == 'MULTIMR') and (bin_x == 8):
             if time_science < 58421.5:
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/ESPRESSO/r.ESPRE.2018-07-06T11:48:22.862_resolution_map.fits')
                 #period = 'MR_8x4_pre_october_2018'
@@ -135,7 +135,7 @@ def open_resolution_map(instrument,time_science,ins_mode,bin_x):
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/ESPRESSO/r.ESPRE.2019-11-05T12:59:57.138_resolution_map.fits')
                 #period = 'MR_8x4_post_june_2019'
         
-        elif (ins_mode == 'SINGLEHR') and (bin_x == 1):
+        elif (ins_mod == 'SINGLEHR') and (bin_x == 1):
             if time_science < 58421.5:
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/ESPRESSO/r.ESPRE.2018-07-04T21:28:53.759_resolution_map.fits')
                 #period = 'HR_1x1_pre_october_2018'
@@ -146,7 +146,7 @@ def open_resolution_map(instrument,time_science,ins_mode,bin_x):
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/ESPRESSO/r.ESPRE.2019-11-19T10:10:12.384_resolution_map.fits')
                 #period = 'HR_1x1_post_june_2019'
         
-        elif (ins_mode == 'SINGLEHR') and (bin_x == 2):
+        elif (ins_mod == 'SINGLEHR') and (bin_x == 2):
             if time_science < 58421.5:
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/ESPRESSO/r.ESPRE.2018-09-05T14:01:58.063_resolution_map.fits')
                 #period = 'HR_2x1_pre_october_2018'
@@ -158,12 +158,12 @@ def open_resolution_map(instrument,time_science,ins_mode,bin_x):
                 #period = 'HR_2x1_post_june_2019'
         
     elif instrument in ['NIRPS_HE','NIRPS_HA']:
-        if ins_mode == 'NIRPS_HA':
+        if ins_mod == 'HA':
             if time_science < 59850.5:
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/NIRPS/r.NIRPS.2022-06-15T18_09_53.175_resolution_map.fits')
             elif (time_science > 59850.5):
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/NIRPS/r.NIRPS.2022-11-28T21_06_04.212_resolution_map.fits')
-        elif ins_mode == 'NIRPS_HE':
+        elif ins_mod == 'HE':
             if time_science < 59850.5:
                 instrumental_function = fits.open('Telluric_processing/Static_resolution/NIRPS/r.NIRPS.2022-06-15T17_52_36.533_resolution_map.fits')
             elif (time_science > 59850.5):
@@ -661,7 +661,7 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
         #Continuum and fit range
         if (molec in fixed_args['tell_cont_range']):fixed_args['mol_cont_range'] = fixed_args['tell_cont_range'][molec]
         else:fixed_args['mol_cont_range'] = [-15.,15.]
-        if (molec in fixed_args['tell_fit_range']):cond_def_fit = np_where1D((fixed_args['edge_velccf'][0:-1]>fixed_args['tell_fit_range'][molec][0]) & (fixed_args['edge_velccf'][1::]<=fixed_args['tell_fit_range'][molec][1]))
+        if (molec in fixed_args['tell_fit_range']) and (len(fixed_args['tell_fit_range'][molec])>0):cond_def_fit = np_where1D((fixed_args['edge_velccf'][0:-1]>fixed_args['tell_fit_range'][molec][0]) & (fixed_args['edge_velccf'][1::]<=fixed_args['tell_fit_range'][molec][1]))
         else:cond_def_fit = np.arange(fixed_args['n_ccf'],dtype=int)
         idx_def_fit = np_where1D(cond_def_fit)
         fixed_args['idx_mod'] = range(idx_def_fit[0],idx_def_fit[-1]+1)
@@ -709,7 +709,11 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
     
     #Calculating data
     if (gen_dic['calc_corr_tell']):
-        print('         Calculating data')    
+        print('         Calculating data')   
+        
+        #Static model directories
+        if inst in ['NIRPS_HE','NIRPS_HA']:inst_dir = 'NIRPS'
+        else: inst_dir=inst
 
         #Automatic telluric correction
         if gen_dic['calc_tell_mode']=='autom':
@@ -721,7 +725,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
             for molec in gen_dic['tell_species']:
                 
                 #Full line list for considered species 
-                static_file_full_range = fits.open('Telluric_processing/Static_model/'+inst+'/Static_hitran_qt_'+molec+'.fits')
+                static_file_full_range = fits.open('Telluric_processing/Static_model/'+inst_dir+'/Static_hitran_qt_'+molec+'.fits')
        
                 #Full molecules properties
                 tell_mol_dic['range_mol_prop'][molec]  = static_file_full_range[1].data
@@ -730,7 +734,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
                 tell_mol_dic['qt_molec'][molec] = static_file_full_range[2].data
 
                 #Strong selection line list for fitting
-                static_file_lines_fit  = fits.open('Telluric_processing/Static_model/'+inst+'/Static_hitran_strongest_lines_'+molec+'.fits')
+                static_file_lines_fit  = fits.open('Telluric_processing/Static_model/'+inst_dir+'/Static_hitran_strongest_lines_'+molec+'.fits')
 
                 #Molecules line list and properties                
                 tell_mol_dic['fit_range_mol_prop'][molec] = static_file_lines_fit[1].data     
@@ -6000,7 +6004,7 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
         #    - data must be put in global tables to perform a global reduction of ranges and orders
         data_dic_exp={}
         data_dic_com={}
-        data_com_inst = np.load(data_inst['proc_com_data_path']+'.npz',allow_pickle=True)['data'].item()   
+        data_com_inst = dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_com') 
         for vis in data_inst['visit_list']:    
             data_vis=data_inst[vis]
             data_dic_com[vis] = np.load(data_vis['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item()   
@@ -6069,7 +6073,6 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
                 data_com_inst['edge_bins'] = np.append(data_com_inst['edge_bins'][:,idx_range_kept],data_com_inst['edge_bins'][:,idx_range_kept[-1]+1][:,None],axis=1)                 
                 data_inst['nspec'] = len(idx_range_kept)               
                 data_inst['dim_exp'][1] = data_inst['nspec']   
-        
         elif (data_inst['type']=='spec2D'):
             cond_ord_kept = np.repeat(True,data_inst['nord'])    #condition relative to current tables
         
@@ -6080,9 +6083,11 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
             if (inst in gen_dic['trim_orders']) and (len(gen_dic['trim_orders'][inst])>0):
                 idx_ord_kept = np.intersect1d(idx_ord_kept,gen_dic['trim_orders'][inst])
             if len(idx_ord_kept)<data_inst['nord']:
+                cond_orders4ccf = np.zeros(data_inst['nord'],dtype=bool)
+                cond_orders4ccf[gen_dic[inst]['orders4ccf']] = True
                 data_inst['nord'] = len(idx_ord_kept)  
                 data_inst['nord_spec']=deepcopy(data_inst['nord'])     
-                gen_dic[inst]['orders4ccf'] = gen_dic[inst]['orders4ccf'][idx_ord_kept]
+                gen_dic[inst]['orders4ccf'] = np_where1D(cond_orders4ccf[idx_ord_kept]) #index of orders relative to the new reduced tables    
                 data_inst['idx_ord_ref'] = np.array(data_inst['idx_ord_ref'])[idx_ord_kept]
                 for key in ['cen_bins','edge_bins']:
                     data_com_inst[key] = np.take(data_com_inst[key],idx_ord_kept,axis=0)    
