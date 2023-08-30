@@ -15,7 +15,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
     ################################################################################################################    
-    #%%% Instrumental calibration estimates
+    #%% Instrumental calibration estimates
     ################################################################################################################ 
     if (plot_dic['gcal']!='') or (plot_dic['gcal_ord']!=''):
         key_plot = 'gcal'
@@ -92,7 +92,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
     ################################################################################################################    
-    #%%% Weighing master
+    #%% Weighing master
     ################################################################################################################
     if gen_dic['specINtype'] and (plot_dic['DImast']!=''):
         key_plot = 'DImast'
@@ -151,12 +151,17 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
             
 
+    ##################################################################################################
+    #%% Global spectral corrections
+    ##################################################################################################        
+       
 
-
-
-
+    ##################################################################################################
+    #%%% Tellurics
+    ##################################################################################################        
+        
     ################################################################################################################    
-    #%%% Telluric CCF
+    #%%%% Telluric CCF
     ################################################################################################################  
     if gen_dic['specINtype'] and (plot_dic['tell_CCF']!=''):
         key_plot = 'tell_CCF'
@@ -202,7 +207,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
     ################################################################################################################    
-    #%%% Telluric properties
+    #%%%% Telluric properties
     ################################################################################################################   
     if gen_dic['specINtype'] and (plot_dic['tell_prop']!=''):
         key_plot = 'tell_prop'
@@ -244,10 +249,12 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
 
-
-     
+    ##################################################################################################
+    #%%% Flux balance corrections
+    ##################################################################################################        
+          
     ################################################################################################################    
-    #%%% Global scaling masters        
+    #%%%% Global scaling masters        
     #    - measured master used in the flux scaling of the spectra
     ################################################################################################################
     if gen_dic['specINtype'] and (plot_dic['glob_mast']!=''):
@@ -335,7 +342,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
     ################################################################################################################    
-    #%%% Global flux balance (exposures)
+    #%%%% Global flux balance (exposures)
     ################################################################################################################
     if gen_dic['specINtype'] and (plot_dic['Fbal_corr']!=''):   
         key_plot = 'Fbal_corr'
@@ -439,7 +446,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
     ##################################################################################################
-    #%%% DRS global flux balance correction
+    #%%%% DRS global flux balance correction
     ##################################################################################################
     if gen_dic['specINtype'] and (plot_dic['Fbal_corr_DRS']!=''):
         key_plot = 'Fbal_corr_DRS'
@@ -459,7 +466,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
     
 
     ################################################################################################################    
-    #%%% Global flux balance (visits)
+    #%%%% Global flux balance (visits)
     ################################################################################################################
     if gen_dic['specINtype'] and (plot_dic['Fbal_corr_vis']!=''):   
         key_plot = 'Fbal_corr_vis'
@@ -513,7 +520,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
     ##################################################################################################
-    #%%% Intra-order flux balance
+    #%%%% Intra-order flux balance
     ##################################################################################################
     if gen_dic['specINtype'] and (plot_dic['Fbal_corr_ord']!=''):
         key_plot = 'Fbal_corr_ord' 
@@ -545,7 +552,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         
         
     ################################################################################################################ 
-    #%%% Temporal flux correction
+    #%%%% Temporal flux correction
     ################################################################################################################ 
     if gen_dic['specINtype'] and (plot_dic['Ftemp_corr']!=''):
         key_plot = 'Ftemp_corr'
@@ -2745,7 +2752,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
             #Normalisation of values by their out-of-transit mean
             #    - can be useful for comparison between visits
-            plot_settings[key_plot]['norm_ref']=True  &  False   
+            plot_settings[key_plot]['norm_ref']=True # &  False   
             if gen_dic['star_name']=='HD189733':  plot_settings[key_plot]['norm_ref'] = True & False
     
             #Bornes du plot       
@@ -2914,12 +2921,16 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20210830']['snr_quad']= 0 
 
             if gen_dic['star_name']=='HD209458':
-                plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20190720']['phase']= 0 
+                plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20190720']['phase']= 0
                 plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20190911']['phase']= 0
+                # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20190720']['snr_quad']= 1
+                # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20190911']['snr_quad']= 1 
                 
             if gen_dic['star_name']=='WASP76':
-                plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20180902']['phase']= 0 
+                plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20180902']['phase']= 0
                 plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20181030']['phase']= 0
+                # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20180902']['snr_quad']= 1
+                # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20181030']['snr_quad']= 0
 
                     
             # plot_settings[key_plot]['deg_prop_fit']={}
@@ -6476,8 +6487,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     #White CCFs
                     plot_settings[key_plot]['iexp_plot']={'ESPRESSO':{'20190720':range(2,46),'20190911':range(2,46)}} 
                     
-                    #CCF Na
-                    plot_settings[key_plot]['iexp_plot']={'ESPRESSO':{'20190720':range(3,44),'20190911':range(3,44)}} 
+                    # #CCF Na
+                    # plot_settings[key_plot]['iexp_plot']={'ESPRESSO':{'20190720':range(3,44),'20190911':range(3,44)}} 
 
                     
                 elif gen_dic['star_name']=='WASP76':
@@ -6529,8 +6540,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['plot_conf_mode']=['HDI']
                 
                 #Number of bins in histograms
-                plot_settings[key_plot]['bins_par'] = 30  #50
-                plot_settings[key_plot]['bins_par'] = 40  #50
+                plot_settings[key_plot]['bins_par'] = 50  #30  #50
+                plot_settings[key_plot]['bins_par'] = 50  #40  #50
         
                 #Common ranges
                 #    - set to None for automatic determination in individual subplots
@@ -6566,8 +6577,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     #White CCFs
                     plot_settings[key_plot]['xrange_all']={'rv': [-7.,7.],'FWHM':[5.,10.],'ctrst':[0.4,0.9]}                  
 
-                    #CCF Na
-                    plot_settings[key_plot]['xrange_all']={'rv': [-10.,10.],'FWHM':[0.,30.],'ctrst':[0.,1.]}   
+                    # #CCF Na
+                    # plot_settings[key_plot]['xrange_all']={'rv': [-10.,10.],'FWHM':[0.,30.],'ctrst':[0.,1.]}   
 
         
 
@@ -6690,7 +6701,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # + 'FWHM_l2c': FWHM(lobe)/FWHM(core) of double gaussian components
         # + 'amp_l2c': contrast(lobe)/contrast(core) of double gaussian components
         plot_settings['prop_ordin']=['rv','rv_res','FWHM','ctrst'] 
-        plot_settings['prop_ordin']=['rv','FWHM','ctrst']  
+        # plot_settings['prop_ordin']=['rv','FWHM','ctrst']  
         # plot_settings['prop_ordin']=['ctrst']
         # plot_settings['prop_ordin']=['rv']
         # plot_settings['prop_ordin']=['FWHM']
@@ -6729,6 +6740,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             #Visits to plot
             #    - add '_bin' to the name of a visit to plot properties derived from intrinsic profiles binned within a visit
             #    - use 'binned' as visit name to plot properties derived from intrinsic profiles binned over several visits
+            plot_settings[key_plot]['visits_to_plot'] = {}
             if gen_dic['studied_pl']=='WASP_8b':plot_settings[key_plot]['visits_to_plot']={'HARPS':['2008-10-04']} 
             elif gen_dic['studied_pl']=='55Cnc_e':plot_settings[key_plot]['visits_to_plot']={'binned':['all_HARPSS','all_HARPS_adj','all_HARPS_adj2','best_HARPSN_adj','best_HARPSN_adj_short','best_HARPSN_adj_long','good_HARPSN_adj','HARPS_HARPSN_binHARPS','HARPS_HARPSN_binHARPSN']}
             if gen_dic['star_name']=='HD3167': 
@@ -6742,8 +6754,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         #            'HARPS':['14-01-18','09-01-18','31-12-17'],
                     'binned':['HARPS-binned']
                 }
-            elif gen_dic['studied_pl']=='WASP76b':
-                plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2018-10-31','2018-09-03','2018-10-31_bin','2018-09-03_bin'],'binned':['ESP_binned']} 
+            elif gen_dic['star_name']=='WASP76':
+                plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['20180902','20181030']} 
             elif gen_dic['studied_pl']=='WASP127b':plot_settings[key_plot]['visits_to_plot']={'HARPS':['2017-03-20','2018-03-31','2018-02-13','2017-02-28']} 
             elif gen_dic['star_name']=='HD209458':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['20190720','20190911']}  
             elif gen_dic['studied_pl']=='GJ9827d':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2019-08-25']} 
@@ -6825,7 +6837,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             elif gen_dic['star_name']=='HD106315':plot_settings[key_plot]['idx_noplot']={'HARPS':{'20170309':[0,1,39],'20170330':[0,1,24],'20180323':[0,1,23]}}
             elif gen_dic['star_name']=='HD209458':
                 plot_settings[key_plot]['idx_noplot']={'ESPRESSO':{'20190720':[0,1,46],'20190911':[0,1,46]}}      #White CCFs 
-                plot_settings[key_plot]['idx_noplot']={'ESPRESSO':{'20190720':[0,1,2,44,45,46],'20190911':[0,1,2,44,45,46]}}      #CCF Na
+                # plot_settings[key_plot]['idx_noplot']={'ESPRESSO':{'20190720':[0,1,2,44,45,46],'20190911':[0,1,2,44,45,46]}}      #CCF Na
             elif gen_dic['star_name']=='WASP76':
                 plot_settings[key_plot]['idx_noplot']={'ESPRESSO':{'20180902':[0,10,11,12,13,20],'20181030':[0,1,18,19,20,21,22,23,24,25,37,38]}}  
 
@@ -7108,9 +7120,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/TOI858b_Saved_data/Joined_fits/Intr_prof/mcmc/Visits12_indiv_osamp5/'
             elif gen_dic['star_name']=='HD209458':
                 plot_settings[key_plot]['IntrProp_path']=  None
-                plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProp/'   
-                plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProp/chi2/'        
-                # plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProf/mcmc_rproj_deg1_comm/'
+                # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProp/'   
+                # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProp/chi2/'        
+                plot_settings[key_plot]['IntrProf_path']='/Volumes/T7/SAVE_TEMP_VINCENT/Travaux/ANTARESS/En_cours/Saves_reductions/HD209458b_Saved_data/Joined_fits/IntrProf/White_CCF/CCF_from_IntrSpec_F9/mcmc_contcorr_contfit/'
 
             elif gen_dic['star_name']=='WASP76':
                 plot_settings[key_plot]['IntrProp_path']=None   
@@ -7118,7 +7130,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProp/'    
  
                 plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProf/chi2/'
-                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProf/mcmc_final/'
+                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits_save/IntrProf/CCF_from_IntrSpec/CONTCORR_CONTFIT/mcmc/mcmc_fg/'
 
 
 
@@ -7169,10 +7181,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['theo_obs_prof'] = False
     
                 #Plot high-resolution model from property fit
-                plot_settings[key_plot]['theo_HR_prop'] = True #   & False
+                plot_settings[key_plot]['theo_HR_prop'] = True    & False
     
                 #Plot high-resolution model from profile fit
-                plot_settings[key_plot]['theo_HR_prof'] = True      & False
+                plot_settings[key_plot]['theo_HR_prof'] = True   #   & False
                 
                 #Plot high-resolution model from nominal values in ANTARESS_systems.py
                 plot_settings[key_plot]['theo_HR_nom'] = True  # &   False            
@@ -7263,8 +7275,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     plot_settings[key_plot]['y_range']=[-10.,5.] 
                 elif gen_dic['star_name']=='HD209458':
                     plot_settings[key_plot]['y_range']=[-5.,5.]     #white CCFs
-                    plot_settings[key_plot]['y_range']=[-8.,8.]     #CCF Na
-                    plot_settings[key_plot]['y_range']=[-5.5,6.5]     #CCF Na
+                    # plot_settings[key_plot]['y_range']=[-8.,8.]     #CCF Na
+                    # plot_settings[key_plot]['y_range']=[-5.5,6.5]     #CCF Na
                 elif gen_dic['star_name']=='WASP76':plot_settings[key_plot]['y_range']=[-1.5,1.5]  
     
 
@@ -7294,8 +7306,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 elif gen_dic['studied_pl']=='GJ9827d':plot_settings[key_plot]['y_range']=[-2500.,2500.]  
                 elif gen_dic['studied_pl']=='Nu2Lupi_c':plot_settings[key_plot]['y_range']=[-2500.,2500.] 
                 elif gen_dic['star_name']=='WASP76':plot_settings[key_plot]['y_range']=[-1500.,1500.] 
-                elif gen_dic['star_name']=='HD209458':
-                    plot_settings[key_plot]['y_range']=[-2000.,2000.]     #CCF Na
+                # elif gen_dic['star_name']=='HD209458':
+                #     plot_settings[key_plot]['y_range']=[-2000.,2000.]     #CCF Na
                     
                     
                     
@@ -7310,10 +7322,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['theo_obs_prof'] = True & False
     
                 #Plot high-resolution model from property fit
-                plot_settings[key_plot]['theo_HR_prop'] = True # & False
+                plot_settings[key_plot]['theo_HR_prop'] = True  & False
     
                 #Plot high-resolution model from profile fit
-                plot_settings[key_plot]['theo_HR_prof'] = True   &  False
+                plot_settings[key_plot]['theo_HR_prof'] = True #  &  False
     
                 #Bornes du plot
                 plot_settings[key_plot]['y_range']=None
@@ -7341,8 +7353,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     plot_settings[key_plot]['y_range']=[5.5,9.5]       
                     if plot_settings[key_plot]['norm_ref']:plot_settings[key_plot]['y_range']=[0.,2.] 
                     
-                    #CCF Na
-                    plot_settings[key_plot]['y_range']=[12.,25.]    
+                    # #CCF Na
+                    # plot_settings[key_plot]['y_range']=[12.,25.]    
                 elif gen_dic['star_name']=='WASP76':plot_settings[key_plot]['y_range']=[6.,13.] 
             
             
@@ -7360,10 +7372,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['theo_obs_prof'] = False
     
                 #Plot high-resolution model from property fit
-                plot_settings[key_plot]['theo_HR_prop'] = True # & False
+                plot_settings[key_plot]['theo_HR_prop'] = True  & False
     
                 #Plot high-resolution model from profile fit
-                plot_settings[key_plot]['theo_HR_prof'] = True   &  False
+                plot_settings[key_plot]['theo_HR_prof'] = True  # &  False
 
                 #Bornes du plot  
                 if gen_dic['studied_pl']=='WASP_8b':
@@ -7394,8 +7406,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     plot_settings[key_plot]['y_range']=[0.48,0.73]  
                     if plot_settings[key_plot]['norm_ref']:plot_settings[key_plot]['y_range']=[0.,2.]
                     
-                    #CCF Na
-                    plot_settings[key_plot]['y_range']=[0.79,1.03]                     
+                    # #CCF Na
+                    # plot_settings[key_plot]['y_range']=[0.79,1.03]                     
                 elif gen_dic['star_name']=='WASP76':plot_settings[key_plot]['y_range']=[0.4,0.75] 
 
 
@@ -7447,22 +7459,75 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
     ################################################################################################################ 
+    #%%% Binned disk-integrated and intrinsic profile series
+    #    - plotted together for comparison
+    ################################################################################################################  
+    if (plot_dic['binned_DI_Intr']!=''):
+        key_plot = 'binned_DI_Intr'
+
+
+        #Data type
+        plot_settings[key_plot]['data_type']='CCF' 
+
+        #Choose bin dimension for disk-integrated profiles
+        #    - 'phase' 
+        plot_settings[key_plot]['dim_plot_DI']='phase' 
+
+        #Choose bin dimension for intrinsic profiles
+        #    - 'xp_abs', 'r_proj' (see details and routine)
+        plot_settings[key_plot]['dim_plot_intr']='r_proj' 
+    
+
+        #Instruments and visits to plot
+        if gen_dic['studied_pl']=='WASP76b':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2018-10-31','2018-09-03']}   
+        elif gen_dic['star_name']=='GJ436':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2019-02-28','2019-04-29','binned']}  
+        
+        #Exposures to plot for each series
+        # if gen_dic['studied_pl']=='WASP76b':
+        #     plot_settings[key_plot]['iexp_plot']={'ESPRESSO':{
+        #         'DIbin':np.arange(2,37,dtype=int),
+        #         'Intrbin':np.arange(1,20,dtype=int)}}
+
+        #Colors
+        if gen_dic['studied_pl']=='WASP76b':plot_settings[key_plot]['color_dic']={'DI':'dodgerblue','Intr':'red'} 
+        elif gen_dic['star_name']=='GJ436':plot_settings[key_plot]['color_dic']={'DI':'dodgerblue','Intr':'red'} 
+        elif gen_dic['star_name']=='HAT_P3':plot_settings[key_plot]['color_dic']={'DI':'dodgerblue','Intr':'red'} 
+
+            
+        #Plot boundaries
+#         if gen_dic['studied_pl']=='WASP76b':
+#             plot_settings[key_plot]['x_range']=[3500.,8000.] 
+#             plot_settings[key_plot]['x_range']=[5880.,5905.] 
+# #            plot_settings[key_plot]['x_range']=[6200.,6300.] 
+#             # plot_settings[key_plot]['x_range']=None
+
+        #Plot boundaries in flux
+        if gen_dic['studied_pl']=='WASP76b':
+            plot_settings[key_plot]['y_range']=[-120.,120.] 
+            plot_settings[key_plot]['y_range']=[3e3,7e3]
+        elif gen_dic['star_name']=='GJ436':
+            plot_settings[key_plot]['x_range']=[-35.,35.] 
+
+
+
+
+
+
+
+
+
+
+
+
+    ##################################################################################################
+    #%% System view
+    ##################################################################################################        
+      
+    ################################################################################################## 
     #%%% Occulted stellar regions
     #    - for a given system configuration, with RV of the planet-occulted regions
-    ################################################################################################################   
+    ##################################################################################################  
     if (plot_dic['occulted_regions']!=''):
         key_plot = 'occulted_regions'
         plot_settings[key_plot]={} 
@@ -7933,61 +7998,13 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
 
-    ################################################################################################################ 
-    #%%% Binned disk-integrated and intrinsic profile series
-    #    - plotted together for comparison
-    ################################################################################################################  
-    if (plot_dic['binned_DI_Intr']!=''):
-        key_plot = 'binned_DI_Intr'
-
-
-        #Data type
-        plot_settings[key_plot]['data_type']='CCF' 
-
-        #Choose bin dimension for disk-integrated profiles
-        #    - 'phase' 
-        plot_settings[key_plot]['dim_plot_DI']='phase' 
-
-        #Choose bin dimension for intrinsic profiles
-        #    - 'xp_abs', 'r_proj' (see details and routine)
-        plot_settings[key_plot]['dim_plot_intr']='r_proj' 
-    
-
-        #Instruments and visits to plot
-        if gen_dic['studied_pl']=='WASP76b':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2018-10-31','2018-09-03']}   
-        elif gen_dic['star_name']=='GJ436':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2019-02-28','2019-04-29','binned']}  
-        
-        #Exposures to plot for each series
-        # if gen_dic['studied_pl']=='WASP76b':
-        #     plot_settings[key_plot]['iexp_plot']={'ESPRESSO':{
-        #         'DIbin':np.arange(2,37,dtype=int),
-        #         'Intrbin':np.arange(1,20,dtype=int)}}
-
-        #Colors
-        if gen_dic['studied_pl']=='WASP76b':plot_settings[key_plot]['color_dic']={'DI':'dodgerblue','Intr':'red'} 
-        elif gen_dic['star_name']=='GJ436':plot_settings[key_plot]['color_dic']={'DI':'dodgerblue','Intr':'red'} 
-        elif gen_dic['star_name']=='HAT_P3':plot_settings[key_plot]['color_dic']={'DI':'dodgerblue','Intr':'red'} 
-
-            
-        #Plot boundaries
-#         if gen_dic['studied_pl']=='WASP76b':
-#             plot_settings[key_plot]['x_range']=[3500.,8000.] 
-#             plot_settings[key_plot]['x_range']=[5880.,5905.] 
-# #            plot_settings[key_plot]['x_range']=[6200.,6300.] 
-#             # plot_settings[key_plot]['x_range']=None
-
-        #Plot boundaries in flux
-        if gen_dic['studied_pl']=='WASP76b':
-            plot_settings[key_plot]['y_range']=[-120.,120.] 
-            plot_settings[key_plot]['y_range']=[3e3,7e3]
-        elif gen_dic['star_name']=='GJ436':
-            plot_settings[key_plot]['x_range']=[-35.,35.] 
 
 
 
-
-
-
+    ##################################################################################################
+    #%% Atmospheric profiles
+    ##################################################################################################        
+      
 
     ################################################################################################################ 
     #%%% All individual atmospheric profiles from a given visit together

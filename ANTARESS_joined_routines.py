@@ -1047,7 +1047,7 @@ def common_fit_rout(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,t
     #Fit initialization
     init_fit(fit_dic,fixed_args,p_start,model_par_names(),fit_prop_dic)     
     merged_chain = None
-
+  
     ########################################################################################################   
 
     #Fit by chi2 minimization
@@ -1076,7 +1076,7 @@ def common_fit_rout(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,t
 
             #Complex prior function
             if (len(fixed_args['prior_func'])>0):fixed_args['global_ln_prior_func']=global_ln_prior_func
-            
+
             #Call to MCMC
             walker_chains=call_MCMC(fit_prop_dic['nthreads'],fixed_args,fit_dic,run_name=fit_dic['run_name'])
                
@@ -1431,32 +1431,43 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
         init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
-        cont_range = fit_prop_dic['cont_range'][inst]
-        if (inst in fit_prop_dic['trim_range']):trim_range = fit_prop_dic['trim_range'][inst]
-        else:trim_range = None 
-            
         fit_save['idx_trim_kept'][inst] = {}
         if (fixed_args['mode']=='ana') and (inst not in fixed_args['func_prof_name']):fixed_args['func_prof_name'][inst] = 'gauss'
-        
+        if (inst in fit_prop_dic['order']):iord_sel =  fit_prop_dic['order'][inst]
+        else:iord_sel = 0
+        cont_range = fit_prop_dic['cont_range'][inst][iord_sel]
+        if (inst in fit_prop_dic['trim_range']):trim_range = fit_prop_dic['trim_range'][inst]
+        else:trim_range = None 
         for vis in data_dic[inst]['visit_list']:
             init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
 
             #Visit is fitted
             if vis is not None:     
                 data_vis=data_dic[inst][vis]
-                init_joined_routines_vis_fit('IntrProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)                
+                init_joined_routines_vis_fit('IntrProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)   
+                data_com = dataload_npz(data_dic[inst][vis]['proc_com_data_paths'])             
+                
+                #Instrumental convolution
+                if (inst not in fixed_args['FWHM_inst']):                
+                    fixed_args['FWHM_inst'][inst] = ref_inst_convol(inst,fixed_args,data_com['cen_bins'][iord_sel])
                 
                 #Trimming data
                 #    - the trimming is applied to the common table, so that all processed profiles keep the same dimension after trimming
-                iord_sel = 0
+                #    - data is trimmed to the minimum range encompassing the continuum to limit useless computations
                 if (trim_range is not None):
-                    data_com = dataload_npz(data_dic[inst][vis]['proc_com_data_paths'])
-                    idx_range_kept = np_where1D((data_com['edge_bins'][iord_sel,0:-1]>=trim_range[0]) & (data_com['edge_bins'][iord_sel,1::]<=trim_range[1]))
-                    ncen_bins = len(idx_range_kept)
-                    if ncen_bins==0:stop('Empty trimmed range')   
+                    min_trim_range = trim_range[0]
+                    max_trim_range = trim_range[1]
                 else:
-                    ncen_bins = data_dic[inst][vis]['nspec']
-                    idx_range_kept = np.arange(ncen_bins,dtype=int)
+                    if len(cont_range)==0:
+                        min_trim_range=-1e100
+                        max_trim_range=1e100
+                    else:
+                        min_trim_range = cont_range[0][0] + 3.*fixed_args['FWHM_inst'][inst]
+                        max_trim_range = cont_range[-1][1] - 3.*fixed_args['FWHM_inst'][inst]
+                idx_range_kept = np_where1D((data_com['edge_bins'][iord_sel,0:-1]>=min_trim_range) & (data_com['edge_bins'][iord_sel,1::]<=max_trim_range))
+                ncen_bins = len(idx_range_kept)
+                if ncen_bins==0:stop('Empty trimmed range')                  
+                
                 fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
                 fit_prop_dic[inst][vis]['']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
                 fixed_args['ncen_bins'][inst][vis] = ncen_bins  
@@ -1513,7 +1524,7 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
                     fixed_args['edge_bins'][inst][vis][isub] = data_exp['edge_bins'][iord_sel,idx_range_kept[0]:idx_range_kept[-1]+2]   
                     fixed_args['dcen_bins'][inst][vis][isub] = fixed_args['edge_bins'][inst][vis][isub][1::]-fixed_args['edge_bins'][inst][vis][isub][0:-1]  
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]  # *0.6703558343325438
-
+                    
                     #Oversampled line profile model table
                     if fixed_args['resamp']:resamp_model_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
 
@@ -1550,10 +1561,6 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
                             elif i_pc==1:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-3.,2.]
                             else:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-1.,1.]
                             fit_prop_dic['priors'][pc_name]={'low':-100. ,'high':100.,'mod':'uf'}
-                            
-                #Instrumental convolution
-                if (inst not in fixed_args['FWHM_inst']):                
-                    fixed_args['FWHM_inst'][inst] = ref_inst_convol(inst,fixed_args,fixed_args['cen_bins'][inst][vis][0])
 
                 #Number of fitted exposures
                 fixed_args['nexp_fit']+=fixed_args['nexp_fit_all'][inst][vis]
@@ -1575,7 +1582,7 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
     fixed_args['use_cov'] = False
     fixed_args['use_cov_eff'] = gen_dic['use_cov']
     fixed_args['fit_func'] = MAIN_joined_intr_prof
-
+  
     #Model fit and calculation
     merged_chain,p_final = common_fit_rout('IntrProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)            
 
@@ -1657,7 +1664,7 @@ def MAIN_joined_intr_prof(param,x_tab,args=None):
 
     #Models over fitted spectral ranges
     mod_dic=joined_intr_prof(param,args)[0]
-    
+   
     #Merit table
     #    - because exposures are specific to each visit, defined on different bins, and stored as objects we define the output table as :
     # chi = concatenate( exp, (obs(exp)-mod(exp))/err(exp)) ) or the equivalent with the covariance matrix
@@ -1668,9 +1675,9 @@ def MAIN_joined_intr_prof(param,x_tab,args=None):
         for inst in args['inst_list']:
             for vis in args['inst_vis_list'][inst]:    
                 for iexp in range(args['nexp_fit_all'][inst][vis]):
-                    cond_fit = args['cond_fit'][inst][vis][iexp]
                     L_mat = scipy.linalg.cholesky_banded(args['cov'][inst][vis][iexp], lower=True)
                     res = args['flux'][inst][vis][iexp]-mod_dic[inst][vis][iexp]
+                    cond_fit = args['cond_fit'][inst][vis][iexp]
                     res[~cond_fit] = 0.  
                     chi_exp  = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)
                     chi = np.append( chi, chi_exp[cond_fit] )                     
@@ -1682,7 +1689,7 @@ def MAIN_joined_intr_prof(param,x_tab,args=None):
                     cond_fit = args['cond_fit'][inst][vis][isub]
                     res = args['flux'][inst][vis][isub][cond_fit]-mod_dic[inst][vis][isub][cond_fit]
                     chi = np.append( chi, res/np.sqrt( args['cov'][inst][vis][isub][0][cond_fit]) )
-          
+         
     return chi
 
 
@@ -1699,7 +1706,7 @@ def joined_intr_prof(param,args):
     if (args['mode']=='theo') and (args['var_line']):  
         for sp in args['abund_sp']:args['grid_dic']['sme_grid']['abund'][sp]=param['abund_'+sp]
         gen_theo_intr_prof(args['grid_dic']['sme_grid'])
-
+       
     #Processing instruments
     for inst in args['inst_list']:
         args['inst']=inst

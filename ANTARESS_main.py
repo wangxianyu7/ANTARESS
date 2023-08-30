@@ -56,7 +56,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
         for vis in data_dic[inst]['visit_list']:
             print('  -----------------')
             print('  Processing visit: '+vis) 
-    
+
             #Initialization of visit properties
             init_visit(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic)             
             
@@ -72,7 +72,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Converting DI stellar spectra into CCFs
             if gen_dic[data_type_gen+'_CCF']:
                 CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,data_dic[data_type_gen])
-     
+        
             #Single line detrending    
             if gen_dic['detrend_prof'] and (not detrend_prof_dic['full_spec']):
                 detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
@@ -100,11 +100,11 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Rescaling profiles to their correct flux level                  
             if gen_dic['flux_sc']:                   
                 rescale_data(data_dic[inst],inst,vis,data_dic,coord_dic,coord_dic[inst][vis]['t_dur_d'],gen_dic,plot_dic,system_param,theo_dic)   
-
+         
             #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
             if gen_dic['DImast_weight']:              
                 process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDI=True)
-     
+
             #Processing converted 2D disk-integrated profiles
             if gen_dic['spec_1D']:                
                 conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
@@ -121,15 +121,15 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Extracting residual profiles
             if (gen_dic['res_data']):
                 extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
-            stop()
+
             #Extracting intrinsic stellar profiles
             if gen_dic['intr_data']:
                 extract_intr_profiles(data_dic,gen_dic,inst,vis,system_param['star'],coord_dic,theo_dic,plot_dic)
-
+                
             #Converting out-of-transit residual and intrinsic spectra into CCFs
             if gen_dic[data_type_gen+'_CCF']:
                 ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
-         
+                  
             #Applying PCA to out-of transit residual profiles
             if (gen_dic['pca_ana']):
                 pc_analysis(gen_dic,data_dic,inst,vis,data_prop,coord_dic)

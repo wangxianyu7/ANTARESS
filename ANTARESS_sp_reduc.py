@@ -319,7 +319,7 @@ def var_convol_tell_sp_slow(telluric_spectrum,nbins,nbins_mod,cen_bins,cen_bins_
     return telluric_spectrum_conv
 
 def var_convol_tell_sp(telluric_spectrum,edge_bins_ord,edge_bins_mod,resolution_map_ord,nbins_mod,cen_bins_mod):
-
+ 
     #Resample resolution map on spectrum table
     res_map = bind.resampling(edge_bins_mod, edge_bins_ord,resolution_map_ord, kind='cubic')
     idx_def = np_where1D(~np.isnan(res_map))
@@ -387,7 +387,7 @@ def telluric_model(params,velccf,args=None):
 
     #Fit parameters
     param_molecules = {args['molec']:params}
-    tell_species = [args['molec']]
+    tell_species = deepcopy([args['molec']])
     
     #Processing current molecule
     hwhm_scaled_dic,intensity_scaled_dic,nu_scaled_dic = init_tell_molec(tell_species,param_molecules,args['range_mol_prop'],args['qt_molec'],args['M_mol_molec'],args['c2'])

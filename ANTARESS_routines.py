@@ -24,8 +24,6 @@ from pathos.multiprocessing import cpu_count,Pool
 from dace_query.spectroscopy import Spectroscopy
 from scipy import stats
 from numpy.polynomial import Polynomial
-from pysme.synthesize import synthesize_spectrum
-from KitCat_main import kitcat_mask
 
 ##########################
 #General values
@@ -957,6 +955,7 @@ def init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_
         if gen_dic['loc_data_corr'] and (data_dic['Intr']['mode_loc_data_corr'] in ['glob_mod','indiv_mod']):
             if data_dic['Intr']['opt_loc_data_corr'][data_dic['Intr']['mode_loc_data_corr']]['mode']=='theo':cond_st_atm = True  
         if cond_st_atm:
+            from pysme.synthesize import synthesize_spectrum
             
             #Calculate grid
             if theo_dic['st_atm']['calc']:
@@ -1020,6 +1019,10 @@ def init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_
             else:theo_dic['sme_grid'] = dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/IntrProf_grid')['sme_grid']
 
     #------------------------------------------------------------------------------------------------------------------------
+
+    #Stellar maask generation is requested
+    gen_dic['def_st_masks'] = gen_dic['def_DImasks'] | gen_dic['def_Intrmasks'] 
+    if gen_dic['def_st_masks']:from KitCat_main import kitcat_mask
 
     #Mask used to compute CCF on stellar lines
     if len(gen_dic['CCF_mask'])>0:
@@ -2923,7 +2926,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
 
                             #Continuum range
                             if autom_cont:
-                                data_dic[key]['cont_range'][inst] = [[min_contfit,min_exc],[max_exc,max_contfit]]
+                                data_dic[key]['cont_range'][inst] = {0:[[min_contfit,min_exc],[max_exc,max_contfit]]}
                         
                             #Fitting range
                             if autom_fit:      
@@ -3488,7 +3491,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
     data_vis=data_dic[inst][vis]
     gen_vis=gen_dic[inst][vis]
     dir_save = {}
-    iexp_conv,data_type_key,_ = init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,'CCFfromSpec',dir_save)
+    iexp_conv,data_type_key,_ = init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,'CCFfromSpec',dir_save,data_dic)
 
     #New paths
     #    - intrinsic and out-of-transit residual profiles are stored separately, contrary to global tables  
@@ -3751,7 +3754,7 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
 
     #Continuum pixels over all exposures
     #    - exclusion of planetary ranges is not required for intrinsic profiles if already applied to their definition, and if not already applied contamination is either negligible or neglected  
-    cond_def_cont_all  = np.zeros(data_inst[vis]['dim_ord'],dtype=bool)
+    cond_def_cont_all  = np.zeros(data_inst[vis]['dim_all'],dtype=bool)
     for i_in,iexp in zip(gen_vis['idx_exp2in'],range(data_vis['n_in_visit'])): 
         if i_in ==-1:
             gen = 'Res'
@@ -3762,14 +3765,15 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
         data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
 
         #Continuum ranges
-        #    - if planetary contamination is excluded from residual out-of-transit profiles, define a large enough initial continuum range if the planet has a wide velocimetric motion          
-        if len(data_dic[gen]['cont_range'][inst])==0:cond_def_cont_all[iexp,:] = True
-        else:
-            for bd_int in data_dic[gen]['cont_range'][inst]:
-                cond_def_cont_all[iexp] |= (data_exp['edge_bins'][0,0:-1]>=bd_int[0]) & (data_exp['edge_bins'][0,1:]<=bd_int[1])        
-            cond_def_cont_all[iexp] &= data_exp['cond_def'][0]
-        if (gen=='Res') and ('Res_prof' in data_dic['Atm']['no_plrange']) and (iexp in data_dic['Atm'][inst][vis]['iexp_no_plrange']):     
-            cond_def_cont_all[iexp] &= excl_plrange(cond_def_cont_all[iexp],data_dic['Atm'][inst][vis]['exclu_range_star'],iexp,data_exp['edge_bins'][0],'CCF')[0]
+        #    - if planetary contamination is excluded from residual out-of-transit profiles, define a large enough initial continuum range if the planet has a wide velocimetric motion 
+        for iord in range(data_dic[inst]['nord']):
+            if iord in data_dic[gen]['cont_range'][inst]:
+                for bd_int in data_dic[gen]['cont_range'][inst][iord]:
+                    cond_def_cont_all[iexp,iord] |= ((data_exp['edge_bins'][iord,0:-1]>=bd_int[0]) & (data_exp['edge_bins'][iord,1:]<=bd_int[1]))        
+            else:cond_def_cont_all[iexp,iord] = True
+            cond_def_cont_all[iexp,iord] &= data_exp['cond_def'][iord]
+            if (gen=='Res') and ('Res_prof' in data_dic['Atm']['no_plrange']) and (iexp in data_dic['Atm'][inst][vis]['iexp_no_plrange']):     
+                cond_def_cont_all[iexp,iord] &= excl_plrange(cond_def_cont_all[iexp,iord],data_dic['Atm'][inst][vis]['exclu_range_star'],iexp,data_exp['edge_bins'][iord],'CCF')[0]
 
     #Definition of continuum pixels and errors
     if data_dic['Intr']['disp_err']:print('         Setting errors on intrinsic CCFs to continuum dispersion')
@@ -3782,18 +3786,19 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
             iexp_eff = i_in
         data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
     
-        #Definition of errors on CCFs based on the dispersion in their continuum
-        #    - attributing constant error to all CCFs points, if requested
-        #    - if atmospheric profiles are extracted this operation must be done on residual CCFs, and not intrinsic ones, so that errors can then be propagated         
+        #Definition of errors on based on the dispersion in the continuum
+        #    - attributing constant error to all points, if requested
+        #    - if atmospheric profiles are extracted this operation must be done on residual profiles, and not intrinsic ones, so that errors can then be propagated         
         if data_dic['Intr']['disp_err']: 
 
             #Continuum dispersion
-            disp_cont=data_exp['flux'][0,cond_def_cont_all[iexp]].std() 
+            for iord in range(data_dic[inst]['nord']):
+                disp_cont=data_exp['flux'][iord,cond_def_cont_all[iexp,iord]].std() 
 
-            #Error table
-            #    - scaled if requested
-            err_tab = np.sqrt(gen_dic['g_err'][inst])*np.repeat(disp_cont,data_vis['nspec'])
-            data_exp['cov'][0] = (err_tab*err_tab)[None,:]
+                #Error table
+                #    - scaled if requested
+                err_tab = np.sqrt(gen_dic['g_err'][inst])*np.repeat(disp_cont,data_vis['nspec'])
+                data_exp['cov'][iord] = (err_tab*err_tab)[None,:]
 
             #Overwrite exposure data
             np.savez_compressed(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff),data=data_exp,allow_pickle=True)  
@@ -5922,9 +5927,6 @@ def extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
     if data_dic['Res']['extract_in'] and ('spec' in data_dic['Res']['type'][inst]) and (not data_vis['comm_sp_tab']):data_dic['Res'][inst][vis]['idx_to_extract'] = deepcopy(gen_dic[inst][vis]['idx_in'])
     else:data_dic['Res'][inst][vis]['idx_to_extract'] =  np.arange(data_vis['n_in_visit'],dtype=int) 
 
-    data_dic['Res'][inst][vis]['idx_to_extract'] = np.arange(27,89)
-    print('ATTENTION')
-
     #Calculating
     if (gen_dic['calc_res_data']):
         print('         Calculating data')     
@@ -6309,14 +6311,14 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
     else:
         data_paths={i_in:proc_gen_data_paths_new+'_'+str(i_in) for i_in in data_dic['Intr'][inst][vis]['idx_def']}
         check_data(data_paths)  
-
+    
     #Continuum level and correction
     #    - at this stage, profiles in CCF mode always come from input CCF data
     #      continuum is only calculated for spectral data if not converted later on (in which case continuum is calculated later on)
     #    - if applied to intrinsic profiles derived from CCF data, planetary ranges have been excluded if requested
     #      for spectral data the full order range is taken as continuum
     if (data_vis['type']=='CCF') or (('spec' in data_vis['type']) and ((not gen_dic['Intr_CCF']) and (not gen_dic['spec_1D_Intr']))):           
-        data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
+        data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
 
     return None
 
@@ -6335,7 +6337,7 @@ def calc_Intr_mean_cont(n_in_tr,nord,nspec,proc_Intr_data_paths,data_type,cont_r
         data_exp = dataload_npz(proc_Intr_data_paths+str(i_in))  
         for iord in range(nord):
             if (inst in cont_range) and (iord in cont_range[inst]):
-                for bd_int in cont_range[inst][iord]:cond_def_cont_all[i_in,iord] |= (data_exp['edge_bins'][0,0:-1]>=bd_int[0]) & (data_exp['edge_bins'][0,1:]<=bd_int[1])     
+                for bd_int in cont_range[inst][iord]:cond_def_cont_all[i_in,iord] |= (data_exp['edge_bins'][iord,0:-1]>=bd_int[0]) & (data_exp['edge_bins'][iord,1:]<=bd_int[1])     
             else:cond_def_cont_all[i_in,:] = True       
             cond_def_cont_all[i_in,iord] &= data_exp['cond_def'][iord]            
     cond_cont_com  = np.all(cond_def_cont_all,axis=0) 
@@ -6740,7 +6742,15 @@ def ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plo
                
         #Exposure-specific properties        
         if ('mod_def' in prop_dic) and (inst in prop_dic['mod_def']):fit_properties.update(prop_dic['mod_def'][inst])
-        
+
+        #Order selection
+        #    - for 2D spectra we select a specific order to perform the comparison, as it is too heavy otherwise
+        #    - we remove the order structure from CCF and 1D spectra to have one-dimensional tables
+        if data_mode in ['CCF','spec1D']:iord_sel = 0
+        elif data_mode=='spec2D':
+            if inst not in prop_dic['fit_prof']['order']:stop('Define fitted order')
+            else:iord_sel = prop_dic['fit_prof']['order'][inst] 
+
         #Continuum and fitted ranges
         #    - spectral tables are defined in:
         # > input frame for original and binned unaligned disk-integrated data
@@ -6752,9 +6762,9 @@ def ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plo
         # > star frame for intrinsic data
         # > star frame for planetary data 
         fit_range = prop_dic['fit_range'][inst][vis_det]
-        cont_range = prop_dic['cont_range'][inst]
+        cont_range = prop_dic['cont_range'][inst][iord_sel]
         trim_range = prop_dic['fit_prof']['trim_range'][inst] if (inst in prop_dic['fit_prof']['trim_range']) else None 
-        
+ 
         #MCMC fit default options
         if prop_dic['fit_mod']=='mcmc': 
             if ('mcmc_set' not in prop_dic):prop_dic['mcmc_set']={}
@@ -6912,14 +6922,6 @@ def ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plo
             #    - intrinsic profile mode is set to analytical to activate conditions, even if intrinsic profiles are not used
             else:
                 fit_properties['mode']='ana'
-
-        #Order selection
-        #    - for 2D spectra we select a specific order to perform the comparison, as it is too heavy otherwise
-        #    - we remove the order structure from CCF and 1D spectra to have one-dimensional tables
-        if data_mode in ['CCF','spec1D']:iord_sel = 0
-        elif data_mode=='spec2D':
-            if inst not in prop_dic['fit_prof']['order']:stop('Define fitted order')
-            else:iord_sel = prop_dic['fit_prof']['order'][inst] 
 
         #Trimming data
         #    - the trimming is applied to the common table, so that all processed profiles keep the same dimension after trimming
@@ -9361,6 +9363,7 @@ def ana_prof_func(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,c
 
     #Fit dictionary
     fit_dic={
+        'merit':{},
         'fit_mod':fit_prop_dic['fit_mod'],
         'uf_bd':{},
         'nx_fit':len(fixed_args['y_val'])
@@ -9438,8 +9441,8 @@ def ana_prof_func(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,c
     fixed_args['fit'] = False 
 
     #Store outputs
-    output_prop_dic['BIC']=fit_dic['BIC']    
-    output_prop_dic['red_chi2']=fit_dic['red_chi2'] 
+    output_prop_dic['BIC']=fit_dic['merit']['BIC']    
+    output_prop_dic['red_chi2']=fit_dic['merit']['red_chi2'] 
  
     #Best-fit model to the full profile (over the minimum fit range) at the observed resolution
     output_prop_dic['edge_bins'] = fixed_args['edge_bins']
@@ -10948,10 +10951,14 @@ def init_st_intr_prof(args,grid_dic,param):
         args['flux_intr_grid'] = np.zeros(grid_dic['nsub_star'])*np.nan   
         args['input_cell_all']={}
         args['coeff_line'] = {}
-        for par_loc in args['linevar_par'][args['inst']][args['vis']]:     
-            args['coeff_line'][par_loc] = polycoeff_def(param,args['coeff_ord2name'][args['inst']][args['vis']][par_loc])
-            args['input_cell_all'][par_loc] = calc_polymodu(args['pol_mode'],args['coeff_line'][par_loc],grid_dic['linevar_coord_grid']) 
-
+        inst_list = args['inst'] if ('inst' in args) else list(args['linevar_par'].keys())
+        for inst in inst_list:
+            vis_list = args['vis'] if ('vis' in args) else list(args['linevar_par'][inst].keys())
+            for vis in vis_list:           
+                for par_loc in args['linevar_par'][inst][vis]:     
+                    args['coeff_line'][par_loc] = polycoeff_def(param,args['coeff_ord2name'][inst][vis][par_loc])
+                    args['input_cell_all'][par_loc] = calc_polymodu(args['pol_mode'],args['coeff_line'][par_loc],grid_dic['linevar_coord_grid']) 
+                        
     #Measured intrinsic profiles
     #    - attributing to each stellar cell the measured profile with closest coordinate
     elif (args['mode']=='Intrbin'):
@@ -13195,7 +13202,7 @@ Conversion of 2D spectra into 1D spectra
     - conversion is applied to the latest processed data of each type
     - converted data is saved independently, but used as default data in all modules following the conversion
 '''
-def init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,mode,dir_save):
+def init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,mode,dir_save,data_dic):
     txt_print = {'CCFfromSpec':'CCF','1Dfrom2D':'1D'}[mode]
     if data_type_gen in ['DI','Intr']:    
         data_type = data_type_gen
@@ -13203,7 +13210,7 @@ def init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,mode,dir_save):
             iexp_conv = list(gen_dic[inst][vis]['idx_out'])+list(gen_dic[inst][vis]['idx_in'][prop_dic[inst][vis]['idx_def']])    #Global indexes
             data_type_key = ['Res','Intr']
             print('   > Converting OT residual and intrinsic spectra into '+txt_print)
-        else:iexp_conv = range(data_vis['n_in_visit'])    #Global indexes
+        else:iexp_conv = range(data_dic[inst][vis]['n_in_visit'])    #Global indexes
     if data_type_gen in ['DI','Atm']:  
         if data_type_gen=='Atm': 
             data_type = prop_dic['pl_atm_sign']
@@ -13218,7 +13225,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
     data_vis=data_dic[inst][vis]
     gen_vis=gen_dic[inst][vis]
     dir_save = {} 
-    iexp_conv,data_type_key,data_type = init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,'1Dfrom2D',dir_save)
+    iexp_conv,data_type_key,data_type = init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,'1Dfrom2D',dir_save,data_dic)
 
     #Paths
     proc_com_data_paths_new = gen_dic['save_data_dir']+'Processed_data/spec1D_'+inst+'_'+vis+'_com'
@@ -13300,8 +13307,9 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
     data_vis['dim_exp'] = [1,data_vis['nspec']]
     data_vis['dim_sp'] = [data_vis['n_in_visit'],1]
 
-    #Updating/correcting continuum level          
-    data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
+    #Updating/correcting continuum level     
+    if data_type_gen=='Intr':     
+        data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
 
     return None
 

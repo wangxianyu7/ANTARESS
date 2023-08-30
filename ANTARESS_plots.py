@@ -248,7 +248,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         
                         #Upload data
                         if data_path_exp is not None:data_exp = dataload_npz(data_path_exp)
-            
+                  
                         #Initializing tables
                         if isub==0:
                             dim_exp_plot = list(np.shape(data_exp['flux']))
@@ -3106,7 +3106,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         SNRS_loc = data_prop[inst][vis]['SNRs'][iexp]
                         if isub==0:SNR_obs = np.zeros([len(iexp_plot)]+list(SNRS_loc.shape))*np.nan
                         SNR_obs[isub] = SNRS_loc
-    
+                    
                     #Horizontal property
                     #    - values are put in tables covering all exposures if necessary  
                     x_obs = np.zeros(n_exp_vis)*np.nan
@@ -3420,8 +3420,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             plt.plot(x_tab,[mean_val_plot,mean_val_plot],color=col_loc,linestyle='--',lw=plot_options['lw_plot']+0.2,zorder=0) 
                         if (prop_mode not in ['rv','rv_pip']):
                             if (prop_mode in ['rv_res','rv_pip_res']):
-                                sc_txt = 100.
-                                units = ' (cm/s)'
+                                # sc_txt = 100.
+                                # units = ' (cm/s)'
+                                sc_txt = 1.
+                                units = ' (m/s)'
                             else:
                                 sc_txt = 1.
                                 units = ''
