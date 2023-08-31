@@ -234,6 +234,7 @@ gen_dic['calc_all'] = True
 
 
 if __name__ == '__main__':
+    user = 'bourrier'
 
     #Planetary system
     
@@ -282,7 +283,9 @@ if __name__ == '__main__':
     #NIRPS
     # gen_dic['star_name']='WASP43'
     # gen_dic['star_name']='L98_59'
-    # gen_dic['star_name']='GJ1214'    
+    # gen_dic['star_name']='GJ1214' 
+    # gen_dic['star_name']='WASP189' # vaulato   
+    # user = 'vaulato'
 
 
 
@@ -290,6 +293,7 @@ if __name__ == '__main__':
     #gen_dic['transit_pl']='HD189733_b'
     #gen_dic['transit_pl']='Corot_9b'
     #gen_dic['transit_pl']='WASP_8b'
+    if user=='vaulato' and gen_dic['star_name']=='WASP189':gen_dic['transit_pl']={'WASP189b':{'NIRPS_HE':['20230604']}} # vaulato
     if gen_dic['star_name']=='GJ436':
         gen_dic['transit_pl']={'GJ436_b':{'ESPRESSO':['20190228','20190429'],
                                           'HARPN':['20160318','20160411'],
@@ -366,7 +370,7 @@ if __name__ == '__main__':
         # gen_dic['transit_pl']={'L98_59c':{'NIRPS_HE':['20230411']}}
         # gen_dic['transit_pl']={'L98_59d':{'NIRPS_HE':['20230411']}}
     if gen_dic['star_name']=='GJ1214':gen_dic['transit_pl']={'GJ1214b':{'NIRPS_HE':['20230407']}}     
-    
+    if user=='vaulato' and gen_dic['star_name']=='WASP189':gen_dic['kepl_pl']=['WASP189b'] # vaulato 
 
 
     #TTVs
@@ -432,7 +436,7 @@ if __name__ == '__main__':
 
     #Saves directory 
     gen_dic['save_dir']= '/Users/bourrier/Travaux/ANTARESS/En_cours/'  
-    
+    if user=='vaulato':gen_dic['save_dir']= '/Users/valentinavaulato/Documents/PhD/Works/ANTARESS/results/'  # vaulato
     
     
     #Plot settings    
@@ -469,6 +473,7 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='WASP43':gen_dic['type']={'NIRPS_HE':'CCF'}
     elif gen_dic['star_name']=='L98_59':gen_dic['type']={'NIRPS_HE':'CCF'}
     elif gen_dic['star_name']=='GJ1214':gen_dic['type']={'NIRPS_HE':'CCF'}
+    elif user=='vaulato' and gen_dic['star_name']=='WASP189':gen_dic['type']={'NIRPS_HE':'spec2D'} # vaulato
   
     
   
@@ -647,7 +652,7 @@ if __name__ == '__main__':
     #Calculating/retrieving
     gen_dic['calc_proc_data']=True   &   False
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','WASP107']:gen_dic['calc_proc_data']=True  & False
-
+    if user=='vaulato' and gen_dic['star_name'] in ['WASP189']:gen_dic['calc_proc_data']=True #& False# vaulato
 
 
 
@@ -1323,6 +1328,7 @@ if __name__ == '__main__':
     if gen_dic['star_name']=='WASP43':gen_dic['data_dir_list']={'NIRPS_HE':{'20230119':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP43b/NIRPS/CCF/2023-01-19/'}}
     if gen_dic['star_name']=='L98_59':gen_dic['data_dir_list']={'NIRPS_HE':{'20230411':'/Users/bourrier/Travaux/Exoplanet_systems/Divers/L98_59/NIRPS/CCF/2023-04-11/'}}
     if gen_dic['star_name']=='GJ1214':gen_dic['data_dir_list']={'NIRPS_HE':{'20230407':'/Users/bourrier/Travaux/Exoplanet_systems/Glieses/GJ1214b/NIRPS/CCF/2023-04-07/'}}  
+    if user=='vaulato' and gen_dic['star_name']=='WASP189':gen_dic['data_dir_list']={'NIRPS_HE':{'20230604':'/Users/valentinavaulato/Documents/PhD/Works/ANTARESS/WASP-189b/NIRPS/20230604/'}} # vaulato
 
 
     #Activity indexes
@@ -2257,6 +2263,7 @@ if __name__ == '__main__':
     if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156']:gen_dic['gcal_thresh'] = {'ESPRESSO':{'outliers':3.,'global':1000}}
     if gen_dic['star_name'] in ['GJ3090']:gen_dic['gcal_thresh'] = {'NIRPS_HA':{'outliers':3.,'global':1000},'NIRPS_HE':{'outliers':3.,'global':3000}}
     if gen_dic['star_name'] in ['55Cnc']:gen_dic['gcal_thresh'] = {'EXPRES':{'outliers':5.,'global':1.}}
+    if user=='vaulato' and gen_dic['star_name'] in ['WASP189']:gen_dic['gcal_thresh'] = {'NIRPS_HE':{'outliers':3.,'global':3e6}} # vaulato
     
     #Non-exclusion range
     if gen_dic['star_name'] in ['WASP76','HD209458','HD29291','GJ436']:gen_dic['gcal_nooutedge']={'ESPRESSO':[2.,0.]}
@@ -2391,7 +2398,8 @@ if __name__ == '__main__':
     
     #Telluric species
     if gen_dic['star_name'] in ['WASP76','HD209458','GJ436']:gen_dic['tell_species']=['H2O','O2']  
-
+    if user=='vaulato' and gen_dic['star_name'] in ['WASP189']:gen_dic['tell_species']=['H2O', 'O2', 'CH4', 'CO2'] #vaulato
+    
     #Orders to be fitted
     if gen_dic['star_name']=='xxx': 
         gen_dic['tell_ord_fit'] = {'ESPRESSO':{'xxx':list(np.concatenate(([0,1],range(4,164),range(166,170))))}}    
@@ -2414,6 +2422,11 @@ if __name__ == '__main__':
         gen_dic['tell_fit_range'] = {'ESPRESSO':{'20190720':{'H2O':tell_fit_range_H2O,'O2':tell_fit_range_O2},'20190911':{'H2O':tell_fit_range_H2O,'O2':tell_fit_range_O2}}}
     elif gen_dic['star_name']=='WASP76':
         gen_dic['tell_fit_range'] = {'ESPRESSO':{'20180902':{'H2O':tell_fit_range_H2O,'O2':tell_fit_range_O2},'20181030':{'H2O':tell_fit_range_H2O,'O2':tell_fit_range_O2}}}
+    elif user=='vaulato' and gen_dic['star_name']=='WASP189':
+        tell_fit_range_CH4 = [-30., 30.] #vaulato
+        tell_fit_range_CO2 = [-30., 30.] #vaulato
+        gen_dic['tell_fit_range'] = {'NIRPS_HE':{'20230604':{'H2O':tell_fit_range_H2O,'O2':tell_fit_range_O2, 'CH4':tell_fit_range_CH4, 'CO2':tell_fit_range_CO2}}} #vaulato 
+
 
     #Fixed/variable properties
     if gen_dic['star_name']=='XXX':          
@@ -2667,7 +2680,8 @@ if __name__ == '__main__':
         gen_dic['Fbal_vis'] = 'meas'   
     elif gen_dic['star_name']=='HD209458':    
         gen_dic['Fbal_vis'] = 'meas'
-
+    elif user=='vaulato' and gen_dic['star_name']=='WASP189':    
+        gen_dic['Fbal_vis'] = None # vaulato: None for WASP-189 because only one instrument (NIRPS) and only one dataset (2023-06-04)
 
     #Fit settings 
     
@@ -2713,7 +2727,8 @@ if __name__ == '__main__':
         gen_dic['Fbal_range_fit'] = {'CARMENES_VIS':{'20190928':[ [1000.,7590.], [7695.,12000.] ]}}
         gen_dic['Fbal_range_fit']['CARMENES_VIS']['20191025'] = gen_dic['Fbal_range_fit']['CARMENES_VIS']['20190928']
         gen_dic['Fbal_range_fit']['CARMENES_VIS']['20191210'] = gen_dic['Fbal_range_fit']['CARMENES_VIS']['20190928']
-
+    elif user=='vaulato' and gen_dic['star_name']=='WASP189':   #vaulato 
+        gen_dic['Fbal_range_fit'] = {'NIRPS_HE':{'20230604':[ [7000., 23000.] ]}}
 
     #Orders to be fitted
     if gen_dic['star_name']=='HD3167': 
@@ -2792,6 +2807,8 @@ if __name__ == '__main__':
         gen_dic['Fbal_bin_nu'] = 200. 
     if gen_dic['star_name'] in ['GJ3090']:   
         gen_dic['Fbal_bin_nu'] = 500. 
+    if user=='vaulato' and gen_dic['star_name'] in ['WASP189']:   #vaulato
+        gen_dic['Fbal_bin_nu'] = 5000. 
 
         
     #Uncertainty scaling
@@ -2807,12 +2824,8 @@ if __name__ == '__main__':
     #Model
     if gen_dic['star_name'] in ['WASP76','HD209458','55Cnc','GJ436']:
         gen_dic['Fbal_mod']='spline'        #ANTARESS I   
-    if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156']:gen_dic['Fbal_mod']='pol'             
+    if gen_dic['star_name'] in ['WASP107','HAT_P11','WASP156','WASP189']:gen_dic['Fbal_mod']='pol'             
 
-    print('ATTENTION REMETTRE CORR NOMINALE')
-    gen_dic['Fbal_mod']='pol'
-    
-    
     #Polynomial degree 
     # if gen_dic['star_name']=='WASP76':    
     #     gen_dic['Fbal_deg'] = {'ESPRESSO':{'20180902':6 ,'20181030':6 }}
@@ -2836,7 +2849,8 @@ if __name__ == '__main__':
         gen_dic['Fbal_deg'] = {'NIRPS_HE':{'20221201':3},'NIRPS_HA':{'20221202':3}}     
     elif gen_dic['star_name']=='HD29291':    
         gen_dic['Fbal_deg'] = {'ESPRESSO':{'20201130':4}}    
-    
+    elif user=='vaulato' and gen_dic['star_name']=='WASP189':    #vaulato
+        gen_dic['Fbal_deg'] = {'NIRPS_HE':{'20230604':6}}     
     
     #Spline smoothing factor
     if gen_dic['star_name']=='WASP76':    
@@ -2856,7 +2870,7 @@ if __name__ == '__main__':
 
     #Spectral range(s) to be corrected
     gen_dic['Fbal_range_corr'] = [ [3000.,9000.] ]           
-        
+    if user=='vaulato':gen_dic['Fbal_range_corr'] = [] #vaulato  
     
     
     #Plot settings
@@ -3090,7 +3104,6 @@ if __name__ == '__main__':
 
     #Calculating/retrieving
     gen_dic['calc_cosm']=True   &  False  
-    print('ATTENTION REMETTRE CORR NOMINALE')
 
     #Alignment mode
     gen_dic['al_cosm']={
@@ -3129,8 +3142,9 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='HD29291':    
         gen_dic['cosm_thresh'] = {'ESPRESSO':{'20201130':10}}
     elif gen_dic['star_name']=='55Cnc':    
-        gen_dic['cosm_thresh'] = {'EXPRES':{'20220131':10,'20220406':10}}
-
+        gen_dic['cosm_thresh'] = {'EXPRES':{'20220131':10,'20220406':10}} 
+    elif user=='vaulato' and gen_dic['star_name']=='WASP189':    #vaulato
+        gen_dic['cosm_thresh'] = {'NIRPS_HE':{'20230604':10}} 
         
     #Exposures to be corrected
     # if gen_dic['star_name']=='WASP76':
@@ -3593,9 +3607,6 @@ if __name__ == '__main__':
 
     #Calculating/retrieving
     gen_dic['calc_wig']=True  &  False  
-    print('ATTENTION REMETTRE CORR NOMINALE')
-    
-    
     
     #Guide shift reset
     gen_dic['wig_no_guidchange'] = []   
@@ -4516,11 +4527,7 @@ if __name__ == '__main__':
     # if gen_dic['star_name'] in ['WASP43']:gen_dic['detrend_prof']=True 
     if (gen_dic['star_name'] in ['HD209458','WASP76']):gen_dic['detrend_prof']=True # &   False
     
-    
-    gen_dic['detrend_prof'] = True
-    print('PUT detrend back to nominal')
-        
-    
+
     # gen_dic['detrend_prof']= False  
     # print('ATTENTION')
 
@@ -4709,9 +4716,9 @@ if __name__ == '__main__':
                 detrend_prof_dic['prop']={'ESPRESSO':{'20190720':{'RV_phase':{'pol':1e-3*np.array([2.037544e+01])},'ctrst_snrQ':{'pol':np.array([-6.238248e-06])}},
                                                       '20190911':{                                                 'ctrst_snrQ':{'pol':np.array([-7.661844e-06])}}}}
 
-                #Perf Fbal                
-                detrend_prof_dic['prop']={'ESPRESSO':{'20190720':{'RV_phase':{'pol':1e-3*np.array([2.050853e+01])},'ctrst_snrQ':{'pol':np.array([-6.450480e-06])}},
-                                                      '20190911':{                                                 'ctrst_snrQ':{'pol':np.array([-7.697481e-06])}}}}                
+                # #Perf Fbal                
+                # detrend_prof_dic['prop']={'ESPRESSO':{'20190720':{'RV_phase':{'pol':1e-3*np.array([2.050853e+01])},'ctrst_snrQ':{'pol':np.array([-6.450480e-06])}},
+                #                                       '20190911':{                                                 'ctrst_snrQ':{'pol':np.array([-7.697481e-06])}}}}                
                 
             else:
                 detrend_prof_dic['prop']={'ESPRESSO':{'20190720':{'RV_phase':{'pol':1e-3*np.array([2.006465e+01])},'ctrst_snrQ':{'pol':np.array([-6.412763e-06])}},
@@ -4728,8 +4735,8 @@ if __name__ == '__main__':
             if gen_dic['corr_wig']:
                 detrend_prof_dic['prop']={'ESPRESSO':{'20180902':{'RV_phase':{'pol':1e-3*np.array([3.480551e+01])},'FWHM_snrQ': {'pol':np.array([-1.321403e-05])},'ctrst_snrQ':{'pol':np.array([-7.496479e-06])}}}} 
                 
-                #Perf. Fbal
-                detrend_prof_dic['prop']={'ESPRESSO':{'20180902':{'RV_phase':{'pol':1e-3*np.array([3.485136e+01])},'FWHM_snrQ': {'pol':np.array([-1.333959e-05])},'ctrst_snrQ':{'pol':np.array([-7.676005e-06])}}}}                  
+                # #Perf. Fbal
+                # detrend_prof_dic['prop']={'ESPRESSO':{'20180902':{'RV_phase':{'pol':1e-3*np.array([3.485136e+01])},'FWHM_snrQ': {'pol':np.array([-1.333959e-05])},'ctrst_snrQ':{'pol':np.array([-7.676005e-06])}}}}                  
             else:
                 detrend_prof_dic['prop']={'ESPRESSO':{'20180902':{'RV_phase':{'pol':1e-3*np.array(['recalc. with rvres'])},'FWHM_snrQ': {'pol':np.array([-1.326882e-05])},'ctrst_snrQ':{'pol':np.array([-7.633751e-06])}}}} 
         elif ('Relaxed' in gen_dic['CCF_mask']['ESPRESSO']):            
@@ -6641,9 +6648,7 @@ if __name__ == '__main__':
                     # data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.761894 - 3.50617e-2 ,'20190911':-14.760615 - 3.42603e-2}}      #From RVres
                     data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.761894 - 3.50617e-2 - 3.413778e-4 ,'20190911':-14.760615 - 3.42603e-2}}      #From RVres, corr_trend
                     
-                    
-                    print('ATTENTION REMETTRE ANCIENNE SYSVEL')
-                    data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.79768500 ,'20190911':-14.79524766}}    #Perf Fbal
+                    # data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.79768500 ,'20190911':-14.79524766}}    #Perf Fbal
                     
                     
                 else:
@@ -6660,8 +6665,7 @@ if __name__ == '__main__':
             if gen_dic['corr_wig']:
                 data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.761894 -3.54030778e-2,'20190911':-14.760615 - 3.42603e-2}}  #F9 mask taken as final reference
 
-                print('ATTENTION REMETTRE ANCIENNE SYSVEL')
-                data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.79768500 ,'20190911':-14.79524766}}    #Perf Fbal
+                # data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.79768500 ,'20190911':-14.79524766}}    #Perf Fbal
 
             else:
                 data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.7976761805,'20190911':-14.7952565153}}   #F9 mask taken as final reference
@@ -6690,10 +6694,7 @@ if __name__ == '__main__':
                         data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.2006343405 ,'20181030':-1.2060707814}}      #From RVres , corr trend, fit chi2   
                         # data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.2003378388 ,'20181030':-1.2058374293}}      #From master out , corr trend, fit chi2   
 
-
-                        print('ATTENTION REMETTRE ANCIENNE SYSVEL')
-                        data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.20071886 ,'20181030':-1.20593882 }}    #Perf Fbal
-                        
+                        # data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.20071886 ,'20181030':-1.20593882 }}    #Perf Fbal
 
                     else:
                         data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.1995008764-1.16900e-3,'20181030':-1.2060368871-0.0215491e-3}}       #From RVres , corr trend, fit chi2  
@@ -6713,10 +6714,8 @@ if __name__ == '__main__':
                 else:
                     if gen_dic['corr_wig']:
                         data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.2006343405,'20181030':-1.2060707814}}  #F9 mask taken as final reference From RVres , corr trend, fit chi2                  
-                    
-                    
-                        print('ATTENTION REMETTRE ANCIENNE SYSVEL')
-                        data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.20071886 ,'20181030':-1.20593882 }}    #Perf Fbal
+
+                        # data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.20071886 ,'20181030':-1.20593882 }}    #Perf Fbal
                     
                     else:
                         data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.1995008764-1.16900e-3,'20181030':-1.2060368871-0.0215491e-3}}    
@@ -7093,7 +7092,8 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='GJ1214':
         data_dic['DI']['sysvel']['NIRPS_HE']={'20230407':8.464783}   #From RVres
 
-
+    elif user=='vaulato' and gen_dic['star_name']=='WASP189': # vaulato
+        data_dic['DI']['sysvel']['NIRPS_HE']={'20230604':-24.452}   # km/h # Anderson et al. 2018 # vaulato
 
 
          
@@ -7366,6 +7366,17 @@ if __name__ == '__main__':
                #+ 0.0009277 / - 0.0009576  (± 0.0009427)      from 4 transits
                # 'HD3167_b':[0.01791],       # +0.00083/-0.00054            
               }
+
+    elif user=='vaulato' and gen_dic['star_name']=='WASP189':  # vaulato
+        data_dic['DI']['system_prop']={
+                                   
+                        'achrom':{
+                            
+                            'WASP189b' : [0.0049632],  # (Rp/Rs)^2 = (0.07045)^2
+                            'LD':['quadratic'], 
+                            'LD_u1' : [0.089533997], # EXOFAST output, input: J band, Teff, log(g) and metallicity [Fe/H] 
+                            'LD_u2' : [0.25300000],  # EXOFAST output, input: J band, Teff, log(g) and metallicity [Fe/H]  
+                            }}   
 
     elif gen_dic['star_name']=='55Cnc':
         data_dic['DI']['system_prop']={

@@ -2035,9 +2035,12 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                                     }[hdr['TELESCOP']]                                
 
                             #Instrumental mode
-                            if inst in ['ESPRESSO','NIRPS_HA','NIRPS_HE']: 
+                            if inst in ['ESPRESSO']: 
                                 data_prop[inst][vis]['ins_mod'] = hdr['HIERARCH ESO INS MODE']    
-                                data_prop[inst][vis]['det_binx'] = hdr['HIERARCH ESO DET BINX']
+                                data_prop[inst][vis]['det_binx'] = hdr['HIERARCH ESO DET BINX']                                
+                            elif inst in ['NIRPS_HA','NIRPS_HE']:
+                                data_prop[inst][vis]['ins_mod'] = hdr['HIERARCH ESO INS MODE']    
+                                data_prop[inst][vis]['det_binx'] = hdr['HIERARCH ESO DET WIN1 BINX']
                                 
                             #Radial velocity tables for input CCFs
                             #    - assumed to be common for all CCFs of the visit dataset, and thus calculated only once
