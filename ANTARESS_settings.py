@@ -7,6 +7,18 @@ from ANTARESS_systems import all_system_params
 
 ##################################################################################################    
 #%%% General information
+#    - ANTARESS : Advanced Neat Techniques for the Accurate Retrieval of Exoplanetary and Stellar Spectra
+#    - Please define the system properties for the host star and its planets. 
+#      Then define the observational datasets to be processed, or the synthetic ones to be generated, and the modules that will process them. 
+#      Modules are grouped in three main categories:
+# > Data first go through formatting and correction modules, some of which are specific to given instruments. 
+# > Once data are set in the common ANTARESS format and corrected for instrumental/environmental effects, they can be processed in the same way by the subsequent modules. 
+#   The second group of modules are thus generic and aim at extracting specific types of spectral profiles, converting them in the format required for the analysis chosen by the user. 
+# > The third group of modules allow fitting the processed spectral profiles to derive quantities of interest. 
+#      Modules in the first and second group are ran successively, ie that data need to be processed by an earlier module before it can be used by the next one. 
+#      Analyses modules, in contrast, are applied to the outputs of various processing modules throughout the pipeline. 
+#      Some of the correction and processing modules are optional, for example the telluric correction module for space-borne data or the flux scaling module for data with absolute photometry. 
+#      Some modules are only activated if the pipeline is used for a specific goal, for example the conversion of stellar spectra into CCFs when the user requires the analysis of the Rossiter-McLaughlin effect.
 #    - each module can be activated independently 
 #      in most modules the user can choose to calculate data (in which case it will then be automatically saved on disk) or to retrieve it (in which case the pipeline will check these data already exists)
 #      keeping all data in memory is not possible when processing e2ds, which is why the pipeline works in each module by retrieving the relevant data from the disk
@@ -16,6 +28,7 @@ from ANTARESS_systems import all_system_params
 # + https://obswww.unige.ch/~delisle/staging/bindensity/doc/
 #   pip install --extra-index-url https://vincent:cestpasfaux@obswww.unige.ch/~delisle/staging bindensity --upgrade
 # + do not use routines with non-continuous tables, as it will mess up with banded covariance matrixes
+# + beware of masking ranges, as undefined pixels (set to nan values) are propagated when resampling or combining profiles in the various pipeline modules.
 #    - pySME
 # + install gcc9 with 'brew install gcc@9'
 # + run 'pip install pysme-astro'
@@ -136,6 +149,8 @@ gen_dic['force_flag_err']=[]
 
 
 #%%%%% Error scaling 
+#    - if no errors are provided with input tables, ANTARESS will automatically attribute a variance to flux values as sigma = sqrt(g_err*F)
+# where F is the number of photoelectrons received during an exposure. 
 #    - all error bars will be multiplied by sqrt(g_err) upon retrieval/definition
 #    - format is 'g_err' = {inst : value}
 #    - leave empty to prevent scaling
@@ -245,8 +260,8 @@ if __name__ == '__main__':
     # gen_dic['star_name']='WASP121'
     #gen_dic['star_name']='KELT9'
     # gen_dic['star_name']='WASP127' 
-    gen_dic['star_name']='HD209458' 
-    # gen_dic['star_name']='WASP76'        
+    # gen_dic['star_name']='HD209458' 
+    gen_dic['star_name']='WASP76'        
     # gen_dic['star_name']='Corot7' 
     # gen_dic['star_name']='Nu2Lupi' 
     # gen_dic['star_name']='GJ9827' 
@@ -286,6 +301,7 @@ if __name__ == '__main__':
     # gen_dic['star_name']='GJ1214' 
     # gen_dic['star_name']='WASP189' # vaulato   
     # user = 'vaulato'
+    gen_dic['star_name']='WASP69'
 
 
 
@@ -517,7 +533,9 @@ if __name__ == '__main__':
     #Common spectral table
     gen_dic['comm_sp_tab'] = {}
 
-
+    print('ATTENTION RESAMPLING EVERYWHERE')    
+    if gen_dic['star_name']=='HD209458':
+        gen_dic['comm_sp_tab'] = {'ESPRESSO':True}    
 
 
 
@@ -2232,7 +2250,7 @@ plot_dic['gcal_ord']=''
 if __name__ == '__main__':
 
     #Calculating/retrieving
-    gen_dic['calc_gcal']=True  &  False 
+    gen_dic['calc_gcal']=True # &  False 
 
     #Bin size
 
@@ -2337,6 +2355,7 @@ gen_dic['tell_cont_range']={}
 
 #%%%%% Fit range
 #    - in Earth rest frame, for each molecule
+#    - adjust the fitted range to optimize the results
 #    - fit range set to the definition range if undefined
 gen_dic['tell_fit_range']={}
 
@@ -2388,7 +2407,7 @@ if __name__ == '__main__':
     if gen_dic['star_name'] in ['55Cnc']:gen_dic['corr_tell']=True 
     
     #Calculating/retrieving
-    gen_dic['calc_corr_tell']=True  & False
+    gen_dic['calc_corr_tell']=True # & False
     
     #Multi-threading
     gen_dic['tell_nthreads'] =  14    
@@ -4718,7 +4737,12 @@ if __name__ == '__main__':
 
                 # #Perf Fbal                
                 # detrend_prof_dic['prop']={'ESPRESSO':{'20190720':{'RV_phase':{'pol':1e-3*np.array([2.050853e+01])},'ctrst_snrQ':{'pol':np.array([-6.450480e-06])}},
-                #                                       '20190911':{                                                 'ctrst_snrQ':{'pol':np.array([-7.697481e-06])}}}}                
+                #                                       '20190911':{                                                 'ctrst_snrQ':{'pol':np.array([-7.697481e-06])}}}}  
+                
+                # #Perf Resamp
+                # detrend_prof_dic['prop']={'ESPRESSO':{'20190720':{'RV_phase':{'pol':1e-3*np.array([1.966652e+01])},'ctrst_snrQ':{'pol':np.array([-6.312153e-06])}},
+                #                                       '20190911':{ 'ctrst_snrQ':{'pol':np.array([-7.545836e-06])}}}}
+                # print('ATTENTION detrend for resamp')                 
                 
             else:
                 detrend_prof_dic['prop']={'ESPRESSO':{'20190720':{'RV_phase':{'pol':1e-3*np.array([2.006465e+01])},'ctrst_snrQ':{'pol':np.array([-6.412763e-06])}},
@@ -4736,7 +4760,12 @@ if __name__ == '__main__':
                 detrend_prof_dic['prop']={'ESPRESSO':{'20180902':{'RV_phase':{'pol':1e-3*np.array([3.480551e+01])},'FWHM_snrQ': {'pol':np.array([-1.321403e-05])},'ctrst_snrQ':{'pol':np.array([-7.496479e-06])}}}} 
                 
                 # #Perf. Fbal
-                # detrend_prof_dic['prop']={'ESPRESSO':{'20180902':{'RV_phase':{'pol':1e-3*np.array([3.485136e+01])},'FWHM_snrQ': {'pol':np.array([-1.333959e-05])},'ctrst_snrQ':{'pol':np.array([-7.676005e-06])}}}}                  
+                # detrend_prof_dic['prop']={'ESPRESSO':{'20180902':{'RV_phase':{'pol':1e-3*np.array([3.485136e+01])},'FWHM_snrQ': {'pol':np.array([-1.333959e-05])},'ctrst_snrQ':{'pol':np.array([-7.676005e-06])}}}}   
+
+                # #Perf. Resamp
+                # detrend_prof_dic['prop']={'ESPRESSO':{'20180902':{'RV_phase':{'pol':1e-3*np.array([3.480508e+01])},'FWHM_snrQ': {'pol':np.array([-1.320113e-05])},'ctrst_snrQ':{'pol':np.array([-7.487491e-06])}}}} 
+                # print('ATTENTION detrend for resamp')    
+
             else:
                 detrend_prof_dic['prop']={'ESPRESSO':{'20180902':{'RV_phase':{'pol':1e-3*np.array(['recalc. with rvres'])},'FWHM_snrQ': {'pol':np.array([-1.326882e-05])},'ctrst_snrQ':{'pol':np.array([-7.633751e-06])}}}} 
         elif ('Relaxed' in gen_dic['CCF_mask']['ESPRESSO']):            
@@ -6649,6 +6678,7 @@ if __name__ == '__main__':
                     data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.761894 - 3.50617e-2 - 3.413778e-4 ,'20190911':-14.760615 - 3.42603e-2}}      #From RVres, corr_trend
                     
                     # data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.79768500 ,'20190911':-14.79524766}}    #Perf Fbal
+                    # data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.79717590,'20190911':-14.79475484}} #Perf resamp
                     
                     
                 else:
@@ -6666,6 +6696,7 @@ if __name__ == '__main__':
                 data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.761894 -3.54030778e-2,'20190911':-14.760615 - 3.42603e-2}}  #F9 mask taken as final reference
 
                 # data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.79768500 ,'20190911':-14.79524766}}    #Perf Fbal
+                # data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.79717590,'20190911':-14.79475484}} #Perf resamp
 
             else:
                 data_dic['DI']['sysvel']={'ESPRESSO':{'20190720':-14.7976761805,'20190911':-14.7952565153}}   #F9 mask taken as final reference
@@ -6695,6 +6726,7 @@ if __name__ == '__main__':
                         # data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.2003378388 ,'20181030':-1.2058374293}}      #From master out , corr trend, fit chi2   
 
                         # data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.20071886 ,'20181030':-1.20593882 }}    #Perf Fbal
+                        data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.20066686,'20181030':-1.20603212}} #Perf resamp
 
                     else:
                         data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.1995008764-1.16900e-3,'20181030':-1.2060368871-0.0215491e-3}}       #From RVres , corr trend, fit chi2  
@@ -6716,6 +6748,7 @@ if __name__ == '__main__':
                         data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.2006343405,'20181030':-1.2060707814}}  #F9 mask taken as final reference From RVres , corr trend, fit chi2                  
 
                         # data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.20071886 ,'20181030':-1.20593882 }}    #Perf Fbal
+                        data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.20066686,'20181030':-1.20603212}} #Perf resamp
                     
                     else:
                         data_dic['DI']['sysvel']={'ESPRESSO':{'20180902':-1.1995008764-1.16900e-3,'20181030':-1.2060368871-0.0215491e-3}}    
@@ -7284,6 +7317,8 @@ data_dic['DI']['transit_prop']={'nsub_Dstar':None}
 
   
 #%%%% Forcing in/out transit flag
+#    - the user can force whether an exposure is considered in- or out-of-transit
+#      this can be useful if the planet only transits the star for a negligible fraction of an exposure
 #    - indexes are relative to the global table in each visit
 #    - will not modify the automatic in/out attribution of other exposures
 data_dic['DI']['idx_ecl']={}
@@ -7372,7 +7407,7 @@ if __name__ == '__main__':
                                    
                         'achrom':{
                             
-                            'WASP189b' : [0.0049632],  # (Rp/Rs)^2 = (0.07045)^2
+                            'WASP189b' : [0.07049649],  
                             'LD':['quadratic'], 
                             'LD_u1' : [0.089533997], # EXOFAST output, input: J band, Teff, log(g) and metallicity [Fe/H] 
                             'LD_u2' : [0.25300000],  # EXOFAST output, input: J band, Teff, log(g) and metallicity [Fe/H]  
@@ -7564,6 +7599,9 @@ if __name__ == '__main__':
 
     elif gen_dic['star_name']=='V1298tau':
         data_dic['DI']['system_prop']={'achrom':{'V1298tau_b' : [0.0700],'LD':['linear'],'LD_u1' : [0.41]}}
+    elif gen_dic['star_name']=='WASP69':
+        data_dic['DI']['system_prop']={'achrom':{'WASP69b' : [11.85*Rearth/(0.813*Rsun)],'LD':['quad'],'LD_u1' : [0.2696],'LD_u2' : [0.2617]}}
+
 
     #RM survey
     #    - je prends une cadence temporelle du modele de 0.05 min = 3s, ce qui fait un oversample de 60 meme pour des expos de 180s 
@@ -7805,6 +7843,9 @@ if __name__ == '__main__':
             data_dic['DI']['transit_prop']={'nsub_Dstar':2001,'NIRPS_HE':{'20230411':{'mode':'simu','n_oversamp':10.}}}
         
     if gen_dic['star_name']=='GJ1214':data_dic['DI']['transit_prop'].update({'NIRPS_HE':{'20230407':{'mode':'model','dt':0.05}}})  
+    if gen_dic['star_name']=='WASP69':
+        transit_prop_com = {'mode':'model','dt':0.05}
+        data_dic['DI']['transit_prop'].update({'NIRPS_HE':{'xx':transit_prop_com,'xx':transit_prop_com,'xx':transit_prop_com}})  
 
 
 
@@ -8044,7 +8085,7 @@ if __name__ == '__main__':
     
     
     #Calculating/retrieving
-    gen_dic['calc_DIbin']=True   &  False  
+    gen_dic['calc_DIbin']=True #  &  False  
     gen_dic['calc_DIbinmultivis'] = True      &  False
     if gen_dic['star_name'] in ['HD209458','WASP76']:
         gen_dic['DIbinmultivis']=True & False  
@@ -8055,6 +8096,10 @@ if __name__ == '__main__':
     data_dic['DI']['vis_in_bin']={}   
 
     #Exposures to be binned
+    # if gen_dic['star_name']=='HD209458':   
+    #     data_dic['DI']['idx_in_bin']={'ESPRESSO':{'20190720':[5,84]}} 
+    #     print('ATTENTION idx_in_bin')
+    
     if gen_dic['transit_pl']=='GJ436_b':
         data_dic['DI']['idx_in_bin']={}
     #     data_dic['DI']['idx_in_bin']={'HARPS':{'2007-05-09':[0,1,2,3,4,5]+list(np.arange(17,35,dtype=int))}}  
@@ -8887,6 +8932,11 @@ gen_dic['calc_intr_data'] = True
 data_dic['Intr']['cont_range'] = {}
 
 
+#%%%% Calculating/retrieving continuum 
+#    - concerns continuum measurement and correction
+data_dic['Intr']['calc_cont'] = True
+
+
 #%%%% Continuum correction
 #    - the continuum might show differences between exposures because of imprecisions on the flux balance correction
 #      this option correct for these deviations and update the flux scaling values accordingly
@@ -8930,11 +8980,15 @@ if __name__ == '__main__':
             data_dic['Intr']['cont_range']['ESPRESSO']={}
             for iord in range(4):data_dic['Intr']['cont_range']['ESPRESSO'][iord] = np.array([[ 5883. , 5885.],[5901., 5903. ]])    #ANTARESS fit sodium doublet
 
+    
+    #Calculating/retrieving continuum 
+    data_dic['Intr']['calc_cont'] = False
+
 
     #Continuum correction
     data_dic['Intr']['cont_norm'] = True   &   False
-    if gen_dic['star_name'] in ['HD209458','WASP76']:
-        data_dic['Intr']['cont_norm'] = True   #activate if CCF intr are generated
+    # if gen_dic['star_name'] in ['HD209458','WASP76']:
+    #     data_dic['Intr']['cont_norm'] = True   #activate if CCF intr are generated
 
 
 
@@ -8988,7 +9042,7 @@ data_dic['Intr']['disp_err']=False
 if __name__ == '__main__':    
  
     #Activating
-    gen_dic['Intr_CCF'] = True  # &  False
+    gen_dic['Intr_CCF'] = True   &  False
     if gen_dic['star_name']=='GJ436':gen_dic['Intr_CCF'] =  False
  
     #Calculating/retrieving 
@@ -9190,10 +9244,10 @@ plot_dic['all_intr_data']=''
 if __name__ == '__main__':
 
     #Activating
-    gen_dic['align_Intr'] = True  &  False
+    gen_dic['align_Intr'] = True # &  False
  
     #Calculating/retrieving
-    gen_dic['calc_align_Intr'] = True  #&  False  
+    gen_dic['calc_align_Intr'] = True  &  False  
 
     #Alignment mode
     data_dic['Intr']['align_mode']='theo'
@@ -9366,12 +9420,12 @@ if __name__ == '__main__':
 
 
     #Activating
-    gen_dic['Intrbin'] = True  &  False
+    gen_dic['Intrbin'] = True # &  False
     gen_dic['Intrbinmultivis'] = True   &  False
 
 
     #Calculating/retrieving
-    gen_dic['calc_Intrbin']=True    &  False 
+    gen_dic['calc_Intrbin']=True  #  &  False 
     gen_dic['calc_Intrbinmultivis']=True  #  &  False 
 
     if gen_dic['star_name'] in ['HD209458','WASP76']:
@@ -9435,6 +9489,10 @@ if __name__ == '__main__':
     if gen_dic['star_name']=='HD209458':
         data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20190720':range(6,56),'20190911':range(6,56)}}    #for mask generation
         data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20190720':range(3,44),'20190911':range(3,44)}}    #for resampling the Na series 
+        # data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20190911':[8,39]}}    #for perf. analysis
+
+
+
 
     if gen_dic['star_name']=='WASP76':
         data_dic['Intr']['idx_in_bin']={'ESPRESSO':{'20180902':range(1,20),'20181030':range(3,35)}}    #for mask generation
@@ -14038,6 +14096,7 @@ if __name__ == '__main__':
 
 
     #Exclude range of planetary signal
+    #    - user can select the modules, and the exposures, to which planet exclusion is applied to
     #    - define below operations from which planetary signal should be excluded
     #      leave empty for no exclusion to be applied
     #    - operations :

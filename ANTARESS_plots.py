@@ -84,7 +84,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #Function to calculate coordinates of planets and occulted regions in a given visit
         #    - in achromatic mode
         def calc_occ_plot(theo_dic_loc,inst,vis,genpar_instvis,param_loc,args,system_param_loc,par_list = ['rv','CB_RV','mu','xp_abs','r_proj','y_st','lat']):
-        
+
             #Generate high-resolution time table covering all planet transits   
             min_bjd = 1e100
             max_bjd = -1e100
@@ -2264,7 +2264,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 title_name='atmospheric '+plot_options['pl_atm_sign']   
                 if plot_options['pl_atm_sign']=='Absorption':y_title='Absorption'
                 elif plot_options['pl_atm_sign']=='Emission':y_title='Flux'
-        add_txt_path = plot_options['add_txt_path'][plot_mod]
+        plot_options['add_txt_path'] = {'DI':'','Intr':'','Atm':plot_options['pl_atm_sign']+'/'}
+        if plot_mod!='glob_mast':add_txt_path = plot_options['add_txt_path'][plot_mod]
         suff_txt_path = {'DI':'_','glob_mast':'','Intr':'_','Atm':'_'}[plot_mod]
         
         #Plot for each instrument
@@ -2372,7 +2373,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         
                     #Retrieving data
                     if plot_mod=='glob_mast':
-                        data_mast_vis = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_meas.npz',allow_pickle=True)['data'].item()   
+                        data_mast_vis = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_meas.npz',allow_pickle=True)['data'].item() 
                         path_exp = data_mast_vis['proc_DI_data_paths']
                         if plot_options['glob_mast_all']=='meas':data_mast_vis_all = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_meas.npz',allow_pickle=True)['data'].item()  
                         elif plot_options['glob_mast_all']=='theo':data_mast_vis_all = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_theo.npz',allow_pickle=True)['data'].item()        
@@ -2385,7 +2386,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         cond_def_exp_all[iexp] = data_exp['cond_def']
                         wav_exp_all[iexp] = data_exp['cen_bins']
                         edge_bins_exp_all[iexp] = data_exp['edge_bins']
-                        sp_exp_all[iexp] = data_exp['flux']                                
+                        sp_exp_all[iexp] = data_exp['flux']    
+
+                        #Shift individual exposures to the star rest frame in which master is defined
+                        if plot_mod=='glob_mast': 
+                            dop_sh = spec_dopshift(data_mast_vis['rv_shifts'][iexp])
+                            wav_exp_all[iexp]*=dop_sh
+                            edge_bins_exp_all[iexp]*=dop_sh
 
                     #Order list
                     order_list = plot_options['orders_to_plot'] if len(plot_options['orders_to_plot'])>0 else range(data_dic[inst]['nord']) 
@@ -2947,15 +2954,16 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     print('      '+vis)
                     i_visit+=1
                     data_vis = data_dic[inst][vis]
+                    prof_fit_vis = None
                     if data_mode=='raw':
                         if vis=='binned':
                             if plot_options['prop_absc']!='phase':stop('Use correct binning dimension')
                             data_bin = np.load(gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_phase_add.npz',allow_pickle=True)['data'].item()
-                            prof_fit_vis=np.load(gen_dic['save_data_dir']+'DIbin_prop/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item()  
+                            if gen_dic['fit_DI'] or gen_dic['fit_DI_1D']:prof_fit_vis=np.load(gen_dic['save_data_dir']+'DIbin_prop/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item()  
                         else:
                             coord_vis = coord_dic[inst][vis][pl_ref]
                             data_prop_vis = data_prop[inst][vis]
-                            prof_fit_vis=np.load(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item()
+                            if gen_dic['fit_DIbin'] or gen_dic['fit_DIbinmultivis']:prof_fit_vis=np.load(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item()
                         transit_prop_nom = (np.load(gen_dic['save_data_dir']+'Introrig_prop/PlOcc_Prop_'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item())['achrom'][pl_ref]
 
                     elif data_mode=='loc':
@@ -3184,7 +3192,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Vertical property
                     #    - values are put in tables covering all exposures if necessary 
                     if vis not in plot_options['idx_noplot'][inst]:plot_options['idx_noplot'][inst][vis]=[]
-                    val_unit = {'rv':'km/s','rv_pip':'km/s','rv_res':'m/s','rv_pip_res':'m/s','FWHM':'km/s','ctrst':''}[prop_mode]
+                    dic_val_unit = {'rv':'km/s','rv_pip':'km/s','rv_res':'m/s','rv_pip_res':'m/s','FWHM':'km/s','ctrst':''}
+                    if prop_mode not in dic_val_unit:dic_val_unit[prop_mode] = ''
+                    val_unit = dic_val_unit[prop_mode]
                     if plot_options['plot_data']:
                         val_obs = np.zeros(n_exp_vis)*np.nan
                         eval_obs= np.zeros([2,n_exp_vis])
@@ -3269,9 +3279,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                      
                         #Points to plot   
                         if data_mode=='raw':
-                            idx_in_plot=[iexp for iexp in range(prof_fit_vis['n_exp']) if (iexp not in plot_options['idx_noplot'][inst][vis]) and (np.isnan(val_obs[iexp])==False)]
+                            idx_in_plot=[iexp for iexp in range(n_exp_vis) if (iexp not in plot_options['idx_noplot'][inst][vis]) and (np.isnan(val_obs[iexp])==False)]
                         elif data_mode=='loc':
-                            idx_in_plot=[i_in for i_in in range(prof_fit_vis['n_exp']) if (i_in not in plot_options['idx_noplot'][inst][vis]) and (np.isnan(val_obs[i_in])==False) and   (     ((not plot_options['plot_det'])) or (plot_options['plot_det']  and (prof_fit_vis[i_in]['detected']))        ) ]
+                            idx_in_plot=[i_in for i_in in range(n_exp_vis) if (i_in not in plot_options['idx_noplot'][inst][vis]) and (np.isnan(val_obs[i_in])==False) and   (     ((not plot_options['plot_det'])) or (plot_options['plot_det']  and (prof_fit_vis[i_in]['detected']))        ) ]
                         x_obs=x_obs[idx_in_plot]
                         st_x_obs=st_x_obs[idx_in_plot]
                         end_x_obs=end_x_obs[idx_in_plot] 
@@ -3279,7 +3289,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         eval_obs=eval_obs[:,idx_in_plot]
                         rv_mod_obs = rv_mod_obs[idx_in_plot]
                         marker_obs=np.repeat(mark_tr,len(idx_in_plot))
-                        idx_in_plot_det=prof_fit_vis['cond_detected'][idx_in_plot]
+                        if prof_fit_vis is None:idx_in_plot_det = np.repeat(True,len(idx_in_plot))
+                        else:idx_in_plot_det=prof_fit_vis['cond_detected'][idx_in_plot]
                             
                     else:idx_in_plot = range(len(x_obs))
                     n_exp_vis=len(idx_in_plot)
@@ -3391,11 +3402,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Print dispersion of residuals to a reference 
                     #    - for in-transit selection we use the ou-of-transit mean as reference                                            
                     if (plot_options['print_disp'] or plot_options['plot_disp']) and (not plot_options['no_orig']):                        
-                        if plot_options['didata_type']=='all':idisp=range(len(val_obs))
-                        elif plot_options['didata_type']=='det':idisp=idx_in_plot_det 
+                        if plot_options['disp_mod']=='all':idisp=range(len(val_obs))
+                        elif plot_options['disp_mod']=='det':idisp=idx_in_plot_det 
                         elif data_mode=='raw':
-                            if plot_options['didata_type']=='out':idisp=isub_out_plot
-                            elif plot_options['didata_type']=='in':idisp=isub_in_plot    
+                            if plot_options['disp_mod']=='out':idisp=isub_out_plot
+                            elif plot_options['disp_mod']=='in':idisp=isub_in_plot    
                         if np.sum(eval_obs[:,idisp])==0.:                        
                             mean_val_plot = np.mean(val_obs[idisp])
                             eval_1D = 0.
@@ -4938,7 +4949,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #Plot all orders for all exposures
                 if (plot_dic[key_plot]!=''):
                     plt.ioff()        
-                    fig = plt.figure(figsize=plot_options['fig_size'])
+                    fig = plt.figure(figsize=plot_options[key_plot]['fig_size'])
    
                     #Vertical range
                     y_min=1e100
@@ -6109,7 +6120,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     n_cosmics_vis_tot=n_cosmics_vis_tot*y_range_loc[1]/np.max(n_cosmics_vis_tot)
                     plt.plot(gen_dic['wav_ord_inst'][inst][order_list],n_cosmics_vis_tot,linestyle='-',color='black',rasterized=plot_options[key_plot]['rasterized'],zorder=0,drawstyle='steps-mid',lw=plot_options[key_plot]['lw_plot'])
                     
-
                     #Plot frame  
                     if plot_options[key_plot]['plot_title']:plt.title('Cosmics detections for visit '+vis+' in '+inst)
                     dx_range=x_range_loc[1]-x_range_loc[0]
@@ -7205,14 +7215,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     if (plot_dic['prop_raw']!=''):
         print('-----------------------------------')
         print('+ Properties of raw data and disk-integrated CCFs')
-        for plot_prop in plot_settings['prop_ordin']:
+        for plot_prop in plot_settings['prop_raw_ordin']:
             key_plot = 'prop_'+plot_prop 
           
             #Default settings
             plot_options=gen_plot_default(plot_options,key_plot)        
 
             #Print and plot mean value and dispersion 
-            plot_options[key_plot]['didata_type']='out' 
+            plot_options[key_plot]['disp_mod']='out' 
             
             #Save dispersion values for analysis in external routine
             plot_options[key_plot]['save_disp']=False
@@ -9109,14 +9119,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     if (plot_dic['prop_Intr']!=''):
         print('-----------------------------------')
         print('+ Properties of planet-occulted stellar CCFs')
-        for plot_prop in plot_settings['prop_ordin']:
+        for plot_prop in plot_settings['prop_Intr_ordin']:
             key_plot = 'prop_'+plot_prop 
         
             #Default settings
             plot_options=gen_plot_default(plot_options,key_plot)           
 
             #Print and plot mean value and dispersion 
-            plot_options[key_plot]['didata_type']='all'  
+            plot_options[key_plot]['disp_mod']='all'  
 
             #General path to the best-fit model to property series
             plot_options[key_plot]['IntrProp_path']=None

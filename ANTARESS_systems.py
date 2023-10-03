@@ -711,13 +711,8 @@ all_system_params={
         'star':{
         'Rstar':1.77,  #Tabernero+2021 
         'istar':90.,
-        'veq':1.48,    #Ehrenreich+2020
-
-#            'istar':178.8654,
-#            'veq':8.5650,
-#            'alpha_rot':0.3292, 
-
-        # 'veq':5.8582384629e-01,
+        # 'veq':1.48,    #Ehrenreich+2020
+        'veq':8.5678789895e-01,      #ANTARESS I
         
         #Properties for theoretical atmosphere grid
         'Tpole':6316.,
@@ -732,15 +727,13 @@ all_system_params={
         'ecc':0.,    #Ehrenreich+2020
         'omega_deg':90,   #Ehrenreich+2020
         'Kstar':116.02,   #Ehrenreich+2020   
-        'aRs':4.08,       #Ehrenreich+2020
-        'inclination':89.623,    #Ehrenreich+2020
+        # 'aRs':4.08,       #Ehrenreich+2020
+        # 'inclination':89.623,    #Ehrenreich+2020
+        'aRs':4.0589878141,       #ANTARESS I    
+        'inclination':8.9603775940e+01,    #ANTARESS I    
         'TLength':0.15818,
-        'lambda_proj':61.28   #Ehrenreich+2020
-        
-             # 'lambda_proj':-7.5525,
-#            'lambda_proj':-6.9970 ,
-            # 'lambda_proj':-1.496011937,       
-        
+        # 'lambda_proj':61.28,   #Ehrenreich+2020
+        'lambda_proj':-3.7082467195e+01    #ANTARESS I    
         
     },
      
@@ -781,10 +774,18 @@ all_system_params={
         # 'Rstar':1.1550,    #Used in Bonomo+2017, from SILVA-VALIO A. 
         'Rstar':1.160,   #Casasayas-Barris+2021
         
-         #SB
-        'veq':4.2277446532,
-        'istar':90.,
-        
+        #   #SB
+        # 'veq':4.2277446532,
+        # 'istar':90.,
+
+        #  #SB chi2 ANTARESS I
+        # 'veq':4.2732126941e+00,
+        # 'istar':90.,
+ 
+        #Joint prof mcmc ANTARESS I
+        'veq':4.2721415478,
+        'istar':90.,        
+ 
         #DR alpha neg.
         # 'veq':4.62694508e+00,
         # 'istar':120.66761463443008,
@@ -872,9 +873,11 @@ all_system_params={
         # 'inclination':86.71,     
         # 'TLength':0.12819010           
  
-            'lambda_proj':1.5875666090,    #SB (article ANTARESS)
+            # 'lambda_proj':1.5875666090,    #SB nominal (ANTARESS)
+            # 'lambda_proj':1.0861926459e+00   #SB chi2 (ANTARESS I)
             # 'lambda_proj':0.4158672165556291,    #DR alpha neg.
             # 'lambda_proj':0.4158672165556291,    
+            'lambda_proj':1.0699092308,    #Joint prof mcmc ANTARESS I
       
         
         # #ANTARESS I, mock, oblate
@@ -2095,8 +2098,32 @@ all_system_params={
             'omega_deg':90.,
             'inclination':84.03,        # deg # Lendl et al. 2020
             'Kstar':182.0,	            #  m/s # Lendl et al. 2020
-            'aRs':10.856,               # R_star # a*R_star # Lendl et al. 2020
+            'aRs':4.6,               # R_star # a*R_star # Lendl et al. 2020
             'lambda_proj':0.
+            
+            },
+        
+    },
+    
+    #------------------------------
+
+    'WASP69':{
+        
+        'star':{
+            'Rstar':0.813 , #Allart+2023
+            'veq':1.,    #unknown
+            'istar':90, #unknown
+            },
+        'WASP69b':{   #No known
+            'period':3.8681390,         #days #Kokori+2022
+            'TCenter':2457176.17789,  # days #Kokori+2022
+            'TLength':2.23/24. ,       # days  Casasayas-Barris et al. (2017).
+            'ecc':0.,
+            'omega_deg':90.,
+            'inclination':86.71,        # deg #  Casasayas-Barris et al. (2017).
+            'Kstar':38.1,	            #  m/s # Casasayas-Barris et al. (2017).
+            'aRs':12.00,               # R_star #  Casasayas-Barris et al. (2017).
+            'lambda_proj':0.      #unknown    
             
             },
         
