@@ -245,7 +245,7 @@ if __name__ == '__main__':
     # gen_dic['star_name']='WASP121'
     #gen_dic['star_name']='KELT9'
     # gen_dic['star_name']='WASP127' 
-    #gen_dic['star_name']='HD209458' 
+    gen_dic['star_name']='HD209458' 
     # gen_dic['star_name']='WASP76'        
     # gen_dic['star_name']='Corot7' 
     # gen_dic['star_name']='Nu2Lupi' 
@@ -285,12 +285,19 @@ if __name__ == '__main__':
     # gen_dic['star_name']='L98_59'
     # gen_dic['star_name']='GJ1214' 
     # gen_dic['star_name']='WASP189' # vaulato
-    gen_dic['star_name']='AUMic' # mercier  
+    #gen_dic['star_name']='AUMic' # mercier  
     # user = 'vaulato'
 
 
 
     #Transiting planets
+    #if user=='mercier' and gen_dic['star_name']=='AUMic':
+    #    gen_dic['transit_pl'] = {
+    #        'AUMicb':{'ESPRESSO' : ['mock_vis']}, 
+    #        'AUMicc':{'ESPRESSO' : ['mock_vis']}
+    #        }
+    #    gen_dic['kepl_pl'] = ['AUMicb', 'AUMicc']
+
     #gen_dic['transit_pl']='HD189733_b'
     #gen_dic['transit_pl']='Corot_9b'
     #gen_dic['transit_pl']='WASP_8b'
@@ -316,9 +323,9 @@ if __name__ == '__main__':
     if gen_dic['star_name']=='WASP76':
         gen_dic['transit_pl']={'WASP76b':{'ESPRESSO':['20180902','20181030']}} 
     if gen_dic['star_name']=='HD209458': 
-        gen_dic['transit_pl']={'HD209458b':{'ESPRESSO':['20190720','20190911']}}       #ANTARESS paper I
-        # gen_dic['transit_pl']={'HD209458b':{'ESPRESSO':['mock_vis']}}       #ANTARESS paper I, mock, precisions
-        # gen_dic['transit_pl']={'HD209458b':{'ESPRESSO':['mock_vis']},'HD209458c':{'ESPRESSO':['mock_vis']}}       #ANTARESS paper I, mock, multi-pl
+        #gen_dic['transit_pl']={'HD209458b':{'ESPRESSO':['20190720','20190911']}}       #ANTARESS paper I
+        gen_dic['transit_pl']={'HD209458b':{'ESPRESSO':['mock_vis']}}       #ANTARESS paper I, mock, precisions
+        #gen_dic['transit_pl']={'HD209458b':{'ESPRESSO':['mock_vis']},'HD209458c':{'ESPRESSO':['mock_vis']}}       #ANTARESS paper I, mock, multi-pl
 
     if gen_dic['star_name']=='Corot7':gen_dic['transit_pl']='Corot7b'
     if gen_dic['star_name']=='Nu2Lupi':gen_dic['transit_pl']={'Nu2Lupi_d':{'ESPRESSO':['mock_vis']}}      
@@ -444,9 +451,9 @@ if __name__ == '__main__':
     
     #Input data type
     if gen_dic['star_name'] in ['HD209458','WASP76','HD29291']:
-        gen_dic['type']={'ESPRESSO':'spec2D'}
-        # gen_dic['type']={'ESPRESSO':'CCF'}      #ANTARESS I, mock dataset, precisions
-        # gen_dic['type']={'ESPRESSO':'spec2D'}      #ANTARESS I, mock dataset, multi-tr
+        #gen_dic['type']={'ESPRESSO':'spec2D'}
+        gen_dic['type']={'ESPRESSO':'CCF'}      #ANTARESS I, mock dataset, precisions
+        #gen_dic['type']={'ESPRESSO':'spec2D'}      #ANTARESS I, mock dataset, multi-tr
     if gen_dic['star_name']=='GJ436':gen_dic['type']={'ESPRESSO':'spec2D'} 
     if gen_dic['star_name']=='V1298tau':gen_dic['type']={'HARPN':'CCF'} 
     if gen_dic['star_name']=='HIP41378':gen_dic['type']={'HARPN':'CCF'}  
@@ -815,6 +822,10 @@ if __name__ == '__main__':
     #Activating module
     gen_dic['mock_data'] =  True     #& False
 
+    #Setting number of threads 
+    if user=='mercier':
+        mock_dic['nthreads'] = 2 
+
     #Defining artificial visits
     if gen_dic['star_name'] == 'V1298tau' : 
         mock_dic['visit_def']={
@@ -823,9 +834,9 @@ if __name__ == '__main__':
                        }}
     elif gen_dic['star_name'] == 'HD209458' : 
         mock_dic['visit_def']={
-            # 'ESPRESSO':{'mock_vis' :{'exp_range':2454560.806755574+np.array([-3.5,3.5])/24.,'nexp':int(7.*60./20.)},   #ANTARESS I, mock, precisions
+            'ESPRESSO':{'mock_vis' :{'exp_range':2454560.806755574+np.array([-3.5,3.5])/24.,'nexp':int(7.*60./20.)},   #ANTARESS I, mock, precisions
             # 'ESPRESSO':{'mock_vis' :{'bin_low':2454560.806755574+np.array([-6.,0.])/24.,'bin_high':2454560.806755574+np.array([-6.+(5./60.),0.+(5./60.)])/24.},    #ANTARESS I, mock, multi-tr,tests
-            'ESPRESSO':{'mock_vis' :{'exp_range':2454560.806755574+np.array([-6.,6.])/24.,'nexp':int(12.*60./5.)},    #ANTARESS I, mock, multi-tr
+            # 'ESPRESSO':{'mock_vis' :{'exp_range':2454560.806755574+np.array([-6.,6.])/24.,'nexp':int(12.*60./5.)},    #ANTARESS I, mock, multi-tr
                        }}
     if gen_dic['star_name'] == 'WASP107' : 
         mock_dic['visit_def']={
@@ -842,8 +853,8 @@ if __name__ == '__main__':
     if gen_dic['star_name'] == 'V1298tau' : 
         mock_dic['DI_table']={'x_start':-150.,'x_end':150.,'dx':0.8}
     if gen_dic['star_name'] == 'HD209458' : 
-        # mock_dic['DI_table']={'x_start':-25.,'x_end':15.,'dx':0.1}   #ANTARESS I, mock, precisions
-        mock_dic['DI_table']={'x_start':5889.95094-0.75,'x_end':5889.95094+0.75,'dx':0.01}       #w(Na_air) = 5889.95094  ;ANTARESS I, mock, multi-tr
+        mock_dic['DI_table']={'x_start':-25.,'x_end':15.,'dx':0.1}   #ANTARESS I, mock, precisions
+        # mock_dic['DI_table']={'x_start':5889.95094-0.75,'x_end':5889.95094+0.75,'dx':0.01}       #w(Na_air) = 5889.95094  ;ANTARESS I, mock, multi-tr
     if gen_dic['star_name'] == 'WASP107' : 
         mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.8}
     if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
@@ -907,7 +918,7 @@ if __name__ == '__main__':
     #Count continuum level
     if gen_dic['star_name'] == 'HD209458' : 
         mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':100.}}
-        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e3}}   #ANTARESS I, mock, precisions  
+        #mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e3}}   #ANTARESS I, mock, precisions  
     if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
         mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':100}}      
             
@@ -936,7 +947,7 @@ if __name__ == '__main__':
                                                                 'resol'  : 1.01*np.ones(40)}}}        
             
             
-            
+    print(gen_dic['kepl_pl'], gen_dic['star_name'], gen_dic['transit_pl'])
             
             
 
@@ -7520,8 +7531,6 @@ if __name__ == '__main__':
                    'LD_u2':[0.219], #Ehrenreich+2020
                    'WASP76b':[0.10852]} #Ehrenreich+2020
             }
-   
-        
 
     if gen_dic['star_name']=='TOI858': 
         data_dic['DI']['system_prop']={  

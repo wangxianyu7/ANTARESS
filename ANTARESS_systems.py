@@ -2110,6 +2110,8 @@ all_system_params={
             'Rstar':0.75,                #+/- 0.03 #solar radii #Plavchan et al. 2020
             'Mstar':0.50,                #+/- 0.03 #solar mass #Plavchan et al. 2020
             'logg':4.39,                 #+/- 0.03 #computed from Plavchan et al. 2020 Rstar and Mstar values by Zicher et al. 2022
+            'veq':7.8,                   #+/- 0.3 #km/s #Klein et al. 2021
+            'istar':90,                  #unknown
         },
         'AUMicb':{
             'period':8.463000,           #+/- 0.000002 #days #Martioli et al. 2021
@@ -2131,6 +2133,7 @@ all_system_params={
             'Kstar':8.5,                 #+/- 2.5 #m/s #Zhicert et al. 2022
             'TLength':4.5/24,            #+/- 0.8 #days #Martioli et al. 2021
             'aRs':31.7,                  #+2.6 -2.7 #Rstsr #Gilbert et al. 2022
+            'lambda_proj':0.,            #unknown
 
         },
     },
