@@ -245,7 +245,7 @@ if __name__ == '__main__':
     # gen_dic['star_name']='WASP121'
     #gen_dic['star_name']='KELT9'
     # gen_dic['star_name']='WASP127' 
-    gen_dic['star_name']='HD209458' 
+    #gen_dic['star_name']='HD209458' 
     # gen_dic['star_name']='WASP76'        
     # gen_dic['star_name']='Corot7' 
     # gen_dic['star_name']='Nu2Lupi' 
@@ -284,7 +284,8 @@ if __name__ == '__main__':
     # gen_dic['star_name']='WASP43'
     # gen_dic['star_name']='L98_59'
     # gen_dic['star_name']='GJ1214' 
-    # gen_dic['star_name']='WASP189' # vaulato   
+    # gen_dic['star_name']='WASP189' # vaulato
+    gen_dic['star_name']='AUMic' # mercier  
     # user = 'vaulato'
 
 
@@ -812,7 +813,7 @@ if __name__ == '__main__':
 
 
     #Activating module
-    gen_dic['mock_data'] =  True     & False
+    gen_dic['mock_data'] =  True     #& False
 
     #Defining artificial visits
     if gen_dic['star_name'] == 'V1298tau' : 
@@ -830,6 +831,10 @@ if __name__ == '__main__':
         mock_dic['visit_def']={
             'HARPS':{'mock_vis' :{'exp_range':2458574.147242+np.array([-3.5,3.5])/24.,'nexp':50},
                        }}
+    if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
+        mock_dic['visit_def']={
+            'ESPRESSO':{'mock_vis':{'exp_range': 2458330.39051+np.array([-4,4])/24., 'nexp':50}
+                        }}
     
     #Spectral profile settings
     
@@ -841,6 +846,8 @@ if __name__ == '__main__':
         mock_dic['DI_table']={'x_start':5889.95094-0.75,'x_end':5889.95094+0.75,'dx':0.01}       #w(Na_air) = 5889.95094  ;ANTARESS I, mock, multi-tr
     if gen_dic['star_name'] == 'WASP107' : 
         mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.8}
+    if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
+        mock_dic['DI_table']={'x_start':-150.,'x_end':150.,'dx':0.01}
 
     
     #Heliocentric stellar RV
@@ -849,6 +856,8 @@ if __name__ == '__main__':
     if gen_dic['star_name'] == 'HD209458' :
         mock_dic['sysvel']={'ESPRESSO' : {'mock_vis' : 0.}}   #ANTARESS I, mock, precisions and multi-tr          
         # mock_dic['sysvel']={'ESPRESSO' : {'mock_vis' : 10.}} 
+    if user=='mercier' and gen_dic['star_name']=='AUMic':
+        mock_dic['sysvel']= {'ESPRESSO' : {'mock_vis' : 0.}}  
 
     
     
@@ -885,11 +894,22 @@ if __name__ == '__main__':
     elif gen_dic['star_name'] == 'WASP107' : 
          mock_dic['intr_prof']={'HARPS' :{'mode':'ana','coord_line':'mu','func_prof_name': 'gauss', 'line_trans':None,'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,'FWHM_ord0__IS__VS_'  : 4 },'pol_mode' : 'modul'}}         
 
+    if user=='mercier' and gen_dic['star_name'] == 'AUMic' : 
+        mock_dic['intr_prof']={'ESPRESSO':{'mode':'ana',        
+            'coord_line':'mu',
+            'func_prof_name': 'gauss', 
+            'line_trans':5889.95094,     #w(Na_air) = 5889.95094
+            'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,
+                        'FWHM_ord0__IS__VS_'  : 4 },
+            'pol_mode' : 'modul'}
+            }
+
     #Count continuum level
     if gen_dic['star_name'] == 'HD209458' : 
         mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':100.}}
         mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e3}}   #ANTARESS I, mock, precisions  
-            
+    if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
+        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':100}}      
             
      
     #Noise settings
@@ -899,7 +919,8 @@ if __name__ == '__main__':
         mock_dic['gcal'] = {'HARPN' : {'mock_vis'  : 20}}
     if gen_dic['star_name'] == 'HD209458' : 
         mock_dic['gcal'] = {'ESPRESSO' : {'mock_vis'  : 1.}}   #ANTARESS I, mock, precisions             
-            
+    if user=='mercier' and gen_dic['star_name'] == 'AUMic' : 
+        mock_dic['gcal'] = {'ESPRESSO' : {'mock_vis'  : 1.}}       
     
     #Jitter on intrinsic profile properties
     if gen_dic['star_name'] == 'V1298tau' : 
