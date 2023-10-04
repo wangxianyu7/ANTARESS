@@ -234,7 +234,7 @@ gen_dic['calc_all'] = True
 
 
 if __name__ == '__main__':
-    user = 'bourrier'
+    user = 'mercier'
 
     #Planetary system
     
@@ -437,7 +437,7 @@ if __name__ == '__main__':
     #Saves directory 
     gen_dic['save_dir']= '/Users/bourrier/Travaux/ANTARESS/En_cours/'  
     if user=='vaulato':gen_dic['save_dir']= '/Users/valentinavaulato/Documents/PhD/Works/ANTARESS/results/'  # vaulato
-    
+    if user=='mercier':gen_dic['save_dir']='/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/antaress_plots' # mercier
     
     #Plot settings    
     
