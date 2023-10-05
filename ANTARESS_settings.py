@@ -661,7 +661,7 @@ if __name__ == '__main__':
     #Data processing
 
     #Calculating/retrieving
-    gen_dic['calc_proc_data']=True   &   False
+    gen_dic['calc_proc_data']=True   #&   False
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','WASP107']:gen_dic['calc_proc_data']=True  & False
     if user=='vaulato' and gen_dic['star_name'] in ['WASP189']:gen_dic['calc_proc_data']=True #& False# vaulato
 
@@ -14614,6 +14614,7 @@ if __name__ == '__main__':
     '''
     Call to main function 
     '''
+    print(mock_dic['visit_def'])
     #Run over nominal settings properties
     if not gen_dic['grid_run']:
         ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,PropAtm_fit_dic,AtmProf_fit_dic, corr_spot_dic,all_system_params[gen_dic['star_name']])

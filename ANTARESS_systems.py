@@ -2129,7 +2129,7 @@ all_system_params={
             'TCenter':2458342.22231,     #+/- 0.00050 #days #Martioli et al. 2021
             'ecc':0.041,                 #+0.047 -0.026 #Zicher et al. 2022
             'omega_deg':153,             #+124 -94 #degrees #Zicher et al. 2022
-            'inclincation':89.39,        #+0.40 -0.28 #degrees #Gilbert et al. 2022
+            'inclination':89.39,        #+0.40 -0.28 #degrees #Gilbert et al. 2022
             'Kstar':8.5,                 #+/- 2.5 #m/s #Zhicert et al. 2022
             'TLength':4.5/24,            #+/- 0.8 #days #Martioli et al. 2021
             'aRs':31.7,                  #+2.6 -2.7 #Rstsr #Gilbert et al. 2022

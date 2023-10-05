@@ -10038,7 +10038,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
             if vis_par not in fixed_args['genpar_instvis'][root_par][inst_par]:fixed_args['genpar_instvis'][root_par][inst_par]+=[vis_par]                  
             root_par_list+=[root_par]            
             par_list+=[par]
-
+            print(par)
             #Parameter vary as polynomial of spatial stellar coordinate
             if ('_ord' in par):
                 gen_root_par = par.split('_ord')[0] 
@@ -10046,6 +10046,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
                 #Define parameter for current instrument and visit (if specified) or all instruments and visits (if undefined) 
                 if inst_par in fixed_args['inst_list']:inst_list = [inst_par]
                 elif inst_par=='_':inst_list = fixed_args['inst_list'] 
+                print(inst_list)
                 for inst_loc in inst_list:
                     if inst_loc not in fixed_args['coeff_ord2name']:fixed_args['coeff_ord2name'][inst_loc] = {}
                     if vis_par in fixed_args['inst_vis_list'][inst_loc]:vis_list = [vis_par]
@@ -10059,7 +10060,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
                             if inst_loc not in fixed_args['linevar_par']:fixed_args['linevar_par'][inst_loc]={}
                             if vis_loc not in fixed_args['linevar_par'][inst_loc]:fixed_args['linevar_par'][inst_loc][vis_loc]=[]
                             if gen_root_par not in fixed_args['linevar_par'][inst_loc][vis_loc]:fixed_args['linevar_par'][inst_loc][vis_loc]+=[gen_root_par]                     
-
+    print(fixed_args['linevar_par'])
     #Process parameters with dependence on instrument/visit
     for root_par in np.unique(root_par_list):
 
@@ -10957,7 +10958,7 @@ def init_st_intr_prof(args,grid_dic,param):
         inst_list = args['inst'] if ('inst' in args) else list(args['linevar_par'].keys())
         for inst in inst_list:
             vis_list = args['vis'] if ('vis' in args) else list(args['linevar_par'][inst].keys())
-            for vis in vis_list:           
+            for vis in vis_list:
                 for par_loc in args['linevar_par'][inst][vis]:     
                     args['coeff_line'][par_loc] = polycoeff_def(param,args['coeff_ord2name'][inst][vis][par_loc])
                     args['input_cell_all'][par_loc] = calc_polymodu(args['pol_mode'],args['coeff_line'][par_loc],grid_dic['linevar_coord_grid']) 
