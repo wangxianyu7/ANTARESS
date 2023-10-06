@@ -1,7 +1,3 @@
-"""
-ANTARESS : Advocating a Neat Technique for the Accurate Retrieval of Exoplanetary and Stellar Spectra
-"""
-
 from ANTARESS_routines import extract_intr_profiles,ana_prof,calc_plocc_prop,calc_spots_prop,def_plocc_profiles,calc_gcal,\
                                 rescale_data,extract_pl_profiles,CCF_from_spec,detrend_prof,ResIntr_CCF_from_spec,\
                                 init_prop,init_visit,update_data_inst,align_profiles,init_data_instru,extract_res_profiles,\
@@ -12,10 +8,23 @@ from ANTARESS_plots import ANTARESS_plot_functions
 from copy import deepcopy
 from utils import stop
 
-"""
-Main ANTARESS routines
-"""
+
 def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,PropAtm_fit_dic,AtmProf_fit_dic, corr_spot_dic,system_param):
+    """Main ANTARESS function.
+
+    Runs ANTARESS workflow. The pipeline is defined as modules than can be run independently. Each module takes as input the datasets produced by earlier modules, transforms or 
+    analyzes them, and saves the outputs to disk. This approach allows the user to re-run the pipeline from any module, which is useful when several flow 
+    options are available. It is even critical with large datasets such as the ones produced by ESPRESSO, which can take several hours to process with a 
+    given module. Finally, this approach also allows a user to retrieve data at any stage of the process flow for external use.
+
+    Parameters
+    ----------
+    TBD
+
+    Returns
+    -------
+    None
+    """
 
     print('****************************************')
     print('Launching ANTARESS')
@@ -125,7 +134,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Extracting intrinsic stellar profiles
             if gen_dic['intr_data']:
                 extract_intr_profiles(data_dic,gen_dic,inst,vis,system_param['star'],coord_dic,theo_dic,plot_dic)
-                
+          
             #Converting out-of-transit residual and intrinsic spectra into CCFs
             if gen_dic[data_type_gen+'_CCF']:
                 ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)

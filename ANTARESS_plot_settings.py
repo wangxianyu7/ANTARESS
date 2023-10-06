@@ -307,6 +307,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
         #Choice of orders to plot
         #    - leave empty to plot all orders
+        
+        plot_settings[key_plot]['orders_to_plot']=[] #vaulato
+        
         plot_settings[key_plot]['orders_to_plot']=[10,11,12,13]
         plot_settings[key_plot]['orders_to_plot']=[0,1,2,3]
         if gen_dic['studied_pl']==['HD3167_b']:
@@ -330,6 +333,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         if gen_dic['star_name']=='WASP76':
             plot_settings[key_plot]['y_range']=[2e5,3.1e6]   #ANTARESS I    V1, vis-masters, all spec
             plot_settings[key_plot]['y_range']=[3e5,1.7e6]   #ANTARESS I    V2, vis-masters, all spec
+        if gen_dic['star_name']=='WASP189': #vaulato
+            plot_settings[key_plot]['y_range']=[-2e0,2e6]   
+            #plot_settings[key_plot]['y_range']=[3e5,1.7e6] 
             
         #Colors
         if gen_dic['studied_pl']==['HD3167_b']:
@@ -387,7 +393,12 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['gap_exp'] = 0.5 
         elif gen_dic['star_name']=='HD29291':   
             plot_settings[key_plot]['gap_exp'] = 0.05     
-    
+        
+        
+        elif gen_dic['star_name']=='WASP189':    #vaulato
+            plot_settings[key_plot]['gap_exp'] = 0.  
+        
+        
         #Colors
         # if gen_dic['studied_pl']=='WASP76b':
         #     plot_settings[key_plot]['color_dic']={'2018-10-31':'dodgerblue','2018-09-03':'red'}      
@@ -599,6 +610,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # # if gen_dic['star_name']=='WASP107':
         # #     plot_settings[key_plot]['iexp_plot']={'CARMENES_VIS':{'20180224':[10]}}  
 
+
+        if gen_dic['star_name']=='WASP189': #vaulato
+            plot_settings[key_plot]['iexp_plot']={'NIRPS_HE ':{'20230604':list(range(3,111))}}
+
         #Choice of orders to plot
         #    - leave empty to plot all orders 
         # if gen_dic['star_name']=='WASP76':
@@ -803,6 +818,12 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # + 'fbal' : after flux balance correction 
         # + 'cosm' : after cosmics correction  
         # + 'permpeak' : after persistent peak correction 
+        
+        
+        if gen_dic['star_name']=='WASP189': # vaulato # To plot before/after global correction
+            plot_settings[key_plot]['plot_pre']='raw'     
+            plot_settings[key_plot]['plot_post']='fbal'
+        
         if gen_dic['star_name']=='WASP76':    
             plot_settings[key_plot]['color_dic']={'ESPRESSO':{'20180902':'red','20181030':'red'}} 
             plot_settings[key_plot]['color_dic_sec']={'ESPRESSO':{'20180902':'dodgerblue','20181030':'dodgerblue'}}            
@@ -2406,48 +2427,48 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         #    + 'TILT1 VAL1','TILT1 VAL2','TILT2 VAL1','TILT2 VAL2': ESPRESSO piezo intel
         #    + 'EW': equivalent width
         #    + 'biss_span': bissector span
-        plot_settings['prop_ordin']=['rv','FWHM','ctrst','AM', 'snr','rv_res','RVdrift']
-        plot_settings['prop_ordin']=['rv','rv_res','FWHM','ctrst','rv_pip','rv_pip_res','FWHM_pip','ctrst_pip']
-        plot_settings['prop_ordin']=['AM', 'snr']        
-        # plot_settings['prop_ordin']=['AM', 'snr_quad','seeing','ha','na','ca','s','rhk']  #ESPRESSO
-        # plot_settings['prop_ordin']=['AM', 'snr','seeing','ha','na','ca','s']    #HARPS
-        # plot_settings['prop_ordin']=['AM', 'snr','ha','na','ca','s']    #HARPS-N
-        plot_settings['prop_ordin']=['rv','rv_res','FWHM','ctrst']
-        # plot_settings['prop_ordin']+=['rv_pip']
-        # plot_settings['prop_ordin']=['rv_pip','rv_pip_res','FWHM_pip','ctrst_pip']
-        # plot_settings['prop_ordin']=['rv_res','FWHM','ctrst']
-        # plot_settings['prop_ordin']=['biss_span']
-        # plot_settings['prop_ordin']=['rv_res','FWHM_voigt','ctrst']
-        # plot_settings['prop_ordin']=['rv_res','ctrst']
-        # plot_settings['prop_ordin']=['ctrst','FWHM']
-        # plot_settings['prop_ordin']=['rv','rv_res','vsini','cont','ctrst_ord0__IS__VS_','FWHM_ord0__IS__VS_']
-        # plot_settings['prop_ordin']=['rv_res','FWHM','ctrst']
-        # plot_settings['prop_ordin']=['rv_l2c','FWHM_l2c','amp_l2c']
-        # plot_settings['prop_ordin']=['rv','rv_res','rv_pip','rv_pip_res']  
-        # plot_settings['prop_ordin']=['snr']
-        # plot_settings['prop_ordin']=['rv'] 
-        # plot_settings['prop_ordin']=['ctrst'] 
-        # plot_settings['prop_ordin']=['rv_res'] 
-        # plot_settings['prop_ordin'] = ['colcorrmin','colcorrmax']
-        # plot_settings['prop_ordin'] += ['snr','AM']        
-        # plot_settings['prop_ordin'] += ['seeing']     
-        # plot_settings['prop_ordin'] += ['satur_check']
-    #    plot_settings['prop_ordin']=['colcorr450','colcorr550','colcorr650']  
-#        plot_settings['prop_ordin']=['rv_res','rv_l2c','FWHM_l2c','amp_l2c']     
-#        plot_settings['prop_ordin']=['rv_res','FWHM_l2c','amp_l2c']  
-#        plot_settings['prop_ordin']=['rv','RV_lobe','amp','amp_lobe','FWHM','FWHM_lobe']          
-        # plot_settings['prop_ordin']=['wig_p_0', 'wig_p_1', 'wig_wref', 'wig_a_0', 'wig_a_1', 'wig_a_2', 'wig_a_3', 'wig_a_4']
-        # plot_settings['prop_ordin']=['rv_res']
-        # plot_settings['prop_ordin']=['AM']        
-        # plot_settings['prop_ordin']+=['az']  
-        # plot_settings['prop_ordin']=['ha','na']  
-        # plot_settings['prop_ordin']=['ADC1 POS','ADC1 RA','ADC1 DEC','ADC2 POS','ADC2 RA','ADC2 DEC']
-        # plot_settings['prop_ordin']=['TILT1 VAL1','TILT1 VAL2','TILT2 VAL1','TILT2 VAL2']        
+        plot_settings['prop_raw_ordin']=['rv','FWHM','ctrst','AM', 'snr','rv_res','RVdrift']
+        plot_settings['prop_raw_ordin']=['rv','rv_res','FWHM','ctrst','rv_pip','rv_pip_res','FWHM_pip','ctrst_pip']
+        plot_settings['prop_raw_ordin']=['AM', 'snr']        
+        # plot_settings['prop_raw_ordin']=['AM', 'snr_quad','seeing','ha','na','ca','s','rhk']  #ESPRESSO
+        # plot_settings['prop_raw_ordin']=['AM', 'snr','seeing','ha','na','ca','s']    #HARPS
+        # plot_settings['prop_raw_ordin']=['AM', 'snr','ha','na','ca','s']    #HARPS-N
+        plot_settings['prop_raw_ordin']=['rv','rv_res','FWHM','ctrst']
+        # plot_settings['prop_raw_ordin']+=['rv_pip']
+        # plot_settings['prop_raw_ordin']=['rv_pip','rv_pip_res','FWHM_pip','ctrst_pip']
+        # plot_settings['prop_raw_ordin']=['rv_res','FWHM','ctrst']
+        # plot_settings['prop_raw_ordin']=['biss_span']
+        # plot_settings['prop_raw_ordin']=['rv_res','FWHM_voigt','ctrst']
+        # plot_settings['prop_raw_ordin']=['rv_res','ctrst']
+        # plot_settings['prop_raw_ordin']=['ctrst','FWHM']
+        # plot_settings['prop_raw_ordin']=['rv','rv_res','vsini','cont','ctrst_ord0__IS__VS_','FWHM_ord0__IS__VS_']
+        # plot_settings['prop_raw_ordin']=['rv_res','FWHM','ctrst']
+        # plot_settings['prop_raw_ordin']=['rv_l2c','FWHM_l2c','amp_l2c']
+        # plot_settings['prop_raw_ordin']=['rv','rv_res','rv_pip','rv_pip_res']  
+        plot_settings['prop_raw_ordin']=['snr'] #vaulato
+        # plot_settings['prop_raw_ordin']=['rv'] 
+        # plot_settings['prop_raw_ordin']=['ctrst'] 
+        # plot_settings['prop_raw_ordin']=['rv_res'] 
+        # plot_settings['prop_raw_ordin'] = ['colcorrmin','colcorrmax']
+        # plot_settings['prop_raw_ordin'] += ['snr','AM']        
+        plot_settings['prop_raw_ordin'] += ['seeing']   #vaulato  
+        # plot_settings['prop_raw_ordin'] += ['satur_check']
+    #    plot_settings['prop_raw_ordin']=['colcorr450','colcorr550','colcorr650']  
+#        plot_settings['prop_raw_ordin']=['rv_res','rv_l2c','FWHM_l2c','amp_l2c']     
+#        plot_settings['prop_raw_ordin']=['rv_res','FWHM_l2c','amp_l2c']  
+#        plot_settings['prop_raw_ordin']=['rv','RV_lobe','amp','amp_lobe','FWHM','FWHM_lobe']          
+        # plot_settings['prop_raw_ordin']=['wig_p_0', 'wig_p_1', 'wig_wref', 'wig_a_0', 'wig_a_1', 'wig_a_2', 'wig_a_3', 'wig_a_4']
+        # plot_settings['prop_raw_ordin']=['rv_res']
+        # plot_settings['prop_raw_ordin']=['AM']        
+        # plot_settings['prop_raw_ordin']+=['az']  
+        # plot_settings['prop_raw_ordin']=['ha','na']  
+        # plot_settings['prop_raw_ordin']=['ADC1 POS','ADC1 RA','ADC1 DEC','ADC2 POS','ADC2 RA','ADC2 DEC']
+        # plot_settings['prop_raw_ordin']=['TILT1 VAL1','TILT1 VAL2','TILT2 VAL1','TILT2 VAL2']        
         
 
 
         #Settings for selected properties
-        for plot_prop in plot_settings['prop_ordin']:
+        for plot_prop in plot_settings['prop_raw_ordin']:
             key_plot = 'prop_'+plot_prop 
             plot_settings[key_plot]={} 
 
@@ -2480,6 +2501,12 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
             #Visits to plot
             plot_settings[key_plot]['visits_to_plot']={}
+            
+            
+            if gen_dic['star_name']=='WASP189': #vaulato
+                plot_settings[key_plot]['visits_to_plot'].update({'NIRPS_HE':['20230604']} ) 
+            
+            
             if gen_dic['star_name']=='55Cnc':
                 plot_settings[key_plot]['visits_to_plot'].update({'ESPRESSO':['20200205','20210121','20210124']} )
                 # plot_settings[key_plot]['visits_to_plot']['ESPRESSO']+=['binned']
@@ -6700,18 +6727,18 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # + 'rv_l2c': RV(lobe)-RV(core) of double gaussian components
         # + 'FWHM_l2c': FWHM(lobe)/FWHM(core) of double gaussian components
         # + 'amp_l2c': contrast(lobe)/contrast(core) of double gaussian components
-        plot_settings['prop_ordin']=['rv','rv_res','FWHM','ctrst'] 
-        # plot_settings['prop_ordin']=['rv','FWHM','ctrst']  
-        # plot_settings['prop_ordin']=['ctrst']
-        # plot_settings['prop_ordin']=['rv']
-        # plot_settings['prop_ordin']=['FWHM']
-        # plot_settings['prop_ordin']=['ctrst','FWHM']
-        # plot_settings['prop_ordin']=['rv','rv_res']
-        # plot_settings['prop_ordin']=['rv_l2c','FWHM_l2c','amp_l2c'] 
-        # plot_settings['prop_ordin']=['rv','true_FWHM','true_ctrst'] 
+        plot_settings['prop_Intr_ordin']=['rv','rv_res','FWHM','ctrst'] 
+        # plot_settings['prop_Intr_ordin']=['rv','FWHM','ctrst']  
+        # plot_settings['prop_Intr_ordin']=['ctrst']
+        # plot_settings['prop_Intr_ordin']=['rv']
+        # plot_settings['prop_Intr_ordin']=['FWHM']
+        # plot_settings['prop_Intr_ordin']=['ctrst','FWHM']
+        # plot_settings['prop_Intr_ordin']=['rv','rv_res']
+        # plot_settings['prop_Intr_ordin']=['rv_l2c','FWHM_l2c','amp_l2c'] 
+        # plot_settings['prop_Intr_ordin']=['rv','true_FWHM','true_ctrst'] 
 
         #Settings for selected properties
-        for plot_prop in plot_settings['prop_ordin']:
+        for plot_prop in plot_settings['prop_Intr_ordin']:
             key_plot = 'prop_'+plot_prop 
             plot_settings[key_plot]={} 
 

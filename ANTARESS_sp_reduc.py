@@ -25,14 +25,25 @@ from constant_data import N_avo,c_light_m,k_boltz,h_planck
 from pathos.multiprocessing import Pool
 import scipy.linalg
 
-
-
-'''
-Reduction of spectral data
-    - plots are deactivated if corrections are not required
-    - every time data is corrected in a module the path to the 'processed' data is updated, so that later modules will use the most corrected data 
-'''
 def red_sp_data_instru(inst,data_dic,plot_dic,gen_dic,data_prop,coord_dic,system_param):
+    """Correction sequence for spectral data
+    
+    Calls the successive modules correcting spectra for environmental/instrumental effects
+    All datasets from a given instrument are processed together, as some corrections benefit from combining several visits, and from using the full range of the input data. 
+    After the correction sequence, spectra can be trimmed to a chosen set of spectral orders and/or spectral bands if the subsequent analysis focuses on a specific region. 
+    
+    Parameters
+    ----------
+    TBD
+    
+    Returns
+    -------
+    None
+    
+    """
+    #Information
+    #    - plots are deactivated if corrections are not required 
+    #    - every time data is corrected in a module the path to the 'processed' data is updated, so that later modules will use the most corrected data
     data_inst=data_dic[inst]
 
     #Save path to uncorrected data
@@ -82,14 +93,23 @@ def red_sp_data_instru(inst,data_dic,plot_dic,gen_dic,data_prop,coord_dic,system
 Tellurics correction
 '''
 
+def voigt_em(x, HWHM=0.5, gamma=1., center=0.):
+    """Emission Voigt.
 
+    Returns Voigt profile in emission.
 
-
-
-'''
-Voigt in emission 
-'''
-def voigt_em(x, HWHM=0.5, gamma=1, center=0):
+    Parameters
+    ----------
+    :x (array): Spectral table over which Voigt is computed.
+    :HWHM (float): HWHM of the Voigt, defaults to 0.5
+    :gamma (float): Damping coefficient of the Voigt, defaults to 1.   
+    :center (float): Central value of the Voigt over x, defaults to 0.
+    
+    Returns
+    -------
+    :V (array): Voigt profile.
+    
+    """
     sigma = HWHM / np.sqrt(2.*np.log(2))
     z = (x - center + 1j * gamma) / (sigma * np.sqrt(2.))
     V = special.wofz(z).real / (np.sqrt(2. * np.pi) * sigma)
@@ -97,10 +117,22 @@ def voigt_em(x, HWHM=0.5, gamma=1, center=0):
 
  
 
-"""
-Open static resolution map. It depends on the instrumental mode of the science frame and on the epoch where it was acquired ==> technical intervention
-"""
 def open_resolution_map(instrument,time_science,ins_mod,bin_x):
+    """Retrieve static resolution map
+    
+    The map depends on the instrumental mode of the science frame and on the epoch where it was acquired ==> technical intervention
+    
+    Adapted from the ATC code (author: R. Allart)
+    
+    Parameters
+    ----------
+    TBD
+    
+    Returns
+    -------
+    :resolution_map (2D array): Resolution map per order and pixel.
+    
+    """
     if instrument =='ESPRESSO':
         if ins_mod == 'SINGLEUHR':
             if time_science < 58421.5:
@@ -319,12 +351,16 @@ def var_convol_tell_sp_slow(telluric_spectrum,nbins,nbins_mod,cen_bins,cen_bins_
     return telluric_spectrum_conv
 
 def var_convol_tell_sp(telluric_spectrum,edge_bins_ord,edge_bins_mod,resolution_map_ord,nbins_mod,cen_bins_mod):
- 
+
     #Resample resolution map on spectrum table
     res_map = bind.resampling(edge_bins_mod, edge_bins_ord,resolution_map_ord, kind='cubic')
     idx_def = np_where1D(~np.isnan(res_map))
     if idx_def[0]>0:res_map[0:idx_def[0]]=res_map[idx_def[0]]
     if idx_def[-1]<nbins_mod:res_map[idx_def[-1]+1:nbins_mod]=res_map[idx_def[-1]]
+    
+    #Fill in internal nan ranges
+    mask = np.isnan(res_map)
+    if True in mask:res_map[mask] = np.interp(np.flatnonzero(mask), np.flatnonzero(~mask), res_map[~mask])
 
     #Measured instrumental response (FWHM = c/R) at each model wavelength
     fwhm_c = 1./res_map
@@ -690,6 +726,7 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
         fixed_args['ccf_corr'] = True
         fixed_args['flux_corr'] = corr_flux_exp
         for molec in tell_species:
+            fixed_args['M_mol_molec'] = {molec:tell_mol_dic['M_mol_molec'][molec]}
             fixed_args['molec'] = molec
             fixed_args['range_mol_prop'] = {molec:tell_mol_dic['fit_range_mol_prop'][molec]}
             fixed_args['lines_fit'] = tell_mol_dic['lines_fit_molecules'][molec]
@@ -832,7 +869,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
                     print('         Using constant resolution for instrumental response ')
                     fixed_args['fixed_res'] = True
                     fixed_args['resolution_map'] = return_FWHM_inst
-                    
+
                 #Overwrite fit properties
                 if (inst in gen_dic['tell_mod_prop']) and (vis in gen_dic['tell_mod_prop'][inst]):fixed_args['tell_mod_prop'] = gen_dic['tell_mod_prop'][inst][vis]
                 else:fixed_args['tell_mod_prop']={}
@@ -964,7 +1001,7 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
 
         #Common instrument table, defined in input rest frame
         #    - used to define masters (if a single visit is processed this table will match the visit-specific common table)
-        data_com_inst = np.load(data_inst['proc_com_data_path']+'.npz',allow_pickle=True)['data'].item() 
+        data_com_inst = dataload_npz(data_inst['proc_com_data_path']) 
         wav_Mstar = data_com_inst['cen_bins']
         edge_wav_Mstar = data_com_inst['edge_bins']  
         dim_exp_mast = data_inst['dim_exp']
@@ -1042,7 +1079,7 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
 
             #Saving visit-specific master
             if (plot_dic['glob_mast']!='') or (gen_dic[inst]['n_visits']>1):
-                np.savez_compressed(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_meas',data = {'cen_bins':wav_Mstar,'flux':Mstar_vis_all[ivisit] ,'cond_def':cond_def_Mstar_vis,'proc_DI_data_paths':data_vis['proc_DI_data_paths']},allow_pickle=True) 
+                np.savez_compressed(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_meas',data = {'cen_bins':wav_Mstar,'flux':Mstar_vis_all[ivisit] ,'cond_def':cond_def_Mstar_vis,'proc_DI_data_paths':data_vis['proc_DI_data_paths'],'rv_shifts':rv_shifts},allow_pickle=True) 
 
             #-------------------------------------------------------------------------------------------
 
@@ -1716,7 +1753,7 @@ def corr_Ftemp(inst,gen_dic,data_inst,plot_dic,data_prop,coord_dic,data_dic):
                 
                 #Latest processed DI data
                 #    - if data were kept on independent tables they need to be resampled on a common one to calculate equivalent fluxes
-                data_exp = np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item()  
+                data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))  
                 if (not data_vis['comm_sp_tab']):
                     for iord in range(data_inst['nord']): 
                         flux_all[iexp,iord],cov_temp = bind.resampling(edge_bins_com[iord], data_exp['edge_bins'][iord], data_exp['flux'][iord]  , cov = data_exp['cov'][iord], kind=gen_dic['resamp_mode'])                                                                                                               
@@ -2281,7 +2318,7 @@ Correcting for ESPRESSO wiggles
     - wiggles are processed in wave_number space nu_ana = c[m s-1]/w[A]
       we use nu_ana because it is on the order of 10, with nu[s-1] = 1e10 nu_ana 
       periodogram frequencies Fnu_ana corresponds to wiggle periods Pnu[s-1] = 1e10 Pnu_ana = 1e10 / Fnu_ana, with Fnu[s] = 1e-10 Fnu_ana 
-      the corresponding period in wavelength space is Pw[A] = c[A s-1]*Pnu[s-1]/nu[s-1]^2 = c[A s-1]/(Fnu[s-1]*nu[s-1]^2) = c[m s-1]/(Fnu_ana*nu_ana^2)
+      the corresponding period in wavelength space is Pw[A] = c[A s-1]*Pnu[s-1]/nu[s-1]^2 = c[A s-1]/(Fnu[s-1]*nu[s-1]^2) = c[m s-1]/(Fnu_ana*nu_ana^2) = w[A]^2/(Fnu_ana*c[m s-1])
     - at this stage spectra can be written as (see rescale_data())
  Fcorr(w,t,v) = Fstar(w,v)*Cref(w,v)*L(t)*W(w,t,v)
       where W(w,t) represents the wiggles and we can ignore Cref(w,v) and L(t) as they will be removed when normalizing Fcorr(w,t,v) by the visit master

@@ -29,12 +29,25 @@ from numpy.polynomial import Polynomial
 #General values
 ##########################
 
-
-"""
-Names of all possible model parameters
-    - used in plots
-"""
 def model_par_names():
+    """Naming function.
+
+    Returns dictionary associating plain name to variable.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    dict
+        Dictionary of names
+
+    Examples
+    --------
+    >>> model_par_names()[x]
+    x_name
+    """
 
     return {
         'veq':'v$_\mathrm{eq}$ (km s$^{-1}$)','vsini':'v$_\mathrm{eq}$sin i$_{*}$ (km/s)',
@@ -66,10 +79,24 @@ def model_par_names():
         'Tcenter' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'flux' : 'F$_{sp}$'
         }  
 
-'''
-Parameter conversion routines
-'''
+
 def conv_cosistar(modif_list,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in):
+    """Parameter conversion function.
+
+    Converts results from chi^2 or mcmc fitting. 
+
+    Parameters
+    ----------
+    TBD
+
+    Returns
+    -------
+    TBD
+
+    Examples
+    --------
+    TBD
+    """    
     if 'cos_istar' in fixed_args_in['var_par_list']:                    
         iistar=np_where1D(fixed_args_in['var_par_list']=='cos_istar')                    
         if fit_dic_in['fit_mod']=='chi2':                     
@@ -171,22 +198,26 @@ def conv_CF_intr_meas(modif_list,inst_list,inst_vis_list,fixed_args,merged_chain
 
 
 
-"""Compute the refraction index n of the air (n_vacuum=1.)
-From C.Lovis in wavelength_calibration.py
 
-wl_air = wl_vacuum/n
-
-keyword argument:
-l -- the wavelength in Angström
-t -- air temperature in Celsius
-p -- air pressure in millimeter of mercury
-
-called in:
-    -phys.read_model
-
-"""
 def air_index(l, t=15., p=760.):
-
+    """Compute the refraction index n of the air 
+    
+    Author: C.Lovis
+    
+    wl_air = wl_vacuum/n
+    n_vacuum=1.
+    
+    Parameters
+    ----------
+    :l (float, array): Wavelength in Angström
+    :t (float, array): Air temperature in Celsius
+    :p (float, array): Air pressure in millimeter of mercury
+    
+    Returns
+    -------
+    :n (float, array): Refraction index.
+    
+    """
     n = 1e-6 * p * (1 + (1.049-0.0157*t)*1e-6*p) / 720.883 / (1 + 0.003661*t) * (64.328 + 29498.1/(146-(1e4/l)**2) + 255.4/(41-(1e4/l)**2))
     n = n + 1
     return n
@@ -206,19 +237,17 @@ def default_func(*x):return np.array([1.])
 '''
 Function to check that pipeline data is saved on disk
 '''
-def check_data(file_paths,vis=None):
+def check_data(file_paths,vis=None,silent=False):
     check_flag = True
     suff = '' if vis is None else ' for '+vis
     for key in file_paths:
-        check_flag&=(Path(file_paths[key]+'.npz').is_file())    
-    if check_flag:print('         Retrieving data'+suff) 
+        check_flag&=(Path(file_paths[key]+'.npz').is_file()) 
+    if check_flag:
+        if ~silent:print('         Retrieving data'+suff) 
     else:
         print('         Data not available'+suff)
-        stop()    
+        stop()            
     return None
-
-
-
 
 
 
@@ -599,6 +628,14 @@ def init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_
         gen_dic['corr_data'] = False
         for key in sp_corr_list: gen_dic['corr_data'] |=gen_dic[key]
 
+    #Deactivate plot if module is not called
+    if (plot_dic['glob_mast']!='') and gen_dic['glob_mast']:
+        plot_dic['glob_mast']==''
+        print('Disabling "glob_mast" plot')
+    if (plot_dic['Fbal_corr_vis']!='') and (~gen_dic['corr_Fbal'] or gen_dic['Fbal_vis'] is None):        
+        plot_dic['Fbal_corr_vis']==''
+        print('Disabling "Fbal_corr_vis" plot')        
+
     #Set general condition for CCF conversions
     gen_dic['CCF_from_sp'] = gen_dic['DI_CCF'] | gen_dic['Intr_CCF'] | gen_dic['Atm_CCF']
     if gen_dic['CCF_from_sp']:gen_dic['ccfINtype'] = True
@@ -820,7 +857,11 @@ def init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_
                 # Ms = 4*pi^2*a^3/(G*P^2)
                 PlParam_loc['Mstar_orb'] = 4.*np.pi**2.*(PlParam_loc['a']*AU_1*1e3)**3./(Msun*G_usi*PlParam_loc['period_s']**2.)
 
-        if pl_loc in gen_dic['studied_pl']:PlParam_loc['lambda_rad']=PlParam_loc['lambda_proj']*np.pi/180.
+        if pl_loc in gen_dic['studied_pl']:
+            PlParam_loc['lambda_rad']=PlParam_loc['lambda_proj']*np.pi/180.
+
+            PlParam_loc['b']=PlParam_loc['aRs']*np.cos(PlParam_loc['inclin_rad'])   
+            if PlParam_loc['b']>1.:print('WARNING: impact parameter for ',pl_loc,' > 1')
 
         #Calculation of transit center (or time of cunjunction for a non-transiting planet)
         #    - when T0 is not given but Tperiastron is known
@@ -1573,7 +1614,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
         gen_dic['CCF_mask_wgt'][inst]=gen_dic['CCF_mask_wgt'][inst]**2.
 
     #Resampling exposures of a given visit on a common table or not
-    #    - imposed for CCFs
+    #    - CCFs will be resampled on a common RV table, as we consider they should only be used for preliminary analysis
     if gen_dic['type'][inst]=='CCF':gen_dic['comm_sp_tab'][inst]=True
     elif (inst not in gen_dic['comm_sp_tab']):gen_dic['comm_sp_tab'][inst]=False
     if (not gen_dic['comm_sp_tab'][inst]):print('   > Data processed on individual spectral tables for each exposure')      
@@ -2059,6 +2100,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                                 velccf = start_rv+delta_rv*np.arange(n_vel_vis)  
 
                                 #Screening
+                                #    - check for oversampling, screening the profiles so that they are defined over uncorrelated points with a resolution similar to the instrumental pixel width.
                                 #    - CCFs are screened (ie, keeping one point every specified length) with a length defined as input, or the instrumental bin length 
                                 #      the goal is to keep only uncorrelated points, on which we can measure the dispersion as a white noise error 
                                 #    - we remove scr_lgth-1 points between two kept points, ie we keep one point in scr_lgth+1
@@ -2519,6 +2561,8 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                             data_prop[inst][vis]['seeing'][iexp]=np.mean(data_prop[inst][vis]['seeing_UT'][iexp])                            
                         elif inst=='ESPRESSO':
                             data_prop[inst][vis]['seeing'][iexp]=hdr['HIERARCH ESO TEL'+tel_inst+' IA FWHM']      #seeing corrected for airmass                 
+                        elif inst in ['NIRPS_HA','NIRPS_HE']:
+                            data_prop[inst][vis]['seeing'][iexp]=hdr['HIERARCH ESO INS2 AOS ATM SEEING']        
             
                         #Shape of PSF
                         #      first and second values: size in X and Y
@@ -2781,7 +2825,10 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                                 #Resampling input telluric spectrum
                                 if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):
                                     data_dic_temp['tell'][iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['tell'][iexp,iord], kind=gen_dic['resamp_mode'])         
-                                  
+
+                        #Overwrite exposure tables
+                        data_dic_temp['cen_bins'][:] = deepcopy(data_com['cen_bins'])
+                        data_dic_temp['edge_bins'][:] = deepcopy(data_com['edge_bins'])                                    
                         data_dic_temp['cond_def'] = ~np.isnan(data_dic_temp['flux'])
                         
                         #Set flag that all exposures in the visit are now defined on a common table
@@ -3094,7 +3141,7 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic):
         for vis in data_dic[inst]['visit_list']:
             print('           Processing '+vis) 
             data_vis=data_dic[inst][vis]
-            data_com_vis = np.load(data_vis['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item()
+            data_com_vis = dataload_npz(data_vis['proc_com_data_paths'])
             data_gain_all={}
 
             #Estimate of instrumental calibration
@@ -3128,7 +3175,7 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic):
                         flux_group = np.zeros(0,dtype=float)
                         var_group = np.zeros(0,dtype=float)
                         for iexp in iexp_in_group:
-                            if iexp not in data_all_temp:data_all_temp[iexp] = np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item()
+                            if iexp not in data_all_temp:data_all_temp[iexp] = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))
                       
                             #Defined bins
                             #    - we further exclude ranges that were found to display abnormal calibration estimates
@@ -3807,7 +3854,12 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
             np.savez_compressed(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff),data=data_exp,allow_pickle=True)  
 
     #Updating/correcting continuum level          
-    data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
+    if data_dic['Intr']['calc_cont']:           
+        data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
+        np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont']},allow_pickle=True)
+    else:
+        check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)
+        data_dic['Intr'][inst][vis]['mean_cont'] = dataload_npz(data_vis['proc_Intr_data_paths']+'_add')
 
     #Determine the correlation length for the visit
     if gen_dic['scr_search']:
@@ -6320,8 +6372,13 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
     #      continuum is only calculated for spectral data if not converted later on (in which case continuum is calculated later on)
     #    - if applied to intrinsic profiles derived from CCF data, planetary ranges have been excluded if requested
     #      for spectral data the full order range is taken as continuum
-    if (data_vis['type']=='CCF') or (('spec' in data_vis['type']) and ((not gen_dic['Intr_CCF']) and (not gen_dic['spec_1D_Intr']))):           
-        data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
+    if (data_vis['type']=='CCF') or (('spec' in data_vis['type']) and ((not gen_dic['Intr_CCF']) and (not gen_dic['spec_1D_Intr']))):
+        if data_dic['Intr']['calc_cont']:           
+            data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
+            np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont']},allow_pickle=True)
+        else:
+            check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)
+            data_dic['Intr'][inst][vis]['mean_cont'] = dataload_npz(data_vis['proc_Intr_data_paths']+'_add')
 
     return None
 
@@ -7571,10 +7628,9 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
     #Identifier for saved file
     if mode=='multivis':vis_save = 'binned'      
     else:vis_save = vis_in 
-
+    prop_dic = deepcopy(data_dic[data_type_gen]) 
     if data_type_gen=='DI':   
         data_type='DI'
-        prop_dic = deepcopy(data_dic['DI']) 
 
         #Set default binning properties to calculate master
         #    - if undefined, or if a single master is requested (overwrites settings in this case, and always calculated for a single visit)
@@ -7588,8 +7644,6 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         #    - for the purpose of weighing we calculate a single master on the common spectral table of the visit, rather than recalculate the master for every weighing profile
         #      we assume the blurring that will be introduced by the resampling of this master on the table of each exposure is negligible in the weighing process
         if masterDI:
-            calc_check=gen_dic['calc_DImast']
-            print('   > Calculating master stellar spectrum')  
             if (data_dic['DI'][inst][vis_in]['rest_frame']!='star') and (data_dic['DI']['sysvel'][inst][vis_in]!=0.):print('WARNING: disk-integrated profiles must be aligned')
             prop_dic['idx_in_bin']=gen_dic['DImast_idx_in_bin']
        
@@ -7597,23 +7651,21 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #    - the paths return to the single master common to all exposures, and for now defined on the same table
             data_dic[inst][vis_in]['mast_'+data_type+'_data_paths'] = {iexp:gen_dic['save_data_dir']+data_type+'_data/Master/'+inst+'_'+vis_in+'_phase' for iexp in range(data_dic[inst][vis_in]['n_in_visit'])}
             save_pref = gen_dic['save_data_dir']+data_type+'_data/Master/'+inst+'_'+vis_in+'_phase'
-        else:
-            print('   > Binning disk-integrated profiles over '+prop_dic['dim_bin']) 
 
     elif data_type_gen=='Intr':
         data_type='Intr'
-        prop_dic = deepcopy(data_dic['Intr'])
-        print('   > Binning intrinsic profiles over '+prop_dic['dim_bin'])
     elif data_type_gen == 'Atm':
-        data_type = data_dic['Atm']['pl_atm_sign']
-        prop_dic = deepcopy(data_dic['Atm'])
-        print('   > Binning atmospheric profiles over '+prop_dic['dim_bin'])       
+        data_type = data_dic['Atm']['pl_atm_sign']     
     if not masterDI:
+        print('   > Binning '+gen_dic['type_name'][data_type_gen]+' profiles over '+prop_dic['dim_bin'])
         calc_check=gen_dic['calc_'+data_type_gen+'bin'+mode]
         if mode=='multivis':prop_dic[inst]['binned']={} 
         save_pref = gen_dic['save_data_dir']+data_type_gen+'bin_data/'
         if data_type_gen=='Atm':save_pref+=data_dic['Atm']['pl_atm_sign']+'/'
         save_pref+=inst+'_'+vis_save+'_'+prop_dic['dim_bin']
+    else:
+        print('   > Calculating master stellar spectrum') 
+        calc_check=gen_dic['calc_DImast'] 
 
     if (calc_check):
         print('         Calculating data') 
@@ -7700,7 +7752,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             vis_bin = idx_bin2vis[iexp_off]            
             data_glob_new['vis_iexp_in_bin'][vis_bin][iexp]={}
             if (data_type not in ['Intr','Absorption']) and (gen_dic[inst][vis_bin]['idx_exp2in'][iexp]!=-1.):data_glob_new['in_inbin']=True
-            
+
             #Latest processed data
             #    - profiles should have been aligned in the star rest frame and rescaled to their correct flux level, if necessary
             flux_est_loc_exp = None
@@ -7747,7 +7799,9 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                         data_est_loc=np.load(data_dic[inst][vis_bin]['LocEst_Atm_data_paths'][iexp]+'.npz',allow_pickle=True)['data'].item() 
              
             #Resampling on common spectral table if required
-            #    - condition is True unless all exposures of 'vis_bin' are defined on a common table, and it is the reference for the binning             
+            #    - condition is True unless all exposures of 'vis_bin' are defined on a common table, and it is the reference for the binning    
+            #    - upon first calculation of the weighing DI master, no DI stellar spectrum is available and it is set to 1 (the weighing DI master must in any case be calculated from stellar spectra aligned in the star rest frame, where stellar lines will not contribute to the weighing)         
+            #      the master stellar spectrum is also set to 1 when binning DI profiles in the star rest frame (where stellar lines will not contribute to the weighing) 
             #    - if the resampling condition is not met, then all profiles have been resampled on the common table for the visit, and the master does not need resampling as:
             # + it is still on its original table, which is the common table for the visit
             # + it has been shifted, and resampled on the table of the associated profile, which is also the common table            
@@ -7758,11 +7812,9 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             # + profiles are defined on their individual tables
             # + several visits are used, profiles have already been resampled within the visit, but not all visits share a common table and visit of binned exposure is not the one used as reference to set the common table
             #    - telluric are set to 1 if unused
-            #    - upon first calculation of the weighing DI master, no DI stellar spectrum is available and it is set to 1
-            #      the master must in any case be calculated from stellar spectra aligned in the star rest frame, where stellar lines will not contribute to the weighing
+            cov_ref_exp = None  
+            flux_ref_exp=np.ones(dim_exp_com,dtype=float)
             if masterDI:
-                flux_ref_exp=np.ones(dim_exp_com,dtype=float)
-                cov_ref_exp = None   
                 dt_exp = 1.   
             else:
                 data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp])         
@@ -7773,15 +7825,15 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 data_to_bin[iexp_off]['flux']=np.zeros(dim_exp_com,dtype=float)*np.nan
                 data_to_bin[iexp_off]['cov']=np.zeros(data_inst['nord'],dtype=object)
                 if not masterDI:
-                    flux_ref_exp=np.zeros(dim_exp_com,dtype=float)*np.nan
-                    cov_ref_exp=np.zeros(data_inst['nord'],dtype=object)
+                    if ((data_type_gen=='DI') and (rest_frame!='star')) or (data_type_gen!='DI'):flux_ref_exp=np.zeros(dim_exp_com,dtype=float)*np.nan
+                    if data_type_gen!='DI':cov_ref_exp=np.zeros(data_inst['nord'],dtype=object)
                 tell_exp=np.ones(dim_exp_com,dtype=float) if data_inst[vis_bin]['tell_sp'] else None
                 mean_gdet_exp=np.ones(dim_exp_com,dtype=float) if gen_dic['cal_weight'] and data_inst[vis_bin]['mean_gdet'] else None                
                 for iord in range(data_inst['nord']): 
                     data_to_bin[iexp_off]['flux'][iord],data_to_bin[iexp_off]['cov'][iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['flux'][iord] , cov = data_exp['cov'][iord], kind=gen_dic['resamp_mode'])                                                        
                     if not masterDI:
-                        if data_type_gen=='DI':flux_ref_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_ref['edge_bins'][iord], data_ref['flux'][iord], kind=gen_dic['resamp_mode'])                                                                            
-                        else:flux_ref_exp[iord],cov_ref_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_ref['edge_bins'][iord], data_ref['flux'][iord] , cov = data_ref['cov'][iord], kind=gen_dic['resamp_mode'])                                                        
+                        if (data_type_gen=='DI') and (rest_frame!='star'):flux_ref_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_ref['edge_bins'][iord], data_ref['flux'][iord], kind=gen_dic['resamp_mode'])                                                                            
+                        elif (data_type_gen!='DI'):flux_ref_exp[iord],cov_ref_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_ref['edge_bins'][iord], data_ref['flux'][iord] , cov = data_ref['cov'][iord], kind=gen_dic['resamp_mode'])                                                        
                     if data_inst[vis_bin]['tell_sp']:tell_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['tell'][iord] , kind=gen_dic['resamp_mode']) 
                     if gen_dic['cal_weight'] and data_inst[vis_bin]['mean_gdet'] :mean_gdet_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['mean_gdet'][iord] , kind=gen_dic['resamp_mode'])                    
                 data_to_bin[iexp_off]['cond_def'] = ~np.isnan(data_to_bin[iexp_off]['flux'])  
@@ -7805,8 +7857,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             # + it has been shifted, and resampled on the table of the associated profile, which is also the common table   
             else:                
                 if not masterDI:
-                    flux_ref_exp = data_ref['flux']
-                    cov_ref_exp = data_ref['cov']   
+                    if ((data_type_gen=='DI') and (rest_frame!='star')) or (data_type_gen!='DI'):flux_ref_exp = data_ref['flux']
+                    if data_type_gen!='DI':cov_ref_exp = data_ref['cov']   
                 for key in ['flux','cond_def','cov']:data_to_bin[iexp_off][key] = data_exp[key] 
                 tell_exp=data_exp['tell']
                 mean_gdet_exp=data_exp['mean_gdet'] 
@@ -7819,7 +7871,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             if (data_type_gen=='DI') and ('DI_Mast' in data_dic['Atm']['no_plrange']) and (iexp_glob in data_dic['Atm'][inst][vis_bin]['iexp_no_plrange']):
                 for iord in range(data_inst['nord']):   
                     data_to_bin[iexp_off]['cond_def'][iord] &= excl_plrange(data_to_bin[iexp_off]['cond_def'][iord],data_dic['Atm'][inst][vis_bin]['exclu_range_star'],iexp_glob,data_com['edge_bins'][iord],data_mode)[0]
-                 
+
             #Weight definition
             #    - the profiles must be specific to a given data type so that earlier types can still be called in the multi-visit binning, after the type of profile has evolved in a given visit
             #    - at this stage of the pipeline broadband flux scaling has been defined, if requested 
@@ -7841,7 +7893,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
 
             #Saving new exposure  
             if not masterDI:np.savez_compressed(save_pref+str(i_new),data=data_exp_new,allow_pickle=True)
-           
+
            
             # # Stage Théo : Saving extra data for the module 'fit_ResProf'
             
@@ -13311,9 +13363,14 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
     data_vis['dim_exp'] = [1,data_vis['nspec']]
     data_vis['dim_sp'] = [data_vis['n_in_visit'],1]
 
-    #Updating/correcting continuum level     
-    if data_type_gen=='Intr':     
-        data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
+    #Continuum level and correction
+    if data_type_gen=='Intr': 
+        if data_dic['Intr']['calc_cont']:           
+            data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
+            np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont']},allow_pickle=True)
+        else:
+            check_data({'0':proc_gen_data_paths_new+'_add'},silent=True)
+            data_dic['Intr'][inst][vis]['mean_cont'] = dataload_npz(data_vis['proc_Intr_data_paths']+'_add')
 
     return None
 
@@ -13344,6 +13401,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
         if scaling_data_paths is not None:data_scaling_exp = dataload_npz(scaling_data_paths[data_type]+str(iexp_eff))
         if tell_data_paths is not None:data_exp['tell'] = dataload_npz(tell_data_paths[data_type][iexp_eff])['tell'] 
         if proc_weight:data_exp['mean_gdet'] = dataload_npz(mean_gdet_data_paths[data_type][iexp_eff])['mean_gdet'] 
+        else:data_exp['mean_gdet'] = None
         if DImast_weight_data_paths is not None:data_ref = dataload_npz(DImast_weight_data_paths[data_type][iexp_eff])
         if data_type_gen=='Atm':
             data_est_loc=dataload_npz(LocEst_Atm_data_paths[iexp_eff])
@@ -13375,7 +13433,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
             flux_est_loc_ord_contr=[]
             if cov_est_loc_exp is not None:cov_est_loc_ord_contr=[]            
         for iord in range(nord):
-         
+
             #Multiply by order weight and store
             flux_ord,cov_ord = bind.mul_array(flux_exp_all[iord] , cov_exp_all[iord] , glob_weight_all[iord])          
             flux_ord_contr+=[flux_ord]
