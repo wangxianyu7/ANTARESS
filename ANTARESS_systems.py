@@ -2167,6 +2167,29 @@ all_system_params={
     
     #------------------------------
 
+    'TOI4562':{    #Heitzmann+2023
+        
+        'star':{
+            'Rstar':1.152,
+            'veq':17.,
+            'mag':12.098,
+            'istar':90, #unknown
+            },
+        'TOI4562b':{   
+            'period':225.11781,
+            'TCenter':2460257.8142 ,  
+            'TLength':4.32/24. , 
+            'ecc':0.76,
+            'omega_deg':60.,
+            'inclination':89.06,    
+            'Kstar':106.,	           
+            'aRs':147.4,               
+            'lambda_proj':0.      #unknown    
+            },
+        
+    },
+    
+    #------------------------------
 
 }
 

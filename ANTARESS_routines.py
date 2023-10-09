@@ -828,8 +828,8 @@ def init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_
     gen_dic['studied_pl'] = list(gen_dic['transit_pl'].keys()) 
 
     #Keplerian motion
-    if ('kepl_pl' not in gen_dic):gen_dic['kepl_pl']='all'
-    if (gen_dic['kepl_pl']=='all'):
+    if ('kepl_pl' not in gen_dic):gen_dic['kepl_pl']=['all']
+    if (gen_dic['kepl_pl']==['all']):
         print('Accounting for Keplerian motion from all planets')
         gen_dic['kepl_pl']=deepcopy(gen_dic['all_pl'])
     
@@ -861,7 +861,7 @@ def init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_
             PlParam_loc['lambda_rad']=PlParam_loc['lambda_proj']*np.pi/180.
 
             PlParam_loc['b']=PlParam_loc['aRs']*np.cos(PlParam_loc['inclin_rad'])   
-            if PlParam_loc['b']>1.:print('WARNING: impact parameter for ',pl_loc,' > 1')
+            if (PlParam_loc['ecc']==0.) & (PlParam_loc['b']>1.):print('WARNING: impact parameter for ',pl_loc,' > 1')
 
         #Calculation of transit center (or time of cunjunction for a non-transiting planet)
         #    - when T0 is not given but Tperiastron is known
@@ -1254,7 +1254,7 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params):
     for key_type in grid_type_eff:
 
         #Intensity grid
-        ld_grid_star,gd_grid_star,mu_grid_star,_,Fsurf_grid_star,Ftot_star,Istar_norm = calc_Isurf_grid(range(system_prop_in[key_type]['nw']),nsub_star,system_prop_in[key_type],coord_grid,star_params,Ssub_Sstar)
+        ld_grid_star,gd_grid_star,mu_grid_star,Fsurf_grid_star,Ftot_star,Istar_norm = calc_Isurf_grid(range(system_prop_in[key_type]['nw']),nsub_star,system_prop_in[key_type],coord_grid,star_params,Ssub_Sstar)
     
         #Storing for model fits
         if mode=='grid':
@@ -1267,9 +1267,9 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params):
         #Total flux
         #    - correspond to sum(F) = n*dl^2/(pi*Rstar)^2
         elif mode=='Ftot':grid_dic['Ftot_star_'+key_type] = Ftot_star   
-
+        
     if mode=='grid':grid_dic['mu'] = grid_dic['mu_grid_star_achrom'][:,0]
-
+    
     return None
 
 '''
@@ -1324,7 +1324,7 @@ def calc_st_sky(coord_grid,star_params):
 '''
 Function returning stellar intensity grid
 '''
-def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params,Ssub_Sstar,Istar_norm=1.):
+def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params,Ssub_Sstar,Istar_norm=1.,region = 'star',Ssub_Sstar_ref = None):
 
     #Limb-darkening grid and flux emitted by the star
     #    - calculating over the grid as a function of mu, and for each chromatic wavelength given as input  
@@ -1348,24 +1348,25 @@ def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params,Ssu
         ld_grid_star[:,isubband]=LD_mu_func(system_prop['LD'][iband],mu_grid_star[:,isubband],LD_coeff_func(system_prop,iband))
 
     #Intensity and fluxes from cells over the grid
-    #    - the chromatic intensity is normalized so that the mean flux integrated over the defined spectral bands, and summed over the full stellar disk, is unity
+    #    - the chromatic intensity is normalized so that the mean flux integrated over the defined spectral bands, and summed over the full (normalized) stellar disk, is unity
     # mean(w , sum(cell,F(w,cell))) = 1 
+    # mean(w , sum(cell,I(w,cell))*SpSs) = 1 
     # mean(w , sum(cell,I(w,cell))) = 1/SpSs 
     #    - specific intensity at disk center is 1 without LD and GD contributions
     #    - normalized by stellar surface, ie F = I0*Scell/Sstar = 1*dl^2/(pi*Rstar)^2 = (dl/Rstar)^2*(1/pi)
     Isurf_grid_star=ld_grid_star*gd_grid_star
-    if Istar_norm==1.:
+    if Istar_norm==1.:     #calculation for full stellar grid
         Itot_star_chrom = np.sum(Isurf_grid_star,axis=0)
-        if system_prop['nw']>1:meanItot_star = np.sum(system_prop['dw'][None,:]*Itot_star_chrom)/np.sum(system_prop['dw'])
-        else:meanItot_star = np.mean(Itot_star_chrom)
-        Istar_norm = (Ssub_Sstar*meanItot_star)
-    Isurf_grid_star/=Istar_norm
-    Fsurf_grid_star = Isurf_grid_star*Ssub_Sstar  
-    
+        if system_prop['nw']>1:Istar_norm = np.sum(system_prop['dw'][None,:]*Itot_star_chrom)/np.sum(system_prop['dw'])
+        else:Istar_norm = np.mean(Itot_star_chrom)
+    #Flux values from stellar cells, normalized by total stellar flux
+    if region == 'star':Fsurf_grid_star = Isurf_grid_star / Istar_norm                                  #fcell = I*SpSs/Ftot, where Ftot = sum(I*SpSs) = Itot*SpSs                            
+    elif region == 'pl':Fsurf_grid_star = Isurf_grid_star*Ssub_Sstar / (Istar_norm*Ssub_Sstar_ref)      #fcell = I_pl*SpSs_pl/Ftot = I_pl*SpSs_pl/(Itot*SpSs)
+
     #Total flux over the full star in each band
     Ftot_star = np.sum(Fsurf_grid_star,axis=0)
-   
-    return ld_grid_star,gd_grid_star,mu_grid_star,Isurf_grid_star,Fsurf_grid_star,Ftot_star,Istar_norm
+
+    return ld_grid_star,gd_grid_star,mu_grid_star,Fsurf_grid_star,Ftot_star,Istar_norm
 
 '''
 Function returning theoretical intrinsic profile grid
@@ -1584,6 +1585,9 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
         if (inst in gen_dic['force_flag_err']):gen_dic['flag_err_inst'][inst]=False
         if gen_dic['flag_err_inst'][inst]:print('   > Errors propagated from raw data')
         else:print('   > Beware: custom definition of errors')
+    else:
+        if (inst in mock_dic['set_err']) and (mock_dic['set_err'][inst]):gen_dic['flag_err_inst'][inst] = True
+        else:gen_dic['flag_err_inst'][inst] = False
 
     #Mask used to compute CCF on stellar lines
     if (gen_dic['CCF_from_sp']) and (inst in gen_dic['CCF_mask']):
@@ -2030,7 +2034,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
 
                             #Effective instrumental convolution
                             fixed_args['FWHM_inst'] = ref_inst_convol(inst,fixed_args,fixed_args['cen_bins'])
-
+                 
                             #Initialize intrinsic profile properties   
                             params_mock = deepcopy(system_param['star']) 
                             if inst not in mock_dic['flux_cont']:mock_dic['flux_cont'][inst]={}
@@ -2053,7 +2057,6 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                                 'fit':False,
                                 })
 
-           
                             # # Spots properties 
                             # if fixed_args['use_spots']:
                             #     fixed_args['t_exp_bjd'] = {inst : {vis : coord_dic[inst][vis]['bjd'] }}
@@ -2194,7 +2197,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                         
                         #Correcting the disk-integrated profile for planet and spot contributions
                         DI_prof_exp = base_DI_prof - surf_prop_dic[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0]
-                       
+
                         #Instrumental response 
                         #    - in RV space for analytical model, in wavelength space for theoretical profiles
                         #    - resolution can be modified to model systematic variations from the instrument or atmosphere
@@ -2228,7 +2231,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                         #    - the S/N of the mock profiles is F_meas(t,w)/EF_meas(t,w) = sqrt(F_meas(t,w)/gcal(band)) = sqrt(Nmeas(t,w)) proportional to sqrt(texp*cont)
                         #      errors in the continuum of the normalized profiles are proportional to 1/sqrt(texp*cont) 
                         #      beware that this error does not necessarily match the flux dispersion
-                        if (inst in mock_dic['set_err']) and (vis in mock_dic['set_err'][inst]) and mock_dic['set_err'][inst][vis]:
+                        if (inst in mock_dic['set_err']) and mock_dic['set_err'][inst]:
                             DI_prof_exp_Fmeas = np.array(list(map(np.random.poisson, DI_prof_exp_Ftrue,  data_inst[vis]['nspec']*[1]))).flatten()
                             DI_err_exp_Emeas = np.sqrt(mock_gcal*DI_prof_exp_Fmeas)
                         else:
@@ -2236,7 +2239,10 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                             DI_err_exp_Emeas = np.zeros(data_inst[vis]['nspec'],dtype=float)
                         data_dic_temp['flux'][iexp,0] = DI_prof_exp_Fmeas                      
                         data_dic_temp['cov'][iexp,0] = (DI_err_exp_Emeas**2.)[None,:]                        
-          
+
+
+
+
                     #-----------------------------------
                     #Observational data
                     #-----------------------------------
@@ -2898,10 +2904,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                 data_com['min_edge_ord'] = np.nanmin(low_bins_def,axis=(0,2))             
                 data_com['max_edge_ord'] = np.nanmax(high_bins_def,axis=(0,2))
                 np.savez_compressed(data_inst[vis]['proc_com_data_paths'],data = data_com,allow_pickle=True)
-                    
-                #Saving dictionary elements defined within the routine
-                np.savez_compressed(gen_dic['save_data_dir']+'Processed_data/Global/'+inst+'_'+vis,data_add=data_inst[vis],coord_add=coord_dic[inst][vis],data_prop_add=data_prop[inst][vis],gen_add=gen_dic[inst][vis],DI_data_add=DI_data_inst[vis],allow_pickle=True)
-              
+
                 #Saving useful keyword file        
                 if gen_dic['sav_keywords']:
                     tup_save=(np.append('index',[str(iexp) for iexp in range(n_in_visit)]),)
@@ -2982,6 +2985,9 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                                 if inst not in data_dic[key]['fit_range']:data_dic[key]['fit_range'][inst]={}
                                 data_dic[key]['fit_range'][inst][vis] = [[min_contfit,max_contfit]]
 
+                #Saving dictionary elements defined within the routine
+                np.savez_compressed(gen_dic['save_data_dir']+'Processed_data/Global/'+inst+'_'+vis,data_add=data_inst[vis],coord_add=coord_dic[inst][vis],data_prop_add=data_prop[inst][vis],gen_add=gen_dic[inst][vis],DI_data_add=DI_data_inst[vis],allow_pickle=True)
+
             ### End of visits
 
         #Saving general information
@@ -2993,7 +2999,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
         data_load = np.load(gen_dic['save_data_dir']+'Processed_data/Global/'+inst+'.npz',allow_pickle=True)
         data_dic[inst]=data_load['data_inst_add'].item()   
         gen_dic[inst]= data_load['gen_inst_add'].item() 
-
+       
         #Remove visits
         #    - this allows removing visits after processing all of them once via gen_dic['calc_proc_data']
         for vis in gen_dic['unused_visits'][inst]:
@@ -3008,8 +3014,8 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
             gen_dic[inst][vis]=data_load['gen_add'].item()
             data_dic['DI'][inst][vis]=data_load['DI_data_add'].item()
             theo_dic[inst][vis]={}
-            data_dic['Atm'][inst][vis]={}  
-            
+            data_dic['Atm'][inst][vis]={} 
+
     #Final processing
     if (not data_dic[inst]['comm_sp_tab']):print('         Visits do not share a common spectral table')      
     else:print('         All visits share a common spectral table')    
@@ -3019,6 +3025,12 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
         gen_vis = gen_dic[inst][vis] 
         if (not data_vis['comm_sp_tab']):print('           Exposures in '+vis+' do not share a common spectral table')      
         else:print('           All exposures in '+vis+' share a common spectral table')   
+            
+        #Default systemic velocity
+        if (inst not in data_dic['DI']['sysvel']):data_dic['DI']['sysvel'][inst] = {}
+        if (vis not in data_dic['DI']['sysvel'][inst]):
+            data_dic['DI']['sysvel'][inst][vis] = 0.
+            print('         WARNING : sysvel set to 0 km/s for ',inst,' : ',vis)
 
         #Define CCF resolution, range, and sysvel here so that spectral data needs not be uploaded again after processing
         if gen_dic['CCF_from_sp'] or gen_dic['Intr_CCF']:
@@ -3854,7 +3866,7 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
 
     #Updating/correcting continuum level          
     if data_dic['Intr']['calc_cont']:           
-        data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
+        data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
         np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont']},allow_pickle=True)
     else:
         check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)
@@ -4094,7 +4106,10 @@ def init_visit(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic):
     data_dic['Intr'][inst][vis]={}    
 
     #Current rest frame
-    data_dic['DI'][inst][vis]['rest_frame'] = 'input'    
+    data_dic['DI'][inst][vis]['rest_frame'] = 'input'   
+    
+    #Current data
+    data_vis['raw_exp_data_paths'] = deepcopy(data_vis['proc_DI_data_paths'])
     
     #Indices of in/out exposures in global tables
     print('   > '+str(data_vis['n_in_visit'])+' exposures')  
@@ -4755,7 +4770,7 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
     print('   > Aligning '+gen_dic['type_name'][data_type]+' profiles') 
     prop_dic = data_dic[data_type]  
     proc_gen_data_paths_new = gen_dic['save_data_dir']+'Aligned_'+data_type+'_data/'+gen_dic['add_txt_path'][data_type]+'/'+inst+'_'+vis+'_'
-    if (data_type=='DI') and (data_dic['DI']['sysvel'][inst][vis]==0.):print('WARNING: sysvel = 0 km/s')
+    if (data_type=='DI') and (data_dic['DI']['sysvel'][inst][vis]==0.):print('         WARNING: sysvel = 0 km/s')
     if data_type=='Intr':proc_gen_data_paths_new+='in'  
     proc_mast = True if ((gen_dic['DImast_weight']) and (data_type in ['Intr','Atm'])) else False
     proc_locEst = True if ((data_type=='Atm') and ((data_dic['Atm']['pl_atm_sign']=='Absorption') or ((data_dic['Atm']['pl_atm_sign']=='Emission')) and data_dic['Intr']['cov_loc_star'])) else False
@@ -5370,10 +5385,6 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
             dic_save['coord_HR'] = coord_pl_HR
             dic_save['LC_HR'] = LC_HR
 
-
-        #Save for plots
-        if len(dic_save)>0:datasave_npz(proc_DI_data_paths_new+'add',dic_save)        
-
         #------------------------------------------------------------------------
 
         #Upload common spectral table
@@ -5441,7 +5452,7 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
         if data_dic['DI']['scaling_val'] is None:Tflux_ref = np.median(Tflux_all)
         else:Tflux_ref=Tcen_bin_comm*data_dic['DI']['scaling_val']
         norm_exp_glob = Tflux_all/Tflux_ref
-            
+        
         #Scaling each exposure
         #    - only defined bins are scaled (the flux in undefined bins remain set to nan), but the scaling spectrum was calculated at all wavelengths so that it can be used later with data for which different bins are defined or not
         #    - all defined bins remain defined 
@@ -5463,9 +5474,10 @@ def rescale_data(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plot_di
                 if system_prop['nw']>1:data_scaling['chrom']=True
                 else:data_scaling['chrom']=False
                 datasave_npz(data_vis['scaled_DI_data_paths']+str(iexp),data_scaling)                
-        
+  
         #Saving complementary data
-        np.savez_compressed(proc_DI_data_paths_new+'add',data={'rest_frame':data_dic['DI'][inst][vis]['rest_frame']},allow_pickle=True)           
+        dic_save['rest_frame']=data_dic['DI'][inst][vis]['rest_frame']
+        datasave_npz(proc_DI_data_paths_new+'add',dic_save)           
         
     #Updating path to processed data and checking it has been calculated
     else:   
@@ -5969,7 +5981,7 @@ def extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
     data_vis = data_inst[vis]
     
     #Current rest frame
-    if data_dic['DI'][inst][vis]['rest_frame']!='star':print('WARNING: disk-integrated profiles must be aligned')
+    if data_dic['DI'][inst][vis]['rest_frame']!='star':print('         WARNING: disk-integrated profiles must be aligned')
     data_dic['Res'][inst][vis]['rest_frame'] = 'star'
 
     #Path to initialized local data
@@ -6038,7 +6050,7 @@ def extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             #    - index is relative to the global table
             iexp_glob = idx_bin2orig[iexp_off]
             vis_bin = idx_bin2vis[iexp_off]
-
+            
             #Latest processed disk-integrated data and associated tables
             #    - profiles should have been aligned in the star rest frame and rescaled to their correct flux level, if necessary          
             data_exp_off = dataload_npz(data_inst[vis_bin]['proc_DI_data_paths']+str(iexp_glob))
@@ -6051,9 +6063,10 @@ def extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             #Master disk-integrated spectrum for weighing
             #    - profile has been shifted to the same frame as the residual profiles, but is still defined on the common table, not the table of current exposure
             #    - see process_binned_prof() for details
-            data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_glob])
-            data_to_bin_gen[iexp_off]['edge_bins_ref'] = data_ref['edge_bins']
-            data_to_bin_gen[iexp_off]['flux_ref'] = data_ref['flux']
+            if gen_dic['DImast_weight']:
+                data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_glob])
+                data_to_bin_gen[iexp_off]['edge_bins_ref'] = data_ref['edge_bins']
+                data_to_bin_gen[iexp_off]['flux_ref'] = data_ref['flux']
 
             #Weight profile
             #    - only calculated here on a common table if:
@@ -6063,7 +6076,7 @@ def extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             if ((mode=='') and data_vis['comm_sp_tab']) or ((mode=='multivis') and data_inst['comm_sp_tab']):
                 flux_ref_exp = np.ones(data_dic[inst][vis_bin]['dim_exp'])  
                 data_to_bin_gen[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,'DI',data_dic[inst]['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['mean_gdet'],data_to_bin_gen[iexp_off]['cen_bins'],1.,flux_ref_exp,None,bdband_flux_sc = gen_dic['flux_sc'])
- 
+      
         #Processing each exposure of current visit selected for extraction
         iexp_proc = data_dic['Res'][inst][vis]['idx_to_extract']
         common_args = (data_vis['proc_DI_data_paths'],mode,data_vis['comm_sp_tab'],data_inst['comm_sp_tab'],proc_gen_data_paths_new,idx_to_bin_all[0],n_in_bin_all[0],dx_ov_all[0],idx_bin2orig,idx_bin2vis,data_inst['com_vis'],data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['tell_sp'],data_vis['nspec'],gen_dic['flux_sc'],gdet4weight,data_to_bin_gen,gen_dic['resamp_mode'],\
@@ -6159,6 +6172,14 @@ def sub_extract_res_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,c
         for iord in range(nord):
             data_loc['flux'][iord],data_loc['cov'][iord]=bind.add(data_mast['flux'][iord], data_mast['cov'][iord], -data_exp['flux'][iord], data_exp['cov'][iord])                 
         data_loc['cond_def'] = ~np.isnan(data_loc['flux'])       
+
+        # if iexp ==25:
+        #     # plt.plot(data_exp['cen_bins'][0],data_exp['flux'][0])
+        #     # plt.plot(data_exp['cen_bins'][0],data_mast['flux'][0])
+        #     plt.plot(data_exp['cen_bins'][0],data_mast['flux'][0]-data_exp['flux'][0])
+        #     plt.plot(data_loc['cen_bins'][0],data_loc['flux'][0])
+        #     plt.show()
+        #     stop()
 
         #Saving data
         #    - saved for each exposure, as the files are too large otherwise                
@@ -6373,7 +6394,7 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
     #      for spectral data the full order range is taken as continuum
     if (data_vis['type']=='CCF') or (('spec' in data_vis['type']) and ((not gen_dic['Intr_CCF']) and (not gen_dic['spec_1D_Intr']))):
         if data_dic['Intr']['calc_cont']:           
-            data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
+            data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
             np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont']},allow_pickle=True)
         else:
             check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)
@@ -6390,7 +6411,7 @@ is done over their full range, not just the continuum)
       if residual or intrinsic profiles were converted from spectra, then their continuum is not know a priori
       a a general approach we thus calculate the continuum value here
 '''
-def calc_Intr_mean_cont(n_in_tr,nord,nspec,proc_Intr_data_paths,data_type,cont_range,inst,cont_norm):
+def calc_Intr_mean_cont(n_in_tr,nord,nspec,proc_Intr_data_paths,data_type,cont_range,inst,cont_norm,flag_err_inst):
     cond_def_cont_all  = np.zeros([n_in_tr,nord,nspec],dtype=bool)
     for i_in in range(n_in_tr):
         data_exp = dataload_npz(proc_Intr_data_paths+str(i_in))  
@@ -6411,9 +6432,9 @@ def calc_Intr_mean_cont(n_in_tr,nord,nspec,proc_Intr_data_paths,data_type,cont_r
             
             #Continuum flux of the intrinsic CCF and corresponding error
             #    - calculated over the defined bins common to all residual and intrinsic profiles
-            #    - we use the covariance diagonal to define a representative weight              
+            #    - we use the covariance diagonal to define a representative weight, unless no errors are defined              
             cont_intr[i_in,iord] = np.sum(data_exp['flux'][iord,cond_cont_com_ord]*dcen_bins)/np.sum(dcen_bins)
-            wcont_intr[i_in,iord] = np.sum(dcen_bins**2.)/np.sum( data_exp['cov'][iord][0,cond_cont_com_ord]*dcen_bins**2. )            
+            if flag_err_inst:wcont_intr[i_in,iord] = np.sum(dcen_bins**2.)/np.sum( data_exp['cov'][iord][0,cond_cont_com_ord]*dcen_bins**2. )            
     
     #Continuum flux over all in-transit exposures
     mean_cont=np.sum(cont_intr*wcont_intr,axis=0)/np.sum(wcont_intr,axis=0)      
@@ -6997,7 +7018,7 @@ def ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plo
             
         else:
             idx_range_kept = np.arange(nspec,dtype=int)
-
+    
         #Preparation
         fit_dic['cond_def_cont_all']= np.zeros([fit_dic['n_exp'],nspec],dtype=bool)
         fit_dic['cond_def_fit_all']=np.zeros([fit_dic['n_exp'],nspec],dtype=bool)
@@ -7015,7 +7036,7 @@ def ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plo
             data_fit[isub]['edge_bins'] = np.append(data_fit_loc['edge_bins'][iord_sel,idx_range_kept],data_fit_loc['edge_bins'][iord_sel,idx_range_kept[-1]+1]) 
             data_fit[isub]['dcen_bins'] = data_fit[isub]['edge_bins'][1::] - data_fit[isub]['edge_bins'][0:-1]          
             data_fit[isub]['cov'] = data_fit_loc['cov'][iord_sel][:,idx_range_kept]
-            
+           
             #Initializing ranges in the relevant rest frame
             if len(cont_range)==0:fit_dic['cond_def_cont_all'][isub] = True    
             else:
@@ -7199,7 +7220,7 @@ def ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plo
         fit_dic['cont_range'] = cont_range
         fit_dic['fit_range'] = fit_range        
         np.savez_compressed(save_path,data=fit_dic,allow_pickle=True)
-
+        
     #Checking data has been calculated
     else:
         data_paths={'path':save_path}      
@@ -9143,15 +9164,16 @@ def ana_prof_func(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,c
     output_prop_dic={}
 
     #Fitted data tables 
-    #    - final model is calculated on the same bins as the input data, limited to the minimum global definition range for the fit
     #    - to avoid issues with gaps, resampling/convolution, and chi2 calculation the model is calculated on the full continuous velocity table, and then limited to fitted pixels
     #    - fitted profiles are trimmed and calculated over the smallest continuous range encompassing all fitted pixels to avoid computing models over a too-wide table
-    idx_def_fit = np_where1D(cond_def_fit)
+    #    - final model is calculated on the same bins as the input data, limited to the minimum global definition range for the fit
+    idx_def_fit = np_where1D(cond_def_fit)                  #trimmed and fit indexes in original table
     if len(idx_def_fit)==0.:stop('No bin in fitted range')
-    cen_bins_fit = cen_bins[cond_def_fit]
-    flux_loc_fit=flux_loc[cond_def_fit]
-    idx_mod = range(idx_def_fit[0],idx_def_fit[-1]+1)
-    fixed_args['idx_fit'] = np_where1D(cond_def_fit[idx_mod])    
+    cen_bins_fit = cen_bins[cond_def_fit]                   #trimmed and fitted values
+    flux_loc_fit=flux_loc[cond_def_fit]                     #trimmed and fitted values
+    idx_mod = range(idx_def_fit[0],idx_def_fit[-1]+1)       
+    fixed_args['idx_fit'] = np_where1D(cond_def_fit[idx_mod])         #trimmed and fitted indexes, reduced to model indexes    
+    output_prop_dic['idx_mod'] = idx_mod      
     fixed_args['ncen_bins'] = len(idx_mod)
     fixed_args['cen_bins']= cen_bins[idx_mod]
     fixed_args['dim_exp']= [1,idx_mod]
@@ -9498,13 +9520,13 @@ def ana_prof_func(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,c
     output_prop_dic['BIC']=fit_dic['merit']['BIC']    
     output_prop_dic['red_chi2']=fit_dic['merit']['red_chi2'] 
  
-    #Best-fit model to the full profile (over the minimum fit range) at the observed resolution
+    #Best-fit model to the full profile (over the original fit range) at the observed resolution
     output_prop_dic['edge_bins'] = fixed_args['edge_bins']
     output_prop_dic['cen_bins'] = fixed_args['cen_bins']
     fixed_args['cond_def_fit']=np.repeat(True,fixed_args['ncen_bins'])    
-    output_prop_dic['cond_def'] = np.ones(len(cen_bins),dtype=bool)
+    output_prop_dic['cond_def'] = np.ones(fixed_args['ncen_bins'],dtype=bool)
     output_prop_dic['flux']=fixed_args['fit_func'](p_final,None,args=fixed_args)
-
+  
     #Double gaussian model: output the two components
     if (model_choice=='dgauss'):
         output_prop_dic['gauss_core'],output_prop_dic['gauss_lobe']=fixed_args['fit_func_gen'](p_final,cen_bins)[1:3] 
@@ -11001,7 +11023,7 @@ def init_st_intr_prof(args,grid_dic,param):
         
         #Set coordinate grid
         grid_dic['linevar_coord_grid'] = calc_linevar_coord_grid(args['coord_line'],grid_dic)          
-        
+
         #Set line profile properties
         args['flux_intr_grid'] = np.zeros(grid_dic['nsub_star'])*np.nan   
         args['input_cell_all']={}
@@ -11395,7 +11417,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
     cond_iexp_proc = cond_spots|cond_transit
     for i_in,(iexp,n_osamp_exp) in enumerate(zip(iexp_list,n_osamp_exp_all)):
         transit_pl_exp = np.array(transit_pl)[cond_transit_all[i_in]]
-        
+   
         #Initialize averaged and range values
         Focc_star={}
         sum_prop_dic={}
@@ -11479,7 +11501,8 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                     n_osamp_exp_eff+=1
                     
                     #Calculate line profile from planet-occulted region 
-                    if ('line_prof' in par_list_in) and  (theo_dic['precision']=='medium'):
+                    #    - profile is scaled to the total flux from current occulted region, stored in coord_reg_dic_pl['Ftot']
+                    if ('line_prof' in par_list_in) and (theo_dic['precision']=='medium'):
                         idx_w = {'achrom':range(system_prop['achrom']['nw'])}
                         if ('chrom' in key_chrom):idx_w['chrom'] = range(system_prop['chrom']['nw'])
                         surf_prop_dic[key_chrom[-1]]['line_prof'][:,i_in]+=intr2plocc_prof(args,transit_pl_exp,coord_reg_dic,idx_w,system_prop,key_chrom,par_star,theo_dic)
@@ -11496,17 +11519,15 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                     for subkey_chrom in key_chrom:
                         for par_loc in par_list:
                 
-                            #Total occulted surface ratio
+                            #Total occulted surface ratio and flux from planet-occulted region
                             #    - calculated per band so that the chromatic dependence of the radius can be accounted for also at the stellar limbs, which we cannot do with the input chromatic RpRs
-                            if par_loc=='SpSstar':surf_prop_dic[subkey_chrom][pl_loc]['SpSstar'][:,i_in] = sum_prop_dic[subkey_chrom][pl_loc]['SpSstar']/n_osamp_exp_eff
-                                                    
-                            #Average intensity from planet-occulted region
-                            elif par_loc=='Ftot':
-                                surf_prop_dic[subkey_chrom][pl_loc]['Ftot'][:,i_in] = sum_prop_dic[subkey_chrom][pl_loc]['Ftot']/sum_prop_dic[subkey_chrom][pl_loc]['nocc']
-                     
+                            #    - averaged over oversampled regions
+                            if par_loc in ['SpSstar','Ftot']:surf_prop_dic[subkey_chrom][pl_loc][par_loc][:,i_in] = sum_prop_dic[subkey_chrom][pl_loc][par_loc]/n_osamp_exp_eff
+
                             #Other surface properties
+                            #    - defined as sum( oversampled region , sum( cell , xi*fi )  ) / sum( oversampled region , sum( cell , fi )  )
                             else:surf_prop_dic[subkey_chrom][pl_loc][par_loc][:,i_in] = sum_prop_dic[subkey_chrom][pl_loc][par_loc]/sum_prop_dic[subkey_chrom][pl_loc]['Ftot']
-   
+                                                           
                             #Range of values covered during exposures    
                             if out_ranges and (par_loc in range_par_list):
                                 surf_prop_dic[subkey_chrom][pl_loc][par_loc+'_range'][:,i_in,:] = range_dic[subkey_chrom][pl_loc][par_loc+'_range']
@@ -11518,16 +11539,16 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                     surf_prop_dic[subkey_chrom]['Ftot_star'][:,i_in] = 1.
                     if n_osamp_exp_eff>0:
                         surf_prop_dic[subkey_chrom]['Ftot_star'][:,i_in] -= Focc_star[subkey_chrom]/(n_osamp_exp_eff*theo_dic['Ftot_star_'+subkey_chrom][iband])
-           
+        
             #Planet-occulted line profile from current exposure
             if ('line_prof' in par_list_in) and (n_osamp_exp_eff>0):
-         
+        
                 #Profile from averaged properties over exposures
                 if (theo_dic['precision']=='low'): 
                     idx_w = {'achrom':(range(system_prop['achrom']['nw']),i_in)}
                     if ('chrom' in key_chrom):idx_w['chrom'] = (range(system_prop['chrom']['nw']),i_in)          
                     surf_prop_dic[key_chrom[-1]]['line_prof'][:,i_in]=intr2plocc_prof(args,transit_pl_exp,surf_prop_dic,idx_w,system_prop,key_chrom,par_star,theo_dic)
-                    
+
                 #Averaged profiles behind all occulted regions during exposure   
                 #    - the weighing by stellar intensity is naturally included when applying flux scaling 
                 elif (theo_dic['precision'] in ['medium','high']): 
@@ -11598,7 +11619,7 @@ def intr2plocc_prof(args,transit_pl,coord_dic,idx_w,system_prop,key_chrom,param,
                 
                 #Calculation of planet-occulted line profile
                 data_av_pl['flux'] = [calc_loc_line_prof(0,coord_dic['achrom'][pl_loc]['rv'][idx_w['achrom']],flux_sc_spec,None,mu_av,args,param)]
-               
+                
             #Theoretical or measured profile
             elif (args['mode'] in ['theo','Intrbin']):     
                 data_loc = {}
@@ -11630,7 +11651,7 @@ def intr2plocc_prof(args,transit_pl,coord_dic,idx_w,system_prop,key_chrom,param,
                 surf_shifts,surf_shifts_edge = def_surf_shift('theo',dic_rv,0,data_loc,pl_loc,args['type'],system_prop,[1,ncen_bins_Intr],1,ncen_bins_Intr) 
                 if surf_shifts_edge is not None:surf_shifts_edge*=-1.
                 data_av_pl=align_data(data_loc,args['type'],1,args['dim_exp'],args['resamp_mode'],data_av_pl['cen_bins'],data_av_pl['edge_bins'],-surf_shifts,rv_shift_edge = surf_shifts_edge, nocov = True)
-               
+
             #Rotational broadening
             #    - for a planet large enough, the distribution of surface RV over the occulted region acts produces rotational broadening
             if coord_dic[chrom_calc][pl_loc]['rv_broad'][idx_w[chrom_calc]][0]>0.:
@@ -11644,7 +11665,7 @@ def intr2plocc_prof(args,transit_pl,coord_dic,idx_w,system_prop,key_chrom,param,
 
             #Co-add contribution from current planet
             line_prof+=data_av_pl['flux'][0]
-
+            
     return line_prof
 
 
@@ -11693,13 +11714,13 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
 
         #Local flux grid over current planet-occulted region, in current band
         coord_grid['nsub_star'] = n_pl_occ
-        _,_,mu_grid_star,_,Fsurf_grid_star,Ftot_star,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_prop,coord_grid,star_params,Ssub_Sstar,Istar_norm = Istar_norm_band)
+        _,_,mu_grid_star,Fsurf_grid_star,Ftot_star,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_prop,coord_grid,star_params,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'pl',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
         coord_grid['mu'] = mu_grid_star[:,0]
 
         #Scale continuum level
         Fsurf_grid_star*=param['cont']
         Ftot_star*=param['cont']
-
+   
         #Flux and number of cells occulted from all planets, cumulated over oversampled positions
         Focc_star_band+= Ftot_star[0]   
         sum_prop_dic_pl['nocc']+=coord_grid['nsub_star']
@@ -11827,8 +11848,11 @@ def sum_region_prop(line_occ_HP_band,iband,args,system_prop,par_list,Fsurf_grid_
             #Cumulate property over successively occulted regions
             sum_prop_dic_pl[par_loc][iband]+=coord_grid[par_loc+'_sum'] 
 
+            #Total flux from current occulted region
+            if par_loc=='Ftot':coord_reg_dic_pl['Ftot'][iband] = coord_grid['Ftot_sum']
+
             #Calculate average property over current occulted region  
-            if par_loc=='Ftot':coord_reg_dic_pl[par_loc][iband] = coord_grid[par_loc+'_sum']/coord_grid['nsub_star']
+            #    - <X> = sum(cell, xcell*fcell)/sum(cell,fcell)           
             else:coord_reg_dic_pl[par_loc][iband] = coord_grid[par_loc+'_sum']/coord_grid['Ftot_sum'] 
 
             #Range of values covered during the exposures (normalized)
@@ -13365,7 +13389,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
     #Continuum level and correction
     if data_type_gen=='Intr': 
         if data_dic['Intr']['calc_cont']:           
-            data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'])
+            data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
             np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont']},allow_pickle=True)
         else:
             check_data({'0':proc_gen_data_paths_new+'_add'},silent=True)

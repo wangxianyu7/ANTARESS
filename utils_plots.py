@@ -356,9 +356,13 @@ def autom_x_tick_prop(dax_range):
     return axmajor_int,axminor_int,axmajor_form    
     
 def autom_y_tick_prop(dax_range): 
-    if dax_range>  10000000.1:axmajor_int,axminor_int,axmajor_form=5000000.,1000000.,'%.1e' 
-    if dax_range>  1000000.1:axmajor_int,axminor_int,axmajor_form=500000.,100000.,'%.1e' 
-    elif dax_range>100000.1:axmajor_int,axminor_int,axmajor_form=50000.,10000.,'%.1e' 
+    if dax_range>  1e11+0.1:axmajor_int,axminor_int,axmajor_form=5e10,1e10,'%.1e' 
+    elif dax_range>  1e10+0.1:axmajor_int,axminor_int,axmajor_form=5e9,1e9,'%.1e' 
+    elif dax_range>  1e9+0.1:axmajor_int,axminor_int,axmajor_form=5e8,1e8,'%.1e'     
+    elif dax_range>  1e8+0.1:axmajor_int,axminor_int,axmajor_form=5e7,1e7,'%.1e'     
+    elif dax_range>  1e7+0.1:axmajor_int,axminor_int,axmajor_form=5e6,1e6,'%.1e' 
+    elif dax_range>  1e6+0.1:axmajor_int,axminor_int,axmajor_form=5e5,1e5,'%.1e' 
+    elif dax_range>1e5+0.1:axmajor_int,axminor_int,axmajor_form=5e4,1e4,'%.1e' 
     elif dax_range>10000.1:axmajor_int,axminor_int,axmajor_form=5000.,1000.,'%i' 
     elif dax_range>5000.1:axmajor_int,axminor_int,axmajor_form=1000.,500.,'%i' 
     elif dax_range>1000.1:axmajor_int,axminor_int,axmajor_form=500.,100.,'%i' 
@@ -380,8 +384,7 @@ def autom_y_tick_prop(dax_range):
     elif dax_range>2.1e-3:axmajor_int,axminor_int,axmajor_form=0.001,0.0005,'%.3f'    
     elif dax_range>1.1e-3:axmajor_int,axminor_int,axmajor_form=5e-4,1e-4,'%.4f'
     elif dax_range>5.1e-4:axmajor_int,axminor_int,axmajor_form=2e-4,1e-4,'%.4f'
-    else:axmajor_int,axminor_int,axmajor_form=None,None,None   
-
+    else:axmajor_int,axminor_int,axmajor_form=None,None,None  
     return axmajor_int,axminor_int,axmajor_form
 
 

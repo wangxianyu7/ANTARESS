@@ -226,7 +226,6 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
         if gen_dic['fit_AtmProf'] or gen_dic['fit_AtmProp']:
             fit_atm_funcs(PropAtm_fit_dic,gen_dic)
 
- 
     ##############################################################################
     #Call to plot functions
     ##############################################################################
