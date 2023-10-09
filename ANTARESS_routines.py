@@ -2034,7 +2034,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                             #Initialize intrinsic profile properties   
                             params_mock = deepcopy(system_param['star']) 
                             if inst not in mock_dic['flux_cont']:mock_dic['flux_cont'][inst]={}
-                            if inst not in mock_dic['flux_cont'][inst]:mock_dic['flux_cont'][inst][vis] = 1.
+                            if vis not in mock_dic['flux_cont'][inst]:mock_dic['flux_cont'][inst][vis] = 1.
                             params_mock.update({'rv':0.,'cont':mock_dic['flux_cont'][inst][vis]})  
                             params_mock = par_formatting(params_mock,fixed_args['mod_prop'],None,None,fixed_args,inst,vis) 
              
@@ -2209,8 +2209,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                         #   - the model is a density of photoelectrons per unit of time, with continuum set to the input mean flux density
                         if (inst in mock_dic['gcal']):mock_gcal = mock_dic['gcal'][inst]
                         else:mock_gcal = 1.
-                        DI_prof_exp_Ftrue = mock_gcal*DI_prof_exp*coord_dic[inst][vis]['t_dur'][iexp]   
-
+                        DI_prof_exp_Ftrue = mock_gcal*DI_prof_exp*coord_dic[inst][vis]['t_dur'][iexp]
                         #Keplerian motion and systemic shift of the disk-integrated profile 
                         #    - including systematic variations if requested
                         kepl_rv = calc_orb_motion(coord_dic,inst,vis,system_param,gen_dic, coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],mock_dic['sysvel'][inst][vis])[1]
@@ -10090,7 +10089,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
             if vis_par not in fixed_args['genpar_instvis'][root_par][inst_par]:fixed_args['genpar_instvis'][root_par][inst_par]+=[vis_par]                  
             root_par_list+=[root_par]            
             par_list+=[par]
-            print(par)
+
             #Parameter vary as polynomial of spatial stellar coordinate
             if ('_ord' in par):
                 gen_root_par = par.split('_ord')[0] 
@@ -10098,7 +10097,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
                 #Define parameter for current instrument and visit (if specified) or all instruments and visits (if undefined) 
                 if inst_par in fixed_args['inst_list']:inst_list = [inst_par]
                 elif inst_par=='_':inst_list = fixed_args['inst_list'] 
-                print(inst_list)
+
                 for inst_loc in inst_list:
                     if inst_loc not in fixed_args['coeff_ord2name']:fixed_args['coeff_ord2name'][inst_loc] = {}
                     if vis_par in fixed_args['inst_vis_list'][inst_loc]:vis_list = [vis_par]
@@ -10112,7 +10111,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
                             if inst_loc not in fixed_args['linevar_par']:fixed_args['linevar_par'][inst_loc]={}
                             if vis_loc not in fixed_args['linevar_par'][inst_loc]:fixed_args['linevar_par'][inst_loc][vis_loc]=[]
                             if gen_root_par not in fixed_args['linevar_par'][inst_loc][vis_loc]:fixed_args['linevar_par'][inst_loc][vis_loc]+=[gen_root_par]                     
-    print(fixed_args['linevar_par'])
+
     #Process parameters with dependence on instrument/visit
     for root_par in np.unique(root_par_list):
 
@@ -11007,9 +11006,9 @@ def init_st_intr_prof(args,grid_dic,param):
         args['flux_intr_grid'] = np.zeros(grid_dic['nsub_star'])*np.nan   
         args['input_cell_all']={}
         args['coeff_line'] = {}
-        inst_list = args['inst'] if ('inst' in args) else list(args['linevar_par'].keys())
+        inst_list = [args['inst']] if ('inst' in args) else list(args['linevar_par'].keys())
         for inst in inst_list:
-            vis_list = args['vis'] if ('vis' in args) else list(args['linevar_par'][inst].keys())
+            vis_list = [args['vis']] if ('vis' in args) else list(args['linevar_par'][inst].keys())
             for vis in vis_list:
                 for par_loc in args['linevar_par'][inst][vis]:     
                     args['coeff_line'][par_loc] = polycoeff_def(param,args['coeff_ord2name'][inst][vis][par_loc])
