@@ -970,6 +970,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
                 #Linewidth
                 plot_settings[key_plot]['lw_plot']=1.   #ANTARESS I, mock, multi-tr, fit CCF DI
+        
+                #Choose profiles to plot
+                #    - 'raw' : input profiles
+                plot_settings[key_plot]['step']='raw'  
             
                 #Visits to plot
                 if gen_dic['studied_pl']=='55Cnc_e':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2020-02-05']}            
@@ -2445,13 +2449,13 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # plot_settings['prop_raw_ordin']=['rv_res','FWHM','ctrst']
         # plot_settings['prop_raw_ordin']=['rv_l2c','FWHM_l2c','amp_l2c']
         # plot_settings['prop_raw_ordin']=['rv','rv_res','rv_pip','rv_pip_res']  
-        plot_settings['prop_raw_ordin']=['snr'] #vaulato
+        # plot_settings['prop_raw_ordin']=['snr'] #vaulato
         # plot_settings['prop_raw_ordin']=['rv'] 
         # plot_settings['prop_raw_ordin']=['ctrst'] 
         # plot_settings['prop_raw_ordin']=['rv_res'] 
         # plot_settings['prop_raw_ordin'] = ['colcorrmin','colcorrmax']
         # plot_settings['prop_raw_ordin'] += ['snr','AM']        
-        plot_settings['prop_raw_ordin'] += ['seeing']   #vaulato  
+        # plot_settings['prop_raw_ordin'] += ['seeing']   #vaulato  
         # plot_settings['prop_raw_ordin'] += ['satur_check']
     #    plot_settings['prop_raw_ordin']=['colcorr450','colcorr550','colcorr650']  
 #        plot_settings['prop_raw_ordin']=['rv_res','rv_l2c','FWHM_l2c','amp_l2c']     
@@ -2469,7 +2473,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
         #Settings for selected properties
         for plot_prop in plot_settings['prop_raw_ordin']:
-            key_plot = 'prop_'+plot_prop 
+            key_plot = 'prop_raw_'+plot_prop 
             plot_settings[key_plot]={} 
 
             #Margins
@@ -2483,24 +2487,24 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['font_size']=18   #ANTARESS I, mock, multi-tr
 
             #Abscissa
-            plot_settings[key_plot]['prop_absc']='phase'
-            # plot_settings[key_plot]['prop_absc']='ctrst'
-            # plot_settings[key_plot]['prop_absc']='FWHM'
-            # plot_settings[key_plot]['prop_absc']='snr'
-            # plot_settings[key_plot]['prop_absc']='snr_quad'
-            # plot_settings[key_plot]['prop_absc']='AM'
-            # plot_settings[key_plot]['prop_absc']='flux_airmass'
-            # plot_settings[key_plot]['prop_absc']='seeing'
-            # plot_settings[key_plot]['prop_absc']='colcorrmin'
-            # plot_settings[key_plot]['prop_absc']='PSFang'
-            # plot_settings[key_plot]['prop_absc']='alt'
-            # plot_settings[key_plot]['prop_absc'] = 's'
-            # plot_settings[key_plot]['prop_absc'] = 'ca'
-            # plot_settings[key_plot]['prop_absc'] = 'ha'
-            # plot_settings[key_plot]['prop_absc'] = 'na'
+            plot_settings[key_plot]['prop_raw_absc']='phase'
+            # plot_settings[key_plot]['prop_raw_absc']='ctrst'
+            # plot_settings[key_plot]['prop_raw_absc']='FWHM'
+            # plot_settings[key_plot]['prop_raw_absc']='snr'
+            # plot_settings[key_plot]['prop_raw_absc']='snr_quad'
+            # plot_settings[key_plot]['prop_raw_absc']='AM'
+            # plot_settings[key_plot]['prop_raw_absc']='flux_airmass'
+            # plot_settings[key_plot]['prop_raw_absc']='seeing'
+            # plot_settings[key_plot]['prop_raw_absc']='colcorrmin'
+            # plot_settings[key_plot]['prop_raw_absc']='PSFang'
+            # plot_settings[key_plot]['prop_raw_absc']='alt'
+            # plot_settings[key_plot]['prop_raw_absc'] = 's'
+            # plot_settings[key_plot]['prop_raw_absc'] = 'ca'
+            # plot_settings[key_plot]['prop_raw_absc'] = 'ha'
+            # plot_settings[key_plot]['prop_raw_absc'] = 'na'
 
             #Visits to plot
-            plot_settings[key_plot]['visits_to_plot']={}
+            # plot_settings[key_plot]['visits_to_plot']={}
             
             
             if gen_dic['star_name']=='WASP189': #vaulato
@@ -2738,7 +2742,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['bin_val']['alpha_bin']=1.
                 plot_settings[key_plot]['alpha_symb']=0.5
                 plot_settings[key_plot]['alpha_err']=0.2
-                if plot_settings[key_plot]['prop_absc']=='phase':
+                if plot_settings[key_plot]['prop_raw_absc']=='phase':
                     if gen_dic['star_name']=='GJ436':dbin,bin_min,bin_max=0.003 ,-0.05  ,0.05
                     elif gen_dic['star_name']=='HAT_P3':dbin,bin_min,bin_max=0.008 ,-0.034  ,0.057
                     elif gen_dic['star_name']=='HAT_P11':dbin,bin_min,bin_max=0.0035 ,-0.045  ,0.045
@@ -2766,7 +2770,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                         plot_settings[key_plot]['bin_val']['HARPN'] = {'dbin':0.006,'bin_min':-0.155,'bin_max':0.125,'color':'black'}   
                         # plot_settings[key_plot]['bin_val']['all'] = {'dbin':0.006,'bin_min':-0.16,'bin_max':0.16,'color':'black'}  
             
-                if plot_settings[key_plot]['prop_absc']=='snr':
+                if plot_settings[key_plot]['prop_raw_absc']=='snr':
                     dbin,bin_min,bin_max=3 ,30  ,70   
 
             #Do not plot original data
@@ -2784,14 +2788,14 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
     
             #Bornes du plot       
             if gen_dic['studied_pl']=='WASP_8b':
-                if plot_settings[key_plot]['prop_absc']=='phase':            
+                if plot_settings[key_plot]['prop_raw_absc']=='phase':            
                     plot_settings[key_plot]['x_range']=[-0.018,0.022]          
-                if plot_settings[key_plot]['prop_absc']=='snr':            
+                if plot_settings[key_plot]['prop_raw_absc']=='snr':            
                     plot_settings[key_plot]['x_range']=[25.,55.]   
-                if plot_settings[key_plot]['prop_absc']=='AM':            
+                if plot_settings[key_plot]['prop_raw_absc']=='AM':            
                     plot_settings[key_plot]['x_range']=[0.9,1.7] 
             if gen_dic['star_name']=='55Cnc':
-                if plot_settings[key_plot]['prop_absc']=='phase':            
+                if plot_settings[key_plot]['prop_raw_absc']=='phase':            
                     if 'ESPRESSO' in plot_settings[key_plot]['visits_to_plot']:
                         plot_settings[key_plot]['x_range']=[-0.165,0.165]
                         if plot_settings[key_plot]['visits_to_plot']['ESPRESSO']==['20200205']:plot_settings[key_plot]['x_range']=[-0.1,0.165]
@@ -2807,73 +2811,73 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     
                     
             if gen_dic['studied_pl']==['HD3167_c']:      
-                if plot_settings[key_plot]['prop_absc']=='phase':
+                if plot_settings[key_plot]['prop_raw_absc']=='phase':
                     plot_settings[key_plot]['x_range']=[-0.0075,0.0075] 
-                if plot_settings[key_plot]['prop_absc']=='snr':
+                if plot_settings[key_plot]['prop_raw_absc']=='snr':
                     plot_settings[key_plot]['x_range']=[30,130]     
         
             if gen_dic['studied_pl']=='WASP121b':      
-                if plot_settings[key_plot]['prop_absc']=='phase':
+                if plot_settings[key_plot]['prop_raw_absc']=='phase':
                     plot_settings[key_plot]['x_range']=[-0.16,0.19] 
         
-                if plot_settings[key_plot]['prop_absc']=='snr':
+                if plot_settings[key_plot]['prop_raw_absc']=='snr':
                     plot_settings[key_plot]['x_range']=[24.,55.]     #SNR50
         
-                if plot_settings[key_plot]['prop_absc']=='AM':
+                if plot_settings[key_plot]['prop_raw_absc']=='AM':
                     plot_settings[key_plot]['x_range']=[0.8,2.]     
         
             if gen_dic['studied_pl']=='Kelt9b':      
-                if plot_settings[key_plot]['prop_absc']=='phase':
+                if plot_settings[key_plot]['prop_raw_absc']=='phase':
                     plot_settings[key_plot]['x_range']=[-0.15,0.11]     
     
             if gen_dic['star_name']=='WASP76':      
-                if plot_settings[key_plot]['prop_absc']=='phase':
+                if plot_settings[key_plot]['prop_raw_absc']=='phase':
                     plot_settings[key_plot]['x_range']=[-0.078,0.088]
     
             elif gen_dic['studied_pl']=='WASP127b':
                 plot_settings[key_plot]['x_range']=[-0.05,0.04] 
     
             if gen_dic['star_name']=='GJ436':
-                if plot_settings[key_plot]['prop_absc']=='phase': 
+                if plot_settings[key_plot]['prop_raw_absc']=='phase': 
                     plot_settings[key_plot]['x_range']=[-0.13,0.085]  
                     # plot_settings[key_plot]['x_range']=[-0.04,0.05]   #ESPRESSO alone / binned data  
-                if plot_settings[key_plot]['prop_absc']=='snr':
+                if plot_settings[key_plot]['prop_raw_absc']=='snr':
                     plot_settings[key_plot]['x_range']=[20.,41.]   #HARPS-N
                     plot_settings[key_plot]['x_range']=[13.,33.]   #HARPS                
-                if plot_settings[key_plot]['prop_absc']=='snr_quad':
+                if plot_settings[key_plot]['prop_raw_absc']=='snr_quad':
                     plot_settings[key_plot]['x_range']=[31.,71.]   #ESPRESSO
     
                 
             if gen_dic['studied_pl']=='HD209458b':
-                if plot_settings[key_plot]['prop_absc']=='phase': plot_settings[key_plot]['x_range']=[-0.031,0.041]       
+                if plot_settings[key_plot]['prop_raw_absc']=='phase': plot_settings[key_plot]['x_range']=[-0.031,0.041]       
             if gen_dic['studied_pl']==['HD3167_b']:
-                if plot_settings[key_plot]['prop_absc']=='phase':
+                if plot_settings[key_plot]['prop_raw_absc']=='phase':
                     plot_settings[key_plot]['x_range']=[-0.08,0.11]    #[-0.05,0.13] 
                     plot_settings[key_plot]['x_range']=[-0.075,0.115]    #[-0.05,0.13] 
-                if plot_settings[key_plot]['prop_absc']=='snr': plot_settings[key_plot]['x_range']=[30.,70.] 
-                if plot_settings[key_plot]['prop_absc']=='snr_quad': plot_settings[key_plot]['x_range']=[47.,99.] 
+                if plot_settings[key_plot]['prop_raw_absc']=='snr': plot_settings[key_plot]['x_range']=[30.,70.] 
+                if plot_settings[key_plot]['prop_raw_absc']=='snr_quad': plot_settings[key_plot]['x_range']=[47.,99.] 
             elif gen_dic['studied_pl']=='Corot7b':plot_settings[key_plot]['x_range']=[-0.08,0.16]  
             elif gen_dic['studied_pl']=='Nu2Lupi_c':
                 plot_settings[key_plot]['x_range']=[-0.0062,  0.0042]      
-                if plot_settings[key_plot]['prop_absc']=='ctrst':plot_settings[key_plot]['x_range']=[0.5755,0.577]  
-                if plot_settings[key_plot]['prop_absc']=='FWHM':plot_settings[key_plot]['x_range']=[7.133,7.141]   
+                if plot_settings[key_plot]['prop_raw_absc']=='ctrst':plot_settings[key_plot]['x_range']=[0.5755,0.577]  
+                if plot_settings[key_plot]['prop_raw_absc']=='FWHM':plot_settings[key_plot]['x_range']=[7.133,7.141]   
             elif gen_dic['studied_pl']=='GJ9827d':
                 plot_settings[key_plot]['x_range']=[-0.019,  0.022]     #ESPRESSO
                 plot_settings[key_plot]['x_range']=[-0.04 ,  0.02 ]     #HARPS
-                if plot_settings[key_plot]['prop_absc']=='AM':plot_settings[key_plot]['x_range'] = [1.,2.5]
-                if plot_settings[key_plot]['prop_absc']=='seeing':plot_settings[key_plot]['x_range'] = [0.3,1.9] 
+                if plot_settings[key_plot]['prop_raw_absc']=='AM':plot_settings[key_plot]['x_range'] = [1.,2.5]
+                if plot_settings[key_plot]['prop_raw_absc']=='seeing':plot_settings[key_plot]['x_range'] = [0.3,1.9] 
             elif gen_dic['studied_pl']=='GJ9827b':
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range'] = [-0.16,0.1]
-                if plot_settings[key_plot]['prop_absc']=='AM':plot_settings[key_plot]['x_range'] = [1.1,2.4]
-                if plot_settings[key_plot]['prop_absc']=='seeing':plot_settings[key_plot]['x_range'] = [0.4,1.8] 
+                if plot_settings[key_plot]['prop_raw_absc']=='phase':plot_settings[key_plot]['x_range'] = [-0.16,0.1]
+                if plot_settings[key_plot]['prop_raw_absc']=='AM':plot_settings[key_plot]['x_range'] = [1.1,2.4]
+                if plot_settings[key_plot]['prop_raw_absc']=='seeing':plot_settings[key_plot]['x_range'] = [0.4,1.8] 
             if gen_dic['star_name']=='TOI858':    
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range'] = [-0.035,0.05]            
+                if plot_settings[key_plot]['prop_raw_absc']=='phase':plot_settings[key_plot]['x_range'] = [-0.035,0.05]            
             if gen_dic['star_name']=='HIP41378':    
-                if plot_settings[key_plot]['prop_absc']=='phase':
+                if plot_settings[key_plot]['prop_raw_absc']=='phase':
                     plot_settings[key_plot]['x_range'] = [0.,1.3e-3] 
                     plot_settings[key_plot]['x_range'] = [-0.001796223476066,0.001796223476066] 
             if gen_dic['star_name']=='HD15337':    
-                if plot_settings[key_plot]['prop_absc']=='snr':
+                if plot_settings[key_plot]['prop_raw_absc']=='snr':
                     plot_settings[key_plot]['x_range'] = [95,185]    
     
     
@@ -2904,9 +2908,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             #    - structure is deg_prop_fit > inst > vis > {prop1 : deg , prop2 : deg ..}   
             plot_settings[key_plot]['deg_prop_fit']={}
             deg_corr = 0
-            for inst in plot_settings[key_plot]['visits_to_plot']:
-                plot_settings[key_plot]['deg_prop_fit'][inst]={}
-                for vis in plot_settings[key_plot]['visits_to_plot'][inst]:plot_settings[key_plot]['deg_prop_fit'][inst][vis]={plot_settings[key_plot]['prop_absc']:deg_corr}
+            if 'visits_to_plot' in plot_settings[key_plot]:
+                for inst in plot_settings[key_plot]['visits_to_plot']:
+                    plot_settings[key_plot]['deg_prop_fit'][inst]={}
+                    for vis in plot_settings[key_plot]['visits_to_plot'][inst]:plot_settings[key_plot]['deg_prop_fit'][inst][vis]={plot_settings[key_plot]['prop_raw_absc']:deg_corr}
 
     
             # if gen_dic['star_name']=='WASP156':
@@ -2977,9 +2982,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             #Points to be fitted
             #    - set instrument and visit to an empty list for its out-of-transit exposures to be fitted automatically, otherwise indicate specific exposures
             plot_settings[key_plot]['idx_fit']={}
-            for inst in plot_settings[key_plot]['visits_to_plot']:
-                plot_settings[key_plot]['idx_fit'][inst]={}
-                for vis in plot_settings[key_plot]['visits_to_plot'][inst]:plot_settings[key_plot]['idx_fit'][inst][vis]=[]  
+            # for inst in plot_settings[key_plot]['visits_to_plot']:
+            #     plot_settings[key_plot]['idx_fit'][inst]={}
+            #     for vis in plot_settings[key_plot]['visits_to_plot'][inst]:plot_settings[key_plot]['idx_fit'][inst][vis]=[]  
             
             if gen_dic['studied_pl']=='WASP_8b':
                 if plot_prop==['ctrst']:
@@ -3620,7 +3625,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     # plot_settings[key_plot]['y_range']=[0.,1.]
     
 
-    
+
     
     
         
@@ -4604,7 +4609,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
     ##################################################################################################        
         
     ##################################################################################################
-    #%%% 2D map: intrinsic profiles
+    #%%% 2D maps: intrinsic stellar profiles
     ##################################################################################################
     if (plot_dic['map_Intr_prof']!=''):
         key_plot = 'map_Intr_prof'
@@ -4758,7 +4763,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['v_range_all']['NIRPS_HE']={'20230411':[-1.,3.]} 
         elif gen_dic['star_name']=='GJ1214':
             plot_settings[key_plot]['v_range_all']['NIRPS_HE']={'20230407':[0.6,1.4]}               
-            
+        elif gen_dic['star_name']=='TOI4562':
+            plot_settings[key_plot]['v_range_all']['HARPS']={'mock_vis':[0.6,1.4]}                
+            # plot_settings[key_plot]['v_range_all']['HARPS']={'mock_vis':None}  
             
           
             
@@ -6739,7 +6746,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
         #Settings for selected properties
         for plot_prop in plot_settings['prop_Intr_ordin']:
-            key_plot = 'prop_'+plot_prop 
+            key_plot = 'prop_Intr_'+plot_prop 
             plot_settings[key_plot]={} 
 
             #Plot margins
@@ -6761,13 +6768,12 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             #    - choose: 
             # + 'phase', 'cstr_loc', 'FWHM_loc', 'rv_loc' (defined for all exposures)
             # + 'mu', 'lat', 'lon', 'x_st', 'abs_y_st', 'y_st', 'y_st2', 'xp_abs', 'r_proj' (defined for in-transit exposures only, and for binned data only if binned over phase)
-            plot_settings[key_plot]['prop_absc']='phase'
-            # plot_settings[key_plot]['prop_absc']='r_proj'
+            plot_settings[key_plot]['prop_Intr_absc']='phase'
+            # plot_settings[key_plot]['prop_Intr_absc']='r_proj'
     
             #Visits to plot
             #    - add '_bin' to the name of a visit to plot properties derived from intrinsic profiles binned within a visit
             #    - use 'binned' as visit name to plot properties derived from intrinsic profiles binned over several visits
-            plot_settings[key_plot]['visits_to_plot'] = {}
             if gen_dic['studied_pl']=='WASP_8b':plot_settings[key_plot]['visits_to_plot']={'HARPS':['2008-10-04']} 
             elif gen_dic['studied_pl']=='55Cnc_e':plot_settings[key_plot]['visits_to_plot']={'binned':['all_HARPSS','all_HARPS_adj','all_HARPS_adj2','best_HARPSN_adj','best_HARPSN_adj_short','best_HARPSN_adj_long','good_HARPSN_adj','HARPS_HARPSN_binHARPS','HARPS_HARPSN_binHARPSN']}
             if gen_dic['star_name']=='HD3167': 
@@ -7007,13 +7013,13 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             #    - define boundaries of the bins within which the exposures will be binned
             plot_settings[key_plot]['bin_val'] = {}
             if 1==0:
-                if plot_settings[key_plot]['prop_absc']=='phase':
+                if plot_settings[key_plot]['prop_Intr_absc']=='phase':
                     dbin,bin_min,bin_max=0.01 ,-0.15  ,0.18
                     if gen_dic['star_name']=='HAT_P11': 
                         dbin,bin_min,bin_max=0.0015 ,-0.01  ,0.01
                     elif gen_dic['star_name']=='HD209458': 
                         plot_settings[key_plot]['bin_val']['ESPRESSO']= {'dbin':(0.0161+0.0164)/41.,'bin_min':-0.0164,'bin_max':0.0161,'color':'black'}   
-                elif plot_settings[key_plot]['prop_absc']=='r_proj':
+                elif plot_settings[key_plot]['prop_Intr_absc']=='r_proj':
                     dbin,bin_min,bin_max=0.05 ,0.15  ,0.98 
                     if gen_dic['star_name']=='WASP107': 
                         dbin=None
@@ -7046,24 +7052,24 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             #plot_settings[key_plot]['x_range']=[0.4,1.3]          #contraste
             #plot_settings[key_plot]['x_range']=[3.,12.]          #FWHM
             if gen_dic['star_name']=='HD3167': 
-                if plot_settings[key_plot]['prop_absc'] in ['abs_y_st','y_st2']:
+                if plot_settings[key_plot]['prop_Intr_absc'] in ['abs_y_st','y_st2']:
                     plot_settings[key_plot]['x_range']=[0.,1.]    
                     plot_settings[key_plot]['x_range']=[-0.02,0.75]    #paper
-                if plot_settings[key_plot]['prop_absc']=='abs_lat':plot_settings[key_plot]['x_range']=[0.,180.]  
-                if plot_settings[key_plot]['prop_absc']=='mu':plot_settings[key_plot]['x_range']=[-0.02,0.92]  
+                if plot_settings[key_plot]['prop_Intr_absc']=='abs_lat':plot_settings[key_plot]['x_range']=[0.,180.]  
+                if plot_settings[key_plot]['prop_Intr_absc']=='mu':plot_settings[key_plot]['x_range']=[-0.02,0.92]  
                     
                 if gen_dic['studied_pl']==['HD3167_c']:
-                    if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.004,0.004]     
-                    if plot_settings[key_plot]['prop_absc']=='mu':plot_settings[key_plot]['x_range']=[0.05,0.9]     
-                    if plot_settings[key_plot]['prop_absc']=='y_st':plot_settings[key_plot]['x_range']=[-1.,1.]
-                    if plot_settings[key_plot]['prop_absc']=='lat':plot_settings[key_plot]['x_range']=[-180.,180.]  
+                    if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.004,0.004]     
+                    if plot_settings[key_plot]['prop_Intr_absc']=='mu':plot_settings[key_plot]['x_range']=[0.05,0.9]     
+                    if plot_settings[key_plot]['prop_Intr_absc']=='y_st':plot_settings[key_plot]['x_range']=[-1.,1.]
+                    if plot_settings[key_plot]['prop_Intr_absc']=='lat':plot_settings[key_plot]['x_range']=[-180.,180.]  
                 if gen_dic['studied_pl']==['HD3167_b']:
-                    if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.04,0.04]    
-                    if plot_settings[key_plot]['prop_absc']=='mu':plot_settings[key_plot]['x_range']=[-0.02,0.92]              
-                    if plot_settings[key_plot]['prop_absc']=='xp_abs':plot_settings[key_plot]['x_range']=[0.,0.9]  
-                    if plot_settings[key_plot]['prop_absc']=='r_proj':plot_settings[key_plot]['x_range']=[0.2,1.]      
-                    if plot_settings[key_plot]['prop_absc']=='y_st':plot_settings[key_plot]['x_range']=[-1.,1.]
-                    if plot_settings[key_plot]['prop_absc']=='lat':plot_settings[key_plot]['x_range']=[-180.,180.]
+                    if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.04,0.04]    
+                    if plot_settings[key_plot]['prop_Intr_absc']=='mu':plot_settings[key_plot]['x_range']=[-0.02,0.92]              
+                    if plot_settings[key_plot]['prop_Intr_absc']=='xp_abs':plot_settings[key_plot]['x_range']=[0.,0.9]  
+                    if plot_settings[key_plot]['prop_Intr_absc']=='r_proj':plot_settings[key_plot]['x_range']=[0.2,1.]      
+                    if plot_settings[key_plot]['prop_Intr_absc']=='y_st':plot_settings[key_plot]['x_range']=[-1.,1.]
+                    if plot_settings[key_plot]['prop_Intr_absc']=='lat':plot_settings[key_plot]['x_range']=[-180.,180.]
                 
     
             elif gen_dic['studied_pl']=='WASP121b':plot_settings[key_plot]['x_range']=[-0.05,0.05]     #phase 
@@ -7073,8 +7079,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             elif gen_dic['studied_pl']==['TIC61024636b']:plot_settings[key_plot]['x_range']=[-0.0023,0.0023]     #phase  
             elif gen_dic['studied_pl']==['TOI858b']:plot_settings[key_plot]['x_range']=[-0.025,0.025]     #phase         
             if gen_dic['star_name']=='GJ436':
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.0085,0.0085]              
-                if plot_settings[key_plot]['prop_absc']=='mu':plot_settings[key_plot]['x_range']=[0.2,0.505]     
+                if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.0085,0.0085]              
+                if plot_settings[key_plot]['prop_Intr_absc']=='mu':plot_settings[key_plot]['x_range']=[0.2,0.505]     
             elif gen_dic['star_name']=='Altair':plot_settings[key_plot]['x_range']=[-0.04,0.04]               
             elif gen_dic['star_name']=='TOI-3362':plot_settings[key_plot]['x_range']=[-0.0035,0.0035]  
             elif gen_dic['star_name']=='Nu2Lupi':plot_settings[key_plot]['x_range']=[-0.0018,0.0018]  
@@ -7082,40 +7088,40 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             elif gen_dic['star_name']=='TIC257527578':plot_settings[key_plot]['x_range']=[-0.0019,0.0019]          
             elif gen_dic['star_name']=='HIP41378':plot_settings[key_plot]['x_range']=[0.0002,0.0011]   
             elif gen_dic['star_name']=='MASCARA1':
-                    if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.045,0.045] 
-                    if plot_settings[key_plot]['prop_absc']=='mu':plot_settings[key_plot]['x_range']=[0.,1.]                
-                    if plot_settings[key_plot]['prop_absc']=='y_st':plot_settings[key_plot]['x_range']=[-1.,1.]                    
-                    if plot_settings[key_plot]['prop_absc']=='y_st2':plot_settings[key_plot]['x_range']=[0.,1.]                    
-                    if plot_settings[key_plot]['prop_absc']=='lat':plot_settings[key_plot]['x_range']=[-180.,180.]  
+                    if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.045,0.045] 
+                    if plot_settings[key_plot]['prop_Intr_absc']=='mu':plot_settings[key_plot]['x_range']=[0.,1.]                
+                    if plot_settings[key_plot]['prop_Intr_absc']=='y_st':plot_settings[key_plot]['x_range']=[-1.,1.]                    
+                    if plot_settings[key_plot]['prop_Intr_absc']=='y_st2':plot_settings[key_plot]['x_range']=[0.,1.]                    
+                    if plot_settings[key_plot]['prop_Intr_absc']=='lat':plot_settings[key_plot]['x_range']=[-180.,180.]  
             elif gen_dic['star_name']=='HD209458':
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.0185,0.0185]     #phase  
+                if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.0185,0.0185]     #phase  
             elif gen_dic['star_name']=='WASP76':
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.047,0.047]     #phase     
+                if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.047,0.047]     #phase     
     
             #RM survey
             elif gen_dic['star_name']=='HAT_P3':
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.016,0.016]   
-                elif plot_settings[key_plot]['prop_absc']=='mu':plot_settings[key_plot]['x_range']=[0.2,0.8]   
+                if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.016,0.016]   
+                elif plot_settings[key_plot]['prop_Intr_absc']=='mu':plot_settings[key_plot]['x_range']=[0.2,0.8]   
             elif gen_dic['star_name']=='HAT_P33':
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.029,0.029]  
-                elif plot_settings[key_plot]['prop_absc']=='mu':plot_settings[key_plot]['x_range']=[0.3,1.]                     
+                if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.029,0.029]  
+                elif plot_settings[key_plot]['prop_Intr_absc']=='mu':plot_settings[key_plot]['x_range']=[0.3,1.]                     
             elif gen_dic['star_name']=='HAT_P49':
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.035,0.035]         
+                if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.035,0.035]         
             elif gen_dic['star_name']=='WASP107':
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.011,0.011]  
-                elif plot_settings[key_plot]['prop_absc']=='mu':plot_settings[key_plot]['x_range']=[0.2,1.]
-                elif plot_settings[key_plot]['prop_absc']=='r_proj':plot_settings[key_plot]['x_range']=[0.15,0.99]
+                if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.011,0.011]  
+                elif plot_settings[key_plot]['prop_Intr_absc']=='mu':plot_settings[key_plot]['x_range']=[0.2,1.]
+                elif plot_settings[key_plot]['prop_Intr_absc']=='r_proj':plot_settings[key_plot]['x_range']=[0.15,0.99]
             elif gen_dic['star_name']=='WASP166':
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.0145,0.0145]   
-                elif plot_settings[key_plot]['prop_absc']=='mu':plot_settings[key_plot]['x_range']=[0.,1.]       
+                if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.0145,0.0145]   
+                elif plot_settings[key_plot]['prop_Intr_absc']=='mu':plot_settings[key_plot]['x_range']=[0.,1.]       
             elif gen_dic['star_name']=='HAT_P11':
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.012,0.012]  
-                elif plot_settings[key_plot]['prop_absc']=='mu':plot_settings[key_plot]['x_range']=[0.2,1.]           
+                if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.012,0.012]  
+                elif plot_settings[key_plot]['prop_Intr_absc']=='mu':plot_settings[key_plot]['x_range']=[0.2,1.]           
             elif gen_dic['star_name']=='WASP156':
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.013,0.013]  
-                elif plot_settings[key_plot]['prop_absc']=='mu':plot_settings[key_plot]['x_range']=[0.,1.]   
+                if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.013,0.013]  
+                elif plot_settings[key_plot]['prop_Intr_absc']=='mu':plot_settings[key_plot]['x_range']=[0.,1.]   
             elif gen_dic['star_name']=='HD106315':
-                if plot_settings[key_plot]['prop_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.0045,0.0045] 
+                if plot_settings[key_plot]['prop_Intr_absc']=='phase':plot_settings[key_plot]['x_range']=[-0.0045,0.0045] 
 
 
 
@@ -7174,7 +7180,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 deg_corr = 0
                 for inst in plot_settings[key_plot]['visits_to_plot']:
                     plot_settings[key_plot]['deg_prop_fit'][inst]={}
-                    for vis in plot_settings[key_plot]['visits_to_plot'][inst]:plot_settings[key_plot]['deg_prop_fit'][inst][vis]={plot_settings[key_plot]['prop_absc']:deg_corr}
+                    for vis in plot_settings[key_plot]['visits_to_plot'][inst]:plot_settings[key_plot]['deg_prop_fit'][inst][vis]={plot_settings[key_plot]['prop_Intr_absc']:deg_corr}
     
                 if gen_dic['star_name']=='HD209458':
                     if (plot_prop in ['rv_res','FWHM','ctrst']):
@@ -7185,10 +7191,11 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
             #Points to be fitted
             #    - set instrument and visit to an empty list for all plotted exposures to be fitted automatically, otherwise indicate specific exposures
-            plot_settings[key_plot]['idx_fit']={}                                 
-            for inst in plot_settings[key_plot]['visits_to_plot']:
-                plot_settings[key_plot]['idx_fit'][inst]={}
-                for vis in plot_settings[key_plot]['visits_to_plot'][inst]:plot_settings[key_plot]['idx_fit'][inst][vis]=[]                     
+            plot_settings[key_plot]['idx_fit']={} 
+            if 'visits_to_plot' in plot_settings[key_plot]:                             
+                for inst in plot_settings[key_plot]['visits_to_plot']:
+                    plot_settings[key_plot]['idx_fit'][inst]={}
+                    for vis in plot_settings[key_plot]['visits_to_plot'][inst]:plot_settings[key_plot]['idx_fit'][inst][vis]=[]                     
             
 
 
@@ -7233,22 +7240,21 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 # + the FWHM and contrast of the local CCFs
                 # + rand: set to True to draw measurements from a gaussian with mean the theoretical RV value and sigma its estimated error
                 #    - for example, one can use RV errors obtained for a given star with a given instrument to estimate C
-
-                # plot_settings[key_plot]['predic']={
-                #     'C_inst':{
-                #         'ESPRESSO':1.,      
-                #         'HARPS':1./6.,    
-                #         'NIRPS':1./5.,     #from C. Lovis, efficiency roughly similar to ESPRESSO, thus flux ratio scales as mirror size ratio 
-                #         },
-                #     'C':1.2e-5,     #determined roughly for ESPRESSO, HD209458b, FWHM=8.3, C = 0.6, texp=175 s
-                #     # 'FWHM':6.1,'ctrst':0.45,     #valeurs pour une K0, pris de Cegla+2016 pour HD189
-                #     # 'FWHM':10.,'ctrst':0.4,       #valeurs pour une F, HAT-P-41, pris de l'analyse de Omar en RRM
-                #     # 'FWHM':8.5,'ctrst':0.6,       #valeurs pour une G0V, HD209 de mon analyse ESPRESSO
-                #     'FWHM':6.,'ctrst':0.7,       #valeurs pour une G4V, Nu2_Lupi, de mon analyse ESPRESSO
-                #     'rand':True
+                plot_settings[key_plot]['predic']={
+                    'C_inst':{
+                        # 'ESPRESSO':1.,      
+                        'HARPS':1./6.,    
+                        # 'NIRPS':1./5.,     #from C. Lovis, efficiency roughly similar to ESPRESSO, thus flux ratio scales as mirror size ratio 
+                        },
+                    'C':1.2e-5,     #determined roughly for ESPRESSO, HD209458b, FWHM=8.3, C = 0.6, texp=175 s
+                    # 'FWHM':6.1,'ctrst':0.45,     #valeurs pour une K0, pris de Cegla+2016 pour HD189
+                    'FWHM':10.,'ctrst':0.4,       #valeurs pour une F, HAT-P-41, pris de l'analyse de Omar en RRM
+                    # 'FWHM':8.5,'ctrst':0.6,       #valeurs pour une G0V, HD209 de mon analyse ESPRESSO
+                    # 'FWHM':6.,'ctrst':0.7,       #valeurs pour une G4V, Nu2_Lupi, de mon analyse ESPRESSO
+                    'rand':True,
     
-                #     'C_RMR':155000.,     #determined roughly for ESPRESSO, HD3167
-                #     }
+                    'C_RMR':155000.,     #determined roughly for ESPRESSO, HD3167
+                    }
     
     
                 #Print system properties derived from common fit to all exposures (if relevant)
@@ -7305,7 +7311,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     # plot_settings[key_plot]['y_range']=[-8.,8.]     #CCF Na
                     # plot_settings[key_plot]['y_range']=[-5.5,6.5]     #CCF Na
                 elif gen_dic['star_name']=='WASP76':plot_settings[key_plot]['y_range']=[-1.5,1.5]  
-    
+                elif gen_dic['star_name']=='TOI4562':plot_settings[key_plot]['y_range']=[-20,20]      
 
             #-----------------------------------------------------
             #RV residual plot (m/s)
@@ -7317,10 +7323,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
     
                 #Plot residuals from high-resolution model from profile fit 
                 #    - overwrites the residuals calculated in the intrinsic profile analysis module using default system properties
-                plot_settings[key_plot]['theo_HR_prof'] = True #    & False            
+                plot_settings[key_plot]['theo_HR_prof'] = True     & False            
 
                 #Plot residuals from high-resolution model from nominal values in ANTARESS_systems.py
-                plot_settings[key_plot]['theo_HR_nom'] = True   &   False     
+                plot_settings[key_plot]['theo_HR_nom'] = True  # &   False     
 
                 #Plot null reference
                 plot_settings[key_plot]['plot_ref']=True
@@ -7382,7 +7388,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     
                     # #CCF Na
                     # plot_settings[key_plot]['y_range']=[12.,25.]    
-                elif gen_dic['star_name']=='WASP76':plot_settings[key_plot]['y_range']=[6.,13.] 
+                elif gen_dic['star_name']=='WASP76':plot_settings[key_plot]['y_range']=[6.,13.]  
+                elif gen_dic['star_name']=='TOI4562':plot_settings[key_plot]['y_range']=[0,20] 
             
             
          
@@ -7435,7 +7442,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     
                     # #CCF Na
                     # plot_settings[key_plot]['y_range']=[0.79,1.03]                     
-                elif gen_dic['star_name']=='WASP76':plot_settings[key_plot]['y_range']=[0.4,0.75] 
+                elif gen_dic['star_name']=='WASP76':plot_settings[key_plot]['y_range']=[0.4,0.75]  
+                elif gen_dic['star_name']=='TOI4562':plot_settings[key_plot]['y_range']=[0.,1.] 
 
 
 
@@ -7727,16 +7735,17 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             
 
         #Orbit colors
-        if len(plot_settings[key_plot]['pl_to_plot'])==1:
-            plot_settings[key_plot]['col_orb'] = ['forestgreen'] 
-            plot_settings[key_plot]['col_orb_samp'] = ['limegreen'] 
-        elif len(plot_settings[key_plot]['pl_to_plot'])==2:
-            plot_settings[key_plot]['col_orb'] = ['forestgreen','peru'] 
-            plot_settings[key_plot]['col_orb_samp'] = ['limegreen','orange'] 
-        elif len(plot_settings[key_plot]['pl_to_plot'])==3:
-            plot_settings[key_plot]['col_orb'] = ['limegreen','orange','purple'] 
-        elif len(plot_settings[key_plot]['pl_to_plot'])==6:
-            plot_settings[key_plot]['col_orb'] = ['darkred','orange','gold','limegreen','cyan','purple']             
+        if 'pl_to_plot' in plot_settings[key_plot]:
+            if len(plot_settings[key_plot]['pl_to_plot'])==1:
+                plot_settings[key_plot]['col_orb'] = ['forestgreen'] 
+                plot_settings[key_plot]['col_orb_samp'] = ['limegreen'] 
+            elif len(plot_settings[key_plot]['pl_to_plot'])==2:
+                plot_settings[key_plot]['col_orb'] = ['forestgreen','peru'] 
+                plot_settings[key_plot]['col_orb_samp'] = ['limegreen','orange'] 
+            elif len(plot_settings[key_plot]['pl_to_plot'])==3:
+                plot_settings[key_plot]['col_orb'] = ['limegreen','orange','purple'] 
+            elif len(plot_settings[key_plot]['pl_to_plot'])==6:
+                plot_settings[key_plot]['col_orb'] = ['darkred','orange','gold','limegreen','cyan','purple']             
 
         #Number of orbits drawn randomly
         if gen_dic['star_name']=='HD3167':plot_settings[key_plot]['norb']=4000  #paper HD3167, to get 1000 orbits
@@ -7858,7 +7867,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         plot_settings[key_plot]['conf_system']='sky_ste'
 
         #Reference planet for the 'sky_orb' configuration
-        plot_settings[key_plot]['pl_ref'] = plot_settings[key_plot]['pl_to_plot'][0]
+        # plot_settings[key_plot]['pl_ref'] = plot_settings[key_plot]['pl_to_plot'][0]
         
         #Orbit width
         plot_settings[key_plot]['lw_plot'] = 2

@@ -1448,7 +1448,7 @@ def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,
             #Adding progressively bins of current spectrum and master that will be used to fit the color balance correction
             #    - each order of 2D spectra is processed independently, but contributes to the global binned table  
             bin_exp_dic={}
-            for key in ['Fr','varFr','Fexp_tot','Fmast_tot','cen_bins','low_bins','high_bins','idx_ord_bin']:bin_exp_dic[key] = np.zeros(0,dtype=float) 
+            for key in ['Fr','varFr','Fmast_tot','cen_bins','low_bins','high_bins','idx_ord_bin']:bin_exp_dic[key] = np.zeros(0,dtype=float) 
             iord_fit_list_def = np.intersect1d(iord_fit_list,np_where1D(np.sum(cond_fit_all,axis=1)))                
             for iord in iord_fit_list_def:
                 
@@ -1584,13 +1584,13 @@ def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,
                 #    - we keep this approach because orders with deep telluric lines (for which corrected pixels are undefined)
                 # have too many undefined ranges after downsampling with bind.resampling, resulting in poorly defined polynomial corrections
                 bin_bd,raw_loc_dic = sub_def_bins(Fbal_binw_ord,cond_fit_all[iord],low_wav_exp[iord],high_wav_exp[iord],dwav_exp[iord],data_exp['cen_bins'][iord],data_exp['flux'][iord]/mean_gdet_exp[iord],Mstar_loc=data_mast_exp['flux'][iord]/mean_gdet_exp[iord])
-                for key in ['Fr','Fexp_tot','Fmast_tot','cen_bins','low_bins','high_bins']:bin_dic[key] = np.zeros(0,dtype=float) 
+                for key in ['Fr','Fmast_tot','cen_bins','low_bins','high_bins']:bin_dic[key] = np.zeros(0,dtype=float) 
                 for ibin,(low_bin_loc,high_bin_loc) in enumerate(zip(bin_bd[0:-1],bin_bd[1:])):
                     bin_loc_dic,_ = sub_calc_bins(low_bin_loc,high_bin_loc,raw_loc_dic,0,calc_Fr=True)
                     if len(bin_loc_dic)>0:
                         for key in bin_loc_dic:bin_dic[key] = np.append( bin_dic[key] , bin_loc_dic[key])  
                 id_sort=np.argsort(bin_dic['cen_bins'])
-                for key in ['Fr','Fexp_tot','Fmast_tot','cen_bins','low_bins','high_bins']:bin_dic[key] = bin_dic[key][id_sort]
+                for key in ['Fr','Fmast_tot','cen_bins','low_bins','high_bins']:bin_dic[key] = bin_dic[key][id_sort]
                 conddef_bin = np.ones(len(bin_dic['cen_bins']),dtype=bool)
 
                 #Fitted values
@@ -2919,7 +2919,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
                     #Visit fit initialization
                     if cond_exp_proc_vis:
                         bin_dic[iexp]={}
-                        for key in ['Fr','varFr','Fexp_tot','Fmast_tot','nu','low_nu','high_nu']:bin_dic[iexp][key] = np.zeros(0,dtype=float)
+                        for key in ['Fr','varFr','Fmast_tot','nu','low_nu','high_nu']:bin_dic[iexp][key] = np.zeros(0,dtype=float)
 
                     #Scaling exposure spectrum and master back to count units
                     #    - the scaling must be applied uniformely to the exposure and master spectra (ie, after the master has been calculated) so as not introduce biases
@@ -2948,7 +2948,7 @@ def corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
 
                             #Initialize tables for fit per order
                             bin_ord_dic={}
-                            for key in ['Fr','varFr','Fexp_tot','Fmast_tot','nu','low_nu','high_nu']:bin_ord_dic[key] = np.zeros(0,dtype=float)
+                            for key in ['Fr','varFr','Fmast_tot','nu','low_nu','high_nu']:bin_ord_dic[key] = np.zeros(0,dtype=float)
                             
                             #Process spectral bins
                             nfilled_bins=0
