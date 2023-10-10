@@ -6791,7 +6791,7 @@ def ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plo
     
     if ('DI' in data_type) or ('Intr' in data_type):
         if ('DI' in data_type):data_type_gen='DI' 
-        elif ('Intr' in data_type):data_type_gen='Intr'               
+        elif ('Intr' in data_type):data_type_gen='Intr'
         print('   > Analyzing'+txt_print+gen_dic['type_name'][data_type_gen]+' stellar profiles')                 
     elif ('Atm' in data_type):   
         data_type_gen='Atm' 
@@ -9896,7 +9896,6 @@ def ana_prof_func(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,c
       
         #Continuum dispersion
         disp_cont = flux_loc[cond_def_cont].std()
-        
         #Area and amplitude criterion
         #    - we ensure that 
         # abs(cont -  peak) > disp            

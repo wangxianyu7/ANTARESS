@@ -311,9 +311,8 @@ if __name__ == '__main__':
     if user=='mercier' and gen_dic['star_name']=='AUMic':
         gen_dic['transit_pl'] = {
             'AUMicb':{'ESPRESSO' : ['mock_vis']}, 
-            'AUMicc':{'ESPRESSO' : ['mock_vis']}
             }
-        gen_dic['kepl_pl'] = ['AUMicb', 'AUMicc']
+        gen_dic['kepl_pl'] = ['AUMicb']
 
     #gen_dic['transit_pl']='HD189733_b'
     #gen_dic['transit_pl']='Corot_9b'
@@ -870,7 +869,7 @@ if __name__ == '__main__':
 
     if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
         mock_dic['visit_def']={
-            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-4,4])/24.,'nexp':50}
+            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-4,4])/24.,'nexp':20}
                         }}
 
     if gen_dic['star_name'] == 'TOI4562' : 
@@ -893,7 +892,7 @@ if __name__ == '__main__':
     if gen_dic['star_name'] == 'WASP107' : 
         mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.8}
     if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
-        mock_dic['DI_table']={'x_start':-150.,'x_end':150.,'dx':0.1}
+        mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
     if gen_dic['star_name'] == 'TOI4562' : 
         mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
     
@@ -948,8 +947,9 @@ if __name__ == '__main__':
     if user=='mercier' and gen_dic['star_name'] == 'AUMic' : 
         mock_dic['intr_prof']={'ESPRESSO':{
             'mode':'ana',        
-            'coord_line':'r_proj',
-            'func_prof_name': 'gauss', 
+            'coord_line':'mu',
+            'func_prof_name': 'gauss',
+            'line_trans':None, 
             'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,
                         'FWHM_ord0__IS__VS_'  : 4 },
             'pol_mode' : 'modul'}
@@ -960,7 +960,7 @@ if __name__ == '__main__':
         mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':100.}}
         mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e3}}   #ANTARESS I, mock, precisions  
     if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
-        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':100.}}      
+        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1.}}      
     elif gen_dic['star_name'] == 'TOI4562':mock_dic['flux_cont']={'HARPS':{'mock_vis':1.}}       
 
             
@@ -977,7 +977,7 @@ if __name__ == '__main__':
       
     #Flux errors
     if gen_dic['star_name'] == 'TOI4562' : mock_dic['set_err']={'HARPS':True}    
-   
+    if gen_dic['star_name'] == 'AUMic' and user=='mercier': mock_dic['set_err']={'ESPRESSO':True}
     
     #Jitter on intrinsic profile properties
     if gen_dic['star_name'] == 'V1298tau' : 
@@ -1998,7 +1998,7 @@ if __name__ == '__main__':
 
     #Precision
     theo_dic['precision'] = 'high'
-    theo_dic['precision'] = 'medium'
+    #theo_dic['precision'] = 'medium'
     if gen_dic['star_name']=='TOI4562':theo_dic['precision'] = 'high' 
 
     #Star discretization      
@@ -2052,7 +2052,7 @@ if __name__ == '__main__':
 
     #Planet discretization
     if user == 'mercier' and gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dpl']= {'AUMicb':101.,'AUMicc':101.}       
+        theo_dic['nsub_Dpl']= {'AUMicb':101.}       
     if gen_dic['star_name']=='HD3167':    
         theo_dic['nsub_Dpl']={'HD3167_b':31.,'HD3167_c':31.} 
         # theo_dic['nsub_Dpl']={'HD3167_b':51.,'HD3167_c':51.}      #final fit + plots   
@@ -2124,7 +2124,7 @@ if __name__ == '__main__':
         theo_dic['n_oversamp']={'55Cnc_e':0.}  
         print('METTRE OVERSAMP POUR FITS')
     if user=='mercier' and gen_dic['star_name']=='AUMic':
-        theo_dic['n_oversamp']={'AUMicb':5, 'AUMicc':5}
+        theo_dic['n_oversamp']={'AUMicb':5.}
     #RM survey
     elif gen_dic['star_name']=='HAT_P3':theo_dic['n_oversamp']={'HAT_P3b':5.}  
     elif gen_dic['star_name']=='Kepler25':theo_dic['n_oversamp']={'Kepler25c':5.}  
@@ -5261,7 +5261,7 @@ if __name__ == '__main__':
 
     #Activating
     gen_dic['fit_DI'] = True    #&  False
-    gen_dic['fit_DIbin']=True   #&  False
+    gen_dic['fit_DIbin']=True   &  False
     gen_dic['fit_DIbinmultivis']=True    &  False
     if ((gen_dic['star_name'] in ['WASP76','HD209458','55Cnc']) and (gen_dic['type']['ESPRESSO']=='spec2D')): 
         gen_dic['fit_DI'] = False   #temporaire
@@ -5273,7 +5273,7 @@ if __name__ == '__main__':
 
     #Calculating/Retrieving
     gen_dic['calc_fit_DI']=True   #  &  False   
-    gen_dic['calc_fit_DIbin']=True  # &  False  
+    gen_dic['calc_fit_DIbin']=True   &  False  
     gen_dic['calc_fit_DIbinmultivis']=True    &  False  
 
     #Fitted data
@@ -5300,7 +5300,7 @@ if __name__ == '__main__':
     data_dic['DI']['fit_prof']['order']={} 
     # data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}   #mock dataset     
     if (gen_dic['star_name']=='WASP76') and gen_dic['trim_spec']:data_dic['DI']['fit_prof']['order']={'ESPRESSO':2}
-    if gen_dic['star_name'] and user=='mercier':
+    if gen_dic['star_name']=='AUMic' and user=='mercier':
         data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}
 
 
@@ -5370,7 +5370,7 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='TIC257527578':data_dic['DI']['cont_range']=[[-300.,-10.],[10.,300.]]    
     elif gen_dic['star_name']=='MASCARA1':data_dic['DI']['cont_range']=[[-350.,-174.],[129.,175.]] 
     elif gen_dic['star_name']=='V1298tau':data_dic['DI']['cont_range']['HARPN']=[[14.-90.,14.-40.],[14.+40.,14.+90.]]
-    elif gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['DI']['cont_range']['ESPRESSO']={0:-14.8+np.array([[-80.,-20.],[20.,80.]])} 
+    elif gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['DI']['cont_range']['ESPRESSO']={0:[[-100.,-80.],[80.,100.]]} 
     #RM survey
     elif gen_dic['star_name']=='HAT_P3':
         if ('KitCat' in gen_dic['data_dir_list']['HARPN']['20200130']):sysguess = 0.
@@ -5533,7 +5533,7 @@ if __name__ == '__main__':
         # data_dic['DI']['fit_range']=[[-350.,-174.],[6.3 + (6.3+130),190.]]    #fit continu, mauvaises bandes exclues        
         data_dic['DI']['fit_range']=[[-350.,-174.],[-100.,190.]]    #fit global, mauvaises bandes exclues
     elif gen_dic['star_name']=='V1298tau':data_dic['DI']['fit_range']['HARPN']=[[14.-90.,14.+90.]]
-    if gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['DI']['fit_range']['ESPRESSO']={'mock_vis':[[14.-90.,14.+90.]]}
+    if gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['DI']['fit_range']['ESPRESSO']={'mock_vis':[[-100.,100.]]}
     #RM survey
     elif gen_dic['star_name']=='HAT_P3':
         fit_range = [[sysguess-75.,sysguess+75.]]
@@ -6551,7 +6551,7 @@ if __name__ == '__main__':
 
     #Housekeeping and derived properties 
     plot_dic['prop_raw']=''   #''  
-    if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','TOI4562']:plot_dic['prop_raw']='pdf'
+    if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','TOI4562','AUMic']:plot_dic['prop_raw']='pdf'
     
     
     
@@ -7432,14 +7432,14 @@ plot_dic['map_DI_prof']=''
 if __name__ == '__main__':     
 
     #Activating
-    gen_dic['flux_sc']=True   & False
+    gen_dic['flux_sc']=True   #& False
     if ((gen_dic['star_name'] in ['55Cnc','HD29291']) and (gen_dic['type']['ESPRESSO']=='spec2D')) or \
        ((gen_dic['star_name'] in ['GJ3090']) and ((gen_dic['type']['NIRPS_HA']=='spec2D') or (gen_dic['type']['NIRPS_HE']=='spec2D'))):
         gen_dic['flux_sc'] = False   
     
     
     #Calculating/retrieving
-    gen_dic['calc_flux_sc']=True  &  False    
+    gen_dic['calc_flux_sc']=True  #&  False    
     
 
     if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','WASP107','TOI4562']:
@@ -7515,7 +7515,7 @@ if __name__ == '__main__':
         data_dic['DI']['system_prop']={
                 'achrom':{
                     'AUMicb' : [0.00262144], #Gilbert et al. 2022
-                    'AUMicc' : [0.001156], #Gilbert et al. 2022
+                    #'AUMicc' : [0.001156], #Gilbert et al. 2022
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.35],
                     'LD_u2' : [0.16],
@@ -7818,6 +7818,12 @@ if __name__ == '__main__':
                 'ESPRESSO':{'mock_vis':{'mode':'simu','n_oversamp':5}},
                 }
 
+    elif gen_dic['star_name']=='AUMic' and user=='mercier':
+        data_dic['DI']['transit_prop'].update({    
+                'nsub_Dstar':101,
+                'ESPRESSO':{'mock_vis':{'mode':'simu','n_oversamp':5}},
+                })
+
     elif gen_dic['star_name']=='Altair':     
         data_dic['DI']['transit_prop']={      'nsub_Dstar':501,  'ESPRESSO':{'mock_vis':{'mode':'simu','n_oversamp':10.}}}                 
             
@@ -7874,9 +7880,7 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='V1298tau':
         data_dic['DI']['transit_prop']={'HARPN':{'20200128':{'mode':'model','dt':0.05},'20201207':{'mode':'model','dt':0.05}, 'mock_vis':{'mode':'model','dt':0.05}}}  
 
-    elif gen_dic['star_name']=='AUMic' and user=='mercier':
-        data_dic['DI']['transit_prop']={'ESPRESSO':{'mock_vis':{'mode':'model','dt':0.05}}}
-          # main_pl_params={
+        # main_pl_params={
         #     #Bourrier+2018
         #     'RpRs':0.0182,
         #     'LD_mod':'quadratic',
@@ -8953,7 +8957,7 @@ if __name__ == '__main__':
     if gen_dic['star_name']=='HIP41378':data_dic['Res']['cont_range']={'HARPN':[[-100.,-15.],[15.,100.]]}  
     elif gen_dic['star_name']=='MASCARA1':data_dic['Res']['cont_range']=[[-150.,-70.],[70.,150.]]  
     elif gen_dic['star_name']=='V1298tau':data_dic['Res']['cont_range']={'HARPN' : [[-150.,-70.],[70.,150.]]  }
-    elif gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['Res']['cont_range']={'ESPRESSO' : [[-150.,-70.],[70.,150.]]  }
+    elif gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['Res']['cont_range']['ESPRESSO']={0 : [[-150.,-70.],[70.,150.]]}
 
     #RM survey
     elif gen_dic['star_name']=='HAT_P3':data_dic['Res']['cont_range']={'HARPN':[[-70.,-20.],[20.,70.]]}          
@@ -9061,11 +9065,11 @@ plot_dic['CCF_Intr_res']=''
 if __name__ == '__main__':
 
     #Calculating
-    gen_dic['intr_data'] = True    &  False
+    gen_dic['intr_data'] = True    #&  False
     if (gen_dic['star_name'] in ['WASP76','HD209458']) and (gen_dic['type']['ESPRESSO']=='spec2D'):gen_dic['intr_data'] = True#  & False
     
     #Calculating/retrieving
-    gen_dic['calc_intr_data'] = True   &  False  
+    gen_dic['calc_intr_data'] = True   #&  False  
     
     if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214','TOI4562']:
         gen_dic['intr_data']=True #  &  False
@@ -9086,7 +9090,7 @@ if __name__ == '__main__':
 
 
     #Continuum correction
-    data_dic['Intr']['cont_norm'] = True   &   False
+    data_dic['Intr']['cont_norm'] = True   #&   False
     # if gen_dic['star_name'] in ['HD209458','WASP76']:
     #     data_dic['Intr']['cont_norm'] = True   #activate if CCF intr are generated
 
@@ -9096,7 +9100,7 @@ if __name__ == '__main__':
 
     #2D maps of intrinsic stellar profiles
     plot_dic['map_Intr_prof']='png'   #'png 
-    if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','TOI4562']:plot_dic['map_Intr_prof']='png'
+    if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','TOI4562', 'AUMic']:plot_dic['map_Intr_prof']='png'
 
     #Individual intrinsic stellar profiles
     plot_dic['sp_intr']=''  
@@ -9528,7 +9532,7 @@ if __name__ == '__main__':
 
 
     #Calculating/retrieving
-    gen_dic['calc_Intrbin']=True  #  &  False 
+    gen_dic['calc_Intrbin']=True    &  False 
     gen_dic['calc_Intrbinmultivis']=True  #  &  False 
 
     if gen_dic['star_name'] in ['HD209458','WASP76']:
@@ -9677,7 +9681,7 @@ if __name__ == '__main__':
             # 'ESPRESSO':{'20180902':{'bin_low': [0.335],'bin_high':[0.393]},
             #             '20181030':{'bin_low': [0.335],'bin_high':[0.393]}}
             # }
-            'ESPRESSO':{'20180902':{'bin_range':[0.,1.],'nbins':1},'20181030':{'bin_range':[0.,1.],'nbins':1}}     #master local, r_proj
+        'ESPRESSO':{'20180902':{'bin_range':[0.,1.],'nbins':1},'20181030':{'bin_range':[0.,1.],'nbins':1}}     #master local, r_proj
             }
 
     elif gen_dic['star_name']=='HD209458':     
@@ -10095,9 +10099,9 @@ if __name__ == '__main__':
 
     #Calculating/Retrieving
     gen_dic['calc_fit_Intr']=True #  &  False   
-    gen_dic['calc_fit_Intr_1D']=True #  &  False   
-    gen_dic['calc_fit_Intrbin']=True  #  &  False    
-    gen_dic['calc_fit_Intrbinmultivis']=True  #  &  False  
+    gen_dic['calc_fit_Intr_1D']=True   &  False   
+    gen_dic['calc_fit_Intrbin']=True    &  False    
+    gen_dic['calc_fit_Intrbinmultivis']=True    &  False  
 
     #Constant data errors
     data_dic['Intr']['cst_err']=True   &  False
@@ -10137,7 +10141,8 @@ if __name__ == '__main__':
         data_dic['Intr']['fit_range']['HARPN']={'20191218':[[-50.,50.]],'20220401': [[-50.,50.]]}
     elif gen_dic['star_name']=='MASCARA1':data_dic['Intr']['fit_range']=[[-130.,130.]] 
     elif gen_dic['star_name']=='V1298tau':data_dic['Intr']['fit_range']['HARPN']={'mock_vis' : [[-130.,130.]] }
-    elif gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['Intr']['fit_range']['ESPRESSO']={'mock_vis' : [[-130.,130.]] }
+    elif gen_dic['star_name']=='AUMic' and user=='mercier':
+        data_dic['Intr']['fit_range']['ESPRESSO']={'mock_vis' : [[-130.,130.]] }
 
     #RM survey             
     elif gen_dic['star_name']=='HAT_P3':
@@ -10352,12 +10357,7 @@ if __name__ == '__main__':
         data_dic['Intr']['mod_prop']={'rv':{'vary':True ,'HARPN':{'20200128':{'guess':0.,'bd':[-10.,10.]},'20201207':{'guess':0.,'bd':[-10.,10.]}}},
                                     'ctrst':{'vary':True  ,'HARPN':{'20200128':{'guess':0.5,'bd':[0.1,0.9]},'20201207':{'guess':0.5,'bd':[0.1,0.9]}}},
                                     'FWHM':{'vary':True  ,'HARPN':{'20200128':{'guess':7.,'bd':[2.,30.]},'20201207':{'guess':7.,'bd':[2.,30.]}}}}
-
-    elif gen_dic['star_name']=='AUMic' and user=='mercier':
-        data_dic['Intr']['mod_prop']={'rv':{'vary':True ,'ESPRESSO':{'mock_vis':{'guess':0.,'bd':[-10.,10.]}}},
-                                    'ctrst':{'vary':True  ,'ESPRESSO':{'mock_vis':{'guess':0.5,'bd':[0.1,0.9]}}},
-                                    'FWHM':{'vary':True  ,'ESPRESSO':{'mock_vis':{'guess':7.,'bd':[2.,30.]}}}}
-
+    
     #RM survey
     elif gen_dic['star_name']=='HAT_P3':
         data_dic['Intr']['mod_prop']={'rv':{'vary':True ,'HARPN':{'20200130':{'guess':0.,'bd':[-1.,1.]}}},
@@ -13966,7 +13966,7 @@ if __name__ == '__main__':
     
     #Calculating/retrieving
     gen_dic['calc_loc_data_corr']=True   &  False   
-    gen_dic['calc_loc_data_corr_bin']=True  #  &  False  
+    gen_dic['calc_loc_data_corr_bin']=True    &  False  
     
     #Profile type
     data_dic['Intr']['plocc_prof_type']='Intr'         
