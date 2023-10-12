@@ -7242,7 +7242,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 #    - for example, one can use RV errors obtained for a given star with a given instrument to estimate C
                 plot_settings[key_plot]['predic']={
                     'C_inst':{
-                        # 'ESPRESSO':1.,      
+                        'ESPRESSO':1.,      
                         'HARPS':1./6.,    
                         # 'NIRPS':1./5.,     #from C. Lovis, efficiency roughly similar to ESPRESSO, thus flux ratio scales as mirror size ratio 
                         },

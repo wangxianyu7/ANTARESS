@@ -9251,6 +9251,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             plot_options[key_plot].update(plot_settings[key_plot]) 
 
             #Plot routine   
+            print(plot_options[key_plot])
             sub_plot_CCF_prop(plot_prop,plot_options[key_plot],'Intr')                  
                 
         

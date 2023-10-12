@@ -2115,6 +2115,7 @@ all_system_params={
             'logg':4.39,                 #+/- 0.03 #computed from Plavchan et al. 2020 Rstar and Mstar values by Zicher et al. 2022
             'veq':7.8,                   #+/- 0.3 #km/s #Klein et al. 2021
             'istar':90,                  #unknown
+            'mag':8.81,                  #+/- 0.10 #Johnson V magnitude
         },
         'AUMicb':{
             'period':8.463000,           #+/- 0.000002 #days #Martioli et al. 2021
