@@ -11383,6 +11383,11 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
     for ipl,pl_loc in enumerate(transit_pl):
         
         #Check for planet transit
+        print('1:', iexp_list)
+        print('1:', coord_pl_in[pl_loc]['ecl'][iexp_list])
+        print('1:', np.abs(coord_pl_in[pl_loc]['ecl'][iexp_list])!=1.)
+        print('1:', np.sum(np.abs(coord_pl_in[pl_loc]['ecl'][iexp_list])!=1.))
+        print('1:', cond_transit_all)
         if np.sum(np.abs(coord_pl_in[pl_loc]['ecl'][iexp_list])!=1.)>0:
             cond_transit_all[:,ipl]|=(np.abs(coord_pl_in[pl_loc]['ecl'][iexp_list])!=1.)   
 
@@ -11403,6 +11408,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                     n_osamp_exp_all=np.maximum(n_osamp_exp_all,npint(np.round(d_exp_in/theo_dic['d_oversamp'][pl_loc]))+1)
                     
             #Planet-dependent properties
+            print('2:',key_chrom)
             for subkey_chrom in key_chrom:
                 surf_prop_dic[subkey_chrom][pl_loc]={}
                 for par_loc in par_list:
@@ -11411,6 +11417,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                 if ('line_prof' in par_list_in) and (theo_dic['precision']=='low'):
                     surf_prop_dic[subkey_chrom][pl_loc]['rv_broad']=-1e100*np.ones([system_prop[subkey_chrom]['nw'],n_exp])
 
+    print('3:',surf_prop_dic)
     #Processing each exposure 
     cond_transit = np.sum(cond_transit_all,axis=1)>0
     cond_iexp_proc = cond_spots|cond_transit

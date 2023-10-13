@@ -461,7 +461,7 @@ if __name__ == '__main__':
     #Saves directory 
     gen_dic['save_dir']= '/Users/bourrier/Travaux/ANTARESS/En_cours/'  
     if user=='vaulato':gen_dic['save_dir']= '/Users/valentinavaulato/Documents/PhD/Works/ANTARESS/results/'  # vaulato
-    if user=='mercier':gen_dic['save_dir']='/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/antaress_plots' # mercier
+    if user=='mercier':gen_dic['save_dir']='/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/' # mercier
     
     #Plot settings    
     
@@ -869,7 +869,7 @@ if __name__ == '__main__':
 
     if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
         mock_dic['visit_def']={
-            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-4,4])/24.,'nexp':20}
+            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-4,4])/24.,'nexp':50}
                         }}
 
     if gen_dic['star_name'] == 'TOI4562' : 
@@ -944,7 +944,7 @@ if __name__ == '__main__':
 
 
 
-    if user=='mercier' and gen_dic['star_name'] == 'AUMic' : 
+    if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
         mock_dic['intr_prof']={'ESPRESSO':{
             'mode':'ana',        
             'coord_line':'mu',
@@ -991,11 +991,11 @@ if __name__ == '__main__':
     if gen_dic['star_name'] == 'V1298tau' : 
         mock_dic['drift_post']   = {'HARPN' : {'mock_vis' :  {'rv'    : 0.005 + np.zeros(40),   # + 5 m/s on all CCF 
                                                                 'resol'  : 1.01*np.ones(40)}}}        
+                        
             
-            
-    print(gen_dic['kepl_pl'], gen_dic['star_name'], gen_dic['transit_pl'], gen_dic['mock_data'])
-            
-            
+
+
+
 
 
 
@@ -2177,7 +2177,18 @@ if __name__ == '__main__':
     #Planetary system architecture
     plot_dic['system_view']=''   #png
   
+    if user=='mercier' and gen_dic['star_name']=='AUMic':
+        #Range of planet-occulted properties
+        plot_dic['plocc_ranges']=''    
+        
+        #Planet-occulted stellar regions
+        plot_dic['occulted_regions']=''
+        
+        #Planetary system architecture
+        plot_dic['system_view']='png'   #png
 
+        #Transit chord discretization        
+        plot_dic['nph_HR'] = 100
 
 
 
@@ -7514,7 +7525,7 @@ if __name__ == '__main__':
     elif gen_dic['star_name']=='AUMic' and user=='mercier':
         data_dic['DI']['system_prop']={
                 'achrom':{
-                    'AUMicb' : [0.00262144], #Gilbert et al. 2022
+                    'AUMicb' : [0.0512], #Gilbert et al. 2022
                     #'AUMicc' : [0.001156], #Gilbert et al. 2022
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.35],
@@ -9682,7 +9693,7 @@ if __name__ == '__main__':
             #             '20181030':{'bin_low': [0.335],'bin_high':[0.393]}}
             # }
         'ESPRESSO':{'20180902':{'bin_range':[0.,1.],'nbins':1},'20181030':{'bin_range':[0.,1.],'nbins':1}}     #master local, r_proj
-            }
+        }
 
     elif gen_dic['star_name']=='HD209458':     
         data_dic['Intr']['prop_bin']={

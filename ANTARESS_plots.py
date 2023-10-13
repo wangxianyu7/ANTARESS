@@ -8948,6 +8948,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             vis_list = np.intersect1d(list(data_dic[inst].keys()),plot_options[key_plot]['visits_to_plot'][inst])
             y_min=-5.*plot_options[key_plot]['y_gap']
             y_max=0.
+            print(plot_options[key_plot])
             if plot_options[key_plot]['x_range'] is None:stop('Define plot range')
             for ivis,vis in enumerate(vis_list): 
 
@@ -9251,7 +9252,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             plot_options[key_plot].update(plot_settings[key_plot]) 
 
             #Plot routine   
-            print(plot_options[key_plot])
             sub_plot_CCF_prop(plot_prop,plot_options[key_plot],'Intr')                  
                 
         
