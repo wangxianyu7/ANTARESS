@@ -2115,17 +2115,21 @@ all_system_params={
             'logg':4.39,                 #+/- 0.03 #computed from Plavchan et al. 2020 Rstar and Mstar values by Zicher et al. 2022
             'veq':7.8,                   #+/- 0.3 #km/s #Klein et al. 2021
             'istar':90,                  #unknown
-            'mag':8.81,                  #+/- 0.10 #Johnson V magnitude
+            'mag':5,                     #test
+            #'mag':8.81,                  #+/- 0.10 #Johnson V magnitude (true value)
         },
         'AUMicb':{
-            'period':8.463000,           #+/- 0.000002 #days #Martioli et al. 2021
+            'period':2.407000,           #test
+            #'period':8.463000,           #+/- 0.000002 #days #Martioli et al. 2021 (true value)
             'TCenter':2458330.39051,     #+/- 0.00015 #days #Martioli et al. 2021
             'ecc':0.04,                  #+0.045 -0.025 #Zicher et al. 2022
             'omega_deg':179,             #+128 -125 #degrees #Zicher et al. 2022
             'inclination':89.18,         #+0.53 - 0.45 #degrees #Gilbert et al. 2022
-            'Kstar':5.8,                 #+/- 2.5 #m/s #Zicher et al. 2022
+            'Kstar':,8.9                 #test
+            #'Kstar':5.8,                 #+/- 2.5 #m/s #Zicher et al. 2022 (true value)
             'TLength':3.50/24,           #+/- 0.08 #days #Martioli et al. 2021
-            'aRs':18.5,                  #+1.3 - 1.4 #Rstar #Gilbert et al. 2022
+            'aRs':8,                     #test
+            #'aRs':18.5,                  #+1.3 - 1.4 #Rstar #Gilbert et al. 2022 (true value)
             'lambda_proj':-4.70,         #+6.80 -6.40 #degrees #Hirano et al. 2020
         },
         #'AUMicc':{
