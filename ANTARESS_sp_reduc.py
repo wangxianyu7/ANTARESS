@@ -219,10 +219,20 @@ def open_resolution_map(instrument,time_science,ins_mod,bin_x):
     return resolution_map
    
 
-'''
-Initializing molecule line properties
-'''
 def init_tell_molec(tell_species,params_molec,range_mol_prop,qt_molec,M_mol_molec,c2):
+    """Molecule initialization.
+
+    Initializes molecule line properties
+
+    Parameters
+    ----------
+    TBD
+    
+    Returns
+    -------
+    TBD
+    
+    """    
 
     #Processing requested molecules
     hwhm_scaled_dic = {'lor':{},'gauss':{}}
@@ -259,11 +269,21 @@ def init_tell_molec(tell_species,params_molec,range_mol_prop,qt_molec,M_mol_mole
 
 
 
-'''
-Calculating model telluric spectrum 
-'''
 def calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_scaled_dic,nu_scaled_dic,params,Nx_molec,hwhm_scaled_dic,nu_mod,nbins_mod,edge_mod):
-  
+    """Telluric model
+
+    Calculates model telluric spectrum 
+
+    Parameters
+    ----------
+    TBD
+    
+    Returns
+    -------
+    :telluric_spectrum (1D array): Model telluric spectrum.
+    
+    """  
+    
     #Processing requested molecules
     tell_op_mod = np.zeros(nbins_mod,dtype=float)
     for molec in tell_species:
