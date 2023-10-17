@@ -2125,7 +2125,7 @@ all_system_params={
             'ecc':0.04,                  #+0.045 -0.025 #Zicher et al. 2022
             'omega_deg':179,             #+128 -125 #degrees #Zicher et al. 2022
             'inclination':89.18,         #+0.53 - 0.45 #degrees #Gilbert et al. 2022
-            'Kstar':,8.9                 #test
+            'Kstar':8.9,                 #test
             #'Kstar':5.8,                 #+/- 2.5 #m/s #Zicher et al. 2022 (true value)
             'TLength':3.50/24,           #+/- 0.08 #days #Martioli et al. 2021
             'aRs':8,                     #test

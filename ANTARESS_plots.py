@@ -819,6 +819,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             else:cbar_pos=fig.add_axes([plot_options['margins'][2]+0.01,plot_options['margins'][1],0.015,(plot_options['margins'][3]-plot_options['margins'][1])])   
                         						
                             #Values	
+                            #cb = plt.cm.ScalarMappable(cmap=cmap_2D,norm=plt.Normalize(vmin=0.3, vmax=1))
                             cb = plt.cm.ScalarMappable(cmap=cmap_2D,norm=plt.Normalize(vmin=v_range[0], vmax=v_range[1]))										
                             cb.set_array(v_range) 	
                         
