@@ -2028,7 +2028,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                             fixed_args['ncen_bins']=data_inst[vis]['nspec']
                             fixed_args['dcen_bins']=fixed_args['edge_bins'][1::] - fixed_args['edge_bins'][0:-1]   
                             fixed_args['dim_exp']=[data_inst['nord'],fixed_args['ncen_bins']]                           
-                            
+                        
                             #Resampled spectral table for model line profile
                             if fixed_args['resamp']:resamp_model_st_prof_tab(None,None,None,fixed_args,gen_dic,1,theo_dic['rv_osamp_line_mod'])
 
