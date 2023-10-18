@@ -1294,12 +1294,12 @@ def init_joined_routines_inst(inst,fit_prop_dic,fixed_args):
     return None
 
 def init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args):
-            
+
     #Identify whether visit is fitted over original or binned exposures
     #    - for simplicity we then use the original visit name in all fit dictionaries, as a visit will not be fitted at the same time in its original and binned format
     if (vis in fit_prop_dic['idx_in_fit'][inst]) and (len(fit_prop_dic['idx_in_fit'][inst][vis])>0):fixed_args['bin_mode'][inst][vis]=''
     elif (vis+'_bin' in fit_prop_dic['idx_in_fit'][inst]) and (len(fit_prop_dic['idx_in_fit'][inst][vis+'_bin'])>0):fixed_args['bin_mode'][inst][vis]='_bin'
-    else:vis=None
+    else:fixed_args['bin_mode'][inst][vis]=None
 
     return None
 
@@ -1440,9 +1440,9 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
         else:trim_range = None 
         for vis in data_dic[inst]['visit_list']:
             init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
-
+            
             #Visit is fitted
-            if vis is not None:     
+            if fixed_args['bin_mode'][inst][vis] is not None:   
                 data_vis=data_dic[inst][vis]
                 init_joined_routines_vis_fit('IntrProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)   
                 data_com = dataload_npz(data_dic[inst][vis]['proc_com_data_paths'])             
@@ -1627,7 +1627,7 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
-    if (plot_dic['CCF_Intr']!='') or (plot_dic['CCF_Intr_res']!='') or (plot_dic['prop_Intr']!='') or (plot_dic['sp_Intr_1D']!=''):
+    if (plot_dic['Intr_prof']!='') or (plot_dic['Intr_prof_res']!='') or (plot_dic['prop_Intr']!='') or (plot_dic['sp_Intr_1D']!=''):
         for inst in fixed_args['inst_list']:
             for vis in fixed_args['inst_vis_list'][inst]:
                 prof_fit_dic={'fit_range':fit_prop_dic['fit_range'][inst][vis]}
