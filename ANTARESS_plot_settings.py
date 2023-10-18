@@ -2557,6 +2557,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 # plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['20190911']} 
                 # plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['mock_vis']}                 
                 
+            elif gen_dic['star_name'] == 'AUMic':
+                plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['mock_vis']}
             elif gen_dic['studied_pl']=='Corot7b':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2019-02-20']} 
             elif gen_dic['studied_pl']=='Nu2Lupi_c':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2020-03-18']}  
             elif gen_dic['studied_pl']==['HD3167_b']:plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2019-10-09']} 

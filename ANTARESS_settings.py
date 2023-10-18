@@ -14057,12 +14057,12 @@ plot_dic['map_Intr_prof_res']=''
 if __name__ == '__main__':
     
     #Estimating stellar profiles 
-    gen_dic['loc_data_corr']=True #  &  False
+    gen_dic['loc_data_corr']=True   &  False
     gen_dic['loc_data_corr_bin']=True    &  False
     
     #Calculating/retrieving
     gen_dic['calc_loc_data_corr']=True   #&  False   
-    gen_dic['calc_loc_data_corr_bin']=True    &  False  
+    gen_dic['calc_loc_data_corr_bin']=True    #&  False  
     
     #Profile type
     data_dic['Intr']['plocc_prof_type']='Intr'         
