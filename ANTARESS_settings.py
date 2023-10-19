@@ -957,7 +957,7 @@ if __name__ == '__main__':
             'func_prof_name': 'gauss',
             'line_trans':None, 
             'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,
-                        'FWHM_ord0__IS__VS_'  : 4 },
+                        'FWHM_ord0__IS__VS_'  : 8 },
             'pol_mode' : 'modul'}
             }
 
