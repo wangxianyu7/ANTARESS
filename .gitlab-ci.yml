@@ -1,0 +1,13 @@
+image: python:3.8-alpine
+
+pages:
+  script:
+  - pip install -U sphinx
+  - pip install sphinx_book_theme
+  - sphinx-build -d _build/doctrees docs/source _build/html
+  - mv _build/html public
+  artifacts:
+        paths:
+        - public
+  only:
+  - master
