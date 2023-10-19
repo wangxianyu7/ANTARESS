@@ -1239,7 +1239,7 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params):
 
     #Coordinates in the sky-projected star rest frame
     nsub_star = calc_st_sky(coord_grid,star_params)
-
+    
     #Storing for model fits
     if mode=='grid':
         grid_dic.update({'Ssub_Sstar' : Ssub_Sstar,'nsub_star' : nsub_star})
@@ -1247,7 +1247,7 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params):
         for key in ['x','y','z']: grid_dic[key+'_st'] = coord_grid[key+'_st'] 
         grid_dic['r_proj'] = np.sqrt(coord_grid['r2_st_sky'])  
  
-    #Spectral grid
+    #Spectral grid  
     #    - the grid is used to model disk-integrated profile and thus only need to be chromatic if they are not in CCF format
     #    - all tables nonetheless have the same structure in ncell x nband
     grid_type_eff = ['achrom']
@@ -1330,6 +1330,7 @@ def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params,Ssu
     #Limb-darkening grid and flux emitted by the star
     #    - calculating over the grid as a function of mu, and for each chromatic wavelength given as input  
     #    - mu = cos(theta)), from 1 at the center of the disk to 0 at the limbs), with theta angle between LOS and local normal
+    
     nw = len(iband_list)
     ld_grid_star = np.ones([ngrid_star,nw],dtype=float)
     gd_grid_star = np.ones([ngrid_star,nw],dtype=float)
@@ -1360,13 +1361,13 @@ def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params,Ssu
         Itot_star_chrom = np.sum(Isurf_grid_star,axis=0)
         if system_prop['nw']>1:Istar_norm = np.sum(system_prop['dw'][None,:]*Itot_star_chrom)/np.sum(system_prop['dw'])
         else:Istar_norm = np.mean(Itot_star_chrom)
+
     #Flux values from stellar cells, normalized by total stellar flux
     if region == 'star':Fsurf_grid_star = Isurf_grid_star / Istar_norm                                  #fcell = I*SpSs/Ftot, where Ftot = sum(I*SpSs) = Itot*SpSs                            
     elif region == 'pl':Fsurf_grid_star = Isurf_grid_star*Ssub_Sstar / (Istar_norm*Ssub_Sstar_ref)      #fcell = I_pl*SpSs_pl/Ftot = I_pl*SpSs_pl/(Itot*SpSs)
 
     #Total flux over the full star in each band
     Ftot_star = np.sum(Fsurf_grid_star,axis=0)
-
     return ld_grid_star,gd_grid_star,mu_grid_star,Fsurf_grid_star,Ftot_star,Istar_norm
 
 '''
