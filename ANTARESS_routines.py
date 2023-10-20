@@ -10898,7 +10898,7 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,theo_dic,star_params,para
     #    - in foward mode: profiles are updated here under condition, and are always used to tile the stellar grid
     #      in fit mode: profiles are updated here if they do not vary during the fit
     #------------------------------------------------------------------------
-        
+
     #Line profile variations
     #    - by default profiles are fixed on initialized values 
     fixed_args['var_line'] = False
@@ -10941,7 +10941,7 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,theo_dic,star_params,para
 
             #Update profiles and attribute them to stellar grid if they remain fixed, and the profile and grid are the same as initialization
             if cond_update and (not fixed_args['var_star_grid']):init_st_intr_prof(fixed_args,fixed_args['grid_dic'],params)
-          
+        
     #----------------------------------
     #Analytical profiles
     elif (fixed_args['mode']=='ana'):
@@ -10952,7 +10952,7 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,theo_dic,star_params,para
         #Model function
         #    - calculated directly on disk-integrated spectral table
         #    - if requested, we convolve the final model disk-integrated line with the instrumental LSF before comparison with the measured disk-integrated profile
-        #    - the mean flux level of intrinsic profiles is assumed to be unity (see function)   
+        #    - the mean flux level of intrinsic profiles is assumed to be unity (see function)
         if type(fixed_args['func_prof_name'])==str:fixed_args['func_prof'] = dispatch_func_prof(fixed_args['func_prof_name'])
         else:fixed_args['func_prof'] = {inst:dispatch_func_prof(fixed_args['func_prof_name'][inst]) for inst in fixed_args['func_prof_name']}
                 
