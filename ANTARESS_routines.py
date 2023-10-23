@@ -2182,7 +2182,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                         #    - defined in forward mode at initialization, or defined in fit mode only if the stellar grid is not updated through the fit
                         #    - there are no default pipeline tables for this scaling because they depend on the local spectral tables of the line profiles
                         theo_intr2loc(args_exp['grid_dic'],args_exp['system_prop'],args_exp,args_exp['ncen_bins'],theo_dic['nsub_star'])                        
-                        
+
                         #Add jitter to the intrinsic profile properties (simulating stellar activity)
                         if (fixed_args['mode']=='ana') and (inst in mock_dic['drift_intr']) and (vis in mock_dic['drift_intr'][vis]) and (len(mock_dic['drift_intr'][inst][vis]>0)):
                             for par_drift in mock_dic['drift_intr'][inst][vis] : 
@@ -11044,7 +11044,8 @@ def init_st_intr_prof(args,grid_dic,param):
                 for par_loc in args['linevar_par'][inst][vis]:     
                     args['coeff_line'][par_loc] = polycoeff_def(param,args['coeff_ord2name'][inst][vis][par_loc])
                     args['input_cell_all'][par_loc] = calc_polymodu(args['pol_mode'],args['coeff_line'][par_loc],grid_dic['linevar_coord_grid']) 
-                        
+       
+
     #Measured intrinsic profiles
     #    - attributing to each stellar cell the measured profile with closest coordinate
     elif (args['mode']=='Intrbin'):
@@ -12318,7 +12319,6 @@ def polycoeff_def(param,coeff_ord2name_polpar):
     #    - input coefficients must be given in decreasing order of degree to poly1d
     deg_max=max(coeff_ord2name_polpar.keys())
     coeff_grid_polpar=[param[coeff_ord2name_polpar[ideg]] if ideg in coeff_ord2name_polpar else 0. for ideg in range(deg_max,-1,-1)]
-
     return coeff_grid_polpar
 
 #Calculation of 'absolute' or 'modulated' polynomial
@@ -12407,7 +12407,6 @@ def theo_intr2loc(grid_dic,system_prop,fixed_args,ncen_bins,nsub_star):
             fixed_args['Fsurf_grid_spec'] = Fsurf_grid_band[:,iband][:,None]
     else:
         fixed_args['Fsurf_grid_spec'] = np.tile(grid_dic['Fsurf_grid_star_achrom'][:,0],[ncen_bins,1]).T       
-
     return None
 
 
