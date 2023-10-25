@@ -2171,7 +2171,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                     if gen_dic['mock_data']: 
                         print('            building exposure '+str(iexp)+'/'+str(n_in_visit - 1))
                         param_exp = deepcopy(params_mock) 
-
+                        print('2:', param_exp)
                         #Table for model calculation
                         args_exp = def_st_prof_tab(None,None,None,fixed_args)
 
@@ -2194,6 +2194,7 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                         base_DI_prof = custom_DI_prof(param_exp,None,args=args_exp)[0]
 
                         #Deviation from nominal stellar profile
+                        print('1:', param_exp)
                         surf_prop_dic = sub_calc_plocc_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp],False)
                         
                         #Correcting the disk-integrated profile for planet and spot contributions
@@ -10647,12 +10648,13 @@ def calc_loc_line_prof(icell,rv_shift,Fsurf_cell_spec,flux_loc_cell,mu_cell,args
     #Calculation of analytical intrinsic line profile
     #    - model is always calculated in RV space, and later converted back to wavelength space if relevant
     #    - the model is directly calculated over the RV table at its requested position, rather than being pre-calculated and shifted
+
     if args['mode']=='ana':
         input_cell = {'cont':1. , 'rv':rv_shift }
         for pol_par in args['input_cell_all']:
             input_cell[pol_par] = args['input_cell_all'][pol_par][icell]
         flux_intr=args['func_prof'](input_cell,args['cen_bins'] )[0]
-            
+
         #Convolve intrinsic profile with macroturbulence kernel
         if args['mac_mode'] is not None:
     
@@ -11104,8 +11106,8 @@ def custom_DI_prof(param,x,args=None):
     #Coadding local line profiles over stellar disk
     #--------------------------------------------------------------------------------
     icell_list = np.arange(args['grid_dic']['nsub_star'])
-    
-    #Multithreading
+
+     #Multithreading
     #    - disabled with theoretical profiles, there seems to be an incompatibility with sme
     if (args['nthreads']>1) and (args['mode']!='theo'):
         flux_DI_sum=para_coadd_loc_line_prof(coadd_loc_line_prof,args['nthreads'],args['grid_dic']['nsub_star'],[rv_shift_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,args,))                           
@@ -11123,9 +11125,10 @@ def custom_DI_prof(param,x,args=None):
     #Polynomial continuum level
     #    - P(x) = cont*(1 + a1*rv + a2*rv^2 + a3*rv^3 ... )
     #      defined as x = rv or x=w-wref to provide less leverage to the fit 
+
     cen_bins_ref = args['cen_bins'] - args['cen_bins_polref']
     DI_flux_mod=DI_flux_cont*pol_cont(cen_bins_ref,args,param)    
-
+    
     return DI_flux_mod,DI_flux_cont,DI_flux_norm
 
 
