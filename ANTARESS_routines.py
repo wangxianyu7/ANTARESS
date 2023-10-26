@@ -2171,7 +2171,6 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                     if gen_dic['mock_data']: 
                         print('            building exposure '+str(iexp)+'/'+str(n_in_visit - 1))
                         param_exp = deepcopy(params_mock) 
-                        print('2:', param_exp)
                         #Table for model calculation
                         args_exp = def_st_prof_tab(None,None,None,fixed_args)
 
@@ -2194,7 +2193,6 @@ def init_data_instru(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic
                         base_DI_prof = custom_DI_prof(param_exp,None,args=args_exp)[0]
 
                         #Deviation from nominal stellar profile
-                        print('1:', param_exp)
                         surf_prop_dic = sub_calc_plocc_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp],False)
                         
                         #Correcting the disk-integrated profile for planet and spot contributions
