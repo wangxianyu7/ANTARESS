@@ -11726,6 +11726,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
         #Local flux grid over current planet-occulted region, in current band
         coord_grid['nsub_star'] = n_pl_occ
         _,_,mu_grid_star,Fsurf_grid_star,Ftot_star,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_prop,coord_grid,star_params,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'pl',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
+
         coord_grid['mu'] = mu_grid_star[:,0]
 
         #Scale continuum level
