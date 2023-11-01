@@ -11739,7 +11739,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
     
         #--------------------------------
 
-        #Co-adding properties from current region to the cumulated values over oversampled planet positions 
+        #Co-adding properties from current region to the cumulated values over oversampled planet positions
         sum_region_prop(line_occ_HP_band,iband,args,system_prop,par_list,Fsurf_grid_star[:,0],coord_grid,Ssub_Sstar,cb_band,range_par_list,range_reg_pl,sum_prop_dic_pl,coord_reg_dic_pl,par_star,lambda_rad_pl[pl_loc],theo_dic,param,cond_fit)
 
     return Focc_star_band,cond_occ
