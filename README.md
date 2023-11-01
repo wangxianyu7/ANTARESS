@@ -1,92 +1,38 @@
-# ANTARESS
+# **A**dvanced and **N**eat **T**echniques for the **A**ccurate **R**etrieval of **E**xoplanetary and **S**tellar **S**pectra
 
+## General approach
 
+First, define the system properties for the host star and its planets. 
 
-## Getting started
+Then define the observational datasets to be processed, or the synthetic ones to be generated, and the modules that will process them. 
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+Modules are grouped in three main categories:
+- [ ] Data first go through formatting and correction modules, some of which are specific to given instruments. Once data are set in the common ANTARESS format and corrected for instrumental/environmental effects, they can be processed in the same way by the subsequent modules. 
+- [ ] The second group of modules are thus generic and aim at extracting specific types of spectral profiles, converting them in the format required for the analysis chosen by the user. 
+- [ ] The third group of modules allow fitting the processed spectral profiles to derive quantities of interest. 
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+Modules in the first and second group are ran successively, ie that data need to be processed by an earlier module before it can be used by the next one. 
 
-## Add your files
+Analyses modules, in contrast, are applied to the outputs of various processing modules throughout the pipeline. 
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+Some of the correction and processing modules are optional, for example the telluric correction module for space-borne data or the flux scaling module for data with absolute photometry. 
 
-```
-cd existing_repo
-git remote add origin https://gitlab.unige.ch/Vincent.Bourrier/antaress.git
-git branch -M main
-git push -uf origin main
-```
+Some modules are only activated if the pipeline is used for a specific goal, for example the conversion of stellar spectra into CCFs when the user requires the analysis of the Rossiter-McLaughlin effect.
 
-## Integrate with your tools
+Each module can be activated independently 
+- in most modules you can choose to calculate data (in which case it will then be automatically saved on disk) or to retrieve it (in which case the pipeline will check these data already exists)
+- keeping all data in memory is not possible when processing e2ds, which is why the pipeline works in each module by retrieving the relevant data from the disk
 
-- [ ] [Set up project integrations](https://gitlab.unige.ch/Vincent.Bourrier/antaress/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thank you to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+## Required packages
+- [ ] run `pip install` with [scipy](https://scipy.org/), lmfit, batman-package, astropy, emcee, pathos, pandas, dace_query, statsmodels, PyAstronomy        
+- [ ] resampling package 
+- [bindensity documentation](https://obswww.unige.ch/~delisle/staging/bindensity/doc/)
+- run `pip install --extra-index-url https://vincent:cestpasfaux@obswww.unige.ch/~delisle/staging bindensity --upgrade`
+- do not use routines with non-continuous tables, as it will mess up with banded covariance matrixes
+- beware of masking ranges, as undefined pixels (set to nan values) are propagated when resampling or combining profiles in the various pipeline modules.
+- [ ] pySME
+- install gcc9 with `brew install gcc@9`
+- run `pip install pysme-astro`
+- [ ] KitCat
+- install [gsl](https://www.gnu.org/software/gsl/) with `brew install gsl`
+- run `python setup_lbl_fit.py build` after setting up the path to your local python installation in this file. Then copy the compiled file `calculate_RV_line_by_line3.cpython-XX-darwin.so` into your ANTARESS/KitCat directory  
