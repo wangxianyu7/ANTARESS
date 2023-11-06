@@ -11630,7 +11630,7 @@ def intr2plocc_prof(args,transit_pl,coord_dic,idx_w,system_prop,key_chrom,param,
                 
                 #Calculation of planet-occulted line profile
                 data_av_pl['flux'] = [calc_loc_line_prof(0,coord_dic['achrom'][pl_loc]['rv'][idx_w['achrom']],flux_sc_spec,None,mu_av,args,param)]
-                
+
             #Theoretical or measured profile
             elif (args['mode'] in ['theo','Intrbin']):     
                 data_loc = {}
