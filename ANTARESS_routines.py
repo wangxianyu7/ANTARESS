@@ -12393,6 +12393,7 @@ def theo_intr2loc(grid_dic,system_prop,fixed_args,ncen_bins,nsub_star):
 
     #Grid of broadband intensity variations, at the resolution of current grid
     #    - condition is validated if data is spectral and intensity input is chromatic
+    
     if ('spec' in fixed_args['type']) and ('chrom' in system_prop):
 
         #Grid of broadband flux variations, at the spectral resolution of the input chromatic properties
@@ -13732,11 +13733,11 @@ def get_planet_disk_prop(spots_prop, pl_loc, grid_dic,system_prop, x_pos_pl, y_p
 
 """
 
-Fonction which decides if a spot is visible or not, based on star inclination (istar), spot coordinates in star rest frame (long, lat) and spot angular size (ang).
+Function which decides if a spot is visible or not, based on star inclination (istar), spot coordinates in star rest frame (long, lat) and spot angular size (ang).
 
-The fonction discretizes the spot circle and test for each point if it visible, thanks this calculation :
+The function discretizes the spot circle and tests for each point if it visible, thanks this calculation :
 
-    Let's P = (x_st, y_st, z_st) be a point of stellar surface (star rest frame), with X axis along stellar equator and Y axis along stellar spin.
+    Let P = (x_st, y_st, z_st) be a point of the stellar surface (star rest frame), with X axis along stellar equator and Y axis along stellar spin.
 
     Writing P in spherical coordinateed in star rest frame gives :
 
