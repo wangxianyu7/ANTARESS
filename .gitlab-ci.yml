@@ -1,4 +1,7 @@
-image: python:3.8-alpine
+default:
+  image: python:3.8-alpine
+  tags:
+    - vb-runner
 
 pages:
   script:
