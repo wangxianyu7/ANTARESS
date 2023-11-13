@@ -13908,7 +13908,7 @@ def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, 
         
     
     # Retrieve angular coordinates of spot
-    cos_long, sin_long, cos_lat, sin_lat =  spot_prop['cos_long_exp_center'],  spot_prop['sin_long_exp_center'],                             spot_prop['cos_lat_exp_center' ],  spot_prop['sin_lat_exp_center' ]
+    cos_long, sin_long, cos_lat, sin_lat =  spot_prop['cos_long_exp_center'], spot_prop['sin_long_exp_center'], spot_prop['cos_lat_exp_center'], spot_prop['sin_lat_exp_center']
     
     # Calculate coordinates in spot rest frame
     x_sp =                         x_st_grid*cos_long - z_st_grid*sin_long
