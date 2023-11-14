@@ -53,16 +53,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
     #Retrieve manual settings
     plot_settings = ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic)
-        
     
 
     ##############################################################################
     #General calculations useful to several plots
     ##############################################################################
-    
     #Default instruments and visits to plot
     plot_dic['visits_to_plot'] = {inst:[vis for vis in data_dic[inst]['visit_list']] for inst in data_dic['instrum_list']}
-
 
     '''
     Calculating high-resolution model of planet-occulted regions along a chosen orbital range
@@ -9315,9 +9312,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         dif_x_over_y = (plot_options[key_plot]['x_range'][1]-plot_options[key_plot]['x_range'][0])/(plot_options[key_plot]['y_range'][1]-plot_options[key_plot]['y_range'][0])
         size_x = size_y*dif_x_over_y
         if ('chrom' in data_dic['DI']['system_prop']):system_prop = data_dic['DI']['system_prop']['chrom']
-        else:system_prop = data_dic['DI']['system_prop']['achrom'] 
-        for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
-            for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst]): 
+        else:system_prop = data_dic['DI']['system_prop']['achrom']
+        for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options[key_plot]['visits_to_plot'].keys())): 
+            for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options[key_plot]['visits_to_plot'][inst]): 
                 pl_ref = plot_options[key_plot]['pl_ref'][inst][vis]
                 RpRs_band = system_prop[pl_ref][plot_options[key_plot]['iband']]
         
@@ -9349,8 +9346,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                     #Planet orbit
                     #    - 'coord_orbit' is defined in the Sky-projected orbital frame: Xsky,Ysky,Zsky	
-                    if plot_options['plot_orb']:
-                        coord_orbit = def_plotorbite(plot_dic['npts_orbit'],system_prop[pl_ref])
+                    if plot_options[key_plot]['plot_orb']:
+                        #coord_orbit = def_plotorbite(plot_dic['npts_orbit'],system_prop[pl_ref])
+                        coord_orbit = def_plotorbite(plot_dic['npts_orbit'],system_param[pl_ref])
                         x_orbit_view=coord_orbit[0]
                         y_orbit_view=coord_orbit[1]
                         w_noorb=np.where( ( (np.power(x_orbit_view,2.)+np.power(y_orbit_view,2.) ) < 1. ) & (coord_orbit[2] < 0.) )[0]
@@ -9397,7 +9395,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 		    xmajor_int=0.5,xminor_int=0.1,ymajor_int=0.5,yminor_int=0.1,
                 		    xmajor_form='%.1f',ymajor_form='%.1f',
                 		    x_title='Position (R$_{*}$)',y_title='Position (R$_{*}$)',
-                              font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
+                              font_size=plot_options[key_plot]['font_size'],xfont_size=plot_options[key_plot]['font_size'],yfont_size=plot_options[key_plot]['font_size'])
                     plt.savefig(path_loc+'Star_occ_'+inst+'_'+vis+'.'+plot_dic['occulted_regions']) 
                     plt.close()
         

@@ -808,39 +808,16 @@ mock_dic['drift_post'] = {}
 
 
 
-# # Add spots in the mock dataset 
-# #    + Spots are defined by 4 parameters : 
-# #        - 'lat' : constant lattitutde of the spot, in star rest frame
-# #        - 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
-# #        - 'ang' : the angular size (in deg) of the spot
-# #        - 'flux' : the flux level of the spot surface, relative to the 'normal' surface of the star.
-# #    + Structure is par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']
+#%%%%% Adding spots to the dataset
+# # + Spots are defined by 4 parameters : 
+# #     - 'lat' : constant lattitutde of the spot, in star rest frame
+# #     - 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
+# #     - 'ang' : the angular size (in deg) of the spot
+# #     - 'flux' : the flux level of the spot surface, relative to the 'normal' surface of the star.
+# # + Structure is par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']
  
-# mock_dic['use_spots'] = True  & False
-# mock_dic['spots_prop'] = {}
-
-# if gen_dic['star_name'] == 'V1298tau' : 
-#     mock_dic['spots_prop']={
-#         'HARPN':{
-#             'mock_vis':{
-                
-                
-#                 # Pour le spot 'spot1' : 
-#                 'lat__ISHARPN_VSmock_vis_SPspot1'     : 30,
-#                 'Tcenter__ISHARPN_VSmock_vis_SPspot1' : 2458877.6306 - 12/24,     # 2458877.213933
-#                 'ang__ISHARPN_VSmock_vis_SPspot1'     : 20,
-#                 'flux__ISHARPN_VSmock_vis_SPspot1'    : 0.4,
-                
-#                 # Pour le spot 'spot2' : 
-#                 'lat__ISHARPN_VSmock_vis_SPspot2'     : 40,
-#                 'Tcenter__ISHARPN_VSmock_vis_SPspot2' : 2458877.6306 + 5/24,
-#                 'ang__ISHARPN_VSmock_vis_SPspot2'     : 25,
-#                 'flux__ISHARPN_VSmock_vis_SPspot2'    : 0.4
-#                     },
-                    
-                    
-#                 'mock_vis2' : {}
-#                     }}
+mock_dic['use_spots'] = True  & False
+mock_dic['spots_prop'] = {}
  
 
 if __name__ == '__main__':
@@ -912,7 +889,28 @@ if __name__ == '__main__':
     #    mock_dic['sysvel']= {'HARPS': {'mock_vis' : 0.}}
 
     
-    
+    #Defining spot properties 
+    if gen_dic['star_name'] == 'AUMic' : 
+     mock_dic['spots_prop']={
+         'ESPRESSO':{
+             'mock_vis':{
+                
+                
+                 # For the spot 'spot1' : 
+                 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 70,
+                 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051 - 0.5,
+                 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 20,
+                 'flux__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
+                
+                 # For the spot 'spot2' : 
+                 #'lat__ISHARPN_VSmock_vis_SPspot2'     : 40,
+                 #'Tcenter__ISHARPN_VSmock_vis_SPspot2' : 2458877.6306 + 5/24,
+                 #'ang__ISHARPN_VSmock_vis_SPspot2'     : 25,
+                 #'flux__ISHARPN_VSmock_vis_SPspot2'    : 0.4
+                     }
+                }
+            }
+
     
     #Intrinsic stellar spectra     
     if gen_dic['star_name'] in ['V1298tau'] :
@@ -1002,7 +1000,6 @@ if __name__ == '__main__':
                                                                 'resol'  : 1.01*np.ones(40)}}}        
                         
             
-
 
 
 
@@ -2192,7 +2189,7 @@ if __name__ == '__main__':
         plot_dic['plocc_ranges']=''    
         
         #Planet-occulted stellar regions
-        plot_dic['occulted_regions']=''
+        plot_dic['occulted_regions']='png'
         
         #Planetary system architecture
         plot_dic['system_view']='png'   #png

@@ -7618,9 +7618,12 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         if gen_dic['studied_pl']==['HD3167_b']:plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2019-10-09']} 
 
         #Planet
-        plot_settings[key_plot]['pl_ref'] = {'inst':{'vis':'HD3167_c'}}
-        plot_settings[key_plot]['pl_ref'] = {'inst':{'vis':'GJ436_b'}}
-        plot_settings[key_plot]['pl_ref'] = {'inst':{'vis':'HD15337c'}}
+        if gen_dic['star_name']=='HD3167':
+            plot_settings[key_plot]['pl_ref'] = {'inst':{'vis':'HD3167_c'}}
+        elif gen_dic['star_name']=='GJ436':
+            plot_settings[key_plot]['pl_ref'] = {'inst':{'vis':'GJ436_b'}}
+        elif gen_dic['star_name']=='HD15337':   
+            plot_settings[key_plot]['pl_ref'] = {'inst':{'vis':'HD15337c'}}
 
 
 
