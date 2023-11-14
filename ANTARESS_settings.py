@@ -7562,8 +7562,8 @@ if __name__ == '__main__':
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.35],
                     'LD_u2' : [0.16],
-
-                }}   
+                }
+                }   
 
     # elif gen_dic['star_name']=='Corot7':
     #     data_dic['DI']['system_prop']={

@@ -11557,7 +11557,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                 #Profile from averaged properties over exposures
                 if (theo_dic['precision']=='low'): 
                     idx_w = {'achrom':(range(system_prop['achrom']['nw']),i_in)}
-                    if ('chrom' in key_chrom):idx_w['chrom'] = (range(system_prop['chrom']['nw']),i_in)          
+                    if ('chrom' in key_chrom):idx_w['chrom'] = (range(system_prop['chrom']['nw']),i_in)
                     surf_prop_dic[key_chrom[-1]]['line_prof'][:,i_in]=intr2plocc_prof(args,transit_pl_exp,surf_prop_dic,idx_w,system_prop,key_chrom,par_star,theo_dic)
 
                 #Averaged profiles behind all occulted regions during exposure   
@@ -13888,7 +13888,7 @@ Calculation is straighforward :
      
 """
 
-def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, star_params, param, use_grid_dic = False) :
+def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, param, use_grid_dic = False) :
                                                 
 
     if use_grid_dic :
@@ -13944,12 +13944,12 @@ Function which calculates the properties of spot-occulted stellar cells
 
 def calc_spotted_region_prop(spots_prop, grid_dic, t_bjd, star_params, LD_law, ld_coeff, gd_band, cb_band, param, coeff_ord2name, dim, func_prof_name, var_par_list, pol_mode) :
     
-    # Nombre de cases de l'étoile
+    # Number of stellar grid cells
     n_tiles = len(grid_dic['x_st_sky'])
 
-    # On stocke la liste des cases stellaires occultées par au moins 1 spot, et la liste des flux occultés par les spots sur chaque case. On cummule l'occultation des spots si 2 ou plus overlappent. 
-
-
+    # On stocke la liste des cases stellaires occultées par au moins 1 spot, et la liste des flux occultés par les spots sur chaque case. On cummule l'occultation des spots si 2 ou plus overlappent.
+    #We store the list of stellar grid cells occulted by at least one spot, and the list of flux values in these cells. We only cumulate the occultation from multiple spots if 2 or more spots overlap.
+    
     flux_emitted_all_tiles_sp = np.ones(n_tiles, dtype = float)
     cond_in_sp = np.zeros(n_tiles, dtype = bool)
     spot_within_grid_all = False
@@ -13959,7 +13959,7 @@ def calc_spotted_region_prop(spots_prop, grid_dic, t_bjd, star_params, LD_law, l
             else : use_grid_dic = True
             spot_within_grid, cond_in_one_sp = calc_spotted_tiles(spots_prop[spot],
                                     grid_dic['x_st_sky'], grid_dic['y_st_sky'], grid_dic['z_st_sky'], grid_dic,
-                                    star_params, param, use_grid_dic)
+                                    param, use_grid_dic)
             if spot_within_grid:
                 spot_within_grid_all = True
                 flux_emitted_all_tiles_sp[cond_in_one_sp] *= spots_prop[spot]['flux']
@@ -13976,6 +13976,7 @@ def calc_spotted_region_prop(spots_prop, grid_dic, t_bjd, star_params, LD_law, l
         ## Coordinates calculation
 
         # Coordonnées x, y, z, r des régions spottées, référentiel incliné
+        # x, y, z and r_proj coordinates for the spotted regions, in the inclined reference frame
         region_prop['r_proj2_st_sky_sp']  = grid_dic['r2_st_sky'][cond_in_sp]
         region_prop['x_st_sky_sp']        = grid_dic['x_st_sky'][cond_in_sp]
         region_prop['y_st_sky_sp']        = grid_dic['y_st_sky'][cond_in_sp]
