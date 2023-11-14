@@ -890,26 +890,27 @@ if __name__ == '__main__':
 
     
     #Defining spot properties 
-    if gen_dic['star_name'] == 'AUMic' : 
-     mock_dic['spots_prop']={
-         'ESPRESSO':{
-             'mock_vis':{
-                
-                
-                 # For the spot 'spot1' : 
-                 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 70,
-                 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051 - 0.5,
-                 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 20,
-                 'flux__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
-                
-                 # For the spot 'spot2' : 
-                 #'lat__ISHARPN_VSmock_vis_SPspot2'     : 40,
-                 #'Tcenter__ISHARPN_VSmock_vis_SPspot2' : 2458877.6306 + 5/24,
-                 #'ang__ISHARPN_VSmock_vis_SPspot2'     : 25,
-                 #'flux__ISHARPN_VSmock_vis_SPspot2'    : 0.4
-                     }
+    if gen_dic['star_name'] == 'AUMic' and user == 'mercier': 
+        mock_dic['use_spots'] = True
+        mock_dic['spots_prop']={
+             'ESPRESSO':{
+                 'mock_vis':{
+                    
+                    
+                     # For the spot 'spot1' : 
+                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 70,
+                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 20,
+                     'flux__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
+                    
+                     # For the spot 'spot2' : 
+                     #'lat__ISHARPN_VSmock_vis_SPspot2'     : 40,
+                     #'Tcenter__ISHARPN_VSmock_vis_SPspot2' : 2458877.6306 + 5/24,
+                     #'ang__ISHARPN_VSmock_vis_SPspot2'     : 25,
+                     #'flux__ISHARPN_VSmock_vis_SPspot2'    : 0.4
+                         }
+                    }
                 }
-            }
 
     
     #Intrinsic stellar spectra     

@@ -8,8 +8,8 @@ Created on Mon Dec 19 14:27:38 2022
 import numpy as np
 from constant_data import c_light
 from utils import stop
+from ANTARESS_routines import retrieve_spots_prop_from_param
 
-  
 def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
     plot_settings={}
 
@@ -7995,14 +7995,15 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         
         # Stage Théo : Plot stellar spots
         plot_settings[key_plot]['stellar_spot'] = {}
-        #         plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' :  30, 'Tcenter' : 2458877.6306 - 12/24, 'ang' : 10, 'flux' : 0.6}
+
+        plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' :  40, 'Tcenter' : 2458330.39051-0.2, 'ang' : 10, 'flux' : 0.2}
         #         plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'flux' : 0.6}
         
         # Number of positions of the spots to be plotted, equally distributed within the given time range.
         plot_settings[key_plot]['n_image_spots'] = 15
         
         # time range (BJD) for ploting spots
-        plot_settings[key_plot]['time_range_spot'] = 2458877.6306   + np.array([-7.5/24, -1.5/24])
+        plot_settings[key_plot]['time_range_spot'] = 2458330.39051   + np.array([-0.5, 0.1])
         
         # Use stellar rotation period to distribute the positions, instead of time
         plot_settings[key_plot]['plot_spot_all_Peq'] = True    

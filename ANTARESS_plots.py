@@ -15,7 +15,7 @@ from utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_f
 from ANTARESS_routines import calc_pl_coord,sub_calc_plocc_prop,def_plotorbite,LD_coeff_func,orb_motion_theoRV,return_FWHM_inst,conv_inclinedStarFrame_to_StarFrame,\
                                 gauss_intr_prop,conv_Losframe_to_inclinedStarFrame,conv_inclinedStarFrame_to_Losframe,LD_mu_func,calc_CB_RV,occ_region_grid,\
                                 calc_binned_prof,def_weights_spatiotemp_bin,get_timeorbit,cust_mod_true_prop,resample_func,calc_zLOS_oblate,calc_RVrot,conv_StarFrame_to_inclinedStarFrame,default_func,\
-                                voigt,dgauss,detrend_prof_gen,cal_piecewise_func,spec_dopshift,calc_Isurf_grid,calc_st_sky,def_contacts,conv_phase
+                                voigt,dgauss,detrend_prof_gen,cal_piecewise_func,spec_dopshift,calc_Isurf_grid,calc_st_sky,def_contacts,conv_phase, retrieve_spots_prop_from_param, calc_spotted_tiles
 from ANTARESS_sp_reduc import sub_def_bins,def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t,air_index
 from lmfit import Parameters
 from copy import deepcopy
@@ -9509,13 +9509,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['plot_hidden_pole']= False  
 
         #Plot stellar spots
-        plot_settings[key_plot]['stellar_spot'] = {}
+        plot_options[key_plot]['stellar_spot'] = {}
         
         #Number of positions of the spots to be plotted, equally distributed within the given time range.
-        plot_settings[key_plot]['n_image_spots'] = 15
+        plot_options[key_plot]['n_image_spots'] = 15
 
         # Use stellar rotation period to distribute the positions, instead of time
-        plot_settings[key_plot]['plot_spot_all_Peq'] = True  
+        plot_options[key_plot]['plot_spot_all_Peq'] = True  
     
         #Overlay to the RV-colored disk a shade controlled by flux
         plot_options[key_plot]['shade_overlay']=True      
@@ -10289,6 +10289,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #-------------------------------------------------------
             #Spotted cells 
             #-------------------------------------------------------
+            print('2:', plot_options[key_plot]['stellar_spot'])
             if len(plot_options[key_plot]['stellar_spot'])>0:
                 
                 # Initialize params to use the retrieve_spots_prop_from_param function
@@ -10312,10 +10313,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     
                     for spot in spots_prop : 
                         if spots_prop[spot]['is_visible']: 
-                            _, spotted_tiles = calc_spotted_tiles( plot_options[key_plot]['spots_prop'][spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
-                                                                   {}, {}, params, use_grid_dic = False)
+                            _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
+                                                                   {}, params, use_grid_dic = False)
                                                                    
-                            star_flux_exp[spotted_tiles] *=  plot_options[key_plot]['spots_prop'][spot]['flux'] 
+                            star_flux_exp[spotted_tiles] *=  plot_options[key_plot]['stellar_spot'][spot]['flux'] 
                         
                     Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_exp)
         
