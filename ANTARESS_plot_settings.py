@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Dec 19 14:27:38 2022
 
-@author: V. Bourrier
-"""
 import numpy as np
 from constant_data import c_light
 from utils import stop
@@ -2909,7 +2905,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             #    - detrending is performed with respect to the multiplied/added polynomials associated to each requested property
             #    - structure is deg_prop_fit > inst > vis > {prop1 : deg , prop2 : deg ..}   
             plot_settings[key_plot]['deg_prop_fit']={}
-            if 1==0:
+            if 1==1:
                 deg_corr = 0
                 if 'visits_to_plot' in plot_settings[key_plot]:
                     for inst in plot_settings[key_plot]['visits_to_plot']:
@@ -7275,17 +7271,11 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 #    - leave empty, or define:
                 # + a phase table for the mock exposures over which the high-res RV model will be binned
                 # + the factor 'C' that should remain always the same (scaled from previous measurements)
-                # + the flux gain 'C_inst' between the considered instrument and the one used to define C
                 # + the FWHM and contrast of the local CCFs
                 # + rand: set to True to draw measurements from a gaussian with mean the theoretical RV value and sigma its estimated error
                 #    - for example, one can use RV errors obtained for a given star with a given instrument to estimate C
                 if 1==0:
                     plot_settings[key_plot]['predic']={
-                        'C_inst':{
-                            # 'ESPRESSO':1.,      
-                            'HARPS':1./6.,    
-                            # 'NIRPS':1./5.,     #from C. Lovis, efficiency roughly similar to ESPRESSO, thus flux ratio scales as mirror size ratio 
-                            },
                         'C':1.2e-5,     #determined roughly for ESPRESSO, HD209458b, FWHM=8.3, C = 0.6, texp=175 s
                         # 'FWHM':6.1,'ctrst':0.45,     #valeurs pour une K0, pris de Cegla+2016 pour HD189
                         'FWHM':10.,'ctrst':0.4,       #valeurs pour une F, HAT-P-41, pris de l'analyse de Omar en RRM

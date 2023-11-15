@@ -1,27 +1,22 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Mar  5 23:38:04 2019
 
-@author: V. Bourrier
-
-Plot routines for ANTARESS
-
-"""
 import numpy as np
 import os as os_system
 from utils_plots import custom_axis,autom_x_tick_prop,autom_y_tick_prop,stackrel,scaled_title,autom_range_ext,plot_shade_range
 from utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz
-from ANTARESS_routines import calc_pl_coord,sub_calc_plocc_prop,def_plotorbite,LD_coeff_func,orb_motion_theoRV,return_FWHM_inst,conv_inclinedStarFrame_to_StarFrame,\
-                                gauss_intr_prop,conv_Losframe_to_inclinedStarFrame,conv_inclinedStarFrame_to_Losframe,LD_mu_func,calc_CB_RV,occ_region_grid,\
-                                calc_binned_prof,def_weights_spatiotemp_bin,get_timeorbit,cust_mod_true_prop,resample_func,calc_zLOS_oblate,calc_RVrot,conv_StarFrame_to_inclinedStarFrame,default_func,\
-                                voigt,dgauss,detrend_prof_gen,cal_piecewise_func,spec_dopshift,calc_Isurf_grid,calc_st_sky,def_contacts,conv_phase
-from ANTARESS_sp_reduc import sub_def_bins,def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t,air_index
+from ANTARESS_all_routines import calc_pl_coord,sub_calc_plocc_prop,LD_coeff_func,orb_motion_theoRV,return_FWHM_inst,\
+                                gauss_intr_prop,conv_Losframe_to_inclinedStarFrame,conv_inclinedStarFrame_to_Losframe,calc_CB_RV,occ_region_grid,\
+                                calc_binned_prof,def_weights_spatiotemp_bin,get_timeorbit,cust_mod_true_prop,resample_func,calc_zLOS_oblate,calc_RVrot,conv_StarFrame_to_inclinedStarFrame,\
+                                voigt,dgauss,detrend_prof_gen,spec_dopshift,calc_Isurf_grid,calc_st_sky,def_contacts
+from ANTARESS_spectral_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
+from ANTARESS_spectral_corrections.ANTARESS_tellurics import air_index
+from ANTARESS_routines.ANTARESS_orbit import def_plotorbite
+from ANTARESS_routines.ANTARESS_calib import cal_piecewise_func
 from lmfit import Parameters
 from copy import deepcopy
 from math import pi,cos,sin,sqrt
 from pathos.multiprocessing import Pool
-from itertools import product as it_product
 from constant_data import c_light
 import numpy.ma as ma
 import bindensity as bind
@@ -40,7 +35,7 @@ import glob
 
 
 
-def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,PropAtm_fit_dic):
+def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic):
     print()
     print('-----------------------------------')
     print('Plots')  
@@ -138,7 +133,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 coord_pl_in[pl_loc]['cen_pos'] = coord_pl_in[pl_loc]['cen_pos'][:,cond_occ_HR]
                 coord_pl_in[pl_loc]['phase'] = coord_pl_in[pl_loc]['phase'][cond_occ_HR]     
                 coord_pl_in[pl_loc]['ecl'] = coord_pl_in[pl_loc]['ecl'][cond_occ_HR] 
-            theo_HR_prop_plocc = sub_calc_plocc_prop(['achrom'],args,par_list,gen_dic['studied_pl'],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']),False)['achrom']
+            theo_HR_prop_plocc = sub_calc_plocc_prop(['achrom'],args,par_list,gen_dic['studied_pl'],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))['achrom']
             for pl_loc in gen_dic['studied_pl']:theo_HR_prop_plocc[pl_loc].update(coord_pl_in[pl_loc]) 
             
             return theo_HR_prop_plocc
@@ -969,7 +964,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     
                         #Persistent peak correction data
                         if (plot_options['plot_pre']=='permpeak') or (plot_options['plot_post']=='permpeak'):
-                            plot_options['data_permpeak'] = np.load(gen_dic['save_data_dir']+'Corr_data/Permpeak/'+inst+'_'+vis+'_add.npz', allow_pickle=True)['data'].item()
+                            plot_options['data_permpeak'] = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Permpeak/'+inst+'_'+vis+'_add')
                         else:
                             plot_options['data_permpeak'] = None
                             plot_options['det_permpeak']=False                                
@@ -1181,11 +1176,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                             #Flux balance correction data
                             if (plot_options['plot_mast']):
-                                if (gen_dic['corr_Fbal']):data_Fbal_exp = np.load(gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp)+'_add.npz', allow_pickle=True)['data'].item()
+                                if (gen_dic['corr_Fbal']):data_Fbal_exp = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp)+'_add')
                                 
                             #Cosmics correction data
                             if plot_options['det_cosm']:
-                                data_cosm = np.load(gen_dic['save_data_dir']+'Corr_data/Cosm/'+inst+'_'+vis+'_'+str(iexp)+'_add.npz', allow_pickle=True)['data'].item()
+                                data_cosm = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Cosm/'+inst+'_'+vis+'_'+str(iexp)+'_add')
     
                             #Plot HITRAN telluric lines
                             if len(plot_options['plot_tell_HITRANS'])>0:
@@ -2910,7 +2905,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 nsamp=len(par_subsample[0])
                                 RV_stsurf_HR_thread=np.empty([nsamp,theo_HR_prop_plocc[pl_ref]['nph_HR']])
                                 for isamp in range(nsamp):
-                                    theo_loc = sub_calc_plocc_prop(['achrom'],{},['rv'],[pl_loc],system_param,theo_dic,data_dic['DI']['system_prop'],par_subsample[0][isamp],{pl_loc:theo_HR_prop_plocc},range(theo_HR_prop_plocc[pl_loc]['nph_HR']),False)        
+                                    theo_loc = sub_calc_plocc_prop(['achrom'],{},['rv'],[pl_loc],system_param,theo_dic,data_dic['DI']['system_prop'],par_subsample[0][isamp],{pl_loc:theo_HR_prop_plocc},range(theo_HR_prop_plocc[pl_loc]['nph_HR']))        
                                     RV_stsurf_HR_thread[isamp,:] =theo_loc[pl_loc]['rv'][0,:]                                
                                 return RV_stsurf_HR_thread
                             
@@ -3702,10 +3697,21 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         data_upload = dataload_npz(gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_add')
                         ph_LC_HR =  data_upload['coord_HR'][pl_ref]['cen_ph']
                         LC_HR = data_upload['LC_HR'][:,0]
-                        
+
+                        #-------------------------------------------                        
                         #Predictions of RM signal
                         RVpred_tab = np.zeros([4,0],dtype=float)
                         SNRpred_tab = np.zeros(0,dtype=float)
+                        
+                        #Flux gain between the considered instrument and VLT/ESPRESSO
+                        C_inst_dic = {
+                            'ESPRESSO':1.,      
+                            'HARPS':1./6.,    
+                            'NIRPS':1./5.,     #from C. Lovis, efficiency roughly similar to ESPRESSO, thus flux ratio scales as mirror size ratio 
+                            }
+                        if inst not in C_inst_dic:stop('Define '+inst+'/ESPRESSO flux gain')
+                        
+                        #Processing exposures
                         for low_ph,high_ph in zip(st_x_obs[idx_in_plot],end_x_obs[idx_in_plot]):
                             cond_in = (xvar_HR[wsort]>low_ph) & (xvar_HR[wsort]<=high_ph)
                             cond_in_LC = (ph_LC_HR>low_ph) & (ph_LC_HR<=high_ph)
@@ -3715,7 +3721,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 LC_exp = np.mean(LC_HR[cond_in_LC])
                                 if (~np.isnan(RV_exp)) and (LC_exp<1.):
                                     texp = (high_ph-low_ph)*system_param[pl_ref]['period_s']
-                                    eRV_exp = sub_def_err_RVloc(plot_options['predic']['C'],plot_options['predic']['FWHM'],plot_options['predic']['ctrst'],LC_exp,plot_options['predic']['C_inst'][inst],texp)                                    
+                                    eRV_exp = sub_def_err_RVloc(plot_options['predic']['C'],plot_options['predic']['FWHM'],plot_options['predic']['ctrst'],LC_exp,C_inst_dic[inst],texp)                                    
                                     if plot_options['predic']['rand']:RV_plot = np.random.normal(loc=RV_exp, scale=eRV_exp)
                                     else:RV_plot=RV_exp 
                                     plt.errorbar(ph_RV_exp,RV_plot,xerr=[[ph_RV_exp-low_ph],[high_ph-ph_RV_exp]],yerr=eRV_exp,color='black',markeredgecolor='black',markerfacecolor='black',marker='o',linestyle='',zorder=0,alpha=plot_options['alpha_err'])
@@ -3725,7 +3731,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                     
                                     #Store SNR on the contrast of the local stellar line
                                     #    - scales as cst*sqrt(C_inst)*C*(1 - LC(t))/LC(t)*10^(-V/5)*sqrt(texp)
-                                    SNRpred_tab=np.append(SNRpred_tab,plot_options['predic']['C_RMR']*sqrt(plot_options['predic']['C_inst'][inst])*plot_options['predic']['ctrst']*((1 - LC_exp)/LC_exp)*10.**(-system_param['star']['mag']/5.) *np.sqrt(texp))
+                                    SNRpred_tab=np.append(SNRpred_tab,plot_options['predic']['C_RMR']*sqrt(C_inst_dic[inst])*plot_options['predic']['ctrst']*((1 - LC_exp)/LC_exp)*10.**(-system_param['star']['mag']/5.) *np.sqrt(texp))
+
+                        #-------------------------------------------  
                                     
                         #Calculate deltachi2 with null hypothesis
                         chi2_mod = np.sum(((RVpred_tab[1]-RVpred_tab[0])/RVpred_tab[2])**2.)   #prediction randomized vs model

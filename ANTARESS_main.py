@@ -1,42 +1,37 @@
-from ANTARESS_routines import extract_intr_profiles,ana_prof,calc_plocc_prop,calc_spots_prop,def_plocc_profiles,calc_gcal,\
-                                rescale_data,extract_pl_profiles,CCF_from_spec,detrend_prof,ResIntr_CCF_from_spec,\
+from ANTARESS_all_routines import extract_intr_profiles,ana_prof,calc_plocc_prop,calc_spots_prop,\
+                                rescale_data,extract_pl_profiles,detrend_prof,\
                                 init_prop,init_visit,update_data_inst,align_profiles,init_data_instru,extract_res_profiles,\
-                                process_bin_prof,conv_2D_to_1D_spec, corr_spot,pc_analysis,def_masks,process_spectral_cont
-from ANTARESS_sp_reduc import red_sp_data_instru
-from ANTARESS_joined_routines import fit_intr_funcs,fit_atm_funcs
+                                process_bin_prof, corr_spot,pc_analysis,process_spectral_cont
+from ANTARESS_spectral_corrections.ANTARESS_sp_reduc import red_sp_data_instru
+from ANTARESS_joined_analysis.ANTARESS_joined_star import fit_intr_funcs
+from ANTARESS_joined_analysis.ANTARESS_joined_atm import fit_atm_funcs
 from ANTARESS_plots import ANTARESS_plot_functions
-from copy import deepcopy
-from utils import stop
+from ANTARESS_routines.ANTARESS_conversions import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
+from ANTARESS_routines.ANTARESS_calib import calc_gcal
+from ANTARESS_routines.ANTARESS_plocc_def import def_plocc_profiles
+from ANTARESS_masks.ANTARESS_masks_gen import def_masks
 
+__version__ = "0.0.1"
 
-def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,PropAtm_fit_dic,AtmProf_fit_dic, corr_spot_dic,system_param):
-    """Main ANTARESS function.
+def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_param):
+    r"""**Main ANTARESS function.**
 
     Runs ANTARESS workflow. The pipeline is defined as modules than can be run independently. Each module takes as input the datasets produced by earlier modules, transforms or 
     analyzes them, and saves the outputs to disk. This approach allows the user to re-run the pipeline from any module, which is useful when several flow 
     options are available. It is even critical with large datasets such as the ones produced by ESPRESSO, which can take several hours to process with a 
     given module. Finally, this approach also allows a user to retrieve data at any stage of the process flow for external use.
 
-    Parameters
-    ----------
-    TBD
+    Args:
+        TBD
 
-    Returns
-    -------
-    None
+    Returns:
+        None
     """
 
-    print('****************************************')
-    print('Launching ANTARESS')
-    print('     Study of :') 
-    for pl_loc in gen_dic['transit_pl'].keys():print('      ',pl_loc)
-    print('****************************************')
-    print('')
-        
     ##############################################################################
     #Initializations
     ##############################################################################
-    coord_dic,data_prop = init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_dic,PropAtm_fit_dic,detrend_prof_dic)
+    coord_dic,data_prop = init_prop(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic)
    
     ####################################################################################################################
     #Processing datasets for each visit of each instrument
@@ -65,7 +60,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
         for vis in data_dic[inst]['visit_list']:
             print('  -----------------')
             print('  Processing visit: '+vis) 
-
+            
             #Initialization of visit properties
             init_visit(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic)             
             
@@ -134,7 +129,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Extracting intrinsic stellar profiles
             if gen_dic['intr_data']:
                 extract_intr_profiles(data_dic,gen_dic,inst,vis,system_param['star'],coord_dic,theo_dic,plot_dic)
-          
+        
             #Converting out-of-transit residual and intrinsic spectra into CCFs
             if gen_dic[data_type_gen+'_CCF']:
                 ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
@@ -224,23 +219,29 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     
         #Wrap-up function to fit atmospheric profiles and their properties
         if gen_dic['fit_AtmProf'] or gen_dic['fit_AtmProp']:
-            fit_atm_funcs(PropAtm_fit_dic,gen_dic)
+            fit_atm_funcs(gen_dic)
 
     ##############################################################################
     #Call to plot functions
     ##############################################################################
     if gen_dic['plots_on']:
-        ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,PropAtm_fit_dic)
+        ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic)
 
     return None
     
     
 
-'''
-Wrap-up function for 2D->1D visits
-'''
-def conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param):
 
+def conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param):
+    """**Wrap-up function for 2D->1D datasets.**
+
+    Args:
+        TBD:
+    
+    Returns:
+        None
+    
+    """ 
     #Processing 2D spectra into new 1D spectra
     if gen_dic['spec_1D_'+data_type_gen] and (data_dic[inst][vis]['type']=='spec2D'): 
         conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,data_dic[data_type_gen])  
@@ -251,11 +252,16 @@ def conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_di
 
     return None
 
-'''
-Wrap-up function for binned visits
-'''
 def bin_gen_functions(data_type_gen,mode,inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=None):
+    """**Wrap-up function for binned datasets.**
 
+    Args:
+        TBD:
+    
+    Returns:
+        None
+    
+    """ 
     #Binning profiles for analysis purpose 
     if gen_dic[data_type_gen+'bin'+mode]: 
         process_bin_prof(mode,data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic)

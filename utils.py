@@ -7,6 +7,7 @@ Created on Sat Aug  2 11:51:09 2014
 import numpy as np
 from math import pi
 from copy import deepcopy
+from pathos.multiprocessing import Pool
 #from mpmath import fp    #unused
 
 
@@ -246,10 +247,18 @@ def import_tabulated(dico_prop):
  
 #TODO: generaliser ou faire plusieurs fonctions selon coordonnees associees au profil (r, th, phi)
    
-'''
-Stop routine
-'''    
+   
 def stop(message=None):
+    r'''**Stop routine**
+    
+    Stop process with optional message
+    
+    Args:
+        message (str): stop message
+
+    Returns:
+        None    
+    ''' 
     str_message=' : '+message if message is not None else ''
     print('Stop'+str_message)
     raise SystemExit
@@ -471,6 +480,33 @@ def dichotomy(low, high, f, x):
 		return dichotomy(low, mid, f, x)
 	else:
 		return dichotomy(mid, high, f, x)
+
+
+def MAIN_multithread(func_input,nthreads,n_elem,y_inputs,common_args,output = False):  
+    r"""**Wrap-up multithreading routine.**
+
+    Args:
+        func_input (function): multi-threaded function
+        nthreads (int): number of threads
+        n_elem (int): number of elements to thread
+        y_inputs (list): threadable function inputs 
+        common_args (tuple): common function inputs
+        output (bool): set to True to return function outputs
+    
+    Returns:
+        y_output (None or specific to func_input): function outputs 
+    
+    """
+    pool_proc = Pool(processes=nthreads)   #cannot be passed through lmfit
+    ind_chunk_list=init_parallel_func(nthreads,n_elem)
+    chunked_args=[tuple(y_inputs[i][ind_chunk[0]:ind_chunk[1]] for i in range(len(y_inputs)))+common_args for ind_chunk in ind_chunk_list]	
+    all_results=tuple(tab for tab in pool_proc.starmap(func_input,chunked_args))
+    if output:y_output=np.concatenate(tuple(all_results[i] for i in range(nthreads)))
+    else:y_output = None     
+    pool_proc.close()
+    pool_proc.join() 				
+    return y_output
+
 
 
 '''
