@@ -230,7 +230,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     #Call to plot functions
     ##############################################################################
     if gen_dic['plots_on']:
-        ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,PropAtm_fit_dic)
+        ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,PropAtm_fit_dic, mock_dic)
 
     return None
     

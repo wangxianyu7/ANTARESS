@@ -898,10 +898,10 @@ if __name__ == '__main__':
                     
                     
                      # For the spot 'spot1' : 
-                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 70,
-                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
-                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 20,
-                     'flux__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
+                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 40,
+                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051-0.2,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
+                     'flux__ISESPRESSO_VSmock_vis_SPspot1'    : 0.2,
                     
                      # For the spot 'spot2' : 
                      #'lat__ISHARPN_VSmock_vis_SPspot2'     : 40,

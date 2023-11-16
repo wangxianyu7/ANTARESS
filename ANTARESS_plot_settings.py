@@ -7735,7 +7735,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         plot_settings[key_plot]['t_BJD'] = None
         # if gen_dic['star_name']=='HD209458':   #ANTARESS I, mock, multi-pl
         #     plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':54560.806755574+np.array([-0.5,-0.2,0.,0.2,0.5])/24. }
-            
+        if gen_dic['star_name']=='AUMic':
+            #plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 50)}
+            plot_settings[key_plot]['t_BJD'] = None
             
             
             
@@ -7992,13 +7994,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         #     plot_settings[key_plot]['n_plcell']['HD209458c'] = 17  #21
         
         
-        
-        # Stage Théo : Plot stellar spots
+
+        #Plot stellar spots
         plot_settings[key_plot]['stellar_spot'] = {}
 
-        plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' :  40, 'Tcenter' : 2458330.39051-0.2, 'ang' : 10, 'flux' : 0.2}
-        #         plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'flux' : 0.6}
-        
         # Number of positions of the spots to be plotted, equally distributed within the given time range.
         plot_settings[key_plot]['n_image_spots'] = 15
         
@@ -8007,7 +8006,18 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         
         # Use stellar rotation period to distribute the positions, instead of time
         plot_settings[key_plot]['plot_spot_all_Peq'] = True    
-                                
+
+        if gen_dic['star_name']=='AUMic':
+            plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' :  40, 'Tcenter' : 2458330.39051-0.2, 'ang' : 10, 'flux' : 0.2}
+            
+            plot_settings[key_plot]['n_image_spots'] = 15
+            
+            plot_settings[key_plot]['time_range_spot'] = 2458330.39051   + np.array([-0.5, 0.1])
+            
+            plot_settings[key_plot]['plot_spot_all_Peq'] = True    
+
+        elif gen_dic['star_name']=='V1298tau':
+            plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'flux' : 0.6}                                
         
         
                                 

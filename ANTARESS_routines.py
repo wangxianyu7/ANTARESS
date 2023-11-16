@@ -13906,7 +13906,6 @@ def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, 
                                                                                     np.arccos(param['cos_istar']))
         
         
-    
     # Retrieve angular coordinates of spot
     cos_long, sin_long, cos_lat, sin_lat =  spot_prop['cos_long_exp_center'], spot_prop['sin_long_exp_center'], spot_prop['cos_lat_exp_center'], spot_prop['sin_lat_exp_center']
     
@@ -13914,7 +13913,7 @@ def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, 
     x_sp =                         x_st_grid*cos_long - z_st_grid*sin_long
     y_sp = y_st_grid*cos_lat  - (x_st_grid*sin_long + z_st_grid*cos_long)   *   sin_lat
     z_sp = y_st_grid*sin_lat  + (x_st_grid*sin_long + z_st_grid*cos_long)   *   cos_lat
-   
+    
     # Deduce which cells are within the spot
     phi_sp = np.arctan2(np.sqrt(x_sp**2. + y_sp**2.),z_sp)
     cond_in_sp = cond_close_to_spot

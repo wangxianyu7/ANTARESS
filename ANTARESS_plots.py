@@ -31,6 +31,7 @@ from minim_routines import fit_minimization,ln_prob_func_lmfit
 from ANTARESS_plot_settings import ANTARESS_plot_settings
 from astropy.io import fits
 import glob
+import imageio
 
 
 
@@ -39,8 +40,7 @@ import glob
 
 
 
-
-def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,PropAtm_fit_dic):
+def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,PropAtm_fit_dic, mock_dic):
     print()
     print('-----------------------------------')
     print('Plots')  
@@ -9543,7 +9543,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Overwrite default settings
         plot_options[key_plot].update(plot_settings[key_plot]) 
-
         path_loc = gen_dic['save_plot_dir']+'System_view/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
          
@@ -10289,37 +10288,84 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #-------------------------------------------------------
             #Spotted cells 
             #-------------------------------------------------------
-            print('2:', plot_options[key_plot]['stellar_spot'])
-            if len(plot_options[key_plot]['stellar_spot'])>0:
-                
-                # Initialize params to use the retrieve_spots_prop_from_param function
-                params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
-                for spot in plot_options[key_plot]['stellar_spot'] : 
-                    params['lat__IS__VS__SP'+spot]     = plot_options[key_plot]['stellar_spot'][spot]['lat']
-                    params['ang__IS__VS__SP'+spot]     = plot_options[key_plot]['stellar_spot'][spot]['ang']
-                    params['Tcenter__IS__VS__SP'+spot] = plot_options[key_plot]['stellar_spot'][spot]['Tcenter']
-                    params['flux__IS__VS__SP'+spot]    = plot_options[key_plot]['stellar_spot'][spot]['flux']
-                
-                # Compute BJD of images 
-                if plot_options[key_plot]['plot_spot_all_Peq'] : t_all_spot = np.linspace(   0  ,   2*np.pi/(star_params['om_eq']*3600.*24.) ,plot_options[key_plot]['n_image_spots']) 
-                else                 : t_all_spot = np.linspace(      plot_options[key_plot]['time_range_spot'][0] , plot_options[key_plot]['time_range_spot'][1]      , plot_options[key_plot]['n_image_spots']) - 2400000
-                
-                
-                # Calculate flux of star grid, at all BJD
+            if mock_dic['use_spots']:
+                #Retrieve spot parameters defined by the user in plot_settings, if they are provided.
+                if len(plot_options[key_plot]['stellar_spot'])>0:
+                    # Initialize params to use the retrieve_spots_prop_from_param function.
+                    params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
+
+                    for spot in plot_options[key_plot]['stellar_spot'] : 
+                        params['lat__IS__VS__SP'+spot]     = plot_options[key_plot]['stellar_spot'][spot]['lat']
+                        params['ang__IS__VS__SP'+spot]     = plot_options[key_plot]['stellar_spot'][spot]['ang']
+                        params['Tcenter__IS__VS__SP'+spot] = plot_options[key_plot]['stellar_spot'][spot]['Tcenter']
+                        params['flux__IS__VS__SP'+spot]    = plot_options[key_plot]['stellar_spot'][spot]['flux']
+
+                else:
+                # If the user did not provide any spot properties for the plotting (ANTARESS_plot_settings.py) then default to
+                # the spot properties from the first instrument and visit provided in the mock dictionary section for the spots.
+                    inst_to_use = plot_options[key_plot]['inst_to_plot'][0]
+                    vis_to_use = plot_options[key_plot]['visits_to_plot'][inst_to_use][0]
+
+                    #Retrieve the spot parameters from the mock dictionary
+                    params = deepcopy(mock_dic['spots_prop'][inst_to_use][vis_to_use])
+                    params['cos_istar'] = star_params['cos_istar'] 
+                    params['alpha_rot'] = star_params['alpha_rot']
+                    params['beta_rot'] = star_params['beta_rot']       
+                 
+
+                #Calculate the flux of star grid, at all the exposures considered
                 star_flux_before_spot = deepcopy(Fsurf_grid_star[:,iband])
-                for t_exp in t_all_spot :
-                    star_flux_exp = deepcopy(star_flux_before_spot)
-                    spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, '_', '_', t_exp) 
-                    
-                    for spot in spots_prop : 
+
+                #Check if we have provided times for the plotting
+                if plot_options[key_plot]['t_BJD'] is not None:
+                    if len(plot_options[key_plot]['stellar_spot'])>0:
+                        spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, '_', '_', plot_t) 
+                    else:
+                        spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, inst_to_use, vis_to_use, plot_t) 
+                    for spot in spots_prop :
                         if spots_prop[spot]['is_visible']: 
                             _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
                                                                    {}, params, use_grid_dic = False)
                                                                    
-                            star_flux_exp[spotted_tiles] *=  plot_options[key_plot]['stellar_spot'][spot]['flux'] 
-                        
-                    Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_exp)
-        
+                            star_flux_before_spot[spotted_tiles] *=  spots_prop[spot]['flux'] 
+                            
+                    Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
+
+                #If no times provided for the plotting, then generate some
+                else:
+                    # Compute BJD of images 
+                    if plot_options[key_plot]['plot_spot_all_Peq'] : t_all_spot = np.linspace(   0  ,   2*np.pi/(star_params['om_eq']*3600.*24.) ,plot_options[key_plot]['n_image_spots']) 
+                    else                 : t_all_spot = np.linspace(      plot_options[key_plot]['time_range_spot'][0] , plot_options[key_plot]['time_range_spot'][1]      , plot_options[key_plot]['n_image_spots']) - 2400000
+ 
+                    # Calculate flux of star grid, at all BJD
+                    star_flux_before_spot = deepcopy(Fsurf_grid_star[:,iband])
+                    for t_exp in t_all_spot :
+                        star_flux_exp = deepcopy(star_flux_before_spot)
+                        if len(plot_options[key_plot]['stellar_spot'])>0:
+                            spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, '_', '_', t_exp) 
+                        else:
+                            spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, inst_to_use, vis_to_use, t_exp) 
+                        for spot in spots_prop :
+                            if spots_prop[spot]['is_visible']:
+                                _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
+                                                                        {}, params, use_grid_dic = False)
+                   
+                                star_flux_exp[spotted_tiles] *=  spots_prop[spot]['flux']
+                                
+
+                                #Testing
+                                # condition_close_to_spot = (coord_grid['x_st_sky'] - spots_prop[spot]['x_sky_exp_center'])**2 + (coord_grid['y_st_sky'] - spots_prop[spot]['y_sky_exp_center'])**2 < spots_prop[spot]['ang_rad']**2
+                                # if t_exp == t_all_spot[int(len(t_all_spot)/2)-3]:     
+                                #     plt.scatter(coord_grid['x_st_sky'][condition_close_to_spot], coord_grid['y_st_sky'][condition_close_to_spot], alpha=0.1)
+                                #plt.scatter(coord_grid['x_st_sky'][spotted_tiles], coord_grid['y_st_sky'][spotted_tiles])
+                                #plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'])
+                                # plt.scatter(np.sin(spots_prop[spot]['long_rad_exp_center'])*np.cos(spots_prop[spot]['lat_rad_exp_center']), np.sin(spots_prop[spot]['lat_rad_exp_center']), color='black')
+                                # for angle in np.linspace(0, 2*np.pi, 20):
+                                #     test_long = (spots_prop[spot]['x_sky_exp_center'] + spots_prop[spot]['ang_rad']*np.sin(angle))
+                                #     test_lat = (spots_prop[spot]['y_sky_exp_center'] + spots_prop[spot]['ang_rad']*np.cos(angle))
+                                #     plt.scatter(test_long, test_lat)
+                        Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_exp)
+            
 
     
             #------------------------------------------------------------          
@@ -10457,6 +10503,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #-----------------------				
             plt.savefig(path_loc+'System'+str(idx_pl)+'_'+str(plot_t)+'.'+plot_dic['system_view']) 
             plt.close()
+    
+    #Making a Gif if we have multilple exposures of the system
+    if plot_options[key_plot]['t_BJD'] is not None:
+        images_to_make_GIF = []
+        for idx_pl, plot_t in enumerate(plot_series):
+            filename = path_loc+'System'+str(idx_pl)+'_'+str(plot_t)+'.'+plot_dic['system_view']
+            images_to_make_GIF.append(imageio.imread(filename))
+        imageio.mimsave(path_loc+'System_GIF.gif', images_to_make_GIF)
     
 
 
