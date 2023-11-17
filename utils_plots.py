@@ -143,10 +143,10 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
         #Major ticks label format		
         if xmajor_form is not None:ax.xaxis.set_major_formatter(FormatStrFormatter(xmajor_form))
 	
-	      #Interval between minor ticks	
+	    #Interval between minor ticks	
         if xminor_int is not None:ax.xaxis.set_minor_locator(MultipleLocator(xminor_int))		
 
-	      #Ticks labels color
+        #Ticks labels color
         if xlab_col is not None:[i_col.set_color(xlab_col) for i_col in ax.get_xticklabels()]
 
         #Hide top ticks
@@ -159,42 +159,36 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
     #Y ticks (on by default)	
     if (no_yticks==False):
 
-		#Direction of ticks
-        if dir_y==None:dir_y='in'         
-
         #Interval between major ticks		
         if ymajor_int is not None:
             n_ticks = int(dy_range/ymajor_int)
             if n_ticks>100:ymajor_int = dy_range/100.
             ax.yaxis.set_major_locator(MultipleLocator(ymajor_int))	
+       
+		#Direction of ticks
+        if dir_y==None:dir_y='in'         
 
-    	    #Major ticks length	
-            ymajor_length_loc=ymajor_length if ymajor_length is not None else 7
-            ymajor_thick_loc=ymajor_thick if ymajor_thick is not None else 1.5		
-            ytick_pad_loc=ytick_pad if ytick_pad is not None else 5 		
-            ax.tick_params('y', length=ymajor_length_loc, which='major',width=ymajor_thick_loc,
-    					  direction=dir_y, pad=ytick_pad_loc,labelsize=yfont_size_loc, right=True)
+	    #Major ticks
+        ymajor_length_loc=ymajor_length if ymajor_length is not None else 7
+        ymajor_thick_loc=ymajor_thick if ymajor_thick is not None else 1.5		
+        ytick_pad_loc=ytick_pad if ytick_pad is not None else 5 		
+        ax.tick_params('y', length=ymajor_length_loc, which='major',width=ymajor_thick_loc,
+        					  direction=dir_y, pad=ytick_pad_loc,labelsize=yfont_size_loc, right=True)
 
-    	    #Major ticks label format		
-            if ymajor_form is not None:ax.yaxis.set_major_formatter(FormatStrFormatter(ymajor_form))	
-            
-    	    #Interval between minor ticks			
-            if yminor_int is not None:
-                n_ticks = int(ymajor_int/yminor_int)
-                if n_ticks>50:yminor_int = ymajor_int/50.
-                ax.yaxis.set_minor_locator(MultipleLocator(yminor_int))
-
-        	    #Minor ticks length	
-                yminor_length_loc=yminor_length if yminor_length is not None else ymajor_length_loc/2.
-                yminor_thick_loc=yminor_thick if yminor_thick is not None else 1.5			
-                ax.tick_params('y', length=yminor_length_loc, which='minor',width=yminor_thick_loc,
+	    #Minor ticks	
+        yminor_length_loc=yminor_length if yminor_length is not None else ymajor_length_loc/2.
+        yminor_thick_loc=yminor_thick if yminor_thick is not None else 1.5			
+        ax.tick_params('y', length=yminor_length_loc, which='minor',width=yminor_thick_loc,
         					  direction=dir_y,labelsize=yfont_size_loc, right=True)
-    
-            else:
-                ax.tick_params('y', which='minor',left=False,labelleft=False)
 
-        else:
-            ax.tick_params('y', which='both',left=False,labelleft=False)
+   	    #Major ticks label format		
+        if ymajor_form is not None:ax.yaxis.set_major_formatter(FormatStrFormatter(ymajor_form))	
+  
+	    #Interval between minor ticks	
+        if yminor_int is not None:
+            n_ticks = int(ymajor_int/yminor_int)
+            if n_ticks>50:yminor_int = ymajor_int/50.
+            ax.yaxis.set_minor_locator(MultipleLocator(yminor_int))		
 
 	    #Ticks labels color
         if ylab_col is not None:[i_col.set_color(ylab_col) for i_col in ax.get_yticklabels()]

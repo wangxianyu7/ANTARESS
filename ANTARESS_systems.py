@@ -66,7 +66,7 @@ Planets
 -----------------------------------------------------------------
 Note on degeneracies
 -----------------------------------------------------------------
-    - for more details see the definition of the axis system in ANTARESS_routines.py and in Cegla+2016
+    - for more details see the definition of the axis system in ANTARESS_all_routines.py and in Cegla+2016
     - we distinguish between the values given as input here for ip_in ([0;90]), lambda_in (x+[0;360]), and istar_in ([0;180]) and the true angles that can take any value between 0 and 360
       note that the angle ranges could be inverted between lambda and istar
       the reason is that degeneracies prevent distinguishing some of the true angle values, except in specific cases
