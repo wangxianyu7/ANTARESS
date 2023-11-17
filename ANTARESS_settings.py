@@ -203,7 +203,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         # gen_dic['star_name']='WASP121'
         #gen_dic['star_name']='KELT9'
         # gen_dic['star_name']='WASP127' 
-        gen_dic['star_name']='HD209458' 
+        #gen_dic['star_name']='HD209458' 
         # gen_dic['star_name']='WASP76'        
         # gen_dic['star_name']='Corot7' 
         # gen_dic['star_name']='Nu2Lupi' 
@@ -246,8 +246,16 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         # user = 'vaulato'
         # gen_dic['star_name']='WASP69'
         # gen_dic['star_name']='TOI4562'
+        if user=='mercier':
+            gen_dic['star_name']='AUMic' # mercier
     
         #Transiting planets
+        if user=='mercier' and gen_dic['star_name']=='AUMic':
+            gen_dic['transit_pl'] = {
+                'AUMicb':{'ESPRESSO' : ['mock_vis']}, 
+                }
+            gen_dic['kepl_pl'] = ['AUMicb']
+
         #gen_dic['transit_pl']='HD189733_b'
         #gen_dic['transit_pl']='Corot_9b'
         #gen_dic['transit_pl']='WASP_8b'
@@ -394,6 +402,9 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         #Plot settings    
         
         #Input data type
+        if gen_dic['star_name']=='AUMic' and user=='mercier':
+            gen_dic['type']={'ESPRESSO':'CCF'}
+
         if gen_dic['star_name'] in ['HD209458','WASP76','HD29291']:
             gen_dic['type']={'ESPRESSO':'spec2D'}
             # gen_dic['type']={'ESPRESSO':'CCF'}      #ANTARESS I, mock dataset, precisions
@@ -742,39 +753,20 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     # #        - 'flux' : the flux level of the spot surface, relative to the 'normal' surface of the star.
     # #    + Structure is par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']
      
-    # mock_dic['use_spots'] = True  & False
-    # mock_dic['spots_prop'] = {}
+    mock_dic['use_spots'] = True  & False
+    mock_dic['spots_prop'] = {}
     
-    # if gen_dic['star_name'] == 'V1298tau' : 
-    #     mock_dic['spots_prop']={
-    #         'HARPN':{
-    #             'mock_vis':{
-                    
-                    
-    #                 # Pour le spot 'spot1' : 
-    #                 'lat__ISHARPN_VSmock_vis_SPspot1'     : 30,
-    #                 'Tcenter__ISHARPN_VSmock_vis_SPspot1' : 2458877.6306 - 12/24,     # 2458877.213933
-    #                 'ang__ISHARPN_VSmock_vis_SPspot1'     : 20,
-    #                 'flux__ISHARPN_VSmock_vis_SPspot1'    : 0.4,
-                    
-    #                 # Pour le spot 'spot2' : 
-    #                 'lat__ISHARPN_VSmock_vis_SPspot2'     : 40,
-    #                 'Tcenter__ISHARPN_VSmock_vis_SPspot2' : 2458877.6306 + 5/24,
-    #                 'ang__ISHARPN_VSmock_vis_SPspot2'     : 25,
-    #                 'flux__ISHARPN_VSmock_vis_SPspot2'    : 0.4
-    #                     },
-                        
-                        
-    #                 'mock_vis2' : {}
-    #                     }}
-
      
     if user is not None:
     
     
         #Activating module
-        gen_dic['mock_data'] =  True     & False
+        gen_dic['mock_data'] =  True     #& False
     
+        #Setting number of threads 
+        if user=='mercier':
+            mock_dic['nthreads'] = 2 
+
         #Defining artificial visits
         if gen_dic['star_name'] == 'V1298tau' : 
             mock_dic['visit_def']={
@@ -791,6 +783,11 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
             mock_dic['visit_def']={
                 'HARPS':{'mock_vis' :{'exp_range':2458574.147242+np.array([-3.5,3.5])/24.,'nexp':50},
                            }}
+
+        if user=='mercier' and gen_dic['star_name'] == 'AUMic':
+            mock_dic['visit_def']={
+                'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-2,2])/24.,'nexp':50}}}
+
         if gen_dic['star_name'] == 'TOI4562' : 
             mock_dic['visit_def']={
                 'HARPS':{'mock_vis' :{'exp_range':2460257.81416  +np.array([-4.,1.])/24.,'nexp':5.*3600./900.}}}
@@ -811,6 +808,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
             mock_dic['DI_table']={'x_start':5889.95094-0.75,'x_end':5889.95094+0.75,'dx':0.01}       #w(Na_air) = 5889.95094  ;ANTARESS I, mock, multi-tr
         if gen_dic['star_name'] == 'WASP107' : 
             mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.8}
+        if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
+            mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
         if gen_dic['star_name'] == 'TOI4562' : 
             mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
         
@@ -820,8 +819,32 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         if gen_dic['star_name'] == 'HD209458' :
             mock_dic['sysvel']={'ESPRESSO' : {'mock_vis' : 0.}}   #ANTARESS I, mock, precisions and multi-tr          
             # mock_dic['sysvel']={'ESPRESSO' : {'mock_vis' : 10.}} 
+        if user=='mercier' and gen_dic['star_name']=='AUMic':
+            mock_dic['sysvel']= {'ESPRESSO' : {'mock_vis' : 0.}} 
     
         
+        #Defining spot properties 
+        if gen_dic['star_name'] == 'AUMic' and user == 'mercier': 
+            mock_dic['use_spots'] = True
+            mock_dic['spots_prop']={
+                 'ESPRESSO':{
+                     'mock_vis':{
+                        
+                        
+                         # For the spot 'spot1' : 
+                         'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 40,
+                         'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051-0.2,
+                         'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
+                         'flux__ISESPRESSO_VSmock_vis_SPspot1'    : 0.2,
+                        
+                         # For the spot 'spot2' : 
+                         #'lat__ISHARPN_VSmock_vis_SPspot2'     : 40,
+                         #'Tcenter__ISHARPN_VSmock_vis_SPspot2' : 2458877.6306 + 5/24,
+                         #'ang__ISHARPN_VSmock_vis_SPspot2'     : 25,
+                         #'flux__ISHARPN_VSmock_vis_SPspot2'    : 0.4
+                             }
+                        }
+                    }
         
         
         #Intrinsic stellar spectra     
@@ -857,13 +880,25 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
              mock_dic['intr_prof']={'HARPS' :{'mode':'ana','coord_line':'mu','func_prof_name': 'gauss', 'line_trans':None,'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,'FWHM_ord0__IS__VS_'  : 4 },'pol_mode' : 'modul'}}         
         elif gen_dic['star_name'] == 'TOI4562' : 
              mock_dic['intr_prof']={'HARPS' :{'mode':'ana','coord_line':'mu','func_prof_name': 'gauss', 'line_trans':None,'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,'FWHM_ord0__IS__VS_'  : 4 },'pol_mode' : 'modul'}}         
-    
+        
+        if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
+            mock_dic['intr_prof']={'ESPRESSO':{
+                'mode':'ana',        
+                'coord_line':'mu',
+                'func_prof_name': 'gauss',
+                'line_trans':None, 
+                'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,
+                            'FWHM_ord0__IS__VS_'  : 8 },
+                'pol_mode' : 'modul'}
+                }
     
     
         #Count continuum level
         if gen_dic['star_name'] == 'HD209458' : 
             mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':100.}}
-            mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e3}}   #ANTARESS I, mock, precisions  
+            mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e3}}   #ANTARESS I, mock, precisions 
+        if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
+            mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e8}}   
         elif gen_dic['star_name'] == 'TOI4562' :      mock_dic['flux_cont']={'HARPS':{'mock_vis':18500.}}        #15 -> 6m/s    17->5.6m/s   18-> 4.7m/s  19 -> 3m/s
                 
          
@@ -874,10 +909,13 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
             mock_dic['gcal'] = {'HARPN' : 20}
         if gen_dic['star_name'] == 'HD209458' : 
             mock_dic['gcal'] = {'ESPRESSO' :  1.}   #ANTARESS I, mock, precisions             
-                
+        if user=='mercier' and gen_dic['star_name'] == 'AUMic' : 
+            mock_dic['gcal'] = {'ESPRESSO' : 1.}   
+
+
         #Flux errors
         if gen_dic['star_name'] == 'TOI4562' :      mock_dic['set_err']={'HARPS':True}    
-       
+        if gen_dic['star_name'] == 'AUMic' and user=='mercier': mock_dic['set_err']={'ESPRESSO':True}
         
         #Jitter on intrinsic profile properties
         if gen_dic['star_name'] == 'V1298tau' : 
@@ -1910,6 +1948,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
             if gen_dic['mock_data']:theo_dic['nsub_Dstar']=201   #201 
         if gen_dic['star_name']=='HD209458': 
             theo_dic['nsub_Dstar']=101    #Fit stellar grid, mock data
+        if gen_dic['star_name']=='AUMic' and user=='mercier':
+            theo_dic['nsub_Dstar']=101
             
             
         # if gen_dic['star_name']=='WASP76':theo_dic['nsub_Dstar']=201
@@ -1948,7 +1988,9 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
                 }  
     
     
-        #Planet discretization        
+        #Planet discretization
+        if user == 'mercier' and gen_dic['star_name']=='AUMic':
+            theo_dic['nsub_Dpl']= {'AUMicb':101.}            
         if gen_dic['star_name']=='HD3167':    
             theo_dic['nsub_Dpl']={'HD3167_b':31.,'HD3167_c':31.} 
             # theo_dic['nsub_Dpl']={'HD3167_b':51.,'HD3167_c':51.}      #final fit + plots   
@@ -2019,6 +2061,9 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         elif gen_dic['star_name']=='55Cnc':
             theo_dic['n_oversamp']={'55Cnc_e':0.}  
             print('METTRE OVERSAMP POUR FITS')
+        if user=='mercier' and gen_dic['star_name']=='AUMic':
+            theo_dic['n_oversamp']={'AUMicb':5.}
+
         #RM survey
         elif gen_dic['star_name']=='HAT_P3':theo_dic['n_oversamp']={'HAT_P3b':5.}  
         elif gen_dic['star_name']=='Kepler25':theo_dic['n_oversamp']={'Kepler25c':5.}  
@@ -2073,8 +2118,19 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         #Planetary system architecture
         plot_dic['system_view']=''   #png
       
-    
-    
+        if user=='mercier' and gen_dic['star_name']=='AUMic':
+            #Range of planet-occulted properties
+            plot_dic['plocc_ranges']=''    
+            
+            #Planet-occulted stellar regions
+            plot_dic['occulted_regions']='png'
+            
+            #Planetary system architecture
+            plot_dic['system_view']='png'   #png
+
+            #Transit chord discretization        
+            plot_dic['nph_HR'] = 100
+        
     
     
         # '''   
@@ -5161,7 +5217,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     if user is not None:  
     
         #Activating
-        gen_dic['fit_DI'] = True    &  False
+        gen_dic['fit_DI'] = True    #&  False
         gen_dic['fit_DIbin']=True   &  False
         gen_dic['fit_DIbinmultivis']=True    &  False
         if ((gen_dic['star_name'] in ['WASP76','HD209458','55Cnc']) and (gen_dic['type']['ESPRESSO']=='spec2D')): 
@@ -5174,7 +5230,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
         #Calculating/Retrieving
         gen_dic['calc_fit_DI']=True   #  &  False   
-        gen_dic['calc_fit_DIbin']=True  # &  False  
+        gen_dic['calc_fit_DIbin']=True   &  False  
         gen_dic['calc_fit_DIbinmultivis']=True    &  False  
     
         #Fitted data
@@ -5199,7 +5255,9 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         #Order to be fitted
         # data_dic['DI']['fit_prof']['order']={'ESPRESSO':85} 
         data_dic['DI']['fit_prof']['order']={} 
-        # data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}   #mock dataset     
+        # data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}   #mock dataset
+        if gen_dic['star_name']=='AUMic' and user=='mercier':
+            data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}     
         if (gen_dic['star_name']=='WASP76') and gen_dic['trim_spec']:data_dic['DI']['fit_prof']['order']={'ESPRESSO':2}
     
     
@@ -5269,7 +5327,9 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         elif gen_dic['star_name']=='K2-139':data_dic['DI']['cont_range']=[[-300.,-10.],[10.,300.]] 
         elif gen_dic['star_name']=='TIC257527578':data_dic['DI']['cont_range']=[[-300.,-10.],[10.,300.]]    
         elif gen_dic['star_name']=='MASCARA1':data_dic['DI']['cont_range']=[[-350.,-174.],[129.,175.]] 
-        elif gen_dic['star_name']=='V1298tau':data_dic['DI']['cont_range']['HARPN']=[[14.-90.,14.-40.],[14.+40.,14.+90.]]     
+        elif gen_dic['star_name']=='V1298tau':data_dic['DI']['cont_range']['HARPN']=[[14.-90.,14.-40.],[14.+40.,14.+90.]]
+        elif gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['DI']['cont_range']['ESPRESSO']={0:[[-100.,-80.],[80.,100.]]} 
+
         #RM survey
         elif gen_dic['star_name']=='HAT_P3':
             if ('KitCat' in gen_dic['data_dir_list']['HARPN']['20200130']):sysguess = 0.
@@ -5430,7 +5490,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         elif gen_dic['star_name']=='MASCARA1':
             # data_dic['DI']['fit_range']=[[-350.,-174.],[6.3 + (6.3+130),190.]]    #fit continu, mauvaises bandes exclues        
             data_dic['DI']['fit_range']=[[-350.,-174.],[-100.,190.]]    #fit global, mauvaises bandes exclues
-        elif gen_dic['star_name']=='V1298tau':data_dic['DI']['fit_range']['HARPN']=[[14.-90.,14.+90.]]  
+        elif gen_dic['star_name']=='V1298tau':data_dic['DI']['fit_range']['HARPN']=[[14.-90.,14.+90.]]
+        if gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['DI']['fit_range']['ESPRESSO']={'mock_vis':[[-100.,100.]]}  
         #RM survey
         elif gen_dic['star_name']=='HAT_P3':
             fit_range = [[sysguess-75.,sysguess+75.]]
@@ -5546,6 +5607,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
             data_dic['DI']['model']='custom'
         elif gen_dic['star_name']=='V1298tau':
             data_dic['DI']['model']['HARPN']='custom'
+        elif gen_dic['star_name']=='AUMic' and user=='mercier':
+            data_dic['DI']['model']['ESPRESSO']='gauss'
         elif gen_dic['star_name'] in ['WASP_8','55Cnc','WASP127','Corot7','Nu2Lupi','GJ9827','HIP41378']:
             for inst in ['ESPRESSO','HARPS','HARPN']:data_dic['DI']['model'][inst]='gauss'  
         #RM survey
@@ -6530,14 +6593,14 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     if user is not None: 
     
         #Activating
-        gen_dic['align_DI'] = True    &  False      
+        gen_dic['align_DI'] = True    #&  False      
         if ((gen_dic['star_name'] in ['55Cnc']) and (gen_dic['type']['ESPRESSO']=='spec2D')) or \
            ((gen_dic['star_name'] in ['GJ3090']) and ((gen_dic['type']['NIRPS_HA']=='spec2D') or (gen_dic['type']['NIRPS_HE']=='spec2D'))):
             gen_dic['align_DI'] = False   
     
         
         #Calculating/retrieving 
-        gen_dic['calc_align_DI']=True    &  False  
+        gen_dic['calc_align_DI']=True    #&  False  
             
         if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','TOI4562','WASP69']:
             gen_dic['align_DI']=True   # & False 
@@ -6895,6 +6958,9 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
             data_dic['DI']['sysvel']={'HARPN':{'20200128':0.,'20201207':0.}}  
             data_dic['DI']['sysvel']={'HARPN':{'20200128':15.004766,'20201207':14.683693, 'mock_vis' : 0}}    #custom fit   # Stage Théo     
             
+        elif user=='mercier' and gen_dic['star_name']=='AUMic':
+            data_dic['DI']['sysvel']={'ESPRESSO' : {'mock_vis' : 0}} 
+
         #RM survey
         elif gen_dic['star_name']=='HAT_P3':
             data_dic['DI']['sysvel']={'HARPN':{'20190415':0.,'20200130':0.}}  
@@ -7332,14 +7398,14 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     if user is not None:     
     
         #Activating
-        gen_dic['flux_sc']=True   & False
+        gen_dic['flux_sc']=True   #& False
         if ((gen_dic['star_name'] in ['55Cnc','HD29291']) and (gen_dic['type']['ESPRESSO']=='spec2D')) or \
            ((gen_dic['star_name'] in ['GJ3090']) and ((gen_dic['type']['NIRPS_HA']=='spec2D') or (gen_dic['type']['NIRPS_HE']=='spec2D'))):
             gen_dic['flux_sc'] = False   
         
         
         #Calculating/retrieving
-        gen_dic['calc_flux_sc']=True  &  False    
+        gen_dic['calc_flux_sc']=True  #&  False    
         
     
         if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','WASP107','TOI4562','WASP69']:
@@ -7411,6 +7477,17 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
                         # 'GJ436_b' : [0.08315-3*0.00011],'LD':['power2'],'LD_u1' : [0.9],'LD_u2':[0.5077195017886956]       #ESPRESSO; moyenne ponderee depuis params from Maxted+2021
     
                         }}    
+
+        elif gen_dic['star_name']=='AUMic' and user=='mercier':
+            data_dic['DI']['system_prop']={
+                    'achrom':{
+                        'AUMicb' : [0.0512], #Gilbert et al. 2022
+                        #'AUMicc' : [0.001156], #Gilbert et al. 2022
+                        'LD' : ['quadratic'],
+                        'LD_u1' : [0.35],
+                        'LD_u2' : [0.16],
+                    }
+                    }   
     
         # elif gen_dic['star_name']=='Corot7':
         #     data_dic['DI']['system_prop']={
@@ -7710,6 +7787,13 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
                     'ESPRESSO':{'mock_vis':{'mode':'simu','n_oversamp':5}},
                     }
     
+        elif gen_dic['star_name']=='AUMic' and user=='mercier':
+            data_dic['DI']['transit_prop'].update({    
+                    'nsub_Dstar':101,
+                    #'ESPRESSO':{'mock_vis':{'mode':'model', 'dt':0.05}}
+                    'ESPRESSO':{'mock_vis':{'mode':'simu','n_oversamp':5}},
+                    })
+
         elif gen_dic['star_name']=='Altair':     
             data_dic['DI']['transit_prop']={      'nsub_Dstar':501,  'ESPRESSO':{'mock_vis':{'mode':'simu','n_oversamp':10.}}}                 
                 
@@ -8765,7 +8849,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         if gen_dic['star_name']=='GJ436':gen_dic['res_data']=False
     
         #Calculating/retrieving 
-        gen_dic['calc_res_data'] = True   &  False
+        gen_dic['calc_res_data'] = True   #&  False
         if gen_dic['star_name'] in ['HD209458','WASP76']:gen_dic['calc_res_data']=True   &False
         
         if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214','TOI4562','WASP69']:
@@ -8845,6 +8929,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         if gen_dic['star_name']=='HIP41378':data_dic['Res']['cont_range']={'HARPN':[[-100.,-15.],[15.,100.]]}  
         elif gen_dic['star_name']=='MASCARA1':data_dic['Res']['cont_range']=[[-150.,-70.],[70.,150.]]  
         elif gen_dic['star_name']=='V1298tau':data_dic['Res']['cont_range']={'HARPN' : [[-150.,-70.],[70.,150.]]  }
+        elif gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['Res']['cont_range']['ESPRESSO']={0 : [[-150.,-70.],[70.,150.]]}
+
     
     
         #RM survey
@@ -8952,11 +9038,11 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     if user is not None:
     
         #Calculating
-        gen_dic['intr_data'] = True    &  False
+        gen_dic['intr_data'] = True    #&  False
         if (gen_dic['star_name'] in ['WASP76','HD209458']) and (gen_dic['type']['ESPRESSO']=='spec2D'):gen_dic['intr_data'] = True # & False
         
         #Calculating/retrieving
-        gen_dic['calc_intr_data'] = True   &  False  
+        gen_dic['calc_intr_data'] = True   #&  False  
         
         if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214','TOI4562','WASP69']:
             gen_dic['intr_data']=True #  &  False
@@ -8971,6 +9057,10 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
                 data_dic['Intr']['cont_range']['ESPRESSO']={}
                 for iord in range(4):data_dic['Intr']['cont_range']['ESPRESSO'][iord] = np.array([[ 5883. , 5885.],[5901., 5903. ]])    #ANTARESS fit sodium doublet
     
+
+        if gen_dic['star_name']=='AUMic' and user=='mercier':
+            data_dic['Intr']['cont_range'] = deepcopy(data_dic['Res']['cont_range'])
+
         
         #Calculating/retrieving continuum 
         data_dic['Intr']['calc_cont'] = True# & False
@@ -8989,6 +9079,9 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         plot_dic['map_Intr_prof']=''   #'png 
         if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','TOI4562','WASP69']:plot_dic['map_Intr_prof']=''
     
+        if gen_dic['star_name']=='AUMic' and user=='mercier':
+            plot_dic['map_Intr_prof']='png'
+
         #Individual intrinsic stellar profiles
         plot_dic['sp_intr']=''  
         plot_dic['Intr_prof']=''   #pdf  
@@ -9235,7 +9328,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     if user is not None:
     
         #Activating
-        gen_dic['align_Intr'] = True   &  False
+        gen_dic['align_Intr'] = True   #&  False
      
         #Calculating/retrieving
         gen_dic['calc_align_Intr'] = True # &  False  
@@ -9247,7 +9340,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         plot_dic['all_intr_data']=''   #pdf
     
     
-    
+        if user=='mercier' and gen_dic['star_name']=='AUMic':
+            data_dic['Intr']['align_ref_pl']={'ESPRESSO':{'mock_vis' : 'AUMicb'}}
     
     
     
@@ -10026,6 +10120,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
             data_dic['Intr']['fit_range']['HARPN']={'20191218':[[-50.,50.]],'20220401': [[-50.,50.]]}
         elif gen_dic['star_name']=='MASCARA1':data_dic['Intr']['fit_range']=[[-130.,130.]] 
         elif gen_dic['star_name']=='V1298tau':data_dic['Intr']['fit_range']['HARPN']={'mock_vis' : [[-130.,130.]] }
+        elif gen_dic['star_name']=='AUMic' and user=='mercier':
+            data_dic['Intr']['fit_range']['ESPRESSO']={'mock_vis' : [[-130.,130.]] }
     
         #RM survey             
         elif gen_dic['star_name']=='HAT_P3':
@@ -12184,7 +12280,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     
         #Activating 
-        gen_dic['fit_IntrProf'] = True #  &  False
+        gen_dic['fit_IntrProf'] = True   &  False
     
     
         #Exposures to be fitted
@@ -12236,6 +12332,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
             glob_fit_dic['IntrProf']['idx_in_fit']={'HARPN':{'20191218':range(18)}  }  
         elif gen_dic['star_name'] == 'V1298tau' :        
             glob_fit_dic['IntrProf']['idx_in_fit']={'HARPN':{'mock_vis':range(1,19)}} 
+        elif gen_dic['star_name'] == 'AUMic' and user == 'mercier':
+         glob_fit_dic['IntrProf']['idx_in_fit'] = deepcopy(glob_fit_dic['IntrProp']['idx_in_fit'])
         elif gen_dic['star_name']=='55Cnc':          
             glob_fit_dic['IntrProf']['idx_in_fit']={
                 'ESPRESSO':{

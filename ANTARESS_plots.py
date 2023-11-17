@@ -8,7 +8,7 @@ from utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_f
 from ANTARESS_all_routines import calc_pl_coord,sub_calc_plocc_prop,LD_coeff_func,orb_motion_theoRV,return_FWHM_inst,\
                                 gauss_intr_prop,conv_Losframe_to_inclinedStarFrame,conv_inclinedStarFrame_to_Losframe,calc_CB_RV,occ_region_grid,\
                                 calc_binned_prof,def_weights_spatiotemp_bin,get_timeorbit,cust_mod_true_prop,resample_func,calc_zLOS_oblate,calc_RVrot,conv_StarFrame_to_inclinedStarFrame,\
-                                voigt,dgauss,detrend_prof_gen,spec_dopshift,calc_Isurf_grid,calc_st_sky,def_contacts
+                                voigt,dgauss,detrend_prof_gen,spec_dopshift,calc_Isurf_grid,calc_st_sky,def_contacts, retrieve_spots_prop_from_param, calc_spotted_tiles
 from ANTARESS_spectral_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
 from ANTARESS_spectral_corrections.ANTARESS_tellurics import air_index
 from ANTARESS_routines.ANTARESS_orbit import def_plotorbite

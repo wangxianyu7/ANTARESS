@@ -48,9 +48,9 @@ def ANTARESS_launcher(input_settings = {} ,input_system = {} , user = None):
     
 
     #Moving to ANTARESS directory
-    antaress_dir = os_system.path.dirname(__file__).split('Method')[0]
-    gen_dic['save_dir']= antaress_dir+'En_cours/'  
-    os_system.chdir(antaress_dir+'Method/')
+    antaress_dir = '/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/antaress'
+    gen_dic['save_dir']= '/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/'
+    os_system.chdir(antaress_dir)
 
     #Overwrite default settings
     if len(input_settings)>0: 

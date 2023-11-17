@@ -2,7 +2,7 @@ from ANTARESS_all_routines import extract_intr_profiles,ana_prof,calc_plocc_prop
                                 rescale_data,extract_pl_profiles,detrend_prof,\
                                 init_prop,init_visit,update_data_inst,align_profiles,init_data_instru,extract_res_profiles,\
                                 process_bin_prof, corr_spot,pc_analysis,process_spectral_cont
-from ANTARESS_spectral_corrections.ANTARESS_sp_reduc import red_sp_data_instru
+#from ANTARESS_spectral_corrections.ANTARESS_sp_reduc import red_sp_data_instru
 from ANTARESS_joined_analysis.ANTARESS_joined_star import fit_intr_funcs
 from ANTARESS_joined_analysis.ANTARESS_joined_atm import fit_atm_funcs
 from ANTARESS_plots import ANTARESS_plot_functions

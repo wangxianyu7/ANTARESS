@@ -4,7 +4,7 @@
 import numpy as np
 from constant_data import c_light
 from utils import stop
-from ANTARESS_routines import retrieve_spots_prop_from_param
+from ANTARESS_all_routines import retrieve_spots_prop_from_param
 
 def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
     plot_settings={}
