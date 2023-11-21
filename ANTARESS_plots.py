@@ -9340,7 +9340,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if system_param['star']['f_GD']>0.:                        
                         xsky_limb = np.linspace(-1., 1., 1000, endpoint=True)
                         x_grid_all = np.tile(xsky_limb,(1000,1)) 
-                        y_grid_all = np.tile(np.linspace(-1., 1., 1000, endpoint=True),(1000,1)) 
+                        y_grid_all = np.tile(np.linspace(-1., 1., 1000, endpoint=True),(1000,1))
                         cond_in_stphot=calc_zLOS_oblate(x_grid_all,y_grid_all,system_param['star']['istar_rad'],system_param['star']['RpoleReq'])[2]               
                         y_grid_all[~cond_in_stphot] = 0.         
                         ysky_limb = np.nanmax(y_grid_all,axis=1)            
@@ -9814,22 +9814,53 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             lw_spin = 2.5
             if star_params['f_GD']>0.:
                 
+                # #Points away from us, in LOS that do not intersect the projected photosphere
+                # idx_behind = np_where1D(st_spin_z_st < 0.)
+                # z_st_sky_behind,_,cond_in_stphot=calc_zLOS_oblate(st_spin_x_st[idx_behind],st_spin_y_st[idx_behind],star_params['istar_rad'],star_params['RpoleReq'])
+
+                # print('0:', len(idx_behind))
+                # print('1:', len(cond_in_stphot))
+                # print('1bis:', len(z_st_sky_behind))                 
+                # w_vis_far = idx_behind[~cond_in_stphot]
+                
+                # #Points away from us, in LOS that intersect the projected photosphere, outside of the photosphere   
+                # w_unvis_far = sorted(list(idx_behind[cond_in_stphot][st_spin_z_st[idx_behind[cond_in_stphot]] <=  z_st_sky_behind[cond_in_stphot] ]))
+                
+                # #Points toward us, in LOS that do not intersect the projected photosphere or in front of it
+                # idx_front = np_where1D(st_spin_z_st >= 0.)
+                # print('2:', len(idx_front))
+                # _,z_photo_front,cond_in_stphot=calc_zLOS_oblate(st_spin_x_st[idx_front],st_spin_y_st[idx_front],star_params['istar_rad'],star_params['RpoleReq'])
+                # print('5:', len(cond_in_stphot))
+                # print('5bis:', len(z_photo_front))
+
+                # w_vis_close = sorted(list(idx_front[~cond_in_stphot])+list(idx_front[cond_in_stphot][st_spin_z_st[idx_front[cond_in_stphot]] >=  z_photo_front[cond_in_stphot] ]))
+
+                # #Plot hidden spin axis
+                # print('test1:', idx_behind[cond_in_stphot])
+                # print('test2:', st_spin_z_st[idx_behind[cond_in_stphot]])
+                # print('test3:', z_st_sky_behind[cond_in_stphot])
+                # if plot_options[key_plot]['plot_stspin_hid']:
+                #     w_vis_in= sorted(list(idx_behind[cond_in_stphot][st_spin_z_st[idx_behind[cond_in_stphot]]>  z_st_sky_behind[cond_in_stphot] ])+ list(idx_front[cond_in_stphot][st_spin_z_st[idx_front[cond_in_stphot]] <  z_photo_front[cond_in_stphot] ]))
+
+
                 #Points away from us, in LOS that do not intersect the projected photosphere
                 idx_behind = np_where1D(st_spin_z_st < 0.)
-                z_st_sky_behind,_,cond_in_stphot=calc_zLOS_oblate(st_spin_x_st[idx_behind],st_spin_y_st[idx_behind],star_params['istar_rad'],star_params['RpoleReq'])                  
-                w_vis_far = idx_behind[~cond_in_stphot]
+                z_st_sky_behind,_,cond_in_stphot_behind=calc_zLOS_oblate(st_spin_x_st[idx_behind],st_spin_y_st[idx_behind],star_params['istar_rad'],star_params['RpoleReq'])
+                              
+                w_vis_far = idx_behind[~cond_in_stphot_behind]
                 
                 #Points away from us, in LOS that intersect the projected photosphere, outside of the photosphere   
-                w_unvis_far = sorted(list(idx_behind[cond_in_stphot][st_spin_z_st[idx_behind[cond_in_stphot]] <=  z_st_sky_behind[cond_in_stphot] ]))
+                w_unvis_far = sorted(list(idx_behind[cond_in_stphot_behind][st_spin_z_st[idx_behind[cond_in_stphot_behind]] <=  z_st_sky_behind[cond_in_stphot_behind] ]))
                 
                 #Points toward us, in LOS that do not intersect the projected photosphere or in front of it
                 idx_front = np_where1D(st_spin_z_st >= 0.)
-                _,z_photo_front,cond_in_stphot=calc_zLOS_oblate(st_spin_x_st[idx_front],st_spin_y_st[idx_front],star_params['istar_rad'],star_params['RpoleReq'])                 
-                w_vis_close = sorted(list(idx_front[~cond_in_stphot])+list(idx_front[cond_in_stphot][st_spin_z_st[idx_front[cond_in_stphot]] >=  z_photo_front[cond_in_stphot] ]))
+                _,z_photo_front,cond_in_stphot_front=calc_zLOS_oblate(st_spin_x_st[idx_front],st_spin_y_st[idx_front],star_params['istar_rad'],star_params['RpoleReq'])
+
+                w_vis_close = sorted(list(idx_front[~cond_in_stphot_front])+list(idx_front[cond_in_stphot_front][st_spin_z_st[idx_front[cond_in_stphot_front]] >=  z_photo_front[cond_in_stphot_front] ]))
 
                 #Plot hidden spin axis
                 if plot_options[key_plot]['plot_stspin_hid']:
-                    w_vis_in= sorted(list(idx_behind[cond_in_stphot][st_spin_z_st[idx_behind[cond_in_stphot]]>  z_st_sky_behind[cond_in_stphot] ])+ list(idx_front[cond_in_stphot][st_spin_z_st[idx_front[cond_in_stphot]] <  z_photo_front[cond_in_stphot] ]))
+                    w_vis_in= sorted(list(idx_behind[cond_in_stphot_behind][st_spin_z_st[idx_behind[cond_in_stphot_behind]]>  z_st_sky_behind[cond_in_stphot_behind] ])+ list(idx_front[cond_in_stphot_front][st_spin_z_st[idx_front[cond_in_stphot_front]] <  z_photo_front[cond_in_stphot_front] ]))
 
             else:
                 r_st_spin2 = st_spin_x_st**2.+ st_spin_y_st**2.
@@ -10327,6 +10358,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 #Check if we have provided times for the plotting
                 if plot_options[key_plot]['t_BJD'] is not None:
+
+                    #Defining a new flux array, such that we don't see the previous spot when plotting the next spot
+                    Flux_for_nonredundant_spot_plotting = deepcopy(Fsurf_grid_star[:,iband])
+
                     if len(plot_options[key_plot]['stellar_spot'])>0:
                         spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, '_', '_', plot_t) 
                     else:
@@ -10338,7 +10373,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                                    
                             star_flux_before_spot[spotted_tiles] *=  spots_prop[spot]['flux'] 
                             
-                    Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
+                    #Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
+                    Flux_for_nonredundant_spot_plotting = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
 
                 #If no times provided for the plotting, then generate some
                 else:
@@ -10346,8 +10382,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if plot_options[key_plot]['plot_spot_all_Peq'] : t_all_spot = np.linspace(   0  ,   2*np.pi/(star_params['om_eq']*3600.*24.) ,plot_options[key_plot]['n_image_spots']) 
                     else                 : t_all_spot = np.linspace(      plot_options[key_plot]['time_range_spot'][0] , plot_options[key_plot]['time_range_spot'][1]      , plot_options[key_plot]['n_image_spots']) - 2400000
  
-                    # Calculate flux of star grid, at all BJD
-                    star_flux_before_spot = deepcopy(Fsurf_grid_star[:,iband])
                     for t_exp in t_all_spot :
                         star_flux_exp = deepcopy(star_flux_before_spot)
                         if len(plot_options[key_plot]['stellar_spot'])>0:
@@ -10363,16 +10397,52 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 
 
                                 #Testing
-                                # condition_close_to_spot = (coord_grid['x_st_sky'] - spots_prop[spot]['x_sky_exp_center'])**2 + (coord_grid['y_st_sky'] - spots_prop[spot]['y_sky_exp_center'])**2 < spots_prop[spot]['ang_rad']**2
-                                # if t_exp == t_all_spot[int(len(t_all_spot)/2)-3]:     
-                                #     plt.scatter(coord_grid['x_st_sky'][condition_close_to_spot], coord_grid['y_st_sky'][condition_close_to_spot], alpha=0.1)
-                                #plt.scatter(coord_grid['x_st_sky'][spotted_tiles], coord_grid['y_st_sky'][spotted_tiles])
-                                #plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'])
+                                #Testing is_spot_visible
+                                #Spot coordinates in the non-inclined star rest frame 
                                 # plt.scatter(np.sin(spots_prop[spot]['long_rad_exp_center'])*np.cos(spots_prop[spot]['lat_rad_exp_center']), np.sin(spots_prop[spot]['lat_rad_exp_center']), color='black')
+
+                                #Spot coordinates projected in the inclined star rest frame
+                                # plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'])
+
+                                #Plotting the boundary of the spots
                                 # for angle in np.linspace(0, 2*np.pi, 20):
                                 #     test_long = (spots_prop[spot]['x_sky_exp_center'] + spots_prop[spot]['ang_rad']*np.sin(angle))
                                 #     test_lat = (spots_prop[spot]['y_sky_exp_center'] + spots_prop[spot]['ang_rad']*np.cos(angle))
                                 #     plt.scatter(test_long, test_lat)
+
+                                #Testing calc_spotted_tiles
+                                #Rough estimate
+                                # condition_close_to_spot = (coord_grid['x_st_sky'] - spots_prop[spot]['x_sky_exp_center'])**2 + (coord_grid['y_st_sky'] - spots_prop[spot]['y_sky_exp_center'])**2 < spots_prop[spot]['ang_rad']**2
+                                # plt.scatter(coord_grid['x_st_sky'][condition_close_to_spot], coord_grid['y_st_sky'][condition_close_to_spot], alpha=0.2)
+
+                                # #More precise estimate
+                                # plt.scatter(coord_grid['x_st_sky'][spotted_tiles], coord_grid['y_st_sky'][spotted_tiles])
+
+                                # #Spot coordinates projected in the inclined star rest frame
+                                # plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'])
+
+
+                                #Testing the projection into the spot reference frame
+                                #Rough estimate
+                                # if t_exp == t_all_spot[4]:
+                                #     plot_projection = True
+                                #     condition_close_to_spot = (coord_grid['x_st_sky'] - spots_prop[spot]['x_sky_exp_center'])**2 + (coord_grid['y_st_sky'] - spots_prop[spot]['y_sky_exp_center'])**2 < spots_prop[spot]['ang_rad']**2
+                                #     plt.scatter(coord_grid['x_st_sky'][condition_close_to_spot], coord_grid['y_st_sky'][condition_close_to_spot], alpha=0.3)
+
+                                # #More precise estimate
+                                #     calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
+                                #                                         {}, params, use_grid_dic = False, plot_projection=True)
+
+                                #Add this in calc_spotted_tiles, and the plot_projection boolean in the function inputs
+                                # if plot_projection:
+                                #     useful_condition = (phi_sp <= spot_prop['ang_rad'])
+                                #     plt.scatter(x_sp, y_sp)
+                                #     plt.scatter(x_st_grid[useful_condition]*cos_long - z_st_grid[useful_condition]*sin_long, y_st_grid[useful_condition]*cos_lat - (x_st_grid[useful_condition]*sin_long + z_st_grid[useful_condition]*cos_long)   *   sin_lat)
+
+
+
+
+
                         Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_exp)
             
 
@@ -10393,6 +10463,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 cmap = plt.get_cmap('GnBu_r')
             elif plot_options[key_plot]['disk_color']=='F':
                 val_disk=Fsurf_grid_star[:,iband]  
+
+                if mock_dic['use_spots'] and plot_options[key_plot]['t_BJD'] is not None:
+                    val_disk = Flux_for_nonredundant_spot_plotting
+
                 # cmap = plt.get_cmap('GnBu_r')
                 cmap = plt.get_cmap('rainbow')
             min_col=0
@@ -10415,7 +10489,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 min_f=np.nanmin(Fsurf_grid_star[:,iband])
                 max_f=np.nanmax(Fsurf_grid_star[:,iband])
                 color_f=cmap_f( (min_col+ (Fsurf_grid_star[:,iband]-min_f)*(max_col-min_col)/ (max_f-min_f)) )
-       
+
+                if mock_dic['use_spots'] and plot_options[key_plot]['t_BJD'] is not None:
+                    min_f=np.nanmin(Flux_for_nonredundant_spot_plotting)
+                    max_f=np.nanmax(Flux_for_nonredundant_spot_plotting)
+                    color_f=cmap_f( (min_col+ (Flux_for_nonredundant_spot_plotting-min_f)*(max_col-min_col)/ (max_f-min_f)) )
+                       
             #Disk colored with RV or specific intensity
             cond_in_plot = (coord_grid['x_st_sky']+0.5*d_stcell>=plot_options[key_plot]['x_range'][0]) & (coord_grid['x_st_sky']-0.5*d_stcell<=plot_options[key_plot]['x_range'][1])\
                          & (coord_grid['y_st_sky']+0.5*d_stcell>=plot_options[key_plot]['y_range'][0]) & (coord_grid['y_st_sky']-0.5*d_stcell<=plot_options[key_plot]['y_range'][1])

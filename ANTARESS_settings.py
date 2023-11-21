@@ -2123,7 +2123,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
             plot_dic['plocc_ranges']=''    
             
             #Planet-occulted stellar regions
-            plot_dic['occulted_regions']='png'
+            plot_dic['occulted_regions']=''
             
             #Planetary system architecture
             plot_dic['system_view']='png'   #png
@@ -8966,7 +8966,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     
         #2D maps of residual profiles
-        plot_dic['map_Res_prof']=''   #png 
+        plot_dic['map_Res_prof']='png'   #png 
     
         #Individual residual profiles
         plot_dic['sp_loc']=''    #png

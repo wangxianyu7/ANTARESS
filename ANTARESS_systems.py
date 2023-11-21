@@ -2118,6 +2118,9 @@ all_system_params={
             'istar':40,                  #unknown
             #'mag':5,                     #test
             'mag':8.81,                  #+/- 0.10 #Johnson V magnitude (true value)
+            'f_GD':0.1947,              #test
+            'Tpole':8450.,              #test
+            'beta_GD':0.190,            #test
         },
         'AUMicb':{
             #'period':2.407000,           #test

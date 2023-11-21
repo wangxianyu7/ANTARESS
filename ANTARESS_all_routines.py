@@ -11058,7 +11058,7 @@ def calc_zLOS_oblate(x_st_sk,y_st_sk,istar_rad,RpoleReq):
     det = Bquad**2.-4.*Aquad*Cquad
     cond_def = det>=0.
     z_st_sky_behind = np.zeros(len(x_st_sk),dtype=float)*np.nan
-    z_st_sky_front = np.zeros(len(x_st_sk),dtype=float)*np.nan
+    z_st_sky_front = np.zeros(len(x_st_sk),dtype=float)*np.nan      
     if True in cond_def:
         z_st_sky_behind[cond_def] = (-Bquad[cond_def]-np.sqrt(det[cond_def]))/(2.*Aquad)
         z_st_sky_front[cond_def] = (-Bquad[cond_def]+np.sqrt(det[cond_def]))/(2.*Aquad)
@@ -11961,11 +11961,10 @@ def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, 
     phi_sp = np.arctan2(np.sqrt(x_sp**2. + y_sp**2.),z_sp)
     cond_in_sp = cond_close_to_spot
     cond_in_sp[cond_close_to_spot] = (phi_sp <= spot_prop['ang_rad'])
-        
+    
     # Check if at least one tile is within the spot
     spot_within_grid = (True in cond_in_sp)   
     
-
     return spot_within_grid, cond_in_sp
 
 
