@@ -3,16 +3,7 @@
 
 import numpy as np
 import os as os_system
-from utils_plots import custom_axis,autom_x_tick_prop,autom_y_tick_prop,stackrel,scaled_title,autom_range_ext,plot_shade_range
-from utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz
-from ANTARESS_all_routines import calc_pl_coord,sub_calc_plocc_prop,LD_coeff_func,orb_motion_theoRV,return_FWHM_inst,\
-                                gauss_intr_prop,conv_Losframe_to_inclinedStarFrame,conv_inclinedStarFrame_to_Losframe,calc_CB_RV,occ_region_grid,\
-                                calc_binned_prof,def_weights_spatiotemp_bin,get_timeorbit,cust_mod_true_prop,resample_func,calc_zLOS_oblate,calc_RVrot,conv_StarFrame_to_inclinedStarFrame,\
-                                voigt,dgauss,detrend_prof_gen,spec_dopshift,calc_Isurf_grid,calc_st_sky,def_contacts
-from ANTARESS_spectral_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
-from ANTARESS_spectral_corrections.ANTARESS_tellurics import air_index
-from ANTARESS_routines.ANTARESS_orbit import def_plotorbite
-from ANTARESS_routines.ANTARESS_calib import cal_piecewise_func
+from utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz,air_index,spec_dopshift
 from lmfit import Parameters
 from copy import deepcopy
 from math import pi,cos,sin,sqrt
@@ -23,12 +14,20 @@ import bindensity as bind
 from matplotlib.ticker import MultipleLocator,MaxNLocator
 import copy
 from minim_routines import fit_minimization,ln_prob_func_lmfit
-from ANTARESS_plot_settings import ANTARESS_plot_settings
 from astropy.io import fits
 import glob
-
-
-
+from ANTARESS_plots.utils_plots import custom_axis,autom_x_tick_prop,autom_y_tick_prop,stackrel,scaled_title,autom_range_ext,plot_shade_range
+from ANTARESS_routines.ANTARESS_binning import resample_func,calc_binned_prof,def_weights_spatiotemp_bin
+from ANTARESS_analysis.ANTARESS_inst_resp import return_FWHM_inst
+from ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_mod_true_prop,voigt
+from ANTARESS_routines.ANTARESS_detrend import detrend_prof_gen
+from ANTARESS_spectral_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
+from ANTARESS_routines.ANTARESS_orbit import def_plotorbite,calc_pl_coord,orb_motion_theoRV,conv_Losframe_to_inclinedStarFrame,conv_inclinedStarFrame_to_Losframe,get_timeorbit,\
+    calc_zLOS_oblate,conv_StarFrame_to_inclinedStarFrame,def_contacts
+from ANTARESS_routines.ANTARESS_calib import cal_piecewise_func
+from ANTARESS_grids.ANTARESS_star_grid import get_LD_coeff,calc_CB_RV,calc_RVrot,calc_Isurf_grid,calc_st_sky
+from ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_prop
+from ANTARESS_plots.ANTARESS_plot_settings import ANTARESS_plot_settings
 
 
 
@@ -3502,10 +3501,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     
                         #Use dispersion on residuals to set the error on properties
                         #    - we perform a preliminary fit to set the dispersion from the residuals   
-                        if plot_options['set_err'] is None:err_disp=np.repeat((val_obs[idx_fit_loc]-np.mean(val_obs[idx_fit_loc])).std(),npts_fit)
+                        if plot_options['set_err'] is None:
+                            err_disp=np.repeat((val_obs[idx_fit_loc]-np.mean(val_obs[idx_fit_loc])).std(),npts_fit)
                         else:
                             eval_1D = np.mean(eval_obs,axis=0)
                             err_disp=plot_options['set_err']*eval_1D[idx_fit_loc]    
+                            if np.max(err_disp)==0.:
+                                print('No errors defined on ',prop_mode,': set to constant value')
+                                err_disp = np.repeat((val_obs[idx_fit_loc]-np.mean(val_obs[idx_fit_loc])).std(),npts_fit)
                         
                         #Define fit properties
                         fixed_args={'use_cov':False,'deg_pol':{},'var_prop':{},'var_fit':{}}
@@ -9322,8 +9325,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         size_x = size_y*dif_x_over_y
         if ('chrom' in data_dic['DI']['system_prop']):system_prop = data_dic['DI']['system_prop']['chrom']
         else:system_prop = data_dic['DI']['system_prop']['achrom'] 
-        for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
-            for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst]): 
+        for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options[key_plot]['visits_to_plot'].keys())): 
+            for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options[key_plot]['visits_to_plot'][inst]): 
                 pl_ref = plot_options[key_plot]['pl_ref'][inst][vis]
                 RpRs_band = system_prop[pl_ref][plot_options[key_plot]['iband']]
         
@@ -9338,9 +9341,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Oblate star
                     #    - see definition of star boundary in 'system_view'
                     if system_param['star']['f_GD']>0.:                        
-                        xsky_limb = np.linspace(-1., 1., 1000, endpoint=True)
-                        x_grid_all = np.tile(xsky_limb,(1000,1)) 
-                        y_grid_all = np.tile(np.linspace(-1., 1., 1000, endpoint=True),(1000,1)) 
+                        cen_sub=-1.+(np.arange(1000)+0.5)*d_sub            
+                        xy_sky_grid=np.array(list(it_product(cen_sub,cen_sub))) 
+                        x_grid_all = xy_sky_grid[:,0] 
+                        y_grid_all = xy_sky_grid[:,1]                        
                         cond_in_stphot=calc_zLOS_oblate(x_grid_all,y_grid_all,system_param['star']['istar_rad'],system_param['star']['RpoleReq'])[2]               
                         y_grid_all[~cond_in_stphot] = 0.         
                         ysky_limb = np.nanmax(y_grid_all,axis=1)            
@@ -9356,7 +9360,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Planet orbit
                     #    - 'coord_orbit' is defined in the Sky-projected orbital frame: Xsky,Ysky,Zsky	
                     if plot_options['plot_orb']:
-                        coord_orbit = def_plotorbite(plot_dic['npts_orbit'],system_prop[pl_ref])
+                        coord_orbit = def_plotorbite(plot_dic['npts_orbit'],system_param[pl_ref])
                         x_orbit_view=coord_orbit[0]
                         y_orbit_view=coord_orbit[1]
                         w_noorb=np.where( ( (np.power(x_orbit_view,2.)+np.power(y_orbit_view,2.) ) < 1. ) & (coord_orbit[2] < 0.) )[0]
@@ -9442,7 +9446,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)  
 
         #Default planets to plot
-        plot_options[key_plot]['pl_to_plot'] = gen_dic['all_pl']
+        #    - set to transiting ones if undefined
+        plot_options[key_plot]['pl_to_plot'] = gen_dic['studied_pl']
 
         #Number of points in the planet orbits
         plot_options[key_plot]['npts_orbits'] = np.repeat(10000,len(plot_options[key_plot]['pl_to_plot'])) 
@@ -9816,20 +9821,20 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 
                 #Points away from us, in LOS that do not intersect the projected photosphere
                 idx_behind = np_where1D(st_spin_z_st < 0.)
-                z_st_sky_behind,_,cond_in_stphot=calc_zLOS_oblate(st_spin_x_st[idx_behind],st_spin_y_st[idx_behind],star_params['istar_rad'],star_params['RpoleReq'])                  
-                w_vis_far = idx_behind[~cond_in_stphot]
+                z_st_sky_behind,_,cond_in_stphot_behind=calc_zLOS_oblate(st_spin_x_st[idx_behind],st_spin_y_st[idx_behind],star_params['istar_rad'],star_params['RpoleReq'])                  
+                w_vis_far = idx_behind[~cond_in_stphot_behind]
                 
                 #Points away from us, in LOS that intersect the projected photosphere, outside of the photosphere   
-                w_unvis_far = sorted(list(idx_behind[cond_in_stphot][st_spin_z_st[idx_behind[cond_in_stphot]] <=  z_st_sky_behind[cond_in_stphot] ]))
+                w_unvis_far = sorted(list(idx_behind[cond_in_stphot_behind][st_spin_z_st[idx_behind[cond_in_stphot_behind]] <=  z_st_sky_behind[cond_in_stphot_behind] ]))
                 
                 #Points toward us, in LOS that do not intersect the projected photosphere or in front of it
                 idx_front = np_where1D(st_spin_z_st >= 0.)
-                _,z_photo_front,cond_in_stphot=calc_zLOS_oblate(st_spin_x_st[idx_front],st_spin_y_st[idx_front],star_params['istar_rad'],star_params['RpoleReq'])                 
-                w_vis_close = sorted(list(idx_front[~cond_in_stphot])+list(idx_front[cond_in_stphot][st_spin_z_st[idx_front[cond_in_stphot]] >=  z_photo_front[cond_in_stphot] ]))
+                _,z_photo_front,cond_in_stphot_front=calc_zLOS_oblate(st_spin_x_st[idx_front],st_spin_y_st[idx_front],star_params['istar_rad'],star_params['RpoleReq'])                 
+                w_vis_close = sorted(list(idx_front[~cond_in_stphot_front])+list(idx_front[cond_in_stphot_front][st_spin_z_st[idx_front[cond_in_stphot_front]] >=  z_photo_front[cond_in_stphot_front] ]))
 
                 #Plot hidden spin axis
                 if plot_options[key_plot]['plot_stspin_hid']:
-                    w_vis_in= sorted(list(idx_behind[cond_in_stphot][st_spin_z_st[idx_behind[cond_in_stphot]]>  z_st_sky_behind[cond_in_stphot] ])+ list(idx_front[cond_in_stphot][st_spin_z_st[idx_front[cond_in_stphot]] <  z_photo_front[cond_in_stphot] ]))
+                    w_vis_in= sorted(list(idx_behind[cond_in_stphot_behind][st_spin_z_st[idx_behind[cond_in_stphot_behind]]>  z_st_sky_behind[cond_in_stphot_behind] ])+ list(idx_front[cond_in_stphot_front][st_spin_z_st[idx_front[cond_in_stphot_front]] <  z_photo_front[cond_in_stphot_front] ]))
 
             else:
                 r_st_spin2 = st_spin_x_st**2.+ st_spin_y_st**2.
@@ -9911,7 +9916,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Stellar surface radial velocity 
         RVstel = calc_RVrot(coord_grid['x_st_sky'],coord_grid['y_st'],istar_rad,star_params)
-        cb_band = calc_CB_RV(LD_coeff_func(system_prop,iband),system_prop['LD'][iband],star_params['c1_CB'],star_params['c2_CB'],star_params['c3_CB'],star_params) 
+        cb_band = calc_CB_RV(get_LD_coeff(system_prop,iband),system_prop['LD'][iband],star_params['c1_CB'],star_params['c2_CB'],star_params['c3_CB'],star_params) 
         for icb in range(4):RVstel+=cb_band[icb]*np.power(mu_grid_star[:,iband],icb)
 
 

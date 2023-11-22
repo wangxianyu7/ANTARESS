@@ -1,16 +1,19 @@
 import numpy as np
 from lmfit import Parameters
-from utils import stop,np_where1D,npint,dataload_npz,MAIN_multithread
+from utils import stop,np_where1D,npint,dataload_npz,MAIN_multithread,air_index,spec_dopshift
 from copy import deepcopy
 import bindensity as bind
-from ANTARESS_all_routines import check_data,def_edge_tab,return_resolv,spec_dopshift,return_FWHM_inst,convol_prof,air_index
 from astropy.io import fits
-import pickle
 from minim_routines import fit_minimization,ln_prob_func_lmfit
 from scipy import special
 from constant_data import N_avo,c_light_m,k_boltz,h_planck
 import scipy.linalg
 from ANTARESS_routines.ANTARESS_conversions import new_compute_CCF,check_CCF_mask_lines
+from ANTARESS_routines.ANTARESS_binning import def_edge_tab
+from ANTARESS_routines.ANTARESS_init import check_data
+from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,return_FWHM_inst,return_resolv
+
+
 
 
 def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):

@@ -3,11 +3,12 @@ import numpy as np
 from utils import stop,np_where1D,dataload_npz,MAIN_multithread
 from copy import deepcopy
 import bindensity as bind
-from ANTARESS_all_routines import check_data,sub_def_bins,sub_calc_bins,def_edge_tab,spec_dopshift
 from scipy.interpolate import UnivariateSpline
 import pickle
 from constant_data import c_light
 from scipy import stats
+from ANTARESS_routines.ANTARESS_binning import sub_calc_bins,sub_def_bins,def_edge_tab
+from ANTARESS_routines.ANTARESS_init import check_data
 
 
 def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):

@@ -8,7 +8,10 @@ import numpy as np
 from math import pi
 from copy import deepcopy
 from pathos.multiprocessing import Pool
-#from mpmath import fp    #unused
+from mpmath import fp    
+import astropy.io.fits as fits
+from scipy.interpolate import InterpolatedUnivariateSpline
+# from constant_data import c_light
 
 
 '''
@@ -53,6 +56,15 @@ def np_where1D(cond):
 
 def is_odd(num):
    return bool(num % 2)
+
+
+'''
+Default function returning 1
+'''
+def default_func(*x):return np.array([1.])
+
+
+
 
     
 '''
@@ -669,7 +681,6 @@ def save_stack(filename,list_of_2D_frames):
 
 def writefits(filename,array):
     """This is a fast wrapper for fits.writeto, with overwrite enabled.... ! >_<"""
-    import astropy.io.fits as fits
     fits.writeto(filename,array,overwrite=True)
     
 
@@ -677,10 +688,8 @@ def selmax(y_in,p,s=0.0):
     """This program returns the p (fraction btw 0 and 1) highest points in y,
     ignoring the very top s % (default zero, i.e. no points ignored), for the
     purpose of outlier rejection."""
-    import numpy as np
-    import copy
     postest(p)
-    y=copy.deepcopy(y_in)#Copy itself, or there are pointer-related troubles...
+    y=deepcopy(y_in)#Copy itself, or there are pointer-related troubles...
     if s < 0.0:
         raise Exception("ERROR in selmax: s should be zero or positive.")
     if p >= 1.0:
@@ -712,4 +721,84 @@ def upsample(x, sample=2):
     return s
 
 
+
+
+'''    
+Repeat boundary value in case of bad interpolation on the edge
+'''
+def repeat_interp(interp_prof):
+    
+    #In case of bad interpolation on the edge, 
+    wok=np.invert(np.isnan(interp_prof))  #well-defined points
+    wlowok=min(np.where(wok==True)[0])    #first well-defined bin
+    if wlowok>0:
+        interp_prof[0:wlowok]=interp_prof[wlowok]
+    whighok=max(np.where(wok==True)[0])
+    if whighok<len(interp_prof)-1:
+        interp_prof[whighok:len(interp_prof)]=interp_prof[whighok]
+        
+    return interp_prof
+
+
+
+
+
+ 
+'''
+Spline Interpolation of a given function
+    Use scipy.interpolate.InterpolatedUnivariateSpline
+    the sqrt is given as the error
+    
+    NB: here the shift is a translation
+    
+    if y is shifted like
+       y[a+shift:b+shift]
+    or xnew = x + shift
+    or x = x - shift
+    then: -shift>0 => ynew is blue shift
+          -shift<0 => ynew is red shift
+    NB: Be careful to the scale (not the same shift in x or y)
+        
+    keyword arguments:
+    x -- Old x axis
+    y -- Old y axis
+    xnew -- New x axis
+    k -- The Spline Order (1=linear, 3=cubic)
+
+'''
+def spline_inter(x, y, xnew, k=3 , ext = 0 ):
+    splflux = InterpolatedUnivariateSpline(x, y, k=k , ext = ext)
+    ynew = splflux(xnew)
+    errorynew = np.sqrt(np.maximum(ynew, 0.))
+    return ynew, errorynew
+
+
+
+
+def air_index(l, t=15., p=760.):
+    """Compute the refraction index n of the air 
+    
+    Author: C.Lovis
+    
+    wl_air = wl_vacuum/n
+    n_vacuum=1.
+    
+    Parameters
+    ----------
+    :l (float, array): Wavelength in Angström
+    :t (float, array): Air temperature in Celsius
+    :p (float, array): Air pressure in millimeter of mercury
+    
+    Returns
+    -------
+    :n (float, array): Refraction index.
+    
+    """
+    n = 1e-6 * p * (1 + (1.049-0.0157*t)*1e-6*p) / 720.883 / (1 + 0.003661*t) * (64.328 + 29498.1/(146-(1e4/l)**2) + 255.4/(41-(1e4/l)**2))
+    n = n + 1
+    return n
+
+
+def spec_dopshift(rv_shift):
+    return np.sqrt(1. - (rv_shift/c_light) )/np.sqrt(1. + (rv_shift/c_light) )
 

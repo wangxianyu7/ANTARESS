@@ -1,11 +1,38 @@
 import numpy as np
-from utils import stop,dataload_npz,datasave_npz,MAIN_multithread,np_where1D,init_parallel_func
+from utils import stop,dataload_npz,datasave_npz,MAIN_multithread,np_where1D,init_parallel_func,spec_dopshift
 from copy import deepcopy
 import bindensity as bind
-from ANTARESS_all_routines import init_conversion,def_weights_spatiotemp_bin,check_data,pre_calc_binned_prof,calc_Intr_mean_cont,spec_dopshift,excl_plrange,corr_length_determination
 from scipy.interpolate import interp1d
 from constant_data import c_light
 from pathos.multiprocessing import Pool
+from ANTARESS_routines.ANTARESS_binning import pre_calc_binned_prof,def_weights_spatiotemp_bin
+from ANTARESS_routines.ANTARESS_init import check_data
+from ANTARESS_routines.ANTARESS_orbit import excl_plrange
+from ANTARESS_routines.ANTARESS_data_process import calc_Intr_mean_cont
+from ANTARESS_routines.ANTARESS_detrend import corr_length_determination
+
+
+def init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,mode,dir_save,data_dic):
+    txt_print = {'CCFfromSpec':'CCF','1Dfrom2D':'1D'}[mode]
+    if data_type_gen in ['DI','Intr']:    
+        data_type = data_type_gen
+        if data_type_gen=='Intr':
+            iexp_conv = list(gen_dic[inst][vis]['idx_out'])+list(gen_dic[inst][vis]['idx_in'][prop_dic[inst][vis]['idx_def']])    #Global indexes
+            data_type_key = ['Res','Intr']
+            print('   > Converting OT residual and intrinsic spectra into '+txt_print)
+        else:iexp_conv = range(data_dic[inst][vis]['n_in_visit'])    #Global indexes
+    if data_type_gen in ['DI','Atm']:  
+        if data_type_gen=='Atm': 
+            data_type = prop_dic['pl_atm_sign']
+            iexp_conv = prop_dic[inst][vis]['idx_def']    #Global or in-transit indexes
+        data_type_key = [data_type_gen]
+        print('   > Converting '+gen_dic['type_name'][data_type]+' spectra into '+txt_print)
+    for key in data_type_key:dir_save[key] = gen_dic['save_data_dir']+key+'_data/'+mode+'/'+gen_dic['add_txt_path'][key]+'/'+inst+'_'+vis+'_'    
+    
+    return iexp_conv,data_type_key,data_type
+
+
+
 
 
 

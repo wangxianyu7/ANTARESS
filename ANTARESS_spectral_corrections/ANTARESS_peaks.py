@@ -1,11 +1,11 @@
 import numpy as np
-from utils import stop,np_where1D,init_parallel_func,dataload_npz,MAIN_multithread
+from utils import stop,np_where1D,init_parallel_func,dataload_npz,MAIN_multithread,spec_dopshift
 from copy import deepcopy
 from PyAstronomy import pyasl
 import bindensity as bind
-from ANTARESS_all_routines import check_data,spec_dopshift,calc_spectral_cont
-import pickle
 from pathos.multiprocessing import Pool
+from ANTARESS_routines.ANTARESS_init import check_data
+from ANTARESS_routines.ANTARESS_sp_cont import calc_spectral_cont
 
 def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
     r"""**Main cosmics correction routine.**    

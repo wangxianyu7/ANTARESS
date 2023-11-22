@@ -2,22 +2,25 @@ import glob
 import numpy as np
 import lmfit
 from lmfit import Parameters
-from utils import stop,np_where1D,is_odd,closest,dataload_npz
-from utils_plots import autom_x_tick_prop,autom_y_tick_prop,custom_axis
+from utils import stop,np_where1D,is_odd,closest,dataload_npz,spec_dopshift
 from itertools import product as it_product
 from copy import deepcopy
 import os as os_system 
 import bindensity as bind
 import matplotlib.pyplot as plt
-from ANTARESS_all_routines import par_formatting,model_par_names,check_data,def_weights_spatiotemp_bin,resample_func,calc_binned_prof,sub_def_bins,sub_calc_bins,spec_dopshift,get_timeorbit,def_contacts
 from scipy.interpolate import interp1d,CubicSpline
-import pickle
 from constant_data import c_light
 from minim_routines import init_fit,fit_merit,fit_minimization,ln_prob_func_lmfit
 from astropy.timeseries import LombScargle
 from scipy import stats
 import itertools
 from matplotlib.ticker import MultipleLocator
+from ANTARESS_plots.utils_plots import autom_x_tick_prop,autom_y_tick_prop,custom_axis
+from ANTARESS_routines.ANTARESS_binning import calc_binned_prof,resample_func,sub_calc_bins,sub_def_bins,def_weights_spatiotemp_bin
+from ANTARESS_routines.ANTARESS_orbit import get_timeorbit,def_contacts
+from ANTARESS_routines.ANTARESS_init import check_data
+from ANTARESS_analysis.ANTARESS_model_prof import par_formatting
+from ANTARESS_analysis.ANTARESS_ana_comm import model_par_names
 
 
 def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
@@ -3939,11 +3942,12 @@ def corr_fring(inst,gen_dic,data_inst,plot_dic,data_dic):
     
                                 #Fitting
                                 wav_ov = data_exp['cen_bins'][iord]
+                                args = {}
                                 args['idx_fit'] = idx_ov_loc_ord[cond_def_ov]
                                 result, merit,p_best= fit_minimization(ln_prob_func_lmfit,p_use,wav_ov,ratio_ov,cov_ratio_ov,fit_func,verbose=False,fixed_args=fixed_args)
                                 if (plot_dic['fring_corr']!=''):
                                     dic_fit['exp_ord_defring_all'][iord]=True
-                                    dic_fit['idx_ov_ord_def_all'][iord] = idx_ov_loc_ord_def
+                                    dic_fit['idx_ov_ord_def_all'][iord] = idx_ov_loc_ord[cond_def_ov]
                                     dic_fit['fring_mod_all'][iord] = merit['fit']
                                     dic_fit['data_fit_all'][iord] = ratio_ov
                                     dic_fit['sig_fit_all'][iord] = np.sqrt(cov_ratio_ov[0,:])                                   

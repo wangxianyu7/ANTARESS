@@ -1,7 +1,7 @@
 import numpy as np
-from utils import stop
 from constant_data import Rjup,Rearth,Rsun,c_light
 from copy import deepcopy
+from pathos.multiprocessing import cpu_count
 
 def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic):
 
@@ -12,7 +12,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     #%%%% Planetary system
     
     #%%%%% Star name
-    gen_dic['star_name']='Earendil' 
+    gen_dic['star_name']='' 
     
     
     #%%%%% Transiting planets
@@ -21,12 +21,13 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     #    - name as given in all_systems_params
     #    - for each planet, indicate the instrument and visits in which its transit should be taken into account (visit names are those given through 'data_dir_list')
     #      if the pipeline is runned with no data, indicate the names of the mock dataset created artifially with the pipeline
-    gen_dic['transit_pl']={'Earendil_b':{'ESPRESSO':['20151021']}}     
+    #    - format is 'planet':{'inst':['vis']}
+    gen_dic['transit_pl']={}     
     
     
     #%%%%% TTVs
     #    - if a visit is defined in this dictionary, the mid-transit time for this visit will be set to the specific value defined here
-    #    -  format is 'Tcenter_visits' = {'planet':{'inst':{'vis':T0}}}
+    #    - format is {'planet':{'inst':{'vis': value}}}
     gen_dic['Tcenter_visits'] = {}
     
     
@@ -72,7 +73,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     #    - set to 1 to prevent
     
     #Multi-threading for profile fits
-    gen_dic['fit_prof_nthreads'] = 14      
+    gen_dic['fit_prof_nthreads'] = int(0.8*cpu_count())      
     
     
     
@@ -203,7 +204,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         # gen_dic['star_name']='WASP121'
         #gen_dic['star_name']='KELT9'
         # gen_dic['star_name']='WASP127' 
-        gen_dic['star_name']='HD209458' 
+        # gen_dic['star_name']='HD209458' 
         # gen_dic['star_name']='WASP76'        
         # gen_dic['star_name']='Corot7' 
         # gen_dic['star_name']='Nu2Lupi' 
@@ -244,7 +245,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         # gen_dic['star_name']='GJ1214' 
         # gen_dic['star_name']='WASP189' # vaulato   
         # user = 'vaulato'
-        # gen_dic['star_name']='WASP69'
+        gen_dic['star_name']='WASP69'
         # gen_dic['star_name']='TOI4562'
     
         #Transiting planets
@@ -441,8 +442,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         gen_dic['use_cov']=False
         if gen_dic['star_name'] in ['HD209458','WASP76','HD189733','GJ436']:gen_dic['use_cov']=True
     
-        print('ATTENTION NOCOV')
-        gen_dic['use_cov']=False
+        # print('ATTENTION NOCOV')
+        # gen_dic['use_cov']=False
     
         #Manual variance table 
         # gen_dic['force_flag_err']=['ESPRESSO']
@@ -632,11 +633,12 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     #    - use to define mock datasets that can then be processed in the same way as observational datasets
     #    - for now, limited to mocking a single band
     #    - the module uses options for the planet and star grid defined throughout the pipeline:
-    #         + 'nsub_Dstar' defines the resolution of the stellar grid (must be an odd number)
-    #         + 'nsub_Dpl' defines the resolution of the planet grid
-    #         + 'n_oversamp' defines the oversampling of the planet position over each exposure    
-    #         + limb-darkening (common)
-    #         + gravity-darkening, if the star is oblate (common)        
+    #         + limb-darkening in data_dic['DI']['system_prop'] 
+    #         + gravity-darkening in data_dic['DI']['system_prop'], if the star is oblate 
+    #         + 'nsub_Dstar' in 'theo_dic' defines the resolution of the stellar grid (must be an odd number)
+    #         + 'nsub_Dpl' in 'theo_dic'  defines the resolution of the planet grid
+    #         + 'n_oversamp' in 'theo_dic' defines the oversampling of the planet position over each exposure    
+    #         + 'precision' in 'theo_dic'  defines the precision at which planet-occulted profiles are defined
     ################################################################################################## 
     
     #%%%% Activating module
@@ -644,7 +646,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     
     #%%%% Multi-threading
-    mock_dic['nthreads'] = 14  
+    mock_dic['nthreads'] = int(0.8*cpu_count())       
     
     
     #%%%% Defining artificial visits
@@ -672,17 +674,19 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     #%%%%% Intrinsic stellar spectra
     #    - we detail here the options and settings used throughout the pipeline (in gen_dic['mock_data'], gen_dic['fit_DI'], gen_dic['fit_IntrProf'], and gen_dic['loc_data_corr']) to define intrinsic profiles
+    #    - line settings are defined per instrument
     #    - 'mode' = 'ana': intrinsic profiles are calculated analytically from input properties 
     # + set line_trans = None for the analytical model to be generated in RV space (CCF mode), or set it to the rest wavelength of the considered transition in the star rest frame (spectral mode)
     # + models are calculated directly on the 'DI_table', which is defined in RV space even in spectral mode to facilitate line profile calculation
     #   the model table table can be oversampled using the theo_dic['rv_osamp_line_mod'] field 
-    # + line properties can be specific to each instrument/visit
     # + line properties can vary as a polynomial along the chosen dimension 'coord_line'
     #   the role of the coefficients depends on the polynomial mode (absolute or polynomial) 
     #   'pol_mode' = 'abs' : coeff_pol[n]*x^n + coeff_pol[n-1]*x^(n-1) .. + coeff_pol[0]*x^0
     #   'pol_mode' = 'modul': (coeff_pol[n]*x^n + coeff_pol[n-1]*x^(n-1) .. + 1)*coeff_pol[0]
     # + lines properties can be derived from the fit to disk-integrated or intrinsic line profiles 
-    # + line properties are defined through 'mod_prop', with the suffix "__IS__VS_" to keep the structure of the fit routine while defining properties visit per visit here   
+    # + line properties are defined through 'mod_prop', with the suffix "__IS__VS_" to keep the structure of the fit routine while defining properties visit per visit here 
+    #   set ISx to x = instrument of definition (if  more than one)
+    #   set VSy to y = visit (if  more than one for instrument x)    
     # + mactroturbulence is included if theo_dic['mac_mode'] is enabled               
     #    - 'mode' = 'theo': generate theoretical model grid as a function of mu
     # + the nominal atmosphere model based on the bulk stellar properties and settings defined via 'theo_dic' is used, so that no option needs to be defined here  
@@ -693,7 +697,6 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     # + instrumental convolution is automatically disabled, as the binned profiles are already convolved (it is stil an approximation, but better than to convolve twice)      
     mock_dic['intr_prof']={}        
         
-    
     
     #%%%%% Continuum level
     #    - mean flux density of the unocculted star over the 'DI_range' band (specific to each visit), ie number of photoelectrons received for an exposure time of 1s
@@ -1307,8 +1310,12 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         if gen_dic['star_name']=='GJ1214':gen_dic['data_dir_list']={'NIRPS_HE':{'20230407':'/Users/bourrier/Travaux/Exoplanet_systems/Glieses/GJ1214b/NIRPS/CCF/2023-04-07/'}}  
         if user=='vaulato' and gen_dic['star_name']=='WASP189':gen_dic['data_dir_list']={'NIRPS_HE':{'20230604':'/Users/valentinavaulato/Documents/PhD/Works/ANTARESS/WASP-189b/NIRPS/20230604/'}} # vaulato
         if gen_dic['star_name']=='WASP69':
-            gen_dic['data_dir_list']={'NIRPS_HE':{'20230624':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP69b/ESPRESSOdrs_LBLmask/WASP-69_ccf_alltransits/20230624/','20230729':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP69b/ESPRESSOdrs_LBLmask/WASP-69_ccf_alltransits/20230729/'}}#,'20230825':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP69b/ESPRESSOdrs_LBLmask/WASP-69_ccf_alltransits/20230825/'}}  
-            
+            # gen_dic['data_dir_list']={'NIRPS_HE':{'20230624':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP69b/ESPRESSOdrs_LBLmask/WASP-69_ccf_alltransits/20230624/','20230729':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP69b/ESPRESSOdrs_LBLmask/WASP-69_ccf_alltransits/20230729/'}}#,'20230825':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP69b/ESPRESSOdrs_LBLmask/WASP-69_ccf_alltransits/20230825/'}}  
+            gen_dic['data_dir_list']={'NIRPS_HE':{'20230624':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP69b/ESPRESSOdrs_LBLmask/All_transits_comm_mask/20230624/','20230729':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP69b/ESPRESSOdrs_LBLmask/All_transits_comm_mask/20230729/','20230825':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP69b/ESPRESSOdrs_LBLmask/All_transits_comm_mask/20230825/'}}  
+            # gen_dic['data_dir_list']={'NIRPS_HE':{'20230624':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP69b/ESPRESSOdrs_LBLmask/All_transits_comm_mask/20230624/'}}
+            # gen_dic['data_dir_list']={'NIRPS_HE':{'20230729':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP69b/ESPRESSOdrs_LBLmask/All_transits_comm_mask/20230729/'}}
+            # gen_dic['data_dir_list']={'NIRPS_HE':{'20230825':'/Users/bourrier/Travaux/Exoplanet_systems/WASP/WASP69b/ESPRESSOdrs_LBLmask/All_transits_comm_mask/20230825/'}}
+                                 
         
         
         
@@ -1761,6 +1768,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     #    - number of subcells along the star diameter for model fits
     #    - must be an odd number
     #    - used (if model relevant) in gen_dic['fit_DI']
+    #    - format is : value
     theo_dic['nsub_Dstar']=101       
     
             
@@ -1824,6 +1832,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     #    - beware to use a fine enough grid, depending on the system and dataset
     #    - must be an odd number
     #    - set to default value if undefined
+    #    - format is {'planet':value}
     theo_dic['nsub_Dpl']={} 
     
     
@@ -1832,6 +1841,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     #    - distance from start to end of exposure will be sampled by RpRs/n_oversamp
     #    - set to 0 or leave undefined to prevent oversampling, but beware that it must be defined to bin profiles over other dimensions than phase
     #    - oversampling of the flux in the flux scaling module is controlled independently
+    #    - format is {'planet':value}
     theo_dic['n_oversamp']={}  
     
     
@@ -2041,7 +2051,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         elif gen_dic['star_name']=='L98_59':theo_dic['n_oversamp']={'L98_59c':3.,'L98_59d':3.}
         elif gen_dic['star_name']=='GJ1214':theo_dic['n_oversamp']={'GJ1214b':3.}
         # elif gen_dic['star_name']=='TOI4562':theo_dic['n_oversamp'] = {'TOI4562b':10.}
-        elif gen_dic['star_name']=='WASP69':theo_dic['n_oversamp']={'WASP69b':2.}
+        elif gen_dic['star_name']=='WASP69':theo_dic['n_oversamp']={'WASP69b':4.}
         
         
         #RV table        
@@ -2160,7 +2170,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     
     #%%%% Multi-threading
-    gen_dic['gcal_nthreads'] =  14   
+    gen_dic['gcal_nthreads'] =  int(0.8*cpu_count())         
     
     
     #%%%% Bin size
@@ -2280,7 +2290,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     
     #%%%% Multi-threading
-    gen_dic['tell_nthreads'] =   14    
+    gen_dic['tell_nthreads'] =   int(0.8*cpu_count())          
     
     
     #%%%% Correction mode
@@ -2463,7 +2473,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     ##################################################################################################
     
     #%%%% Multi-threading
-    gen_dic['Fbal_nthreads'] = 14    
+    gen_dic['Fbal_nthreads'] = int(0.8*cpu_count())          
     
     
     ##################################################################################################
@@ -3041,7 +3051,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         
     
     #%%%% Multi-threading
-    gen_dic['cosm_nthreads'] = 14     
+    gen_dic['cosm_nthreads'] = int(0.8*cpu_count())           
     
     
     #%%%% Alignment mode
@@ -3175,7 +3185,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     
     #%%%% Multi-threading
-    gen_dic['permpeak_nthreads'] = 14
+    gen_dic['permpeak_nthreads'] = int(0.8*cpu_count())      
     
     
     #%%%% Correction settings
@@ -4511,7 +4521,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         gen_dic['detrend_prof']=True   &   False
         if gen_dic['star_name'] in ['Kepler68','HAT_P33','HD89345','HAT_P49','WASP107','WASP166','HAT_P11','WASP156','Kepler25','55Cnc']:gen_dic['detrend_prof']=True   
         # if gen_dic['star_name'] in ['HD189733']:gen_dic['detrend_prof']=True 
-        if gen_dic['star_name'] in ['WASP43','WASP69']:gen_dic['detrend_prof']=True  #& False
+        if gen_dic['star_name'] in ['WASP43','WASP69']:gen_dic['detrend_prof']=True  & False
         if (gen_dic['star_name'] in ['HD209458','WASP76']):gen_dic['detrend_prof']=True # &   False
         
     
@@ -5167,7 +5177,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         if ((gen_dic['star_name'] in ['WASP76','HD209458','55Cnc']) and (gen_dic['type']['ESPRESSO']=='spec2D')): 
             gen_dic['fit_DI'] = False   #temporaire
             # gen_dic['fit_DIbin']=  True
-        if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','TOI4562']:
+        if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','TOI4562','WASP69']:
             gen_dic['fit_DI'] = True   #& False
             gen_dic['fit_DIbin']=True & False
     
@@ -6448,8 +6458,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         plot_dic['DI_prof_res']=''   #pdf
     
         #Housekeeping and derived properties 
-        plot_dic['prop_raw']='pdf'   #''  
-        if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','TOI4562','WASP69']:plot_dic['prop_raw']=''
+        plot_dic['prop_raw']=''   #''  
+        if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','TOI4562','WASP69']:plot_dic['prop_raw']='pdf'
         
         
         
@@ -6540,7 +6550,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         gen_dic['calc_align_DI']=True    &  False  
             
         if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','TOI4562','WASP69']:
-            gen_dic['align_DI']=True   # & False 
+            gen_dic['align_DI']=True  #  & False 
             gen_dic['calc_align_DI']=True 
         if gen_dic['star_name'] in ['HD209458','WASP76']:  
             gen_dic['align_DI']=True  #  & False  
@@ -7105,8 +7115,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         elif user=='vaulato' and gen_dic['star_name']=='WASP189': # vaulato
             data_dic['DI']['sysvel']['NIRPS_HE']={'20230604':-24.452}   # km/h # Anderson et al. 2018 # vaulato
         elif gen_dic['star_name']=='WASP69':
-            data_dic['DI']['sysvel']['NIRPS_HE']={'20230624':5.13744e+01 ,'20230729':5.13962e+01}   #From RVres, apres RV correction  
-    
+            data_dic['DI']['sysvel']['NIRPS_HE']={'20230624':5.13744e+01 ,'20230729':5.13962e+01}   #From RVres, apres RV correction, V0
+            data_dic['DI']['sysvel']['NIRPS_HE']={'20230624':0.,'20230729':0.,'20230825':0.}   
              
             
         #Plots: aligned disk-integrated profiles
@@ -7928,7 +7938,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     
     #%%%% Multi-threading
-    gen_dic['nthreads_spec_1D_DI']= 4 
+    gen_dic['nthreads_spec_1D_DI']= int(0.8*cpu_count())      
     
     
     #%%%% 1D spectral table
@@ -8309,7 +8319,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     
     #%%%% Multi-threading
-    data_dic['DI']['mask']['nthreads'] = 14 
+    data_dic['DI']['mask']['nthreads'] = int(0.8*cpu_count())       
     
     
     #%%%% Print status
@@ -8698,7 +8708,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     
     #%%%% Multi-threading
-    gen_dic['nthreads_res_data']= 14
+    gen_dic['nthreads_res_data']= int(0.8*cpu_count())      
     
     
     #%%%% In-transit restriction
@@ -9276,7 +9286,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     
     #%%%% Multi-threading
-    gen_dic['nthreads_spec_1D_Intr']= 4
+    gen_dic['nthreads_spec_1D_Intr']= int(0.8*cpu_count())
     
     
     #%%%% 1D spectral table
@@ -10787,7 +10797,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     
     #%%%% Multi-threading
-    glob_fit_dic['IntrProp']['nthreads'] = 14 
+    glob_fit_dic['IntrProp']['nthreads'] = int(0.8*cpu_count())
     
     
     #%%%% Fitted data
@@ -12029,7 +12039,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
         
     #%%%% Multi-threading
-    glob_fit_dic['IntrProf']['nthreads'] = 6
+    glob_fit_dic['IntrProf']['nthreads'] = int(0.8*cpu_count())
     
     
     #%%%% Fitted data
@@ -12184,7 +12194,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     
     
         #Activating 
-        gen_dic['fit_IntrProf'] = True #  &  False
+        gen_dic['fit_IntrProf'] = True   &  False
     
     
         #Exposures to be fitted
@@ -13870,7 +13880,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     # + chose a dimension over which the fit/interpolation is performed         
     # + option to select exposures contributing to the fit/interpolation
     # > 'theo': use imported theoretical local intrinsic stellar profiles    
-    data_dic['Intr']['opt_loc_data_corr']={'nthreads':14,'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
+    data_dic['Intr']['opt_loc_data_corr']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
     
     
     #%%%% Plot settings
@@ -14530,7 +14540,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
 
 
     #%%%% Multi-threading
-    gen_dic['nthreads_spec_1D_Atm']= 14
+    gen_dic['nthreads_spec_1D_Atm']= int(0.8*cpu_count())
 
 
     #Properties of 1D spectral table, specific to each instrument
@@ -14557,10 +14567,10 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
     data_dic['Atm']['mask'] = {}
     
     #%%%% Activating
-    gen_dic['def_Atmmasks'] = True  #  &  False
+    gen_dic['def_Atmmasks'] = False
 
     #%%%% Multi-threading
-    data_dic['Atm']['mask']['nthreads'] = 14 
+    data_dic['Atm']['mask']['nthreads'] = int(0.8*cpu_count())
 
 
     #%%%% Plot settings 

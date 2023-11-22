@@ -7,7 +7,6 @@ Created on Wed Oct 18 11:21:31 2017
 
 import numpy as np
 from utils import np_where1D,stop,npint,init_parallel_func
-from utils_plots import custom_axis,autom_y_tick_prop
 import matplotlib.pyplot as plt
 import time as time
 import emcee
@@ -28,6 +27,7 @@ from scipy import stats
 from copy import deepcopy
 from lmfit import minimize, report_fit
 from scipy import special
+from ANTARESS_plots.utils_plots import custom_axis,autom_y_tick_prop
 
 
 '''
