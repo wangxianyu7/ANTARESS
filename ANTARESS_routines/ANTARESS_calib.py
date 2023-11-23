@@ -1,6 +1,5 @@
 import numpy as np
 from utils import dataload_npz,np_where1D,stop,init_parallel_func
-from ANTARESS_all_routines import sub_def_bins,sub_calc_bins,return_resolv,check_data
 import lmfit
 from lmfit import Parameters
 from scipy.interpolate import interp1d
@@ -9,6 +8,11 @@ from copy import deepcopy
 from minim_routines import fit_minimization,ln_prob_func_lmfit
 from pathos.multiprocessing import Pool
 from numpy.polynomial import Polynomial
+from ANTARESS_routines.ANTARESS_binning import sub_calc_bins,sub_def_bins
+from ANTARESS_routines.ANTARESS_init import check_data
+from ANTARESS_analysis.ANTARESS_inst_resp import return_resolv
+
+
 
 
 def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic):

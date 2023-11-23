@@ -7,7 +7,7 @@ from ANTARESS_systems import all_system_params
 from utils import stop
 import os as os_system
 
-def ANTARESS_launcher(input_settings = {} ,input_system = {} , user = None):
+def ANTARESS_launcher(input_dic = {} , user = None):
     r"""**ANTARESS launch routine.**
     
     Runs ANTARESS with default or manual settings.  
@@ -21,8 +21,8 @@ def ANTARESS_launcher(input_settings = {} ,input_system = {} , user = None):
     """ 
 
     #Overwrite default system properties
-    if len(input_system)>0:
-        all_system_params.update(input_system)
+    if ('system' in input_dic) and (len(input_dic['system'])>0):
+        all_system_params.update(input_dic['system'])
 
     #Retrieve default settings
     gen_dic={}
@@ -53,11 +53,13 @@ def ANTARESS_launcher(input_settings = {} ,input_system = {} , user = None):
     os_system.chdir(antaress_dir)
 
     #Overwrite default settings
-    if len(input_settings)>0: 
-        if 'gen_dic' in input_settings:gen_dic.update(input_settings['gen_dic'])
-        if 'data_dic' in input_settings:
-            if 'DI' in input_settings['data_dic']:data_dic['DI'].update(input_settings['data_dic']['DI'])
-
+    if ('settings' in input_dic) and (len(input_dic['settings'])>0):
+        if 'gen_dic' in input_dic['settings']:gen_dic.update(input_dic['settings']['gen_dic'])
+        if 'data_dic' in input_dic['settings']:
+            if 'DI' in input_dic['settings']['data_dic']:data_dic['DI'].update(input_dic['settings']['data_dic']['DI'])
+        if 'mock_dic' in input_dic['settings']:mock_dic.update(input_dic['settings']['mock_dic'])
+        if 'plot_dic' in input_dic['settings']:plot_dic.update(input_dic['settings']['plot_dic'])
+    
     print('****************************************')
     print('Launching ANTARESS')
     print('****************************************')
@@ -82,5 +84,5 @@ def ANTARESS_launcher(input_settings = {} ,input_system = {} , user = None):
                 gen_dic['orders4ccf'][inst]=[iord] 
             ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,all_system_params[gen_dic['star_name']])
 
-    stop('End of workflow')
+    if len(input_dic)==0:stop('End of workflow')
     return None

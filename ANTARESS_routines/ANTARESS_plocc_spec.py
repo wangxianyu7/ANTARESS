@@ -1,13 +1,15 @@
 import numpy as np
 from utils import stop,dataload_npz,datasave_npz,closest_arr,np_where1D
-from ANTARESS_all_routines import check_data,init_surf_shift,init_bin_rout,excl_plrange,def_surf_shift,align_data,def_weights_spatiotemp_bin,init_custom_DI_prof,\
-    calc_binned_prof,ref_inst_convol,sub_calc_plocc_prop,theo_intr2loc,resamp_model_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab
 from scipy.interpolate import griddata
 from copy import deepcopy
 import bindensity as bind
-
-
-
+from ANTARESS_routines.ANTARESS_binning import calc_binned_prof,def_weights_spatiotemp_bin,init_bin_rout
+from ANTARESS_routines.ANTARESS_init import check_data
+from ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc
+from ANTARESS_grids.ANTARESS_plocc_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_prop
+from ANTARESS_routines.ANTARESS_orbit import excl_plrange
+from ANTARESS_routines.ANTARESS_data_align import align_data
+from ANTARESS_analysis.ANTARESS_inst_resp import def_st_prof_tab,cond_conv_st_prof_tab,ref_inst_convol,resamp_model_st_prof_tab,conv_st_prof_tab
 
 
 def def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic):

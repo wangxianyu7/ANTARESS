@@ -1,15 +1,20 @@
-from ANTARESS_all_routines import extract_intr_profiles,ana_prof,calc_plocc_prop,calc_spots_prop,\
-                                rescale_data,extract_pl_profiles,detrend_prof,\
-                                init_prop,init_visit,update_data_inst,align_profiles,init_data_instru,extract_res_profiles,\
-                                process_bin_prof, corr_spot,pc_analysis,process_spectral_cont
 #from ANTARESS_spectral_corrections.ANTARESS_sp_reduc import red_sp_data_instru
-from ANTARESS_joined_analysis.ANTARESS_joined_star import fit_intr_funcs
-from ANTARESS_joined_analysis.ANTARESS_joined_atm import fit_atm_funcs
-from ANTARESS_plots import ANTARESS_plot_functions
+from ANTARESS_analysis.ANTARESS_joined_star import fit_intr_funcs
+from ANTARESS_analysis.ANTARESS_joined_atm import fit_atm_funcs
+from ANTARESS_plots.ANTARESS_plots_all import ANTARESS_plot_functions
 from ANTARESS_routines.ANTARESS_conversions import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
 from ANTARESS_routines.ANTARESS_calib import calc_gcal
-from ANTARESS_routines.ANTARESS_plocc_def import def_plocc_profiles
+from ANTARESS_routines.ANTARESS_plocc_spec import def_plocc_profiles
 from ANTARESS_masks.ANTARESS_masks_gen import def_masks
+from ANTARESS_grids.ANTARESS_plocc_grid import calc_plocc_prop
+from ANTARESS_grids.ANTARESS_spots import calc_spots_prop, corr_spot
+from ANTARESS_routines.ANTARESS_binning import process_bin_prof
+from ANTARESS_routines.ANTARESS_detrend import detrend_prof,pc_analysis
+from ANTARESS_routines.ANTARESS_data_process import init_prop,init_data_instru,update_data_inst,init_visit,align_profiles,rescale_data,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
+from ANTARESS_analysis.ANTARESS_ana_comm import ana_prof
+from ANTARESS_routines.ANTARESS_sp_cont import process_spectral_cont
+
+
 
 __version__ = "0.0.1"
 

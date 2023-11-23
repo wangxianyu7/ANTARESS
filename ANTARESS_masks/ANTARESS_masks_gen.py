@@ -1,10 +1,10 @@
 import numpy as np
-from utils import stop,np_where1D,dataload_npz,datasave_npz
-from astropy.io import fits #to read .fits
+from utils import stop,np_where1D,dataload_npz,datasave_npz,air_index,spec_dopshift
+from astropy.io import fits 
 from copy import deepcopy
 import os as os_system 
 import bindensity as bind
-from ANTARESS_all_routines import spec_dopshift,air_index
+
 
 
 
