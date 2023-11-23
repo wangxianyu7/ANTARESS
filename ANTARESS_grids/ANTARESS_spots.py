@@ -240,7 +240,7 @@ Calculation is straighforward :
      
 """
 
-def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, star_params, param, use_grid_dic = False) :
+def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, param, use_grid_dic = False) :
                                                 
 
     if use_grid_dic :

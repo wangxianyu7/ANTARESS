@@ -4,7 +4,7 @@ from copy import deepcopy
 from utils import closest,np_poly,np_interp,spec_dopshift,closest_arr,MAIN_multithread
 import astropy.convolution.convolve as astro_conv
 import bindensity as bind
-from pysme.synthesize import synthesize_spectrum
+#from pysme.synthesize import synthesize_spectrum
 import lmfit
 from ANTARESS_analysis.ANTARESS_line_prop import calc_polymodu,calc_linevar_coord_grid,polycoeff_def
 from ANTARESS_analysis.ANTARESS_model_prof import pol_cont,gen_over_func,dispatch_func_prof
