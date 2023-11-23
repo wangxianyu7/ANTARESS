@@ -1,4 +1,4 @@
-#from ANTARESS_spectral_corrections.ANTARESS_sp_reduc import red_sp_data_instru
+from ANTARESS_spectral_corrections.ANTARESS_sp_reduc import red_sp_data_instru
 from ANTARESS_analysis.ANTARESS_joined_star import fit_intr_funcs
 from ANTARESS_analysis.ANTARESS_joined_atm import fit_atm_funcs
 from ANTARESS_plots.ANTARESS_plots_all import ANTARESS_plot_functions

@@ -5,6 +5,8 @@ import numpy as np
 from constant_data import c_light
 from utils import stop
 
+
+
 def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
     plot_settings={}
 
@@ -2434,6 +2436,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # plot_settings['prop_raw_ordin']=['AM', 'snr','seeing','ha','na','ca','s']    #HARPS
         # plot_settings['prop_raw_ordin']=['AM', 'snr','ha','na','ca','s']    #HARPS-N
         plot_settings['prop_raw_ordin']=['rv','rv_res','FWHM','ctrst']
+        # plot_settings['prop_raw_ordin']=['rv','rv_res','FWHM','ctrst']
         # plot_settings['prop_raw_ordin']+=['rv_pip']
         # plot_settings['prop_raw_ordin']=['rv_pip','rv_pip_res','FWHM_pip','ctrst_pip']
         # plot_settings['prop_raw_ordin']=['rv_res','FWHM','ctrst']
@@ -2554,6 +2557,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 
             elif gen_dic['star_name'] == 'AUMic':
                 plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['mock_vis']}
+
             elif gen_dic['studied_pl']=='Corot7b':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2019-02-20']} 
             elif gen_dic['studied_pl']=='Nu2Lupi_c':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2020-03-18']}  
             elif gen_dic['studied_pl']==['HD3167_b']:plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2019-10-09']} 
@@ -7630,6 +7634,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
 
+
     ################################################################################################################   
     #%%% Planetary system architecture
     #   - orbits of all planets in the system can be plotted in 3D
@@ -7727,6 +7732,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         if gen_dic['star_name']=='AUMic':
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 50)}
             plot_settings[key_plot]['t_BJD'] = None
+
             
             
             
@@ -7984,6 +7990,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         
         
 
+
+
         #Plot stellar spots
         plot_settings[key_plot]['stellar_spot'] = {}
 
@@ -8009,6 +8017,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'flux' : 0.6}                                
         
         
+           
+
+
+
                                 
         #Overlay to the RV-colored disk a shade controlled by flux
         plot_settings[key_plot]['shade_overlay']=True      
