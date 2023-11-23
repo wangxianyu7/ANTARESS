@@ -14,8 +14,6 @@ from ANTARESS_routines.ANTARESS_data_process import init_prop,init_data_instru,u
 from ANTARESS_analysis.ANTARESS_ana_comm import ana_prof
 from ANTARESS_routines.ANTARESS_sp_cont import process_spectral_cont
 
-
-
 __version__ = "0.0.1"
 
 def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_param):
@@ -89,7 +87,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Calculating theoretical properties of the planet occulted-regions 
             if (gen_dic['theoPlOcc']): 
                 calc_plocc_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'])
-                
+            
             #Calculating theoretical properties of the planet occulted-regions 
             if (gen_dic['theo_spots']): 
                 calc_spots_prop(gen_dic,system_param['star'],theo_dic,inst,data_dic)
@@ -101,11 +99,10 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Aligning disk-integrated profiles to star rest frame
             if (gen_dic['align_'+data_type_gen]):
                 align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)
-
+               
             # #Correcting for spot contamination 
             # if gen_dic['correct_spots'] : 
             #     corr_spot(corr_spot_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo_dic, system_param)
-              
             #Rescaling profiles to their correct flux level                  
             if gen_dic['flux_sc']:                   
                 rescale_data(data_dic[inst],inst,vis,data_dic,coord_dic,coord_dic[inst][vis]['t_dur_d'],gen_dic,plot_dic,system_param,theo_dic)   

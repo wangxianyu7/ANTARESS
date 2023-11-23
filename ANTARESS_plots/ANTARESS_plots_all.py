@@ -29,8 +29,6 @@ from ANTARESS_grids.ANTARESS_star_grid import get_LD_coeff,calc_CB_RV,calc_RVrot
 from ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_prop
 from ANTARESS_grids.ANTARESS_spots import retrieve_spots_prop_from_param, calc_spotted_tiles
 from ANTARESS_plots.ANTARESS_plot_settings import ANTARESS_plot_settings
-import imageio
-
 
 
 def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic, mock_dic):
@@ -9344,16 +9342,26 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         # x_grid_all = np.tile(xsky_limb,(1000,1)) 
                         # y_grid_all = np.tile(np.linspace(-1., 1., 1000, endpoint=True),(1000,1))
                         # To be tested
-                        cen_sub=-1.+(np.arange(1000)+0.5)*d_sub            
-                        xy_sky_grid=np.array(list(it_product(cen_sub,cen_sub))) 
+                        from itertools import product as it_product
+                        d_sub = 2/100
+                        cen_sub=-1.+(np.arange(100)+0.5)*d_sub            
+                        xy_sky_grid=np.array(list(it_product(cen_sub,cen_sub)))
                         x_grid_all = xy_sky_grid[:,0] 
-                        y_grid_all = xy_sky_grid[:,1]                        
-                        cond_in_stphot=calc_zLOS_oblate(x_grid_all,y_grid_all,system_param['star']['istar_rad'],system_param['star']['RpoleReq'])[2]               
-                        y_grid_all[~cond_in_stphot] = 0.         
-                        ysky_limb = np.nanmax(y_grid_all,axis=1)            
-                        xsky_limb = np.append(xsky_limb,xsky_limb[::-1])             
-                        ysky_limb = np.append(ysky_limb,-ysky_limb[::-1])
-                        plt.plot(xsky_limb,ysky_limb,zorder=1, color='black',lw=1)
+                        y_grid_all = xy_sky_grid[:,1]
+                        cond_in_stphot=calc_zLOS_oblate(x_grid_all,y_grid_all,system_param['star']['istar_rad'],system_param['star']['RpoleReq'])[2]
+                        y_grid_all[~cond_in_stphot] = 0.
+                        x_grid_all[~cond_in_stphot] = 0.
+                        x_to_plot=[]
+                        y_to_plot=[]
+                        for test in range(len(x_grid_all)):
+                            if not x_grid_all[test]==0:
+                                x_to_plot.append(x_grid_all[test])
+                            if not y_grid_all[test]==0:
+                                y_to_plot.append(y_grid_all[test])
+                        # ysky_limb = np.nanmax(y_grid_all,axis=1)            
+                        # xsky_limb = np.append(xsky_limb,xsky_limb[::-1])             
+                        # ysky_limb = np.append(ysky_limb,-ysky_limb[::-1])
+                        plt.scatter(x_to_plot,y_to_plot,zorder=1, color='black',lw=1)
         
                     #Spherical star
                     else: 
@@ -9532,7 +9540,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         # Use stellar rotation period to distribute the positions, instead of time
         plot_options[key_plot]['plot_spot_all_Peq'] = True  
-    
+
+        # Whether we want to show the track of the spots (spot_overlap=True) or the location of the spots (spot_overlap=False).
+        # Only activated if we plot multiple exposures.
+        plot_options[key_plot]['spot_overlap'] = False
+
         #Overlay to the RV-colored disk a shade controlled by flux
         plot_options[key_plot]['shade_overlay']=True      
         
@@ -9552,6 +9564,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #RV range
         plot_options[key_plot]['rv_range'] = None
     
+        #GIF generation when using multiple exposures
+        plot_options[key_plot]['GIF_generation'] = False
+
     
     
         print('-----------------------------------')
@@ -9561,7 +9576,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot].update(plot_settings[key_plot]) 
         path_loc = gen_dic['save_plot_dir']+'System_view/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
-         
         #--------------------------------------------
         #Coordinates
         #---------
@@ -10377,9 +10391,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                                    {}, params, use_grid_dic = False)
                                                                    
                             star_flux_before_spot[spotted_tiles] *=  spots_prop[spot]['flux'] 
-                            
-                    #Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
-                    Flux_for_nonredundant_spot_plotting = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
+                    
+                    if plot_options[key_plot]['spot_overlap']:      
+                        Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
+                    else:
+                        Flux_for_nonredundant_spot_plotting = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
 
                 #If no times provided for the plotting, then generate some
                 else:
@@ -10469,7 +10485,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             elif plot_options[key_plot]['disk_color']=='F':
                 val_disk=Fsurf_grid_star[:,iband]  
 
-                if mock_dic['use_spots'] and plot_options[key_plot]['t_BJD'] is not None:
+                if mock_dic['use_spots'] and not plot_options[key_plot]['spot_overlap'] and plot_options[key_plot]['t_BJD'] is not None:
                     val_disk = Flux_for_nonredundant_spot_plotting
 
                 # cmap = plt.get_cmap('GnBu_r')
@@ -10495,7 +10511,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 max_f=np.nanmax(Fsurf_grid_star[:,iband])
                 color_f=cmap_f( (min_col+ (Fsurf_grid_star[:,iband]-min_f)*(max_col-min_col)/ (max_f-min_f)) )
 
-                if mock_dic['use_spots'] and plot_options[key_plot]['t_BJD'] is not None:
+                if mock_dic['use_spots'] and not plot_options[key_plot]['spot_overlap'] and plot_options[key_plot]['t_BJD'] is not None:
                     min_f=np.nanmin(Flux_for_nonredundant_spot_plotting)
                     max_f=np.nanmax(Flux_for_nonredundant_spot_plotting)
                     color_f=cmap_f( (min_col+ (Flux_for_nonredundant_spot_plotting-min_f)*(max_col-min_col)/ (max_f-min_f)) )
@@ -10597,12 +10613,17 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             plt.savefig(path_loc+'System'+str(idx_pl)+'_'+str(plot_t)+'.'+plot_dic['system_view']) 
             plt.close()
     
-    #Making a Gif if we have multilple exposures of the system
-    if plot_options[key_plot]['t_BJD'] is not None:
+    #Making a GIF if we have multiple exposures of the system
+    if plot_options[key_plot]['t_BJD'] is not None and plot_options[key_plot]['GIF_generation']:
+        #Import package required for the GIF generation.
+        import imageio
+        #Initialize a list to store the images used to make the GIF.
         images_to_make_GIF = []
+        #Iterate over the system views generated for each exposure, and store the output png files in the GIF list.
         for idx_pl, plot_t in enumerate(plot_series):
             filename = path_loc+'System'+str(idx_pl)+'_'+str(plot_t)+'.'+plot_dic['system_view']
             images_to_make_GIF.append(imageio.imread(filename))
+        #Produce and store the GIF.
         imageio.mimsave(path_loc+'System_GIF.gif', images_to_make_GIF)
     
 

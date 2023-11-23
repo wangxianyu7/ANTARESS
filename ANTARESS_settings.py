@@ -2134,7 +2134,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
             plot_dic['plocc_ranges']=''    
             
             #Planet-occulted stellar regions
-            plot_dic['occulted_regions']=''
+            plot_dic['occulted_regions']='png'
             
             #Planetary system architecture
             plot_dic['system_view']='png'   #png

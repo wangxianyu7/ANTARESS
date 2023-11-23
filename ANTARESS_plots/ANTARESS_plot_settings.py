@@ -7730,8 +7730,15 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # if gen_dic['star_name']=='HD209458':   #ANTARESS I, mock, multi-pl
         #     plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':54560.806755574+np.array([-0.5,-0.2,0.,0.2,0.5])/24. }
         if gen_dic['star_name']=='AUMic':
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 50)}
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
             plot_settings[key_plot]['t_BJD'] = None
+
+        #Defining a boolean to decide whether we make a GIF. 
+        #This is only used if we plot multiple exposures.
+        plot_settings[key_plot]['GIF_generation']=True & False
+        if gen_dic['star_name']=='AUMic':
+            plot_settings[key_plot]['GIF_generation']=True
+
 
             
             
@@ -8004,6 +8011,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # Use stellar rotation period to distribute the positions, instead of time
         plot_settings[key_plot]['plot_spot_all_Peq'] = True    
 
+        #Whether we want to plot the spot tracks or locations in the multi-exposure system views.
+        plot_settings[key_plot]['spot_overlap'] = True & False
+
         if gen_dic['star_name']=='AUMic':
             plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' :  40, 'Tcenter' : 2458330.39051-0.2, 'ang' : 10, 'flux' : 0.2}
             
@@ -8011,17 +8021,20 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             
             plot_settings[key_plot]['time_range_spot'] = 2458330.39051   + np.array([-0.5, 0.1])
             
-            plot_settings[key_plot]['plot_spot_all_Peq'] = True    
+            plot_settings[key_plot]['plot_spot_all_Peq'] = True  
+
+            plot_settings[key_plot]['spot_overlap'] = False  
 
         elif gen_dic['star_name']=='V1298tau':
-            plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'flux' : 0.6}                                
-        
+            plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'flux' : 0.6}   
+
+                                     
         
            
 
 
 
-                                
+
         #Overlay to the RV-colored disk a shade controlled by flux
         plot_settings[key_plot]['shade_overlay']=True      
     
