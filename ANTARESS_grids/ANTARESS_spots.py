@@ -2,6 +2,7 @@ import numpy as np
 from copy import deepcopy
 from utils import np_poly,stop
 from ANTARESS_routines.ANTARESS_init import check_data
+from ANTARESS_routines.ANTARESS_orbit import calc_zLOS_oblate
 from ANTARESS_routines.ANTARESS_orbit import conv_inclinedStarFrame_to_StarFrame,conv_StarFrame_to_inclinedStarFrame
 from ANTARESS_analysis.ANTARESS_line_prop import poly_prop_calc
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,return_FWHM_inst
@@ -100,7 +101,7 @@ The fonction discretizes the spot circle and test for each point if it visible, 
     We rotate this vector by angle (pi/2-istar) around X axis, moving it in the 'inclined' star frame (with Z now along the LOS, and Y the projected stellar spin):
 
     x_sky = x_st
-    y_sky = sin(istar)y_st - cos sin(istar)z_st
+    y_sky = sin(istar)y_st - cos(istar)z_st
     z_sky = cos(istar)y_st + sin(istar)z_st,
 
     with Y_sky axis along the line of sight and X_sky still along the star equator.
@@ -117,13 +118,29 @@ The fonction discretizes the spot circle and test for each point if it visible, 
 """
 
 
-def is_spot_visible(istar, long_rad, lat_rad, ang_rad, f_GD) :
+def is_spot_visible(istar, long_rad, lat_rad, ang_rad, f_GD, RpoleReq) :
     spot_visible = False
     
     for arg in np.linspace(0,2*np.pi, 20) :
+        #Define the edges of the spots
         long_edge = long_rad + ang_rad * np.sin(arg)
         lat_edge  = lat_rad  + ang_rad * np.cos(arg)
-        criterion = (    (np.cos(istar)*np.sin(lat_edge)*(1-f_GD)  +  np.sin(istar)*np.cos(long_edge)*np.cos(lat_edge))   >   0     )
+
+        #Define the corresponding x, y, and z coordinates of the edges of the spots in the un-inclined star rest frame
+        x_st_edge = np.sin(long_edge)*np.cos(lat_edge)
+        y_st_edge = np.sin(lat_edge)
+        z_st_edge = np.cos(long_edge)*np.cos(lat_edge)
+
+        #Move the x, y, and z coordinates of the spot edges into the inclined star rest frame 
+        x_sky_edge, y_sky_edge, z_sky_edge = conv_StarFrame_to_inclinedStarFrame(x_st_edge, y_st_edge, z_st_edge, istar)
+
+        #Checking the value of the z coordinate for each edge point to see if the point is visible
+        if f_GD>0:
+            first_criterion = calc_zLOS_oblate(np.array([x_sky_edge]),np.array([y_sky_edge/(1-f_GD)]),istar, RpoleReq)[2]
+            criterion = first_criterion and (np.sqrt(1-x_sky_edge**2 - (y_sky_edge/(1-f_GD))**2)>0)
+        else:
+            criterion = (z_sky_edge > 0)
+        
         spot_visible |= criterion
 
     return spot_visible
@@ -192,7 +209,7 @@ def retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd):
         spots_prop[spot]['y_sky_exp_center'] = y_sky
         spots_prop[spot]['z_sky_exp_center'] = z_sky
         spots_prop[spot]['ang_rad'] = spots_prop[spot]['ang'] * np.pi/180
-        spots_prop[spot]['is_visible'] = is_spot_visible(istar,long_rad, lat_rad, spots_prop[spot]['ang_rad'], star_params['f_GD'])
+        spots_prop[spot]['is_visible'] = is_spot_visible(istar,long_rad, lat_rad, spots_prop[spot]['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
 
     return spots_prop
              

@@ -9337,31 +9337,48 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         
                     #Oblate star
                     #    - see definition of star boundary in 'system_view'
-                    if system_param['star']['f_GD']>0.:                        
-                        # xsky_limb = np.linspace(-1., 1., 1000, endpoint=True)
-                        # x_grid_all = np.tile(xsky_limb,(1000,1)) 
-                        # y_grid_all = np.tile(np.linspace(-1., 1., 1000, endpoint=True),(1000,1))
-                        # To be tested
-                        from itertools import product as it_product
-                        d_sub = 2/100
-                        cen_sub=-1.+(np.arange(100)+0.5)*d_sub            
-                        xy_sky_grid=np.array(list(it_product(cen_sub,cen_sub)))
-                        x_grid_all = xy_sky_grid[:,0] 
-                        y_grid_all = xy_sky_grid[:,1]
-                        cond_in_stphot=calc_zLOS_oblate(x_grid_all,y_grid_all,system_param['star']['istar_rad'],system_param['star']['RpoleReq'])[2]
-                        y_grid_all[~cond_in_stphot] = 0.
-                        x_grid_all[~cond_in_stphot] = 0.
-                        x_to_plot=[]
-                        y_to_plot=[]
-                        for test in range(len(x_grid_all)):
-                            if not x_grid_all[test]==0:
-                                x_to_plot.append(x_grid_all[test])
-                            if not y_grid_all[test]==0:
-                                y_to_plot.append(y_grid_all[test])
-                        # ysky_limb = np.nanmax(y_grid_all,axis=1)            
-                        # xsky_limb = np.append(xsky_limb,xsky_limb[::-1])             
-                        # ysky_limb = np.append(ysky_limb,-ysky_limb[::-1])
-                        plt.scatter(x_to_plot,y_to_plot,zorder=1, color='black',lw=1)
+                    if system_param['star']['f_GD']>0.: 
+
+                        #Oblate star parameters
+                        star_params = system_param['star']
+                        Rpole = star_params['RpoleReq']
+                        mRp2 = (1. - Rpole**2.)
+                        istar_rad=star_params['istar_rad']
+                        ci = cos(istar_rad)
+                        si = sin(istar_rad)  
+
+                        #X position initialization
+                        r_inner=1.
+                        r_outer=1.7
+                        x_annulus = np.linspace(-r_outer, r_outer, 3000, endpoint=True)
+
+                        #Oblate star
+                        #there is no simple expression of the projection of the photosphere envelope in the plane of the sky
+                        #for each x value of the grid, we thus find the condition for y values on a grid to belong to the photosphere (ie, having defined z values), and we take the maximum of the y values fulfilling the condition   
+                        ygrid = np.linspace(-1., 1., 3000, endpoint=True)
+                        y_grid_all = np.tile(ygrid,(3000,1)) 
+                        Aquad =  1. - si**2.*mRp2 
+                        r_grid2 = x_annulus[:,None]**2.+ y_grid_all**2. 
+                        Bquad = 2.*y_grid_all*ci*si*mRp2        
+                        Cquad_in = y_grid_all**2.*si**2.*mRp2 + Rpole**2.*(r_grid2 - r_inner**2.)   
+                        det_in = Bquad**2.-4.*Aquad*Cquad_in
+                        cond_in = det_in<0.
+                        y_grid_in = deepcopy(y_grid_all)                
+                        y_grid_in[cond_in] = 0.         
+                        yin_up = np.nanmax(y_grid_in,axis=1)
+                        yin_down = -yin_up            
+
+                        #Finding the spot where we the yin_up values go to 0, so as to keep one of the zeros for plotting.
+                        #Finding indexes where yin_up is zero.
+                        up_zeros_indexes = np.where(yin_up==0)
+                        #Finding indexes where the zero to non-zero value switch occurs (happens at two places).
+                        zero_shift_index_low = np.where(np.diff(up_zeros_indexes[0])>1)[0][0]
+                        zero_shift_index_high = up_zeros_indexes[0][zero_shift_index_low+1]
+                        #The spot where we swap from zero to non-zero values is the same in yin_up and yin_down.
+
+                        #Plotting the oblate star outline
+                        plt.plot(x_annulus[zero_shift_index_low:zero_shift_index_high+1], yin_up[zero_shift_index_low:zero_shift_index_high+1], color="black",zorder=0,lw=1)
+                        plt.plot(x_annulus[zero_shift_index_low:zero_shift_index_high+1], yin_down[zero_shift_index_low:zero_shift_index_high+1], color="black",zorder=0,lw=1)  
         
                     #Spherical star
                     else: 
@@ -9834,35 +9851,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #    - in the stellar frame the spin axis is always the vertical axis  
             lw_spin = 2.5
             if star_params['f_GD']>0.:
-                
-                # #Points away from us, in LOS that do not intersect the projected photosphere
-                # idx_behind = np_where1D(st_spin_z_st < 0.)
-                # z_st_sky_behind,_,cond_in_stphot=calc_zLOS_oblate(st_spin_x_st[idx_behind],st_spin_y_st[idx_behind],star_params['istar_rad'],star_params['RpoleReq'])
-
-                # print('0:', len(idx_behind))
-                # print('1:', len(cond_in_stphot))
-                # print('1bis:', len(z_st_sky_behind))                 
-                # w_vis_far = idx_behind[~cond_in_stphot]
-                
-                # #Points away from us, in LOS that intersect the projected photosphere, outside of the photosphere   
-                # w_unvis_far = sorted(list(idx_behind[cond_in_stphot][st_spin_z_st[idx_behind[cond_in_stphot]] <=  z_st_sky_behind[cond_in_stphot] ]))
-                
-                # #Points toward us, in LOS that do not intersect the projected photosphere or in front of it
-                # idx_front = np_where1D(st_spin_z_st >= 0.)
-                # print('2:', len(idx_front))
-                # _,z_photo_front,cond_in_stphot=calc_zLOS_oblate(st_spin_x_st[idx_front],st_spin_y_st[idx_front],star_params['istar_rad'],star_params['RpoleReq'])
-                # print('5:', len(cond_in_stphot))
-                # print('5bis:', len(z_photo_front))
-
-                # w_vis_close = sorted(list(idx_front[~cond_in_stphot])+list(idx_front[cond_in_stphot][st_spin_z_st[idx_front[cond_in_stphot]] >=  z_photo_front[cond_in_stphot] ]))
-
-                # #Plot hidden spin axis
-                # print('test1:', idx_behind[cond_in_stphot])
-                # print('test2:', st_spin_z_st[idx_behind[cond_in_stphot]])
-                # print('test3:', z_st_sky_behind[cond_in_stphot])
-                # if plot_options[key_plot]['plot_stspin_hid']:
-                #     w_vis_in= sorted(list(idx_behind[cond_in_stphot][st_spin_z_st[idx_behind[cond_in_stphot]]>  z_st_sky_behind[cond_in_stphot] ])+ list(idx_front[cond_in_stphot][st_spin_z_st[idx_front[cond_in_stphot]] <  z_photo_front[cond_in_stphot] ]))
-
 
                 #Points away from us, in LOS that do not intersect the projected photosphere
                 idx_behind = np_where1D(st_spin_z_st < 0.)
@@ -10410,56 +10398,97 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         else:
                             spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, inst_to_use, vis_to_use, t_exp) 
                         for spot in spots_prop :
-                            if spots_prop[spot]['is_visible']:
-                                _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
-                                                                        {}, params, use_grid_dic = False)
-                   
-                                star_flux_exp[spotted_tiles] *=  spots_prop[spot]['flux']
+                            #if spots_prop[spot]['is_visible']:
+                            _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
+                                                                    {}, params, use_grid_dic = False)
+               
+                            star_flux_exp[spotted_tiles] *=  spots_prop[spot]['flux']
+                            
+
+                            #Testing - Spherical
+                            #Testing is_spot_visible
+                            #Spot coordinates in the non-inclined star rest frame 
+                            # plt.scatter(np.sin(spots_prop[spot]['long_rad_exp_center'])*np.cos(spots_prop[spot]['lat_rad_exp_center']), np.sin(spots_prop[spot]['lat_rad_exp_center']), color='black')
+
+                            # #Spot coordinates projected in the inclined star rest frame
+                            # plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'])
+
+                            # #Plotting the boundary of the spots
+                            # criterion = False
+                            # for angle in np.linspace(0, 2*np.pi, 20):
+                            #     test_long = (spots_prop[spot]['long_rad_exp_center'] + spots_prop[spot]['ang_rad']*np.sin(angle))
+                            #     test_lat = (spots_prop[spot]['lat_rad_exp_center'] + spots_prop[spot]['ang_rad']*np.cos(angle))
+
+                            #     new_plot_x = np.sin(test_long)*np.cos(test_lat)
+                            #     new_plot_y = np.sin(test_lat)
+                            #     new_plot_z = np.cos(test_long)*np.cos(test_lat)
+                            #     plot_x, plot_y, plot_z = conv_StarFrame_to_inclinedStarFrame(new_plot_x, new_plot_y, new_plot_z, star_params['istar_rad'])
+
+                            #     plt.scatter(np.sin(test_long)*np.cos(test_lat), np.sin(star_params['istar_rad'])*np.sin(test_lat) - np.cos(star_params['istar_rad'])*np.cos(test_long)*np.cos(test_lat))
+                            #     criteria = (np.cos(star_params['istar_rad']) * np.sin(test_lat) + np.sin(star_params['istar_rad'])*np.cos(test_long)*np.cos(test_lat)>0)
+                            #     criterion |= criteria
+                            # print('1:', criterion)
+
+
+                            #Testing calc_spotted_tiles
+                            #Rough estimate
+                            # condition_close_to_spot = (coord_grid['x_st_sky'] - spots_prop[spot]['x_sky_exp_center'])**2 + (coord_grid['y_st_sky'] - spots_prop[spot]['y_sky_exp_center'])**2 < spots_prop[spot]['ang_rad']**2
+                            # plt.scatter(coord_grid['x_st_sky'][condition_close_to_spot], coord_grid['y_st_sky'][condition_close_to_spot], alpha=0.2)
+
+                            # #More precise estimate
+                            # plt.scatter(coord_grid['x_st_sky'][spotted_tiles], coord_grid['y_st_sky'][spotted_tiles])
+
+                            # #Spot coordinates projected in the inclined star rest frame
+                            # plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'])
+
+
+                            #Testing the projection into the spot reference frame
+                            #Rough estimate
+                            # if t_exp == t_all_spot[4]:
+                            #     plot_projection = True
+                            #     condition_close_to_spot = (coord_grid['x_st_sky'] - spots_prop[spot]['x_sky_exp_center'])**2 + (coord_grid['y_st_sky'] - spots_prop[spot]['y_sky_exp_center'])**2 < spots_prop[spot]['ang_rad']**2
+                            #     plt.scatter(coord_grid['x_st_sky'][condition_close_to_spot], coord_grid['y_st_sky'][condition_close_to_spot], alpha=0.3)
+
+                            # #More precise estimate
+                            #     calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
+                            #                                         {}, params, use_grid_dic = False, plot_projection=True)
+
+                            #Add this in calc_spotted_tiles, and the plot_projection boolean in the function inputs
+                            # if plot_projection:
+                            #     useful_condition = (phi_sp <= spot_prop['ang_rad'])
+                            #     plt.scatter(x_sp, y_sp)
+                            #     plt.scatter(x_st_grid[useful_condition]*cos_long - z_st_grid[useful_condition]*sin_long, y_st_grid[useful_condition]*cos_lat - (x_st_grid[useful_condition]*sin_long + z_st_grid[useful_condition]*cos_long)   *   sin_lat)
+
+                            #Testing - Oblate
+                            #Testing is_spot_visible
+                            #Spot coordinates in the inclined star rest frame
+                            plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center']/(1-star_params['f_GD']))
+
+                            # #Plotting the spot boundaries
+                            criterion = False
+                            criterion_2 = False
+                            for angle in np.linspace(0, 2*np.pi, 20):
+                                test_long = (spots_prop[spot]['long_rad_exp_center'] + spots_prop[spot]['ang_rad']*np.sin(angle))
+                                test_lat = (spots_prop[spot]['lat_rad_exp_center'] + spots_prop[spot]['ang_rad']*np.cos(angle))
                                 
+                                new_plot_x = np.sin(test_long)*np.cos(test_lat)
+                                new_plot_y = np.sin(test_lat)/(1-star_params['f_GD'])
+                                new_plot_z = np.cos(test_long)*np.cos(test_lat)
+                                
+                                plot_x, plot_y, plot_z = conv_StarFrame_to_inclinedStarFrame(new_plot_x, new_plot_y, new_plot_z, star_params['istar_rad'])
 
-                                #Testing
-                                #Testing is_spot_visible
-                                #Spot coordinates in the non-inclined star rest frame 
-                                # plt.scatter(np.sin(spots_prop[spot]['long_rad_exp_center'])*np.cos(spots_prop[spot]['lat_rad_exp_center']), np.sin(spots_prop[spot]['lat_rad_exp_center']), color='black')
+                                plt.scatter(plot_x, plot_y)
 
-                                #Spot coordinates projected in the inclined star rest frame
-                                # plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'])
+                                z_behind, z_front, criteria = calc_zLOS_oblate(np.array([plot_x]),np.array([plot_y]),star_params['istar_rad'],star_params['RpoleReq'])
 
-                                #Plotting the boundary of the spots
-                                # for angle in np.linspace(0, 2*np.pi, 20):
-                                #     test_long = (spots_prop[spot]['x_sky_exp_center'] + spots_prop[spot]['ang_rad']*np.sin(angle))
-                                #     test_lat = (spots_prop[spot]['y_sky_exp_center'] + spots_prop[spot]['ang_rad']*np.cos(angle))
-                                #     plt.scatter(test_long, test_lat)
+                                criteria_2 = z_front>0.5
 
-                                #Testing calc_spotted_tiles
-                                #Rough estimate
-                                # condition_close_to_spot = (coord_grid['x_st_sky'] - spots_prop[spot]['x_sky_exp_center'])**2 + (coord_grid['y_st_sky'] - spots_prop[spot]['y_sky_exp_center'])**2 < spots_prop[spot]['ang_rad']**2
-                                # plt.scatter(coord_grid['x_st_sky'][condition_close_to_spot], coord_grid['y_st_sky'][condition_close_to_spot], alpha=0.2)
+                                print('2:', criteria, z_behind, z_front, z_front>0.5, z_front+z_behind, np.sqrt(z_front**2 + z_behind**2), np.sqrt(1 - plot_x**2 - (plot_y)**2))
 
-                                # #More precise estimate
-                                # plt.scatter(coord_grid['x_st_sky'][spotted_tiles], coord_grid['y_st_sky'][spotted_tiles])
-
-                                # #Spot coordinates projected in the inclined star rest frame
-                                # plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'])
-
-
-                                #Testing the projection into the spot reference frame
-                                #Rough estimate
-                                # if t_exp == t_all_spot[4]:
-                                #     plot_projection = True
-                                #     condition_close_to_spot = (coord_grid['x_st_sky'] - spots_prop[spot]['x_sky_exp_center'])**2 + (coord_grid['y_st_sky'] - spots_prop[spot]['y_sky_exp_center'])**2 < spots_prop[spot]['ang_rad']**2
-                                #     plt.scatter(coord_grid['x_st_sky'][condition_close_to_spot], coord_grid['y_st_sky'][condition_close_to_spot], alpha=0.3)
-
-                                # #More precise estimate
-                                #     calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
-                                #                                         {}, params, use_grid_dic = False, plot_projection=True)
-
-                                #Add this in calc_spotted_tiles, and the plot_projection boolean in the function inputs
-                                # if plot_projection:
-                                #     useful_condition = (phi_sp <= spot_prop['ang_rad'])
-                                #     plt.scatter(x_sp, y_sp)
-                                #     plt.scatter(x_st_grid[useful_condition]*cos_long - z_st_grid[useful_condition]*sin_long, y_st_grid[useful_condition]*cos_lat - (x_st_grid[useful_condition]*sin_long + z_st_grid[useful_condition]*cos_long)   *   sin_lat)
-
+                                criterion |= criteria
+                                criterion_2 |= criteria_2
+                            
+                            print('1:', criterion, criterion_2) 
 
 
 
