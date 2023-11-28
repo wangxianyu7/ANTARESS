@@ -10483,7 +10483,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                                 criteria_2 = z_front>0.5
 
-                                print('2:', criteria, z_behind, z_front, z_front>0.5, z_front+z_behind, np.sqrt(z_front**2 + z_behind**2), np.sqrt(1 - plot_x**2 - (plot_y)**2))
+                                print('2:', 'Stellar photosphere condition:', criteria, ', Z coordinates:', z_behind, z_front) 
+                                print('2:', 'Front z greater than 0.5:', z_front>0.5, 'Sum:', z_front+z_behind, 'Quadratic sum:', np.sqrt(z_front**2 + z_behind**2), 'Other test:', np.sqrt(1 - plot_x**2 - (plot_y)**2))
 
                                 criterion |= criteria
                                 criterion_2 |= criteria_2

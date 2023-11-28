@@ -8015,7 +8015,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         plot_settings[key_plot]['spot_overlap'] = True & False
 
         if gen_dic['star_name']=='AUMic':
-            plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' :  10, 'Tcenter' : 2458330.39051-0.2, 'ang' : 10, 'flux' : 0.2}
+            plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' :  0, 'Tcenter' : 2458330.39051-0.2, 'ang' : 10, 'flux' : 0.2}
             
             plot_settings[key_plot]['n_image_spots'] = 15
             
