@@ -58,6 +58,4 @@ Notebooks available in the namesake directory:
 
 ## Contributors
 **Main developer**: Vincent Bourrier (you can contact me for inquiries about the ANTARESS workflow and associated pipeline).  
-**Main contributors**: Jean-Baptiste Delisle, Christophe Lovis.  
-**Contributors**: TBD
-
+**Contributors**: Omar Attia, Romain Allart, Khaled Al Moulla, Heather Cegla, Michaël Cretignier, William Dethier, Jean-Baptiste Delisle, Xavier Dumusque, David Ehrenreich, Nathan Hara, Christophe Lovis, Samson Jules Mercier, Dany Mounzer, Francesco Alfonso Pepe, Julia Victoria Seidel, Michal Steiner, Sara Tavella, Valentina Vaulato, Theo Vrignaud, Aurélien Wyttenbach.
