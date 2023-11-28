@@ -6,6 +6,8 @@ First, define the system properties for the host star and its planets in [ANTARE
 Then, define your input datasets, and the modules to process and analyze them, in a copy of the default configuration file [ANTARESS_settings.py](ANTARESS_settings.py). You can name your own configuration file as `ANTARESS_settings_username.py`.  
 Finally, launch the workflow with the python command `ANTARESS_launcher(user = username)`. 
 
+Most fields in the configuration file have default values. However, we recommend you try out changing their values to process your specific datasets.
+
 Modules are grouped in three main categories:
 - [ ] Data first go through formatting and correction modules, some of which are specific to given instruments. Once data are set in the common ANTARESS format and corrected for instrumental/environmental effects, they can be processed in the same way by the subsequent modules. 
 - [ ] The second group of modules are thus generic and aim at extracting specific types of spectral profiles, converting them in the format required for the analysis chosen by the user. 
@@ -55,4 +57,7 @@ Notebooks available in the namesake directory:
 - run `python setup_lbl_fit.py build` after setting up the path to your local python installation in this file. Then copy the compiled file `calculate_RV_line_by_line3.cpython-XX-darwin.so` into your ANTARESS/KitCat directory  
 
 ## Contributors
-TBD
+Main developer: Vincent Bourrier (you can contact me for inquiries about the ANTARESS workflow and associated pipeline).
+Main contributors: Jean-Baptiste Delisle, Christophe Lovis.
+Contributors: TBD
+
