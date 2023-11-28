@@ -57,7 +57,7 @@ Notebooks available in the namesake directory:
 - run `python setup_lbl_fit.py build` after setting up the path to your local python installation in this file. Then copy the compiled file `calculate_RV_line_by_line3.cpython-XX-darwin.so` into your ANTARESS/KitCat directory  
 
 ## Contributors
-Main developer: Vincent Bourrier (you can contact me for inquiries about the ANTARESS workflow and associated pipeline).
-Main contributors: Jean-Baptiste Delisle, Christophe Lovis.
-Contributors: TBD
+**Main developer**: Vincent Bourrier (you can contact me for inquiries about the ANTARESS workflow and associated pipeline).  
+**Main contributors**: Jean-Baptiste Delisle, Christophe Lovis.  
+**Contributors**: TBD
 
