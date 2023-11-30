@@ -626,6 +626,7 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         gen_dic['calc_proc_data']=True   &   False
         if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','WASP107']:gen_dic['calc_proc_data']=True  & False
         if user=='vaulato' and gen_dic['star_name'] in ['WASP189']:gen_dic['calc_proc_data']=True #& False# vaulato
+        if user=='mercier' and gen_dic['star_name']=='AUMic':gen_dic['calc_proc_data']=True
     
         
     
@@ -790,7 +791,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
 
         if user=='mercier' and gen_dic['star_name'] == 'AUMic':
             mock_dic['visit_def']={
-                'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-2,2])/24.,'nexp':50}}}
+                'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.5,0.5]),'nexp':10}}}
+                # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-2,2])/24.,'nexp':50}}}
 
         if gen_dic['star_name'] == 'TOI4562' : 
             mock_dic['visit_def']={
@@ -837,15 +839,15 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
                         
                          # For the spot 'spot1' : 
                          'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 40,
-                         'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051-0.2,
+                         'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051-1.3,
                          'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
                          'flux__ISESPRESSO_VSmock_vis_SPspot1'    : 0.2,
                         
-                         # For the spot 'spot2' : 
-                         #'lat__ISHARPN_VSmock_vis_SPspot2'     : 40,
-                         #'Tcenter__ISHARPN_VSmock_vis_SPspot2' : 2458877.6306 + 5/24,
-                         #'ang__ISHARPN_VSmock_vis_SPspot2'     : 25,
-                         #'flux__ISHARPN_VSmock_vis_SPspot2'    : 0.4
+                         #For the spot 'spot2' : 
+                         'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
+                         'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 + 1.5,
+                         'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
+                         'flux__ISESPRESSO_VSmock_vis_SPspot2'    : 0.4
                              }
                         }
                     }

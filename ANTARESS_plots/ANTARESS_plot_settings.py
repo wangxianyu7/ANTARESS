@@ -8015,13 +8015,17 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         plot_settings[key_plot]['spot_overlap'] = True & False
 
         if gen_dic['star_name']=='AUMic':
-            plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' :  0, 'Tcenter' : 2458330.39051-0.2, 'ang' : 10, 'flux' : 0.2}
+            plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' :  40, 'Tcenter' : 2458330.39051-1.3, 'ang' : 10, 'flux' : 0.2}
+            plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+1.5, 'ang' : 25, 'flux' : 0.4}
             
-            plot_settings[key_plot]['n_image_spots'] = 15
+            plot_settings[key_plot]['n_image_spots'] = 10
+            # plot_settings[key_plot]['n_image_spots'] = 50
             
-            plot_settings[key_plot]['time_range_spot'] = 2458330.39051   + np.array([-0.5, 0.1])
+            plot_settings[key_plot]['time_range_spot'] = 2458330.39051+np.array([-0.5,0.5])
+            # plot_settings[key_plot]['time_range_spot'] = 2458330.39051   + np.array([-2.8, 1.9])
+            # plot_settings[key_plot]['time_range_spot'] = 2458330.39051+np.array([-2,2])/24.
             
-            plot_settings[key_plot]['plot_spot_all_Peq'] = True  
+            plot_settings[key_plot]['plot_spot_all_Peq'] = False  
 
             plot_settings[key_plot]['spot_overlap'] = False  
 

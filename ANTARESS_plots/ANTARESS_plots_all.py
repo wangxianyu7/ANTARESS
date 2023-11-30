@@ -10388,7 +10388,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #If no times provided for the plotting, then generate some
                 else:
                     # Compute BJD of images 
-                    if plot_options[key_plot]['plot_spot_all_Peq'] : t_all_spot = np.linspace(   0  ,   2*np.pi/(star_params['om_eq']*3600.*24.) ,plot_options[key_plot]['n_image_spots']) 
+                    if plot_options[key_plot]['plot_spot_all_Peq'] : t_all_spot = np.linspace(   0  ,   2*np.pi/(star_params['om_eq']*3600.*24.) ,plot_options[key_plot]['n_image_spots'])
                     else                 : t_all_spot = np.linspace(      plot_options[key_plot]['time_range_spot'][0] , plot_options[key_plot]['time_range_spot'][1]      , plot_options[key_plot]['n_image_spots']) - 2400000
  
                     for t_exp in t_all_spot :
@@ -10398,23 +10398,23 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         else:
                             spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, inst_to_use, vis_to_use, t_exp) 
                         for spot in spots_prop :
-                            #if spots_prop[spot]['is_visible']:
-                            _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
-                                                                    {}, params, use_grid_dic = False)
-               
-                            star_flux_exp[spotted_tiles] *=  spots_prop[spot]['flux']
-                            
+                            if spots_prop[spot]['is_visible']:
+                                _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
+                                                                        {}, params, use_grid_dic = False)
+                   
+                                star_flux_exp[spotted_tiles] *=  spots_prop[spot]['flux']
+                        
 
                             #Testing - Spherical
                             #Testing is_spot_visible
                             #Spot coordinates in the non-inclined star rest frame 
-                            # plt.scatter(np.sin(spots_prop[spot]['long_rad_exp_center'])*np.cos(spots_prop[spot]['lat_rad_exp_center']), np.sin(spots_prop[spot]['lat_rad_exp_center']), color='black')
+                            # criterion = False
+                            # # plt.scatter(np.sin(spots_prop[spot]['long_rad_exp_center'])*np.cos(spots_prop[spot]['lat_rad_exp_center']), np.sin(spots_prop[spot]['lat_rad_exp_center']), color='black')
 
                             # #Spot coordinates projected in the inclined star rest frame
                             # plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'])
 
                             # #Plotting the boundary of the spots
-                            # criterion = False
                             # for angle in np.linspace(0, 2*np.pi, 20):
                             #     test_long = (spots_prop[spot]['long_rad_exp_center'] + spots_prop[spot]['ang_rad']*np.sin(angle))
                             #     test_lat = (spots_prop[spot]['lat_rad_exp_center'] + spots_prop[spot]['ang_rad']*np.cos(angle))
@@ -10424,10 +10424,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #     new_plot_z = np.cos(test_long)*np.cos(test_lat)
                             #     plot_x, plot_y, plot_z = conv_StarFrame_to_inclinedStarFrame(new_plot_x, new_plot_y, new_plot_z, star_params['istar_rad'])
 
-                            #     plt.scatter(np.sin(test_long)*np.cos(test_lat), np.sin(star_params['istar_rad'])*np.sin(test_lat) - np.cos(star_params['istar_rad'])*np.cos(test_long)*np.cos(test_lat))
-                            #     criteria = (np.cos(star_params['istar_rad']) * np.sin(test_lat) + np.sin(star_params['istar_rad'])*np.cos(test_long)*np.cos(test_lat)>0)
+                            #     plt.scatter(plot_x, plot_y)
+                        
+                            #     criteria = (plot_z>0)
                             #     criterion |= criteria
+
                             # print('1:', criterion)
+                            # if criterion:
+                            #     plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'], color='k')
 
 
                             #Testing calc_spotted_tiles
@@ -10462,34 +10466,54 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #Testing - Oblate
                             #Testing is_spot_visible
                             #Spot coordinates in the inclined star rest frame
-                            plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center']/(1-star_params['f_GD']))
+                            # plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'])
 
-                            # #Plotting the spot boundaries
-                            criterion = False
-                            criterion_2 = False
-                            for angle in np.linspace(0, 2*np.pi, 20):
-                                test_long = (spots_prop[spot]['long_rad_exp_center'] + spots_prop[spot]['ang_rad']*np.sin(angle))
-                                test_lat = (spots_prop[spot]['lat_rad_exp_center'] + spots_prop[spot]['ang_rad']*np.cos(angle))
+                            # # #Plotting the spot boundaries
+                            # criterion = False
+                            # criterion_2 = False
+                            # for angle in np.linspace(0, 2*np.pi, 20):
+                            #     test_long = (spots_prop[spot]['long_rad_exp_center'] + spots_prop[spot]['ang_rad']*np.sin(angle))
+                            #     test_lat = (spots_prop[spot]['lat_rad_exp_center'] + spots_prop[spot]['ang_rad']*np.cos(angle))
                                 
-                                new_plot_x = np.sin(test_long)*np.cos(test_lat)
-                                new_plot_y = np.sin(test_lat)/(1-star_params['f_GD'])
-                                new_plot_z = np.cos(test_long)*np.cos(test_lat)
+                            #     new_plot_x = np.sin(test_long)*np.cos(test_lat)
+                            #     new_plot_y = np.sin(test_lat)
+                            #     new_plot_z = np.cos(test_long)*np.cos(test_lat)
                                 
-                                plot_x, plot_y, plot_z = conv_StarFrame_to_inclinedStarFrame(new_plot_x, new_plot_y, new_plot_z, star_params['istar_rad'])
+                            #     plot_x, plot_y, plot_z = conv_StarFrame_to_inclinedStarFrame(new_plot_x, new_plot_y, new_plot_z, star_params['istar_rad'])
+                            #     print('4:',spots_prop[spot]['lat_rad_exp_center']*180/np.pi, star_params['istar_rad']*180/np.pi)
+                            #     true_long = (test_long * 180/np.pi)%360
+                            #     # if (spots_prop[spot]['lat_rad_exp_center']*180/np.pi < 0 and star_params['istar_rad']*180/np.pi < 90) or (spots_prop[spot]['lat_rad_exp_center']*180/np.pi > 0 and star_params['istar_rad']*180/np.pi > 90):
+                            #     #     print('Here1')
+                            #     #     additive = -np.abs(90 - (star_params['istar_rad'] * 180/np.pi))
+                            #     # elif (spots_prop[spot]['lat_rad_exp_center']*180/np.pi <= 0 and star_params['istar_rad']*180/np.pi >= 90) or (spots_prop[spot]['lat_rad_exp_center']*180/np.pi >= 0 and star_params['istar_rad']*180/np.pi <= 90):
+                            #     #     print('Here2')
+                            #     #     additive = np.abs(90 - (star_params['istar_rad'] * 180/np.pi))
+                            #     # print('3:', additive)
+                            #     # No inclination, no latitude -> no need for additives
+                            #     # No inclination, latitude -> no need for additives
+                            #     additive = 0
+                            #     #inclination, no latitude -> need additives
 
-                                plt.scatter(plot_x, plot_y)
+                            #     crit1 = (-90-additive <= true_long and true_long <= 90+additive) or (270-additive <= true_long and true_long <=360) or (-360 <= true_long and true_long <= -270+additive)
 
-                                z_behind, z_front, criteria = calc_zLOS_oblate(np.array([plot_x]),np.array([plot_y]),star_params['istar_rad'],star_params['RpoleReq'])
+                            #     if crit1:
+                            #         plt.scatter(plot_x, plot_y, color='k')
+                            #     else:
+                            #         plt.scatter(plot_x, plot_y)
 
-                                criteria_2 = z_front>0.5
+                            #     z_behind, z_front, criteria = calc_zLOS_oblate(np.array([plot_x]),np.array([plot_y]),star_params['istar_rad'],star_params['RpoleReq'])
 
-                                print('2:', 'Stellar photosphere condition:', criteria, ', Z coordinates:', z_behind, z_front) 
-                                print('2:', 'Front z greater than 0.5:', z_front>0.5, 'Sum:', z_front+z_behind, 'Quadratic sum:', np.sqrt(z_front**2 + z_behind**2), 'Other test:', np.sqrt(1 - plot_x**2 - (plot_y)**2))
+                            #     print('1:', criteria)
+                            #     crit2 = crit1 and criteria
 
-                                criterion |= criteria
-                                criterion_2 |= criteria_2
-                            
-                            print('1:', criterion, criterion_2) 
+                            #     if crit2:
+                            #         plt.scatter(plot_x, plot_y, color='r')
+
+                            #     criterion |= crit2
+                            # print('2:', criterion)
+
+                            # if criterion:
+                            #     plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'], color='r')
 
 
 
