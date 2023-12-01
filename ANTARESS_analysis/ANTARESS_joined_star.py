@@ -16,12 +16,18 @@ from ANTARESS_analysis.ANTARESS_inst_resp import return_FWHM_inst,ref_inst_convo
 
 
 
-
-'''
-Wrap-up function to process intrinsic stellar profiles
-'''
 def fit_intr_funcs(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic):
-        
+    r"""**Joined stellar fits**
+
+    Wrap-up function to call joint fits of stellar properties and profiles
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """        
     #Fitting stellar surface properties with a linked model
     if gen_dic['fit_IntrProp']:
         fit_IntrProp_all('IntrProp',glob_fit_dic['IntrProp'],gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic)    

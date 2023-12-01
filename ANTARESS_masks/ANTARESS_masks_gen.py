@@ -13,13 +13,15 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
     r"""**CCF mask generation**
 
     Generates CCF binary masks from processed stellar spectrum 
-     - 2D spectra must have been aligned in the star (for disk-integrated profiles), common (for intrinsic profiles), or planet (for atmospheric profiles) rest frame, converted into 1D profiles, and binned into a master spectrum
-     - disk-integrated masks are shifted from the star rest frame to the rest frame of the input data using the systemic velocity associated with the master spectrum
-       they can then be used to generate CCFs from disk-integrated spectra in their input rest frame
-     - intrinsic masks are left defined in the common rest frame
-       they can be used to generate CCFs from intrinsic spectra in the star rest frame
-     - atmospheric masks are left defined in the common rest frame
-       they can be used to generate CCFs from atmospheric spectra in the planet rest frame
+     - 2D spectra must have been aligned in the star (for disk-integrated profiles), photosphere (for intrinsic profiles), or planet (for atmospheric profiles) rest frame, converted into 1D profiles, and binned into a master spectrum.  
+       This alignment in the rest frame of the line transitions is necessary to cross-match them with linelists
+     - The derived masks are thus defined in the approximate rest frame defined above   
+      + Disk-integrated masks are shifted from the star rest frame to the rest frame of the input data, based on the input systemic velocity used to align the disk-integrated profiles.
+        The masks can then be used to generate CCFs from disk-integrated spectra in their input rest frame.
+      + Intrinsic masks are left defined in the photosphere rest frame.  
+        They can be used to generate CCFs from intrinsic spectra in the star rest frame
+      + Atmospheric masks are left defined in the planet rest frame.  
+        They can be used to generate CCFs from atmospheric spectra in the planet rest frame
 
     Args:
         TBD

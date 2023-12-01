@@ -18,7 +18,7 @@ from ANTARESS_routines.ANTARESS_sp_cont import process_spectral_cont
 
 __version__ = "0.0.1"
 
-def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_param):
+def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_param,input_dic,user):
     r"""**Main ANTARESS function.**
 
     Runs ANTARESS workflow. The pipeline is defined as modules than can be run independently. Each module takes as input the datasets produced by earlier modules, transforms or 
@@ -161,7 +161,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
 
             #Building estimates for complete local stellar profiles
             if gen_dic['loc_data_corr']:
-                def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic)
+                def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
         
             #--------------------------------------------------------------------------------------------------
             #Processing atmospheric profiles
@@ -230,7 +230,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     #Call to plot functions
     ##############################################################################
     if gen_dic['plots_on']:
-        ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic)
+        ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,input_dic,user)
 
     return None
     
