@@ -626,7 +626,8 @@ def ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo
         gen_dic['calc_proc_data']=True   &   False
         if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214','WASP107']:gen_dic['calc_proc_data']=True  & False
         if user=='vaulato' and gen_dic['star_name'] in ['WASP189']:gen_dic['calc_proc_data']=True #& False# vaulato
-        if user=='mercier' and gen_dic['star_name']=='AUMic':gen_dic['calc_proc_data']=True
+        if user=='mercier' and gen_dic['star_name']=='AUMic':gen_dic['calc_proc_data']=True#&False
+
     
         
     
