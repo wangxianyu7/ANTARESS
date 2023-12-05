@@ -265,10 +265,21 @@ def get_LD_coeff(transit_prop,iband):
 
 
 
-'''
-Limb-Darkening value at a given mu
-'''
+
+
+
 def calc_LD(LD_mod,mu,ld_coeff):
+    r"""**Limb-Darkening intensity**
+
+    Calculates limb-Darkening value at a given :math:`\mu`
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """   
     if LD_mod == 'uniform':
         ld_val = 1.
     elif LD_mod == 'linear':
@@ -286,10 +297,22 @@ def calc_LD(LD_mod,mu,ld_coeff):
         ld_val = (ld_coeff[0] + ld_coeff[1]*mu - ld_coeff[2]*mu**2. +ld_coeff[3]*mu**3. -ld_coeff[4]*mu**4. +ld_coeff[5]*mu**5.)/norm_ld
     return ld_val
 
-'''
-Function returning stellar intensity grid
-'''
+
+
+
+
 def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params,Ssub_Sstar,Istar_norm=1.,region = 'star',Ssub_Sstar_ref = None):
+    r"""**Stellar intensity grid.**
+
+    Calculates flux and intensity values over the stellar grid, from various contributions.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
 
     #Limb-darkening grid and flux emitted by the star
     #    - calculating over the grid as a function of mu, and for each chromatic wavelength given as input  
@@ -334,10 +357,19 @@ def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params,Ssu
     return ld_grid_star,gd_grid_star,mu_grid_star,Fsurf_grid_star,Ftot_star,Istar_norm
 
 
-'''
-Function returning coordinates of stellar occulting cells in the sky-projected star rest frame
-'''
+
 def calc_st_sky(coord_grid,star_params):
+    r"""**Sky-projected stellar grid.**
+
+    Calculates coordinates of stellar cells in the sky-projected star rest frame.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
     
     #Distance of subcells to star center (squared)
     coord_grid['r2_st_sky']=coord_grid['x_st_sky']*coord_grid['x_st_sky']+coord_grid['y_st_sky']*coord_grid['y_st_sky']
@@ -372,10 +404,18 @@ def calc_st_sky(coord_grid,star_params):
 
 
 
-'''
-Functions to define model stellar grid
-'''
 def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params):
+    r"""**Model stellar grid**
+
+    Defines coordinates and intensity values over the stellar grid.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
     coord_grid = {}
     
     #Subcell width (in units of Rstar) and surface (in units of Rstar^2 and pi*Rstar^2) 
@@ -430,11 +470,19 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params):
     
     return None
 
-'''
-Function to update stellar grid
-'''
-def up_model_star(args,param):
 
+def up_model_star(args,param):
+    r"""**Update stellar grid**
+
+    Update coordinates and intensity values over the stellar grid.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
     #Update potentially variable stellar properties
     for ideg in range(1,5):
         if ('LD_u'+str(ideg)) in param:args['system_prop']['achrom'].update({'LD_u'+str(ideg):[param['LD_u'+str(ideg)]]}) 

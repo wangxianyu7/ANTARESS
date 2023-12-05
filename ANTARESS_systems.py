@@ -143,47 +143,6 @@ Note on degeneracies
 
 all_system_params={
 
-    'HD189733':{
-        
-        'star':{
-            # 'dstar':19.45,
-            # 'Mstar':0.823,
-            # 'SystV':-2.2765,
-            
-            # #Limb-darkening
-            # 'LD_mod':'linear',
-            # 'LD_u1':0.816
-
-            #Analysis for Mounzer+2023
-            'Rstar':0.784,
-            'istar':90.,'veq':1.5, 
-            
-            },
-    
-        'HD189733b':{
-            #Old
-            # 'Msini':1.135,
-            # 'TDepth':0.024122,
-            # 'Rpl':1.138,
-            # 'sma':0.0312,
-
-            #Analysis for Mounzer+2023            
-            'period':2.2185751979,
-            'TCenter':2459446.49851,
-            'TLength':1.81/24. ,# 1.9070525639199452/24.,
-            'ecc':0.,
-            'omega_deg':90.,
-            'inclination':85.46578817370532,
-            'Kstar':201.3,	
-            'aRs':8.8843,
-            'lambda_proj':0.
-            
-            
-            },
-
-    },
-    
-    #------------------------------
     '55Cnc':{
         
         'star':{
@@ -267,7 +226,75 @@ all_system_params={
         'Kstar':3.,   
     },               
     },
+        
+    #------------------------------
+    #------------------------------
+
+    'HD189733':{
+        
+        'star':{
+            # 'dstar':19.45,
+            # 'Mstar':0.823,
+            # 'SystV':-2.2765,
+            
+            # #Limb-darkening
+            # 'LD_mod':'linear',
+            # 'LD_u1':0.816
+
+            #Analysis for Mounzer+2023
+            'Rstar':0.784,
+            'istar':90.,'veq':1.5, 
+            
+            },
     
+        'HD189733b':{
+            #Old
+            # 'Msini':1.135,
+            # 'TDepth':0.024122,
+            # 'Rpl':1.138,
+            # 'sma':0.0312,
+
+            #Analysis for Mounzer+2023            
+            'period':2.2185751979,
+            'TCenter':2459446.49851,
+            'TLength':1.81/24. ,# 1.9070525639199452/24.,
+            'ecc':0.,
+            'omega_deg':90.,
+            'inclination':85.46578817370532,
+            'Kstar':201.3,	
+            'aRs':8.8843,
+            'lambda_proj':0.
+            
+            
+            },
+
+    },
+
+    #------------------------------
+    #------------------------------
+
+    'K2-79':{
+        'star':{
+            'Rstar':1.265,     #+0.041-0.027    Bonomo+2023
+            'istar':90.,'veq':1., 
+            },
+    
+        'K2-79b':{           
+            'period':10.99386423,       #TO BE REVISED
+            'TCenter':2460214.7753992,        #TO BE REVISED
+            'TLength':4.420/24.,  #±0.088 /24.   Crossfield+2016
+            'ecc':0.,                   #assumed circular   Bonomo+2023
+            'omega_deg':90.,
+            'inclination':88.44,   #±0.44        Bonomo+2023
+            'Kstar':2.63,  #  +-0.69   	   Bonomo+2023
+            'aRs':16.794606,    #0.09880*AU_1_m/(1.265*Rsun*1e3)       Bonomo+2023
+            'lambda_proj':0.
+
+            },
+
+    },
+
+
 
     #------------------------------
     'Corot_9':{

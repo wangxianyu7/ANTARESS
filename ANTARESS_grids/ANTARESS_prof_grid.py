@@ -13,134 +13,112 @@ from ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_R
 
 
 
-#Cumulate local profiles from each cell of the stellar disk
-def coadd_loc_line_prof(rv_shift_grid,icell_list,Fsurf_grid_spec,flux_intr_grid,mu_grid,param,args):
-    flux_DI_sum=[]
-    for isub,(icell,rv_shift,flux_intr_cell,mu_cell) in enumerate(zip(icell_list,rv_shift_grid,flux_intr_grid,mu_grid)):
-        flux_DI_sum+=[calc_loc_line_prof(icell,rv_shift,Fsurf_grid_spec[isub],flux_intr_cell,mu_cell,args,param)]
-    return flux_DI_sum
+def MAIN_custom_DI_prof(param,RV,args=None):
+    r"""**Disk-integrated profile: fit function**
 
-#Calculate local line profile
-def calc_loc_line_prof(icell,rv_shift,Fsurf_cell_spec,flux_loc_cell,mu_cell,args,param):
+    Calls generic profile function applied to the calculation of custom disk-integrated stellar profile.
+    The disk-integrated profile is built upon a discretized grid of the stellar surface to allow accounting for any type of intensity and velocity field
 
-    #Calculation of analytical intrinsic line profile
-    #    - model is always calculated in RV space, and later converted back to wavelength space if relevant
-    #    - the model is directly calculated over the RV table at its requested position, rather than being pre-calculated and shifted
-    if args['mode']=='ana':
-        input_cell = {'cont':1. , 'rv':rv_shift }
-        for pol_par in args['input_cell_all']:
-            input_cell[pol_par] = args['input_cell_all'][pol_par][icell]
-        flux_intr=args['func_prof'](input_cell,args['cen_bins'] )[0]
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """  
+    ymodel=gen_over_func(param,custom_DI_prof,args)
+    return ymodel
+
+
+
+def custom_DI_prof(param,x,args=None):
+    r"""**Disk-integrated profile: model function**
+
+    Calculates custom disk-integrated stellar profile.
+    This routine is separated from init_custom_DI_prof() so that it can be used in fitting routines with varying parameters.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    
+    #--------------------------------------------------------------------------------
+    #Updating stellar grid and line profile grid
+    #    - only if routine is called in fit mode, otherwise the default pipeline stellar grid and the scaling from init_custom_DI_prof() are used
+    #--------------------------------------------------------------------------------
+    if args['fit']:    
+
+        #Updating stellar grid
+        #    - if stellar grid is different from the default one 
+        if args['var_star_grid']:
             
-        #Convolve intrinsic profile with macroturbulence kernel
-        if args['mac_mode'] is not None:
+            #Update variable stellar properties and stellar grid
+            up_model_star(args,param)
+
+            #Update broadband scaling of intrinsic profiles into local profiles
+            #    - only necessary if stellar grid is updated
+            theo_intr2loc(args['grid_dic'],args['system_prop'],args,args['ncen_bins'],args['grid_dic']['nsub_star'])     
     
-            #Mactroturbulence kernel table     
-            #    - centered spectral table with same pixel widths as the band spectrum the kernel is associated to
-            #    - a range of 3.15 times the FWHM already contains 99.98% of a Gaussian LSF integral, we thus use 5 times its value 
-            #    - G(rv) = exp(- (rv/ sqrt(2)*sig )^2  ) with  = FWHM/(2 sqrt(2ln(2)))   
-            #      with eta = sqrt(2)*sig
-            #           sig = FWHM/(2 sqrt(2ln(2)))  
-            #      thus FWHM = eta*(2 sqrt(ln(2)))  
-            #      we assume a conservative FWHM = 50km/s for macroturbulence
-            dbins = args['cen_bins'][1]-args['cen_bins'][0]        
-            hnkern=np.int(np.ceil(2.125*50./dbins)+1)
-            cen_bins_kernel=dbins*np.arange(-hnkern,hnkern+1)
+        #--------------------------------------------------------------------------------        
+        #Updating intrinsic line profiles
+        #    - if the line properties or the stellar grid cells to which they are attributed to vary
+        if args['var_line'] or args['var_star_grid']:
+            init_st_intr_prof(args,args['grid_dic'],param)
             
-            #Calculate local macroturbulence kernel
-            cos_mu_cell = mu_cell
-            sin_mu_cell = np.sqrt(1. - mu_cell**2.)
-            macro_kern_loc = args['mac_mode_func'](cen_bins_kernel,param,cos_mu_cell,sin_mu_cell)
-            macro_kern_loc=macro_kern_loc/np.sum(macro_kern_loc) 
+    #--------------------------------------------------------------------------------
+    #Radial velocities of the stellar surface (km/s)
+    #    - an offset is allowed to account for the star/input frame velocity when the model is used on raw data 
+    #--------------------------------------------------------------------------------
+    rv_shift_grid = calc_RVrot(args['grid_dic']['x_st_sky'],args['grid_dic']['y_st'],args['star_params']['istar_rad'],param) + param['rv']
+    cb_band = calc_CB_RV(get_LD_coeff(args['system_prop']['achrom'],0),args['system_prop']['achrom']['LD'][0],param['c1_CB'], param['c2_CB'], param['c3_CB'],param)
+    if np.max(np.abs(cb_band))!=0.:rv_shift_grid += np_poly(cb_band)(args['grid_dic']['mu']).flatten()
+
+    #--------------------------------------------------------------------------------        
+    #Coadding local line profiles over stellar disk
+    #--------------------------------------------------------------------------------
+    icell_list = np.arange(args['grid_dic']['nsub_star'])
     
-            #Convolution
-            #    - bins must have the same size in a given table
-            flux_intr=astro_conv(flux_intr,macro_kern_loc,boundary='extend')          
-        
-    #Shift stored intrinsic profile to RV of local stellar surface element        
-    #    - see align_data for details 
-    #    - models are pre-calculated and then shifted, since the line profile and the shift are independent
-    elif (args['mode'] in ['theo','Intrbin']):
-        if ('spec' in args['type']):edge_bins_rest = args['edge_bins_intr']*spec_dopshift(-rv_shift) 
-        elif (args['type']=='CCF'):edge_bins_rest = args['edge_bins_intr'] + rv_shift
-        flux_intr = bind.resampling(args['edge_bins'],edge_bins_rest,flux_loc_cell, kind=args['resamp_mode'])            
+    #Multithreading
+    #    - disabled with theoretical profiles, there seems to be an incompatibility with sme
+    if (args['nthreads']>1) and (args['mode']!='theo'):
+        flux_DI_sum=MAIN_multithread(coadd_loc_line_prof,args['nthreads'],args['grid_dic']['nsub_star'],[rv_shift_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,args,),output = True)                           
     
-    #Continuum scaling into local line profiles
-    #    - default continuum of intrinsic profiles is set to 1 so that it can be modulated chromatically here
-    flux_loc=flux_intr*Fsurf_cell_spec
+    #Direct call
+    else:flux_DI_sum=coadd_loc_line_prof(rv_shift_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)
     
-    return flux_loc
+    #Co-adding profiles
+    DI_flux_norm = np.sum(flux_DI_sum,axis=0)
+
+    #Scaling disk-integrated profile to requested continuum
+    #    - DI_flux_norm is returned by the function normalized to unity  
+    DI_flux_cont = param['cont']*DI_flux_norm
+
+    #Polynomial continuum level
+    #    - P(x) = cont*(1 + a1*rv + a2*rv^2 + a3*rv^3 ... )
+    #      defined as x = rv or x=w-wref to provide less leverage to the fit 
+    cen_bins_ref = args['cen_bins'] - args['cen_bins_polref']
+    DI_flux_mod=DI_flux_cont*pol_cont(cen_bins_ref,args,param)    
+
+    return DI_flux_mod,DI_flux_cont,DI_flux_norm
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''
-Initialization of stellar grid properties
-    - for disk-integrated and local stellar grid
-    - fit parameters are initialized to default stellar properties
-'''
-def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_guess_tab):  
-
-    #Stellar grid properties
-    #    - all stellar properties are initialized to default stellar values
-    #      those defined as variable properties through the settings will be overwritten in 'par_formatting'
-    for key,bd_min,bd_max in zip(['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
-                                 [0.,    None,       None,      None,   None,   None,   -1.,        0.,     0.,      0.,     0. , 0.,     0. ,  0.,     0. ,    0.],
-                                 [1e4,   None,       None,      None,   None,   None,    1.,        1.,     1.,      1e5,    1.,  1e5,    1e5,  1e5,    100.,   100.]):
-        if key in star_params:params.add_many((key, star_params[key],   False,    bd_min,bd_max,None))
-
-    #Properties specific to disk-integrated profiles
-    if fixed_args['DI_grid']:
-        for ideg in range(1,5):params.add_many(('LD_u'+str(ideg),  system_prop['achrom']['LD_u'+str(ideg)][0],              False,    None,None,None))   
-
-    #Line model properties
-    params.add_many(('cont',      fixed_args['flux_cont'],                          False,    None,             None,               None))
-    params.add_many(('rv',        RV_guess_tab[0],                                  False,    RV_guess_tab[1],  RV_guess_tab[2],    None)) 
-    for ideg in range(1,5):params.add_many(('c'+str(ideg)+'_pol',          0.,              False,    None,None,None)) 
-
-    return fixed_args,params    
-
-
-
-'''
-Initializing intrinsic / local profiles for global grid
-'''
 def init_custom_DI_prof(fixed_args,gen_dic,system_prop,theo_dic,star_params,param_in):   
+    r"""**Disk-integrated profile: grid initialization**
+
+    Initializes stellar and intrinsic profile grids
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
     if isinstance(param_in,lmfit.parameter.Parameters):params={par:param_in[par].value for par in param_in}
     else:params=deepcopy(param_in) 
 
@@ -288,99 +266,55 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,theo_dic,star_params,para
 
 
 
+def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_guess_tab):  
+    r"""**Disk-integrated profile: parameter initialization**
 
+    Initializes stellar parameters controlling either disk-integrated or local stellar grids. 
+    Fit parameters are initialized to default stellar properties
 
-
-'''
-Custom discretized profile
-    - the disk-integrated profile is built upon a discretized grid of the stellar surface to allow accounting for any type of intensity and velocity field
-'''
-def MAIN_custom_DI_prof(param,RV,args=None):
-    ymodel=gen_over_func(param,custom_DI_prof,args)
-    return ymodel
-
-'''
-Function to calculate the disk-integrated stellar profile
-    - separated from init_custom_DI_prof() so that custom_DI_prof() can be used in fitting routines with varying parameters
-'''
-def custom_DI_prof(param,x,args=None):
-
-    #--------------------------------------------------------------------------------
-    #Updating stellar grid and line profile grid
-    #    - only if routine is called in fit mode, otherwise the default pipeline stellar grid and the scaling from init_custom_DI_prof() are used
-    #--------------------------------------------------------------------------------
-    if args['fit']:    
-
-        #Updating stellar grid
-        #    - if stellar grid is different from the default one 
-        if args['var_star_grid']:
-            
-            #Update variable stellar properties and stellar grid
-            up_model_star(args,param)
-
-            #Update broadband scaling of intrinsic profiles into local profiles
-            #    - only necessary if stellar grid is updated
-            theo_intr2loc(args['grid_dic'],args['system_prop'],args,args['ncen_bins'],args['grid_dic']['nsub_star'])     
+    Args:
+        TBD
     
-        #--------------------------------------------------------------------------------        
-        #Updating intrinsic line profiles
-        #    - if the line properties or the stellar grid cells to which they are attributed to vary
-        if args['var_line'] or args['var_star_grid']:
-            init_st_intr_prof(args,args['grid_dic'],param)
-            
-    #--------------------------------------------------------------------------------
-    #Radial velocities of the stellar surface (km/s)
-    #    - an offset is allowed to account for the star/input frame velocity when the model is used on raw data 
-    #--------------------------------------------------------------------------------
-    rv_shift_grid = calc_RVrot(args['grid_dic']['x_st_sky'],args['grid_dic']['y_st'],args['star_params']['istar_rad'],param) + param['rv']
-    cb_band = calc_CB_RV(get_LD_coeff(args['system_prop']['achrom'],0),args['system_prop']['achrom']['LD'][0],param['c1_CB'], param['c2_CB'], param['c3_CB'],param)
-    if np.max(np.abs(cb_band))!=0.:rv_shift_grid += np_poly(cb_band)(args['grid_dic']['mu']).flatten()
-
-    #--------------------------------------------------------------------------------        
-    #Coadding local line profiles over stellar disk
-    #--------------------------------------------------------------------------------
-    icell_list = np.arange(args['grid_dic']['nsub_star'])
+    Returns:
+        TBD
     
-    #Multithreading
-    #    - disabled with theoretical profiles, there seems to be an incompatibility with sme
-    if (args['nthreads']>1) and (args['mode']!='theo'):
-        flux_DI_sum=MAIN_multithread(coadd_loc_line_prof,args['nthreads'],args['grid_dic']['nsub_star'],[rv_shift_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,args,),output = True)                           
-    
-    #Direct call
-    else:flux_DI_sum=coadd_loc_line_prof(rv_shift_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)
-    
-    #Co-adding profiles
-    DI_flux_norm = np.sum(flux_DI_sum,axis=0)
+    """ 
+    #Stellar grid properties
+    #    - all stellar properties are initialized to default stellar values
+    #      those defined as variable properties through the settings will be overwritten in 'par_formatting'
+    for key,bd_min,bd_max in zip(['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
+                                 [0.,    None,       None,      None,   None,   None,   -1.,        0.,     0.,      0.,     0. , 0.,     0. ,  0.,     0. ,    0.],
+                                 [1e4,   None,       None,      None,   None,   None,    1.,        1.,     1.,      1e5,    1.,  1e5,    1e5,  1e5,    100.,   100.]):
+        if key in star_params:params.add_many((key, star_params[key],   False,    bd_min,bd_max,None))
 
-    #Scaling disk-integrated profile to requested continuum
-    #    - DI_flux_norm is returned by the function normalized to unity  
-    DI_flux_cont = param['cont']*DI_flux_norm
+    #Properties specific to disk-integrated profiles
+    if fixed_args['DI_grid']:
+        for ideg in range(1,5):params.add_many(('LD_u'+str(ideg),  system_prop['achrom']['LD_u'+str(ideg)][0],              False,    None,None,None))   
 
-    #Polynomial continuum level
-    #    - P(x) = cont*(1 + a1*rv + a2*rv^2 + a3*rv^3 ... )
-    #      defined as x = rv or x=w-wref to provide less leverage to the fit 
-    cen_bins_ref = args['cen_bins'] - args['cen_bins_polref']
-    DI_flux_mod=DI_flux_cont*pol_cont(cen_bins_ref,args,param)    
+    #Line model properties
+    params.add_many(('cont',      fixed_args['flux_cont'],                          False,    None,             None,               None))
+    params.add_many(('rv',        RV_guess_tab[0],                                  False,    RV_guess_tab[1],  RV_guess_tab[2],    None)) 
+    for ideg in range(1,5):params.add_many(('c'+str(ideg)+'_pol',          0.,              False,    None,None,None)) 
 
-    return DI_flux_mod,DI_flux_cont,DI_flux_norm
+    return fixed_args,params    
 
 
 
 
 
-
-
-
-
-
-
-
-'''
-Routine to initialize intrinsic profile grid and properties
-    - called upon initialization of the disk-integrated stellar profile grid, or in fit mode if the stellar grid or the intrinsic profile grid vary
-'''
 def init_st_intr_prof(args,grid_dic,param):
+    r"""**Intrinsic stellar profiles: initialization**
 
+    Initializes intrinsic profile grid and properties.
+    Called upon initialization of the disk-integrated stellar profile grid, or in fit mode if the stellar grid or the intrinsic profile grid vary
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
     #Theoretical intrinsic profiles
     if (args['mode']=='theo'):
 
@@ -423,11 +357,18 @@ def init_st_intr_prof(args,grid_dic,param):
 
 
 
-'''
-Function returning theoretical intrinsic profile grid
-'''
 def gen_theo_intr_prof(sme_grid):
+    r"""**Theoretical intrinsic stellar profiles**
+
+    Returns grid of theoretical intrinsic profiles  as a function of :math:`\mu`
+
+    Args:
+        TBD
     
+    Returns:
+        TBD
+    
+    """    
     #Initialize grid of synthetic spectra
     flux_intr_grid = np.zeros([sme_grid['n_mu'],sme_grid['n_wav']],dtype=float)
     
@@ -448,23 +389,44 @@ def gen_theo_intr_prof(sme_grid):
 
 
 
-'''
-Intrinsic to local intensity scaling
-    - see proc_intr_data() and loc_prof_DI_mast(): intrinsic spectra do not necessarily have the same flux as the disk-integrated profiles, but have been set to the same continuum or total flux
-    - now that the intrinsic and disk-integrated profiles are equivalent in terms of flux we have:
-   F_intr(w,t,vis) ~ F_DI(w,vis)
-   this is valid for broadband fluxes or the continuum of CCFs (see rescale_data() )
-    - the model disk-integrated profile is defined as 
-   F_DI_mod(w,vis) = sum( all stellar cells , F_intr(w - w_shift , x,vis)*LD(cell,w)*dS ) / A
-                   ~ sum( all stellar cells , F_DI(w - w_shift,vis)*LD(cell,w)*dS ) / A
-      where the shift accounts for the stellar surface velocity field. If we neglect these shifts (for spectra) or consider the continuum range (for CCF)
-   F_DI_mod(w,vis) ~ F_DI(w,vis)*sum( all stellar cells , LD(cell,w)*dS ) / A
-   A(w) = sum( all stellar cells , LD(cell,w)*dS )
-   where A is a spectrum
-    - if the line profile is calculated directly within the fit function we store the scaling profiles
-'''
-def theo_intr2loc(grid_dic,system_prop,fixed_args,ncen_bins,nsub_star):
 
+
+
+def theo_intr2loc(grid_dic,system_prop,fixed_args,ncen_bins,nsub_star):
+    r"""**Intrinsic to local intensity scaling**
+
+    Returns the scaling values or profiles to scale stellar line profiles from intrinsic to local in each cell.
+    
+    Intrinsic spectra do not necessarily have the same flux as the disk-integrated profiles, but have been set to the same continuum or total flux (see `proc_intr_data()` and `loc_prof_DI_mast()`).
+    Now that the intrinsic and disk-integrated profiles are equivalent in terms of flux we have :math:`F_\mathrm{intr}(w,t,vis) \sim F_\mathrm{DI}(w,vis)`.
+    This is valid for broadband fluxes or the continuum of CCFs (see `rescale_data()`).
+    
+    The model disk-integrated profile is defined as 
+    
+    .. math::    
+       F_\mathrm{DI,mod}(w,vis) &= (\sum_{\mathrm{all \, stellar \, cells}} F_\mathrm{intr}(w - w_\mathrm{shift},x,vis) \mathrm{LD}(cell,w) dS ) / A  \\
+                                & \sim (\sum_{\mathrm{all \, stellar \, cells}} F_\mathrm{DI}(w - w_\mathrm{shift},vis) \mathrm{LD}(cell,w) dS ) / A
+                               
+    Where the shift accounts for the stellar surface velocity field. If we neglect these shifts (for spectra) or consider the continuum range (for CCF) then
+
+    .. math::    
+       F_\mathrm{DI,mod}(w,vis) \sim F_\mathrm{DI}(w,vis) (\sum_{\mathrm{all \, stellar \, cells}} \mathrm{LD}(cell,w) dS ) / A
+       
+    Where A is a spectrum   
+
+    .. math::     
+       A(w) = \sum_{\mathrm{all \, stellar \, cells}}(\mathrm{LD}(cell,w) dS )
+
+    If the line profile is calculated directly within the fit function we store the scaling profiles.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """   
+    
     #Grid of broadband intensity variations, at the resolution of current grid
     #    - condition is validated if data is spectral and intensity input is chromatic
     if ('spec' in fixed_args['type']) and ('chrom' in system_prop):
@@ -485,4 +447,100 @@ def theo_intr2loc(grid_dic,system_prop,fixed_args,ncen_bins,nsub_star):
         fixed_args['Fsurf_grid_spec'] = np.tile(grid_dic['Fsurf_grid_star_achrom'][:,0],[ncen_bins,1]).T       
 
     return None
+
+
+
+
+
+
+
+def calc_loc_line_prof(icell,rv_shift,Fsurf_cell_spec,flux_loc_cell,mu_cell,args,param):
+    r"""**Local line profile calculation**
+
+    Calculates local profile from a given cell of the stellar disk.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+
+    #Calculation of analytical intrinsic line profile
+    #    - model is always calculated in RV space, and later converted back to wavelength space if relevant
+    #    - the model is directly calculated over the RV table at its requested position, rather than being pre-calculated and shifted
+    if args['mode']=='ana':
+        input_cell = {'cont':1. , 'rv':rv_shift }
+        for pol_par in args['input_cell_all']:
+            input_cell[pol_par] = args['input_cell_all'][pol_par][icell]
+        flux_intr=args['func_prof'](input_cell,args['cen_bins'] )[0]
+            
+        #Convolve intrinsic profile with macroturbulence kernel
+        if args['mac_mode'] is not None:
+    
+            #Mactroturbulence kernel table     
+            #    - centered spectral table with same pixel widths as the band spectrum the kernel is associated to
+            #    - a range of 3.15 times the FWHM already contains 99.98% of a Gaussian LSF integral, we thus use 5 times its value 
+            #    - G(rv) = exp(- (rv/ sqrt(2)*sig )^2  ) with  = FWHM/(2 sqrt(2ln(2)))   
+            #      with eta = sqrt(2)*sig
+            #           sig = FWHM/(2 sqrt(2ln(2)))  
+            #      thus FWHM = eta*(2 sqrt(ln(2)))  
+            #      we assume a conservative FWHM = 50km/s for macroturbulence
+            dbins = args['cen_bins'][1]-args['cen_bins'][0]        
+            hnkern=np.int(np.ceil(2.125*50./dbins)+1)
+            cen_bins_kernel=dbins*np.arange(-hnkern,hnkern+1)
+            
+            #Calculate local macroturbulence kernel
+            cos_mu_cell = mu_cell
+            sin_mu_cell = np.sqrt(1. - mu_cell**2.)
+            macro_kern_loc = args['mac_mode_func'](cen_bins_kernel,param,cos_mu_cell,sin_mu_cell)
+            macro_kern_loc=macro_kern_loc/np.sum(macro_kern_loc) 
+    
+            #Convolution
+            #    - bins must have the same size in a given table
+            flux_intr=astro_conv(flux_intr,macro_kern_loc,boundary='extend')          
+        
+    #Shift stored intrinsic profile to RV of local stellar surface element        
+    #    - see align_data for details 
+    #    - models are pre-calculated and then shifted, since the line profile and the shift are independent
+    elif (args['mode'] in ['theo','Intrbin']):
+        if ('spec' in args['type']):edge_bins_rest = args['edge_bins_intr']*spec_dopshift(-rv_shift) 
+        elif (args['type']=='CCF'):edge_bins_rest = args['edge_bins_intr'] + rv_shift
+        flux_intr = bind.resampling(args['edge_bins'],edge_bins_rest,flux_loc_cell, kind=args['resamp_mode'])            
+    
+    #Continuum scaling into local line profiles
+    #    - default continuum of intrinsic profiles is set to 1 so that it can be modulated chromatically here
+    flux_loc=flux_intr*Fsurf_cell_spec
+    
+    return flux_loc
+
+
+
+
+def coadd_loc_line_prof(rv_shift_grid,icell_list,Fsurf_grid_spec,flux_intr_grid,mu_grid,param,args):
+    r"""**Local line profile co-addition**
+
+    Cumulates local profiles from each cell of the stellar disk.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    flux_DI_sum=[]
+    for isub,(icell,rv_shift,flux_intr_cell,mu_cell) in enumerate(zip(icell_list,rv_shift_grid,flux_intr_grid,mu_grid)):
+        flux_DI_sum+=[calc_loc_line_prof(icell,rv_shift,Fsurf_grid_spec[isub],flux_intr_cell,mu_cell,args,param)]
+    return flux_DI_sum
+
+
+
+
+
+
+
+
+
 

@@ -16,6 +16,7 @@ import copy
 from minim_routines import fit_minimization,ln_prob_func_lmfit
 from astropy.io import fits
 import glob
+import imageio
 from ANTARESS_plots.utils_plots import custom_axis,autom_x_tick_prop,autom_y_tick_prop,stackrel,scaled_title,autom_range_ext,plot_shade_range
 from ANTARESS_routines.ANTARESS_binning import resample_func,calc_binned_prof,def_weights_spatiotemp_bin
 from ANTARESS_analysis.ANTARESS_inst_resp import return_FWHM_inst
@@ -31,7 +32,8 @@ from ANTARESS_grids.ANTARESS_spots import retrieve_spots_prop_from_param, calc_s
 from ANTARESS_plots.ANTARESS_plot_settings import ANTARESS_plot_settings
 
 
-def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic, mock_dic):
+
+def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,mock_dic,nbook_dic,user):
 
     print()
     print('-----------------------------------')
@@ -39,12 +41,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     print('-----------------------------------')
 
     import matplotlib
-    if gen_dic['non_int_back']==True:
-        matplotlib.use('Agg')	
+    if gen_dic['non_int_back']:matplotlib.use('Agg')	
     import matplotlib.pyplot as plt    
 
-    #Retrieve manual settings
-    plot_settings = ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic)
+    #Retrieve user settings
+    if user!='':plot_settings = ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic)
+    else:plot_settings = {}
+    if ('plots' not in nbook_dic):nbook_dic['plots'] = {}
     
 
     ##############################################################################
@@ -260,7 +263,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             if plot_mod in ['map_Intr_prof_est','map_Intr_prof_res']: 
 
                                 #Check that model exists for in-transit profiles 
-                                if (gen_dic[inst][vis]['idx_exp2in'][iexp_or]==-1.) or ((gen_dic[inst][vis]['idx_exp2in'][iexp_or]>-1) and (((plot_options['line_model']=='fit') and (iexp in prof_fit_vis)) or ((plot_options['line_model']=='rec') and (iexp in prof_fit_vis['idx_est_loc'])))): 
+                                if (gen_dic[inst][vis]['idx_exp2in'][iexp_or]==-1.) or \
+                                  ((gen_dic[inst][vis]['idx_exp2in'][iexp_or]>-1) and \
+                                        (plot_options['cont_only'] or \
+                                        ((plot_options['line_model']=='fit') and (iexp in prof_fit_vis)) or \
+                                        ((plot_options['line_model']=='rec') and (iexp in prof_fit_vis['idx_est_loc'])))): 
                                
                                     #Estimates for intrinsic stellar profiles
                                     #    - models for local stellar profiles are scaled as F_intr(w,t,v) = F_res(w,t,v)/(1 - LC_theo(band,t))
@@ -895,14 +902,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Reference planet for the visit
         pl_ref=plot_options['pl_ref'][inst][vis] 
-
+        
         #Upload model
         prof_fit_vis = None
         fit_results = None
-        if plot_options['plot_line_model'] or plot_options['plot_line_model_HR'] or ('_res' in plot_mod):
+        if plot_options['plot_line_model'] or plot_options['plot_line_model_HR'] or (('_res' in plot_mod) & (not plot_options['cont_only'])):
             
             #Planet-occulted models from reconstruction
-            if (('Res' in plot_mod) or ('Intr' in plot_mod)) and plot_options['line_model']=='rec':
+            if (('Res' in plot_mod) or ('Intr' in plot_mod)) and (plot_options['line_model']=='rec'):
                 prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
                 
             #Line profile from best-fit
@@ -1001,17 +1008,24 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #      if out-of-transit residuals are requested, we add the path to out-of-transit Residual profiles
         elif (plot_mod=='map_Intr_prof_res'): 
             inout_flag=np.repeat('in',len(iexp_plot))  
-            data_path_all = [prof_fit_vis['loc_data_corr_inpath']+str(iexp) for iexp in iexp_plot]
-            rest_frame = prof_fit_vis['rest_frame']                   
+            if plot_options['cont_only']:
+                data_path_all = [data_vis['proc_Intr_data_paths']+str(iexp) for iexp in iexp_plot]
+                rest_frame = data_dic['Intr'][inst][vis]['rest_frame']                  
+            else:
+                data_path_all = [prof_fit_vis['loc_data_corr_inpath']+str(iexp) for iexp in iexp_plot]
+                rest_frame = prof_fit_vis['rest_frame']                   
  
             #Calculate out-of-transit residuals
             if plot_options['show_outres']:
                 iexp_out = np.setdiff1d(data_dic['Res'][inst][vis]['idx_to_extract'],iexp_orig)   #original indexes of local profiles not processed as intrinsic profiles
+                inout_flag=np.append(inout_flag,np.repeat('out',len(iexp_out)))
                 iexp_plot=np.append(iexp_plot,iexp_out) 
                 nexp_plot+=len(iexp_out)
                 iexp_orig=np.append(iexp_orig,iexp_out)
-                data_path_all+=[prof_fit_vis['loc_data_corr_outpath']+str(iexp) for iexp in iexp_out]
-                inout_flag=np.append(inout_flag,np.repeat('out',len(iexp_out)))
+                if plot_options['cont_only']:
+                    data_path_all+=[data_vis['proc_Res_data_paths']+str(iexp) for iexp in iexp_out]
+                else:
+                    data_path_all+=[prof_fit_vis['loc_data_corr_outpath']+str(iexp) for iexp in iexp_out]
         
         #Measured data
         else:         
@@ -1095,7 +1109,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Plot for each instrument        
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
-            print('      - Instrument : '+inst)
+            print('  > Instrument : '+inst)
             if inst not in plot_options['color_dic']:plot_options['color_dic'][inst]={}
             if inst not in plot_options['color_dic_sec']:plot_options['color_dic_sec'][inst]={}
 
@@ -1125,7 +1139,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
             #Plot for each visit
             for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst]): 
-                print('       - Visit : '+vis)
+                print('     - Visit : '+vis)
                 data_vis = data_dic[inst][vis]
                 pl_ref,txt_conv,iexp_plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc = sub_plot_prof_dir(inst,vis,plot_options,data_mode,'Indiv',add_txt_path,plot_mod,txt_aligned,data_type,data_type_gen)
 
@@ -1143,11 +1157,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         plot_options['color_dic_sec'][inst][vis]=np.array([cmap(0)]) if nexp_plot==1 else cmap( np.arange(nexp_plot)/(nexp_plot-1.))         
                     else:plot_options['color_dic_sec'][inst][vis] = np.repeat(plot_options['color_dic_sec'][inst][vis],nexp_plot)
 
-                #Overplot multiple exposures
+                #Overplot multiple exposures for each plotted order
+                images_to_make_GIF = None
                 if plot_options['multi_exp']: 
                     all_figs = {}
                     all_ax= {}
                     y_range_loc = {}
+                    if plot_options['GIF_generation'] and (len(order_list)>1):images_to_make_GIF = []
 
                 #Plot profile for each exposure
                 for isub,(iexp,data_path_exp) in enumerate(zip(iexp_plot,data_path_all)):      
@@ -1286,6 +1302,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                     all_ax = {iord:plt.gca()}
                                     if plot_options['y_range'] is not None:y_range_loc={ iord:sc_fact*np.array(plot_options['y_range'])}
                                     else:y_range_loc={ iord:[1e100,-1e100]} 
+                                    
+                                    #GIF is generated over series of exposures for current order
+                                    if plot_options['GIF_generation'] and (len(iexp_plot)>1) and (isub==0):images_to_make_GIF = {iord:[]}
+ 
                                 else:
                                     if iord not in all_figs:
                                         all_figs[iord] = plt.figure(figsize=plot_options['fig_size'])
@@ -1428,8 +1448,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         evar_loc = sc_fact*err_exp[cond_fit_exp_raw]
                                         if plot_options['y_range'] is None:y_range_loc[iord] = [min(np.nanmin(var_loc),y_range_loc[iord][0]),max(np.nanmax(var_loc),y_range_loc[iord][1])]
                                         dy_range=y_range_loc[iord][1]-y_range_loc[iord][0]
-            
-            
             
                                         #Calculate mean and dispersion of the residuals 
                                         if plot_options['plot_prop']:  
@@ -1594,14 +1612,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                             disp_res=(flux_exp[cond_fit_exp_raw]-flux_mod_exp_fit).std()
                                             plt.text(xtxt,ytxt+2*ygap,'RMS (res.) = '+"{0:.5f}".format(disp_res),verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40)  
   
-                                        if (plot_mod in ['DI_prof','DIbin','Intr_prof','CCF_Intrbin','CCFatm','CCF_Atmbin']):                    
+                                        if (plot_mod in ['DI_prof','DIbin','Intr_prof','CCF_Intrbin','Atm_prof','CCF_Atmbin']):                    
                 
                                             #Intrinsic and atmospheric CCFs
                                             ytxt = y_range_loc[iord][1]
-                                            if (plot_mod in ['Intr_prof','CCF_Intrbin','CCFatm','CCF_Atmbin']): 
+                                            if (plot_mod in ['Intr_prof','CCF_Intrbin','Atm_prof','CCF_Atmbin']): 
                                             
                                                 #Oplot original index
-                                                if (plot_mod in ['Intr_prof','CCFatm']): 
+                                                if (plot_mod in ['Intr_prof','Atm_prof']): 
                                                     plt.text(x_range_loc[0]+0.1*dx_range,ytxt-0.3*dy_range,'i$_\mathrm{all}$ ='+str(iexp_or),verticalalignment='center', horizontalalignment='left',fontsize=15.,zorder=40) 
                     
                                                 #Indicate if individual CCF is detected
@@ -1613,7 +1631,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                     plt.text(x_range_loc[0]+0.1*dx_range,ytxt-0.4*dy_range,txt_detection,verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40) 
                                 
                                             #Main fit properties
-                                            if (plot_mod in ['DI_prof','DIbin','Intr_prof','CCF_Intrbin','CCFatm','CCF_Atmbin']):
+                                            if (plot_mod in ['DI_prof','DIbin','Intr_prof','CCF_Intrbin','Atm_prof','CCF_Atmbin']):
                                                 xtxt = np.mean(x_range_loc)+0.05*dx_range
                                                 ygap = -0.1*dy_range
                                                 if (plot_options['fit_type']=='indiv'):    
@@ -1630,7 +1648,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                             plt.text(xtxt,ytxt+6.5*ygap,'           '+"{0:.2f}".format(mod_prop_exp['cont_amp']/np.mean(mod_prop_exp['err_cont_amp']))+'$\sigma$ ; '+"{0:.2f}".format(mod_prop_exp['cont_amp']/disp_from_mean_cont)+'$\sigma_\mathrm{cont}$',verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40)     
                                                         plt.text(xtxt,ytxt+5.*ygap,'amp ='+stackrel(mod_prop_exp['amp'],mod_prop_exp['err_amp'][0],mod_prop_exp['err_amp'][1],"0:.2e"),verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40) 
                                                         plt.text(xtxt,ytxt+5.5*ygap,'           '+"{0:.2f}".format(mod_prop_exp['amp']/np.mean(mod_prop_exp['err_amp']))+'$\sigma$ ; '+"{0:.2f}".format(mod_prop_exp['cont_amp']/disp_from_mean_cont)+'$\sigma_\mathrm{cont}$',verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40)                                 
-                                                elif (plot_options['fit_type']=='global') and (plot_mod in ['Intr_prof','CCFatm']):
+                                                elif (plot_options['fit_type']=='global') and (plot_mod in ['Intr_prof','Atm_prof']):
                                                     plt.text(xtxt,ytxt+2*ygap,'RV (intr.) ='+"{0:.4f}".format(mod_prop_exp['rv'])+' km s$^{-1}$',verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40)                                                      
                                                     plt.text(xtxt,ytxt+3*ygap,'ctrst (intr.) ='+"{0:.4f}".format(mod_prop_exp['ctrst']),verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40) 
                                                     plt.text(xtxt,ytxt+4*ygap,'FWHM (intr.) ='+"{0:.4f}".format(mod_prop_exp['FWHM'])+' km s$^{-1}$',verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40) 
@@ -1660,7 +1678,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                     #     for pl_loc in data_dic[inst][vis]['transit_pl']:
                                     #         bd_int=data_dic['Atm']['plrange'] + coord_dic[inst][vis][pl_loc]['rv_pl'][iexp_or]
                                     #         if (bd_int[0]<1e10):plt.axvspan(bd_int[0],bd_int[1], facecolor='red', alpha=0.1,zorder=10) 
-                                    # elif (plot_mod in ['CCFatm','CCFatm_res','CCF_Atmbin','CCF_Atmbin_res']):
+                                    # elif (plot_mod in ['Atm_prof','Atm_prof_res','CCF_Atmbin','CCF_Atmbin_res']):
                                     #     bd_int=data_dic['Atm']['plrange']
                                     #     if (bd_int[0]<1e10):plt.axvspan(bd_int[0],bd_int[1], facecolor='red', alpha=0.1,zorder=10) 
                                     
@@ -1740,25 +1758,45 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                 hide_axis = plot_options['hide_axis'],
                                                 x_title=x_title,y_title=y_title,
                                                 font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
-                                    
-                                    save_path = path_loc
+      
+                                    if (plot_mod in ['DI_raw','DImast','Res','Intr','atm']) and (data_dic['Res']['type'][inst]=='spec2D'):str_add='_iord'+str(iord)
+                                    else:str_add=''
                                     if not plot_options['multi_exp']:
-                                        if (plot_mod in ['DI_raw','DImast','Res','Intr','atm']) and (data_dic['Res']['type'][inst]=='spec2D'):str_add='_iord'+str(iord)
-                                        else:str_add=''
                                         if plot_mod in ['DIbin','DIbin_res','DImast','Intrbin','Atmbin']:str_idx = 'idx'+"{:d}".format(iexp)
                                         else:str_idx = 'idx'+"{:d}".format(iexp_or)
                                         loc_str='_'   
                                         if iexp_or in gen_dic[inst][vis]['idx_in']:loc_str='_in'+str(gen_dic[inst][vis]['idx_exp2in'][iexp_or])
-                                        elif iexp_or in gen_dic[inst][vis]['idx_out']:loc_str='_out'+str(iexp_or)                                        
-                                        if (plot_options['plot_pre']=='permpeak') or (plot_options['plot_post']=='permpeak'):
-                                            save_path += 'iord'+str(iord)+'/'+str_idx+loc_str+'_'+ref_name+"{0:.5f}".format(ref_val)
-                                            if (not os_system.path.exists(path_loc+'iord'+str(iord)+'/')):os_system.makedirs(path_loc+'iord'+str(iord)+'/')  
-                                        else:save_path+='/'+str_idx+loc_str+'_'+ref_name+"{0:.5f}".format(ref_val)+str_add
+                                        elif iexp_or in gen_dic[inst][vis]['idx_out']:loc_str='_out'+str(iexp_or)                                         
+                                        str_mid=str_idx+loc_str 
                                     else:    
-                                        save_path+='/'+ref_name+"{0:.5f}".format(ref_val)+'_multiexp_iord'+str(iord)
-                                    all_figs[iord].savefig(save_path+'.'+plot_ext ,transparent=plot_options['transparent'])                        
-                                    plt.close()         
+                                        str_mid='multiexp'
+                                    filename = path_loc+'/'+str_mid+'_'+ref_name+"{0:.5f}".format(ref_val)+str_add+'.'+plot_ext
+                                    all_figs[iord].savefig(filename,transparent=plot_options['transparent'])                        
+                                    plt.close() 
+                                    
+                                    #Store image for GIF generation
+                                    if (images_to_make_GIF is not None): 
+                                        if (not plot_options['multi_exp']):images_to_make_GIF[iord].append(imageio.imread(filename))   
+                                        else:images_to_make_GIF.append(imageio.imread(filename))   
         
+                        ### End of loop on orders         
+
+               ### End of loop on exposures
+               
+                #Generate GIF
+                if (images_to_make_GIF is not None):
+                    
+                    #For each order, over exposure series
+                    if (not plot_options['multi_exp']):
+                        for iord in images_to_make_GIF:
+                            if (plot_mod in ['DI_raw','DImast','Res','Intr','atm']) and (data_dic['Res']['type'][inst]=='spec2D'):str_add='_iord'+str(iord)
+                            else:str_add=''                            
+                            imageio.mimsave(path_loc+'/'+ref_name+str_add+'.gif', images_to_make_GIF[iord])
+                    
+                    #Over order series
+                    else:imageio.mimsave(path_loc+'/multi_exp_'+ref_name+'.gif', images_to_make_GIF)
+
+               
         return None
 
 
@@ -4465,6 +4503,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #List of stellar lines to plot
         plot_options[key_plot]['st_lines_wav'] = []
 
+        #Make GIF from plot series.
+        plot_options[key_plot]['GIF_generation'] = False
+
         #--------------------------------------
 
         #Instruments to plot
@@ -4541,7 +4582,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['plot_cont_lev']=False
         
         #Plot continuum pixels specific to each exposure
-        plot_options[key_plot]['plot_cont_exp']=False        
+        plot_options[key_plot]['plot_cont_exp']=False   
+        
+        #Plot residuals from continuum alone
+        plot_options[key_plot]['cont_only'] = False
 
         #Plot fitted pixels
         plot_options[key_plot]['plot_fitpix']=False
@@ -4565,7 +4609,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['plot_biss']=False
                 
         #Print dispersions
-        plot_options[key_plot]['print_disp'] = True  
+        plot_options[key_plot]['print_disp'] = False  
         
         #Plot HITRAN telluric lines for requested molecules
         plot_options[key_plot]['plot_tell_HITRANS']=[]
@@ -4889,7 +4933,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['y_range_ord'] = None  
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])
         
         print('-----------------------------------')
         print('+ Instrumental calibration estimates')     
@@ -5098,7 +5143,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['glob_mast_vis']=True 
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])
           
         print('-----------------------------------')
         print('+ Global scaling master')
@@ -5124,7 +5170,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])
           
         print('-----------------------------------')
         print('+ Weighing master')
@@ -5153,7 +5200,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['print_disp']=None         
         
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])
           
         print('-----------------------------------')
         print('+ Telluric CCF')
@@ -5290,7 +5338,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['tell_species'] = gen_dic['tell_species']
         
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])
           
         print('-----------------------------------')
         print('+ Telluric properties')
@@ -5441,7 +5490,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['dlnw_plot'] = 0.002
         
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])
         
         print('-----------------------------------')
         print('+ Global flux balance (exposures)')
@@ -5601,7 +5651,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)
         
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])
             
         print('-----------------------------------')
         print('   > Plotting flux balance correction from DRS')
@@ -5685,7 +5736,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['dlnw_plot'] = 0.002
         
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])
         
         print('-----------------------------------')
         print('+ Global flux balance (visits)')
@@ -5833,7 +5885,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])                
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])                
 
         print('-----------------------------------')
         print('   > Plotting intra-order flux balance correction')
@@ -5944,7 +5997,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)
  
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])  
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])  
         
         print('-----------------------------------')
         print('   > Plotting temporal flux correction')
@@ -6031,7 +6085,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['cosm_vs_ord']=True 
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])  
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])  
         
         print('-----------------------------------')
         print('+ Plotting cosmics correction')
@@ -6171,7 +6226,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])  
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])  
 
         print('-----------------------------------')
         print('+ Plotting master for persistent peaks correction')
@@ -6281,7 +6337,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)
     
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])          
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])          
 
         print('-----------------------------------')
         print('   > Plotting fringing correction')
@@ -6379,7 +6436,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['plot_contmax']=True 
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])  
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])  
 
         print('-----------------------------------')
         print('+ Individual disk-integrated spectra')
@@ -6411,6 +6469,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #Default settings
                 plot_options=gen_plot_default(plot_options,key_plot)
 
+                #Choose profiles to plot
+                #    - 'raw' : input profiles
+                plot_options[key_plot]['step']='raw'  
+
                 ##############################################################################
                 #Plot each raw profile and its fit in their original rest frame (typically heliocentric)
                 #    - ccfs are continuum-normalized for the purpose of the plot
@@ -6425,7 +6487,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     print('+ Individual residuals from disk-integrated profiles')
         
                 #Overwrite default settings
-                plot_options[key_plot].update(plot_settings[key_plot]) 
+                if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+                if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
         
                 #Plot        
                 sub_plot_prof(plot_options[key_plot],key_plot,plot_dic[key_plot])
@@ -6483,7 +6546,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['y_range_disp'] = {}
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])  
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])  
 
         print('-----------------------------------')
         print('+ Individual disk-integrated transmission spectra')
@@ -6534,7 +6598,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     print('+ Individual residuals from binned disk-integrated profiles')
         
                 #Overwrite default settings
-                plot_options[key_plot].update(plot_settings[key_plot]) 
+                if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+                if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
         
                 #Plot
                 sub_plot_prof(plot_options[key_plot],key_plot,plot_dic[key_plot])
@@ -6573,7 +6638,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])
     
         print('-----------------------------------')
         print('+ Individual 1D disk-integrated spectra')
@@ -6628,7 +6694,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('+ Intrinsic mask : spectra')
             
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
         #---------------------------------
         #Plot
@@ -6835,7 +6902,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('+ Intrinsic mask : line depth range selection')
             
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
         #---------------------------------
         #Plot
@@ -6878,7 +6946,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('+ Intrinsic mask : line depth and width selection')
             
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
         #---------------------------------
         #Plot
@@ -6917,7 +6986,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('+ Intrinsic mask : line position selection')
             
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
         #---------------------------------
         #Plot
@@ -6956,7 +7026,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('+ Intrinsic mask : telluric selection')
             
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
         #---------------------------------
         #Plot
@@ -6992,7 +7063,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('+ Intrinsic mask : VALD selection')
             
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
         #---------------------------------
         #Plot
@@ -7109,7 +7181,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('+ Intrinsic mask : morphological (asymmetry) selection')
             
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
         #---------------------------------
         #Plot
@@ -7151,7 +7224,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('+ Intrinsic mask : morphological (shape) selection')
             
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
         #---------------------------------
         #Plot
@@ -7193,7 +7267,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('+ Intrinsic mask : RV dispersion selection')
             
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
         #---------------------------------
         #Plot
@@ -7232,6 +7307,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     if (plot_dic['prop_raw']!=''):
         print('-----------------------------------')
         print('+ Properties of raw data and disk-integrated CCFs')
+        
+        #Default properties
+        if 'prop_raw_ordin' not in plot_settings:plot_settings['prop_raw_ordin']=['rv']
+        
+        #Processing properties
         for plot_prop in plot_settings['prop_raw_ordin']:
             key_plot = 'prop_raw_'+plot_prop 
           
@@ -7488,7 +7568,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             if (plot_prop=='biss_span'):print('   > Bissector span')
                 
             #Overwrite default settings
-            plot_options[key_plot].update(plot_settings[key_plot]) 
+            if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+            if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
             #Plot routine   
             sub_plot_CCF_prop(plot_prop,plot_options[key_plot],'raw')  
@@ -7514,7 +7595,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['data_type']='CCF' 
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])                 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])                 
 
         print('-----------------------------------')
         print('+ Plotting data aligned in star rest frame')
@@ -7568,7 +7650,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['lc_gap']=None
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
          
         print('-----------------------------------')
         print('+ Input light curves')
@@ -7717,7 +7800,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['wav_LC']=[5500.]
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
         
         print('-----------------------------------')
         print('+ Effective spectral light curves')
@@ -7832,7 +7916,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['step']='scaled'
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])         
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])         
         
         print('-----------------------------------')
         print('+ Plotting 2D maps of disk-integrated profiles')   
@@ -7860,7 +7945,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)           
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])         
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])         
 
         print('-----------------------------------')
         print('+ Plotting 2D maps of binned disk-integrated stellar profiles') 
@@ -7892,7 +7978,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)           
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
         
         print('-----------------------------------')
         print('+ 2D maps of 1D disk-integrated stellar profiles') 
@@ -7915,7 +8002,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)           
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])         
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])         
         
         print('-----------------------------------')
         print('+ 2D maps of residual profiles')    
@@ -7944,7 +8032,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['mode_loc_data_corr'] = 'glob_mod'
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])  
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])  
 
         print('-----------------------------------')
         print('   > Plotting individual local spectra for each visit')
@@ -7979,7 +8068,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['fit_type']='global'  
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])          
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])          
 
         print('-----------------------------------')
         print('+ Plotting individual residual CCFs for each visit')
@@ -8009,7 +8099,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)   
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
     
         print('-----------------------------------')
         print('+ Plot stdev vs binsize for out CCFs in each visit')
@@ -8092,7 +8183,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['aligned']=False
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
         
         print('-----------------------------------')
         print('+ 2D maps: intrinsic stellar profiles') 
@@ -8119,7 +8211,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)           
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])         
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])         
 
         print('-----------------------------------')
         print('+ Plotting 2D maps of binned intrinsic stellar profiles') 
@@ -8149,7 +8242,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)           
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])         
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])         
 
         print('-----------------------------------')
         print('+ 2D map: 1D intrinsic stellar profiles') 
@@ -8183,6 +8277,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 if key_plot == 'map_Intr_prof_est':
                     
+                    #Model always required
+                    plot_options[key_plot]['plot_line_model'] = True
+                    
                     print('-----------------------------------')
                     print('+ 2D map: theoretical intrinsic stellar profiles') 
         
@@ -8193,17 +8290,17 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         
                     #Correct only for continuum level
                     plot_options[key_plot]['cont_only']=True
+                    plot_options[key_plot]['plot_line_model'] = False
                     
                     print('-----------------------------------')
                     print('+ 2D map: residuals from intrinsic stellar profiles') 
                   
                 #------------------------------------
                 #Overwrite default settings
-                plot_options[key_plot].update(plot_settings[key_plot]) 
+                if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+                if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
-                #Model always required
-                plot_options[key_plot]['plot_line_model'] = True
-                
+
                 #Plot map
                 sub_2D_map(key_plot,plot_dic[key_plot],plot_options[key_plot])    
 
@@ -8230,7 +8327,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['cmap'] = 'Spectral'
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
    
         print('-----------------------------------')
         print('+ Plotting 2D maps of PC-based noise model')     
@@ -8286,7 +8384,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         for key in ['x_range_var','y_range_var','x_range_rms','y_range_rms','x_range_bic','y_range_bic','x_range_hist','y_range_hist','x_range_pc','y_range_pc','x_range_pc','y_range_pc','x_range_fft','y_range_fft']:plot_options[key_plot][key]=None
          
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])          
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])          
 
         print('-----------------------------------')
         print('   > Plotting PCA')
@@ -8629,7 +8728,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['data_type']='CCF' 
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])  
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])  
 
         print('-----------------------------------')
         print('+ All intrinsic profiles')
@@ -8649,84 +8749,42 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
     '''
-    Plotting individual intrinsic spectral profiles
+    Plotting individual intrinsic profiles
     '''
-    if any('spec' in s for s in data_dic['Res']['type'].values()) and (plot_dic['sp_intr']!=''):
-        key_plot = 'sp_intr'
-        
-        #Default settings
-        plot_options=gen_plot_default(plot_options,key_plot)  
-
-        #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])  
-    
-        print('-----------------------------------')
-        print('+ Individual intrinsic spectra')
-        sub_plot_prof(plot_options[key_plot],'Intr',plot_dic[key_plot])             
-                        
-
-
-
-
-
-
-
-
-
-
-    '''
-    Plotting individual intrinsic CCF profiles
-    '''
-    if ('CCF' in data_dic['Res']['type'].values()) and ((plot_dic['Intr_prof']!='') or (plot_dic['Intr_prof_res']!='')):
+    if ((plot_dic['Intr_prof']!='') or (plot_dic['Intr_prof_res']!='')):
         for key_plot in ['Intr_prof','Intr_prof_res']:
             if plot_dic[key_plot]!='':
-      
+              
                 #Default settings
                 plot_options=gen_plot_default(plot_options,key_plot)
-         
-                #Model from the global fit to all CCFs ('global')
-                plot_options[key_plot]['fit_type']='global'           
 
-        ##############################################################################
-        #Plot each intrinsic CCF and its fit
-        if (plot_dic['Intr_prof']!=''):
-            key_plot = 'Intr_prof'
+                #Model from the global fit to all profiles ('global')
+                plot_options[key_plot]['fit_type']='global'       
 
-            #Plot aligned CCFs
-            plot_options[key_plot]['aligned']=False
+                ##############################################################################
+                #Plot each flux profile and its fit
+                if (key_plot=='Intr_prof'):
 
+                    #Plot aligned profiles
+                    plot_options[key_plot]['aligned']=False
 
-            print('-----------------------------------')
-            print('+ Individual intrinsic CCFs')
-            
-        #Plot residuals between the intrinsic CCFs and their fit
-        if (plot_dic['Intr_prof_res']!='') and ((gen_dic['fit_Intr']) or (gen_dic['fit_IntrProf'])):
-            key_plot = 'Intr_prof_res'
-
-            print('-----------------------------------')
-            print('+ Individual residuals from intrinsic CCFs')
-
-        #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])      
+                    print('-----------------------------------')
+                    print('+ Individual intrinsic profiles')
         
-        #Plot
-        sub_plot_prof(plot_options[key_plot],key_plot,plot_dic[key_plot])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                ##############################################################################
+                #Plot residuals between the flux profiles and their fit
+                if (key_plot=='Intr_prof_res') and ((gen_dic['fit_Intr']) or (gen_dic['fit_IntrProf'])):
+                    print('-----------------------------------')
+                    print('+ Individual residuals from intrinsic profiles')
+        
+                #Overwrite default settings
+                if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+                if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
+        
+                #Plot        
+                sub_plot_prof(plot_options[key_plot],key_plot,plot_dic[key_plot])    
+    
+    
 
 
 
@@ -8740,7 +8798,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)          
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])  
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])  
     
         print('-----------------------------------')
         print('+ Individual binned intrinsic spectra')
@@ -8786,7 +8845,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('+ Individual residuals from binned intrinsic CCFs')
    
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])      
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])      
         
         #Plot
         sub_plot_prof(plot_options[key_plot],key_plot,plot_dic[key_plot])
@@ -8831,7 +8891,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 plot_options=gen_plot_default(plot_options,key_plot)          
         
                 #Overwrite default settings
-                plot_options[key_plot].update(plot_settings[key_plot])  
+                if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+                if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])  
         
                 if key_plot=='sp_Intr_1D':  
                     print('-----------------------------------')
@@ -8882,7 +8943,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['IntrProp_path']=None
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])  
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])  
 
         print('-----------------------------------')
         print('+ Chi2 per fitted local property value')
@@ -8923,7 +8985,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['plot_visid'] = True
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])         
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])         
         
         print('-----------------------------------')
         print('+ Range of planet-occulted regions')
@@ -9086,7 +9149,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     print('+ 1D PDFs of intrinsic properties')
         
                 #Overwrite default settings
-                plot_options[key_plot].update(plot_settings[key_plot]) 
+                if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+                if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
                 
                 #Plot
                 sub_plot_propCCF_mcmc_PDFs(plot_options[key_plot],key_plot,plot_dic[key_plot])
@@ -9256,7 +9320,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     print('   > True contrast')
 
             #Overwrite default settings
-            plot_options[key_plot].update(plot_settings[key_plot]) 
+            if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+            if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
             #Plot routine   
             sub_plot_CCF_prop(plot_prop,plot_options[key_plot],'Intr')                  
@@ -9307,7 +9372,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['y_range'] = np.array([-1.15,1.15])
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
         
         print('-----------------------------------')
         print('+ Plot planet-occulted regions')
@@ -9404,7 +9470,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         st_pos_in=coord_dic[inst][vis][pl_loc]['st_pos']
                         end_pos_in=coord_dic[inst][vis][pl_loc]['end_pos']
                     elif data_type=='Intrbin':
-                        data_bin = np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot']+'_add.npz',allow_pickle=True)['data'].item()
+                        data_bin = np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis+'_'+plot_options[key_plot]['dim_plot']+'_add.npz',allow_pickle=True)['data'].item()
                         x_pos_in=data_bin['cen_pos'][0]
                         y_pos_in=data_bin['cen_pos'][1]
                         st_pos_in=data_bin['st_pos']
@@ -9482,6 +9548,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Position of planets along their orbit
         plot_options[key_plot]['t_BJD'] = None
+        plot_options[key_plot]['GIF_generation'] = False
         plot_options[key_plot]['xorp_pl'] = np.tile([[-0.5],[0.5]],len(plot_options[key_plot]['pl_to_plot'])).T
         plot_options[key_plot]['yorb_pl'] = np.repeat(0.5,len(plot_options[key_plot]['pl_to_plot']))  
 
@@ -9568,6 +9635,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #Number of equi-RV curves
         plot_options[key_plot]['n_equi']=None      
     
+        #Color range
+        plot_options[key_plot]['val_range'] = None       
+    
         #Overlay axis of selected frame
         plot_options[key_plot]['axis_overlay']=False      
     
@@ -9590,7 +9660,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('+ Plotting planetary system architecture')
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
+
         path_loc = gen_dic['save_plot_dir']+'System_view/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
         #--------------------------------------------
@@ -10024,7 +10096,18 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #--------------------------------------------
         #Plot series
         if plot_options[key_plot]['t_BJD'] is None:plot_series=['']
-        else:plot_series = plot_options[key_plot]['t_BJD']['t']
+        else:plot_series = plot_options[key_plot]['t_BJD']['t']-2400000. 
+
+        #Making a GIF if we have multiple exposures of the system
+        if (plot_options[key_plot]['t_BJD'] is not None) and plot_options[key_plot]['GIF_generation']:
+            if plot_dic['system_view']!='png':stop('GIF generation requires png format')
+
+            #Initialize a list to store the images used to make the GIF.
+            images_to_make_GIF = [] 
+            
+        else:images_to_make_GIF = None
+        
+        #Processing exposures
         for idx_pl,plot_t in enumerate(plot_series):
             
             #--------------------------------------------
@@ -10033,7 +10116,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #---------
             plt.ioff()        
             fig = plt.figure(figsize=(plot_options[key_plot]['width'],plot_options[key_plot]['width']))
-            ax1=fig.add_axes([plot_settings[key_plot]['margins'][0],plot_settings[key_plot]['margins'][1],plot_settings[key_plot]['margins'][2]-plot_settings[key_plot]['margins'][0],plot_settings[key_plot]['margins'][3]-plot_settings[key_plot]['margins'][1]])
+            ax1=fig.add_axes([plot_options[key_plot]['margins'][0],plot_options[key_plot]['margins'][1],plot_options[key_plot]['margins'][2]-plot_options[key_plot]['margins'][0],plot_options[key_plot]['margins'][3]-plot_options[key_plot]['margins'][1]])
         
             if plot_options[key_plot]['axis_overlay']:
                 
@@ -10663,23 +10746,19 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         x_title='Distance (R$_{*}$)',y_title='Distance (R$_{*}$)',
                         font_size=plot_options[key_plot]['font_size'],xfont_size=plot_options[key_plot]['font_size'],yfont_size=plot_options[key_plot]['font_size'])
             
-            #-----------------------				
-            plt.savefig(path_loc+'System'+str(idx_pl)+'_'+str(plot_t)+'.'+plot_dic['system_view']) 
+            #-----------------------	
+            filename = path_loc+'System'+str(idx_pl)+'_'+str(plot_t)+'.'+plot_dic['system_view']		
+            plt.savefig(filename) 
             plt.close()
-    
-    #Making a GIF if we have multiple exposures of the system
-    if plot_options[key_plot]['t_BJD'] is not None and plot_options[key_plot]['GIF_generation']:
-        #Import package required for the GIF generation.
-        import imageio
-        #Initialize a list to store the images used to make the GIF.
-        images_to_make_GIF = []
-        #Iterate over the system views generated for each exposure, and store the output png files in the GIF list.
-        for idx_pl, plot_t in enumerate(plot_series):
-            filename = path_loc+'System'+str(idx_pl)+'_'+str(plot_t)+'.'+plot_dic['system_view']
-            images_to_make_GIF.append(imageio.imread(filename))
+            
+            #Store image for GIF generation
+            if images_to_make_GIF is not None:images_to_make_GIF.append(imageio.imread(filename))
+
+        ### End of loop on plotted timesteps    
+
         #Produce and store the GIF.
-        imageio.mimsave(path_loc+'System_GIF.gif', images_to_make_GIF)
-    
+        if images_to_make_GIF is not None:imageio.mimsave(path_loc+'System.gif', images_to_make_GIF)
+
 
 
 
@@ -10733,7 +10812,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('+ Plotting binned disk-integrated and intrinsic profiles')
             
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
             
         #Plot
         sub_plot_DI_Intr_binprof(plot_options,plot_dic[key_plot])     
@@ -10772,7 +10852,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('+ Plotting all atmospheric profiles in each visit')
         
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
         #Plot        
         sub_plot_all_prof(plot_options,'atm',plot_dic[key_plot])          
@@ -10781,88 +10862,43 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
 
-
-
-
-
     '''
-    Plotting individual atmospheric spectral profiles
+    Plotting individual atmospheric profiles
     '''
-    if any('spec' in s for s in data_dic['Atm']['type'].values()) and (plot_dic['sp_atm']!=''):
-        key_plot = 'sp_atm'
-        
-        #Default settings
-        plot_options=gen_plot_default(plot_options,key_plot)           
-
-        #Plot aligned profiles
-        plot_options[key_plot]['aligned']=False
-    
-        print('-----------------------------------')
-        print('   > Plotting individual atmospheric spectra for each visit')
-
-        #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
-
-        #Plot        
-        sub_plot_prof(plot_options,'atm',plot_dic[key_plot])    
-          
-                        
-
-
-
-
-
-
-
-
-
-
-    '''
-    Plotting individual atmospheric CCF profiles
-    '''
-    if ('CCF' in data_dic['Atm']['type'].values()) and ((plot_dic['CCFatm']!='') or (plot_dic['CCFatm_res']!='')):
-        for key_plot in ['CCFatm','CCFatm_res']:
+    if ((plot_dic['Atm_prof']!='') or (plot_dic['Atm_prof_res']!='')):
+        for key_plot in ['Atm_prof','Atm_prof_res']:
             if plot_dic[key_plot]!='':
-                
+              
                 #Default settings
-                plot_options=gen_plot_default(plot_options,key_plot)                   
+                plot_options=gen_plot_default(plot_options,key_plot)
+
+                #Model from the global fit to all profiles ('global')
+                plot_options[key_plot]['fit_type']='global'       
+
+                ##############################################################################
+                #Plot each flux profile and its fit
+                if (key_plot=='Atm_prof'):
+
+                    #Plot aligned profiles
+                    plot_options[key_plot]['aligned']=False
+
+                    print('-----------------------------------')
+                    print('+ Individual atmospheric profiles')
         
-                #Choose model to use
-                #    - from the fit to individual CCFs ('indiv') or from the global fit to all CCFs ('global')
-                plot_options[key_plot]['fit_type']='global'           
-
-        ##############################################################################
-        #Plot each atmospheric CCF and its fit
-        if (plot_dic['CCFatm']!=''):
-            key_plot='CCFatm'
-            
-            #Plot aligned CCFs
-            plot_options[key_plot]['aligned']=False
-
-            print('-----------------------------------')
-            print('+ Plot individual atmospheric CCFs for each visit')
-
-        ##############################################################################
-        #Plot residuals between the atmospheric CCFs and their fit
-        if (plot_dic['CCFatm_res']!='') and ((gen_dic['ana_atm']) or (gen_dic['fit_AtmProf'])):
-            key_plot='CCFatm_res'
-
-            print('-----------------------------------')
-            print('+ Plot individual residuals of fit to atmospheric CCFs for each visit')
-
-        #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+                ##############################################################################
+                #Plot residuals between the profiles and their fit
+                if (key_plot=='Atm_prof_res') and ((gen_dic['fit_Atm']) or (gen_dic['fit_AtmProf'])):
+                    print('-----------------------------------')
+                    print('+ Individual residuals from atmospheric profiles')
         
-        #Plot
-        sub_plot_prof(plot_options,key_plot,plot_dic[key_plot])
-            
-            
-            
-            
-            
-            
-            
-            
+                #Overwrite default settings
+                if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+                if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
+        
+                #Plot        
+                sub_plot_prof(plot_options[key_plot],key_plot,plot_dic[key_plot])    
+    
+      
             
             
     '''
@@ -10878,7 +10914,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('+ Plotting individual binned atmospheric spectra for each visit')
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])         
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])         
 
         #Plot        
         sub_plot_prof(plot_options,'Atmbin',plot_dic[key_plot])             
@@ -10925,7 +10962,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('   > Plot individual residuals of fit to binned atmospheric CCFs for each visit')
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot]) 
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot]) 
 
         #Plot
         sub_plot_prof(plot_options[key_plot],key_plot,plot_dic[key_plot])
@@ -10953,7 +10991,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('   > Plotting individual 1D atmospheric spectra for each visit')
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])  
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])  
             
         #Plot
         sub_plot_prof(plot_options[key_plot],key_plot,plot_dic[key_plot])             
@@ -10978,7 +11017,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('   > Plot chi2 per fitted atmospheric property')
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])   
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])   
         
         #Plot
         sub_plot_chi2_prop(plot_options[key_plot],plot_dic[key_plot])  
@@ -11003,7 +11043,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['aligned']=False
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])         
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])         
 
         print('-----------------------------------')
         print('+ Plotting 2D maps of atmospheric profiles') 
@@ -11036,7 +11077,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)           
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])         
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])         
         
         print('-----------------------------------')
         print('+ Plotting 2D maps of binned atmospheric profiles') 
@@ -11066,7 +11108,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options=gen_plot_default(plot_options,key_plot)           
 
         #Overwrite default settings
-        plot_options[key_plot].update(plot_settings[key_plot])         
+        if (key_plot in plot_settings):plot_options[key_plot].update(plot_settings[key_plot])
+        if (key_plot in nbook_dic['plots']):plot_options[key_plot].update(nbook_dic['plots'][key_plot])         
 
         print('-----------------------------------')
         print('+ Plotting 2D maps of 1D atmospheric profiles') 

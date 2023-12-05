@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 from ANTARESS_main import ANTARESS_main
-from ANTARESS_settings import ANTARESS_settings
 from ANTARESS_systems import all_system_params
 from utils import stop
+import importlib
 import os as os_system
 
-def ANTARESS_launcher(input_dic = {} , user = None):
+def ANTARESS_launcher(nbook_dic = {} , user = ''):
     r"""**ANTARESS launch routine.**
     
     Runs ANTARESS with default or manual settings.  
@@ -21,10 +21,10 @@ def ANTARESS_launcher(input_dic = {} , user = None):
     """ 
 
     #Overwrite default system properties
-    if ('system' in input_dic) and (len(input_dic['system'])>0):
-        all_system_params.update(input_dic['system'])
+    if ('system' in nbook_dic) and (len(nbook_dic['system'])>0):
+        all_system_params.update(nbook_dic['system'])
 
-    #Retrieve default settings
+    #Initializes main dictionaries
     gen_dic={}
     plot_dic={}
     corr_spot_dic={}
@@ -33,7 +33,7 @@ def ANTARESS_launcher(input_dic = {} , user = None):
         'Res':{},
         'PCA':{},
         'Intr':{'fit_prof':{},'mask':{}},
-        'Atm':{'fit_prof':{}}}
+        'Atm':{'fit_prof':{},'mask':{}}}
     mock_dic={}
     theo_dic={}
     detrend_prof_dic={}
@@ -41,24 +41,32 @@ def ANTARESS_launcher(input_dic = {} , user = None):
         'IntrProp':{},
         'ResProf':{},
         'IntrProf':{},
-        } 
-    ANTARESS_settings(user,gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic)
-
-    #Retrieve user settings
+        'AtmProp':{},
+        'AtmProf':{},
+        }  
     
-
+    #Retrieve default settings
+    from ANTARESS_settings import ANTARESS_settings
+    ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic)
+    
+    #Overwrite with user settings
+    if user!='':
+        main_file = importlib.import_module('ANTARESS_settings_'+user)
+        main_file.ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic)
+    
+    #Overwrite with notebook settings
+    if ('settings' in nbook_dic) and (len(nbook_dic['settings'])>0):
+        if 'gen_dic' in nbook_dic['settings']:gen_dic.update(nbook_dic['settings']['gen_dic'])
+        if 'data_dic' in nbook_dic['settings']:
+            if 'DI' in nbook_dic['settings']['data_dic']:data_dic['DI'].update(nbook_dic['settings']['data_dic']['DI'])
+        if 'mock_dic' in nbook_dic['settings']:mock_dic.update(nbook_dic['settings']['mock_dic'])
+        if 'plot_dic' in nbook_dic['settings']:plot_dic.update(nbook_dic['settings']['plot_dic'])
+    
     #Moving to ANTARESS directory
     antaress_dir = '/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/antaress'
     gen_dic['save_dir']= '/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/'
     os_system.chdir(antaress_dir)
 
-    #Overwrite default settings
-    if ('settings' in input_dic) and (len(input_dic['settings'])>0):
-        if 'gen_dic' in input_dic['settings']:gen_dic.update(input_dic['settings']['gen_dic'])
-        if 'data_dic' in input_dic['settings']:
-            if 'DI' in input_dic['settings']['data_dic']:data_dic['DI'].update(input_dic['settings']['data_dic']['DI'])
-        if 'mock_dic' in input_dic['settings']:mock_dic.update(input_dic['settings']['mock_dic'])
-        if 'plot_dic' in input_dic['settings']:plot_dic.update(input_dic['settings']['plot_dic'])
     
     print('****************************************')
     print('Launching ANTARESS')
@@ -67,7 +75,7 @@ def ANTARESS_launcher(input_dic = {} , user = None):
     
     #Run over nominal settings properties
     if len(gen_dic['grid_run'])==0:
-        ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,all_system_params[gen_dic['star_name']])
+        ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,all_system_params[gen_dic['star_name']],nbook_dic,user)
     
     #Run over a grid of properties
     else:
@@ -82,7 +90,7 @@ def ANTARESS_launcher(input_dic = {} , user = None):
             else:
                 print('Order :',str(iord))
                 gen_dic['orders4ccf'][inst]=[iord] 
-            ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,all_system_params[gen_dic['star_name']])
+            ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,all_system_params[gen_dic['star_name']],nbook_dic,user)
 
-    if len(input_dic)==0:stop('End of workflow')
+    print('End of workflow')
     return None

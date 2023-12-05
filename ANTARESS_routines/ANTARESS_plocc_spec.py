@@ -12,7 +12,7 @@ from ANTARESS_routines.ANTARESS_data_align import align_data
 from ANTARESS_analysis.ANTARESS_inst_resp import def_st_prof_tab,cond_conv_st_prof_tab,ref_inst_convol,resamp_model_st_prof_tab,conv_st_prof_tab
 
 
-def def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic):
+def def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic):
     r"""**Planet-occulted exposure profiles.**
     
     Calls requested function to define planet-occulted profiles associated with each observed exposure
@@ -59,10 +59,11 @@ def def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_para
         elif corr_mode=='rec_prof': 
             data_add = loc_prof_rec(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,coord_dic)
             
-        #Saving complementary data
-        data_add['loc_data_corr_inpath'] = data_dic[inst][vis]['proc_Intr_data_paths']
-        data_add['loc_data_corr_outpath'] = data_dic[inst][vis]['proc_Res_data_paths']
-        data_add['rest_frame'] = data_dic['Intr'][inst][vis]['rest_frame']
+        #Saving complementary data for plots
+        if plot_dic['map_Intr_prof_res']!='':
+            data_add['loc_data_corr_inpath'] = data_dic[inst][vis]['proc_Intr_data_paths']
+            data_add['loc_data_corr_outpath'] = data_dic[inst][vis]['proc_Res_data_paths']
+            data_add['rest_frame'] = data_dic['Intr'][inst][vis]['rest_frame']
         datasave_npz(gen_dic['save_data_dir']+'Loc_estimates/'+corr_mode+'/'+inst+'_'+vis+'_add',data_add)
             
     #Checking that local data has been calculated for all exposures
