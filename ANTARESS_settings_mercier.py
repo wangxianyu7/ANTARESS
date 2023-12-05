@@ -2414,7 +2414,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # gen_dic['correct_spots'] = True &  False
     # gen_dic['calc_correct_spots'] = True  #&  False
     
-corr_spot_dic = {}
+    corr_spot_dic = {}
     
     # # List all spots that should be included in the correction 
     # if gen_dic['star_name'] == 'V1298tau' : 
@@ -4907,6 +4907,10 @@ corr_spot_dic = {}
     #%%%%% Derived properties
     #    - from original or binned data
     plot_dic['prop_Atm']=''  
+
+    #Plot residuals between CCFs and their fit
+    plot_dic['CCFatm_res']=''  # pdf
+
 
 
 

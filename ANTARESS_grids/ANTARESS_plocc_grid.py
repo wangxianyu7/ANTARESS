@@ -135,7 +135,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
     #Condition for spot calculation
     #Initializing the necessary dictionaries. We have to initialize them to something since they 
     #will be called later, even if spots are not activated.
-    n_spots = 2
+    n_spots = param['num_spots']
     cond_spots_all = np.zeros([n_exp,n_spots], dtype=bool)
     #Define dictionary that will contain the spot properties for all the exposures
     spots_prop_all_exp = {}
@@ -352,7 +352,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                                 if (theo_dic['precision']=='low'):surf_prop_dic[subkey_chrom][pl_loc]['rv_broad'][iband,i_in] = np.max([coord_reg_dic[subkey_chrom][pl_loc]['rv_broad'][iband],surf_prop_dic[subkey_chrom][pl_loc]['rv_broad'][iband,i_in]])
                                 elif (theo_dic['precision']=='high'):surf_prop_dic[subkey_chrom]['line_prof'][:,i_in]+=sum_prop_dic[subkey_chrom][pl_loc]['line_prof']
                  
-                
+                            print('1:', Focc_star[subkey_chrom][iband])
                 #Retrieving the properties of the region occulted by each spot
                 for spot in spots_in_exp:
                     
@@ -380,6 +380,14 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
 
                             sp_loc_grid, cond_occ_sp, occ_region_prop = new_calc_spotted_region_prop(spot_prop_to_use, theo_dic, star_params, system_prop[subkey_chrom]['LD'][iband], ld_coeff, gd_band, cb_band, param, 
                                                             args['coeff_ord2name'][args['inst']][args['vis']], args['coord_line'], args['func_prof_name'], par_list, args['pol_mode'])
+
+                            #Updating the necessary dictionaries
+                            #Retrieve star flux grid
+                            # _,_,_,Fsurf_grid_star_sp,_,_ = calc_Isurf_grid([iband],args['grid_dic']['nsub_star'],system_prop[subkey_chrom],args['grid_dic'],
+                            #                                 star_params,theo_dic['Ssub_Sstar'], region = 'star')
+
+                            print('1:', Fsurf_grid_star_sp)
+                            # Focc_star[subkey_chrom][iband] = Fsurf_grid_star_sp[sp_loc_grid]
 
                     # print('9:', len(sp_loc_grid))
                     # print('10:', cond_occ_sp)
