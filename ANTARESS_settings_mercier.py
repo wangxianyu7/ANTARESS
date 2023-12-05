@@ -186,109 +186,107 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - if set to True: selection is based upon each module option
     gen_dic['calc_all'] = True  
 
-    if user is not None:
     
-        #Planetary system
-        
-        #Star name
+    #Planetary system
+    
+    #Star name
 
-        if user=='mercier':
-            gen_dic['star_name']='AUMic' # mercier
-    
-        #Transiting planets
-        if user=='mercier' and gen_dic['star_name']=='AUMic':
-            gen_dic['transit_pl'] = {
-                'AUMicb':{'ESPRESSO' : ['mock_vis']}, 
-                }
-            gen_dic['kepl_pl'] = ['AUMicb']
-        
-        
-        #Plot settings    
-        
-        #Input data type
-        if gen_dic['star_name']=='AUMic' and user=='mercier':
-            gen_dic['type']={'ESPRESSO':'CCF'}      
-        
-      
-        #Spectral frame
-        gen_dic['sp_frame']='air'
-        
-        #Multi-threading for profile fits
-        gen_dic['fit_prof_nthreads'] = 10
-    
-        #Data uncertainties
-    
-        #Using covariance matrix
-        gen_dic['use_cov']=False
-        if gen_dic['star_name'] in ['HD209458','WASP76','HD189733','GJ436']:gen_dic['use_cov']=True
-    
-        # print('ATTENTION NOCOV')
-        # gen_dic['use_cov']=False
-    
-        #Manual variance table 
-        # gen_dic['force_flag_err']=['ESPRESSO']
+    gen_dic['star_name']='AUMic' # mercier
+
+    #Transiting planets
+    if gen_dic['star_name']=='AUMic':
+        gen_dic['transit_pl'] = {
+            'AUMicb':{'ESPRESSO' : ['mock_vis']}, 
+            }
+        gen_dic['kepl_pl'] = ['AUMicb']
     
     
-        #Error scaling 
-        # gen_dic['g_err']={'ESPRESSO':0.4}    
-        # if 'HD3167_b' in gen_dic['transit_pl']:gen_dic['g_err']={'ESPRESSO':0.8173865854983544}    
-        # gen_dic['g_err']={'CORALIE':1.5}   #TOI858, CCFs
-        # gen_dic['g_err']={'CORALIE':2.4}   #TOI858, master out
-        # gen_dic['g_err']={'ESPRESSO':10.}   #GJ436, prop. errors, CCF DIs indiv
-        # if gen_dic['star_name']=='MASCARA1':gen_dic['g_err']={'ESPRESSO':10.}
-        #RM survey, fit DI/Intr
-        # if gen_dic['star_name']=='HAT_P3':gen_dic['g_err']={'HARPN':1225.821753159515}
-        # if gen_dic['star_name']=='Kepler25':gen_dic['g_err']={'HARPN':1077.0782388569025}
-        # if gen_dic['star_name']=='HAT_P33':gen_dic['g_err']={'HARPN':101.2502291529179}
-        # if gen_dic['star_name']=='HD89345':gen_dic['g_err']={'HARPN':21325.166477498904}
-        # if gen_dic['star_name']=='HAT_P49':gen_dic['g_err']={'HARPN':531.0020126395225}
+    #Plot settings    
     
+    #Input data type
+    if gen_dic['star_name']=='AUMic':
+        gen_dic['type']={'ESPRESSO':'CCF'}      
     
-        #Resampling    
+  
+    #Spectral frame
+    gen_dic['sp_frame']='air'
     
-        #Resampling mode
-        # gen_dic['resamp_mode']='linear'
-        gen_dic['resamp_mode']='cubic'  
-    
-        #Common spectral table
-        gen_dic['comm_sp_tab'] = {}
+    #Multi-threading for profile fits
+    gen_dic['fit_prof_nthreads'] = 10
+
+    #Data uncertainties
+
+    #Using covariance matrix
+    gen_dic['use_cov']=False
+    if gen_dic['star_name'] in ['HD209458','WASP76','HD189733','GJ436']:gen_dic['use_cov']=True
+
+    # print('ATTENTION NOCOV')
+    # gen_dic['use_cov']=False
+
+    #Manual variance table 
+    # gen_dic['force_flag_err']=['ESPRESSO']
+
+
+    #Error scaling 
+    # gen_dic['g_err']={'ESPRESSO':0.4}    
+    # if 'HD3167_b' in gen_dic['transit_pl']:gen_dic['g_err']={'ESPRESSO':0.8173865854983544}    
+    # gen_dic['g_err']={'CORALIE':1.5}   #TOI858, CCFs
+    # gen_dic['g_err']={'CORALIE':2.4}   #TOI858, master out
+    # gen_dic['g_err']={'ESPRESSO':10.}   #GJ436, prop. errors, CCF DIs indiv
+    # if gen_dic['star_name']=='MASCARA1':gen_dic['g_err']={'ESPRESSO':10.}
+    #RM survey, fit DI/Intr
+    # if gen_dic['star_name']=='HAT_P3':gen_dic['g_err']={'HARPN':1225.821753159515}
+    # if gen_dic['star_name']=='Kepler25':gen_dic['g_err']={'HARPN':1077.0782388569025}
+    # if gen_dic['star_name']=='HAT_P33':gen_dic['g_err']={'HARPN':101.2502291529179}
+    # if gen_dic['star_name']=='HD89345':gen_dic['g_err']={'HARPN':21325.166477498904}
+    # if gen_dic['star_name']=='HAT_P49':gen_dic['g_err']={'HARPN':531.0020126395225}
+
+
+    #Resampling    
+
+    #Resampling mode
+    # gen_dic['resamp_mode']='linear'
+    gen_dic['resamp_mode']='cubic'  
+
+    #Common spectral table
+    gen_dic['comm_sp_tab'] = {}
+
+       
+    # if gen_dic['star_name']=='HD209458':
+    #     print('ATTENTION RESAMPLING EVERYWHERE') 
+    #     gen_dic['comm_sp_tab'] = {'ESPRESSO':True}    
+
+
+    #Mask for stellar spectra
+    #gen_dic['CCF_mask'] = '/Travaux/Radial_velocity/RV_masks/ESPRESSO_F9.fits'        #in the air 
     
            
-        # if gen_dic['star_name']=='HD209458':
-        #     print('ATTENTION RESAMPLING EVERYWHERE') 
-        #     gen_dic['comm_sp_tab'] = {'ESPRESSO':True}    
+    #Orders
+    #gen_dic['orders4ccf']={'HARPS':np.arange(36),'HARPN':np.arange(36)} 
+
+    #Screening
+
+    #First pixel for screening
+    gen_dic['ist_scr']=0
     
-    
-        #Mask for stellar spectra
-        #gen_dic['CCF_mask'] = '/Travaux/Radial_velocity/RV_masks/ESPRESSO_F9.fits'        #in the air 
-        
-               
-        #Orders
-        #gen_dic['orders4ccf']={'HARPS':np.arange(36),'HARPN':np.arange(36)} 
-    
-        #Screening
-    
-        #First pixel for screening
-        gen_dic['ist_scr']=0
-        
-        #Screening length determination
-        gen_dic['scr_search']=False
-       
-        #Screening lengths
-        gen_dic['scr_lgth']={}
-         
-        #Plots: screening length analysis
-        plot_dic['scr_search']=''    
-    
-    
-        #Grid run
-        # gen_dic['grid_run'] = {'ESPRESSO':np.delete(np.arange(85),[59,68,74,75,76,77,78,82])}     #empty CCF orders (tellurics)
- 
-    
-        #Data processing
-    
-        #Calculating/retrieving
-        if user=='mercier' and gen_dic['star_name']=='AUMic':gen_dic['calc_proc_data']=True  #& False
+    #Screening length determination
+    gen_dic['scr_search']=False
+   
+    #Screening lengths
+    gen_dic['scr_lgth']={}
+     
+    #Plots: screening length analysis
+    plot_dic['scr_search']=''    
+
+
+    #Grid run
+    # gen_dic['grid_run'] = {'ESPRESSO':np.delete(np.arange(85),[59,68,74,75,76,77,78,82])}     #empty CCF orders (tellurics)
+
+
+    #Data processing
+
+    #Calculating/retrieving
+    if gen_dic['star_name']=='AUMic':gen_dic['calc_proc_data']=True  #& False
 
     
         
@@ -421,92 +419,89 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     mock_dic['use_spots'] = True  & False
     mock_dic['spots_prop'] = {}
     
-     
-    if user is not None:
-    
-        #Activating module
-        gen_dic['mock_data'] =  True     #& False
-    
-        #Setting number of threads 
-        if user=='mercier':
-            mock_dic['nthreads'] = 2 
-
-        #Defining artificial visits
-        if user=='mercier' and gen_dic['star_name'] == 'AUMic':
-            mock_dic['visit_def']={
-                'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.5,0.5]),'nexp':10}}}
-                # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-2,2])/24.,'nexp':50}}}
-                           
-    
-    
-        
-        #Spectral profile settings
-        
-        #Spectral table for disk-integrated profiles 
-        if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
-            mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
          
-        #Heliocentric stellar RV
-        if user=='mercier' and gen_dic['star_name']=='AUMic':
-            mock_dic['sysvel']= {'ESPRESSO' : {'mock_vis' : 0.}} 
+    #Activating module
+    gen_dic['mock_data'] =  True     #& False
+
+    #Setting number of threads 
+    mock_dic['nthreads'] = 2 
+
+    #Defining artificial visits
+    if gen_dic['star_name'] == 'AUMic':
+        mock_dic['visit_def']={
+            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.5,0.5]),'nexp':10}}}
+            # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-2,2])/24.,'nexp':50}}}
+                       
+
+
     
-        
-        #Defining spot properties 
-        if gen_dic['star_name'] == 'AUMic' and user == 'mercier': 
-            mock_dic['use_spots'] = True
-            mock_dic['spots_prop']={
-                 'ESPRESSO':{
-                     'mock_vis':{
-                        
-                        
-                         # For the spot 'spot1' : 
-                         'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 40,
-                         'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051-1.3,
-                         'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
-                         'flux__ISESPRESSO_VSmock_vis_SPspot1'    : 0.2,
-                        
-                         #For the spot 'spot2' : 
-                         'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
-                         'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 + 1.5,
-                         'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
-                         'flux__ISESPRESSO_VSmock_vis_SPspot2'    : 0.4
-                             }
-                        }
+    #Spectral profile settings
+    
+    #Spectral table for disk-integrated profiles 
+    if gen_dic['star_name'] == 'AUMic' :
+        mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
+     
+    #Heliocentric stellar RV
+    if gen_dic['star_name']=='AUMic':
+        mock_dic['sysvel']= {'ESPRESSO' : {'mock_vis' : 0.}} 
+
+    
+    #Defining spot properties 
+    if gen_dic['star_name'] == 'AUMic': 
+        mock_dic['use_spots'] = True
+        mock_dic['spots_prop']={
+             'ESPRESSO':{
+                 'mock_vis':{
+                    
+                    
+                     # For the spot 'spot1' : 
+                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 40,
+                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051-1.3,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
+                     'flux__ISESPRESSO_VSmock_vis_SPspot1'    : 0.2,
+                    
+                     #For the spot 'spot2' : 
+                     'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
+                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 + 1.5,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
+                     'flux__ISESPRESSO_VSmock_vis_SPspot2'    : 0.4
+                         }
                     }
-        
-        
-        #Intrinsic stellar spectra             
-        if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
-            mock_dic['intr_prof']={'ESPRESSO':{
-                'mode':'ana',        
-                'coord_line':'mu',
-                'func_prof_name': 'gauss',
-                'line_trans':None, 
-                'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,
-                            'FWHM_ord0__IS__VS_'  : 8 },
-                'pol_mode' : 'modul'}
                 }
     
     
-        #Count continuum level
-        if user=='mercier' and gen_dic['star_name'] == 'AUMic' :
-            mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e8}}   
-                
-         
-        #Noise settings
-        
-        #Instrumental calibration           
-        if user=='mercier' and gen_dic['star_name'] == 'AUMic' : 
-            mock_dic['gcal'] = {'ESPRESSO' : 1.}   
+    #Intrinsic stellar spectra             
+    if gen_dic['star_name'] == 'AUMic' :
+        mock_dic['intr_prof']={'ESPRESSO':{
+            'mode':'ana',        
+            'coord_line':'mu',
+            'func_prof_name': 'gauss',
+            'line_trans':None, 
+            'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,
+                        'FWHM_ord0__IS__VS_'  : 8 },
+            'pol_mode' : 'modul'}
+            }
 
 
-        #Flux errors
-        if gen_dic['star_name'] == 'AUMic' and user=='mercier': mock_dic['set_err']={'ESPRESSO':True}
-        
-        #Jitter on intrinsic profile properties
-           
-        
-        #Systematic variations on disk-integrated profiles
+    #Count continuum level
+    if gen_dic['star_name'] == 'AUMic' :
+        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e8}}   
+            
+     
+    #Noise settings
+    
+    #Instrumental calibration           
+    if gen_dic['star_name'] == 'AUMic' : 
+        mock_dic['gcal'] = {'ESPRESSO' : 1.}   
+
+
+    #Flux errors
+    if gen_dic['star_name'] == 'AUMic': mock_dic['set_err']={'ESPRESSO':True}
+    
+    #Jitter on intrinsic profile properties
+       
+    
+    #Systematic variations on disk-integrated profiles
                  
                 
                 
@@ -829,78 +824,76 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['system_view']=''  
       
     
-    
-    if user is not None:
-    
-        #Activating module
-        gen_dic['theoPlOcc'] = True #  &  False
-    
-        #Calculating/retrieving
-        gen_dic['calc_theoPlOcc']=True  # &  False  
-    
-        #Precision
-        # theo_dic['precision'] = 'high'
-        theo_dic['precision'] = 'medium'
-    
-        #Star discretization      
-        if gen_dic['star_name']=='AUMic' and user=='mercier':
-            theo_dic['nsub_Dstar']=101
-             
-                
-        #Stellar macroturbulence
-        theo_dic['mac_mode'] = None
-    
-        #Theoretical stellar atmosphere
-    
-        #Planet discretization
-        if user == 'mercier' and gen_dic['star_name']=='AUMic':
-            theo_dic['nsub_Dpl']= {'AUMicb':101.}                
-    
-        #Exposure discretization
-        if user=='mercier' and gen_dic['star_name']=='AUMic':
-            theo_dic['n_oversamp']={'AUMicb':5.}
         
-        #RV table        
+    #Activating module
+    gen_dic['theoPlOcc'] = True #  &  False
+
+    #Calculating/retrieving
+    gen_dic['calc_theoPlOcc']=True  # &  False  
+
+    #Precision
+    # theo_dic['precision'] = 'high'
+    theo_dic['precision'] = 'medium'
+
+    #Star discretization      
+    if gen_dic['star_name']=='AUMic':
+        theo_dic['nsub_Dstar']=101
+         
+            
+    #Stellar macroturbulence
+    theo_dic['mac_mode'] = None
+
+    #Theoretical stellar atmosphere
+
+    #Planet discretization
+    if gen_dic['star_name']=='AUMic':
+        theo_dic['nsub_Dpl']= {'AUMicb':101.}                
+
+    #Exposure discretization
+    if gen_dic['star_name']=='AUMic':
+        theo_dic['n_oversamp']={'AUMicb':5.}
     
-        # #Oversampling 
-        # theo_dic['rv_osamp_line_mod']=0.5 #None  #1.
-        # print('ATTENTION rv_osamp_line_mod')
+    #RV table        
+
+    # #Oversampling 
+    # theo_dic['rv_osamp_line_mod']=0.5 #None  #1.
+    # print('ATTENTION rv_osamp_line_mod')
+
+
+
+
+    #Plot settings
+
+    #Planetary orbit discretization
+    plot_dic['npts_orbit'] = 10000
+
+    #Contact determination
+    # if (gen_dic['star_name']=='HD209458') and gen_dic['mock_data']:    plot_dic['stend_ph'] = 2.      #Plot multi-pl
+
+    #Transit chord discretization        
+    # if gen_dic['star_name']=='MASCARA1':plot_dic['nph_HR'] = 100
+
+    #Range of planet-occulted properties
+    plot_dic['plocc_ranges']=''    
     
+    #Planet-occulted stellar regions
+    plot_dic['occulted_regions']=''
     
-    
-    
-        #Plot settings
-    
-        #Planetary orbit discretization
-        plot_dic['npts_orbit'] = 10000
-    
-        #Contact determination
-        # if (gen_dic['star_name']=='HD209458') and gen_dic['mock_data']:    plot_dic['stend_ph'] = 2.      #Plot multi-pl
-    
-        #Transit chord discretization        
-        # if gen_dic['star_name']=='MASCARA1':plot_dic['nph_HR'] = 100
-    
+    #Planetary system architecture
+    plot_dic['system_view']=''   #png
+  
+    if gen_dic['star_name']=='AUMic':
         #Range of planet-occulted properties
         plot_dic['plocc_ranges']=''    
         
         #Planet-occulted stellar regions
-        plot_dic['occulted_regions']=''
+        plot_dic['occulted_regions']='png'
         
         #Planetary system architecture
-        plot_dic['system_view']=''   #png
-      
-        if user=='mercier' and gen_dic['star_name']=='AUMic':
-            #Range of planet-occulted properties
-            plot_dic['plocc_ranges']=''    
-            
-            #Planet-occulted stellar regions
-            plot_dic['occulted_regions']='png'
-            
-            #Planetary system architecture
-            plot_dic['system_view']='png'   #png
+        plot_dic['system_view']='png'   #png
 
-            #Transit chord discretization        
-            plot_dic['nph_HR'] = 100
+        #Transit chord discretization        
+        plot_dic['nph_HR'] = 100
         
     
 
@@ -2205,153 +2198,151 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Housekeeping and derived properties 
     plot_dic['prop_raw']=''  
     
-    
-    if user is not None:  
-    
-        #Activating
-        gen_dic['fit_DI'] = True    #&  False
-        gen_dic['fit_DIbin']=True   &  False
-        gen_dic['fit_DIbinmultivis']=True    &  False
-    
-    
-        #Calculating/Retrieving
-        gen_dic['calc_fit_DI']=True   #  &  False   
-        gen_dic['calc_fit_DIbin']=True   &  False  
-        gen_dic['calc_fit_DIbinmultivis']=True    &  False  
-    
-        #Fitted data
-    
-        #Constant data errors
-        data_dic['DI']['cst_err']=True   &  False
-        data_dic['DI']['cst_errbin']=True   &  False
-    
-        #Scaled data errors
-    
-        #Occulted line exclusion 
-    
-        #Trimming 
-        data_dic['DI']['fit_prof']['trim_range']={}
-    
-    
-        #Order to be fitted
-        if gen_dic['star_name']=='AUMic' and user=='mercier':
-            data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}     
-    
-    
-        #Continuum range
-        if gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['DI']['cont_range']['ESPRESSO']={0:[[-100.,-80.],[80.,100.]]} 
-            
-        #Spectral range(s) to be fitted
-        if gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['DI']['fit_range']['ESPRESSO']={'mock_vis':[[-100.,100.]]}  
-                
-        #Direct measurements
-        # data_dic['DI']['meas_prop']={
-        #     # 'EW':{'rv_range':[-5.,5.]},
-        #     'biss':{'source':'obs','rv_range':[-50.,50.],'dF':0.001,'Cspan':None}
-        #     }
-    
-    
-        #Line profile model   
         
-        #Transition wavelength
-        data_dic['DI']['line_trans']=None
-    
-    
-       
-        #Instrumental convolution
-        data_dic['DI']['conv_model']=False    
-                
-    
-        #Model type    
-        if gen_dic['star_name']=='AUMic' and user=='mercier':    
-    
-    
-        #Intrinsic line properties  
-        
-    
-        #Fixed/variable properties
-        
+    #Activating
+    gen_dic['fit_DI'] = True    #&  False
+    gen_dic['fit_DIbin']=True   &  False
+    gen_dic['fit_DIbinmultivis']=True    &  False
 
-        #Best model table
-        
-        #Fitting mode 
-        data_dic['DI']['fit_mod']='chi2'   
-        # data_dic['DI']['fit_mod']='mcmc' 
-        # data_dic['DI']['fit_mod']=''  
-        
-        #Printing fits results
-        data_dic['DI']['verbose']=True  & False
-    
-       
-        #Priors on variable properties
-        data_dic['DI']['line_fit_priors']={}
 
-        #Derived properties
-        data_dic['DI']['deriv_prop']=['amp','area','true_ctrst','true_FWHM','true_amp']   #generic
-        data_dic['DI']['deriv_prop']+=['FWHM_LOR','FWHM_voigt']   #voigt
-        data_dic['DI']['deriv_prop']+=['cont_amp','RV_lobe','amp_lobe','FWHM_lobe']    #double-gaussian
-        data_dic['DI']['deriv_prop']+=['vsini']    #custom
-        data_dic['DI']['deriv_prop']=['']
-    
-    
-        #Calculating/retrieving
-        data_dic['DI']['mcmc_run_mode']='use'
+    #Calculating/Retrieving
+    gen_dic['calc_fit_DI']=True   #  &  False   
+    gen_dic['calc_fit_DIbin']=True   &  False  
+    gen_dic['calc_fit_DIbinmultivis']=True    &  False  
+
+    #Fitted data
+
+    #Constant data errors
+    data_dic['DI']['cst_err']=True   &  False
+    data_dic['DI']['cst_errbin']=True   &  False
+
+    #Scaled data errors
+
+    #Occulted line exclusion 
+
+    #Trimming 
+    data_dic['DI']['fit_prof']['trim_range']={}
+
+
+    #Order to be fitted
+    if gen_dic['star_name']=='AUMic':
+        data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}     
+
+
+    #Continuum range
+    if gen_dic['star_name']=='AUMic':data_dic['DI']['cont_range']['ESPRESSO']={0:[[-100.,-80.],[80.,100.]]} 
         
-        
-        #Walkers
+    #Spectral range(s) to be fitted
+    if gen_dic['star_name']=='AUMic':data_dic['DI']['fit_range']['ESPRESSO']={'mock_vis':[[-100.,100.]]}  
             
-        #Walkers exclusion        
-        data_dic['DI']['exclu_walk']=True     & False           
-         
-        
-        #Derived errors
-        data_dic['DI']['out_err_mode']='HDI'
-        # data_dic['DI']['HDI']='2s'   #None   #'3s'  
-        
-        #Derived lower/upper limits
-        # data_dic['DI']['conf_limits']={'veq':{'bound':0.,'type':'upper','level':['1s','3s']}}      
+    #Direct measurements
+    # data_dic['DI']['meas_prop']={
+    #     # 'EW':{'rv_range':[-5.,5.]},
+    #     'biss':{'source':'obs','rv_range':[-50.,50.],'dF':0.001,'Cspan':None}
+    #     }
+
+
+    #Line profile model   
     
-    
-    
-    
-        #Plot settings
-        
-        #1D PDF from mcmc
-        plot_dic['prop_DI_mcmc_PDFs']=''                 
+    #Transition wavelength
+    data_dic['DI']['line_trans']=None
+
+
+   
+    #Instrumental convolution
+    data_dic['DI']['conv_model']=False    
             
-        #Individual disk-integrated profiles
-        plot_dic['DI_prof']=''  #pdf   
+
+    #Model type    
+    if gen_dic['star_name']=='AUMic':    
+        data_dic['DI']['model']['ESPRESSO']='gauss'
+
+    #Intrinsic line properties  
     
-        #Residuals from disk-integrated profiles
-        plot_dic['DI_prof_res']=''   #pdf
+
+    #Fixed/variable properties
     
-        #Housekeeping and derived properties 
-        plot_dic['prop_raw']=''   #''          
+
+    #Best model table
+    
+    #Fitting mode 
+    data_dic['DI']['fit_mod']='chi2'   
+    # data_dic['DI']['fit_mod']='mcmc' 
+    # data_dic['DI']['fit_mod']=''  
+    
+    #Printing fits results
+    data_dic['DI']['verbose']=True  & False
+
+   
+    #Priors on variable properties
+    data_dic['DI']['line_fit_priors']={}
+
+    #Derived properties
+    data_dic['DI']['deriv_prop']=['amp','area','true_ctrst','true_FWHM','true_amp']   #generic
+    data_dic['DI']['deriv_prop']+=['FWHM_LOR','FWHM_voigt']   #voigt
+    data_dic['DI']['deriv_prop']+=['cont_amp','RV_lobe','amp_lobe','FWHM_lobe']    #double-gaussian
+    data_dic['DI']['deriv_prop']+=['vsini']    #custom
+    data_dic['DI']['deriv_prop']=['']
+
+
+    #Calculating/retrieving
+    data_dic['DI']['mcmc_run_mode']='use'
+    
+    
+    #Walkers
         
+    #Walkers exclusion        
+    data_dic['DI']['exclu_walk']=True     & False           
+     
+    
+    #Derived errors
+    data_dic['DI']['out_err_mode']='HDI'
+    # data_dic['DI']['HDI']='2s'   #None   #'3s'  
+    
+    #Derived lower/upper limits
+    # data_dic['DI']['conf_limits']={'veq':{'bound':0.,'type':'upper','level':['1s','3s']}}      
+
+
+
+
+    #Plot settings
+    
+    #1D PDF from mcmc
+    plot_dic['prop_DI_mcmc_PDFs']=''                 
         
-      
+    #Individual disk-integrated profiles
+    plot_dic['DI_prof']=''  #pdf   
+
+    #Residuals from disk-integrated profiles
+    plot_dic['DI_prof_res']=''   #pdf
+
+    #Housekeeping and derived properties 
+    plot_dic['prop_raw']=''   #''          
     
     
-        # #Stage Théo : new fitting settings for V1298tau artificial visit
+  
+
+
+    # #Stage Théo : new fitting settings for V1298tau artificial visit
+
+
+    # if gen_dic['mock_data'] : 
     
     
-        # if gen_dic['mock_data'] : 
-        
-        
-        #     if gen_dic['star_name']=='V1298tau':
-        #         data_dic['DI']['model']['HARPN']='gauss'
-        #         data_dic['DI']['cont_range']['HARPN']=[[-150.,-70.],[70.,150.]]    
-        #         data_dic['DI']['fit_range']['HARPN']= { 'mock_vis' : [[-50, 50]]  }
-        
+    #     if gen_dic['star_name']=='V1298tau':
+    #         data_dic['DI']['model']['HARPN']='gauss'
+    #         data_dic['DI']['cont_range']['HARPN']=[[-150.,-70.],[70.,150.]]    
+    #         data_dic['DI']['fit_range']['HARPN']= { 'mock_vis' : [[-50, 50]]  }
     
-        #         data_dic['DI']['mod_def']['HARPN']={'mode':'ana','coord_line':'mu','func_prof_name':'gauss'} 
-        #         data_dic['DI']['mod_prop']={}
-        #         data_dic['DI']['mod_prop'].update({
-        #                                         'rv':{'vary':True     ,'HARPN':{'mock_vis':{'guess':0,'bd':[-10.,10.]}}},
-        #                                         'veq':{'vary':False   ,'HARPN':{'mock_vis':{'guess':23.5,'bd':[20.,30.]}}},                             
-        #                                         'ctrst_ord0__IS__VS_':{'vary':True  ,'HARPN':{'mock_vis':{'guess':0.7,'bd':[0.2,1]}}},
-        #                                         'FWHM_ord0__IS__VS_' :{'vary':True  ,'HARPN':{'mock_vis':{'guess':4,'bd':[0.,10.]}}},
-        #                                         })  
+
+    #         data_dic['DI']['mod_def']['HARPN']={'mode':'ana','coord_line':'mu','func_prof_name':'gauss'} 
+    #         data_dic['DI']['mod_prop']={}
+    #         data_dic['DI']['mod_prop'].update({
+    #                                         'rv':{'vary':True     ,'HARPN':{'mock_vis':{'guess':0,'bd':[-10.,10.]}}},
+    #                                         'veq':{'vary':False   ,'HARPN':{'mock_vis':{'guess':23.5,'bd':[20.,30.]}}},                             
+    #                                         'ctrst_ord0__IS__VS_':{'vary':True  ,'HARPN':{'mock_vis':{'guess':0.7,'bd':[0.2,1]}}},
+    #                                         'FWHM_ord0__IS__VS_' :{'vary':True  ,'HARPN':{'mock_vis':{'guess':4,'bd':[0.,10.]}}},
+    #                                         })  
                                             
                                             
                                             
@@ -2387,94 +2378,92 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     
+        
+    #Activating
+    gen_dic['align_DI'] = True    #&  False          
     
-    if user is not None: 
+    #Calculating/retrieving 
+    gen_dic['calc_align_DI']=True    #&  False  
+        
+    #Systemic velocity        
+    if gen_dic['star_name']=='AUMic':
+        data_dic['DI']['sysvel']={'ESPRESSO' : {'mock_vis' : 0}} 
+     
+    #Plots: aligned disk-integrated profiles
+    plot_dic['all_DI_data']=''     #pdf    
     
-        #Activating
-        gen_dic['align_DI'] = True    #&  False          
-        
-        #Calculating/retrieving 
-        gen_dic['calc_align_DI']=True    #&  False  
-            
-        #Systemic velocity        
-        if user=='mercier' and gen_dic['star_name']=='AUMic':
-            data_dic['DI']['sysvel']={'ESPRESSO' : {'mock_vis' : 0}} 
-         
-        #Plots: aligned disk-integrated profiles
-        plot_dic['all_DI_data']=''     #pdf    
-        
-        
-        
-        
-        
-        # """
-        # Routine to correct DI CFFs from spot occultation
-        #     - CCF continuum are set to the expected value given planetary and spot contamination
-        #     - spot occulted profiles are then added to the DI CCF
-        #     - It's assumed that DI CCF are aligned in the star rest frame
-        #     - 2 options : 
-        #         - Ignore overlapping between spots and planet (in the case lambda_pl is unknown)
-        #         - Or, if lambda is known, one can choose to take overlapping between spots and planet into account
-        
-        
-        #     - Correction will be performed within the 'detrend_prof' module, after all other DI corrections. 
-        # """
-        
-        
-        
-        # gen_dic['correct_spots'] = True &  False
-        # gen_dic['calc_correct_spots'] = True  #&  False
-        
-    corr_spot_dic = {}
-        
-        # # List all spots that should be included in the correction 
-        # if gen_dic['star_name'] == 'V1298tau' : 
-        #     corr_spot_dic['spots_prop']={
-        #         'HARPN':{
-        #             'mock_vis':{
+    
+    
+    
+    
+    # """
+    # Routine to correct DI CFFs from spot occultation
+    #     - CCF continuum are set to the expected value given planetary and spot contamination
+    #     - spot occulted profiles are then added to the DI CCF
+    #     - It's assumed that DI CCF are aligned in the star rest frame
+    #     - 2 options : 
+    #         - Ignore overlapping between spots and planet (in the case lambda_pl is unknown)
+    #         - Or, if lambda is known, one can choose to take overlapping between spots and planet into account
+    
+    
+    #     - Correction will be performed within the 'detrend_prof' module, after all other DI corrections. 
+    # """
+    
+    
+    
+    # gen_dic['correct_spots'] = True &  False
+    # gen_dic['calc_correct_spots'] = True  #&  False
+    
+corr_spot_dic = {}
+    
+    # # List all spots that should be included in the correction 
+    # if gen_dic['star_name'] == 'V1298tau' : 
+    #     corr_spot_dic['spots_prop']={
+    #         'HARPN':{
+    #             'mock_vis':{
+                    
+    #                 # Pour le spot 'spot1' : 
+    #                 'lat__ISHARPN_VSmock_vis_SPspot1'     : 30,
+    #                 'Tcenter__ISHARPN_VSmock_vis_SPspot1' : 2458877.6306 - 12/24,     # 2458877.213933
+    #                 'ang__ISHARPN_VSmock_vis_SPspot1'     : 20,
+    #                 'flux__ISHARPN_VSmock_vis_SPspot1'    : 0.4,
+                    
+    #                 # Pour le spot 'spot2' : 
+    #                 'lat__ISHARPN_VSmock_vis_SPspot2'     : 40,
+    #                 'Tcenter__ISHARPN_VSmock_vis_SPspot2' : 2458877.6306 + 5/24,
+    #                 'ang__ISHARPN_VSmock_vis_SPspot2'     : 25,
+    #                 'flux__ISHARPN_VSmock_vis_SPspot2'    : 0.4
+                    
+    #                     },
                         
-        #                 # Pour le spot 'spot1' : 
-        #                 'lat__ISHARPN_VSmock_vis_SPspot1'     : 30,
-        #                 'Tcenter__ISHARPN_VSmock_vis_SPspot1' : 2458877.6306 - 12/24,     # 2458877.213933
-        #                 'ang__ISHARPN_VSmock_vis_SPspot1'     : 20,
-        #                 'flux__ISHARPN_VSmock_vis_SPspot1'    : 0.4,
+    #                 'mock_vis2' : {}
+                    
+    #                     }}
                         
-        #                 # Pour le spot 'spot2' : 
-        #                 'lat__ISHARPN_VSmock_vis_SPspot2'     : 40,
-        #                 'Tcenter__ISHARPN_VSmock_vis_SPspot2' : 2458877.6306 + 5/24,
-        #                 'ang__ISHARPN_VSmock_vis_SPspot2'     : 25,
-        #                 'flux__ISHARPN_VSmock_vis_SPspot2'    : 0.4
-                        
-        #                     },
-                            
-        #                 'mock_vis2' : {}
-                        
-        #                     }}
-                            
-    
-    
-        # # Properties of stellar ray
-        # if gen_dic['star_name'] in ['V1298tau'] :
-            
-        #     corr_spot_dic['intr_prof']={
-        #         'mode':'ana',        
-        #         'coord_line':'mu',
-        #         'func_prof_name': {'HARPN' : 'gauss'},             
-        #         'mod_prop':{'ctrst_ord0__ISHARPN_VSmock_vis' : 0.7,
-        #                     'FWHM_ord0__ISHARPN_VSmock_vis'  : 4,
-        #                     }   ,   
-        #         'pol_mode' : 'abs'
-        #     }
-            
-    
-        # # Precision used for calculating planet-occulted profiles (almost useless here, only relevant to the case where planet + spot overlap)
-        # corr_spot_dic['precision']='high'
-    
-        # # Corresponding dimension (for now, stick to 'mu' and 'r_proj').
-        # corr_spot_dic['coord_line']='mu'
-    
-        # # Choose between taking overlapping spot/planet into account or not. 
-        # corr_spot_dic['overlap'] = True   #& False
+
+
+    # # Properties of stellar ray
+    # if gen_dic['star_name'] in ['V1298tau'] :
+        
+    #     corr_spot_dic['intr_prof']={
+    #         'mode':'ana',        
+    #         'coord_line':'mu',
+    #         'func_prof_name': {'HARPN' : 'gauss'},             
+    #         'mod_prop':{'ctrst_ord0__ISHARPN_VSmock_vis' : 0.7,
+    #                     'FWHM_ord0__ISHARPN_VSmock_vis'  : 4,
+    #                     }   ,   
+    #         'pol_mode' : 'abs'
+    #     }
+        
+
+    # # Precision used for calculating planet-occulted profiles (almost useless here, only relevant to the case where planet + spot overlap)
+    # corr_spot_dic['precision']='high'
+
+    # # Corresponding dimension (for now, stick to 'mu' and 'r_proj').
+    # corr_spot_dic['coord_line']='mu'
+
+    # # Choose between taking overlapping spot/planet into account or not. 
+    # corr_spot_dic['overlap'] = True   #& False
     
     
         
@@ -2604,65 +2593,63 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['map_DI_prof']=''  
     
         
-    
-    if user is not None:     
-    
-        #Activating
-        gen_dic['flux_sc']=True   #& False
         
+    #Activating
+    gen_dic['flux_sc']=True   #& False
+    
+    
+    #Calculating/retrieving
+    gen_dic['calc_flux_sc']=True  #&  False    
+    
         
-        #Calculating/retrieving
-        gen_dic['calc_flux_sc']=True  #&  False    
-        
-            
-    
-        #Scaling disk-integrated profiles
-        data_dic['DI']['rescale_DI'] = True    
-    
-        #Scaling spectral range
-        # if gen_dic['star_name']=='WASP76':data_dic['DI']['scaling_range']=[]
-        
-        #Out scaling flux
-        data_dic['DI']['scaling_val']=1. 
-    
-        #Stellar and planet intensity settings 
-        if gen_dic['star_name']=='AUMic' and user=='mercier':
-            data_dic['DI']['system_prop']={
-                    'achrom':{
-                        'AUMicb' : [0.0512], #Gilbert et al. 2022
-                        #'AUMicc' : [0.001156], #Gilbert et al. 2022
-                        'LD' : ['quadratic'],
-                        'LD_u1' : [0.35],
-                        'LD_u2' : [0.16],
-                    }
-                    }   
-    
 
-        #Transit light curve model    
-        if gen_dic['star_name']=='AUMic' and user=='mercier':
-            data_dic['DI']['transit_prop'].update({    
-                    'nsub_Dstar':101,
-                    #'ESPRESSO':{'mock_vis':{'mode':'model', 'dt':0.05}}
-                    'ESPRESSO':{'mock_vis':{'mode':'simu','n_oversamp':5}},
-                    })
-          
-          
-        #Forcing in/out transit flag
+    #Scaling disk-integrated profiles
+    data_dic['DI']['rescale_DI'] = True    
+
+    #Scaling spectral range
+    # if gen_dic['star_name']=='WASP76':data_dic['DI']['scaling_range']=[]
+    
+    #Out scaling flux
+    data_dic['DI']['scaling_val']=1. 
+
+    #Stellar and planet intensity settings 
+    if gen_dic['star_name']=='AUMic':
+        data_dic['DI']['system_prop']={
+                'achrom':{
+                    'AUMicb' : [0.0512], #Gilbert et al. 2022
+                    #'AUMicc' : [0.001156], #Gilbert et al. 2022
+                    'LD' : ['quadratic'],
+                    'LD_u1' : [0.35],
+                    'LD_u2' : [0.16],
+                }
+                }   
 
 
-        #Plot settings
-    
+    #Transit light curve model    
+    if gen_dic['star_name']=='AUMic':
+        data_dic['DI']['transit_prop'].update({    
+                'nsub_Dstar':101,
+                #'ESPRESSO':{'mock_vis':{'mode':'model', 'dt':0.05}}
+                'ESPRESSO':{'mock_vis':{'mode':'simu','n_oversamp':5}},
+                })
+      
+      
+    #Forcing in/out transit flag
 
-        #Model time resolution   
-    
-        #Input light curves 
-        plot_dic['input_LC']=''  #pdf
-    
-        #Scaling light curves
-        plot_dic['spectral_LC']=''   #pdf
-    
-        #2D maps of disk-integrated profiles
-        plot_dic['map_DI_prof']=''   #png   
+
+    #Plot settings
+
+
+    #Model time resolution   
+
+    #Input light curves 
+    plot_dic['input_LC']=''  #pdf
+
+    #Scaling light curves
+    plot_dic['spectral_LC']=''   #pdf
+
+    #2D maps of disk-integrated profiles
+    plot_dic['map_DI_prof']=''   #png   
     
     
     
@@ -3049,41 +3036,40 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     
-    if user is not None:
     
-        #Activating
-        gen_dic['res_data'] = True #  &  False
-    
-        #Calculating/retrieving 
-        gen_dic['calc_res_data'] = True   #&  False
+    #Activating
+    gen_dic['res_data'] = True #  &  False
 
-    
-        #Multi-threading
-        gen_dic['nthreads_res_data']= 2
-    
-        #In-transit restriction
-        data_dic['Res']['extract_in']=True  &  False
-        
-        #Master visits
-     
-        #Master exposures
-        
-    
-        #Continuum range
-        if gen_dic['star_name']=='AUMic' and user=='mercier':data_dic['Res']['cont_range']['ESPRESSO']={0 : [[-150.,-70.],[70.,150.]]}
+    #Calculating/retrieving 
+    gen_dic['calc_res_data'] = True   #&  False
 
+
+    #Multi-threading
+    gen_dic['nthreads_res_data']= 2
+
+    #In-transit restriction
+    data_dic['Res']['extract_in']=True  &  False
     
-        #Error definition
-        data_dic['Res']['disp_err']=False
+    #Master visits
+ 
+    #Master exposures
     
+
+    #Continuum range
+    if gen_dic['star_name']=='AUMic':data_dic['Res']['cont_range']['ESPRESSO']={0 : [[-150.,-70.],[70.,150.]]}
+
+
+    #Error definition
+    data_dic['Res']['disp_err']=False
+
+
+    #2D maps of residual profiles
+    plot_dic['map_Res_prof']='png'   #png 
+
+    #Individual residual profiles
+    plot_dic['sp_loc']=''    #png
+    plot_dic['CCF_Res']=''   #pdf    
     
-        #2D maps of residual profiles
-        plot_dic['map_Res_prof']='png'   #png 
-    
-        #Individual residual profiles
-        plot_dic['sp_loc']=''    #png
-        plot_dic['CCF_Res']=''   #pdf    
-        
     
     
     
@@ -3141,42 +3127,41 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['Intr_prof_res']=''  
     
     
-    if user is not None:
     
-        #Calculating
-        gen_dic['intr_data'] = True    #&  False
-        
-        #Calculating/retrieving
-        gen_dic['calc_intr_data'] = True   #&  False      
+    #Calculating
+    gen_dic['intr_data'] = True    #&  False
     
-        #Continuum range
-        if gen_dic['star_name']=='AUMic' and user=='mercier':
-            data_dic['Intr']['cont_range'] = deepcopy(data_dic['Res']['cont_range'])
+    #Calculating/retrieving
+    gen_dic['calc_intr_data'] = True   #&  False      
 
-        
-        #Calculating/retrieving continuum 
-        data_dic['Intr']['calc_cont'] = True# & False
-    
-    
-        #Continuum correction
-        data_dic['Intr']['cont_norm'] = True   &   False
+    #Continuum range
+    if gen_dic['star_name']=='AUMic':
+        data_dic['Intr']['cont_range'] = deepcopy(data_dic['Res']['cont_range'])
 
     
-    
+    #Calculating/retrieving continuum 
+    data_dic['Intr']['calc_cont'] = True# & False
 
-        #2D maps of intrinsic stellar profiles
-        plot_dic['map_Intr_prof']=''   #'png 
-    
-        if gen_dic['star_name']=='AUMic' and user=='mercier':
-            plot_dic['map_Intr_prof']='png'
 
-        #Individual intrinsic stellar profiles
-        plot_dic['sp_intr']=''  
-        plot_dic['Intr_prof']=''   #pdf  
+    #Continuum correction
+    data_dic['Intr']['cont_norm'] = True   &   False
+
+
+
+
+    #2D maps of intrinsic stellar profiles
+    plot_dic['map_Intr_prof']=''   #'png 
+
+    if gen_dic['star_name']=='AUMic':
+        plot_dic['map_Intr_prof']='png'
+
+    #Individual intrinsic stellar profiles
+    plot_dic['sp_intr']=''  
+    plot_dic['Intr_prof']=''   #pdf  
+
+    #Residuals from intrinsic stellar profiles
+    plot_dic['Intr_prof_res']=''  #pdf
     
-        #Residuals from intrinsic stellar profiles
-        plot_dic['Intr_prof_res']=''  #pdf
-        
     
     
     
@@ -3315,23 +3300,22 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     
     
-    if user is not None:
+
+    #Activating
+    gen_dic['align_Intr'] = True   #&  False
+ 
+    #Calculating/retrieving
+    gen_dic['calc_align_Intr'] = True # &  False  
+
+    #Alignment mode
+    data_dic['Intr']['align_mode']='theo'
     
-        #Activating
-        gen_dic['align_Intr'] = True   #&  False
-     
-        #Calculating/retrieving
-        gen_dic['calc_align_Intr'] = True # &  False  
-    
-        #Alignment mode
-        data_dic['Intr']['align_mode']='theo'
-        
-        #Plots: all profiles 
-        plot_dic['all_intr_data']=''   #pdf
-    
-    
-        if user=='mercier' and gen_dic['star_name']=='AUMic':
-            data_dic['Intr']['align_ref_pl']={'ESPRESSO':{'mock_vis' : 'AUMicb'}}
+    #Plots: all profiles 
+    plot_dic['all_intr_data']=''   #pdf
+
+
+    if gen_dic['star_name']=='AUMic':
+        data_dic['Intr']['align_ref_pl']={'ESPRESSO':{'mock_vis' : 'AUMicb'}}
     
     
     
@@ -3675,67 +3659,66 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['prop_Intr']=''  
         
     
-    if user is not None:
     
-        #Activating
-        gen_dic['fit_Intr'] = True   &  False
-        gen_dic['fit_Intr_1D'] = True   &  False
-        gen_dic['fit_Intrbin']=True     &  False
-        gen_dic['fit_Intrbinmultivis']=True     &  False
+    #Activating
+    gen_dic['fit_Intr'] = True   &  False
+    gen_dic['fit_Intr_1D'] = True   &  False
+    gen_dic['fit_Intrbin']=True     &  False
+    gen_dic['fit_Intrbinmultivis']=True     &  False
+
+    #Calculating/Retrieving
+    gen_dic['calc_fit_Intr']=True #  &  False   
+    gen_dic['calc_fit_Intr_1D']=True   &  False   
+    gen_dic['calc_fit_Intrbin']=True    &  False    
+    gen_dic['calc_fit_Intrbinmultivis']=True   &  False  
+
+    #Constant data errors
+    data_dic['Intr']['cst_err']=True   &  False
+    data_dic['Intr']['cst_errbin']=True   &  False
+
+    #Spectral range(s) to be fitted
+    if gen_dic['star_name']=='AUMic':
+        data_dic['Intr']['fit_range']['ESPRESSO']={'mock_vis' : [[-130.,130.]] }
     
-        #Calculating/Retrieving
-        gen_dic['calc_fit_Intr']=True #  &  False   
-        gen_dic['calc_fit_Intr_1D']=True   &  False   
-        gen_dic['calc_fit_Intrbin']=True    &  False    
-        gen_dic['calc_fit_Intrbinmultivis']=True   &  False  
-    
-        #Constant data errors
-        data_dic['Intr']['cst_err']=True   &  False
-        data_dic['Intr']['cst_errbin']=True   &  False
-    
-        #Spectral range(s) to be fitted
-        if gen_dic['star_name']=='AUMic' and user=='mercier':
-            data_dic['Intr']['fit_range']['ESPRESSO']={'mock_vis' : [[-130.,130.]] }
-        
-        #Model type  
-                
-        #Intrinsic line properties
-          
-        #Fitting mode 
-        data_dic['Intr']['fit_mod']=''
-        data_dic['Intr']['fit_mod']='chi2'
-        data_dic['Intr']['fit_mod']='mcmc'
-    
-    
-        #Printing fits results
-        data_dic['Intr']['verbose'] =  True      &   False  
-    
-        
-        #Priors on variable properties                
-    
+    #Model type  
+            
+    #Intrinsic line properties
       
-        #Detection thresholds    
-     
-        
-        #Force detection flag
-          
-        #Calculating/retrieving
-        data_dic['Intr']['mcmc_run_mode']='use'
-        
-        #Walkers
-        
-        #Walkers exclusion
-        data_dic['Intr']['exclu_walk_autom']=None  #  5.
-        
-        
-        #Derived errors
+    #Fitting mode 
+    data_dic['Intr']['fit_mod']=''
+    data_dic['Intr']['fit_mod']='chi2'
+    data_dic['Intr']['fit_mod']='mcmc'
 
 
-        #1D PDF from mcmc
-        plot_dic['prop_Intr_mcmc_PDFs']=''     
+    #Printing fits results
+    data_dic['Intr']['verbose'] =  True      &   False  
+
     
-        #Derived properties
-        plot_dic['prop_Intr']=''  
+    #Priors on variable properties                
+
+  
+    #Detection thresholds    
+ 
+    
+    #Force detection flag
+      
+    #Calculating/retrieving
+    data_dic['Intr']['mcmc_run_mode']='use'
+    
+    #Walkers
+    
+    #Walkers exclusion
+    data_dic['Intr']['exclu_walk_autom']=None  #  5.
+    
+    
+    #Derived errors
+
+
+    #1D PDF from mcmc
+    plot_dic['prop_Intr_mcmc_PDFs']=''     
+
+    #Derived properties
+    plot_dic['prop_Intr']=''  
     
     
     
@@ -4258,126 +4241,124 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - see function for options
     glob_fit_dic['IntrProf']['corner_options']={}
     
-    
-    if user is not None:
-    
-    
-        #Activating 
-        gen_dic['fit_IntrProf'] = True   &  False
-    
-    
-        #Exposures to be fitted
-        if gen_dic['star_name'] == 'AUMic' and user == 'mercier':
-         glob_fit_dic['IntrProf']['idx_in_fit'] = deepcopy(glob_fit_dic['IntrProp']['idx_in_fit'])
-      
-        #Trimming
-        glob_fit_dic['IntrProf']['trim_range'] = deepcopy(data_dic['Intr']['fit_prof']['trim_range'])   
-    
-        #Continuum range
-                      
-        #Spectral range(s) to be fitted            
-            
-        #Model type
-     
-        #Analytical profile
-             
-        #Analytical profile coordinate
-    
-    
-        #Analytical profile variation
-    
-    
         
-        #Fixed/variable properties   
-      
+    
+    #Activating 
+    gen_dic['fit_IntrProf'] = True   &  False
+
+
+    #Exposures to be fitted
+    if gen_dic['star_name'] == 'AUMic':
+     glob_fit_dic['IntrProf']['idx_in_fit'] = deepcopy(glob_fit_dic['IntrProp']['idx_in_fit'])
+  
+    #Trimming
+    glob_fit_dic['IntrProf']['trim_range'] = deepcopy(data_dic['Intr']['fit_prof']['trim_range'])   
+
+    #Continuum range
+                  
+    #Spectral range(s) to be fitted            
+        
+    #Model type
  
-        #PC noise model
-        
-        #Fitting mode
-        glob_fit_dic['IntrProf']['fit_mod']='chi2' 
-        glob_fit_dic['IntrProf']['fit_mod']='mcmc' 
+    #Analytical profile
+         
+    #Analytical profile coordinate
+
+
+    #Analytical profile variation
+
+
     
+    #Fixed/variable properties   
+  
+
+    #PC noise model
     
-        #Printing fits results
-        glob_fit_dic['IntrProf']['verbose']=True   #& False
-        
-        #Priors on variable properties
+    #Fitting mode
+    glob_fit_dic['IntrProf']['fit_mod']='chi2' 
+    glob_fit_dic['IntrProf']['fit_mod']='mcmc' 
+
+
+    #Printing fits results
+    glob_fit_dic['IntrProf']['verbose']=True   #& False
     
-        #Derived properties
-        glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','psi','om','b','ip','istar_deg_conv','fold_istar','lambda_deg','c0','CB_ms']
-        glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg']
-        # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','ip']
-        # glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg','istar_deg_conv','Peq_veq']
-        #glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','lambda_deg','istar_deg_conv','fold_istar','psi']
-        # glob_fit_dic['IntrProf']['modif_list'] = []
-        # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','psi'] 
-        # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','Peq_vsini'] 
-        # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini'] 
-        # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini','psi_lambda'] 
-        # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','istar_Peq','psi'] 
-        # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','ip'] 
-        # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_meas_conv'] 
-        # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_DG_conv'] 
-        # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_meas_add','b','ip'] 
+    #Priors on variable properties
+
+    #Derived properties
+    glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','psi','om','b','ip','istar_deg_conv','fold_istar','lambda_deg','c0','CB_ms']
+    glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg']
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','ip']
+    # glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg','istar_deg_conv','Peq_veq']
+    #glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','lambda_deg','istar_deg_conv','fold_istar','psi']
+    # glob_fit_dic['IntrProf']['modif_list'] = []
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','psi'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','Peq_vsini'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini','psi_lambda'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','istar_Peq','psi'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','ip'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_meas_conv'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_DG_conv'] 
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_meas_add','b','ip'] 
+
+
     
+    #Calculating/retrieving
+    glob_fit_dic['IntrProf']['mcmc_run_mode']='use'    
+
+
+
+    #Walkers
+
+    #Complex priors        
+         
+    #Walkers exclusion  
+    glob_fit_dic['IntrProf']['exclu_walk']=True     & False       
     
-        
-        #Calculating/retrieving
-        glob_fit_dic['IntrProf']['mcmc_run_mode']='use'    
+
+    #Automatic exclusion of outlying chains
+    glob_fit_dic['IntrProf']['exclu_walk_autom']=None  #  5.
+
+
+
+    #Derived errors         
     
+    #Derived lower/upper limits    
+
     
-    
-        #Walkers
-    
-        #Complex priors        
-             
-        #Walkers exclusion  
-        glob_fit_dic['IntrProf']['exclu_walk']=True     & False       
-        
-    
-        #Automatic exclusion of outlying chains
-        glob_fit_dic['IntrProf']['exclu_walk_autom']=None  #  5.
-    
-    
-    
-        #Derived errors         
-        
-        #Derived lower/upper limits    
-    
-        
-        #MCMC chains
-        glob_fit_dic['IntrProf']['save_MCMC_chains']='png'   #png  
-    
-    
-    
-        #MCMC corner plot
-        glob_fit_dic['IntrProf']['corner_options']={
-    #            'bins_1D_par':[50,50,50,50],       #vsini, ip, lambda, b
-    #            'bins_2D_par':[30,30,30,30], 
-    #            'range_par':[(0.,320.),(88.,90.),(86.,91.),(0.,0.13)],
-            'plot_HDI':True , # & False,             
-    
-    #            'bins_1D_par':[50,50,50,45,50,50,50],       #veq, ip, alpha, istar, lambda, psi, b 
-    ##            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(1.,14.),(84.8,89.),(86.8,89.1),(0.055,0.145)],     #low istar
-    ##            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(166.,179.),(84.8,89.),(90.3,92.),(0.055,0.145)],      #high istar
-    #            'plot_HDI':True,  
-    
-    #            'bins_1D_par':[50,50,50,45,50,50],       #veq, ip, alpha, istar, lambda, psi    FIG PAPER
-    ##            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(1.,14.),(84.8,89.),(86.8,89.1)],     #low istar
-    #            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(166.,179.),(84.8,89.),(90.3,92.)],      #high istar
-    #            'plot_HDI':True,
-            'plot1s_1D':False,
-            # 'plot_best':False,
-                
-                
-    #            'major_int':[0.2,50.],
-    #            'minor_int':[0.1,10.],
-            'color_levels':['deepskyblue','lime'],
-            # 'fontsize':15,
-            'fontsize':10,
-    #            'smooth2D':[0.05,5.] 
-    #            'plot1s_1D':False
-            }    
+    #MCMC chains
+    glob_fit_dic['IntrProf']['save_MCMC_chains']='png'   #png  
+
+
+
+    #MCMC corner plot
+    glob_fit_dic['IntrProf']['corner_options']={
+#            'bins_1D_par':[50,50,50,50],       #vsini, ip, lambda, b
+#            'bins_2D_par':[30,30,30,30], 
+#            'range_par':[(0.,320.),(88.,90.),(86.,91.),(0.,0.13)],
+        'plot_HDI':True , # & False,             
+
+#            'bins_1D_par':[50,50,50,45,50,50,50],       #veq, ip, alpha, istar, lambda, psi, b 
+##            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(1.,14.),(84.8,89.),(86.8,89.1),(0.055,0.145)],     #low istar
+##            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(166.,179.),(84.8,89.),(90.3,92.),(0.055,0.145)],      #high istar
+#            'plot_HDI':True,  
+
+#            'bins_1D_par':[50,50,50,45,50,50],       #veq, ip, alpha, istar, lambda, psi    FIG PAPER
+##            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(1.,14.),(84.8,89.),(86.8,89.1)],     #low istar
+#            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(166.,179.),(84.8,89.),(90.3,92.)],      #high istar
+#            'plot_HDI':True,
+        'plot1s_1D':False,
+        # 'plot_best':False,
+            
+            
+#            'major_int':[0.2,50.],
+#            'minor_int':[0.1,10.],
+        'color_levels':['deepskyblue','lime'],
+        # 'fontsize':15,
+        'fontsize':10,
+#            'smooth2D':[0.05,5.] 
+#            'plot1s_1D':False
+        }    
         
         
         
