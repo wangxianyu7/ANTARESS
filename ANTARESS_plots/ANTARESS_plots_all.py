@@ -11,6 +11,7 @@ from pathos.multiprocessing import Pool
 from constant_data import c_light
 import numpy.ma as ma
 import bindensity as bind
+from itertools import product as it_product
 from matplotlib.ticker import MultipleLocator,MaxNLocator
 import copy
 from minim_routines import fit_minimization,ln_prob_func_lmfit
@@ -24,11 +25,11 @@ from ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_mo
 from ANTARESS_routines.ANTARESS_detrend import detrend_prof_gen
 from ANTARESS_spectral_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
 from ANTARESS_routines.ANTARESS_orbit import def_plotorbite,calc_pl_coord,orb_motion_theoRV,conv_Losframe_to_inclinedStarFrame,conv_inclinedStarFrame_to_Losframe,get_timeorbit,\
-    calc_zLOS_oblate,conv_StarFrame_to_inclinedStarFrame,def_contacts
+    calc_zLOS_oblate,conv_StarFrame_to_inclinedStarFrame,conv_inclinedStarFrame_to_StarFrame,def_contacts
 from ANTARESS_routines.ANTARESS_calib import cal_piecewise_func
 from ANTARESS_grids.ANTARESS_star_grid import get_LD_coeff,calc_CB_RV,calc_RVrot,calc_Isurf_grid,calc_st_sky
 from ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_prop
-from ANTARESS_grids.ANTARESS_spots import retrieve_spots_prop_from_param, calc_spotted_tiles
+from ANTARESS_grids.ANTARESS_spots import retrieve_spots_prop_from_param, calc_spotted_tiles, spot_occ_region_grid
 from ANTARESS_plots.ANTARESS_plot_settings import ANTARESS_plot_settings
 
 
@@ -10428,7 +10429,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         params['lat__IS__VS__SP'+spot]     = plot_options[key_plot]['stellar_spot'][spot]['lat']
                         params['ang__IS__VS__SP'+spot]     = plot_options[key_plot]['stellar_spot'][spot]['ang']
                         params['Tcenter__IS__VS__SP'+spot] = plot_options[key_plot]['stellar_spot'][spot]['Tcenter']
-                        params['flux__IS__VS__SP'+spot]    = plot_options[key_plot]['stellar_spot'][spot]['flux']
+                        params['atten__IS__VS__SP'+spot]    = plot_options[key_plot]['stellar_spot'][spot]['atten']
 
                 else:
                 # If the user did not provide any spot properties for the plotting (ANTARESS_plot_settings.py) then default to
@@ -10484,9 +10485,48 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             if spots_prop[spot]['is_visible']:
                                 _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
                                                                         {}, params, use_grid_dic = False)
-                   
-                                star_flux_exp[spotted_tiles] *=  spots_prop[spot]['flux']
-                        
+                                # if t_exp == t_all_spot[0]:
+                                star_flux_exp[spotted_tiles] *=  spots_prop[spot]['atten']
+                            
+
+                            #Testing how to make 
+                            # if t_exp == t_all_spot[0]:
+
+                            #     x_grid_test, y_grid_test = spot_occ_region_grid(np.sin(spots_prop[spot]['ang_rad']), 30)
+                                # z_grid_test = 1 - (x_grid_test*x_grid_test) - (y_grid_test*y_grid_test)
+                                # x_grid_test, y_grid_test, z_grid_test = conv_StarFrame_to_inclinedStarFrame(x_grid_test, y_grid_test, z_grid_test, star_params['istar_rad'])
+                                # _, spotte_tiles = calc_spotted_tiles(spots_prop[spot], x_grid_test, y_grid_test, z_grid_test, {}, params, use_grid_dic = False)
+
+                                # new_x_grid_test = spots_prop[spot]['x_sky_exp_center']+x_grid_test
+                                # new_x_grid_test = new_x_grid_test[spotte_tiles]
+                                # new_y_grid_test = spots_prop[spot]['y_sky_exp_center']+y_grid_test
+                                # new_y_grid_test = new_y_grid_test[spotte_tiles]
+
+                                # Retrieve angular coordinates of spot
+                                # spot_prop = spots_prop[spot]
+                                # cos_long, sin_long, cos_lat, sin_lat =  spot_prop['cos_long_exp_center'],  spot_prop['sin_long_exp_center'], spot_prop['cos_lat_exp_center' ],  spot_prop['sin_lat_exp_center' ]
+                                
+                                # # Calculate coordinates in spot rest frame
+                                # x_sp =                         x_grid_test*cos_long - z_grid_test*sin_long
+                                # y_sp = y_grid_test*cos_lat  - (x_grid_test*sin_long + z_grid_test*cos_long)   *   sin_lat
+                                # z_sp = y_grid_test*sin_lat  + (x_grid_test*sin_long + z_grid_test*cos_long)   *   cos_lat
+
+                                # # # Deduce which cells are within the spot
+                                # cond_close_to_spot = (x_grid_test**2 + y_grid_test**2) < (np.sin(spots_prop[spot]['ang_rad']))**2
+                                # phi_sp = np.arctan2(np.sqrt(x_sp**2. + y_sp**2.),z_sp)
+                                # cond_in_sp = cond_close_to_spot
+                                # cond_in_sp = (phi_sp <= spot_prop['ang_rad'])
+
+
+                                # plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'], color='white')
+                                # for l in range(len(x_grid_test)):
+                                #     plt.scatter(spots_prop[spot]['x_sky_exp_center']+x_grid_test[l], spots_prop[spot]['y_sky_exp_center']+y_grid_test[l], alpha=0.3, s=6)
+                                #     if cond_close_to_spot[l]:
+                                #         plt.scatter(spots_prop[spot]['x_sky_exp_center']+x_grid_test[l], spots_prop[spot]['y_sky_exp_center']+y_grid_test[l], color='black', alpha=0.6, s=4)
+                                    # if cond_in_sp[l]:
+                                    #     plt.scatter(spots_prop[spot]['x_sky_exp_center']+x_grid_test[l], spots_prop[spot]['y_sky_exp_center']+y_grid_test[l], color='red', alpha=0.6, s=4)
+                                # for m in range(len(new_x_grid_test)):
+                                #     plt.scatter(new_x_grid_test[m], new_y_grid_test[m], color='red', alpha=0.3, s=6)
 
                             #Testing - Spherical
                             #Testing is_spot_visible
