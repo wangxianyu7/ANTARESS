@@ -1,5 +1,5 @@
 import numpy as np
-from utils import stop,np_where1D,init_parallel_func,dataload_npz,MAIN_multithread,spec_dopshift
+from utils import stop,np_where1D,init_parallel_func,dataload_npz,MAIN_multithread,gen_specdopshift
 from copy import deepcopy
 from PyAstronomy import pyasl
 import bindensity as bind
@@ -166,7 +166,7 @@ def corr_cosm_vis(iexp_group,proc_DI_data_paths,hcosm_ncomp,n_in_visit,cosm_ncom
                 
             #Align complementary exposures with current spectrum
             #    - in orders to be corrected for only
-            edge_bins_new = edge_bins_all[iexp_c]*spec_dopshift(rv_shift)    
+            edge_bins_new = edge_bins_all[iexp_c]*gen_specdopshift(-rv_shift)  
             for iord in ord_corr_list: 
                 flux_align_comp[iloc,iord] = bind.resampling(edge_bins_all[iexp,iord], edge_bins_new[iord], flux_all[iexp_c,iord], kind=resamp_mode)
             
@@ -269,12 +269,12 @@ def MAIN_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop):
             nord_corr_list = len(ord_corr_list)
             
             #Common visit table
-            #    - shifted from the solar barycentric to the average Earth frame for the visit
+            #    - shifted from the solar barycentric (receiver) to the average Earth (source) rest frame for the visit
             data_com = dataload_npz(data_vis['proc_com_data_paths'])
-            sp_shift = spec_dopshift(np.mean(data_prop[inst][vis]['BERV']))/(1.+1.55e-8) 
+            sp_shift = 1./(gen_specdopshift(np.mean(data_prop[inst][vis]['BERV']))*(1.+1.55e-8))      
             edge_bins_com_Earth = data_com['edge_bins']*sp_shift  
             cen_bins_com_Earth = data_com['cen_bins']*sp_shift
-        
+
             #Retrieve all exposures for master calculation
             dim_all = [data_vis['n_in_visit'],nord_corr_list,data_com['nspec']]
             flux_Earth_all = np.zeros(dim_all, dtype=float)*np.nan 
@@ -285,7 +285,7 @@ def MAIN_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop):
                 data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))
 
                 #Align exposure in Earth referential for orders to be corrected
-                edge_bins_Earth = data_exp['edge_bins']*spec_dopshift(data_prop[inst][vis]['BERV'][iexp])/(1.+1.55e-8)  
+                edge_bins_Earth = data_exp['edge_bins']/(gen_specdopshift(data_prop[inst][vis]['BERV'][iexp])*(1.+1.55e-8))   
                 for isub_ord,iord in enumerate(ord_corr_list): 
                     flux_Earth_all[iexp,isub_ord] = bind.resampling(edge_bins_com_Earth[iord], edge_bins_Earth[iord], data_exp['flux'][iord], kind=gen_dic['resamp_mode'])
                 cond_def_all[iexp] = ~np.isnan(flux_Earth_all[iexp])                    
@@ -425,8 +425,11 @@ def permpeak_flag(iexp_group,BERV_group,nord_corr_list,nspec,proc_DI_data_paths,
         #Upload latest processed data
         data_exp = dataload_npz(proc_DI_data_paths+str(iexp))
 
-        #Shift exposure in Earth rest frame
-        sp_shift = spec_dopshift(BERV_group[isub_exp])/(1.+1.55e-8)   
+        #Shift exposure from the solar barycenter (receiver) to the Earth (source) rest frame
+        #    - see gen_specdopshift():
+        # w_source = w_receiver / (1+ (rv[s/r]/c))
+        # w_Earth = w_solbar / (1+ (BERV/c))      
+        sp_shift = 1./(gen_specdopshift(BERV_group[isub_exp])*(1.+1.55e-8))   
         cen_bins_Earth = data_exp['cen_bins']*sp_shift
         edge_bins_Earth = data_exp['edge_bins']*sp_shift
 

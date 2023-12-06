@@ -16,7 +16,7 @@ import numpy              as     np
 import pandas             as     pd
 from   scipy.signal       import argrelextrema
 
-from utils import stop,np_where1D,dataload_npz,init_parallel_func,spec_dopshift
+from utils import stop,np_where1D,dataload_npz,init_parallel_func,gen_specdopshift
 from constant_data import c_light,c_light_m
 import bindensity as bind
 from copy import deepcopy
@@ -24,7 +24,7 @@ from pathos.multiprocessing import Pool
 import ANTARESS_masks.KitCat.calculate_RV_line_by_line3 as calculate_RV_line_by_line 
 
 
-def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_norm,gen_dic,save_data_paths,tell_spec,rv_sys,min_rv_earth_mast,max_rv_earth_mast,Teff_star,dic_sav,plot_spec,plot_ld,plot_ld_lw,plot_RVdev_fit,cont_func_dic,vis_iexp_in_bin,
+def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_norm,gen_dic,save_data_paths,tell_spec,rv_sys,min_specdopshift_receiver_Earth,max_specdopshift_receiver_Earth,Teff_star,dic_sav,plot_spec,plot_ld,plot_ld_lw,plot_RVdev_fit,cont_func_dic,vis_iexp_in_bin,
                 data_type_gen,data_dic,plot_tellcont,plot_vald_depthcorr,plot_morphasym,plot_morphshape,plot_RVdisp):
     mask_info=''
        
@@ -144,8 +144,11 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #=============================================================================
     if mask_dic['verbose']:print('           Selection: screening')
 
-    #Remove lines in selected rejection ranges + telluric oxygen bands (shifted into the star rest frame)
-    line_rej_range = np.array([[6865,6930],[7590,7705]])*spec_dopshift(-rv_sys)
+    #Remove lines in selected rejection ranges + telluric oxygen bands 
+    #    - shifted from the Earth (source) into the star (receiver) rest frame. We neglect the Keplerian and BERV motions.
+    #      see gen_specdopshift():
+    # w_star ~ w_starbar = w_solbar * (1+ rv[solbar/starbar]/c)) ~ w_Earth * (1+ rv_sys/c))
+    line_rej_range = np.array([[6865,6930],[7590,7705]])*gen_specdopshift(rv_sys)
     if (inst in mask_dic['line_rej_range']):line_rej_range = np.append(line_rej_range,np.array(mask_dic['line_rej_range'][inst]),axis=0)
     cond_rej = np.repeat(False,nlines)
     for bd_int in line_rej_range:  
@@ -157,7 +160,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
 
     #Issue warning
     if np.min(matrix_wave[:,0])<3000.:print('         WARNING: expect bad RASSINE normalisation below 3000 A')
-    if np.max(matrix_wave[:,0])>10000.*spec_dopshift(-rv_sys):print('         WARNING: expect issues with telluric oxygen above 10000 A')    
+    if np.max(matrix_wave[:,0])>10000.*gen_specdopshift(rv_sys):print('         WARNING: expect issues with telluric oxygen above 10000 A')    
     
     #Remove lines with same left and right maxima, or with left (resp. right) maxima to the right (resp. left) of their minima
     mask_line = (matrix_index[:,1]!=matrix_index[:,2]) & (matrix_index[:,2]>matrix_index[:,0]) & (matrix_index[:,1]<matrix_index[:,0])
@@ -466,13 +469,15 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         
         #Exclusion of stellar lines overlapping with deep telluric lines
         #    - the master stellar spectrum is aligned in the star (for disk-integrated profiles) or surface (for intrinsic profiles) rest frames
-        #    - telluric minima are shifted to these frames as:
-        # rv(tell_line/star) = rv(tell_line/earth) + BERV - RV_star_solCDM
-        #      or
-        # rv(tell_line/surf) = rv(tell_line/earth) + BERV - RV_star_solCDM - rv(surf/star) 
-        #    - we include a security of 4kms to account telluric width
-        min_dopp_shift = (1+1.55e-8)*spec_dopshift(-(min_rv_earth_mast-4.))    
-        max_dopp_shift = (1+1.55e-8)*spec_dopshift(-(max_rv_earth_mast+4.))   
+        #      we thus shift telluric minima from the Earth (source) to these receiver frames as:
+        # w_receiver = w_source * (1+ rv[s/r]/c))  
+        # w_star = w_Earth * (1+ rv[Earth/solbar]/c)) * (1+ rv[solbar/starbar]/c)) * (1+ rv[starbar/star]/c)) 
+        # w_star = w_Earth * (1+ BERV/c)) * (1 - rv_sys/c)) * (1 - rv_kepl/c))  
+        #      or 
+        # w_photo = w_star  * (1+ rv[star/photo]/c))  
+        #    - we define the maximum and minimum shift of the telluric lines over the processed visits, accounting for a margin of 4kms to account for telluric width
+        min_dopp_shift = min_specdopshift_receiver_Earth*gen_specdopshift(-4.)
+        max_dopp_shift = max_specdopshift_receiver_Earth*gen_specdopshift(4.) 
         mean_dopp_shift = 0.5*(min_dopp_shift+max_dopp_shift)
 
         #Processing each stellar line in the mask   
@@ -486,6 +491,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
             wavet_minima_l =   wavet_minima[mask2]
            
             #Min and max position of telluric line during the visit
+            #    - shifted from the Earth (source) to the star (receiver) rest frame
             wmax_t = wavet_minima_l*max_dopp_shift
             wmin_t = wavet_minima_l*min_dopp_shift
             

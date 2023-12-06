@@ -3,9 +3,9 @@ from copy import deepcopy
 from utils import np_poly,stop
 from ANTARESS_routines.ANTARESS_init import check_data
 from ANTARESS_routines.ANTARESS_orbit import conv_inclinedStarFrame_to_StarFrame,conv_StarFrame_to_inclinedStarFrame
-from ANTARESS_analysis.ANTARESS_line_prop import poly_prop_calc
+from ANTARESS_analysis.ANTARESS_model_prof import poly_prop_calc
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,return_FWHM_inst
-
+from ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
 
 
 '''

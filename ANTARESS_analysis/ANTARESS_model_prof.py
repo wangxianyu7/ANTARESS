@@ -1,5 +1,5 @@
 import numpy as np
-from utils import closest,init_parallel_func,np_where1D
+from utils import closest,init_parallel_func,np_where1D,stop
 from scipy import special
 from copy import deepcopy
 import lmfit
@@ -7,191 +7,436 @@ import bindensity as bind
 from pathos.multiprocessing import Pool
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,conv_st_prof_tab
 
+##################################################################################################    
+#%%% Model line profiles
+##################################################################################################
 
-
-'''
-Sub-function to modify parameters properties using input values
-'''
-def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
-  
-    #Parameters are used for fitting   
-    if isinstance(p_start,lmfit.parameter.Parameters):fit_used=True
-    else:fit_used=False
-
-    #Process default / additional parameters
-    fixed_args['varpar_priors']={}
-    for par in np.unique( list(p_start.keys()) + list(model_prop.keys())  ):    
-
-        #Overwrite default properties 
-        if (par in model_prop):
-            
-            #Check property is used for current instrument
-            #    - this is to avoid modifying a property for other instruments than the one(s) it is set up with in model_prop
-            #    - except for planet/star properties independent of a dataset (defined as 'physical')
-            if (inst in par) or ('__IS' in par) or ((inst in model_prop[par]) and (vis in model_prop[par][inst])) or (('physical' in model_prop[par]) and (model_prop[par]['physical'] is True)):
-     
-                #Properties are fitted
-                if fit_used:
-                
-                    #Properties depend on instrument and/or visit or is common to all
-                    if (inst in model_prop[par]):
-                        if (vis in model_prop[par][inst]):model_prop_par = model_prop[par][inst][vis]
-                        else:model_prop_par = model_prop[par][inst]
-                    else:model_prop_par = model_prop[par] 
-
-                    #Overwrite property fields
-                    if (par in p_start):
-                        p_start[par].value  = model_prop_par['guess']  
-                        p_start[par].vary  = model_prop[par]['vary']                   
-                    
-                    #Add property
-                    else:  
-                        p_start.add(par, model_prop_par['guess']  ,model_prop[par]['vary']  ,None , None, None)
-         
-                    #Value linked to other parameter
-                    if ('expr' in model_prop_par):p_start[par].expr = model_prop_par['expr']  
-                    
-                #Fixed properties
-                else:p_start[par] = model_prop[par]               
-             
-        #Variable parameter
-        if fit_used and (par in p_start) and p_start[par].vary:
-            
-            #Chi2 fit
-            #    - overwrite default priors
-            if (fit_dic['fit_mod']=='chi2'):
-                if (par in priors_prop) and (priors_prop[par]['mod']=='uf'): 
-                    p_start[par].min = priors_prop[par]['low']
-                    p_start[par].max = priors_prop[par]['high']
-
-                #Change guess value if beyond prior range
-                if (not np.isinf(p_start[par].min)) and (np.isinf(p_start[par].max)) and (p_start[par].value<p_start[par].min):p_start[par].value=p_start[par].min
-                if (np.isinf(p_start[par].min)) and (not np.isinf(p_start[par].max)) and (p_start[par].value>p_start[par].max):p_start[par].value=p_start[par].max
-                if (not np.isinf(p_start[par].min)) and (not np.isinf(p_start[par].max)) and ((p_start[par].value<p_start[par].min) or (p_start[par].value>p_start[par].max)):p_start[par].value=0.5*(p_start[par].min+p_start[par].max)
-
-            #MCMC fit
-            elif (fit_dic['fit_mod']=='mcmc'):
-                
-                #Range for walkers initialization
-                if (par in model_prop):fit_dic['uf_bd'][par]=model_prop_par['bd']
-                else:
-                    uf_bd=[-1e5,1e5]
-                    if (not np.isinf(p_start[par].min)):uf_bd[0]=p_start[par].min
-                    if (not np.isinf(p_start[par].max)):uf_bd[1]=p_start[par].max
-                    fit_dic['uf_bd'][par]=uf_bd
-                
-                #Priors
-                if (par in priors_prop):
-                    fixed_args['varpar_priors'][par] = priors_prop[par]                          
-                else:
-                    varpar_priors=[-1e5,1e5]
-                    if (not np.isinf(p_start[par].min)):varpar_priors[0]=p_start[par].min
-                    if (not np.isinf(p_start[par].max)):varpar_priors[1]=p_start[par].max                
-                    fixed_args['varpar_priors'][par]={'mod':'uf','low':varpar_priors[0],'high':varpar_priors[1]}
-
-                #Change guess value if beyond prior range
-                if ((p_start[par].value<fixed_args['varpar_priors'][par]['low']) or (p_start[par].value>fixed_args['varpar_priors'][par]['high'])):p_start[par].value=0.5*(fixed_args['varpar_priors'][par]['low']+fixed_args['varpar_priors'][par]['high'])
-
-
-    #---------------------------------------------------
-
-    #Associate the correct input names for model functions with instrument and visit dependence
-    #     - properties must be defined in p_start as 'propN__ISx_VSy'
-    #  + N is the degree of the coefficient (if relevant)
-    #  + x is the id of the instrument
-    #  + y is the id of the visit associated with the instrument
-    #     - x and y can be set to '_' so that the coefficient is common to all instruments and/or visits
-    fixed_args['name_prop2input'] = {}
-    fixed_args['coeff_ord2name'] = {}
-    fixed_args['linevar_par'] = {}
-
-    #Retrieve all root name parameters with instrument/visit dependence, possibly with several orders (polynomial degree, or list)
-    par_list=[]
-    root_par_list=[]
-    fixed_args['genpar_instvis']  = {}
-    if 'inst_list' not in fixed_args:fixed_args['inst_list']=[inst]
-    if 'inst_vis_list' not in fixed_args:fixed_args['inst_vis_list']={inst:[vis]}
-    for par in p_start:
- 
-        #Parameter depend on instrument and visit
-        if ('__IS') and ('_VS') in par:
-            root_par = par.split('__IS')[0]
-            inst_vis_par = par.split('__IS')[1]
-            inst_par  = inst_vis_par.split('_VS')[0]
-            vis_par  = inst_vis_par.split('_VS')[1]              
-            if root_par not in fixed_args['genpar_instvis'] :fixed_args['genpar_instvis'][root_par] = {}          
-            if inst_par not in fixed_args['genpar_instvis'][root_par]:fixed_args['genpar_instvis'][root_par][inst_par]=[]
-            if vis_par not in fixed_args['genpar_instvis'][root_par][inst_par]:fixed_args['genpar_instvis'][root_par][inst_par]+=[vis_par]                  
-            root_par_list+=[root_par]            
-            par_list+=[par]
-
-            #Parameter vary as polynomial of spatial stellar coordinate
-            if ('_ord' in par):
-                gen_root_par = par.split('_ord')[0] 
-                
-                #Define parameter for current instrument and visit (if specified) or all instruments and visits (if undefined) 
-                if inst_par in fixed_args['inst_list']:inst_list = [inst_par]
-                elif inst_par=='_':inst_list = fixed_args['inst_list'] 
-                for inst_loc in inst_list:
-                    if inst_loc not in fixed_args['coeff_ord2name']:fixed_args['coeff_ord2name'][inst_loc] = {}
-                    if vis_par in fixed_args['inst_vis_list'][inst_loc]:vis_list = [vis_par]
-                    elif vis_par=='_':vis_list = fixed_args['inst_vis_list'][inst_loc]              
-                    for vis_loc in vis_list:
-                        if vis_loc not in fixed_args['coeff_ord2name'][inst_loc]:fixed_args['coeff_ord2name'][inst_loc][vis_loc] = {}                
-                        if gen_root_par not in fixed_args['coeff_ord2name'][inst_loc][vis_loc]:fixed_args['coeff_ord2name'][inst_loc][vis_loc][gen_root_par]={}
+def gen_fit_prof(param_in,x_tab,args=None):
+    r"""**Generic profile fit function**
     
-                        #Identify stellar line properties with polynomial spatial dependence 
-                        if gen_root_par in ['ctrst','FWHM','amp_l2c','rv_l2c','FWHM_l2c','a_damp','rv_line']:
-                            if inst_loc not in fixed_args['linevar_par']:fixed_args['linevar_par'][inst_loc]={}
-                            if vis_loc not in fixed_args['linevar_par'][inst_loc]:fixed_args['linevar_par'][inst_loc][vis_loc]=[]
-                            if gen_root_par not in fixed_args['linevar_par'][inst_loc][vis_loc]:fixed_args['linevar_par'][inst_loc][vis_loc]+=[gen_root_par]                     
+    Function called by minimization algorithms, returning the chosen model profile after applyying (if requested) convolution, spectral conversion and resampling.
+    
+    The profile model function must return several arguments (or a list of one) with the model as first argument.
+    The profile is calculated over a continuous table to allow for convolution and use of covariance matrix (fitted pixels are accounted for directly in the minimization routine).
 
-    #Process parameters with dependence on instrument/visit
-    for root_par in np.unique(root_par_list):
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """      
+    args_exp = deepcopy(args['args_exp'])
 
-        #Parameter is associated with order coefficient
-        if ('_ord' in root_par):
-            deg_coeff=int(root_par[-1])
-            gen_root_par = root_par.split('_ord')[0]  
-        else:deg_coeff=None
-         
-        #Property common to all instruments is also common to all visits
-        #    - we associate the property for current instrument and visit to the property common to all instruments and visits
-        if any([root_par+'__IS__' in str_loc for str_loc in par_list]):
-            for inst in fixed_args['inst_list']:
-                for vis in fixed_args['inst_vis_list'][inst]:
-                    par_input = root_par+'__IS'+inst+'_VS'+vis                    
-                    fixed_args['name_prop2input'][par_input] = root_par+'__IS__VS_'
-                    if deg_coeff is not None:
-                        fixed_args['coeff_ord2name'][inst][vis][gen_root_par][deg_coeff]=root_par+'__IS__VS_' 
-            
-        #Property is specific to a given instrument
-        else:
+    #In case param_in is defined as a Parameters structure, retrieve values and define dictionary
+    if isinstance(param_in,lmfit.parameter.Parameters):
+        param={}
+        for par in param_in:param[par]=param_in[par].value
+    else:param=param_in   
+   
+   	#Profile model
+    sp_line_model = args['func_nam'](param,args_exp['cen_bins'],args)[0]
+   
+   	#Convolution and resampling 
+    mod_prof = conv_st_prof_tab(None,None,None,args,args_exp,sp_line_model,args['FWHM_inst'])  
 
-            #Process all fitted instruments associated with the property
-            for inst in fixed_args['inst_list']:
-                if (inst in fixed_args['genpar_instvis'][root_par]):
+    return mod_prof
 
-                    #Property is common to all visits of current instrument
-                    #    - we associate the property for current instrument and visit to the value specific to this instrument, common to all visits
-                    if any([root_par+'__IS'+inst+'_VS_' in str_loc for str_loc in par_list]): 
-                        for vis in fixed_args['inst_vis_list'][inst]:
-                            par_input = root_par+'__IS'+inst+'_VS'+vis 
-                            fixed_args['name_prop2input'][par_input] = root_par+'__IS'+inst+'_VS_'  
-                            if deg_coeff is not None:fixed_args['coeff_ord2name'][inst][vis][gen_root_par][deg_coeff]=root_par+'__IS'+inst+'_VS_'      
+
+
+
+def dispatch_func_prof(func_name):
+    r"""**Line profile model dispatching**
+    
+    Returns the chosen line profile function.
+
+    Args:
+        func_name (str): name of the chosen function
+    
+    Returns:
+        func (function): chosen function
+    
+    """  
+    func = {'voigt':voigt,
+            'gauss':gauss_intr_prof,
+            'cgauss':gauss_herm_lin,
+            'pgauss':gauss_poly,
+            'dgauss':dgauss,
+        }[func_name]
+    return func
+
+
+
+
+
+def voigt(param,x,args=None):
+    r"""**Line model: Voigt**
+    
+    Calculates Voigt profile, expressed in terms of the Faddeeva function (factorless)
+
+    .. math::     
+       V(rv) = Real(w(x))     
+           
+    As a function of 
+    
+    .. math:: 
+       x &= ((rv-rv_0) + i \gamma)/(\sqrt{2} \sigma)   \\
+         &= (rv-rv_0)/(\sqrt{2} \sigma) + i a       \\
+         &= 2 \sqrt{\ln{2}} (rv-rv_0)/\mathrm{FWHM}_\mathrm{gauss} + i a
+       
+    Where `a` is the damping coefficient 
+    
+    .. math:: 
+       a &= \gamma/(\sqrt{2} \sigma)            \\
+         &= 2 \gamma \sqrt{\ln{2}}/\mathrm{FWHM}_\mathrm{gauss}       \\
+         &= \sqrt{\ln{2}} \mathrm{FWHM}_\mathrm{lor}/\mathrm{FWHM}_\mathrm{gauss}       
+       
+    The :math:`\mathrm{FWHM}_\mathrm{gauss}` parameter is that of the Gaussian component (factorless)
+    
+    .. math::
+       G(rv) &= \exp(- (rv-rv_0)^2/ ( \mathrm{FWHM}_\mathrm{gauss}/(2 \sqrt{\ln{2}}) )^2  )            \\     
+             &= \exp(- (rv-rv_0)^2/ 2 ( \mathrm{FWHM}_\mathrm{gauss}/(2 \sqrt{2 \ln{2}}) )^2  )         \\
+             &= \exp(- (rv-rv_0)^2/ 2 \sigma^2  )
+
+    With :math:`\sigma = \mathrm{FWHM}_\mathrm{gauss}/(2 \sqrt{\ln{2}})` and :math:`\mathrm{FWHM}_\mathrm{lor} = 2 \gamma`
+   
+    The full-width at half maximum of the Voigt profile approximates as
+
+    .. math::    
+       \mathrm{FWHM}_\mathrm{voigt} = 0.5436 \mathrm{FWHM}_\mathrm{lor}+ \sqrt{0.2166 \mathrm{FWHM}_\mathrm{lor}^2 + \mathrm{FWHM}_\mathrm{gauss}^2} 
+    
+    From J.J.Olivero and R.L. Longbothum in Empirical fits to the Voigt line width: A brief review, JQSRT 17, P233    
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """  
+    z_tab = 2.*np.sqrt(np.log(2.))*(x - param['rv' ])/param['FWHM'] +  1j*param['a_damp']
+    
+    #Voigt profile
+    voigt_peak = special.wofz(1j*param['a_damp']).real
+    voigt_mod = 1. - (param['ctrst']/voigt_peak)*special.wofz(z_tab).real
+                 
+    #Continuum        
+    cont_pol = param['cont']*pol_cont(x,args,param)   
+
+    return voigt_mod*cont_pol , cont_pol
+
+
+
+def gauss_intr_prof(param,rv_tab,args=None):
+    r"""**Line model: Gaussian**
+    
+    Calculates Gaussian profile.
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
         
-                    #Property is specific to the visit
-                    #    - we associate the property for current instrument and visit to the value specific to this instrument, and this visit
-                    else:
-                        
-                        #Process all fitted visits associated with the property
-                        for vis in fixed_args['inst_vis_list'][inst]:
-                            if (vis in fixed_args['genpar_instvis'][root_par][inst]):   
-                                par_input = root_par+'__IS'+inst+'_VS'+vis 
-                                fixed_args['name_prop2input'][par_input] = root_par+'__IS'+inst+'_VS'+vis   
-                                if deg_coeff is not None:fixed_args['coeff_ord2name'][inst][vis][gen_root_par][deg_coeff]=root_par+'__IS'+inst+'_VS'+vis  
-                    
-    return p_start
+    """ 
+    ymodel = [param['cont']*(1.-param['ctrst']*np.exp(-np.power( 2.*np.sqrt(np.log(2.))*(rv_tab-param['rv'])/param['FWHM']  ,2.  )))] 
+    return ymodel
+
+
+
+
+
+def gauss_herm_lin(param,x,args=None):
+    r"""**Line model: Skewed Gaussian**
+    
+    Calculates Gaussian profile with hermitian polynom term for skewness/kurtosis.
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+        
+    """    
+    x_tab = (2.*np.sqrt(2.*np.log(2.)))*(x-param['rv' ])/param['FWHM'] 
+    
+    #Skewness and kurtosis
+    skew1 = param['skewA']
+    kurt1 = param['kurtA']
+    factor=1.
+    if skew1!=0. or kurt1!=0.:  
+        c0 = np.sqrt(6.)/4.
+        c1 = -np.sqrt(3.)
+        c2 = -np.sqrt(6.)
+        c3 = 2./np.sqrt(3.)
+        c4 = np.sqrt(6.)/3.        
+    if skew1!=0.:factor+=skew1*(c1*x_tab+c3*x_tab**3.)
+    if kurt1!=0.:factor+=kurt1*(c0+c2*x_tab**2.+c4*x_tab**4.)   
+ 
+    #Skewd gaussian profile
+    sk_gauss = 1.- factor*param['ctrst']*np.exp(-0.5*x_tab**2.)
+     
+    #Continuum        
+    cont_pol = param['cont']*pol_cont(x,args,param)    
+
+    return sk_gauss*cont_pol , cont_pol
+
+
+
+def gauss_poly(param,RV,args=None):
+    r"""**Line model: Sidelobed Gaussian**
+    
+    Calculates Gaussian profile with flat continuum and polynomial for sidelobes.
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+        
+    """ 
+ 
+    #Gaussian with baseline set to continuum value
+    cen_RV = param['rv']    #center
+    y_gausscore=1.-param['ctrst']*np.exp(-np.power( 2.*np.sqrt(np.log(2.))*(RV-cen_RV)/param['FWHM']  ,2.  )) 
+    ymodel = y_gausscore*param['cont']
+    
+    #Polynomial
+    #    - P(x) = a0 + a1*(x-x0) + a2*(x-x0)^2 + a3*(x-x0)^3 + a4*(x-x0)^4 + a6*(x-x0)^6
+    #      P must by symmetric, and have continuity of value and derivative in x=x0+-dx
+    #      this must be true in particular if x0 = 0, and we thus solve:
+    # P(x) = P(-x)
+    # P(dx) = cont
+    # P'(dx) = 0 
+    #    - the continuum is set to its constant value beyond the continuity points
+    c4_pol = param['c4_pol']                          #4th order coefficient
+    c6_pol = param['c6_pol']                          #6th order coefficient
+    dRV_joint=param['dRV_joint']                      #continuity points
+    RV_joint_high = cen_RV + dRV_joint       
+    RV_joint_low  = cen_RV - dRV_joint
+    cond_lobes = (RV >= RV_joint_low) & (RV <= RV_joint_high) 
+    y_polylobe = np.repeat(1.,len(RV))
+    y_polylobe[cond_lobes] *= c4_pol*dRV_joint**4. + 2.*c6_pol*dRV_joint**6. - dRV_joint**2.*np.power(RV[cond_lobes]-cen_RV,2.)*(2.*c4_pol + 3.*c6_pol*dRV_joint**2.) + c4_pol*np.power(RV[cond_lobes]-cen_RV,4.) + c6_pol*np.power(RV[cond_lobes]-cen_RV,6.)
+    ymodel[cond_lobes]*=y_polylobe[cond_lobes]    
+    
+    return ymodel, param['cont']*y_gausscore, param['cont']*y_polylobe
+                 
+
+
+def dgauss(param,rv_tab,args=None):
+    r"""**Line model: Double Gaussian**
+    
+    Calculates Double-Gaussian profile, with Gaussian in absorption co-added with a Gaussian in emission at the core.
+    
+    The Gaussian profiles are centered but their amplitude and width can be fixed or independant. The model is defined as
+
+    .. math::    
+       F &= F_\mathrm{cont} + A_\mathrm{core} \exp(f_1) + A_\mathrm{lobe} \exp(f_2)       \\
+       F &= F_\mathrm{cont} + A_\mathrm{core} ( \exp(f_1) - A_\mathrm{l2c} \exp(f_2) ) 
+       
+    We define a contrast parameter as the relative flux between the continuum and the CCF minimum 
+
+    .. math::    
+       C &= (F_\mathrm{cont} - (F_\mathrm{cont} + A_\mathrm{core} - A_\mathrm{core} A_\mathrm{l2c}) ) / F_\mathrm{cont}          \\
+       C &= -A_\mathrm{core} ( 1 - A_\mathrm{l2c}) / F_\mathrm{cont}              \\
+       A_\mathrm{core} &= -C F_\mathrm{cont}/( 1 - A_\mathrm{l2c})             \\
+       A_\mathrm{lobe} &= -A_\mathrm{l2c} A_\mathrm{core} = A_\mathrm{l2c} C F_\mathrm{cont}/( 1 - A_\mathrm{l2c})
+      
+    Thus the model can be expressed as   
+
+    .. math::     
+       F &= F_\mathrm{cont} - C F_\mathrm{cont} ( \exp(f_1) - A_\mathrm{l2c} \exp(f_2) )/( 1 - A_\mathrm{l2c})             \\
+       F &= F_\mathrm{cont} ( 1 - C ( \exp(f_1) - A_\mathrm{l2c} \exp(f_2) )/( 1 - A_\mathrm{l2c}) )     
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+        
+    """ 
+ 
+    #Reduced contrast
+    ctrst_red = param['ctrst']/( 1. - param['amp_l2c'])
+     
+    #Inverted gaussian core
+    y_gausscore=param['cont']*(1. - ctrst_red*np.exp(-np.power(2.*np.sqrt(np.log(2.))*(rv_tab-param['rv'])/param['FWHM'],2))) 
+    
+    #Gaussian lobes
+    cen_RV_lobes=param['rv']+param['rv_l2c']   
+    FWHM_lobes = (param['FWHM'])*(param['FWHM_l2c'])   
+    y_gausslobes=param['cont']*(1. + ctrst_red*param['amp_l2c']*np.exp(-np.power(2.*np.sqrt(np.log(2.))*(rv_tab-cen_RV_lobes)/FWHM_lobes,2)))     
+    
+    #Complete model
+    ymodel = y_gausscore + y_gausslobes - param['cont']
+
+    #Output models of each gaussian component superimposed to the continuum
+    return ymodel , y_gausscore, y_gausslobes
+
+
+
+
+
+
+def pol_cont(cen_bins_ref,args,param):
+    r"""**Line polynomial continuum**
+    
+    Calculates polynomial modulated around 1.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    return (1. + param['c1_pol']*cen_bins_ref + param['c2_pol']*cen_bins_ref**2.  + param['c3_pol']*cen_bins_ref**3. + param['c4_pol']*cen_bins_ref**4. ) 
+
+
+
+def calc_macro_ker_rt(rv_mac_kernel,param,cos_th,sin_th):
+    r"""**Macroturbulence broadening: anisotropic Gaussian**
+    
+    Calculates broadening kernel for local macroturbulence, based on formulation with anisotropic gaussian (Takeda \& UeNo 2017)
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    
+    if cos_th>0:term_R=(param['A_R']/(np.sqrt(np.pi)*param['ksi_R']*cos_th))*np.exp(-rv_mac_kernel**2./  ((param['ksi_R']*cos_th)**2.)  )   #Otherwise exp yield 0
+    else:term_R=0.
+    if sin_th>0:term_T=(param['A_T']/(np.sqrt(np.pi)*param['ksi_T']*sin_th))*np.exp(-rv_mac_kernel**2./  ((param['ksi_T']*sin_th)**2.)  )   #Otherwise exp yield 0 
+    else:term_T=0.
+    macro_ker_sub=term_R+term_T    
+    return macro_ker_sub
+
+def calc_macro_ker_anigauss(rv_mac_kernel,param,cos_th,sin_th):
+    r"""**Macroturbulence broadening: radial-tangential**
+    
+    Calculates broadening kernel for local macroturbulence, based on radial-tangential model (Gray 1975, 2005)
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """     
+    macro_ker_sub=np.exp(  -rv_mac_kernel**2./  ((param['eta_R']*cos_th)**2.  +  (param['eta_T']*sin_th)**2.)  )
+    return macro_ker_sub
+
+
+
+
+
+##################################################################################################    
+#%%% Model line properties
+##################################################################################################
+
+def calc_linevar_coord_grid(dim,grid):
+    r"""**Line profile coordinate dispatching**
+    
+    Returns the relevant coordinate for calculation of line properties variations.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    if (dim in ['mu','xp_abs','r_proj','y_st']):linevar_coord_grid = grid[dim]
+    elif (dim=='y_st2'):linevar_coord_grid = grid['y_st']**2.
+    elif (dim=='abs_y_st'):linevar_coord_grid = np.abs(grid['y_st'])
+    else:stop('Undefined line coordinate')
+    return linevar_coord_grid
+
+
+def calc_polymodu(pol_mode,coeff_pol,x_val):
+    r"""**Line profile coordinate models**
+    
+    Calculates absolute or modulated polynomial
+    
+    The list of polynomial coefficient 'coeff_pol' has been defined in decreasing powers, as expected by `poly1d`, using input coefficient defined through their power value (see `polycoeff_def()`)
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """     
+    
+    #Absolute polynomial
+    #    - coeff_pol[0]*x^n + coeff_pol[1]*x^(n-1) .. + coeff_pol[n]*x^0
+    if pol_mode=='abs':
+        mod= np.poly1d(coeff_pol)(x_val)         
+
+    #Modulated polynomial
+    #    - (coeff_pol[0]*x^n + coeff_pol[1]*x^(n-1) .. + 1)*coeff_pol[n] 
+    elif pol_mode=='modul':
+        coeff_pol_modu = coeff_pol[:-1] + [1]
+        mod= coeff_pol[-1]*np.poly1d(coeff_pol_modu)(x_val)  
+    else:stop('Undefined polynomial mode')
+    return mod
+
+
+
+
+
+def polycoeff_def(param,coeff_ord2name_polpar):
+    r"""**Line profile coordinate coefficients**
+    
+    Defines polynomial coefficients from the `Parameter()` format through their power value
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+
+    #Polynomial coefficients 
+    #    - keys in 'coeff_ord2name_polpar' are the coefficients degrees, values are their names, as defined in 'param' 
+    #      they can be defined in disorder (in terms of degrees), as coefficients are forced to order from deg_max to 0 in 'coeff_grid_polpar' 
+    #    - degrees can be missing
+    #    - input coefficients must be given in decreasing order of degree to poly1d
+    deg_max=max(coeff_ord2name_polpar.keys())
+    coeff_grid_polpar=[param[coeff_ord2name_polpar[ideg]] if ideg in coeff_ord2name_polpar else 0. for ideg in range(deg_max,-1,-1)]
+
+    return coeff_grid_polpar
+
+
+
+
+
+# Stage Théo : fusion des 2 dernières fonctions. 
+def poly_prop_calc(param,fit_coord_grid,coeff_ord2name_polpar, pol_mode):
+
+    #Polynomial coefficients 
+    #    - keys in 'coeff_ord2name_polpar' are the coefficients degrees, values are their names, as defined in 'param' 
+    #      they can be defined in disorder (in terms of degrees), as coefficients are forced to order from 0 to deg_max in 'coeff_pol_ctrst' 
+    #    - degrees can be missing
+    #     - input coefficients must be given in decreasing order of degree to poly1d
+    deg_max=max(coeff_ord2name_polpar.keys())
+    
+    coeff_grid_polpar=[param[coeff_ord2name_polpar[ideg]] if ideg in coeff_ord2name_polpar else 0. for ideg in range(deg_max,-1,-1)]
+    
+    # Absolute polynomial 
+    if pol_mode == 'abs' : 
+        polpar_grid = np.poly1d(coeff_grid_polpar)(fit_coord_grid)
+        
+    # Modulated polynomial
+    if pol_mode == 'modul' :
+        coeff_pol_modu = coeff_grid_polpar[:-1] + [1]
+        polpar_grid = np.poly1d(coeff_pol_modu)(fit_coord_grid)*coeff_grid_polpar[-1]
+        
+    return polpar_grid
 
 
 
@@ -201,19 +446,9 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+##################################################################################################    
+#%%% Model line analysis
+##################################################################################################
 
 '''
 Bissector calculation
@@ -281,132 +516,6 @@ def calc_biss(Fnorm_in,RV_tab_in,RV_min,max_rv_range,dF_grid,resamp_mode,Cspan):
 
 
 
-'''
-General oversampling of model line profiles
-    function must return several arguments (or a list of one) with the model as first argument
-    model is calculated over a continuous table to allow for convolution and use of covariance matrix (fitted pixels are accounted for directly in the minimization routine)
-'''
-def gen_over_func(param_in,func_nam,args):
-    args_exp = deepcopy(args['args_exp'])
-
-    #In case param_in is defined as a Parameters structure, retrieve values and define dictionary
-    if isinstance(param_in,lmfit.parameter.Parameters):
-        param={}
-        for par in param_in:param[par]=param_in[par].value
-    else:param=param_in   
-    
-    #Line profile model
-    sp_line_model = func_nam(param,args_exp['cen_bins'],args)[0]
-
-    #Add offset if required
-    if ('offset' in param):sp_line_model+=param['offset']    
-
-    #Conversion and resampling 
-    mod_prof = conv_st_prof_tab(None,None,None,args,args_exp,sp_line_model,args['FWHM_inst'])    
-
-    return mod_prof
-
-
-
-
-
-
-'''
-Dispatching function
-'''
-def dispatch_func_prof(func_name):
-    return {'gauss':gauss_intr_prof,
-            'dgauss':dgauss,
-            'voigt':voigt
-        }[func_name]
-
-
-'''
-Polynomial continuum for stellar line models
-'''
-def pol_cont(cen_bins_ref,args,param):
-    return (1. + param['c1_pol']*cen_bins_ref + param['c2_pol']*cen_bins_ref**2.  + param['c3_pol']*cen_bins_ref**3. + param['c4_pol']*cen_bins_ref**4. ) 
-
-'''
-Gaussian with hermitian polynom term for skewness/kurtosis and with linear trend
-'''
-def MAIN_gauss_herm_lin(param,RV,args=None):
-    ymodel=gen_over_func(param,gauss_herm_lin,args)
-    return ymodel
-
-'''
-Gaussian with hermitian polynom term for skewness/kurtosis and with linear trend
-'''
-def gauss_herm_lin(param,x,args=None):
-    x_tab = (2.*np.sqrt(2.*np.log(2.)))*(x-param['rv' ])/param['FWHM'] 
-    
-    #Skewness and kurtosis
-    skew1 = param['skewA']
-    kurt1 = param['kurtA']
-    factor=1.
-    if skew1!=0. or kurt1!=0.:  
-        c0 = np.sqrt(6.)/4.
-        c1 = -np.sqrt(3.)
-        c2 = -np.sqrt(6.)
-        c3 = 2./np.sqrt(3.)
-        c4 = np.sqrt(6.)/3.        
-    if skew1!=0.:factor+=skew1*(c1*x_tab+c3*x_tab**3.)
-    if kurt1!=0.:factor+=kurt1*(c0+c2*x_tab**2.+c4*x_tab**4.)   
- 
-    #Skewd gaussian profile
-    sk_gauss = 1.- factor*param['ctrst']*np.exp(-0.5*x_tab**2.)
-     
-    #Continuum        
-    cont_pol = param['cont']*pol_cont(x,args,param)    
-
-    return sk_gauss*cont_pol , cont_pol
-
-'''
-Voigt profile main function
-'''
-def MAIN_voigt(param,RV,args=None):
-    ymodel=gen_over_func(param,voigt,args)
-    return ymodel
-
-'''
-Voigt profile with linear trend
-    - the FWHM_gauss parameter is that of the gaussian component (factorless):
- G(rv) = exp(- (rv-rv0)^2/ ( FWHM_gauss/(2 sqrt(ln(2))) )^2  )             
- G(rv) = exp(- (rv-rv0)^2/ 2*( FWHM_gauss/(2 sqrt(2ln(2))) )^2  )  
- G(rv) = exp(- (rv-rv0)^2/ 2*sig^2  ) 
-      with sig = FWHM_gauss/(2 sqrt(2ln(2)))          
-    - the Voigt profile is expressed in terms of the Faddeeva function (factorless):
- V(rv) = Real(w(x))      
-      with x = ((rv-rv0) + i*gamma)/(sqrt(2)*sig)
-      we use the damping coefficient 
- a = gamma/(sqrt(2)*sigma) = 2*gamma*sqrt(ln(2))/FWHM_gauss 
-      which can be expressed as a function of FWHM_LOR = 2*gamma, so that 
- a = sqrt(ln(2))*FWHM_LOR/FWHM_gauss 
-      and
- x = (rv-rv0)/(sqrt(2)*sig) + i*a 
-   = 2*sqrt(ln(2))*(rv-rv0)/FWHM_gauss + i*a
-    - the full-width at half maximum of the Voigt profile approximates as:
- fwhm_voigt = (0.5436*fwhm_lor+ np.sqrt(0.2166*pow(fhwhm_lor,2.)+pow(fwhm_gauss,2.)) )
-      from J.J.Olivero and R.L. Longbothum in Empirical fits to the Voigt line width: A brief review, JQSRT 17, P233
-'''
-def voigt(param,x,args=None):
-    z_tab = 2.*np.sqrt(np.log(2.))*(x - param['rv' ])/param['FWHM'] +  1j*param['a_damp']
-    
-    #Voigt profile
-    voigt_peak = special.wofz(1j*param['a_damp']).real
-    voigt_mod = 1. - (param['ctrst']/voigt_peak)*special.wofz(z_tab).real
-                 
-    #Continuum        
-    cont_pol = param['cont']*pol_cont(x,args,param)   
-
-    return voigt_mod*cont_pol , cont_pol
-
-
-'''
-Simple gaussian profile 
-'''
-def gauss_intr_prof(param,rv_tab,args=None):
-    return [param['cont']*(1.-param['ctrst']*np.exp(-np.power( 2.*np.sqrt(np.log(2.))*(rv_tab-param['rv'])/param['FWHM']  ,2.  )))] 
 
 
 '''
@@ -432,88 +541,6 @@ def gauss_intr_prop(ctrst_intr,FWHM_intr,FWHM_inst):
     return ctrst_meas,FWHM_meas
 
 
-
-
-
-
-
-
-'''
-Gaussian with flat continuum and polynomial for sidelobes
-'''
-def MAIN_gauss_poly(param,RV,args=None):
-    ymodel=gen_over_func(param,gauss_poly,args)
-    return ymodel
-
-def gauss_poly(param,RV,args=None):
- 
-    #Gaussian with baseline set to continuum value
-    cen_RV = param['rv']    #center
-    y_gausscore=1.-param['ctrst']*np.exp(-np.power( 2.*np.sqrt(np.log(2.))*(RV-cen_RV)/param['FWHM']  ,2.  )) 
-    ymodel = y_gausscore*param['cont']
-    
-    #Polynomial
-    #    - P(x) = a0 + a1*(x-x0) + a2*(x-x0)^2 + a3*(x-x0)^3 + a4*(x-x0)^4 + a6*(x-x0)^6
-    #      P must by symmetric, and have continuity of value and derivative in x=x0+-dx
-    #      this must be true in particular if x0 = 0, and we thus solve:
-    # P(x) = P(-x)
-    # P(dx) = cont
-    # P'(dx) = 0 
-    #    - the continuum is set to its constant value beyond the continuity points
-    c4_pol = param['c4_pol']                          #4th order coefficient
-    c6_pol = param['c6_pol']                          #6th order coefficient
-    dRV_joint=param['dRV_joint']                      #continuity points
-    RV_joint_high = cen_RV + dRV_joint       
-    RV_joint_low  = cen_RV - dRV_joint
-    cond_lobes = (RV >= RV_joint_low) & (RV <= RV_joint_high) 
-    y_polylobe = np.repeat(1.,len(RV))
-    y_polylobe[cond_lobes] *= c4_pol*dRV_joint**4. + 2.*c6_pol*dRV_joint**6. - dRV_joint**2.*np.power(RV[cond_lobes]-cen_RV,2.)*(2.*c4_pol + 3.*c6_pol*dRV_joint**2.) + c4_pol*np.power(RV[cond_lobes]-cen_RV,4.) + c6_pol*np.power(RV[cond_lobes]-cen_RV,6.)
-    ymodel[cond_lobes]*=y_polylobe[cond_lobes]    
-    
-    return ymodel, param['cont']*y_gausscore, param['cont']*y_polylobe
-                 
-
-
-
-
-
-'''
-Model with gaussian for continuum, and inverted gaussian for the core
-    - the gaussian profiles are centered but their amplitude and width can be fixed or independant
-    - the model is defined as :
- CCF = cont + amp_core*exp(f1) + amp_lobe*exp(f2)
- CCF = cont + amp_core*( exp(f1) - amp_l2c*exp(f2) ) 
-      we define a contrast parameter as the relative flux between the continuum and the CCF minimum :
- C = (cont - (cont + amp_core - amp_core*amp_l2c) ) / cont 
- C = -amp_core*( 1 - amp_l2c) / cont
- amp_core = -C*cont/( 1 - amp_l2c)
- amp_lobe = -amp_l2c*amp_core = amp_l2c*C*cont/( 1 - amp_l2c)
-      thus the model can be expressed as :    
- CCF = cont - C*cont*( exp(f1) - amp_l2c*exp(f2) )/( 1 - amp_l2c)
- CCF = cont*( 1 - C*( exp(f1) - amp_l2c*exp(f2) )/( 1 - amp_l2c) ) 
-'''
-def MAIN_dgauss(param,RV,args=None):
-    ymodel=gen_over_func(param,dgauss,args)
-    return ymodel
-
-def dgauss(param,rv_tab,args=None):
- 
-    #Reduced contrast
-    ctrst_red = param['ctrst']/( 1. - param['amp_l2c'])
-     
-    #Inverted gaussian core
-    y_gausscore=param['cont']*(1. - ctrst_red*np.exp(-np.power(2.*np.sqrt(np.log(2.))*(rv_tab-param['rv'])/param['FWHM'],2))) 
-    
-    #Gaussian lobes
-    cen_RV_lobes=param['rv']+param['rv_l2c']   
-    FWHM_lobes = (param['FWHM'])*(param['FWHM_l2c'])   
-    y_gausslobes=param['cont']*(1. + ctrst_red*param['amp_l2c']*np.exp(-np.power(2.*np.sqrt(np.log(2.))*(rv_tab-cen_RV_lobes)/FWHM_lobes,2)))     
-    
-    #Complete model
-    ymodel = y_gausscore + y_gausslobes - param['cont']
-
-    #Output models of each gaussian component superimposed to the continuum
-    return ymodel , y_gausscore, y_gausslobes
 
 
 
@@ -582,19 +609,26 @@ def para_cust_mod_true_prop(func_input,nthreads,n_elem,y_inputs,common_args):
     pool_proc.join() 
     return y_output
 
-#Local macroturbulence broadening functions
-#    - formulation with anisotropic gaussian from Takeda & UeNo 2017 or with radial-tangential model (Gray 1975, 2005)
-def calc_macro_ker_rt(rv_mac_kernel,param,cos_th,sin_th):
-    if cos_th>0:term_R=(param['A_R']/(np.sqrt(np.pi)*param['ksi_R']*cos_th))*np.exp(-rv_mac_kernel**2./  ((param['ksi_R']*cos_th)**2.)  )   #Otherwise exp yield 0
-    else:term_R=0.
-    if sin_th>0:term_T=(param['A_T']/(np.sqrt(np.pi)*param['ksi_T']*sin_th))*np.exp(-rv_mac_kernel**2./  ((param['ksi_T']*sin_th)**2.)  )   #Otherwise exp yield 0 
-    else:term_T=0.
-    macro_ker_sub=term_R+term_T    
-    return macro_ker_sub
 
-def calc_macro_ker_anigauss(rv_mac_kernel,param,cos_th,sin_th):
-    macro_ker_sub=np.exp(  -rv_mac_kernel**2./  ((param['eta_R']*cos_th)**2.  +  (param['eta_T']*sin_th)**2.)  )
-    return macro_ker_sub
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

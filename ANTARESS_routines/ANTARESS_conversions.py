@@ -1,5 +1,5 @@
 import numpy as np
-from utils import stop,dataload_npz,datasave_npz,MAIN_multithread,np_where1D,init_parallel_func,spec_dopshift
+from utils import stop,dataload_npz,datasave_npz,MAIN_multithread,np_where1D,init_parallel_func,gen_specdopshift
 from copy import deepcopy
 import bindensity as bind
 from scipy.interpolate import interp1d
@@ -498,9 +498,12 @@ def new_compute_CCF(edge_wav,flux,cov,resamp_mode,edge_velccf,wght_mask,wav_mask
         stop('Spectral bins must be continuous')
     
     #Line wavelength at each requested RV
-    #    - for each line, the rest wavelength of its transition is shifted to all trial wavelengths of the spectrum rest frame associated with the CCF RVs
+    #    - for each line, the rest wavelength of its transition (source, assimilated to the star rest frame) is shifted to all trial wavelengths of the spectrum rest frame (receiver) associated with the CCF RVs
+    #      see gen_specdopshift():
+    # w_receiver = w_source * (1+ rv[s/r]/c))
+    # w_trial = w_line * (1+ rv[line/trial]/c))
     n_RV=len(edge_velccf)-1
-    edge_mask_lines=wav_mask[:,None]*spec_dopshift(-edge_velccf)
+    edge_mask_lines=wav_mask[:,None]*gen_specdopshift(edge_velccf)
 
     #Call to parallelized function   
     if (nthreads>1) and (nthreads<=len(wght_mask)):            

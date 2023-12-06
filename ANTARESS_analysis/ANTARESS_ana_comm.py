@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from utils import stop,np_where1D,npint,np_interp,dataload_npz,MAIN_multithread,np_poly,closest_arr,spec_dopshift,closest
+from utils import stop,np_where1D,npint,np_interp,dataload_npz,MAIN_multithread,np_poly,closest_arr,gen_specdopshift,closest,def_edge_tab
 from copy import deepcopy
 from lmfit import Parameters
 import lmfit
@@ -12,16 +12,207 @@ import matplotlib.pyplot as plt
 import bindensity as bind
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff
 from ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_prop
-from ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,MAIN_custom_DI_prof,custom_DI_prof,theo_intr2loc
+from ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,custom_DI_prof,theo_intr2loc
 from ANTARESS_routines.ANTARESS_orbit import calc_pl_coord
-from ANTARESS_analysis.ANTARESS_model_prof import par_formatting,para_cust_mod_true_prop,proc_cust_mod_true_prop,cust_mod_true_prop,gauss_intr_prop,calc_biss,\
-    dgauss,MAIN_dgauss,MAIN_gauss_poly,gauss_poly,MAIN_voigt,voigt,MAIN_gauss_herm_lin,gauss_herm_lin
+from ANTARESS_analysis.ANTARESS_model_prof import para_cust_mod_true_prop,proc_cust_mod_true_prop,cust_mod_true_prop,gauss_intr_prop,calc_biss,\
+    dgauss,gauss_poly,voigt,gauss_herm_lin,polycoeff_def,gen_fit_prof
 from ANTARESS_analysis.ANTARESS_inst_resp import return_FWHM_inst
-from ANTARESS_analysis.ANTARESS_line_prop import polycoeff_def
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,def_st_prof_tab,cond_conv_st_prof_tab,resamp_model_st_prof_tab,ref_inst_convol
-from ANTARESS_routines.ANTARESS_binning import def_edge_tab
 from ANTARESS_routines.ANTARESS_orbit import excl_plrange
 from ANTARESS_routines.ANTARESS_init import check_data 
+
+
+
+
+
+'''
+Sub-function to modify parameters properties using input values
+'''
+def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
+  
+    #Parameters are used for fitting   
+    if isinstance(p_start,lmfit.parameter.Parameters):fit_used=True
+    else:fit_used=False
+
+    #Process default / additional parameters
+    fixed_args['varpar_priors']={}
+    for par in np.unique( list(p_start.keys()) + list(model_prop.keys())  ):    
+
+        #Overwrite default properties 
+        if (par in model_prop):
+            
+            #Check property is used for current instrument
+            #    - this is to avoid modifying a property for other instruments than the one(s) it is set up with in model_prop
+            #    - except for planet/star properties independent of a dataset (defined as 'physical')
+            if (inst in par) or ('__IS' in par) or ((inst in model_prop[par]) and (vis in model_prop[par][inst])) or (('physical' in model_prop[par]) and (model_prop[par]['physical'] is True)):
+     
+                #Properties are fitted
+                if fit_used:
+                
+                    #Properties depend on instrument and/or visit or is common to all
+                    if (inst in model_prop[par]):
+                        if (vis in model_prop[par][inst]):model_prop_par = model_prop[par][inst][vis]
+                        else:model_prop_par = model_prop[par][inst]
+                    else:model_prop_par = model_prop[par] 
+
+                    #Overwrite property fields
+                    if (par in p_start):
+                        p_start[par].value  = model_prop_par['guess']  
+                        p_start[par].vary  = model_prop[par]['vary']                   
+                    
+                    #Add property
+                    else:  
+                        p_start.add(par, model_prop_par['guess']  ,model_prop[par]['vary']  ,None , None, None)
+         
+                    #Value linked to other parameter
+                    if ('expr' in model_prop_par):p_start[par].expr = model_prop_par['expr']  
+                    
+                #Fixed properties
+                else:p_start[par] = model_prop[par]               
+             
+        #Variable parameter
+        if fit_used and (par in p_start) and p_start[par].vary:
+            
+            #Chi2 fit
+            #    - overwrite default priors
+            if (fit_dic['fit_mod']=='chi2'):
+                if (par in priors_prop) and (priors_prop[par]['mod']=='uf'): 
+                    p_start[par].min = priors_prop[par]['low']
+                    p_start[par].max = priors_prop[par]['high']
+
+                #Change guess value if beyond prior range
+                if (not np.isinf(p_start[par].min)) and (np.isinf(p_start[par].max)) and (p_start[par].value<p_start[par].min):p_start[par].value=p_start[par].min
+                if (np.isinf(p_start[par].min)) and (not np.isinf(p_start[par].max)) and (p_start[par].value>p_start[par].max):p_start[par].value=p_start[par].max
+                if (not np.isinf(p_start[par].min)) and (not np.isinf(p_start[par].max)) and ((p_start[par].value<p_start[par].min) or (p_start[par].value>p_start[par].max)):p_start[par].value=0.5*(p_start[par].min+p_start[par].max)
+
+            #MCMC fit
+            elif (fit_dic['fit_mod']=='mcmc'):
+                
+                #Range for walkers initialization
+                if (par in model_prop):fit_dic['uf_bd'][par]=model_prop_par['bd']
+                else:
+                    uf_bd=[-1e5,1e5]
+                    if (not np.isinf(p_start[par].min)):uf_bd[0]=p_start[par].min
+                    if (not np.isinf(p_start[par].max)):uf_bd[1]=p_start[par].max
+                    fit_dic['uf_bd'][par]=uf_bd
+                
+                #Priors
+                if (par in priors_prop):
+                    fixed_args['varpar_priors'][par] = priors_prop[par]                          
+                else:
+                    varpar_priors=[-1e5,1e5]
+                    if (not np.isinf(p_start[par].min)):varpar_priors[0]=p_start[par].min
+                    if (not np.isinf(p_start[par].max)):varpar_priors[1]=p_start[par].max                
+                    fixed_args['varpar_priors'][par]={'mod':'uf','low':varpar_priors[0],'high':varpar_priors[1]}
+
+                #Change guess value if beyond prior range
+                if ((p_start[par].value<fixed_args['varpar_priors'][par]['low']) or (p_start[par].value>fixed_args['varpar_priors'][par]['high'])):p_start[par].value=0.5*(fixed_args['varpar_priors'][par]['low']+fixed_args['varpar_priors'][par]['high'])
+
+
+    #---------------------------------------------------
+
+    #Associate the correct input names for model functions with instrument and visit dependence
+    #     - properties must be defined in p_start as 'propN__ISx_VSy'
+    #  + N is the degree of the coefficient (if relevant)
+    #  + x is the id of the instrument
+    #  + y is the id of the visit associated with the instrument
+    #     - x and y can be set to '_' so that the coefficient is common to all instruments and/or visits
+    fixed_args['name_prop2input'] = {}
+    fixed_args['coeff_ord2name'] = {}
+    fixed_args['linevar_par'] = {}
+
+    #Retrieve all root name parameters with instrument/visit dependence, possibly with several orders (polynomial degree, or list)
+    par_list=[]
+    root_par_list=[]
+    fixed_args['genpar_instvis']  = {}
+    if 'inst_list' not in fixed_args:fixed_args['inst_list']=[inst]
+    if 'inst_vis_list' not in fixed_args:fixed_args['inst_vis_list']={inst:[vis]}
+    for par in p_start:
+ 
+        #Parameter depend on instrument and visit
+        if ('__IS') and ('_VS') in par:
+            root_par = par.split('__IS')[0]
+            inst_vis_par = par.split('__IS')[1]
+            inst_par  = inst_vis_par.split('_VS')[0]
+            vis_par  = inst_vis_par.split('_VS')[1]              
+            if root_par not in fixed_args['genpar_instvis'] :fixed_args['genpar_instvis'][root_par] = {}          
+            if inst_par not in fixed_args['genpar_instvis'][root_par]:fixed_args['genpar_instvis'][root_par][inst_par]=[]
+            if vis_par not in fixed_args['genpar_instvis'][root_par][inst_par]:fixed_args['genpar_instvis'][root_par][inst_par]+=[vis_par]                  
+            root_par_list+=[root_par]            
+            par_list+=[par]
+
+            #Parameter vary as polynomial of spatial stellar coordinate
+            if ('_ord' in par):
+                gen_root_par = par.split('_ord')[0] 
+                
+                #Define parameter for current instrument and visit (if specified) or all instruments and visits (if undefined) 
+                if inst_par in fixed_args['inst_list']:inst_list = [inst_par]
+                elif inst_par=='_':inst_list = fixed_args['inst_list'] 
+                for inst_loc in inst_list:
+                    if inst_loc not in fixed_args['coeff_ord2name']:fixed_args['coeff_ord2name'][inst_loc] = {}
+                    if vis_par in fixed_args['inst_vis_list'][inst_loc]:vis_list = [vis_par]
+                    elif vis_par=='_':vis_list = fixed_args['inst_vis_list'][inst_loc]              
+                    for vis_loc in vis_list:
+                        if vis_loc not in fixed_args['coeff_ord2name'][inst_loc]:fixed_args['coeff_ord2name'][inst_loc][vis_loc] = {}                
+                        if gen_root_par not in fixed_args['coeff_ord2name'][inst_loc][vis_loc]:fixed_args['coeff_ord2name'][inst_loc][vis_loc][gen_root_par]={}
+    
+                        #Identify stellar line properties with polynomial spatial dependence 
+                        if gen_root_par in ['ctrst','FWHM','amp_l2c','rv_l2c','FWHM_l2c','a_damp','rv_line']:
+                            if inst_loc not in fixed_args['linevar_par']:fixed_args['linevar_par'][inst_loc]={}
+                            if vis_loc not in fixed_args['linevar_par'][inst_loc]:fixed_args['linevar_par'][inst_loc][vis_loc]=[]
+                            if gen_root_par not in fixed_args['linevar_par'][inst_loc][vis_loc]:fixed_args['linevar_par'][inst_loc][vis_loc]+=[gen_root_par]                     
+
+    #Process parameters with dependence on instrument/visit
+    for root_par in np.unique(root_par_list):
+
+        #Parameter is associated with order coefficient
+        if ('_ord' in root_par):
+            deg_coeff=int(root_par[-1])
+            gen_root_par = root_par.split('_ord')[0]  
+        else:deg_coeff=None
+         
+        #Property common to all instruments is also common to all visits
+        #    - we associate the property for current instrument and visit to the property common to all instruments and visits
+        if any([root_par+'__IS__' in str_loc for str_loc in par_list]):
+            for inst in fixed_args['inst_list']:
+                for vis in fixed_args['inst_vis_list'][inst]:
+                    par_input = root_par+'__IS'+inst+'_VS'+vis                    
+                    fixed_args['name_prop2input'][par_input] = root_par+'__IS__VS_'
+                    if deg_coeff is not None:
+                        fixed_args['coeff_ord2name'][inst][vis][gen_root_par][deg_coeff]=root_par+'__IS__VS_' 
+            
+        #Property is specific to a given instrument
+        else:
+
+            #Process all fitted instruments associated with the property
+            for inst in fixed_args['inst_list']:
+                if (inst in fixed_args['genpar_instvis'][root_par]):
+
+                    #Property is common to all visits of current instrument
+                    #    - we associate the property for current instrument and visit to the value specific to this instrument, common to all visits
+                    if any([root_par+'__IS'+inst+'_VS_' in str_loc for str_loc in par_list]): 
+                        for vis in fixed_args['inst_vis_list'][inst]:
+                            par_input = root_par+'__IS'+inst+'_VS'+vis 
+                            fixed_args['name_prop2input'][par_input] = root_par+'__IS'+inst+'_VS_'  
+                            if deg_coeff is not None:fixed_args['coeff_ord2name'][inst][vis][gen_root_par][deg_coeff]=root_par+'__IS'+inst+'_VS_'      
+        
+                    #Property is specific to the visit
+                    #    - we associate the property for current instrument and visit to the value specific to this instrument, and this visit
+                    else:
+                        
+                        #Process all fitted visits associated with the property
+                        for vis in fixed_args['inst_vis_list'][inst]:
+                            if (vis in fixed_args['genpar_instvis'][root_par][inst]):   
+                                par_input = root_par+'__IS'+inst+'_VS'+vis 
+                                fixed_args['name_prop2input'][par_input] = root_par+'__IS'+inst+'_VS'+vis   
+                                if deg_coeff is not None:fixed_args['coeff_ord2name'][inst][vis][gen_root_par][deg_coeff]=root_par+'__IS'+inst+'_VS'+vis  
+                    
+    return p_start
+
+
+
+
+
 
 
 def model_par_names():
@@ -63,7 +254,7 @@ def model_par_names():
         'rv':'RV (km/s)',
         'FWHM':'FWHM (km/s)',
         'rv_l2c':'RV$_{l}$-RV$_{c}$','amp_l2c':'A$_{l}$/A$_{c}$','FWHM_l2c':'FWHM$_{l}$/FWHM$_{c}$',
-        'cont':'P$_\mathrm{cont}$','offset':'F$_\mathrm{off}$',
+        'cont':'P$_\mathrm{cont}$',
         'c1_pol':'c$_1$','c2_pol':'c$_2$','c3_pol':'c$_3$','c4_pol':'c$_4$',
         'LD_u1':'LD$_1$','LD_u2':'LD$_2$','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
         'f_GD':'f$_{\rm GD}$','beta_GD':'$\beta_{\rm GD}$','Tpole':'T$_{\rm pole}$',
@@ -257,12 +448,17 @@ def ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plo
                 idx_exp2in = data_bin['idx_exp2in']
                 idx_in = data_bin['idx_in'] 
            
-                #Shift ranges (defined in input rest frame) into the star rest frame
+                #Shift ranges from the solar barycentric rest frame (receiver, where they are defined) to the star barycentric rest frame (source)
+                #      see gen_specdopshift() :
+                # w_source = w_receiver / (1+ rv[s/r]/c))
+                # w_starbar = w_solbar / (1+ rv[starbar/solbar]/c))  
+                #           = w_solbar / (1+ sysvel/c))         
+                #      where we neglect the Keplerian motion of the star in the definition of the ranges in the star rest frame
                 if rest_frame=='star':
                     fit_range = np.array(fit_range)
                     cont_range = np.array(cont_range)
                     if ('spec' in data_mode):
-                        conv_fact = spec_dopshift(data_bin['sysvel'])
+                        conv_fact = 1./gen_specdopshift(data_bin['sysvel'])
                         fit_range*=conv_fact
                         cont_range*=conv_fact
                         if (trim_range is not None):trim_range = np.array(trim_range)*conv_fact
@@ -272,27 +468,51 @@ def ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plo
                         if (trim_range is not None):trim_range = np.array(trim_range)-data_bin['sysvel']
                     if ('rv' in prop_dic['mod_prop']) and (inst in prop_dic['mod_prop']['rv']) and (vis in prop_dic['mod_prop']['rv'][inst]) and (vis_mode==''):prop_dic['mod_prop']['rv'][inst][vis]['guess']-=data_bin['sysvel']
 
-
             #Defined exposures
             iexp_def = range(fit_dic['n_exp'])
 
-            #Definition of ranges covered by occulted stellar lines / for signal integration in the star rest frame
-            #    - we center requested range around surface RVs in original rest frame
+            #Definition of ranges covered by occulted stellar lines / for signal integration 
             if (inst in prop_dic['occ_range']) or ('EW' in prop_dic['meas_prop']) or ('biss' in prop_dic['meas_prop']):
-                if rest_frame=='star':rv_shift_frame = np.repeat(0.,fit_dic['n_exp'])
+                
+                #RV shift from the star rest frame to the rest frame of the analyzed disk-integrated profiles
+                if rest_frame=='star':
+                    rv_star_starbar = np.repeat(0.,fit_dic['n_exp'])
+                    rv_starbar_solbar = np.repeat(0.,fit_dic['n_exp'])
                 else:
-                    if 'orig' in data_type:rv_shift_frame = coord_dic[inst][vis]['RV_star_solCDM']
-                    elif 'bin' in data_type:rv_shift_frame = data_bin['RV_star_solCDM']
+                    if 'orig' in data_type:
+                        rv_star_starbar = coord_dic[inst][vis]['RV_star_stelCDM']
+                        rv_starbar_solbar = data_dic['DI']['sysvel'][inst][vis]                       
+                    elif 'bin' in data_type:
+                        rv_star_starbar = data_bin['RV_star_stelCDM']
+                        rv_starbar_solbar = data_bin['sysvel']
+                    
+                #Ranges for occulted stellar lines
+                #    - 'occ_range' define the range covered by local stellar lines in the photosphere rest frame (source), and is shifted to the star or solar barycentric rest frame (receiver) if relevant 
+                #       see gen_specdopshift() :
+                # w_receiver = w_source * (1+ rv[s/r]/c))
+                # w_star = w_photo * (1+ rv[photo/star]/c))
+                # w_solbar = w_photo * (1+ rv[photo/star]/c)) * (1+ rv[star/starbar]/c)) * (1+ rv[starbar/solbar]/c))
+                #      'line_range' define the maximum extension of the disk-integrated stellar line in the star rest frame (source), and is shifted to the solar barycentric rest frame (receiver) if relevant
+                # w_solbar = w_star * (1+ rv[star/starbar]/c)) * (1+ rv[starbar/solbar]/c))              
                 if (inst in prop_dic['occ_range']):
-                    occ_exclu_range = np.array(prop_dic['occ_range'][inst])[:,None] + (surf_rv_mod+rv_shift_frame[idx_in])   
-                    line_range = np.array(prop_dic['line_range'][inst])[:,None] + rv_shift_frame[idx_in]                     
                     if ('spec' in data_mode):
-                        occ_exclu_range = prop_dic['line_trans']*spec_dopshift(-occ_exclu_range)
-                        line_range = prop_dic['line_trans']*spec_dopshift(-line_range)
+                        specdopshift_star_solbar = gen_specdopshift(rv_star_starbar[idx_in])*gen_specdopshift(rv_starbar_solbar[idx_in])
+                        occ_exclu_range = prop_dic['line_trans']*gen_specdopshift(np.array(prop_dic['occ_range'][inst])[:,None])*gen_specdopshift(surf_rv_mod)*specdopshift_star_solbar
+                        line_range = prop_dic['line_trans']*gen_specdopshift(np.array(prop_dic['line_range'][inst])[:,None])*specdopshift_star_solbar
+                    else:
+                        specdopshift_star_solbar = rv_star_starbar[idx_in]+rv_starbar_solbar[idx_in]
+                        occ_exclu_range = np.array(prop_dic['occ_range'][inst])[:,None] + (surf_rv_mod+specdopshift_star_solbar)   
+                        line_range = np.array(prop_dic['line_range'][inst])[:,None] + specdopshift_star_solbar
+                        
+                #Ranges for signal integration
+                #    - used in rv space
+                #    - defined in the star rest frame 
+                #    - if relevant, shifted from the star rest frame (source) to the solar barycentric rest frame (receiver)
+                # rv(range/solbar) = rv(range/star) + rv(star/starbar) + rv(starbar/solbar)
                 if ('EW' in prop_dic['meas_prop']):
-                    prop_dic['EW_range_frame'] = np.array(prop_dic['meas_prop']['EW']['rv_range'])[:,None] + rv_shift_frame
+                    prop_dic['EW_range_frame'] = np.array(prop_dic['meas_prop']['EW']['rv_range'])[:,None] + rv_star_starbar+rv_starbar_solbar
                 if ('biss' in prop_dic['meas_prop']):
-                    prop_dic['biss_range_frame'] = np.array(prop_dic['meas_prop']['biss']['rv_range'])[:,None] + rv_shift_frame
+                    prop_dic['biss_range_frame'] = np.array(prop_dic['meas_prop']['biss']['rv_range'])[:,None] + rv_star_starbar+rv_starbar_solbar
 
         #Intrinsic profiles
         elif 'Intr' in data_type:
@@ -305,13 +525,16 @@ def ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plo
             #Binned profiles
             elif 'bin' in data_type:iexp_def = range(fit_dic['n_exp'])
 
-            #Definition of ranges for signal integration in the surface rest frame
-            #    - we center requested range around surface RVs in the star or surface rest frame
+            #Ranges for signal integration
+            #    - used in rv space
+            #    - defined in the photosphere rest frame  
+            #    - if relevant, shifted from the photosphere rest frame (source) to the star rest frame (receiver)
+            # rv(range/star) = rv(range/photo) + rv(photo/star)        
             if ('EW' in prop_dic['meas_prop']) or ('biss' in prop_dic['meas_prop']):
-                if rest_frame=='surf':rv_shift_frame = np.repeat(0.,fit_dic['n_exp'])
-                else:rv_shift_frame = surf_rv_mod
-                if ('EW' in prop_dic['meas_prop']):prop_dic['EW_range_frame'] = np.array(prop_dic['meas_prop']['EW']['rv_range'])[:,None] + rv_shift_frame
-                if ('biss' in prop_dic['meas_prop']):prop_dic['biss_range_frame'] = np.array(prop_dic['meas_prop']['biss']['rv_range'])[:,None] + rv_shift_frame
+                if rest_frame=='surf':rv_photo_star = np.repeat(0.,fit_dic['n_exp'])
+                else:rv_photo_star = surf_rv_mod
+                if ('EW' in prop_dic['meas_prop']):prop_dic['EW_range_frame'] = np.array(prop_dic['meas_prop']['EW']['rv_range'])[:,None] + rv_photo_star
+                if ('biss' in prop_dic['meas_prop']):prop_dic['biss_range_frame'] = np.array(prop_dic['meas_prop']['biss']['rv_range'])[:,None] + rv_photo_star
 
         #Atmospheric profiles
         elif 'Atm' in data_type:               
@@ -328,17 +551,20 @@ def ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plo
             #Binned profiles
             elif 'bin' in data_type:iexp_def = range(fit_dic['n_exp'])
 
-            #Definition of ranges for signal integration in the planet rest frame
-            #    - we center requested range around planet RVs in the star or planet rest frame
+            #Ranges for signal integration
+            #    - used in rv space
+            #    - defined in the planet rest frame  
+            #    - if relevant, shifted from the planet rest frame (source) to the star rest frame (receiver)
+            # rv(range/pl) = rv(range/pl) + rv(pl/star)  
             if ('int_sign' in prop_dic['meas_prop']) or ('EW' in prop_dic['meas_prop']):
-                if rest_frame=='pl':rv_shift_frame = np.repeat(0.,fit_dic['n_exp'])
+                if rest_frame=='pl':rv_pl_star = np.repeat(0.,fit_dic['n_exp'])
                 else:
                     if 'orig' in data_type:
-                        if prop_dic['pl_atm_sign']=='Absorption':rv_shift_frame = coord_dic[inst][vis]['rv_pl'][idx_in]
-                        elif prop_dic['pl_atm_sign']=='Emission':rv_shift_frame = coord_dic[inst][vis]['rv_pl']
-                    elif 'bin' in data_type:rv_shift_frame = data_bin[ref_pl]['rv_pl']
-                if ('int_sign' in prop_dic['meas_prop']):prop_dic['int_sign_range_frame'] = np.array(prop_dic['meas_prop']['int_sign']['rv_range'])[:,None] + rv_shift_frame
-                if ('EW' in prop_dic['meas_prop']):prop_dic['EW_range_frame'] = np.array(prop_dic['meas_prop']['EW']['rv_range'])[:,None] + rv_shift_frame
+                        if prop_dic['pl_atm_sign']=='Absorption':rv_pl_star = coord_dic[inst][vis]['rv_pl'][idx_in]
+                        elif prop_dic['pl_atm_sign']=='Emission':rv_pl_star = coord_dic[inst][vis]['rv_pl']
+                    elif 'bin' in data_type:rv_pl_star = data_bin[ref_pl]['rv_pl']
+                if ('int_sign' in prop_dic['meas_prop']):prop_dic['int_sign_range_frame'] = np.array(prop_dic['meas_prop']['int_sign']['rv_range'])[:,None] + rv_pl_star
+                if ('EW' in prop_dic['meas_prop']):prop_dic['EW_range_frame'] = np.array(prop_dic['meas_prop']['EW']['rv_range'])[:,None] + rv_pl_star
 
         #Stellar line model
         if ('DI' in data_type) or ('Intr' in data_type):        
@@ -741,6 +967,9 @@ def ana_prof_func(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,c
     # Initialise model parameters
     p_start = Parameters()
 
+    #Generic fit function
+    fixed_args['fit_func']=gen_fit_prof
+
     #-------------------------------------------------------------------------------
     #Custom model for disk-integrated profiles
     #    - obtained via numerical integration over the disk
@@ -758,9 +987,8 @@ def ana_prof_func(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,c
         fixed_args['conv2intr'] = False
         fixed_args,p_start = init_custom_DI_par(fixed_args,gen_dic,data_dic['DI']['system_prop'],star_params,p_start,RV_guess_tab)
 
-        #Fit function
-        fixed_args['fit_func']=MAIN_custom_DI_prof
-        fixed_args['fit_func_gen']=custom_DI_prof
+        #Model function
+        fixed_args['func_nam']=custom_DI_prof
 
     #Analytical models
     else:
@@ -789,13 +1017,11 @@ def ana_prof_func(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,c
             #    - the main component of the model is an inverted gaussian with constant baseline
             #    - for fast rotators or sloped continuum use skewness and slope properties for the gaussian
             if (model_choice=='gauss'):
-                fixed_args['fit_func']=MAIN_gauss_herm_lin 
-                fixed_args['fit_func_gen']=gauss_herm_lin 
+                fixed_args['func_nam']=gauss_herm_lin 
                 
             #Inverted Voigt profile
             elif (model_choice=='voigt'):
-                fixed_args['fit_func'] = MAIN_voigt 
-                fixed_args['fit_func_gen']=voigt  
+                fixed_args['func_nam']=voigt  
                 p_start.add_many((  'a_damp',  1., True,    0.,       1e15,  None))
     
             # #Complex prior function     -> left as an example, but now that contrast is a direct parameter a function is not required anymore
@@ -834,9 +1060,8 @@ def ana_prof_func(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,c
                               ( 'c4_pol',       c4_pol,         True,   None,None,  None),
                               ( 'c6_pol',       c6_pol,         True,   None,None,  None))
     
-            #Fit function
-            fixed_args['fit_func']=MAIN_gauss_poly
-            fixed_args['fit_func_gen']=gauss_poly
+            #Model function
+            fixed_args['func_nam']=gauss_poly
             
         #-------------------------------------------------------------------------------
         #-------------------------------------------------------------------------------
@@ -871,9 +1096,8 @@ def ana_prof_func(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,c
             #Continuum
             for ideg in range(1,5):p_start.add_many(('c'+str(ideg)+'_pol',          0.,              False,    None,None,None)) 
         
-            #Fit function
-            fixed_args['fit_func']=MAIN_dgauss
-            fixed_args['fit_func_gen']=dgauss
+            #Model function
+            fixed_args['func_nam']=dgauss
 
     ######################################################################################################## 
 
@@ -969,21 +1193,21 @@ def ana_prof_func(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,c
   
     #Double gaussian model: output the two components
     if (model_choice=='dgauss'):
-        output_prop_dic['gauss_core'],output_prop_dic['gauss_lobe']=fixed_args['fit_func_gen'](p_final,cen_bins)[1:3] 
+        output_prop_dic['gauss_core'],output_prop_dic['gauss_lobe']=fixed_args['func_nam'](p_final,cen_bins)[1:3] 
         if fixed_args['FWHM_inst'] is not None:
             output_prop_dic['gauss_core'] = convol_prof(output_prop_dic['gauss_core'],cen_bins,fixed_args['FWHM_inst'])  
             output_prop_dic['gauss_lobe'] = convol_prof(output_prop_dic['gauss_lobe'],cen_bins,fixed_args['FWHM_inst']) 
 
     #Gaussian + polynomial model: output the two components
     elif (model_choice=='gauss_poly'):
-        output_prop_dic['gauss_core'],output_prop_dic['poly_lobe']=fixed_args['fit_func_gen'](p_final,cen_bins)[1:3] 
+        output_prop_dic['gauss_core'],output_prop_dic['poly_lobe']=fixed_args['func_nam'](p_final,cen_bins)[1:3] 
         if fixed_args['FWHM_inst'] is not None:
             output_prop_dic['gauss_core'] = convol_prof(output_prop_dic['gauss_core'],cen_bins,fixed_args['FWHM_inst'])  
             output_prop_dic['poly_lobe'] = convol_prof(output_prop_dic['poly_lobe'],cen_bins,fixed_args['FWHM_inst']) 
             
     #Custom model: output the line without continuum
     elif (model_choice=='custom'):
-        output_prop_dic['core'],output_prop_dic['core_norm']=fixed_args['fit_func_gen'](p_final,cen_bins,args=fixed_args)[1:3]
+        output_prop_dic['core'],output_prop_dic['core_norm']=fixed_args['func_nam'](p_final,cen_bins,args=fixed_args)[1:3]
         if fixed_args['FWHM_inst'] is not None:
             output_prop_dic['core'] = convol_prof(output_prop_dic['core'],cen_bins,fixed_args['FWHM_inst'])  
             output_prop_dic['core_norm'] = convol_prof(output_prop_dic['core_norm'],cen_bins,fixed_args['FWHM_inst']) 

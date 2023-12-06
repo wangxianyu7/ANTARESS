@@ -1,6 +1,6 @@
 import numpy as np
 from lmfit import Parameters
-from utils import stop,np_where1D,npint,dataload_npz,MAIN_multithread,air_index,spec_dopshift
+from utils import stop,np_where1D,npint,dataload_npz,MAIN_multithread,air_index,gen_specdopshift,def_edge_tab
 from copy import deepcopy
 import bindensity as bind
 from astropy.io import fits
@@ -9,7 +9,6 @@ from scipy import special
 from constant_data import N_avo,c_light_m,k_boltz,h_planck
 import scipy.linalg
 from ANTARESS_routines.ANTARESS_conversions import new_compute_CCF,check_CCF_mask_lines
-from ANTARESS_routines.ANTARESS_binning import def_edge_tab
 from ANTARESS_routines.ANTARESS_init import check_data
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,return_FWHM_inst,return_resolv
 
@@ -125,7 +124,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
             fixed_args['cov_val'] = np.array([np.ones(fixed_args['n_ccf'],dtype=float)**2.])  
 
             #Telluric CCF minimization model
-            fixed_args['fit_func'] = MAIN_telluric_model
+            fixed_args['fit_func'] = FIT_telluric_model
       
         #Process each visit independently
         iord_list_ref = range(data_inst['nord_ref'])
@@ -279,8 +278,12 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
         edge_bins*=air_index(edge_bins, t=15., p=760.)
         cen_bins*=air_index(cen_bins, t=15., p=760.)
 
-    #Align spectra back into telluric rest frame 
-    sc_shift = spec_dopshift(BERV_exp)/(1.+1.55e-8)
+    #Align spectra back from the solar barycentric (receiver) to the telluric (source) rest frame 
+    #    - see gen_specdopshift():
+    # w_source = w_receiver / (1+ (rv[s/r]/c))
+    # w_Earth = w_solbar / (1+ (rv[Earth/solbar]/c))
+    # w_Earth = w_solbar / (1+ (BERV/c))
+    sc_shift = 1./(gen_specdopshift(BERV_exp)*(1.+1.55e-8))
     fixed_args['edge_bins_earth'] = edge_bins*sc_shift
     fixed_args['cen_bins_earth'] = cen_bins*sc_shift   
 
@@ -736,7 +739,7 @@ def var_convol_tell_sp(telluric_spectrum,edge_bins_ord,edge_bins_mod,resolution_
 
 
 
-def MAIN_telluric_model(param,velccf,args=None):
+def FIT_telluric_model(param,velccf,args=None):
     r"""**Main minimization function for telluric model.**
     
     Calculates the merit factor of the telluric fit

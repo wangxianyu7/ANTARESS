@@ -81,7 +81,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Using covariance matrix
     #    - set to True to propagate full covariance matrix and use it in fits (otherwise variance alone is used)
     #    - do not activate when using CCF from input
-    gen_dic['use_cov']=True
+    if 'spec2D' in gen_dic['type'].values():gen_dic['use_cov']=True
+    else:gen_dic['use_cov']=False
     
     
     #%%%%% Manual variance table 
@@ -1792,9 +1793,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Direct measurements
     #    - format is {prop_name:{options}}
     #    - possibilities:
-    # + equivalent width: 'EW' : {'rv_range':[rv1,rv2] single range over which the integral is performed}                         
+    # + equivalent width: 'EW' : {'rv_range':[rv1,rv2] single range over which the integral is performed, defined in the star rest frame}                         
     # + bissector: 'biss' : {'source':'obs' or 'mod',
-    #                        'rv_range':[rv1,rv2] maximum range over which bissector is calculated,
+    #                        'rv_range':[rv1,rv2] maximum range over which bissector is calculated, defined in the star rest frame
     #                        'dF': flux resolution for line profile resampling,
     #                        'Cspan': percentage of line contrast at which to measure bissector span (1 corresponds to line minimum); set to None to take maximum RV deviation from minimum}
     data_dic['DI']['meas_prop']={}
@@ -2961,6 +2962,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%% Direct measurements
     #    - same as data_dic['DI']['meas_prop']={}
+    #    - options that differ:
+    # + equivalent width: 'EW' : {'rv_range':[rv1,rv2] single range over which the integral is performed, defined in the photosphere rest frame}                         
+    # + bissector: 'biss' : {'rv_range':[rv1,rv2] maximum range over which bissector is calculated, defined in the photosphere rest frame}
     data_dic['Intr']['meas_prop']={}
     
     

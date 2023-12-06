@@ -745,28 +745,12 @@ def calc_zLOS_oblate(x_st_sk,y_st_sk,istar_rad,RpoleReq):
 
 '''
 Sub-routine to identify spectral pixels contaminated by the planet
-    - spectra are defined over RV(M/star) 
-      the excluded range is defined in the planet rest frame, ie as RV(plrange/pl) 
-      to correspond to the spectra we shift this range as :
-    RV(plrange/pl) + RV(pl/star) + RV(CDM_star/CDM_sun)
-  = RV(plrange/star) 
-    - the range is excluded for each line in the planet atmosphere mask
-      in its own rest frame an atom absorbs the light at nu_received = nu0 
-      If we consider an absorbing atom in the planet as the source, then the light observed in the stellar rest frame is:
-      w_0/w_star   = (1 + v_star/c )/(1 - v_pl/c )                                
-           with v_star =0 as we place ourselves in the star rest frame
-           with v_pl > 0   if the planet is moving toward the star, ie
-                v_pl = rv(pl/star) since rv(pl/star) < 0 when moving toward us (away from the star)         
-           thus :   
-      w_star = w_0 / (1 - rv(pl/star)/c )             
-    - we use the more precise relativistic formula:
-      w_star = w_0 * sqrt(1 + rv(pl/star)/c )/sqrt(1 - rv(pl/star)/c ) 
-    - since we consider a range of velocities in the planet rest frame, it is RV(plrange/star) instead of RV(pl/star) 
+    - a common rv range is excluded for each line in the planet atmosphere mask
+      see init_visit() for the definition of these ranges in other frames
 '''
 def excl_plrange(cond_def,range_star_in,iexp,edge_bins,data_type):
     cond_kept = np.ones(cond_def.shape,dtype=bool)
     idx_excl_bd_ranges = []
-    
     if data_type=='CCF':
         range_star = range_star_in['CCF']
         for pl_loc in range_star:

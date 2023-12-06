@@ -1,5 +1,5 @@
 import numpy as np
-from utils import stop,np_where1D,dataload_npz,datasave_npz,air_index,spec_dopshift
+from utils import stop,np_where1D,dataload_npz,datasave_npz,air_index,gen_specdopshift
 from astropy.io import fits 
 from copy import deepcopy
 import os as os_system 
@@ -12,16 +12,18 @@ import bindensity as bind
 def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_param,data_prop):
     r"""**CCF mask generation**
 
-    Generates CCF binary masks from processed stellar spectrum 
-     - 2D spectra must have been aligned in the star (for disk-integrated profiles), photosphere (for intrinsic profiles), or planet (for atmospheric profiles) rest frame, converted into 1D profiles, and binned into a master spectrum.  
-       This alignment in the rest frame of the line transitions is necessary to cross-match them with linelists
-     - The derived masks are thus defined in the approximate rest frame defined above   
-      + Disk-integrated masks are shifted from the star rest frame to the rest frame of the input data, based on the input systemic velocity used to align the disk-integrated profiles.
-        The masks can then be used to generate CCFs from disk-integrated spectra in their input rest frame.
-      + Intrinsic masks are left defined in the photosphere rest frame.  
-        They can be used to generate CCFs from intrinsic spectra in the star rest frame
-      + Atmospheric masks are left defined in the planet rest frame.  
-        They can be used to generate CCFs from atmospheric spectra in the planet rest frame
+    Generates CCF binary masks from processed stellar spectrum. 
+    
+    2D spectra must have been aligned in the star (for disk-integrated profiles), photosphere (for intrinsic profiles), or planet (for atmospheric profiles) rest frame, converted into 1D profiles, and binned into a master spectrum.  
+    This alignment in the rest frame of the line transitions is necessary to cross-match them with linelists
+    
+    The derived masks are thus defined in the approximate rest frame defined above   
+     - Disk-integrated masks are shifted from the star rest frame to the rest frame of the input data, based on the input systemic velocity used to align the disk-integrated profiles.
+       The masks can then be used to generate CCFs from disk-integrated spectra in their input rest frame.
+     - Intrinsic masks are left defined in the photosphere rest frame.  
+       They can be used to generate CCFs from intrinsic spectra in the star rest frame
+     - Atmospheric masks are left defined in the planet rest frame.  
+       They can be used to generate CCFs from atmospheric spectra in the planet rest frame
 
     Args:
         TBD
@@ -84,13 +86,12 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
         #Telluric contamination
         if data_dic['DI']['mask']['verbose']:print('           Mean telluric spectrum')
         tell_spec = np.zeros(nspec,dtype=float) if data_inst['tell_sp'] else None
-        rv_tell_inbin = []
+        specdopshift_receiver_Earth_inbin = []
         nexp_in_bin = np.zeros(nspec,dtype=float) 
         for vis_bin in data_bin['vis_iexp_in_bin']:
             
             #Retrieve mean RV shifts used to align data
-            RV_star_solCDM = dataload_npz(gen_dic['save_data_dir']+'Aligned_DI_data/'+inst+'_'+vis_bin+'__add')['rv_shift_mean']
-            if (data_type_gen=='Intr'):RV_surf_star = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_add')['rv_shift_mean']
+            data_align_comp = dataload_npz(gen_dic['save_data_dir']+'Aligned_DI_data/'+inst+'_'+vis_bin+'__add')
 
             #Define mean telluric spectrum over all exposures used in the master stellar spectrum
             #    - iexp is relative to global or in-transit indexes depending on data_type                
@@ -99,14 +100,18 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
                 else:iexp_orig = iexp
 
                 #Align and resample telluric spectra
-                #    - disk-integrated spectra used in the binning were aligned in the star rest frame, so we shift them to the Earth rest frame as
-                # rv(tell/earth) = rv(tell/star) - (BERV - RV_star_solCDM)
-                #    - intrinsic spectra used in the binning were aligned in their common rest frame, so we shift them to the Earth rest frame as
-                # rv(tell/earth) = rv(tell/surf) - (BERV - RV_star_solCDM - rv(surf/star))      
-                #    - the resulting master spectrum is aligned in the Earth rest frame
-                rv_earth_mast_exp = data_prop[inst][vis_bin]['BERV'][iexp_orig] - RV_star_solCDM[iexp_orig]
-                if (data_type_gen=='Intr'):rv_earth_mast_exp-=RV_surf_star[iexp]
-                rv_tell_inbin+=[rv_earth_mast_exp]
+                #    - see gen_specdopshift():
+                # w_source = w_receiver / (1+ (rv[s/r]/c))       
+                #      disk-integrated spectra used in the binning were aligned in the star rest frame, so we shift their telluric spectrum back to the Earth rest frame as
+                # w(tell/earth) = w(tell/star) / ( (1+ (rv[Earth/solbar]/c)) * (1+ (rv[solbar/starbar]/c)) * (1+ (rv[starbar/star]/c)) )
+                #               = w(tell/star) / ( (1+ (BERV/c)) * (1- (rv_sys/c)) * (1- (rv_kep/c)) )    
+                #      intrinsic spectra used in the binning were aligned in the photosphere rest frame, so we shift their telluric spectrum back to the Earth rest frame as
+                # w(tell/earth) = w(tell/star) / ( (1+ (BERV/c)) * (1- (rv_sys/c)) * (1- (rv_kep/c)) * (1+ (rv[star/photo]/c) ) 
+                #               = w(tell/star) / ( (1+ (BERV/c)) * (1- (rv_sys/c)) * (1- (rv_kep/c)) * (1- (rv_surf/c)) )              
+                #    - the resulting master telluric spectrum is aligned in the Earth rest frame  
+                specdopshift_earth_receiver = 1./(gen_specdopshift(data_prop[inst][vis_bin]['BERV'][iexp_orig])*(1.+1.55e-8)*gen_specdopshift(-data_align_comp['rv_starbar_solbar'])*gen_specdopshift(-data_align_comp['star_starbar'][iexp_orig]))
+                if (data_type_gen=='Intr'):specdopshift_earth_receiver *= 1./gen_specdopshift(-data_align_comp['surf_star'][iexp])
+                specdopshift_receiver_Earth_inbin+=[1./specdopshift_earth_receiver]
                 if data_inst['tell_sp']:
                     
                     #Retrieve the 1D telluric spectrum associated with the exposure
@@ -115,7 +120,9 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
                     cond_def_exp = data_exp['cond_def'][0]
                     tell_exp = dataload_npz(data_bin['vis_iexp_in_bin'][vis_bin][iexp]['tell_path'])['tell'][0]      
                     tell_exp[~cond_def_exp] = np.nan
-                    edge_bins_earth=data_exp['edge_bins'][0]*spec_dopshift(rv_earth_mast_exp)/(1.+1.55e-8)                    
+                    
+                    #Shifting telluric spectrum back from receiver (star or photosphere) back to Earth (source) rest frame
+                    edge_bins_earth=data_exp['edge_bins'][0]*specdopshift_earth_receiver
                     tell_exp = bind.resampling(edge_bins_mast[0],edge_bins_earth,tell_exp, kind=gen_dic['resamp_mode'])
                 
                     #Co-add
@@ -129,15 +136,15 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
             tell_spec[cond_def_tell]/=nexp_in_bin[cond_def_tell]
             tell_spec[~cond_def_tell] = 1.
             
-        #Min/max telluric RV in the rest frame of the stellar master spectrum 
-        min_rv_earth_mast = np.min(rv_tell_inbin)
-        max_rv_earth_mast = np.max(rv_tell_inbin)            
+        #Min/max Doppler shift of tellurics in the rest frame of the stellar master spectrum 
+        min_specdopshift_receiver_Earth = np.min(specdopshift_receiver_Earth_inbin)
+        max_specdopshift_receiver_Earth = np.max(specdopshift_receiver_Earth_inbin)
 
         #Mask generation
         #    - defined in the stellar (for disk-integrated profiles) or surface (for intrinsic profiles) rest frames
         from ANTARESS_masks.KitCat import KitCat_main
-        mask_waves,mask_weights,mask_info = KitCat_main.kitcat_mask(mask_dic,mask_dic['fwhm_ccf'],cen_bins_mast[0],inst,edge_bins_mast[0],flux_mast_norm,gen_dic,save_data_paths,tell_spec,data_dic['DI']['sysvel'][inst][vis_bin],min_rv_earth_mast,
-                                                        max_rv_earth_mast,system_param['star']['Tpole'],dic_sav,plot_dic[data_type_gen+'mask_spectra'],plot_dic[data_type_gen+'mask_ld'],plot_dic[data_type_gen+'mask_ld_lw'],plot_dic[data_type_gen+'mask_RVdev_fit'],cont_func_dic,
+        mask_waves,mask_weights,mask_info = KitCat_main.kitcat_mask(mask_dic,mask_dic['fwhm_ccf'],cen_bins_mast[0],inst,edge_bins_mast[0],flux_mast_norm,gen_dic,save_data_paths,tell_spec,data_dic['DI']['sysvel'][inst][vis_bin],min_specdopshift_receiver_Earth,
+                                                        max_specdopshift_receiver_Earth,system_param['star']['Tpole'],dic_sav,plot_dic[data_type_gen+'mask_spectra'],plot_dic[data_type_gen+'mask_ld'],plot_dic[data_type_gen+'mask_ld_lw'],plot_dic[data_type_gen+'mask_RVdev_fit'],cont_func_dic,
                                                         data_bin['vis_iexp_in_bin'],data_type_gen,data_dic,plot_dic[data_type_gen+'mask_tellcont'],plot_dic[data_type_gen+'mask_vald_depthcorr'],plot_dic[data_type_gen+'mask_morphasym'],
                                                         plot_dic[data_type_gen+'mask_morphshape'],plot_dic[data_type_gen+'mask_RVdisp'])
 

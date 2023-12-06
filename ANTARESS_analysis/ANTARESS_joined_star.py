@@ -16,7 +16,7 @@ from ANTARESS_analysis.ANTARESS_inst_resp import return_FWHM_inst,ref_inst_convo
 
 
 
-def fit_intr_funcs(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic):
+def joined_Intr_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic):
     r"""**Joined stellar fits**
 
     Wrap-up function to call joint fits of stellar properties and profiles
@@ -30,15 +30,15 @@ def fit_intr_funcs(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,
     """        
     #Fitting stellar surface properties with a linked model
     if gen_dic['fit_IntrProp']:
-        fit_IntrProp_all('IntrProp',glob_fit_dic['IntrProp'],gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic)    
+        main_joined_IntrProp('IntrProp',glob_fit_dic['IntrProp'],gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic)    
     
     #Fitting intrinsic stellar lines with joined model
     if gen_dic['fit_IntrProf']:
-        fit_IntrProf_all('IntrProf',data_dic,gen_dic,system_param,glob_fit_dic['IntrProf'],theo_dic,plot_dic,coord_dic)    
+        main_joined_IntrProf('IntrProf',data_dic,gen_dic,system_param,glob_fit_dic['IntrProf'],theo_dic,plot_dic,coord_dic)    
 
     #Fitting local stellar lines with joined model, including spots in the fitted parameters
     if gen_dic['fit_ResProf']:
-        fit_ResProf_all('ResProf',data_dic,gen_dic,system_param,glob_fit_dic['ResProf'],theo_dic,plot_dic,coord_dic)    
+        main_joined_ResProf('ResProf',data_dic,gen_dic,system_param,glob_fit_dic['ResProf'],theo_dic,plot_dic,coord_dic)    
 
     return None
 
@@ -49,17 +49,213 @@ def fit_intr_funcs(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,
 
 
 
-'''
-Routine to fit intrinsic stellar profiles with a joined model
-    - we use simple analytical profiles to describe the profiles, or theoretical models
-    - positions of the profiles along the transit chord are linked by the stellar surface RV model
-    - shapes of the profiles, when analytical, are linked across the transit chord by polynomial laws as a function of a chosen dimension
-      polynomial coefficients can depend on the visit and their associated instrument, to account for possible variations in the line shape between visits
-    - stellar line profiles are defined before instrumental convolution, so that data from all instruments and visits can be fitted together
-    - beware that the intrinsic and disk-integrated profiles have the same continuum, but that it is not necessarily unity
-      thus the continuum of analytical and theoretical model profiles must be let free to vary
-'''
-def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):
+
+def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic):
+    r"""**Joined stellar property fits**
+
+    Main routine to fit a given stellar surface property from planet-occulted regions with a joined model over instruments and visits.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    print('   > Fitting single stellar surface property')
+    
+    #Initializations
+    fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)    
+    fit_dic['save_dir']+=fit_prop_dic['prop']+'/'        
+
+    #Arguments to be passed to the fit function
+    #    - fit is performed on achromatic average properties
+    #    - the full stellar line profile are not calculated, since we only fit the average properties of the occulted regions
+    fixed_args.update({
+        'chrom_mode':'achrom',
+        'mode':'ana',  #to activate the calculation of line profile properties
+        'prop_fit':fit_prop_dic['prop']})
+    
+    #Coordinate and property to calculate for the fit
+    fixed_args['par_list']+=[fixed_args['prop_fit']]
+    if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
+    else:fixed_args['coord_line']=fit_prop_dic['dim_fit']
+    fixed_args['par_list']+=[fixed_args['coord_line']]
+
+    #Construction of the fit tables
+    for par in ['s_val','y_val']:fixed_args[par]=np.zeros(0,dtype=float)
+    for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
+    idx_fit2vis={}
+    for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
+        init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
+        idx_fit2vis[inst] = {}
+        for vis in data_dic[inst]['visit_list']:
+            init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
+
+            #Visit is fitted
+            if vis is not None: 
+                data_vis=data_dic[inst][vis]
+                init_joined_routines_vis_fit('IntrProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
+
+                #Binned/original data
+                if fixed_args['bin_mode'][inst][vis]=='_bin':data_load = dataload_npz(gen_dic['save_data_dir']+'/Intrbin_prop/'+inst+'_'+vis)
+                else:data_load = dataload_npz(gen_dic['save_data_dir']+'/Introrig_prop/'+inst+'_'+vis)
+                
+                #Fit tables
+                idx_fit2vis[inst][vis] = range(fit_dic['nx_fit'],fit_dic['nx_fit']+len(fit_prop_dic['idx_in_fit'][inst][vis]))
+                fit_dic['nx_fit']+=len(fit_prop_dic['idx_in_fit'][inst][vis])
+                for i_in in fit_prop_dic['idx_in_fit'][inst][vis]:    
+                    fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
+                    fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))
+
+
+    fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)
+    fixed_args['nexp_fit'] = fit_dic['nx_fit']
+    fixed_args['x_val']=range(fixed_args['nexp_fit'])
+    fixed_args['fit_func'] = FIT_joined_IntrProp
+    
+    #Uncertainties on the property are given a covariance matrix structure for consistency with the fit routine 
+    fixed_args['cov_val'] = np.array([fixed_args['s_val']**2.])
+    fixed_args['use_cov'] = False   
+
+    #Model fit and calculation
+    merged_chain,p_final = common_fit_rout('IntrProp',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)   
+  
+    #Best-fit model and properties
+    fit_save={}
+    fixed_args['fit'] = False
+    mod_tab,coeff_line_dic,fit_save['prop_mod']= joined_IntrProp(p_final,fixed_args)
+  
+    #Save best-fit properties
+    fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'pol_mode':fit_prop_dic['pol_mode'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
+                     'merit':fit_dic['merit']})
+    if (plot_dic['prop_Intr']!='') or (plot_dic['chi2_fit_IntrProp']!=''):
+        key_list = ['prop_fit','err_prop_fit']
+        for key in key_list:fit_save[key] = {}
+        for inst in fixed_args['inst_list']:
+            for key in key_list:fit_save[key][inst] = {}
+            for vis in fixed_args['inst_vis_list'][inst]:
+                fit_save['prop_fit'][inst][vis] = fixed_args['y_val'][idx_fit2vis[inst][vis]]
+                fit_save['err_prop_fit'][inst][vis] = fixed_args['s_val'][idx_fit2vis[inst][vis]]
+    np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
+
+    #Post-processing
+    fit_dic['p_null'] = deepcopy(p_final)
+    if fit_prop_dic['prop']=='rv':fit_dic['p_null']['veq'] = 0.
+    else:
+        for par in fit_dic['p_null']:fit_dic['p_null'][par]=0.
+        fit_dic['p_null']['cont']=1.
+    post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
+
+    return None
+
+
+
+
+
+
+def FIT_joined_IntrProp(param,x_tab,args=None):
+    r"""**Fit function: joined stellar property**
+
+    Calls corresponding model function for optimization
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    """
+    return joined_IntrProp(param,args)[0]
+
+
+
+
+def joined_IntrProp(param,args):
+    r"""**Model function: joined stellar property**
+
+    Defines the joined model for stellar properties
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """   
+    mod_tab=np.zeros(0,dtype=float)
+    mod_prop_dic = {}
+    coeff_line_dic = {}
+    mod_coord_dic={}
+    for inst in args['inst_list']:
+        args['inst']=inst
+        mod_prop_dic[inst]={}
+        coeff_line_dic[inst]={}
+        mod_coord_dic[inst]={}
+        for vis in args['inst_vis_list'][inst]: 
+            args['vis']=vis 
+            
+            #Calculate coordinates and properties of occulted regions 
+            system_param_loc,coord_pl,param_val = calc_plocc_coord(inst,vis,args['par_list'],args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
+            surf_prop_dic = sub_calc_plocc_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
+            
+            #Properties associated with the transiting planet in the visit 
+            pl_vis = args['transit_pl'][inst][vis][0]
+            theo_vis = surf_prop_dic['achrom'][pl_vis]      
+
+            #Fit coordinate
+            #    - only used for plots
+            if (not args['fit']) and ('coeff_line' in args):coeff_line_dic[inst][vis] = args['coeff_line']
+            else:coeff_line_dic[inst][vis] = None
+
+            #Model property for the visit 
+            mod_prop_dic[inst][vis] = theo_vis[args['prop_fit']][0] 
+         
+            #Appending over all visits
+            mod_tab=np.append(mod_tab,mod_prop_dic[inst][vis])
+ 
+    return mod_tab,coeff_line_dic,mod_prop_dic
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):
+    r"""**Joined stellar profile fits**
+
+    Main routine to fit intrinsic stellar profiles from planet-occulted regions with a joined model over instruments and visits.
+
+    Profile description
+    
+     - We use analytical models, measured profiles, or theoretical models to describe the intrinsic profiles.
+     - Positions of the profiles along the transit chord are linked by the stellar surface RV model.
+     - Shapes of the profiles, when analytical, are linked across the transit chord by polynomial laws as a function of a chosen dimension.
+       Polynomial coefficients can depend on the visit and their associated instrument, to account for possible variations in the line shape between visits
+     - Stellar line profiles are defined before instrumental convolution, so that data from all instruments and visits can be fitted together
+    
+    Beware that the intrinsic and disk-integrated profiles have the same continuum, but that it is not necessarily unity
+    Thus the continuum of analytical and theoretical model profiles must be let free to vary
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
     print('   > Fitting joined intrinsic profiles')
 
     #Initializations
@@ -265,7 +461,7 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
     fixed_args['cov_val'] = np.array([fixed_args['s_val']**2.])  
     fixed_args['use_cov'] = False
     fixed_args['use_cov_eff'] = gen_dic['use_cov']
-    fixed_args['fit_func'] = MAIN_joined_intr_prof
+    fixed_args['fit_func'] = FIT_joined_IntrProf
   
     #Model fit and calculation
     merged_chain,p_final = common_fit_rout('IntrProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)            
@@ -303,7 +499,7 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
 
     #Best-fit model and derived properties
     fixed_args['fit'] = False
-    mod_dic,coeff_line_dic,mod_prop_dic = joined_intr_prof(p_final,fixed_args)
+    mod_dic,coeff_line_dic,mod_prop_dic = joined_IntrProf(p_final,fixed_args)
 
     #Save best-fit properties
     #    - with same structure as fit to individual profiles 
@@ -341,13 +537,21 @@ def fit_IntrProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_d
 
 
 
-'''
-Generic function to calculate the merit factor of the joined fit
-'''
-def MAIN_joined_intr_prof(param,x_tab,args=None):
 
+def FIT_joined_IntrProf(param,x_tab,args=None):
+    r"""**Fit function: joined intrinsic stellar profiles**
+
+    Calls corresponding model function for optimization
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    """
+    
     #Models over fitted spectral ranges
-    mod_dic=joined_intr_prof(param,args)[0]
+    mod_dic=joined_IntrProf(param,args)[0]
    
     #Merit table
     #    - because exposures are specific to each visit, defined on different bins, and stored as objects we define the output table as :
@@ -377,10 +581,20 @@ def MAIN_joined_intr_prof(param,x_tab,args=None):
     return chi
 
 
-'''
-Time-series of planet-occulted intrinsic profiles
-'''
-def joined_intr_prof(param,args):
+
+
+def joined_IntrProf(param,args):
+    r"""**Model function: joined intrinsic stellar profiles**
+
+    Defines the joined model for intrinsic stellar profiles.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
     mod_dic = {}
     mod_prop_dic = {}
     coeff_line_dic = {}
@@ -499,170 +713,31 @@ def joined_intr_prof(param,args):
 
 
 
-'''
-Routine to fit a given stellar surface property from planet-occulted regions with a common model over instrument/visit
-'''
-def fit_IntrProp_all(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic):
-    print('   > Fitting single stellar surface property')
+
+
+
+
+
+
+
+
+
+
+
+
+
+def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):    
+    r"""**Joined residual profiles fits**
+
+    Main routine to fit a given stellar surface property from planet-occulted regions with a joined model over instruments and visits.
+
+    Args:
+        TBD
     
-    #Initializations
-    fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)    
-    fit_dic['save_dir']+=fit_prop_dic['prop']+'/'        
-
-    #Arguments to be passed to the fit function
-    #    - fit is performed on achromatic average properties
-    #    - the full stellar line profile are not calculated, since we only fit the average properties of the occulted regions
-    fixed_args.update({
-        'chrom_mode':'achrom',
-        'mode':'ana',  #to activate the calculation of line profile properties
-        'prop_fit':fit_prop_dic['prop']})
+    Returns:
+        TBD
     
-    #Coordinate and property to calculate for the fit
-    fixed_args['par_list']+=[fixed_args['prop_fit']]
-    if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
-    else:fixed_args['coord_line']=fit_prop_dic['dim_fit']
-    fixed_args['par_list']+=[fixed_args['coord_line']]
-
-    #Construction of the fit tables
-    for par in ['s_val','y_val']:fixed_args[par]=np.zeros(0,dtype=float)
-    for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
-    idx_fit2vis={}
-    for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
-        init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
-        idx_fit2vis[inst] = {}
-        for vis in data_dic[inst]['visit_list']:
-            init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
-
-            #Visit is fitted
-            if vis is not None: 
-                data_vis=data_dic[inst][vis]
-                init_joined_routines_vis_fit('IntrProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
-
-                #Binned/original data
-                if fixed_args['bin_mode'][inst][vis]=='_bin':data_load = dataload_npz(gen_dic['save_data_dir']+'/Intrbin_prop/'+inst+'_'+vis)
-                else:data_load = dataload_npz(gen_dic['save_data_dir']+'/Introrig_prop/'+inst+'_'+vis)
-                
-                #Fit tables
-                idx_fit2vis[inst][vis] = range(fit_dic['nx_fit'],fit_dic['nx_fit']+len(fit_prop_dic['idx_in_fit'][inst][vis]))
-                fit_dic['nx_fit']+=len(fit_prop_dic['idx_in_fit'][inst][vis])
-                for i_in in fit_prop_dic['idx_in_fit'][inst][vis]:    
-                    fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
-                    fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))
-
-
-    fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)
-    fixed_args['nexp_fit'] = fit_dic['nx_fit']
-    fixed_args['x_val']=range(fixed_args['nexp_fit'])
-    fixed_args['fit_func'] = MAIN_joined_prop
-    
-    #Uncertainties on the property are given a covariance matrix structure for consistency with the fit routine 
-    fixed_args['cov_val'] = np.array([fixed_args['s_val']**2.])
-    fixed_args['use_cov'] = False   
-
-    #Model fit and calculation
-    merged_chain,p_final = common_fit_rout('IntrProp',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)   
-  
-    #Best-fit model and properties
-    fit_save={}
-    fixed_args['fit'] = False
-    mod_tab,coeff_line_dic,fit_save['prop_mod']= joined_prop(p_final,fixed_args)
-  
-    #Save best-fit properties
-    fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'pol_mode':fit_prop_dic['pol_mode'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
-                     'merit':fit_dic['merit']})
-    if (plot_dic['prop_Intr']!='') or (plot_dic['chi2_fit_IntrProp']!=''):
-        key_list = ['prop_fit','err_prop_fit']
-        for key in key_list:fit_save[key] = {}
-        for inst in fixed_args['inst_list']:
-            for key in key_list:fit_save[key][inst] = {}
-            for vis in fixed_args['inst_vis_list'][inst]:
-                fit_save['prop_fit'][inst][vis] = fixed_args['y_val'][idx_fit2vis[inst][vis]]
-                fit_save['err_prop_fit'][inst][vis] = fixed_args['s_val'][idx_fit2vis[inst][vis]]
-    np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
-
-    #Post-processing
-    fit_dic['p_null'] = deepcopy(p_final)
-    if fit_prop_dic['prop']=='rv':fit_dic['p_null']['veq'] = 0.
-    else:
-        for par in fit_dic['p_null']:fit_dic['p_null'][par]=0.
-        fit_dic['p_null']['cont']=1.
-    post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
-
-    return None
-
-
-
-
-
- 
-
-
-'''
-Wrap-up function for calculation of model surface property
-'''
-def MAIN_joined_prop(param,x_tab,args=None):
-    return joined_prop(param,args)[0]
-
-def joined_prop(param,args):
-    mod_tab=np.zeros(0,dtype=float)
-    mod_prop_dic = {}
-    coeff_line_dic = {}
-    mod_coord_dic={}
-    for inst in args['inst_list']:
-        args['inst']=inst
-        mod_prop_dic[inst]={}
-        coeff_line_dic[inst]={}
-        mod_coord_dic[inst]={}
-        for vis in args['inst_vis_list'][inst]: 
-            args['vis']=vis 
-            
-            #Calculate coordinates and properties of occulted regions 
-            system_param_loc,coord_pl,param_val = calc_plocc_coord(inst,vis,args['par_list'],args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
-            surf_prop_dic = sub_calc_plocc_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
-            
-            #Properties associated with the transiting planet in the visit 
-            pl_vis = args['transit_pl'][inst][vis][0]
-            theo_vis = surf_prop_dic['achrom'][pl_vis]      
-
-            #Fit coordinate
-            #    - only used for plots
-            if (not args['fit']) and ('coeff_line' in args):coeff_line_dic[inst][vis] = args['coeff_line']
-            else:coeff_line_dic[inst][vis] = None
-
-            #Model property for the visit 
-            mod_prop_dic[inst][vis] = theo_vis[args['prop_fit']][0] 
-         
-            #Appending over all visits
-            mod_tab=np.append(mod_tab,mod_prop_dic[inst][vis])
- 
-    return mod_tab,coeff_line_dic,mod_prop_dic
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-"""
-Stage Théo
-Routine to fit joined residual profiles, with a fixed number of spots. 
-
-fit_prop_dic  =  glob_fit_dic['ResProf']
-"""
-
-def fit_ResProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):    
+    """ 
     print('   > Fitting joined residual stellar CCFs, including spots')
 
     #Initializations
@@ -826,7 +901,7 @@ def fit_ResProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_di
     fixed_args['cov_val'] = np.array([fixed_args['s_val']**2.])  
     fixed_args['use_cov'] = False
     fixed_args['use_cov_eff'] = gen_dic['use_cov']
-    fixed_args['fit_func'] = MAIN_joined_intr_prof_res
+    fixed_args['fit_func'] = FIT_joined_ResProf
     
     #Model fit and calculation
     merged_chain,p_final = common_fit_rout('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)     
@@ -849,13 +924,21 @@ def fit_ResProf_all(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_di
 
     
 
-'''
-Generic function to calculate the merit factor of the joined fit
-'''
-def MAIN_joined_intr_prof_res(param,x_tab,args=None):
+
+def FIT_joined_ResProf(param,x_tab,args=None):
+    r"""**Fit function: joined residual stellar profiles**
+
+    Calls corresponding model function for optimization
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    """
     
     #Models over fitted spectral ranges
-    model_prof=joined_intr_prof_res(param,args)
+    model_prof=joined_ResProf(param,args)
     
     chi = np.zeros(0,dtype=float)
     if args['use_cov_eff']:
@@ -881,23 +964,26 @@ def MAIN_joined_intr_prof_res(param,x_tab,args=None):
 
 
 
+   
+def joined_ResProf(param,args):
+    r"""**Model function: joined residual profiles**
+
+    Defines the joined model for residual profiles. This is done in three steps
     
-"""
-Function which computes the model for residual profiles
+     1. We calculate all DI profiles of the star (fitted exposures + exposures that contributed to the master-out), and we scale 
+        them at the same value as after the `Broadband flux Scaling module`.
 
-3 steps : 
-
-    1. We calculate all DI profile of the star (fitted exposures + exposures that contributed to the master-out), and we scale 
-       them at the same value as after the Broadband flux Scaling module
-
-    2. We compute the master out, with same weights as those used in the corresponding module
+     2. We compute the master out, with same weights as those used in the corresponding module.
     
-    3. We extract residual profile with   CCFres = master-out - CCFscal
+     3. We extract residual profiles as :math:`F_\mathrm{res} = F_\mathrm{out} - F_\mathrm{sc}`   
 
-"""
-
-def joined_intr_prof_res(param,args):
+    Args:
+        TBD
     
+    Returns:
+        TBD
+    
+    """     
     model_prof = {}
     for inst in args['inst_list']:
         model_prof[inst]={}

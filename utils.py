@@ -11,7 +11,7 @@ from pathos.multiprocessing import Pool
 from mpmath import fp    
 import astropy.io.fits as fits
 from scipy.interpolate import InterpolatedUnivariateSpline
-# from constant_data import c_light
+from constant_data import c_light
 
 
 '''
@@ -799,6 +799,49 @@ def air_index(l, t=15., p=760.):
     return n
 
 
-def spec_dopshift(rv_shift):
+#Relativistic longitudinal Doppler effect
+def rel_lon_specdopshift(rv_shift):
     return np.sqrt(1. - (rv_shift/c_light) )/np.sqrt(1. + (rv_shift/c_light) )
 
+#General Doppler effect
+#    - Doppler shift for the case where the inertial motions of the source and receiver are at any specified angle.
+#
+#    - Doppler shift for a stationary receiver and moving source
+#      source moving at speed v at an angle θr measured in the frame of the receiver. 
+#      the radial component of the source's motion along the line of sight is equal to rv = v cosθr, negative if the source is moving away from the receiver 
+# nu_receiver = nu_source / (gamma ( 1 + beta cosθr ) ) 
+# w_receiver = w_source * (gamma * (1+beta*cos theta_r))
+#       beta = v/c               
+#       Lorentz factor gamma = 1/sqrt(1 - beta^2) = 1/sqrt(1 - (v/c)^2) ~ 1 (also because v generally unknown)    
+# w_receiver = w_source * (1+ (rv[s/r]/c))
+# w_source = w_receiver / (1+ (rv[s/r]/c))
+#
+#    - typically we convert wavelengths from the receiver to the source frame (to align measurements in their frame of emission), so one needs to 
+# divide by gen_specdopshift()
+def gen_specdopshift(rv_s2r):
+    return (1. + (rv_s2r/c_light))
+
+def def_edge_tab(cen_bins,dim = 2):
+    r"""**Bins edge definition**
+
+    Defines edges of input centered bins.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    if dim==0:
+        mid_bins = 0.5*(cen_bins[0:-1]+cen_bins[1::]) 
+        low_bins_st =cen_bins[0] - (mid_bins[0] - cen_bins[0])
+        high_bins_end = cen_bins[-1] + (cen_bins[-1]-mid_bins[-1])  
+        edge_bins =  np.concatenate(([low_bins_st], mid_bins,[high_bins_end]))        
+    elif dim==2:
+        mid_bins = 0.5*(cen_bins[:,:,0:-1]+cen_bins[:,:,1::]) 
+        low_bins_st =cen_bins[:,:,0] - (mid_bins[:,:,0] - cen_bins[:,:,0])
+        high_bins_end = cen_bins[:,:,-1] + (cen_bins[:,:,-1]-mid_bins[:,:,-1])  
+        edge_bins =  np.concatenate((low_bins_st[:,:,None] , mid_bins,high_bins_end[:,:,None]),axis=2)        
+    else:stop('Upgrade def_edge_tab()')                           
+    return edge_bins

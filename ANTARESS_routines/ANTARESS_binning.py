@@ -134,7 +134,9 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         #      for each new bin, the binning routine is called with the list of original index that it will use
         #    - different binned profiles might use the same original exposures, which is why we use 'idx_to_bin_unik' to pre-process only once original exposures 
         data_to_bin={}
-        if (data_type_gen=='DI') and (not masterDI):data_glob_new['RV_star_solCDM'] = np.zeros(n_bin,dtype=float)
+        if (data_type_gen=='DI') and (not masterDI):
+            data_glob_new['RV_star_solCDM'] = np.zeros(n_bin,dtype=float)
+            data_glob_new['RV_star_stelCDM'] = np.zeros(n_bin,dtype=float)
         data_glob_new['vis_iexp_in_bin']={vis_bin:{} for vis_bin in vis_to_bin}
         for iexp_off in idx_to_bin_unik:
             data_to_bin[iexp_off]={}
@@ -165,7 +167,9 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 iexp_glob=iexp
                 
                 #Store Keplerian motion
-                if ('RV_star_solCDM' in data_glob_new):data_to_bin[iexp_off]['RV_star_solCDM'] = coord_dic[inst][vis_bin]['RV_star_solCDM'][iexp_glob]
+                if ('RV_star_solCDM' in data_glob_new):
+                    data_to_bin[iexp_off]['RV_star_solCDM'] = coord_dic[inst][vis_bin]['RV_star_solCDM'][iexp_glob]
+                    data_to_bin[iexp_off]['RV_star_stelCDM'] = coord_dic[inst][vis_bin]['RV_star_stelCDM'][iexp_glob]
                 
             else:
                                 
@@ -281,8 +285,12 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #Keplerian motion relative to the stellar CDM and the Sun (km/s)
             if ('RV_star_solCDM' in data_glob_new):
                 RV_star_solCDM = 0.
-                for isub,ibin in enumerate(idx_to_bin):RV_star_solCDM+=dx_ov[isub]*data_to_bin[ibin]['RV_star_solCDM']
+                RV_star_stelCDM = 0.
+                for isub,ibin in enumerate(idx_to_bin):
+                    RV_star_solCDM+=dx_ov[isub]*data_to_bin[ibin]['RV_star_solCDM']
+                    RV_star_stelCDM+=dx_ov[isub]*data_to_bin[ibin]['RV_star_stelCDM']
                 data_glob_new['RV_star_solCDM'][i_new] = RV_star_solCDM/np.sum(dx_ov)
+                data_glob_new['RV_star_stelCDM'][i_new] = RV_star_stelCDM/np.sum(dx_ov)
 
             #Saving new exposure  
             if not masterDI:np.savez_compressed(save_pref+str(i_new),data=data_exp_new,allow_pickle=True)
@@ -1386,29 +1394,4 @@ def sub_def_bins(bin_siz,idx_kept_ord,low_pix,high_pix,dpix_loc,pix_loc,sp1D_loc
 
 
 
-
-def def_edge_tab(cen_bins,dim = 2):
-    r"""**Bins edge definition**
-
-    Defines edges of input centered bins.
-
-    Args:
-        TBD
-    
-    Returns:
-        TBD
-    
-    """ 
-    if dim==0:
-        mid_bins = 0.5*(cen_bins[0:-1]+cen_bins[1::]) 
-        low_bins_st =cen_bins[0] - (mid_bins[0] - cen_bins[0])
-        high_bins_end = cen_bins[-1] + (cen_bins[-1]-mid_bins[-1])  
-        edge_bins =  np.concatenate(([low_bins_st], mid_bins,[high_bins_end]))        
-    elif dim==2:
-        mid_bins = 0.5*(cen_bins[:,:,0:-1]+cen_bins[:,:,1::]) 
-        low_bins_st =cen_bins[:,:,0] - (mid_bins[:,:,0] - cen_bins[:,:,0])
-        high_bins_end = cen_bins[:,:,-1] + (cen_bins[:,:,-1]-mid_bins[:,:,-1])  
-        edge_bins =  np.concatenate((low_bins_st[:,:,None] , mid_bins,high_bins_end[:,:,None]),axis=2)        
-    else:stop('Upgrade def_edge_tab()')                           
-    return edge_bins
 

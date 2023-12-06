@@ -67,7 +67,6 @@ def ANTARESS_launcher(nbook_dic = {} , user = ''):
     gen_dic['save_dir']= antaress_dir+'En_cours/'  
     os_system.chdir(antaress_dir+'Method/')
     
-    
     print('****************************************')
     print('Launching ANTARESS')
     print('****************************************')

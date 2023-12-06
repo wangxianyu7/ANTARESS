@@ -49,21 +49,6 @@ def clustering(array, tresh, num):
     else:
         print('no cluster found with such treshhold')
 
-def doppler_r(lamb,v):
-    """Relativistic Doppler. Take (wavelength, velocity in [m/s]) and return lambda observed and lambda source"""
-    c= 299.792e6
-    button=False
-    factor=np.sqrt((1+v/c)/(1-v/c))
-    if type(factor)!=np.ndarray:
-        button=True
-        factor=np.array([factor])
-    lambo=lamb*factor[:,np.newaxis]
-    lambs=lamb*(factor**(-1))[:,np.newaxis]
-    if button:
-        return lambo[0],lambs[0]
-    else:
-        return lambo, lambs
-
 def find_nearest(array,value,dist_abs=True,closest='abs'):
     if type(array)!=np.ndarray:
         array = np.array(array)

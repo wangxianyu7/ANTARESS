@@ -5,7 +5,7 @@ Created on Tue Jul 22 12:51:40 2014
 @author: bourrier
 """
 from math import pi
-from utils import np_nan
+import numpy as np
 
 #######################################################################
 #A routine to define planet parameters and physical constants
@@ -201,9 +201,9 @@ dico_all_gases={
     'alumina':{
         'nature':'dust',
         'rho':2.9,
-        'Mg':np_nan,
-        'L':np_nan,
-        'Pinf':np_nan,
+        'Mg':np.nan,
+        'L':np.nan,
+        'Pinf':np.nan,
         'alpha':0.1 #arbitrary
     }, 
     # Ammonia
@@ -211,9 +211,9 @@ dico_all_gases={
     'Ammonia':{   
         'nature':'dust', 
         'rho': 0.88,
-        'Mg':np_nan,
-        'L':np_nan,
-        'Pinf':np_nan,
+        'Mg':np.nan,
+        'L':np.nan,
+        'Pinf':np.nan,
         'alpha':0.1 #arbitrary
     },      
     # Carbon at T=400°C 
@@ -308,9 +308,9 @@ dico_all_gases={
     'Perovskite':{
         'nature':'dust',
         'rho': 4.1,
-        'Mg':np_nan,
-        'L':np_nan,
-        'Pinf':np_nan,
+        'Mg':np.nan,
+        'L':np.nan,
+        'Pinf':np.nan,
         'alpha':0.1      #arbitrary
     },  
     # Pyroxene 20% iron
@@ -372,9 +372,9 @@ dico_all_gases={
     'wtrice':{
         'nature':'dust',
         'rho': 1.0 ,
-        'Mg':np_nan,
-        'L':np_nan,
-        'Pinf':np_nan,
+        'Mg':np.nan,
+        'L':np.nan,
+        'Pinf':np.nan,
         'alpha':0.1 #arbitrary
     },
     # Water Liquid
@@ -382,9 +382,9 @@ dico_all_gases={
     'wtrliq':{
         'nature':'dust',
         'rho': 1.0 ,
-        'Mg':np_nan,
-        'L':np_nan,
-        'Pinf':np_nan,
+        'Mg':np.nan,
+        'L':np.nan,
+        'Pinf':np.nan,
         'alpha':0.1 #arbitrary
     },
 

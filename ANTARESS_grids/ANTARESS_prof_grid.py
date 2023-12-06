@@ -1,40 +1,23 @@
 import numpy as np
 from scipy.interpolate import interp1d
 from copy import deepcopy
-from utils import closest,np_poly,np_interp,spec_dopshift,closest_arr,MAIN_multithread
+from utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab
 import astropy.convolution.convolve as astro_conv
 import bindensity as bind
+from pysme import sme as SME
+from pysme.linelist.vald import ValdFile
+from pysme.abund         import Abund
 from pysme.synthesize import synthesize_spectrum
 import lmfit
-from ANTARESS_analysis.ANTARESS_line_prop import calc_polymodu,calc_linevar_coord_grid,polycoeff_def
-from ANTARESS_analysis.ANTARESS_model_prof import pol_cont,gen_over_func,dispatch_func_prof
+from ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
 from ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
-
-
-
-
-def MAIN_custom_DI_prof(param,RV,args=None):
-    r"""**Disk-integrated profile: fit function**
-
-    Calls generic profile function applied to the calculation of custom disk-integrated stellar profile.
-    The disk-integrated profile is built upon a discretized grid of the stellar surface to allow accounting for any type of intensity and velocity field
-
-    Args:
-        TBD
-    
-    Returns:
-        TBD
-    
-    """  
-    ymodel=gen_over_func(param,custom_DI_prof,args)
-    return ymodel
-
 
 
 def custom_DI_prof(param,x,args=None):
     r"""**Disk-integrated profile: model function**
 
     Calculates custom disk-integrated stellar profile.
+    The disk-integrated profile is built upon a discretized grid of the stellar surface to allow accounting for any type of intensity and velocity field.
     This routine is separated from init_custom_DI_prof() so that it can be used in fitting routines with varying parameters.
 
     Args:
@@ -72,9 +55,9 @@ def custom_DI_prof(param,x,args=None):
     #Radial velocities of the stellar surface (km/s)
     #    - an offset is allowed to account for the star/input frame velocity when the model is used on raw data 
     #--------------------------------------------------------------------------------
-    rv_shift_grid = calc_RVrot(args['grid_dic']['x_st_sky'],args['grid_dic']['y_st'],args['star_params']['istar_rad'],param) + param['rv']
+    rv_surf_star_grid = calc_RVrot(args['grid_dic']['x_st_sky'],args['grid_dic']['y_st'],args['star_params']['istar_rad'],param) + param['rv']
     cb_band = calc_CB_RV(get_LD_coeff(args['system_prop']['achrom'],0),args['system_prop']['achrom']['LD'][0],param['c1_CB'], param['c2_CB'], param['c3_CB'],param)
-    if np.max(np.abs(cb_band))!=0.:rv_shift_grid += np_poly(cb_band)(args['grid_dic']['mu']).flatten()
+    if np.max(np.abs(cb_band))!=0.:rv_surf_star_grid += np_poly(cb_band)(args['grid_dic']['mu']).flatten()
 
     #--------------------------------------------------------------------------------        
     #Coadding local line profiles over stellar disk
@@ -84,10 +67,10 @@ def custom_DI_prof(param,x,args=None):
     #Multithreading
     #    - disabled with theoretical profiles, there seems to be an incompatibility with sme
     if (args['nthreads']>1) and (args['mode']!='theo'):
-        flux_DI_sum=MAIN_multithread(coadd_loc_line_prof,args['nthreads'],args['grid_dic']['nsub_star'],[rv_shift_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,args,),output = True)                           
+        flux_DI_sum=MAIN_multithread(coadd_loc_line_prof,args['nthreads'],args['grid_dic']['nsub_star'],[rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,args,),output = True)                           
     
     #Direct call
-    else:flux_DI_sum=coadd_loc_line_prof(rv_shift_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)
+    else:flux_DI_sum=coadd_loc_line_prof(rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)
     
     #Co-adding profiles
     DI_flux_norm = np.sum(flux_DI_sum,axis=0)
@@ -357,6 +340,70 @@ def init_st_intr_prof(args,grid_dic,param):
 
 
 
+
+def gen_theo_atm(st_atm,star_params):
+    r"""**Theoretical stellar atmosphere**
+
+    Initializes SME grid to generate intrinsic stellar profiles 
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
+
+    #Atmosphere structure
+    sme_grid = SME.SME_Structure()
+    
+    #Stellar atmosphere model
+    #    - we keep the defaults for sme.atmo.method = "grid" and sme.atmo.geom = "PP"
+    sme_grid.atmo.source = st_atm['atm_model']+'.sav'
+    
+    #NLTE departure
+    if ('nlte' in st_atm) and (len(st_atm['nlte'])>0):
+        for sp_nlte in st_atm['nlte']:sme_grid.nlte.set_nlte(sp_nlte,st_atm['nlte'][sp_nlte]+'.grd')   
+    
+    #Set nominal model properties
+    #    - vsini is set to 0 so that intrinsic profiles are kept aligned
+    sme_grid['teff'] = star_params['Tpole']    
+    sme_grid['logg'] = star_params['logg']                
+    sme_grid['vsini'] = 0.
+    sme_grid['vmic'] = 0.            
+    sme_grid['vmac'] = 0.            
+
+    #Wavelength and mu grid of the synthetic spectra
+    #    - in A, in the star rest frame
+    sme_grid['n_wav'] = int((st_atm['wav_max']-st_atm['wav_min'])/st_atm['dwav'])
+    sme_grid_wave = np.linspace(st_atm['wav_min'],st_atm['wav_max'],sme_grid['n_wav']) 
+    sme_grid['edge_bins'] = def_edge_tab(sme_grid_wave[None,:][None,:])[0,0]
+    sme_grid['wave'] = sme_grid_wave
+    sme_grid['mu_grid'] = st_atm['mu_grid']
+    sme_grid['n_mu'] = len(st_atm['mu_grid'])
+    
+    #Retrieve linelist and limit to range of spectral grid
+    sme_grid['linelist'] = ValdFile(st_atm['linelist'])
+    wlcent = sme_grid['linelist']['wlcent']
+    cond_within = (wlcent>=st_atm['wav_min']-5.) & (wlcent<=st_atm['wav_max']+5.)
+    if True not in cond_within:stop('No VALD transitions within requested range')
+    sme_grid['linelist'] = sme_grid['linelist'][cond_within]
+
+    #Abundances
+    #    - set by default to solar, from Asplund+2009
+    #    - specific abundances are defined as A(X) = log10( N(X)/N(H) ) + 12 
+    #    - overall metallicity yields A(X) = Anominal(X) + [M/H] for X != H and He   
+    sme_grid['abund'] = Abund.solar()
+    if ('abund' in st_atm) and (len(st_atm['abund'])>0):
+        for sp_abund in st_atm['abund']:sme_grid['abund'][sp_abund]=st_atm['abund'][sp_abund]
+    sme_grid['monh'] = st_atm['MovH'] if 'MovH' in st_atm else 0    
+    
+    #Intrinsic profile grid
+    gen_theo_intr_prof(sme_grid)    
+    
+    return sme_grid
+
+
 def gen_theo_intr_prof(sme_grid):
     r"""**Theoretical intrinsic stellar profiles**
 
@@ -384,8 +431,6 @@ def gen_theo_intr_prof(sme_grid):
     sme_grid['flux_intr_grid'] = interp1d(sme_grid['mu_grid'],flux_intr_grid,axis=0)
     
     return None
-
-
 
 
 
@@ -454,7 +499,7 @@ def theo_intr2loc(grid_dic,system_prop,fixed_args,ncen_bins,nsub_star):
 
 
 
-def calc_loc_line_prof(icell,rv_shift,Fsurf_cell_spec,flux_loc_cell,mu_cell,args,param):
+def calc_loc_line_prof(icell,rv_surf_star,Fsurf_cell_spec,flux_loc_cell,mu_cell,args,param):
     r"""**Local line profile calculation**
 
     Calculates local profile from a given cell of the stellar disk.
@@ -471,11 +516,11 @@ def calc_loc_line_prof(icell,rv_shift,Fsurf_cell_spec,flux_loc_cell,mu_cell,args
     #    - model is always calculated in RV space, and later converted back to wavelength space if relevant
     #    - the model is directly calculated over the RV table at its requested position, rather than being pre-calculated and shifted
     if args['mode']=='ana':
-        input_cell = {'cont':1. , 'rv':rv_shift }
+        input_cell = {'cont':1. , 'rv':rv_surf_star }
         for pol_par in args['input_cell_all']:
             input_cell[pol_par] = args['input_cell_all'][pol_par][icell]
         flux_intr=args['func_prof'](input_cell,args['cen_bins'] )[0]
-            
+
         #Convolve intrinsic profile with macroturbulence kernel
         if args['mac_mode'] is not None:
     
@@ -501,13 +546,16 @@ def calc_loc_line_prof(icell,rv_shift,Fsurf_cell_spec,flux_loc_cell,mu_cell,args
             #    - bins must have the same size in a given table
             flux_intr=astro_conv(flux_intr,macro_kern_loc,boundary='extend')          
         
-    #Shift stored intrinsic profile to RV of local stellar surface element        
-    #    - see align_data for details 
+    #Shift stored intrinsic profile from the photosphere (source) to the star (receiver) rest frame     
+    #    - see gen_specdopshift():
+    # w_receiver = w_source * (1+ (rv[s/r]/c))
+    # w_star = w_photo * (1+ (rv[photo/star]/c))
+    #        = w_photo * (1+ (rv_surf/c))
     #    - models are pre-calculated and then shifted, since the line profile and the shift are independent
     elif (args['mode'] in ['theo','Intrbin']):
-        if ('spec' in args['type']):edge_bins_rest = args['edge_bins_intr']*spec_dopshift(-rv_shift) 
-        elif (args['type']=='CCF'):edge_bins_rest = args['edge_bins_intr'] + rv_shift
-        flux_intr = bind.resampling(args['edge_bins'],edge_bins_rest,flux_loc_cell, kind=args['resamp_mode'])            
+        if ('spec' in args['type']):edge_bins_surf = args['edge_bins_intr']*gen_specdopshift(rv_surf_star)        
+        elif (args['type']=='CCF'):edge_bins_surf = args['edge_bins_intr'] + rv_surf_star
+        flux_intr = bind.resampling(args['edge_bins'],edge_bins_surf,flux_loc_cell, kind=args['resamp_mode'])            
     
     #Continuum scaling into local line profiles
     #    - default continuum of intrinsic profiles is set to 1 so that it can be modulated chromatically here
@@ -518,7 +566,7 @@ def calc_loc_line_prof(icell,rv_shift,Fsurf_cell_spec,flux_loc_cell,mu_cell,args
 
 
 
-def coadd_loc_line_prof(rv_shift_grid,icell_list,Fsurf_grid_spec,flux_intr_grid,mu_grid,param,args):
+def coadd_loc_line_prof(rv_surf_star_grid,icell_list,Fsurf_grid_spec,flux_intr_grid,mu_grid,param,args):
     r"""**Local line profile co-addition**
 
     Cumulates local profiles from each cell of the stellar disk.
@@ -531,8 +579,8 @@ def coadd_loc_line_prof(rv_shift_grid,icell_list,Fsurf_grid_spec,flux_intr_grid,
     
     """ 
     flux_DI_sum=[]
-    for isub,(icell,rv_shift,flux_intr_cell,mu_cell) in enumerate(zip(icell_list,rv_shift_grid,flux_intr_grid,mu_grid)):
-        flux_DI_sum+=[calc_loc_line_prof(icell,rv_shift,Fsurf_grid_spec[isub],flux_intr_cell,mu_cell,args,param)]
+    for isub,(icell,rv_surf_star,flux_intr_cell,mu_cell) in enumerate(zip(icell_list,rv_surf_star_grid,flux_intr_grid,mu_grid)):
+        flux_DI_sum+=[calc_loc_line_prof(icell,rv_surf_star,Fsurf_grid_spec[isub],flux_intr_cell,mu_cell,args,param)]
     return flux_DI_sum
 
 

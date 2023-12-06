@@ -1,16 +1,15 @@
 import numpy as np
 from itertools import product as it_product
 from copy import deepcopy
-from utils import stop,closest,np_poly,npint,np_interp,np_where1D,datasave_npz,dataload_npz
+from utils import stop,closest,np_poly,npint,np_interp,np_where1D,datasave_npz,dataload_npz,gen_specdopshift
 from constant_data import Rsun,c_light
 from ANTARESS_routines.ANTARESS_init import check_data
 from ANTARESS_routines.ANTARESS_orbit import conv_Losframe_to_inclinedStarFrame,conv_inclinedStarFrame_to_Losframe
 from ANTARESS_routines.ANTARESS_data_align import align_data
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
-from ANTARESS_analysis.ANTARESS_line_prop import calc_polymodu,calc_linevar_coord_grid
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,calc_st_sky,calc_Isurf_grid,calc_RVrot
-from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof
-
+from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid
+from ANTARESS_analysis.ANTARESS_model_prof import calc_polymodu
 
 
 
@@ -696,15 +695,20 @@ def plocc_prof(args,transit_pl,coord_dic,idx_w,system_prop,key_chrom,param,theo_
                 data_loc['flux'] = np.array([Fintr_av_pl*flux_sc_spec])
                 ncen_bins_Intr = len(data_loc['cen_bins'][0])
             
-                #Shift profile to average position for current planet
+                #Shift profile from average occulted photopshere position for current planet (source, in which it is defined) to star rest frame (receiver) 
                 #    - 'conv2intr' is True when the routine is used to calculate model intrinsic profiles (flux_sc_spec is then 1) to be compared with measured intrinsic profiles
                 #       since the latter were corrected for chromatic deviations upon extraction, the present model profiles are only shifted with the achromatic planet-occulted rv 
                 #    - otherwise a chromatic shift is applied
                 if args['conv2intr']:dic_rv = {'achrom':{pl_loc:{'rv': np.reshape(coord_dic['achrom'][pl_loc]['rv'][idx_w['achrom']],[system_prop['achrom']['nw'],1]) }}}
                 else:dic_rv = {chrom_calc:{pl_loc:{'rv': np.reshape(coord_dic[chrom_calc][pl_loc]['rv'][idx_w[chrom_calc]],[system_prop[chrom_calc]['nw'],1]) }}}
-                surf_shifts,surf_shifts_edge = def_surf_shift('theo',dic_rv,0,data_loc,pl_loc,args['type'],system_prop,[1,ncen_bins_Intr],1,ncen_bins_Intr) 
-                if surf_shifts_edge is not None:surf_shifts_edge*=-1.
-                data_av_pl=align_data(data_loc,args['type'],1,args['dim_exp'],args['resamp_mode'],data_av_pl['cen_bins'],data_av_pl['edge_bins'],-surf_shifts,rv_shift_edge = surf_shifts_edge, nocov = True)
+                rv_surf_star,rv_surf_star_edge = def_surf_shift('theo',dic_rv,0,data_loc,pl_loc,args['type'],system_prop,[1,ncen_bins_Intr],1,ncen_bins_Intr)  
+                if rv_surf_star_edge is not None:
+                    rv_shift_edge = -rv_surf_star_edge
+                    spec_dopshift_edge = gen_specdopshift(rv_surf_star_edge)
+                else:
+                    rv_shift_edge = None
+                    spec_dopshift_edge = None
+                data_av_pl=align_data(data_loc,args['type'],1,args['dim_exp'],args['resamp_mode'],data_av_pl['cen_bins'],data_av_pl['edge_bins'],-rv_surf_star,gen_specdopshift(rv_surf_star),rv_shift_edge = rv_shift_edge,spec_dopshift_edge = spec_dopshift_edge, nocov = True)
 
             #Rotational broadening
             #    - for a planet large enough, the distribution of surface RV over the occulted region acts produces rotational broadening
@@ -803,7 +807,7 @@ def init_surf_shift(gen_dic,inst,vis,data_dic,align_mode):
 def def_surf_shift(align_mode,dic_rv,i_in,data_exp,pl_ref,data_type,system_prop,dim_exp,nord,nspec):    
     r"""**Planet-occulted rv shifts**
 
-    Returns shifts from measured or theoretical planet-occulted rv
+    Returns rv shifts of stellar surface in star rest frame, from measured or theoretical planet-occulted rv
 
     Args:
         TBD
@@ -814,8 +818,8 @@ def def_surf_shift(align_mode,dic_rv,i_in,data_exp,pl_ref,data_type,system_prop,
     """ 
     #Set surface RV to measured achromatic value 
     if (align_mode=='meas'):
-        surf_shifts=dic_rv[i_in]['rv']
-        surf_shifts_edge=None
+        rv_surf_star=dic_rv[i_in]['rv']
+        rv_surf_star_edge=None
     
     #Set surface RVs to model
     elif ('theo' in align_mode):
@@ -825,22 +829,22 @@ def def_surf_shift(align_mode,dic_rv,i_in,data_exp,pl_ref,data_type,system_prop,
         # each bin is shifted with the surface rv corresponding to its wavelength   
         #    - if data has been converted from spectra to CCF, nominal properties will be used
         if ('spec' in data_type) and ('chrom' in dic_rv):
-            surf_shifts=np.zeros(dim_exp,dtype=float)*np.nan
-            surf_shifts_edge=np.zeros([nord,nspec+1],dtype=float)*np.nan
+            rv_surf_star=np.zeros(dim_exp,dtype=float)*np.nan
+            rv_surf_star_edge=np.zeros([nord,nspec+1],dtype=float)*np.nan
             
             #Absolute or chromatic-to-nominal relative RV
             if align_mode=='theo':RV_shift_pl = dic_rv['chrom'][pl_ref]['rv'][:,i_in]
             elif align_mode=='theo_rel':RV_shift_pl = dic_rv['chrom'][pl_ref]['rv'][:,i_in]-dic_rv['achrom'][pl_ref]['rv'][0,i_in]              
             for iord in range(nord):
-                surf_shifts[iord] = np_interp(data_exp['cen_bins'][iord],system_prop['chrom']['w'],RV_shift_pl,left=RV_shift_pl[0],right=RV_shift_pl[-1])
-                surf_shifts_edge[iord] = np_interp(data_exp['edge_bins'][iord],system_prop['chrom']['w'],RV_shift_pl,left=RV_shift_pl[0],right=RV_shift_pl[-1])
+                rv_surf_star[iord] = np_interp(data_exp['cen_bins'][iord],system_prop['chrom']['w'],RV_shift_pl,left=RV_shift_pl[0],right=RV_shift_pl[-1])
+                rv_surf_star_edge[iord] = np_interp(data_exp['edge_bins'][iord],system_prop['chrom']['w'],RV_shift_pl,left=RV_shift_pl[0],right=RV_shift_pl[-1])
             
         #Achromatic RV defined for the nominal transit properties
         else:
-            surf_shifts = dic_rv['achrom'][pl_ref]['rv'][0,i_in]  
-            surf_shifts_edge=None
+            rv_surf_star = dic_rv['achrom'][pl_ref]['rv'][0,i_in]  
+            rv_surf_star_edge=None
 
-    return surf_shifts,surf_shifts_edge
+    return rv_surf_star,rv_surf_star_edge
 
 
 

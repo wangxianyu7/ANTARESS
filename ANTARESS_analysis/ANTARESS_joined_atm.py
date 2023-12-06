@@ -7,7 +7,7 @@
 '''
 Wrap-up function to process atmospheric profiles
 '''
-def fit_atm_funcs(gen_dic):
+def joined_Atm_ana(gen_dic):
 
     #Fitting intrinsic stellar CCFs with joined model
     if gen_dic['fit_AtmProf']:

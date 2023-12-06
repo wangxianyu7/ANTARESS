@@ -2,7 +2,7 @@ import glob
 import numpy as np
 import lmfit
 from lmfit import Parameters
-from utils import stop,np_where1D,is_odd,closest,dataload_npz,spec_dopshift
+from utils import stop,np_where1D,is_odd,closest,dataload_npz,gen_specdopshift
 from itertools import product as it_product
 from copy import deepcopy
 import os as os_system 
@@ -19,8 +19,7 @@ from ANTARESS_plots.utils_plots import autom_x_tick_prop,autom_y_tick_prop,custo
 from ANTARESS_routines.ANTARESS_binning import calc_binned_prof,resample_func,sub_calc_bins,sub_def_bins,def_weights_spatiotemp_bin
 from ANTARESS_routines.ANTARESS_orbit import get_timeorbit,def_contacts
 from ANTARESS_routines.ANTARESS_init import check_data
-from ANTARESS_analysis.ANTARESS_model_prof import par_formatting
-from ANTARESS_analysis.ANTARESS_ana_comm import model_par_names
+from ANTARESS_analysis.ANTARESS_ana_comm import model_par_names    ,par_formatting
 
 
 def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
@@ -456,8 +455,13 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     else:data_glob[iexp]['tell'] = None
                     data_glob[iexp]['mean_gdet'] = dataload_npz(data_dic[inst][vis]['mean_gdet_DI_data_paths'][iexp])['mean_gdet']             
            
-                    #Aligning exposures, shifting them from the solar system barycentric rest frame into the star rest frame
-                    dopp_fact = spec_dopshift(rv_al_all[iexp])  
+                    #Aligning exposures, shifting them from the solar system barycentric rest frame (source) into a common frame (receiver)
+                    #      see gen_specdopshift() :            
+                    # w_receiver = w_source * (1+ (rv[s/r]/c))
+                    # w_common = w_solbar * (1- rv[common/solbar]/c))
+                    #      no need to align them in the star rest frame: profiles need to be aligned in a common frame to calculate transmission spectra, 
+                    # and are then shifted back
+                    dopp_fact = 1./gen_specdopshift(coord_dic[inst][vis]['RV_star_stelCDM'][iexp])  
                     
                     #Only the exposure table is modified if data do not share a common table
                     #    - data will be resampled along with the master in a later stage
@@ -712,10 +716,15 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 bin_ord_dic['Fr']*=corr_Fr
                                 bin_ord_dic['varFr']*=corr_Fr**2.
     
-                            #Shift transmission spectrum from star to Earth rest frame
+                            #Shift transmission spectrum from common frame (receiver) to Earth (source) rest frame
+                            #    - see gen_specdopshift():                            
+                            # w_source = w_receiver / (1+ (rv[s/r]/c))
+                            # w_Earth = w_solbar / (1+ (rv[Earth/solbar]/c))
+                            #         = w_common / ((1+ (rv[Earth/solbar]/c))*(1+ (rv[solbar/common]/c)) )
+                            #         = w_common / ((1+ (BERV/c))*(1- (rv[common/solbar]/c)) )
                             #    - once stellar lines have been removed by dividing exposure and master in the star rest frame, we align transmission spectra in the 
                             # frame of the telescope expected to trace more directly the wiggle
-                            dopp_star2earth = spec_dopshift(-rv_al_all[iexp]+data_prop[inst][vis]['BERV'][iexp])/(1.+1.55e-8)  
+                            dopp_star2earth = 1./(gen_specdopshift(data_prop[inst][vis]['BERV'][iexp])*(1.+1.55e-8)*gen_specdopshift(-coord_dic[inst][vis]['RV_star_stelCDM'][iexp]))
                             bin_ord_dic['high_nu']*= dopp_star2earth
                             bin_ord_dic['low_nu']*= dopp_star2earth
                             bin_ord_dic['nu']*= dopp_star2earth
@@ -1134,10 +1143,10 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 #Run fit over several iteration to converge, using the robust 'nelder' method
                                 fixed_args_loc['idx_fit'] = np.ones(len(Fr_bin_fit['nu']),dtype=bool)
                                 for it in range(gen_dic['wig_exp_fit']['nit']):
-                                    _,_ ,p_best = fit_minimization(ln_prob_func_lmfit,p_best,Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.array([Fr_bin_fit['varFr']]),MAIN_calc_wig_mod_nu,verbose=False ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method=gen_dic['wig_exp_fit']['fit_method'])  
+                                    _,_ ,p_best = fit_minimization(ln_prob_func_lmfit,p_best,Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.array([Fr_bin_fit['varFr']]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method=gen_dic['wig_exp_fit']['fit_method'])  
 
                                 #Determine uncertainties by running LM fit using Nelder-Mead solution as starting point
-                                _,_ ,p_best = fit_minimization(ln_prob_func_lmfit,p_best,Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.array([Fr_bin_fit['varFr']]),MAIN_calc_wig_mod_nu,verbose=False ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method='leastsq')
+                                _,_ ,p_best = fit_minimization(ln_prob_func_lmfit,p_best,Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.array([Fr_bin_fit['varFr']]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method='leastsq')
 
                                 #Store properties
                                 globexpfit_results = {}
@@ -1265,14 +1274,14 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
         
                                     #Wiggle frequencies
                                     if 'Freq' in par:
-                                        main_fit_func = MAIN_wig_freq_nu  
+                                        fit_func = FIT_wig_freq_nu  
                                         params_fit.add_many(('Freq'+fixed_args['comp_str']+'_c0_off',1., True  , None, None))
                                         for ideg in range(1,3): 
                                             if fixed_args['deg_Freq'][comp_id]>=ideg:params_fit.add_many(('Freq'+fixed_args['comp_str']+'_c'+str(ideg)+'_off',0., True  , None, None))
 
                                     #Wiggle amplitudes                    
                                     elif 'Amp' in par:
-                                        main_fit_func = MAIN_wig_amp_nu_poly
+                                        fit_func = FIT_wig_amp_nu_poly
                                         params_fit.add_many(('AmpGlob'+fixed_args['comp_str']+'_c0_off',1e-3, True      , None , None, None))
                                         for ideg in range(1,5): 
                                             if fixed_args['deg_Amp'][comp_id]>=ideg:params_fit.add_many(('AmpGlob'+fixed_args['comp_str']+'_c'+str(ideg)+'_off',0., True  , None, None))
@@ -1306,13 +1315,13 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                     fixed_args['idx_fit'] = np.ones(np.sum(cond_fit_all),dtype=bool)
                                     if np.sum(cond_fit_all)>6:   
                                         fit_prop = True
-                                        _,_,p_best = fit_minimization(ln_prob_func_lmfit,p_best,nu_samp[cond_fit_all],prop_samp[cond_fit_all],var_fit,main_fit_func,verbose=False ,fixed_args=fixed_args)
+                                        _,_,p_best = fit_minimization(ln_prob_func_lmfit,p_best,nu_samp[cond_fit_all],prop_samp[cond_fit_all],var_fit,fit_func,verbose=False ,fixed_args=fixed_args)
                                           
                                         #Successive fits with automatic identification and exclusion of outliers
                                         for it_res in range(nit_hyper):
                                             
                                             #Model from previous fit iteration
-                                            mod = main_fit_func(p_best,nu_samp,args = fixed_args)
+                                            mod = fit_func(p_best,nu_samp,args = fixed_args)
                                             
                                             #Residuals
                                             res = prop_samp - mod
@@ -1331,7 +1340,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                                 if nan_err:var_fit = np.array([np.repeat(np.std(res[cond_fit_all]),np.sum(cond_fit_all))])                                                  
                                                 else:var_fit = np.array([eprop_samp[cond_fit_all]])**2. 
                                                 fixed_args['idx_fit'] = np.ones(np.sum(cond_fit_all),dtype=bool)
-                                                _,merit,p_best = fit_minimization(ln_prob_func_lmfit,p_best,nu_samp[cond_fit_all],prop_samp[cond_fit_all],var_fit,main_fit_func,verbose=False ,fixed_args=fixed_args)
+                                                _,merit,p_best = fit_minimization(ln_prob_func_lmfit,p_best,nu_samp[cond_fit_all],prop_samp[cond_fit_all],var_fit,fit_func,verbose=False ,fixed_args=fixed_args)
                                   
                                         #Save results of current hyperparameter fit
                                         #    - only for variable properties, so that global fits remain initialized to generic parameter values if not fitted here
@@ -1366,7 +1375,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             
                                         #Plot best fit / fixed  model
                                         n_nu_HR,nu_HR = def_wig_tab(nu_samp[0],nu_samp[-1],fixed_args['dnu_HR'])        
-                                        best_mod_HR = main_fit_func(p_best,nu_HR,args = fixed_args)
+                                        best_mod_HR = fit_func(p_best,nu_HR,args = fixed_args)
                                         ax[0].plot(nu_HR,sc_fact*best_mod_HR,linestyle='-',color='black',zorder=2)
                                     
                                         #Frame
@@ -1388,7 +1397,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                         #------------------------------
                                     
                                         #Residuals
-                                        best_mod = main_fit_func(p_best,nu_samp,args = fixed_args)             
+                                        best_mod = fit_func(p_best,nu_samp,args = fixed_args)             
                                         res_prop = sc_fact*(prop_samp - best_mod)   
                                         ax[1].plot(x_plot,res_prop,marker='o',linestyle='',color='dodgerblue',zorder=0)                
                                         if fit_prop:ax[1].plot(x_plot[cond_fit_all],res_prop[cond_fit_all],marker='o',linestyle='',color='red',zorder=0)  
@@ -1585,7 +1594,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     params_fit = Parameters()
 
                     #Generic model
-                    main_fit_func = MAIN_wig_submod_coord_discont 
+                    fit_func = FIT_wig_submod_coord_discont 
 
                     #Wiggle offset
                     if 'Phi' in par_root:
@@ -1633,7 +1642,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                  
                     # #Correlation tests
                     # params_fit = Parameters()
-                    # main_fit_func = MAIN_wig_corre     
+                    # fit_func = FIT_wig_corre     
                     # params_fit.add_many(
                     #     (fixed_args_loc['par_name']+'a0',0., True    , None, None) ,
                     #     (fixed_args_loc['par_name']+'a1',0., True    , None, None), 
@@ -1798,7 +1807,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
        
                     #Fitting
                     fixed_args_loc['idx_fit'] = np.ones(np.sum(cond_fit_all),dtype=bool)
-                    _,merit,p_best = fit_minimization(ln_prob_func_lmfit,p_best,x_var[cond_fit_all],y_var[cond_fit_all],var_fit**2.,main_fit_func,verbose=False ,fixed_args=fixed_args_loc)
+                    _,merit,p_best = fit_minimization(ln_prob_func_lmfit,p_best,x_var[cond_fit_all],y_var[cond_fit_all],var_fit**2.,fit_func,verbose=False ,fixed_args=fixed_args_loc)
                       
                     #Successive fits with automatic identification and exclusion of outliers
                     if  (gen_dic['wig_exp_point_ana']['thresh'] is not None) and (fitted_par[par]):
@@ -1806,7 +1815,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             
                             #Model from previous fit iteration
                             var_fit,fixed_args_loc = sub_prep(fixed_args_loc,np.repeat(True,n_exp_groups),y_var,sy_var)                               
-                            mod = main_fit_func(p_best,x_var,args = fixed_args_loc)
+                            mod = fit_func(p_best,x_var,args = fixed_args_loc)
                             
                             #Residuals
                             res = y_var - mod
@@ -1820,7 +1829,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 cond_fit_all[cond_sub]=False
                                 var_fit,fixed_args_loc = sub_prep(fixed_args_loc,cond_fit_all,res,sy_var)
                                 fixed_args_loc['idx_fit'] = np.ones(np.sum(cond_fit_all),dtype=bool)
-                                _,merit,p_best = fit_minimization(ln_prob_func_lmfit,p_best,x_var[cond_fit_all],y_var[cond_fit_all],var_fit**2.,main_fit_func,verbose=False ,fixed_args=fixed_args_loc)
+                                _,merit,p_best = fit_minimization(ln_prob_func_lmfit,p_best,x_var[cond_fit_all],y_var[cond_fit_all],var_fit**2.,fit_func,verbose=False ,fixed_args=fixed_args_loc)
               
                     #Save results of current hyperparameter fit
                     np.savetxt(file_save,[['Parameter '+par_root]],fmt=['%s']) 
@@ -1864,7 +1873,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #Plotting best fit at high-resolution
                         if plot_modHR:
                             fixed_args_loc.update(tel_coord_HR)
-                            mod_HR = main_fit_func(p_best,np.zeros(len(cen_ph_HR)),args=fixed_args_loc)
+                            mod_HR = fit_func(p_best,np.zeros(len(cen_ph_HR)),args=fixed_args_loc)
                             ax[0].plot(cen_ph_HR,sc_fact*mod_HR,linestyle=':',color='black',zorder=1,lw=1.5)   
 
                         #Range 
@@ -1894,7 +1903,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #Residuals
                         if (fitted_par[par]):
                             for key in tel_coord_expgroup:fixed_args_loc[key] = tel_coord_expgroup[key]      
-                            res_prop = sc_fact*(y_var - main_fit_func(p_best,x_var,args = fixed_args_loc) )             
+                            res_prop = sc_fact*(y_var - fit_func(p_best,x_var,args = fixed_args_loc) )             
                             for isub_group in range(n_exp_groups): 
                                 if plot_empty and (sy_var_plot[isub_group]==0.):markerfacecolor = 'none'
                                 else:markerfacecolor=col_visit[isub_group]                  
@@ -1996,7 +2005,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     #Model and fit properties 
                     fixed_args_loc.update({
                         'par_list':[],
-                        'fit_func':MAIN_calc_wig_mod_nu_t,
+                        'fit_func':FIT_calc_wig_mod_nu_t,
                         'x_val':nu_all,
                         'y_val':Fr_all ,  
                         'cov_val':np.array([varFr_all]) , 
@@ -2598,9 +2607,12 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     cond_def_flat = np.reshape(data_exp['cond_def'],n_flat)
                     pcorr_flat = np.zeros(n_flat,dtype=float)*np.nan
 
-                    #Shift spectral table from solar barycentric rest frame to earth rest frame
+                    #Shift spectral table from solar barycentric rest frame to earth rest frame, in which model is defined
+                    #    - see gen_specdopshift():
+                    # w_source = w_receiver / (1+ (rv[s/r]/c))
+                    # w_Earth = w_solbar / (1+ (BERV/c))   
                     #    - since flux values remain associated to the original pixels, there is no need to shift back the model after definition
-                    nu_bins_flat*=spec_dopshift(data_prop[inst][vis]['BERV'][iexp])/(1.+1.55e-8)  
+                    nu_bins_flat*=1./(gen_specdopshift(data_prop[inst][vis]['BERV'][iexp])*(1.+1.55e-8))  
                             
                     #Calculate correction over defined bins
                     #    - the model is calculated without oversampling, as wiggles spectral scales are larger than bin widths  
@@ -3097,10 +3109,10 @@ def wig_perio_sampling(comp_id_proc,plot_samp,samp_fit_dic,shift_off,ishift_comp
                 args['comp_mod'] = [comp_id]
                 args['idx_fit'] = np.ones(len(samp_fit_dic['nu'][comp_id]),dtype=bool)
                 for it in range(args['nit']):
-                    _,_ ,p_temp_best = fit_minimization(ln_prob_func_lmfit,p_temp_best,samp_fit_dic['nu'][comp_id],samp_fit_dic['flux'][comp_id],np.array([samp_fit_dic['var'][comp_id]]),MAIN_calc_wig_mod_nu,verbose=False ,fixed_args=args,maxfev = args['max_nfev'],method='nelder')
+                    _,_ ,p_temp_best = fit_minimization(ln_prob_func_lmfit,p_temp_best,samp_fit_dic['nu'][comp_id],samp_fit_dic['flux'][comp_id],np.array([samp_fit_dic['var'][comp_id]]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=args,maxfev = args['max_nfev'],method='nelder')
 
                 #Determine uncertainties by running LM fit using Nelder-Mead solution as starting point
-                _, merit,p_temp_best = fit_minimization(ln_prob_func_lmfit,p_temp_best,samp_fit_dic['nu'][comp_id],samp_fit_dic['flux'][comp_id],np.array([samp_fit_dic['var'][comp_id]]),MAIN_calc_wig_mod_nu,verbose=False ,fixed_args=args,maxfev = args['max_nfev'],method='leastsq')
+                _, merit,p_temp_best = fit_minimization(ln_prob_func_lmfit,p_temp_best,samp_fit_dic['nu'][comp_id],samp_fit_dic['flux'][comp_id],np.array([samp_fit_dic['var'][comp_id]]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=args,maxfev = args['max_nfev'],method='leastsq')
                 
                 #Store best fit for variable parameters if current component is fitted
                 if comp_id == args['comp_id_max']:
@@ -3379,7 +3391,7 @@ def plot_rms_wig(cen_ph_plot,rms_precorr,rms_postcorr,median_err,save_path):
 
 
 
-def MAIN_wig_submod_coord_discont(param_in,x_in,args=None):
+def FIT_wig_submod_coord_discont(param_in,x_in,args=None):
     r"""**Wiggle fit function: generic model for hyper-parameters**
 
     Calls corresponding model function for optimization
@@ -3395,6 +3407,8 @@ def MAIN_wig_submod_coord_discont(param_in,x_in,args=None):
     else:params=param_in        
     mod_exp = wig_submod_coord_discont(len(x_in),params,args)
     return mod_exp
+
+
 
 def wig_submod_coord_discont(nexp,params,args): 
     r"""**Wiggle model function: generic model for hyper-parameters**
@@ -3458,7 +3472,7 @@ def wig_submod_coord_discont(nexp,params,args):
     return mod  
 
 # #Test function    
-# def MAIN_wig_corre(param_in,x_in,args=None):
+# def FIT_wig_corre(param_in,x_in,args=None):
 #     if isinstance(param_in,lmfit.parameter.Parameters):params={par:param_in[par].value for par in param_in}
 #     else:params=param_in    
 #     mod_exp = params[args['par_name']+'a0'] + params[args['par_name']+'a1']*x_in + params[args['par_name']+'a2']*x_in*2. + params[args['par_name']+'a3']*x_in**3.
@@ -3468,7 +3482,7 @@ def wig_submod_coord_discont(nexp,params,args):
 
 
 
-def MAIN_wig_amp_nu_poly(param_in,nu_in,args=None):
+def FIT_wig_amp_nu_poly(param_in,nu_in,args=None):
     r"""**Wiggle fit function: chromatic amplitude**
 
     Calls corresponding model function for optimization
@@ -3515,7 +3529,7 @@ def wig_amp_nu_poly(comp_id,nu_in,params,args):
 
 
 
-def MAIN_wig_freq_nu(param_in,nu_in,args=None):
+def FIT_wig_freq_nu(param_in,nu_in,args=None):
     r"""**Wiggle fit function: chromatic frequency**
 
     Calls corresponding model function for optimization
@@ -3591,7 +3605,7 @@ def wig_intfreq_nu(comp_id,nu_in,params,args):
 
 
 
-def MAIN_calc_wig_mod_nu(param_in,nu_in,args=None):
+def FIT_calc_wig_mod_nu(param_in,nu_in,args=None):
     r"""**Wiggle fit function: global chromatic model**
 
     Calls corresponding model function for optimization
@@ -3646,7 +3660,7 @@ def calc_wig_mod_nu(nu_in,params,args):
 
 
 
-def MAIN_calc_wig_mod_nu_t(param_in,nu_all,args=None):
+def FIT_calc_wig_mod_nu_t(param_in,nu_all,args=None):
     r"""**Wiggle fit function: global chromato-temporal model**
 
     Calls corresponding model function for optimization
@@ -3858,7 +3872,7 @@ def corr_fring(inst,gen_dic,data_inst,plot_dic,data_dic):
             fixed_args['deg_pol']=len(fixed_args['coeff_pol'])
             
             #Fit function
-            fit_func=MAIN_fring_mod             
+            fit_func=FIT_fring_mod             
             
             
             
@@ -3983,7 +3997,7 @@ def corr_fring(inst,gen_dic,data_inst,plot_dic,data_dic):
 
 
 
-def MAIN_fring_mod(param,x,args=None):
+def FIT_fring_mod(param,x,args=None):
     r"""**Fringing fit function**
 
     Calls corresponding model function for optimization

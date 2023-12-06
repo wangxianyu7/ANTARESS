@@ -1,13 +1,12 @@
 import glob
 import numpy as np
-from utils import stop,np_where1D,dataload_npz,MAIN_multithread
+from utils import stop,np_where1D,dataload_npz,MAIN_multithread,gen_specdopshift,def_edge_tab
 from copy import deepcopy
 import bindensity as bind
 from scipy.interpolate import UnivariateSpline
-import pickle
 from constant_data import c_light
 from scipy import stats
-from ANTARESS_routines.ANTARESS_binning import sub_calc_bins,sub_def_bins,def_edge_tab
+from ANTARESS_routines.ANTARESS_binning import sub_calc_bins,sub_def_bins
 from ANTARESS_routines.ANTARESS_init import check_data
 
 
@@ -48,9 +47,9 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
         for ivisit,vis in enumerate(data_inst['visit_list']):
             data_vis = data_inst[vis]
 
-            #RV used for spectra alignment in the star rest frame
+            #Doppler shift used for spectra alignment in the star rest frame (see below)
             #    - beware that systemic RV should be defined or similar between visits if a master common to all visits is used
-            rv_shifts = coord_dic[inst][vis]['RV_star_solCDM'] 
+            specdopshift_star_solbar = 1./(gen_specdopshift(coord_dic[inst][vis]['RV_star_stelCDM'])*gen_specdopshift(data_dic['DI']['sysvel'][inst][vis]))
          
             #Exposure selection    
             if (inst in gen_dic['glob_mast_exp']) and (vis in gen_dic['glob_mast_exp'][inst]) and (gen_dic['glob_mast_exp'][inst][vis]!='all'):
@@ -65,8 +64,13 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
                 #Upload latest processed data
                 data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))
                 
-                #Shifting data from the input rest frame (assumed to be the solar or shifted-solar CDM) to the star rest frame and resampling on common table
-                edge_bins_rest = data_exp['edge_bins']*spec_dopshift(rv_shifts[iexp])    
+                #Shifting data from the input rest frame (assumed to be the solar or shifted-solar CDM, receiver) to the star rest frame (source) and resampling on common table
+                #    - see gen_specdopshift():
+                # w_source = w_receiver / (1+ (rv[s/r]/c))
+                # w_star = w_starbar/ (1+ (rv[star/starbar]/c))
+                #        = w_solbar / ((1+ (rv[star/starbar]/c)) * (1+ (rv[starbar/solbar]/c)))
+                #        = w_solbar / ((1+ (rv_kep/c)) * (1+ (rv_sys/c))) 
+                edge_bins_rest = data_exp['edge_bins']*specdopshift_star_solbar[iexp]
                 for iord in range(data_inst['nord']): 
                     flux_vis[isub_exp][iord] = bind.resampling(edge_wav_Mstar[iord], edge_bins_rest[iord],data_exp['flux'][iord], kind=gen_dic['resamp_mode'])
                 cond_def_vis[isub_exp] = ~np.isnan(flux_vis[isub_exp])
@@ -113,7 +117,7 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
 
             #Saving visit-specific master
             if (plot_dic['glob_mast']!='') or (gen_dic[inst]['n_visits']>1):
-                np.savez_compressed(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_meas',data = {'cen_bins':wav_Mstar,'flux':Mstar_vis_all[ivisit] ,'cond_def':cond_def_Mstar_vis,'proc_DI_data_paths':data_vis['proc_DI_data_paths'],'rv_shifts':rv_shifts},allow_pickle=True) 
+                np.savez_compressed(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_meas',data = {'cen_bins':wav_Mstar,'flux':Mstar_vis_all[ivisit] ,'cond_def':cond_def_Mstar_vis,'proc_DI_data_paths':data_vis['proc_DI_data_paths'],'specdopshift_star_solbar':specdopshift_star_solbar},allow_pickle=True) 
 
             #-------------------------------------------------------------------------------------------
 
@@ -128,7 +132,7 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
 
                 #Shifting master from the star rest frame to the exposure rest frame (applying the opposite shift as for the master calculation)
                 data_mast_exp['flux'] = np.zeros(data_vis['dim_exp'])*np.nan
-                edge_bins_rest = edge_wav_Mstar*spec_dopshift(-rv_shifts[iexp])    
+                edge_bins_rest = edge_wav_Mstar/specdopshift_star_solbar[iexp]   
                 
                 #Resampling
                 for iord in idx_ord_def_vis[ivisit]:data_mast_exp['flux'][iord] = bind.resampling(data_exp['edge_bins'][iord], edge_bins_rest[iord],Mstar_vis_all[ivisit][iord], kind=gen_dic['resamp_mode'])
@@ -387,8 +391,13 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
                     nu_bins_exp = c_light/cen_wav_Mstar[:,::-1]
 
                     #Processing requested orders
+                    #    - shifting from the star (source) to the solar barycenter (receiver) rest frame
+                    #      see gen_specdopshift() :
+                    # w_receiver = w_source * (1+ rv[s/r]/c))
+                    # w_solbar = w_star * (1+ rv[star/starbar]/c))* (1+ rv[starbar/solbar]/c))
+                    #      we neglect the stellar keplerian motion
                     iord_fit_list_def = np.intersect1d(iord_fit_list,np_where1D(np.sum(cond_def_Mast,axis=1)))
-                    cen_wav_Mstar_solbar = cen_wav_Mstar*spec_dopshift(-data_dic['DI']['sysvel'][inst][vis])                    
+                    cen_wav_Mstar_solbar = cen_wav_Mstar*gen_specdopshift(data_dic['DI']['sysvel'][inst][vis])             
                     nu_Mstar_binned = np.zeros(0,dtype=float)
                     Mstar_Fr = np.zeros(0,dtype=float)
                     for iord in iord_fit_list_def:  

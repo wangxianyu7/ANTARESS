@@ -1,5 +1,5 @@
 import numpy as np
-from utils import stop,dataload_npz,datasave_npz,closest_arr,np_where1D
+from utils import stop,dataload_npz,datasave_npz,closest_arr,np_where1D,gen_specdopshift
 from scipy.interpolate import griddata
 from copy import deepcopy
 import bindensity as bind
@@ -177,17 +177,24 @@ def loc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_di
                 else:scaled_data_paths=None
                 
             #Radial velocity shifts set to the opposite of the planet-occulted surface rv associated with current exposure
-            surf_shifts,surf_shifts_edge = def_surf_shift(data_dic['Intr']['align_mode'],dic_rv,i_in,data_exp_bin,ref_pl,data_vis['type'],data_dic['DI']['system_prop'],data_dic[inst][vis_bin]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis_bin]['nspec'])
-            if surf_shifts_edge is not None:surf_shifts_edge*= -1.
+            rv_surf_star,rv_surf_star_edge = def_surf_shift(data_dic['Intr']['align_mode'],dic_rv,i_in,data_exp_bin,ref_pl,data_vis['type'],data_dic['DI']['system_prop'],data_dic[inst][vis_bin]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis_bin]['nspec'])
+            rv_shift_cen = -rv_surf_star
+            spec_dopshift_cen = gen_specdopshift(rv_surf_star)
+            if rv_surf_star_edge is not None:
+                rv_shift_edge = -rv_surf_star_edge
+                spec_dopshift_edge = gen_specdopshift(rv_surf_star_edge)
+            else:
+                rv_shift_edge = None
+                spec_dopshift_edge = None            
                     
             #Aligning contributing profile at current exposure stellar surface rv 
             #    - aligned profiles are here resampled on the table of current exposure, which is common to all exposures if a common table is used        
             #    - complementary tables follow the same shifts
-            data_to_bin[iexp_off]=align_data(data_exp_bin,data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],data_loc_exp['cen_bins'],data_loc_exp['edge_bins'],-surf_shifts,rv_shift_edge = surf_shifts_edge)
+            data_to_bin[iexp_off]=align_data(data_exp_bin,data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],data_loc_exp['cen_bins'],data_loc_exp['edge_bins'],rv_shift_cen,spec_dopshift_cen,spec_dopshift_edge = spec_dopshift_edge,rv_shift_edge = rv_shift_edge)
                 
             #Shifting weighing master at current exposure stellar surface rv 
             #    - master will be resampled on the same table as current exposure
-            data_ref_align=align_data(data_ref,data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],data_loc_exp['cen_bins'], data_loc_exp['edge_bins'],-surf_shifts,rv_shift_edge = surf_shifts_edge)
+            data_ref_align=align_data(data_ref,data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],data_loc_exp['cen_bins'], data_loc_exp['edge_bins'],rv_shift_cen,spec_dopshift_cen,spec_dopshift_edge = spec_dopshift_edge,rv_shift_edge = rv_shift_edge)
 
             #Weight profile
             data_to_bin[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_bin_glob,in_type,data_vis['type'],data_vis['dim_exp'],data_to_bin[iexp_off]['tell'],data_to_bin[iexp_off]['mean_gdet'],data_to_bin[iexp_off]['cen_bins'],coord_dic[inst][vis_bin]['t_dur'][iexp_off],data_ref_align['flux'],data_ref_align['cov'],bdband_flux_sc = gen_dic['flux_sc'])            
@@ -574,13 +581,20 @@ def loc_prof_rec(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,coord_dic):
         data_loc_exp = dataload_npz(data_vis['proc_'+data_dic['Intr']['plocc_prof_type']+'_data_paths']+str(iexp_eff))  
 
         #Radial velocity shifts set to the opposite of the planet-occulted surface rv associated with current exposure
-        surf_shifts,surf_shifts_edge = def_surf_shift(data_dic['Intr']['align_mode'],dic_rv,i_in,data_rec[isub],ref_pl,data_vis['type'],data_dic['DI']['system_prop'],data_dic[inst][vis]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'])
+        rv_surf_star,rv_surf_star_edge = def_surf_shift(data_dic['Intr']['align_mode'],dic_rv,i_in,data_rec[isub],ref_pl,data_vis['type'],data_dic['DI']['system_prop'],data_dic[inst][vis]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'])
 
         #Aligning reconstructed profile at current exposure stellar surface rv 
         #    - reconstructed profile is already aligned in a null rest frame and resampled on a common table
         #    - aligned profiles are resampled on the table of current exposure, which is common to all exposures if a common table is used 
-        if surf_shifts_edge is not None:surf_shifts_edge*= -1.
-        data_est_loc=align_data(data_rec[isub],data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],data_loc_exp['cen_bins'],data_loc_exp['edge_bins'],-surf_shifts,rv_shift_edge = surf_shifts_edge ,nocov=True)
+        rv_shift_cen = -rv_surf_star
+        spec_dopshift_cen = gen_specdopshift(rv_surf_star)
+        if rv_surf_star_edge is not None:
+            rv_shift_edge = -rv_surf_star_edge
+            spec_dopshift_edge = gen_specdopshift(rv_surf_star_edge)
+        else:
+            rv_shift_edge = None
+            spec_dopshift_edge = None  
+        data_est_loc=align_data(data_rec[isub],data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],data_loc_exp['cen_bins'],data_loc_exp['edge_bins'],rv_shift_cen,spec_dopshift_cen,rv_shift_edge = rv_shift_edge,spec_dopshift_edge = spec_dopshift_edge, nocov = True)
 
         #Rescaling reconstructed intrinsic profile to the level of the local profile
         if data_dic['Intr']['plocc_prof_type']=='Res':

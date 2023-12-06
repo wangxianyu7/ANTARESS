@@ -1,5 +1,5 @@
 import numpy as np
-from utils import npint,stop,spec_dopshift
+from utils import npint,stop,gen_specdopshift
 import astropy.convolution.convolve as astro_conv
 from constant_data import c_light
 from copy import deepcopy
@@ -241,9 +241,10 @@ def conv_st_prof_tab(inst,vis,isub,args,args_exp,line_mod_in,FWHM_inst):
     else:line_mod_out =  convol_prof( line_mod_in,args_exp['cen_bins'],FWHM_inst)
 
     #Convert table from RV to spectral space if relevant
+    #    - w = w0*(1+rv/c)
     if args['spec2rv']:
-        args_exp['edge_bins'] = args['line_trans']*spec_dopshift(-args_exp['edge_bins'])  
-        args_exp['cen_bins'] = args['line_trans']*spec_dopshift(-args_exp['cen_bins'])  
+        args_exp['edge_bins'] = args['line_trans']*gen_specdopshift(args_exp['edge_bins'])  
+        args_exp['cen_bins'] = args['line_trans']*gen_specdopshift(args_exp['cen_bins'])  
 
     #Resample model on observed table if oversampling
     if args['resamp']:
