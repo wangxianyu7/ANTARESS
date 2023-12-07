@@ -469,6 +469,12 @@ def calc_pl_coord(ecc,omega_bar,aRs,inclin,ph_loc,RpRs,lambda_rad,star_params,rv
             vzp_loc=  VY1_p*np.sin(inclin)   
 
     #--------------------------------------------------------------------------------------------------------------------
+    #Absolute orbital velocity
+    #    - in /Rstar/h 
+    if rv_LOS:
+        vp_loc=np.sqrt(VX1_p*VX1_p + VY1_p*VY1_p)
+
+    #--------------------------------------------------------------------------------------------------------------------
     #Distance star - planet in the plane of sky
     #    - in /Rstar
     Dprojplanet=np.sqrt(xp_loc*xp_loc + yp_loc*yp_loc)
@@ -478,7 +484,7 @@ def calc_pl_coord(ecc,omega_bar,aRs,inclin,ph_loc,RpRs,lambda_rad,star_params,rv
     if RpRs is not None:ecl_loc = eclipse_def(Dprojplanet,RpRs,lambda_rad,star_params,xp_loc,yp_loc)     
     else:ecl_loc = None
           
-    return xp_loc,yp_loc,zp_loc,Dprojplanet,vxp_loc,vyp_loc,vzp_loc ,ecl_loc   
+    return xp_loc,yp_loc,zp_loc,Dprojplanet,vxp_loc,vyp_loc,vzp_loc , vp_loc, ecl_loc   
     
     
 
@@ -546,7 +552,7 @@ def coord_expos(pl_loc,coord_dic,inst,vis,star_params,pl_params,bjd_inst,exp_tim
     ph_dur=end_phases-st_phases
 
     #Return values for start, mid, end exposure    
-    xp_all,yp_all,zp_all,_,_,_,_,ecl= calc_pl_coord(pl_params['ecc'],pl_params['omega_rad'],pl_params['aRs'],pl_params['inclin_rad'],np.vstack((st_phases,phases,end_phases)),RpRs,pl_params['lambda_rad'],star_params)
+    xp_all,yp_all,zp_all,_,_,_,_,_,ecl= calc_pl_coord(pl_params['ecc'],pl_params['omega_rad'],pl_params['aRs'],pl_params['inclin_rad'],np.vstack((st_phases,phases,end_phases)),RpRs,pl_params['lambda_rad'],star_params)
     eclipse = ecl[0]
     st_positions= [xp_all[0][0],yp_all[0][0],zp_all[0][0]]
     positions= [xp_all[1][0],yp_all[1][0],zp_all[1][0]]
@@ -566,13 +572,17 @@ def coord_expos(pl_loc,coord_dic,inst,vis,star_params,pl_params,bjd_inst,exp_tim
         #    - oversampling bins are centered in phase
         ph_osamp_loc = st_phases+dph_osamp_loc*(0.5+np.arange(nt_osamp_RV))  
 
-        #Average velocity over oversampled values
+        #Average orbital velocity over oversampled values
         #    - converted from velocity along the LOS in /Rstar/h to km/s
-        rv_pl_all=star_params['RV_conv_fact']*np.mean(calc_pl_coord(pl_params['ecc'],pl_params['omega_rad'],pl_params['aRs'],pl_params['inclin_rad'],ph_osamp_loc,None,None,None,rv_LOS=True,omega_p=pl_params['omega_p'])[6])        
+        rv_pl_osamp,v_pl_osamp = calc_pl_coord(pl_params['ecc'],pl_params['omega_rad'],pl_params['aRs'],pl_params['inclin_rad'],ph_osamp_loc,None,None,None,rv_LOS=True,omega_p=pl_params['omega_p'])[6:8]
+        rv_pl_all=star_params['RV_conv_fact']*np.mean(rv_pl_osamp)    
+        v_pl_all=star_params['RV_conv_fact']*np.mean(v_pl_osamp)   
                 
-    else:rv_pl_all=None
-    
-    return positions,st_positions,end_positions,eclipse,rv_pl_all,st_phases,phases,end_phases,ph_dur
+    else:
+        rv_pl_all=None
+        v_pl_all=None
+        
+    return positions,st_positions,end_positions,eclipse,rv_pl_all,v_pl_all,st_phases,phases,end_phases,ph_dur
 
 
 '''

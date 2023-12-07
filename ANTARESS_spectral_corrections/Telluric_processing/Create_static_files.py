@@ -308,7 +308,9 @@ def lines_to_fit(input_file,species,wavenumber_born=np.array([10**8/7000,10**8/8
    	##############################################
 
     wave_number_hitran_rest_Nstrong          = []
+    delta_air_temp_Nstrong                   = []
     wave_number_hitran_rest_temp_order       = wave_number_hitran_rest_temp[np.argsort(intensity_hitran_temp)]
+    delta_air_temp_order                     = delta_air_temp[np.argsort(intensity_hitran_temp)]
     wave_number_hitran_rest_excluded         = []
 
 
@@ -318,6 +320,7 @@ def lines_to_fit(input_file,species,wavenumber_born=np.array([10**8/7000,10**8/8
         if (np.sum((wave_number_hitran_rest_temp_order[idx] < 10**8/(10**8/lines_excluded + 2*40./300000*np.mean(10**8/lines_excluded))) | (wave_number_hitran_rest_temp_order[idx] > 10**8/(10**8/lines_excluded - 2*40./300000*np.mean(10**8/lines_excluded))))==len(lines_excluded)) & ((wave_number_hitran_rest_temp_order[idx] > region_excluded[0]) | (wave_number_hitran_rest_temp_order[idx] < region_excluded[1])):
             if (len(wave_number_hitran_rest_Nstrong) == 0):
                 wave_number_hitran_rest_Nstrong = np.concatenate((wave_number_hitran_rest_Nstrong,[wave_number_hitran_rest_temp_order[idx]]))
+                delta_air_temp_Nstrong = np.concatenate((delta_air_temp_Nstrong,[delta_air_temp_order[idx]]))
             elif (len(wave_number_hitran_rest_Nstrong) != 0)  :
                 rejection_criteria=0
                 for swl in range(len(wave_number_hitran_rest_Nstrong)):
@@ -325,6 +328,7 @@ def lines_to_fit(input_file,species,wavenumber_born=np.array([10**8/7000,10**8/8
                         rejection_criteria+=1
                 if (rejection_criteria ==0) :
                     wave_number_hitran_rest_Nstrong = np.concatenate((wave_number_hitran_rest_Nstrong,[wave_number_hitran_rest_temp_order[idx]]))
+                    delta_air_temp_Nstrong = np.concatenate((delta_air_temp_Nstrong,[delta_air_temp_order[idx]]))
                 else:
                     wave_number_hitran_rest_excluded = np.concatenate((wave_number_hitran_rest_excluded,[wave_number_hitran_rest_temp_order[idx]]))
             if len(wave_number_hitran_rest_Nstrong) >=number_of_lines:
@@ -333,6 +337,7 @@ def lines_to_fit(input_file,species,wavenumber_born=np.array([10**8/7000,10**8/8
             wave_number_hitran_rest_excluded = np.concatenate((wave_number_hitran_rest_excluded,[wave_number_hitran_rest_temp_order[idx]]))
 
     wave_number_hitran_rest_Nstrong  = np.array(wave_number_hitran_rest_Nstrong)
+    delta_air_temp_Nstrong  = np.array(delta_air_temp_Nstrong)
     wave_number_hitran_rest_excluded = np.array(wave_number_hitran_rest_excluded)
 
 
@@ -369,6 +374,7 @@ def lines_to_fit(input_file,species,wavenumber_born=np.array([10**8/7000,10**8/8
 
     col7 = fits.Column(name='CCF_lines_position_wavenumber', format='1D', array=wave_number_hitran_rest_Nstrong)
     col8 = fits.Column(name='CCF_lines_position_wavelength', format='1D', array=10**8/wave_number_hitran_rest_Nstrong)
+    col8bis = fits.Column(name='CCF_lines_delta', format='1D', array=delta_air_temp_Nstrong)
 
     col9 = fits.Column(name='Excluded_lines_position_wavenumber', format='1D', array=wave_number_hitran_rest_excluded)
     col10 = fits.Column(name='Excluded_lines_position_wavelength', format='1D', array=10**8/wave_number_hitran_rest_excluded)
@@ -376,7 +382,7 @@ def lines_to_fit(input_file,species,wavenumber_born=np.array([10**8/7000,10**8/8
     cols0 = fits.ColDefs([col1, col2, col3, col4, col5, col6])
     tbhdu0 = fits.BinTableHDU.from_columns(cols0)
 
-    cols1 = fits.ColDefs([col7, col8])
+    cols1 = fits.ColDefs([col7, col8 , col8bis])
     tbhdu1 = fits.BinTableHDU.from_columns(cols1)
 
     cols2 = fits.ColDefs([col9, col10])

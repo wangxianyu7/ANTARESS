@@ -11,7 +11,7 @@ from ANTARESS_grids.ANTARESS_spots import calc_spots_prop
 from ANTARESS_routines.ANTARESS_binning import process_bin_prof
 from ANTARESS_routines.ANTARESS_detrend import detrend_prof,pc_analysis
 from ANTARESS_routines.ANTARESS_data_process import init_prop,init_data_instru,update_data_inst,init_visit,align_profiles,rescale_data,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
-from ANTARESS_analysis.ANTARESS_ana_comm import ana_prof
+from ANTARESS_analysis.ANTARESS_ana_comm import MAIN_ana_prof
 from ANTARESS_routines.ANTARESS_sp_cont import process_spectral_cont
 
 
@@ -96,7 +96,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
 
             #Analyzing original disk-integrated profiles
             if gen_dic['fit_'+data_type_gen]:
-                ana_prof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
+                MAIN_ana_prof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
 
             #Aligning disk-integrated profiles to star rest frame
             if (gen_dic['align_'+data_type_gen]):

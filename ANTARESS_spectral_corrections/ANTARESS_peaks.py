@@ -166,7 +166,7 @@ def corr_cosm_vis(iexp_group,proc_DI_data_paths,hcosm_ncomp,n_in_visit,cosm_ncom
                 
             #Align complementary exposures with current spectrum
             #    - in orders to be corrected for only
-            edge_bins_new = edge_bins_all[iexp_c]*gen_specdopshift(-rv_shift)  
+            edge_bins_new = edge_bins_all[iexp_c]/gen_specdopshift(rv_shift)  
             for iord in ord_corr_list: 
                 flux_align_comp[iloc,iord] = bind.resampling(edge_bins_all[iexp,iord], edge_bins_new[iord], flux_all[iexp_c,iord], kind=resamp_mode)
             

@@ -115,7 +115,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 
                 #Calculate coordinates
                 #    - start/end phase have been set to None if no oversampling is requested, in which case start/end positions are not calculated
-                xp_HR,yp_HR,_,Dprojplanet_HR,_,_,_,ecl_pl_HR = calc_pl_coord(system_param_loc[pl_loc]['ecc'],system_param_loc[pl_loc]['omega_rad'],system_param_loc[pl_loc]['aRs'],system_param_loc[pl_loc]['inclin_rad'],phase_pl,system_prop_loc['achrom'][pl_loc][0],system_param_loc[pl_loc]['lambda_rad'],system_param_loc['star'])
+                xp_HR,yp_HR,_,Dprojplanet_HR,_,_,_,_,ecl_pl_HR = calc_pl_coord(system_param_loc[pl_loc]['ecc'],system_param_loc[pl_loc]['omega_rad'],system_param_loc[pl_loc]['aRs'],system_param_loc[pl_loc]['inclin_rad'],phase_pl,system_prop_loc['achrom'][pl_loc][0],system_param_loc[pl_loc]['lambda_rad'],system_param_loc['star'])
             
                 #Coordinates and properties of planet-occulted regions
                 coord_pl_in[pl_loc] = {'ecl':ecl_pl_HR,'cen_pos':np.vstack((xp_HR,yp_HR)),'phase':phase_pl}
@@ -1696,7 +1696,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         
                                         elif (plot_mod=='Res'): 
                                             wrange_line = data_dic['Atm'][inst][vis]['exclu_range_star'][:,:,iexp]
-                                        elif (plot_mod in ['Atm','Atmbin','sp_1D_Atm']):
+                                        elif (plot_mod in ['Atm','Atmbin','sp_Atm_1D']):
                                             wrange_line= data_dic['Atm']['CCF_mask_wav'][:,None] * np.sqrt(1. + (data_dic['Atm']['plrange']/c_light) )/np.sqrt(1. - (data_dic['Atm']['plrange']/c_light) ) 
                                         cond_lines_in = (wrange_line[:,0]>=x_range_loc[0]) & (wrange_line[:,1]<=x_range_loc[1]) 
                                         for iline in range(np.sum(cond_lines_in)):
@@ -1742,7 +1742,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         elif (plot_mod in ['CCF_Intrbin','CCF_Intrbin_res','CCF_Atmbin','CCF_Atmbin_res','Intrbin','Atmbin']):
                                             ref_name = plot_options['dim_plot']
                                             ref_val=data_bin['cen_bindim'][iexp]
-                                        # elif (plot_mod in ['sp_Intr_1D','sp_1D_atm']) and (plot_options['dim_plot']=='bin'):
+                                        # elif (plot_mod in ['sp_Intr_1D','sp_Atm_1D']) and (plot_options['dim_plot']=='bin'):
                                         #     ref_name = dim_bin_1D
                                         #     ref_val=data_bin['cen_bindim'][iexp]
                                         else:
@@ -2131,7 +2131,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 elif maink=='post':col_loc = plot_options['color_dic_sec'][inst][vis]
                                 plt.plot(cen_bins_var[isub_ord][cond_def_raw], yoff+raw_Fr,color=col_loc,linestyle='-',lw=plot_options['lw_plot'],marker=plot_options['marker'],markersize=plot_options['markersize'],drawstyle=plot_options['drawstyle'],zorder=0,alpha = 0.5)   
                                 if plot_options['plot_err']:
-                                    raw_varFr = corr_Fr**2.*cov_rb[0][cond_def_raw]/mast_flux_ord[cond_def_raw]**2.    
+                                    raw_varFr = corr_Fr**2.*cov_ord[0][cond_def_raw]/mast_flux_ord[cond_def_raw]**2.    
                                     plt.errorbar(cen_bins_var[isub_ord][cond_def_raw], yoff+raw_Fr,yerr = np.sqrt(raw_varFr),color=col_loc,linestyle='-',lw=plot_options['lw_plot'],marker=None,markersize=plot_options['markersize'],zorder=0,alpha = 0.3)   
 
                         #Range
@@ -5304,7 +5304,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 plt.savefig(path_loc+molec+'_idx'+str(iexp)+'.'+plot_dic['tell_CCF']) 
                                 plt.close()  
 
-                    #Dispersion plots
+                #Dispersion plots
                 if plot_options[key_plot]['print_disp'] is not None:
                     for molec in plot_options[key_plot]['tell_species']:  
                     
@@ -5335,6 +5335,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         #Mean dispersion
                         mean_disp = np.mean(disp_molec)
                         plt.plot(x_range_loc,[mean_disp,mean_disp],color='dodgerblue',linestyle='-',zorder=1)
+                        plt.text(0.05,1.1,'$\sigma$ ='+"{0:.2e}".format(mean_disp),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=10,color='black',transform=plt.gca().transAxes) 
                         
                         #Frame                         
                         dx_range=x_range_loc[1]-x_range_loc[0]        
@@ -10007,7 +10008,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         ld_grid_star,gd_grid_star,mu_grid_star,Fsurf_grid_star,_,_ = calc_Isurf_grid(range(system_prop['nw']),nsub_star,system_prop,coord_grid,star_params,Ssub_Sstar)
 
         #Stellar surface radial velocity 
-        RVstel = calc_RVrot(coord_grid['x_st_sky'],coord_grid['y_st'],istar_rad,star_params)
+        RVstel = calc_RVrot(coord_grid['x_st_sky'],coord_grid['y_st'],istar_rad,star_params)[0]
         cb_band = calc_CB_RV(get_LD_coeff(system_prop,iband),system_prop['LD'][iband],star_params['c1_CB'],star_params['c2_CB'],star_params['c3_CB'],star_params) 
         for icb in range(4):RVstel+=cb_band[icb]*np.power(mu_grid_star[:,iband],icb)
 
@@ -10802,8 +10803,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     '''
     Plotting individual 1D atmospheric spectral profiles
     '''
-    if any('spec' in s for s in data_dic['Atm']['type'].values()) and (plot_dic['sp_1D_atm']!=''):
-        key_plot = 'sp_1D_atm'  
+    if any('spec' in s for s in data_dic['Atm']['type'].values()) and (plot_dic['sp_Atm_1D']!=''):
+        key_plot = 'sp_Atm_1D'  
         
         #Default settings
         plot_options=gen_plot_default(plot_options,key_plot)          

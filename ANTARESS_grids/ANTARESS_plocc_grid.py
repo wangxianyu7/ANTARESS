@@ -352,7 +352,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
     coord_grid['x_st_sky']=x_st_sky_max[cond_in_RpRs] 
     coord_grid['y_st_sky']=y_st_sky_max[cond_in_RpRs]   
 
-    #Coordinates of stellar occulting cells in the sky-projected star rest frame
+    #Identifying occulted stellar cells in the sky-projected and star star rest frame
     n_pl_occ = calc_st_sky(coord_grid,star_params)
     
     #Star is effectively occulted
@@ -536,7 +536,7 @@ def sum_region_prop(line_occ_HP_band,iband,args,system_prop,par_list,Fsurf_grid_
                 coord_grid[par_loc] = calc_polymodu(args['pol_mode'],args['coeff_line'][par_loc],linevar_coord_grid) 
     
             #Stellar-rotation induced radial velocity (km/s)
-            elif par_loc=='Rot_RV':coord_grid[par_loc] = calc_RVrot(coord_grid['x_st_sky'],coord_grid['y_st'],par_star['istar_rad'],par_star)
+            elif par_loc=='Rot_RV':coord_grid[par_loc] = calc_RVrot(coord_grid['x_st_sky'],coord_grid['y_st'],par_star['istar_rad'],par_star)[0]
                          
             #Disk-integrated-corrected convective blueshift polynomial (km/s)
             elif par_loc=='CB_RV':coord_grid[par_loc] = np_poly(cb_band)(coord_grid['mu'])          

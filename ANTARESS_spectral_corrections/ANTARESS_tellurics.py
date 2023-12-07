@@ -124,7 +124,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
             fixed_args['cov_val'] = np.array([np.ones(fixed_args['n_ccf'],dtype=float)**2.])  
 
             #Telluric CCF minimization model
-            fixed_args['fit_func'] = FIT_telluric_model
+            fixed_args['fit_func'] = FIT_CCF_telluric_model
       
         #Process each visit independently
         iord_list_ref = range(data_inst['nord_ref'])
@@ -356,7 +356,10 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
         fixed_args['M_mol_molec'] = {molec:tell_mol_dic['M_mol_molec'][molec]}
         fixed_args['molec'] = molec
         fixed_args['range_mol_prop'] = {molec:tell_mol_dic['fit_range_mol_prop'][molec]}
-        fixed_args['lines_fit'] = tell_mol_dic['lines_fit_molecules'][molec]
+        fixed_args['CCF_lines'] = tell_mol_dic['lines_fit_molecules'][molec]['CCF_lines_position_wavelength']
+        idx_CCF_lines = np.intersect1d(fixed_args['CCF_lines'],1e8/tell_mol_dic['fit_range_mol_prop'][molec]['wave_number'],return_indices=True)[2]
+        idx_CCF_lines = idx_CCF_lines[np.argsort(idx_CCF_lines)]
+        fixed_args['CCF_deltas'] = tell_mol_dic['fit_range_mol_prop'][molec]['delta'][idx_CCF_lines]       
         fixed_args['qt_molec'] = {molec:tell_mol_dic['qt_molec'][molec]}
         fixed_args['Nx_molec'] = {molec:tell_mol_dic['Nx_molec'][molec]}
     
@@ -391,15 +394,26 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
     if (tell_CCF!=''):
         fixed_args['ccf_corr'] = True
         fixed_args['flux_corr'] = corr_flux_exp
-        for molec in tell_species:
-            fixed_args['M_mol_molec'] = {molec:tell_mol_dic['M_mol_molec'][molec]}
+        for molec in tell_species:       
             fixed_args['molec'] = molec
-            fixed_args['range_mol_prop'] = {molec:tell_mol_dic['fit_range_mol_prop'][molec]}
-            fixed_args['lines_fit'] = tell_mol_dic['lines_fit_molecules'][molec]
+            fixed_args['M_mol_molec'] = {molec:tell_mol_dic['M_mol_molec'][molec]}
             fixed_args['qt_molec'] = {molec:tell_mol_dic['qt_molec'][molec]}
             fixed_args['Nx_molec'] = {molec:tell_mol_dic['Nx_molec'][molec]}
             fixed_args['idx_mod'] = np.arange(fixed_args['n_ccf']+1,dtype=int)
-            outputs[molec]['ccf_uncorr_master'],_,outputs[molec]['ccf_model_conv_master'],outputs[molec]['ccf_corr_master']=telluric_model(param_molecules[molec],fixed_args['velccf'],args=fixed_args)
+            
+            #CCF on strong lines used for the fit     
+            fixed_args['range_mol_prop'] = {molec:tell_mol_dic['fit_range_mol_prop'][molec]}
+            fixed_args['CCF_lines'] = tell_mol_dic['lines_fit_molecules'][molec]['CCF_lines_position_wavelength']
+            idx_CCF_lines = np.intersect1d(fixed_args['CCF_lines'],1e8/tell_mol_dic['fit_range_mol_prop'][molec]['wave_number'],return_indices=True)[2]
+            idx_CCF_lines = idx_CCF_lines[np.argsort(idx_CCF_lines)]
+            fixed_args['CCF_deltas'] = tell_mol_dic['fit_range_mol_prop'][molec]['delta'][idx_CCF_lines] 
+            outputs[molec]['ccf_uncorr_master'],_,outputs[molec]['ccf_model_conv_master'],outputs[molec]['ccf_corr_master']=CCF_telluric_model(param_molecules[molec],fixed_args['velccf'],args=fixed_args)
+            
+            #CCF on full line list
+            fixed_args['range_mol_prop'] = {molec:tell_mol_dic['range_mol_prop'][molec]}
+            fixed_args['CCF_lines'] = 10**8./fixed_args['range_mol_prop'][molec]['wave_number']  
+            fixed_args['CCF_deltas'] = tell_mol_dic['range_mol_prop'][molec]['delta'] 
+            outputs[molec]['ccf_uncorr_full'],_,outputs[molec]['ccf_model_conv_full'],outputs[molec]['ccf_corr_full']=CCF_telluric_model(param_molecules[molec],fixed_args['velccf'],args=fixed_args)
 
     return tell_spec_exp,corr_flux_exp,corr_cov_exp,outputs
 
@@ -739,8 +753,8 @@ def var_convol_tell_sp(telluric_spectrum,edge_bins_ord,edge_bins_mod,resolution_
 
 
 
-def FIT_telluric_model(param,velccf,args=None):
-    r"""**Main minimization function for telluric model.**
+def FIT_CCF_telluric_model(param,velccf,args=None):
+    r"""**Main minimization function for CCF telluric model.**
     
     Calculates the merit factor of the telluric fit
 
@@ -755,7 +769,7 @@ def FIT_telluric_model(param,velccf,args=None):
     """ 
     
     #Models over full spectral range
-    ccf_uncorr_master,cov_uncorr,ccf_model_conv_master,_=telluric_model(param,velccf,args=args)
+    ccf_uncorr_master,cov_uncorr,ccf_model_conv_master,_=CCF_telluric_model(param,velccf,args=args)
     
     #Merit table
     res = ccf_uncorr_master-ccf_model_conv_master
@@ -771,7 +785,7 @@ def FIT_telluric_model(param,velccf,args=None):
 
 
 
-def telluric_model(params,velccf,args=None):
+def CCF_telluric_model(params,velccf,args=None):
     """**Telluric CCF function.**
     
     Calculates telluric CCF and associated covariance matrix from measured and model spectra.  
@@ -847,19 +861,25 @@ def telluric_model(params,velccf,args=None):
                 resolution_map_ord = args['resolution_map'][iord,idx_def_ord[0]:idx_def_ord[-1]+1]        
                 telluric_spectrum_conv = var_convol_tell_sp(telluric_spectrum,edge_bins_ord,edge_bins_mod,resolution_map_ord,nbins_mod,cen_bins_mod)
 
+            #CCF linelist
+            #    - CCF linelist is provided at rest, and must be corrected for pressure shift (see init_tell_molec())
+            CCF_line_nu_rest = 1e8/args['CCF_lines'] 
+            CCF_line_nu_scaled = CCF_line_nu_rest + args['CCF_deltas'] * param_molecules[args['molec']]['Pressure_ground'].value
+            CCF_line_wav_scaled = 1e8/CCF_line_nu_scaled
+
             #Keep lines fully within spectrum range without nan
             flux_ord = args['flux'][iord,idx_def_ord[0]:idx_def_ord[-1]+1]        
             cov_ord = args['cov'][iord][:,idx_def_ord[0]:idx_def_ord[-1]+1] 
             gdet_ord = args['mean_gdet'][iord,idx_def_ord[0]:idx_def_ord[-1]+1] 
             if args['ccf_corr']:flux_corr_ord = args['flux_corr'][iord][idx_def_ord[0]:idx_def_ord[-1]+1] 
             cond_def_ord = args['cond_def'][iord,idx_def_ord[0]:idx_def_ord[-1]+1]        
-            idx_maskL_kept = check_CCF_mask_lines(1,np.array([edge_bins_ord]),np.array([cond_def_ord]),args['lines_fit']['CCF_lines_position_wavelength'],args['edge_velccf'])
+            idx_maskL_kept = check_CCF_mask_lines(1,np.array([edge_bins_ord]),np.array([cond_def_ord]),CCF_line_wav_scaled,args['edge_velccf'])
             if len(idx_maskL_kept)>0:
                 ord_coadd_eff+=[isub_ord]
           
                 #Weights unity
                 sij_ccf       = np.ones(len(idx_maskL_kept))
-                wave_line_ccf = args['lines_fit']['CCF_lines_position_wavelength'][idx_maskL_kept]
+                wave_line_ccf = CCF_line_wav_scaled[idx_maskL_kept]
 
                 #Compute CCFs
                 #    - multiprocessing not efficient for these calculations

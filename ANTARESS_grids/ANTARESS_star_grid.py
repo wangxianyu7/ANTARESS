@@ -8,15 +8,36 @@ from ANTARESS_routines.ANTARESS_orbit import calc_zLOS_oblate,conv_inclinedStarF
 def calc_RVrot(x_sky_st,y_st,istar_rad,st_par):
     r"""**Stellar rotational rv**
 
-    Calculates radial velocity of stellar surface element from rotation.
-    
-    Defined as negative toward the observer, in km/s
+    Calculates radial velocity of stellar surface element from rotation (in km/s).     
+    The absolute and radial velocity depend on stellar latitude in presence of differential rotation.
 
     .. math::  
-       v &= 2 \pi \Omega R_\mathrm{\star} \\
-       rv &= 2 \pi \sin{i_\mathrm{\star}} \Omega \\ 
-       rv &= 2 \pi \sin{i_\mathrm{\star}} \Omega_\mathrm{eq} (1-\alpha_\mathrm{rot} y_\mathrm{lat}^2 - \beta_\mathrm{rot} y_\mathrm{lat}^4) \\
-       rv &= x_\mathrm{norm} v_\mathrm{eq} \sin{i_\mathrm{\star}} (1-\alpha_\mathrm{rot} y_\mathrm{lat}^2 - \beta_\mathrm{rot} y_\mathrm{lat}^4) 
+       v &= \Omega R_\mathrm{\star} \\
+         &= \Omega_\mathrm{eq} (1-\alpha_\mathrm{rot} y_\mathrm{lat}^2 - \beta_\mathrm{rot} y_\mathrm{lat}^4) R_\mathrm{\star} \\           
+         &= v_\mathrm{eq} (1-\alpha_\mathrm{rot} y_\mathrm{lat}^2 - \beta_\mathrm{rot} y_\mathrm{lat}^4) 
+         
+    The velocity vector in the star frame is defined as
+
+    .. math::    
+       v_\mathrm{x,star} &=  v \cos(\Phi)   \\
+       v_\mathrm{y,star} &= -v \sin(\Phi)   \\
+       v_\mathrm{z,star} &=  0 
+        
+    Where :math:`\Phi` is the angle between the LOS `z` and the surface element in the `zx` plane.
+    The velocity vector in the inclined star frame is then
+    
+    .. math::    
+       v_\mathrm{x,sky star} &=  v \cos(\Phi)   \\
+       v_\mathrm{y,sky star} &= -v \sin(\Phi) cos(i_\star)   \\
+       v_\mathrm{z,sky star} &= -v \sin(\Phi) sin(i_\star) 
+
+    And the radial velocity along the :math:`z_\mathrm{sky star}` axis, defined as negative toward the observer, is then
+    
+    .. math:: 
+       rv &= - v_\mathrm{z,sky star}    \\
+          &= v \sin(\Phi) sin(i_\star)    \\
+          &= v x_\mathrm{norm} sin(i_\star)    \\          
+          &= x_\mathrm{norm} v_\mathrm{eq} sin(i_\star) (1-\alpha_\mathrm{rot} y_\mathrm{lat}^2 - \beta_\mathrm{rot} y_\mathrm{lat}^4)  
 
     Args:
         TBD
@@ -25,8 +46,9 @@ def calc_RVrot(x_sky_st,y_st,istar_rad,st_par):
         TBD
     
     """   
-    RVrot = x_sky_st*st_par['veq']*np.sin(istar_rad)*(1.-st_par['alpha_rot']*y_st**2.-st_par['beta_rot']*y_st**4.) 
-    return RVrot
+    Vrot = st_par['veq']*(1.-st_par['alpha_rot']*y_st**2.-st_par['beta_rot']*y_st**4.)
+    RVrot = x_sky_st*Vrot*np.sin(istar_rad) 
+    return RVrot,Vrot
 
 
 

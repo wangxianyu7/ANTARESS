@@ -334,7 +334,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 phase_tab = conv_phase(coord_dic,inst,vis_save,system_param,bin_prop['ref_pl'],pl_loc,np.vstack((new_x_low,new_x_cen,new_x_high)))              
             
                 #Coordinates
-                x_pos_pl,y_pos_pl,z_pos_pl,Dprojp,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phase_tab,data_dic['DI']['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param['star'])
+                x_pos_pl,y_pos_pl,z_pos_pl,Dprojp,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phase_tab,data_dic['DI']['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param['star'])
                 data_glob_new['coord'][pl_loc] = {
                     'ecl':ecl_pl,
                     'st_ph':phase_tab[0],'cen_ph':phase_tab[1],'end_ph':phase_tab[2],

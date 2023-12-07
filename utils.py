@@ -812,14 +812,15 @@ def rel_lon_specdopshift(rv_shift):
 # nu_receiver = nu_source / (gamma ( 1 + beta cosθr ) ) 
 # w_receiver = w_source * (gamma * (1+beta*cos theta_r))
 #       beta = v/c               
-#       Lorentz factor gamma = 1/sqrt(1 - beta^2) = 1/sqrt(1 - (v/c)^2) ~ 1 (also because v generally unknown)    
-# w_receiver = w_source * (1+ (rv[s/r]/c))
-# w_source = w_receiver / (1+ (rv[s/r]/c))
+# w_receiver = w_source * gamma * (1+ (rv[s/r]/c))
+# w_source = w_receiver / (gamma*(1+ (rv[s/r]/c)))
+#       Lorentz factor gamma = 1/sqrt(1 - beta^2) = 1/sqrt(1 - (v/c)^2) ~ 1 in most cases but is accounted in the Doppler shift of the orbital velocity, as it can yields variations on the order of 1-10m/s for close-in planets on eccentric orbits 
 #
 #    - typically we convert wavelengths from the receiver to the source frame (to align measurements in their frame of emission), so one needs to 
 # divide by gen_specdopshift()
-def gen_specdopshift(rv_s2r):
-    return (1. + (rv_s2r/c_light))
+def gen_specdopshift(rv_s2r , v_s = 0.):
+    gamma = 1./np.sqrt(1. - (v_s/c_light)**2.)
+    return gamma*(1. + (rv_s2r/c_light))
 
 def def_edge_tab(cen_bins,dim = 2):
     r"""**Bins edge definition**

@@ -8385,8 +8385,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
     '''
     Plotting individual 1D atmospheric spectral profiles
     '''
-    if any('spec' in s for s in data_dic['Atm']['type'].values()) and (plot_dic['sp_1D_atm']!=''):
-        key_plot = 'sp_1D_atm'  
+    if any('spec' in s for s in data_dic['Atm']['type'].values()) and (plot_dic['sp_Atm_1D']!=''):
+        key_plot = 'sp_Atm_1D'  
         plot_settings[key_plot]={} 
 
         #Signal type 

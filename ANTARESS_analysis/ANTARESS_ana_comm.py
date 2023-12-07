@@ -22,14 +22,19 @@ from ANTARESS_routines.ANTARESS_orbit import excl_plrange
 from ANTARESS_routines.ANTARESS_init import check_data 
 
 
-
-
-
-'''
-Sub-function to modify parameters properties using input values
-'''
 def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
-  
+    r"""**Parameter formatting**
+
+    Defines parameters in format relevant for fits and models, using input parameters.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
+    
     #Parameters are used for fitting   
     if isinstance(p_start,lmfit.parameter.Parameters):fit_used=True
     else:fit_used=False
@@ -210,31 +215,23 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
     return p_start
 
 
-
-
-
-
-
 def model_par_names():
-    """**Naming function**
+    r"""**Naming function**
 
     Returns dictionary associating plain name to variable.
 
-    Parameters
-    ----------
-    None
+    Args:
+        None
 
-    Returns
-    -------
-    dict
-        Dictionary of names
+    Returns:
+        name_dic (dict): dictionary of names
 
-    Examples
-    --------
-    >>> model_par_names()[x]
-    x_name
+    Example:
+        >>> model_par_names()[x]
+        x_name
+        
     """
-    return {
+    name_dic = {
         'veq':'v$_\mathrm{eq}$ (km s$^{-1}$)','vsini':'v$_\mathrm{eq}$sin i$_{*}$ (km/s)',
         'Peq':'P$_\mathrm{eq}$ (d)',
         'alpha_rot':r'$\alpha_\mathrm{rot}$',   
@@ -262,27 +259,23 @@ def model_par_names():
 
         # Stage Théo
         'Tcenter' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'flux' : 'F$_{sp}$'
-        }  
+        } 
+    return name_dic
 
 
 
 
 def conv_cosistar(modif_list,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in):
-    """**Parameter conversion function**
+    r"""**Parameter conversion**
 
     Converts results from :math:`\chi^2` or mcmc fitting. 
 
-    Parameters
-    ----------
-    TBD
+    Args:
+        TBD
 
-    Returns
-    -------
-    TBD
-
-    Examples
-    --------
-    TBD
+    Returns:
+        TBD
+        
     """    
     if 'cos_istar' in fixed_args_in['var_par_list']:                    
         iistar=np_where1D(fixed_args_in['var_par_list']=='cos_istar')                    
@@ -310,18 +303,28 @@ def conv_cosistar(modif_list,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in
 
 
 
-'''
-Routine to analyze line profiles
-    - function is applied to:
-# + profiles in their input rest frame, original exposures, for all formats
-# + profiles in their input or star (if aligned) rest frame, original exposures, converted from 2D->1D 
-# + profiles in their input or star (if aligned) rest frame, binned exposures, all formats
-# + profiles in the star rest frame, binned exposures, all formats        
-    - formats are CCF profiles, 1D spectra, or a specific 2D spectral order
-    - each profile is analyzed independently from the others
-    - the module can be used to fit the disk-integrated master using best estimates for the intrinsic stellar profiles (measured, theoretical, imported)    
-'''
-def ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,star_param):
+def MAIN_ana_prof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,star_param):
+    r"""**Main profile analysis routine**
+
+    Initializes and calls analysis of line profiles
+    
+     - profiles in their input rest frame, original exposures, for all formats
+     - profiles in their input or star (if aligned) rest frame, original exposures, converted from 2D->1D 
+     - profiles in their input or star (if aligned) rest frame, binned exposures, all formats
+     - profiles in the star rest frame, binned exposures, all formats   
+
+    Formats are CCF profiles, 1D spectra, or a specific 2D spectral order.
+    Each profile is analyzed independently from the others.
+    The routine can also be used to fit the unocculted disk-integrated stellar profile using best estimates for the intrinsic stellar profiles (measured, theoretical, imported) 
+
+    Args:
+        TBD
+
+    Returns:
+        TBD
+        
+    """  
+    
 
     #Analyzing profiles
     if 'orig' in data_type:   #unbinned profiles
@@ -3092,7 +3095,7 @@ def calc_plocc_coord(inst,vis,par_list,args,param_in,transit_pl,nexp_fit,ph_fit,
             #    - start/end phase have been set to None if no oversampling is requested, in which case start/end positions are not calculated
             if args['grid_dic']['d_oversamp'] is not None:phases = ph_fit[pl_loc]
             else:phases = ph_fit[pl_loc][1]
-            x_pos_pl,y_pos_pl,_,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phases,args['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param_loc['star'])
+            x_pos_pl,y_pos_pl,_,_,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phases,args['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param_loc['star'])
             if args['grid_dic']['d_oversamp'] is not None:
                 coord_pl[pl_loc]['st_pos'] = np.vstack((x_pos_pl[0],y_pos_pl[0]))
                 coord_pl[pl_loc]['cen_pos'] = np.vstack((x_pos_pl[1],y_pos_pl[1]))

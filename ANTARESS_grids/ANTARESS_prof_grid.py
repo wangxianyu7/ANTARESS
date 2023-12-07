@@ -55,7 +55,7 @@ def custom_DI_prof(param,x,args=None):
     #Radial velocities of the stellar surface (km/s)
     #    - an offset is allowed to account for the star/input frame velocity when the model is used on raw data 
     #--------------------------------------------------------------------------------
-    rv_surf_star_grid = calc_RVrot(args['grid_dic']['x_st_sky'],args['grid_dic']['y_st'],args['star_params']['istar_rad'],param) + param['rv']
+    rv_surf_star_grid = calc_RVrot(args['grid_dic']['x_st_sky'],args['grid_dic']['y_st'],args['star_params']['istar_rad'],param)[0] + param['rv']
     cb_band = calc_CB_RV(get_LD_coeff(args['system_prop']['achrom'],0),args['system_prop']['achrom']['LD'][0],param['c1_CB'], param['c2_CB'], param['c3_CB'],param)
     if np.max(np.abs(cb_band))!=0.:rv_surf_star_grid += np_poly(cb_band)(args['grid_dic']['mu']).flatten()
 

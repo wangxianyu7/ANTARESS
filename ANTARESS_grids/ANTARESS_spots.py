@@ -382,7 +382,7 @@ def calc_spotted_region_prop(spots_prop, grid_dic, t_bjd, star_params, LD_law, l
         ## Radial velocity calculation
 
         # Rotation speed
-        region_prop['RV_sp'] = calc_RVrot(region_prop['x_st_sky_sp'],region_prop['y_st_sp'],star_params['istar_rad'],param)
+        region_prop['RV_sp'] = calc_RVrot(region_prop['x_st_sky_sp'],region_prop['y_st_sp'],star_params['istar_rad'],param)[0]
 
         # Systemic velocity
         region_prop['RV_sp'] += param['rv']
