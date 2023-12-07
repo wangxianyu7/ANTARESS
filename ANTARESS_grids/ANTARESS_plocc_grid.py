@@ -10,7 +10,7 @@ from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
 from ANTARESS_analysis.ANTARESS_line_prop import calc_polymodu,calc_linevar_coord_grid
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,calc_st_sky,calc_Isurf_grid,calc_RVrot
 from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof
-from ANTARESS_grids.ANTARESS_spots import retrieve_spots_prop_from_param, calc_spotted_tiles, new_calc_spotted_region_prop, new_retrieve_spots_prop_from_param
+from ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, new_calc_spotted_region_prop, new_retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop
 
 
 
@@ -403,27 +403,31 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                     spot_prop_oversamp['lat_rad_exp_center'] = spots_prop_all_exp[iexp][spot]['lat_rad_exp_center']
                     spot_prop_oversamp['ang_rad'] = spots_prop_all_exp[iexp][spot]['ang_rad']
                     spot_prop_oversamp['long_rad_exp_center'] = np.arcsin(x_oversamp_sp[spot][iosamp] / np.cos(spots_prop_all_exp[iexp][spot]['lat_rad_exp_center']))
+                    spot_prop_oversamp['cos_long_exp_center'] = np.cos(spot_prop_oversamp['long_rad_exp_center'])
+                    spot_prop_oversamp['sin_long_exp_center'] = np.sin(spot_prop_oversamp['long_rad_exp_center'])
+                    spot_prop_oversamp['cos_lat_exp_center'] = np.cos(spot_prop_oversamp['lat_rad_exp_center'])
+                    spot_prop_oversamp['sin_lat_exp_center'] = np.sin(spot_prop_oversamp['lat_rad_exp_center'])
                     spot_prop_oversamp['is_visible'] = is_spot_visible(star_params['istar_rad'], spot_prop_oversamp['long_rad_exp_center'], spot_prop_oversamp['lat_rad_exp_center'], spot_prop_oversamp['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
                     
                     #Going over the chromatic modes
-                    for subkey_chrom in key_chrom:
+                    # for subkey_chrom in key_chrom:
                         
-                        #Going over the bands in each chromatic mode
-                        for iband in range(system_prop[subkey_chrom]['nw']):
+                    #     #Going over the bands in each chromatic mode
+                    #     for iband in range(system_prop[subkey_chrom]['nw']):
                             
-                            #Retrieving the LD coefficients for the chromatic mode and band considered
-                            ld_coeff = get_LD_coeff(system_prop[subkey_chrom],iband)
+                    #         #Retrieving the LD coefficients for the chromatic mode and band considered
+                    #         ld_coeff = get_LD_coeff(system_prop[subkey_chrom],iband)
                             
-                            #Retrieving CB coefficients
-                            cb_band = calc_CB_RV(ld_coeff,system_prop[subkey_chrom]['LD'][iband],par_star['c1_CB'],par_star['c2_CB'],par_star['c3_CB'],par_star)
+                    #         #Retrieving CB coefficients
+                    #         cb_band = calc_CB_RV(ld_coeff,system_prop[subkey_chrom]['LD'][iband],par_star['c1_CB'],par_star['c2_CB'],par_star['c3_CB'],par_star)
 
-                            #Retrieving the GD coefficients (if defined)
-                            gd_band={}
-                            if (star_params['f_GD']>0.):
-                                gd_band = {'wmin':system_prop[subkey_chrom]['GD_wmin'][iband],'wmax':system_prop[subkey_chrom]['GD_wmax'][iband],'dw':system_prop[subkey_chrom]['GD_dw'][iband]}
+                    #         #Retrieving the GD coefficients (if defined)
+                    #         gd_band={}
+                    #         if (star_params['f_GD']>0.):
+                    #             gd_band = {'wmin':system_prop[subkey_chrom]['GD_wmin'][iband],'wmax':system_prop[subkey_chrom]['GD_wmax'][iband],'dw':system_prop[subkey_chrom]['GD_dw'][iband]}
 
-                            sp_loc_grid, cond_occ_sp, occ_region_prop = new_calc_spotted_region_prop(spot_prop_oversamp, theo_dic, star_params, system_prop[subkey_chrom]['LD'][iband], ld_coeff, gd_band, cb_band, param, 
-                                                            args['coeff_ord2name'][args['inst']][args['vis']], args['coord_line'], args['func_prof_name'], par_list, args['pol_mode'])
+                    #         sp_loc_grid, cond_occ_sp, occ_region_prop = new_new_calc_spotted_region_prop(spot_prop_oversamp, theo_dic, star_params, system_prop[subkey_chrom]['LD'][iband], ld_coeff, gd_band, cb_band, param, 
+                    #                                         args['coeff_ord2name'][args['inst']][args['vis']], args['coord_line'], args['func_prof_name'], par_list, args['pol_mode'])
 
                             #Updating the necessary dictionaries
                             #Retrieve star flux grid

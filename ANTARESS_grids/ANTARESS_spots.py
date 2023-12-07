@@ -255,8 +255,8 @@ Calculation is straighforward :
  - We rotate the new grid by the lattitude of the spot, moving it to the spot rest frame
  
     x_sp =   deepcopy(x_sp_star)
-    y_sp =   y_sp_star*np.cos(lat_rad) - z_sp_star*np.sin(long_rad)
-    z_sp =   y_sp_star*np.sin(lat_rad) + z_sp_star*np.cos(long_rad)
+    y_sp =   y_sp_star*np.cos(lat_rad) - z_sp_star*np.sin(lat_rad)
+    z_sp =   y_sp_star*np.sin(lat_rad) + z_sp_star*np.cos(lat_rad)
     
     
  - We then check wich cells are within the spot by evaluing : 
@@ -266,7 +266,7 @@ Calculation is straighforward :
      
 """
 
-def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, param, use_grid_dic = False) :
+def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, param, use_grid_dic = False, plot=False) :
                                                 
 
     if use_grid_dic :
@@ -292,7 +292,14 @@ def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, 
     x_sp =                         x_st_grid*cos_long - z_st_grid*sin_long
     y_sp = y_st_grid*cos_lat  - (x_st_grid*sin_long + z_st_grid*cos_long)   *   sin_lat
     z_sp = y_st_grid*sin_lat  + (x_st_grid*sin_long + z_st_grid*cos_long)   *   cos_lat
-   
+    
+    if plot:
+        import matplotlib.pyplot as plt
+        for j in range(len(x_sp)):
+            plt.scatter(x_sp[j], y_sp[j], color='blue', alpha=0.3, s=6)
+
+        plt.scatter(x_sp[5], y_sp[5], color='white', alpha=0.3, s=6)
+        plt.scatter(x_sp[5]+spot_prop['ang_rad'], y_sp[5], color='white', alpha=0.3, s=6)
     # Deduce which cells are within the spot
     phi_sp = np.arctan2(np.sqrt(x_sp**2. + y_sp**2.),z_sp)
     cond_in_sp = cond_close_to_spot
@@ -1210,7 +1217,7 @@ def new_retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd, exp
 
 
 def spot_occ_region_grid(RspRs, nsub_Dsp):
-    r"""**Spot grid**
+    r"""**Spot grid** - We are in the star frame !!!! Un-inclined !!!!
 
     Defines grid discretizing spot disk, in the 'inclined' star frame
       
@@ -1232,17 +1239,17 @@ def spot_occ_region_grid(RspRs, nsub_Dsp):
     #Coordinates of points discretizing the enclosing square
     cen_sub=-RspRs+(np.arange(nsub_Dsp)+0.5)*d_sub            
     xy_st_sky_grid=np.array(list(it_product(cen_sub,cen_sub)))
-    print('1:', xy_st_sky_grid)
+
     #Distance to spot center (squared)
-    r_sub_sp2=xy_st_sky_grid[:,0]*xy_st_sky_grid[:,0]+xy_st_sky_grid[:,1]*xy_st_sky_grid[:,1]
+    # r_sub_sp2=xy_st_sky_grid[:,0]*xy_st_sky_grid[:,0]+xy_st_sky_grid[:,1]*xy_st_sky_grid[:,1]
 
     # #Keeping only grid points behind the spot
-    cond_in_spdisk = ( r_sub_sp2 < RspRs*RspRs)           
-    x_st_sky_grid=xy_st_sky_grid[cond_in_spdisk,0]
-    y_st_sky_grid=xy_st_sky_grid[cond_in_spdisk,1] 
-    r_sub_sp2=r_sub_sp2[cond_in_spdisk] 
+    # cond_in_spdisk = ( r_sub_sp2 < RspRs*RspRs)           
     x_st_sky_grid=xy_st_sky_grid[:,0]
     y_st_sky_grid=xy_st_sky_grid[:,1] 
+    # r_sub_sp2=r_sub_sp2[cond_in_spdisk] 
+    # x_st_sky_grid=xy_st_sky_grid[:,0]
+    # y_st_sky_grid=xy_st_sky_grid[:,1] 
 
     return x_st_sky_grid,y_st_sky_grid
     # return d_sub,Ssub_Sstar,x_st_sky_grid,y_st_sky_grid,r_sub_pl2

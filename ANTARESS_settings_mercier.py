@@ -454,23 +454,23 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                  'mock_vis':{
 
                      # For the spot 'spot1' : 
-                     # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 0,
-                     # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
-                     # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
-                     # 'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
+                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 30,
+                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
+                     'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
 
                     
-                     # For the spot 'spot1' : 
-                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
-                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051-1.3,
-                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
-                     'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.2,
+                     # # For the spot 'spot1' : 
+                     # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
+                     # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051-1.3,
+                     # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
+                     # 'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.2,
                     
-                     # #For the spot 'spot2' : 
-                     'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
-                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 + 1.5,
-                     'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
-                     'atten__ISESPRESSO_VSmock_vis_SPspot2'    : 0.4
+                     # # #For the spot 'spot2' : 
+                     # 'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
+                     # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 + 1.5,
+                     # 'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
+                     # 'atten__ISESPRESSO_VSmock_vis_SPspot2'    : 0.4
                          }
                     }
                 }
