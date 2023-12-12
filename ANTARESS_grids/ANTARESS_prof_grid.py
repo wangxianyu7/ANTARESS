@@ -107,7 +107,7 @@ def custom_DI_prof(param,x,args=None):
 
 
 
-def init_custom_DI_prof(fixed_args,gen_dic,system_prop,theo_dic,star_params,param_in):   
+def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop, theo_dic,star_params,param_in):   
     r"""**Disk-integrated profile: grid initialization**
 
     Initializes stellar and intrinsic profile grids
@@ -127,6 +127,8 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,theo_dic,star_params,para
     fixed_args['system_prop'] = deepcopy(system_prop) 
     fixed_args['star_params'] = deepcopy(star_params)  
     fixed_args['grid_dic'] = deepcopy(theo_dic)
+    #Adding the spot LD properties
+    fixed_args['system_spot_prop'] = deepcopy(system_spot_prop)
 
     #------------------------------------------------------------------------
     #Identify variable stellar grid

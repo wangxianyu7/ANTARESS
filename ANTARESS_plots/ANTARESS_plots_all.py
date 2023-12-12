@@ -10462,7 +10462,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
                                                                    {}, params, use_grid_dic = False)
                                                                    
-                            star_flux_before_spot[spotted_tiles] *=  spots_prop[spot]['flux'] 
+                            star_flux_before_spot[spotted_tiles] *=  spots_prop[spot]['atten'] 
                     
                     if plot_options[key_plot]['spot_overlap']:      
                         Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
@@ -10485,65 +10485,56 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             if spots_prop[spot]['is_visible']:
                                 _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
                                                                         {}, params, use_grid_dic = False)
-                                if t_exp == t_all_spot[0]:
-                                    star_flux_exp[spotted_tiles] *=  spots_prop[spot]['atten']
+                                # if t_exp == t_all_spot[9]:
+                                star_flux_exp[spotted_tiles] *=  spots_prop[spot]['atten']
                             
 
                             #Testing how to make 
-                            if t_exp == t_all_spot[0]:
+                            # if t_exp == t_all_spot[9]:
 
                                 #These coordinates are in the inclined star frame
-                                x_grid_test, y_grid_test = spot_occ_region_grid(spots_prop[spot]['ang_rad'], 30)
-                                z_grid_test = np.sqrt(1 - (x_grid_test*x_grid_test) - (y_grid_test*y_grid_test))
+                                # x_grid_test, y_grid_test, _ = spot_occ_region_grid(spots_prop[spot]['ang_rad'], 30)
+                                # z_grid_test = np.sqrt(1 - (x_grid_test*x_grid_test) - (y_grid_test*y_grid_test))
 
-                                #Move grid to the spot longitude 
-                                long_x_grid_test = x_grid_test*spots_prop[spot]['cos_long_exp_center'] + z_grid_test*spots_prop[spot]['sin_long_exp_center']
-                                long_z_grid_test = z_grid_test*spots_prop[spot]['cos_long_exp_center'] - x_grid_test*spots_prop[spot]['sin_long_exp_center']
-
-                                #Move grid to spot latitude
-                                lat_y_grid_test = y_grid_test*spots_prop[spot]['cos_lat_exp_center'] + long_z_grid_test * spots_prop[spot]['sin_lat_exp_center']
-                                lat_z_grid_test = -y_grid_test*spots_prop[spot]['sin_lat_exp_center'] + long_z_grid_test * spots_prop[spot]['cos_lat_exp_center']
-
-                                #Move to star frame
+                                # #Move coordinates in star frame in order to move them to the longitude and latitude of spot 
                                 # st_x_grid_test, st_y_grid_test, st_z_grid_test = conv_inclinedStarFrame_to_StarFrame(x_grid_test+spots_prop[spot]['x_sky_exp_center'], y_grid_test+spots_prop[spot]['y_sky_exp_center'], z_grid_test+spots_prop[spot]['z_sky_exp_center'], star_params['istar_rad'])
+
+                                # #Move grid to the spot longitude 
+                                # long_x_grid_test = st_x_grid_test*spots_prop[spot]['cos_long_exp_center'] - st_z_grid_test*spots_prop[spot]['sin_long_exp_center']
+                                # long_z_grid_test = st_z_grid_test*spots_prop[spot]['cos_long_exp_center'] + st_x_grid_test*spots_prop[spot]['sin_long_exp_center']
+
+                                # #Move grid to spot latitude
+                                # lat_y_grid_test = st_y_grid_test*spots_prop[spot]['cos_lat_exp_center'] - long_z_grid_test * spots_prop[spot]['sin_lat_exp_center']
+                                # lat_z_grid_test = st_y_grid_test*spots_prop[spot]['sin_lat_exp_center'] + long_z_grid_test * spots_prop[spot]['cos_lat_exp_center']
+
+                                # #Figure out which coordinates are in the spot - in star frame - before even moving to spot location! to not be annoyed by the curvature
+                                # cond_chromo = (x_grid_test+spots_prop[spot]['x_sky_exp_center'])**2 + (y_grid_test+spots_prop[spot]['y_sky_exp_center'])**2 < 1
                                 
-                                # #Move to spot reference frame 
-                                # stt_x_grid_test = st_x_grid_test*spots_prop[spot]['cos_long_exp_center'] + st_z_grid_test*spots_prop[spot]['sin_long_exp_center']
-                                # stt_y_grid_test = st_y_grid_test*spots_prop[spot]['cos_lat_exp_center'] + (st_z_grid_test*spots_prop[spot]['cos_long_exp_center'] - st_x_grid_test*spots_prop[spot]['sin_long_exp_center'])*spots_prop[spot]['sin_lat_exp_center']
-                                # stt_z_grid_test = -st_y_grid_test*spots_prop[spot]['sin_lat_exp_center'] + (st_z_grid_test*spots_prop[spot]['cos_long_exp_center'] - st_x_grid_test*spots_prop[spot]['sin_long_exp_center'])*spots_prop[spot]['cos_lat_exp_center']
+                                # cond_in_sp = x_grid_test**2 + y_grid_test**2 <= spots_prop[spot]['ang_rad']**2
 
-                                #Zero-point in 
-                                #Move initial grid in the star frame to the latitude of the spot
-                                # cond_y = y_grid_test*spots_prop[spot]['cos_lat_exp_center'] + z_grid_test*spots_prop[spot]['sin_lat_exp_center']
-                                # cond_z = z_grid_test*spots_prop[spot]['cos_lat_exp_center'] - y_grid_test*spots_prop[spot]['sin_lat_exp_center']
-                                
-                                #Finding spot coordinates in star frame
-                                # new_center_x, new_center_y, new_center_z = conv_inclinedStarFrame_to_StarFrame(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'], spots_prop[spot]['z_sky_exp_center'], star_params['istar_rad'])
-
-                                #Move grid coordinates to sky frame (don't pay attention to the labels)
-                                # sky_x_grid_test, sky_y_grid_test, sky_z_grid_test = conv_StarFrame_to_inclinedStarFrame(x_grid_test, y_grid_test, z_grid_test, star_params['istar_rad'])
-                                
-                                #Move grid coordinates to the spot location - need to do this in star frame!! (doing long and lat shift at the same time)
-                                # stt_x_grid_test = x_grid_test*spots_prop[spot]['cos_long_exp_center'] + z_grid_test*spots_prop[spot]['sin_long_exp_center']
-                                # stt_y_grid_test = y_grid_test*spots_prop[spot]['cos_lat_exp_center'] + (z_grid_test*spots_prop[spot]['cos_long_exp_center'] - x_grid_test*spots_prop[spot]['sin_long_exp_center'])*spots_prop[spot]['sin_lat_exp_center']
-                                # stt_z_grid_test = -y_grid_test*spots_prop[spot]['sin_lat_exp_center'] + (z_grid_test*spots_prop[spot]['cos_long_exp_center'] - x_grid_test*spots_prop[spot]['sin_long_exp_center'])*spots_prop[spot]['cos_lat_exp_center']
-
-                                #Move grid coordinates to the spot location - in sky frame
-                                # skyt_x_grid_test, skyt_y_grid_test, skyt_z_grid_test = conv_StarFrame_to_inclinedStarFrame(stt_x_grid_test, stt_y_grid_test, stt_z_grid_test, star_params['istar_rad'])
-
-                                #Figure out which coordinates are in the spot - in star frame - before even moving to spot location! to not be annoyed by the curvature
-                                # cond_in_sp = (x_grid_test)**2 + (y_grid_test)**2 < spots_prop[spot]['ang_rad']**2
-                                #Figure out which coodinates are in the spot - in sky frame
-                                # cond_in_sp_sky = ((skyt_x_grid_test - spots_prop[spot]['x_sky_exp_center'])**2 + (skyt_y_grid_test - spots_prop[spot]['y_sky_exp_center'])**2) < spots_prop[spot]['ang_rad']**2
+                                # better_cond_in_sp = long_x_grid_test**2. + lat_y_grid_test**2. <= spots_prop[spot]['ang_rad']**2
+                                # #Figure out which coodinates are in the spot - in sky frame
+                                # # cond_in_sp_sky = ((skyt_x_grid_test - spots_prop[spot]['x_sky_exp_center'])**2 + (skyt_y_grid_test - spots_prop[spot]['y_sky_exp_center'])**2) < spots_prop[spot]['ang_rad']**2
  
-                                #Testing
-                                print('1:', spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'])
-                                plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'], color='white')
-                                for l in range(len(x_grid_test)):
-                                    # plt.scatter(x_grid_test[l]+spots_prop[spot]['x_sky_exp_center'], y_grid_test[l]+spots_prop[spot]['y_sky_exp_center'], alpha=0.3, s=6)
-                                    plt.scatter(stt_x_grid_test[l], stt_y_grid_test[l], alpha=0.3, s=6)
+                                # #Testing
+                                # plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'], color='white')
+                                # for l in range(len(x_grid_test)):
+                                #     # plt.scatter(long_x_grid_test[l], lat_y_grid_test[l], alpha=0.3, s=6)
+                                #     plt.scatter(x_grid_test[l]+spots_prop[spot]['x_sky_exp_center'], y_grid_test[l]+spots_prop[spot]['y_sky_exp_center'], alpha=0.3, s=6)
+                                #     # if ~cond_chromo[l]:
+                                #     #     plt.scatter(x_grid_test[l]+spots_prop[spot]['x_sky_exp_center'], y_grid_test[l]+spots_prop[spot]['y_sky_exp_center'], color='blue', alpha=0.5, s=6)
+                                #     # if cond_chromo[l] and cond_in_sp[l]:
+                                #     #     plt.scatter(x_grid_test[l]+spots_prop[spot]['x_sky_exp_center'], y_grid_test[l]+spots_prop[spot]['y_sky_exp_center'], color='blue', alpha=0.5, s=6)
+                                #     if cond_chromo[l] and cond_in_sp[l] and better_cond_in_sp[l]:
+                                #         plt.scatter(x_grid_test[l]+spots_prop[spot]['x_sky_exp_center'], y_grid_test[l]+spots_prop[spot]['y_sky_exp_center'], color='blue', alpha=0.5, s=6)
+
+                                    # print(z_grid_test[l])
+
+                                    # if z_grid_test[l] < 1.:
+                                    #     plt.scatter(x_grid_test[l]+spots_prop[spot]['x_sky_exp_center'], y_grid_test[l]+spots_prop[spot]['y_sky_exp_center'], color='black', alpha=0.3, s=6)
+
                                     # if cond_in_sp[l]:
-                                    #     plt.scatter(stt_x_grid_test[l], stt_y_grid_test[l], color='black', alpha=0.3, s=6)
+                                    #     plt.scatter(long_x_grid_test[l], lat_y_grid_test[l], color='black', alpha=0.3, s=6)
                                     # plt.scatter(skyt_x_grid_test[l], skyt_y_grid_test[l], color='black', alpha=0.6, s=4)
                                     # if cond_in_sp[l]:
                                     #     plt.scatter(skyt_x_grid_test[l], skyt_y_grid_test[l], color='green', alpha=0.6, s=4)

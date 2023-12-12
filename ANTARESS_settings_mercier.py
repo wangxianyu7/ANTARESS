@@ -456,7 +456,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      # For the spot 'spot1' : 
                      'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 30,
                      'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
-                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 5,
                      'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
 
                     
@@ -859,7 +859,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Spot discretization
     if gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dspot']={'spot1':101., 'spot2':201.}
+        theo_dic['nsub_Dspot']={'spot1':21., 'spot2':21.}
         
     #Exposure discretization
     if gen_dic['star_name']=='AUMic':
@@ -2648,7 +2648,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     'LD_u2' : [0.16],
 
                 },
-                'chrom':{}
                 }
 
     #Transit light curve model    

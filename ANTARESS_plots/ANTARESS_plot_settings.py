@@ -8017,7 +8017,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         if gen_dic['star_name']=='AUMic':
             # plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' : 10, 'Tcenter' : 2458330.39051-1.3, 'ang' : 10, 'atten' : 0.2}
             # plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+1.5, 'ang' : 25, 'atten' : 0.4}
-            plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 25, 'atten' : 0.4}
+            plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 5, 'atten' : 0.4}
             plot_settings[key_plot]['n_image_spots'] = 10
             # plot_settings[key_plot]['n_image_spots'] = 50
             
