@@ -10505,12 +10505,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 lat_z_grid_test = -y_grid_test*spots_prop[spot]['sin_lat_exp_center'] + long_z_grid_test * spots_prop[spot]['cos_lat_exp_center']
 
                                 #Move to star frame
-                                st_x_grid_test, st_y_grid_test, st_z_grid_test = conv_inclinedStarFrame_to_StarFrame(x_grid_test+spots_prop[spot]['x_sky_exp_center'], y_grid_test+spots_prop[spot]['y_sky_exp_center'], z_grid_test+spots_prop[spot]['z_sky_exp_center'], star_params['istar_rad'])
+                                # st_x_grid_test, st_y_grid_test, st_z_grid_test = conv_inclinedStarFrame_to_StarFrame(x_grid_test+spots_prop[spot]['x_sky_exp_center'], y_grid_test+spots_prop[spot]['y_sky_exp_center'], z_grid_test+spots_prop[spot]['z_sky_exp_center'], star_params['istar_rad'])
                                 
-                                #Move to spot reference frame 
-                                stt_x_grid_test = st_x_grid_test*spots_prop[spot]['cos_long_exp_center'] + st_z_grid_test*spots_prop[spot]['sin_long_exp_center']
-                                stt_y_grid_test = st_y_grid_test*spots_prop[spot]['cos_lat_exp_center'] + (st_z_grid_test*spots_prop[spot]['cos_long_exp_center'] - st_x_grid_test*spots_prop[spot]['sin_long_exp_center'])*spots_prop[spot]['sin_lat_exp_center']
-                                stt_z_grid_test = -st_y_grid_test*spots_prop[spot]['sin_lat_exp_center'] + (st_z_grid_test*spots_prop[spot]['cos_long_exp_center'] - st_x_grid_test*spots_prop[spot]['sin_long_exp_center'])*spots_prop[spot]['cos_lat_exp_center']
+                                # #Move to spot reference frame 
+                                # stt_x_grid_test = st_x_grid_test*spots_prop[spot]['cos_long_exp_center'] + st_z_grid_test*spots_prop[spot]['sin_long_exp_center']
+                                # stt_y_grid_test = st_y_grid_test*spots_prop[spot]['cos_lat_exp_center'] + (st_z_grid_test*spots_prop[spot]['cos_long_exp_center'] - st_x_grid_test*spots_prop[spot]['sin_long_exp_center'])*spots_prop[spot]['sin_lat_exp_center']
+                                # stt_z_grid_test = -st_y_grid_test*spots_prop[spot]['sin_lat_exp_center'] + (st_z_grid_test*spots_prop[spot]['cos_long_exp_center'] - st_x_grid_test*spots_prop[spot]['sin_long_exp_center'])*spots_prop[spot]['cos_lat_exp_center']
 
                                 #Zero-point in 
                                 #Move initial grid in the star frame to the latitude of the spot
