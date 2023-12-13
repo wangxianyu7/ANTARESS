@@ -429,7 +429,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Defining artificial visits
     if gen_dic['star_name'] == 'AUMic':
         mock_dic['visit_def']={
-            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.5,0.5]),'nexp':10}}}
+            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.7,0.7]),'nexp':10}}}
             # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-2,2])/24.,'nexp':50}}}
                        
 
@@ -456,7 +456,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      # For the spot 'spot1' : 
                      'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 30,
                      'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
-                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 5,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
                      'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
 
                     
@@ -859,12 +859,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Spot discretization
     if gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dspot']={'spot1':21., 'spot2':21.}
+        theo_dic['nsub_Dspot']={'spot1':21.}#, 'spot2':21.}
         
     #Exposure discretization
     if gen_dic['star_name']=='AUMic':
         theo_dic['n_oversamp']={'AUMicb':5.}
-        theo_dic['n_oversamp_spot']={'spot1':0, 'spot2':0}
+        theo_dic['n_oversamp_spot']={'spot1':0}#, 'spot2':0}
     
     #RV table        
 
@@ -2641,8 +2641,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['spots_prop']={
                 'achrom':{
-                    'spot1' : [10 * np.pi/180],
-                    'spot2' : [25 * np.pi/180],
+                    # 'spot1' : [10 * np.pi/180],
+                    'spot1' : [25 * np.pi/180],
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.3],
                     'LD_u2' : [0.16],

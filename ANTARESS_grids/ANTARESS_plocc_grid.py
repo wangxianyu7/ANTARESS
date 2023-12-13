@@ -105,9 +105,14 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
 
     #Calculation of achromatic and/or chromatic values
     surf_prop_dic = {}
-    for subkey_chrom in key_chrom:surf_prop_dic[subkey_chrom] = {}
+    surf_prop_dic_spot = {}
+    for subkey_chrom in key_chrom:
+        surf_prop_dic[subkey_chrom] = {}
+        surf_prop_dic_spot[subkey_chrom] = {}
     if 'line_prof' in par_list_in:
-        for subkey_chrom in key_chrom:surf_prop_dic[subkey_chrom]['line_prof']=np.zeros([args['ncen_bins'],n_exp],dtype=float)
+        for subkey_chrom in key_chrom:
+            surf_prop_dic[subkey_chrom]['line_prof']=np.zeros([args['ncen_bins'],n_exp],dtype=float)
+            surf_prop_dic_spot[subkey_chrom]['line_prof']=np.zeros([args['ncen_bins'],n_exp],dtype=float)
 
     #Properties to be calculated
     par_star = deepcopy(param)
@@ -122,16 +127,25 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
     par_star['istar_rad']=np.arccos(par_star['cos_istar'])
     cb_band_dic = {}
     for subkey_chrom in key_chrom:
-        if Ftot_star:surf_prop_dic[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
+        if Ftot_star:
+            surf_prop_dic[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
+            surf_prop_dic_spot[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
         cb_band_dic[subkey_chrom]={}  
         if ('CB_RV' in par_list) or ('c0_CB' in par_list):     
             surf_prop_dic[subkey_chrom]['c0_CB']=np.zeros(system_prop[subkey_chrom]['nw'])*np.nan
+            surf_prop_dic_spot[subkey_chrom]['c0_CB']=np.zeros(system_prop[subkey_chrom]['nw'])*np.nan
             for iband in range(system_prop[subkey_chrom]['nw']):
                 cb_band_dic[subkey_chrom][iband] = calc_CB_RV(get_LD_coeff(system_prop[subkey_chrom],iband),system_prop[subkey_chrom]['LD'][iband],par_star['c1_CB'],par_star['c2_CB'],par_star['c3_CB'],par_star) 
                 surf_prop_dic[subkey_chrom]['c0_CB'][iband]=cb_band_dic[subkey_chrom][iband][0] 
+                surf_prop_dic_spot[subkey_chrom]['c0_CB'][iband]=cb_band_dic[subkey_chrom][iband][0]
         else:
             for iband in range(system_prop[subkey_chrom]['nw']):cb_band_dic[subkey_chrom][iband] = None
     if 'rv' in par_list_in:par_list+=['rv']  #must be placed after all other RV contributions
+
+    #Define the list of parameters whose range we're interested in
+    range_par_list=[]
+    if (len(theo_dic['d_oversamp'])>0) and out_ranges:range_par_list = np.intersect1d(['mu','lat','lon','x_st','y_st','xp_abs','r_proj'],par_list)
+
 
     #Condition for spot calculation
     #Initializing the necessary dictionaries. We have to initialize them to something since they 
@@ -165,7 +179,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
             
             #Get the time in BJD of the exposure we're considering.
             exp_time = coord_pl_in['bjd'][iexp]
-            
+
             #Extract spot properties for the exposure we're considering.
             spots_prop = new_retrieve_spots_prop_from_param(star_params, param, args['inst'], args['vis'], exp_time, coord_pl_in['t_dur'][iexp])
 
@@ -190,6 +204,15 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                         dz_exp_in_sp[spot] = spots_prop[spot]['z_sky_exp_end'] - spots_prop[spot]['z_sky_exp_start']
                         n_osamp_exp_all_sp[isub_exp] = np.maximum(n_osamp_exp_all_sp[isub_exp], theo_dic['n_oversamp_spot'][spot])
 
+                    #Spot-dependent properties - initialize dictionaries
+                    for subkey_chrom in key_chrom:
+                        surf_prop_dic_spot[subkey_chrom][spot]={}
+                        for par_loc in par_list:
+                            surf_prop_dic_spot[subkey_chrom][spot][par_loc]=np.zeros([system_spot_prop[subkey_chrom]['nw'],n_exp])*np.nan        
+                        for par_loc in range_par_list:surf_prop_dic_spot[subkey_chrom][spot][par_loc+'_range']=np.zeros([system_spot_prop[subkey_chrom]['nw'],n_exp,2])*np.nan
+                        if ('line_prof' in par_list_in) and (theo_dic['precision']=='low'):
+                            surf_prop_dic_spot[subkey_chrom][spot]['rv_broad']=-1e100*np.ones([system_spot_prop[subkey_chrom]['nw'],n_exp])
+
             # Update cond_spots_all
             cond_spots_all[isub_exp]=spot_within_grid_all
 
@@ -199,9 +222,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
         #Storing the 'names' of the spots for later use.
         list_spot_names = list(spots_prop.keys())
 
-    range_par_list=[]
     n_osamp_exp_all = np.repeat(1,n_exp)
-    if (len(theo_dic['d_oversamp'])>0) and out_ranges:range_par_list = np.intersect1d(['mu','lat','lon','x_st','y_st','xp_abs','r_proj'],par_list)
     lambda_rad_pl = {}
     dx_exp_in={}
     dy_exp_in={}
@@ -354,7 +375,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                 pl_proc={subkey_chrom:{iband:[] for iband in range(system_prop[subkey_chrom]['nw'])} for subkey_chrom in key_chrom}
 
                 #Initializing variable in case it is not defined
-                cond_occ = False
+                cond_occ_pl = False
                 for pl_loc in transit_pl_exp:   
                     
                     #Frame conversion of planet coordinates from the classical frame perpendicular to the LOS, to the 'inclined star' frame
@@ -365,10 +386,10 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                     y_st_sky_max = y_st_sky_pos+theo_dic['y_st_sky_grid_pl'][pl_loc]
                     
                     #Calculating properties
-                    cond_occ = False
+                    cond_occ_pl = False
                     for subkey_chrom in key_chrom:
                         for iband in range(system_prop[subkey_chrom]['nw']):
-                            Focc_star_pl[subkey_chrom][iband],cond_occ = calc_occ_region_prop(line_occ_HP[subkey_chrom][iband],cond_occ,iband,args,system_prop[subkey_chrom],iosamp,pl_loc,pl_proc[subkey_chrom][iband],theo_dic['Ssub_Sstar_pl'][pl_loc],x_st_sky_max,y_st_sky_max,system_prop[subkey_chrom]['cond_in_RpRs'][pl_loc][iband],par_list,par_star,theo_dic['Istar_norm_'+subkey_chrom],\
+                            Focc_star_pl[subkey_chrom][iband],cond_occ_pl = calc_occ_region_prop(line_occ_HP[subkey_chrom][iband],cond_occ_pl,iband,args,system_prop[subkey_chrom],iosamp,pl_loc,pl_proc[subkey_chrom][iband],theo_dic['Ssub_Sstar_pl'][pl_loc],x_st_sky_max,y_st_sky_max,system_prop[subkey_chrom]['cond_in_RpRs'][pl_loc][iband],par_list,par_star,theo_dic['Istar_norm_'+subkey_chrom],\
                                                                                   x_oversamp_pl,y_oversamp_pl,lambda_rad_pl,par_star,sum_prop_dic[subkey_chrom][pl_loc],coord_reg_dic[subkey_chrom][pl_loc],range_dic[subkey_chrom][pl_loc],range_par_list,Focc_star_pl[subkey_chrom][iband],star_params,cb_band_dic[subkey_chrom][iband],theo_dic)
          
                             #Cumulate line profile from planet-occulted cells
@@ -380,7 +401,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                             # print('1:', Focc_star[subkey_chrom][iband])
 
                 #Star was effectively occulted at oversampled position
-                if cond_occ:
+                if cond_occ_pl:
                     n_osamp_exp_eff+=1
                     
                     #Calculate line profile from planet-occulted region 
@@ -390,8 +411,12 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                         if ('chrom' in key_chrom):idx_w['chrom'] = range(system_prop['chrom']['nw'])
                         surf_prop_dic[key_chrom[-1]]['line_prof'][:,i_in]+=plocc_prof(args,transit_pl_exp,coord_reg_dic,idx_w,system_prop,key_chrom,par_star,theo_dic)
             
+            
+            n_osamp_exp_eff_sp = 0
             #Loop on oversampled exposure positions - spots
             for iosamp in range(n_osamp_exp_sp):
+
+                cond_occ_sp = False
 
                 #Retrieving the properties of the region occulted by each spot
                 for spot in spots_in_exp:
@@ -417,26 +442,35 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                     spot_prop_oversamp['sin_lat_exp_center'] = np.sin(spot_prop_oversamp['lat_rad_exp_center'])
                     spot_prop_oversamp['is_visible'] = is_spot_visible(star_params['istar_rad'], spot_prop_oversamp['long_rad_exp_center'], spot_prop_oversamp['lat_rad_exp_center'], spot_prop_oversamp['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
                     
+                    cond_occ_sp = False
+
                     #Going over the chromatic modes
                     for subkey_chrom in key_chrom:
                         
                         #Going over the bands in each chromatic mode
                         for iband in range(system_spot_prop[subkey_chrom]['nw']):
                             
-                            Focc_star_sp[subkey_chrom][iband] = new_new_calc_spotted_region_prop(spot_prop_oversamp, iband, system_spot_prop[subkey_chrom], star_params, theo_dic['Ssub_Sstar_sp'][spot], 
-                                                            theo_dic['Ssub_Sstar'], theo_dic['Istar_norm_'+subkey_chrom], par_star, sum_prop_dic[subkey_chrom][spot], coord_reg_dic[subkey_chrom][spot], Focc_star_sp[subkey_chrom][iband], par_list, args, cb_band_dic[subkey_chrom][iband])
+                            Focc_star_sp[subkey_chrom][iband], cond_occ_sp = new_new_calc_spotted_region_prop(line_occ_HP[subkey_chrom][iband], cond_occ_sp, spot_prop_oversamp, iband, system_spot_prop[subkey_chrom], star_params, theo_dic['Ssub_Sstar_sp'][spot], 
+                                                            theo_dic['Ssub_Sstar'], theo_dic['Istar_norm_'+subkey_chrom], par_star, sum_prop_dic[subkey_chrom][spot], coord_reg_dic[subkey_chrom][spot], 
+                                                            range_dic[subkey_chrom][spot], Focc_star_sp[subkey_chrom][iband], par_list, range_par_list, args, cb_band_dic[subkey_chrom][iband])
 
-                            #Updating the necessary dictionaries
-                            #Retrieve star flux grid
-                            # _,_,_,Fsurf_grid_star_sp,_,_ = calc_Isurf_grid([iband],args['grid_dic']['nsub_star'],system_prop[subkey_chrom],args['grid_dic'],
-                            #                                 star_params,theo_dic['Ssub_Sstar'], region = 'star')
-
-                            # print('1:', Fsurf_grid_star_sp)
-                            # Focc_star[subkey_chrom][iband] = Fsurf_grid_star_sp[sp_loc_grid]
-
-                    # print('9:', len(sp_loc_grid))
-                    # print('10:', cond_occ_sp)
-                    # print('3:', occ_region_prop)
+                             #Cumulate line profile from spot-occulted cells
+                            #    - in high-precision mode there is a single subkey_chrom and achromatic band, but several spots may have been processed
+                            if ('line_prof' in par_list_in):
+                                if (theo_dic['precision']=='low'):surf_prop_dic_spot[subkey_chrom][spot]['rv_broad'][iband,i_in] = np.max([coord_reg_dic[subkey_chrom][spot]['rv_broad'][iband],surf_prop_dic_spot[subkey_chrom][spot]['rv_broad'][iband,i_in]])
+                                elif (theo_dic['precision']=='high'):surf_prop_dic_spot[subkey_chrom]['line_prof'][:,i_in]+=sum_prop_dic[subkey_chrom][spot]['line_prof']
+                 
+                #Star was effectively occulted at oversampled position
+                if cond_occ_sp:
+                    n_osamp_exp_eff_sp+=1
+                    
+                    #Calculate line profile from planet-occulted region 
+                    #    - profile is scaled to the total flux from current occulted region, stored in coord_reg_dic_pl['Ftot']
+                    if ('line_prof' in par_list_in) and (theo_dic['precision']=='medium'):
+                        idx_w = {'achrom':range(system_spot_prop['achrom']['nw'])}
+                        if ('chrom' in key_chrom):idx_w['chrom'] = range(system_spot_prop['chrom']['nw'])
+                        surf_prop_dic_spot[key_chrom[-1]]['line_prof'][:,i_in]+=plocc_prof(args,spots_in_exp,coord_reg_dic,idx_w,system_spot_prop,key_chrom,par_star,theo_dic) #<---- double check that this function works with spots
+            
             #------------------------------------------------------------
 
             #Averaged values behind all occulted regions during exposure
@@ -461,15 +495,38 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                             #Range of values covered during exposures    
                             if out_ranges and (par_loc in range_par_list):
                                 surf_prop_dic[subkey_chrom][pl_loc][par_loc+'_range'][:,i_in,:] = range_dic[subkey_chrom][pl_loc][par_loc+'_range']
-                                   
-            #Normalized stellar flux after occultation by all planets
+            
+            for spot in spots_in_exp:
+               if (sum_prop_dic[key_chrom[0]][spot]['Ftot'][0]>0.):
+                    for subkey_chrom in key_chrom:
+                        for par_loc in par_list:
+
+                           #Total occulted surface ratio and flux from spot-occulted region
+                            #    - calculated per band so that the chromatic dependence of the radius can be accounted for also at the stellar limbs, which we cannot do with the input chromatic RpRs
+                            #    - averaged over oversampled regions
+                            if par_loc in ['SpSstar','Ftot']:surf_prop_dic_spot[subkey_chrom][spot][par_loc][:,i_in] = sum_prop_dic[subkey_chrom][spot][par_loc]/n_osamp_exp_eff_sp
+
+                            #Other surface properties
+                            #    - defined as sum( oversampled region , sum( cell , xi*fi )  ) / sum( oversampled region , sum( cell , fi )  )
+                            else:surf_prop_dic_spot[subkey_chrom][spot][par_loc][:,i_in] = sum_prop_dic[subkey_chrom][spot][par_loc]/sum_prop_dic[subkey_chrom][spot]['Ftot']
+                                                           
+                            #Range of values covered during exposures    
+                            if out_ranges and (par_loc in range_par_list):
+                                surf_prop_dic[subkey_chrom][spot][par_loc+'_range'][:,i_in,:] = range_dic[subkey_chrom][spot][par_loc+'_range']
+
+            #Normalized stellar flux after occultation by all planets and by all spots
             #    - the intensity from each cell is calculated in the same way as that of the full pre-calculated stellar grid
             if Ftot_star:
                 for subkey_chrom in key_chrom:
+
                     surf_prop_dic[subkey_chrom]['Ftot_star'][:,i_in] = 1.
+                    #Planets
                     if n_osamp_exp_eff>0:
                         surf_prop_dic[subkey_chrom]['Ftot_star'][:,i_in] -= Focc_star_pl[subkey_chrom]/(n_osamp_exp_eff*theo_dic['Ftot_star_'+subkey_chrom])
-        
+                    #Spots
+                    if n_osamp_exp_eff_sp>0:
+                        surf_prop_dic_spot[subkey_chrom]['Ftot_star'][:,i_in] -= Focc_star_sp[subkey_chrom]/(n_osamp_exp_eff_sp*theo_dic['Ftot_star_'+subkey_chrom])
+
             #Planet-occulted line profile from current exposure
             if ('line_prof' in par_list_in) and (n_osamp_exp_eff>0):
         

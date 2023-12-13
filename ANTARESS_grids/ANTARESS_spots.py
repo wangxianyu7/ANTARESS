@@ -8,6 +8,7 @@ from ANTARESS_routines.ANTARESS_orbit import conv_inclinedStarFrame_to_StarFrame
 from ANTARESS_analysis.ANTARESS_line_prop import poly_prop_calc
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,return_FWHM_inst
 from ANTARESS_grids.ANTARESS_star_grid import calc_GD, calc_LD, calc_RVrot, calc_Isurf_grid
+from ANTARESS_grids.ANTARESS_prof_grid import init_st_intr_prof, coadd_loc_line_prof
 from ANTARESS_analysis.ANTARESS_line_prop import calc_linevar_coord_grid, calc_polymodu
 
 
@@ -1252,7 +1253,7 @@ def spot_occ_region_grid(RspRs, nsub_Dsp):
 
 
 
-def new_new_calc_spotted_region_prop(spot_prop, iband, system_spot_prop, star_params, Ssub_Sstar_sp, Ssub_Sstar_ref, Istar_norm_band, par_star, sum_prop_dic_spot, coord_reg_dict_spot, Focc_star_band, par_list, args, cb_band) :
+def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iband, system_spot_prop, star_params, Ssub_Sstar_sp, Ssub_Sstar_ref, Istar_norm_band, par_star, sum_prop_dic_spot, coord_reg_dic_spot, range_reg_dic_spot, Focc_star_band, par_list, range_par_list, args, cb_band) :
     
     r"""**Spot-occulted properties: define and update**
     
@@ -1260,6 +1261,8 @@ def new_new_calc_spotted_region_prop(spot_prop, iband, system_spot_prop, star_pa
     Updates the average and summed properties from a spot-occulted stellar surface region during an exposure.
 
     Args:
+        line_occ_HP_band : string telling us the precision with which to process the exposure in this particular band.
+        cond_occ : Boolean telling us whether there is an occultation in the (oversampled) exposure and band considered.
         spot_prop : Dictionary (formatted with new_retrieve_spots_prop_from_param) containing the spot properties.
         iband : The index of the band used to calculate the spot LD properties.
         system_spot_prop : Dictionary containing the spot LD properties.
@@ -1268,12 +1271,14 @@ def new_new_calc_spotted_region_prop(spot_prop, iband, system_spot_prop, star_pa
         Ssub_Sstar_ref : The cell surface from the grid used to discretize the star.
         Istar_norm_band : The total intensity of the star in the given band.
         par_star : ???
-        sum_prop_dict_spot : Dictionary containing the value of all parameters of interest (par_list), summed over the region occulted by the spot of interest in the exposure considered, 
+        sum_prop_dic_spot : Dictionary containing the value of all parameters of interest (par_list), summed over the region occulted by the spot of interest in the exposure considered, 
                             and for the band of interest.
-        coord_reg_dict_spot : Dictionary containing the value of all parameters of interest (par_list), averaged over the region occulted by the spot of interest in the exposure considered, 
+        coord_reg_dic_spot : Dictionary containing the value of all parameters of interest (par_list), averaged over the region occulted by the spot of interest in the exposure considered, 
                             and for the band of interest.
+        range_reg_dic_spot : Dictionary containing the range of average values the parameters of interest (range_par_list) can take during this exposure.
         Focc_star_band : Float storing the total flux occulted by the spot considered in the exposure considered, in the band considered. 
         par_list : List of parameters of interest, whose value in sum_prop_dict_spot will be updated.
+        range par_list : List of parameters of interest, whose range of values, stored in range_reg_dic_spot, will be updated.
         args : Dictionary containing the parameters used to generate the intrinsic profiles (not sure this is all it contains).
         cb_band : List containing the coefficients to calculate the convective blueshift RV contribution.
     Returns:
@@ -1286,32 +1291,45 @@ def new_new_calc_spotted_region_prop(spot_prop, iband, system_spot_prop, star_pa
     cond_in_star = spot_prop['x_sky_grid']**2 + spot_prop['y_sky_grid']**2 < 1.
 
     #We have a condition to figure out which cells in this input grid are occulted.
-    cond_in_sp = (spot_prop['x_sky_grid']-spot_prop['x_sky_exp_center'])**2 + (spot_prop['y_sky_grid']-spot_prop['y_sky_exp_center'])**2 <= spot_prop['ang_rad']**2
+    ##Take the cells that are in the stellar grid.
+    new_x_sky_grid = spot_prop['x_sky_grid'][cond_in_star]
+    new_y_sky_grid = spot_prop['y_sky_grid'][cond_in_star]
 
-    #Total condition which tells us which cells are in the stellar grid AND part of the spot occultation.
-    total_condition = cond_in_star & cond_in_sp
+    ##Retrieve the z-coordinate for the cells.
+    new_z_sky_grid = np.sqrt(1 - new_x_sky_grid**2 - new_y_sky_grid**2)
 
-    #Figure out the number of cells occulted
-    n_occ_sp = np.sum(total_condition)
+    ##Move coordinates to the star reference frame and then the spot reference frame
+    x_st_grid, y_st_grid, z_st_grid = conv_inclinedStarFrame_to_StarFrame(new_x_sky_grid, new_y_sky_grid, new_z_sky_grid, star_params['istar_rad'])
 
+    x_spot_grid = x_st_grid*spot_prop['cos_long_exp_center'] - z_st_grid*spot_prop['sin_long_exp_center']
+
+    y_spot_grid = y_st_grid*spot_prop['cos_lat_exp_center'] - (z_st_grid*spot_prop['cos_long_exp_center'] + x_st_grid*spot_prop['sin_long_exp_center']) * spot_prop['sin_lat_exp_center']
+
+    z_spot_grid = y_st_grid*spot_prop['sin_lat_exp_center'] + (z_st_grid*spot_prop['cos_long_exp_center'] + x_st_grid*spot_prop['sin_long_exp_center']) * spot_prop['cos_lat_exp_center']
+
+    cond_in_sp = x_spot_grid**2. + y_spot_grid**2. <= spot_prop['ang_rad']**2
+
+    #Figure out the number of cells occulted and store it
+    n_occ_sp = np.sum(cond_in_sp)
+    if n_occ_sp > 0:
+        cond_occ = True
     #--------------------------------
-
-    #Making the grid of coordinates for the calc_Isurf_grid function
+    #Making the grid of coordinates for the calc_Isurf_grid function.
     coord_grid = {}
-    #Getting, x, y and sky-projected radius
-    coord_grid['x_st_sky'] = spot_prop['x_sky_grid'][total_condition]
-    coord_grid['y_st_sky'] = spot_prop['y_sky_grid'][total_condition]
+    #Getting, x, y, z, sky-projected radius, and number of occulted cells.
+    coord_grid['x_st_sky'] = new_x_sky_grid[cond_in_sp]
+    coord_grid['y_st_sky'] = new_y_sky_grid[cond_in_sp]
+    coord_grid['z_st_sky'] = new_z_sky_grid[cond_in_sp]
+
     coord_grid['r2_st_sky']=coord_grid['x_st_sky']*coord_grid['x_st_sky']+coord_grid['y_st_sky']*coord_grid['y_st_sky']
 
-    #Getting z component
-    if star_params['f_GD']==0:
-        coord_grid['z_st_sky'] = np.sqrt(1 - coord_grid['x_st_sky']**2 - coord_grid['x_st_sky']**2)
+    coord_grid['nsub_star'] = n_occ_sp
 
     #Getting the coordinates in the star rest frame
     coord_grid['x_st'], coord_grid['y_st'], coord_grid['z_st'] = conv_inclinedStarFrame_to_StarFrame(coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], star_params['istar_rad'])
     
     #Retrieve the stellar flux grids over this local occulted-region grid.
-    ld_grid_occ, gd_grid_occ, mu_grid_occ, Fsurf_grid_occ, Ftot_occ, Istar_occ = calc_Isurf_grid([iband], n_occ_sp, system_spot_prop, coord_grid, star_params, Ssub_Sstar_sp, Istar_norm_band, region='pl', Ssub_Sstar_ref=Ssub_Sstar_ref)
+    ld_grid_occ, gd_grid_occ, mu_grid_occ, Fsurf_grid_occ, Ftot_occ, Istar_occ = calc_Isurf_grid([iband], coord_grid['nsub_star'], system_spot_prop, coord_grid, star_params, Ssub_Sstar_sp, Istar_norm_band, region='pl', Ssub_Sstar_ref=Ssub_Sstar_ref)
 
     #Scale the flux grid to the desired level
     Fsurf_grid_occ *= par_star['cont']
@@ -1320,19 +1338,27 @@ def new_new_calc_spotted_region_prop(spot_prop, iband, system_spot_prop, star_pa
     #--------------------------------
 
     #Updating the provided dictionaries 
+
     coord_grid['mu'] = mu_grid_occ[:,0]
     Focc_star_band += Ftot_occ[0]
-    sum_prop_dic_spot['nocc'] += n_occ_sp
+    sum_prop_dic_spot['nocc'] += coord_grid['nsub_star']
     print('1:', Ftot_occ)
     
+    #Sky-projected distance from star center
+    if ('r_proj' in par_list) or (('coord_line' in args) and (args['coord_line']=='r_proj')):coord_grid['r_proj'] = np.sqrt(coord_grid['r2_st_sky'])                   
+
     for par_loc in par_list:
 
         #Ratio of the occulted surface to the star surface
         if par_loc=='SpSstar':
-            sum_prop_dic_spot[par_loc][iband] += Ssub_Sstar_sp*n_occ_sp
-            coord_reg_dict_spot[par_loc][iband] = Ssub_Sstar_sp*n_occ_sp
+            sum_prop_dic_spot[par_loc][iband] += Ssub_Sstar_sp*coord_grid['nsub_star']
+            coord_reg_dic_spot[par_loc][iband] = Ssub_Sstar_sp*coord_grid['nsub_star']
 
         else:
+            #Flux level from region occulted by the planet alone
+            #    - set to 1 since it is weighted by flux afterward
+            if par_loc=='Ftot':coord_grid[par_loc] = 1.                    
+
             #Longitude and Latitude of occulted region - in degrees
             # sin(lat) = Ystar / Rstar
             # sin(lon) = Xstar / Rstar
@@ -1355,9 +1381,57 @@ def new_new_calc_spotted_region_prop(spot_prop, iband, system_spot_prop, star_pa
             elif par_loc=='rv':
                 coord_grid[par_loc] = deepcopy(coord_grid['Rot_RV']) + par_star['rv']
                 if 'CB_RV' in par_list:coord_grid[par_loc]+=coord_grid['CB_RV']
-                if 'rv_line' in par_list:coord_grid[par_loc]+=coord_grid['rv_line']    #<<<------ issue here
+                if 'rv_line' in par_list:coord_grid[par_loc]+=coord_grid['rv_line'] 
 
-    return Focc_star_band
+    #--------------------------------
+
+            #Sum property over occulted region, weighted by stellar flux
+            #    - we use flux rather than intensity, because local flux level depend on the spot grid resolution
+            #    - total RVs from spot-occulted region is set last in par_list to calculate all rv contributions first:
+            # + rotational contribution is always included
+            # + disk-integrated-corrected convective blueshift polynomial (in km/s)   
+            coord_grid[par_loc+'_sum'] = np.sum(coord_grid[par_loc]*Fsurf_grid_occ[:,0])
+
+            #Cumulate property over successively occulted regions
+            sum_prop_dic_spot[par_loc][iband]+=coord_grid[par_loc+'_sum'] 
+
+            #Total flux from current occulted region
+            if par_loc=='Ftot':coord_reg_dic_spot['Ftot'][iband] = coord_grid['Ftot_sum']
+
+            #Calculate average property over current occulted region  
+            #    - <X> = sum(cell, xcell*fcell)/sum(cell,fcell)           
+            else:coord_reg_dic_spot[par_loc][iband] = coord_grid[par_loc+'_sum']/coord_grid['Ftot_sum'] 
+
+            #Range of values covered during the exposures (normalized)
+            #    - for spatial-related coordinates
+            if par_loc in range_par_list:
+                range_reg_dic_spot[par_loc+'_range'][iband][0]=np.min([range_reg_dic_spot[par_loc+'_range'][iband][0],coord_reg_dic_spot[par_loc][iband]])
+                range_reg_dic_spot[par_loc+'_range'][iband][1]=np.max([range_reg_dic_spot[par_loc+'_range'][iband][1],coord_reg_dic_spot[par_loc][iband]])
+
+    #------------------------------------------------    
+    #Calculate line profile from average of cell profiles over current region
+    #    - this high precision mode is only possible for achromatic or closest-achromatic mode 
+    if line_occ_HP_band=='high':    
+        
+        #Attribute intrinsic profile to each cell 
+        init_st_intr_prof(args,coord_grid,par_star)
+
+        #Calculate individual local line profiles from all region cells
+        #    - analytical intrinsic profiles are fully calculated 
+        #      theoretical and measured intrinsic profiles have been pre-defined and are just shifted to their position
+        #    - in both cases a scaling is then applied to convert them into local profiles
+        line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_occ[:,0],args['flux_intr_grid'],coord_grid['mu'],par_star,args)          
+      
+        #Coadd line profiles over spot-occulted region
+        sum_prop_dic_spot['line_prof'] = np.sum(line_prof_grid,axis=0) 
+  
+    #Define rotational broadening of planet-occulted region
+    elif line_occ_HP_band in ['low','medium']:
+        drv_min = coord_reg_dic_spot['rv'][iband]-np.min(coord_grid['rv'])
+        drv_max = np.max(coord_grid['rv'])-coord_reg_dic_spot['rv'][iband] 
+        coord_reg_dic_spot['rv_broad'][iband] = 0.5*(drv_min+drv_max)       
+
+    return Focc_star_band, cond_occ
 
 
 
