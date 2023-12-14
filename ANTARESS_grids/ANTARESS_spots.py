@@ -1342,7 +1342,6 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
     coord_grid['mu'] = mu_grid_occ[:,0]
     Focc_star_band += Ftot_occ[0]
     sum_prop_dic_spot['nocc'] += coord_grid['nsub_star']
-    print('1:', Ftot_occ)
     
     #Sky-projected distance from star center
     if ('r_proj' in par_list) or (('coord_line' in args) and (args['coord_line']=='r_proj')):coord_grid['r_proj'] = np.sqrt(coord_grid['r2_st_sky'])                   
@@ -1421,9 +1420,12 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
         #      theoretical and measured intrinsic profiles have been pre-defined and are just shifted to their position
         #    - in both cases a scaling is then applied to convert them into local profiles
         line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_occ[:,0],args['flux_intr_grid'],coord_grid['mu'],par_star,args)          
-      
+        
+        #Calculate line profile emitted by the spot
+        emit_line_prof_grid = coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),(1-spot_prop['atten'])*Fsurf_grid_occ[:,0],args['flux_intr_grid'],coord_grid['mu'],par_star,args)          
+        
         #Coadd line profiles over spot-occulted region
-        sum_prop_dic_spot['line_prof'] = np.sum(line_prof_grid,axis=0) 
+        sum_prop_dic_spot['line_prof'] = np.sum((line_prof_grid-emit_line_prof_grid),axis=0) 
   
     #Define rotational broadening of planet-occulted region
     elif line_occ_HP_band in ['low','medium']:

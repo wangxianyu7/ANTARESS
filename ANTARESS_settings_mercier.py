@@ -429,7 +429,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Defining artificial visits
     if gen_dic['star_name'] == 'AUMic':
         mock_dic['visit_def']={
-            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.7,0.7]),'nexp':10}}}
+            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.2,0.2]),'nexp':50}}}
             # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-2,2])/24.,'nexp':50}}}
                        
 
@@ -453,18 +453,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
              'ESPRESSO':{
                  'mock_vis':{
 
-                     # For the spot 'spot1' : 
-                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 30,
-                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
-                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
-                     'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
+                     # # For the spot 'spot1' : - testing
+                     # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 30,
+                     # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
+                     # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
+                     # 'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
 
-                    
-                     # # For the spot 'spot1' : 
-                     # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
-                     # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051-1.3,
-                     # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
-                     # 'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.2,
+                     # For the spot 'spot1' : 
+                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
+                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
+                     'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.8,
                     
                      # # #For the spot 'spot2' : 
                      # 'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
@@ -859,12 +858,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Spot discretization
     if gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dspot']={'spot1':21.}#, 'spot2':21.}
+        theo_dic['nsub_Dspot']={'spot1':50.}#, 'spot2':50.}
         
     #Exposure discretization
     if gen_dic['star_name']=='AUMic':
         theo_dic['n_oversamp']={'AUMicb':5.}
-        theo_dic['n_oversamp_spot']={'spot1':0}#, 'spot2':0}
+        theo_dic['n_oversamp_spot']={'spot1':5}#, 'spot2':5}
     
     #RV table        
 
@@ -2324,13 +2323,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['prop_DI_mcmc_PDFs']=''                 
         
     #Individual disk-integrated profiles
-    plot_dic['DI_prof']=''  #pdf   
+    plot_dic['DI_prof']=''   
 
     #Residuals from disk-integrated profiles
     plot_dic['DI_prof_res']=''   #pdf
 
     #Housekeeping and derived properties 
-    plot_dic['prop_raw']=''   #''          
+    plot_dic['prop_raw']='pdf'   #''          
     
     
   
@@ -2641,8 +2640,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['spots_prop']={
                 'achrom':{
-                    # 'spot1' : [10 * np.pi/180],
-                    'spot1' : [25 * np.pi/180],
+                    'spot1' : [10 * np.pi/180],
+                    #'spot2' : [25 * np.pi/180],
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.3],
                     'LD_u2' : [0.16],
