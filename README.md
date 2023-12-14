@@ -37,7 +37,7 @@ Because plots may require specific outputs of large size, the latter are not gen
 
 ## Notebooks
 
-Notebooks allows you to run a simplified version of the ANTARESS workflow. Their purpose is to help you familiarize with ANTARESS. To use the workflow to its full capabilities, user the configuration file.  
+Notebooks allows you to run a simplified version of the ANTARESS workflow. Their purpose is to help you familiarize with ANTARESS. To use the workflow to its full capabilities, use the configuration file.  
 
 Notebooks available in the namesake directory:
 - [ANTARESS_nbook_mock](Notebooks/ANTARESS_nbook_mock.ipynb) : to generate a mock CCF dataset
