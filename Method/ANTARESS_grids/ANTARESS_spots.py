@@ -6,7 +6,7 @@ from ANTARESS_routines.ANTARESS_init import check_data
 from ANTARESS_routines.ANTARESS_orbit import calc_zLOS_oblate
 from ANTARESS_routines.ANTARESS_orbit import conv_inclinedStarFrame_to_StarFrame,conv_StarFrame_to_inclinedStarFrame
 from ANTARESS_analysis.ANTARESS_model_prof import poly_prop_calc
-from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,return_FWHM_inst
+from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
 from ANTARESS_grids.ANTARESS_star_grid import calc_GD, calc_LD, calc_RVrot, calc_Isurf_grid
 from ANTARESS_grids.ANTARESS_prof_grid import init_st_intr_prof, coadd_loc_line_prof
 from ANTARESS_analysis.ANTARESS_model_prof import calc_linevar_coord_grid, calc_polymodu
