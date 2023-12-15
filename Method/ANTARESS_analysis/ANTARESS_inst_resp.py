@@ -5,42 +5,19 @@ from constant_data import c_light
 from copy import deepcopy
 import bindensity as bind
 
+   
+def return_pix_size(): 
+    r"""**Spectrograph sampling**
 
-'''
-Resolving power R
-'''    
-def return_resolv(inst):                 
-    return {        
-        'SOPHIE_HR':75000.,  
-        'SOPHIE_HE':40000.,  
-        'CORALIE':55000.,
-        'HARPN':120000.,
-        'HARPS':120000.,
-        'STIS_E230M':30000.,     
-        'STIS_G750L':1280.,         
-        'ESPRESSO':140000.,
-        'ESPRESSO_MR':70000.,
-        'CARMENES_VIS':94600.,
-        'NIRPS_HE':75000.,
-        'NIRPS_HA':88000.,
-        'EXPRES':137500.,
-    }[inst]     
-'''
-Instrumental resolution 
-    - corresponds to 
- deltav_instru = c / R
- deltaw_instru = lambda_0/R = lambda_0*deltav_instru/c 
-    - equivalent to the FWHM of a Gaussian approximating the LSF 
-      call the function with either w or c_light to get the FWHM in the correct space
-''' 
-def return_FWHM_inst(inst,w_c):
-    return w_c/return_resolv(inst)
-  
+    Returns width of detector pixel in rv space (km/s)
+
+    Args:
+        TBD
     
-'''
-Return instrumental bin size (km/s)
-'''    
-def return_pix_size():             
+    Returns:
+        TBD
+    
+    """             
     return {
             
         #Sophie HE mod: pix_size = 0.0275 A ~ 1.4 km/s at 5890 A 
@@ -92,83 +69,22 @@ def return_pix_size():
         'NIRPS_HE':1.,  
         
         'EXPRES':0.5
-    }      
-        
+    }     
 
 
-'''
-Convolution by instrumental LSF   
-    - bins must have the same size in a given table
-'''
-def convol_prof(prof_in,cen_bins,FWHM):
+def resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,nexp,rv_osamp_line_mod):
+    r"""**Resampled spectral profile table**
 
-    #Half number of pixels in the kernel table at the resolution of the band spectrum
-    #    - a range of 3.15 x FWHM ( = 3.15*2*sqrt(2*ln(2)) sigma = 7.42 sigma ) contains 99.98% of a Gaussian LSF integral
-    #      we conservatively use a kernel covering 4.25 x FWHM / dbin pixels, ie 2.125 FWHM or 5 sigma on each side   
-    dbins = cen_bins[1]-cen_bins[0]
-    hnkern=npint(np.ceil(2.125*FWHM/dbins)+1)
+    Defines resampled spectral grid for line profile calculations.
+    Theoretical profiles are directly calculated at the requested resolution, measured profiles are extracted at their native resolution.
+
+    Args:
+        TBD
     
-    #Centered spectral table with same pixel widths as the band spectrum the kernel is associated to
-    cen_bins_kernel=dbins*np.arange(-hnkern,hnkern+1)
-
-    #Discrete Gaussian kernel 
-    gauss_psf=np.exp(-np.power(  2.*np.sqrt(np.log(2.))*cen_bins_kernel/FWHM   ,2.))
-
-    #Normalization
-    gauss_kernel=gauss_psf/np.sum(gauss_psf)        
-
-    #Convolution by the instrumental LSF   
-    #    - bins must have the same size in a given table
-    prof_conv=astro_conv(prof_in,gauss_kernel,boundary='extend')
-
-    return prof_conv
-
-
-
-'''
-Attribution of original / resampled spectral grid for line profile calculations
-'''
-def def_st_prof_tab(inst,vis,isub,args):
-    args_exp = deepcopy(args)
-    if args['resamp']:suff='_HR'
-    else:suff=''
-    if (inst is None):
-        for key in ['edge_bins','cen_bins','dcen_bins','ncen_bins','dim_exp']:args_exp[key] = args[key+suff]
-    else:
-        for key in ['edge_bins','cen_bins','dcen_bins']:args_exp[key] = args[key+suff][inst][vis][isub]
-        for key in ['ncen_bins','dim_exp']:args_exp[key] = args[key+suff][inst][vis]
-        if (args['mode']=='ana'):args_exp['func_prof'] = args['func_prof'][inst]
-        
-    return args_exp
-
-'''
-Activation of spectral conversion and resampling 
-'''
-def cond_conv_st_prof_tab(rv_osamp_line_mod,fixed_args,data_type):
+    Returns:
+        TBD
     
-    #Spectral oversampling
-    if (fixed_args['mode']=='ana') and (rv_osamp_line_mod is not None):fixed_args['resamp'] = True
-    else:fixed_args['resamp'] = False
-    
-    #Activate RV mode for analytical models of spectral profiles
-    #    - theoretical profiles are processed in wavelength space
-    #      measured profiles are processed in their space of origin
-    #      analytical profiles are processed in RV space, and needs conversion back to wavelength space if data is in spectral mode  
-    #    - since spectral tables will not have constant pixel size (required for model computation) in RV space, we activate the resampling mode so that all models will be calculated on this table and then resampled in spectral space,
-    # rather than resampling the exposure in RV space
-    if ('spec' in data_type) and (fixed_args['mode']=='ana'):
-        fixed_args['spec2rv'] = True
-        fixed_args['resamp'] = True 
-        if fixed_args['line_trans'] is None:stop('Define "line_trans" to fit spectral data with "mode = ana"')
-    else:fixed_args['spec2rv'] = False
-    
-    return None
-
-'''
-Resampled spectral table for model line profile
-    - theoretical profiles are directly calculated at the requested resolution, measured profiles are extracted at their native resolution
-'''
-def resamp_model_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,nexp,rv_osamp_line_mod):
+    """
     if inst is None:edge_bins = fixed_args['edge_bins']
     else:edge_bins = fixed_args['edge_bins'][inst][vis][isub]
 
@@ -213,28 +129,190 @@ def resamp_model_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,nexp,rv_osamp_line
 
     return None
 
-'''
-Effective instrumental convolution
-    - in RV space for analytical model, in wavelength space for theoretical profiles
-    - disabled if measured profiles as used as proxy for the intrinsic profiles
-'''
-def ref_inst_convol(inst,fixed_args,cen_bins):
+
+def def_st_prof_tab(inst,vis,isub,args):
+    r"""**Spectral profile table attribution**
+
+    Attributes original or resampled spectral grid for line profile calculations.
+
+    Args:
+        TBD
     
+    Returns:
+        TBD
+    
+    """  
+    args_exp = deepcopy(args)
+    if args['resamp']:suff='_HR'
+    else:suff=''
+    if (inst is None):
+        for key in ['edge_bins','cen_bins','dcen_bins','ncen_bins','dim_exp']:args_exp[key] = args[key+suff]
+    else:
+        for key in ['edge_bins','cen_bins','dcen_bins']:args_exp[key] = args[key+suff][inst][vis][isub]
+        for key in ['ncen_bins','dim_exp']:args_exp[key] = args[key+suff][inst][vis]
+        if (args['mode']=='ana'):args_exp['func_prof'] = args['func_prof'][inst]
+        
+    return args_exp
+
+
+
+def return_resolv(inst): 
+    r"""**Spectral resolving power**
+
+    Returns resolving power of a given spectrograph.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
+    inst_res = {        
+        'SOPHIE_HR':75000.,  
+        'SOPHIE_HE':40000.,  
+        'CORALIE':55000.,
+        'HARPN':120000.,
+        'HARPS':120000.,
+        'STIS_E230M':30000.,     
+        'STIS_G750L':1280.,         
+        'ESPRESSO':140000.,
+        'ESPRESSO_MR':70000.,
+        'CARMENES_VIS':94600.,
+        'NIRPS_HE':75000.,
+        'NIRPS_HA':88000.,
+        'EXPRES':137500.,
+    }[inst]  
+    return inst_res
+
+def calc_FWHM_inst(inst,w_c):
+    r"""**Spectral resolution**
+
+    Returns FWHM of a Gaussian approximating the LSF for a given resolving power, in rv or wavelength space
+    
+    .. math:: 
+       \Delta v &= c / R   \\
+       \Delta \lambda &= \lambda_\mathrm{ref}/R = \lambda_\mathrm{ref} \Delta v/c 
+     
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
+    FWHM_inst = w_c/return_resolv(inst)
+    return FWHM_inst
+  
+    
+def get_FWHM_inst(inst,fixed_args,cen_bins):
+    r"""**Effective spectral resolution**
+
+    Returns FWHM relevant to convolve the processed data 
+    
+     - in rv space for analytical profiles
+     - in wavelength space for theoretical profiles
+     - disabled if measured profiles as used as proxy for intrinsic profiles
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """     
     #Reference point
     if (fixed_args['mode']=='ana') or fixed_args['spec2rv']:fixed_args['ref_conv'] = c_light
     elif fixed_args['mode']=='theo':fixed_args['ref_conv'] = cen_bins[int(len(cen_bins)/2)]    
     
     #Instrumental response 
     if (fixed_args['mode']=='Intrbin'):FWHM_inst = None
-    else:FWHM_inst = return_FWHM_inst(inst,fixed_args['ref_conv'])      
+    else:FWHM_inst = calc_FWHM_inst(inst,fixed_args['ref_conv'])      
     
     return FWHM_inst
+        
 
-'''
-Convolution, spectral conversion and resampling of spectral grid for line profile calculations
-'''
+def convol_prof(prof_in,cen_bins,FWHM):
+    r"""**Instrumental convolution**
+
+    Convolves input profile with spectrograph LSF.
+    Profile must be defined on a uniform spectral grid.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """  
+    
+    #Half number of pixels in the kernel table at the resolution of the band spectrum
+    #    - a range of 3.15 x FWHM ( = 3.15*2*sqrt(2*ln(2)) sigma = 7.42 sigma ) contains 99.98% of a Gaussian LSF integral
+    #      we conservatively use a kernel covering 4.25 x FWHM / dbin pixels, ie 2.125 FWHM or 5 sigma on each side   
+    dbins = cen_bins[1]-cen_bins[0]
+    hnkern=npint(np.ceil(2.125*FWHM/dbins)+1)
+    
+    #Centered spectral table with same pixel widths as the band spectrum the kernel is associated to
+    cen_bins_kernel=dbins*np.arange(-hnkern,hnkern+1)
+
+    #Discrete Gaussian kernel 
+    gauss_psf=np.exp(-np.power(  2.*np.sqrt(np.log(2.))*cen_bins_kernel/FWHM   ,2.))
+
+    #Normalization
+    gauss_kernel=gauss_psf/np.sum(gauss_psf)        
+
+    #Convolution by the instrumental LSF   
+    #    - bins must have the same size in a given table
+    prof_conv=astro_conv(prof_in,gauss_kernel,boundary='extend')
+
+    return prof_conv
+
+
+def cond_conv_st_prof_tab(rv_osamp_line_mod,fixed_args,data_type):
+    r"""**Spectral conversion and resampling**
+
+    Enables/disables operations.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """  
+    
+    #Spectral oversampling
+    if (fixed_args['mode']=='ana') and (rv_osamp_line_mod is not None):fixed_args['resamp'] = True
+    else:fixed_args['resamp'] = False
+    
+    #Activate RV mode for analytical models of spectral profiles
+    #    - theoretical profiles are processed in wavelength space
+    #      measured profiles are processed in their space of origin
+    #      analytical profiles are processed in RV space, and needs conversion back to wavelength space if data is in spectral mode  
+    #    - since spectral tables will not have constant pixel size (required for model computation) in RV space, we activate the resampling mode so that all models will be calculated on this table and then resampled in spectral space,
+    # rather than resampling the exposure in RV space
+    if ('spec' in data_type) and (fixed_args['mode']=='ana'):
+        fixed_args['spec2rv'] = True
+        fixed_args['resamp'] = True 
+        if fixed_args['line_trans'] is None:stop('Define "line_trans" to fit spectral data with "mode = ana"')
+    else:fixed_args['spec2rv'] = False
+    
+    return None
+
+
 def conv_st_prof_tab(inst,vis,isub,args,args_exp,line_mod_in,FWHM_inst):
+    r"""**Spectral convolution, conversion, and resampling**
 
+    Applies operations.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    
     #Convolve with instrumental response 
     #    - performed on table with constant bin size
     if FWHM_inst is None:line_mod_out = line_mod_in

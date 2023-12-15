@@ -471,9 +471,8 @@ def calc_pl_coord(ecc,omega_bar,aRs,inclin,ph_loc,RpRs,lambda_rad,star_params,rv
     #--------------------------------------------------------------------------------------------------------------------
     #Absolute orbital velocity
     #    - in /Rstar/h 
-    vp_loc = 0
-    if rv_LOS:
-        vp_loc=np.sqrt(VX1_p*VX1_p + VY1_p*VY1_p)
+    if rv_LOS:vp_loc=np.sqrt(VX1_p*VX1_p + VY1_p*VY1_p)
+    else:vp_loc=None
 
     #--------------------------------------------------------------------------------------------------------------------
     #Distance star - planet in the plane of sky

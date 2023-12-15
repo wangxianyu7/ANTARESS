@@ -7,12 +7,12 @@ import numpy as np
 import scipy.linalg
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
-from ANTARESS_analysis.ANTARESS_ana_comm import init_joined_routines,init_joined_routines_inst,init_joined_routines_vis,init_joined_routines_vis_fit,common_fit_rout,post_proc_func,calc_plocc_coord
-from ANTARESS_routines.ANTARESS_binning import calc_binned_prof
-from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_prop
+from ANTARESS_analysis.ANTARESS_ana_comm import init_joined_routines,init_joined_routines_inst,init_joined_routines_vis,init_joined_routines_vis_fit,com_joint_fits,com_joint_postproc
+from ANTARESS_routines.ANTARESS_binning import calc_bin_prof
+from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_prop,up_plocc_prop
 from ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,init_custom_DI_prof,custom_DI_prof
 from ANTARESS_grids.ANTARESS_spots import compute_deviation_profile
-from ANTARESS_analysis.ANTARESS_inst_resp import return_FWHM_inst,ref_inst_convol,resamp_model_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab
+from ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,get_FWHM_inst,resamp_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab
 
 
 
@@ -119,7 +119,7 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
     fixed_args['use_cov'] = False   
 
     #Model fit and calculation
-    merged_chain,p_final = common_fit_rout('IntrProp',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)   
+    merged_chain,p_final = com_joint_fits('IntrProp',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)   
   
     #Best-fit model and properties
     fit_save={}
@@ -145,7 +145,7 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
     else:
         for par in fit_dic['p_null']:fit_dic['p_null'][par]=0.
         fit_dic['p_null']['cont']=1.
-    post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
+    com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
 
     return None
 
@@ -195,7 +195,7 @@ def joined_IntrProp(param,args):
             args['vis']=vis 
             
             #Calculate coordinates and properties of occulted regions 
-            system_param_loc,coord_pl,param_val = calc_plocc_coord(inst,vis,args['par_list'],args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args['par_list'],args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
             surf_prop_dic = sub_calc_plocc_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
             
             #Properties associated with the transiting planet in the visit 
@@ -329,7 +329,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 
                 #Instrumental convolution
                 if (inst not in fixed_args['FWHM_inst']):                
-                    fixed_args['FWHM_inst'][inst] = ref_inst_convol(inst,fixed_args,data_com['cen_bins'][iord_sel])
+                    fixed_args['FWHM_inst'][inst] = get_FWHM_inst(inst,fixed_args,data_com['cen_bins'][iord_sel])
                 
                 #Trimming data
                 #    - the trimming is applied to the common table, so that all processed profiles keep the same dimension after trimming
@@ -406,7 +406,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]  # *0.6703558343325438
                     
                     #Oversampled line profile model table
-                    if fixed_args['resamp']:resamp_model_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
+                    if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
 
                     #Initializing ranges in the relevant rest frame
                     if len(cont_range)==0:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] = True    
@@ -464,7 +464,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fixed_args['fit_func'] = FIT_joined_IntrProf
   
     #Model fit and calculation
-    merged_chain,p_final = common_fit_rout('IntrProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)            
+    merged_chain,p_final = com_joint_fits('IntrProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)            
 
     #PC correction
     if len(fit_prop_dic['PC_model'])>0:
@@ -528,7 +528,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     #Post-processing    
     fit_dic['p_null'] = deepcopy(p_final)
     for par in [ploc for ploc in fit_dic['p_null'] if 'ctrst' in ploc]:fit_dic['p_null'][par] = 0.    
-    post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
+    com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
 
     return None
 
@@ -633,7 +633,7 @@ def joined_IntrProf(param,args):
                 
             #-----------------------------------------------------------
             #Calculate coordinates of occulted regions or use imported values
-            system_param_loc,coord_pl,param_val = calc_plocc_coord(inst,vis,deepcopy(args['par_list']),args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,deepcopy(args['par_list']),args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -794,7 +794,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
           
         for key in ['phase','cen_bins','dcen_bins','flux','cov','cond_def', 'cond_fit','cond_model','t_exp_bjd', 'rescaling','cont_DI_obs', 'n_in_visit', 'data_mast', 'idx_calc'] : fixed_args[key][inst]={}
-        fixed_args['FWHM_inst'][inst]=return_FWHM_inst(inst)
+        fixed_args['FWHM_inst'][inst]=calc_FWHM_inst(inst)
         
         for vis in data_dic[inst]['visit_list']:
             init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
@@ -865,7 +865,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                                 cond_in_fit   |= (edge_bins[0:-1]>=bd_int[0]             )    &    (edge_bins[1:]<=bd_int[1]             )
                                 cond_in_model |= (edge_bins[0:-1]>=bd_int[0] - 3*FW_inst )    &    (edge_bins[1:]<=bd_int[1] + 3*FW_inst )
                                                             
-                        # Store bins properties for the whole visit (edge bins are requested as arg of calc_binned_prof, but uselesss)
+                        # Store bins properties for the whole visit (edge bins are requested as arg of calc_bin_prof, but uselesss)
                         fixed_args['cen_bins'] [inst][vis]  =  cen_bins [cond_in_model] 
                         fixed_args['dcen_bins'] [inst][vis]  =  dcen_bins
                         fixed_args['cond_fit'] [inst][vis]  =  cond_in_fit[cond_in_model]
@@ -904,7 +904,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['fit_func'] = FIT_joined_ResProf
     
     #Model fit and calculation
-    merged_chain,p_final = common_fit_rout('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)     
+    merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)     
     
     #Best-fit model and properties
     fit_save={}
@@ -917,7 +917,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #Post-processing    
     fit_dic['p_null'] = deepcopy(p_final)
     for par in [ploc for ploc in fit_dic['p_null'] if 'ctrst' in ploc]:fit_dic['p_null'][par] = 0.    
-    post_proc_func(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
+    com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
     
     
     return None
@@ -1042,7 +1042,7 @@ def joined_ResProf(param,args):
                 
                 
             nspec = len( args['cen_bins'] [inst][vis])
-            master_out_flux = calc_binned_prof(args['data_mast'][inst][vis]['idx_to_bin'],   
+            master_out_flux = calc_bin_prof(args['data_mast'][inst][vis]['idx_to_bin'],   
                                                1,   
                                                [1,nspec] ,
                                                nspec,  

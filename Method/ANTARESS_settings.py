@@ -836,8 +836,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Correction settings
     
     #%%%%% Threshold 
-    #    - flux values where telluric are below this threshold (between 0 and 1) are set to nan
-    gen_dic['tell_thresh_corr'] = 0.1      
+    #    - flux values where telluric contrast is deeper than this threshold (between 0 and 1) are set to nan
+    gen_dic['tell_thresh_corr'] = 0.9      
     
     
     #%%%%% Exposures to be corrected
@@ -987,11 +987,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%%% Polynomial degree 
+    #    - 'Fbal_deg' applies to the ratio between indivisual exposure and the visit-specific references
+    #      'Fbal_deg_vis' applies to the ratio between visit-specific references and the global reference
+    #    - default = 4 (decrease to smooth)
     gen_dic['Fbal_deg'] ={}
     gen_dic['Fbal_deg_vis'] ={}
     
     
     #%%%%%% Spline smoothing factor
+    #    - 'Fbal_smooth' applies to the ratio between indivisual exposure and the visit-specific references
+    #      'Fbal_smooth_vis' applies to the ratio between visit-specific references and the global reference
     #    - default = 1e-4 (increase to smooth)
     gen_dic['Fbal_smooth']={}
     gen_dic['Fbal_smooth_vis']={}   
@@ -1224,7 +1229,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + 'wig_exp_point_ana' to fit the phase, and the chromatic coefficients of frequency and amplitude derived from 'wig_exp_fit', as a function of the telescope pointing coordinates 
     # + 'wig_vis_fit' to fit the spectro-temporal wiggle model to all exposures together, initialized by the results of 'wig_exp_point_ana'
     #    - wiggles are processed in wave_number space nu[1e-10 s-1] = c[m s-1]/w[A]
-    #      wiggle frequencies Fnu corresponds to wiggle periods Pw[A] = w[A]^2/(Fnu[1e10 s]*c[m s-1])
+    #      wiggle frequencies Fnu corresponds to wiggle periods Pw[A] = w[A]^2/(Fnu[1e10 s]*c[m s-1]) = w[A]^2*Pnu[1e-10 s-1]/c[m s-1]
     ##################################################################################################
     
     
@@ -1330,7 +1335,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #      thus, start by smapling the highest component, and proceed by including lower ones iteratively
     #    - 'freq_guess': define the polynomial coefficients describing the model frequency for each component 
     #                    these models control the definition of the sampling bands 
-    #    - 'nsamp' : number of cycles to sample for each component
+    #    - 'nsamp' : number of cycles to sample for each component, in a given band (defines the size of the sampling band, based on the guess frequency)
     #                must not be too high to ensure that the component frequency remains constant within the sampled bands 
     #    - 'sampbands_shifts': oversampling of sampling bands (nu in 1e-10 s-1)
     #                          adjust to the scale of the frequency or amplitude variations of each component
@@ -1394,7 +1399,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Step 4: Exposure fit 
     #    - fitting the spectral wiggle model to each exposure individually
     #    - 'comp_ids': components to include in the model
-    #    - 'init_chrom': initialize the fit using the results of 'wig_exp_nu_ana' on the closest exposure sampled in 'wig_exp_samp'
+    #    - 'init_chrom': initialize the fit guess values using the results of 'wig_exp_nu_ana' on the closest exposure sampled in 'wig_exp_samp'
     #                    running 'wig_exp_samp' on a selection of representative exposures sampling the wiggle variations is thus sufficient
     #                    beware to run 'wig_exp_nu_ana' with the same components used in 'wig_exp_fit'
     #    - 'freq_guess': define for each component the polynomial coefficients describing the model frequency 
@@ -1406,7 +1411,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - 'use': set to False to retrieve fits 
     #             useful to analyze their results using 'wig_exp_point_ana', and periodograms automatically produced for each exposure
     #    - 'fixed_pointpar': fix values of chosen properties ( > vis > [prop1,prop2,..]) to their model from 'wig_exp_point_ana'
-    #    - 'prior_par: bound properties with a uniform prior on the chosen range (common to all exposures) informed by 'wig_exp_point_ana'
+    #    - 'prior_par: bound properties with a uniform prior on the chosen range (common to all exposures, defined as par > {'low' : val, 'high' : val}). Use results from 'wig_exp_point_ana' to decide on the prior range.
+    #                  if par > {'guess' : val} is defined it will overwrite the default or chromatic initialization 
     #    - 'model_par': initialize property to its exposure value v(t) from the 'wig_exp_point_ana' model, and set a uniform prior in [ v(t)-model_par[par][0] ; v(t)+model_par[par][1] ]
     #    - 'plot': plot transmission spectra with their models, residuals, associated periodograms, and overall rms
     gen_dic['wig_exp_fit']={

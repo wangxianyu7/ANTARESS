@@ -3,16 +3,16 @@ from itertools import product as it_product
 from copy import deepcopy
 from utils import stop,closest,np_poly,npint,np_interp,np_where1D,datasave_npz,dataload_npz,gen_specdopshift
 from constant_data import Rsun,c_light
+import lmfit
+from lmfit import Parameters
 from ANTARESS_routines.ANTARESS_init import check_data
-from ANTARESS_routines.ANTARESS_orbit import conv_Losframe_to_inclinedStarFrame,conv_inclinedStarFrame_to_Losframe
+from ANTARESS_routines.ANTARESS_orbit import conv_Losframe_to_inclinedStarFrame,conv_inclinedStarFrame_to_Losframe,calc_pl_coord
 from ANTARESS_routines.ANTARESS_data_align import align_data
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,calc_st_sky,calc_Isurf_grid,calc_RVrot
-from ANTARESS_analysis.ANTARESS_model_prof import calc_polymodu
+from ANTARESS_analysis.ANTARESS_model_prof import calc_polymodu,polycoeff_def
 from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid
 from ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, new_calc_spotted_region_prop, new_retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop
-
-
 
 
 def calc_plocc_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=False):
@@ -49,6 +49,75 @@ def calc_plocc_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,ca
         check_data({'path':gen_dic['save_data_dir']+'Introrig_prop/PlOcc_Prop_'+inst+'_'+vis})        
 
     return None
+
+
+def up_plocc_prop(inst,vis,par_list,args,param_in,transit_pl,nexp_fit,ph_fit,coord_pl_fit):
+    r"""**Planet-occulted properties: update**
+
+    Updates properties of the planet-occulted region and planetary orbit for fitted step. 
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    system_param_loc=deepcopy(args['system_param'])
+   
+    #In case param_in is defined as a Parameters structure, retrieve values and define dictionary
+    param={}
+    if isinstance(param_in,lmfit.parameter.Parameters):
+        for par in param_in:param[par]=param_in[par].value
+    else:param=param_in
+
+    #Coefficients describing the polynomial variation of spectral line properties as a function of the chosen coordinate
+    #    - coefficients can be specific to a given spectral line model
+    if (args['mode']=='ana') and (len(args['linevar_par'])>0):
+        args['coeff_line'] = {}
+        for par_loc in args['linevar_par'][inst][vis]:    
+            args['coeff_line'][par_loc] = polycoeff_def(param,args['coeff_ord2name'][inst][vis][par_loc])
+          
+    #Recalculate coordinates of occulted regions or use nominal values
+    #    - the 'fit_X' conditions are only True if at least one parameter is varying, so that param_fit is True if fit_X is True
+    if args['fit_orbit']:coord_pl = {}
+    else:coord_pl = deepcopy(coord_pl_fit)
+    for pl_loc in transit_pl:
+
+        #Recalculate planet grid if relevant
+        if args['fit_RpRs'] and ('RpRs__pl'+pl_loc in args['var_par_list']):
+            args['system_prop']['achrom'][pl_loc][0]=param['RpRs__pl'+pl_loc] 
+            args['grid_dic']['Ssub_Sstar_pl'][pl_loc],args['grid_dic']['x_st_sky_grid_pl'][pl_loc],args['grid_dic']['y_st_sky_grid_pl'][pl_loc],r_sub_pl2=occ_region_grid(args['system_prop']['achrom'][pl_loc][0],args['grid_dic']['nsub_Dpl'][pl_loc])  
+            args['system_prop']['achrom'],['cond_in_RpRs'][pl_loc] = [(r_sub_pl2<args['system_prop']['achrom'],[pl_loc][0]**2.)]        
+
+        #Recalculate planet coordinates if relevant        
+        if args['fit_orbit']:
+            coord_pl[pl_loc]={}
+            pl_params_loc = system_param_loc[pl_loc]
+            
+            #Update fitted system properties for current step 
+            if ('lambda_rad__pl'+pl_loc in args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
+            else:lamb_name = 'lambda_rad__pl'+pl_loc 
+            if (lamb_name in args['var_par_list']):pl_params_loc['lambda_rad'] = param[lamb_name]                     
+            if ('inclin_rad__pl'+pl_loc in args['var_par_list']):pl_params_loc['inclin_rad']=param['inclin_rad__pl'+pl_loc]       
+            if ('aRs__pl'+pl_loc in args['var_par_list']):pl_params_loc['aRs']=param['aRs__pl'+pl_loc]  
+            
+            #Calculate coordinates
+            #    - start/end phase have been set to None if no oversampling is requested, in which case start/end positions are not calculated
+            if args['grid_dic']['d_oversamp'] is not None:phases = ph_fit[pl_loc]
+            else:phases = ph_fit[pl_loc][1]
+            x_pos_pl,y_pos_pl,_,_,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phases,args['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param_loc['star'])
+            if args['grid_dic']['d_oversamp'] is not None:
+                coord_pl[pl_loc]['st_pos'] = np.vstack((x_pos_pl[0],y_pos_pl[0]))
+                coord_pl[pl_loc]['cen_pos'] = np.vstack((x_pos_pl[1],y_pos_pl[1]))
+                coord_pl[pl_loc]['end_pos'] = np.vstack((x_pos_pl[2],y_pos_pl[2]))
+            else:coord_pl[pl_loc]['cen_pos'] = np.vstack((x_pos_pl,y_pos_pl))
+            coord_pl[pl_loc]['ecl'] = ecl_pl
+
+    return system_param_loc,coord_pl,param
+
+
+
 
 
 
@@ -592,9 +661,9 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
 
 def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl_loc,pl_proc_band,Ssub_Sstar,x_st_sky_max,y_st_sky_max,cond_in_RpRs,par_list,param,Istar_norm_band,x_pos_pl,y_pos_pl,lambda_rad_pl,par_star,sum_prop_dic_pl,\
                          coord_reg_dic_pl,range_reg_pl,range_par_list,Focc_star_band,star_params,cb_band,theo_dic):
-    r"""**Planet-occulted properties: update**
+    r"""**Planet-occulted properties: region**
 
-    Updates the average and summed properties from a planet-occulted stellar surface region during an exposure.
+    Calculates the average and summed properties from a planet-occulted stellar surface region during an exposure.
 
     Args:
         TBD

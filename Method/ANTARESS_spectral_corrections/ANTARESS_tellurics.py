@@ -10,7 +10,7 @@ from constant_data import N_avo,c_light_m,k_boltz,h_planck
 import scipy.linalg
 from ANTARESS_routines.ANTARESS_conversions import new_compute_CCF,check_CCF_mask_lines
 from ANTARESS_routines.ANTARESS_init import check_data
-from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,return_FWHM_inst,return_resolv
+from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,calc_FWHM_inst,return_resolv
 
 
 
@@ -154,7 +154,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
                 else:
                     print('         Using constant resolution for instrumental response ')
                     fixed_args['fixed_res'] = True
-                    fixed_args['resolution_map'] = return_FWHM_inst
+                    fixed_args['resolution_map'] = calc_FWHM_inst
 
                 #Overwrite fit properties
                 if (inst in gen_dic['tell_mod_prop']) and (vis in gen_dic['tell_mod_prop'][inst]):fixed_args['tell_mod_prop'] = gen_dic['tell_mod_prop'][inst][vis]
@@ -999,8 +999,8 @@ def full_telluric_model(flux_exp,cov_exp,args,param_molecules,tell_species,tell_
         corr_flux_exp[iord],corr_cov_exp[iord] = bind.mul_array(flux_exp[iord],cov_exp[iord],1./tell_spec_exp[iord])
 
         #Telluric threshold
-        #    - flux values where telluric lines are below this threshold are set to nan, as we consider the telluric-absorbed flux is too low and noisy to be retrieved
-        cond_deep_tell = tell_spec_exp[iord]<args['tell_thresh_corr']
+        #    - flux values where telluric contrast is deeper than this threshold are set to nan, as we consider the telluric-absorbed flux is too low and noisy to be retrieved
+        cond_deep_tell = (1.-tell_spec_exp[iord]>args['tell_thresh_corr'])
         if True in cond_deep_tell:corr_flux_exp[iord,cond_deep_tell] = np.nan
 
     return tell_spec_exp,corr_flux_exp,corr_cov_exp

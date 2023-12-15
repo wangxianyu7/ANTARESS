@@ -18,7 +18,7 @@ from ANTARESS_analysis.ANTARESS_inst_resp import return_resolv
 def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic):
     r"""**Main instrumental calibration routine.**
     
-    Estimates instrumental calibration (see `def_weights_spatiotemp_bin()`)
+    Estimates instrumental calibration (see `weights_bin_prof()`)
     
     
     Calibration is used as weight or to scale back profiles approximatively to their raw photoelectron counts during CCF calculations (this allows artifically increasing errors when combining spectral regions with different SNRs).

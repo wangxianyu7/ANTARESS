@@ -846,3 +846,26 @@ def def_edge_tab(cen_bins,dim = 2):
         edge_bins =  np.concatenate((low_bins_st[:,:,None] , mid_bins,high_bins_end[:,:,None]),axis=2)        
     else:stop('Upgrade def_edge_tab()')                           
     return edge_bins
+
+
+
+
+def gen_hrand_chain(par_med,epar_low,epar_high,n_throws):
+    if epar_high==epar_low:
+        hrand_chain = np.random.normal(par_med, epar_high, n_throws)
+    else:
+        if n_throws>1:
+            if n_throws<20:n_throws_half = 10*n_throws
+            else:n_throws_half = 2*n_throws
+            rand_draw_right = np.random.normal(loc=par_med, scale=epar_high, size=n_throws_half)
+            rand_draw_right = rand_draw_right[rand_draw_right>par_med]
+            rand_draw_right = rand_draw_right[0:int(n_throws/2)]
+            rand_draw_left = np.random.normal(loc=par_med, scale=epar_low, size=n_throws_half)
+            rand_draw_left = rand_draw_left[rand_draw_left<=par_med]
+            rand_draw_left = rand_draw_left[0:n_throws-int(n_throws/2)]
+            hrand_chain = np.append(rand_draw_left,rand_draw_right)
+        else:
+            if np.random.normal(loc=0., scale=1., size=1)>0:hrand_chain = np.random.normal(loc=par_med, scale=epar_high, size=1)
+            else:hrand_chain = np.random.normal(loc=par_med, scale=epar_low, size=1)
+    return hrand_chain
+

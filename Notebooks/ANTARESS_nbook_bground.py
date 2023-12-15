@@ -24,7 +24,7 @@ def init(nbook_type):
     
     #Plot path
     if nbook_type=='mock':
-        input_nbook['plot_path'] = '/Users/bourrier/Travaux/ANTARESS/En_cours/Valinor_Plots/'
+        input_nbook['plot_path'] = '/Users/bourrier/Travaux/ANTARESS/Ongoing/Valinor_Plots/'
 
     return input_nbook
 

@@ -7,15 +7,24 @@ from ANTARESS_routines.ANTARESS_orbit import excl_plrange,calc_pl_coord,conv_pha
 from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_prop
 from ANTARESS_routines.ANTARESS_init import check_data
 
-
-'''
-Routine to combine profiles in new bins along a chosen dimension
-    - for a given visit or between several visits
-    - binned profiles are calculated as means weighted by specific weights depending on the type of profiles
-    - for analysis purpose or use outside the pipeline
-      masters used to extract local stellar profiles from each exposure are calculated in extract_res_profiles() 
-'''
 def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDI=False):
+    r"""**Binning routine**
+
+    Bins series of input spectral profile into a new series along the chosen temporal/spatial dimension.
+    
+     - for a given visit or between several visits
+     - binned profiles are calculated as weighted means with weights specific to the type of profiles
+     - binned profiles are used for analysis purposes
+     - master profiles used to extract residual profiles from each exposure are calculated in `extract_res_profiles()` 
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """     
+    
     data_inst = data_dic[inst]    
         
     #Identifier for saved file
@@ -127,7 +136,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         if (len(data_inst[vis_save]['transit_pl'])==1) or ('ref_pl' not in bin_prop):bin_prop['ref_pl'] = data_inst[vis_save]['transit_pl'][0]  
 
         #Initialize binning
-        new_x_cen,new_x_low,new_x_high,_,n_in_bin_all,idx_to_bin_all,dx_ov_all,n_bin,idx_bin2orig,idx_bin2vis,idx_to_bin_unik = init_bin_rout(data_type,bin_prop,prop_dic['idx_in_bin'],prop_dic['dim_bin'],coord_dic,inst,vis_to_bin,data_dic,gen_dic)
+        new_x_cen,new_x_low,new_x_high,_,n_in_bin_all,idx_to_bin_all,dx_ov_all,n_bin,idx_bin2orig,idx_bin2vis,idx_to_bin_unik = init_bin_prof(data_type,bin_prop,prop_dic['idx_in_bin'],prop_dic['dim_bin'],coord_dic,inst,vis_to_bin,data_dic,gen_dic)
 
         #Retrieving data that will be used in the binning
         #    - original data is associated with its original index, so that it can be retrieved easily by the binning routine
@@ -272,7 +281,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #Weight definition
             #    - the profiles must be specific to a given data type so that earlier types can still be called in the multi-visit binning, after the type of profile has evolved in a given visit
             #    - at this stage of the pipeline broadband flux scaling has been defined, if requested 
-            data_to_bin[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_mode,dim_exp_com,tell_exp,mean_gdet_exp,data_com['cen_bins'],dt_exp,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,bdband_flux_sc = gen_dic['flux_sc'])                          
+            data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_mode,dim_exp_com,tell_exp,mean_gdet_exp,data_com['cen_bins'],dt_exp,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,bdband_flux_sc = gen_dic['flux_sc'])                          
 
         #----------------------------------------------------------------------------------------------
 
@@ -280,7 +289,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         for i_new,(idx_to_bin,n_in_bin,dx_ov) in enumerate(zip(idx_to_bin_all,n_in_bin_all,dx_ov_all)):
 
             #Calculate binned exposure on common spectral table
-            data_exp_new = calc_binned_prof(idx_to_bin,data_dic[inst]['nord'],dim_exp_com,nspec_com,data_to_bin,inst,n_in_bin,data_com['cen_bins'],data_com['edge_bins'],dx_ov_in = dx_ov)
+            data_exp_new = calc_bin_prof(idx_to_bin,data_dic[inst]['nord'],dim_exp_com,nspec_com,data_to_bin,inst,n_in_bin,data_com['cen_bins'],data_com['edge_bins'],dx_ov_in = dx_ov)
 
             #Keplerian motion relative to the stellar CDM and the Sun (km/s)
             if ('RV_star_solCDM' in data_glob_new):
@@ -388,11 +397,18 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
     return None
 
 
-'''
-Sub-function to initalize temporal/spatial resampling routine
-'''
-def init_bin_rout(data_type,bin_prop,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bin,data_dic,gen_dic):
+def init_bin_prof(data_type,bin_prop,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bin,data_dic,gen_dic):
+    r"""**Binning routine: initialization**
 
+    Initializes `process_bin_prof()`. 
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
     #Concatenate tables from all visits to bin
     #    - indexes of original exposures are arbitrarily offset between visits to be distinguishable
     x_low_vis = np.zeros(0,dtype=float)
@@ -547,13 +563,21 @@ def init_bin_rout(data_type,bin_prop,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bi
 
 
 
-'''
-Function to define weights when binning profiles temporally/spatially
-    - weights should only be defined using the inverse squared error if the weighted values are comparable, so that all spectra should have been scaled to comparable flux levels prior to binning
-    - spectra must be defined on the same spectral table to be averaged in time/space     
-'''
-def def_weights_spatiotemp_bin(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,mean_gdet,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True):
 
+def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,mean_gdet,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True):
+    r"""**Binning routine: weights**
+
+    Defines weights to be used when binning profiles.
+    Weights should only be defined using the inverse squared error if the weighted values are comparable, so that all profiles should have been scaled to comparable flux levels prior to binning.
+    Profiles must be defined on the same spectral table to be binned together.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """  
     #Weight definition
     #    - in case of photon noise the error on photons counts writes as E(n) = sqrt(N) where N is the number of photons received during a time interval dt over a spectral bin dw
     # + if the same measurement is manipulated, eg with N' = a*N1, then the rules of error propagation apply and E(N') = a*E(N1)
@@ -866,8 +890,8 @@ def def_weights_spatiotemp_bin(iord_orig_list,scaled_data_paths,inst,vis,gen_cor
 
 
 
-def calc_binned_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,cen_bins_exp,edge_bins_exp,dx_ov_in=None):
-    r"""**Spectral profiles binning**
+def calc_bin_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,cen_bins_exp,edge_bins_exp,dx_ov_in=None):
+    r"""**Spectral profile binning**
 
     Main routine to bin input spectral profiles, defined over a common spectral table, into a single spectral profile
     
@@ -884,7 +908,7 @@ def calc_binned_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,
     """ 
     #Clean weights
     #    - in all calls to the routine, exposures contributing to the master are already defined / have been resampled on a common spectral table
-    flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_binned_prof(n_in_bin,dim_exp,idx_to_bin,None,dx_ov_in,data_to_bin_in,None,tab_delete=cen_bins_exp)
+    flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_bin_prof(n_in_bin,dim_exp,idx_to_bin,None,dx_ov_in,data_to_bin_in,None,tab_delete=cen_bins_exp)
 
     #Tables for new exposure
     data_bin={'cen_bins':cen_bins_exp,'edge_bins':edge_bins_exp} 
@@ -947,10 +971,10 @@ def calc_binned_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,
 
 
 
-def pre_calc_binned_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_bin,edge_bins_resamp,nocov=False,tab_delete=None):
-    r"""**Weights pre-processing**
+def pre_calc_bin_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_bin,edge_bins_resamp,nocov=False,tab_delete=None):
+    r"""**Spectral binning: pre-processing**
 
-    Clean and normalizes weights profiles for profile binning
+    Cleans and normalizes profiles and their weights before binning.
 
     Args:
         TBD
@@ -1347,7 +1371,7 @@ def sub_calc_bins(low_bin,high_bin,raw_loc_dic,nfilled_bins,calc_Fr=False,calc_g
                 if 'var' in raw_loc_dic:bin_loc_dic['varFr'] = np.sum(raw_loc_dic['var'][idx_overpix]*raw_loc_dic['dbins'][idx_overpix]**2.)/bin_loc_dic['Fmast_tot']**2.
 
             #Ratio binned exposure error squared / binned exposure flux
-            #    - see def_weights_spatiotemp_bin(): 
+            #    - see weights_bin_prof(): 
             # gdet(band,v) = sum( EF_meas(w,t,v)^2 )  ) / sum( F_meas(w,t,v) )
             if calc_gdet and (Fexp_tot>0.):
                 bin_loc_dic['gdet'] = np.sum(raw_loc_dic['var'][idx_overpix]) /np.sum(raw_loc_dic['flux'][idx_overpix])

@@ -754,7 +754,7 @@ def corr_spot(corr_spot_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo
                 data_exp['flux'][0] *= (1 - spot_occulted_flux - pl_occulted_flux)  /  cont_exp
                 
                 # Add the profile occulted by spots, taking into account instrumental dispersion :
-                data_exp['flux'][0] += convol_prof(spot_occulted_prof, fixed_args['cen_bins'][inst][vis], return_FWHM_inst(inst))
+                data_exp['flux'][0] += convol_prof(spot_occulted_prof, fixed_args['cen_bins'][inst][vis], calc_FWHM_inst(inst))
                 
                 # Reset the exposure continuum to the initial value (might be important if the profiles are not fitted again, especially in the Joined Residual profiles fitting). 
                 data_exp['flux'][0] *= cont_exp  /  (1 - pl_occulted_flux)
