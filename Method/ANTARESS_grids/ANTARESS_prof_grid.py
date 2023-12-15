@@ -4,10 +4,10 @@ from copy import deepcopy
 from utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab
 import astropy.convolution.convolve as astro_conv
 import bindensity as bind
-from pysme import sme as SME
-from pysme.linelist.vald import ValdFile
-from pysme.abund         import Abund
-from pysme.synthesize import synthesize_spectrum
+# from pysme import sme as SME
+# from pysme.linelist.vald import ValdFile
+# from pysme.abund         import Abund
+# from pysme.synthesize import synthesize_spectrum
 import lmfit
 from ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
 from ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff

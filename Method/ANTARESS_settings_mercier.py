@@ -462,8 +462,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      # For the spot 'spot1' : 
                      'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
                      'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
-                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 10,
-                     'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.8,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 0,
+                     'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.2,
                     
                      # # #For the spot 'spot2' : 
                      # 'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
@@ -2640,7 +2640,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['spots_prop']={
                 'achrom':{
-                    'spot1' : [10 * np.pi/180],
+                    'spot1' : [0 * np.pi/180],
                     #'spot2' : [25 * np.pi/180],
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.3],

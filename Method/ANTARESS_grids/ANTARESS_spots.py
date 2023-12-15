@@ -9,8 +9,8 @@ from ANTARESS_analysis.ANTARESS_model_prof import poly_prop_calc
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,return_FWHM_inst
 from ANTARESS_grids.ANTARESS_star_grid import calc_GD, calc_LD, calc_RVrot, calc_Isurf_grid
 from ANTARESS_grids.ANTARESS_prof_grid import init_st_intr_prof, coadd_loc_line_prof
-from ANTARESS_analysis.ANTARESS_line_prop import calc_linevar_coord_grid, calc_polymodu
-from ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
+from ANTARESS_analysis.ANTARESS_model_prof import calc_linevar_coord_grid, calc_polymodu
+# from ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
 
 
 '''
@@ -1371,7 +1371,7 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
                 coord_grid[par_loc] = calc_polymodu(args['pol_mode'],args['coeff_line'][par_loc],linevar_coord_grid) 
     
             #Stellar-rotation induced radial velocity (km/s)
-            elif par_loc=='Rot_RV':coord_grid[par_loc] = calc_RVrot(coord_grid['x_st_sky'],coord_grid['y_st'],par_star['istar_rad'],par_star)
+            elif par_loc=='Rot_RV':coord_grid[par_loc] = calc_RVrot(coord_grid['x_st_sky'],coord_grid['y_st'],par_star['istar_rad'],par_star)[0]
                          
             #Disk-integrated-corrected convective blueshift polynomial (km/s)
             elif par_loc=='CB_RV':coord_grid[par_loc] = np_poly(cb_band)(coord_grid['mu'])          
