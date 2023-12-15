@@ -5,7 +5,7 @@ import bindensity as bind
 from scipy.interpolate import interp1d
 from constant_data import c_light
 from pathos.multiprocessing import Pool
-from ANTARESS_routines.ANTARESS_binning import pre_calc_binned_prof,def_weights_spatiotemp_bin
+from ANTARESS_routines.ANTARESS_binning import pre_calc_bin_prof,weights_bin_prof
 from ANTARESS_routines.ANTARESS_init import check_data
 from ANTARESS_routines.ANTARESS_orbit import excl_plrange
 from ANTARESS_routines.ANTARESS_data_process import calc_Intr_mean_cont
@@ -788,10 +788,10 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
         #      all profiles that are the same for overlapping orders (tellurics, disk-integrated stellar spectrum, global flux scaling, ...) are thus not used in the weighing 
         #      they are however processed in the same way as the exposure if used later on in the pipeline 
         #    - for intrinsic and atmospheric profiles we provide the broadband flux scaling, even if does not matter to the weighing, because it is otherwise set to 0 and messes up with weights definition
-        data_exp['weights'] = def_weights_spatiotemp_bin(range(nord),scaling_data_paths[data_type],inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,None,data_exp['mean_gdet'], data_exp['cen_bins'],1.,np.ones(dim_exp),np.zeros([dim_exp[0],1,dim_exp[1]]),corr_Fbal=False,bdband_flux_sc=bdband_flux_sc)
+        data_exp['weights'] = weights_bin_prof(range(nord),scaling_data_paths[data_type],inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,None,data_exp['mean_gdet'], data_exp['cen_bins'],1.,np.ones(dim_exp),np.zeros([dim_exp[0],1,dim_exp[1]]),corr_Fbal=False,bdband_flux_sc=bdband_flux_sc)
 
         #Resample spectra and weights on 1D table in each order, and clean weights
-        flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_binned_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_exp,edge_bins_1D)
+        flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_exp,edge_bins_1D)
 
         #Processing each order
         flux_ord_contr=[]

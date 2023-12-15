@@ -88,7 +88,7 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
                 #Calculate mean of spectra
                 #    - the use of the mean naturally gives a stronger weight to spectra with larger flux (and SNR), but it might be biased by strong spurious features
                 #    - we do not use weights, as in the present case they would compensate in the weighted mean
-                #      after normalizing spectra to the same global flux level, the correct weights would be (see def_weights_spatiotemp_bin):
+                #      after normalizing spectra to the same global flux level, the correct weights would be (see weights_bin_prof):
                 # wi = 1/ci, with Fi_norm = ci*Fi 
                 #      then Fmast = sum( Fi_norm*wi )/sum(wi) = sum( ci*Fi/ci )/sum(1/ci) = sum(Fi)/sum(ci)
                 #      since the overal level of the master does not matter, we can thus simply calculate a mean of the unweighted flux

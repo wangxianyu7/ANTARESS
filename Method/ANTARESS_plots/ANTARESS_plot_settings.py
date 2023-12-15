@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import numpy as np
 from constant_data import c_light
 from utils import stop
@@ -753,12 +750,14 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         #     plot_settings[key_plot]['iexp_plot']={'CARMENES_VIS':{'20170807':[0,30,59],'20170812':[0,30,57]}}  
         # elif gen_dic['star_name']=='WASP156':
         #     plot_settings[key_plot]['iexp_plot']={'CARMENES_VIS':{'20191025':[0]}}           #ANTARESS I, persistent peaks 1  
-
+        if gen_dic['star_name']=='HD189733':
+            plot_settings[key_plot]['iexp_plot'] = {'ESPRESSO':{'20210810':[5,15,20,25,35],'20210830':[5,15,20,25,35]}}
 
 
         #Plot all exposures on the same plot
         if gen_dic['star_name']=='WASP156':plot_settings[key_plot]['multi_exp']=True  # #ANTARESS I, persistent peaks 2 et 3  
         elif gen_dic['star_name']=='HD209458':plot_settings[key_plot]['multi_exp']=True   & False
+        elif gen_dic['star_name']=='HD189733':plot_settings[key_plot]['multi_exp']=True
 
         #Choice of orders to plot
         #    - leave empty to plot all orders
@@ -788,6 +787,15 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         elif gen_dic['star_name']=='WASP156':
             plot_settings[key_plot]['orders_to_plot']=[46]         #ANTARESS I, persistent peaks 1, 2
             plot_settings[key_plot]['orders_to_plot']=[8]      #ANTARESS I, persistent peaks 3  
+        elif gen_dic['star_name']=='HD189733':
+            plot_settings[key_plot]['orders_to_plot']=np.arange(128,170)
+
+   
+
+        #Plot all orders on the same plot
+        if gen_dic['star_name']=='HD189733':plot_settings[key_plot]['multi_ord']=True 
+   
+
 
         #Only plot exposures & orders with masked persistent pixels        
         if gen_dic['star_name']=='WASP156':plot_settings[key_plot]['det_permpeak']=True      #ANTARESS I, persistent peaks  
@@ -803,7 +811,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         #Plot telluric spectrum
         if gen_dic['star_name']=='WASP76':
             plot_settings[key_plot]['plot_tell'] = True    #ANTARESS I, tell
-
+        if gen_dic['star_name']=='HD189733':
+            plot_settings[key_plot]['plot_tell'] = True
 
         #Plot spectra at two chosen steps of the correction process
         #    - set to None, or chose amongst:
@@ -861,6 +870,11 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 #            plot_settings[key_plot]['plot_post']='tell' 
             # plot_settings[key_plot]['plot_pre']='cosm'                             
             # plot_settings[key_plot]['plot_post']='permpeak' 
+
+        if gen_dic['star_name']=='HD189733':
+            plot_settings[key_plot]['plot_pre']='raw'
+            plot_settings[key_plot]['plot_post']='tell'
+
 
 
         #Plot continuum used for persistent peak masking
@@ -941,7 +955,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         if gen_dic['star_name']=='HD209458': 
             plot_settings[key_plot]['x_range']=[5870.,5915.]    #sodium
 
-
+        if gen_dic['star_name']=='HD189733':
+            plot_settings[key_plot]['x_range'] = None #[6200.,7900.]
 
 
 
@@ -1184,7 +1199,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
         #Plot as a function of nu = c/w
         plot_settings[key_plot]['sp_var'] = 'nu'     
-        # plot_settings[key_plot]['sp_var'] = 'wav'    
+        plot_settings[key_plot]['sp_var'] = 'wav'    
 
 
         #Data bin size
@@ -1225,6 +1240,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         #Exposures to plot
         plot_settings[key_plot]['iexp_plot'] = {}
         # plot_settings[key_plot]['iexp_plot'] = {'ESPRESSO':{'20190720':[6,81]}}
+        if gen_dic['star_name']=='HD189733':
+            plot_settings[key_plot]['iexp_plot'] = {'ESPRESSO':{'20210810':[5,15,20,25,35],'20210830':[5,15,20,25,35]}}
 
         #Plot raw data and errors
         plot_settings[key_plot]['plot_data'] = True & False
@@ -6379,10 +6396,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
         #General path to the best-fit model to property series
         plot_settings[key_plot]['IntrProp_path']=None
-        if gen_dic['star_name']=='HAT_P3':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HAT_P3b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
-        elif gen_dic['star_name']=='HAT_P33':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HAT_P33b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
-        elif gen_dic['star_name']=='HD209458':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/Intr_prop/chi2/'
-        elif gen_dic['star_name']=='WASP76':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProp/chi2/'
+        if gen_dic['star_name']=='HAT_P3':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HAT_P3b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
+        elif gen_dic['star_name']=='HAT_P33':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HAT_P33b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
+        elif gen_dic['star_name']=='HD209458':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HD209458b_Saved_data/Joined_fits/Intr_prop/chi2/'
+        elif gen_dic['star_name']=='WASP76':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP76b_Saved_data/Joined_fits/IntrProp/chi2/'
 
         #Visits to plot
         if gen_dic['studied_pl']=='WASP76b':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2018-10-31','2018-09-03']} 
@@ -7158,44 +7175,44 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
     
             #General path to the best-fit joint model to property and profile series
             if gen_dic['star_name']=='MASCARA1':
-                plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/MASCARA1b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
+                plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/MASCARA1b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
             # if gen_dic['studied_pl']==['GJ436_b']:
-            #     plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/GJ436_b_Saved_data/Joined_fits/Intr_prof/mcmc/ESPRESSO/DG_CLfromDI_proppervis_osamp5/'
+            #     plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/GJ436_b_Saved_data/Joined_fits/Intr_prof/mcmc/ESPRESSO/DG_CLfromDI_proppervis_osamp5/'
             #RM survey
             elif gen_dic['star_name']=='HAT_P3':
-                plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HAT_P3b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
+                plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HAT_P3b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
                 plot_settings[key_plot]['IntrProp_path'] = None
-                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HAT_P3b_Saved_data/Joined_fits/Intr_prof/mcmc/Oversamp5_n51/'
+                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HAT_P3b_Saved_data/Joined_fits/Intr_prof/mcmc/Oversamp5_n51/'
             elif gen_dic['star_name']=='HAT_P33':
-                plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HAT_P33b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
+                plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HAT_P33b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
                 # plot_settings[key_plot]['IntrProp_path'] = None
-                #     plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HAT_P33b_Saved_data/Joined_fits/Intr_prof/mcmc/Oversamp5_n51/'
+                #     plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HAT_P33b_Saved_data/Joined_fits/Intr_prof/mcmc/Oversamp5_n51/'
             elif gen_dic['star_name']=='WASP107':
-                plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP107b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
+                plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP107b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
                 plot_settings[key_plot]['IntrProp_path'] = None
-                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP107b_Saved_data/Joined_fits/Intr_prof/mcmc/Oversamp3_n31_voigt_scaled_FINAL/'
-            elif gen_dic['star_name']=='WASP166':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP166b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
-            # elif gen_dic['star_name']=='HAT_P11':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HAT_P11b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
-            elif gen_dic['star_name']=='WASP156':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP156b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
+                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP107b_Saved_data/Joined_fits/Intr_prof/mcmc/Oversamp3_n31_voigt_scaled_FINAL/'
+            elif gen_dic['star_name']=='WASP166':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP166b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
+            # elif gen_dic['star_name']=='HAT_P11':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HAT_P11b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
+            elif gen_dic['star_name']=='WASP156':plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP156b_Saved_data/Joined_fits/Intr_prop/Orig/chi2/'
             if gen_dic['studied_pl']==['TOI858b']:
-                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/TOI858b_Saved_data/Joined_fits/Intr_prof/mcmc/'
-                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/TOI858b_Saved_data/Joined_fits/Intr_prof/mcmc/Visits12_indiv_osamp5/'
+                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/TOI858b_Saved_data/Joined_fits/Intr_prof/mcmc/'
+                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/TOI858b_Saved_data/Joined_fits/Intr_prof/mcmc/Visits12_indiv_osamp5/'
             elif gen_dic['star_name']=='HD209458':
                 plot_settings[key_plot]['IntrProp_path']=  None
-                # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProp/'   
-                # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/HD209458b_Saved_data/Joined_fits/IntrProp/chi2/'        
-                plot_settings[key_plot]['IntrProf_path']='/Volumes/T7/SAVE_TEMP_VINCENT/Travaux/ANTARESS/En_cours/Saves_reductions/HD209458b_Saved_data/Joined_fits/IntrProf/White_CCF/CCF_from_IntrSpec_F9/mcmc_contcorr_contfit/'
+                # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HD209458b_Saved_data/Joined_fits/IntrProp/'   
+                # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HD209458b_Saved_data/Joined_fits/IntrProp/chi2/'        
+                plot_settings[key_plot]['IntrProf_path']='/Volumes/T7/SAVE_TEMP_VINCENT/Travaux/ANTARESS/Ongoing/Saves_reductions/HD209458b_Saved_data/Joined_fits/IntrProf/White_CCF/CCF_from_IntrSpec_F9/mcmc_contcorr_contfit/'
 
             elif gen_dic['star_name']=='WASP76':
                 plot_settings[key_plot]['IntrProp_path']=None   
-                # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProp/chi2/'       
-                # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProp/'    
+                # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP76b_Saved_data/Joined_fits/IntrProp/chi2/'       
+                # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP76b_Saved_data/Joined_fits/IntrProp/'    
  
-                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits/IntrProf/chi2/'
-                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP76b_Saved_data/Joined_fits_save/IntrProf/CCF_from_IntrSpec/CONTCORR_CONTFIT/mcmc/mcmc_fg/'
+                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP76b_Saved_data/Joined_fits/IntrProf/chi2/'
+                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP76b_Saved_data/Joined_fits_save/IntrProf/CCF_from_IntrSpec/CONTCORR_CONTFIT/mcmc/mcmc_fg/'
             elif gen_dic['star_name']=='WASP69':
                 plot_settings[key_plot]['IntrProp_path']=None                   
-                # plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/En_cours/WASP69b_Saved_data/Joined_fits/IntrProf/20230624_20230729/mcmc/'
+                # plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP69b_Saved_data/Joined_fits/IntrProf/20230624_20230729/mcmc/'
 
 
 

@@ -16,7 +16,7 @@ from scipy import stats
 import itertools
 from matplotlib.ticker import MultipleLocator
 from ANTARESS_plots.utils_plots import autom_x_tick_prop,autom_y_tick_prop,custom_axis
-from ANTARESS_routines.ANTARESS_binning import calc_binned_prof,resample_func,sub_calc_bins,sub_def_bins,def_weights_spatiotemp_bin
+from ANTARESS_routines.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof
 from ANTARESS_routines.ANTARESS_orbit import get_timeorbit,def_contacts
 from ANTARESS_routines.ANTARESS_init import check_data
 from ANTARESS_analysis.ANTARESS_ana_comm import model_par_names    ,par_formatting
@@ -160,11 +160,11 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             else:iord_fit_list = iord_fit_ref
             
             #Original indexes of exposures to be included in the master calculation 
-            if 'all' in gen_dic['wig_exp_mast'][vis]:iexp_mast_list = np.arange(data_vis['n_in_visit'])
+            if (vis not in gen_dic['wig_exp_mast']) or (gen_dic['wig_exp_mast'][vis]=='all'):iexp_mast_list = np.arange(data_vis['n_in_visit'])
             else:iexp_mast_list = gen_dic['wig_exp_mast'][vis]
 
             #Original indexes of exposures to be fitted 
-            if 'all' in gen_dic['wig_exp_in_fit'][vis]:iexp_fit_list = np.arange(data_vis['n_in_visit'])
+            if (vis not in gen_dic['wig_exp_in_fit']) or (gen_dic['wig_exp_in_fit'][vis]=='all'):iexp_fit_list = np.arange(data_vis['n_in_visit'])
             else:iexp_fit_list = gen_dic['wig_exp_in_fit'][vis]
             nexp_fit_list = len(iexp_fit_list)            
             
@@ -293,13 +293,13 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 for comp_id in range(1,6):
                     comp_str=str(comp_id) 
                     
-                    #Model values                             
+                    #Model properties and default values                             
                     for pref,suf in zip(pref_names_amp[comp_id]+['Phi'],suf_names_amp[comp_id]+['']):
                         mod_prop_exp[pref+comp_str+suf+'_off']  = {'vary':True,'guess':0.}
                     for pref,suf in zip(pref_names_freq[comp_id],suf_names_freq[comp_id]):
                         mod_prop_exp[pref+comp_str+suf+'_off']  = {'vary':True,'guess':1.}
 
-                    #Priors
+                    #Default priors
                     varpar_priors_exp.update({            
                         'AmpGlob'+comp_str+'_c0_off':{'low':-1e-2 ,'high':1e-2},'AmpGlob'+comp_str+'_c1_off':{'low':-1e-3,'high':1e-3},'AmpGlob'+comp_str+'_c2_off':{'low':-1e-4,'high':1e-4},'AmpGlob'+comp_str+'_c3_off':{'low':-1e-5 ,'high':1e-5},'AmpGlob'+comp_str+'_c4_off':{'low':-1e-6 ,'high':1e-6},        
                         'Freq'+comp_str+'_c0_off':{'low':0.,'high':10.},'Freq'+comp_str+'_c1_off':{'low':-1.,'high':1.},'Freq'+comp_str+'_c2_off':{'low':-1.,'high':1.},'Freq'+comp_str+'_c2_off':{'low':-1.,'high':1.}, 
@@ -318,12 +318,13 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         for comp_id in gen_dic['wig_exp_fit']['freq_guess']:
                             for ideg in range(fixed_args['deg_Freq'][comp_id]+1):mod_prop_exp['Freq'+str(comp_id)+'_c'+str(ideg)+'_off']['guess'] = gen_dic['wig_exp_fit']['freq_guess'][comp_id]['c'+str(ideg)]
 
-                    #Overwrite default prior
-                    if (vis in gen_dic['wig_exp_fit']['prior_par']): 
-                        for par in gen_dic['wig_exp_fit']['prior_par'][vis]:
-                            if (par+'_off') in varpar_priors_exp:
-                                if ('low' in gen_dic['wig_exp_fit']['prior_par'][vis][par]):varpar_priors_exp[par+'_off']['low'] = gen_dic['wig_exp_fit']['prior_par'][vis][par]['low']
-                                if ('high' in gen_dic['wig_exp_fit']['prior_par'][vis][par]):varpar_priors_exp[par+'_off']['high'] = gen_dic['wig_exp_fit']['prior_par'][vis][par]['high']
+                #Overwrite default prior
+                if (vis in gen_dic['wig_exp_fit']['prior_par']): 
+                    for par in gen_dic['wig_exp_fit']['prior_par'][vis]:
+                        if (par+'_off') in varpar_priors_exp:
+                            if ('guess' in gen_dic['wig_exp_fit']['prior_par'][vis][par]):varpar_priors_exp[par+'_off']['guess'] = gen_dic['wig_exp_fit']['prior_par'][vis][par]['guess']
+                            if ('low' in gen_dic['wig_exp_fit']['prior_par'][vis][par]):varpar_priors_exp[par+'_off']['low'] = gen_dic['wig_exp_fit']['prior_par'][vis][par]['low']
+                            if ('high' in gen_dic['wig_exp_fit']['prior_par'][vis][par]):varpar_priors_exp[par+'_off']['high'] = gen_dic['wig_exp_fit']['prior_par'][vis][par]['high']
                 
                 #Default variable properties 
                 stable_pointpar_exp = {}
@@ -461,7 +462,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     # w_common = w_solbar * (1- rv[common/solbar]/c))
                     #      no need to align them in the star rest frame: profiles need to be aligned in a common frame to calculate transmission spectra, 
                     # and are then shifted back
-                    dopp_fact = 1./gen_specdopshift(coord_dic[inst][vis]['RV_star_stelCDM'][iexp])  
+                    dopp_fact = 1./gen_specdopshift(rv_al_all[iexp])  
                     
                     #Only the exposure table is modified if data do not share a common table
                     #    - data will be resampled along with the master in a later stage
@@ -506,9 +507,9 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                         #Weight definition 
                         #    - at this stage of the pipeline no broadband flux scaling was applied
-                        #    - weights with at least one undefined pixels are set to 1 for all binned exposures (ie, no weighing is applied) within calc_binned_prof()    
+                        #    - weights with at least one undefined pixels are set to 1 for all binned exposures (ie, no weighing is applied) within calc_bin_prof()    
                         weight_mean_gdet_exp = data_glob[iexp]['mean_gdet'] if gen_dic['cal_weight'] else None 
-                        data_glob[iexp]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp,'DI',data_inst['type'],data_vis['dim_exp'],data_glob[iexp]['tell'],weight_mean_gdet_exp,data_glob[iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc=1./flux_glob)            
+                        data_glob[iexp]['weight'] = weights_bin_prof(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp,'DI',data_inst['type'],data_vis['dim_exp'],data_glob[iexp]['tell'],weight_mean_gdet_exp,data_glob[iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc=1./flux_glob)            
     
                         #Resampling if a common master is used
                         #    - if exposures do not share a common table they were kept on individual exposures; here we only resample those involved in the master calculation
@@ -540,7 +541,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 #    - we do not use the global master of the flux balance correction because it is defined over all visits 
                 if (not gen_dic['wig_indiv_mast']):
                     for idmer in idx_to_bin_mer:                    
-                        data_mast[idmer] = calc_binned_prof(idx_to_bin_mer[idmer],data_dic[inst]['nord'],dim_exp_com,nspec_com,data_to_bin[idmer],inst,len(idx_to_bin_mer[idmer]),data_com['cen_bins'],data_com['edge_bins'])
+                        data_mast[idmer] = calc_bin_prof(idx_to_bin_mer[idmer],data_dic[inst]['nord'],dim_exp_com,nspec_com,data_to_bin[idmer],inst,len(idx_to_bin_mer[idmer]),data_com['cen_bins'],data_com['edge_bins'])
 
             #------------------------------------------------------
 
@@ -651,7 +652,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 for key in ['flux','cond_def','cov','weight']:data_to_bin_extract[iexp_off][key] = data_glob[iexp_off][key]
 
                         #Calculate master on current exposure table
-                        data_mast_exp = calc_binned_prof(idx_to_bin,data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin_extract,inst,n_in_bin,data_glob[iexp]['cen_bins'],data_glob[iexp]['edge_bins'])
+                        data_mast_exp = calc_bin_prof(idx_to_bin,data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin_extract,inst,n_in_bin,data_glob[iexp]['cen_bins'],data_glob[iexp]['edge_bins'])
     
                     #Processing master and exposure over common pixels, defined and outside of selected range
                     #    - from here on data is processed in nu space
@@ -724,7 +725,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             #         = w_common / ((1+ (BERV/c))*(1- (rv[common/solbar]/c)) )
                             #    - once stellar lines have been removed by dividing exposure and master in the star rest frame, we align transmission spectra in the 
                             # frame of the telescope expected to trace more directly the wiggle
-                            dopp_star2earth = 1./(gen_specdopshift(data_prop[inst][vis]['BERV'][iexp])*(1.+1.55e-8)*gen_specdopshift(-coord_dic[inst][vis]['RV_star_stelCDM'][iexp]))
+                            dopp_star2earth = 1./(gen_specdopshift(data_prop[inst][vis]['BERV'][iexp])*(1.+1.55e-8)*gen_specdopshift(-rv_al_all[iexp]))
                             bin_ord_dic['high_nu']*= dopp_star2earth
                             bin_ord_dic['low_nu']*= dopp_star2earth
                             bin_ord_dic['nu']*= dopp_star2earth
@@ -850,7 +851,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
        
                                #Set fixed range to better visualize wiggles
                                x_range = [min_plot,max_plot]
-                               if gen_dic['wig_exp_init']['y_range'] is None:y_range = 1. + np.array([-1.,1])*np.abs(p_ord_best['amp'].value)*8.
+                               if gen_dic['wig_exp_init']['y_range'] is None:y_range = 1. + np.array([-1.,1])*np.std(Fr_bin_fit['Fr'])*10.
                                else:y_range = gen_dic['wig_exp_init']['y_range']
                          
                                #Plot each exposure and slices independently
@@ -2141,7 +2142,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     #            = wig(t) / sum(t in mast) , norm_weight(t)*wig(t))
                     #            = wig(t) / mast_wig(t)
                     #      where norm_weight(t) = weight(t)/sum(t in mast , weight(t)) 
-                    #      see calc_binned_profile() for the definition of Fmast
+                    #      see calc_bin_profile() for the definition of Fmast
                     #    - in a given iteration, we fit the wiggles for all exposures using the master wiggle calculated at the previous iteration
                     #      we then iterate until reaching convergence on all model parameters, defined as (par[i]/par[i-1]) - 1 < threshold
                     #    - if global fit is performed and wiggle normalization is not applied, there is no need for convergence
@@ -2724,6 +2725,7 @@ def wig_def_sampbands(comp_id,nu,shift_off,args,p_start_gen):
         #Return period of wiggle in nu space
         def samp_per(nu,comp_id_in):
             return 1./wig_freq_nu(comp_id,nu,p_start_gen,args)
+        
         #Smallest frequency is at low nu (smallest period is at low wavelength / high nu)
         min_bandwidth = args['nsamp'][comp_id]*samp_per(nu[-1],comp_id)
         nsamp_sub = int(shift_off/min_bandwidth)
@@ -3010,6 +3012,7 @@ def wig_perio_sampling(comp_id_proc,plot_samp,samp_fit_dic,shift_off,ishift_comp
     nu_amp[comp_id] = np.empty([3,0],dtype=float)
     fap_guess = {}
     src_range = {}
+    args['comp_mod'] = [comp_id]
     for iband,(low_theoband_edge,high_theoband_edge) in enumerate(zip(low_theoband_edges,high_theoband_edges)):
         irow = int(iband/nsub_col)
         icol = iband%nsub_col 
@@ -3106,7 +3109,6 @@ def wig_perio_sampling(comp_id_proc,plot_samp,samp_fit_dic,shift_off,ishift_comp
                         p_temp_best['Freq'+comp_str+'_c0_off'].max = src_range[1]
 
                 #Run fit over several iteration to converge, using the robust 'nelder' method
-                args['comp_mod'] = [comp_id]
                 args['idx_fit'] = np.ones(len(samp_fit_dic['nu'][comp_id]),dtype=bool)
                 for it in range(args['nit']):
                     _,_ ,p_temp_best = fit_minimization(ln_prob_func_lmfit,p_temp_best,samp_fit_dic['nu'][comp_id],samp_fit_dic['flux'][comp_id],np.array([samp_fit_dic['var'][comp_id]]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=args,maxfev = args['max_nfev'],method='nelder')

@@ -64,7 +64,7 @@ def ANTARESS_launcher(nbook_dic = {} , user = ''):
     
     #Moving to ANTARESS directory
     antaress_dir = os_system.path.dirname(__file__).split('Method')[0]
-    gen_dic['save_dir']= antaress_dir+'En_cours/'  
+    gen_dic['save_dir']= antaress_dir+'Ongoing/'  
     os_system.chdir(antaress_dir+'Method/')
     
     print('****************************************')

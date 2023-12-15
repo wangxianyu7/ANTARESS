@@ -3,13 +3,13 @@ from utils import stop,dataload_npz,datasave_npz,closest_arr,np_where1D,gen_spec
 from scipy.interpolate import griddata
 from copy import deepcopy
 import bindensity as bind
-from ANTARESS_routines.ANTARESS_binning import calc_binned_prof,def_weights_spatiotemp_bin,init_bin_rout
+from ANTARESS_routines.ANTARESS_binning import calc_bin_prof,weights_bin_prof,init_bin_prof
 from ANTARESS_routines.ANTARESS_init import check_data
 from ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc
 from ANTARESS_grids.ANTARESS_plocc_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_prop
 from ANTARESS_routines.ANTARESS_orbit import excl_plrange
 from ANTARESS_routines.ANTARESS_data_align import align_data
-from ANTARESS_analysis.ANTARESS_inst_resp import def_st_prof_tab,cond_conv_st_prof_tab,ref_inst_convol,resamp_model_st_prof_tab,conv_st_prof_tab
+from ANTARESS_analysis.ANTARESS_inst_resp import def_st_prof_tab,cond_conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab,conv_st_prof_tab
 
 
 def def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic):
@@ -117,7 +117,7 @@ def loc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_di
         in_type='Intr'
         dim_bin = opt_dic['dim_bin']
         if not gen_dic['align_Intr']:stop('Intrinsic profiles must have been aligned')
-    new_x_cen,_,_,x_cen_all,n_in_bin_all,idx_to_bin_all,dx_ov_all,_,idx_bin2orig,idx_bin2vis,idx_to_bin_unik = init_bin_rout(in_type,opt_dic[inst][vis],opt_dic['idx_in_bin'],dim_bin,coord_dic,inst,vis_to_bin,data_dic,gen_dic)
+    new_x_cen,_,_,x_cen_all,n_in_bin_all,idx_to_bin_all,dx_ov_all,_,idx_bin2orig,idx_bin2vis,idx_to_bin_unik = init_bin_prof(in_type,opt_dic[inst][vis],opt_dic['idx_in_bin'],dim_bin,coord_dic,inst,vis_to_bin,data_dic,gen_dic)
 
     #Find binned profile closest (along bin dimension ) to each processed in-transit exposure 
     if corr_mode=='Intrbin':idx_bin_closest = closest_arr(new_x_cen, x_cen_all[idx_aligned])
@@ -197,10 +197,10 @@ def loc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_di
             data_ref_align=align_data(data_ref,data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],data_loc_exp['cen_bins'], data_loc_exp['edge_bins'],rv_shift_cen,spec_dopshift_cen,spec_dopshift_edge = spec_dopshift_edge,rv_shift_edge = rv_shift_edge)
 
             #Weight profile
-            data_to_bin[iexp_off]['weight'] = def_weights_spatiotemp_bin(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_bin_glob,in_type,data_vis['type'],data_vis['dim_exp'],data_to_bin[iexp_off]['tell'],data_to_bin[iexp_off]['mean_gdet'],data_to_bin[iexp_off]['cen_bins'],coord_dic[inst][vis_bin]['t_dur'][iexp_off],data_ref_align['flux'],data_ref_align['cov'],bdband_flux_sc = gen_dic['flux_sc'])            
+            data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_bin_glob,in_type,data_vis['type'],data_vis['dim_exp'],data_to_bin[iexp_off]['tell'],data_to_bin[iexp_off]['mean_gdet'],data_to_bin[iexp_off]['cen_bins'],coord_dic[inst][vis_bin]['t_dur'][iexp_off],data_ref_align['flux'],data_ref_align['cov'],bdband_flux_sc = gen_dic['flux_sc'])            
             
         #Calculating binned profile
-        data_est_loc = calc_binned_prof(idx_to_bin_all[i_bin],data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin,inst,n_in_bin_all[i_bin],data_loc_exp['cen_bins'],data_loc_exp['edge_bins'],dx_ov_in = dx_ov_all[i_bin])
+        data_est_loc = calc_bin_prof(idx_to_bin_all[i_bin],data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin,inst,n_in_bin_all[i_bin],data_loc_exp['cen_bins'],data_loc_exp['edge_bins'],dx_ov_in = dx_ov_all[i_bin])
         
         #Rescaling measured intrinsic profile to the level of the local profile
         #    - this operation assumes that all exposures used to compute the master-out have not been rescaled with respect to the reference, ie that they all have the same flux balance as current exposure before it was rescaled
@@ -312,10 +312,10 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
             fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],theo_dic,system_param['star'],params)                  
 
             #Effective instrumental convolution
-            fixed_args['FWHM_inst'] = ref_inst_convol(inst,fixed_args,fixed_args['cen_bins'])
+            fixed_args['FWHM_inst'] = get_FWHM_inst(inst,fixed_args,fixed_args['cen_bins'])
 
         #Resampled spectral table for model line profile
-        if fixed_args['resamp']:resamp_model_st_prof_tab(None,None,None,fixed_args,gen_dic,1,theo_dic['rv_osamp_line_mod'])
+        if fixed_args['resamp']:resamp_st_prof_tab(None,None,None,fixed_args,gen_dic,1,theo_dic['rv_osamp_line_mod'])
         
         #Table for model calculation
         args_exp = def_st_prof_tab(None,None,None,fixed_args)      

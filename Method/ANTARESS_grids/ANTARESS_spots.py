@@ -4,7 +4,7 @@ from utils import np_poly,stop
 from ANTARESS_routines.ANTARESS_init import check_data
 from ANTARESS_routines.ANTARESS_orbit import conv_inclinedStarFrame_to_StarFrame,conv_StarFrame_to_inclinedStarFrame
 from ANTARESS_analysis.ANTARESS_model_prof import poly_prop_calc
-from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,return_FWHM_inst
+from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,calc_FWHM_inst
 from ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
 
 
@@ -721,7 +721,7 @@ def corr_spot(corr_spot_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo
                 data_exp['flux'][0] *= (1 - spot_occulted_flux - pl_occulted_flux)  /  cont_exp
                 
                 # Add the profile occulted by spots, taking into account instrumental dispersion :
-                data_exp['flux'][0] += convol_prof(spot_occulted_prof, fixed_args['cen_bins'][inst][vis], return_FWHM_inst(inst))
+                data_exp['flux'][0] += convol_prof(spot_occulted_prof, fixed_args['cen_bins'][inst][vis], calc_FWHM_inst(inst))
                 
                 # Reset the exposure continuum to the initial value (might be important if the profiles are not fitted again, especially in the Joined Residual profiles fitting). 
                 data_exp['flux'][0] *= cont_exp  /  (1 - pl_occulted_flux)
