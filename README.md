@@ -37,7 +37,7 @@ Because plots may require specific outputs of large size, the latter are not gen
 
 ## Notebooks
 
-Notebooks allows you to run a simplified version of the ANTARESS workflow. Their purpose is to help you familiarize with ANTARESS. To use the workflow to its full capabilities, user the configuration file.  
+Notebooks allows you to run a simplified version of the ANTARESS workflow. Their purpose is to help you familiarize with ANTARESS. To use the workflow to its full capabilities, use the configuration file.  
 
 Notebooks available in the namesake directory:
 - [ANTARESS_nbook_mock](Notebooks/ANTARESS_nbook_mock.ipynb) : to generate a mock CCF dataset
@@ -54,7 +54,7 @@ Notebooks available in the namesake directory:
 - run `pip install pysme-astro`
 - [ ] KitCat
 - install [gsl](https://www.gnu.org/software/gsl/) with `brew install gsl`
-- run `python setup_lbl_fit.py build` after setting up the path to your local python installation in this file. Then copy the compiled file `calculate_RV_line_by_line3.cpython-XX-darwin.so` into your ANTARESS/KitCat directory  
+- run `python setup_lbl_fit.py build` after setting up the path to your local python installation in the [setup_lbl_fit.py](ANTARESS_masks/KitCat/setup_lbl_fit.py). Then copy the compiled file `calculate_RV_line_by_line3.cpython-XX-darwin.so` into your ANTARESS/KitCat directory  
 
 ## Contributors
 **Main developer**: Vincent Bourrier (you can contact me for inquiries about the ANTARESS workflow and associated pipeline).  
