@@ -576,7 +576,6 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
         surf_prop_dic = {'chrom':surf_prop_dic['achrom']}
         surf_prop_dic_spot = {'chrom':surf_prop_dic_spot['achrom']}
 
-    print('1:', surf_prop_dic_spot[key_chrom[-1]])
     if 'use_spots' in param.keys():
         return surf_prop_dic, surf_prop_dic_spot
     else:
