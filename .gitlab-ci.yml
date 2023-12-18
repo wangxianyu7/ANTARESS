@@ -53,7 +53,7 @@ Generate documentation:
   script:
  #   - pip install dist/*.tar.gz
     - cd Docs
-    - ./Make_doc_git
+    - chmod +x ./Make_doc_git
     - make html
   artifacts:
     paths:
