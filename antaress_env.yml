@@ -1,0 +1,13 @@
+name: antaress
+channels:
+   - conda-forge
+dependencies:
+   - python>=3.6
+   - numpy>=1.16
+   - pytest
+   - sphinx
+   - numpydoc
+   - pydata-sphinx-theme
+   - matplotlib
+   - scipy
+   - twine
