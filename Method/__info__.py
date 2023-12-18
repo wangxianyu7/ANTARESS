@@ -1,26 +1,26 @@
 # -*- coding: utf-8 -*-
 
-# Copyright 2019-2023 Jean-Baptiste Delisle
+# Copyright 2023 Vincent Bourrier
 #
-# This file is part of spleaf.
+# This file is part of antaress.
 #
-# spleaf is free software: you can redistribute it and/or modify
+# antaress is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# spleaf is distributed in the hope that it will be useful,
+# antaress is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with spleaf.  If not, see <http://www.gnu.org/licenses/>.
+# along with antaress.  If not, see <http://www.gnu.org/licenses/>.
 
-__title__ = 'spleaf'
-__description__ = 'Symmetric S+LEAF matrix.'
-__author__ = 'Jean-Baptiste Delisle'
-__author_email__ = 'jean-baptiste.delisle@unige.ch'
+__title__ = 'antaress'
+__description__ = 'High-resolution spectroscopyy pipeline.'
+__author__ = 'Vincent Bourrier'
+__author_email__ = 'vincent.bourrier@unige.ch'
 __license__ = 'GPLv3'
-__url__ = 'https://gitlab.unige.ch/delisle/spleaf'
-__version__ = "2.1.9"
+__url__ = 'https://gitlab.unige.ch/bourrier/ANTARESS'
+__version__ = "1.0.0"
