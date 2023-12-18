@@ -52,11 +52,12 @@ Generate documentation:
   stage: documentation
   script:
  #   - pip install dist/*.tar.gz
-    - cd doc
+    - cd Docs
+    - ./Make_doc_git
     - make html
   artifacts:
     paths:
-      - doc/build/html
+      - Docs/build/html
     expire_in: 1 day
 
 #Deploy on Staging:
