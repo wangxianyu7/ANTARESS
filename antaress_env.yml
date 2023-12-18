@@ -4,11 +4,12 @@ channels:
 dependencies:
    - python>=3.6
    - numpy>=1.16
-   - pytest
+   #- pytest
    - sphinx
    - numpydoc
-   - pydata-sphinx-theme
+   #- pydata-sphinx-theme
    - matplotlib
    - scipy
-   - twine
+   #- twine
    - myst-nb
+   - sphinx-book-theme
