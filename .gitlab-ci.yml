@@ -8,7 +8,7 @@ variables:
   DACECALC1: "10.194.66.55"
 
 stages:
-  - build
+#  - build
 #  - test
   - documentation
 #  - staging
@@ -29,15 +29,15 @@ stages:
     - micromamba env create -f ${PROJECT_NAME}_env.yml
     - micromamba activate $PROJECT_NAME
 
-Build distribution:
-  extends: .setup_env
-  stage: build
-  script:
-    - python setup.py sdist
-  artifacts:
-    paths:
-      - dist/*.tar.gz
-    expire_in: 1 day
+#Build distribution:
+#  extends: .setup_env
+#  stage: build
+#  script:
+#    - python setup.py sdist
+#  artifacts:
+#    paths:
+#      - dist/*.tar.gz
+#    expire_in: 1 day
 
 #Run test:
 #  extends: .setup_env
@@ -51,7 +51,7 @@ Generate documentation:
   extends: .setup_env
   stage: documentation
   script:
-    - pip install dist/*.tar.gz
+ #   - pip install dist/*.tar.gz
     - cd doc
     - make html
   artifacts:
