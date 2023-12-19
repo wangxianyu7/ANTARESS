@@ -11,7 +11,7 @@ stages:
 #  - build
 #  - test
   - documentation
-#  - staging
+  - staging
 #  - production
 
 .setup_env:
@@ -60,12 +60,12 @@ Generate documentation:
       - Docs/build/html
     expire_in: 1 day
 
-#Deploy on Staging:
-#  extends: .setup_env
-#  stage: staging
-#  script:
+Deploy on Staging:
+  extends: .setup_env
+  stage: staging
+  script:
 #    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/staging/${PROJECT_NAME}/
-#    - rsync -rv --delete doc/build/html/ dacemgr@${DACECALC1}:/www/people/delisle/public/staging/${PROJECT_NAME}/doc
+    - rsync -rv --delete Docs/build/html/ dacemgr@${DACECALC1}:/www/people/bourriev/public/staging/${PROJECT_NAME}/doc
 
 # Release and deploy on Production:
 #   extends: .setup_env
