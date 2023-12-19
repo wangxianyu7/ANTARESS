@@ -51,22 +51,22 @@ Notebooks available in the namesake [directory](Notebooks/):
 - beware of masking ranges, as undefined pixels (set to nan values) are propagated when resampling or combining profiles in the various pipeline modules.
 - [ ] pySME
 - follow these instructions to install PySME on M1/M2 Macs.
-- install rosetta by running `softwareupdate --install-rosetta`
-- install Homebrew under rosetta by running  
+  - install rosetta by running `softwareupdate --install-rosetta`
+  - install Homebrew under rosetta by running  
 `$ arch -x86_64 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"` 
 This installs Homebrew under  
 `/usr/local/bin/brew`   
 instead of the default for arm64  
 `/opt/homebrew/bin/brew`
-- install gcc@9 by running
+  - install gcc@9 (see [documentation](https://tenderlovemaking.com/2022/01/07/homebrew-rosetta-and-ruby.html )) by running
 `$ arch -x86_64 /usr/local/bin/brew install gcc@9`
-- create a Conda environment to run under the intel x64_86 architecture and install PySME in this environment   
+  - create a Conda environment to run under the intel x64_86 architecture (see [documentation](https://abpcomputing.web.cern.ch/guides/apple_silicon/)) and install PySME in this environment   
 `CONDA_SUBDIR=osx-64 conda create -n envname python=3.11`
 then 
 `pip install pysme-astro`
-- on older Macs run
-install gcc9 with `brew install gcc@9`
-run `pip install pysme-astro`
+- follow these instructions to install PySME on older Macs
+  - install gcc9 with `brew install gcc@9`
+  - run `pip install pysme-astro`
 
 - [ ] KitCat
 - install [gsl](https://www.gnu.org/software/gsl/) with `brew install gsl`
@@ -74,4 +74,4 @@ run `pip install pysme-astro`
 
 ## Contributors
 **Main developer**: Vincent Bourrier (you can contact me for inquiries about the ANTARESS workflow and associated pipeline).  
-**Contributors**: Omar Attia, Romain Allart, Khaled Al Moulla, Heather Cegla, Michaël Cretignier, William Dethier, Jean-Baptiste Delisle, Xavier Dumusque, David Ehrenreich, Nathan Hara, Christophe Lovis, Samson Jules Mercier, Dany Mounzer, Francesco Alfonso Pepe, Julia Victoria Seidel, Michal Steiner, Sara Tavella, Valentina Vaulato, Theo Vrignaud, Aurélien Wyttenbach.
+**Contributors**: Omar Attia, Romain Allart, Khaled Al Moulla, Heather Cegla, Michaël Cretignier, William Dethier, Jean-Baptiste Delisle, Xavier Dumusque, David Ehrenreich, Erik Fridén, Nathan Hara, Christophe Lovis, Samson Jules Mercier, Dany Mounzer, Francesco Alfonso Pepe, Julia Victoria Seidel, Michal Steiner, Sara Tavella, Valentina Vaulato, Theo Vrignaud, Aurélien Wyttenbach.

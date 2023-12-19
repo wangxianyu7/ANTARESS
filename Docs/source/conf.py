@@ -12,7 +12,18 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('/Users/bourrier/Travaux/ANTARESS/Method/'))
+import glob
+
+#Identify whether doc is generated on gitlab or locally
+conf_path = os.path.abspath(os.path.dirname(__file__))
+if conf_path=='/builds/bourrier/antaress/Docs/source':
+	sys.path.insert(0, os.path.abspath('/builds/bourrier/antaress/Method/'))
+	for antaress_dir in glob.glob('/builds/bourrier/antaress/Method/ANTARESS_*/'):
+		sys.path.insert(0, os.path.abspath(antaress_dir))
+else:
+	sys.path.insert(0, os.path.abspath('/Users/bourrier/Travaux/ANTARESS/Method/'))
+	for antaress_dir in glob.glob('/Users/bourrier/Travaux/ANTARESS/Method/ANTARESS_*/'):
+		sys.path.insert(0, os.path.abspath(antaress_dir))
 
 # -- Project information -----------------------------------------------------
 
@@ -21,7 +32,7 @@ copyright = '2023, Vincent Bourrier'
 author = 'Vincent Bourrier'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = '1.0.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -77,16 +88,12 @@ html_theme = "sphinx_book_theme"
 html_copy_source = True
 html_show_sourcelink = True
 html_sourcelink_suffix = ""
-
-
-
-
-
-
-
-
-
-
-
-
-
+#html_theme_options = {
+ #   "path_to_docs": "docs",
+  #  "repository_url": repository_url,
+   # "repository_branch": repository_branch,
+    #"use_edit_page_button": False,
+#    "use_issues_button": False,
+ #   "use_repository_button": False,
+ #   "use_download_button": False,
+#}

@@ -1,0 +1,16 @@
+#!/bin/bash 
+echo "Generating ANTARESS doc files"
+
+#Create rst files from py files in Method/
+echo "  From py files in Method"
+sphinx-apidoc --force -o /builds/bourrier/antaress/Docs/source/ /builds/bourrier/antaress/Method/
+
+#Create rst files from py files in Method/ANTARESS_* directories
+for file in `find /builds/bourrier/antaress/Method -type d -name "ANTARESS_*"`
+do
+  echo "  From py files in $file"
+  sphinx-apidoc --force -o /builds/bourrier/antaress/Docs/source/ "$file"
+done
+
+#Generate html files
+make clean html
