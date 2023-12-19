@@ -13,3 +13,4 @@ dependencies:
    #- twine
    - myst-nb
    - sphinx-book-theme
+   - pathos
