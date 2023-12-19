@@ -5,7 +5,7 @@ default:
 variables:
   PROJECT_NAME: "antaress"
   PROJECT_ID: "8586"
-  DACECALC1: "10.194.66.55"
+  LOGIN01: "129.194.61.6"
 
 stages:
 #  - build
@@ -22,7 +22,7 @@ stages:
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
-    - echo "$SSH_KNOWN_HOSTS_DACECALC1" >> ~/.ssh/known_hosts
+    - echo "$SSH_KNOWN_HOSTS_LOGIN01" >> ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
     - curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
     - eval "$(./bin/micromamba shell hook -s posix)"
@@ -65,7 +65,7 @@ Deploy on Staging:
   stage: staging
   script:
 #    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/staging/${PROJECT_NAME}/
-    - rsync -rv --delete Docs/build/html/ dacemgr@${DACECALC1}:/www/people/bourriev/public/staging/${PROJECT_NAME}/doc
+    - rsync -rv --delete Docs/build/html/ bourriev@${LOGIN01}:/www/people/bourriev/public/staging/${PROJECT_NAME}/doc
 
 # Release and deploy on Production:
 #   extends: .setup_env
