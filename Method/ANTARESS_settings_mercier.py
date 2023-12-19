@@ -191,7 +191,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Star name
 
-    gen_dic['star_name']='AUMic' # mercier
+    # gen_dic['star_name']='AUMic' # mercier
+    gen_dic['star_name']='V1298tau'
 
     #Transiting planets
     if gen_dic['star_name']=='AUMic':
@@ -200,6 +201,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
             }
         gen_dic['kepl_pl'] = ['AUMicb']
     
+    if gen_dic['star_name']=='V1298tau':
+        gen_dic['transit_pl'] = {
+            'V1298tau_b':{'ESPRESSO' : ['mock_vis']}, 
+            }
+        gen_dic['kepl_pl'] = ['V1298tau_b']
+
     
     #Plot settings    
     
@@ -207,6 +214,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='AUMic':
         gen_dic['type']={'ESPRESSO':'CCF'}      
     
+    if gen_dic['star_name']=='V1298tau':
+        gen_dic['type']={'ESPRESSO':'CCF'}
   
     #Spectral frame
     gen_dic['sp_frame']='air'
@@ -287,6 +296,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Calculating/retrieving
     if gen_dic['star_name']=='AUMic':gen_dic['calc_proc_data']=True  #& False
+    if gen_dic['star_name']=='V1298tau':gen_dic['calc_proc_data']=True  #& False
 
     
         
@@ -432,7 +442,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
             'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.2,0.2]),'nexp':50}}}
             # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-2,2])/24.,'nexp':50}}}
                        
-
+    if gen_dic['star_name'] == 'V1298tau':
+        mock_dic['visit_def']={
+            'ESPRESSO':{'mock_vis' :{'exp_range':2457067.0488+np.array([-0.2, 0.2]),'nexp':40}}}
 
     
     #Spectral profile settings
@@ -440,10 +452,15 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Spectral table for disk-integrated profiles 
     if gen_dic['star_name'] == 'AUMic' :
         mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
-     
+    if gen_dic['star_name'] == 'V1298tau':
+        mock_dic['DI_table']={'x_start':-150.,'x_end':150.,'dx':0.8}
+
+
     #Heliocentric stellar RV
     if gen_dic['star_name']=='AUMic':
         mock_dic['sysvel']= {'ESPRESSO' : {'mock_vis' : 0.}} 
+    if gen_dic['star_name'] == 'V1298tau' : 
+        mock_dic['sysvel']= {'ESPRESSO' : {'mock_vis' : 0.}}  
 
     
     #Defining spot properties 
@@ -460,7 +477,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      # 'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
 
                      # For the spot 'spot1' : 
-                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 90,
+                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 30,
                      'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
                      'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 15,
                      'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.2,
@@ -474,7 +491,27 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     }
                 }
     
-    
+    if gen_dic['star_name']=='V1298tau':
+        mock_dic['use_spots'] = True
+        mock_dic['spots_prop']={
+             'ESPRESSO':{
+                 'mock_vis':{
+
+                     # For the spot 'spot1' : 
+                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : -30,
+                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2457067.0488 - 12/24,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 20,
+                     'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
+                    
+                     # For the spot 'spot2' : 
+                     'lat__ISESPRESSO_VSmock_vis_SPspot2'     : 40,
+                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2457067.0488 + 5/24,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
+                     'atten__ISESPRESSO_VSmock_vis_SPspot2'    : 0.6
+                         }
+                    }
+                }
+
     #Intrinsic stellar spectra             
     if gen_dic['star_name'] == 'AUMic' :
         mock_dic['intr_prof']={'ESPRESSO':{
@@ -487,21 +524,42 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
             'pol_mode' : 'modul'}
             }
 
+    if gen_dic['star_name'] =='V1298tau' :
+        mock_dic['intr_prof']={'ESPRESSO':{
+            'mode':'ana',        
+            'coord_line':'r_proj',
+            'func_prof_name': 'gauss',             
+            'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,
+                        'FWHM_ord0__IS__VS_'  : 4,
+                        
+                        'amp_l2c__ISESPRESSO_VSmock_vis' : 0.1,
+                        'RV_l2c__ISESPRESSO_VSmock_vis' : 0,
+                        'FWHM_l2c__ISESPRESSO_VSmock_vis' : 4,
+                        
+                        'a_damp__ISESPRESSO_VSmock_vis' : 0.5,
+                        'slope__ISESPRESSO_VSmock_vis' : 0,
+                        },
+            'pol_mode' : 'modul'}}  
 
     #Count continuum level
     if gen_dic['star_name'] == 'AUMic' :
         mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e8}}   
             
-     
+    if gen_dic['star_name'] == 'V1298tau' :
+        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e6}}   
+    
     #Noise settings
     
     #Instrumental calibration           
     if gen_dic['star_name'] == 'AUMic' : 
         mock_dic['gcal'] = {'ESPRESSO' : 1.}   
 
+    if gen_dic['star_name'] == 'V1298tau' : 
+        mock_dic['gcal'] = {'ESPRESSO' : 1.}  
 
     #Flux errors
     if gen_dic['star_name'] == 'AUMic': mock_dic['set_err']={'ESPRESSO':True}
+    if gen_dic['star_name'] == 'V1298tau': mock_dic['set_err']={'ESPRESSO':True}
     
     #Jitter on intrinsic profile properties
        
@@ -839,13 +897,15 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     gen_dic['calc_theoPlOcc']=True  # &  False  
 
     #Precision
-    # theo_dic['precision'] = 'high'
-    theo_dic['precision'] = 'medium'
+    theo_dic['precision'] = 'high'
+    # theo_dic['precision'] = 'medium'
 
     #Star discretization      
     if gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dstar']=101
-         
+        theo_dic['nsub_Dstar']=101.
+    
+    if gen_dic['star_name']=='V1298tau':
+        theo_dic['nsub_Dstar']=201.
             
     #Stellar macroturbulence
     theo_dic['mac_mode'] = None
@@ -856,15 +916,23 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='AUMic':
         theo_dic['nsub_Dpl']= {'AUMicb':101.}                
 
+    if gen_dic['star_name']=='V1298tau':
+        theo_dic['nsub_Dpl']={'V1298tau_b':21.}
+
     #Spot discretization
     if gen_dic['star_name']=='AUMic':
         theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
         
+    if gen_dic['star_name']=='V1298tau':
+        theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
     #Exposure discretization
     if gen_dic['star_name']=='AUMic':
         theo_dic['n_oversamp']={'AUMicb':5.}
-        theo_dic['n_oversamp_spot']={'spot1':5, 'spot2':5}
+        theo_dic['n_oversamp_spot']={'spot1':5., 'spot2':5.}
     
+    if gen_dic['star_name']=='V1298tau':
+        theo_dic['n_oversamp'] = {'V1298tau_b':5.}
+        theo_dic['n_oversamp_spot']={'spot1':1., 'spot2':1.}
     #RV table        
 
     # #Oversampling 
@@ -908,6 +976,18 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         plot_dic['nph_HR'] = 100
         
     
+    if gen_dic['star_name']=='V1298tau':
+        #Range of planet-occulted properties
+        plot_dic['plocc_ranges']=''    
+        
+        #Planet-occulted stellar regions
+        plot_dic['occulted_regions']='png'
+        
+        #Planetary system architecture
+        plot_dic['system_view']='png'   #png
+
+        #Transit chord discretization        
+        plot_dic['nph_HR'] = 100
 
     # '''   
     # Calculating properties of spots
@@ -2239,13 +2319,20 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Order to be fitted
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}     
+    
+    if gen_dic['star_name']=='V1298tau':
+        data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}     
 
 
     #Continuum range
     if gen_dic['star_name']=='AUMic':data_dic['DI']['cont_range']['ESPRESSO']={0:[[-100.,-80.],[80.,100.]]} 
         
+    if gen_dic['star_name']=='V1298tau':data_dic['DI']['cont_range']['ESPRESSO']={0:[[14.-90.,14.-40.],[14.+40.,14.+90.]]} 
+
     #Spectral range(s) to be fitted
     if gen_dic['star_name']=='AUMic':data_dic['DI']['fit_range']['ESPRESSO']={'mock_vis':[[-100.,100.]]}  
+
+    if gen_dic['star_name']=='V1298tau':data_dic['DI']['fit_range']['ESPRESSO']={'mock_vis':[[14.-90.,14.+90.]]}  
             
     #Direct measurements
     # data_dic['DI']['meas_prop']={
@@ -2267,6 +2354,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Model type    
     if gen_dic['star_name']=='AUMic':    
+        data_dic['DI']['model']['ESPRESSO']='gauss'
+
+    if gen_dic['star_name']=='V1298tau':    
         data_dic['DI']['model']['ESPRESSO']='gauss'
 
     #Intrinsic line properties  
@@ -2401,6 +2491,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['sysvel']={'ESPRESSO' : {'mock_vis' : 0}} 
      
+    if gen_dic['star_name']=='V1298tau':
+        data_dic['DI']['sysvel']={'ESPRESSO' : {'mock_vis' : 0}} 
+
     #Plots: aligned disk-integrated profiles
     plot_dic['all_DI_data']=''     #pdf    
     
@@ -2636,6 +2729,15 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                 }
                 }   
 
+    if gen_dic['star_name']=='V1298tau':
+        data_dic['DI']['system_prop']={
+                'achrom':{
+                    'V1298tau_b' : [0.0700],
+                    'LD':['linear'],
+                    'LD_u1' : [0.41]
+                }
+                }
+
     #Intensity settings for the spots
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['spots_prop']={
@@ -2649,6 +2751,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                 },
                 }
 
+    if gen_dic['star_name']=='V1298tau':
+        data_dic['DI']['spots_prop']={
+                'achrom':{
+                    'spot1' : [20 * np.pi/180],
+                    'spot2' : [25 * np.pi/180],
+                    'LD' : ['quadratic'],
+                    'LD_u1' : [0.41],
+
+                },
+                }
     #Transit light curve model    
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['transit_prop'].update({    
@@ -2657,7 +2769,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                 'ESPRESSO':{'mock_vis':{'mode':'simu','n_oversamp':5}},
                 })
       
-      
+    if gen_dic['star_name']=='V1298tau':
+        data_dic['DI']['transit_prop'].update({
+                'ESPRESSO':{'mock_vis':{'mode':'model', 'dt':0.05}}
+                })  
+
     #Forcing in/out transit flag
 
 
@@ -3082,6 +3198,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Continuum range
     if gen_dic['star_name']=='AUMic':data_dic['Res']['cont_range']['ESPRESSO']={0 : [[-150.,-70.],[70.,150.]]}
 
+    if gen_dic['star_name']=='V1298tau':data_dic['Res']['cont_range']['ESPRESSO']={0 : [[-150.,-70.],[70.,150.]]  }
 
     #Error definition
     data_dic['Res']['disp_err']=False
@@ -3162,7 +3279,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='AUMic':
         data_dic['Intr']['cont_range'] = deepcopy(data_dic['Res']['cont_range'])
 
-    
+    if gen_dic['star_name']=='V1298tau':
+        data_dic['Intr']['cont_range'] = deepcopy(data_dic['Res']['cont_range'])
+
     #Calculating/retrieving continuum 
     data_dic['Intr']['calc_cont'] = True# & False
 
@@ -3177,6 +3296,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['map_Intr_prof']=''   #'png 
 
     if gen_dic['star_name']=='AUMic':
+        plot_dic['map_Intr_prof']='png'
+
+    if gen_dic['star_name']=='V1298tau':
         plot_dic['map_Intr_prof']='png'
 
     #Individual intrinsic stellar profiles
@@ -3342,7 +3464,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         data_dic['Intr']['align_ref_pl']={'ESPRESSO':{'mock_vis' : 'AUMicb'}}
     
     
-    
+    if gen_dic['star_name']=='V1298tau':
+        data_dic['Intr']['align_ref_pl']={'ESPRESSO':{'mock_vis' : 'V1298tau_b'}}
 
     
     
@@ -3704,6 +3827,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='AUMic':
         data_dic['Intr']['fit_range']['ESPRESSO']={'mock_vis' : [[-130.,130.]] }
     
+    if gen_dic['star_name']=='V1298tau':
+        data_dic['Intr']['fit_range']['ESPRESSO']={'mock_vis' : [[-130.,130.]] }
+
     #Model type  
             
     #Intrinsic line properties
@@ -4275,6 +4401,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name'] == 'AUMic':
      glob_fit_dic['IntrProf']['idx_in_fit'] = deepcopy(glob_fit_dic['IntrProp']['idx_in_fit'])
   
+    if gen_dic['star_name'] == 'V1298tau':
+     glob_fit_dic['IntrProf']['idx_in_fit'] = deepcopy(glob_fit_dic['IntrProp']['idx_in_fit'])
+
     #Trimming
     glob_fit_dic['IntrProf']['trim_range'] = deepcopy(data_dic['Intr']['fit_prof']['trim_range'])   
 

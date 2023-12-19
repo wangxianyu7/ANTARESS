@@ -86,7 +86,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
 
             #Calculating theoretical properties of the planet occulted-regions 
             if (gen_dic['theoPlOcc']): 
-                calc_plocc_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'])
+                calc_plocc_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'], mock_dic=mock_dic)
             
             #Calculating theoretical properties of the spot occulted-regions 
             if (gen_dic['theo_spots']): 

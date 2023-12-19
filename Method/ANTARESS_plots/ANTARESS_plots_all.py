@@ -228,7 +228,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #High-resolution RV model 
                     #    - achromatic
                     params = deepcopy(system_param['star'])
-                    params.update({'rv':0.,'cont':1.})  
+                    params.update({'rv':0.,'cont':1.})
                     if plot_options['theoRV_HR']:
                         theo_HR_prop_plocc = calc_occ_plot(deepcopy(theo_dic),inst,vis,{},params,{},deepcopy(system_param))
                     if plot_options['theoRV_HR_align']:
@@ -3073,7 +3073,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     y_min=min(y_min,np.nanmin(theo_HR_prop_plocc[pl_ref]['rv']))
                     y_max=max(y_max,np.nanmax(theo_HR_prop_plocc[pl_ref]['rv']))
 
-                    #Global RV model      
+                    #Global RV model
                     if (prop_mode=='rv'):
 
                         #Contributions to the global RV model                        

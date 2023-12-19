@@ -2446,17 +2446,17 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         #    + 'TILT1 VAL1','TILT1 VAL2','TILT2 VAL1','TILT2 VAL2': ESPRESSO piezo intel
         #    + 'EW': equivalent width
         #    + 'biss_span': bissector span
-        plot_settings['prop_raw_ordin']=['rv','FWHM','ctrst','AM', 'snr','rv_res','RVdrift']
-        plot_settings['prop_raw_ordin']=['rv','rv_res','FWHM','ctrst','rv_pip','rv_pip_res','FWHM_pip','ctrst_pip']
-        plot_settings['prop_raw_ordin']=['AM', 'snr']        
+        # plot_settings['prop_raw_ordin']=['rv','FWHM','ctrst','AM', 'snr','rv_res','RVdrift']
+        # plot_settings['prop_raw_ordin']=['rv','rv_res','FWHM','ctrst','rv_pip','rv_pip_res','FWHM_pip','ctrst_pip']
+        # plot_settings['prop_raw_ordin']=['AM', 'snr']        
         # plot_settings['prop_raw_ordin']=['AM', 'snr_quad','seeing','ha','na','ca','s','rhk']  #ESPRESSO
         # plot_settings['prop_raw_ordin']=['AM', 'snr','seeing','ha','na','ca','s']    #HARPS
         # plot_settings['prop_raw_ordin']=['AM', 'snr','ha','na','ca','s']    #HARPS-N
-        plot_settings['prop_raw_ordin']=['rv','rv_res','FWHM','ctrst']
+        # plot_settings['prop_raw_ordin']=['rv','rv_res','FWHM','ctrst']
         # plot_settings['prop_raw_ordin']=['rv','rv_res','FWHM','ctrst']
         # plot_settings['prop_raw_ordin']+=['rv_pip']
         # plot_settings['prop_raw_ordin']=['rv_pip','rv_pip_res','FWHM_pip','ctrst_pip']
-        plot_settings['prop_raw_ordin']=['rv_res','FWHM','ctrst']
+        plot_settings['prop_raw_ordin']=['rv', 'rv_res','FWHM','ctrst']
         # plot_settings['prop_raw_ordin']=['biss_span']
         # plot_settings['prop_raw_ordin']=['rv_res','FWHM_voigt','ctrst']
         # plot_settings['prop_raw_ordin']=['rv_res','ctrst']
@@ -2573,6 +2573,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 # plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['mock_vis']}                 
                 
             elif gen_dic['star_name'] == 'AUMic':
+                plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['mock_vis']}
+
+            elif gen_dic['star_name'] == 'V1298tau':
                 plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['mock_vis']}
 
             elif gen_dic['studied_pl']=='Corot7b':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2019-02-20']} 
@@ -2743,7 +2746,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             elif gen_dic['star_name']=='HIP41378':plot_settings[key_plot]['color_dic']={'HARPN':{'20191218':'dodgerblue','20220401':'red'}}   
             elif gen_dic['star_name']=='TOI858':plot_settings[key_plot]['color_dic']={'CORALIE':{'20191205':'dodgerblue','20210118':'red'}}            
             elif gen_dic['star_name']=='MASCARA1':plot_settings[key_plot]['color_dic']={'ESPRESSO':{'20190714':'dodgerblue','20190811':'red'}}  
-            elif gen_dic['star_name']=='V1298tau':plot_settings[key_plot]['color_dic']={'HARPN':{'20200128':'dodgerblue','20201207':'red'}}  
+            # elif gen_dic['star_name']=='V1298tau':plot_settings[key_plot]['color_dic']={'HARPN':{'20200128':'dodgerblue','20201207':'red'}}  
             # elif gen_dic['star_name']=='HAT_P3':plot_settings[key_plot]['color_dic']={'HARPN':{'20190415':'dodgerblue','20200130':'red'}}         
             elif gen_dic['star_name']=='WASP107':plot_settings[key_plot]['color_dic']={'HARPS':{'20140406':'dodgerblue','20180201':'red','20180313':'limegreen'},'CARMENES_VIS':{'20180224':'orange'}}          
             elif gen_dic['star_name']=='WASP166':plot_settings[key_plot]['color_dic']={'HARPS':{'20170114':'dodgerblue','20170304':'red','20170315':'limegreen'}}          
@@ -4132,7 +4135,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['v_range_all']={'HARPN':{'2016-10-01':[-1e-3  ,  1.6e-3]}}
 
         elif gen_dic['star_name']=='V1298tau':
-            plot_settings[key_plot]['v_range_all']={'HARPN':{'20200128':[-0.01,0.02],'20201207':[-0.01,0.02], 'mock_vis' : [-0.01,0.02]}}   #pour voir in et out
+            plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'20200128':[-0.01,0.02],'20201207':[-0.01,0.02], 'mock_vis' : [-0.01,0.02]}}   #pour voir in et out
         
         #Reversed image 
         if plot_settings[key_plot]['reverse_2D']:   
@@ -7744,10 +7747,15 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
             plot_settings[key_plot]['t_BJD'] = None
             
+        if gen_dic['star_name']=='V1298tau':
+            plot_settings[key_plot]['t_BJD'] = None
         #Defining a boolean to decide whether we make a GIF
         #    - this is only used if we plot multiple exposures.
         plot_settings[key_plot]['GIF_generation']=True & False
         if gen_dic['star_name']=='AUMic':
+            plot_settings[key_plot]['GIF_generation']=True
+
+        if gen_dic['star_name']=='V1298tau':
             plot_settings[key_plot]['GIF_generation']=True
 
 
@@ -8041,7 +8049,14 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['spot_overlap'] = False  
 
         elif gen_dic['star_name']=='V1298tau':
-            plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'atten' : 0.6}   
+            # plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'atten' : 0.6}   
+            plot_settings[key_plot]['n_image_spots'] = 40
+            
+            plot_settings[key_plot]['time_range_spot'] = 2457067.0488+np.array([-0.2, 0.2])
+            
+            plot_settings[key_plot]['plot_spot_all_Peq'] = False  
+
+            plot_settings[key_plot]['spot_overlap'] = False  
 
                                      
         

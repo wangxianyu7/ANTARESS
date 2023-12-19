@@ -1310,10 +1310,33 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
 
     cond_in_sp = x_spot_grid**2. + y_spot_grid**2. <= spot_prop['ang_rad']**2
 
-    #Figure out the number of cells occulted and store it
+    #Figure out the number of cells occulted and store it - account for overlap when using oversampling
     n_occ_sp = np.sum(cond_in_sp)
     if n_occ_sp > 0:
         cond_occ = True
+        # #Move coordinates of the new spot position to previous spot reference frame
+        # if spot_prop['prev_x_sky_grid'] != []:
+
+        #     current_sp_x_st_grid, current_sp_y_st_grid, current_sp_z_st_grid = conv_inclinedStarFrame_to_StarFrame(new_x_sky_grid[cond_in_sp], new_y_sky_grid[cond_in_sp], new_z_sky_grid[cond_in_sp], star_params['istar_rad'])
+
+        # prev_sp_x_st_sky, prev_sp_y_st_sky
+        # #Removing spot cells already processed for previous occultations
+        #     cond_pl_occ_corr = np.repeat(True,n_occ_sp)
+        #     for sp_prev in spot_proc_band:
+    
+        #         #Coordinate of previous planet center in the 'inclined star' frame
+        #         x_st_sky_prev,y_st_sky_prev,_=conv_Losframe_to_inclinedStarFrame(lambda_rad_pl[pl_prev],x_pos_pl[pl_prev][idx],y_pos_pl[pl_prev][idx],None)
+
+        #         #Cells occulted by current planet and not previous ones
+        #         #    - condition is that cells must be beyond previous planet grid in this band
+        #         RpRs_prev = system_prop[pl_prev][iband]
+        #         cond_pl_occ_corr &= ( (coord_grid['x_st_sky'] - x_st_sky_prev)**2.+(coord_grid['y_st_sky'] - y_st_sky_prev)**2. > RpRs_prev**2. )
+        #     for key in coord_grid:coord_grid[key] = coord_grid[key][cond_pl_occ_corr]
+        #     n_pl_occ = np.sum(cond_pl_occ_corr)
+      
+        #     #Store planet as processed in current band
+        #     pl_proc_band+=[pl_loc]    
+
     #--------------------------------
     #Making the grid of coordinates for the calc_Isurf_grid function.
     coord_grid = {}
@@ -1344,6 +1367,9 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
     Focc_star_band += Ftot_occ[0]
     sum_prop_dic_spot['nocc'] += coord_grid['nsub_star']
     
+    #Remove xp_abs from the list if it's in there
+    if 'xp_abs' in par_list : par_list.remove('xp_abs')
+
     #Sky-projected distance from star center
     if ('r_proj' in par_list) or (('coord_line' in args) and (args['coord_line']=='r_proj')):coord_grid['r_proj'] = np.sqrt(coord_grid['r2_st_sky'])                   
 
@@ -1426,7 +1452,7 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
         emit_line_prof_grid = coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),(1-spot_prop['atten'])*Fsurf_grid_occ[:,0],args['flux_intr_grid'],coord_grid['mu'],par_star,args)          
         
         #Coadd line profiles over spot-occulted region
-        sum_prop_dic_spot['line_prof'] = np.sum((line_prof_grid-emit_line_prof_grid),axis=0) 
+        sum_prop_dic_spot['line_prof'] = np.sum((np.array(line_prof_grid)-np.array(emit_line_prof_grid)),axis=0) 
   
     #Define rotational broadening of planet-occulted region
     elif line_occ_HP_band in ['low','medium']:

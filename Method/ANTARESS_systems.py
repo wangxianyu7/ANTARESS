@@ -1503,19 +1503,20 @@ all_system_params={
         'star':{   #Provided by A. Sozetti and G. Guilluy
         'Rstar':1.345,     #David2019ApJL) 
         'istar':90.,
+        'Mstar':1.101,
         'veq':23.59, #-0.26 +0.31		         			fitted from prior 24 +- 1.  (Calculated from LD fit with free LD coefficient (i), see LD)
             },
     #------------------------------
     'V1298tau_b':{   #Provided by A. Sozetti and G. Guilluy
-        'period':24.1414410,			#David priv. comm.
-        'TCenter':None,      #Set to visit-specific values
+        'period':24.1396,			#David priv. comm.
+        'TCenter':2457067.0488,      #Set to visit-specific values
         'ecc':0.,
-        'omega_deg':90.,
+        'omega_deg':92.,
         'Kstar':40.5,
-        'aRs':26.98847695192694,  #(Ggrav/(4*!dpi^2.))^(1./3.)*(Mstar)^(1./3.)*((Per)^(2./3.)/Rstar) = (2942.71377/(4*np.pi**2.))**(1./3.)*(1.101)**(1./3.)*(24.1414410**(2./3.)/1.345)    ;From Sozzetti et al. 2007
+        'aRs':27.0,  #(Ggrav/(4*!dpi^2.))^(1./3.)*(Mstar)^(1./3.)*((Per)^(2./3.)/Rstar) = (2942.71377/(4*np.pi**2.))**(1./3.)*(1.101)**(1./3.)*(24.1414410**(2./3.)/1.345)    ;From Sozzetti et al. 2007
         'inclination':89.00,   # -0.24+0.46  						David2019b
         'TLength':6.42/24.,      #Feinstein2021
-        'lambda_proj':0.
+        'lambda_proj':4.
     }, 
 
     },      
