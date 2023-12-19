@@ -28,6 +28,8 @@ stages:
     - eval "$(./bin/micromamba shell hook -s posix)"
     - micromamba env create -f ${PROJECT_NAME}_env.yml
     - micromamba activate $PROJECT_NAME
+    - pip install PyAstronomy
+    - pip install --extra-index-url https://vincent:cestpasfaux@obswww.unige.ch/~delisle/staging bindensity --upgrade
 
 #Build distribution:
 #  extends: .setup_env
