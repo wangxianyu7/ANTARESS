@@ -30,6 +30,7 @@ stages:
     - micromamba activate $PROJECT_NAME
     - pip install PyAstronomy
     - pip install --extra-index-url https://vincent:cestpasfaux@obswww.unige.ch/~delisle/staging bindensity --upgrade
+    - eval "$/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)""
     - brew install gcc@9
 
 #Build distribution:
