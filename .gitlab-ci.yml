@@ -12,7 +12,7 @@ stages:
 #  - test
   - documentation
   - staging
-#  - production
+  - production
 
 .setup_env:
   before_script:
@@ -67,16 +67,16 @@ Deploy on Staging:
 #    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/staging/${PROJECT_NAME}/
     - rsync -rv --delete Docs/build/html/ bourriev@${LOGIN01}:/www/people/bourriev/public/staging/${PROJECT_NAME}/doc
 
-# Release and deploy on Production:
-#   extends: .setup_env
-#   stage: production
-#   script:
-#     # According to documentation, gitlab uses detached HEAD and we need to go back to master to release.
-#     # See https://gitlab.com/gitlab-org/gitlab-ce/issues/19421
-#     - git checkout -B master origin/master
-#     - git config --global user.name 'Gitlab CI'
-#     - git config --global user.email ''
-#     - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/delisle/${PROJECT_NAME}.git"
+Release and deploy on Production:
+  extends: .setup_env
+  stage: production
+  script:
+    # According to documentation, gitlab uses detached HEAD and we need to go back to master to release.
+    # See https://gitlab.com/gitlab-org/gitlab-ce/issues/19421
+    - git checkout -B master origin/master
+    - git config --global user.name 'Gitlab CI'
+    - git config --global user.email ''
+    - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/bourrier/${PROJECT_NAME}.git"
 #     # Tag
 #     - VERSION=`grep __version__ ${PROJECT_NAME}/__info__.py | sed 's/.*version__ = "//' | sed 's/"//'`
 #     - TAG_VERSION="v$VERSION"
@@ -103,4 +103,4 @@ Deploy on Staging:
 #     - git add ${PROJECT_NAME}/__info__.py
 #     - git commit -m "Upgrade project to next version $NEW_VERSION"
 #     - git push origin master --quiet
-#   when: manual
+  when: manual
