@@ -71,9 +71,9 @@ Release and deploy on Production:
   extends: .setup_env
   stage: production
   script:
-    # According to documentation, gitlab uses detached HEAD and we need to go back to master to release.
+    # According to documentation, gitlab uses detached HEAD and we need to go back to main to release.
     # See https://gitlab.com/gitlab-org/gitlab-ce/issues/19421
-    - git checkout -B master origin/master
+    - git checkout -B main origin/main
     - git config --global user.name 'Gitlab CI'
     - git config --global user.email ''
     - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/bourrier/${PROJECT_NAME}.git"
