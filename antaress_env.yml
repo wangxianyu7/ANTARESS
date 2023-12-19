@@ -19,4 +19,4 @@ dependencies:
    - pandas
    - dace-query
    - statsmodels
-   - PyAstronomy
+   - PyAstronomy[occult]
