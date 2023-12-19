@@ -17,6 +17,6 @@ dependencies:
    - astropy
    - emcee
    - pandas
-   - dace_query
+   - dace-query
    - statsmodels
    - PyAstronomy
