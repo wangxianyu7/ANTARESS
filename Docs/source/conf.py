@@ -17,10 +17,11 @@ import glob
 #Identify whether doc is generated on gitlab or locally
 conf_path = os.path.abspath(os.path.dirname(__file__))
 if conf_path=='/builds/bourrier/antaress/Docs/source':
+	print(sys.path)
 	sys.path.insert(0, os.path.abspath('/builds/bourrier/antaress/Method/'))
 	for antaress_dir in glob.glob('/builds/bourrier/antaress/Method/ANTARESS_*/'):
 		sys.path.insert(0, os.path.abspath(antaress_dir))
-		print(antaress_dir)
+	print(sys.path)
 else:
 	sys.path.insert(0, os.path.abspath('/Users/bourrier/Travaux/ANTARESS/Method/'))
 	for antaress_dir in glob.glob('/Users/bourrier/Travaux/ANTARESS/Method/ANTARESS_*/'):
