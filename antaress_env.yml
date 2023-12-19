@@ -10,6 +10,7 @@ dependencies:
    - scipy
    - myst-nb
    - sphinx-book-theme
+   - PyAstronomy
    - pathos
    - mpmath
    - lmfit
@@ -19,4 +20,3 @@ dependencies:
    - pandas
    - dace-query
    - statsmodels
-   - PyAstronomy[occult]
