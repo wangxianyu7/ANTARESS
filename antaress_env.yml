@@ -4,13 +4,19 @@ channels:
 dependencies:
    - python>=3.6
    - numpy>=1.16
-   #- pytest
    - sphinx
    - numpydoc
-   #- pydata-sphinx-theme
    - matplotlib
    - scipy
-   #- twine
    - myst-nb
    - sphinx-book-theme
    - pathos
+   - mpmath
+   - lmfit
+   - batman-package
+   - astropy
+   - emcee
+   - pandas
+   - dace_query
+   - statsmodels
+   - PyAstronomy
