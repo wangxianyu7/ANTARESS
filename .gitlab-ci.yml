@@ -77,13 +77,13 @@ Release and deploy on Production:
     - git config --global user.name 'Gitlab CI'
     - git config --global user.email ''
     - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/bourrier/${PROJECT_NAME}.git"
-#     # Tag
-#     - VERSION=`grep __version__ ${PROJECT_NAME}/__info__.py | sed 's/.*version__ = "//' | sed 's/"//'`
-#     - TAG_VERSION="v$VERSION"
-#     - git tag -a "$TAG_VERSION" -m "Release $PROJECT_NAME $TAG_VERSION"
-#     - git push origin "$TAG_VERSION" --quiet
-#     - CHANGES=`cat CHANGES.txt`
-#     # Add release on gitlab (via gitlab API)
+    # Tag
+    - VERSION=`grep __version__ ${PROJECT_NAME}/__info__.py | sed 's/.*version__ = "//' | sed 's/"//'`
+    - TAG_VERSION="v$VERSION"
+    - git tag -a "$TAG_VERSION" -m "Release $PROJECT_NAME $TAG_VERSION"
+    - git push origin "$TAG_VERSION" --quiet
+    - CHANGES=`cat CHANGES.txt`
+    # Add release on gitlab (via gitlab API)
 #     - curl -X POST -H "PRIVATE-TOKEN:$RELEASE_TOKEN" -F "name=Release $PROJECT_NAME $TAG_VERSION" -F "tag_name=$TAG_VERSION" -F "ref=$TAG_VERSION" -F "description=Changes:$CHANGES" "https://gitlab.unige.ch/api/v4/projects/${PROJECT_ID}/releases"
 #     # Deploy on https://obswww.unige.ch/~delisle/
 #     - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/${PROJECT_NAME}/
