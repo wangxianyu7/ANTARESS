@@ -78,7 +78,7 @@ Release and deploy on Production:
     - git config --global user.email ''
     - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/bourrier/${PROJECT_NAME}.git"
     # Tag
-    - VERSION=`grep __version__ ${PROJECT_NAME}/__info__.py | sed 's/.*version__ = "//' | sed 's/"//'`
+    - VERSION=`grep __version__ __info__.py | sed 's/.*version__ = "//' | sed 's/"//'`
     - TAG_VERSION="v$VERSION"
     - git tag -a "$TAG_VERSION" -m "Release $PROJECT_NAME $TAG_VERSION"
     - git push origin "$TAG_VERSION" --quiet
