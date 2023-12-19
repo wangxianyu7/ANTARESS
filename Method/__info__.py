@@ -18,7 +18,7 @@
 # along with antaress.  If not, see <http://www.gnu.org/licenses/>.
 
 __title__ = 'antaress'
-__description__ = 'High-resolution spectroscopyy pipeline.'
+__description__ = 'High-resolution spectroscopy pipeline.'
 __author__ = 'Vincent Bourrier'
 __author_email__ = 'vincent.bourrier@unige.ch'
 __license__ = 'GPLv3'
