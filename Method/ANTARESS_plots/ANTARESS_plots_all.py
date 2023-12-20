@@ -676,7 +676,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #------------------------------------  
                                       
                             #Modelled and measured local stellar surface RVs
-                            if (data_type == 'CCF'):
+                            if (data_type == 'CCF') and 1==0:
     
                                 #Local stellar residual profiles
                                 if (plot_mod in ['map_Res_prof','map_Intr_prof_est','map_Intr_prof_res','map_Intrbin']) or ((plot_mod in ['map_Intr_prof']) and (not plot_options['aligned'])):

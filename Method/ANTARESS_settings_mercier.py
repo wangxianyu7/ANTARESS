@@ -191,8 +191,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Star name
 
-    # gen_dic['star_name']='AUMic' # mercier
-    gen_dic['star_name']='V1298tau'
+    gen_dic['star_name']='AUMic' # mercier
+    # gen_dic['star_name']='V1298tau'
 
     #Transiting planets
     if gen_dic['star_name']=='AUMic':

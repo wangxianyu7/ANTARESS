@@ -540,7 +540,6 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                         if ('chrom' in key_chrom):idx_w['chrom'] = range(system_prop['chrom']['nw'])
                         surf_prop_dic[key_chrom[-1]]['line_prof'][:,i_in]+=plocc_prof(args,transit_pl_exp,coord_reg_dic,idx_w,system_prop,key_chrom,par_star,theo_dic)
             
-            
             n_osamp_exp_eff_sp = 0
             #Loop on oversampled exposure positions - spots
             for iosamp in range(n_osamp_exp_sp):
@@ -582,7 +581,8 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                             
                             Focc_star_sp[subkey_chrom][iband], cond_occ_sp = new_new_calc_spotted_region_prop(line_occ_HP[subkey_chrom][iband], cond_occ_sp, spot_prop_oversamp, iband, system_spot_prop[subkey_chrom], star_params, theo_dic['Ssub_Sstar_sp'][spot], 
                                                             theo_dic['Ssub_Sstar'], theo_dic['Istar_norm_'+subkey_chrom], par_star, sum_prop_dic[subkey_chrom][spot], coord_reg_dic[subkey_chrom][spot], 
-                                                            range_dic[subkey_chrom][spot], Focc_star_sp[subkey_chrom][iband], par_list, range_par_list, args, cb_band_dic[subkey_chrom][iband])
+                                                            range_dic[subkey_chrom][spot], Focc_star_sp[subkey_chrom][iband], par_list, range_par_list, args, cb_band_dic[subkey_chrom][iband], 
+                                                            pl_loc_x = coord_pl_in[pl_loc]['cen_pos'][0,iexp], pl_loc_y = coord_pl_in[pl_loc]['cen_pos'][1,iexp], RpRs = system_prop[subkey_chrom][pl_loc][iband], plocc = (n_osamp_exp_eff>=1))
 
                             #Cumulate line profile from spot-occulted cells
                             #    - in high-precision mode there is a single subkey_chrom and achromatic band, but several spots may have been processed

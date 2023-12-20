@@ -1254,7 +1254,8 @@ def spot_occ_region_grid(RspRs, nsub_Dsp):
 
 
 
-def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iband, system_spot_prop, star_params, Ssub_Sstar_sp, Ssub_Sstar_ref, Istar_norm_band, par_star, sum_prop_dic_spot, coord_reg_dic_spot, range_reg_dic_spot, Focc_star_band, par_list, range_par_list, args, cb_band) :
+def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iband, system_spot_prop, star_params, Ssub_Sstar_sp, Ssub_Sstar_ref, Istar_norm_band, par_star, sum_prop_dic_spot,\
+                                    coord_reg_dic_spot, range_reg_dic_spot, Focc_star_band, par_list, range_par_list, args, cb_band, pl_loc_x = None, pl_loc_y = None, RpRs = None, plocc = False) :
     
     r"""**Spot-occulted properties: define and update**
     
@@ -1286,7 +1287,8 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
         Focc_star_band : The input Focc_star_band updated with the flux occulted by the spot in the exposure being processed.
     
     """ 
-
+    parameter_list = deepcopy(par_list)
+    range_parameter_list = deepcopy(range_par_list)
     #We have as input a grid discretizing the spot.
     #We have a condition to find the cells in the input grid that are in the stellar grid.
     cond_in_star = spot_prop['x_sky_grid']**2 + spot_prop['y_sky_grid']**2 < 1.
@@ -1310,18 +1312,32 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
 
     cond_in_sp = x_spot_grid**2. + y_spot_grid**2. <= spot_prop['ang_rad']**2
 
+    #--------------------------------
+    # Accounting for planet occultation of the spot
+    if plocc:
+        cond_in_planet_disk = (new_x_sky_grid[cond_in_sp] - pl_loc_x)**2 + (new_y_sky_grid[cond_in_sp] - pl_loc_y)**2 < RpRs**2
+        spot_x_sky_grid = new_x_sky_grid[cond_in_sp][~cond_in_planet_disk]
+        spot_y_sky_grid = new_x_sky_grid[cond_in_sp][~cond_in_planet_disk]
+        spot_z_sky_grid = new_x_sky_grid[cond_in_sp][~cond_in_planet_disk]
+        n_occ_sp = np.sum(cond_in_sp) - np.sum(cond_in_planet_disk)
+    else:
+        spot_x_sky_grid = new_x_sky_grid[cond_in_sp]
+        spot_y_sky_grid = new_y_sky_grid[cond_in_sp]
+        spot_z_sky_grid = new_z_sky_grid[cond_in_sp]
+        n_occ_sp = np.sum(cond_in_sp)
+
+    #--------------------------------
+
     #Figure out the number of cells occulted and store it - account for overlap when using oversampling
-    n_occ_sp = np.sum(cond_in_sp)
     if n_occ_sp > 0:
         cond_occ = True
 
-    #--------------------------------
     #Making the grid of coordinates for the calc_Isurf_grid function.
     coord_grid = {}
     #Getting, x, y, z, sky-projected radius, and number of occulted cells.
-    coord_grid['x_st_sky'] = new_x_sky_grid[cond_in_sp]
-    coord_grid['y_st_sky'] = new_y_sky_grid[cond_in_sp]
-    coord_grid['z_st_sky'] = new_z_sky_grid[cond_in_sp]
+    coord_grid['x_st_sky'] = spot_x_sky_grid
+    coord_grid['y_st_sky'] = spot_y_sky_grid
+    coord_grid['z_st_sky'] = spot_z_sky_grid
 
     coord_grid['r2_st_sky']=coord_grid['x_st_sky']*coord_grid['x_st_sky']+coord_grid['y_st_sky']*coord_grid['y_st_sky']
 
@@ -1346,12 +1362,13 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
     sum_prop_dic_spot['nocc'] += coord_grid['nsub_star']
     
     #Remove xp_abs from the list if it's in there
-    if 'xp_abs' in par_list : par_list.remove('xp_abs')
+    if 'xp_abs' in parameter_list : parameter_list.remove('xp_abs')
+    if 'xp_abs' in range_parameter_list : range_parameter_list.remove('xp_abs')
 
     #Sky-projected distance from star center
-    if ('r_proj' in par_list) or (('coord_line' in args) and (args['coord_line']=='r_proj')):coord_grid['r_proj'] = np.sqrt(coord_grid['r2_st_sky'])                   
+    if ('r_proj' in parameter_list) or (('coord_line' in args) and (args['coord_line']=='r_proj')):coord_grid['r_proj'] = np.sqrt(coord_grid['r2_st_sky'])                   
 
-    for par_loc in par_list:
+    for par_loc in parameter_list:
 
         #Ratio of the occulted surface to the star surface
         if par_loc=='SpSstar':
@@ -1384,8 +1401,8 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
             #    - accounting for an additional constant offset to model jitter or global shifts, and for visit-specific offset to model shifts specific to a given transition
             elif par_loc=='rv':
                 coord_grid[par_loc] = deepcopy(coord_grid['Rot_RV']) + par_star['rv']
-                if 'CB_RV' in par_list:coord_grid[par_loc]+=coord_grid['CB_RV']
-                if 'rv_line' in par_list:coord_grid[par_loc]+=coord_grid['rv_line'] 
+                if 'CB_RV' in parameter_list:coord_grid[par_loc]+=coord_grid['CB_RV']
+                if 'rv_line' in parameter_list:coord_grid[par_loc]+=coord_grid['rv_line'] 
 
     #--------------------------------
 
@@ -1408,7 +1425,7 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
 
             #Range of values covered during the exposures (normalized)
             #    - for spatial-related coordinates
-            if par_loc in range_par_list:
+            if par_loc in range_parameter_list:
                 range_reg_dic_spot[par_loc+'_range'][iband][0]=np.min([range_reg_dic_spot[par_loc+'_range'][iband][0],coord_reg_dic_spot[par_loc][iband]])
                 range_reg_dic_spot[par_loc+'_range'][iband][1]=np.max([range_reg_dic_spot[par_loc+'_range'][iband][1],coord_reg_dic_spot[par_loc][iband]])
 

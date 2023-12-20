@@ -110,7 +110,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
          
             #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
             if gen_dic['DImast_weight']:              
-                process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDI=True)
+                process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic, mock_dic = mock_dic, masterDI=True)
 
             #Processing converted 2D disk-integrated profiles
             if gen_dic['spec_1D']:                
@@ -255,7 +255,7 @@ def conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_di
 
     return None
 
-def bin_gen_functions(data_type_gen,mode,inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=None):
+def bin_gen_functions(data_type_gen,mode,inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic, mock_dic={}, vis=None):
     """**Wrap-up function for binned datasets.**
 
     Args:
@@ -267,7 +267,7 @@ def bin_gen_functions(data_type_gen,mode,inst,gen_dic,data_dic,coord_dic,data_pr
     """ 
     #Binning profiles for analysis purpose 
     if gen_dic[data_type_gen+'bin'+mode]: 
-        process_bin_prof(mode,data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic)
+        process_bin_prof(mode,data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic, mock_dic=mock_dic)
 
     #Analyzing binned profiles
     if gen_dic['fit_'+data_type_gen+'bin'+mode]: 
