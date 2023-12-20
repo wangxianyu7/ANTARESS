@@ -24,7 +24,7 @@ import os
 path = os.path.abspath(os.path.dirname(__file__))
 
 info = {}
-with open(os.path.join(path, 'Method', '__info__.py'), 'r') as f:
+with open(os.path.join(path, '__info__.py'), 'r') as f:
   exec(f.read(), info)
 with open('README.md', 'r', encoding='utf-8') as readme:
   long_description = readme.read()

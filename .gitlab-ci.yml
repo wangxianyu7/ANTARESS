@@ -5,14 +5,14 @@ default:
 variables:
   PROJECT_NAME: "antaress"
   PROJECT_ID: "8586"
-  DACECALC1: "10.194.66.55"
+  LOGIN01: "129.194.61.6"
 
 stages:
 #  - build
 #  - test
   - documentation
   - staging
-#  - production
+  - production
 
 .setup_env:
   before_script:
@@ -22,12 +22,15 @@ stages:
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
     - mkdir -p ~/.ssh
     - chmod 700 ~/.ssh
-    - echo "$SSH_KNOWN_HOSTS_DACECALC1" >> ~/.ssh/known_hosts
+    - echo "$SSH_KNOWN_HOSTS_LOGIN01" >> ~/.ssh/known_hosts
     - chmod 644 ~/.ssh/known_hosts
     - curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
     - eval "$(./bin/micromamba shell hook -s posix)"
     - micromamba env create -f ${PROJECT_NAME}_env.yml
     - micromamba activate $PROJECT_NAME
+    - pip install PyAstronomy
+    - pip install --extra-index-url https://vincent:cestpasfaux@obswww.unige.ch/~delisle/staging bindensity --upgrade
+    - pip install pysme-astro
 
 #Build distribution:
 #  extends: .setup_env
@@ -65,25 +68,25 @@ Deploy on Staging:
   stage: staging
   script:
 #    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/staging/${PROJECT_NAME}/
-    - rsync -rv --delete Docs/build/html/ dacemgr@${DACECALC1}:/www/people/bourriev/public/staging/${PROJECT_NAME}/doc
+    - rsync -rv --delete Docs/build/html/ bourriev@${LOGIN01}:/www/people/bourriev/public/staging/${PROJECT_NAME}/doc
 
-# Release and deploy on Production:
-#   extends: .setup_env
-#   stage: production
-#   script:
-#     # According to documentation, gitlab uses detached HEAD and we need to go back to master to release.
-#     # See https://gitlab.com/gitlab-org/gitlab-ce/issues/19421
-#     - git checkout -B master origin/master
-#     - git config --global user.name 'Gitlab CI'
-#     - git config --global user.email ''
-#     - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/delisle/${PROJECT_NAME}.git"
-#     # Tag
-#     - VERSION=`grep __version__ ${PROJECT_NAME}/__info__.py | sed 's/.*version__ = "//' | sed 's/"//'`
-#     - TAG_VERSION="v$VERSION"
-#     - git tag -a "$TAG_VERSION" -m "Release $PROJECT_NAME $TAG_VERSION"
-#     - git push origin "$TAG_VERSION" --quiet
-#     - CHANGES=`cat CHANGES.txt`
-#     # Add release on gitlab (via gitlab API)
+Release and deploy on Production:
+  extends: .setup_env
+  stage: production
+  script:
+    # According to documentation, gitlab uses detached HEAD and we need to go back to main to release.
+    # See https://gitlab.com/gitlab-org/gitlab-ce/issues/19421
+    - git checkout -B main origin/main
+    - git config --global user.name 'Gitlab CI'
+    - git config --global user.email ''
+    - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/bourrier/${PROJECT_NAME}.git"
+    # Tag
+    - VERSION=`grep __version__ __info__.py | sed 's/.*version__ = "//' | sed 's/"//'`
+    - TAG_VERSION="v$VERSION"
+    - git tag -a "$TAG_VERSION" -m "Release $PROJECT_NAME $TAG_VERSION"
+    - git push origin "$TAG_VERSION" --quiet
+    - CHANGES=`cat CHANGES.txt`
+    # Add release on gitlab (via gitlab API)
 #     - curl -X POST -H "PRIVATE-TOKEN:$RELEASE_TOKEN" -F "name=Release $PROJECT_NAME $TAG_VERSION" -F "tag_name=$TAG_VERSION" -F "ref=$TAG_VERSION" -F "description=Changes:$CHANGES" "https://gitlab.unige.ch/api/v4/projects/${PROJECT_ID}/releases"
 #     # Deploy on https://obswww.unige.ch/~delisle/
 #     - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/${PROJECT_NAME}/
@@ -103,4 +106,4 @@ Deploy on Staging:
 #     - git add ${PROJECT_NAME}/__info__.py
 #     - git commit -m "Upgrade project to next version $NEW_VERSION"
 #     - git push origin master --quiet
-#   when: manual
+  when: manual

@@ -1,6 +1,9 @@
 #!/bin/bash 
 echo "Generating ANTARESS doc files"
 
+SCRIPT_DIR="$(pwd)"
+echo "Script directory: $SCRIPT_DIR"
+
 #Create rst files from py files in Method/
 echo "  From py files in Method"
 sphinx-apidoc --force -o /builds/bourrier/antaress/Docs/source/ /builds/bourrier/antaress/Method/
