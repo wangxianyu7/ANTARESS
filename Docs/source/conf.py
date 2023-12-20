@@ -29,7 +29,7 @@ else:
 
 project = 'ANTARESS'
 copyright = '2023, Vincent Bourrier'
-author = 'Vincent Bourrier'
+author = 'V. Bourrier & contributors'
 
 # The full version, including alpha/beta/rc tags
 release = '1.0.0'
