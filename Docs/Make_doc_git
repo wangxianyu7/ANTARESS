@@ -16,7 +16,7 @@ sphinx-apidoc --force -o "$DIR_PATH/Docs/source/" "$DIR_PATH/Method/"
 
 
 #Create rst files from py files in Method/ANTARESS_* directories
-for file in `find /Users/bourrier/Travaux/ANTARESS/Method -type d -name "ANTARESS_*"`
+for file in `find $DIR_PATH/Method -type d -name "ANTARESS_*"`
 do
   echo "  From py files in $file"
   sphinx-apidoc --force -o "$DIR_PATH/Docs/source/" "$file"
