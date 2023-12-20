@@ -444,7 +444,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                        
     if gen_dic['star_name'] == 'V1298tau':
         mock_dic['visit_def']={
-            'ESPRESSO':{'mock_vis' :{'exp_range':2457067.0488+np.array([-0.2, 0.2]),'nexp':40}}}
+            'ESPRESSO':{'mock_vis' :{'exp_range':2457067.0488+np.array([-0.25, 0.25]),'nexp':100}}}
 
     
     #Spectral profile settings
@@ -480,7 +480,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 30,
                      'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
                      'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 15,
-                     'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.2,
+                     'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.3,
                     
                      # #For the spot 'spot2' : 
                      'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
@@ -546,7 +546,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e8}}   
             
     if gen_dic['star_name'] == 'V1298tau' :
-        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e6}}   
+        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e5}}   
     
     #Noise settings
     
@@ -932,7 +932,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     if gen_dic['star_name']=='V1298tau':
         theo_dic['n_oversamp'] = {'V1298tau_b':5.}
-        theo_dic['n_oversamp_spot']={'spot1':1., 'spot2':1.}
+        theo_dic['n_oversamp_spot']={'spot1':5., 'spot2':5.}
     #RV table        
 
     # #Oversampling 

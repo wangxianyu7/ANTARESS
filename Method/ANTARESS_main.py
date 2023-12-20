@@ -14,6 +14,7 @@ from ANTARESS_routines.ANTARESS_data_process import init_prop,init_data_instru,u
 from ANTARESS_analysis.ANTARESS_ana_comm import MAIN_single_anaprof
 from ANTARESS_routines.ANTARESS_sp_cont import process_spectral_cont
 
+import os
 __version__ = "0.0.1"
 
 def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_param,input_dic,user):
@@ -131,11 +132,11 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Extracting intrinsic stellar profiles
             if gen_dic['intr_data']:
                 extract_intr_profiles(data_dic,gen_dic,inst,vis,system_param['star'],coord_dic,theo_dic,plot_dic)
-        
+      
             #Converting out-of-transit residual and intrinsic spectra into CCFs
             if gen_dic[data_type_gen+'_CCF']:
                 ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
-                  
+      
             #Applying PCA to out-of transit residual profiles
             if (gen_dic['pca_ana']):
                 pc_analysis(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
@@ -159,7 +160,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Building estimates for complete local stellar profiles
             if gen_dic['loc_data_corr']:
                 def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
-        
+            
             #--------------------------------------------------------------------------------------------------
             #Processing atmospheric profiles
             data_type_gen = 'Atm'

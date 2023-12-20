@@ -1314,28 +1314,6 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
     n_occ_sp = np.sum(cond_in_sp)
     if n_occ_sp > 0:
         cond_occ = True
-        # #Move coordinates of the new spot position to previous spot reference frame
-        # if spot_prop['prev_x_sky_grid'] != []:
-
-        #     current_sp_x_st_grid, current_sp_y_st_grid, current_sp_z_st_grid = conv_inclinedStarFrame_to_StarFrame(new_x_sky_grid[cond_in_sp], new_y_sky_grid[cond_in_sp], new_z_sky_grid[cond_in_sp], star_params['istar_rad'])
-
-        # prev_sp_x_st_sky, prev_sp_y_st_sky
-        # #Removing spot cells already processed for previous occultations
-        #     cond_pl_occ_corr = np.repeat(True,n_occ_sp)
-        #     for sp_prev in spot_proc_band:
-    
-        #         #Coordinate of previous planet center in the 'inclined star' frame
-        #         x_st_sky_prev,y_st_sky_prev,_=conv_Losframe_to_inclinedStarFrame(lambda_rad_pl[pl_prev],x_pos_pl[pl_prev][idx],y_pos_pl[pl_prev][idx],None)
-
-        #         #Cells occulted by current planet and not previous ones
-        #         #    - condition is that cells must be beyond previous planet grid in this band
-        #         RpRs_prev = system_prop[pl_prev][iband]
-        #         cond_pl_occ_corr &= ( (coord_grid['x_st_sky'] - x_st_sky_prev)**2.+(coord_grid['y_st_sky'] - y_st_sky_prev)**2. > RpRs_prev**2. )
-        #     for key in coord_grid:coord_grid[key] = coord_grid[key][cond_pl_occ_corr]
-        #     n_pl_occ = np.sum(cond_pl_occ_corr)
-      
-        #     #Store planet as processed in current band
-        #     pl_proc_band+=[pl_loc]    
 
     #--------------------------------
     #Making the grid of coordinates for the calc_Isurf_grid function.
@@ -1453,7 +1431,7 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
         
         #Coadd line profiles over spot-occulted region
         sum_prop_dic_spot['line_prof'] = np.sum((np.array(line_prof_grid)-np.array(emit_line_prof_grid)),axis=0) 
-  
+
     #Define rotational broadening of planet-occulted region
     elif line_occ_HP_band in ['low','medium']:
         drv_min = coord_reg_dic_spot['rv'][iband]-np.min(coord_grid['rv'])

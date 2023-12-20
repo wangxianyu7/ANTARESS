@@ -208,7 +208,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #2D map function
         #    - should be saved as png for spectra, too heavy otherwise
         def sub_2D_map(plot_mod,save_res_map,plot_options):
-         
+            
             #Options
             sc_fact=10**plot_options['sc_fact10']            
 
@@ -221,6 +221,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 for ivis,vis in enumerate(np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst])):                 
                     print('     - Visit '+vis) 
+                    if plot_mod == 'map_Res_prof':
+                        plot_options['cmap'] = 'jet'
                     cmap_2D = copy.copy(plt.cm.get_cmap(plot_options['cmap'])) 
                     data_vis = data_dic[inst][vis]
                     pl_ref,txt_conv,iexp_plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list = sub_plot_prof_dir(inst,vis,plot_options,data_mode,'Map',add_txt_path,plot_mod,txt_aligned,data_type,data_type_gen)
