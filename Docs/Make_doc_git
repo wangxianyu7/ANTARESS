@@ -2,6 +2,7 @@
 echo "Generating ANTARESS doc files"
 
 MAKE_PATH=`pwd`
+echo "$MAKE_PATH"
 if [ "$MAKE_PATH" = "/builds/bourrier/antaress/Docs" ]
 then
   DIR_PATH="/builds/bourrier/antaress"
