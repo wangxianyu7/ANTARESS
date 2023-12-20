@@ -18,12 +18,12 @@ import glob
 conf_path = os.path.abspath(os.path.dirname(__file__))
 if conf_path=='/builds/bourrier/antaress/Docs/source':
 	sys.path.insert(0, os.path.abspath('/builds/bourrier/antaress/Method/'))
-	for antaress_dir in glob.glob('/builds/bourrier/antaress/Method/ANTARESS_*/'):
-		sys.path.insert(0, os.path.abspath(antaress_dir))
+	for code_dir in glob.glob('/builds/bourrier/antaress/Method/ANTARESS_*/'):
+		sys.path.insert(0, os.path.abspath(code_dir))
 else:
 	sys.path.insert(0, os.path.abspath('/Users/bourrier/Travaux/ANTARESS/Method/'))
-	for antaress_dir in glob.glob('/Users/bourrier/Travaux/ANTARESS/Method/ANTARESS_*/'):
-		sys.path.insert(0, os.path.abspath(antaress_dir))
+	for code_dir in glob.glob('/Users/bourrier/Travaux/ANTARESS/Method/ANTARESS_*/'):
+		sys.path.insert(0, os.path.abspath(code_dir))
 
 # -- Project information -----------------------------------------------------
 
