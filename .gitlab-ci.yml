@@ -80,11 +80,11 @@ Release and deploy on Production:
     - git config --global user.name 'Gitlab CI'
     - git config --global user.email ''
     - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/bourrier/${PROJECT_NAME}.git"
-    # Tag
+    # Tag (update version number in pyproject.toml)
     - VERSION=$(grep version pyproject.toml | sed -e 's/.*version = "\([^"]*\)"/\1/')
     - TAG_VERSION="v$VERSION"
-    - git tag -a "$TAG_VERSION" -m "Release $PROJECT_NAME $TAG_VERSION"
-    - git push origin "$TAG_VERSION" --quiet -o ci.skip
+#    - git tag -a "$TAG_VERSION" -m "Release $PROJECT_NAME $TAG_VERSION"
+#    - git push origin "$TAG_VERSION" --quiet -o ci.skip
     # Add release on gitlab (via gitlab API)
     #    - curl -X POST -H "PRIVATE-TOKEN:$RELEASE_TOKEN" -F "name=Release $PROJECT_NAME $TAG_VERSION" -F "tag_name=$TAG_VERSION" -F "ref=$TAG_VERSION" "https://gitlab.unige.ch/api/v4/projects/${PROJECT_ID}/releases"
      # Deploy on obswww.unige.ch/~bourriev/
