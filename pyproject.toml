@@ -3,21 +3,21 @@ requires = ["setuptools >= 61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "linmarg"
-version = "0.1.1"
+name = "antaress"
+version = "0.0.0"
 authors = [
-  { name = "Jean-Baptiste Delisle", email = "jean-baptiste.delisle@unige.ch" },
+  { name = "Vincent Bourrier", email = "vincent.bourrier@unige.ch" },
 ]
-description = "Linear parameters marginalizer"
+description = "High-resolution spectroscopy pipeline"
 readme = "README.md"
 requires-python = ">=3.8"
 classifiers = [
   "Programming Language :: Python :: 3",
   "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
-  "Operating System :: OS Independent",
+  "Operating System :: MacOS",
 ]
 dependencies = ["numpy", "scipy"]
 
 [project.urls]
-Homepage = "https://gitlab.unige.ch/delisle/linmarg"
-Issues = "https://gitlab.unige.ch/delisle/linmarg/-/issues"
+Homepage = "https://gitlab.unige.ch/bourrier/ANTARESS"
+Issues = "https://gitlab.unige.ch/bourrier/ANTARESS/-/issues"
