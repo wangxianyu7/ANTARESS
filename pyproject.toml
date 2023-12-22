@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "antaress"
-version = "0.0.0"
+version = "1.0.0"
 authors = [
   { name = "Vincent Bourrier", email = "vincent.bourrier@unige.ch" },
 ]
