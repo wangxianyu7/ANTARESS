@@ -101,8 +101,8 @@ Release and deploy on Production:
     - NEW_VERSION="$MAJOR_DIGIT.$MINOR_DIGIT.$PATCH_DIGIT"
     - echo $NEW_VERSION
     # Need to hack sed to work on both mac and unix. See details here : https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
-    - sed -i.bak s"/version__ = \"$VERSION\"/version__ = \"$NEW_VERSION\"/g" ${PROJECT_NAME}/__info__.py
-    - git add ${PROJECT_NAME}/__info__.py
+    - sed -i.bak s"/version = \"$VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
+    - git add pyproject.toml
     - git commit -m "Upgrade project to next version $NEW_VERSION"
-    - git push origin master --quiet
+    - git push origin main --quiet -o ci.skip
   when: manual
