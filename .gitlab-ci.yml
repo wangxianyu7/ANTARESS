@@ -83,26 +83,26 @@ Release and deploy on Production:
     # Tag (update version number in pyproject.toml)
     - VERSION=$(grep version pyproject.toml | sed -e 's/.*version = "\([^"]*\)"/\1/')
     - TAG_VERSION="v$VERSION"
-#    - git tag -a "$TAG_VERSION" -m "Release $PROJECT_NAME $TAG_VERSION"
-#    - git push origin "$TAG_VERSION" --quiet -o ci.skip
+    - git tag -a "$TAG_VERSION" -m "Release $PROJECT_NAME $TAG_VERSION"
+    - git push origin "$TAG_VERSION" --quiet -o ci.skip
     # Add release on gitlab (via gitlab API)
     #    - curl -X POST -H "PRIVATE-TOKEN:$RELEASE_TOKEN" -F "name=Release $PROJECT_NAME $TAG_VERSION" -F "tag_name=$TAG_VERSION" -F "ref=$TAG_VERSION" "https://gitlab.unige.ch/api/v4/projects/${PROJECT_ID}/releases"
-     # Deploy on obswww.unige.ch/~bourriev/
+    # Deploy on obswww.unige.ch/~bourriev/
 #     - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/${PROJECT_NAME}/
     - rsync -rv --delete Docs/build/html bourriev@${LOGIN01}:/www/people/bourriev/public/${PROJECT_NAME}/doc
     - rsync -rv --delete Docs/build/html bourriev@${LOGIN01}:/www/people/bourriev/public/${PROJECT_NAME}/doc_hist/${TAG_VERSION}
 #     # Deploy on Pypi
 #     - python -m twine upload dist/*.tar.gz
-#     # Upgrade to next version
-#     - MAJOR_DIGIT=`echo $VERSION | awk -F. '{print $1}'`
-#     - MINOR_DIGIT=`echo $VERSION | awk -F. '{print $2}'`
-#     - PATCH_DIGIT=`echo $VERSION | awk -F. '{print $3}'`
-#     - PATCH_DIGIT=$((PATCH_DIGIT + 1))
-#     - NEW_VERSION="$MAJOR_DIGIT.$MINOR_DIGIT.$PATCH_DIGIT"
-#     - echo $NEW_VERSION
-#     # Need to hack sed to work on both mac and unix. See details here : https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
-#     - sed -i.bak s"/version__ = \"$VERSION\"/version__ = \"$NEW_VERSION\"/g" ${PROJECT_NAME}/__info__.py
-#     - git add ${PROJECT_NAME}/__info__.py
-#     - git commit -m "Upgrade project to next version $NEW_VERSION"
-#     - git push origin master --quiet
+    # Upgrade to next version
+    - MAJOR_DIGIT=`echo $VERSION | awk -F. '{print $1}'`
+    - MINOR_DIGIT=`echo $VERSION | awk -F. '{print $2}'`
+    - PATCH_DIGIT=`echo $VERSION | awk -F. '{print $3}'`
+    - PATCH_DIGIT=$((PATCH_DIGIT + 1))
+    - NEW_VERSION="$MAJOR_DIGIT.$MINOR_DIGIT.$PATCH_DIGIT"
+    - echo $NEW_VERSION
+    # Need to hack sed to work on both mac and unix. See details here : https://stackoverflow.com/questions/5694228/sed-in-place-flag-that-works-both-on-mac-bsd-and-linux
+    - sed -i.bak s"/version__ = \"$VERSION\"/version__ = \"$NEW_VERSION\"/g" ${PROJECT_NAME}/__info__.py
+    - git add ${PROJECT_NAME}/__info__.py
+    - git commit -m "Upgrade project to next version $NEW_VERSION"
+    - git push origin master --quiet
   when: manual
