@@ -1,5 +1,7 @@
 # **A**dvanced and **N**eat **T**echniques for the **A**ccurate **R**etrieval of **E**xoplanetary and **S**tellar **S**pectra
 
+Read the documentation [here](https://obswww.unige.ch/~bourriev/antaress/doc/html/).
+
 ## General approach
 
 First, define the system properties for the host star and its planets in [ANTARESS_systems.py](ANTARESS_systems.py).  
