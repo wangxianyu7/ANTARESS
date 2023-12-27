@@ -18,9 +18,9 @@ if conf_path=='/builds/bourrier/antaress/Docs/source':
 
 	#Get release version
 	with open('/builds/bourrier/antaress/pyproject.toml', 'r') as f:
-    	for line in f.readlines():
-        	if 'version' in line:
-            	release = line.split('= "')[1].split('"')[0]
+		for line in f.readlines():
+			if 'version' in line:
+				release = line.split('= "')[1].split('"')[0]
 else:
 	sys.path.insert(0, os.path.abspath('/Users/bourrier/Travaux/ANTARESS/Method/'))
 	for code_dir in glob.glob('/Users/bourrier/Travaux/ANTARESS/Method/ANTARESS_*/'):
