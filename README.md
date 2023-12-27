@@ -75,15 +75,14 @@ then
 - run `python setup_lbl_fit.py build` after setting up the path to your local python installation in the [setup_lbl_fit.py](ANTARESS_masks/KitCat/setup_lbl_fit.py). Then copy the compiled file `calculate_RV_line_by_line3.cpython-XX-darwin.so` into your ANTARESS/KitCat directory  
 
 ## Contributors
-Vincent Bourrier (you can [contact me](mailto:vincent.bourrier@unige.ch) for inquiries about ANTARESS and possible collaborations).
-
-Omar Attia, Romain Allart, Khaled Al Moulla, Heather Cegla, Michaël Cretignier, William Dethier, Jean-Baptiste Delisle, Xavier Dumusque, David Ehrenreich, Erik Fridén, Nathan Hara, Christophe Lovis, Samson Jules Mercier, Dany Mounzer, Francesco Alfonso Pepe, Julia Victoria Seidel, Michal Steiner, Sara Tavella, Valentina Vaulato, Theo Vrignaud, Aurélien Wyttenbach.
+Omar Attia, Romain Allart, Khaled Al Moulla, Vincent Bourrier, Heather Cegla, Michaël Cretignier, William Dethier, Jean-Baptiste Delisle, Xavier Dumusque, David Ehrenreich, Erik Fridén, Nathan Hara, Christophe Lovis, Samson Jules Mercier, Dany Mounzer, Francesco Alfonso Pepe, Julia Victoria Seidel, Michal Steiner, Sara Tavella, Valentina Vaulato, Theo Vrignaud, Aurélien Wyttenbach.
 
 ## References
 TBD
 
 ## Contribute
-Everyone is welcome to open issues and/or contribute code via pull-requests.
-A SWITCH edu-ID account is necessary to [sign in](https://gitlab.unige.ch).
-If you don't have an account, you can easily create one [here](https://eduid.ch).
-Then you can [sign in](https://gitlab.unige.ch) by selecting "SWITCH edu-ID" as your organisation.
+You are welcome to open issues and/or contribute code via pull-requests after signing in to your [SWITCH edu-ID account](https://gitlab.unige.ch).
+If you do not have an account, [create one](https://eduid.ch) and then [sign in](https://gitlab.unige.ch) by selecting "SWITCH edu-ID" as your organisation.
+
+You can contact [Vincent Bourrier](mailto:vincent.bourrier@unige.ch) if you are interested in collaborations and developments of this project. 
+
