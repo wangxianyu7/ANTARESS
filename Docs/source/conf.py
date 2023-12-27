@@ -5,11 +5,6 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # -- Path setup --------------------------------------------------------------
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
 import os
 import sys
 import glob
@@ -26,14 +21,9 @@ else:
 		sys.path.insert(0, os.path.abspath(code_dir))
 
 # -- Project information -----------------------------------------------------
-
 project = 'ANTARESS'
-copyright = '2023, Vincent Bourrier'
+copyright = '2023, Université de Genève'
 author = 'V. Bourrier & contributors'
-
-# The full version, including alpha/beta/rc tags
-release = '1.0.0'
-
 
 # -- General configuration ---------------------------------------------------
 
@@ -62,7 +52,6 @@ exclude_patterns = []
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
 html_theme = 'alabaster'
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -88,12 +77,4 @@ html_theme = "sphinx_book_theme"
 html_copy_source = True
 html_show_sourcelink = True
 html_sourcelink_suffix = ""
-#html_theme_options = {
- #   "path_to_docs": "docs",
-  #  "repository_url": repository_url,
-   # "repository_branch": repository_branch,
-    #"use_edit_page_button": False,
-#    "use_issues_button": False,
- #   "use_repository_button": False,
- #   "use_download_button": False,
-#}
+html_theme_options = {'gitlab_url': 'https://gitlab.unige.ch/bourriev/antaress'}
