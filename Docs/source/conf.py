@@ -15,6 +15,12 @@ if conf_path=='/builds/bourrier/antaress/Docs/source':
 	sys.path.insert(0, os.path.abspath('/builds/bourrier/antaress/Method/'))
 	for code_dir in glob.glob('/builds/bourrier/antaress/Method/ANTARESS_*/'):
 		sys.path.insert(0, os.path.abspath(code_dir))
+
+	#Get release version
+	with open('/builds/bourrier/antaress/pyproject.toml', 'r') as f:
+    	for line in f.readlines():
+        	if 'version' in line:
+            	release = line.split('= "')[1].split('"')[0]
 else:
 	sys.path.insert(0, os.path.abspath('/Users/bourrier/Travaux/ANTARESS/Method/'))
 	for code_dir in glob.glob('/Users/bourrier/Travaux/ANTARESS/Method/ANTARESS_*/'):
@@ -49,10 +55,6 @@ exclude_patterns = []
 
 
 # -- Options for HTML output -------------------------------------------------
-
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes.
-html_theme = 'alabaster'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
