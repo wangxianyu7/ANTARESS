@@ -28,6 +28,7 @@ stages:
     - eval "$(./bin/micromamba shell hook -s posix)"
     - micromamba env create -f ${PROJECT_NAME}_env.yml
     - micromamba activate $PROJECT_NAME
+    #Install here packages that failed to install via ${PROJECT_NAME}_env.yml
     - pip install PyAstronomy
     - pip install --extra-index-url https://vincent:cestpasfaux@obswww.unige.ch/~delisle/staging bindensity --upgrade
     - pip install pysme-astro
@@ -67,7 +68,7 @@ Deploy on Staging:
   extends: .setup_env
   stage: staging
   script:
-#    - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/staging/${PROJECT_NAME}/
+#    - rsync -v dist/*.tar.gz bourriev@${LOGIN01}:/www/people/bourriev/public/staging/${PROJECT_NAME}/
     - rsync -rv --delete Docs/build/html/ bourriev@${LOGIN01}:/www/people/bourriev/public/staging/${PROJECT_NAME}/doc
 
 Release and deploy on Production:
@@ -88,7 +89,7 @@ Release and deploy on Production:
     # Add release on gitlab (via gitlab API)
     #    - curl -X POST -H "PRIVATE-TOKEN:$RELEASE_TOKEN" -F "name=Release $PROJECT_NAME $TAG_VERSION" -F "tag_name=$TAG_VERSION" -F "ref=$TAG_VERSION" "https://gitlab.unige.ch/api/v4/projects/${PROJECT_ID}/releases"
     # Deploy on obswww.unige.ch/~bourriev/
-#     - rsync -v dist/*.tar.gz dacemgr@${DACECALC1}:/www/people/delisle/public/${PROJECT_NAME}/
+#     - rsync -v dist/*.tar.gz bourriev@${LOGIN01}:/www/people/bourriev/public/${PROJECT_NAME}/
     - rsync -rv --delete Docs/build/html bourriev@${LOGIN01}:/www/people/bourriev/public/${PROJECT_NAME}/doc
     - rsync -rv --delete Docs/build/html bourriev@${LOGIN01}:/www/people/bourriev/public/${PROJECT_NAME}/doc_hist/${TAG_VERSION}
 #     # Deploy on Pypi
