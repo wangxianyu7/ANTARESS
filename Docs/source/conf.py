@@ -77,4 +77,4 @@ html_theme = "sphinx_book_theme"
 html_copy_source = True
 html_show_sourcelink = True
 html_sourcelink_suffix = ""
-html_theme_options = {'gitlab_url': 'https://gitlab.unige.ch/bourriev/antaress'}
+html_theme_options = {'gitlab_url': 'https://gitlab.unige.ch/bourrier/antaress'}
