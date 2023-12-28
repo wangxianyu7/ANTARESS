@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 from ANTARESS_main import ANTARESS_main
-from ANTARESS_systems import all_system_params
 from utils import stop
 import importlib
 import os as os_system
@@ -19,6 +18,7 @@ def ANTARESS_launcher(nbook_dic = {} , user = ''):
         None
     
     """ 
+    from ANTARESS_systems import all_system_params
 
     #Overwrite default system properties
     if ('system' in nbook_dic) and (len(nbook_dic['system'])>0):
@@ -71,7 +71,7 @@ def ANTARESS_launcher(nbook_dic = {} , user = ''):
     print('Launching ANTARESS')
     print('****************************************')
     print('')
-    
+
     #Run over nominal settings properties
     if len(gen_dic['grid_run'])==0:
         ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,all_system_params[gen_dic['star_name']],nbook_dic,user)

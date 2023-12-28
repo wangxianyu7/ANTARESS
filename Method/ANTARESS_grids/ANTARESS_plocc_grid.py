@@ -1,20 +1,20 @@
 import numpy as np
 from itertools import product as it_product
 from copy import deepcopy
-from utils import stop,closest,np_poly,npint,np_interp,np_where1D,datasave_npz,dataload_npz,gen_specdopshift
+from utils import stop,closest,np_poly,npint,np_interp,np_where1D,datasave_npz,dataload_npz,gen_specdopshift,check_data
 from constant_data import Rsun,c_light
 import lmfit
 from lmfit import Parameters
-from ANTARESS_routines.ANTARESS_init import check_data
-from ANTARESS_routines.ANTARESS_orbit import conv_Losframe_to_inclinedStarFrame,conv_inclinedStarFrame_to_Losframe,calc_pl_coord
+from ANTARESS_grids.ANTARESS_coord import frameconv_LOS_to_InclinedStar,frameconv_InclinedStar_to_LOS,calc_pl_coord
 from ANTARESS_routines.ANTARESS_data_align import align_data
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,calc_st_sky,calc_Isurf_grid,calc_RVrot
 from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid
 from ANTARESS_analysis.ANTARESS_model_prof import calc_polymodu,polycoeff_def
+#from ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, new_calc_spotted_region_prop, new_retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop
 
 
-def calc_plocc_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=False):
+def calc_plocc_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=False,mock_dic={}):
     r"""**Planet-occulted properties: workflow**
 
     Calls function to calculate theoretical properties of the regions occulted by all transiting planets. 
@@ -312,7 +312,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                 for pl_loc in transit_pl_exp:   
                     
                     #Frame conversion of planet coordinates from the classical frame perpendicular to the LOS, to the 'inclined star' frame
-                    x_st_sky_pos,y_st_sky_pos,_=conv_Losframe_to_inclinedStarFrame(lambda_rad_pl[pl_loc],x_oversamp_pl[pl_loc][iosamp],y_oversamp_pl[pl_loc][iosamp],None)      
+                    x_st_sky_pos,y_st_sky_pos,_=frameconv_LOS_to_InclinedStar(lambda_rad_pl[pl_loc],x_oversamp_pl[pl_loc][iosamp],y_oversamp_pl[pl_loc][iosamp],None)      
     
                     #Largest possible square grid enclosing the planet shifted to current planet position     
                     x_st_sky_max = x_st_sky_pos+theo_dic['x_st_sky_grid_pl'][pl_loc]
@@ -440,7 +440,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
             for pl_prev in pl_proc_band:
     
                 #Coordinate of previous planet center in the 'inclined star' frame
-                x_st_sky_prev,y_st_sky_prev,_=conv_Losframe_to_inclinedStarFrame(lambda_rad_pl[pl_prev],x_pos_pl[pl_prev][idx],y_pos_pl[pl_prev][idx],None)
+                x_st_sky_prev,y_st_sky_prev,_=frameconv_LOS_to_InclinedStar(lambda_rad_pl[pl_prev],x_pos_pl[pl_prev][idx],y_pos_pl[pl_prev][idx],None)
 
                 #Cells occulted by current planet and not previous ones
                 #    - condition is that cells must be beyond previous planet grid in this band
@@ -575,7 +575,7 @@ def sum_region_prop(line_occ_HP_band,iband,args,system_prop,par_list,Fsurf_grid_
     
     """     
     #Distance from projected orbital normal in the sky plane, in absolute value
-    if ('xp_abs' in par_list) or (('coord_line' in args) and (args['coord_line']=='xp_abs')):coord_grid['xp_abs'] = conv_inclinedStarFrame_to_Losframe(lambda_rad_pl_loc,coord_grid['x_st_sky'],coord_grid['y_st_sky'],coord_grid['z_st_sky'])[0]  
+    if ('xp_abs' in par_list) or (('coord_line' in args) and (args['coord_line']=='xp_abs')):coord_grid['xp_abs'] = frameconv_InclinedStar_to_LOS(lambda_rad_pl_loc,coord_grid['x_st_sky'],coord_grid['y_st_sky'],coord_grid['z_st_sky'])[0]  
 
     #Sky-projected distance from star center
     if ('r_proj' in par_list) or (('coord_line' in args) and (args['coord_line']=='r_proj')):coord_grid['r_proj'] = np.sqrt(coord_grid['r2_st_sky'])                   

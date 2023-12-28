@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from utils import stop,np_where1D,npint,dataload_npz,gen_specdopshift,closest,def_edge_tab,gen_hrand_chain
+from utils import stop,np_where1D,npint,dataload_npz,gen_specdopshift,closest,def_edge_tab,gen_hrand_chain,check_data
 from copy import deepcopy
 from lmfit import Parameters
 import lmfit
@@ -16,8 +16,7 @@ from ANTARESS_analysis.ANTARESS_model_prof import para_cust_mod_true_prop,proc_c
     dgauss,gauss_poly,voigt,gauss_herm_lin,gen_fit_prof
 from ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,def_st_prof_tab,cond_conv_st_prof_tab,resamp_st_prof_tab,get_FWHM_inst
-from ANTARESS_routines.ANTARESS_orbit import excl_plrange
-from ANTARESS_routines.ANTARESS_init import check_data 
+from ANTARESS_grids.ANTARESS_coord import excl_plrange
 
 
 def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):

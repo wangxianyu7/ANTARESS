@@ -869,3 +869,21 @@ def gen_hrand_chain(par_med,epar_low,epar_high,n_throws):
             else:hrand_chain = np.random.normal(loc=par_med, scale=epar_low, size=1)
     return hrand_chain
 
+
+
+from pathlib import Path
+'''
+Function to check that pipeline data is saved on disk
+'''
+def check_data(file_paths,vis=None,silent=False):
+    check_flag = True
+    suff = '' if vis is None else ' for '+vis
+    for key in file_paths:
+        check_flag&=(Path(file_paths[key]+'.npz').is_file()) 
+    if check_flag:
+        if ~silent:print('         Retrieving data'+suff) 
+    else:
+        print('         Data not available'+suff)
+        stop()            
+    return None
+

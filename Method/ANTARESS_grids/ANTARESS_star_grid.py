@@ -2,7 +2,7 @@ import numpy as np
 from itertools import product as it_product
 from utils import stop,planck
 from constant_data import G_usi,Msun
-from ANTARESS_routines.ANTARESS_orbit import calc_zLOS_oblate,conv_inclinedStarFrame_to_StarFrame
+from ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate,frameconv_InclinedStar_to_Star
 
 
 def calc_RVrot(x_sky_st,y_st,istar_rad,st_par):
@@ -414,7 +414,7 @@ def calc_st_sky(coord_grid,star_params):
     #Frame conversion from the inclined star frame to the 'star' frame 
     #    - positions in star rest frame (in units of stellar radius)
     nsub_star = np.sum(cond_in_stphot)
-    if (nsub_star>0):coord_grid['x_st'],coord_grid['y_st'],coord_grid['z_st']=conv_inclinedStarFrame_to_StarFrame(coord_grid['x_st_sky'],coord_grid['y_st_sky'],coord_grid['z_st_sky'],star_params['istar_rad'])
+    if (nsub_star>0):coord_grid['x_st'],coord_grid['y_st'],coord_grid['z_st']=frameconv_InclinedStar_to_Star(coord_grid['x_st_sky'],coord_grid['y_st_sky'],coord_grid['z_st_sky'],star_params['istar_rad'])
     
     return nsub_star
 
