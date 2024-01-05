@@ -1,18 +1,25 @@
 #!/bin/bash 
 echo "Generating ANTARESS doc files"
 
-SCRIPT_DIR="$(pwd)"
-echo "Script directory: $SCRIPT_DIR"
+MAKE_PATH=`pwd`
+echo "$MAKE_PATH"
+if [ "$MAKE_PATH" = "/builds/bourrier/antaress/Docs" ]
+then
+  DIR_PATH="/builds/bourrier/antaress"
+else
+  DIR_PATH="/Users/bourrier/Travaux/ANTARESS"
+fi
 
 #Create rst files from py files in Method/
 echo "  From py files in Method"
-sphinx-apidoc --force -o /builds/bourrier/antaress/Docs/source/ /builds/bourrier/antaress/Method/
+sphinx-apidoc --force -o "$DIR_PATH/Docs/source/" "$DIR_PATH/Method/"
+
 
 #Create rst files from py files in Method/ANTARESS_* directories
-for file in `find /builds/bourrier/antaress/Method -type d -name "ANTARESS_*"`
+for file in `find $DIR_PATH/Method -type d -name "ANTARESS_*"`
 do
   echo "  From py files in $file"
-  sphinx-apidoc --force -o /builds/bourrier/antaress/Docs/source/ "$file"
+  sphinx-apidoc --force -o "$DIR_PATH/Docs/source/" "$file"
 done
 
 #Generate html files

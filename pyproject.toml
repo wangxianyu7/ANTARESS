@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "antaress"
+version = "1.0.4"
+authors = [
+  { name = "Vincent Bourrier", email = "vincent.bourrier@unige.ch" },
+]
+description = "High-resolution spectroscopy pipeline"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
+  "Operating System :: MacOS",
+]
+dependencies = ["numpy", "scipy"]
+
+[project.urls]
+Homepage = "https://gitlab.unige.ch/bourrier/ANTARESS"
+Issues = "https://gitlab.unige.ch/bourrier/ANTARESS/-/issues"

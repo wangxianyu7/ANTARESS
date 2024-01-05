@@ -1,5 +1,7 @@
 # **A**dvanced and **N**eat **T**echniques for the **A**ccurate **R**etrieval of **E**xoplanetary and **S**tellar **S**pectra
 
+Read the documentation [here](https://obswww.unige.ch/~bourriev/antaress/doc/html/).
+
 ## General approach
 
 First, define the system properties for the host star and its planets in [ANTARESS_systems.py](ANTARESS_systems.py).  
@@ -37,7 +39,7 @@ Because plots may require specific outputs of large size, the latter are not gen
 
 ## Notebooks
 
-Notebooks allows you to run a simplified version of the ANTARESS workflow. Their purpose is to help you familiarize with ANTARESS. To use the workflow to its full capabilities, use the configuration file.  
+Notebooks allow you to run a simplified version of the ANTARESS workflow. Their purpose is to help you familiarize with ANTARESS. To exploit the workflow to its full capabilities, use the configuration file.  
 
 Notebooks available in the namesake [directory](Notebooks/):
 - [ANTARESS_nbook_mock](Notebooks/ANTARESS_nbook_mock.ipynb) : to generate a mock CCF dataset
@@ -73,5 +75,14 @@ then
 - run `python setup_lbl_fit.py build` after setting up the path to your local python installation in the [setup_lbl_fit.py](ANTARESS_masks/KitCat/setup_lbl_fit.py). Then copy the compiled file `calculate_RV_line_by_line3.cpython-XX-darwin.so` into your ANTARESS/KitCat directory  
 
 ## Contributors
-**Main developer**: Vincent Bourrier (you can contact me for inquiries about the ANTARESS workflow and associated pipeline).  
-**Contributors**: Omar Attia, Romain Allart, Khaled Al Moulla, Heather Cegla, Michaël Cretignier, William Dethier, Jean-Baptiste Delisle, Xavier Dumusque, David Ehrenreich, Erik Fridén, Nathan Hara, Christophe Lovis, Samson Jules Mercier, Dany Mounzer, Francesco Alfonso Pepe, Julia Victoria Seidel, Michal Steiner, Sara Tavella, Valentina Vaulato, Theo Vrignaud, Aurélien Wyttenbach.
+Omar Attia, Romain Allart, Khaled Al Moulla, Vincent Bourrier, Heather Cegla, Michaël Cretignier, William Dethier, Jean-Baptiste Delisle, Xavier Dumusque, David Ehrenreich, Erik Fridén, Nathan Hara, Christophe Lovis, Samson Jules Mercier, Dany Mounzer, Francesco Alfonso Pepe, Julia Victoria Seidel, Michal Steiner, Sara Tavella, Valentina Vaulato, Theo Vrignaud, Aurélien Wyttenbach.
+
+## References
+TBD
+
+## Contribute
+You are welcome to open issues and/or contribute code via pull-requests after signing in to your [SWITCH edu-ID account](https://gitlab.unige.ch).
+If you do not have an account, [create one](https://eduid.ch) and then [sign in](https://gitlab.unige.ch) by selecting "SWITCH edu-ID" as your organisation.
+
+You can contact [Vincent Bourrier](mailto:vincent.bourrier@unige.ch) if you are interested in collaborations and developments of this project. 
+

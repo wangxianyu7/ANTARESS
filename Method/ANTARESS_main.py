@@ -1,21 +1,19 @@
-from ANTARESS_spectral_corrections.ANTARESS_sp_reduc import red_sp_data_instru
-from ANTARESS_analysis.ANTARESS_joined_star import joined_Intr_ana
+from ANTARESS_corrections.ANTARESS_sp_reduc import red_sp_data_instru
+from ANTARESS_analysis.ANTARESS_joined_star import joined_Star_ana
 from ANTARESS_analysis.ANTARESS_joined_atm import joined_Atm_ana
 from ANTARESS_plots.ANTARESS_plots_all import ANTARESS_plot_functions
-from ANTARESS_routines.ANTARESS_conversions import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
 from ANTARESS_routines.ANTARESS_calib import calc_gcal
 from ANTARESS_routines.ANTARESS_plocc_spec import def_plocc_profiles
-from ANTARESS_masks.ANTARESS_masks_gen import def_masks
+from ANTARESS_conversions.ANTARESS_masks_gen import def_masks
+from ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
 from ANTARESS_grids.ANTARESS_plocc_grid import calc_plocc_prop
 from ANTARESS_grids.ANTARESS_spots import calc_spots_prop, corr_spot
 from ANTARESS_routines.ANTARESS_binning import process_bin_prof
-from ANTARESS_routines.ANTARESS_detrend import detrend_prof,pc_analysis
+from ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
 from ANTARESS_routines.ANTARESS_data_process import init_prop,init_data_instru,update_data_inst,init_visit,align_profiles,rescale_data,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
 from ANTARESS_analysis.ANTARESS_ana_comm import MAIN_single_anaprof
 from ANTARESS_routines.ANTARESS_sp_cont import process_spectral_cont
 
-import os
-__version__ = "0.0.1"
 
 def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_param,input_dic,user):
     r"""**Main ANTARESS function.**
@@ -85,11 +83,12 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             if gen_dic['detrend_prof'] and (not detrend_prof_dic['full_spec']):
                 detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
 
-            #Calculating theoretical properties of the planet occulted-regions 
+            #Calculating theoretical properties of the planet-occulted regions 
             if (gen_dic['theoPlOcc']): 
-                calc_plocc_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'], mock_dic=mock_dic)
-            
-            #Calculating theoretical properties of the spot occulted-regions 
+                calc_plocc_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'],mock_dic=mock_dic)
+                
+            #Calculating theoretical properties of the spot-occulted regions 
+
             if (gen_dic['theo_spots']): 
                 calc_spots_prop(gen_dic,system_param['star'],theo_dic,inst,data_dic)
 
@@ -110,7 +109,8 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
          
             #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
             if gen_dic['DImast_weight']:              
-                process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic, mock_dic = mock_dic, masterDI=True)
+                process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDI=True,mock_dic=mock_dic)
+
 
             #Processing converted 2D disk-integrated profiles
             if gen_dic['spec_1D']:                
@@ -143,7 +143,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
 
             #Fitting intrinsic stellar profiles in the star rest frame
             if gen_dic['fit_'+data_type_gen]:
-                ana_prof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
+                MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
             
             #Aligning intrinsic stellar profiles to their local rest frame
             if gen_dic['align_'+data_type_gen]: 
@@ -176,7 +176,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
 
             #Fitting atmospheric profiles in the star rest frame
             if gen_dic['fit_'+data_type_gen]:
-                ana_prof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
+                MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
       
             #Aligning atmospheric profiles to the planet rest frame
             if gen_dic['align_'+data_type_gen]:   
@@ -218,17 +218,17 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     
         #Wrap-up function to fit intrinsic stellar profiles and surface RVs   
         if gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_ResProf'] :
-            fit_intr_funcs(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic)
+            joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic)
     
         #Wrap-up function to fit atmospheric profiles and their properties
         if gen_dic['fit_AtmProf'] or gen_dic['fit_AtmProp']:
-            fit_atm_funcs(gen_dic)
+            joined_Atm_ana(gen_dic)
 
     ##############################################################################
     #Call to plot functions
     ##############################################################################
     if gen_dic['plots_on']:
-        ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic, mock_dic, input_dic, user)
+        ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,mock_dic,input_dic,user)
 
     return None
     
@@ -251,11 +251,12 @@ def conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_di
 
     #Analyzing converted profiles
     if gen_dic['fit_'+data_type_gen+'_1D']: 
-        ana_prof('',data_type_gen+'_1D',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])   
+        MAIN_single_anaprof('',data_type_gen+'_1D',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])   
 
     return None
 
-def bin_gen_functions(data_type_gen,mode,inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic, mock_dic={}, vis=None):
+
+def bin_gen_functions(data_type_gen,mode,inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,mock_dic={},vis=None):
     """**Wrap-up function for binned datasets.**
 
     Args:
@@ -267,11 +268,11 @@ def bin_gen_functions(data_type_gen,mode,inst,gen_dic,data_dic,coord_dic,data_pr
     """ 
     #Binning profiles for analysis purpose 
     if gen_dic[data_type_gen+'bin'+mode]: 
-        process_bin_prof(mode,data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic, mock_dic=mock_dic)
+        process_bin_prof(mode,data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,mock_dic=mock_dic)
 
     #Analyzing binned profiles
     if gen_dic['fit_'+data_type_gen+'bin'+mode]: 
-        ana_prof(mode,data_type_gen+'bin',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])                        
+        MAIN_single_anaprof(mode,data_type_gen+'bin',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])                        
 
     #Calculating generic stellar continuum from binned master spectrum
     if (data_type_gen in ['DI','Intr']) and gen_dic[data_type_gen+'_stcont']:

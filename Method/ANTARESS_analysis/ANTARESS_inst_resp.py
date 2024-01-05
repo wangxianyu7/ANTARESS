@@ -65,8 +65,8 @@ def return_pix_size():
         #    - 2.8 pixel / FWHM, so that pixel size = 1.1317 km/s             
         'CARMENES_VIS':1.1317,
         
-        'NIRPS_HA':1.,
-        'NIRPS_HE':1.,  
+        'NIRPS_HA':0.93,
+        'NIRPS_HE':0.93,  
         
         'EXPRES':0.5
     }     

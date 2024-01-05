@@ -5,11 +5,6 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 # -- Path setup --------------------------------------------------------------
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
 import os
 import sys
 import glob
@@ -18,22 +13,23 @@ import glob
 conf_path = os.path.abspath(os.path.dirname(__file__))
 if conf_path=='/builds/bourrier/antaress/Docs/source':
 	sys.path.insert(0, os.path.abspath('/builds/bourrier/antaress/Method/'))
-	for antaress_dir in glob.glob('/builds/bourrier/antaress/Method/ANTARESS_*/'):
-		sys.path.insert(0, os.path.abspath(antaress_dir))
+	for code_dir in glob.glob('/builds/bourrier/antaress/Method/ANTARESS_*/'):
+		sys.path.insert(0, os.path.abspath(code_dir))
+
+	#Get release version
+	with open('/builds/bourrier/antaress/pyproject.toml', 'r') as f:
+		for line in f.readlines():
+			if 'version' in line:
+				release = line.split('= "')[1].split('"')[0]
 else:
 	sys.path.insert(0, os.path.abspath('/Users/bourrier/Travaux/ANTARESS/Method/'))
-	for antaress_dir in glob.glob('/Users/bourrier/Travaux/ANTARESS/Method/ANTARESS_*/'):
-		sys.path.insert(0, os.path.abspath(antaress_dir))
+	for code_dir in glob.glob('/Users/bourrier/Travaux/ANTARESS/Method/ANTARESS_*/'):
+		sys.path.insert(0, os.path.abspath(code_dir))
 
 # -- Project information -----------------------------------------------------
-
 project = 'ANTARESS'
-copyright = '2023, Vincent Bourrier'
-author = 'Vincent Bourrier'
-
-# The full version, including alpha/beta/rc tags
-release = '1.0.0'
-
+copyright = '2023, Université de Genève'
+author = 'V. Bourrier & contributors'
 
 # -- General configuration ---------------------------------------------------
 
@@ -60,11 +56,6 @@ exclude_patterns = []
 
 # -- Options for HTML output -------------------------------------------------
 
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes.
-#
-html_theme = 'alabaster'
-
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
@@ -88,12 +79,4 @@ html_theme = "sphinx_book_theme"
 html_copy_source = True
 html_show_sourcelink = True
 html_sourcelink_suffix = ""
-#html_theme_options = {
- #   "path_to_docs": "docs",
-  #  "repository_url": repository_url,
-   # "repository_branch": repository_branch,
-    #"use_edit_page_button": False,
-#    "use_issues_button": False,
- #   "use_repository_button": False,
- #   "use_download_button": False,
-#}
+html_theme_options = {'gitlab_url': 'https://gitlab.unige.ch/bourrier/antaress'}

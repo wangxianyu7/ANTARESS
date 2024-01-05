@@ -3953,11 +3953,14 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
 
-
+        
+    ##################################################################################################
+    #%% Residual profiles
+    ##################################################################################################        
+        
 
     ################################################################################################################  
-    #%% 2D map: residual profiles 
-    #    - in stellar rest frame
+    #%%% 2D map: residual profiles 
     ################################################################################################################  
     if (plot_dic['map_Res_prof']!=''):
         key_plot = 'map_Res_prof'
@@ -4612,7 +4615,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
     ##################################################################################################
-    #%% Standard deviation with bin size for out-of-transit residual CCFs
+    #%%% Standard deviation with bin size for out-of-transit residual CCFs
     #    - one plot per exposure
     ##################################################################################################
     if (plot_dic['scr_search']!=''):
@@ -5138,7 +5141,6 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
     ##################################################################################################
     #%%% 2D map: model intrinsic stellar profiles and residuals
-    #    - in star rest frame
     ##################################################################################################
     if (plot_dic['map_Intr_prof_est']!='') or (plot_dic['map_Intr_prof_res']!=''):
         for key_plot in ['map_Intr_prof_est','map_Intr_prof_res']:
@@ -7996,7 +7998,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
         #Number of cells on a diameter of the star (must be odd)
         #    - leave undefined for default settings to be used
-        # plot_settings[key_plot]['n_stcell']=11. 
+        plot_settings[key_plot]['n_stcell']=51. 
         # plot_settings[key_plot]['n_stcell']=201. #classic GJ436
         # plot_settings[key_plot]['n_stcell']=101.
         # plot_settings[key_plot]['n_stcell']=301. #espresso paper
@@ -8066,13 +8068,14 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
         #Overlay to the RV-colored disk a shade controlled by flux
-        plot_settings[key_plot]['shade_overlay']=True      
+        plot_settings[key_plot]['shade_overlay']=True   
     
         #Number of equi-RV curves
         #    - must be even not to overplot the stellar spin axis
         #    - coded in 'sky_ste' mode only
         #    - set to None to prevent
         plot_settings[key_plot]['n_equi']=None   #40   #None   #10    
+        plot_settings[key_plot]['n_equi']=10
         # if gen_dic['star_name']=='HD209458':
         #     plot_settings[key_plot]['n_equi'] = 15     #ANTARESS I   
     

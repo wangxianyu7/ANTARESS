@@ -16,7 +16,7 @@ from ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,get_FWHM_inst,re
 
 
 
-def joined_Intr_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic):
+def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic):
     r"""**Joined stellar fits**
 
     Wrap-up function to call joint fits of stellar properties and profiles

@@ -418,15 +418,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     
-    # # Add spots in the mock dataset 
-    # #    + Spots are defined by 4 parameters : 
-    # #        - 'lat' : constant lattitutde of the spot, in star rest frame
-    # #        - 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
-    # #        - 'ang' : the angular size (in deg) of the spot
-    # #        - 'flux' : the flux level of the spot surface, relative to the 'normal' surface of the star.
-    # #    + Structure is par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']
-     
-    mock_dic['use_spots'] = True  & False
+    #%%%% Spot settings           
+    mock_dic['use_spots'] = False
+    
+    
+    #%%%%% Properties
+    #    - spots are defined by 4 parameters : 
+    # + 'lat' : constant lattitutde of the spot, in star rest frame
+    # + 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
+    # + 'ang' : the angular size (in deg) of the spot
+    # + 'flux' : the flux level of the spot surface, relative to the 'normal' surface of the star.
+    #    - structure is par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']    
     mock_dic['spots_prop'] = {}
     
          

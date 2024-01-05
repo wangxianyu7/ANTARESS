@@ -1,13 +1,13 @@
 import numpy as np
 import bindensity as bind
-from utils import stop,np_where1D,dataload_npz,default_func
+from utils import stop,np_where1D,dataload_npz,default_func,check_data
 from copy import deepcopy
 from constant_data import c_light
-from ANTARESS_routines.ANTARESS_orbit import excl_plrange,calc_pl_coord,conv_phase
+from ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase
 from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_prop
-from ANTARESS_routines.ANTARESS_init import check_data
 
-def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic, mock_dic={}, masterDI=False):
+
+def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,mock_dic={},masterDI=False):
     r"""**Binning routine**
 
     Bins series of input spectral profile into a new series along the chosen temporal/spatial dimension.
@@ -373,30 +373,30 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             data_glob_new['idx_in2exp'] = np.arange(data_glob_new['n_exp'],dtype=int)[data_glob_new['idx_in']]
             data_glob_new['dim_in'] = [data_glob_new['n_in_tr']]+data_glob_new['dim_exp']
 
-            #Properties of planet occulted-regions
+            #Properties of planet-occulted and spot regions 
             params = deepcopy(system_param['star'])
-            params.update({'rv':0.,'cont':1.})  
-
-            #Add spot properties
+            params.update({'rv':0.,'cont':1.}) 
             params['use_spots']=False
-
-            if mock_dic!={} and mock_dic['use_spots']:
-                params['use_spots']=True
-                for spot_param in mock_dic['spots_prop'][inst][vis].keys():
-                    params[spot_param]=mock_dic['spots_prop'][inst][vis][spot_param]
-                #Figuring out the number of spots
-                num_spots = 0
-                for par in params:
-                    if 'lat__IS'+inst+'_VS'+vis+'_SP' in par:
-                        num_spots +=1
-                params['num_spots']=num_spots
-                params['inst']=inst
-                params['vis']=vis
-
+            if mock_dic!={} and mock_dic['use_spots'] and (inst in mock_dic['use_spots']):
+                if mode=='multivis':
+                    print('WARNING: spots properties are not propagated for multiple visits.')
+                elif vis_in in mock_dic['spots_prop'][inst]:
+                    params['use_spots']=True
+                    for spot_param in list(mock_dic['spots_prop'][inst][vis_in].keys()):
+                        params[spot_param]=mock_dic['spots_prop'][inst][vis_in][spot_param]
+                        
+                    #Figuring out the number of spots
+                    num_spots = 0
+                    for par in params:
+                        if 'lat__IS'+inst+'_VS'+vis_in+'_SP' in par:num_spots +=1
+                    params['num_spots']=num_spots
+                    params['inst']=inst
+                    params['vis']=vis_in
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
             if ('spec' in data_mode) and ('chrom' in data_dic['DI']['system_prop']):key_chrom+=['chrom']
-            data_glob_new['plocc_prop'] = sub_calc_plocc_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,data_dic['DI']['system_prop'],params,data_glob_new['coord'],range(n_bin),system_spot_prop_in = ,out_ranges=True)            
+            data_glob_new['plocc_prop'] = sub_calc_plocc_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,data_dic['DI']['system_prop'],params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True)            
+
 
         #---------------------------------------------------------------------------
 

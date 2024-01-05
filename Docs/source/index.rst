@@ -1,7 +1,4 @@
-.. ANTARESS documentation master file, created by
-   sphinx-quickstart on Fri Sep 22 23:56:45 2023.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. ANTARESS documentation master file
 
 Welcome to ANTARESS's documentation!
 ====================================
@@ -23,25 +20,23 @@ Welcome to ANTARESS's documentation!
    :maxdepth: 2
    :caption: Routines:
 
-   ANTARESS_orbit
    ANTARESS_calib
    ANTARESS_plocc_spec
    ANTARESS_binning
-   ANTARESS_init
    ANTARESS_data_process
-   ANTARESS_detrend
    ANTARESS_sp_cont
    ANTARESS_data_align		
 
 .. toctree::
    :maxdepth: 2
-   :caption: Spectral corrections:
+   :caption: Corrections:
 
    ANTARESS_sp_reduc
-   ANTARESS_flux_balance
-   ANTARESS_interferences
-   ANTARESS_peaks
    ANTARESS_tellurics
+   ANTARESS_flux_balance
+   ANTARESS_peaks
+   ANTARESS_interferences
+   ANTARESS_detrend
 
 .. toctree::
    :maxdepth: 2
@@ -57,6 +52,7 @@ Welcome to ANTARESS's documentation!
    :maxdepth: 2
    :caption: Grids:
    
+   ANTARESS_coord
    ANTARESS_star_grid
    ANTARESS_plocc_grid
    ANTARESS_spots
