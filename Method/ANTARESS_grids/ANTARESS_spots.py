@@ -1283,6 +1283,7 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
         range par_list : List of parameters of interest, whose range of values, stored in range_reg_dic_spot, will be updated.
         args : Dictionary containing the parameters used to generate the intrinsic profiles (not sure this is all it contains).
         cb_band : List containing the coefficients to calculate the convective blueshift RV contribution.
+    
     Returns:
         Focc_star_band : The input Focc_star_band updated with the flux occulted by the spot in the exposure being processed.
     
