@@ -5,7 +5,7 @@ from itertools import product as it_product
 from ANTARESS_grids.ANTARESS_coord import frameconv_InclinedStar_to_Star,frameconv_Star_to_InclinedStar
 from ANTARESS_analysis.ANTARESS_model_prof import poly_prop_calc
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
-from ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
+# from ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
 from ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate
 from ANTARESS_grids.ANTARESS_star_grid import calc_GD, calc_LD, calc_RVrot, calc_Isurf_grid
 from ANTARESS_grids.ANTARESS_prof_grid import init_st_intr_prof, coadd_loc_line_prof
@@ -296,13 +296,6 @@ def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, 
     y_sp = y_st_grid*cos_lat  - (x_st_grid*sin_long + z_st_grid*cos_long)   *   sin_lat
     z_sp = y_st_grid*sin_lat  + (x_st_grid*sin_long + z_st_grid*cos_long)   *   cos_lat
     
-    if plot:
-        import matplotlib.pyplot as plt
-        for j in range(len(x_sp)):
-            plt.scatter(x_sp[j], y_sp[j], color='blue', alpha=0.3, s=6)
-
-        plt.scatter(x_sp[5], y_sp[5], color='white', alpha=0.3, s=6)
-        plt.scatter(x_sp[5]+spot_prop['ang_rad'], y_sp[5], color='white', alpha=0.3, s=6)
     # Deduce which cells are within the spot
     phi_sp = np.arctan2(np.sqrt(x_sp**2. + y_sp**2.),z_sp)
     cond_in_sp = cond_close_to_spot
@@ -1486,7 +1479,7 @@ def new_calc_spotted_region_prop(spot_prop, grid_dic, star_params, LD_law, ld_co
         region_prop['z_st_sky_sp']        = grid_dic['z_st_sky'][cond_in_sp]
 
         #Frame conversion from the inclined star frame to the 'star' frame
-        region_prop['x_st_sp'],region_prop['y_st_sp'],region_prop['z_st_sp'] = conv_inclinedStarFrame_to_StarFrame(region_prop['x_st_sky_sp'],
+        region_prop['x_st_sp'],region_prop['y_st_sp'],region_prop['z_st_sp'] = frameconv_InclinedStar_to_Star(region_prop['x_st_sky_sp'],
                                                                                                                       region_prop['y_st_sky_sp'], 
                                                                                                                       region_prop['z_st_sky_sp'], 
                                                                                                                       np.arccos(param['cos_istar']))
@@ -1634,11 +1627,11 @@ def new_retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd, exp
         # inclined frame
         istar = np.arccos(param['cos_istar'])
         #Exposure center
-        x_sky_center,y_sky_center,z_sky_center = conv_StarFrame_to_inclinedStarFrame(x_st_center,y_st_center,z_st_center,istar)
+        x_sky_center,y_sky_center,z_sky_center = frameconv_Star_to_InclinedStar(x_st_center,y_st_center,z_st_center,istar)
         #Exposure start
-        x_sky_start,y_sky_start,z_sky_start = conv_StarFrame_to_inclinedStarFrame(x_st_start,y_st_start,z_st_start,istar)
+        x_sky_start,y_sky_start,z_sky_start = frameconv_Star_to_InclinedStar(x_st_start,y_st_start,z_st_start,istar)
         #Exposure end
-        x_sky_end,y_sky_end,z_sky_end = conv_StarFrame_to_inclinedStarFrame(x_st_end,y_st_end,z_st_end,istar)
+        x_sky_end,y_sky_end,z_sky_end = frameconv_Star_to_InclinedStar(x_st_end,y_st_end,z_st_end,istar)
        
         #Store properties common across the exposure
         spots_prop[spot]['ang_rad'] = spots_prop[spot]['ang'] * np.pi/180
@@ -1765,7 +1758,7 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
     new_z_sky_grid = np.sqrt(1 - new_x_sky_grid**2 - new_y_sky_grid**2)
 
     ##Move coordinates to the star reference frame and then the spot reference frame
-    x_st_grid, y_st_grid, z_st_grid = conv_inclinedStarFrame_to_StarFrame(new_x_sky_grid, new_y_sky_grid, new_z_sky_grid, star_params['istar_rad'])
+    x_st_grid, y_st_grid, z_st_grid = frameconv_InclinedStar_to_Star(new_x_sky_grid, new_y_sky_grid, new_z_sky_grid, star_params['istar_rad'])
 
     x_spot_grid = x_st_grid*spot_prop['cos_long_exp_center'] - z_st_grid*spot_prop['sin_long_exp_center']
 
@@ -1807,7 +1800,7 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
     coord_grid['nsub_star'] = n_occ_sp
 
     #Getting the coordinates in the star rest frame
-    coord_grid['x_st'], coord_grid['y_st'], coord_grid['z_st'] = conv_inclinedStarFrame_to_StarFrame(coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], star_params['istar_rad'])
+    coord_grid['x_st'], coord_grid['y_st'], coord_grid['z_st'] = frameconv_InclinedStar_to_Star(coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], star_params['istar_rad'])
     
     #Retrieve the stellar flux grids over this local occulted-region grid.
     ld_grid_occ, gd_grid_occ, mu_grid_occ, Fsurf_grid_occ, Ftot_occ, Istar_occ = calc_Isurf_grid([iband], coord_grid['nsub_star'], system_spot_prop, coord_grid, star_params, Ssub_Sstar_sp, Istar_norm_band, region='pl', Ssub_Sstar_ref=Ssub_Sstar_ref)

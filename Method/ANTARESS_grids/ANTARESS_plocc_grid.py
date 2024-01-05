@@ -273,7 +273,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
 
     #Define the list of parameters whose range we're interested in
     range_par_list=[]
-    if (len(theo_dic['d_oversamp'])>0) and out_ranges:range_par_list = np.intersect1d(['mu','lat','lon','x_st','y_st','xp_abs','r_proj'],par_list)
+    if (len(theo_dic['d_oversamp'])>0) and out_ranges:range_par_list = list(np.intersect1d(['mu','lat','lon','x_st','y_st','xp_abs','r_proj'],par_list))
 
 
     #Condition for spot calculation
