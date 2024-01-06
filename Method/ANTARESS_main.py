@@ -62,7 +62,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
         for vis in data_dic[inst]['visit_list']:
             print('  -----------------')
             print('  Processing visit: '+vis) 
-            
+
             #Initialization of visit properties
             init_visit(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic)             
             
@@ -90,7 +90,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Calculating theoretical properties of the spot-occulted regions 
             if (gen_dic['theo_spots']): 
                 calc_spots_prop(gen_dic,system_param['star'],theo_dic,inst,data_dic)
-
+          
             #Analyzing original disk-integrated profiles
             if gen_dic['fit_'+data_type_gen]:
                 MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])

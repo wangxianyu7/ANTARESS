@@ -867,7 +867,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
         if DImast_weight_data_paths is not None:
             flux_ref_1D,cov_ref_1D = bind.sum(flux_ref_ord_contr,cov_ref_ord_contr)
             flux_ref_1D[~cond_def_binned]=np.nan   
-            datasave_npz(dir_save[data_type]+'ref_'+str(iexp_eff),{'edge_bins':data_exp1D['edge_bins'],'flux':flux_ref_1D[None,:],'cov':[cov_1D]})           
+            datasave_npz(dir_save[data_type]+'ref_'+str(iexp_eff),{'cen_bins':data_exp1D['cen_bins'],'edge_bins':data_exp1D['edge_bins'],'flux':flux_ref_1D[None,:],'cov':[cov_1D]})           
         if flux_est_loc_exp is not None:
             if cov_est_loc_exp is None:
                 flux_est_loc_1D = flux_est_loc_ord_contr

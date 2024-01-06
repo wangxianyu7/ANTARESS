@@ -243,7 +243,7 @@ all_system_params={
 
             #Analysis for Mounzer+2023
             'Rstar':0.784,
-            'istar':90.,'veq':1.5, 
+            'istar':90.,'veq':3.25, 
             
             },
     
@@ -263,7 +263,7 @@ all_system_params={
             'inclination':85.46578817370532,
             'Kstar':201.3,	
             'aRs':8.8843,
-            'lambda_proj':0.
+            'lambda_proj':-0.45
             
             
             },

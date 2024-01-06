@@ -1071,7 +1071,7 @@ def resample_func(x_bd_low_in,x_bd_high_in,x_low_in_all,x_high_in_all,flux_in_al
      - This resampling assumes that the flux density is constant over each pixel, ie that the same number of photons is received by every portion of the pixel.
        In practice this is not the case, as the flux may vary sharply from one pixel to the next, and thus the flux density varies over a pixel (as we would measure at a higher spectral resolution).
        The advantage of the present resampling is that it conserves the flux, which is not necessarily the case for interpolation.
-     - nan values can be let in the input tables, so that new pixels that overlap with them will be set conservatively to nan.
+     - nan values can be left in the input tables, so that new pixels that overlap with them will be set conservatively to nan.
        They can also be removed before input to speed up calculation, in which case the new pixel will be defined based on defined, overlapping pixels.
      - If a new pixel is only partially covered by input pixels, its boundaries can be re-adjusted to the maximum overlapping range.
      - The x tables must not contain nan so that they can be sorted.
@@ -1352,10 +1352,10 @@ def resample_func(x_bd_low_in,x_bd_high_in,x_low_in_all,x_high_in_all,flux_in_al
 
 
 
-def sub_calc_bins(low_bin,high_bin,raw_loc_dic,nfilled_bins,calc_Fr=False,calc_gdet=False):
+def sub_calc_bins(low_bin,high_bin,raw_loc_dic,nfilled_bins,calc_Fr=False,calc_gdet=False,adjust_bins=True):
     r"""**Simplified binning routine**
 
-    We do not use the resampling function because only the flux is binned and/or the bins are large enough that we can neglect the covariance between them.
+    Used instead of the resampling function when only the flux is binned and/or the bins are large enough that we can neglect the covariance between them.
     This is also why we can bin the master and exposure over defined pixels (ie, ignoring some of the pixels that might be undefined within a bin).
     Otherwise the covariance matrix would need to be resampled over all consecutive pixels, included undefined ones, and the binned pixels would be set to undefined by the resampling function.
         
@@ -1392,10 +1392,15 @@ def sub_calc_bins(low_bin,high_bin,raw_loc_dic,nfilled_bins,calc_Fr=False,calc_g
                 bin_loc_dic['gdet'] = np.sum(raw_loc_dic['var'][idx_overpix]) /np.sum(raw_loc_dic['flux'][idx_overpix])
 
             #Adjust bin center and boundaries
-            bin_loc_dic['cen_bins'] = np.mean(raw_loc_dic['cen_bins'][idx_overpix])
-            bin_loc_dic['low_bins'] = raw_loc_dic['low_bins'][idx_overpix[0]]
-            bin_loc_dic['high_bins'] = raw_loc_dic['high_bins'][idx_overpix[-1]]
-
+            if adjust_bins:
+                bin_loc_dic['cen_bins'] = np.mean(raw_loc_dic['cen_bins'][idx_overpix])
+                bin_loc_dic['low_bins'] = raw_loc_dic['low_bins'][idx_overpix[0]]
+                bin_loc_dic['high_bins'] = raw_loc_dic['high_bins'][idx_overpix[-1]]
+            else:
+                bin_loc_dic['cen_bins'] = 0.5*(low_bin+high_bin)
+                bin_loc_dic['low_bins'] = low_bin
+                bin_loc_dic['high_bins'] = high_bin
+                
     return bin_loc_dic,nfilled_bins
 
 
@@ -1425,7 +1430,7 @@ def sub_def_bins(bin_siz,idx_kept_ord,low_pix,high_pix,dpix_loc,pix_loc,sp1D_loc
     max_pix = np.nanmax(raw_loc_dic['high_bins'])
     n_bins_init=int(np.ceil((max_pix-min_pix)/bin_siz))
     bin_siz=(max_pix-min_pix)/n_bins_init
-    bin_bd=np.append(min_pix+bin_siz*np.arange(n_bins_init,dtype=float),raw_loc_dic['high_bins'][-1])                             
+    bin_bd=min_pix+bin_siz*np.arange(n_bins_init+1,dtype=float)                      
 
     return bin_bd,raw_loc_dic
 

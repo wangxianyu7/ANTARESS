@@ -2,7 +2,7 @@ import glob
 import numpy as np
 import lmfit
 from lmfit import Parameters
-from utils import stop,np_where1D,is_odd,closest,dataload_npz,gen_specdopshift,check_data
+from utils import stop,np_where1D,is_odd,closest,dataload_npz,gen_specdopshift,check_data,datasave_npz
 from itertools import product as it_product
 from copy import deepcopy
 import os as os_system 
@@ -14,6 +14,7 @@ from minim_routines import init_fit,fit_merit,fit_minimization,ln_prob_func_lmfi
 from astropy.timeseries import LombScargle
 from scipy import stats
 import itertools
+from scipy.signal import savgol_filter
 from matplotlib.ticker import MultipleLocator
 from ANTARESS_plots.utils_plots import autom_x_tick_prop,autom_y_tick_prop,custom_axis
 from ANTARESS_routines.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof
@@ -72,66 +73,78 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
     #Calculating data
     if gen_dic['calc_wig'] :
         print('         Fitting/correcting wiggles') 
+        fixed_args = {'rasterized':True}
 
-        #Optional arguments to be passed to the fit functions
-        #    - common to all steps in the module
-        fixed_args={'use_cov':False}
+        #Wiggle filter
+        if gen_dic['wig_exp_filt']['mode']: 
+            if gen_dic['wig_norm_ord']:print("WARNING: it is advised to disable gen_dic['wig_norm_ord'] with filter mode")
+            fit_dic = {}
 
-        #Reference nu for frequency calculations
-        fixed_args['nu_ref'] = c_light/6000. 
+            #Disable analytical steps
+            for key in ['wig_exp_samp','wig_exp_nu_ana','wig_exp_fit','wig_exp_point_ana','wig_vis_fit']:gen_dic[key]['mode'] = False
+
+        #Analytical wiggle model
+        else:
+
+            #Optional arguments to be passed to the fit functions
+            #    - common to all steps in the module
+            fixed_args['use_cov'] = False 
+
+            #Reference nu for frequency calculations
+            fixed_args['nu_ref'] = c_light/6000. 
+        
+            #Maximum number of fit evaluations
+            fixed_args['max_nfev'] = 10000
+
+            #Maximum degree of polynomial frequency variations
+            #    - 2 is required over the full ESPRESSO range, but may be reduced to 1 for dataset with wiggles undetectable in the blue orders
+            fixed_args['deg_Freq'] = gen_dic['wig_deg_Freq'] 
+
+            #Maximum degree of polynomial amplitude variations
+            #    - defined for each component
+            fixed_args['deg_Amp'] = gen_dic['wig_deg_Amp'] 
+
+            #Component colors
+            color_comps={1:'dodgerblue',2:'orange',3:'limegreen',4:'magenta'}
+
+            #Parameters generic names
+            pref_names_amp={}
+            suf_names_amp={}
+            pref_names_freq={}
+            suf_names_freq={}
+            pref_names={}
+            suf_names={}
+            for comp_id in range(1,6):
+                pref_names_amp[comp_id] = ['AmpGlob' for ideg in range(fixed_args['deg_Amp'][comp_id]+1)] 
+                suf_names_amp[comp_id] =  ['_c'+str(ideg) for ideg in range(fixed_args['deg_Amp'][comp_id]+1)]
+                pref_names_freq[comp_id] = ['Freq' for i in range(fixed_args['deg_Freq'][comp_id]+1)]
+                suf_names_freq[comp_id] = ['_c'+str(ideg) for ideg in range(fixed_args['deg_Freq'][comp_id]+1)]
+                pref_names[comp_id] = pref_names_amp[comp_id]+pref_names_freq[comp_id]+['Phi']
+                suf_names[comp_id] =  suf_names_amp[comp_id]+suf_names_freq[comp_id]+['']
+            suf_hyper = ['_off','_dx_east','_dy_east','_dz_east','_dz_west','_doff']    
+    
+            #Generic fit dictionary
+            fit_prop_dic = {'calc_quant' : False}
+            fit_dic={'uf_bd':{}}    
     
         #Resolution of plot model (1e-10 s-1)
         fixed_args['dnu_HR'] = gen_dic['wig_bin']/4.
-        
-        #Maximum number of fit evaluations
-        fixed_args['max_nfev'] = 10000
-
-        #Maximum degree of polynomial frequency variations
-        #    - 2 is required over the full ESPRESSO range, but may be reduced to 1 for dataset with wiggles undetectable in the blue orders
-        fixed_args['deg_Freq'] = gen_dic['wig_deg_Freq'] 
-
-        #Maximum degree of polynomial amplitude variations
-        #    - defined for each component
-        fixed_args['deg_Amp'] = gen_dic['wig_deg_Amp'] 
 
         #Account for data noise in periodograms
         fixed_args['lb_with_err'] = False
         
         #FAP levels
         fixed_args['sampling_fap'] = [0.1, 0.05, 0.01]
-        
-        #Component colors
-        color_comps={1:'dodgerblue',2:'orange',3:'limegreen',4:'magenta'}
 
         #Condition for spectral processing in visit fit
         if gen_dic['wig_vis_fit']['mode']:
             cond_exp_proc_vis = True 
             if gen_dic['wig_vis_fit']['fixed'] and not (gen_dic['wig_vis_fit']['plot_mod'] | gen_dic['wig_vis_fit']['plot_rms'] | gen_dic['wig_vis_fit']['plot_hist']| gen_dic['wig_vis_fit']['plot_par_chrom']):cond_exp_proc_vis = False  
         else:cond_exp_proc_vis = False  
-        cond_exp_proc = gen_dic['wig_exp_init']['mode'] | gen_dic['wig_exp_samp']['mode'] | gen_dic['wig_exp_fit']['mode'] 
-
-        #Parameters generic names
-        pref_names_amp={}
-        suf_names_amp={}
-        pref_names_freq={}
-        suf_names_freq={}
-        pref_names={}
-        suf_names={}
-        for comp_id in range(1,6):
-            pref_names_amp[comp_id] = ['AmpGlob' for ideg in range(fixed_args['deg_Amp'][comp_id]+1)] 
-            suf_names_amp[comp_id] =  ['_c'+str(ideg) for ideg in range(fixed_args['deg_Amp'][comp_id]+1)]
-            pref_names_freq[comp_id] = ['Freq' for i in range(fixed_args['deg_Freq'][comp_id]+1)]
-            suf_names_freq[comp_id] = ['_c'+str(ideg) for ideg in range(fixed_args['deg_Freq'][comp_id]+1)]
-            pref_names[comp_id] = pref_names_amp[comp_id]+pref_names_freq[comp_id]+['Phi']
-            suf_names[comp_id] =  suf_names_amp[comp_id]+suf_names_freq[comp_id]+['']
-        suf_hyper = ['_off','_dx_east','_dy_east','_dz_east','_dz_west','_doff']
-
+        cond_exp_proc = gen_dic['wig_exp_filt']['mode'] | gen_dic['wig_exp_init']['mode'] | gen_dic['wig_exp_samp']['mode'] | gen_dic['wig_exp_fit']['mode'] 
+        
         #Indexes of order to be fitted
         iord_fit_ref = range(data_inst['nord_ref'])
-
-        #Generic fit dictionary
-        fit_prop_dic = {'calc_quant' : False}
-        fit_dic={'uf_bd':{}}
 
         #Sampling initialization
         if gen_dic['wig_exp_samp']['mode']:             
@@ -194,8 +207,8 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             #    - the wiggle are modeled in three phases, as wiggle behaviour changes with guide star:
             #      if the guide star changed before meridian crossing, the model is shift / A / B
             #      if the guide star changed after meridian crossing, the model is A / B / shift
-            #      where A and B are models east or west of the meridian   
-            suf_hyper_vis = deepcopy(suf_hyper)
+            #      where A and B are models east or west of the meridian  
+            if not gen_dic['wig_exp_filt']['mode']:suf_hyper_vis = deepcopy(suf_hyper)
             fixed_args['iexp_guidchange'] = 1e10
             cen_ph_guid = None
             shift_group = None
@@ -223,14 +236,15 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     tel_coord_vis['cond_westmer'][tel_coord_vis['cond_shift']] = False
                     
                     #Hyperparameter suffix
-                    suf_hyper_vis+=['_doff_sh','_dx_shift','_dy_shift','_dz_shift']
+                    if not gen_dic['wig_exp_filt']['mode']:
+                        suf_hyper_vis+=['_doff_sh','_dx_shift','_dy_shift','_dz_shift']
 
             #Maximum edges of fitted spectral tables
             glob_min_bins = 1e100
             glob_max_bins = -1e100    
   
             #High-resolution model for plotting
-            if ((gen_dic['wig_exp_point_ana']['mode']) and (gen_dic['wig_exp_point_ana']['plot'])) or ((gen_dic['wig_vis_fit']['mode']) and (gen_dic['wig_vis_fit']['plot_chrompar_point'])):
+            if (not gen_dic['wig_exp_filt']['mode']) and (((gen_dic['wig_exp_point_ana']['mode']) and (gen_dic['wig_exp_point_ana']['plot'])) or ((gen_dic['wig_vis_fit']['mode']) and (gen_dic['wig_vis_fit']['plot_chrompar_point']))):
             
                 #High-res model
                 #    - cubic spline captures better the altitude variations
@@ -264,7 +278,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
             #Save directories
             path_dic={}
-            for step,dir_name in zip(['wig_exp_init','wig_exp_samp','wig_exp_nu_ana','wig_exp_fit','wig_exp_point_ana'],['Init','Sampling','Chrom','Global','Coord']):
+            for step,dir_name in zip(['wig_exp_init','wig_exp_filt','wig_exp_samp','wig_exp_nu_ana','wig_exp_fit','wig_exp_point_ana'],['Init','Filter','Sampling','Chrom','Global','Coord']):
                 path_dic['datapath_'+dir_name] = gen_dic['save_data_dir']+'Corr_data/Wiggles/Exp_fit/'+inst+'_'+vis+'/'+dir_name+'/' 
                 if gen_dic['wig_exp_ana']:                    
                     path_dic['plotpath_'+dir_name] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/Wiggles/Exp_fit/'+inst+'_'+vis+'/'+dir_name+'/'
@@ -361,16 +375,12 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             #Initialize exposure-per-exposure analysis
             if gen_dic['wig_exp_ana']:
                 print('             Exposure analysis')
-                if gen_dic['wig_exp_init']['mode']: print('             - Initialization')
-                if gen_dic['wig_exp_samp']['mode']: print('             - Periodogram sampling')
-                if gen_dic['wig_exp_nu_ana']['mode']:print('           - Chromatic sampling analysis')
-                if gen_dic['wig_exp_fit']['mode']: print('             - Global exposure fit')
-                if gen_dic['wig_exp_point_ana']['mode']:print('           - Temporal analysis')                    
-                
-                fit_dic.update({
-                    'merit':{},                    
-                    'fit_mod' : 'chi2',
-                    'save_dir' :gen_dic['save_data_dir']+'/Corr_data/Wiggles/Exp_fit/'})
+                if gen_dic['wig_exp_init']['mode']:     print('             - Initialization')
+                if gen_dic['wig_exp_filt']['mode']:     print('             - Filtering')
+                if gen_dic['wig_exp_samp']['mode']:     print('             - Periodogram sampling')
+                if gen_dic['wig_exp_nu_ana']['mode']:   print('             - Chromatic sampling analysis')
+                if gen_dic['wig_exp_fit']['mode']:      print('             - Global exposure fit')
+                if gen_dic['wig_exp_point_ana']['mode']:print('             - Temporal analysis')                    
 
                 #Number of grouped exposures and indexes of exposures making each group
                 if (vis in gen_dic['wig_exp_groups']) and (len(gen_dic['wig_exp_groups'][vis])>0):
@@ -379,7 +389,14 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 else:
                     wig_exp_groups = None
                     n_exp_groups = nexp_fit_list     
-
+                
+                #Analytical model
+                fit_dic['save_dir'] = gen_dic['save_data_dir']+'/Corr_data/Wiggles/Exp_fit/'
+                if not gen_dic['wig_exp_filt']['mode']:
+                    fit_dic.update({
+                        'merit':{},                    
+                        'fit_mod' : 'chi2'})
+    
                 #Equivalent tables for grouped exposures
                 tel_coord_expgroup = {
                     'az' : np.zeros(n_exp_groups,dtype=float)*np.nan,
@@ -392,20 +409,20 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     'cen_ph' : np.zeros(n_exp_groups,dtype=float)*np.nan}
 
                 #RMS
-                rms_exp_raw = np.zeros(n_exp_groups,dtype=float)*np.nan
-                if gen_dic['wig_exp_fit']['mode']:
-                    rms_exp_fit = np.zeros(n_exp_groups,dtype=float)*np.nan
+                if gen_dic['wig_exp_fit']['mode'] | gen_dic['wig_exp_filt']['mode']:
+                    rms_exp_raw = np.zeros(n_exp_groups,dtype=float)*np.nan
                     median_err = np.zeros(n_exp_groups,dtype=float)*np.nan
+                rms_exp_fit = np.zeros(n_exp_groups,dtype=float)*np.nan
 
             #Initialize global dictionary to store binned transmission spectra
             bin_dic={}
             data_glob={}
             
             #------------------------------------------------------
-            
+        
             #Spectral processing
             if cond_exp_proc or cond_exp_proc_vis:
-
+           
                 #Retrieve common visit table 
                 if not gen_dic['wig_indiv_mast'] :
                     data_com = np.load(data_inst[vis]['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item() 
@@ -572,13 +589,18 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 if gen_dic['wig_exp_init']['plot_hist']:
                     comm_power_comp = {}
                     for comp_id in comm_freq_comp:comm_power_comp[comp_id]=np.zeros(len(comm_freq_comp[comp_id]),dtype=float)
-         
+
+            #Initialize filter results
+            if gen_dic['wig_exp_filt']['mode']:
+                dic_filter = {}
+
             #Processing each exposure
             init_ord = False
             init_exp = False
-            iexp_group_list = []     
+            iexp_group_list = []    
+            iexp2glob = {}
             for isub_exp,iexp in enumerate(iexp_fit_list):
-          
+                
                 #Process exposure 
                 if gen_dic['wig_exp_ana']:
 
@@ -605,6 +627,9 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         iexp_glob_bin = iexp
                         iexp_glob_bin_next = iexp_next
                         iexp_group_list +=[iexp]
+                        
+                    #Tracing exposure group
+                    if gen_dic['wig_exp_filt']['mode']:iexp2glob[iexp] = deepcopy(iexp_glob_bin)
 
                 #Processing spectral ratio
                 if cond_exp_proc or cond_exp_proc_vis:
@@ -653,8 +678,9 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #Calculate master on current exposure table
                         data_mast_exp = calc_bin_prof(idx_to_bin,data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin_extract,inst,n_in_bin,data_glob[iexp]['cen_bins'],data_glob[iexp]['edge_bins'])
     
-                    #Processing master and exposure over common pixels, defined and outside of selected range
+                    #Processing master and exposure, now defined over common pixels and within selected range
                     #    - from here on data is processed in nu space
+                    #    - master and exposure are still defined per order
                     cond_kept_all = data_glob[iexp]['cond_def'] & data_mast_exp['cond_def']
                     if (vis in gen_dic['wig_range_fit']) and (len(gen_dic['wig_range_fit'][vis])>0):
                         cond_sel = np.zeros(data_vis['dim_exp'],dtype=bool)
@@ -666,92 +692,122 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         bin_dic[iexp]={}
                         for key in ['Fr','varFr','Fmast_tot','nu','low_nu','high_nu']:bin_dic[iexp][key] = np.zeros(0,dtype=float)
 
-                    #Scaling exposure spectrum and master back to count units
+                    #Defined and fitted orders
+                    iord_def = np.intersect1d(iord_fit_list,np_where1D(np.sum(cond_kept_all,axis=1)>0))
+
+                    #Filter
+                    #    - reshaping orders into a single array so that they are binned together
+                    #    - this is necessary because a single contiguous table must be passed to the filter
+                    #    - spectra are not rescaled into count units so that they are comparable in order overlaps and can be integrated together within new bins 
+                    if gen_dic['wig_exp_filt']['mode']:
+                        adjust_bins=False
+                        cond_kept_exp = np.array([cond_kept_all[iord_def,::-1].flatten()])
+                        count_exp = np.array([data_glob[iexp]['flux'][iord_def,::-1].flatten()])
+                        var_exp=np.zeros(0,dtype=float)
+                        for iord in iord_def:var_exp = np.append(var_exp,data_glob[iexp]['cov'][iord][0][::-1])
+                        var_exp = np.array([var_exp])
+                        count_mast_exp = np.array([data_mast_exp['flux'][iord_def,::-1].flatten()])
+                        cen_nu_exp = np.array([data_glob[iexp]['cen_nu'][iord_def,::-1].flatten()])
+                        edge_nu_exp=data_glob[iexp]['edge_nu'][iord_def,::-1]
+                        low_bins_nu_exp = np.array([edge_nu_exp[:,0:-1].flatten()])
+                        high_bins_nu_exp = np.array([edge_nu_exp[:,1::].flatten()])
+                        iord_def = [0]
+                        min_nu_exp = np.min(low_bins_nu_exp)
+                        max_nu_exp = np.max(high_bins_nu_exp)
+ 
+                    #Analytical model
+                    #    - scaling exposure spectrum and master back to count units
                     #    - the scaling must be applied uniformely to the exposure and master spectra (ie, after the master has been calculated) so as not introduce biases
-                    mean_gdet_exp = data_glob[iexp]['mean_gdet'][:,::-1]
-                    count_exp = data_glob[iexp]['flux'][:,::-1]/mean_gdet_exp
-                    count_mast_exp = data_mast_exp['flux'][:,::-1]/mean_gdet_exp                     
+                    else:
+                        adjust_bins = True
+                        cond_kept_exp = cond_kept_all[iord_def,::-1]                        
+                        mean_gdet_exp = data_glob[iexp]['mean_gdet'][iord_def,::-1]
+                        count_exp = data_glob[iexp]['flux'][iord_def,::-1]/mean_gdet_exp
+                        var_exp = np.zeros(np.shape(count_exp),dtype=float)
+                        for isub_ord,iord in enumerate(iord_def):var_exp[isub_ord] = data_glob[iexp]['cov'][iord][0][::-1]/mean_gdet_exp[isub_ord]**2. 
+                        count_mast_exp = data_mast_exp['flux'][iord_def,::-1]/mean_gdet_exp    
+                        cen_nu_exp=data_glob[iexp]['cen_nu'][iord_def,::-1]
+                        edge_nu_exp=data_glob[iexp]['edge_nu'][iord_def,::-1]
+                        low_bins_nu_exp=edge_nu_exp[:,0:-1]
+                        high_bins_nu_exp=edge_nu_exp[:,1::]
 
                     #Grouping progressively bins of current spectrum 
-                    #    - each order of 2D spectra is processed independently, but contributes to the global binned table 
-                    for iord in iord_fit_list[::-1]:
-                  
-                        if (np.sum(cond_kept_all[iord])>0):
+                    #    - each order of 2D spectra is processed independently, but contributes to the global binned table
+                    #      this is done in this way to keep track of each order, and because there is no need to bin orders together to fit the model
+                    for isub_ord,iord in zip(np.arange(len(iord_def))[::-1],iord_def[::-1]):
 
-                            #Order tables with nu
-                            cond_kept_ord = cond_kept_all[iord][::-1]
-                            mast_flux_ord=count_mast_exp[iord]
-                            flux_ord=count_exp[iord]
-                            var_ord = data_glob[iexp]['cov'][iord][0][::-1]/mean_gdet_exp[iord]**2. 
-                            cen_nu=data_glob[iexp]['cen_nu'][iord][::-1]
-                            edge_nu=data_glob[iexp]['edge_nu'][iord][::-1]
-                            low_bins_nu=edge_nu[0:-1]
-                            high_bins_nu=edge_nu[1::]
-                            
-                            #Resample spectra
-                            bin_bd,raw_loc_dic = sub_def_bins(gen_dic['wig_bin'],cond_kept_ord,low_bins_nu,high_bins_nu,high_bins_nu-low_bins_nu,cen_nu,flux_ord,Mstar_loc=mast_flux_ord,var1D_loc=var_ord)                       
-
-                            #Initialize tables for fit per order
-                            bin_ord_dic={}
-                            for key in ['Fr','varFr','Fmast_tot','nu','low_nu','high_nu']:bin_ord_dic[key] = np.zeros(0,dtype=float)
-                            
-                            #Process spectral bins
-                            nfilled_bins=0
-                            for ibin,(low_bin_loc,high_bin_loc) in enumerate(zip(bin_bd[0:-1],bin_bd[1:])):
-                                bin_loc_dic,nfilled_bins = sub_calc_bins(low_bin_loc,high_bin_loc,raw_loc_dic,nfilled_bins,calc_Fr=True)
+                        #Resample spectra
+                        low_bins_nu=low_bins_nu_exp[isub_ord]
+                        high_bins_nu=high_bins_nu_exp[isub_ord]
+                        bin_bd,raw_loc_dic = sub_def_bins(gen_dic['wig_bin'],cond_kept_exp[isub_ord],low_bins_nu,high_bins_nu,high_bins_nu-low_bins_nu,cen_nu_exp[isub_ord],count_exp[isub_ord],Mstar_loc=count_mast_exp[isub_ord],var1D_loc=var_exp[isub_ord])                       
+                    
+                        #Initialize tables for fit per order
+                        bin_ord_dic={}
+                        for key in ['Fr','varFr','Fmast_tot','nu','low_nu','high_nu']:bin_ord_dic[key] = np.zeros(0,dtype=float)
                         
-                                #Add bin to order table
-                                if len(bin_loc_dic)>0:
-                                    for key_loc,key in zip(['Fr','varFr','cen_bins','low_bins','high_bins'],['Fr','varFr','nu','low_nu','high_nu']):
-                                        bin_ord_dic[key] = np.append( bin_ord_dic[key] , bin_loc_dic[key_loc])                                  
+                        #Process spectral bins
+                        nfilled_bins=0
+                        for ibin,(low_bin_loc,high_bin_loc) in enumerate(zip(bin_bd[0:-1],bin_bd[1:])):
+                            bin_loc_dic,nfilled_bins = sub_calc_bins(low_bin_loc,high_bin_loc,raw_loc_dic,nfilled_bins,calc_Fr=True,adjust_bins=adjust_bins)
+                    
+                            #Add bin to order table
+                            if len(bin_loc_dic)>0:
+                                for key_loc,key in zip(['Fr','varFr','cen_bins','low_bins','high_bins'],['Fr','varFr','nu','low_nu','high_nu']):
+                                    bin_ord_dic[key] = np.append( bin_ord_dic[key] , bin_loc_dic[key_loc])
+                            
+                            #When wiggles are filtered bins need to be contiguous and defined
+                            #    - we set undefined bins to unity (so that the filter will not correct the data) and attribute a larger error of 5% 
+                            elif gen_dic['wig_exp_filt']['mode']:
+                                for val_loc,key in zip([1.,0.05,0.5*(low_bin_loc+high_bin_loc),low_bin_loc,high_bin_loc],['Fr','varFr','nu','low_nu','high_nu']):
+                                    bin_ord_dic[key] = np.append( bin_ord_dic[key] , val_loc)
+                                                                  
+                        #Set binned ratio over current order to a constant level unity
+                        #    - in cases the color balance is not perfectly corrected at order level
+                        #      we assume the measurement of the total flux is precise enough that it does not need fitting
+                        #    - this normalization assumes that the wiggle does not modify the average flux over the slice, which is not true if the slice contains few wiggle periods
+                        #      however small differences in the level of the fitted flux do not bias the derived sinusoidal parameters  
+                        if gen_dic['wig_norm_ord']:                            
+                            delta_bin_ord = (bin_ord_dic['high_nu']-bin_ord_dic['low_nu'])
+                            corr_Fr = np.sum(delta_bin_ord)/np.sum(bin_ord_dic['Fr']*delta_bin_ord)  
+                            bin_ord_dic['Fr']*=corr_Fr
+                            bin_ord_dic['varFr']*=corr_Fr**2.
 
-                            #Set binned ratio over current order to a constant level unity
-                            #    - in cases the color balance is not perfectly corrected at order level
-                            #      we assume the measurement of the total flux is precise enough that it does not need fitting
-                            #    - this normalization assumes that the wiggle does not modify the average flux over the slice, which is not true if the slice contains few wiggle periods
-                            #      however small differences in the level of the fitted flux do not bias the derived sinusoidal parameters  
-                            if gen_dic['wig_norm_ord']:                            
-                                delta_bin_ord = (bin_ord_dic['high_nu']-bin_ord_dic['low_nu'])
-                                corr_Fr = np.sum(delta_bin_ord)/np.sum(bin_ord_dic['Fr']*delta_bin_ord)  
-                                bin_ord_dic['Fr']*=corr_Fr
-                                bin_ord_dic['varFr']*=corr_Fr**2.
-    
-                            #Shift transmission spectrum from common frame (receiver) to Earth (source) rest frame
-                            #    - see gen_specdopshift():                            
-                            # w_source = w_receiver / (1+ (rv[s/r]/c))
-                            # w_Earth = w_solbar / (1+ (rv[Earth/solbar]/c))
-                            #         = w_common / ((1+ (rv[Earth/solbar]/c))*(1+ (rv[solbar/common]/c)) )
-                            #         = w_common / ((1+ (BERV/c))*(1- (rv[common/solbar]/c)) )
-                            #    - once stellar lines have been removed by dividing exposure and master in the star rest frame, we align transmission spectra in the 
-                            # frame of the telescope expected to trace more directly the wiggle
-                            dopp_star2earth = 1./(gen_specdopshift(data_prop[inst][vis]['BERV'][iexp])*(1.+1.55e-8)*gen_specdopshift(-rv_al_all[iexp]))
-                            bin_ord_dic['high_nu']*= dopp_star2earth
-                            bin_ord_dic['low_nu']*= dopp_star2earth
-                            bin_ord_dic['nu']*= dopp_star2earth
-    
-                            #Add binned ratio over current order to global table for current exposure
-                            if cond_exp_proc_vis:
+                        #Shift transmission spectrum from common frame (receiver) to Earth (source) rest frame
+                        #    - see gen_specdopshift():                            
+                        # w_source = w_receiver / (1+ (rv[s/r]/c))
+                        # w_Earth = w_solbar / (1+ (rv[Earth/solbar]/c))
+                        #         = w_common / ((1+ (rv[Earth/solbar]/c))*(1+ (rv[solbar/common]/c)) )
+                        #         = w_common / ((1+ (BERV/c))*(1- (rv[common/solbar]/c)) )
+                        #    - once stellar lines have been removed by dividing exposure and master in the star rest frame, we align transmission spectra in the 
+                        # frame of the telescope expected to trace more directly the wiggle
+                        dopp_star2earth = 1./(gen_specdopshift(data_prop[inst][vis]['BERV'][iexp])*(1.+1.55e-8)*gen_specdopshift(-rv_al_all[iexp]))
+                        bin_ord_dic['high_nu']*= dopp_star2earth
+                        bin_ord_dic['low_nu']*= dopp_star2earth
+                        bin_ord_dic['nu']*= dopp_star2earth
+
+                        #Append binned ratio over current order to global table for current exposure
+                        if cond_exp_proc_vis:
+                            for key in ['Fr','varFr','nu','low_nu','high_nu']:
+                                bin_dic[iexp][key] = np.append( bin_dic[iexp][key] , bin_ord_dic[key])  
+                                    
+                        #Process slice for fit per exposure if exposure is in groups
+                        if cond_exp_proc and (iexp_glob_bin is not None):
+
+                            #Initialize dictionaries storing all orders over all exposures in current group
+                            n_bins_ord = len(bin_ord_dic['Fr'])
+                            if (not init_ord):
+                                init_ord = True
+                                ibin2ord_fit = np.repeat(iord,n_bins_ord)     #slices to which binned datapoints belong to 
+                                ibin2exp_fit = np.repeat(iexp,n_bins_ord)     #exposures to which binned datapoints belong to 
+                                Fr_bin_fit = deepcopy(bin_ord_dic)   
+
+                            #Append to fit table
+                            else:
+                                ibin2ord_fit = np.append(ibin2ord_fit,np.repeat(iord,n_bins_ord))
+                                ibin2exp_fit = np.append(ibin2exp_fit,np.repeat(iexp,n_bins_ord))
                                 for key in ['Fr','varFr','nu','low_nu','high_nu']:
-                                    bin_dic[iexp][key] = np.append( bin_dic[iexp][key] , bin_ord_dic[key])  
-                                        
-                            #Process slice for fit per exposure if exposure is in groups
-                            if cond_exp_proc and (iexp_glob_bin is not None):
+                                    Fr_bin_fit[key] = np.append( Fr_bin_fit[key] , bin_ord_dic[key]) 
 
-                                #Initialize dictionaries storing all orders over all exposures in current group
-                                n_bins_ord = len(bin_ord_dic['Fr'])
-                                if (not init_ord):
-                                    init_ord = True
-                                    ibin2ord_fit = np.repeat(iord,n_bins_ord)     #slices to which binned datapoints belong to 
-                                    ibin2exp_fit = np.repeat(iexp,n_bins_ord)     #exposures to which binned datapoints belong to 
-                                    Fr_bin_fit = deepcopy(bin_ord_dic)   
-
-                                #Append to fit table
-                                else:
-                                    ibin2ord_fit = np.append(ibin2ord_fit,np.repeat(iord,n_bins_ord))
-                                    ibin2exp_fit = np.append(ibin2exp_fit,np.repeat(iexp,n_bins_ord))
-                                    for key in ['Fr','varFr','nu','low_nu','high_nu']:
-                                        Fr_bin_fit[key] = np.append( Fr_bin_fit[key] , bin_ord_dic[key]) 
-            
                     ### End of orders for current exposure
                     if (not gen_dic['wig_indiv_mast']):data_glob.pop(iexp)
 
@@ -764,6 +820,8 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         glob_max_bins = np.max([glob_max_bins,bin_dic[iexp]['high_nu'][-1]])
                         wsort = np.argsort(bin_dic[iexp]['nu'])
                         for key in ['Fr','varFr','nu','low_nu','high_nu']:bin_dic[iexp][key] = bin_dic[iexp][key][wsort]                
+
+                ### End of processing spectral ratio
 
                 #Perform fit when all exposures in current group have been joined
                 #    - if the group exposure of next exposure is larger than the group exposure of current exposure
@@ -804,7 +862,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         max_plot=Fr_bin_fit['high_nu'][-1]
 
                         #RMS and median error of uncorrected data
-                        if gen_dic['wig_exp_fit']['mode']:
+                        if gen_dic['wig_exp_fit']['mode'] | gen_dic['wig_exp_filt']['mode']:
                             rms_exp_raw[isub_group] = Fr_bin_fit['Fr'].std()
                             median_err[isub_group] = np.median(np.sqrt(Fr_bin_fit['varFr']))
 
@@ -817,7 +875,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             #Fit transmission spectra with constant level unity
                             p_start = Parameters()
                             p_start.add_many(('level',1., True & False  , None , None , None)) 
-            
+
                             #Fitting
                             fit_func_wig = wig_mod_cst
                             fixed_args['idx_fit'] = np.ones(len(Fr_bin_fit['nu']),dtype=bool)
@@ -839,64 +897,53 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             #Plot fit
                             #    - this is done internally to the function to avoid saving all ratios and fits for the plot routine
                             if gen_dic['wig_exp_init']['plot_spec']:
-                               
-                               #Unique list of processed exposures and orders
-                               expbin_list = np.unique(ibin2exp_fit)
-                               ordbin_list = np.unique(ibin2ord_fit)
-                               
-                               #Frame
-                               plt.ioff()        
-                               plt.figure(figsize=(  min( 10*max([1,int(len(ordbin_list)/3)]) , 100 )  , 6))
-       
-                               #Set fixed range to better visualize wiggles
-                               x_range = [min_plot,max_plot]
-                               if gen_dic['wig_exp_init']['y_range'] is None:y_range = 1. + np.array([-1.,1])*np.std(Fr_bin_fit['Fr'])*10.
-                               else:y_range = gen_dic['wig_exp_init']['y_range']
+                                plot_screening(ibin2exp_fit,ibin2ord_fit,min_plot,max_plot,gen_dic,Fr_bin_fit,merit['rms'],path_dic['plotpath_Init']+'ExpGroup'+str(iexp_glob_bin),fixed_args)
                          
-                               #Plot each exposure and slices independently
-                               for (iexp_plt,iord_plt) in it_product(expbin_list,ordbin_list):
-                                   
-                                   #Binned points belonging to current exposure and slice
-                                   ibin_group = ((ibin2exp_fit==iexp_plt) & (ibin2ord_fit==iord_plt))
-                                   plt.plot(Fr_bin_fit['nu'][ibin_group],Fr_bin_fit['Fr'][ibin_group],linestyle='-',zorder=0)
-                                       
-                                   #Index of global order
-                                   if iexp_plt==expbin_list[0]:
-                                       dsign_txt = 1. if is_odd(iord_plt) else -1.
-                                       plt.text(np.mean(Fr_bin_fit['nu'][ibin_group]),y_range[1]+(0.1+dsign_txt*0.05)*(y_range[1]-y_range[0]),str(iord_plt),verticalalignment='center', horizontalalignment='center',fontsize=10.,zorder=15,color='black') 
-    
-                               #Binned data
-                               #    - we use resample_func() rather than bind.resampling because input tables are not necessarily continuous, and because the calculations here are less generic than those in process_bin_prof()
-                               mean_per = 0.27
-                               dbin_plot = mean_per/5.
-                               nbin_plot = int((max_plot-min_plot)/dbin_plot)
-                               if nbin_plot<2:nbin_plot=2
-                               dbin_plot = (max_plot-min_plot)/nbin_plot
-                               x_bd_low_in = min_plot + dbin_plot*np.arange(nbin_plot)
-                               x_bd_high_in = x_bd_low_in+dbin_plot 
-                               _,_,wav_bin_plot,_,Fr_bin_plot,_ = resample_func(x_bd_low_in,x_bd_high_in,Fr_bin_fit['low_nu'],Fr_bin_fit['high_nu'],Fr_bin_fit['Fr'],None)
-                               plt.plot(wav_bin_plot,Fr_bin_plot,linestyle='-',marker='o',markersize=5,color='black',zorder=1)
-                           
-                               #Constant unity level
-                               plt.plot(x_range,[1.,1.],linestyle=':',color='black',zorder=-1,rasterized=True)
-    
-                               #Dispersion of fitted spectrum
-                               dx_range = x_range[1]-x_range[0]
-                               dy_range = y_range[1]-y_range[0]
-                               plt.text(x_range[1]-0.1*dx_range,y_range[1]-0.2*dy_range,'RMS ='+"{0:.4e}".format(merit['rms']),verticalalignment='center', horizontalalignment='left',fontsize=9.,zorder=10,color='black')     
-    
-                               #Frame
-                               xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(x_range[1]-x_range[0])
-                               ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(y_range[1]-y_range[0])  
-                               xmajor_int = 1.
-                               xminor_int = 0.5
-                               custom_axis(plt,position=[0.15,0.15,0.95,0.7],
-                                           x_range=x_range,xmajor_int=xmajor_int,xminor_int=xminor_int,
-                                           y_range=y_range,ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,dir_y='out',
-                                           xmajor_form=xmajor_form,x_title=r'$\nu$ (10$^{-10}$ s$^{-1}$)',y_title='Flux ratio',font_size=16,xfont_size=16,yfont_size=16)
-                               plt.savefig(path_dic['plotpath_Init']+'ExpGroup'+str(iexp_glob_bin)+'.png') 
-                               plt.close()                          
-    
+                        #-------------------
+                        #Filter
+                        if gen_dic['wig_exp_filt']['mode']:                                 
+
+                            #Smoothing window
+                            dnu_tab = Fr_bin_fit['high_nu']-Fr_bin_fit['low_nu']
+                            dnu_med = np.median(dnu_tab)
+                            n_smooth_win = int(gen_dic['wig_exp_filt']['win']/dnu_med)
+                            if not is_odd(n_smooth_win):n_smooth_win+=1
+                            
+                            #Savitzky-Golay filtering
+                            filtered_flux = savgol_filter(Fr_bin_fit['Fr'], n_smooth_win,gen_dic['wig_exp_filt']['deg'])  
+
+                            #Save filtered spectrum as a function
+                            #    - filling in the edges with unity values to prevent sharp variations
+                            nlow = int((Fr_bin_fit['nu'][0]-min_nu_exp)/dnu_tab[0])+2
+                            nhigh = int((max_nu_exp-Fr_bin_fit['nu'][-1])/dnu_tab[-1])+2
+                            nu_interp = np.concatenate((Fr_bin_fit['nu'][0] - dnu_tab[0]*np.arange(1,nlow+1)[::-1],Fr_bin_fit['nu'],Fr_bin_fit['nu'][-1] + dnu_tab[-1]*np.arange(1,nhigh+1)))
+                            flux_interp = np.concatenate((np.ones(nlow),filtered_flux,np.ones(nhigh)))
+                            dic_filter[iexp_glob_bin] = CubicSpline(nu_interp,flux_interp)
+
+                            #Residuals between binned spectrum and filtered spectrum
+                            flux_res = 1. + Fr_bin_fit['Fr'] - filtered_flux
+                
+                            #RMS and median error of corrected data
+                            rms_exp_fit[isub_group] = flux_res.std()
+
+                            #------------------------------        
+                            #Plot 
+                            if gen_dic['wig_exp_filt']['plot']: 
+                                fixed_args_loc = deepcopy(fixed_args) 
+                                min_nuplot=Fr_bin_fit['nu'][0]-0.3
+                                max_nuplot=Fr_bin_fit['nu'][-1]+0.3
+                                min_max_plot = [min_nuplot,max_nuplot]
+                                
+                                #Periodogram in log mode
+                                fixed_args_loc['perio_log'] = True & False
+
+                                #Model
+                                n_nu,nu_plot = def_wig_tab(min_nuplot,max_nuplot,fixed_args_loc['dnu_HR'])
+                                mod_plot_glob={'all':dic_filter[iexp_glob_bin](nu_plot)}
+
+                                #Plot
+                                plot_wig_glob(Fr_bin_fit['low_nu'],Fr_bin_fit['high_nu'],Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.sqrt(Fr_bin_fit['varFr']),nu_plot,mod_plot_glob,Fr_bin_fit['low_nu'],Fr_bin_fit['high_nu'],Fr_bin_fit['nu'],flux_res,np.sqrt(Fr_bin_fit['varFr']),fixed_args_loc,min_max_plot,'_',path_dic['plotpath_Filter']+'ExpGroup'+str(iexp_glob_bin),bin_spec=True,filter_mode=True)
+
                         #-------------------
                         #Periodogram sampling
                         if gen_dic['wig_exp_samp']['mode']: 
@@ -1099,7 +1146,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             # fit_prop_dic['mod_prop']['Freq3_c1_off']['vary'] = False
                             # fit_prop_dic['mod_prop']['Freq3_c2_off']['vary'] = False   
 
-                            #Define each component
+                            #Define each model component
                             for comp_id in range(1,6):     
                                 comp_str = str(comp_id)   
                     
@@ -1136,7 +1183,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                             #------------------------------
     
-                            #Fit model
+                            #Fit model to data
                             p_best = p_start
                             if gen_dic['wig_exp_fit']['use']:
                       
@@ -1153,12 +1200,13 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 for subpar in p_best:globexpfit_results[subpar] = [p_best[subpar].value,p_best[subpar].stderr,p_best[subpar].vary]       
                                 np.savez_compressed(path_dic['datapath_Global']+'/Fit_results_iexpGroup'+str(iexp_glob_bin),data=globexpfit_results,allow_pickle=True)            
 
+                            #Retrieve results from existing fit
                             else:
-                                globexpfit_results = np.load(path_dic['datapath_Global']+'/Fit_results_iexpGroup'+str(iexp_glob_bin)+'.npz',allow_pickle=True)['data'].item()        
+                                globexpfit_results = dataload_npz(path_dic['datapath_Global']+'/Fit_results_iexpGroup'+str(iexp_glob_bin))        
                                 for subpar in globexpfit_results:
                                     p_best[subpar].value = globexpfit_results[subpar][0] 
                                     
-                            #Fitted residual spectrum
+                            #Residuals between fitted spectrum and best-fit model
                             flux_res = 1. + Fr_bin_fit['Fr'] - calc_wig_mod_nu(Fr_bin_fit['nu'],p_best,fixed_args_loc)[0] 
                 
                             #RMS and median error of corrected data
@@ -1174,14 +1222,14 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 #Periodogram in log mode
                                 fixed_args_loc['perio_log'] = True & False
 
-                                #Final model
+                                #Model
                                 n_nu,nu_plot = def_wig_tab(min_nuplot,max_nuplot,fixed_args_loc['dnu_HR'])
                                 best_mod_HR,comp_mod_HR = calc_wig_mod_nu(nu_plot,p_best,fixed_args_loc) 
                                 mod_plot_glob={'all':best_mod_HR}
                                 for comp_id in comp_mod_HR:mod_plot_glob[comp_id]=1.+comp_mod_HR[comp_id]
     
                                 #Plot
-                                plot_wig_glob(Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.sqrt(Fr_bin_fit['varFr']),nu_plot,mod_plot_glob,Fr_bin_fit['nu'],flux_res,np.sqrt(Fr_bin_fit['varFr']),fixed_args_loc,min_max_plot,'_',path_dic['plotpath_Global']+'ExpGroup'+str(iexp_glob_bin))
+                                plot_wig_glob(None,None,Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.sqrt(Fr_bin_fit['varFr']),nu_plot,mod_plot_glob,None,None,Fr_bin_fit['nu'],flux_res,np.sqrt(Fr_bin_fit['varFr']),fixed_args_loc,min_max_plot,'_',path_dic['plotpath_Global']+'ExpGroup'+str(iexp_glob_bin))
 
                     ### end of processing for current exposure
            
@@ -1437,10 +1485,18 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             ### end of all exposure processing
             n_expgroup = len(iexp_group_list)                 
 
+            #-----------------------------------------------------------    
+            #Save filter results
+            if gen_dic['wig_exp_filt']['mode']:
+                save_dir_vis = gen_dic['save_data_dir']+'/Corr_data/Wiggles/Vis_fit/'+inst+'_'+vis+'/'
+                if (not os_system.path.exists(save_dir_vis)):os_system.makedirs(save_dir_vis)
+                dic_filter['iexp2glob'] = iexp2glob
+                datasave_npz(save_dir_vis+'Outputs_final',dic_filter)
+
             #-----------------------------------------------------------                                  
             #RMS over all exposures                 
-            if gen_dic['wig_exp_fit']['mode'] and gen_dic['wig_exp_fit']['plot']: 
-                plot_rms_wig(tel_coord_expgroup['cen_ph'],rms_exp_raw,rms_exp_fit,median_err,path_dic['plotpath_Global'])
+            if (gen_dic['wig_exp_fit']['mode'] and gen_dic['wig_exp_fit']['plot']):  plot_rms_wig(tel_coord_expgroup['cen_ph'],rms_exp_raw,rms_exp_fit,median_err,path_dic['plotpath_Global'])
+            if (gen_dic['wig_exp_filt']['mode'] and gen_dic['wig_exp_filt']['plot']):plot_rms_wig(tel_coord_expgroup['cen_ph'],rms_exp_raw,rms_exp_fit,median_err,path_dic['plotpath_Filter'])
 
             #-----------------------------------------------------------                                  
             #Periodogram from all exposures
@@ -2184,7 +2240,6 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         for subpar in var_par_list:globvisfit_results['var_par_fit'][subpar][iloop,:] = [p_best_curr[subpar].value,p_best_curr[subpar].stderr] 
                         globvisfit_results['rms'][iloop] = merit['rms']
 
-
                         #Convergence check
                         #    - not required if wiggle normalisation is not applied in global fit 
                         if gen_dic['wig_vis_fit']['wig_fit_ratio']:
@@ -2265,7 +2320,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     ax.set_xlim(x_range_plot)
                     ax.set_ylim(y_range_plot)   
                     ax.set_ylabel('Wiggle master',fontsize=10)  
-                    plt.plot(fixed_args_loc['nu_HR'],weighted_wig_mod_HR,linestyle='-',color='red',lw=2,rasterized=True)      
+                    plt.plot(fixed_args_loc['nu_HR'],weighted_wig_mod_HR,linestyle='-',color='red',lw=2,rasterized=fixed_args_loc['rasterized'])      
                     plt.plot(x_range_plot,[1.,1.],linestyle=':',color='black') 
                     plt.savefig(path_fit+'Wiggle_master.png')                  
                     plt.close()   
@@ -2289,7 +2344,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                         #Plot
                         if gen_dic['wig_vis_fit']['plot_mod']:
-                            plot_wig_glob(nu_all[istart:iend],Fr_all[istart:iend],np.array([varFr_all[istart:iend]]),fixed_args_loc['nu_HR'],mod_plot_glob,nu_all[istart:iend],flux_res,np.array([varFr_all[istart:iend]]),fixed_args_loc,min_max_plot,'_',path_fit+'Exp'+str(iexp)+'_')
+                            plot_wig_glob(None,None,nu_all[istart:iend],Fr_all[istart:iend],np.array([varFr_all[istart:iend]]),fixed_args_loc['nu_HR'],mod_plot_glob,None,None,nu_all[istart:iend],flux_res,np.array([varFr_all[istart:iend]]),fixed_args_loc,min_max_plot,'_',path_fit+'Exp'+str(iexp)+'_')
                      
                         #RMS and median error
                         if gen_dic['wig_vis_fit']['plot_rms']:
@@ -2354,8 +2409,8 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             plt.ioff()  
                             plt.figure(figsize=(20,6))
                             for cen_ph,mod_exp,col_exp in zip(tel_coord_vis['cen_ph'],mod_coord,col_visit):
-                                plt.plot(cen_ph,mod_exp,color=col_exp,rasterized=True,zorder=1,marker='o',markersize=markersize)
-                            plt.plot(cen_ph_HR,mod_coord_HR,color='black',rasterized=True,zorder=0,linestyle='-',lw=lw_plot)
+                                plt.plot(cen_ph,mod_exp,color=col_exp,rasterized=fixed_args_loc['rasterized'],zorder=1,marker='o',markersize=markersize)
+                            plt.plot(cen_ph_HR,mod_coord_HR,color='black',rasterized=fixed_args_loc['rasterized'],zorder=0,linestyle='-',lw=lw_plot)
 
                             #Guide shift and meridian crossing
                             dy_range = np.max(mod_coord)-np.min(mod_coord)
@@ -2480,7 +2535,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     yplot = 1e6*globvisfit_results['rms'][0:iloop_end+1]
 
                     #Mean RMS pre-correction
-                    plt.plot(xplot,yplot,linestyle='-',color='dodgerblue',rasterized=True,zorder=1,marker='o',markersize=markersize,lw=lw_plot)
+                    plt.plot(xplot,yplot,linestyle='-',color='dodgerblue',rasterized=fixed_args_loc['rasterized'],zorder=1,marker='o',markersize=markersize,lw=lw_plot)
                         
                     #Frame
                     dy_range = np.max(yplot)-np.min(yplot)
@@ -2506,15 +2561,15 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         n_sdef = np.sum( ~np.isnan(splot) )
                   
                         #Plot property
-                        axd['00'].plot(xplot,yplot,linestyle='-',color='dodgerblue',rasterized=True,zorder=1,marker='o',markersize=markersize,lw=lw_plot)
-                        if n_sdef>0:axd['00'].errorbar(xplot,yplot,yerr=splot,color='dodgerblue',rasterized=True,markeredgecolor='None',markerfacecolor='None',marker='o',markersize=markersize,linestyle='',zorder=0,alpha=0.5) 
+                        axd['00'].plot(xplot,yplot,linestyle='-',color='dodgerblue',rasterized=fixed_args_loc['rasterized'],zorder=1,marker='o',markersize=markersize,lw=lw_plot)
+                        if n_sdef>0:axd['00'].errorbar(xplot,yplot,yerr=splot,color='dodgerblue',rasterized=fixed_args_loc['rasterized'],markeredgecolor='None',markerfacecolor='None',marker='o',markersize=markersize,linestyle='',zorder=0,alpha=0.5) 
 
                         #Value from last loop
-                        axd['00'].plot(x_range_plot,np.repeat(yplot[iloop_end],2),linestyle='--',color='limegreen',rasterized=True,zorder=1,lw=lw_plot)
+                        axd['00'].plot(x_range_plot,np.repeat(yplot[iloop_end],2),linestyle='--',color='limegreen',rasterized=fixed_args_loc['rasterized'],zorder=1,lw=lw_plot)
 
                         #Value from first iteration
                         #    - equivalent to assuming the wiggles average out in the master
-                        axd['00'].plot(x_range_plot,np.repeat(yplot[0],2),linestyle='--',color='red',rasterized=True,zorder=1,lw=lw_plot)
+                        axd['00'].plot(x_range_plot,np.repeat(yplot[0],2),linestyle='--',color='red',rasterized=fixed_args_loc['rasterized'],zorder=1,lw=lw_plot)
                         
                         #Frame
                         if par in y_range:y_range_plot = y_range[par]
@@ -2535,13 +2590,13 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         yplot = 100.*((yplot[1::]/yplot[0:-1]) - 1.)
                         
                         #Plot property
-                        axd['10'].plot(xplot_rel,yplot,linestyle='-',color='dodgerblue',rasterized=True,zorder=1,marker='o',markersize=markersize,lw=lw_plot)
-                        if n_sdef>0:axd['10'].errorbar(xplot_rel,yplot,yerr=splot,color='dodgerblue',rasterized=True,markeredgecolor='None',markerfacecolor='None',marker='o',markersize=markersize,linestyle='',zorder=0,alpha=0.5) 
+                        axd['10'].plot(xplot_rel,yplot,linestyle='-',color='dodgerblue',rasterized=fixed_args_loc['rasterized'],zorder=1,marker='o',markersize=markersize,lw=lw_plot)
+                        if n_sdef>0:axd['10'].errorbar(xplot_rel,yplot,yerr=splot,color='dodgerblue',rasterized=fixed_args_loc['rasterized'],markeredgecolor='None',markerfacecolor='None',marker='o',markersize=markersize,linestyle='',zorder=0,alpha=0.5) 
                         
                         #Plot relative threshold
-                        axd['10'].plot(x_range_plot,[rel_thresh,rel_thresh],linestyle=':',color='black',rasterized=True,zorder=1,lw=lw_plot)
-                        axd['10'].plot(x_range_plot,[0.,0.],linestyle='--',color='black',rasterized=True,zorder=1,lw=lw_plot)
-                        axd['10'].plot(x_range_plot,[-rel_thresh,-rel_thresh],linestyle=':',color='black',rasterized=True,zorder=1,lw=lw_plot)
+                        axd['10'].plot(x_range_plot,[rel_thresh,rel_thresh],linestyle=':',color='black',rasterized=fixed_args_loc['rasterized'],zorder=1,lw=lw_plot)
+                        axd['10'].plot(x_range_plot,[0.,0.],linestyle='--',color='black',rasterized=fixed_args_loc['rasterized'],zorder=1,lw=lw_plot)
+                        axd['10'].plot(x_range_plot,[-rel_thresh,-rel_thresh],linestyle=':',color='black',rasterized=fixed_args_loc['rasterized'],zorder=1,lw=lw_plot)
 
                         #Frame
                         if par in y_range_rel:y_range_plot = y_range_rel[par]
@@ -2561,13 +2616,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         plt.savefig(path_loc+par+'.png') 
                         plt.close() 
 
-                        
-                     
-                        
-                     
-                        
-     
-                        
+      
                      
             #-------------------------------------------------------------------------------  
             #Correcting data
@@ -2576,37 +2625,41 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 print('           - Correcting data')  
                 fixed_args_loc = deepcopy(fixed_args)
                 
-                #Correction
-                if (vis in gen_dic['wig_corr']['path']):corr_path = gen_dic['wig_corr']['path'][vis]
-                else:corr_path = gen_dic['save_data_dir']+'/Corr_data/Wiggles/Vis_fit/'+inst+'_'+vis+'/Outputs_final.npz'
-                data_corr = np.load(corr_path,allow_pickle=True)['data'].item()
-                p_corr = data_corr['p_best']
-          
                 #Original indexes of exposures to be corrected
                 if (vis in gen_dic['wig_corr']['exp_list']):iexp_corr_list = gen_dic['wig_corr']['exp_list'][vis]
-                else:iexp_corr_list = np.arange(data_vis['n_in_visit'])
-         
+                else:iexp_corr_list = np.arange(data_vis['n_in_visit'])                
+                
+                #Correction
+                if (vis in gen_dic['wig_corr']['path']):corr_path = gen_dic['wig_corr']['path'][vis]
+                else:corr_path = gen_dic['save_data_dir']+'/Corr_data/Wiggles/Vis_fit/'+inst+'_'+vis+'/Outputs_final'
+                data_corr = dataload_npz(corr_path)
+                
+                #Analytical model
+                if ('iexp2glob' not in data_corr):
+                    p_corr = data_corr['p_best']
+                    fixed_args_loc.update({
+                        'comp_mod':gen_dic['wig_corr']['comp_ids'],
+                        'nexp_list':len(iexp_corr_list),
+                        'stable_pointpar':data_corr['stable_pointpar']
+                       })
+                    for key in ['az','x_az','y_az','z_alt','cond_eastmer','cond_westmer','cond_shift']:fixed_args_loc[key] = tel_coord_vis[key][iexp_corr_list] 
+                    calc_chrom_coord(p_corr,fixed_args_loc)          
+
                 #Processing exposures
                 proc_DI_data_paths_new = gen_dic['save_data_dir']+'Corr_data/Wiggles/Data/'+inst+'_'+vis+'_' 
-                fixed_args_loc.update({
-                    'comp_mod':gen_dic['wig_corr']['comp_ids'],
-                    'nexp_list':len(iexp_corr_list),
-                    'stable_pointpar':data_corr['stable_pointpar']
-                   })
-                for key in ['az','x_az','y_az','z_alt','cond_eastmer','cond_westmer','cond_shift']:fixed_args_loc[key] = tel_coord_vis[key][iexp_corr_list] 
-                calc_chrom_coord(p_corr,fixed_args_loc)
                 for isub,iexp in enumerate(iexp_corr_list):
                
                     #Latest processed disk-integrated data
-                    data_exp = np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item()                     
+                    data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))                     
                     
                     #Flatten the order matrix into a 1D table
+                    #    - correction must be applied to sorted array for when interpolator is applied
                     n_flat = data_inst['nord']*data_vis['nspec']
                     cen_bins_flat = np.reshape(data_exp['cen_bins'],n_flat)
                     nu_bins_flat = c_light/cen_bins_flat[::-1]
-                    cond_def_flat = np.reshape(data_exp['cond_def'],n_flat)
-                    pcorr_flat = np.zeros(n_flat,dtype=float)*np.nan
-
+                    isort = np.argsort(nu_bins_flat)
+                    nu_bins_flat = nu_bins_flat[isort]
+                
                     #Shift spectral table from solar barycentric rest frame to earth rest frame, in which model is defined
                     #    - see gen_specdopshift():
                     # w_source = w_receiver / (1+ (rv[s/r]/c))
@@ -2614,10 +2667,59 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     #    - since flux values remain associated to the original pixels, there is no need to shift back the model after definition
                     nu_bins_flat*=1./(gen_specdopshift(data_prop[inst][vis]['BERV'][iexp])*(1.+1.55e-8))  
                             
-                    #Calculate correction over defined bins
-                    #    - the model is calculated without oversampling, as wiggles spectral scales are larger than bin widths  
-                    wig_mod_corr=calc_wig_mod_nu_t(nu_bins_flat,p_corr,{**fixed_args_loc,'icoord':isub})[0]
-                    pcorr_flat[cond_def_flat] = wig_mod_corr[::-1][cond_def_flat]       
+                    #Filter
+                    if ('iexp2glob' in data_corr):
+                        iexp2glob = data_corr['iexp2glob']
+                        
+                        #Exposure group to which exposure belongs to 
+                        if iexp in iexp2glob:
+                            
+                            #Exposure was included in wiggle analysis
+                            iexp_glob_bin = iexp2glob[iexp]   
+                            
+                        else:
+                            
+                            #Find closest exposure included in wiggle analysis and its group 
+                            isub_low = iexp - np.arange(1,iexp+1)
+                            isub_high = iexp + np.arange(1,data_vis['n_in_visit']-1-iexp+1)
+                            isub_alternate = [x for x in itertools.chain.from_iterable(itertools.zip_longest(isub_low,isub_high)) if x is not None]
+                            for isub in isub_alternate:
+                                if isub in iexp2glob:
+                                    iexp_glob_bin = iexp2glob[isub]   
+                                    break
+
+                        #Retrieve filter from current exposure group
+                        if iexp_glob_bin in data_corr:
+                            iexp_filt = iexp
+
+                        #Retrieve filter from closest exposure group
+                        else:
+                            isub_low = iexp_glob_bin - np.arange(1,iexp+1)
+                            isub_high = iexp_glob_bin + np.arange(1,nexp_fit_list-1-iexp_glob_bin+1)
+                            isub_alternate = [x for x in itertools.chain.from_iterable(itertools.zip_longest(isub_low,isub_high)) if x is not None]
+                            for isub in isub_alternate:
+                                if isub in data_corr:
+                                    iexp_filt = isub
+                                    break
+
+                        #Calculate correction model 
+                        wig_mod_corr=data_corr[iexp_filt](nu_bins_flat)
+                        
+                    #Analytical model
+                    else:
+                    
+                        #Calculate correction model
+                        #    - the model is calculated without oversampling, as wiggles spectral scales are larger than bin widths  
+                        wig_mod_corr=calc_wig_mod_nu_t(nu_bins_flat,p_corr,{**fixed_args_loc,'icoord':isub})[0]
+                    
+                    #Unsort correction array and return to wavelength space 
+                    iunsort = np.argsort( isort )
+                    wig_mod_corr = wig_mod_corr[iunsort][::-1]
+                    
+                    #Restrict correction array to defined bins
+                    pcorr_flat = np.ones(n_flat,dtype=float)
+                    cond_def_flat = np.reshape(data_exp['cond_def'],n_flat)
+                    pcorr_flat[cond_def_flat] = wig_mod_corr[cond_def_flat]       
 
                     #Return correction to matrix shape
                     #    - the correction is defined as a modulation around unity and will not change the overall flux level of the spectra
@@ -2638,15 +2740,14 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         data_exp['flux'][iord],data_exp['cov'][iord] = bind.mul_array(data_exp['flux'][iord],data_exp['cov'][iord],1./wig_fit_ord)
 
                     #Saving modified data and update paths
-                    np.savez_compressed(proc_DI_data_paths_new+str(iexp),data = data_exp,allow_pickle=True) 
+                    datasave_npz(proc_DI_data_paths_new+str(iexp),data_exp) 
 
                 #Save for plotting purpose
-                if plot_dic['trans_sp']!='':
-                    np.savez_compressed(gen_dic['save_data_dir']+'Corr_data/Wiggles/Vis_fit/'+inst+'_'+vis+'_add',data={
-                        'comp_ids':gen_dic['wig_corr']['comp_ids'],'nu_ref':fixed_args['nu_ref'],'wig_range_fit':gen_dic['wig_range_fit'],
-                        'tel_coord_vis':tel_coord_vis,'deg_Freq':fixed_args['deg_Freq'],'deg_Amp':fixed_args['deg_Amp'],'corr_path':corr_path,'iexp_mast_list':iexp_mast_list,
-                        'uncorrected_data_path':deepcopy(data_vis['proc_DI_data_paths']),'corrected_data_path':proc_DI_data_paths_new,       
-                        },allow_pickle=True)      
+                dic_plot = {'wig_range_fit':gen_dic['wig_range_fit'],'corr_path':corr_path,'iexp_mast_list':iexp_mast_list,'uncorrected_data_path':deepcopy(data_vis['proc_DI_data_paths']),'corrected_data_path':proc_DI_data_paths_new}
+                if ('iexp2glob' not in data_corr):
+                    dic_plot.update({
+                        'comp_ids':gen_dic['wig_corr']['comp_ids'],'nu_ref':fixed_args['nu_ref'],'tel_coord_vis':tel_coord_vis,'deg_Freq':fixed_args['deg_Freq'],'deg_Amp':fixed_args['deg_Amp']})
+                datasave_npz(gen_dic['save_data_dir']+'Corr_data/Wiggles/Vis_fit/'+inst+'_'+vis+'_add',dic_plot)      
                 data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new                        
                                
     #------------------------------------------------------------------------------------------------------------
@@ -2803,6 +2904,93 @@ def wig_perio_gen(calc_range,src_range,nu_in,flux_in,err_in,args,plot=False):
     
     return amp_guess,freq_guess,phi_guess,fap_max,ls,frequency, power,max_power
 
+def plot_bin_spec(ax,low_bins,high_bins,val_bins,min_plot,max_plot,dbin_plot):
+    r"""**Wiggle plot : binned spectrum**
+
+    Plot the binned transmission spectrum of an exposure.
+    We use resample_func() rather than bind.resampling because input tables are not necessarily continuous, and because the calculations here are less generic than those in process_bin_prof()
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    nbin_plot = int((max_plot-min_plot)/dbin_plot)
+    if nbin_plot<2:nbin_plot=2
+    dbin_plot = (max_plot-min_plot)/nbin_plot
+    x_bd_low_in = min_plot + dbin_plot*np.arange(nbin_plot)
+    x_bd_high_in = x_bd_low_in+dbin_plot 
+    _,_,wav_bin_plot,_,Fr_bin_plot,_ = resample_func(x_bd_low_in,x_bd_high_in,low_bins,high_bins,val_bins,None)
+    ax.plot(wav_bin_plot,Fr_bin_plot,linestyle='-',marker='o',markersize=5,color='goldenrod',zorder=1)
+    
+    return None
+
+def plot_screening(ibin2exp_fit,ibin2ord_fit,min_plot,max_plot,gen_dic,Fr_bin_fit,rms,plot_path,fixed_args):
+    r"""**Wiggle plot : screening**
+
+    Plot the transmission spectrum of an exposure with the associated periodogram.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+
+    #Unique list of processed exposures and orders
+    expbin_list = np.unique(ibin2exp_fit)
+    ordbin_list = np.unique(ibin2ord_fit)
+    
+    #Frame
+    plt.ioff()        
+    plt.figure(figsize=(  min( 10*max([2,int(len(ordbin_list)/3)]) , 100 )  , 6))
+
+    #Set fixed range to better visualize wiggles
+    x_range = [min_plot,max_plot]
+    if gen_dic['wig_exp_init']['y_range'] is None:y_range = 1. + np.array([-1.,1])*np.std(Fr_bin_fit['Fr'])*10.
+    else:y_range = gen_dic['wig_exp_init']['y_range']
+  
+    #Plot each exposure and slices independently
+    for (iexp_plt,iord_plt) in it_product(expbin_list,ordbin_list):
+        
+        #Binned points belonging to current exposure and slice
+        ibin_group = ((ibin2exp_fit==iexp_plt) & (ibin2ord_fit==iord_plt))
+        plt.plot(Fr_bin_fit['nu'][ibin_group],Fr_bin_fit['Fr'][ibin_group],linestyle='-',zorder=0)
+            
+        #Index of global order
+        if iexp_plt==expbin_list[0]:
+            dsign_txt = 1. if is_odd(iord_plt) else -1.
+            plt.text(np.mean(Fr_bin_fit['nu'][ibin_group]),y_range[1]+(0.1+dsign_txt*0.05)*(y_range[1]-y_range[0]),str(iord_plt),verticalalignment='center', horizontalalignment='center',fontsize=10.,zorder=15,color='black') 
+ 
+    #Binned data
+    #    - we use resample_func() rather than bind.resampling because input tables are not necessarily continuous, and because the calculations here are less generic than those in process_bin_prof()
+    plot_bin_spec(plt.gca(),Fr_bin_fit['low_nu'],Fr_bin_fit['high_nu'],Fr_bin_fit['Fr'],min_plot,max_plot,0.27/5.,Fr_bin_fit)
+
+    #Constant unity level
+    plt.plot(x_range,[1.,1.],linestyle=':',color='black',zorder=-1,rasterized=fixed_args['rasterized'])
+ 
+    #Dispersion of fitted spectrum
+    dx_range = x_range[1]-x_range[0]
+    dy_range = y_range[1]-y_range[0]
+    plt.text(x_range[1]-0.1*dx_range,y_range[1]-0.2*dy_range,'RMS ='+"{0:.4e}".format(rms),verticalalignment='center', horizontalalignment='left',fontsize=9.,zorder=10,color='black')     
+ 
+    #Frame
+    xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(x_range[1]-x_range[0])
+    ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(y_range[1]-y_range[0])  
+    xmajor_int = 1.
+    xminor_int = 0.5
+    custom_axis(plt,position=[0.15,0.15,0.95,0.7],
+                x_range=x_range,xmajor_int=xmajor_int,xminor_int=xminor_int,
+                y_range=y_range,ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,dir_y='out',
+                xmajor_form=xmajor_form,x_title=r'$\nu$ (10$^{-10}$ s$^{-1}$)',y_title='Flux ratio',font_size=16,xfont_size=16,yfont_size=16)
+    plt.savefig(plot_path+'.png') 
+    plt.close()  
+
+    return None    
+
 
 def plot_sampling_perio(fixed_args,ax,best_freq,src_range,calc_perio,ls,ls_freq,ls_pow,freq_guess,max_pow,fap_max,probas,log=False,fontsize=10,plot_xlab=True,plot_ylab=True): 
     r"""**Wiggle plot : periodogram**
@@ -2817,8 +3005,8 @@ def plot_sampling_perio(fixed_args,ax,best_freq,src_range,calc_perio,ls,ls_freq,
     
     """ 
     #Periodogram
-    ax.plot(ls_freq,ls_pow,color='black',zorder=1,rasterized=True)
-    ax.plot([freq_guess,freq_guess] , [0.,max_pow],color='dodgerblue',linestyle='--',zorder=5,rasterized=True)     
+    ax.plot(ls_freq,ls_pow,color='black',zorder=1,rasterized=fixed_args['rasterized'])
+    ax.plot([freq_guess,freq_guess] , [0.,max_pow],color='dodgerblue',linestyle='--',zorder=5,rasterized=fixed_args['rasterized'])     
     if best_freq is not None:
         ax.plot([best_freq,best_freq] , [0.,max_pow],color='red',linestyle='--',zorder=5)
    
@@ -2889,8 +3077,8 @@ def plot_global_perio(fixed_args,comm_freq_comp,comm_power_comp,nexp,path_gen,co
         #Plot periodogram
         if (ax_key=='00'):col_loc = 'black'
         else:col_loc = color_comps[comp_id]
-        axd[ax_key].plot(comm_freq_comp[comp_id],power_comp,color='black',zorder=0,rasterized=True)
-        axd[ax_key].plot([freq_guess,freq_guess] , [0.,max_pow],color=col_loc,linestyle='--',zorder=5,rasterized=True)     
+        axd[ax_key].plot(comm_freq_comp[comp_id],power_comp,color='black',zorder=0,rasterized=fixed_args['rasterized'])
+        axd[ax_key].plot([freq_guess,freq_guess] , [0.,max_pow],color=col_loc,linestyle='--',zorder=5,rasterized=fixed_args['rasterized'])     
         axd[ax_key].text(comm_freq_comp[comp_id][0]+0.2*(comm_freq_comp[comp_id][-1]-comm_freq_comp[comp_id][0]),0.6*max_pow,'F = '+"{0:.3f}".format(freq_guess),verticalalignment='bottom', horizontalalignment='left',fontsize=30,zorder=2,color=col_loc) 
                     
         #Frame
@@ -2917,7 +3105,7 @@ def plot_global_perio(fixed_args,comm_freq_comp,comm_power_comp,nexp,path_gen,co
 
 
 
-def plot_sampling_spec(ax,x_range_plot_in,nu_fit,var_plot,nu_plot,mod_HR,mean_wav,mean_nu,args,fontsize=10,plot_xlab=True,plot_ylab=True):
+def plot_sampling_spec(ax,x_range_plot_in,nu_fit,var_plot,nu_plot,mod_HR,mean_wav,mean_nu,fixed_args,fontsize=10,plot_xlab=True,plot_ylab=True):
     r"""**Wiggle plot : spectra**
 
     Plot transmission spectra in sampled bands.
@@ -2939,12 +3127,12 @@ def plot_sampling_spec(ax,x_range_plot_in,nu_fit,var_plot,nu_plot,mod_HR,mean_wa
     ax.xaxis.set_minor_locator(MultipleLocator(0.5))
         
     #Fitted spectrum
-    ax.plot(x_fit,var_plot,linestyle='-',color='black',zorder=1,rasterized=True)  
+    ax.plot(x_fit,var_plot,linestyle='-',color='black',zorder=1,rasterized=fixed_args['rasterized'])  
     max_delta = np.max([ np.max(var_plot-1.),np.max(1.-var_plot) ])
     y_range_plot = [1.-max_delta*1.1,1.+max_delta*1.1]             
 
     #Wiggle model
-    if np.max(mod_HR)>0.:ax.plot(x_plot,mod_HR,linestyle='--',color='red',zorder=2,rasterized=True)      
+    if np.max(mod_HR)>0.:ax.plot(x_plot,mod_HR,linestyle='--',color='red',zorder=2,rasterized=fixed_args['rasterized'])      
     
     #Dispersion of fitted spectrum
     plot_rms = True & False
@@ -3203,7 +3391,7 @@ def wig_perio_sampling(comp_id_proc,plot_samp,samp_fit_dic,shift_off,ishift_comp
          
         #Plot
         if plot_samp:
-            plot_wig_glob(samp_fit_dic['nu_all'][1],samp_fit_dic['flux_all'][1],np.sqrt(samp_fit_dic['var_all'][1]),args['nu_plot_glob'],samp_fit_dic['mod_plot_glob'],samp_fit_dic['nu_all'][comp_id],samp_fit_dic['res_all'][comp_id],np.sqrt(samp_fit_dic['var_all'][comp_id]),args,min_max_plot,pref_plot,path_sampling_plot)
+            plot_wig_glob(None,None,samp_fit_dic['nu_all'][1],samp_fit_dic['flux_all'][1],np.sqrt(samp_fit_dic['var_all'][1]),args['nu_plot_glob'],samp_fit_dic['mod_plot_glob'],None,None,samp_fit_dic['nu_all'][comp_id],samp_fit_dic['res_all'][comp_id],np.sqrt(samp_fit_dic['var_all'][comp_id]),args,min_max_plot,pref_plot,path_sampling_plot)
         
         #Empty global dictionaries 
         for key in ['nu_all','var_all','res_all']:samp_fit_dic[key].pop(comp_id) 
@@ -3212,10 +3400,10 @@ def wig_perio_sampling(comp_id_proc,plot_samp,samp_fit_dic,shift_off,ishift_comp
 
 
 
-def plot_wig_glob(nu_fit,flux_fit,err_fit,nu_mod,mod_plot_glob,nu_res,flux_res,err_res,args,min_max_plot,pref_plot,path_sampling_plot):
-    r"""**Wiggle plot: sampling bands**
+def plot_wig_glob(low_nu_fit,high_nu_fit,nu_fit,flux_fit,err_fit,nu_mod,mod_plot_glob,low_nu_res,high_nu_res,nu_res,flux_res,err_res,fixed_args,min_max_plot,pref_plot,path_sampling_plot,bin_spec=False,filter_mode=False):
+    r"""**Wiggle plot: full spectrum**
 
-    Plots wiggle transmission spectra and associated periodograms in each sampled band
+    Plots full wiggle transmission spectrum (measured and model) before and after correction, with associated periodogram.
 
     Args:
         TBD
@@ -3239,12 +3427,12 @@ def plot_wig_glob(nu_fit,flux_fit,err_fit,nu_mod,mod_plot_glob,nu_res,flux_res,e
         axd[ax_key].xaxis.set_major_locator(MultipleLocator(1))
         axd[ax_key].xaxis.set_major_formatter('{x:.0f}')
         axd[ax_key].xaxis.set_minor_locator(MultipleLocator(0.5))
-    perio_range = [args['min_x_glob_perio'],args['max_x_glob_perio']]
+    perio_range = [fixed_args['min_x_glob_perio'],fixed_args['max_x_glob_perio']]
         
     #-----------------------------------    
     
     #Fitted uncorrected spectrum
-    axd['00'].plot(x_fit,flux_fit,linestyle='-',color='black',zorder=1,rasterized=True)
+    axd['00'].plot(x_fit,flux_fit,linestyle='-',color='black',zorder=1,rasterized=fixed_args['rasterized'])
     rms = (flux_fit-1.).std()
     max_delta = np.max([ np.max(flux_fit-1.),np.max(1.-flux_fit) ])
     y_range_plot = [1.-max_delta*1.1,1.+max_delta*1.1]
@@ -3252,34 +3440,41 @@ def plot_wig_glob(nu_fit,flux_fit,err_fit,nu_mod,mod_plot_glob,nu_res,flux_res,e
                    y_range_plot[1]-0.15*(y_range_plot[1]-y_range_plot[0]),
                    'RMS = '+"{0:.0f}".format(rms*1e6)+' ppm',verticalalignment='bottom', horizontalalignment='left',fontsize=25,zorder=4,color='green') 
 
+    #Plot binned spectrum
+    if bin_spec:plot_bin_spec(axd['00'],low_nu_fit,high_nu_fit,flux_fit,x_range_plot[0],x_range_plot[1],0.27/5.)
+
     #Plot full model and components
     #    - in bands where the component model was not fitted it remains set to zero (and the global model to one)
-    for comp_loc in args['comp_mod']:
-        axd['00'].plot(x_mod,mod_plot_glob[comp_loc],linestyle='-',color={1:'dodgerblue',2:'orange',3:'limegreen',4:'magenta'}[comp_loc],zorder=comp_loc,lw=1.5,rasterized=True) 
-    axd['00'].plot(x_mod,mod_plot_glob['all'],linestyle='--',color='red',zorder=5,lw=2,rasterized=True)      
+    axd['00'].plot(x_mod,mod_plot_glob['all'],linestyle='--',color='red',zorder=5,lw=2,rasterized=fixed_args['rasterized'])      
+    if not filter_mode:
+        for comp_loc in fixed_args['comp_mod']:
+            axd['00'].plot(x_mod,mod_plot_glob[comp_loc],linestyle='-',color={1:'dodgerblue',2:'orange',3:'limegreen',4:'magenta'}[comp_loc],zorder=comp_loc,lw=1.5,rasterized=True) 
 
     #Reference level 
     axd['00'].plot(x_range_plot,[1.,1.],linestyle=':',color='black') 
 
     #Periodogram
-    _,freq_guess,_,fap_guess_loc,ls,ls_freq,ls_pow,max_pow = wig_perio_gen(perio_range,perio_range,nu_fit,flux_fit,err_fit,args,plot=False)
-    plot_sampling_perio(args,axd['01'],None,perio_range,perio_range,ls,ls_freq,ls_pow,freq_guess,max_pow,fap_guess_loc,args['sampling_fap'],log=args['perio_log'],fontsize=fontsize)         
+    _,freq_guess,_,fap_guess_loc,ls,ls_freq,ls_pow,max_pow = wig_perio_gen(perio_range,perio_range,nu_fit,flux_fit,err_fit,fixed_args,plot=False)
+    plot_sampling_perio(fixed_args,axd['01'],None,perio_range,perio_range,ls,ls_freq,ls_pow,freq_guess,max_pow,fap_guess_loc,fixed_args['sampling_fap'],log=fixed_args['perio_log'],fontsize=fontsize)         
 
     #-----------------------------------
 
     #Fitted corrected spectrum
-    axd['10'].plot(x_res,flux_res,linestyle='-',color='black',zorder=0,rasterized=True)
+    axd['10'].plot(x_res,flux_res,linestyle='-',color='black',zorder=0,rasterized=fixed_args['rasterized'])
     rms = (flux_res-1.).std()
     axd['10'].text(x_range_plot[0]+0.1*(x_range_plot[1]-x_range_plot[0]),
                    y_range_plot[1]-0.15*(y_range_plot[1]-y_range_plot[0]),
                    'RMS = '+"{0:.0f}".format(rms*1e6)+' ppm',verticalalignment='bottom', horizontalalignment='left',fontsize=25,zorder=4,color='green') 
     
+    #Plot binned spectrum
+    if bin_spec:plot_bin_spec(axd['10'],low_nu_res,high_nu_res,flux_res,x_range_plot[0],x_range_plot[1],0.27/5.)    
+    
     #Reference level 
     axd['10'].plot(x_range_plot,[1.,1.],linestyle=':',color='black') 
 
     #Periodogram 
-    _,freq_guess,_,fap_guess_loc,ls,ls_freq,ls_pow,max_pow = wig_perio_gen(perio_range,perio_range,nu_res,flux_res,err_res,args,plot=False)
-    plot_sampling_perio(args,axd['11'],None,perio_range,perio_range,ls,ls_freq,ls_pow,freq_guess,max_pow,fap_guess_loc,args['sampling_fap'],log=args['perio_log'],fontsize=fontsize)         
+    _,freq_guess,_,fap_guess_loc,ls,ls_freq,ls_pow,max_pow = wig_perio_gen(perio_range,perio_range,nu_res,flux_res,err_res,fixed_args,plot=False)
+    plot_sampling_perio(fixed_args,axd['11'],None,perio_range,perio_range,ls,ls_freq,ls_pow,freq_guess,max_pow,fap_guess_loc,fixed_args['sampling_fap'],log=fixed_args['perio_log'],fontsize=fontsize)         
 
     #-----------------------------------
          

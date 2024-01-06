@@ -78,7 +78,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     
         #Function to calculate coordinates of planets and occulted regions in a given visit
         #    - in achromatic mode
-        def calc_occ_plot(theo_dic_loc,inst,vis,genpar_instvis,param_loc,args,system_param_loc,par_list = ['rv','CB_RV','mu','xp_abs','r_proj','y_st','lat']):
+        def calc_occ_plot(theo_dic_loc,inst,vis,genpar_instvis,param_loc,args,system_param_loc,iband=0,par_list = ['rv','CB_RV','mu','xp_abs','r_proj','y_st','lat']):
 
             #Generate high-resolution time table covering all planet transits   
             min_bjd = 1e100
@@ -134,13 +134,18 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 coord_pl_in[pl_loc]['phase'] = coord_pl_in[pl_loc]['phase'][cond_occ_HR]     
                 coord_pl_in[pl_loc]['ecl'] = coord_pl_in[pl_loc]['ecl'][cond_occ_HR] 
             theo_HR_prop_plocc = sub_calc_plocc_prop(['achrom'],args,par_list,gen_dic['studied_pl'],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))['achrom']
-            for pl_loc in gen_dic['studied_pl']:theo_HR_prop_plocc[pl_loc].update(coord_pl_in[pl_loc]) 
+            for pl_loc in gen_dic['studied_pl']:
+                theo_HR_prop_plocc[pl_loc].update(coord_pl_in[pl_loc])
+                
+                #Reduce to chosen band
+                cond_def_HR = ~np.isnan(theo_HR_prop_plocc[pl_loc]['rv'][iband])
+                theo_HR_prop_plocc[pl_loc]['phase']=theo_HR_prop_plocc[pl_loc]['phase'][cond_def_HR]
+                for par in ['rv','mu','lat','lon','x_st','y_st','xp_abs','r_proj','Rot_RV','CB_RV']:
+                    if par in theo_HR_prop_plocc[pl_loc]:theo_HR_prop_plocc[pl_loc][par]=theo_HR_prop_plocc[pl_loc][par][iband,cond_def_HR] 
             
             return theo_HR_prop_plocc
     
     
-
-
 
 
 
@@ -159,53 +164,151 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     '''
     if any('map_' in key for key in list(plot_dic.keys())):
 
-        #High-resolution orbital RV model in star rest frame (km/s)
-        #    - must be shorter than an exposure duration for exposures with exclusion to be plotted properly
-        min_ph_HRpl=-0.3
-        max_ph_HRpl=0.3        
-        dph_HRpl=0.0001
-        nph_HRpl=int((max_ph_HRpl-min_ph_HRpl)/dph_HRpl)
-        dph_HRpl=(max_ph_HRpl-min_ph_HRpl)/(nph_HRpl-1.)
-        ph_tab_HRpl=min_ph_HRpl+dph_HRpl*np.arange(nph_HRpl) 
-        rv_pl_HR={}
-        plrange_star_HR={}
-        wlines_star_HR={}
-        wmin_lines_star_HR={}
-        wmax_lines_star_HR={}
-        wlow_lines_star_HR={}
-        whigh_lines_star_HR={}
-        min_wlow_lines_star_HR={}
-        max_wlow_lines_star_HR={}
-        for pl_loc in gen_dic['studied_pl']:
-            rv_pl_HR[pl_loc]=system_param['star']['RV_conv_fact']*calc_pl_coord(system_param[pl_loc]['ecc'],system_param[pl_loc]['omega_rad'],system_param[pl_loc]['aRs'],system_param[pl_loc]['inclin_rad'],ph_tab_HRpl,None,None,None,rv_LOS=True,omega_p=system_param[pl_loc]['omega_p'])[6]     
+        '''
+        Orbital and stellar tracks
+        '''
+        def doppler_track_plots(key_track,line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,pl_list,pl_ref,theo_HR,line_range,iexp_plot,iexp_range,reverse_2D,data_type,x_range_loc,y_range_loc):
+      
+            #Masks
+            for pl_loc in pl_list:
+                
+                #Spectral line ranges
+                #    - from planet rest frame to planet line range frame, or from surface rest frame to planet line range frame
+                if cond_range and (line_mask is not None):range_dopshift = gen_specdopshift(line_range)[:,None]      
 
-            #Corresponding wavelength model for each atmospheric mask line
-            #    - dimensions nHR x nlines
-            if (data_dic['Atm']['exc_plrange']):
-                plrange_star_HR[pl_loc] = data_dic['Atm']['plrange'][:,None] + rv_pl_HR[pl_loc]               
-            if ('CCF_mask_wav' in data_dic['Atm']):
-                wlines_star_HR[pl_loc] = data_dic['Atm']['CCF_mask_wav']*np.sqrt(1. + (rv_pl_HR[pl_loc][:,None]/c_light) )/np.sqrt(1. - (rv_pl_HR[pl_loc][:,None]/c_light) ) 
-                wmin_lines_star_HR[pl_loc] = np.min(wlines_star_HR[pl_loc],axis=0)
-                wmax_lines_star_HR[pl_loc] = np.max(wlines_star_HR[pl_loc],axis=0) 
-            
-                #Lower/upper wavelength boundaries of excluded ranges for each planetary mask line
-                if (data_dic['Atm']['exc_plrange']):
-                    wlow_lines_star_HR[pl_loc] = data_dic['Atm']['CCF_mask_wav'][:,None] * np.sqrt(1. + (plrange_star_HR[pl_loc][0,:]/c_light) )/np.sqrt(1. - (plrange_star_HR[pl_loc][0,:]/c_light) )
-                    whigh_lines_star_HR[pl_loc] = data_dic['Atm']['CCF_mask_wav'][:,None] * np.sqrt(1. + (plrange_star_HR[pl_loc][1,:]/c_light) )/np.sqrt(1. - (plrange_star_HR[pl_loc][1,:]/c_light) )                                
-                    min_wlow_lines_star_HR[pl_loc] = np.min(wlow_lines_star_HR[pl_loc],axis=1)
-                    max_wlow_lines_star_HR[pl_loc] = np.max(whigh_lines_star_HR[pl_loc],axis=1)
+                #Model track in their rest frame
+                #    - independent of the planets, but defined for each planet to use a common structure in plot functions
+                if key_track==rest_frame:
+                    if cond_range: 
+                        
+                        #Spectral space
+                        if (line_mask is not None):   
+                            
+                            #Line position
+                            lines_HR = np.tile(line_mask,(theo_HR[pl_loc]['nph_HR'],1))
+                            
+                            #Minimum/maximum position of each line over the chosen phase range
+                            #    - constant in planet rest frame
+                            min_lines_HR = line_mask
+                            max_lines_HR = line_mask
+                            
+                            #Lower/upper boundary of excluded spectral range, for each line
+                            #    - common to all lines in rv but not in wavelength
+                            low_lines_HR = line_mask[:,None] * range_dopshift[0,:]  
+                            high_lines_HR = line_mask[:,None] * range_dopshift[1,:]                                
+                            
+                            #Minimum lower/maximum upper boundary of excluded spectral range, over all lines
+                            min_low_lines_HR = np.min(low_lines_HR,axis=1)
+                            max_high_lines_HR = np.max(high_lines_HR,axis=1) 
+                            
+                        #RV space
+                        else:
+                            
+                            #Minimum lower/maximum upper boundary of excluded rv range 
+                            min_low_lines_HR = line_range[0]
+                            max_high_lines_HR = line_range[1]                
+                    
+                #High-resolution orbital or surface RV model in star rest frame (km/s)
+                #    - must be shorter than an exposure duration for exposures with exclusion to be plotted properly
+                #    - for each planet
+                #    - for each requested line (by default atmospheric mask line) in spectral mode  
+                #    - shift from the planet or surface to the star rest frame
+                elif rest_frame=='star':
 
-        #Planet-independent properties
-        if (data_dic['Atm']['exc_plrange']):
-            plrange_pl_HR = data_dic['Atm']['plrange'][:,None] 
-            if ('CCF_mask_wav' in data_dic['Atm']):    
-                wlines_pl_HR = np.tile(data_dic['Atm']['CCF_mask_wav'],(nph_HRpl,1))
-                wmin_lines_pl_HR = data_dic['Atm']['CCF_mask_wav']
-                wmax_lines_pl_HR = data_dic['Atm']['CCF_mask_wav']   
-                wlow_lines_pl_HR = data_dic['Atm']['CCF_mask_wav'][:,None] * np.sqrt(1. + (plrange_pl_HR[0,:]/c_light) )/np.sqrt(1. - (plrange_pl_HR[0,:]/c_light) )
-                whigh_lines_pl_HR = data_dic['Atm']['CCF_mask_wav'][:,None] * np.sqrt(1. + (plrange_pl_HR[1,:]/c_light) )/np.sqrt(1. - (plrange_pl_HR[1,:]/c_light) )                                
-                min_wlow_lines_pl_HR = np.min(wlow_lines_pl_HR,axis=1)
-                max_wlow_lines_pl_HR = np.max(whigh_lines_pl_HR,axis=1)                
+                    #Spectral space
+                    #    - dimensions nHR x nlines
+                    if line_mask is not None:
+                        if key_track=='pl':main_dopshift = gen_specdopshift(theo_HR[pl_loc]['rv'],v_s = theo_HR[pl_loc]['v'])  
+                        elif key_track=='surf':main_dopshift = gen_specdopshift(theo_HR[pl_loc]['rv'])  
+                        
+                        #Line position
+                        lines_HR = line_mask*main_dopshift[:,None]
+                        
+                        #Minimum/maximum position of each line over the chosen phase range
+                        min_lines_HR = np.min(lines_HR,axis=0)
+                        max_lines_HR = np.max(lines_HR,axis=0) 
+                    
+                        #Excluded planetary ranges
+                        if cond_range:
+                            
+                            #Lower/upper wavelength boundaries of line ranges for each line
+                            low_lines_HR = line_mask[:,None]*main_dopshift[:,None]*range_dopshift
+                            high_lines_HR = line_mask[:,None]*main_dopshift[:,None]*range_dopshift                     
+                            
+                            #Minimum lower/maximum upper boundary of spectral line range over all lines
+                            min_low_lines_HR = np.min(low_lines_HR,axis=1)
+                            max_high_lines_HR = np.max(high_lines_HR,axis=1)
+                         
+                    #RV space
+                    elif cond_range:
+                            
+                            #Minimum lower/maximum upper boundary of rv line range 
+                            range_star_HR = line_range[:,None] + theo_HR[pl_loc]['rv']
+                            max_high_lines_HR = range_star_HR[0]
+                            max_high_lines_HR = range_star_HR[1]
+
+                #Order high-resolution curves
+                if reverse_2D:w_sorted=theo_HR[pl_loc]['phase'].argsort()
+                else:w_sorted=theo_HR[pl_ref]['rv'].argsort() 
+    
+                #In rv space
+                if (data_type == 'CCF'):                            
+    
+                    #High-resolution model
+                    if cond_track:   
+                        if (rest_frame=='star'):rv_mod_loc = theo_HR[pl_loc]['rv']
+                        elif (key_track==rest_frame):rv_mod_loc = np.repeat(0.,theo_HR[pl_loc]['nph_HR'])
+                        if reverse_2D:plt.plot(theo_HR[pl_loc]['phase'][w_sorted],rv_mod_loc[w_sorted],color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10) 
+                        else:plt.plot(rv_mod_loc[w_sorted],theo_HR[pl_loc]['phase'][w_sorted] ,color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10)                              
+    
+                    #Excluded ranges for each/all planetary mask line
+                    if cond_range: 
+                        if reverse_2D:plt.fill_between(theo_HR[pl_loc]['phase'][w_sorted],max_high_lines_HR[w_sorted], max_high_lines_HR[w_sorted],zorder=9,color='white',alpha=0.2)
+                        else:plt.fill_betweenx(theo_HR[pl_loc]['phase'][w_sorted],max_high_lines_HR[w_sorted], max_high_lines_HR[w_sorted],zorder=9,color='white',alpha=0.2)
+    
+                #In spectral space
+                #    - for each studied line in plot range
+                elif ('spec' in data_type): 
+    
+                    #High-resolution model 
+                    if cond_track: 
+                        if reverse_2D:
+                            cond_lines_in = (max_lines_HR>=y_range_loc[0]) & (min_lines_HR<=y_range_loc[1])  
+                            lines_HR_plot = lines_HR[:,cond_lines_in][w_sorted]
+                            for iline in range(np.sum(cond_lines_in)):plt.plot(theo_HR[pl_loc]['phase'][w_sorted],lines_HR_plot[:,iline],color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10,alpha=1)
+                        else:  
+                            cond_lines_in = (max_lines_HR>=x_range_loc[0]) & (min_lines_HR<=x_range_loc[1]) 
+                            lines_HR_plot = lines_HR[:,cond_lines_in][w_sorted]
+                            for iline in range(np.sum(cond_lines_in)):plt.plot(lines_HR_plot[:,iline],theo_HR[pl_loc]['phase'][w_sorted],color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10,alpha=1) 
+    
+                    #Line ranges for each line
+                    if cond_range:  
+    
+                        #Create condition for high-resolution points within exposures without exclusion
+                        #    - by setting to false those points without exposures with exclusion, so that they are not masked
+                        cond_exp_excl = np.ones([len(line_mask),theo_HR[pl_loc]['nph_HR']],dtype=bool)
+                        if iexp_range is not None:
+                            for iexp in np.intersect1d(iexp_range,iexp_plot):
+                                sub_cond_HR = (theo_HR[pl_loc]['phase']>=coord_dic[inst][vis]['st_ph'][iexp]) & (theo_HR[pl_loc]['phase']<=coord_dic[inst][vis]['end_ph'][iexp])
+                                if True in sub_cond_HR:cond_exp_excl[:,sub_cond_HR]=False
+
+                        if reverse_2D:cond_lines_in = (max_high_lines_HR>=y_range_loc[0]) & (min_low_lines_HR<=y_range_loc[1]) 
+                        else:cond_lines_in = (max_high_lines_HR>=x_range_loc[0]) & (min_low_lines_HR<=x_range_loc[1]) 
+    
+                        wlow_lines_HR_plot = low_lines_HR[cond_lines_in][:,w_sorted]
+                        whigh_lines_HR_plot = high_lines_HR[cond_lines_in][:,w_sorted]
+                        cond_exp_excl = cond_exp_excl[cond_lines_in][:,w_sorted]
+                        wlow_lines_HR_plot = ma.masked_where(cond_exp_excl, wlow_lines_HR_plot)
+                        whigh_lines_HR_plot = ma.masked_where(cond_exp_excl, whigh_lines_HR_plot) 
+                        
+                        if reverse_2D:
+                            for iline in range(np.sum(cond_lines_in)):
+                                plt.fill_between(theo_HR[pl_loc]['phase'][w_sorted],wlow_lines_HR_plot[iline,:], whigh_lines_HR_plot[iline,:],zorder=9,color=col_loc,alpha=0.3)
+                        else:                                  
+                            for iline in range(np.sum(cond_lines_in)):
+                                plt.fill_betweenx(theo_HR[pl_loc]['phase'][w_sorted], wlow_lines_HR_plot[iline,:], whigh_lines_HR_plot[iline,:],zorder=9,color=col_loc,alpha=0.3)
+
+            return None
 
 
         def sub_2D_map(plot_mod,save_res_map,plot_options):
@@ -258,7 +361,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Data
                     data_com = dataload_npz(data_vis['proc_com_data_paths'])   
                     fixed_args_loc = {}
-                    pl_ref,txt_conv,iexp_plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data = sub_plot_prof_dir(inst,vis,plot_options,data_mode,'Map',add_txt_path,plot_mod,txt_aligned,data_type,data_type_gen)
+                    pl_ref,txt_conv,iexp_plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data,data_bin = sub_plot_prof_dir(inst,vis,plot_options,data_mode,'Map',add_txt_path,plot_mod,txt_aligned,data_type,data_type_gen)
 
                     #Order list
                     order_list = plot_options['orders_to_plot'] if len(plot_options['orders_to_plot'])>0 else range(nord_data) 
@@ -281,7 +384,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     elif ('spec' in data_type):
                         if plot_options['sp_var'] == 'nu' :
                             if plot_options['x_range'] is None:sp_range_loc = [c_light/9000.,c_light/3000.]
-                            sp_title = r'\nu in '+xt_str+' rest frame (10$^{-10}$s$^{-1}$)'
+                            sp_title = r'$\nu$ in '+xt_str+' rest frame (10$^{-10}$s$^{-1}$)'  
                         elif plot_options['sp_var'] == 'wav' :
                             if plot_options['x_range'] is None:sp_range_loc = [3000.,9000.] 
                             sp_title = r'Wavelength in '+xt_str+' rest frame (A)'                                            
@@ -309,8 +412,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     var_map = np.zeros(dim_all_proc)*np.nan
                     cond_def_map = np.zeros(dim_all_proc,dtype=bool)
 
-                    #High-resolution RV model 
+                    #High-resolution surface RV model 
                     #    - achromatic
+                    #    - rv of stellar surface region in star rest frame
                     params = deepcopy(system_param['star'])
                     params.update({'rv':0.,'cont':1.})  
                     if plot_options['theoRV_HR']:
@@ -319,6 +423,24 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         system_param_align = deepcopy(system_param)
                         system_param_align[pl_ref]['lambda_rad'] = 0.
                         theo_HR_prop_plocc_align = calc_occ_plot(deepcopy(theo_dic),inst,vis,{},params,{},system_param_align)
+                        
+                    #High-resolution orbital phase model
+                    #    - rv of planet in star rest frame
+                    if plot_options['theoRVpl_HR']:
+                        theo_HR_pl = {}
+                        min_ph_HRpl=-0.3
+                        max_ph_HRpl=0.3        
+                        dph_HRpl=0.0001
+                        nph_HRpl=int((max_ph_HRpl-min_ph_HRpl)/dph_HRpl)
+                        dph_HRpl=(max_ph_HRpl-min_ph_HRpl)/(nph_HRpl-1.)
+                        ph_tab_HRpl=min_ph_HRpl+dph_HRpl*np.arange(nph_HRpl)                         
+                        for pl_loc in gen_dic['studied_pl']:
+                            theo_HR_pl[pl_loc]={}
+                            theo_HR_pl[pl_loc]['phase'] = ph_tab_HRpl
+                            theo_HR_pl[pl_loc]['nph_HR'] = nph_HRpl
+                            rv_HR,v_HR=calc_pl_coord(system_param[pl_loc]['ecc'],system_param[pl_loc]['omega_rad'],system_param[pl_loc]['aRs'],system_param[pl_loc]['inclin_rad'],ph_tab_HRpl,None,None,None,rv_LOS=True,omega_p=system_param[pl_loc]['omega_p'])[6:8]     
+                            theo_HR_pl[pl_loc]['rv']=rv_HR*system_param['star']['RV_conv_fact']
+                            theo_HR_pl[pl_loc]['v']=v_HR*system_param['star']['RV_conv_fact']  
 
                     #Processing exposures
                     for isub,(iexp,iexp_or,data_path_exp) in enumerate(zip(iexp_plot,iexp_orig,data_path_all)):
@@ -377,10 +499,18 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                                                 #Correct for local continuum level only
                                                 if plot_options['cont_only']: 
-                                                    
-                                                    #Intrinsic continuum level                              
-                                                    intr_flux_est[iord] = data_dic['Intr'][inst][vis]['mean_cont'][iord]
-    
+
+                                                    #Broadband continuum profile
+                                                    #    - for spectral data, if continuum was measured
+                                                    if ('spec' in data_type) and (plot_options['st_cont'] is not None):
+                                                        cont_func_dic = dataload_npz(gen_dic['save_data_dir']+'Stellar_cont_'+plot_options['st_cont']+'/'+inst+'_'+vis+'/St_cont')['cont_func_dic']
+                                                        intr_flux_est[iord] = cont_func_dic(data_exp['cen_bins'][iord])
+                                                        
+                                                    #Mean intrinsic continuum level                              
+                                                    else:
+                                                        intr_flux_est[iord] = data_dic['Intr'][inst][vis]['mean_cont'][iord]
+  
+                                                        
                                                 #Correct for full local stellar profile
                                                 else:
                                                     
@@ -639,117 +769,75 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 for isub,iexp in enumerate(iexp_orig):
                                     plt.text(x_range_loc[0]+0.05*(x_range_loc[1]-x_range_loc[0]),0.5*(low_ordi_tab+high_ordi_tab)[isub],str(iexp),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=15,color='black') 
                                     plt.text(x_range_loc[0]+0.1*(x_range_loc[1]-x_range_loc[0]),0.5*(low_ordi_tab+high_ordi_tab)[isub],str(gen_dic[inst][vis]['idx_exp2in'][iexp]),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=15,color='black') 
-      
-                            #------------------------------------  
-                        
-                            #Lines of stellar CCF masks
-                            if (rest_frame=='star') and ('spec' in data_type) and plot_options['CCF_mask_star']:
-                                col_loc='white'
-                                if plot_options['reverse_2D']:
-                                    cond_lines_in = np_where1D((gen_dic['CCF_mask_wav'][inst]>=y_range_loc[0]) & (gen_dic['CCF_mask_wav'][inst]<=y_range_loc[1])) 
-                                    for iline in cond_lines_in:plt.axhline(gen_dic['CCF_mask_wav'][inst][iline],color=col_loc, lw=1.5,linestyle='-',zorder=10) 
-                                else:  
-                                    cond_lines_in = np_where1D((gen_dic['CCF_mask_wav'][inst]>=x_range_loc[0]) & (gen_dic['CCF_mask_wav'][inst]<=x_range_loc[1])) 
-                                    for iline in cond_lines_in:plt.axvline(gen_dic['CCF_mask_wav'][inst][iline],color=col_loc, lw=1.5,linestyle='-',zorder=10) 
 
-                            #Overplot stellar lines
-                            if len(plot_options['st_lines_wav'])>0:
-                                st_lines_wav = np.array(plot_options['st_lines_wav'])
-                                cond_in_plot = (st_lines_wav>x_range_loc[0]) & (st_lines_wav<x_range_loc[1])
-                                for st_line_wav in st_lines_wav[cond_in_plot]:plt.axvline(x=st_line_wav,color='black',ls='--',lw=1,alpha=0.6)  
-                                        
-    
                             #------------------------------------  
                       
-                            #Planetary orbital model
-                            if (rest_frame in ['star','planet']) and (ordi_name == 'phase') and (plot_mod in ['map_DI_prof','map_Res_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_Atm_prof']):
-    
-                                #Order high-resolution curves
-                                if (plot_options['theoRVpl_HR']) or (plot_options['plot_plexc']):
-                                    if plot_options['reverse_2D']:w_sorted=ph_tab_HRpl.argsort()
-                                    else:w_sorted=rv_pl_HR[pl_ref].argsort() 
-    
-                                #Colors
-                                if plot_mod=='map_Atm_prof': col_loc='limegreen'
-                                else:col_loc='magenta'
-    
-                                #In RV space
-                                if (data_type == 'CCF'):                            
-    
-                                    #High-resolution orbital model of planet in star rest frame
-                                    if (plot_options['theoRVpl_HR']):                                    
-                                        if (rest_frame=='star'):rv_mod_loc = rv_pl_HR[pl_ref]
-                                        else:rv_mod_loc = np.repeat(0.,nph_HRpl)
-                                        if plot_options['reverse_2D']:plt.plot(ph_tab_HRpl[w_sorted],rv_mod_loc[w_sorted],color=col_loc,linestyle='-',lw=2,zorder=10) 
-                                        else:plt.plot(rv_mod_loc[w_sorted],ph_tab_HRpl[w_sorted] ,color=col_loc,linestyle='-',lw=2,zorder=10)                              
-    
-                                    #Excluded ranges for each planetary mask line
-                                    if (plot_options['plot_plexc']) and (data_dic['Atm']['exc_plrange']): 
-                                        if (rest_frame=='star'):plrange_loc = plrange_star_HR[pl_ref]
-                                        else:plrange_loc = plrange_pl_HR
-                                        if plot_options['reverse_2D']:plt.fill_between(ph_tab_HRpl[w_sorted],plrange_loc[0,w_sorted], plrange_loc[1,w_sorted],zorder=9,color='white',alpha=0.2)
-                                        else:plt.fill_betweenx(ph_tab_HRpl[w_sorted],plrange_loc[0,w_sorted], plrange_loc[1,w_sorted],zorder=9,color='white',alpha=0.2)
-    
-                                #In spectral space, for each studied planetary line in plot range
-                                elif ('spec' in data_type) and ('CCF_mask_wav' in data_dic['Atm']): 
-    
-                                    #High-resolution orbital model of planet in star rest frame
-                                    if (plot_options['theoRVpl_HR']): 
-                                        if (rest_frame=='star'):
-                                            wmax_lines_loc_HR = wmax_lines_star_HR[pl_ref]
-                                            wmin_lines_loc_HR = wmin_lines_star_HR[pl_ref]
-                                            wlines_loc_HR = wlines_star_HR[pl_ref]
+                            #Planetary and stellar tracks
+                            if (ordi_name == 'phase'):
+                                
+                                #Planet track
+                                if (rest_frame in ['star','pl']) and (plot_mod in ['map_DI_prof','map_Res_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_Atm_prof']) and (plot_options['theoRVpl_HR'] or plot_options['plot_plexc']):
+                                    
+                                    #Line mask
+                                    if ('spec' in data_type):
+                                        if (len(plot_options['pl_lines_wav'])>0):line_mask = plot_options['pl_lines_wav']
                                         else:
-                                            wmax_lines_loc_HR = wmax_lines_pl_HR
-                                            wmin_lines_loc_HR = wmin_lines_pl_HR
-                                            wlines_loc_HR = wlines_pl_HR
-    
-                                        if plot_options['reverse_2D']:
-                                            cond_lines_in = (wmax_lines_loc_HR>=y_range_loc[0]) & (wmin_lines_loc_HR<=y_range_loc[1])  
-                                            wlines_HR_plot = wlines_loc_HR[:,cond_lines_in][w_sorted]
-                                            for iline in range(np.sum(cond_lines_in)):plt.plot(ph_tab_HRpl[w_sorted],wlines_HR_plot[:,iline],color=col_loc,linestyle='-',lw=1.5,zorder=10)
-                                        else:  
-                                            cond_lines_in = (wmax_lines_loc_HR>=x_range_loc[0]) & (wmin_lines_loc_HR<=x_range_loc[1]) 
-                                            wlines_HR_plot = wlines_loc_HR[:,cond_lines_in][w_sorted]
-                                            for iline in range(np.sum(cond_lines_in)):plt.plot(wlines_HR_plot[:,iline],ph_tab_HRpl[w_sorted],color=col_loc,linestyle='-',lw=1.5,zorder=10) 
-    
-                                    #Excluded ranges for each planetary mask line
-                                    if (plot_options['plot_plexc']) and (data_dic['Atm']['exc_plrange']):  
-    
-                                        #Create condition for high-resolution points within exposures without exclusion
-                                        #    - by setting to false those points without exposures with exclusion, so that they are not masked
-                                        cond_exp_excl = np.ones([len(data_dic['Atm']['CCF_mask_wav']),nph_HRpl],dtype=bool)
-                                        for iexp in np.intersect1d(data_dic['Atm'][inst][vis]['iexp_no_plrange'],iexp_plot):
-                                            sub_cond_HR = (ph_tab_HRpl>=coord_dic[inst][vis]['st_ph'][iexp]) & (ph_tab_HRpl<=coord_dic[inst][vis]['end_ph'][iexp])
-                                            if True in sub_cond_HR:cond_exp_excl[:,sub_cond_HR]=False
-                                                
-                                        if (rest_frame=='star'):
-                                            max_wlow_lines_loc_HR = max_wlow_lines_star_HR[pl_ref]
-                                            min_wlow_lines_loc_HR = min_wlow_lines_star_HR[pl_ref]
-                                            wlow_lines_loc_HR = wlow_lines_star_HR[pl_ref]
-                                            whigh_lines_loc_HR = whigh_lines_star_HR[pl_ref]
-                                        else:  
-                                            max_wlow_lines_loc_HR = max_wlow_lines_pl_HR
-                                            min_wlow_lines_loc_HR = min_wlow_lines_pl_HR
-                                            wlow_lines_loc_HR = wlow_lines_pl_HR
-                                            whigh_lines_loc_HR = whigh_lines_pl_HR                                  
-                                            
-                                        if plot_options['reverse_2D']:cond_lines_in = (max_wlow_lines_loc_HR>=y_range_loc[0]) & (min_wlow_lines_loc_HR<=y_range_loc[1]) 
-                                        else:cond_lines_in = (max_wlow_lines_loc_HR>=x_range_loc[0]) & (min_wlow_lines_loc_HR<=x_range_loc[1]) 
-                                            
-                                        wlow_lines_HR_plot = wlow_lines_loc_HR[cond_lines_in][:,w_sorted]
-                                        whigh_lines_HR_plot = whigh_lines_loc_HR[cond_lines_in][:,w_sorted]
-                                        cond_exp_excl = cond_exp_excl[cond_lines_in][:,w_sorted]
-                                        wlow_lines_HR_plot = ma.masked_where(cond_exp_excl, wlow_lines_HR_plot)
-                                        whigh_lines_HR_plot = ma.masked_where(cond_exp_excl, whigh_lines_HR_plot) 
+                                            if ('CCF_mask_wav' not in data_dic['Atm']):stop('Define atmospheric CCF mask or plot mask')
+                                            line_mask = data_dic['Atm']['CCF_mask_wav']
+                                    else:line_mask = None 
+                                    
+                                    #Settings
+                                    if plot_mod=='map_Atm_prof': col_loc='limegreen'
+                                    else:col_loc='magenta'
+                                    lw_mod=1.5
+                                    ls_loc='-'
+                                    
+                                    cond_track = plot_options['theoRVpl_HR']
+                                    cond_range = (plot_options['plot_plexc']) and (data_dic['Atm']['exc_plrange'])
+                                    if cond_range:
+                                        line_range = data_dic['Atm']['plrange']
+                                        iexp_range = data_dic['Atm'][inst][vis]['iexp_no_plrange']
+                                    else:
+                                        line_range=None
+                                        iexp_range=None
+                                    doppler_track_plots('pl',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['transit_pl'],pl_ref,theo_HR_pl,line_range,iexp_plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc)
+
+                                #Stellar track
+                                if (rest_frame in ['star','surf']) and ((plot_mod in ['map_Res_prof','map_Intr_prof_est','map_Intr_prof_res','map_Intrbin']) or ((plot_mod in ['map_Intr_prof']) and (not plot_options['aligned']))) and (plot_options['theoRV_HR'] or plot_options['theoRV_HR_align']): 
+                                    
+                                    #Line mask
+                                    if ('spec' in data_type):
+                                        if (len(plot_options['st_lines_wav'])>0):line_mask = plot_options['st_lines_wav']
+                                        else:
+                                            if ('CCF_mask_wav' not in gen_dic) and (inst not in gen_dic['CCF_mask_wav']):stop('Define stellar CCF mask or plot mask')
+                                            line_mask = gen_dic['CCF_mask_wav'][inst]
+                                    else:line_mask = None 
+
+                                    #Settings
+                                    if plot_options['cmap'] in ['afmhot_r']:
+                                        col_loc='limegreen'
+                                        ls_loc='-'
+                                        lw_mod = 2 
+                                    else:
+                                        col_loc='black'  #'white'
+                                        ls_loc='--'   
+                                        lw_mod = 2  
                                         
-                                        if plot_options['reverse_2D']:
-                                            for iline in range(np.sum(cond_lines_in)):
-                                                plt.fill_between(ph_tab_HRpl[w_sorted],wlow_lines_HR_plot[iline,:], whigh_lines_HR_plot[iline,:],zorder=9,color=col_loc,alpha=0.3)
-                                        else:                                  
-                                            for iline in range(np.sum(cond_lines_in)):
-                                                plt.fill_betweenx(ph_tab_HRpl[w_sorted], wlow_lines_HR_plot[iline,:], whigh_lines_HR_plot[iline,:],zorder=9,color=col_loc,alpha=0.3)
-    
+                                    cond_range = (plot_options['plot_stexc']) and (inst in data_dic['DI']['occ_range'])
+                                    if cond_range:line_range = data_dic['DI']['occ_range'][inst]
+                                    else:line_range=None
+                                    iexp_range=None
+
+                                    #Nominal orbit
+                                    if plot_options['theoRV_HR']:
+                                        cond_track = plot_options['theoRVpl_HR']
+                                        doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['transit_pl'],pl_ref,theo_HR_prop_plocc,line_range,iexp_plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc)
+
+                                    #Aligned orbit
+                                    if plot_options['theoRV_HR_align']:
+                                        cond_track = plot_options['theoRVpl_HR_align']
+                                        doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['transit_pl'],pl_ref,theo_HR_prop_plocc_align,line_range,iexp_plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc)
+
                             #------------------------------------  
                                       
                             #Modelled and measured local stellar surface RVs
@@ -774,23 +862,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                        
                                     #High-resolution model 
                                     if plot_options['theoRV_HR'] or plot_options['theoRV_HR_align']:
-                                        if plot_options['cmap'] in ['afmhot_r']:
-                                            col_loc='limegreen'
-                                            ls_loc='-'
-                                            lw_mod = 2 
-                                        else:
-                                            col_loc='black'  #'white'
-                                            ls_loc='--'   
-                                            lw_mod = 2                                 
+                               
                                         for pl_loc in data_dic[inst][vis]['transit_pl']:
                                             if plot_options['theoRV_HR']:
-                                                cond_def_HR = ~np.isnan(theo_HR_prop_plocc[pl_loc]['rv'][0])
-                                                ph_HR_loc = theo_HR_prop_plocc[pl_ref]['phase'][cond_def_HR]
-                                                rv_HR_loc = theo_HR_prop_plocc[pl_loc]['rv'][0,cond_def_HR]
+                                                ph_HR_loc = theo_HR_prop_plocc[pl_ref]['phase']
+                                                rv_HR_loc = theo_HR_prop_plocc[pl_loc]['rv']
                                             elif plot_options['theoRV_HR_align']:
-                                                cond_def_HR = ~np.isnan(theo_HR_prop_plocc_align[pl_loc]['rv'][0])
-                                                ph_HR_loc = theo_HR_prop_plocc_align[pl_ref]['phase'][cond_def_HR]
-                                                rv_HR_loc = theo_HR_prop_plocc_align[pl_loc]['rv'][0,cond_def_HR]
+                                                ph_HR_loc = theo_HR_prop_plocc_align[pl_ref]['phase']
+                                                rv_HR_loc = theo_HR_prop_plocc_align[pl_loc]['rv']
                                             if plot_options['reverse_2D']:
                                                 w_sorted=ph_HR_loc.argsort() 
                                                 xtheoRV_HR=ph_HR_loc[w_sorted]
@@ -798,7 +877,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                     ytheoRV_HR=rv_HR_loc[w_sorted]
                                                     plt.plot(xtheoRV_HR,ytheoRV_HR,color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10) 
                                                 if plot_options['theoRV_HR_align']:
-                                                    plt.plot(xtheoRV_HR,theo_HR_prop_plocc_align[pl_ref]['rv'][0,cond_def_HR][w_sorted],color=col_loc,linestyle='--',lw=lw_mod,zorder=10) 
+                                                    plt.plot(xtheoRV_HR,theo_HR_prop_plocc_align[pl_ref]['rv'][w_sorted],color=col_loc,linestyle='--',lw=lw_mod,zorder=10) 
                                             else:  
                                                 w_sorted=rv_HR_loc.argsort() 
                                                 ytheoRV_HR=ph_HR_loc[w_sorted] 
@@ -806,7 +885,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                     xtheoRV_HR=rv_HR_loc[w_sorted]
                                                     plt.plot(xtheoRV_HR,ytheoRV_HR,color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10) 
                                                 if plot_options['theoRV_HR_align']:
-                                                    plt.plot(theo_HR_prop_plocc_align[pl_ref]['rv'][0,cond_def_HR][w_sorted] ,ytheoRV_HR,color=col_loc,linestyle='--',lw=lw_mod,zorder=10) 
+                                                    plt.plot(theo_HR_prop_plocc_align[pl_ref]['rv'][w_sorted] ,ytheoRV_HR,color=col_loc,linestyle='--',lw=lw_mod,zorder=10) 
     
                                         
     
@@ -853,8 +932,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #----------------------------------------------
                                         
                             #Plot frame 
-                         
-    
                             xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
                             ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0])                        
     
@@ -958,7 +1035,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 'fbal':gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_',
                 'cosm':gen_dic['save_data_dir']+'Corr_data/Cosm/'+inst+'_'+vis+'_',
                 'permpeak':gen_dic['save_data_dir']+'Corr_data/Permpeak/'+inst+'_'+vis+'_',
-                'wig':gen_dic['save_data_dir']+'Corr_data/Wiggles/Datax/'+inst+'_'+vis+'_',
+                'wig':gen_dic['save_data_dir']+'Corr_data/Wiggles/Data/'+inst+'_'+vis+'_',
                 }
         else:data_path_dic={}        
         return data_path_dic
@@ -992,7 +1069,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         if not os_system.path.exists(gen_dic['save_data_dir']+'Joined_fits/IntrProf/IntrProf_fit_'+add_txt_path+inst+'_'+vis+'.npz'):stop('No existing fit results')
                         prof_fit_vis=dataload_npz(gen_dic['save_data_dir']+'Joined_fits/IntrProf/IntrProf_fit_'+add_txt_path+inst+'_'+vis)['prof_fit_dic']  
                         fit_results =dataload_npz(gen_dic['save_data_dir']+'Joined_fits/IntrProf/Fit_results')
-
+   
         #Directories
         txt_mod=deepcopy(add_txt_path)
         if '_pca' in plot_mod:
@@ -1008,8 +1085,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         if (gen_dic['type'][inst]=='spec2D') and ('_1D' in plot_mod):main_path_txt+='1Dfrom2D'
         if ('spec' in gen_dic['type'][inst]) and (data_type=='CCF'):
             txt_conv='CCFfromSpec'        
-            main_path_txt+=txt_conv
+            main_path_txt+='fromSpec'        
         else:txt_conv = ''
+        data_bin=None
         if '_pca' in plot_mod: 
             if plot_mod=='map_pca_prof':
                 path_loc = gen_dic['save_plot_dir']+'Res_data/PCA/Maps_theo/'  
@@ -1150,6 +1228,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 if plot_options['step']=='raw':
                                     data_path = data_vis['raw_exp_data_paths']
                                     rest_frame = 'input'
+                                elif plot_options['step']=='conv':    
+                                    data_path = gen_dic['save_data_dir']+'DI_data/CCFfromSpec/'+inst+'_'+vis+'_'  
+                                    rest_frame = 'input'
                                 elif plot_options['step']=='scaled':
                                     data_path = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_' 
                                     rest_frame = dataload_npz(data_path+'add')['rest_frame']
@@ -1172,7 +1253,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         else:
             nord_data = None
                             
-        return pl_ref,txt_conv,iexp_plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data
+        return pl_ref,txt_conv,iexp_plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data,data_bin
     
     
     
@@ -1270,14 +1351,16 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 print('        - Visit :',vis)
                 data_inst=data_dic[inst]
                 data_vis = data_inst[vis]
-                
+              
                 #Data
                 data_com = dataload_npz(data_vis['proc_com_data_paths'])  
                 fixed_args_loc = {}
-                pl_ref,txt_conv,iexp_plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data = sub_plot_prof_dir(inst,vis,plot_options,data_mode,'Indiv',add_txt_path,plot_mod,txt_aligned,data_type,data_type_gen)
-
+                pl_ref,txt_conv,iexp_plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data,data_bin = sub_plot_prof_dir(inst,vis,plot_options,data_mode,'Indiv',add_txt_path,plot_mod,txt_aligned,data_type,data_type_gen)
+                
                 #Order list
-                order_list = plot_options['orders_to_plot'] if len(plot_options['orders_to_plot'])>0 else range(nord_data)  
+                if data_type=='CCF':order_list=[0]
+                else:
+                    order_list = plot_options['orders_to_plot'] if len(plot_options['orders_to_plot'])>0 else range(nord_data)  
                 idx_sel_ord = order_list
                 if len(order_list)==1:plot_options['multi_ord']=False
 
@@ -1288,7 +1371,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 if 'spec' in data_type:
                     if plot_options['sp_var'] == 'nu' :
                         if plot_options['x_range'] is None:x_range_loc = [c_light/9000.,c_light/3000.]
-                        x_title = r'\nu in '+xt_str+' rest frame (10$^{-10}$s$^{-1}$)'
+                        x_title = r'$\nu$ in '+xt_str+' rest frame (10$^{-10}$s$^{-1}$)'
                         
                     elif plot_options['sp_var'] == 'wav' :
                         if plot_options['x_range'] is None:x_range_loc = [3000.,9000.] 
@@ -1317,11 +1400,16 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 edge_bins_com = data_com['edge_bins'][idx_sel_ord]                
 
                 #Pre-processing exposures  
-                if 'spec' in data_type:
-                    data_proc,data_mod = pre_proc_exp(inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc)
+                if (plot_mod=='DI_raw') and ('spec' in data_type):  
+                    data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc)
                 else:
                     data_proc={}
                     data_mod={}
+                    data4mast={}
+                
+                #Stellar continuum
+                if ('spec' in data_type) and (plot_options['st_cont'] is not None):
+                    cont_func_dic = dataload_npz(gen_dic['save_data_dir']+'Stellar_cont_'+plot_options['st_cont']+'/'+inst+'_'+vis+'/St_cont')['cont_func_dic']
 
                 #Multiple exposures per plot
                 images_to_make_GIF = None
@@ -1351,11 +1439,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #Plot profile for each exposure
                 for isub,(iexp,data_path_exp) in enumerate(zip(iexp_plot,data_path_all)): 
                     iexp_or=iexp_orig[isub]     
-
+                 
                     #Colors
                     col_exp = plot_options['color_dic'][inst][vis][isub]
                     col_exp_sec = plot_options['color_dic_sec'][inst][vis][isub]        
- 
+                    
                     #Upload data
                     if data_path_exp is not None:data_exp = dataload_npz(data_path_exp)
                     
@@ -1450,7 +1538,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     
                     #Plot exposure only if fitted
                     if plot_options['fitted_exp']:do_plot&=cond_mod
-                    
+                   
                     #Plot current exposure  
                     if do_plot:
 
@@ -1467,7 +1555,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
      
                         #Plot each order 
                         for isub_ord,iord in enumerate(order_list):                    
-             
+                           
                             #Only plot order if it overlaps with the requested window
                             plot_ord=True
                             cen_bins = data_exp['cen_bins'][iord]
@@ -1485,7 +1573,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             
                                     #Only plot order if cosmics were detected
                                     if plot_options['det_permpeak'] and (plot_options['data_permpeak']['count_bad_all'][iexp,iord]==0):plot_ord &= False  
-
+                                
                                 #Plot order
                                 if plot_ord:  
 
@@ -1770,6 +1858,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         if plot_options['resample'] is not None:
                                             var_resamp = bind.resampling(edge_bins_reg,edge_loc,var_loc, kind=gen_dic['resamp_mode'])   
                                             all_ax[key_frame].plot(cen_bins_reg,var_resamp,color=col_exp,linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'] & False,zorder=2,drawstyle=plot_options['drawstyle'],figure = all_figs[key_frame])                      
+
+                                    #Plot stellar continuum
+                                    if ('spec' in data_type) and (plot_options['st_cont'] is not None) and (('DI' in plot_mod) or ('Intr' in plot_mod)):                      
+                                        all_ax[key_frame].plot(x_loc,sc_fact*cont_func_dic(x_loc)/mean_flux ,color='black',linestyle='-',lw=plot_options['lw_plot'],zorder=-1) 
+                                 
                        
                                     #Single order options
                                     if (not plot_options['multi_ord']):
@@ -1918,7 +2011,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         # + a single exposure per order is plotted, or last exposure has been processed
                                         #----------------------------------------
                                         if ((not plot_options['multi_exp']) or (isub==len(iexp_plot)-1)): 
-                                            filename = end_plot_prof(pl_ref,inst,vis,all_figs[key_frame],all_ax[key_frame],x_range_loc[key_frame],y_range_loc[key_frame],hide_yticks,plot_options,iexp_or,plot_mod,title_name,ref_name,iord,plot_ext,x_title,y_title,path_loc)
+                                            filename = end_plot_prof(pl_ref,inst,vis,all_figs[key_frame],all_ax[key_frame],x_range_loc[key_frame],y_range_loc[key_frame],hide_yticks,plot_options,iexp_or,plot_mod,title_name,ref_name,iord,plot_ext,x_title,y_title,path_loc,data_bin)
      
                                             #Store image for GIF generation
                                             if (images_to_make_GIF is not None): 
@@ -1934,7 +2027,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         # + all orders are plotted together
                         #----------------------------------------
                         if plot_options['multi_ord'] and ((not plot_options['multi_exp']) or (isub==len(iexp_plot)-1)): 
-                            filename = end_plot_prof(pl_ref,inst,vis,all_figs[key_frame],all_ax[key_frame],x_range_loc[key_frame],y_range_loc[key_frame],hide_yticks,plot_options,iexp_or,plot_mod,title_name,ref_name,None,plot_ext,x_title,y_title,path_loc)    
+                            filename = end_plot_prof(pl_ref,inst,vis,all_figs[key_frame],all_ax[key_frame],x_range_loc[key_frame],y_range_loc[key_frame],hide_yticks,plot_options,iexp_or,plot_mod,title_name,ref_name,None,plot_ext,x_title,y_title,path_loc,data_bin)    
 
                     ### End of condition to plot current exposure
 
@@ -1947,7 +2040,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 # + all orders are plotted together
                 #----------------------------------------
                 if plot_options['multi_ord'] and plot_options['multi_exp']:
-                    filename = end_plot_prof(pl_ref,inst,vis,all_figs[key_frame],all_ax[key_frame],x_range_loc[key_frame],y_range_loc[key_frame],hide_yticks,plot_options,None,plot_mod,title_name,ref_name,None,plot_ext,x_title,y_title,path_loc)                
+                    filename = end_plot_prof(pl_ref,inst,vis,all_figs[key_frame],all_ax[key_frame],x_range_loc[key_frame],y_range_loc[key_frame],hide_yticks,plot_options,None,plot_mod,title_name,ref_name,None,plot_ext,x_title,y_title,path_loc,data_bin)                
 
                 #Generate GIF
                 if (images_to_make_GIF is not None):
@@ -1965,13 +2058,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                
         return None
 
-    def pre_proc_exp(inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc):
+    def pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc):
         print('           Pre-processing exposures')
-        data_proc = {}                               
-        data_mast = {}   
+        data_proc = {} 
+        data4mast = {} 
         for maink in maink_list:
-            data_proc[maink] = {}                              
-            data_mast[maink] = {}                             
+            data_proc[maink] = {} 
+            data4mast[maink] = {}                            
         data_mod = {}
         iexp_proc_list = np.unique(list(iexp_mast_list)+list(iexp_plot)) 
         flux_ref = np.ones(data_vis['dim_exp']) 
@@ -2021,17 +2114,20 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
    
                 #Exposures used in master calculations
                 if iexp in iexp_mast_list:
-
+                    for key in ['cen_bins','edge_bins','flux','cov','cond_def']:data4mast[maink][iexp][key]=deepcopy(data_proc[maink][iexp][key])
+                    
                     #Weight definition   
                     #    - at this stage, no broadband flux scaling has been applied to the data
-                    data_proc[maink][iexp]['weight'] = weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',data_inst['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['mean_gdet'],data_proc[maink][iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc = 1./flux_glob)                       
+                    data4mast[maink][iexp]['weight'] = weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',data_inst['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['mean_gdet'],data_proc[maink][iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc = 1./flux_glob)                       
        
                     #Resampling if exposures do not share a common table
                     if (not data_vis['comm_sp_tab']):   
                         for isub in range(nord_proc):
-                            data_proc[maink][iexp]['flux'][isub],data_proc[maink][iexp]['cov'][isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub], data_proc[maink][iexp]['flux'][isub] , cov = data_proc[maink][iexp]['cov'][isub], kind=gen_dic['resamp_mode'])                                                        
-                            data_proc[maink][iexp]['weight'][isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub], data_proc[maink][iexp]['weight'][isub] ,kind=gen_dic['resamp_mode'])   
-                        data_proc[maink][iexp]['cond_def'] = ~np.isnan(data_proc[maink][iexp]['flux']) 
+                            data4mast[maink][iexp]['flux'][isub],data4mast[maink][iexp]['cov'][isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub], data_proc[maink][iexp]['flux'][isub] , cov = data_proc[maink][iexp]['cov'][isub], kind=gen_dic['resamp_mode'])                                                        
+                            data4mast[maink][iexp]['weight'][isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub], data_proc[maink][iexp]['weight'][isub] ,kind=gen_dic['resamp_mode'])   
+                        data4mast[maink][iexp]['cond_def'] = ~np.isnan(data4mast[maink][iexp]['flux']) 
+                        data4mast[maink][iexp]['cen_bins'] = cen_bins_com
+                        data4mast[maink][iexp]['edge_bins'] = edge_bins_com
               
             #Calculating wiggle model for current exposure and shifting it from the telluric (source) to the star (receiver) rest frame
             #    - see gen_specdopshift():
@@ -2045,11 +2141,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 data_mod[iexp]['wig_HR']=calc_wig_mod_nu_t(fixed_args_loc['nu_HR'],p_best,{**fixed_args_loc,'icoord':iexp})[0]
                 data_mod[iexp]['nu_HR'] = fixed_args_loc['nu_HR']*gen_specdopshift(-coord_dic[inst][vis]['RV_star_stelCDM'][iexp])*gen_specdopshift(-data_dic['DI']['sysvel'][inst][vis])*gen_specdopshift(data_prop[inst][vis]['BERV'][iexp])*(1.+1.55e-8)  
      
-        return data_proc,data_mod
+        return data_proc,data_mod,data4mast
 
 
 
-    def end_plot_prof(pl_ref,inst,vis,fig_frame,ax_frame,x_range_frame,y_range_frame,hide_yticks,plot_options,iexp_or,plot_mod,title_name,ref_name,iord,plot_ext,x_title,y_title,path_loc):
+    def end_plot_prof(pl_ref,inst,vis,fig_frame,ax_frame,x_range_frame,y_range_frame,hide_yticks,plot_options,iexp_or,plot_mod,title_name,ref_name,iord,plot_ext,x_title,y_title,path_loc,data_bin):
         if (not plot_options['multi_exp']):
             if (plot_mod in ['DIbin','DIbin_res','DImast']):                                        
                 ref_val=data_bin['cen_bindim'][iexp_or]
@@ -2060,7 +2156,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             else:
                 ref_val=coord_dic[inst][vis][pl_ref]['cen_ph'][iexp_or]  
         else:ref_val=None
-        if plot_options['plot_title']:
+        if plot_options['title']:
             title = title_name
             if 'spec' in data_type:title+=' spectrum'
             else:title+=' CCF'
@@ -2123,7 +2219,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('      - Instrument :',inst)
             for key in ['color_dic','color_dic_sec','color_dic_bin','color_dic_bin_sec']:
                 if inst not in plot_options[key]:plot_options[key][inst]={}
-
+                data_type = data_dic['DI']['type'][inst]
+            
             #Data to plot
             maink_list = []
             data_list = []
@@ -2161,8 +2258,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                     #Correction model
                     if (vis in plot_options['wig_path_corr']):data_fit = (np.load(plot_options['wig_path_corr'][vis],allow_pickle=True)['data'].item())
-                    else:data_fit = (np.load(data_com_wig['corr_path'],allow_pickle=True)['data'].item())
-                    p_best = data_fit['p_best']
+                    else:data_fit = dataload_npz(data_com_wig['corr_path'])
+                    if ('iexp2glob' not in data_fit):p_best = data_fit['p_best']
  
                 #Spectral variable
                 if plot_options['aligned']:title_name='Aligned '+title_name
@@ -2171,7 +2268,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 if 'spec' in data_type:
                     if plot_options['sp_var'] == 'nu' :
                         if plot_options['x_range'] is None:x_range_loc = [c_light/9000.,c_light/3000.]
-                        x_title = r'\nu in '+xt_str+' rest frame (10$^{-10}$s$^{-1}$)'
+                        x_title = r'$\nu$ in '+xt_str+' rest frame (10$^{-10}$s$^{-1}$)'
                         
                     elif plot_options['sp_var'] == 'wav' :
                         if plot_options['x_range'] is None:x_range_loc = [3000.,9000.] 
@@ -2179,14 +2276,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         
                 else:x_title='Velocity in '+xt_str+' rest frame (km s$^{-1}$)'     
                 
-                #Process selected ranges and orders
+                #Selected ranges and orders
                 cond_sel = np.zeros(data_vis['dim_exp'],dtype=bool)
-                if plot_options['sp_var'] == 'nu' :                
-                    cen_bins_var = c_light/data_com['cen_bins'][:,::-1]
-                    edge_bins_var = c_light/data_com['edge_bins'][:,::-1]    
-                elif plot_options['sp_var'] == 'wav' :
-                    cen_bins_var = data_com['cen_bins']
-                    edge_bins_var = data_com['edge_bins']
+                if plot_options['sp_var'] == 'nu' :edge_bins_var = c_light/data_com['edge_bins'][:,::-1]    
+                elif plot_options['sp_var'] == 'wav' :edge_bins_var = data_com['edge_bins']
                 cond_sel|=(edge_bins_var[:,0:-1]>x_range_loc[0]) & (edge_bins_var[:,1::]<x_range_loc[1])
                 idx_sel_ord = np_where1D(np.sum( cond_sel,axis=1 )>0 )
                 if len(plot_options['orders_to_plot'])>0:idx_sel_ord=np.intersect1d(idx_sel_ord,plot_options['orders_to_plot'])
@@ -2194,7 +2287,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 nord_proc = len(idx_sel_ord)
                 if nord_proc==0:stop('No orders left')
                 dim_exp_proc = [nord_proc,data_vis['nspec']]
-                cen_bins_var = cen_bins_var[idx_sel_ord]
                 edge_bins_var = edge_bins_var[idx_sel_ord]
                 cen_bins_com = data_com['cen_bins'][idx_sel_ord]
                 edge_bins_com = data_com['edge_bins'][idx_sel_ord]
@@ -2214,16 +2306,17 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         n_nu_HR,fixed_args_loc['nu_HR']  = def_wig_tab(min_nu_HR,max_nu_HR,dnu_HR)            
               
                     #Pointing coordinate series
-                    fixed_args_loc.update({
-                        'z_mer' : data_vis['z_mer'],
-                        'deg_Freq':data_com_wig['deg_Freq'], 
-                        'deg_Amp':data_com_wig['deg_Amp'], 
-                        'nu_ref':data_com_wig['nu_ref'],
-                        'comp_mod':data_com_wig['comp_ids'],
-                        'nexp_list':len(range(data_vis['n_in_visit'])),
-                        'stable_pointpar':data_fit['stable_pointpar']})                
-                    for key in ['az','x_az','y_az','z_alt','cond_eastmer','cond_westmer','cond_shift']:fixed_args_loc[key] = data_com_wig['tel_coord_vis'][key]                 
-                    calc_chrom_coord(p_best,fixed_args_loc)
+                    if ('iexp2glob' not in data_fit):
+                        fixed_args_loc.update({
+                            'z_mer' : data_vis['z_mer'],
+                            'deg_Freq':data_com_wig['deg_Freq'], 
+                            'deg_Amp':data_com_wig['deg_Amp'], 
+                            'nu_ref':data_com_wig['nu_ref'],
+                            'comp_mod':data_com_wig['comp_ids'],
+                            'nexp_list':len(range(data_vis['n_in_visit'])),
+                            'stable_pointpar':data_fit['stable_pointpar']})                
+                        for key in ['az','x_az','y_az','z_alt','cond_eastmer','cond_westmer','cond_shift']:fixed_args_loc[key] = data_com_wig['tel_coord_vis'][key]                 
+                        calc_chrom_coord(p_best,fixed_args_loc)
 
                 #Data at chosen steps
                 data_path_dic = get_data_path('DI_raw','spec',inst,vis)
@@ -2240,21 +2333,22 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 else:iexp_mast_list = gen_dic[inst][vis]['idx_out']
                 
                 #Pre-process all exposures
-                data_proc,data_mod = pre_proc_exp(inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc)  
+                data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc)  
      
                 #Calculate master for requested data steps
                 data_mast={}
                 disp_dic={}
                 for maink in maink_list:
                 
-                    #Calculate common master                       
-                    data_mast[maink] = calc_bin_prof(iexp_mast_list,nord_proc,dim_exp_proc,data_dic[inst]['nspec'],data_proc[maink],inst,len(iexp_mast_list),cen_bins_com,edge_bins_com)
+                    #Calculate common master
+                    #    - defined over common table if exposures are defined over independent tables, or over common table shared by all exposures                       
+                    data_mast[maink] = calc_bin_prof(iexp_mast_list,nord_proc,dim_exp_proc,data_dic[inst]['nspec'],data4mast[maink],inst,len(iexp_mast_list),cen_bins_com,edge_bins_com)
 
                     #Dispersion tables
                     if plot_options['print_disp']:disp_dic[maink] = np.zeros([2,len(iexp_plot)])*np.nan 
-                        
+                
                 #Calculating and plotting transmission spectra
-                #    - all exposures are now defined on the common spectral table, in the star rest frame
+                #    - all exposures are now defined in the star rest frame
                 print('           Processing and plotting exposures')
                 for isub_exp,iexp in enumerate(iexp_plot):
                     plt.ioff()        
@@ -2294,14 +2388,21 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             mast_flux_ord=data_mast[maink]['flux'][isub_ord]
                             flux_ord=data_proc[maink][iexp]['flux'][isub_ord]
                             cov_ord=data_proc[maink][iexp]['cov'][isub_ord]
-                            edge_bins_ord=edge_bins_var[isub_ord]
-
-                            #Order tables with nu
-                            if plot_options['sp_var'] == 'nu':  
+                            
+                            #Spectral grid
+                            if plot_options['sp_var'] == 'nu' :                
+                                cen_bins_ord = c_light/data_proc[maink][iexp]['cen_bins'][isub_ord,::-1]
+                                edge_bins_ord = c_light/data_proc[maink][iexp]['edge_bins'][isub_ord,::-1]    
+                                
+                                #Order tables with nu 
                                 cond_kept_ord = cond_kept_ord[::-1]
                                 mast_flux_ord=mast_flux_ord[::-1]
                                 flux_ord=flux_ord[::-1]
-                                cov_ord=cov_ord[:,::-1]                  
+                                cov_ord=cov_ord[:,::-1]   
+                                    
+                            elif plot_options['sp_var'] == 'wav' :
+                                cen_bins_ord = data_proc[maink][iexp]['cen_bins'][isub_ord]
+                                edge_bins_ord = data_proc[maink][iexp]['edge_bins'][isub_ord]                            
 
                             #Defining bins at the requested resolution over the range of original defined bins
                             min_pix = np.nanmin(edge_bins_ord[0:-1][cond_kept_ord])
@@ -2345,10 +2446,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 raw_Fr_all = np.append(raw_Fr_all,raw_Fr)
                                 if maink=='pre':col_loc = plot_options['color_dic'][inst][vis]
                                 elif maink=='post':col_loc = plot_options['color_dic_sec'][inst][vis]
-                                plt.plot(cen_bins_var[isub_ord][cond_def_raw], yoff+raw_Fr,color=col_loc,linestyle='-',lw=plot_options['lw_plot'],marker=plot_options['marker'],markersize=plot_options['markersize'],drawstyle=plot_options['drawstyle'],zorder=0,alpha = 0.5)   
+                                plt.plot(cen_bins_ord[cond_def_raw], yoff+raw_Fr,color=col_loc,linestyle='-',lw=plot_options['lw_plot'],marker=plot_options['marker'],markersize=plot_options['markersize'],drawstyle=plot_options['drawstyle'],zorder=0,alpha = 0.5)   
                                 if plot_options['plot_err']:
                                     raw_varFr = corr_Fr**2.*cov_ord[0][cond_def_raw]/mast_flux_ord[cond_def_raw]**2.    
-                                    plt.errorbar(cen_bins_var[isub_ord][cond_def_raw], yoff+raw_Fr,yerr = np.sqrt(raw_varFr),color=col_loc,linestyle='-',lw=plot_options['lw_plot'],marker=None,markersize=plot_options['markersize'],zorder=0,alpha = 0.3)   
+                                    plt.errorbar(cen_bins_ord[cond_def_raw], yoff+raw_Fr,yerr = np.sqrt(raw_varFr),color=col_loc,linestyle='-',lw=plot_options['lw_plot'],marker=None,markersize=plot_options['markersize'],zorder=0,alpha = 0.3)   
 
                         #Range
                         if plot_options['y_range'] is None:
@@ -2627,7 +2728,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             # if plot_options['plot_cont']:plt.plot(data_exp['cen_bins'][0][cond_cont],var_loc[cond_cont],color='black',linestyle='',marker='d',markersize=1,zorder=10,rasterized=plot_options['rasterized'])      
                             
                     #Plot frame               
-                    if plot_options['plot_title']:plt.title(al_txt+title_name+' CCFs in '+xt_str+' rest frame',fontsize=plot_options['font_size'])
+                    if plot_options['title']:plt.title(al_txt+title_name+' CCFs in '+xt_str+' rest frame',fontsize=plot_options['font_size'])
                     y_title = scaled_title(plot_options['sc_fact10'],y_title)                       
                     dx_range=x_range_loc[1]-x_range_loc[0]
                     dy_range=y_range_loc[1]-y_range_loc[0]
@@ -2739,7 +2840,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #Plot frame  
                             if data_type=='spec1D':str_add=''
                             elif data_type=='spec2D':str_add=' (iord = '+str(iord)+')'                        
-                            if plot_options['plot_title']:plt.title(al_txt+title_name+' spectra in '+xt_str+' rest frame'+str_add)
+                            if plot_options['title']:plt.title(al_txt+title_name+' spectra in '+xt_str+' rest frame'+str_add)
                             y_title='Flux'
                             y_title = scaled_title(plot_options['sc_fact10'],y_title)
                             dx_range=x_range_loc[1]-x_range_loc[0]
@@ -2823,7 +2924,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     plt.plot(x_range_loc,[1.,1.],linestyle='-',lw=0.5,color='black')
                
                     #Plot frame
-                    if plot_options['plot_title']:plt.title('Binned disk-integrated and intrinsic CCFs',fontsize=plot_options['font_size'])
+                    if plot_options['title']:plt.title('Binned disk-integrated and intrinsic CCFs',fontsize=plot_options['font_size'])
                     y_title='Flux'
                     y_title = scaled_title(plot_options['sc_fact10'],y_title)                   
                     dx_range=x_range_loc[1]-x_range_loc[0]
@@ -2885,7 +2986,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         if isub==0: x_range_loc=np.array(plot_options['x_range']) if plot_options['x_range'] is not None else np.array([wav_tab[0]-0.02,wav_tab[-1]+0.02])  
                         if plot_options['data_type']=='spec1D':str_add=''
                         elif plot_options['data_type']=='spec2D':str_add=' (iord = '+str(iord)+')'                        
-                        if plot_options['plot_title']==True:plt.title('Binned disk-integrated and intrinsic '+str_add)
+                        if plot_options['title']==True:plt.title('Binned disk-integrated and intrinsic '+str_add)
                         y_title='Flux'
                         y_title = scaled_title(plot_options['sc_fact10'],y_title) 
                         dx_range=x_range_loc[1]-x_range_loc[0]
@@ -2953,7 +3054,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #Plot frame 
         x_range_loc=autom_range_ext(plot_options['x_range'],x_min,x_max)
         y_range_loc=autom_range_ext(plot_options['y_range'],0.,y_max)
-        if plot_options['plot_title']:plt.title('$\Chi^2$ per exposure',fontsize=plot_options['font_size'])     
+        if plot_options['title']:plt.title('$\Chi^2$ per exposure',fontsize=plot_options['font_size'])     
         xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
         ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0])                          
         custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
@@ -3121,14 +3222,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     params.update({'rv':0.,'cont':1.})                 
                     theo_HR_prop_plocc = calc_occ_plot(deepcopy(theo_dic),inst,vis,{},params,{},deepcopy(system_param))
                     if plot_options['prop_'+data_mode+'_absc']=='phase':xvar_HR=deepcopy(theo_HR_prop_plocc[pl_ref]['phase'])  
-                    elif plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']:xvar_HR=deepcopy(theo_HR_prop_plocc[pl_ref][plot_options['prop_'+data_mode+'_absc']][0])  
-                    elif plot_options['prop_'+data_mode+'_absc']=='y_st2':xvar_HR=theo_HR_prop_plocc[pl_ref]['y_st'][0]**2.  
-                    elif plot_options['prop_'+data_mode+'_absc']=='abs_y_st':xvar_HR=np.abs(theo_HR_prop_plocc[pl_ref]['y_st'][0])
+                    elif plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']:xvar_HR=deepcopy(theo_HR_prop_plocc[pl_ref][plot_options['prop_'+data_mode+'_absc']])  
+                    elif plot_options['prop_'+data_mode+'_absc']=='y_st2':xvar_HR=theo_HR_prop_plocc[pl_ref]['y_st']**2.  
+                    elif plot_options['prop_'+data_mode+'_absc']=='abs_y_st':xvar_HR=np.abs(theo_HR_prop_plocc[pl_ref]['y_st'])
                     wsort=theo_HR_prop_plocc[pl_ref]['phase'].argsort()
        
                     #Nominal high-resolution model     
                     x_theo_HR_nom = xvar_HR[wsort]
-                    y_theo_HR_nom = theo_HR_prop_plocc[pl_ref]['rv'][0][wsort]
+                    y_theo_HR_nom = theo_HR_prop_plocc[pl_ref]['rv'][wsort]
                     if prop_mode=='rv':plt.plot(x_theo_HR_nom,y_theo_HR_nom,color='black',linestyle='-',lw=plot_options['lw_plot'],zorder=-1)   
                     
                     # #Save/replot manually 
@@ -3151,8 +3252,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                         #Contributions to the global RV model                        
                         if plot_options['contrib_theo_HR_nom']:
-                            plt.plot(xvar_HR[wsort],theo_HR_prop_plocc[pl_ref]['Rot_RV'][0,wsort],color='orange',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)  
-                            plt.plot(xvar_HR[wsort],theo_HR_prop_plocc[pl_ref]['CB_RV'][0,wsort],color='dodgerblue',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
+                            plt.plot(xvar_HR[wsort],theo_HR_prop_plocc[pl_ref]['Rot_RV'][wsort],color='orange',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)  
+                            plt.plot(xvar_HR[wsort],theo_HR_prop_plocc[pl_ref]['CB_RV'][wsort],color='dodgerblue',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
     
                         #----------------------------------------------------------------------
                         
@@ -3992,7 +4093,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             cond_in_LC = (ph_LC_HR>low_ph) & (ph_LC_HR<=high_ph)
                             if (True in cond_in) and (True in cond_in_LC):
                                 ph_RV_exp = np.mean(xvar_HR[wsort][cond_in])
-                                RV_exp = np.mean(theo_HR_prop_plocc[pl_ref]['rv'][0][wsort][cond_in])
+                                RV_exp = np.mean(theo_HR_prop_plocc[pl_ref]['rv'][wsort][cond_in])
                                 LC_exp = np.mean(LC_HR[cond_in_LC])
                                 if (~np.isnan(RV_exp)) and (LC_exp<1.):
                                     texp = (high_ph-low_ph)*system_param[pl_ref]['period_s']
@@ -4173,7 +4274,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             y_title_dic['rv_res'] =  'Surface RV residuals (m s$^{-1}$)'           
         if prop_mode not in y_title_dic:y_title_dic[prop_mode]=prop_mode
             
-        if plot_options['plot_title']:
+        if plot_options['title']:
             plot_title_dic={}
             for key in y_title_dic:plot_title_dic[key] = y_title_dic[key]
             if data_mode=='raw':sub_key = 'raw'
@@ -4676,10 +4777,27 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
 
-    '''
-    Generic function for default plot settings
-    '''
+
     def gen_plot_default(plot_options,key_plot):
+        r"""**Default plot settings.**
+        
+        Set default values for the following fields. 
+        Manual values can be given to all fields through `ANTARESS_plot_settings.py`, depending on their relevance for the chosen plot function. 
+        
+         - `fig_size = (width,height)` : figure size.
+         - `margins = [x_left,y_low,x_width,y_width]` : margins of plot in the figure. 
+         - `wspace = width` : horizontal separation between subplots.      
+           `hspace = height` : vertical separation between subplots. 
+         - `title = bool` : show plot title.
+         
+        Args:
+            plot_options (dic) : dictionary for all generic plot settings
+            key_plot (str) : identifier of current plot 
+        
+        Returns:
+            plot_options (dic) : input, initialized with default settings according to the plot identifier
+        
+        """
         plot_options[key_plot]={}
         
         #Figure size
@@ -4693,7 +4811,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['hspace'] = 0.06
         
         #Plot title
-        plot_options[key_plot]['plot_title']= False        
+        plot_options[key_plot]['title']= False        
         
         #Font size
         plot_options[key_plot]['font_size']=14
@@ -4738,8 +4856,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #Spectral resampling
         plot_options[key_plot]['resample'] = None
         
-        #List of stellar lines to plot
+        #List of stellar lines to plot in spectral mode
+        #    - default to stellar CCF mask
         plot_options[key_plot]['st_lines_wav'] = []
+
+        #List of planet lines to plot in spectral mode
+        #    - default to planet CCF mask
+        plot_options[key_plot]['pl_lines_wav'] = []
 
         #Make GIF from plot series.
         plot_options[key_plot]['GIF_generation'] = False
@@ -4799,6 +4922,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Overplot excluded planetary ranges
         plot_options[key_plot]['plot_plexc']=False
+
+        #Overplot intrinsic stellar line ranges
+        plot_options[key_plot]['plot_stexc']=False
         
         #Reference planet for each visit
         plot_options[key_plot]['pl_ref']={}
@@ -5042,9 +5168,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Overplot RV(pl/star) model 
             plot_options[key_plot]['theoRVpl_HR']=False
 
-            #Overplot lines of stellar CCF mask
-            plot_options[key_plot]['CCF_mask_star']= False
-
             #Plot zero line markers
             plot_options[key_plot]['plot_zermark']= True 
             
@@ -5272,7 +5395,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     y_range_loc = plot_options[key_plot]['y_range'] if plot_options[key_plot]['y_range'] is not None else [np.nanmin(gdet_bins_mean),np.nanmax(gdet_bins_mean)] 
                    
                     #Plot frame  
-                    if plot_options[key_plot]['plot_title']:plt.title('Calibration for visit '+vis+' in '+inst)
+                    if plot_options[key_plot]['title']:plt.title('Calibration for visit '+vis+' in '+inst)
                     dx_range=x_range_loc[1]-x_range_loc[0]
                     dy_range=y_range_loc[1]-y_range_loc[0]
                     xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
@@ -5329,7 +5452,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             plt.plot([wav_trans_all[1,isub_ord,isub_iexp],wav_trans_all[1,isub_ord,isub_iexp]],y_range_loc,linestyle='--',color=col_visit[isub_iexp],lw=0.5,rasterized=plot_options[key_plot]['rasterized'])
                                                         
                         #Plot frame                          
-                        if plot_options[key_plot]['plot_title']:plt.title('Calibration for visit '+vis+' in '+inst+' (order '+str(iord)+')')
+                        if plot_options[key_plot]['title']:plt.title('Calibration for visit '+vis+' in '+inst+' (order '+str(iord)+')')
                         dx_range=x_range_loc[1]-x_range_loc[0]
                         dy_range=y_range_loc[1]-y_range_loc[0]
                         xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
@@ -5858,7 +5981,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         plt.plot([cen_ord[iord],cen_ord[iord]],y_range_loc,linestyle='--',zorder=-15,color='darkgrey',lw=1) 
             
                 #Plot frame  
-                if plot_options[key_plot]['plot_title']:plt.title('Global flux balance for visit '+vis+' in '+inst)               
+                if plot_options[key_plot]['title']:plt.title('Global flux balance for visit '+vis+' in '+inst)               
                 dx_range=x_range_loc[1]-x_range_loc[0]
                 xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
                 ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)     
@@ -5944,7 +6067,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 
                 #Plot frame  
                 y_range_loc=plot_options[key_plot]['y_range'] if plot_options[key_plot]['y_range'] is not None else np.array([y_min,y_max])
-                if plot_options[key_plot]['plot_title']:plt.title('Flux balance correction for visit '+vis+' in '+inst)
+                if plot_options[key_plot]['title']:plt.title('Flux balance correction for visit '+vis+' in '+inst)
                 custom_axis(plt,position=plot_options[key_plot]['margins'],x_range=plot_options[key_plot]['x_range'],y_range=y_range_loc,dir_y='out', 
                             xmajor_int=1000.,xminor_int=100.,
                             xmajor_form='%.1f',ymajor_form='%.1f',
@@ -6096,7 +6219,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     plt.plot([cen_ord[iord],cen_ord[iord]],y_range_loc,linestyle='--',zorder=-15,color='darkgrey',lw=1) 
         
             #Plot frame  
-            if plot_options[key_plot]['plot_title']:plt.title('Global flux balance for instrument '+inst)               
+            if plot_options[key_plot]['title']:plt.title('Global flux balance for instrument '+inst)               
             dx_range=x_range_loc[1]-x_range_loc[0]
             xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
             ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)     
@@ -6208,7 +6331,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         plt.plot(cen_bins_all[isub_ord][iexp][cond_def],Fbal_T_fit_all[isub_ord][iexp][cond_def],linestyle='-',color=col_visit[iexp],lw=1,rasterized=plot_options[key_plot]['rasterized']) 
 
                     #Plot frame  
-                    if plot_options[key_plot]['plot_title']:plt.title('Intra-order flux balance for visit '+vis+' in '+inst+' (order '+str(iord)+')')
+                    if plot_options[key_plot]['title']:plt.title('Intra-order flux balance for visit '+vis+' in '+inst+' (order '+str(iord)+')')
                     y_range_loc=plot_options[key_plot]['y_range'] if plot_options[key_plot]['y_range'] is not None else np.array([y_min,y_max])
                     custom_axis(plt,position=plot_options[key_plot]['margins'],x_range=plot_options[key_plot]['x_range'],y_range=y_range_loc,dir_y='out', 
                                 xmajor_int=10.,xminor_int=1.,
@@ -6287,7 +6410,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #Plot frame  
                 x_range_loc = plot_options[key_plot]['x_range'] if plot_options[key_plot]['x_range'] is not None else [np.min(data_Ftemp['bjd_all']),np.max(data_Ftemp['bjd_all'])] 
                 y_range_loc = plot_options[key_plot]['y_range'] if plot_options[key_plot]['y_range'] is not None else [np.min(data_Ftemp['Tflux_all']-data_Ftemp['Tsig_all']),np.max(data_Ftemp['Tflux_all']+data_Ftemp['Tsig_all'])]          
-                if plot_options[key_plot]['plot_title']:plt.title('Temporal flux correction for visit '+vis+' in '+inst)               
+                if plot_options[key_plot]['title']:plt.title('Temporal flux correction for visit '+vis+' in '+inst)               
                 custom_axis(plt,position=plot_options[key_plot]['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                             # xmajor_int=1000.,xminor_int=100.,
                             # xmajor_form='%.1f',ymajor_form='%.1f',
@@ -6408,7 +6531,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             plt.plot(x_range_loc,[gen_dic['cosm_thresh'][inst][vis],gen_dic['cosm_thresh'][inst][vis]],linestyle='--',color='red',lw=1)
                             
                             #Plot frame  
-                            if plot_options[key_plot]['plot_title']:plt.title('Cosmics detections for visit '+vis+' in '+inst)
+                            if plot_options[key_plot]['title']:plt.title('Cosmics detections for visit '+vis+' in '+inst)
                             dx_range=x_range_loc[1]-x_range_loc[0]
                             xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
                             ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)  
@@ -6441,7 +6564,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     plt.plot(gen_dic['wav_ord_inst'][inst][order_list],n_cosmics_vis_tot,linestyle='-',color='black',rasterized=plot_options[key_plot]['rasterized'],zorder=0,drawstyle='steps-mid',lw=plot_options[key_plot]['lw_plot'])
                     
                     #Plot frame  
-                    if plot_options[key_plot]['plot_title']:plt.title('Cosmics detections for visit '+vis+' in '+inst)
+                    if plot_options[key_plot]['title']:plt.title('Cosmics detections for visit '+vis+' in '+inst)
                     dx_range=x_range_loc[1]-x_range_loc[0]
                     dy_range=y_range_loc[1]-y_range_loc[0]
                     xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
@@ -6531,7 +6654,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     dy_range=y_range_loc[1]-y_range_loc[0]
                       
                     #Plot frame  
-                    if plot_options[key_plot]['plot_title']:plt.title('Master for persistent peaks correction for visit '+vis+' in '+inst)
+                    if plot_options[key_plot]['title']:plt.title('Master for persistent peaks correction for visit '+vis+' in '+inst)
                     xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
                     ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)  
                     custom_axis(plt,position=plot_options[key_plot]['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
@@ -6633,7 +6756,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             plt.plot(wav_ov,data_corr['fring_mod'][iord],linestyle='-',color='red',rasterized=plot_options[key_plot]['rasterized'],zorder=1)    
                                      
                             #Plot frame  
-                            if plot_options[key_plot]['plot_title']:plt.title('Fringing correction for visit '+vis+' in '+inst)
+                            if plot_options[key_plot]['title']:plt.title('Fringing correction for visit '+vis+' in '+inst)
                             custom_axis(plt,position=plot_options[key_plot]['margins'],x_range=x_range_loc,y_range=plot_options[key_plot]['y_range'],dir_y='out', 
                         		    # xmajor_int=1000,xminor_int=100.,
             #                        ymajor_int=0.005,yminor_int=0.001,
@@ -8014,7 +8137,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             plt.plot([cont_ph,cont_ph],y_range_loc,color='black',linestyle=ls_pl,lw=plot_options[key_plot]['lw_plot'])
 
                 #Plot frame                 
-                if plot_options[key_plot]['plot_title']:plt.title('Input light curves')
+                if plot_options[key_plot]['title']:plt.title('Input light curves')
                 dx_range=x_range_loc[1]-x_range_loc[0]
                 dy_range=y_range_loc[1]-y_range_loc[0]
                 xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
@@ -8122,7 +8245,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     plt.plot([cont_ph,cont_ph],y_range_loc,color='black',linestyle=':',lw=1.)                
                 
                 #Plot frame                 
-                if plot_options[key_plot]['plot_title']:plt.title('Spectral light curves')
+                if plot_options[key_plot]['title']:plt.title('Spectral light curves')
                 custom_axis(plt,position=plot_options[key_plot]['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                 		    xmajor_int=0.05,xminor_int=0.01,
                 		    ymajor_int=0.01,yminor_int=0.001,
@@ -8518,9 +8641,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
 
-    '''
-    2D maps of best estimates for intrinsic stellar profiles, residuals from observed profiles
-    '''
+    ################################################################################################################ 
+    #%%% 2D maps of best estimates for intrinsic stellar profiles, residuals from observed profiles
+    ################################################################################################################ 
     if (plot_dic['map_Intr_prof_est']!='') or (plot_dic['map_Intr_prof_res']!=''):
         for key_plot in ['map_Intr_prof_est','map_Intr_prof_res']:
             if plot_dic[key_plot]!='':
@@ -8547,6 +8670,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Correct only for continuum level
                     plot_options[key_plot]['cont_only']=True
                     plot_options[key_plot]['plot_line_model'] = False
+                    plot_options[key_plot]['st_cont']=None
                     
                     print('-----------------------------------')
                     print('+ 2D map: residuals from intrinsic stellar profiles') 
@@ -8688,7 +8812,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Plot frame  
                     x_range_loc=plot_options[key_plot]['x_range_var'] if plot_options[key_plot]['x_range_var'] is not None else np.array([0.,n_pc])
                     y_range_loc=plot_options[key_plot]['y_range_var'] if plot_options[key_plot]['y_range_var'] is not None else np.array([y_min,y_max])
-                    if plot_options[key_plot]['plot_title']:plt.title('PC variance for visit '+vis+' in '+inst)
+                    if plot_options[key_plot]['title']:plt.title('PC variance for visit '+vis+' in '+inst)
                     xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
                     ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0]) 
                     custom_axis(plt,position=plot_options[key_plot]['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
@@ -8731,7 +8855,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                     #Plot frame  
                     x_range_loc=plot_options[key_plot]['x_range_rms'] if plot_options[key_plot]['x_range_rms'] is not None else np.array([np.min(cen_ph),np.max(cen_ph)])
-                    if plot_options[key_plot]['plot_title']:plt.title('RMS for visit '+vis+' in '+inst)
+                    if plot_options[key_plot]['title']:plt.title('RMS for visit '+vis+' in '+inst)
                     xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
                     ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0]) 
                     custom_axis(plt,position=plot_options[key_plot]['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
@@ -8777,7 +8901,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     plt.plot(x_range_loc,[0.,0.],color='black',linestyle='--',lw=plot_options[key_plot]['lw_plot'],zorder=0)
 
                     #Plot frame  
-                    if plot_options[key_plot]['plot_title']:plt.title('Delta-BIC for visit '+vis+' in '+inst)
+                    if plot_options[key_plot]['title']:plt.title('Delta-BIC for visit '+vis+' in '+inst)
                     xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
                     ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0]) 
                     custom_axis(plt,position=plot_options[key_plot]['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
@@ -8903,7 +9027,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     x_range_loc=plot_options[key_plot]['x_range_pc'] if plot_options[key_plot]['x_range_pc'] is not None else np.array([np.min(data_upload['cen_bins']),np.max(data_upload['cen_bins'])])
                     plt.plot(x_range_loc,[0,0],color='black',linestyle='--')
                     y_range_loc=plot_options[key_plot]['y_range_pc'] if plot_options[key_plot]['y_range_pc'] is not None else np.array([y_min,y_max])
-                    if plot_options[key_plot]['plot_title']:plt.title('PC profiles for visit '+vis+' in '+inst)
+                    if plot_options[key_plot]['title']:plt.title('PC profiles for visit '+vis+' in '+inst)
                     xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
                     ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0]) 
                     custom_axis(plt,position=plot_options[key_plot]['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
@@ -8943,7 +9067,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                  
                         #Plot frame  
                         y_range_loc=plot_options[key_plot]['y_range_fft'] if plot_options[key_plot]['y_range_fft'] is not None else np.array([y_min,y_max])
-                        if plot_options[key_plot]['plot_title']:
+                        if plot_options[key_plot]['title']:
                             if fft_loc=='res':txt = 'residual profiles'
                             elif fft_loc=='corr':txt = 'corr. residual profiles'
                             elif fft_loc=='boot':txt = 'boot. corr. residual profiles'
@@ -9318,7 +9442,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
             #Plot frame  
             x_title={'mu':r'$\mu$','xp_abs':r'|x$_p$|','r_proj':r'r$_{\rm sky}$'}[plot_options[key_plot]['x_prop']]
-            if plot_options[key_plot]['plot_title']:plt.title('Planet-occulted range for '+x_title,fontsize=plot_options[key_plot]['font_size'])
+            if plot_options[key_plot]['title']:plt.title('Planet-occulted range for '+x_title,fontsize=plot_options[key_plot]['font_size'])
             if plot_options[key_plot]['x_range'] is not None:x_range_loc=plot_options[key_plot]['x_range']
             else:
                 dx_range = x_max-x_min

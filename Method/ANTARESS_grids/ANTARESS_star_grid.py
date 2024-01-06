@@ -310,7 +310,8 @@ def calc_LD(LD_mod,mu,ld_coeff):
         ld_val = 1. - ld_coeff[0]*(1. -mu) - ld_coeff[1]*np.power(1. -mu,2.)
     elif LD_mod == 'squareroot':
         ld_val = 1. - ld_coeff[0]*(1. -mu) - ld_coeff[1]*(1. - np.sqrt(mu))
-    elif LD_mod == 'nonlinear':
+    elif LD_mod == 'nonlinear': 
+        #Claret+2000
         ld_val = 1. - ld_coeff[0]*(1. -mu**0.5) - ld_coeff[1]*(1. -mu) - ld_coeff[2]*(1. -mu**1.5) - ld_coeff[3]*(1. -mu**2.)
     elif LD_mod == 'power2':        
         ld_val = 1. - ld_coeff[0]*(1. -mu**ld_coeff[1]) 

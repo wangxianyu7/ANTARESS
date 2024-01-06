@@ -74,7 +74,7 @@ def calc_Kstar(params,star_params):
     .. math:: 
        K_\mathrm{prim} = (2 \pi G/P)^{1/3} M_\mathrm{sec} \sin(i_p) ((M_\mathrm{sec}+M_\mathrm{prim})^{1/3} / M_\mathrm{prim}) /\sqrt{1-e^2}
     
-    With `K_\mathrm{prim}` in km/s, `G` in :math:`m^3 kg^{-1} s^{-2}`, `P` in s, :math:`M_\mathrm{prim}` and :math:`M_\mathrm{sec}` in kg. Thus    
+    With :math:`K_\mathrm{prim}` in km/s, `G` in :math:`m^3 kg^{-1} s^{-2}`, `P` in s, :math:`M_\mathrm{prim}` and :math:`M_\mathrm{sec}` in kg. Thus    
 
     .. math:: 
        K_\mathrm{prim} &= (212.91918458020422/P_\mathrm{days}^{1/3}) M_\mathrm{sec} \sin(i_p) ((M_\mathrm{sec}+M_\mathrm{prim})^{1/3}/M_\mathrm{prim}) / \sqrt{1-e^2}   \\
@@ -86,13 +86,13 @@ def calc_Kstar(params,star_params):
     .. math::     
        K_{\star} \sim (2 \pi G/P)^{1/3} (M_p \sin(i_p)/M_{\star}^{2/3}) /\sqrt{1-e^2}
 
-    With `K_{\star}` in km/s, `G` in :math:`m^3 kg^{-1} s^{-2}`, `P` in s, :math:`M_p` and :math:`M_{\star}` in kg. Or
+    With :math:`K_{\star}` in km/s, `G` in :math:`m^3 kg^{-1} s^{-2}`, `P` in s, :math:`M_p` and :math:`M_{\star}` in kg. Or
     
     .. math:: 
        K_{\star} &= (0.20323137323712528/P_\mathrm{days}^{1/3}) (M_p \sin(i_p)/M_{\star}^{2/3}) /\sqrt{1-e^2} \\
        &\mathrm{where\,} [ (2 \pi 6.67300\times10^{-11})^{1/3} 1.8986000\times10^{27}]/[(24 \times 3600)^{1/3} (1.9891001\times10^{30})^{2/3}]/1000 = 0.20323137    
 
-    With :math:`P_\mathrm{days}` in days,:math:`M_p` and :math:`M_{\star}` in :math:`M_\mathrm{Sun}`. Or
+    With :math:`P_\mathrm{days}` in days, :math:`M_p` and :math:`M_{\star}` in :math:`M_\mathrm{Sun}`. Or
 
     .. math:: 
        K_{\star} = (0.02843112300449059/P_\mathrm{years}^{1/3}) (M_p \sin(i_p)/M_{\star}^{2/3}) /\sqrt{1-e^2}
@@ -1039,7 +1039,7 @@ def frameconv_LOS_to_InclinedStar(lambd,xin,yin,zin):
     r"""**Frame: LOS to Inclined star**
 
     Converts coordinates from the classical frame perpendicular to the LOS, to the sky-projected (inclined) stellar frame.
-    Frame is rotated around the `Z_\mathrm{LOS}` axis (the LOS, which remains unchanged), by angle :math:`\lambda` counted :math:`>0` counted counterclockwise
+    Frame is rotated around the :math:`Z_\mathrm{LOS}` axis (the LOS, which remains unchanged), by angle :math:`\lambda` counted :math:`>0` counterclockwise
     from the :math:`X_\mathrm{sky,star}` to the :math:`X_\mathrm{LOS}` axis, or from the :math:`Y_\mathrm{sky,star}` to the :math:`Y_\mathrm{LOS}` axis, in the :math:`XY_\mathrm{LOS}` plane.
 
     .. math:: 
@@ -1081,8 +1081,8 @@ def frameconv_InclinedStar_to_LOS(lambd,xin,yin,zin):
 def frameconv_InclinedStar_to_Star(xin,yin,zin,istar):
     r"""**Frame: Inclined star to star**
 
-    Converts coordinates from the sky-projected (inclined) stellar frame to the star frame
-    Frame is rotated around the `X_\mathrm{sky,star}` axis (which remains unchanged), by angle :math:`i_{\star}` counted :math:`>0` counted counterclockwise
+    Converts coordinates from the sky-projected (inclined) stellar frame to the star frame. 
+    Frame is rotated around the :math:`X_\mathrm{sky,star}` axis (which remains unchanged), by angle :math:`i_{\star}` counted :math:`>0` counted counterclockwise
     from the :math:`Y_\mathrm{sky,star}` to the :math:`Y_\star` axis, or from the :math:`Z_\mathrm{sky,star}` to the :math:`Z_\star` axis, in the :math:`YZ_\mathrm{sky,star}` plane.
 
     .. math:: 

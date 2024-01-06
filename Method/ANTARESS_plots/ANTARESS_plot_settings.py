@@ -788,7 +788,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['orders_to_plot']=[46]         #ANTARESS I, persistent peaks 1, 2
             plot_settings[key_plot]['orders_to_plot']=[8]      #ANTARESS I, persistent peaks 3  
         elif gen_dic['star_name']=='HD189733':
-            plot_settings[key_plot]['orders_to_plot']=np.arange(128,170)
+            plot_settings[key_plot]['orders_to_plot']=np.arange(110,170)
+            plot_settings[key_plot]['orders_to_plot']=[112,114,116,118,120]
+            plot_settings[key_plot]['orders_to_plot']=[48,50,52,54,56,58,60,62,64]
+            plot_settings[key_plot]['orders_to_plot']=[52,54,56,58,60]
 
    
 
@@ -812,7 +815,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         if gen_dic['star_name']=='WASP76':
             plot_settings[key_plot]['plot_tell'] = True    #ANTARESS I, tell
         if gen_dic['star_name']=='HD189733':
-            plot_settings[key_plot]['plot_tell'] = True
+            plot_settings[key_plot]['plot_tell'] = True & False
 
         #Plot spectra at two chosen steps of the correction process
         #    - set to None, or chose amongst:
@@ -875,6 +878,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['plot_pre']='raw'
             plot_settings[key_plot]['plot_post']='tell'
 
+            plot_settings[key_plot]['plot_pre']='fbal'
+            plot_settings[key_plot]['plot_post']='wig'
 
 
         #Plot continuum used for persistent peak masking
@@ -957,6 +962,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
         if gen_dic['star_name']=='HD189733':
             plot_settings[key_plot]['x_range'] = None #[6200.,7900.]
+            plot_settings[key_plot]['x_range'] = None
+
+            plot_settings[key_plot]['y_range']=[1e5,9e6]
+            plot_settings[key_plot]['y_range']=[1e5,4e6]
 
 
 
@@ -984,7 +993,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         
                 #Choose profiles to plot
                 #    - 'raw' : input profiles
+                #    - 'conv' : converted from spectra
                 plot_settings[key_plot]['step']='raw'  
+                plot_settings[key_plot]['step']='conv'  
             
                 #Visits to plot
                 if gen_dic['studied_pl']=='55Cnc_e':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2020-02-05']}            
@@ -1063,7 +1074,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 elif gen_dic['studied_pl']=='Nu2Lupi_c':plot_settings[key_plot]['x_range']=[-90.,-48.] 
                 elif gen_dic['star_name']=='GJ9827': plot_settings[key_plot]['x_range']=[10.,54.] 
                 elif gen_dic['star_name']=='TOI858':plot_settings[key_plot]['x_range']=[33.,98.]      #CORALIE        
-                elif gen_dic['star_name']=='HD189733':plot_settings[key_plot]['x_range']=[-50.,50.]               
+                # elif gen_dic['star_name']=='HD189733':plot_settings[key_plot]['x_range']=[-50.,50.]               
             
                 #Plot continuum pixels specific to each exposure 
                 plot_settings[key_plot]['plot_cont_exp']=True & False  
@@ -1208,7 +1219,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         plot_settings[key_plot]['bin_width'] = 0.2     #nu
         # plot_settings[key_plot]['bin_width'] = 0.08     #wav
         # plot_settings[key_plot]['bin_width'] = 25.     #wav
-
+        plot_settings[key_plot]['bin_width'] = 10.     #wav, Fbal sampling
+        plot_settings[key_plot]['bin_width'] = 2.      #wav, wig 
+        plot_settings[key_plot]['bin_width'] = 0.08      #wav, Na 
 
 
         #Horizontal range for the plot
@@ -1217,11 +1230,15 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         plot_settings[key_plot]['x_range'] = [45.,55.]
         plot_settings[key_plot]['x_range'] = [38.,64.]
         # plot_settings[key_plot]['x_range'] = [48.,50.]        
-        # plot_settings[key_plot]['x_range'] = [5883.,5902.]
+        plot_settings[key_plot]['x_range'] = [5884.,5902.]  #Na
         # plot_settings[key_plot]['x_range'] = [c_light/53.,c_light/49.]    #bump de Fbal dans region Na, HD209    
+        # plot_settings[key_plot]['x_range'] = [4500,4700.]
+        # plot_settings[key_plot]['x_range'] = [3750.,7900.]  #full ESPRESSO
+        plot_settings[key_plot]['x_range'] = [5870.,5916.]  #Na
         
         #Vertical range
-        # plot_settings[key_plot]['y_range'] = [0.98,1.02]
+        plot_settings[key_plot]['y_range'] = [0.98,1.02]
+        plot_settings[key_plot]['y_range'] = [0.96,1.04]        
 
         #Plot dispersion over exposures
         plot_settings[key_plot]['plot_disp'] = True    #   & False 
@@ -1240,8 +1257,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         #Exposures to plot
         plot_settings[key_plot]['iexp_plot'] = {}
         # plot_settings[key_plot]['iexp_plot'] = {'ESPRESSO':{'20190720':[6,81]}}
-        if gen_dic['star_name']=='HD189733':
-            plot_settings[key_plot]['iexp_plot'] = {'ESPRESSO':{'20210810':[5,15,20,25,35],'20210830':[5,15,20,25,35]}}
+        # if gen_dic['star_name']=='HD189733':
+        #     plot_settings[key_plot]['iexp_plot'] = {'ESPRESSO':{'20210810':[5,15,20,25,35],'20210830':[5,15,20,25,35]}}
 
         #Plot raw data and errors
         plot_settings[key_plot]['plot_data'] = True & False
@@ -1253,6 +1270,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
         #Force order level to unity
         plot_settings[key_plot]['force_unity'] = True & False
+        
+        #Marker
+        plot_settings[key_plot]['marker'] = None
 
         #Select plot mode
         plot_settings[key_plot]['drawstyle']='steps-mid'
@@ -1281,7 +1301,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # + 'fbal' : after flux balance correction 
         # + 'cosm' : after cosmics correction  
         # + 'permpeak' : after persistent peak correction 
-        # + 'wiggle' : after ESPRESSO wiggle correction
+        # + 'wig' : after ESPRESSO wiggle correction
         #              calculations are performed here as ratios are not calculated within the routine after correction   
         #              for speed and simplicity in the plot we resample all spectra only once on their common table
 
@@ -1320,6 +1340,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         
         # plot_settings[key_plot]['plot_pre']='fbal'    
         # plot_settings[key_plot]['plot_post']='permpeak'  
+
+        plot_settings[key_plot]['plot_pre']='fbal'    
+        plot_settings[key_plot]['plot_post']='wig'  
 
 
         # plot_settings[key_plot]['color_dic']={'ESPRESSO':{'20190720':'dodgerblue','20190911':'dodgerblue'}} 
@@ -1482,12 +1505,13 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     plot_settings[key_plot]['plot_biss']=True   & False        
         
                     #Plot fitted line profile
-                    plot_settings[key_plot]['plot_line_model']=True # & False
+                    plot_settings[key_plot]['plot_line_model']=True  & False
             
                     #Plot model line profile
-                    plot_settings[key_plot]['plot_line_model_HR']=True  #& False
+                    plot_settings[key_plot]['plot_line_model_HR']=True  & False
         
-        
+                    #Plot stellar continuum
+                    plot_settings[key_plot]['st_cont'] = 'DI'
         
                 #-----------------------------------
                 #Plot each disk-integrated profile and its fit
@@ -1586,7 +1610,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         #    - 'detrend' : profiles have been detrended
         #    - 'aligned' : profiles have been aligned, after being corrected if requested
         #    - 'scaled' : profiles have been scaled, after being corrected and aligned if requested
-        plot_settings[key_plot]['step']='scaled'        
+        plot_settings[key_plot]['step']='scaled'   
         
         #Choice of visits to be plotted
         if gen_dic['studied_pl']=='55Cnc_e':
@@ -2578,7 +2602,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             elif gen_dic['star_name']=='HAT_P11':
                 plot_settings[key_plot]['visits_to_plot']={'HARPN':['20150913','20151101']}   #RM paper, C corr    
             if gen_dic['star_name']=='HD189733':
-                plot_settings[key_plot]['visits_to_plot'].update({'ESPRESSO':['20210810','20210830']} )
+                plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['20210810','20210830']} 
             elif gen_dic['star_name']=='GJ3090':
                 plot_settings[key_plot]['visits_to_plot'] = {'NIRPS_HA':['20221202']} 
                 plot_settings[key_plot]['visits_to_plot'] = {'NIRPS_HE':['20221201']} 
@@ -2923,7 +2947,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             #    - detrending is performed with respect to the multiplied/added polynomials associated to each requested property
             #    - structure is deg_prop_fit > inst > vis > {prop1 : deg , prop2 : deg ..}   
             plot_settings[key_plot]['deg_prop_fit']={}
-            if 1==0:
+            if 1==1:
                 deg_corr = 0
                 if 'visits_to_plot' in plot_settings[key_plot]:
                     for inst in plot_settings[key_plot]['visits_to_plot']:
@@ -4013,10 +4037,6 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
     
         #Overplot RV(pl/star) model 
         plot_settings[key_plot]['theoRVpl_HR']=True       &   False         
-
-
-        #Overplot lines of stellar CCF mask
-        plot_settings[key_plot]['CCF_mask_star']=True  &  False
 
         #Plot zero line markers
         plot_settings[key_plot]['plot_zermark']= True # &  False
@@ -5154,6 +5174,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 #    - if not phase, exposures are plotted successively without respecting their actual positions, because of overlaps 
                 plot_settings[key_plot]['dim_plot']='phase' 
 
+                #Plot as a function of nu = c/w
+                plot_settings[key_plot]['sp_var'] = 'nu'
+                plot_settings[key_plot]['sp_var'] = 'wav'
+
                 #Choice of visits to be plotted
                 if gen_dic['studied_pl']=='WASP76b':
                     plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2018-10-31','2018-09-03']}  
@@ -5169,15 +5193,21 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 #Overplot surface RV model along the full transit chord
                 #    - if not aligned 
                 #    - based on properties given in settings
-                plot_settings[key_plot]['theoRV_HR']=True    & False 
+                plot_settings[key_plot]['theoRV_HR']=True   & False 
                 if gen_dic['star_name'] in ['Kepler68','WASP47']:plot_settings[key_plot]['theoRV_HR']=False
 
                 #Overplot surface RV model along the full transit chord for an aligned orbit
                 plot_settings[key_plot]['theoRV_HR_align'] = True & False
                 
+                #Stellar lines in spectral mode
+                plot_settings[key_plot]['st_lines_wav'] = [5889.95094,5892.88000,5895.92424]                
+                
                 #Overplot RV(pl/star) model 
                 if gen_dic['star_name']=='HAT_P49':plot_settings[key_plot]['theoRVpl_HR']=True  
+                # if gen_dic['star_name']=='HD189733':plot_settings[key_plot]['theoRVpl_HR']=True  
 
+                #Planet lines in spectral mode
+                plot_settings[key_plot]['pl_lines_wav'] = [5889.95094,5892.88000,5895.92424]
         
 
 
@@ -5297,7 +5327,34 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     y_range_comm = [-0.014  , 0.014]   #transit
                     plot_settings[key_plot]['y_range_all']['NIRPS_HE']={'20230624':y_range_comm,'20230729':y_range_comm,'20230825':y_range_comm}
                     plot_settings[key_plot]['y_range_all']['NIRPS_HE']={'20230624':[-0.0235  , 0.021] ,'20230729':[-0.019  , 0.033],'20230825':[-0.023  , 0.025] }  
-           
+
+                if gen_dic['star_name']=='HD189733':
+                    #plot_settings[key_plot]['x_range']=[37.,41.]
+                    plot_settings[key_plot]['x_range']=[37.5,47.]
+                    #plot_settings[key_plot]['x_range']=[41.,45.]
+                    #plot_settings[key_plot]['x_range']=[45.,49.]
+                    #plot_settings[key_plot]['x_range']=[45,50]
+                    # plot_settings[key_plot]['x_range']=[49.,53.]
+                    #plot_settings[key_plot]['x_range']=[50,56]
+                    #plot_settings[key_plot]['x_range']=[53.,57.]
+                    #plot_settings[key_plot]['x_range']=[54.5,58.5]
+                    #plot_settings[key_plot]['x_range']=[57.,61.]
+                    #plot_settings[key_plot]['x_range']=[59.,63.]
+                    #plot_settings[key_plot]['x_range']=[61.,65.]
+                    #plot_settings[key_plot]['x_range']=[63.,67.]
+                    #plot_settings[key_plot]['x_range']=[65.,69.]
+                    #plot_settings[key_plot]['x_range']=[69.,73.]
+                    
+                    # plot_settings[key_plot]['x_range']=[44,55]
+                    #plot_settings[key_plot]['x_range']=[55,73]   
+                    
+                    plot_settings[key_plot]['x_range']=[5887.,5899.] 
+                    
+                    # plot_settings[key_plot]['x_range']=[5889.,5897.] 
+                    # plot_settings[key_plot]['y_range_all']['ESPRESSO']={'20210810':[-0.018  , 0.018] ,'20210830':[-0.018  , 0.018] }  
+                    
+                    # plot_settings[key_plot]['x_range']=[3000.,9000.] 
+
         
                 #---------------------------------
                 if key_plot=='map_Intr_prof_est':
@@ -5361,6 +5418,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     plot_settings[key_plot]['cont_only']=True # & False
                     if gen_dic['star_name'] in ['Kepler68','WASP47']:plot_settings[key_plot]['cont_only']=True  #non-detection
                     if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214']:plot_settings[key_plot]['cont_only']=True  #non-detection
+        
+                    #Account for spectral continuum profile
+                    #    - set to DI or Intr (corresponding continuum must have been calculated)
+                    plot_settings[key_plot]['st_cont'] = 'Intr'
         
                     #Color range 
                     if gen_dic['star_name']=='WASP76':
@@ -5467,7 +5528,15 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                         plot_settings[key_plot]['sc_fact10']=3.
                         yrange_comm = [-5e-3,5e-3]
                         plot_settings[key_plot]['v_range_all']['NIRPS_HE']={'20230624':yrange_comm,'20230729':yrange_comm,'20230825':yrange_comm}                         
-                        
+
+                    elif gen_dic['star_name']=='HD189733':
+                        plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'20210810':[-0.007,0.007],'20210830':[-0.005,0.005]}}
+                        #plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'20210810':[-0.005,0.005],'20210830':[-0.003,0.003]}}
+                        #plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'20210810':[-0.008,0.008],'20210830':[-0.003,0.003]}}
+                        #plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'20210810':[-0.004,0.004],'20210830':[-0.002,0.002]}}  
+                        # plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'20210810':[-0.02,0.02],'20210830':[-0.01,0.01]}}   
+                        plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'20210810':[-0.045,0.01],'20210830':[-0.045,0.01]}}   #Na  
+                        # plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'20210810':[-0.04,0.0],'20210830':[-0.04,0.0]}}   #Na in-tr                   
         
                     #Shade areas
                     if gen_dic['star_name']=='HD209458':
