@@ -326,7 +326,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                     if spot_within_grid:
                         spot_within_grid_all[spot_index]=True
 
-                    #Check if oversampling is turned on for this spot
+                    #Check if oversampling is turned on for this spot and force all spots to have same oversampling rate
                     if len(theo_dic['n_oversamp_spot'])>0 and theo_dic['n_oversamp_spot'][spot]>0:
                         dx_exp_in_sp[spot] = spots_prop[spot]['x_sky_exp_end'] - spots_prop[spot]['x_sky_exp_start']
                         dy_exp_in_sp[spot] = spots_prop[spot]['y_sky_exp_end'] - spots_prop[spot]['y_sky_exp_start']
@@ -389,11 +389,16 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
 
 
     #Processing each exposure 
+    #Figuring out which exposures are occulted (by spots or planets)
     cond_transit = np.sum(cond_transit_all,axis=1)>0
     cond_spots = np.sum(cond_spots_all, axis=1)>0
 
     cond_iexp_proc = cond_spots|cond_transit
-    for i_in,(iexp,n_osamp_exp, n_osamp_exp_sp) in enumerate(zip(iexp_list,n_osamp_exp_all, n_osamp_exp_all_sp)):
+
+    #Enforcing a common oversampling factor to the spots and planets
+    n_osamp_exp_all_total = np.maximum(n_osamp_exp_all, n_osamp_exp_all_sp)
+
+    for i_in,(iexp,n_osamp_exp) in enumerate(zip(iexp_list,n_osamp_exp_all_total)):
         #Planets in exposure
         transit_pl_exp = np.array(transit_pl)[cond_transit_all[i_in]]
         #Spots in exposure 
@@ -482,24 +487,30 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
             #Spot oversampled positions
             for spot in spots_in_exp:
                 #No oversampling
-                if n_osamp_exp_sp==1:
+                if n_osamp_exp==1:
                     x_oversamp_sp[spot] = [spots_prop_all_exp[iexp][spot]['x_sky_exp_center']]
                     y_oversamp_sp[spot] = [spots_prop_all_exp[iexp][spot]['y_sky_exp_center']]
                     z_oversamp_sp[spot] = [spots_prop_all_exp[iexp][spot]['z_sky_exp_center']]
                 
                 #If we want to oversample
                 else:
-                    x_oversamp_sp[spot] = spots_prop_all_exp[iexp][spot]['x_sky_exp_start'] + np.arange(n_osamp_exp_sp)*dx_exp_in_sp[spot]/(n_osamp_exp_sp-1.)  
-                    y_oversamp_sp[spot] = spots_prop_all_exp[iexp][spot]['y_sky_exp_start'] + np.arange(n_osamp_exp_sp)*dy_exp_in_sp[spot]/(n_osamp_exp_sp-1.) 
-                    z_oversamp_sp[spot] = spots_prop_all_exp[iexp][spot]['z_sky_exp_start'] + np.arange(n_osamp_exp_sp)*dz_exp_in_sp[spot]/(n_osamp_exp_sp-1.) 
+                    x_oversamp_sp[spot] = spots_prop_all_exp[iexp][spot]['x_sky_exp_start'] + np.arange(n_osamp_exp)*dx_exp_in_sp[spot]/(n_osamp_exp-1.)  
+                    y_oversamp_sp[spot] = spots_prop_all_exp[iexp][spot]['y_sky_exp_start'] + np.arange(n_osamp_exp)*dy_exp_in_sp[spot]/(n_osamp_exp-1.) 
+                    z_oversamp_sp[spot] = spots_prop_all_exp[iexp][spot]['z_sky_exp_start'] + np.arange(n_osamp_exp)*dz_exp_in_sp[spot]/(n_osamp_exp-1.) 
 
             #Loop on oversampled exposure positions - planets
             #    - after x_oversamp_pl has been defined for all planets
             #    - if oversampling is not active a single central position is processed
             #    - we neglect the potential chromatic variations of the planet radius and corresponding grid 
             #    - if at least one of the processed planet is transiting
+
+            #Variables to keep track of how many oversampled positions in this exposure were occulting the star
             n_osamp_exp_eff = 0
+            n_osamp_exp_eff_sp = 0
+
             for iosamp in range(n_osamp_exp):
+                ## Planets ##
+
                 #Dictionary telling us which planets have been processed in which chromatic mode and band.
                 pl_proc={subkey_chrom:{iband:[] for iband in range(system_prop[subkey_chrom]['nw'])} for subkey_chrom in key_chrom}
 
@@ -515,7 +526,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                     y_st_sky_max = y_st_sky_pos+theo_dic['y_st_sky_grid_pl'][pl_loc]
                     
                     #Calculating properties
-                    cond_occ_pl = False
+                    # cond_occ_pl = False
                     for subkey_chrom in key_chrom:
                         for iband in range(system_prop[subkey_chrom]['nw']):
                             Focc_star_pl[subkey_chrom][iband],cond_occ_pl = calc_occ_region_prop(line_occ_HP[subkey_chrom][iband],cond_occ_pl,iband,args,system_prop[subkey_chrom],iosamp,pl_loc,pl_proc[subkey_chrom][iband],theo_dic['Ssub_Sstar_pl'][pl_loc],x_st_sky_max,y_st_sky_max,system_prop[subkey_chrom]['cond_in_RpRs'][pl_loc][iband],par_list,par_star,theo_dic['Istar_norm_'+subkey_chrom],\
@@ -538,10 +549,8 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                         if ('chrom' in key_chrom):idx_w['chrom'] = range(system_prop['chrom']['nw'])
                         surf_prop_dic[key_chrom[-1]]['line_prof'][:,i_in]+=plocc_prof(args,transit_pl_exp,coord_reg_dic,idx_w,system_prop,key_chrom,par_star,theo_dic)
             
-            n_osamp_exp_eff_sp = 0
-            #Loop on oversampled exposure positions - spots
-            for iosamp in range(n_osamp_exp_sp):
-
+                
+                ## Spots ##
                 cond_occ_sp = False
 
                 #Retrieving the properties of the region occulted by each spot
@@ -569,7 +578,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                     spot_prop_oversamp['sin_lat_exp_center'] = np.sin(spot_prop_oversamp['lat_rad_exp_center'])
                     spot_prop_oversamp['is_visible'] = is_spot_visible(star_params['istar_rad'], spot_prop_oversamp['long_rad_exp_center'], spot_prop_oversamp['lat_rad_exp_center'], spot_prop_oversamp['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
 
-                    cond_occ_sp = False
+                    # cond_occ_sp = False
 
                     #Going over the chromatic modes
                     for subkey_chrom in key_chrom:
@@ -580,7 +589,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
                             Focc_star_sp[subkey_chrom][iband], cond_occ_sp = new_new_calc_spotted_region_prop(line_occ_HP[subkey_chrom][iband], cond_occ_sp, spot_prop_oversamp, iband, system_spot_prop[subkey_chrom], star_params, theo_dic['Ssub_Sstar_sp'][spot], 
                                                             theo_dic['Ssub_Sstar'], theo_dic['Istar_norm_'+subkey_chrom], par_star, sum_prop_dic[subkey_chrom][spot], coord_reg_dic[subkey_chrom][spot], 
                                                             range_dic[subkey_chrom][spot], Focc_star_sp[subkey_chrom][iband], par_list, range_par_list, args, cb_band_dic[subkey_chrom][iband], 
-                                                            pl_loc_x = coord_pl_in[pl_loc]['cen_pos'][0,iexp], pl_loc_y = coord_pl_in[pl_loc]['cen_pos'][1,iexp], RpRs = system_prop[subkey_chrom][pl_loc][iband], plocc = (n_osamp_exp_eff>=1))
+                                                            pl_loc_x = x_oversamp_pl, pl_loc_y = y_oversamp_pl, oversamp_idx = iosamp, RpRs = system_prop[subkey_chrom], plocc = (n_osamp_exp_eff>=1))
 
                             #Cumulate line profile from spot-occulted cells
                             #    - in high-precision mode there is a single subkey_chrom and achromatic band, but several spots may have been processed
@@ -724,7 +733,7 @@ def sub_calc_plocc_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo
         surf_prop_dic = {'chrom':surf_prop_dic['achrom']}
         surf_prop_dic_spot = {'chrom':surf_prop_dic_spot['achrom']}
 
-    if 'use_spots' in param.keys():
+    if 'use_spots' in param.keys() and param['use_spots']:
         return surf_prop_dic, surf_prop_dic_spot
     else:
         return surf_prop_dic

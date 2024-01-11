@@ -446,7 +446,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                        
     if gen_dic['star_name'] == 'V1298tau':
         mock_dic['visit_def']={
-            'ESPRESSO':{'mock_vis' :{'exp_range':2457067.0488+np.array([-0.25, 0.25]),'nexp':100}}}
+            'ESPRESSO':{'mock_vis' :{'exp_range':2457067.0488+np.array([-0.25, 0.25]),'nexp':50}}}
 
     
     #Spectral profile settings
@@ -486,7 +486,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     
                      # #For the spot 'spot2' : 
                      'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
-                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 + 2.1,
+                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 -0.2,
                      'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
                      'atten__ISESPRESSO_VSmock_vis_SPspot2'    : 0.1,
                          }

@@ -283,9 +283,19 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #    - at this stage of the pipeline broadband flux scaling has been defined, if requested 
             data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_mode,dim_exp_com,tell_exp,mean_gdet_exp,data_com['cen_bins'],dt_exp,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,bdband_flux_sc = gen_dic['flux_sc'])                          
 
+            #Timestamp of exposure
+            data_to_bin[iexp_off]['bjd'] = coord_dic[inst][vis_bin]['bjd'][iexp]
+
+            #Duration of exposure
+            data_to_bin[iexp_off]['t_dur'] = coord_dic[inst][vis_bin]['t_dur'][iexp]
         #----------------------------------------------------------------------------------------------
 
         #Processing and analyzing each new exposure 
+
+        #Preparing an array that will contain the timestamp and duration of each binned exposure
+        binned_time = np.zeros(len(idx_to_bin_all))
+        binned_t_dur = np.zeros(len(idx_to_bin_all))
+
         for i_new,(idx_to_bin,n_in_bin,dx_ov) in enumerate(zip(idx_to_bin_all,n_in_bin_all,dx_ov_all)):
 
             #Calculate binned exposure on common spectral table
@@ -304,7 +314,16 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #Saving new exposure  
             if not masterDI:np.savez_compressed(save_pref+str(i_new),data=data_exp_new,allow_pickle=True)
 
-           
+            
+            #Calculate the timestamp (BJD) and duration of the binned exposure(s)
+            time_to_bin = np.zeros(len(idx_to_bin))
+            dur_to_bin = np.zeros(len(idx_to_bin))
+            for loc, indiv_idx in enumerate(idx_to_bin):
+                time_to_bin[loc] = data_to_bin[indiv_idx]['bjd']
+                dur_to_bin[loc] = data_to_bin[indiv_idx]['t_dur']
+            binned_time[i_new] = np.average(time_to_bin)
+            binned_t_dur[i_new] = np.average(dur_to_bin)
+
             # # Stage Théo : Saving extra data for the module 'fit_ResProf'
             
             # if (gen_dic['fit_ResProf'] and masterDI) : 
@@ -312,7 +331,6 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #     data_exp_new['weight'] = {}
             #     for iexp_off in idx_to_bin : data_exp_new['weight'][iexp_off] = data_to_bin[iexp_off]['weight']
             #     data_exp_new['dx_ov'] = dx_ov
-
 
 
 
@@ -373,11 +391,12 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             data_glob_new['idx_in2exp'] = np.arange(data_glob_new['n_exp'],dtype=int)[data_glob_new['idx_in']]
             data_glob_new['dim_in'] = [data_glob_new['n_in_tr']]+data_glob_new['dim_exp']
 
-            #Properties of planet-occulted and spot regions 
+
+            #Properties of planet-occulted and spot-occulted regions 
             params = deepcopy(system_param['star'])
             params.update({'rv':0.,'cont':1.}) 
             params['use_spots']=False
-            if mock_dic!={} and mock_dic['use_spots'] and (inst in mock_dic['spots_prop']) and 1==0:
+            if mock_dic!={} and mock_dic['use_spots'] and (inst in mock_dic['spots_prop']):
                 if mode=='multivis':
                     print('WARNING: spots properties are not propagated for multiple visits.')
                 elif vis_in in mock_dic['spots_prop'][inst]:
@@ -392,6 +411,11 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     params['num_spots']=num_spots
                     params['inst']=inst
                     params['vis']=vis_in
+
+                #Adding binned exposure timestamp and duration - there are needed for spot-occulted reion
+                data_glob_new['coord']['bjd'] = binned_time
+                data_glob_new['coord']['t_dur'] = binned_t_dur
+
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
             if ('spec' in data_mode) and ('chrom' in data_dic['DI']['system_prop']):key_chrom+=['chrom']

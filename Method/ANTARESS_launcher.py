@@ -63,9 +63,9 @@ def ANTARESS_launcher(nbook_dic = {} , user = ''):
         if 'plot_dic' in nbook_dic['settings']:plot_dic.update(nbook_dic['settings']['plot_dic'])
     
     #Moving to ANTARESS directory
-    antaress_dir = '/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/antaress'
-    gen_dic['save_dir']= '/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/'
-    os_system.chdir(antaress_dir)
+    antaress_dir = os_system.path.dirname(__file__).split('Method')[0]
+    gen_dic['save_dir']= antaress_dir+'Ongoing/'  
+    os_system.chdir(antaress_dir+'Method/')
 
     
     print('****************************************')
