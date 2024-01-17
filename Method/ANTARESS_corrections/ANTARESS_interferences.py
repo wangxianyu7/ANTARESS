@@ -17,7 +17,7 @@ import itertools
 from scipy.signal import savgol_filter
 from matplotlib.ticker import MultipleLocator
 from ANTARESS_plots.utils_plots import autom_x_tick_prop,autom_y_tick_prop,custom_axis
-from ANTARESS_routines.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof
+from ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof
 from ANTARESS_grids.ANTARESS_coord import get_timeorbit,calc_tr_contacts
 from ANTARESS_analysis.ANTARESS_ana_comm import model_par_names,par_formatting
 
@@ -45,7 +45,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 &= c[m s^{-1}]/(F_{\nu,\mathrm{ana}} \nu_\mathrm{ana}^2)    \\
                 &= w[A]^2/(F_{\nu,\mathrm{ana}} c[m s^{-1}])
   
-    at this stage spectra can be written as (see rescale_data())
+    at this stage spectra can be written as (see rescale_profiles())
     
     .. math:: 
        F_\mathrm{corr}(w,t,v) = F_{\star}(w,v) C_\mathrm{ref}(w,v) L(t) W(w,t,v)

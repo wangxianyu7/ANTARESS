@@ -57,9 +57,12 @@ def ANTARESS_launcher(nbook_dic = {} , user = ''):
     #Overwrite with notebook settings
     if ('settings' in nbook_dic) and (len(nbook_dic['settings'])>0):
         if 'gen_dic' in nbook_dic['settings']:gen_dic.update(nbook_dic['settings']['gen_dic'])
-        if 'data_dic' in nbook_dic['settings']:
-            if 'DI' in nbook_dic['settings']['data_dic']:data_dic['DI'].update(nbook_dic['settings']['data_dic']['DI'])
         if 'mock_dic' in nbook_dic['settings']:mock_dic.update(nbook_dic['settings']['mock_dic'])
+        if 'data_dic' in nbook_dic['settings']:
+            for key in ['DI','Intr']:
+                if key in nbook_dic['settings']['data_dic']:data_dic[key].update(nbook_dic['settings']['data_dic'][key])
+        if 'glob_fit_dic' in nbook_dic['settings']:
+            if 'IntrProf' in nbook_dic['settings']['glob_fit_dic']:glob_fit_dic['IntrProf'].update(nbook_dic['settings']['glob_fit_dic']['IntrProf'])
         if 'plot_dic' in nbook_dic['settings']:plot_dic.update(nbook_dic['settings']['plot_dic'])
     
     #Moving to ANTARESS directory

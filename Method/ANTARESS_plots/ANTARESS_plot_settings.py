@@ -1397,6 +1397,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     # plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['binned']}   
                 if gen_dic['star_name']=='HD209458':
                     plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['binned']}
+                if gen_dic['star_name']=='HD189733':
+                    plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['binned']}
                     
                 #Colors
                 if gen_dic['studied_pl']=='WASP76b':plot_settings[key_plot]['color_dic']={'ESPRESSO':{'2018-10-31':'dodgerblue','2018-09-03':'red'}} 
@@ -1860,16 +1862,19 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 # + 'sel4': line selection with morphological clipping (delta-maxima/line depth and asymetry parameter)
                 # + 'sel5': line selection with morphological clipping (depth and width criteria)
                 # + 'sel6': line selection with RV dispersion and telluric contamination
-                plot_settings[key_plot]['step']='sel6'           
+                plot_settings[key_plot]['step']='cont'           
         
                 #Overplot resampled spectra
-                # if plot_settings[key_plot]['step']=='cont': 
-                #     if gen_dic['star_name']=='HD209458':        
-                #         plot_settings[key_plot]['resample'] = 0.2#2.    
-                #         plot_settings[key_plot]['alpha_symb'] = 0.2 
+                if plot_settings[key_plot]['step']=='cont': 
+                    if gen_dic['star_name']=='HD209458':        
+                        plot_settings[key_plot]['resample'] = 0.2#2.    
+                        plot_settings[key_plot]['alpha_symb'] = 0.2 
+                    if gen_dic['star_name']=='HD189733':        
+                        plot_settings[key_plot]['resample'] = 0.2#2.    
+                        plot_settings[key_plot]['alpha_symb'] = 0.2 
         
                 #Print number of lines selected in step
-                plot_settings[key_plot]['print_nl']=True    & False               
+                plot_settings[key_plot]['print_nl']=True #   & False               
 
                 #Plot exclusion ranges
                 plot_settings[key_plot]['line_rej_range']=True 
@@ -1954,6 +1959,15 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                         # plot_settings[key_plot]['print_nl']=False 
                         plot_settings[key_plot]['x_range']=[4430.,4450.]     
                         plot_settings[key_plot]['y_range']=[0.2,1.1]                     
+
+                # if gen_dic['star_name']=='HD189733':
+                #     plot_settings[key_plot]['rasterized'] = True  
+                #     if plot_settings[key_plot]['step']=='cont':                    
+                #         plot_settings[key_plot]['plot_norm'] = False
+                #         # plot_settings[key_plot]['plot_norm_reg'] = False
+
+                #         plot_settings[key_plot]['x_range']=[3770.,7890.] 
+                #         plot_settings[key_plot]['y_range']=[0.,1.5]  
 
         
         #---------------------------------
@@ -2593,7 +2607,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 # plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['20190720']} 
                 # plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['20190911']} 
                 # plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['mock_vis']}                 
-                
+            elif gen_dic['star_name'] == 'AUMic':
+                plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['mock_vis']}
+            elif gen_dic['star_name'] == 'V1298tau':
+                plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['mock_vis']}                
             elif gen_dic['studied_pl']=='Corot7b':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2019-02-20']} 
             elif gen_dic['studied_pl']=='Nu2Lupi_c':plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2020-03-18']}  
             elif gen_dic['studied_pl']==['HD3167_b']:plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2019-10-09']} 
@@ -4151,6 +4168,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
         elif gen_dic['star_name']=='V1298tau':
             plot_settings[key_plot]['v_range_all']={'HARPN':{'20200128':[-0.01,0.02],'20201207':[-0.01,0.02], 'mock_vis' : [-0.01,0.02]}}   #pour voir in et out
+            plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'20200128':[-0.01,0.02],'20201207':[-0.01,0.02], 'mock_vis' : [-0.01,0.02]}}   #pour voir in et out
         
         #Reversed image 
         if plot_settings[key_plot]['reverse_2D']:   
@@ -7690,9 +7708,13 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         if gen_dic['studied_pl']==['HD3167_b']:plot_settings[key_plot]['visits_to_plot']={'ESPRESSO':['2019-10-09']} 
 
         #Planet
-        plot_settings[key_plot]['pl_ref'] = {'inst':{'vis':'HD3167_c'}}
-        plot_settings[key_plot]['pl_ref'] = {'inst':{'vis':'GJ436_b'}}
-        plot_settings[key_plot]['pl_ref'] = {'inst':{'vis':'HD15337c'}}
+        if gen_dic['star_name']=='HD3167':
+            plot_settings[key_plot]['pl_ref'] = {'inst':{'vis':'HD3167_c'}}
+        elif gen_dic['star_name']=='GJ436':
+            plot_settings[key_plot]['pl_ref'] = {'inst':{'vis':'GJ436_b'}}
+        elif gen_dic['star_name']=='HD15337':   
+            plot_settings[key_plot]['pl_ref'] = {'inst':{'vis':'HD15337c'}}
+
 
 
 
@@ -7732,7 +7754,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['pl_to_plot']=['HD15337c'] 
         if gen_dic['star_name']=='HD209458':
             plot_settings[key_plot]['pl_to_plot']=['HD209458b'] 
-            # plot_settings[key_plot]['pl_to_plot']=['HD209458b','HD209458c'] 
+            plot_settings[key_plot]['pl_to_plot']=['HD209458b','HD209458c'] 
         if gen_dic['star_name']=='Altair':
             plot_settings[key_plot]['pl_to_plot']=['Altair_b'] 
         if gen_dic['star_name']=='GJ436':
@@ -7787,8 +7809,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['xorp_pl'] = np.array([[0.,  1.]])
             plot_settings[key_plot]['yorb_pl'] = [-0.3]
 
-            # plot_settings[key_plot]['xorp_pl'] = np.array([[0.,  1.],[0.,  1.]])
-            # plot_settings[key_plot]['yorb_pl'] = [-0.3,-0.3]
+            plot_settings[key_plot]['xorp_pl'] = np.array([[0.,  1.],[0.,  1.]])
+            plot_settings[key_plot]['yorb_pl'] = [-0.3,-0.3]
 
         elif gen_dic['star_name']=='WASP76':   #ANTARESS I, arbitrary plot
             plot_settings[key_plot]['xorp_pl'] = np.array([[-1.,  0.]])
@@ -7798,8 +7820,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         #Absolute time of the plot (BJD - 2400000)
         #    - overwrites 'yorb_pl' if not set to None
         plot_settings[key_plot]['t_BJD'] = None
-        # if gen_dic['star_name']=='HD209458':   #ANTARESS I, mock, multi-pl
-        #     plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':2454560.806755574+np.array([-0.5,-0.2,0.,0.2,0.5])/24. }
+        if gen_dic['star_name']=='HD209458':   #ANTARESS I, mock, multi-pl
+            plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':2454560.806755574+np.array([-0.5,-0.2,0.,0.2,0.5])/24. }
+            plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':2454560.806755574+np.array([0.5])/24. }
             
         #Defining a boolean to decide whether we make a GIF
         #    - this is only used if we plot multiple exposures.
@@ -8006,8 +8029,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # plot_settings[key_plot]['disk_color']='LD'  #dezoom GJ436
         # plot_settings[key_plot]['disk_color']='GD'  
         # plot_settings[key_plot]['disk_color']='F'
-        if gen_dic['star_name']=='HD209458':
-            plot_settings[key_plot]['disk_color'] = 'F'    #ANTARESS I, oblate view
+        # if gen_dic['star_name']=='HD209458':
+        #     plot_settings[key_plot]['disk_color'] = 'F'    #ANTARESS I, oblate view
 
         #Choice of spectral band for intensity
         #    - from the main planet transit properties
@@ -8034,7 +8057,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         plot_settings[key_plot]['plot_stspin']=True  #  &  False        
         
         #Plot hidden stellar spin
-        plot_settings[key_plot]['plot_stspin_hid']=  True        
+        plot_settings[key_plot]['plot_stspin_hid']=  True  & False      
         
         #Plot stellar poles
         plot_settings[key_plot]['plot_hidden_pole']=True & False
@@ -8052,8 +8075,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
     #    plot_settings[key_plot]['n_stcell']=201  #dezoom GJ436
     #    plot_settings[key_plot]['n_stcell']=1001.   #to get a smooth plot of the equiRV. The plot must be in png not to be too heavy
         # if gen_dic['star_name'] in ['HAT_P3','HAT_P11','HAT_P33','HAT_P49','HD89345','HD106315','K2_105','Kepler25','Kepler63','WASP107','WASP156','WASP166']:plot_settings[key_plot]['n_stcell']=201.     
-        # if gen_dic['star_name']=='HD209458':   #ANTARESS I multi-pl           
-        #     plot_settings[key_plot]['n_stcell']=41.             
+        if gen_dic['star_name']=='HD209458':   #ANTARESS I multi-pl           
+            plot_settings[key_plot]['n_stcell']=41.             
+            plot_settings[key_plot]['n_stcell']=351.    
         if gen_dic['star_name']=='WASP76':   #ANTARESS I       
             plot_settings[key_plot]['n_stcell']=251.         
         
@@ -8090,9 +8114,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         #    - coded in 'sky_ste' mode only
         #    - set to None to prevent
         plot_settings[key_plot]['n_equi']=None   #40   #None   #10    
-        plot_settings[key_plot]['n_equi']=10
-        # if gen_dic['star_name']=='HD209458':
-        #     plot_settings[key_plot]['n_equi'] = 15     #ANTARESS I   
+        # plot_settings[key_plot]['n_equi']=10
+        if gen_dic['star_name']=='HD209458':
+            plot_settings[key_plot]['n_equi'] = 15     #ANTARESS I   
     
         #RV range
         plot_settings[key_plot]['val_range'] = None    
@@ -8139,10 +8163,11 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['x_range'] = np.array([-1.1,1.1])   
             plot_settings[key_plot]['y_range'] = np.array([-1.1,1.1])      
 
-        # elif gen_dic['star_name']=='HD209458':
+        elif gen_dic['star_name']=='HD209458':
         #     plot_settings[key_plot]['x_range'] = np.array([-0.5+0.3,0.5+0.3])      #ANTARESS multi-pl
         #     plot_settings[key_plot]['y_range'] = np.array([-1.05,-0.05])  
-
+            plot_settings[key_plot]['x_range'] = np.array([-1.49,1.49])      #ANTARESS multi-pl
+            plot_settings[key_plot]['y_range'] = np.array([-1.49,1.49]) 
 
 
 

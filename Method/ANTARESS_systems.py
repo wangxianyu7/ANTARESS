@@ -834,10 +834,10 @@ all_system_params={
         # 'eta_T': 20.0,
         
         
-        # #ANTARESS I, artificial view, DR 
-        # 'veq':4.,
-        # 'istar':50.,        
-        # 'alpha_rot':0.5,
+        #ANTARESS I, artificial view, DR 
+        'veq':4.,
+        'istar':50.,        
+        'alpha_rot':0.5,
         # 'c1_CB':-2. 
         
         # #ANTARESS I, artificial view oblate 
@@ -847,7 +847,7 @@ all_system_params={
         # 'f_GD':0.1947,
         # 'Tpole':8450.,
         # 'beta_GD':0.190,
-        # 'istar':50.                
+        # 'istar':50. ,               
 
         # #ANTARESS I, mock dataset for comparison of precisions
         # 'veq':25.,
@@ -857,11 +857,11 @@ all_system_params={
         # 'veq':15.,
         # 'istar':90., 
         
-        #Properties for theoretical atmosphere grid
-        'Tpole':6026.,
-        'logg':4.307,
-        'vmic':0.85,    
-        'vmac':3.98  
+        # #Properties for theoretical atmosphere grid
+        # 'Tpole':6026.,
+        # 'logg':4.307,
+        # 'vmic':0.85,    
+        # 'vmac':3.98  
         
             },
     #------------------------------
@@ -914,17 +914,17 @@ all_system_params={
         # 'lambda_proj':0.   
 
         },
-    # 'HD209458c':{      #Mock planet, multi-tr
-    #     'period':3.52474859*2.,
-    #     'ecc':0.,       
-    #     'omega_deg':90, 
-    #     'Kstar':84.27,         
-    #     'TLength':0.12408*3.,      
-    #     'TCenter':2454560.806755574 + (1.2/24.),
-    #     'inclination':86.,     
-    #     'aRs':(8.903744503359597*2)**(2./3.),        
-    #     'lambda_proj':70.         
-    # },
+    'HD209458c':{      #Mock planet, multi-tr
+        'period':3.52474859*2.,
+        'ecc':0.,       
+        'omega_deg':90, 
+        'Kstar':84.27,         
+        'TLength':0.12408*3.,      
+        'TCenter':2454560.806755574 + (1.2/24.),
+        'inclination':86.,     
+        'aRs':(8.903744503359597*2)**(2./3.),        
+        'lambda_proj':70.         
+    },
     },
 
     #------------------------------

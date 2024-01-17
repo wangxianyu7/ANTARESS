@@ -3,11 +3,11 @@ from utils import stop,dataload_npz,datasave_npz,closest_arr,np_where1D,gen_spec
 from scipy.interpolate import griddata
 from copy import deepcopy
 import bindensity as bind
-from ANTARESS_routines.ANTARESS_binning import calc_bin_prof,weights_bin_prof,init_bin_prof
+from ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,weights_bin_prof,init_bin_prof
 from ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc
-from ANTARESS_grids.ANTARESS_plocc_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_prop
+from ANTARESS_grids.ANTARESS_plocc_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_spot_prop
 from ANTARESS_grids.ANTARESS_coord import excl_plrange
-from ANTARESS_routines.ANTARESS_data_align import align_data
+from ANTARESS_process.ANTARESS_data_align import align_data
 from ANTARESS_analysis.ANTARESS_inst_resp import def_st_prof_tab,cond_conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab,conv_st_prof_tab
 
 
@@ -203,10 +203,10 @@ def loc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_di
         
         #Rescaling measured intrinsic profile to the level of the local profile
         #    - this operation assumes that all exposures used to compute the master-out have not been rescaled with respect to the reference, ie that they all have the same flux balance as current exposure before it was rescaled
-        #    - see rescale_data() and proc_intr_data() for more details
+        #    - see rescale_profiles() and proc_intr_data() for more details
         #      a given local profile write as 
         #      F_res(w,t,vis) = MFstar(w,vis) - Fsc(w,vis,t)
-        #   at low resolution, in the continuum (see rescale_data())
+        #   at low resolution, in the continuum (see rescale_profiles())
         #      Fsc(w,vis,t) = LC(w,t)*Fstar(w,vis_norm)*Cref(w)
         #   assuming that the rescaling light curves are constant outside of the transit, all out-of-transit profiles are equivalent between themselves and thus to the master-out
         #      MFstar(w,vis) ~ Fstar(w,vis_norm)*Cref(w)
@@ -308,7 +308,7 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
         #Initializing stellar profiles
         #    - can be defined using the first exposure table
         if isub==0:
-            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],theo_dic,system_param['star'],params)                  
+            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,system_param['star'],params)                  
 
             #Effective instrumental convolution
             fixed_args['FWHM_inst'] = get_FWHM_inst(inst,fixed_args,fixed_args['cen_bins'])
@@ -324,7 +324,7 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
             theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],args_exp,args_exp['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
 
         #Planet-occulted line profile 
-        surf_prop_dic = sub_calc_plocc_prop([chrom_mode],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_dic[inst][vis],[gen_dic[inst][vis]['idx_in2exp'][i_in]])
+        surf_prop_dic,spot_prop_dic = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_dic[inst][vis],[gen_dic[inst][vis]['idx_in2exp'][i_in]])
         sp_line_model = surf_prop_dic[chrom_mode]['line_prof'][:,0]
 
         #Scaling to fitted intrinsic continuum level

@@ -4,7 +4,7 @@ from utils import stop,np_where1D,dataload_npz,default_func,check_data
 from copy import deepcopy
 from constant_data import c_light
 from ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase
-from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_prop
+from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop
 
 def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,mock_dic={},masterDI=False):
     r"""**Binning routine**
@@ -375,12 +375,10 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #Properties of planet-occulted and spot regions 
             params = deepcopy(system_param['star'])
             params.update({'rv':0.,'cont':1.}) 
-            params['use_spots']=False
-            if mock_dic!={} and mock_dic['use_spots'] and (inst in mock_dic['use_spots']):
+            if mock_dic!={} and (inst in mock_dic['spots_prop']):
                 if mode=='multivis':
                     print('WARNING: spots properties are not propagated for multiple visits.')
                 elif vis_in in mock_dic['spots_prop'][inst]:
-                    params['use_spots']=True
                     for spot_param in list(mock_dic['spots_prop'][inst][vis_in].keys()):
                         params[spot_param]=mock_dic['spots_prop'][inst][vis_in][spot_param]
                         
@@ -394,7 +392,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
             if ('spec' in data_mode) and ('chrom' in data_dic['DI']['system_prop']):key_chrom+=['chrom']
-            data_glob_new['plocc_prop'] = sub_calc_plocc_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,data_dic['DI']['system_prop'],params,data_glob_new['coord'],range(n_bin), out_ranges=True)            
+            data_glob_new['plocc_prop'],data_glob_new['spot_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,data_dic['DI']['system_prop'],params,data_glob_new['coord'],range(n_bin), out_ranges=True)            
 
         #---------------------------------------------------------------------------
 
@@ -669,7 +667,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     #Definition of errors on disk-integrated spectra
     #--------------------------------------------------------     
     #    - we calculate the mean of a time-series of disk-integrated spectra while accounting for variations in the noise of the pixels between different exposures
-    #    - at the latest processing stage those spectra are defined from rescale_data() as:
+    #    - at the latest processing stage those spectra are defined from rescale_profiles() as:
     # Fsc(w,t,v) = LC_theo(band,t,v)*Fcorr(w,t,v)/(dt*globF(t,v))    
     #      with the corrected spectra linked to the measured spectra as (see spec_corr() function above for the corrections that are included):
     # Fcorr(w,t,v) = F_meas(w,t,v)*Ccorr(w,t,v)  
@@ -787,7 +785,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #--------------------------------------------------------    
         #Definition of errors on residual spectra
         #-------------------------------------------------------- 
-        #    - see rescale_data(), extract_res_profiles(), the profiles are defined as:
+        #    - see rescale_profiles(), extract_res_profiles(), the profiles are defined as:
         # Fres(w,t,v) = ( MFstar(w,v) - Fsc(w,t,v) )
         #      where profiles have been scaled to comparable levels and can be seen as (temporal) flux densities
         #    - we want to use as weights the errors on the true residual flux:
@@ -806,7 +804,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #--------------------------------------------------------    
         #Definition of errors on intrinsic spectra
         #-------------------------------------------------------- 
-        #    - see rescale_data(), extract_res_profiles() and proc_intr_data(), the profiles are defined as:
+        #    - see rescale_profiles(), extract_res_profiles() and proc_intr_data(), the profiles are defined as:
         # Fintr(w,t,v) = Fres(w,t,v)/(1 - LC_theo(band,t))
         #              = ( MFstar(w,v) - Fsc(w,t,v) )/(1 - LC_theo(band,t))            
         #    - we want to use as weights the errors on the true intrinsic flux, ie : 

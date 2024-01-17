@@ -299,12 +299,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - format is {inst:{vis:{rv:value,resol:value}}
     mock_dic['drift_post'] = {}
        
-    
-    #%%%% Spot settings           
-    mock_dic['use_spots'] = False
-    
-    
     #%%%%% Properties
+    #    - spot inclusion is conditioned by this dictionary being filled in
     #    - spots are defined by 4 parameters : 
     # + 'lat' : constant lattitutde of the spot, in star rest frame
     # + 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
@@ -430,7 +426,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%%% Using stellar spectrum  
-    gen_dic['DImast_weight'] = True  
+    gen_dic['DImast_weight'] = False  
     
     
     #%%%%%% Plots: weighing master 
@@ -539,7 +535,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + mu grid: define array 'mu_grid' of mu coordinates
     #            the resolution in mu has little impact on computing time
     # + linelist: indicate the path 'linelist' of the linelist generated from the VALD database
-    #             connect into VALD with email address: http://vald.astro.uu.se/ and define:
+    #             connect into VALD with email address: http://vald.astro.uu.se/, choose 'Extract Stellar', and define:
     #    > start and end wavelength (A, vacuum): should be wide enough to contain all transitions in the simulated band (it can be larger and is automatically cropped to the simulated spectral range)
     #    > line detection threshold: typically set to 0.1 
     #    > microturbulence (km/s): must be consistent with stellar value
@@ -1880,6 +1876,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     data_dic['DI']['verbose']= False
+
+    
+    #%%%%% Monitor MCMC
+    data_dic['DI']['progress']= True
     
     
     #%%%%% Priors on variable properties
@@ -1986,8 +1986,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - if the value is unknown, or a precise measurement is required for each visit, one can use input CCFs or CCFs from input spectra to determine it
     #      first set 'sysvel' to 0 km/s, then run a preliminary analysis to derive its value from the CCF, and update 'sysvel'
     #      it can be determined either from the centroid of the master out-of-transit (calculated with gen_dic['DIbin']) or from the mean value of the out-of-transit RV residuals from the keplerian model (via plot_dic['prop_raw'])
-    #    - beware of using published values, because they can be derived from fits to many datasets, while there
-    # are still small instrumental offsets in the RV series in a given visit (also, we are using the RV in the fits files which is not corrected for the secular acceleration)
+    #    - beware of using published values, because they can be derived from fits to many datasets, while there are still small instrumental offsets in the RV series in a given visit 
+    #      (also, we are using the RV in the fits files which is not corrected for the secular acceleration)
     #    - when using spectra the value can be modified without running again the initialization module gen_dic['calc_proc_data'] and spectral correction modules, but any processing modules must still be re-run if the systemic velocity is changed
     #      if CCFs are given from input the pipeline must be fully re-run
     data_dic['DI']['sysvel']={}
@@ -2301,7 +2301,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     ##################################################################################################
     #%%% Module: disk-integrated CCF masks
-    #    - spectra must have been aligned in the star rest frame (using a approximate 'sysvel'), converted into a 1D profile, and binned
+    #    - spectra must have been aligned in the star rest frame (using a approximate 'sysvel'), converted into a 1D profile, and binned. The mask can then be used in the input rest frame (setting 'sysvel' to 0 km/s)
     #    - the mask is determined by default from a master spectrum built over all processed visits of an instrument, for consistency of the CCFs between visits
     #    - the mask is saved as a .txt file in air or vacuum (depending on the pipeline process) and as a .fits file in air to be read by ESPRESSO-like DRS
     ##################################################################################################
@@ -2399,6 +2399,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - telluric lines with ratio larger than minimum threshold are considered for exclusion
     #    - stellar lines with ratio larger than maximum threshold are excluded (the final threshold is applied after the VALD and morphological analysis)
     data_dic['DI']['mask']['tell_star_depthR_min'] = None
+    data_dic['DI']['mask']['tell_star_depthR_max'] = None
+    data_dic['DI']['mask']['tell_star_depthR_max_final'] = None
     
     
     #%%%% VALD cross-validation     
@@ -2862,7 +2864,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     ##################################################################################################
     #%%% Module: intrinsic CCF masks
-    #    - spectra must have been aligned in the star rest frame, converted into a 1D profile, and binned
+    #    - spectra must have been aligned in the star rest frame, converted into a 1D profile, and binned. 
     #    - the mask is built by default over all processed visits of an instrument, for consistency of the CCFs between visits
     ##################################################################################################
     
@@ -3020,13 +3022,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Fitting mode 
     #    - chi2 or MCMC
-    data_dic['Intr']['fit_mod']=''
+    data_dic['Intr']['fit_mod']='chi2'
     
     
     #%%%%% Printing fits results
     data_dic['Intr']['verbose'] = False  
     
     
+    #%%%%% Monitor MCMC
+    data_dic['Intr']['progress']= True
+    
+        
     #%%%%% Priors on variable properties
     #    - the width of the master disk-integrated profile can be used as upper limit
     data_dic['Intr']['line_fit_priors']={}
@@ -3166,6 +3172,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     glob_fit_dic['IntrProp']['verbose'] = False
+
+
+    #%%%%% Monitor MCMC
+    glob_fit_dic['IntrProp']['progress']= True
     
     
     #%%%%% Priors on variable properties
@@ -3540,6 +3550,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     glob_fit_dic['IntrProf']['verbose']= False
+
+    
+    #%%%%% Monitor MCMC
+    glob_fit_dic['IntrProf']['progress']= True
     
     
     #%%%%% Priors on variable properties
@@ -4061,6 +4075,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     data_dic['Atm']['verbose'] = False  
     
     
+    #%%%%% Monitor MCMC
+    data_dic['Atm']['progress']= True
+    
+        
     #%%%%% Priors on variable properties
     data_dic['Atm']['line_fit_priors']={}
 
@@ -4183,6 +4201,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     glob_fit_dic['AtmProp']['verbose'] = False
     
     
+    #%%%%% Monitor MCMC
+    glob_fit_dic['AtmProp']['progress']= True
+    
+        
     #%%%%% Priors on variable properties
     #    - see gen_dic['fit_DI'] for details
     glob_fit_dic['AtmProp']['priors']={} 
@@ -4327,6 +4349,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     glob_fit_dic['AtmProf']['verbose']= False
+
+    
+    #%%%%% Monitor MCMC
+    glob_fit_dic['AtmProf']['progress']= True
     
     
     #%%%%% Priors on variable properties
