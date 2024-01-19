@@ -19,11 +19,11 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
     
     The derived masks are thus defined in the approximate rest frame defined above   
      - Disk-integrated masks are shifted from the star rest frame to the rest frame of the input data, based on the input systemic velocity used to align the disk-integrated profiles.
-       The masks can then be used to generate CCFs from disk-integrated spectra in their input rest frame.
+       The masks can then be used to generate CCFs from disk-integrated spectra in their input rest frame (where CCFs will be centered at the approximate systemic rv + Keplerian rv)
      - Intrinsic masks are left defined in the photosphere rest frame.  
-       They can be used to generate CCFs from intrinsic spectra in the star rest frame
+       They can be used to generate CCFs from intrinsic spectra in the star (where CCFs will be centered at the photosphere + line rv) or photosphere rest frame (where CCFs will be centered at the line rv) 
      - Atmospheric masks are left defined in the planet rest frame.  
-       They can be used to generate CCFs from atmospheric spectra in the planet rest frame
+       They can be used to generate CCFs from atmospheric spectra in the star (where CCFs will be centered at the orbital + atmospheric rv) or planet rest frame (where CCFs will be centered at the atmospheric rv) 
 
     Args:
         TBD
@@ -77,10 +77,10 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
         nspec = len(flux_mast[0])
         
         #Continuum-normalisation
-        cont_func_dic = dataload_npz(gen_dic['save_data_dir']+'Stellar_cont_DI/'+inst+'_'+vis_det+'/')['cont_func_dic']
+        cont_func_dic = dataload_npz(gen_dic['save_data_dir']+'Stellar_cont_DI/'+inst+'_'+vis_det+'/St_cont')['cont_func_dic']
         flux_mast_norm = flux_mast[0]
         flux_mast_norm[~cond_def_mast[0]] = 0.
-        flux_mast_norm[cond_def_mast[0]] /=cont_func_dic[0](cen_bins_mast[0,cond_def_mast[0]])
+        flux_mast_norm[cond_def_mast[0]] /=cont_func_dic(cen_bins_mast[0,cond_def_mast[0]])
 
         #---------------------------------------------------------------------------------------------------------------------
         #Telluric contamination

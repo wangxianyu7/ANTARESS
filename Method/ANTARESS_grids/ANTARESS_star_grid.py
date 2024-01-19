@@ -2,7 +2,7 @@ import numpy as np
 from itertools import product as it_product
 from utils import stop,planck
 from constant_data import G_usi,Msun
-from ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate,frameconv_InclinedStar_to_Star
+from ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate,frameconv_skystar_to_star
 
 
 def calc_RVrot(x_sky_st,y_st,istar_rad,st_par):
@@ -310,7 +310,8 @@ def calc_LD(LD_mod,mu,ld_coeff):
         ld_val = 1. - ld_coeff[0]*(1. -mu) - ld_coeff[1]*np.power(1. -mu,2.)
     elif LD_mod == 'squareroot':
         ld_val = 1. - ld_coeff[0]*(1. -mu) - ld_coeff[1]*(1. - np.sqrt(mu))
-    elif LD_mod == 'nonlinear':
+    elif LD_mod == 'nonlinear': 
+        #Claret+2000
         ld_val = 1. - ld_coeff[0]*(1. -mu**0.5) - ld_coeff[1]*(1. -mu) - ld_coeff[2]*(1. -mu**1.5) - ld_coeff[3]*(1. -mu**2.)
     elif LD_mod == 'power2':        
         ld_val = 1. - ld_coeff[0]*(1. -mu**ld_coeff[1]) 
@@ -414,7 +415,7 @@ def calc_st_sky(coord_grid,star_params):
     #Frame conversion from the inclined star frame to the 'star' frame 
     #    - positions in star rest frame (in units of stellar radius)
     nsub_star = np.sum(cond_in_stphot)
-    if (nsub_star>0):coord_grid['x_st'],coord_grid['y_st'],coord_grid['z_st']=frameconv_InclinedStar_to_Star(coord_grid['x_st_sky'],coord_grid['y_st_sky'],coord_grid['z_st_sky'],star_params['istar_rad'])
+    if (nsub_star>0):coord_grid['x_st'],coord_grid['y_st'],coord_grid['z_st']=frameconv_skystar_to_star(coord_grid['x_st_sky'],coord_grid['y_st_sky'],coord_grid['z_st_sky'],star_params['istar_rad'])
     
     return nsub_star
 

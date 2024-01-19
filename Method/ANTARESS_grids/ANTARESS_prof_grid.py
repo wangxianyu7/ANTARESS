@@ -90,7 +90,8 @@ def custom_DI_prof(param,x,args=None):
 
 
 
-def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop, theo_dic,star_params,param_in):   
+
+def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop,theo_dic,star_params,param_in):   
     r"""**Disk-integrated profile: grid initialization**
 
     Initializes stellar and intrinsic profile grids
@@ -110,7 +111,6 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop, theo_di
     fixed_args['system_prop'] = deepcopy(system_prop) 
     fixed_args['star_params'] = deepcopy(star_params)  
     fixed_args['grid_dic'] = deepcopy(theo_dic)
-    #Adding the spot LD properties
     fixed_args['system_spot_prop'] = deepcopy(system_spot_prop)
 
     #------------------------------------------------------------------------
@@ -446,7 +446,7 @@ def theo_intr2loc(grid_dic,system_prop,fixed_args,ncen_bins,nsub_star):
     
     Intrinsic spectra do not necessarily have the same flux as the disk-integrated profiles, but have been set to the same continuum or total flux (see `proc_intr_data()` and `loc_prof_DI_mast()`).
     Now that the intrinsic and disk-integrated profiles are equivalent in terms of flux we have :math:`F_\mathrm{intr}(w,t,vis) \sim F_\mathrm{DI}(w,vis)`.
-    This is valid for broadband fluxes or the continuum of CCFs (see `rescale_data()`).
+    This is valid for broadband fluxes or the continuum of CCFs (see `rescale_profiles()`).
     
     The model disk-integrated profile is defined as 
     

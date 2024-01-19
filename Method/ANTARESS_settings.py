@@ -305,12 +305,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - format is {inst:{vis:{rv:value,resol:value}}
     mock_dic['drift_post'] = {}
        
-    
-    #%%%% Spot settings           
-    mock_dic['use_spots'] = False
-    
-    
     #%%%%% Properties
+    #    - spot inclusion is conditioned by this dictionary being filled in
     #    - spots are defined by 4 parameters : 
     # + 'lat' : constant lattitutde of the spot, in star rest frame
     # + 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
@@ -436,7 +432,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%%% Using stellar spectrum  
-    gen_dic['DImast_weight'] = True  
+    gen_dic['DImast_weight'] = False  
     
     
     #%%%%%% Plots: weighing master 
@@ -551,7 +547,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + mu grid: define array 'mu_grid' of mu coordinates
     #            the resolution in mu has little impact on computing time
     # + linelist: indicate the path 'linelist' of the linelist generated from the VALD database
-    #             connect into VALD with email address: http://vald.astro.uu.se/ and define:
+    #             connect into VALD with email address: http://vald.astro.uu.se/, choose 'Extract Stellar', and define:
     #    > start and end wavelength (A, vacuum): should be wide enough to contain all transitions in the simulated band (it can be larger and is automatically cropped to the simulated spectral range)
     #    > line detection threshold: typically set to 0.1 
     #    > microturbulence (km/s): must be consistent with stellar value
@@ -1219,13 +1215,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     ##################################################################################################
     #%%% Module: ESPRESSO "wiggles"
-    #    - run sequentially those steps :
-    # + 'wig_exp_init' to identify which ranges to include in the analysis, and which wiggle components are present
-    # + 'wig_exp_samp' to sample the frequency and amplitude of each wiggle component with nu, in a representative selection of exposure
-    # + 'wig_exp_nu_ana' to fit the sampled frequency and amplitude with polynomials of nu, to evaluate their degree and chromatic coefficients
-    # + 'wig_exp_fit' to fit the spectral wiggle model to each exposure individually, initialized by the results of 'wig_exp_nu_ana'   
-    # + 'wig_exp_point_ana' to fit the phase, and the chromatic coefficients of frequency and amplitude derived from 'wig_exp_fit', as a function of the telescope pointing coordinates 
-    # + 'wig_vis_fit' to fit the spectro-temporal wiggle model to all exposures together, initialized by the results of 'wig_exp_point_ana'
+    #    - this module is used to characterize and correct wiggles, using either an analytical model over the full visit, or a filter
+    #      the analytical model should be preferred whenever possible to keep as much as possible of the planetary and stellar feature at medium-resolution
+    #      if the wiggle pattern is however too complex to be captured by the model, apply the filter (low-resolution variations should have been previously corrected with the flux balance module)
     #    - wiggles are processed in wave_number space nu[1e-10 s-1] = c[m s-1]/w[A]
     #      wiggle frequencies Fnu corresponds to wiggle periods Pw[A] = w[A]^2/(Fnu[1e10 s]*c[m s-1]) = w[A]^2*Pnu[1e-10 s-1]/c[m s-1]
     ##################################################################################################
@@ -1241,11 +1233,15 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%% Guide shift reset
     #    - disable automatic reset of wiggle properties following guide star shift, for the chosen list of visits
+    #    - relevant with analytical model only
     gen_dic['wig_no_guidchange'] = []   
     
     
     #%%%% Forced order normalization
     #    - transmission spectrum is normalized to unity over each order 
+    #    - the analytical wiggle model can only capture medium-frequency modulations around unity
+    #      low-frequency variations must be captured with the flux balance correction or with the wiggle filter, or later on in planetary spectra (it is in this later case 
+    # that normalization can be forced here temporarily)
     gen_dic['wig_norm_ord'] = True  
     
     
@@ -1273,22 +1269,22 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     gen_dic['wig_exp_mast'] = {}
         
         
-    #%%%% Fit settings        
+    #%%%% Analysis settings        
         
-    #%%%%% Exposures to be fitted
+    #%%%%% Exposures to be characterized
     #    - instrument > visit
     #    - set to 'all' to use all exposures
     gen_dic['wig_exp_in_fit'] = {}
     
     
-    #%%%%% Groups of exposures to be fitted together
+    #%%%%% Groups of exposures to be characterized together
     #    - leave empty to perform the fit on individual exposures
     #    - this is useful to boost SNR, especially in the bluest orders, without losing the spectral resolution over orders
     #      beware however that wiggles amplitude and offsets change over time, and will thus be blurred by this average
     gen_dic['wig_exp_groups']={}
         
     
-    #%%%%% Spectral range(s) to be fitted
+    #%%%%% Spectral range(s) to be characterized
     #    - if left empty, the full spectrum is used
     #    - units are c/w (10-10 s-1)
     gen_dic['wig_range_fit'] = []
@@ -1309,9 +1305,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     gen_dic['wig_ord_fit'] = {}
     
     
-    #%%%% Fitting steps
+    #%%%% Analysis
     
-    #%%%%% Step 1: Screening 
+    #%%%%% Screening 
+    #    - use to identify which ranges to include in the analysis, and which wiggle components are present
     #    - use 'plot_spec' to identify which ranges / orders are of poor quality and need to be excluded from the fit and/or the correction
     #      use as much of the ESPRESSO range as possible, but exclude the bluest orders where the noise is much larger than the wiggles
     #    - use 'plot_hist' to plot the periodogram from all exposures together, to identify the number and approximate frequency of wiggle components 
@@ -1322,8 +1319,22 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'y_range':None
         }
     
+    #%%%%% Filter
+    #    - characterize wiggles using a Savitzky–Golay filter of the binned transmission spectrum in each exposure 
+    #    - 'win': size of the smoothing window, in nu 
+    #    - 'deg': order of the polynomial used to fit the smoothed spectrum
+    gen_dic['wig_exp_filt']={
+        'mode':False,
+        'win':0.2,
+        'deg':3, 
+        'plot':True        
+        }
+
+    #%%%%% Analytical model   
+    #    - run the following steps sequentially to determine the model
     
-    #%%%%% Step 2: Chromatic sampling
+    #%%%%%% Step 1: Chromatic sampling
+    #    - to sample the frequency and amplitude of each wiggle component with nu, in a representative selection of exposure
     #    - sampling the frequency and amplitude of each wiggle component with nu
     #    - wiggle properties are sampled using a sliding periodogram
     #    - only a representative subset of exposures needs to be sampled, using 'wig_exp_in_fit'
@@ -1368,7 +1379,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         }      
     
     
-    #%%%%% Step 3: Chromatic analysis
+    #%%%%%% Step 2: Chromatic analysis
+    #    - to fit the sampled frequency and amplitude with polynomials of nu, to evaluate their degree and chromatic coefficients
     #    - fitting the sampled frequency and amplitude with polynomials of nu
     #    - use this step to determine 'wig_deg_Freq' and 'wig_deg_Amp' for each component
     #    - 'comp_ids': component properties to analyze, among those sampled in 'wig_exp_samp'
@@ -1382,19 +1394,20 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         } 
     
     
-    #%%%%%% Frequency degree
+    #%%%%%%% Frequency degree
     #    - maximum degree of polynomial frequency variations with nu
     #    - for some datasets the second order component may not be constrained by the blue bands and remain consistent with 0
     gen_dic['wig_deg_Freq'] = {comp_id:1 for comp_id in range(1,6)}
     
     
-    #%%%%%% Amplitude degree
+    #%%%%%%% Amplitude degree
     #    - maximum degree of polynomial amplitude variations with nu
     #    - defined for each component
     gen_dic['wig_deg_Amp'] = {comp_id:2 for comp_id in range(1,6)}
     
     
-    #%%%%% Step 4: Exposure fit 
+    #%%%%%% Step 3: Exposure fit 
+    #    - to fit the spectral wiggle model to each exposure individually, initialized by the results of 'wig_exp_nu_ana'   
     #    - fitting the spectral wiggle model to each exposure individually
     #    - 'comp_ids': components to include in the model
     #    - 'init_chrom': initialize the fit guess values using the results of 'wig_exp_nu_ana' on the closest exposure sampled in 'wig_exp_samp'
@@ -1430,7 +1443,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         }     
     
     
-    #%%%%% Step 5: Pointing analysis
+    #%%%%%% Step 4 Pointing analysis
+    #    - to fit the phase, and the chromatic coefficients of frequency and amplitude derived from 'wig_exp_fit', as a function of the telescope pointing coordinates 
     #    - fitting the phase, and the chromatic coefficients of frequency and amplitude, as a function of the telescope pointing coordinates  
     #    - 'source': fitting coefficients derived from the sampling ('samp') or spectral ('glob') fits 
     #    - 'thresh': threshold for automatic outlier exclusion (set to None to prevent automatic exclusion)
@@ -1449,7 +1463,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'plot':True
         } 
     
-    #%%%%% Step 6: Global fit 
+    #%%%%%% Step 5: Global fit 
+    #    - to fit the spectro-temporal wiggle model to all exposures together, initialized by the results of 'wig_exp_point_ana'
     #    - fitting spectro-temporal model to all exposures together
     #    - by default the model is initialized using the results from 'wig_exp_point_ana'
     #    - options:
@@ -1752,7 +1767,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + this method only works if a sufficient portion of the stellar line remains defined after exclusion, ie if the DI line is much larger than the intrinsic one
     #    - the exclusion of occulted stellar lines is only relevant for disk-integrated profiles, and is not proposed for their binning because in-transit profiles will never be equivalent to out-of-transit ones
     #    - the selected 'occ_range' range is centered on the brightness-averaged RV of each occulted stellar region, calculated analytically with the properties set for the star and planet
-    #      excluded pixels must then fall within the shifted occ_range and line_range, wich defines the maximum extension of the disk-integrated stellar line
+    #      excluded pixels must then fall within the shifted occ_range and line_range, which defines the maximum extension of the disk-integrated stellar line
+    #      format for both ranges is range = {inst : [min_rv,max_rv]}
     #    - only applied to original, unbinned visits
     #    - define [rv1,rv2]] in the star rest frame
     data_dic['DI']['occ_range']={} 
@@ -1872,6 +1888,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     data_dic['DI']['verbose']= False
+
+    
+    #%%%%% Monitor MCMC
+    data_dic['DI']['progress']= True
     
     
     #%%%%% Priors on variable properties
@@ -1978,8 +1998,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - if the value is unknown, or a precise measurement is required for each visit, one can use input CCFs or CCFs from input spectra to determine it
     #      first set 'sysvel' to 0 km/s, then run a preliminary analysis to derive its value from the CCF, and update 'sysvel'
     #      it can be determined either from the centroid of the master out-of-transit (calculated with gen_dic['DIbin']) or from the mean value of the out-of-transit RV residuals from the keplerian model (via plot_dic['prop_raw'])
-    #    - beware of using published values, because they can be derived from fits to many datasets, while there
-    # are still small instrumental offsets in the RV series in a given visit (also, we are using the RV in the fits files which is not corrected for the secular acceleration)
+    #    - beware of using published values, because they can be derived from fits to many datasets, while there are still small instrumental offsets in the RV series in a given visit 
+    #      (also, we are using the RV in the fits files which is not corrected for the secular acceleration)
     #    - when using spectra the value can be modified without running again the initialization module gen_dic['calc_proc_data'] and spectral correction modules, but any processing modules must still be re-run if the systemic velocity is changed
     #      if CCFs are given from input the pipeline must be fully re-run
     data_dic['DI']['sysvel']={}
@@ -2292,7 +2312,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     ##################################################################################################
     #%%% Module: disk-integrated CCF masks
-    #    - spectra must have been aligned in the star rest frame (using a approximate 'sysvel'), converted into a 1D profile, and binned
+    #    - spectra must have been aligned in the star rest frame (using a approximate 'sysvel'), converted into a 1D profile, and binned. The mask can then be used in the input rest frame (setting 'sysvel' to 0 km/s)
     #    - the mask is determined by default from a master spectrum built over all processed visits of an instrument, for consistency of the CCFs between visits
     #    - the mask is saved as a .txt file in air or vacuum (depending on the pipeline process) and as a .fits file in air to be read by ESPRESSO-like DRS
     ##################################################################################################
@@ -2390,6 +2410,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - telluric lines with ratio larger than minimum threshold are considered for exclusion
     #    - stellar lines with ratio larger than maximum threshold are excluded (the final threshold is applied after the VALD and morphological analysis)
     data_dic['DI']['mask']['tell_star_depthR_min'] = None
+    data_dic['DI']['mask']['tell_star_depthR_max'] = None
+    data_dic['DI']['mask']['tell_star_depthR_max_final'] = None
     
     
     #%%%% VALD cross-validation     
@@ -2852,7 +2874,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     ##################################################################################################
     #%%% Module: intrinsic CCF masks
-    #    - spectra must have been aligned in the star rest frame, converted into a 1D profile, and binned
+    #    - spectra must have been aligned in the star rest frame, converted into a 1D profile, and binned. 
     #    - the mask is built by default over all processed visits of an instrument, for consistency of the CCFs between visits
     ##################################################################################################
     
@@ -3010,13 +3032,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Fitting mode 
     #    - chi2 or MCMC
-    data_dic['Intr']['fit_mod']=''
+    data_dic['Intr']['fit_mod']='chi2'
     
     
     #%%%%% Printing fits results
     data_dic['Intr']['verbose'] = False  
     
     
+    #%%%%% Monitor MCMC
+    data_dic['Intr']['progress']= True
+    
+        
     #%%%%% Priors on variable properties
     #    - the width of the master disk-integrated profile can be used as upper limit
     data_dic['Intr']['line_fit_priors']={}
@@ -3156,6 +3182,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     glob_fit_dic['IntrProp']['verbose'] = False
+
+
+    #%%%%% Monitor MCMC
+    glob_fit_dic['IntrProp']['progress']= True
     
     
     #%%%%% Priors on variable properties
@@ -3530,6 +3560,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     glob_fit_dic['IntrProf']['verbose']= False
+
+    
+    #%%%%% Monitor MCMC
+    glob_fit_dic['IntrProf']['progress']= True
     
     
     #%%%%% Priors on variable properties
@@ -4050,6 +4084,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     data_dic['Atm']['verbose'] = False  
     
     
+    #%%%%% Monitor MCMC
+    data_dic['Atm']['progress']= True
+    
+        
     #%%%%% Priors on variable properties
     data_dic['Atm']['line_fit_priors']={}
 
@@ -4172,6 +4210,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     glob_fit_dic['AtmProp']['verbose'] = False
     
     
+    #%%%%% Monitor MCMC
+    glob_fit_dic['AtmProp']['progress']= True
+    
+        
     #%%%%% Priors on variable properties
     #    - see gen_dic['fit_DI'] for details
     glob_fit_dic['AtmProp']['priors']={} 
@@ -4317,6 +4359,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     glob_fit_dic['AtmProf']['verbose']= False
+
+    
+    #%%%%% Monitor MCMC
+    glob_fit_dic['AtmProf']['progress']= True
     
     
     #%%%%% Priors on variable properties

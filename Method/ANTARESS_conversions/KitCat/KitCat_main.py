@@ -35,7 +35,10 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     
     #Kernel smoothing length
     if (inst in mask_dic['kernel_smooth']):kernel_smooth = mask_dic['kernel_smooth'][inst]
-    else:kernel_smooth={'ESPRESSO':5}[inst]
+    else:
+        kernel_smooth={'ESPRESSO':5}
+        if inst not in kernel_smooth:stop('Add '+inst+' to "kernel_smooth" in KitCat_main.py')
+        kernel_smooth=kernel_smooth[inst]        
     
     #Kernel profile
     if fwhm_ccf<=15.:kernel_prof = 'savgol'
@@ -47,7 +50,9 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #Resampling master and telluric spectrum on oversampled regular grid
     if (inst in mask_dic['dw_reg']):dw_reg = mask_dic['dw_reg'][inst]    
     else:
-        dw_reg={'ESPRESSO':0.001}[inst]
+        dw_reg={'ESPRESSO':0.001}
+        if inst not in dw_reg:stop('Add '+inst+' to "dw_reg" in KitCat_main.py')
+        dw_reg=dw_reg[inst]           
     n_reg = int(np.ceil((edge_bins_mast[-1]-edge_bins_mast[0])/dw_reg))
     if n_reg<len(cen_bins_mast)*5:print('         WARNING: oversampling lower than 5')
     edge_bins_reg = np.linspace(edge_bins_mast[0],edge_bins_mast[-1],n_reg)
@@ -66,14 +71,17 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     if mask_dic['verbose']:print('           Finding extrema')
 
     #Vicinity window for the local extrema algorithm
-    #    - in pixels of the oversampled regular grid
+    #    - vicinity_fwhm in fraction of the FWHM
+    #      vicinity_reg in pixels of the oversampled regular grid
     if (inst in mask_dic['vicinity_fwhm']):vicinity_fwhm = mask_dic['vicinity_fwhm'][inst]    
     else:
-        vicinity_fwhm={'ESPRESSO':20.}[inst]      
+        vicinity_fwhm={'ESPRESSO':20.}
+        if inst not in vicinity_fwhm:stop('Add '+inst+' to "vicinity_fwhm" in KitCat_main.py')
+        vicinity_fwhm=vicinity_fwhm[inst]              
     vicinity_rv = fwhm_ccf/vicinity_fwhm
     vicinity_spec = vicinity_rv*cen_bins_reg/c_light
     vicinity_reg = int(np.min(vicinity_spec/dw_reg))
-    if vicinity_reg<5:stop('Vicinity window ='+str(vicinity_reg)+' < 5 pixels: decrease "vicinity_fwhm"')
+    if vicinity_reg<5:stop('Vicinity window = '+str(vicinity_fwhm)+' x FWHM = '+str(vicinity_reg)+' pixels < 5 pixels: decrease "vicinity_fwhm"')
 
     #Minima
     index_minima, f_minima = myf.local_max(-flux_norm_reg,vicinity_reg)
@@ -1030,7 +1038,7 @@ def RV_LBL(idx_RV_disp_sel,Niter,win_size,nlines,data_vis_paths,cont_func_dic,w_
     
         #Continuum-normalisation
         wav_exp  = data_exp['cen_bins'][0]
-        cont_exp= 1./cont_func_dic[0](wav_exp)
+        cont_exp= 1./cont_func_dic(wav_exp)
         flux_exp_norm,cov_exp_norm = bind.mul_array(data_exp['flux'][0],data_exp['cov'][0],cont_exp)
         err_exp_norm = np.sqrt(cov_exp_norm[0])
     

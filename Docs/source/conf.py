@@ -28,7 +28,7 @@ else:
 
 # -- Project information -----------------------------------------------------
 project = 'ANTARESS'
-copyright = '2023, Université de Genève'
+copyright = '2023-2024, V. Bourrier'
 author = 'V. Bourrier & contributors'
 
 # -- General configuration ---------------------------------------------------

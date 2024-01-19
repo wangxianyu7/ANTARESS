@@ -74,7 +74,7 @@ def calc_Kstar(params,star_params):
     .. math:: 
        K_\mathrm{prim} = (2 \pi G/P)^{1/3} M_\mathrm{sec} \sin(i_p) ((M_\mathrm{sec}+M_\mathrm{prim})^{1/3} / M_\mathrm{prim}) /\sqrt{1-e^2}
     
-    With `K_\mathrm{prim}` in km/s, `G` in :math:`m^3 kg^{-1} s^{-2}`, `P` in s, :math:`M_\mathrm{prim}` and :math:`M_\mathrm{sec}` in kg. Thus    
+    With :math:`K_\mathrm{prim}` in km/s, `G` in :math:`m^3 kg^{-1} s^{-2}`, `P` in s, :math:`M_\mathrm{prim}` and :math:`M_\mathrm{sec}` in kg. Thus    
 
     .. math:: 
        K_\mathrm{prim} &= (212.91918458020422/P_\mathrm{days}^{1/3}) M_\mathrm{sec} \sin(i_p) ((M_\mathrm{sec}+M_\mathrm{prim})^{1/3}/M_\mathrm{prim}) / \sqrt{1-e^2}   \\
@@ -86,13 +86,13 @@ def calc_Kstar(params,star_params):
     .. math::     
        K_{\star} \sim (2 \pi G/P)^{1/3} (M_p \sin(i_p)/M_{\star}^{2/3}) /\sqrt{1-e^2}
 
-    With `K_{\star}` in km/s, `G` in :math:`m^3 kg^{-1} s^{-2}`, `P` in s, :math:`M_p` and :math:`M_{\star}` in kg. Or
+    With :math:`K_{\star}` in km/s, `G` in :math:`m^3 kg^{-1} s^{-2}`, `P` in s, :math:`M_p` and :math:`M_{\star}` in kg. Or
     
     .. math:: 
        K_{\star} &= (0.20323137323712528/P_\mathrm{days}^{1/3}) (M_p \sin(i_p)/M_{\star}^{2/3}) /\sqrt{1-e^2} \\
        &\mathrm{where\,} [ (2 \pi 6.67300\times10^{-11})^{1/3} 1.8986000\times10^{27}]/[(24 \times 3600)^{1/3} (1.9891001\times10^{30})^{2/3}]/1000 = 0.20323137    
 
-    With :math:`P_\mathrm{days}` in days,:math:`M_p` and :math:`M_{\star}` in :math:`M_\mathrm{Sun}`. Or
+    With :math:`P_\mathrm{days}` in days, :math:`M_p` and :math:`M_{\star}` in :math:`M_\mathrm{Sun}`. Or
 
     .. math:: 
        K_{\star} = (0.02843112300449059/P_\mathrm{years}^{1/3}) (M_p \sin(i_p)/M_{\star}^{2/3}) /\sqrt{1-e^2}
@@ -586,7 +586,7 @@ def calc_pl_coord_plots(n_pts_orbit,pl_params):
         ph_plot=np.arange(n_pts_orbit+1.)/n_pts_orbit
         X0_plot= aRs*np.cos(2.*np.pi*ph_plot)
         Y0_plot= aRs*np.sin(2.*np.pi*ph_plot)
-        coord_orbit=[Y0_plot,                     #Xsky
+        coord_orbit=[Y0_plot,              #Xsky
                      -X0_plot*c_ip,        #Ysky 
                       X0_plot*s_ip]        #Zsky   
   
@@ -852,7 +852,7 @@ def calc_tr_contacts(RpRs,pl_params,stend_ph,star_params):
 
         #Frame conversion of planet coordinates from the classical frame perpendicular to the LOS, to the 'inclined star' frame
         idx_front = np_where1D(zp>0)
-        xp_st_sk,yp_st_sk,_=frameconv_LOS_to_InclinedStar(pl_params['lambda_rad'],xp[idx_front],yp[idx_front],None)              
+        xp_st_sk,yp_st_sk,_=frameconv_skyorb_to_skystar(pl_params['lambda_rad'],xp[idx_front],yp[idx_front],None)              
 
         #Number of planet limb points within the projected stellar photosphere
         nlimb = 501
@@ -937,14 +937,14 @@ def eclipse_status(Dprojp_all,RpRs,lambda_rad,star_params,xp_sk_all,yp_sk_all,zp
         nlimb = 501
         if exact_pos:
             nexp = len(xp_sk_all)
-            x_st_sky_all,y_st_sky_all,_=frameconv_LOS_to_InclinedStar(lambda_rad,xp_sk_all,yp_sk_all,None) 
+            x_st_sky_all,y_st_sky_all,_=frameconv_skyorb_to_skystar(lambda_rad,xp_sk_all,yp_sk_all,None) 
             nlimb_in_ph = np.array([ pl_limb_in_oblate_star(nlimb,RpRs,[x_st_sky],[y_st_sky],star_params)[0] for x_st_sky,y_st_sky in zip(x_st_sky_all,y_st_sky_all) ])   
         else:
             nexp = len(xp_sk_all[0])
 
             #Frame conversion of planet coordinates from the classical frame perpendicular to the LOS, to the 'inclined star' frame
-            start_x_st_sky_all,start_y_st_sky_all,_=frameconv_LOS_to_InclinedStar(lambda_rad,xp_sk_all[0],yp_sk_all[0],None)           
-            end_x_st_sky_all,end_y_st_sky_all,_=frameconv_LOS_to_InclinedStar(lambda_rad,xp_sk_all[2],yp_sk_all[2],None) 
+            start_x_st_sky_all,start_y_st_sky_all,_=frameconv_skyorb_to_skystar(lambda_rad,xp_sk_all[0],yp_sk_all[0],None)           
+            end_x_st_sky_all,end_y_st_sky_all,_=frameconv_skyorb_to_skystar(lambda_rad,xp_sk_all[2],yp_sk_all[2],None) 
     
             #Number of planet limb points within the projected stellar photosphere
             nlimb_in_ph = np.zeros(nexp,dtype=float)
@@ -1035,12 +1035,12 @@ def pl_limb_in_oblate_star(nlimb,RpRs,xp_st_sk,yp_st_sk,star_params):
 #%% Frame change
 ################################################################################################## 
 
-def frameconv_LOS_to_InclinedStar(lambd,xin,yin,zin):
-    r"""**Frame: LOS to Inclined star**
+def frameconv_skyorb_to_skystar(lambd,xin,yin,zin):
+    r"""**Frame: sky-projected, orbital to stellar.**
 
-    Converts coordinates from the classical frame perpendicular to the LOS, to the sky-projected (inclined) stellar frame.
-    Frame is rotated around the `Z_\mathrm{LOS}` axis (the LOS, which remains unchanged), by angle :math:`\lambda` counted :math:`>0` counted counterclockwise
-    from the :math:`X_\mathrm{sky,star}` to the :math:`X_\mathrm{LOS}` axis, or from the :math:`Y_\mathrm{sky,star}` to the :math:`Y_\mathrm{LOS}` axis, in the :math:`XY_\mathrm{LOS}` plane.
+    Converts coordinates from the classical sky-projected orbital frame, to the sky-projected (inclined) stellar frame.
+    Frame is rotated around the :math:`Z_\mathrm{LOS}` axis (the LOS, which remains unchanged), by angle :math:`\lambda` counted :math:`>0` counterclockwise
+    from the :math:`X_\mathrm{sky,star}` to the :math:`X_\mathrm{sky}` axis, or from the :math:`Y_\mathrm{sky,star}` to the :math:`Y_\mathrm{sky}` axis, in the :math:`XY_\mathrm{sky}` plane.
 
     .. math:: 
        X_\mathrm{sky,star} &= \mathrm{sky-projected \, stellar \, equator}  \\
@@ -1059,10 +1059,10 @@ def frameconv_LOS_to_InclinedStar(lambd,xin,yin,zin):
     zout=deepcopy(zin)
     return xout,yout,zout
 
-def frameconv_InclinedStar_to_LOS(lambd,xin,yin,zin):
-    r"""**Frame: Inclined star to LOS**
+def frameconv_skystar_to_skyorb(lambd,xin,yin,zin):
+    r"""**Frame: sky-projected, stellar to orbital.**
 
-    Converts coordinates from the sky-projected (inclined) stellar frame to the classical frame perpendicular to the LOS.
+    Converts coordinates from the sky-projected (inclined) stellar frame to the classical sky-projected orbital frame.
 
     Args:
         TBD
@@ -1078,17 +1078,17 @@ def frameconv_InclinedStar_to_LOS(lambd,xin,yin,zin):
 
 
 
-def frameconv_InclinedStar_to_Star(xin,yin,zin,istar):
-    r"""**Frame: Inclined star to star**
+def frameconv_skystar_to_star(xin,yin,zin,istar):
+    r"""**Frame: sky-projected stellar to stellar.**
 
-    Converts coordinates from the sky-projected (inclined) stellar frame to the star frame
-    Frame is rotated around the `X_\mathrm{sky,star}` axis (which remains unchanged), by angle :math:`i_{\star}` counted :math:`>0` counted counterclockwise
-    from the :math:`Y_\mathrm{sky,star}` to the :math:`Y_\star` axis, or from the :math:`Z_\mathrm{sky,star}` to the :math:`Z_\star` axis, in the :math:`YZ_\mathrm{sky,star}` plane.
+    Converts coordinates from the sky-projected (inclined) stellar frame to the star frame. 
+    Frame is rotated around the :math:`X_\mathrm{sky,star}` axis (which remains unchanged), by angle :math:`i_{\star}` counted :math:`>0` counted counterclockwise
+    from the :math:`Z_\mathrm{sky,star}` to the :math:`Y_\star` axis in the :math:`YZ_\mathrm{sky,star}` plane.
 
     .. math:: 
-       X_\mathrm{star} &= \mathrm{complements \, frame}  \\
+       X_\mathrm{star} &= \mathrm{star \,equator} \\
        Y_\mathrm{star} &= \mathrm{star \, spin} \\
-       Z_\mathrm{star} &= \mathrm{star \,equator}
+       Z_\mathrm{star} &= \mathrm{complements \, frame}  
 
     Args:
         TBD
@@ -1102,8 +1102,8 @@ def frameconv_InclinedStar_to_Star(xin,yin,zin,istar):
     zout=-np.cos(istar)*yin + np.sin(istar)*zin   
     return xout,yout,zout
 
-def frameconv_Star_to_InclinedStar(xin,yin,zin,istar):
-    r"""**Frame: star to inclined star**
+def frameconv_star_to_skystar(xin,yin,zin,istar):
+    r"""**Frame: stellar to  sky-projected stellar.**
 
     Converts coordinates from the star frame to the sky-projected (inclined) stellar frame.
 

@@ -450,12 +450,18 @@ def poly_prop_calc(param,fit_coord_grid,coeff_ord2name_polpar, pol_mode):
 #%%% Model line analysis
 ##################################################################################################
 
-'''
-Bissector calculation
-    - for a line profile provided in RV space as input
-'''
 def calc_biss(Fnorm_in,RV_tab_in,RV_min,max_rv_range,dF_grid,resamp_mode,Cspan):
-
+    r"""**Bissector.**
+    
+    Calculates bissector for a line profile provided in RV space as input.
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+        
+    """ 
     #Reduction to maximum range    
     cond_range = (RV_tab_in>max_rv_range[0]) & (RV_tab_in<max_rv_range[-1])
     Fnorm = Fnorm_in[cond_range]
@@ -516,26 +522,49 @@ def calc_biss(Fnorm_in,RV_tab_in,RV_min,max_rv_range,dF_grid,resamp_mode,Cspan):
 
 
 
-
-
-'''
-Function returning the measured FWHM and contrast of intrinsic stellar profiles with gaussian shape
-    - if the intrinsic line is a gaussian, its FWHM is sqrt( FWHM_intr^2 + FWHM_instr^2 )
-      the area of the convolution is also equal to the product of the area of the two convolved profiles, providing an analytical value for the contrast of the convolved profile:
- + gaussian kernel : fkern(rv) = (1/( sqrt(2*pi)*sig_k ))*exp( -rv^2 / (2*sig_k^2) ) 
-                     sig_k  = FWHM_inst/( 2.*np.sqrt(2*np.log(2.)) )
- + profile : fprof(rv) = A*(1/( sqrt(2*pi)*sig_p ))*exp( -rv^2 / (2*sig_p^2) )    
-                     sig_p  = FWHM_exp/( 2.*np.sqrt(2*np.log(2.)) )
-                     A = ctrst_exp*sqrt(pi)*FWHM_exp/( 2.*np.sqrt(np.log(2.)) )
- + amplitude of the convolution profile: A/sqrt(2*pi*( sig_k^2 + sig_p^2 ))
-                                       = ctrst_exp*sqrt(pi)*FWHM_exp/(  2.*np.sqrt(np.log(2.)) * sqrt(2*pi*( sig_k^2 + sig_p^2 ))  )
-                                       = ctrst_exp*FWHM_exp/(  2.*np.sqrt(2*np.log(2.)) * sqrt(sig_k^2 + sig_p^2 )  )
- sig_k^2 + sig_p^2 = (FWHM_inst^2 + FWHM_exp^2) /( 2.*np.sqrt(2*np.log(2.)) )^2
-                                       = ctrst_exp*FWHM_exp/( sqrt(FWHM_inst^2 + FWHM_exp^2)  )
-    - this is only valid for analytical profiles
-      for numerical profiles, the model is the sum of intrinsic profiles over the planet-occulted surface and may be further broadened by the local surface rv field                            
-'''
 def gauss_intr_prop(ctrst_intr,FWHM_intr,FWHM_inst):
+    r"""**Intrinsic > Measured Gaussian properties.**
+    
+    Estimates the FWHM and contrast of a measured-like Gaussian profile, defined as the convolution of a Gaussian intrinsic model profile and a Gaussian instrumental response.
+
+    The FWHM can be expressed as
+    
+    .. math:: 
+        \mathrm{FWHM} &= \sqrt{\mathrm{FWHM}_\mathrm{intr}^2 + \mathrm{FWHM}_\mathrm{inst}^2 } \\
+        \mathrm{with}\,\sigma &= \frac{\mathrm{FWHM}}{2 \sqrt{\ln{2}}} = \sqrt{\sigma_\mathrm{intr}^2 + \sigma_\mathrm{inst}^2 }
+        
+    The area of the measured convolution profile is equal to the product of the area of the intrinsic and instrumental convolved profiles, providing an analytical expression for the contrast.  
+    The instrumental kernel, with area = 1, is expressed as
+
+    .. math::     
+        f_\mathrm{kern}(rv) &= \frac{1}{\sqrt{2 \pi} \sigma_\mathrm{inst} } \exp^{ -\frac{rv^2}{2 \sigma_\mathrm{inst}^2} } \\
+        \mathrm{where}\,\sigma_\mathrm{inst} &= \frac{\mathrm{FWHM}_\mathrm{inst}}{ 2 \sqrt{2 \log{2}} }
+            
+    The intrinsic profile, with area = :math:`\mathrm{A}_\mathrm{intr}`, is expressed as
+    
+    .. math::     
+        f_\mathrm{intr}(rv) &= \frac{\mathrm{A}_\mathrm{intr}}{\sqrt{2 \pi} \sigma_\mathrm{intr} } \exp^{ -\frac{rv^2}{2 \sigma_\mathrm{intr}^2} } \\
+        \mathrm{where}\,\sigma_\mathrm{intr} &= \frac{\mathrm{FWHM}_\mathrm{intr}}{ 2 \sqrt{2 \ln{2}} }    
+    
+    The contrast `C` of the measured profile relates to its area `A` as
+    
+    .. math::     
+        C &= \frac{A}{\sqrt{2 \pi} \sigma }  \\
+          &= \frac{1 \times \mathrm{A}_\mathrm{intr} }{ \sqrt{2 \pi (\sigma_\mathrm{intr}^2 + \sigma_\mathrm{inst}^2 ) }}  \\
+          &= \frac{\mathrm{C}_\mathrm{intr} \sqrt{2 \pi} \sigma_\mathrm{intr} }{\sqrt{2 \pi (\sigma_\mathrm{intr}^2 + \sigma_\mathrm{inst}^2 ) }}   \\        
+          &= \frac{\mathrm{C}_\mathrm{intr} \sigma_\mathrm{intr} }{\sqrt{\sigma_\mathrm{intr}^2 + \sigma_\mathrm{inst}^2}}   \\          
+          &= \frac{\mathrm{C}_\mathrm{intr} \mathrm{FWHM}_\mathrm{intr} }{\sqrt{\mathrm{FWHM}_\mathrm{intr}^2 + \mathrm{FWHM}_\mathrm{inst}^2}}    
+                                     
+    This is only valid for analytical profiles. For numerical profiles, the model is the sum of intrinsic profiles over the planet-occulted surface that may have non-Gaussian shape, and which
+    are further broadened by the local surface `rv` field. In that case, use `cust_mod_true_prop()`. 
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+        
+    """ 
     FWHM_meas = np.sqrt(FWHM_intr**2. + FWHM_inst**2.) 
     ctrst_meas = ctrst_intr*FWHM_intr/FWHM_meas
     return ctrst_meas,FWHM_meas
@@ -546,17 +575,24 @@ def gauss_intr_prop(ctrst_intr,FWHM_intr,FWHM_inst):
 
 
 
-
-'''
-Function returning the measured FWHM and contrast of stellar profiles with custom shape
-    - we return the 'true' contrast and FWM on the measured-like model
-    - we calculate the model on a HR table 
-    - we calculate with the derived model the contrast counted from the estimated continuum (
- + for double-gaussian profiles, the peaks of the lobes are the closest estimate to the true stellar continuum
-    - we calculate the FWHM by finding the points on the blue side at half-maximum, and on the red side
-'''
 def cust_mod_true_prop(param,velccf_HR,args):
-
+    r"""**Intrinsic > Measured line properties.**
+    
+    Estimates the FWHM and contrast of a measured-like line profile with custom shape.
+    This is done numerically, calculating the model profile at high resolution.
+    
+    Contrast is counted from the estimated continuum.
+    For double-gaussian profiles, the peaks of the lobes are considered as the closest estimate to the true stellar continuum.
+    
+    FWHM is calculated by finding the points on the blue side at half-maximum, and on the red side.
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+        
+    """ 
     #HR model
     CCF_HR_intr = args['fit_func_gen'](param,velccf_HR,args=args)[0]
     
@@ -590,6 +626,17 @@ def cust_mod_true_prop(param,velccf_HR,args):
     return true_ctrst,true_FWHM,true_amp    
 
 def proc_cust_mod_true_prop(merged_chain_proc,args,param_loc):
+    r"""**Wrap-up of cust_mod_true_prop().**
+    
+    Estimates the FWHM and contrast of a measured-like line profile with custom shape, for a sample of properties.
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+        
+    """     
     nsamp=len(merged_chain_proc[:,0])    
     param_proc = deepcopy(param_loc)
     chain_loc_proc=np.empty([3,0],dtype=float) 
@@ -599,7 +646,20 @@ def proc_cust_mod_true_prop(merged_chain_proc,args,param_loc):
         chain_loc_proc=np.append(chain_loc_proc,[[true_ctrst_step],[true_FWHM_step],[true_amp_step]],axis=1) 
     return chain_loc_proc
     
-def para_cust_mod_true_prop(func_input,nthreads,n_elem,y_inputs,common_args):   
+def para_cust_mod_true_prop(func_input,nthreads,n_elem,y_inputs,common_args):  
+    r"""**Multithreading routine for proc_cust_mod_true_prop().**
+
+    Args:
+        func_input (function): multi-threaded function
+        nthreads (int): number of threads
+        n_elem (int): number of elements to thread
+        y_inputs (list): threadable function inputs 
+        common_args (tuple): common function inputs
+    
+    Returns:
+        y_output (None or specific to func_input): function outputs 
+    
+    """        
     pool_proc = Pool(processes=nthreads)   #cannot be passed through lmfit
     ind_chunk_list=init_parallel_func(nthreads,n_elem)
     chunked_args=[(y_inputs[0][ind_chunk[0]:ind_chunk[1],:],)+common_args for ind_chunk in ind_chunk_list]	

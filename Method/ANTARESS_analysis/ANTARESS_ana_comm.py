@@ -10,7 +10,7 @@ from minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_
 from constant_data import Rsun,c_light
 import bindensity as bind
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff
-from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_prop,up_plocc_prop
+from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
 from ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,custom_DI_prof,theo_intr2loc
 from ANTARESS_analysis.ANTARESS_model_prof import para_cust_mod_true_prop,proc_cust_mod_true_prop,cust_mod_true_prop,gauss_intr_prop,calc_biss,\
     dgauss,gauss_poly,voigt,gauss_herm_lin,gen_fit_prof
@@ -18,6 +18,10 @@ from ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,def_st_prof_tab,cond_conv_st_prof_tab,resamp_st_prof_tab,get_FWHM_inst
 from ANTARESS_grids.ANTARESS_coord import excl_plrange
 
+
+##################################################################################################    
+#%%% Definition functions
+################################################################################################## 
 
 def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
     r"""**Parameter formatting**
@@ -33,7 +37,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
     """
     
     #Parameters are used for fitting   
-    if isinstance(p_start,lmfit.parameter.Parameters):fit_used=True
+    if isinstance(p_start,lmfit.parameter.Parameters) and (fit_dic['fit_mod']!=''):fit_used=True
     else:fit_used=False
 
     #Process default / additional parameters
@@ -109,7 +113,8 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
 
                 #Change guess value if beyond prior range
                 if ((p_start[par].value<fixed_args['varpar_priors'][par]['low']) or (p_start[par].value>fixed_args['varpar_priors'][par]['high'])):p_start[par].value=0.5*(fixed_args['varpar_priors'][par]['low']+fixed_args['varpar_priors'][par]['high'])
-
+                if (fit_dic['uf_bd'][par][0]<fixed_args['varpar_priors'][par]['low']):fit_dic['uf_bd'][par][0]=fixed_args['varpar_priors'][par]['low']
+                if (fit_dic['uf_bd'][par][1]>fixed_args['varpar_priors'][par]['high']):fit_dic['uf_bd'][par][1]=fixed_args['varpar_priors'][par]['high']
 
     #---------------------------------------------------
 
@@ -263,7 +268,9 @@ def model_par_names():
 
 
 
-
+##################################################################################################    
+#%%% Initialization functions
+################################################################################################## 
 
 def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic):
     r"""**Joined fits: general initialization.**
@@ -423,7 +430,9 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
 
 
 
-
+##################################################################################################    
+#%%% Analysis functions
+################################################################################################## 
 
 def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic):
     r"""**Wrap-up for time-series fits.**
@@ -467,7 +476,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     # + c1, c2 and c3 : coefficients of the mu-dependent CB velocity polynomial (km/s) 
     # + aRs, inclin_rad: in some cases these properties can be better constrained by the fit to the local RVs
     #                    since they control the orbital trajectory of the planet, fitting these parameters will make the code recalculate the coordinates of the planet-occulted regions    
-    #      for more details see calc_plocc_prop()  
+    #      for more details see calc_plocc_spot_prop()  
     #    - parameters specific to a given planet should be defined as 'parname__plX', where X is the name of the planet used throughout the pipeline
     #    - the model uses the nominal RpRs and LD coefficients, which must be suited to the spectral band from which the local stellar properties were derived
     #------------------------------------------------------------
@@ -497,7 +506,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
 
     #Initializing stellar profiles
     if rout_mode!='IntrProp':
-        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],theo_dic,fixed_args['system_param']['star'],p_start)
+        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,fixed_args['system_param']['star'],p_start)
     else:
         fixed_args['grid_dic'] = deepcopy(theo_dic)
         fixed_args['grid_dic']['precision'] = 'low'      #to calculate intensity-weighted properties
@@ -956,7 +965,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             if 'orig' in data_type:
                 fit_dic['n_exp'] = data_inst[vis]['n_in_tr']
                 iexp_def = prop_dic[inst][vis]['idx_def'] 
-
+                
             #Binned profiles
             elif 'bin' in data_type:iexp_def = range(fit_dic['n_exp'])
 
@@ -1041,11 +1050,13 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             idx_range_kept = np.arange(nspec,dtype=int)
     
         #Preparation
+        cond_def_exp = np.zeros(fit_dic['n_exp'],dtype=bool)
         fit_dic['cond_def_cont_all']= np.zeros([fit_dic['n_exp'],nspec],dtype=bool)
         fit_dic['cond_def_fit_all']=np.zeros([fit_dic['n_exp'],nspec],dtype=bool)
         fit_dic['idx_excl_bd_ranges']={}
         data_fit = {}
         for isub,iexp in enumerate(iexp_def):
+            cond_def_exp[isub] = True
             
             #Upload profile               
             if bin_mode=='':     data_fit_loc = dataload_npz(data_inst[vis]['proc_'+data_type_gen+'_data_paths']+str(iexp))
@@ -1057,7 +1068,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             data_fit[isub]['edge_bins'] = np.append(data_fit_loc['edge_bins'][iord_sel,idx_range_kept],data_fit_loc['edge_bins'][iord_sel,idx_range_kept[-1]+1]) 
             data_fit[isub]['dcen_bins'] = data_fit[isub]['edge_bins'][1::] - data_fit[isub]['edge_bins'][0:-1]          
             data_fit[isub]['cov'] = data_fit_loc['cov'][iord_sel][:,idx_range_kept]
-           
+            
             #Initializing ranges in the relevant rest frame
             if len(cont_range)==0:fit_dic['cond_def_cont_all'][isub] = True    
             else:
@@ -1065,11 +1076,11 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             if len(fit_range)==0:fit_dic['cond_def_fit_all'][isub] = True    
             else:
                 for bd_int in fit_range:fit_dic['cond_def_fit_all'][isub] |= (data_fit[isub]['edge_bins'][0:-1]>=bd_int[0]) & (data_fit[isub]['edge_bins'][1:]<=bd_int[1])        
-            
+
             #Accounting for undefined pixels
             fit_dic['cond_def_cont_all'][isub] &= data_fit[isub]['cond_def']            
             fit_dic['cond_def_fit_all'][isub] &= data_fit[isub]['cond_def']   
-            
+
             #Exclusion of planetary ranges
             #    - not required for intrinsic profiles if already applied to their definition, and if not already applied contamination is either negligible or neglected
             #    - not required for binned disk-integrated profiles, as planetary ranges can be excluded from their construction
@@ -1092,7 +1103,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
        
         #Continuum common to all processed profiles
         #    - collapsed along temporal axis
-        cond_cont_com  = np.all(fit_dic['cond_def_cont_all'],axis=0)
+        cond_cont_com  = np.all(fit_dic['cond_def_cont_all'][cond_def_exp],axis=0)
         if np.sum(cond_cont_com)==0.:stop('No pixels in common continuum')   
 
         #Common continuum flux in fitted intrinsic profiles
@@ -1102,11 +1113,11 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
         if (data_type_gen=='Intr'):
             cont_intr = np.zeros(fit_dic['n_exp'])*np.nan
             wcont_intr = np.zeros(fit_dic['n_exp'])*np.nan
-            for isub in range(fit_dic['n_exp']): 
+            for isub,iexp in enumerate(iexp_def):
                 dw_sum = np.sum(data_fit[isub]['dcen_bins'][cond_cont_com])
                 cont_intr[isub] = np.sum(data_fit[isub]['flux'][cond_cont_com]*data_fit[isub]['dcen_bins'][cond_cont_com])/dw_sum
                 wcont_intr[isub] = dw_sum**2./np.sum(data_fit[isub]['cov'][0,cond_cont_com]*data_fit[isub]['dcen_bins'][cond_cont_com]**2.)
-            flux_cont=np.sum(cont_intr*wcont_intr)/np.sum(wcont_intr)
+            flux_cont=np.nansum(cont_intr*wcont_intr)/np.nansum(wcont_intr)
             
         #------------------------------------------------------------------------------------------
 
@@ -1192,7 +1203,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             fit_properties.update({'iexp':iexp,'flux_cont':flux_cont})
             fit_dic[iexp]=single_anaprof(isub,iexp,inst,data_dic,vis_det,prop_dic,gen_dic,prop_dic['verbose'],fit_dic['cond_def_fit_all'][isub],fit_dic['cond_def_cont_all'][isub] ,data_type_gen,data_fit[isub]['edge_bins'],data_fit[isub]['cen_bins'],data_fit[isub]['flux'],cov_exp,
                                         idx_force_det,theo_dic,star_param,fit_properties,prop_dic['line_fit_priors'],prop_dic['model'][inst],prop_dic['mod_prop'],data_mode)
-
+            
             #-------------------------------------------------
 
             #Detection flag
@@ -1225,17 +1236,30 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             fit_dic[iexp]['rv_res']=fit_dic[iexp]['rv']-fit_dic[iexp]['RVmod']
             fit_dic[iexp]['err_rv_res']=fit_dic[iexp]['err_rv']
 
-        #Printing out measured systemic velocity (rv(CDM/sun) in km/s)
+        #Systemic rv from master (rv(CDM/sun) in km/s)
         #    - for CCFs, the disk-integrated master is centered in the CDM rest frame, hence its fit returns the systemic velocity         
         #      we assume the master is defined well enough that the uncertainty on the velocity v(CDM/sun) is negligible
-        if (data_type=='DIbin') and (fit_dic['n_exp']==1):
+        if (data_type=='DIbin') and ((vis_mode=='multivis') or (fit_dic['n_exp']==1)):
             rv_sys,erv_sys=0.,0.
             for iexp in iexp_def:
                 rv_sys+=fit_dic[iexp]['rv']
                 erv_sys+=np.mean(fit_dic[iexp]['err_rv'])**2.
             rv_sys/=fit_dic['n_exp']
             erv_sys = np.sqrt(erv_sys)/fit_dic['n_exp']
-            print('         Measured systemic velocity =',"{0:.6f}".format(rv_sys),'+-',"{0:.6e}".format(erv_sys),'km/s')
+            print('         Systemic rv from master profile =',"{0:.6f}".format(rv_sys),'+-',"{0:.6e}".format(erv_sys),'km/s')
+        
+        #Systemic rv from time-series
+        elif data_type=='DIorig':
+            rv_res_out = []
+            erv_res_out = []
+            for iexp in gen_dic[inst][vis]['idx_out']:
+                rv_res_out+=[fit_dic[iexp]['rv_res']]
+                erv_res_out+=[np.mean(fit_dic[iexp]['err_rv_res'])]
+            weights = 1./np.array(erv_res_out)**2.
+            rv_sys = np.sum(np.array(rv_res_out)*weights)/np.sum(weights)
+            erv_sys = 1./np.sqrt(np.sum(weights))
+            print('         Systemic rv from time-series =',"{0:.6f}".format(rv_sys),'+-',"{0:.6e}".format(erv_sys),'km/s')
+
 
         #Saving data
         fit_dic['cont_range'] = cont_range
@@ -1291,7 +1315,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     fixed_args['x_val']=cen_bins[idx_mod]
     fixed_args['y_val']=flux_loc[idx_mod]
     fixed_args['cov_val'] = cov_loc[:,idx_mod]
-
+    
     #Activation of spectral conversion and resampling 
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_type)
 
@@ -1564,7 +1588,6 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
             theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],fixed_args['args_exp'],fixed_args['args_exp']['ncen_bins'],fixed_args['grid_dic']['nsub_star'])         
         
     #Fit initialization
-    fit_prop_dic['progress'] = True
     fit_dic['save_dir'] = fixed_args['save_dir']+'iexp'+str(fixed_args['iexp'])+'/'
     init_fit(fit_dic,fixed_args,p_start,model_par_names(),fit_prop_dic)  
 
@@ -1968,9 +1991,9 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
        
         #Process
         p_final=postMCMCwrapper_2(fit_dic,fixed_args,merged_chain)
-
+       
     #Storing best-fit values and selected uncertainties in output dictionary
-    for key in ['cont','rv','FWHM','amp','ctrst','area','FWHM_LOR','a_damp','FWHM_voigt','rv_l2c','amp_l2c','FWHM_l2c','cont_amp','RV_lobe','amp_lobe','FWHM_lobe','true_amp','true_ctrst','true_FWHM','FWHM','veq','cos_istar','vsini','ctrst_ord0__IS__VS_','FWHM_ord0__IS__VS_']:
+    for key in ['cont','rv','FWHM','amp','ctrst','area','FWHM_LOR','a_damp','FWHM_voigt','rv_l2c','amp_l2c','FWHM_l2c','cont_amp','RV_lobe','amp_lobe','FWHM_lobe','true_amp','true_ctrst','true_FWHM','veq','cos_istar','vsini','ctrst_ord0__IS__VS_','FWHM_ord0__IS__VS_']:
         
         if key in p_final:
             output_prop_dic[key]  = p_final[key]  
@@ -1988,10 +2011,10 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                     output_prop_dic['err_'+key]= np.array([p_final[key]-fit_dic['HDI_interv'][ipar][0][0],fit_dic['HDI_interv'][ipar][-1][1]-p_final[key]])           
                 
             else:output_prop_dic['err_'+key]=[0.,0.]        
-
+            
     #Save derived parameters
     save_fit_results('derived',fixed_args,fit_dic,fit_dic['fit_mod'],p_final)
-
+  
     #Close save file
     fit_dic['file_save'].close()
 
@@ -2105,9 +2128,9 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
 
 
 
-'''
-Wrap-up for definition of complex prior functions for MCMC runs
-'''
+##################################################################################################    
+#%%% Prior functions
+################################################################################################## 
 
 def prior_sini_geom(p_step_loc,fixed_args,prior_func_prop):
     r"""**Prior: sin(istar)**
@@ -2278,7 +2301,7 @@ def prior_contrast(p_step_loc,args_in,prior_func_prop):
             args['vis']=vis
             pl_vis = args['transit_pl'][inst][vis][0]
             system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,[args['coord_line']],args,p_step_loc,[pl_vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
-            surf_prop_dic = sub_calc_plocc_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_pl_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
+            surf_prop_dic,spot_prop_dic = sub_calc_plocc_spot_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_pl_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
             ctrst_vis = surf_prop_dic[pl_vis]['ctrst'][0]       
             break_cond = (ctrst_vis<0.) | (ctrst_vis>1.)
             if True in break_cond:
@@ -2360,7 +2383,9 @@ def global_ln_prior_func(p_step_loc,fixed_args):
 
 
 
-
+##################################################################################################    
+#%%% Post-processing 
+################################################################################################## 
 
 def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic):
     r"""**Wrap-up for post-processing of time-series fits.**

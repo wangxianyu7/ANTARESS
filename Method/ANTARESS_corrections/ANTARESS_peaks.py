@@ -4,7 +4,7 @@ from copy import deepcopy
 from PyAstronomy import pyasl
 import bindensity as bind
 from pathos.multiprocessing import Pool
-from ANTARESS_routines.ANTARESS_sp_cont import calc_spectral_cont
+from ANTARESS_conversions.ANTARESS_sp_cont import calc_spectral_cont
 
 def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
     r"""**Main cosmics correction routine.**    

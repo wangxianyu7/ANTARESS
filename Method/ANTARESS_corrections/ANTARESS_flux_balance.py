@@ -6,7 +6,7 @@ import bindensity as bind
 from scipy.interpolate import UnivariateSpline
 from constant_data import c_light
 from scipy import stats
-from ANTARESS_routines.ANTARESS_binning import sub_calc_bins,sub_def_bins
+from ANTARESS_conversions.ANTARESS_binning import sub_calc_bins,sub_def_bins
 
 
 def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):

@@ -8,8 +8,8 @@ import scipy.linalg
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from ANTARESS_analysis.ANTARESS_ana_comm import init_joined_routines,init_joined_routines_inst,init_joined_routines_vis,init_joined_routines_vis_fit,com_joint_fits,com_joint_postproc
-from ANTARESS_routines.ANTARESS_binning import calc_bin_prof
-from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_prop,up_plocc_prop
+from ANTARESS_conversions.ANTARESS_binning import calc_bin_prof
+from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
 from ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,init_custom_DI_prof,custom_DI_prof
 from ANTARESS_grids.ANTARESS_spots import compute_deviation_profile
 from ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,get_FWHM_inst,resamp_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab
@@ -196,7 +196,7 @@ def joined_IntrProp(param,args):
             
             #Calculate coordinates and properties of occulted regions 
             system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args['par_list'],args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
-            surf_prop_dic = sub_calc_plocc_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
+            surf_prop_dic,spotocc_prop = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
             
             #Properties associated with the transiting planet in the visit 
             pl_vis = args['transit_pl'][inst][vis][0]
@@ -293,7 +293,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fit_save={'idx_trim_kept':{}}
         
     #Stellar surface coordinate required to calculate spectral line profiles
-    #    - other required properties are automatically added in the sub_calc_plocc_prop() function
+    #    - other required properties are automatically added in the sub_calc_plocc_spot_prop() function
     fixed_args['par_list']+=['line_prof']
     if fixed_args['mode']=='ana':
         if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
@@ -647,7 +647,7 @@ def joined_IntrProf(param,args):
                 args_exp = def_st_prof_tab(inst,vis,isub,args)
 
                 #Intrinsic profile for current exposure
-                surf_prop_dic = sub_calc_plocc_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,[isub])
+                surf_prop_dic,spotocc_prop = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,[isub])
                 sp_line_model = surf_prop_dic[args['chrom_mode']]['line_prof'][:,0]
                 
                 #Conversion and resampling 
@@ -1003,7 +1003,7 @@ def joined_ResProf(param,args):
                 'func_prof_name':mock_dic['intr_prof'][inst]['func_prof_name'],
                 'flux_cont':mock_dic['intensity'][inst][vis]['I0']}
             fit_properties.update(new_args['intr_prof'][inst])
-            new_args,param = init_custom_DI_prof(new_args,fit_properties,gen_dic,data_dic['DI']['system_prop'],theo_dic,inst,vis,new_args['system_param']['star'],param,[rv_mock,None,None],False)
+            new_args,param = init_custom_DI_prof(new_args,fit_properties,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,inst,vis,new_args['system_param']['star'],param,[rv_mock,None,None],False)
             base_DI_prof = custom_DI_prof(param,None,args=new_args)[0]     
             
             ##### attention a bien gerer le scaling intr->local ; idealement travailler avec les intr en transit pour ne pas avoir ce probleme
