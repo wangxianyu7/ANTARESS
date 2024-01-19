@@ -118,7 +118,7 @@ def retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd):
         
         # Spot longitude
         sin_lat = np.sin(lat_rad)
-        P_spot = 2*np.pi/((1.-param['alpha_rot']*sin_lat**2.-param['beta_rot']*sin_lat**4.)*star_params['om_eq']*3600.*24.)
+        P_spot = 2*np.pi/((1.-param['alpha_rot']*sin_lat**2.-param['beta_rot']*sin_lat**4.)*param['om_eq_spots']*3600.*24.)
         Tcen_sp = spots_prop[spot]['Tcenter'] - 2400000.
         long_rad = (t_bjd-Tcen_sp)/P_spot * 2*np.pi
         
@@ -266,7 +266,7 @@ def new_retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd, exp
         
         # Spot longitude - varies over time
         sin_lat = np.sin(lat_rad)
-        P_spot = 2*np.pi/((1.-param['alpha_rot']*sin_lat**2.-param['beta_rot']*sin_lat**4.)*star_params['om_eq']*3600.*24.)
+        P_spot = 2*np.pi/((1.-param['alpha_rot']*sin_lat**2.-param['beta_rot']*sin_lat**4.)*param['om_eq_spots']*3600.*24.)
         Tcen_sp = spots_prop[spot]['Tcenter'] - 2400000.
         long_rad_center = (t_bjd_center-Tcen_sp)/P_spot * 2*np.pi
         long_rad_start = (t_bjd_start-Tcen_sp)/P_spot * 2*np.pi
@@ -361,7 +361,7 @@ def spot_occ_region_grid(RspRs, nsub_Dsp):
     Ssub_Sstar=d_sub*d_sub/np.pi
 
     #Coordinates of points discretizing the enclosing square
-    cen_sub=-RspRs+(np.arange(nsub_Dsp)+0.5)*d_sub            
+    cen_sub=-RspRs+(np.arange(-2, nsub_Dsp+2)+0.5)*d_sub            
     xy_st_sky_grid=np.array(list(it_product(cen_sub,cen_sub)))
 
     # #Keeping only grid points behind the spot
@@ -587,7 +587,7 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
 
 ########################################################################################################################
 ########################################################################################################################
-#################################################### UNUSED FUNCTIONs  #################################################
+#################################################### UNUSED FUNCTIONS  #################################################
 ########################################################################################################################
 ########################################################################################################################
 

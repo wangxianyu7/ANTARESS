@@ -25,7 +25,7 @@ from ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_mo
 from ANTARESS_corrections.ANTARESS_detrend import detrend_prof_gen
 from ANTARESS_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
 from ANTARESS_grids.ANTARESS_coord import calc_pl_coord_plots,calc_pl_coord,calc_rv_star_HR,frameconv_LOS_to_InclinedStar,frameconv_InclinedStar_to_LOS,get_timeorbit,\
-    calc_zLOS_oblate,frameconv_Star_to_InclinedStar,calc_tr_contacts
+    calc_zLOS_oblate,frameconv_Star_to_InclinedStar,frameconv_InclinedStar_to_Star,calc_tr_contacts
 from ANTARESS_routines.ANTARESS_calib import cal_piecewise_func
 from ANTARESS_grids.ANTARESS_star_grid import get_LD_coeff,calc_CB_RV,calc_RVrot,calc_Isurf_grid,calc_st_sky
 from ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_prop
@@ -4746,7 +4746,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['GIF_generation'] = False
         
         #FPS for gif
-        plot_options[key_plot]['fps'] = 5
+        plot_options[key_plot]['fps'] = 40
 
         #--------------------------------------
 
@@ -10696,6 +10696,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     params['alpha_rot'] = star_params['alpha_rot']
                     params['beta_rot'] = star_params['beta_rot']       
                  
+                #Retrieve spot rotational velocity
+                params['om_eq_spots']=data_dic['DI']['spots_prop']['achrom']['veq_spots'][0]/star_params['Rstar_km']
 
                 #Calculate the flux of star grid, at all the exposures considered
                 star_flux_before_spot = deepcopy(Fsurf_grid_star[:,iband])
@@ -10715,7 +10717,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
                                                                    {}, params, use_grid_dic = False)
                                                                    
-                            star_flux_before_spot[spotted_tiles] *=  spots_prop[spot]['atten'] 
+                            star_flux_before_spot[spotted_tiles] *=  (1-spots_prop[spot]['atten'])
                     
                     if plot_options[key_plot]['spot_overlap']:      
                         Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
@@ -10725,7 +10727,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #If no times provided for the plotting, then generate some
                 else:
                     # Compute BJD of images 
-                    if plot_options[key_plot]['plot_spot_all_Peq'] : t_all_spot = np.linspace(   0  ,   2*np.pi/(star_params['om_eq']*3600.*24.) ,plot_options[key_plot]['n_image_spots'])
+                    if plot_options[key_plot]['plot_spot_all_Peq'] : t_all_spot = np.linspace(   0  ,   2*np.pi/(params['om_eq_spots']*3600.*24.) ,plot_options[key_plot]['n_image_spots'])
                     else:
                         dbjd =  (plot_options[key_plot]['time_range_spot'][1]-plot_options[key_plot]['time_range_spot'][0])/plot_options[key_plot]['n_image_spots']
                         n_in_visit = int((plot_options[key_plot]['time_range_spot'][1]-plot_options[key_plot]['time_range_spot'][0])/dbjd)
@@ -10743,14 +10745,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             if spots_prop[spot]['is_visible']:
                                 _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
                                                                         {}, params, use_grid_dic = False)
-                                # if t_exp == t_all_spot[-1]:
+                                # if t_exp == t_all_spot[int(len(t_all_spot)/2)+22]:
                                 star_flux_exp[spotted_tiles] *=  (1-spots_prop[spot]['atten'])
                             
 
                             #Testing how to make 
-                            # if t_exp == t_all_spot[-1]:
+                            # if t_exp == t_all_spot[int(len(t_all_spot)/2)+22]:
                             #     # These coordinates are in the inclined star frame
-                            #     x_grid_test, y_grid_test, _ = spot_occ_region_grid(spots_prop[spot]['ang_rad'], 30)
+                            #     x_grid_test, y_grid_test, _ = spot_occ_region_grid(spots_prop[spot]['ang_rad'], 35)
 
                             #     new_x_grid_test = x_grid_test + spots_prop[spot]['x_sky_exp_center']
                             #     new_y_grid_test = y_grid_test + spots_prop[spot]['y_sky_exp_center']
@@ -10767,7 +10769,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #     plt.scatter(new_new_x_grid_test, new_new_y_grid_test, color='blue', alpha=0.5, s=8)
 
                             #     #Move coordinates in star frame in order to move them to the longitude and latitude of spot 
-                            #     st_x_grid_test, st_y_grid_test, st_z_grid_test = conv_inclinedStarFrame_to_StarFrame(new_new_x_grid_test, new_new_y_grid_test, new_z_grid_test, star_params['istar_rad'])
+                            #     st_x_grid_test, st_y_grid_test, st_z_grid_test = frameconv_InclinedStar_to_Star(new_new_x_grid_test, new_new_y_grid_test, new_z_grid_test, star_params['istar_rad'])
 
                             #     # plt.scatter(st_x_grid_test, st_y_grid_test, color='red', alpha=0.3, s=6)
 
@@ -10787,7 +10789,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                             #     plt.scatter(new_new_x_grid_test[better_cond_in_sp], new_new_y_grid_test[better_cond_in_sp], color='red', alpha=0.7, s=6)
 
-
+                            #     #Put spot position
+                            #     plt.scatter(spots_prop[spot]['x_sky_exp_center'], spots_prop[spot]['y_sky_exp_center'], color='white', s=20)
 
 
                             #Testing - Spherical
@@ -11054,12 +11057,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             plt.close()
             
             #Store image for GIF generation
-            if images_to_make_GIF is not None:images_to_make_GIF.append(imageio.imread(filename))
+            if images_to_make_GIF is not None:images_to_make_GIF.append(imageio.v2.imread(filename))
 
         ### End of loop on plotted timesteps    
 
         #Produce and store the GIF.
-        if images_to_make_GIF is not None:imageio.mimsave(path_loc+'System.gif', images_to_make_GIF,fps=plot_options[key_plot]['fps'])
+        if images_to_make_GIF is not None:imageio.mimsave(path_loc+'System.gif', images_to_make_GIF,duration=(1000 * 1/plot_options[key_plot]['fps']))
 
 
 

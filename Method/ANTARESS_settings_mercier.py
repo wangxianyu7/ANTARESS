@@ -191,13 +191,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Star name
 
-    gen_dic['star_name']='AUMic' # mercier
-    # gen_dic['star_name']='V1298tau'
+    # gen_dic['star_name']='AUMic' # mercier
+    gen_dic['star_name']='V1298tau'
 
     #Transiting planets
     if gen_dic['star_name']=='AUMic':
         gen_dic['transit_pl'] = {
-            'AUMicb':{'ESPRESSO' : ['mock_vis']}, 
+            'AUMicb':{'ESPRESSO' : ['mock_vis']},
+            # 'AUMicc':{'ESPRESSO' : ['mock_vis']}, 
             }
         gen_dic['kepl_pl'] = ['AUMicb']
     
@@ -441,7 +442,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Defining artificial visits
     if gen_dic['star_name'] == 'AUMic':
         mock_dic['visit_def']={
-            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.2,0.2]),'nexp':50}}}
+            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':50}}}
+            # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':250}}} #-- plotting purposes
             # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-2,2])/24.,'nexp':50}}}
                        
     if gen_dic['star_name'] == 'V1298tau':
@@ -486,9 +488,22 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     
                      # #For the spot 'spot2' : 
                      'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
-                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 -0.2,
+                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 - 0.2,
                      'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
                      'atten__ISESPRESSO_VSmock_vis_SPspot2'    : 0.1,
+
+                     # For the spot 'spot1' : -- plotting purposes
+                     # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 35,
+                     # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051 + 0.3,
+                     # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 15,
+                     # 'atten__ISESPRESSO_VSmock_vis_SPspot1'    : 0.95,
+                     
+
+                     # #For the spot 'spot2' :  -- plotting purposes
+                     # 'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -15,
+                     # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 - 0.4,
+                     # 'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
+                     # 'atten__ISESPRESSO_VSmock_vis_SPspot2'    : 0.85,
                          }
                     }
                 }
@@ -904,7 +919,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Star discretization      
     if gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dstar']=101.
+        theo_dic['nsub_Dstar']=201.
+        # theo_dic['nsub_Dstar']=301. #-- for plotting purposes
     
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dstar']=201.
@@ -916,10 +932,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Planet discretization
     if gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dpl']= {'AUMicb':101.}                
+        theo_dic['nsub_Dpl']= {'AUMicb':101.}#, 'AUMicc':101.}                
 
     if gen_dic['star_name']=='V1298tau':
-        theo_dic['nsub_Dpl']={'V1298tau_b':21.}
+        theo_dic['nsub_Dpl']={'V1298tau_b':101.}
 
     #Spot discretization
     if gen_dic['star_name']=='AUMic':
@@ -929,7 +945,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
     #Exposure discretization
     if gen_dic['star_name']=='AUMic':
-        theo_dic['n_oversamp']={'AUMicb':5.}
+        theo_dic['n_oversamp']={'AUMicb':5.}#, 'AUMicc': 5.}
         theo_dic['n_oversamp_spot']={'spot1':5., 'spot2':5.}
     
     if gen_dic['star_name']=='V1298tau':
@@ -2724,7 +2740,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         data_dic['DI']['system_prop']={
                 'achrom':{
                     'AUMicb' : [0.0512], #Gilbert et al. 2022
-                    #'AUMicc' : [0.001156], #Gilbert et al. 2022
+                    # 'AUMicc' : [0.1], #Gilbert et al. 2022
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.35],
                     'LD_u2' : [0.16],
@@ -2744,11 +2760,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['spots_prop']={
                 'achrom':{
-                    'spot1' : [15 * np.pi/180],
-                    'spot2' : [25 * np.pi/180],
+                    'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot1'] * np.pi/180],
+                    'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.3],
                     'LD_u2' : [0.16],
+                    'veq_spots' : [7.8],
 
                 },
                 }
@@ -2756,10 +2773,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='V1298tau':
         data_dic['DI']['spots_prop']={
                 'achrom':{
-                    'spot1' : [20 * np.pi/180],
-                    'spot2' : [25 * np.pi/180],
-                    'LD' : ['quadratic'],
+                    'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot1'] * np.pi/180],
+                    'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
+                    'LD' : ['linear'],
                     'LD_u1' : [0.41],
+                    'veq_spots' : [23.59],
 
                 },
                 }

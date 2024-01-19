@@ -7746,6 +7746,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
         #     plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':54560.806755574+np.array([-0.5,-0.2,0.,0.2,0.5])/24. }
         if gen_dic['star_name']=='AUMic':
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,200)}--plotting purposes
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
             plot_settings[key_plot]['t_BJD'] = None
             
@@ -7755,7 +7756,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         #    - this is only used if we plot multiple exposures.
         plot_settings[key_plot]['GIF_generation']=True & False
         if gen_dic['star_name']=='AUMic':
-            plot_settings[key_plot]['GIF_generation']=True
+            plot_settings[key_plot]['GIF_generation']=True&False
 
         if gen_dic['star_name']=='V1298tau':
             plot_settings[key_plot]['GIF_generation']=True
@@ -8008,7 +8009,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # if gen_dic['star_name']=='HD209458':   #ANTARESS I multi-pl           
         #     plot_settings[key_plot]['n_stcell']=41.             
         if gen_dic['star_name']=='WASP76':   #ANTARESS I       
-            plot_settings[key_plot]['n_stcell']=251.         
+            plot_settings[key_plot]['n_stcell']=251.  
+        if gen_dic['star_name']=='AUMic':    
+            plot_settings[key_plot]['n_stcell']=51.       
         
         #Number of cells on a diameter of planets (must be odd)
         #    - leave undefined for default settings to be used       
