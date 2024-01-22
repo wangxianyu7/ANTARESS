@@ -676,6 +676,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #    - om = 2*pi/P
     star_params['om_eq'] = star_params['veq']/star_params['Rstar_km']
 
+    #Spot Equatorial rotation rate (rad/s)
+    star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
+
     #No GD
     if ('beta_GD' not in star_params):star_params['beta_GD']=0.
     if ('Tpole' not in star_params):star_params['Tpole']=0.
@@ -686,7 +689,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     star_params['vsini']=star_params['veq']*np.sin(star_params['istar_rad'])    #km/s
     
     #Default parameters
-    for key in ['alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','c1_pol','c2_pol','c3_pol','c4_pol']:
+    for key in ['alpha_rot','beta_rot','alpha_rot_spots','beta_rot_spots','c1_CB','c2_CB','c3_CB','c1_pol','c2_pol','c3_pol','c4_pol']:
         if key not in star_params:star_params[key] = 0.
 
     #Conversion factor from the LOS velocity output (/Rstar/h) to RV in km/s

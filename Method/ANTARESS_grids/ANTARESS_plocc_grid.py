@@ -307,12 +307,13 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
 
     # #If spots are being used, and they are in the param dictionary provided (which is not always the case)  
     if 'use_spots' in param.keys() and param['use_spots']:
+        #High precision is required for spots
+        if (theo_dic['precision']!='high'):stop('High precision required for spots')
+        
         #Figure out the number of spots
         n_spots = param['num_spots']
         #Initialize the dictionary that will contain spot presence
         cond_spots_all = np.zeros([n_exp,n_spots], dtype=bool)
-        #Retrieve spot rotational velocity
-        param['om_eq_spots']=system_spot_prop['achrom']['veq_spots'][0]/star_params['Rstar_km']
 
         #Looping over all exposures
         for isub_exp, iexp in enumerate(iexp_list):
@@ -844,8 +845,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
         #Accounting for the spots' emission
         if spot_occ:
             for spot in list(reduced_spot_prop.keys()):
-                Fsurf_grid_star[:, iband] = np.where(coord_grid[spot+'_flag_map'] == True, Fsurf_grid_star[:, iband]*(1-reduced_spot_prop[spot]['atten']), Fsurf_grid_star[:, iband])
-                # Fsurf_grid_star[:, iband] = np.where(coord_grid[spot+'_flag_map'] == True, Fsurf_grid_star[:, iband] - (Fsurf_grid_star[:, iband] * (1-reduced_spot_prop[spot]['atten'])), Fsurf_grid_star[:, iband]) <-- other possibility
+                Fsurf_grid_star[:, iband] = np.where(coord_grid[spot+'_flag_map'] == True, Fsurf_grid_star[:, iband] - (Fsurf_grid_star[:, iband] * (1-reduced_spot_prop[spot]['atten'])), Fsurf_grid_star[:, iband])
             Ftot_star = np.sum(Fsurf_grid_star, axis=0)
 
         #Scale continuum level

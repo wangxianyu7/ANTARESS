@@ -7780,6 +7780,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         elif gen_dic['star_name']=='WASP166':plot_settings[key_plot]['pl_to_plot']=['WASP166b']
         elif gen_dic['star_name'] == 'V1298tau' :
             plot_settings[key_plot]['pl_to_plot']=['V1298tau_b']
+        elif gen_dic['star_name'] == 'AUMic' :
+            plot_settings[key_plot]['pl_to_plot']=['AUMicb']
         if gen_dic['star_name']=='WASP76':plot_settings[key_plot]['pl_to_plot']=['WASP76b'] 
 
         #Number of points in the planet orbits

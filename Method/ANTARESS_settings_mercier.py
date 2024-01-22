@@ -191,8 +191,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Star name
 
-    # gen_dic['star_name']='AUMic' # mercier
-    gen_dic['star_name']='V1298tau'
+    gen_dic['star_name']='AUMic' # mercier
+    # gen_dic['star_name']='V1298tau'
 
     #Transiting planets
     if gen_dic['star_name']=='AUMic':
@@ -469,7 +469,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Defining spot properties 
     if gen_dic['star_name'] == 'AUMic': 
-        mock_dic['use_spots'] = True
+        mock_dic['use_spots'] = False
         mock_dic['spots_prop']={
              'ESPRESSO':{
                  'mock_vis':{
@@ -916,6 +916,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Precision
     theo_dic['precision'] = 'high'
     # theo_dic['precision'] = 'medium'
+    # theo_dic['precision'] = 'low'
+
 
     #Star discretization      
     if gen_dic['star_name']=='AUMic':
@@ -929,6 +931,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     theo_dic['mac_mode'] = None
 
     #Theoretical stellar atmosphere
+    if gen_dic['star_name']=='AUMic':
+        theo_dic['st_atm']['calc']=False
 
     #Planet discretization
     if gen_dic['star_name']=='AUMic':
@@ -2765,7 +2769,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.3],
                     'LD_u2' : [0.16],
-                    'veq_spots' : [7.8],
 
                 },
                 }
@@ -2777,7 +2780,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
                     'LD' : ['linear'],
                     'LD_u1' : [0.41],
-                    'veq_spots' : [23.59],
 
                 },
                 }
@@ -4414,12 +4416,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     
     #Activating 
-    gen_dic['fit_IntrProf'] = True   &  False
+    gen_dic['fit_IntrProf'] = True   #&  False
 
 
     #Exposures to be fitted
     if gen_dic['star_name'] == 'AUMic':
-     glob_fit_dic['IntrProf']['idx_in_fit'] = deepcopy(glob_fit_dic['IntrProp']['idx_in_fit'])
+     glob_fit_dic['IntrProf']['idx_in_fit'] = {'ESPRESSO':{'mock_vis':range(50)}}
   
     if gen_dic['star_name'] == 'V1298tau':
      glob_fit_dic['IntrProf']['idx_in_fit'] = deepcopy(glob_fit_dic['IntrProp']['idx_in_fit'])
@@ -4428,43 +4430,56 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     glob_fit_dic['IntrProf']['trim_range'] = deepcopy(data_dic['Intr']['fit_prof']['trim_range'])   
 
     #Continuum range
-                  
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['IntrProf']['cont_range']={'ESPRESSO':{0:[[-150.0,-70.0],[70.0,150.0]]}}
+
     #Spectral range(s) to be fitted            
-        
+    glob_fit_dic['IntrProf']['fit_range'] = deepcopy(data_dic['Intr']['fit_range'])
+    
     #Model type
- 
+
     #Analytical profile
-         
+    if gen_dic['star_name'] == 'AUMic' :
+        glob_fit_dic['IntrProf']['func_prof_name']={'ESPRESSO':'gauss'}
+    
     #Analytical profile coordinate
+    if gen_dic['star_name'] in ['AUMic','V1298tau']:glob_fit_dic['IntrProf']['dim_fit']='r_proj'
 
 
     #Analytical profile variation
-
+    if gen_dic['star_name'] in ['AUMic','V1298tau']:glob_fit_dic['IntrProf']['pol_mode']='modul'  
 
     
     #Fixed/variable properties   
-  
+    if gen_dic['star_name']=='AUMic':
+        glob_fit_dic['IntrProf']['mod_prop']={
+        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.5},
+        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':10}
+                                            }
 
     #PC noise model
     
     #Fitting mode
-    glob_fit_dic['IntrProf']['fit_mod']='chi2' 
-    glob_fit_dic['IntrProf']['fit_mod']='mcmc' 
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['IntrProf']['fit_mod']='chi2' 
+        # glob_fit_dic['IntrProf']['fit_mod']='mcmc' 
 
 
     #Printing fits results
-    glob_fit_dic['IntrProf']['verbose']=True   #& False
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['IntrProf']['verbose']=True   #& False
     
     #Priors on variable properties
 
     #Derived properties
-    glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','psi','om','b','ip','istar_deg_conv','fold_istar','lambda_deg','c0','CB_ms']
-    glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg']
+    # glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','psi','om','b','ip','istar_deg_conv','fold_istar','lambda_deg','c0','CB_ms']
+    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg']
     # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','ip']
     # glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg','istar_deg_conv','Peq_veq']
     #glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','lambda_deg','istar_deg_conv','fold_istar','psi']
     # glob_fit_dic['IntrProf']['modif_list'] = []
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','psi'] 
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','psi']
     # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','Peq_vsini'] 
     # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini'] 
     # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini','psi_lambda'] 

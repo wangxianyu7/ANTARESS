@@ -41,6 +41,10 @@ Star
     - logg : surface gravity of the star in log(cgs)
     - vmic and vmac: micro and macroturbulence (km/s)
  + only used for stellar atmosphere grid 
+    - veq_spots : equatorial rotational velocity of spots [km/s]
+    - alpha_rot_spots, beta_rot_spots : differential rotation coefficients for spots
++ DR law is defined in the same way as for the stellar surface
+
     
 -----------------------------------------------------------------
 Planets
@@ -1505,6 +1509,7 @@ all_system_params={
         'istar':90.,
         'Mstar':1.101,
         'veq':23.59, #-0.26 +0.31		         			fitted from prior 24 +- 1.  (Calculated from LD fit with free LD coefficient (i), see LD)
+        'veq_spots':23.59,
             },
     #------------------------------
     'V1298tau_b':{   #Provided by A. Sozetti and G. Guilluy
@@ -1537,6 +1542,7 @@ all_system_params={
             # 'f_GD':0.1947,              #test
             # 'Tpole':8450.,              #test
             # 'beta_GD':0.190,            #test
+            'veq_spots':7.8,
         },
         'AUMicb':{
             #'period':2.407000,           #test
@@ -1929,7 +1935,7 @@ all_system_params={
             # 'TLength':2.7528/24.,             
             
             #Allart+
-            'period':5.72148836, 
+            'period': 5.72148836, 
             'TCenter':2458574.147242,
             'ecc':0.152,
             'omega_deg':43.575,
@@ -2178,51 +2184,6 @@ all_system_params={
         
     },
     
-    #------------------------------
-
-    'AUMic':{
-
-        'star':{
-            'Rstar':0.75,                #+/- 0.03 #solar radii #Plavchan et al. 2020
-            'Mstar':0.50,                #+/- 0.03 #solar mass #Plavchan et al. 2020
-            'logg':4.39,                 #+/- 0.03 #computed from Plavchan et al. 2020 Rstar and Mstar values by Zicher et al. 2022
-            'veq':7.8,                   #+/- 0.3 #km/s #Klein et al. 2021
-            'istar':90,                  #unknown
-            # 'istar':30,                  #unknown
-            #'mag':5,                     #test
-            'mag':8.81,                  #+/- 0.10 #Johnson V magnitude (true value)
-            # 'f_GD':0.1947,              #test
-            # 'Tpole':8450.,              #test
-            # 'beta_GD':0.190,            #test
-        },
-        'AUMicb':{
-            #'period':2.407000,           #test
-            'period':8.463000,           #+/- 0.000002 #days #Martioli et al. 2021 (true value)
-            'TCenter':2458330.39051,     #+/- 0.00015 #days #Martioli et al. 2021
-            'ecc':0.04,                  #+0.045 -0.025 #Zicher et al. 2022
-            'omega_deg':179,             #+128 -125 #degrees #Zicher et al. 2022
-            'inclination':89.18,         #+0.53 - 0.45 #degrees #Gilbert et al. 2022
-            #'Kstar':8.9,                 #test
-            'Kstar':5.8,                 #+/- 2.5 #m/s #Zicher et al. 2022 (true value)
-            'TLength':3.50/24,           #+/- 0.08 #days #Martioli et al. 2021
-            #'aRs':8,                     #test
-            'aRs':18.5,                  #+1.3 - 1.4 #Rstar #Gilbert et al. 2022 (true value)
-            'lambda_proj':-4.70,         #+6.80 -6.40 #degrees #Hirano et al. 2020
-        },
-        #'AUMicc':{
-        #    'period':18.859019,          #+/- 0.000016 #days #Martioli et al. 2021
-        #    'TCenter':2458342.22231,     #+/- 0.00050 #days #Martioli et al. 2021
-        #    'ecc':0.041,                 #+0.047 -0.026 #Zicher et al. 2022
-        #    'omega_deg':153,             #+124 -94 #degrees #Zicher et al. 2022
-        #    'inclination':89.39,        #+0.40 -0.28 #degrees #Gilbert et al. 2022
-        #    'Kstar':8.5,                 #+/- 2.5 #m/s #Zhicert et al. 2022
-        #    'TLength':4.5/24,            #+/- 0.8 #days #Martioli et al. 2021
-        #    'aRs':31.7,                  #+2.6 -2.7 #Rstsr #Gilbert et al. 2022
-        #    'lambda_proj':0.,            #unknown
-
-        #},
-    },
-
     #------------------------------
     
     'WASP69':{

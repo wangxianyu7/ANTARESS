@@ -10831,7 +10831,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     params['beta_rot'] = star_params['beta_rot']       
                  
                 #Retrieve spot rotational velocity
-                params['om_eq_spots']=data_dic['DI']['spots_prop']['achrom']['veq_spots'][0]/star_params['Rstar_km']
+                star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
 
                 #Calculate the flux of star grid, at all the exposures considered
                 star_flux_before_spot = deepcopy(Fsurf_grid_star[:,iband])
@@ -10843,9 +10843,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     Flux_for_nonredundant_spot_plotting = deepcopy(Fsurf_grid_star[:,iband])
 
                     if len(plot_options[key_plot]['stellar_spot'])>0:
-                        spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, '_', '_', plot_t) 
+                        spots_prop = retrieve_spots_prop_from_param(star_params, params, '_', '_', plot_t) 
                     else:
-                        spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, inst_to_use, vis_to_use, plot_t) 
+                        spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, plot_t) 
                     for spot in spots_prop :
                         if spots_prop[spot]['is_visible']: 
                             _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
@@ -10861,7 +10861,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #If no times provided for the plotting, then generate some
                 else:
                     # Compute BJD of images 
-                    if plot_options[key_plot]['plot_spot_all_Peq'] : t_all_spot = np.linspace(   0  ,   2*np.pi/(params['om_eq_spots']*3600.*24.) ,plot_options[key_plot]['n_image_spots'])
+                    if plot_options[key_plot]['plot_spot_all_Peq'] : t_all_spot = np.linspace(   0  ,   2*np.pi/((1.-star_params['alpha_rot_spots']*sin_lat**2.-star_params['beta_rot_spots']*sin_lat**4.)*star_params['om_eq_spots']*3600.*24.) ,plot_options[key_plot]['n_image_spots'])
                     else:
                         dbjd =  (plot_options[key_plot]['time_range_spot'][1]-plot_options[key_plot]['time_range_spot'][0])/plot_options[key_plot]['n_image_spots']
                         n_in_visit = int((plot_options[key_plot]['time_range_spot'][1]-plot_options[key_plot]['time_range_spot'][0])/dbjd)
@@ -10872,9 +10872,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     for t_exp in t_all_spot :
                         star_flux_exp = deepcopy(star_flux_before_spot)
                         if len(plot_options[key_plot]['stellar_spot'])>0:
-                            spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, '_', '_', t_exp) 
+                            spots_prop = retrieve_spots_prop_from_param(star_params, params, '_', '_', t_exp) 
                         else:
-                            spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, inst_to_use, vis_to_use, t_exp) 
+                            spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, t_exp) 
                         for spot in spots_prop :
                             if spots_prop[spot]['is_visible']:
                                 _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
