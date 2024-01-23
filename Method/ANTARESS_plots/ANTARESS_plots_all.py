@@ -49,7 +49,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     if user!='':plot_settings = ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic)
     else:plot_settings = {}
     if ('plots' not in nbook_dic):nbook_dic['plots'] = {}
-    
 
     ##############################################################################
     #General calculations useful to several plots
@@ -1394,14 +1393,18 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #Process selected ranges and orders
                 nord_proc = len(idx_sel_ord)
                 if nord_proc==0:stop('No orders left')
-                if vis=='binned':dim_exp_proc = [nord_proc,data_inst['nspec']]
-                else:dim_exp_proc = [nord_proc,data_vis['nspec']]
+                if vis=='binned':
+                    nspec_eff = data_inst['nspec']
+                    dim_exp_proc = [nord_proc,nspec_eff]
+                else:
+                    nspec_eff = data_inst[vis]['nspec']
+                    dim_exp_proc = [nord_proc,nspec_eff]
                 cen_bins_com = data_com['cen_bins'][idx_sel_ord]
                 edge_bins_com = data_com['edge_bins'][idx_sel_ord]                
 
                 #Pre-processing exposures  
                 if (plot_mod=='DI_raw') and ('spec' in data_type):  
-                    data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc)
+                    data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_inst[vis],data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc)
                 else:
                     data_proc={}
                     data_mod={}
@@ -1503,17 +1506,17 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 if (plot_options['fit_type']=='indiv'):  
                                     if (plot_mod in ['DI_prof','DI_prof_res']):idx_excl_bd_ranges=prof_fit_vis['idx_excl_bd_ranges'][iexp_mod]
                                     idx_trim_kept = mod_prop_exp['idx_mod']
-                                    cond_fit_exp_raw = np.zeros(data_vis['nspec'],dtype=bool)
+                                    cond_fit_exp_raw = np.zeros(nspec_eff,dtype=bool)
                                     cond_fit_exp_raw[idx_trim_kept] =  prof_fit_vis['cond_def_fit_all'][iexp_mod][idx_trim_kept]                 #trimmed and fitted condition in individual table, defined only over model pixels
-                                    cond_cont_exp_raw = np.zeros(data_vis['nspec'],dtype=bool)
+                                    cond_cont_exp_raw = np.zeros(nspec_eff,dtype=bool)
                                     cond_cont_exp_raw[idx_trim_kept] = prof_fit_vis['cond_def_cont_all'][iexp_mod][idx_trim_kept]                #trimmed and fitted condition in individual table, defined only over model pixels
                                     flux_mod_exp_fit = mod_prop_exp['flux']   
                                 elif (plot_options['fit_type']=='global'): 
                                     idx_trim_kept = fit_results['idx_trim_kept'][inst][vis]     #trimmed indexes of profiles before fit
                                     cond_fit_exp_trim = mod_prop_exp['cond_def_fit']            #fitted indexes in trimmed tables                      
-                                    cond_fit_exp_raw = np.zeros(data_vis['nspec'],dtype=bool)
+                                    cond_fit_exp_raw = np.zeros(nspec_eff,dtype=bool)
                                     cond_fit_exp_raw[idx_trim_kept] = cond_fit_exp_trim         #trimmed and fitted condition in global tables
-                                    cond_cont_exp_raw = np.zeros(data_vis['nspec'],dtype=bool)
+                                    cond_cont_exp_raw = np.zeros(nspec_eff,dtype=bool)
                                     cond_cont_exp_raw[idx_trim_kept] = mod_prop_exp['cond_def_cont']     #trimmed and continuum condition in global tables
                                     flux_mod_exp_fit = mod_prop_exp['flux'][cond_fit_exp_trim]
                                 cond_cont_exp_fit  = cond_cont_exp_raw[idx_trim_kept]  #trimmed and continuum condition in individual table, reduced to model pixels 
@@ -3578,7 +3581,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         elif plot_options['prop_'+data_mode+'_absc']=='ADC2 RA': x_obs=data_prop_vis['adc_prop'][iexp_plot,4]    
                         elif plot_options['prop_'+data_mode+'_absc']=='ADC2 DEC': x_obs=data_prop_vis['adc_prop'][iexp_plot,5] 
                         st_x_obs,end_x_obs = x_obs,x_obs
-               
+                    
                     #Vertical property
                     #    - values are put in tables covering all exposures if necessary 
                     if vis not in plot_options['idx_noplot'][inst]:plot_options['idx_noplot'][inst][vis]=[]
@@ -3662,16 +3665,18 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             elif prop_mode=='TILT1 VAL2': val_obs=data_prop_vis['piezo_prop'][:,1]    
                             elif prop_mode=='TILT2 VAL1': val_obs=data_prop_vis['piezo_prop'][:,2]    
                             elif prop_mode=='TILT2 VAL2': val_obs=data_prop_vis['piezo_prop'][:,3]                                              
+                        else:stop(prop_mode+' not recognized')
 
                         #Save residual RVs before screening
                         if (prop_mode=='rv_res') and plot_options['save_RVres']:
                             np.savetxt(path_loc+inst+'_'+vis+'_'+prop_mode+'_'+plot_options['prop_'+data_mode+'_absc']+'.dat', np.column_stack((x_obs,val_obs,np.mean(eval_obs,axis=0))),fmt=('%15.10f','%15.10f','%15.10f') )                                       
-                     
+          
                         #Points to plot   
                         if data_mode=='raw':
                             idx_in_plot=[iexp for iexp in range(n_exp_vis) if (iexp not in plot_options['idx_noplot'][inst][vis]) and (np.isnan(val_obs[iexp])==False)]
                         elif data_mode=='Intr':
                             idx_in_plot=[i_in for i_in in range(n_exp_vis) if (i_in not in plot_options['idx_noplot'][inst][vis]) and (np.isnan(val_obs[i_in])==False) and   (     ((not plot_options['plot_det'])) or (plot_options['plot_det']  and (prof_fit_vis[i_in]['detected']))        ) ]
+                        if len(idx_in_plot)==0:stop('No points to plot')
                         x_obs=x_obs[idx_in_plot]
                         st_x_obs=st_x_obs[idx_in_plot]
                         end_x_obs=end_x_obs[idx_in_plot] 
@@ -3733,7 +3738,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         col_obs=deepcopy(col_visit)
                         col_face_obs=deepcopy(col_visit)
                         col_loc = 'black'
- 
+                    
                     #-------------------------------------------------------
                     #Plot value
                     if (not plot_options['no_orig']) and (plot_options['plot_data']): 
@@ -3813,13 +3818,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         dytxt=i_visit*0.1
     
                         #Print mean value over selected points, with dispersion from mean
-                        if (plot_options['print_disp']):
-                            plt.text(0.2,1.1+dytxt,'w. mean['+prop_mode+'] ='+"{0:.5e}".format(mean_val_plot)+' +-'+"{0:.2e}".format(disp_from_mean)+' '+val_unit,verticalalignment='center', horizontalalignment='center',fontsize=10.,zorder=10,color=col_loc,transform=plt.gca().transAxes) 
-                        
                         if plot_options['plot_disp'] and (((data_mode=='raw') and (prop_mode not in ['rv','rv_pip'])) or (data_mode=='Intr')):
                             x_tab = plot_options['x_range'] if plot_options['x_range'] is not None else [min(x_obs),max(x_obs)]
                             plt.plot(x_tab,[mean_val_plot,mean_val_plot],color=col_loc,linestyle='--',lw=plot_options['lw_plot']+0.2,zorder=0) 
-                        if (prop_mode not in ['rv','rv_pip']):
+                        if plot_options['print_disp']:
+                            plt.text(0.2,1.1+dytxt,'w. mean['+prop_mode+'] ='+"{0:.5e}".format(mean_val_plot)+' +-'+"{0:.2e}".format(disp_from_mean)+' '+val_unit,verticalalignment='center', horizontalalignment='center',fontsize=10.,zorder=10,color=col_loc,transform=plt.gca().transAxes) 
+                        
                             if (prop_mode in ['rv_res','rv_pip_res']):
                                 # sc_txt = 100.
                                 # units = ' (cm/s)'
@@ -4453,10 +4457,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     '''
     Plot distributions of line properties for mask generation
     '''
-    def sub_dist_CCFmasks(plot_info,plot_options,ax_loc,var,var_thresh,var_thresh_test,prop_type,y_title,range_loc,ax_name,mode='2D'):
+    def sub_dist_CCFmasks(dist_info,plot_info,plot_options,ax_loc,var,var_thresh,var_thresh_test,prop_type,y_title,range_loc,ax_name,mode='2D'):
         if plot_options[ax_name+'_range_hist'] is not None:range_hist = plot_options[ax_name+'_range_hist']
         else:range_hist = None
-        if plot_options['dist_info']  =='hist':
+        if dist_info =='hist':
             if ax_name=='x':
                 orientation="vertical"
                 if mode=='2D':
@@ -4487,7 +4491,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     ax_loc.axhline(var_thresh_test, color='gold',lw=plot_options['lw_plot'],linestyle='--')
                     if prop_type=='ld':ax_loc.axhline(plot_options['linedepth_cont_max'], color='gold',lw=plot_options['lw_plot'],linestyle='--')   
                  
-        elif plot_options['dist_info'] =='cum_w':
+        elif dist_info =='cum_w':
             idx_sort = np.argsort(var)
             weight_rv_plt = plot_info['weight_rv_'+prop_type][idx_sort]
             cumsum = np.nancumsum(weight_rv_plt)
@@ -4549,7 +4553,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             
         return range_hist
     
-    def dist1D_stlines_CCFmasks(plot_options,key_plot,plot_ext):
+    def dist1D_stlines_CCFmasks(dist_info,plot_options,key_plot,plot_ext):
         data_type_gen=key_plot.split('mask')[0]
         prop_type = key_plot.split('mask_')[1]
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
@@ -4569,6 +4573,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
             #Property before selection 
             x_var_name = {
+                'RVdisp':'disp_RV_lines',
                 'RVdev_fit':'abs_RVdev_fit',
                 'tellcont':'rel_contam',
                 'tellcont_final':'rel_contam_final'}[prop_type]            
@@ -4585,6 +4590,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
             #Thresholds
             x_thresh_name = {
+                'RVdisp':'RVdisp_max',
                 'RVdev_fit':'abs_RVdev_fit_max',
                 'tellcont':'tell_star_depthR_max',
                 'tellcont_final':'tell_star_depthR_max_final'}[prop_type]   
@@ -4592,11 +4598,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             else:var_thresh_test = None
 
             #Histogram 
-            if plot_options['dist_info'] =='hist':y_title='Occurences'
-            elif plot_options['dist_info'] =='cum_w':
+            if dist_info =='hist':y_title='Occurences'
+            elif dist_info =='cum_w':
                 y_title='Cumulated weights'
                 plot_options['x_log_hist'] = False
-            y_range_loc = sub_dist_CCFmasks(plot_info,plot_options,ax,var,plot_info[x_thresh_name],var_thresh_test,prop_type,y_title,x_range_loc,'x',mode='1D')
+            y_range_loc = sub_dist_CCFmasks(dist_info,plot_info,plot_options,ax,var,plot_info[x_thresh_name],var_thresh_test,prop_type,y_title,x_range_loc,'x',mode='1D')
             if plot_options['x_log_hist']:dy_range=np.log10(y_range_loc[1])-np.log10(y_range_loc[0])
             else:dy_range=y_range_loc[1]-y_range_loc[0]
 
@@ -4617,20 +4623,21 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
             #Frame
             x_lab_name = {
+                'RVdisp':r'RV dispersion (m/s)',
                 'RVdev_fit':r'|RV$_{\rm fit}$| deviation',
                 'tellcont':r'Telluric/Line depth',
                 'tellcont_final':r'Telluric/Line depth'}[prop_type]
             ax.set_xlabel(x_lab_name,fontsize=plot_options['font_size'])
             ax.tick_params('x',labelsize=plot_options['font_size'])
             ax.tick_params('y',labelsize=plot_options['font_size'])
-            plt.savefig(path_loc+prop_type+'_'+plot_options['dist_info']+'.'+plot_ext)                       
+            plt.savefig(path_loc+prop_type+'_'+dist_info+'.'+plot_ext)                       
             plt.close() 
           
         return None
 
 
 
-    def dist2D_stlines_CCFmasks(plot_options,key_plot,plot_ext):
+    def dist2D_stlines_CCFmasks(dist_info,plot_options,key_plot,plot_ext):
         data_type_gen=key_plot.split('mask')[0]
         prop_type = key_plot.split('mask_')[1]
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
@@ -4662,7 +4669,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 'RVdisp':'disp_err_RV_lines'}[prop_type]
             x_var = plot_info[x_var_name]
             y_var = plot_info[y_var_name] 
-    
+  
             #Plot frame 
             if plot_options['x_range'] is not None:x_range_loc=plot_options['x_range'] 
             else:x_range_loc = np.array([np.min(x_var),np.max(x_var)])
@@ -4699,8 +4706,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             axes[1,0].plot(x_range_loc,np.repeat(y_var_thresh,2),color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=10)               
             axes[1,0].plot(np.repeat(x_var_thresh,2),y_range_loc,color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=10) 
             if prop_type=='ld':             
-                axes[1,0].plot(np.repeat(plot_info['linedepth_cont_max'] ,2),y_range_loc,color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=10)                 
-            
+                axes[1,0].plot(np.repeat(plot_info['linedepth_cont_max'] ,2),y_range_loc,color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=10)
+                axes[1,0].plot(x_range_loc,np.repeat(plot_info['linedepth_max'] ,2),color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=10) 
+                if plot_info['linedepth_contdepth'] is not None: 
+                    linedepth_rel = plot_info['linedepth_contdepth'][0]*x_var+plot_info['linedepth_contdepth'][1]
+                    axes[1,0].plot(x_range_loc,plot_info['linedepth_contdepth'][0]*x_range_loc+plot_info['linedepth_contdepth'][1],color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=10)                  
+                else:linedepth_rel=10.
+        
             #Plot test selection threshold
             thresh_test = 1
             x_var_thresh_test = None
@@ -4710,6 +4722,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 axes[1,0].plot(np.repeat(x_var_thresh_test,2),y_range_loc,color='gold',linestyle='--',lw=plot_options['lw_plot'],zorder=10) 
                 if prop_type=='ld':             
                     axes[1,0].plot(np.repeat(plot_options['linedepth_cont_max'] ,2),y_range_loc,color='gold',linestyle='--',lw=plot_options['lw_plot'],zorder=10) 
+                    axes[1,0].plot(x_range_loc,np.repeat(plot_options['linedepth_max'] ,2),color='gold',linestyle='--',lw=plot_options['lw_plot'],zorder=10) 
+                    if plot_options['linedepth_contdepth'] is not None: 
+                        linedepth_rel_test = plot_options['linedepth_contdepth'][0]*x_var+plot_options['linedepth_contdepth'][1]
+                        axes[1,0].plot(x_range_loc,plot_options['linedepth_contdepth'][0]*x_range_loc+plot_options['linedepth_contdepth'][1],color='gold',linestyle='--',lw=plot_options['lw_plot'],zorder=10) 
+                    else:linedepth_rel_test = 10.
             else:thresh_test = None
             if y_thresh_name in plot_options:
                 y_var_thresh_test = plot_options[y_thresh_name]
@@ -4718,8 +4735,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
      
             #Plot line properties before/after pipeline selection
             if prop_type in ['ld']:
-                cond_sel = (x_var>x_var_thresh)&(x_var<plot_info['linedepth_cont_max'])&(y_var>y_var_thresh)
-                if (thresh_test is not None):cond_sel_test = (x_var>x_var_thresh_test)&(x_var<plot_options['linedepth_cont_max'])&(y_var>y_var_thresh_test)
+                cond_sel = (x_var>x_var_thresh)&(x_var<plot_info['linedepth_cont_max'])&(y_var>y_var_thresh)&(y_var<plot_info['linedepth_max'])&(y_var<linedepth_rel)
+                if (thresh_test is not None):cond_sel_test = (x_var>x_var_thresh_test)&(x_var<plot_options['linedepth_cont_max'])&(y_var>y_var_thresh_test)&(y_var<plot_options['linedepth_cont_min'])&(y_var<linedepth_rel_test)
             elif prop_type in ['ld_lw']:
                 cond_sel = (x_var>x_var_thresh)&(y_var>y_var_thresh)
                 if (thresh_test is not None):cond_sel_test = (x_var>x_var_thresh_test)&(y_var>y_var_thresh_test)
@@ -4764,22 +4781,22 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             axes[1,0].set_ylabel(y_lab_name,fontsize=plot_options['font_size'])
     
             #------------------------------------------------------------
-            if plot_options['dist_info'] =='hist':y_title='Occurences'
-            elif plot_options['dist_info'] =='cum_w':y_title='Cumulated weights'
+            if dist_info =='hist':y_title='Occurences'
+            elif dist_info =='cum_w':y_title='Cumulated weights'
             #------------------------------------------------------------
             
             #Histogram of X
-            sub_dist_CCFmasks(plot_info,plot_options,axes[0,0],x_var,x_var_thresh,x_var_thresh_test,prop_type,y_title,x_range_loc,'x')
+            sub_dist_CCFmasks(dist_info,plot_info,plot_options,axes[0,0],x_var,x_var_thresh,x_var_thresh_test,prop_type,y_title,x_range_loc,'x')
 
             #------------------------------------------------------------
 
             #Histograms of Y
-            sub_dist_CCFmasks(plot_info,plot_options,axes[1,1],y_var,y_var_thresh,y_var_thresh_test,prop_type,y_title,y_range_loc,'y')            
+            sub_dist_CCFmasks(dist_info,plot_info,plot_options,axes[1,1],y_var,y_var_thresh,y_var_thresh_test,prop_type,y_title,y_range_loc,'y')            
 
             #--------------------------------------------------------
             #Fill remaining space with empty ax
             axes[0,1].axis('off')
-            plt.savefig(path_loc+prop_type+'_'+plot_options['dist_info']+'.'+plot_ext)                        
+            plt.savefig(path_loc+prop_type+'_'+dist_info+'.'+plot_ext)                        
             plt.close() 
 
         return None
@@ -7133,7 +7150,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 edge_bins_reg = np.linspace(x_range_loc[0],x_range_loc[1],n_reg)
                 cen_bins_reg = 0.5*(edge_bins_reg[0:-1]+edge_bins_reg[1::]) 
 
-            #Smoothed regular spectrum
+            #Smoothed regular normalized spectrum
             if plot_options[key_plot]['plot_norm_reg']:
                 ax.plot(plot_info['cen_bins_reg'][cond_in_range],plot_info['flux_norm_reg'][cond_in_range],color='black',linestyle='-',lw=plot_options[key_plot]['lw_plot'],zorder=10,rasterized=plot_options[key_plot]['rasterized'],alpha = plot_options[key_plot]['alpha_symb'])  
 
@@ -7242,7 +7259,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Plot rejection ranges
             if plot_options[key_plot]['line_rej_range']:
                 plot_shade_range(ax,plot_info['line_rej_range'],x_range_loc,y_range_loc,mode='fill',zorder=4)    
- 
+
+            #Plot unity level
+            ax.axhline(1.,color='black', lw=plot_options[key_plot]['lw_plot'],linestyle='--',zorder=10,rasterized=plot_options[key_plot]['rasterized'])              
+
             #Frame
             xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
             ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range) 
@@ -7266,7 +7286,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 plot_options=gen_plot_default(plot_options,key_plot)       
 
                 #Number of bins in histograms
-                plot_options[key_plot]['dist_info'] ='hist'
+                plot_options[key_plot]['dist_info'] = ['hist','cum_w']
                 plot_options[key_plot]['x_bins_par'] = 40
                 plot_options[key_plot]['x_log_hist'] = False
                 plot_options[key_plot]['y_bins_par'] = 40    
@@ -7296,7 +7316,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #---------------------------------
         #Plot
-        dist2D_stlines_CCFmasks(plot_options[key_plot],key_plot,plot_dic[key_plot])  
+        for dist_info in plot_options[key_plot]['dist_info']:dist2D_stlines_CCFmasks(dist_info,plot_options[key_plot],key_plot,plot_dic[key_plot])  
         
         
         
@@ -7310,7 +7330,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 plot_options=gen_plot_default(plot_options,key_plot)       
 
                 #Number of bins in histograms
-                plot_options[key_plot]['dist_info'] ='hist'
+                plot_options[key_plot]['dist_info'] = ['hist','cum_w']
                 plot_options[key_plot]['x_bins_par'] = 40
                 plot_options[key_plot]['x_log_hist'] = False
                 plot_options[key_plot]['y_bins_par'] = 40    
@@ -7340,7 +7360,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #---------------------------------
         #Plot
-        dist2D_stlines_CCFmasks(plot_options[key_plot],key_plot,plot_dic[key_plot])        
+        for dist_info in plot_options[key_plot]['dist_info']:dist2D_stlines_CCFmasks(dist_info,plot_options[key_plot],key_plot,plot_dic[key_plot])        
         
 
 
@@ -7353,7 +7373,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 plot_options=gen_plot_default(plot_options,key_plot)   
 
                 #Number of bins in histograms
-                plot_options[key_plot]['dist_info'] ='hist'
+                plot_options[key_plot]['dist_info'] =['hist','cum_w']
                 plot_options[key_plot]['x_bins_par'] = 40
                 plot_options[key_plot]['x_log_hist'] = False
                 plot_options[key_plot]['x_range_hist'] = None
@@ -7380,7 +7400,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #---------------------------------
         #Plot
-        dist1D_stlines_CCFmasks(plot_options[key_plot],key_plot,plot_dic[key_plot])
+        for dist_info in plot_options[key_plot]['dist_info']:dist1D_stlines_CCFmasks(dist_info,plot_options[key_plot],key_plot,plot_dic[key_plot])
 
 
 
@@ -7393,7 +7413,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 plot_options=gen_plot_default(plot_options,key_plot)       
 
                 #Number of bins in histograms
-                plot_options[key_plot]['dist_info'] ='hist'
+                plot_options[key_plot]['dist_info'] =['hist','cum_w']
                 plot_options[key_plot]['x_bins_par'] = 40
                 plot_options[key_plot]['x_log_hist'] = False
                 plot_options[key_plot]['x_range_hist'] = None
@@ -7420,8 +7440,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #---------------------------------
         #Plot
-        dist1D_stlines_CCFmasks(plot_options[key_plot],key_plot,plot_dic[key_plot])
-        dist1D_stlines_CCFmasks(plot_options[key_plot],key_plot+'_final',plot_dic[key_plot])
+        for dist_info in plot_options[key_plot]['dist_info']:
+            dist1D_stlines_CCFmasks(dist_info,plot_options[key_plot],key_plot,plot_dic[key_plot])
+            dist1D_stlines_CCFmasks(dist_info,plot_options[key_plot],key_plot+'_final',plot_dic[key_plot])
         
 
     '''
@@ -7545,7 +7566,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 plot_options=gen_plot_default(plot_options,key_plot)       
 
                 #Number of bins in histograms
-                plot_options[key_plot]['dist_info'] ='hist'
+                plot_options[key_plot]['dist_info'] =['hist','cum_w']
                 plot_options[key_plot]['x_bins_par'] = 40
                 plot_options[key_plot]['x_log_hist'] = False
                 plot_options[key_plot]['y_bins_par'] = 40    
@@ -7575,7 +7596,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #---------------------------------
         #Plot
-        dist2D_stlines_CCFmasks(plot_options[key_plot],key_plot,plot_dic[key_plot])
+        for dist_info in plot_options[key_plot]['dist_info']:dist2D_stlines_CCFmasks(dist_info,plot_options[key_plot],key_plot,plot_dic[key_plot])
         
 
 
@@ -7588,7 +7609,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 plot_options=gen_plot_default(plot_options,key_plot)       
 
                 #Number of bins in histograms
-                plot_options[key_plot]['dist_info'] ='hist'
+                plot_options[key_plot]['dist_info'] =['hist','cum_w']
                 plot_options[key_plot]['x_bins_par'] = 40
                 plot_options[key_plot]['x_log_hist'] = False
                 plot_options[key_plot]['y_bins_par'] = 40    
@@ -7618,7 +7639,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #---------------------------------
         #Plot
-        dist2D_stlines_CCFmasks(plot_options[key_plot],key_plot,plot_dic[key_plot])
+        for dist_info in plot_options[key_plot]['dist_info']:dist2D_stlines_CCFmasks(dist_info,plot_options[key_plot],key_plot,plot_dic[key_plot])
 
 
 
@@ -7631,7 +7652,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 plot_options=gen_plot_default(plot_options,key_plot)       
 
                 #Number of bins in histograms
-                plot_options[key_plot]['dist_info'] ='hist'
+                plot_options[key_plot]['dist_info'] =['hist','cum_w']
                 plot_options[key_plot]['x_bins_par'] = 40
                 plot_options[key_plot]['x_log_hist'] = False
                 plot_options[key_plot]['y_bins_par'] = 40    
@@ -7661,8 +7682,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #---------------------------------
         #Plot
-        dist2D_stlines_CCFmasks(plot_options[key_plot],key_plot,plot_dic[key_plot])
-
+        for dist_info in plot_options[key_plot]['dist_info']:
+            dist2D_stlines_CCFmasks(dist_info,plot_options[key_plot],key_plot,plot_dic[key_plot])
+            dist1D_stlines_CCFmasks(dist_info,plot_options[key_plot],key_plot,plot_dic[key_plot])
 
 
 
@@ -7699,6 +7721,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         
         #Default properties
         if 'prop_raw_ordin' not in plot_settings:plot_settings['prop_raw_ordin']=['rv']
+
+        #Overwrite default settings
+        if ('prop_raw_ordin' in nbook_dic['plots']):plot_settings['prop_raw_ordin'] = nbook_dic['plots']['prop_raw_ordin']
         
         #Processing properties
         for plot_prop in plot_settings['prop_raw_ordin']:

@@ -28,7 +28,7 @@ from ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_sp
 from ANTARESS_grids.ANTARESS_spots import corr_spot
 from ANTARESS_conversions.ANTARESS_binning import process_bin_prof
 from ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
-from ANTARESS_routines.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
+from ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
 from ANTARESS_analysis.ANTARESS_ana_comm import MAIN_single_anaprof
 from ANTARESS_conversions.ANTARESS_sp_cont import process_spectral_cont
 
@@ -431,9 +431,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #Instruments to which are associated the different datasets
         data_dic['instrum_list'] = list(gen_dic['data_dir_list'].keys())
         
-        #Use of covariance matrix
-        if not gen_dic['use_cov']:print('Covariances discounted')
-
     #Used visits
     for inst in data_dic['instrum_list']:
         if inst not in gen_dic['unused_visits']:gen_dic['unused_visits'][inst]=[]
@@ -451,6 +448,13 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     gen_dic['all_types'] = list(np.unique(gen_dic['all_types']))
     gen_dic['specINtype'] = any('spec' in s for s in gen_dic['all_types'])
     gen_dic['ccfINtype'] = ('CCF' in gen_dic['all_types'])   
+
+    #Use of covariance
+    if gen_dic['mock_data']:gen_dic['use_cov'] = False    
+    else:
+        #Used by default with spectral datasets, unless CCF datasets are processed or user requests otherwise
+        if gen_dic['ccfINtype']:gen_dic['use_cov'] = False  
+    if not gen_dic['use_cov']:print('Covariances discounted')        
 
     #Automatic activation/deactivation
     if gen_dic['pca_ana']:gen_dic['intr_data'] = True
@@ -562,7 +566,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
 
     #Set general condition for profiles fits
     for key in ['DI','Intr','Atm']:
-        gen_dic['fit_'+key+'_gen'] = gen_dic['fit_'+key] | gen_dic['fit_'+key+'bin'] | gen_dic['fit_'+key+'binmultivis']
+        gen_dic['fit_'+key+'_gen'] = gen_dic['fit_'+key] | gen_dic['fit_'+key+'bin'] | gen_dic['fit_'+key+'binmultivis'] 
 
     #Automatic continuum and fit range
     for key in ['DI','Intr','Atm']:
@@ -1188,7 +1192,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 
             #Observational data        
             else:
-                vis_path = gen_dic['data_dir_list'][inst][vis]
+                
+                #Adding / in case user forgets
+                vis_path = gen_dic['data_dir_list'][inst][vis]+'/'
         
                 #List of all exposures for current instrument
                 if inst in ['SOPHIE']:
@@ -1516,7 +1522,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             if inst not in mock_dic['flux_cont']:mock_dic['flux_cont'][inst]={}
                             if vis not in mock_dic['flux_cont'][inst]:mock_dic['flux_cont'][inst][vis] = 1.
                             params_mock.update({'rv':0.,'cont':mock_dic['flux_cont'][inst][vis]})  
-                            params_mock = par_formatting(params_mock,fixed_args['mod_prop'],None,None,fixed_args,inst,vis) 
+                            params_mock = par_formatting(params_mock,fixed_args['mod_prop'],None,None,fixed_args,inst,vis,mock_dic['intr_prof'][inst]['mode']) 
              
                             #Generic properties required for model calculation
                             if inst not in mock_dic['sysvel']:mock_dic['sysvel'][inst]={}
@@ -1683,12 +1689,15 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                         #Convolution, conversion and resampling 
                         DI_prof_exp = conv_st_prof_tab(None,None,None,fixed_args,args_exp,DI_prof_exp,fixed_args['FWHM_inst'])
+                        
+                        #Set negative flux values to null
+                        DI_prof_exp[DI_prof_exp] = 0.
 
                         #Define number of photoelectrons extracted during the exposure
                         #   - the model is a density of photoelectrons per unit of time, with continuum set to the input mean flux density
                         if (inst in mock_dic['gcal']):mock_gcal = mock_dic['gcal'][inst]
                         else:mock_gcal = 1.
-                        DI_prof_exp_Ftrue = mock_gcal*DI_prof_exp*coord_dic[inst][vis]['t_dur'][iexp]   
+                        DI_prof_exp_Ftrue = mock_gcal*DI_prof_exp*coord_dic[inst][vis]['t_dur'][iexp] 
 
                         #Keplerian motion and systemic shift of the disk-integrated profile 
                         #    - we shift profiles from the star rest frame (source) to the solar barycentric rest frame (receiver)
@@ -2445,7 +2454,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         #    - done here rather than in the 'calc_proc_data' condition so that ranges can be defined for already-processed observed or mock datasets, even if the analysis modules were not activated 
         # at the time of processing
         for key in ['DI','Intr','Atm']:
-            if gen_dic['fit_'+key+'_gen']:
+            if gen_dic['fit_'+key+'_gen'] or ((key=='Intr') & gen_dic['fit_IntrProf']):
                 autom_cont = True if (inst not in data_dic[key]['cont_range']) else False
                 autom_fit = True if ((inst not in data_dic[key]['fit_range']) or (vis not in data_dic[key]['fit_range'][inst])) else False
                 if autom_cont or autom_fit:

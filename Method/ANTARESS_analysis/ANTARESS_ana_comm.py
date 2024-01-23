@@ -23,7 +23,7 @@ from ANTARESS_grids.ANTARESS_coord import excl_plrange
 #%%% Definition functions
 ################################################################################################## 
 
-def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
+def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,line_type):
     r"""**Parameter formatting**
 
     Defines parameters in format relevant for fits and models, using input parameters.
@@ -165,6 +165,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
     
                         #Identify stellar line properties with polynomial spatial dependence 
                         if gen_root_par in ['ctrst','FWHM','amp_l2c','rv_l2c','FWHM_l2c','a_damp','rv_line']:
+                            if (line_type!='ana') and (gen_root_par!='rv_line'):stop('Cannot use parameter '+gen_root_par+'with line model of type '+line_type)
                             if inst_loc not in fixed_args['linevar_par']:fixed_args['linevar_par'][inst_loc]={}
                             if vis_loc not in fixed_args['linevar_par'][inst_loc]:fixed_args['linevar_par'][inst_loc][vis_loc]=[]
                             if gen_root_par not in fixed_args['linevar_par'][inst_loc][vis_loc]:fixed_args['linevar_par'][inst_loc][vis_loc]+=[gen_root_par]                     
@@ -497,23 +498,39 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     #    - for simplicity we define randomly for each walker 
     #    - parameters must be defined in the same order as in 'p_start'
     fixed_args,p_start = init_custom_DI_par(fixed_args,gen_dic,data_dic['DI']['system_prop'],fixed_args['system_param']['star'],p_start,[0.,None,None])
-    
+
     #Condition to calculate CB
     if ('c1_CB' in fit_prop_dic['mod_prop']) or ('c2_CB' in fit_prop_dic['mod_prop'])  or ('c3_CB' in fit_prop_dic['mod_prop']):fixed_args['par_list']+=['CB_RV']
 
-    #Parameter initialization
-    p_start = par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['priors'],fit_dic,fixed_args,'','')
+    #Fit spin-orbit angle by default when relevant
+    #    - assuming common values to all datasets
+    if ((rout_mode=='IntrProp') and (fit_prop_dic['prop']=='rv')) or (rout_mode=='IntrProf'):
+        for pl_loc in gen_dic['studied_pl']:
+            p_start.add_many(('lambda_rad__pl'+pl_loc, 0.,   True, -2.*np.pi,2.*np.pi,None))
 
-    #Initializing stellar profiles
-    if rout_mode!='IntrProp':
-        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,fixed_args['system_param']['star'],p_start)
-    else:
+    #Initializing stellar properties
+    if rout_mode=='IntrProp':    
         fixed_args['grid_dic'] = deepcopy(theo_dic)
         fixed_args['grid_dic']['precision'] = 'low'      #to calculate intensity-weighted properties
-    
+        line_type=None
+        
+    #Initializing stellar profiles
+    else:     
+
+        #Set default gaussian line
+        p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None),
+                         ('FWHM_ord0__IS__VS_' , 5.,    True, 0.,100.,None))
+
+        #Profile grid
+        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,fixed_args['system_param']['star'],p_start)
+        line_type = fixed_args['mode']
+
+    #Parameter initialization
+    p_start = par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['priors'],fit_dic,fixed_args,'','',line_type)
+
     #Stellar grid properties
     fixed_args['grid_dic'].update({'Ssub_Sstar_pl':theo_dic['Ssub_Sstar_pl'],'x_st_sky_grid_pl':theo_dic['x_st_sky_grid_pl'],'y_st_sky_grid_pl':theo_dic['y_st_sky_grid_pl'],'nsub_Dpl':theo_dic['nsub_Dpl'],'d_oversamp':theo_dic['d_oversamp'],'Istar_norm_achrom':theo_dic['Istar_norm_achrom']})             
-    
+   
     #Determine if orbital and light curve properties are fitted or whether nominal values are used
     #    - this depends on whether parameters required to calculate coordinates of planet-occulted regions are fitted  
     par_orb=['inclin_rad','aRs','lambda_rad']
@@ -561,7 +578,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     #Fit initialization
     init_fit(fit_dic,fixed_args,p_start,model_par_names(),fit_prop_dic)     
     merged_chain = None
-  
+    
     ########################################################################################################   
 
     #Fit by chi2 minimization
@@ -579,11 +596,14 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         print('     ----------------------------------')
         print('     MCMC calculation')
 
-        #MCMC walkers setting 
-        fit_dic['nwalkers'] = fit_prop_dic['mcmc_set']['nwalkers']
-        fit_dic['nsteps'] = fit_prop_dic['mcmc_set']['nsteps']
-        fit_dic['nburn'] = fit_prop_dic['mcmc_set']['nburn']    
-
+        #Default options
+        if 'nwalkers' not in fit_prop_dic['mcmc_set']:fit_dic['nwalkers'] = 50
+        else:fit_dic['nwalkers'] = fit_prop_dic['mcmc_set']['nwalkers']
+        if 'nsteps' not in fit_prop_dic['mcmc_set']:fit_dic['nsteps'] = 1000
+        else:fit_dic['nsteps'] = fit_prop_dic['mcmc_set']['nsteps']
+        if 'nburn' not in fit_prop_dic['mcmc_set']:fit_dic['nburn'] = 200
+        else:fit_dic['nburn'] = fit_prop_dic['mcmc_set']['nburn']
+      
         #Run MCMC
         if fit_prop_dic['mcmc_run_mode']=='use':
             print('     Applying MCMC') 
@@ -746,7 +766,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
 
 
 def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,star_param):
-    r"""**Main single profile analysis routine**
+    r"""**Main analysis routine for single profiles**
 
     Initializes and calls analysis of line profiles
     
@@ -1578,7 +1598,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     fixed_args['fit'] = {'chi2':True,'':False,'mcmc':True}[fit_prop_dic['fit_mod']]
 
     #Parameter initialization
-    p_start = par_formatting(p_start,model_prop,line_fit_priors,fit_dic,fixed_args,inst,vis)
+    p_start = par_formatting(p_start,model_prop,line_fit_priors,fit_dic,fixed_args,inst,vis,fixed_args['mode'])
 
     #Model initialization
     #    - must be done after the final parameter initialization

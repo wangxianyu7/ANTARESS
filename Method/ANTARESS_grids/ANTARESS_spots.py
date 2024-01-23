@@ -1187,11 +1187,11 @@ def corr_spot(corr_spot_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo
                     params['inclin_rad__pl'+pl_loc] = system_param[pl_loc]['inclin_rad']
                         
                     # Propriétés du profils stellaire
-                    params = par_formatting(params,corr_spot_dic['intr_prof']['mod_prop'],None,None,fixed_args,inst,vis) 
+                    params = par_formatting(params,corr_spot_dic['intr_prof']['mod_prop'],None,None,fixed_args,inst,vis,line_type) 
                     params_without_spot = deepcopy(params)
                     
                     # Propriétés des spots   
-                    par_formatting(params,corr_spot_dic['spots_prop'][inst][vis],None,None,fixed_args,inst,vis)
+                    par_formatting(params,corr_spot_dic['spots_prop'][inst][vis],None,None,fixed_args,inst,vis,line_type)
                     params_with_spot = deepcopy(params)
                 
                 

@@ -144,7 +144,7 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
         #    - defined in the stellar (for disk-integrated profiles) or surface (for intrinsic profiles) rest frames
         from ANTARESS_conversions.KitCat import KitCat_main
         mask_waves,mask_weights,mask_info = KitCat_main.kitcat_mask(mask_dic,mask_dic['fwhm_ccf'],cen_bins_mast[0],inst,edge_bins_mast[0],flux_mast_norm,gen_dic,save_data_paths,tell_spec,data_dic['DI']['sysvel'][inst][vis_bin],min_specdopshift_receiver_Earth,
-                                                        max_specdopshift_receiver_Earth,system_param['star']['Tpole'],dic_sav,plot_dic[data_type_gen+'mask_spectra'],plot_dic[data_type_gen+'mask_ld'],plot_dic[data_type_gen+'mask_ld_lw'],plot_dic[data_type_gen+'mask_RVdev_fit'],cont_func_dic,
+                                                        max_specdopshift_receiver_Earth,dic_sav,plot_dic[data_type_gen+'mask_spectra'],plot_dic[data_type_gen+'mask_ld'],plot_dic[data_type_gen+'mask_ld_lw'],plot_dic[data_type_gen+'mask_RVdev_fit'],cont_func_dic,
                                                         data_bin['vis_iexp_in_bin'],data_type_gen,data_dic,plot_dic[data_type_gen+'mask_tellcont'],plot_dic[data_type_gen+'mask_vald_depthcorr'],plot_dic[data_type_gen+'mask_morphasym'],
                                                         plot_dic[data_type_gen+'mask_morphshape'],plot_dic[data_type_gen+'mask_RVdisp'])
 

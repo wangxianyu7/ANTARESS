@@ -232,7 +232,7 @@ all_system_params={
 
     'HD189733':{
         
-        'star':{
+        'star':{  
             # 'dstar':19.45,
             # 'Mstar':0.823,
             # 'SystV':-2.2765,
@@ -241,7 +241,7 @@ all_system_params={
             # 'LD_mod':'linear',
             # 'LD_u1':0.816
 
-            #Analysis for Mounzer+2023
+            #Analysis for Mounzer+2023, from Krenn+2023            
             'Rstar':0.784,
             'istar':90.,'veq':3.25, 
             
@@ -254,13 +254,13 @@ all_system_params={
             # 'Rpl':1.138,
             # 'sma':0.0312,
 
-            #Analysis for Mounzer+2023            
+            #Analysis for Mounzer+2023, from Krenn+2023             
             'period':2.2185751979,
             'TCenter':2459446.49851,
             'TLength':1.81/24. ,# 1.9070525639199452/24.,
             'ecc':0.,
             'omega_deg':90.,
-            'inclination':85.46578817370532,
+            'inclination':85.70539050086485,   #0.016060250342902198 deg
             'Kstar':201.3,	
             'aRs':8.8843,
             'lambda_proj':-0.45

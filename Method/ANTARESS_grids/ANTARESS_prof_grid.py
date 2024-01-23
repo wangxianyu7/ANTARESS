@@ -93,7 +93,7 @@ def custom_DI_prof(param,x,args=None):
 def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop,theo_dic,star_params,param_in):   
     r"""**Disk-integrated profile: grid initialization**
 
-    Initializes stellar and intrinsic profile grids
+    Initializes stellar and intrinsic profile grids.
 
     Args:
         TBD
@@ -147,7 +147,7 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop,theo_dic
     #Line profile variations
     #    - by default profiles are fixed on initialized values 
     fixed_args['var_line'] = False
-    
+
     #Theoretical profiles 
     if fixed_args['mode']=='theo':
         fixed_args['abund_sp']=[] 
@@ -200,7 +200,7 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop,theo_dic
         #    - the mean flux level of intrinsic profiles is assumed to be unity (see function)   
         if type(fixed_args['func_prof_name'])==str:fixed_args['func_prof'] = dispatch_func_prof(fixed_args['func_prof_name'])
         else:fixed_args['func_prof'] = {inst:dispatch_func_prof(fixed_args['func_prof_name'][inst]) for inst in fixed_args['func_prof_name']}
-                
+
         #Define profiles in forward mode
         if (not fixed_args['fit']):init_st_intr_prof(fixed_args,fixed_args['grid_dic'],params)
      
@@ -266,10 +266,11 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
     #Stellar grid properties
     #    - all stellar properties are initialized to default stellar values
     #      those defined as variable properties through the settings will be overwritten in 'par_formatting'
-    for key,bd_min,bd_max in zip(['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
-                                 [0.,    None,       None,      None,   None,   None,   -1.,        0.,     0.,      0.,     0. , 0.,     0. ,  0.,     0. ,    0.],
-                                 [1e4,   None,       None,      None,   None,   None,    1.,        1.,     1.,      1e5,    1.,  1e5,    1e5,  1e5,    100.,   100.]):
-        if key in star_params:params.add_many((key, star_params[key],   False,    bd_min,bd_max,None))
+    for key,vary,bd_min,bd_max in zip(['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
+                                      [True,  False,     False,     False,  False,  False,  False,      False, False,    False,  False, False, False,False,  False,   False],
+                                      [0.,    None,       None,      None,   None,   None,   -1.,        0.,     0.,      0.,     0. , 0.,     0. ,  0.,     0. ,    0.],
+                                      [1e4,   None,       None,      None,   None,   None,    1.,        1.,     1.,      1e5,    1.,  1e5,    1e5,  1e5,    100.,   100.]):
+        if key in star_params:params.add_many((key, star_params[key],   vary,    bd_min,bd_max,None))
 
     #Properties specific to disk-integrated profiles
     if fixed_args['DI_grid']:
@@ -380,6 +381,12 @@ def gen_theo_atm(st_atm,star_params):
     sme_grid_wave = np.linspace(st_atm['wav_min'],st_atm['wav_max'],sme_grid['n_wav']) 
     sme_grid['edge_bins'] = def_edge_tab(sme_grid_wave[None,:][None,:])[0,0]
     sme_grid['wave'] = sme_grid_wave
+    
+    #Add extreme mu values if not set to prevent extrapolation issues
+    id_sort = np.argsort(st_atm['mu_grid'])
+    st_atm['mu_grid'] = st_atm['mu_grid'][id_sort]
+    if st_atm['mu_grid'][0]>0.:st_atm['mu_grid'] = np.append(0.,st_atm['mu_grid'])
+    if st_atm['mu_grid'][-1]<1.:st_atm['mu_grid'] = np.append(st_atm['mu_grid'],1.)
     sme_grid['mu_grid'] = st_atm['mu_grid']
     sme_grid['n_mu'] = len(st_atm['mu_grid'])
     
