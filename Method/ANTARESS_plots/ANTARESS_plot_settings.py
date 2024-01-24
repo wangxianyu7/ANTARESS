@@ -2194,8 +2194,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['x_range']=None
 
                 #Histogram range
-                if plot_settings[key_plot]['dist_info'] == 'cum_w' :
-                    plot_settings[key_plot]['x_range_hist']=[0.95,1]
+                # plot_settings[key_plot]['x_range_hist']=[0.95,1]
 
                 # #Test thresholds on ratio between telluric and stellar line
                 # plot_settings[key_plot]['tell_star_depthR_max'] = 0.1
@@ -2400,6 +2399,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 #X range
                 plot_settings[key_plot]['x_range']=None
                 plot_settings[key_plot]['x_range']=[0.,15.]
+                plot_settings[key_plot]['x_range']=[0.,200.] #RV disp
 
                 #Y range
                 plot_settings[key_plot]['y_range']=None

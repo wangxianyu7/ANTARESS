@@ -11,6 +11,7 @@ from pathos.multiprocessing import Pool
 from constant_data import c_light
 import numpy.ma as ma
 import bindensity as bind
+from itertools import product as it_product
 from matplotlib.ticker import MultipleLocator,MaxNLocator
 import copy
 from minim_routines import fit_minimization,ln_prob_func_lmfit
@@ -24,11 +25,12 @@ from ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_mo
 from ANTARESS_corrections.ANTARESS_detrend import detrend_prof_gen
 from ANTARESS_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
 from ANTARESS_grids.ANTARESS_coord import calc_pl_coord_plots,calc_pl_coord,calc_rv_star_HR,frameconv_skyorb_to_skystar,frameconv_skystar_to_skyorb,get_timeorbit,\
-    calc_zLOS_oblate,frameconv_star_to_skystar,calc_tr_contacts
+    calc_zLOS_oblate,frameconv_star_to_skystar,frameconv_skystar_to_star,calc_tr_contacts
 from ANTARESS_corrections.ANTARESS_calib import cal_piecewise_func
 from ANTARESS_grids.ANTARESS_star_grid import get_LD_coeff,calc_CB_RV,calc_RVrot,calc_Isurf_grid,calc_st_sky
 from ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_spot_prop
 from ANTARESS_plots.ANTARESS_plot_settings import ANTARESS_plot_settings
+from ANTARESS_grids.ANTARESS_spots import retrieve_spots_prop_from_param, calc_spotted_tiles, spot_occ_region_grid
 
 
 
@@ -4630,6 +4632,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             ax.set_xlabel(x_lab_name,fontsize=plot_options['font_size'])
             ax.tick_params('x',labelsize=plot_options['font_size'])
             ax.tick_params('y',labelsize=plot_options['font_size'])
+            if prop_type=='RVdisp':prop_type+='1D'
             plt.savefig(path_loc+prop_type+'_'+dist_info+'.'+plot_ext)                       
             plt.close() 
           
@@ -10007,6 +10010,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Use stellar rotation period to distribute the positions, instead of time
         plot_options[key_plot]['plot_spot_all_Peq'] = True  
+
+        # Whether we want to show the track of the spots (spot_overlap=True) or the location of the spots (spot_overlap=False).
+        # Only activated if we plot multiple exposures.
+        plot_options[key_plot]['spot_overlap'] = False
     
         #Overlay to the RV-colored disk a shade controlled by flux
         plot_options[key_plot]['shade_overlay']=True       
@@ -10029,6 +10036,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         
         #RV range
         plot_options[key_plot]['rv_range'] = None
+
+        #GIF generation when using multiple exposures
+        plot_options[key_plot]['GIF_generation'] = False
     
     
     
@@ -10305,7 +10315,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 idx_behind = np_where1D(st_spin_z_st < 0.)
                 z_st_sky_behind,_,cond_in_stphot_behind=calc_zLOS_oblate(st_spin_x_st[idx_behind],st_spin_y_st[idx_behind],star_params['istar_rad'],star_params['RpoleReq'])                  
                 w_vis_far = idx_behind[~cond_in_stphot_behind]
-                
+                               
                 #Points away from us, in LOS that intersect the projected photosphere, outside of the photosphere   
                 w_unvis_far = sorted(list(idx_behind[cond_in_stphot_behind][st_spin_z_st[idx_behind[cond_in_stphot_behind]] <=  z_st_sky_behind[cond_in_stphot_behind] ]))
                 
@@ -10792,35 +10802,83 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #-------------------------------------------------------
             #Spotted cells 
             #-------------------------------------------------------
-            if len(plot_options[key_plot]['stellar_spot'])>0:
-                
-                # Initialize params to use the retrieve_spots_prop_from_param function
-                params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
-                for spot in plot_options[key_plot]['stellar_spot'] : 
-                    params['lat__IS__VS__SP'+spot]     = plot_options[key_plot]['stellar_spot'][spot]['lat']
-                    params['ang__IS__VS__SP'+spot]     = plot_options[key_plot]['stellar_spot'][spot]['ang']
-                    params['Tcenter__IS__VS__SP'+spot] = plot_options[key_plot]['stellar_spot'][spot]['Tcenter']
-                    params['flux__IS__VS__SP'+spot]    = plot_options[key_plot]['stellar_spot'][spot]['flux']
-                
-                # Compute BJD of images 
-                if plot_options[key_plot]['plot_spot_all_Peq'] : t_all_spot = np.linspace(   0  ,   2*np.pi/(star_params['om_eq']*3600.*24.) ,plot_options[key_plot]['n_image_spots']) 
-                else                 : t_all_spot = np.linspace(      plot_options[key_plot]['time_range_spot'][0] , plot_options[key_plot]['time_range_spot'][1]      , plot_options[key_plot]['n_image_spots']) - 2400000
-                
-                
-                # Calculate flux of star grid, at all BJD
+            if mock_dic['use_spots']:    #Samson: plotting spots should not depend on the use of mock_dic
+                #Retrieve spot parameters defined by the user in plot_settings, if they are provided.
+                if len(plot_options[key_plot]['stellar_spot'])>0:
+                    # Initialize params to use the retrieve_spots_prop_from_param function.
+                    params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
+                    for spot in plot_options[key_plot]['stellar_spot'] : 
+                        params['lat__IS__VS__SP'+spot]     = plot_options[key_plot]['stellar_spot'][spot]['lat']
+                        params['ang__IS__VS__SP'+spot]     = plot_options[key_plot]['stellar_spot'][spot]['ang']
+                        params['Tcenter__IS__VS__SP'+spot] = plot_options[key_plot]['stellar_spot'][spot]['Tcenter']
+                        params['atten__IS__VS__SP'+spot]    = plot_options[key_plot]['stellar_spot'][spot]['atten']
+                else:
+                # If the user did not provide any spot properties for the plotting (ANTARESS_plot_settings.py) then default to
+                # the spot properties from the first instrument and visit provided in the mock dictionary section for the spots.
+                    inst_to_use = plot_options[key_plot]['inst_to_plot'][0]
+                    vis_to_use = plot_options[key_plot]['visits_to_plot'][inst_to_use][0]
+                    #Retrieve the spot parameters from the mock dictionary
+                    params = deepcopy(mock_dic['spots_prop'][inst_to_use][vis_to_use])
+                    params['cos_istar'] = star_params['cos_istar'] 
+                    params['alpha_rot'] = star_params['alpha_rot']
+                    params['beta_rot'] = star_params['beta_rot']       
+                 
+                #Retrieve spot rotational velocity
+                star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
+                #Calculate the flux of star grid, at all the exposures considered
                 star_flux_before_spot = deepcopy(Fsurf_grid_star[:,iband])
                 for t_exp in t_all_spot :
                     star_flux_exp = deepcopy(star_flux_before_spot)
                     spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, '_', '_', t_exp) 
-                    
-                    for spot in spots_prop : 
+
+                #Check if we have provided times for the plotting
+                if plot_options[key_plot]['t_BJD'] is not None:
+                    #Defining a new flux array, such that we don't see the previous spot when plotting the next spot
+                    Flux_for_nonredundant_spot_plotting = deepcopy(Fsurf_grid_star[:,iband])
+                    if len(plot_options[key_plot]['stellar_spot'])>0:
+                        spots_prop = retrieve_spots_prop_from_param(star_params, params, '_', '_', plot_t) 
+                    else:
+                        spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, plot_t) 
+                    for spot in spots_prop :
                         if spots_prop[spot]['is_visible']: 
                             _, spotted_tiles = calc_spotted_tiles( plot_options[key_plot]['spots_prop'][spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
                                                                    {}, {}, params, use_grid_dic = False)
+                            _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
+                                                                   {}, params, use_grid_dic = False)
                                                                    
                             star_flux_exp[spotted_tiles] *=  plot_options[key_plot]['spots_prop'][spot]['flux'] 
-                        
+                            star_flux_before_spot[spotted_tiles] *=  (1-spots_prop[spot]['atten'])
+                    
+                    if plot_options[key_plot]['spot_overlap']:      
+                        Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
+                    else:
+                        Flux_for_nonredundant_spot_plotting = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
+                #If no times provided for the plotting, then generate some
+                else:
+                    # Compute BJD of images 
+                    if plot_options[key_plot]['plot_spot_all_Peq'] : t_all_spot = np.linspace(   0  ,   2*np.pi/((1.-star_params['alpha_rot_spots']*sin_lat**2.-star_params['beta_rot_spots']*sin_lat**4.)*star_params['om_eq_spots']*3600.*24.) ,plot_options[key_plot]['n_image_spots'])
+                    else:
+                        dbjd =  (plot_options[key_plot]['time_range_spot'][1]-plot_options[key_plot]['time_range_spot'][0])/plot_options[key_plot]['n_image_spots']
+                        n_in_visit = int((plot_options[key_plot]['time_range_spot'][1]-plot_options[key_plot]['time_range_spot'][0])/dbjd)
+                        bjd_exp_low = plot_options[key_plot]['time_range_spot'][0] + dbjd*np.arange(n_in_visit)
+                        bjd_exp_high = bjd_exp_low+dbjd      
+                        t_all_spot = 0.5*(bjd_exp_low+bjd_exp_high) - 2400000.
+                    for t_exp in t_all_spot :
+                        star_flux_exp = deepcopy(star_flux_before_spot)
+                        if len(plot_options[key_plot]['stellar_spot'])>0:
+                            spots_prop = retrieve_spots_prop_from_param(star_params, params, '_', '_', t_exp) 
+                        else:
+                            spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, t_exp) 
+                        for spot in spots_prop :
+                            if spots_prop[spot]['is_visible']:
+                                _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
+                                                                        {}, params, use_grid_dic = False)
+
+                                star_flux_exp[spotted_tiles] *=  (1-spots_prop[spot]['atten'])
+                            
+                          
                     Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_exp)
+
         
 
     
@@ -10840,6 +10898,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 cmap = plt.get_cmap('GnBu_r')
             elif plot_options[key_plot]['disk_color']=='F':
                 val_disk=Fsurf_grid_star[:,iband]  
+                
+                if mock_dic['use_spots'] and not plot_options[key_plot]['spot_overlap'] and plot_options[key_plot]['t_BJD'] is not None:
+                    val_disk = Flux_for_nonredundant_spot_plotting
+                
                 # cmap = plt.get_cmap('GnBu_r')
                 # cmap = plt.get_cmap('jet')
                 cmap = plt.get_cmap('rainbow')
@@ -10865,7 +10927,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 min_f=np.nanmin(Fsurf_grid_star[:,iband])
                 max_f=np.nanmax(Fsurf_grid_star[:,iband])
                 color_f=cmap_f( (min_col+ (Fsurf_grid_star[:,iband]-min_f)*(max_col-min_col)/ (max_f-min_f)) )
-       
+
+                if mock_dic['use_spots'] and not plot_options[key_plot]['spot_overlap'] and plot_options[key_plot]['t_BJD'] is not None:
+                    min_f=np.nanmin(Flux_for_nonredundant_spot_plotting)
+                    max_f=np.nanmax(Flux_for_nonredundant_spot_plotting)
+                    color_f=cmap_f( (min_col+ (Flux_for_nonredundant_spot_plotting-min_f)*(max_col-min_col)/ (max_f-min_f)) )
+        
+
             #Disk colored with RV or specific intensity
             cond_in_plot = (coord_grid['x_st_sky']+0.5*d_stcell>=plot_options[key_plot]['x_range'][0]) & (coord_grid['x_st_sky']-0.5*d_stcell<=plot_options[key_plot]['x_range'][1])\
                          & (coord_grid['y_st_sky']+0.5*d_stcell>=plot_options[key_plot]['y_range'][0]) & (coord_grid['y_st_sky']-0.5*d_stcell<=plot_options[key_plot]['y_range'][1])
@@ -10965,12 +11033,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             plt.close()
             
             #Store image for GIF generation
-            if images_to_make_GIF is not None:images_to_make_GIF.append(imageio.imread(filename))
+            if images_to_make_GIF is not None:images_to_make_GIF.append(imageio.v2.imread(filename))
 
         ### End of loop on plotted timesteps    
 
         #Produce and store the GIF.
-        if images_to_make_GIF is not None:imageio.mimsave(path_loc+'System.gif', images_to_make_GIF,fps=plot_options[key_plot]['fps'])
+        if images_to_make_GIF is not None:imageio.mimsave(path_loc+'System.gif', images_to_make_GIF,duration=(1000 * 1/plot_options[key_plot]['fps']))
+
 
 
 

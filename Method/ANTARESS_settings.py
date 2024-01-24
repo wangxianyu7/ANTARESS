@@ -272,7 +272,21 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - set to 1 if undefined
     #    - format is {inst:{value}}
     mock_dic['gcal']={}
+
+
+    #%%%% Spots
        
+    #%%%%% Properties
+    #    - spot inclusion is conditioned by this dictionary being filled in
+    #    - spots are defined by 4 parameters : 
+    # + 'lat' : constant lattitutde of the spot, in star rest frame
+    # + 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
+    # + 'ang' : the angular size (in deg) of the spot
+    # + 'flux' : the flux level of the spot surface, relative to the 'normal' surface of the star.
+    #    - format is {inst : {vis : {prop : val}}}
+    #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']    
+    mock_dic['spots_prop'] = {}
+
     
     #%%%% Noise settings
     
@@ -297,20 +311,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - possibilities: RV shift, change in instrumental resolution (replacing nominal instrumental convolution)
     #    - format is {inst:{vis:{rv:value,resol:value}}
     mock_dic['drift_post'] = {}
-       
-    #%%%%% Properties
-    #    - spot inclusion is conditioned by this dictionary being filled in
-    #    - spots are defined by 4 parameters : 
-    # + 'lat' : constant lattitutde of the spot, in star rest frame
-    # + 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
-    # + 'ang' : the angular size (in deg) of the spot
-    # + 'flux' : the flux level of the spot surface, relative to the 'normal' surface of the star.
-    #    - structure is par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']    
-    mock_dic['spots_prop'] = {}
 
-    
-
-    
                 
 
     
@@ -557,9 +558,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'abund':{},
         'calc':True,
         }  
-    
-    
-    #%%%% Planet
+
+
+    #%%%% Planets
     
     #%%%%% Discretization        
     #    - number of subcells along a planet diameter to define the grid of subcells discretizing the stellar regions it occults 
@@ -598,6 +599,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - can be relevant to fit profiles measured at low resolution
     #    - set to None for no oversampling
     theo_dic['rv_osamp_line_mod']=None
+
+
+    #%%%% Spots
+    gen_dic['theo_spots'] = False #Samson: is this field still useful ?
+    
+    #%%%%% Discretization         
+    theo_dic['nsub_Dspot']={} 
+
+
+    #%%%%% Exposure oversampling
+    theo_dic['n_oversamp_spot']={}  
     
     
     #%%%% Plot settings
@@ -633,14 +645,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     
-        # '''   
-        # Calculating properties of spots
-        # ''' 
-    
-        #Activate
-    gen_dic['theo_spots'] = True   &  False
 
-    
     
     
     
@@ -2128,6 +2133,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
       
     
     #%%%% Spot intensity settings
+    #    - same format as 'system_prop'
     data_dic['DI']['spots_prop']={}
     
     
