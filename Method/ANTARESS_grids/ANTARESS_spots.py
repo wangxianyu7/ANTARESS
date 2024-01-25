@@ -566,7 +566,7 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
         line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_occ[:,0],args['flux_intr_grid'],coord_grid['mu'],par_star,args)          
         
         #Calculate line profile emitted by the spot
-        emit_line_prof_grid = coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),(1-spot_prop['atten'])*Fsurf_grid_occ[:,0],args['flux_intr_grid'],coord_grid['mu'],par_star,args)          
+        emit_line_prof_grid = coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),(1-spot_prop['ctrst'])*Fsurf_grid_occ[:,0],args['flux_intr_grid'],coord_grid['mu'],par_star,args)          
         
         #Coadd line profiles over spot-occulted region
         sum_prop_dic_spot['line_prof'] = np.sum((np.array(line_prof_grid)-np.array(emit_line_prof_grid)),axis=0) 
@@ -862,7 +862,7 @@ def new_calc_spotted_region_prop(spot_prop, grid_dic, star_params, LD_law, ld_co
                                 grid_dic['x_st_sky'], grid_dic['y_st_sky'], grid_dic['z_st_sky'], grid_dic,
                                 star_params, use_grid_dic)
         if spot_within_grid:
-            flux_emitted_all_tiles_sp[cond_in_one_sp] *= spot_prop['atten']
+            flux_emitted_all_tiles_sp[cond_in_one_sp] *= spot_prop['ctrst']
             cond_in_sp |= cond_in_one_sp
                 
     flux_occulted_all_tiles_sp = 1 - flux_emitted_all_tiles_sp

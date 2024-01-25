@@ -8127,9 +8127,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         plot_settings[key_plot]['spot_overlap'] = True & False
 
         if gen_dic['star_name']=='AUMic':
-            # plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' : 10, 'Tcenter' : 2458330.39051, 'ang' : 20, 'atten' : 0.2}
-            # plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+1.5, 'ang' : 25, 'atten' : 0.4}
-            # plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 25, 'atten' : 0.4}
+            # plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' : 10, 'Tcenter' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
+            # plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
+            # plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
             plot_settings[key_plot]['n_image_spots'] = 50
             # plot_settings[key_plot]['n_image_spots'] = 50
             
@@ -8142,7 +8142,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['spot_overlap'] = False  
 
         elif gen_dic['star_name']=='V1298tau':
-            # plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'atten' : 0.6}   
+            # plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'ctrst' : 0.6}   
             plot_settings[key_plot]['n_image_spots'] = 40
             
             plot_settings[key_plot]['time_range_spot'] = 2457067.0488+np.array([-0.2, 0.2])

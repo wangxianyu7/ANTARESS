@@ -528,7 +528,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                 spots_are_visible = False
                 for spot in spots_in_exp:
                     reduced_spot_prop_oversamp[spot]={}
-                    reduced_spot_prop_oversamp[spot]['atten']=spots_prop_all_exp[iexp][spot]['atten']
+                    reduced_spot_prop_oversamp[spot]['ctrst']=spots_prop_all_exp[iexp][spot]['ctrst']
                     reduced_spot_prop_oversamp[spot]['ang_rad']=spots_prop_all_exp[iexp][spot]['ang_rad']
                     temp_long = np.arcsin(x_oversamp_sp[spot][iosamp] / np.cos(spots_prop_all_exp[iexp][spot]['lat_rad_exp_center']))
                     reduced_spot_prop_oversamp[spot]['cos_lat_exp_center'] = np.cos(spots_prop_all_exp[iexp][spot]['lat_rad_exp_center'])
@@ -592,7 +592,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                     #Need to make a new dictionary that contains the spot properties for this oversampled exposure
                     spot_prop_oversamp = {}
                     #Setting the properties in spot_prop_oversamp to those of the oversampled exposure
-                    spot_prop_oversamp['atten'] = spots_prop_all_exp[iexp][spot]['atten']
+                    spot_prop_oversamp['ctrst'] = spots_prop_all_exp[iexp][spot]['ctrst']
                     spot_prop_oversamp['x_sky_grid'] = x_st_sky_max_sp
                     spot_prop_oversamp['y_sky_grid'] = y_st_sky_max_sp
                     spot_prop_oversamp['x_sky_exp_center'] = x_oversamp_sp[spot][iosamp]
@@ -626,10 +626,10 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                                 elif (theo_dic['precision']=='high'):surf_prop_dic_spot[subkey_chrom]['line_prof'][:,i_in]+=sum_prop_dic[subkey_chrom][spot]['line_prof']
                             
                             emit_coord_reg_dic = deepcopy(coord_reg_dic)
-                            emit_coord_reg_dic[subkey_chrom][spot]['Ftot'][iband] *= (1-spot_prop_oversamp['atten'])
+                            emit_coord_reg_dic[subkey_chrom][spot]['Ftot'][iband] *= (1-spot_prop_oversamp['ctrst'])
 
                             emit_surf_prop_dic_spot = deepcopy(surf_prop_dic_spot)
-                            emit_surf_prop_dic_spot[subkey_chrom][spot]['Ftot'][iband] *= (1-spot_prop_oversamp['atten'])
+                            emit_surf_prop_dic_spot[subkey_chrom][spot]['Ftot'][iband] *= (1-spot_prop_oversamp['ctrst'])
 
                 #Star was effectively occulted at oversampled position
                 if cond_occ_sp:
@@ -845,7 +845,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
         #Accounting for the spots' emission
         if spot_occ:
             for spot in list(reduced_spot_prop.keys()):
-                Fsurf_grid_star[:, iband] = np.where(coord_grid[spot+'_flag_map'] == True, Fsurf_grid_star[:, iband] - (Fsurf_grid_star[:, iband] * (1-reduced_spot_prop[spot]['atten'])), Fsurf_grid_star[:, iband])
+                Fsurf_grid_star[:, iband] = np.where(coord_grid[spot+'_flag_map'] == True, Fsurf_grid_star[:, iband] - (Fsurf_grid_star[:, iband] * (1-reduced_spot_prop[spot]['ctrst'])), Fsurf_grid_star[:, iband])
             Ftot_star = np.sum(Fsurf_grid_star, axis=0)
 
         #Scale continuum level
