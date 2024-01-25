@@ -794,11 +794,11 @@ def corr_spot(corr_spot_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo
                     params['inclin_rad__pl'+pl_loc] = system_param[pl_loc]['inclin_rad']
                         
                     # Propriétés du profils stellaire
-                    params = par_formatting(params,corr_spot_dic['intr_prof']['mod_prop'],None,None,fixed_args,inst,vis) 
+                    params = par_formatting(params,corr_spot_dic['intr_prof']['mod_prop'],None,None,fixed_args,inst,vis,line_type) 
                     params_without_spot = deepcopy(params)
                     
                     # Propriétés des spots   
-                    par_formatting(params,corr_spot_dic['spots_prop'][inst][vis],None,None,fixed_args,inst,vis)
+                    par_formatting(params,corr_spot_dic['spots_prop'][inst][vis],None,None,fixed_args,inst,vis,line_type)
                     params_with_spot = deepcopy(params)
                 
                 
@@ -1399,4 +1399,5 @@ def calc_spotted_region_prop(spots_prop, grid_dic, star_params, LD_law, ld_coeff
         for key in ['r_proj2_st_sky_sp', 'x_st_sky_sp', 'y_st_sky_sp', 'z_st_sky_sp', 'x_st_sp', 'y_st_sp', 'z_st_sp', 'mu_sp'] :
            region_prop.pop(key)
     
-    return cond_in_sp, (   spot_within_grid_all and np.any(region_prop['flux_sp'] > 0)   ), region_prop
+
+    return cond_in_sp, (   spot_within_grid and np.any(region_prop['flux_sp'] > 0)   ), region_prop

@@ -7,7 +7,7 @@ from constant_data import c_light
 from pathos.multiprocessing import Pool
 from ANTARESS_conversions.ANTARESS_binning import pre_calc_bin_prof,weights_bin_prof
 from ANTARESS_grids.ANTARESS_coord import excl_plrange
-from ANTARESS_routines.ANTARESS_data_process import calc_Intr_mean_cont
+from ANTARESS_process.ANTARESS_data_process import calc_Intr_mean_cont
 from ANTARESS_corrections.ANTARESS_detrend import corr_length_determination
 
 

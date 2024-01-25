@@ -79,12 +79,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Data uncertainties
     
     #%%%%% Using covariance matrix
-    #    - set to True to propagate full covariance matrix and use it in fits (otherwise variance alone is used)
-    #    - do not activate when using CCF from input
-    if 'spec2D' in gen_dic['type'].values():gen_dic['use_cov']=True
-    else:gen_dic['use_cov']=False
-    
-    
+    #    - set to True to propagate full covariance matrix and use it in fits (default for spectra)
+    #      otherwise variance alone is used (imposed for CCFs)
+    gen_dic['use_cov']=True
+
+
     #%%%%% Manual variance table 
     #    - set instrument in list for its error tables to be considered undefined 
     #    - for spectral profiles errors are set to sqrt(F) for disk-integrated profiles and propagated afterwards
@@ -279,7 +278,23 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - set to 1 if undefined
     #    - format is {inst:{value}}
     mock_dic['gcal']={}
-       
+
+
+    #%%%% Spots
+    #%%%% Activating spots
+    mock_dic['use_spots'] = False
+
+    #%%%%% Properties
+    #    - spot inclusion is conditioned by this dictionary being filled in
+    #    - spots are defined by 4 parameters : 
+    # + 'lat' : constant lattitutde of the spot, in star rest frame
+    # + 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
+    # + 'ang' : the angular size (in deg) of the spot
+    # + 'ctrst' : the flux level of the spot surface, relative to the 'normal' surface of the star.
+    #    - format is {inst : {vis : {prop : val}}}
+    #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']    
+    mock_dic['spots_prop'] = {}
+
     
     #%%%% Noise settings
     
@@ -304,18 +319,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - possibilities: RV shift, change in instrumental resolution (replacing nominal instrumental convolution)
     #    - format is {inst:{vis:{rv:value,resol:value}}
     mock_dic['drift_post'] = {}
-       
-    #%%%%% Properties
-    #    - spot inclusion is conditioned by this dictionary being filled in
-    #    - spots are defined by 4 parameters : 
-    # + 'lat' : constant lattitutde of the spot, in star rest frame
-    # + 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
-    # + 'ang' : the angular size (in deg) of the spot
-    # + 'flux' : the flux level of the spot surface, relative to the 'normal' surface of the star.
-    #    - structure is par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']    
-    mock_dic['spots_prop'] = {}
-    
-
 
 
 
@@ -547,7 +550,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + mu grid: define array 'mu_grid' of mu coordinates
     #            the resolution in mu has little impact on computing time
     # + linelist: indicate the path 'linelist' of the linelist generated from the VALD database
-    #             connect into VALD with email address: http://vald.astro.uu.se/, choose 'Extract Stellar', and define:
+    #             connect into VALD at http://vald.astro.uu.se/ with your registered email address (you will need to ask for an account using their Contact form)
+    #             choose 'Extract Stellar', and define:
     #    > start and end wavelength (A, vacuum): should be wide enough to contain all transitions in the simulated band (it can be larger and is automatically cropped to the simulated spectral range)
     #    > line detection threshold: typically set to 0.1 
     #    > microturbulence (km/s): must be consistent with stellar value
@@ -569,9 +573,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'abund':{},
         'calc':True,
         }  
-    
-    
-    #%%%% Planet
+
+
+    #%%%% Planets
     
     #%%%%% Discretization        
     #    - number of subcells along a planet diameter to define the grid of subcells discretizing the stellar regions it occults 
@@ -610,6 +614,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - can be relevant to fit profiles measured at low resolution
     #    - set to None for no oversampling
     theo_dic['rv_osamp_line_mod']=None
+
+
+    #%%%% Spots
+    gen_dic['theo_spots'] = False #Samson: is this field still useful ?
+    
+    #%%%%% Discretization         
+    theo_dic['nsub_Dspot']={} 
+
+
+    #%%%%% Exposure oversampling
+    theo_dic['n_oversamp_spot']={}  
     
     
     #%%%% Plot settings
@@ -643,29 +658,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['system_view']=''  
       
 
-    # '''   
-    # Calculating properties of spots
-    # ''' 
-
-    #Activate
-    gen_dic['theo_spots'] = True   &  False
-    
-    # #Calculating/retrieving
-    # gen_dic['calc_theo_spots']=True   &  False  
-
-
-    # #Number and properties of spots in each visit
-    # theo_dic['spots_prop']={
-    #     'HARPN':{
-    #         '20200128':{
-    #             'spot1':{'RspRs':0.1},
-    #             'spot2':{'RspRs':0.1}},
-    #         '20201207':{
-    #             'spot1':{'RspRs':0.1},
-    #             'spot2':{'RspRs':0.1}}
-    #         }}      
-    
-    
     
     
     
@@ -1662,7 +1654,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #      the sinusoidal coefficients are used if defined via 'sin'
     #    - the constant level a0 is left undefined :  for contrast and FWHM models are normalized to their mean, and for RVs the level is controlled by the alignment module and sysvel
     #    - RV correction must be done in the input rest frame, as CCFs are corrected before being aligned
-    #      if a FWHM correction is requested you must perform first the RV correction to determine and fix the systemic velocity  
+    #      if a FWHM correction is requested you must perform first the RV correction alone, then determine and fix the systemic velocity, then perform the FWHM correction  
     detrend_prof_dic['prop']={}    
     
             
@@ -2155,6 +2147,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     data_dic['DI']['system_prop']={}
       
     
+    #%%%% Spot intensity settings
+    #    - same format as 'system_prop'
+    data_dic['DI']['spots_prop']={}
+    
+    
     #%%%% Transit light curve model
     #    - there are several possibilities to define the light curves, specific to each instrument and visit, via 'transit_prop':inst:vis
     # > Imported : {'mode':'imp','path':path}     
@@ -2338,6 +2335,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Vicinity window
     #    - in fraction of 'fwhm_ccf'
     #    - window for extrema localization in pixels of the regular grid = int(min(fwhm_ccf*w_reg/(vicinity_fwhm*c_light*dw_reg)))
+    #      beware that it should not be too small, otherwise small variations within the lines themselves will be mistaken for extrema
     data_dic['DI']['mask']['vicinity_fwhm'] = {} 
     
     
@@ -2381,7 +2379,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     data_dic['DI']['mask']['linedepth_cont_min'] = {}   
     data_dic['DI']['mask']['linedepth_min'] = {}  
     data_dic['DI']['mask']['linedepth_cont_max'] = {} 
-    
+    data_dic['DI']['mask']['linedepth_max'] = {}      
+    data_dic['DI']['mask']['linedepth_contdepth'] = {} 
+
     
     #%%%%% Minimum depth and width
     #    - selection criteria on minimum line depth and half-width (between minima and closest maxima) to be kept (value > 10^(crit)) 
@@ -2409,12 +2409,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Thresholds on telluric/stellar lines depth ratio
     #    - telluric lines with ratio larger than minimum threshold are considered for exclusion
     #    - stellar lines with ratio larger than maximum threshold are excluded (the final threshold is applied after the VALD and morphological analysis)
+    #    - check using plot_dic['DImask_spectra'] with step='sel3'
+    #      use plot_dic['DImask_tellcont'] to adjust
     data_dic['DI']['mask']['tell_star_depthR_min'] = None
     data_dic['DI']['mask']['tell_star_depthR_max'] = None
     data_dic['DI']['mask']['tell_star_depthR_max_final'] = None
     
     
-    #%%%% VALD cross-validation     
+    #%%%% VALD cross-validation 
+    #    - lines from the input VALD linelist are cross-matched with the lines identified by the module and stored for later use.
+    #    - this step has no impact on the line selection    
     
     #%%%%% Path to VALD linelist
     #    - set to None to prevent
@@ -2430,18 +2434,23 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Symmetry
     #    - selection criteria on maximum ratio between normalized continuum difference and relative line depth, and normalized asymetry parameter, to be kept (value < crit) 
+    #    - check using plot_dic['DImask_spectra'] with step='sel4'
+    #      use plot_dic['DImask_morphasym'] to adjust    
     data_dic['DI']['mask']['diff_cont_rel_max'] = None
     data_dic['DI']['mask']['asym_ddflux_max'] = None    
     
     
     #%%%%% Width and depth
     #    - selection criteria on minimum line depth (value > crit) and maximum line width (value < crit) to be kept
+    #    - check using plot_dic['DImask_spectra'] with step='sel5'
+    #      use plot_dic['DImask_morphshape'] to adjust   
     data_dic['DI']['mask']['width_max'] = None 
     data_dic['DI']['mask']['diff_depth_min'] = None
     
         
     #%%%% Line selection: RV dispersion 
     #    - set to True to activate 
+    #    - check using plot_dic['DImask_spectra'] with step='sel6'
     data_dic['DI']['mask']['RV_disp_sel'] = True
     
     
@@ -2453,13 +2462,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% RV deviation
     #    - lines with absolute RVs beyond this value are excluded (in m/s)
+    #    - use plot_dic['DImask_RVdisp'] to adjust 
     data_dic['DI']['mask']['absRV_max'] = {}
     
     
     #%%%%% Dispersion deviation
-    #    - lines with RV dispersion/mean error over the exposure series beyond this value are excluded
+    #    - lines with RV dispersion and RV dispersion/mean error over the exposure series beyond these values are excluded
     #    - beware not to use this criterion when there are too few exposures
+    #    - use plot_dic['DImask_RVdisp'] to adjust 
     data_dic['DI']['mask']['RVdisp2err_max'] = {}
+    data_dic['DI']['mask']['RVdisp_max'] = {}
     
     
     #%%%% Plot settings 

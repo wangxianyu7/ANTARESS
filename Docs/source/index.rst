@@ -18,17 +18,6 @@ Welcome to ANTARESS's documentation!
 
 .. toctree::
    :maxdepth: 2
-   :caption: Routines:
-
-   ANTARESS_calib
-   ANTARESS_plocc_spec
-   ANTARESS_binning
-   ANTARESS_data_process
-   ANTARESS_sp_cont
-   ANTARESS_data_align		
-
-.. toctree::
-   :maxdepth: 2
    :caption: Corrections:
 
    ANTARESS_sp_reduc
@@ -37,6 +26,15 @@ Welcome to ANTARESS's documentation!
    ANTARESS_peaks
    ANTARESS_interferences
    ANTARESS_detrend
+   ANTARESS_calib
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Processing:
+
+   ANTARESS_data_process
+   ANTARESS_data_align		
+   ANTARESS_plocc_spec
 
 .. toctree::
    :maxdepth: 2
@@ -64,6 +62,8 @@ Welcome to ANTARESS's documentation!
    
    ANTARESS_masks_gen
    ANTARESS_conv
+   ANTARESS_binning
+   ANTARESS_sp_cont
 
 .. toctree::
    :maxdepth: 2

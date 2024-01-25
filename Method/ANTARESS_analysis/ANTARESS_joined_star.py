@@ -315,9 +315,19 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         if (fixed_args['mode']=='ana') and (inst not in fixed_args['func_prof_name']):fixed_args['func_prof_name'][inst] = 'gauss'
         if (inst in fit_prop_dic['order']):iord_sel =  fit_prop_dic['order'][inst]
         else:iord_sel = 0
+        
+        #Setting continuum range to default if undefined
+        if inst not in fit_prop_dic['cont_range']:fit_prop_dic['cont_range'] = data_dic['Intr']['cont_range']
         cont_range = fit_prop_dic['cont_range'][inst][iord_sel]
+
+        #Setting fitted range to default if undefined
+        if inst not in fit_prop_dic['fit_range']:fit_prop_dic['fit_range'][inst] = data_dic['Intr']['fit_range'][inst]
+        
+        #Setting trimmed range to default if undefined
         if (inst in fit_prop_dic['trim_range']):trim_range = fit_prop_dic['trim_range'][inst]
         else:trim_range = None 
+        
+        #Processing visit
         for vis in data_dic[inst]['visit_list']:
             init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
             

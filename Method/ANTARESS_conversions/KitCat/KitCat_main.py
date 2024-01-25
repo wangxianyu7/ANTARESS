@@ -24,7 +24,7 @@ from pathos.multiprocessing import Pool
 import ANTARESS_conversions.KitCat.calculate_RV_line_by_line3 as calculate_RV_line_by_line 
 
 
-def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_norm,gen_dic,save_data_paths,tell_spec,rv_sys,min_specdopshift_receiver_Earth,max_specdopshift_receiver_Earth,Teff_star,dic_sav,plot_spec,plot_ld,plot_ld_lw,plot_RVdev_fit,cont_func_dic,vis_iexp_in_bin,
+def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_norm,gen_dic,save_data_paths,tell_spec,rv_sys,min_specdopshift_receiver_Earth,max_specdopshift_receiver_Earth,dic_sav,plot_spec,plot_ld,plot_ld_lw,plot_RVdev_fit,cont_func_dic,vis_iexp_in_bin,
                 data_type_gen,data_dic,plot_tellcont,plot_vald_depthcorr,plot_morphasym,plot_morphshape,plot_RVdisp):
     mask_info=''
        
@@ -71,11 +71,11 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     if mask_dic['verbose']:print('           Finding extrema')
 
     #Vicinity window for the local extrema algorithm
-    #    - vicinity_fwhm in fraction of the FWHM
+    #    - vicinity_fwhm in fraction of the FWHM (should not be too small or the algorithm finds extrema within the lines themselves)
     #      vicinity_reg in pixels of the oversampled regular grid
     if (inst in mask_dic['vicinity_fwhm']):vicinity_fwhm = mask_dic['vicinity_fwhm'][inst]    
     else:
-        vicinity_fwhm={'ESPRESSO':20.}
+        vicinity_fwhm={'ESPRESSO':10.}    
         if inst not in vicinity_fwhm:stop('Add '+inst+' to "vicinity_fwhm" in KitCat_main.py')
         vicinity_fwhm=vicinity_fwhm[inst]              
     vicinity_rv = fwhm_ccf/vicinity_fwhm
@@ -191,7 +191,14 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     Dico['right_width'] = Dico['w_minima']-Dico['w_maxima_right']
     Dico['left_depth'] = Dico['f_minima']-Dico['f_maxima_left']
     Dico['right_depth'] = Dico['f_minima']-Dico['f_maxima_right']    
-    
+
+    #Store for plotting
+    dic_sav['sel0']={}
+    if plot_spec:
+        dic_sav['sel0'].update({'nl_mask_pre':nlines,'nl_mask_post':len(Dico['w_minima'])})                   
+        for key in ['f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel0'][key] = np.array(Dico[key])
+        dic_sav['sel0']['w_lines'] = np.array(Dico['w_minima'])
+        dic_sav['line_rej_range'] = line_rej_range    
 
     #=============================================================================  
     #RV weights 
@@ -244,6 +251,8 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #Depth range criteria
     if (inst in mask_dic['linedepth_min']):linedepth_min = mask_dic['linedepth_min'][inst]
     else:linedepth_min = 0.01    #mainly to exclude abnormal 'positive' lines
+    if (inst in mask_dic['linedepth_max']):linedepth_max = mask_dic['linedepth_max'][inst]
+    else:linedepth_max = 0.99    #mainly to exclude abnormal 'negative' lines    
     if (inst in mask_dic['linedepth_cont_min']):linedepth_cont_min = mask_dic['linedepth_cont_min'][inst]
     else:
         if (fwhm_ccf<15.):linedepth_cont_min = 0.10   
@@ -252,15 +261,30 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     else:
         if (fwhm_ccf<15.):linedepth_cont_max = 0.95  
         else:linedepth_cont_max = 0.40 
+        
+    #Depth = f(continuum depth) limit
+    #    - both are correlated, so that a specific threshold can be defined
+    if (inst in mask_dic['linedepth_contdepth']):
+        linedepth_contdepth = mask_dic['linedepth_contdepth'][inst] 
+        
+        #Linear threshold
+        linedepth_rel = linedepth_contdepth[0]*line_depth_cont+linedepth_contdepth[1]
+        
+    else:
+        linedepth_contdepth = None
+        linedepth_rel = 10.
      
     #Store for plotting
     if plot_ld:
-        dic_sav.update({'line_depth_cont':line_depth_cont,'line_depth':line_depth,'linedepth_cont_min':linedepth_cont_min,'linedepth_cont_max':linedepth_cont_max,'linedepth_min':linedepth_min,'weight_rv_ld':np.array(Dico[mask_dic['mask_weights']])})
-        
+        dic_sav.update({'line_depth_cont':line_depth_cont,'line_depth':line_depth,'linedepth_cont_min':linedepth_cont_min,'linedepth_cont_max':linedepth_cont_max,'linedepth_max':linedepth_max,'linedepth_min':linedepth_min,'linedepth_contdepth':linedepth_contdepth,
+                        'weight_rv_ld':np.array(Dico[mask_dic['mask_weights']])})
+  
     #Keep lines with continuum depth within the requested depth range, and with effective depth larger than a threshold
-    mask_line = (line_depth_cont > linedepth_cont_min)&(line_depth_cont < linedepth_cont_max)&(line_depth > linedepth_min )
+    mask_line = (line_depth_cont > linedepth_cont_min)&(line_depth_cont < linedepth_cont_max)&(line_depth > linedepth_min ) & (line_depth < linedepth_max) & (line_depth<linedepth_rel)
     Dico = Dico.loc[mask_line]
-    Dico = Dico.reset_index(drop=True)     
+    Dico = Dico.reset_index(drop=True)    
+    
+    #------------------------------------------------------
 
     #Keep lines with minimum depth and width larger than requested threshold
     if (mask_dic['line_width_logmin'] is not None):line_width_logmin = mask_dic['line_width_logmin']
@@ -285,7 +309,6 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         dic_sav['sel1'].update({'nl_mask_pre':nlines,'nl_mask_post':len(Dico['w_minima']),'linedepth_cont_min':linedepth_cont_min,'linedepth_cont_max':linedepth_cont_max})                                
         for key in ['f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel1'][key] = np.array(Dico[key])
         dic_sav['sel1']['w_lines'] = np.array(Dico['w_minima'])
-        dic_sav['line_rej_range'] = line_rej_range
 
     #=============================================================================
     #Line properties
@@ -577,8 +600,6 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #=============================================================================
     if mask_dic['VALD_linelist'] is not None:
         if mask_dic['verbose']:print('           Selection: VALD') 
-        if (Teff_star<4500.)|(Teff_star>6500.):
-            print('         WARNING: Stellar effective temperature out of the VALD Teff range [4500,6500]')
             
         #Upload VALD linelist
         from pysme.linelist.vald import ValdFile
@@ -843,7 +864,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #Store for plotting    
     if plot_morphasym:
         dic_sav.update({'diff_continuum_rel':diff_continuum_rel,'abs_asym_ddflux_norm':asym_ddflux_norm,
-                        'diff_cont_rel_max':mask_dic['diff_cont_rel_max'],'asym_ddflux_max':mask_dic['asym_ddflux_max'],'weight_rv_morphasym':np.array(Dico[mask_dic['mask_weights']])})
+                        'diff_cont_rel_max':diff_cont_rel_max,'asym_ddflux_max':asym_ddflux_max,'weight_rv_morphasym':np.array(Dico[mask_dic['mask_weights']])})
     
     #Remove lines with blends
     mask &= Dico['num_dd_max']==1
@@ -948,40 +969,43 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
             else: RV_tab_vis = RV_LBL(idx_RV_disp_sel,*common_args)  
             RV_tab = np.append(RV_tab,RV_tab_vis,axis=2)   
                  
-        #Calculate weighted average of RV, and dispersion/mean error, for each line
+        #Calculate weighted average of RV, dispersion, and dispersion/mean error, for each line
         #    - beware in cases where the number of out-of-transit spectra, and thus of RV measurements for each line, is too low to analyze the RV distribution and errors of a single line 
         av_RV_lines = np.ones(nlines,dtype=float)*1e10
+        disp_RV_lines = np.ones(nlines,dtype=float)*1e10
         disp_err_RV_lines = np.ones(nlines,dtype=float)*1e10
         for iline in range(nlines):
             cond_def = (~np.isnan(RV_tab[0,iline,:])) & (~np.isnan(RV_tab[1,iline,:])) 
             if np.sum(cond_def)>0:
             
-                #Weighted average
+                #Weighted average (m/s)
                 wRV_line = 1./RV_tab[1,iline,cond_def]**2.
                 av_RV_lines[iline] = np.sum(RV_tab[0,iline,cond_def]*wRV_line)/np.sum(wRV_line)
             
                 #Dispersion to error ratio
-                disp_RV = np.std(RV_tab[0,iline,cond_def])
+                disp_RV_lines[iline] = np.std(RV_tab[0,iline,cond_def])
                 mean_eRV = np.mean(RV_tab[1,iline,cond_def])
-                disp_err_RV_lines[iline] = disp_RV/mean_eRV
-                
-                if np.isnan(disp_err_RV_lines[iline]):print(disp_RV,mean_eRV)
-
+                disp_err_RV_lines[iline] = disp_RV_lines[iline]/mean_eRV
 
         #Dispersion thresholds
         if (inst in mask_dic['absRV_max']):absRV_max = mask_dic['absRV_max'][inst]
         else:absRV_max={'ESPRESSO':50}[inst]
+        if (inst in mask_dic['RVdisp_max']):RVdisp_max = mask_dic['RVdisp_max'][inst]
+        else:
+            RVdisp_max={'ESPRESSO':100.}
+            if inst not in RVdisp_max:stop('Add '+inst+' to "RVdisp_max" in KitCat_main.py')
+            RVdisp_max=RVdisp_max[inst]              
         if (inst in mask_dic['RVdisp2err_max']):RVdisp2err_max = mask_dic['RVdisp2err_max'][inst]
         else:RVdisp2err_max=10.     
         
         #Store for plotting
         abs_av_RV_lines = np.abs(av_RV_lines)
         if plot_RVdisp:
-            dic_sav.update({'nexp4lineRV':RV_tab.shape[2],'abs_av_RV_lines':abs_av_RV_lines,'disp_err_RV_lines':disp_err_RV_lines,'absRV_max':absRV_max,'RVdisp2err_max':RVdisp2err_max,'weight_rv_RVdisp':np.array(Dico[mask_dic['mask_weights']])})        
+            dic_sav.update({'nexp4lineRV':RV_tab.shape[2],'abs_av_RV_lines':abs_av_RV_lines,'disp_err_RV_lines':disp_err_RV_lines,'disp_RV_lines':disp_RV_lines,'absRV_max':absRV_max,'RVdisp2err_max':RVdisp2err_max,'RVdisp_max':RVdisp_max,'weight_rv_RVdisp':np.array(Dico[mask_dic['mask_weights']])})        
         
         #Exclude from mask lines with absolute RV and RV dispersion/error beyond threshold
         #    - RV should be well spread around 0, since exposures and master are aligned in the star frame, and have dispersion and error comparable over the time series
-        mask = (abs_av_RV_lines<absRV_max) & (disp_err_RV_lines<RVdisp2err_max)
+        mask = (abs_av_RV_lines<absRV_max) & (disp_err_RV_lines<RVdisp2err_max) & (disp_RV_lines<RVdisp_max)
         Dico = Dico.loc[mask]
         Dico = Dico.reset_index(drop=True)
 

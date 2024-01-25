@@ -28,7 +28,7 @@ from ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_sp
 from ANTARESS_grids.ANTARESS_spots import corr_spot,spot_occ_region_grid
 from ANTARESS_conversions.ANTARESS_binning import process_bin_prof
 from ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
-from ANTARESS_routines.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
+from ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
 from ANTARESS_analysis.ANTARESS_ana_comm import MAIN_single_anaprof
 from ANTARESS_conversions.ANTARESS_sp_cont import process_spectral_cont
 
@@ -430,9 +430,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #Instruments to which are associated the different datasets
         data_dic['instrum_list'] = list(gen_dic['data_dir_list'].keys())
         
-        #Use of covariance matrix
-        if not gen_dic['use_cov']:print('Covariances discounted')
-
     #Used visits
     for inst in data_dic['instrum_list']:
         if inst not in gen_dic['unused_visits']:gen_dic['unused_visits'][inst]=[]
@@ -450,6 +447,13 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     gen_dic['all_types'] = list(np.unique(gen_dic['all_types']))
     gen_dic['specINtype'] = any('spec' in s for s in gen_dic['all_types'])
     gen_dic['ccfINtype'] = ('CCF' in gen_dic['all_types'])   
+
+    #Use of covariance
+    if gen_dic['mock_data']:gen_dic['use_cov'] = False    
+    else:
+        #Used by default with spectral datasets, unless CCF datasets are processed or user requests otherwise
+        if gen_dic['ccfINtype']:gen_dic['use_cov'] = False  
+    if not gen_dic['use_cov']:print('Covariances discounted')        
 
     #Automatic activation/deactivation
     if gen_dic['pca_ana']:gen_dic['intr_data'] = True
@@ -561,7 +565,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
 
     #Set general condition for profiles fits
     for key in ['DI','Intr','Atm']:
-        gen_dic['fit_'+key+'_gen'] = gen_dic['fit_'+key] | gen_dic['fit_'+key+'bin'] | gen_dic['fit_'+key+'binmultivis']
+        gen_dic['fit_'+key+'_gen'] = gen_dic['fit_'+key] | gen_dic['fit_'+key+'bin'] | gen_dic['fit_'+key+'binmultivis'] 
 
     #Automatic continuum and fit range
     for key in ['DI','Intr','Atm']:
@@ -677,7 +681,8 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     star_params['om_eq'] = star_params['veq']/star_params['Rstar_km']
 
     #Spot Equatorial rotation rate (rad/s)
-    star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
+    if 'veq_spots' in star_params:star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
+    else:star_params['om_eq_spots']=star_params['om_eq']
 
     #No GD
     if ('beta_GD' not in star_params):star_params['beta_GD']=0.
@@ -786,7 +791,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     if (not gen_dic['theoPlOcc']) and ((('CCF' in data_dic['Res']['type'].values()) and (gen_dic['fit_Intr'])) or (gen_dic['align_Intr']) or (gen_dic['calc_pl_atm'])):
         gen_dic['theoPlOcc']=True
 
-    
     #Oversampling factor for values from planet-occulted regions
     #    - uses the nominal planet-to-star radius ratios, which must correspond to the band from which local properties are derived
     theo_dic['d_oversamp']={}
@@ -857,57 +861,49 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 data_dic['DI']['system_prop']['chrom']['cond_in_RpRs'][pl_loc][iband] = (r_sub_pl2<data_dic['DI']['system_prop']['chrom'][pl_loc][iband]**2.)
 
     #------------------------------------------------------------------------------
-    #Generic path names
-    gen_dic['main_pl_text'] = ''
-    for pl_loc in gen_dic['studied_pl']:gen_dic['main_pl_text']+=pl_loc
-    gen_dic['save_data_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Saved_data/'
-    gen_dic['save_plot_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'
-    gen_dic['add_txt_path']={'DI':'','Intr':'','Res':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
-    gen_dic['data_type_gen']={'DI':'DI','Res':'Res','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
-    gen_dic['type_name']={'DI':'disk-integrated','Res':'residual','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
-
-    #------------------------------------------------------------------------------
     #Spots
     #------------------------------------------------------------------------------
-    #Oversampling factor for spot-occulted regions
-    #    - use the spot radius provided as input
-    theo_dic['d_oversamp_spot']={}
-    for spot in theo_dic['n_oversamp_spot']:
-        if (theo_dic['n_oversamp_spot'][spot]>0.):
-            theo_dic['d_oversamp_spot'][spot] = np.sin(data_dic['DI']['spots_prop']['achrom'][spot][0])/theo_dic['n_oversamp_spot'][spot]
-
-    #Spot surface chromatic properties
-    #Need to define the LD coefficients if they are not defined
-    for ideg in range(2,5):
-        if 'LD_u'+str(ideg) not in data_dic['DI']['spots_prop']['achrom']:data_dic['DI']['spots_prop']['achrom']['LD_u'+str(ideg)] = [0.]
-
-    #Need to define chromatic band properties
-    data_dic['DI']['spots_prop']['achrom']['w']=[None]
-    data_dic['DI']['spots_prop']['achrom']['nw']=1
-    data_dic['DI']['spots_prop']['chrom_mode'] = 'achrom'
-    if ('chrom' in data_dic['DI']['spots_prop']):
-        if (not gen_dic['specINtype']) or (len(data_dic['DI']['spots_prop']['chrom']['w'])==1):data_dic['DI']['spots_prop'].pop('chrom')
-        else:
-            data_dic['DI']['spots_prop']['chrom_mode'] = 'chrom'
-            data_dic['DI']['spots_prop']['chrom']['w'] = np.array(data_dic['DI']['spots_prop']['chrom']['w'])
-            data_dic['DI']['spots_prop']['chrom']['nw']=len(data_dic['DI']['spots_prop']['chrom']['w'])
+    if 1==0:   #Samson: need for a generic condition to initialize or not spots
+    
+        #Oversampling factor for spot-occulted regions
+        #    - use the spot radius provided as input
+        theo_dic['d_oversamp_spot']={}
+        for spot in theo_dic['n_oversamp_spot']:
+            if (theo_dic['n_oversamp_spot'][spot]>0.):
+                theo_dic['d_oversamp_spot'][spot] = np.sin(data_dic['DI']['spots_prop']['achrom'][spot][0])/theo_dic['n_oversamp_spot'][spot]
+    
+        #Spot surface chromatic properties
+        #Need to define the LD coefficients if they are not defined
+        for ideg in range(2,5):
+            if 'LD_u'+str(ideg) not in data_dic['DI']['spots_prop']['achrom']:data_dic['DI']['spots_prop']['achrom']['LD_u'+str(ideg)] = [0.]
+    
+        #Need to define chromatic band properties
+        data_dic['DI']['spots_prop']['achrom']['w']=[None]
+        data_dic['DI']['spots_prop']['achrom']['nw']=1
+        data_dic['DI']['spots_prop']['chrom_mode'] = 'achrom'
+        if ('chrom' in data_dic['DI']['spots_prop']):
+            if (not gen_dic['specINtype']) or (len(data_dic['DI']['spots_prop']['chrom']['w'])==1):data_dic['DI']['spots_prop'].pop('chrom')
+            else:
+                data_dic['DI']['spots_prop']['chrom_mode'] = 'chrom'
+                data_dic['DI']['spots_prop']['chrom']['w'] = np.array(data_dic['DI']['spots_prop']['chrom']['w'])
+                data_dic['DI']['spots_prop']['chrom']['nw']=len(data_dic['DI']['spots_prop']['chrom']['w'])
+                
+                #Typical scale of chromatic variations
+                w_edge = def_edge_tab(data_dic['DI']['spots_prop']['chrom']['w'][None,:][None,:])[0,0]    
+                data_dic['DI']['spots_prop']['chrom']['dw'] = w_edge[1::]-w_edge[0:-1]
+                data_dic['DI']['spots_prop']['chrom']['med_dw'] = np.median(data_dic['DI']['spots_prop']['chrom']['dw'])
+    
+        #Definition of grids discretizing planets disk to calculate planet-occulted properties
+        theo_dic['x_st_sky_grid_sp']={}
+        theo_dic['y_st_sky_grid_sp']={}
+        theo_dic['Ssub_Sstar_sp'] = {}
+        for spot in theo_dic['nsub_Dspot']:
             
-            #Typical scale of chromatic variations
-            w_edge = def_edge_tab(data_dic['DI']['spots_prop']['chrom']['w'][None,:][None,:])[0,0]    
-            data_dic['DI']['spots_prop']['chrom']['dw'] = w_edge[1::]-w_edge[0:-1]
-            data_dic['DI']['spots_prop']['chrom']['med_dw'] = np.median(data_dic['DI']['spots_prop']['chrom']['dw'])
-
-
-    #Definition of grids discretizing planets disk to calculate planet-occulted properties
-    theo_dic['x_st_sky_grid_sp']={}
-    theo_dic['y_st_sky_grid_sp']={}
-    theo_dic['Ssub_Sstar_sp'] = {}
-    for spot in theo_dic['nsub_Dspot']:
-        #Retrieve spot size
-        spot_size = data_dic['DI']['spots_prop']['achrom'][spot][0]
-
-        #Define a default grid size if the spot grid hasn't been defined (should be done outside of for loop)
-        theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot], theo_dic['Ssub_Sstar_sp'][spot] = spot_occ_region_grid(spot_size, theo_dic['nsub_Dspot'][spot])
+            #Retrieve spot size
+            spot_size = data_dic['DI']['spots_prop']['achrom'][spot][0]
+    
+            #Define a default grid size if the spot grid hasn't been defined (should be done outside of for loop)
+            theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot], theo_dic['Ssub_Sstar_sp'][spot] = spot_occ_region_grid(spot_size, theo_dic['nsub_Dspot'][spot])
 
     #------------------------------------------------------------------------------------------------------------------------
     #Model star
@@ -943,6 +939,16 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 theo_dic['sme_grid'] = gen_theo_atm(theo_dic['st_atm'],star_params)
                 datasave_npz(gen_dic['save_data_dir']+'Introrig_prop/IntrProf_grid',{'sme_grid':theo_dic['sme_grid']})
             else:theo_dic['sme_grid'] = dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/IntrProf_grid')['sme_grid']
+
+    #------------------------------------------------------------------------------
+    #Generic path names
+    gen_dic['main_pl_text'] = ''
+    for pl_loc in gen_dic['studied_pl']:gen_dic['main_pl_text']+=pl_loc
+    gen_dic['save_data_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Saved_data/'
+    gen_dic['save_plot_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'
+    gen_dic['add_txt_path']={'DI':'','Intr':'','Res':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
+    gen_dic['data_type_gen']={'DI':'DI','Res':'Res','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
+    gen_dic['type_name']={'DI':'disk-integrated','Res':'residual','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
 
     #------------------------------------------------------------------------------------------------------------------------
 
@@ -1232,7 +1238,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 
             #Observational data        
             else:
-                vis_path = gen_dic['data_dir_list'][inst][vis]
+                
+                #Adding / in case user forgets
+                vis_path = gen_dic['data_dir_list'][inst][vis]+'/'
         
                 #List of all exposures for current instrument
                 if inst in ['SOPHIE']:
@@ -1560,7 +1568,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             if inst not in mock_dic['flux_cont']:mock_dic['flux_cont'][inst]={}
                             if vis not in mock_dic['flux_cont'][inst]:mock_dic['flux_cont'][inst][vis] = 1.
                             params_mock.update({'rv':0.,'cont':mock_dic['flux_cont'][inst][vis]})  
-                            params_mock = par_formatting(params_mock,fixed_args['mod_prop'],None,None,fixed_args,inst,vis) 
+                            params_mock = par_formatting(params_mock,fixed_args['mod_prop'],None,None,fixed_args,inst,vis,mock_dic['intr_prof'][inst]['mode']) 
              
                             #Generic properties required for model calculation
                             if inst not in mock_dic['sysvel']:mock_dic['sysvel'][inst]={}
@@ -1577,15 +1585,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 'fit':False,
                                 })
 
-                            # Spots properties
-                            params_mock['use_spots']=False 
-                            if mock_dic['use_spots']:
-                            #     fixed_args['t_exp_bjd'] = {inst : {vis : coord_dic[inst][vis]['bjd'] }}
-                            #     fixed_args['print_exp'] = True
-                            # for pl_loc in data_inst[vis]['transit_pl']:
-                            #     fixed_args['phase'] = {inst:{vis:[coord_dic[inst][vis][pl_loc][m] for m in ['st_ph','cen_ph','end_ph']] }}
-                                par_formatting(params_mock,mock_dic['spots_prop'][inst][vis],None,None,fixed_args,inst,vis) 
+
+                            #Spots properties
+                            if mock_dic['use_spots'] and (inst in mock_dic['spots_prop']) and (vis in mock_dic['spots_prop'][inst]):
                                 params_mock['use_spots']=True
+                                par_formatting(params_mock,mock_dic['spots_prop'][inst][vis],None,None,fixed_args,inst,vis) 
+                                
                                 #Figuring out the number of spots
                                 num_spots = 0
                                 for par in params_mock:
@@ -1593,6 +1598,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 params_mock['num_spots']=num_spots
                                 params_mock['inst']=inst
                                 params_mock['vis']=vis
+                            else:params_mock['use_spots']=False 
+
 
                         #Observational data            
                         else:   
@@ -1723,14 +1730,14 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                         #Deviation from nominal stellar profile 
                         surf_prop_dic, surf_prop_dic_sp = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp], system_spot_prop_in=args_exp['system_spot_prop'])
-                        
+
                         #Correcting the disk-integrated profile for planet and spot contributions
                         if param_exp['use_spots']:
                             DI_prof_exp = base_DI_prof - surf_prop_dic[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0]
+                        
+                        #Correcting the disk-integrated profile for planet contribution alone
                         else:
-                            #Correcting the disk-integrated profile for planet and spot contributions
                             DI_prof_exp = base_DI_prof - surf_prop_dic[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0]
-
 
                         #Instrumental response 
                         #    - in RV space for analytical model, in wavelength space for theoretical profiles
@@ -1741,12 +1748,15 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                         #Convolution, conversion and resampling 
                         DI_prof_exp = conv_st_prof_tab(None,None,None,fixed_args,args_exp,DI_prof_exp,fixed_args['FWHM_inst'])
+                        
+                        #Set negative flux values to null
+                        DI_prof_exp[DI_prof_exp] = 0.
 
                         #Define number of photoelectrons extracted during the exposure
                         #   - the model is a density of photoelectrons per unit of time, with continuum set to the input mean flux density
                         if (inst in mock_dic['gcal']):mock_gcal = mock_dic['gcal'][inst]
                         else:mock_gcal = 1.
-                        DI_prof_exp_Ftrue = mock_gcal*DI_prof_exp*coord_dic[inst][vis]['t_dur'][iexp]   
+                        DI_prof_exp_Ftrue = mock_gcal*DI_prof_exp*coord_dic[inst][vis]['t_dur'][iexp] 
 
                         #Keplerian motion and systemic shift of the disk-integrated profile 
                         #    - we shift profiles from the star rest frame (source) to the solar barycentric rest frame (receiver)
@@ -2503,7 +2513,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         #    - done here rather than in the 'calc_proc_data' condition so that ranges can be defined for already-processed observed or mock datasets, even if the analysis modules were not activated 
         # at the time of processing
         for key in ['DI','Intr','Atm']:
-            if gen_dic['fit_'+key+'_gen']:
+            if gen_dic['fit_'+key+'_gen'] or ((key=='Intr') & gen_dic['fit_IntrProf']):
                 autom_cont = True if (inst not in data_dic[key]['cont_range']) else False
                 autom_fit = True if ((inst not in data_dic[key]['fit_range']) or (vis not in data_dic[key]['fit_range'][inst])) else False
                 if autom_cont or autom_fit:

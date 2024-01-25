@@ -999,7 +999,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                             #Model parameters
                             p_start = Parameters()  
-                            par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['varpar_priors'],fit_dic,fixed_args_loc,'','')
+                            par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['varpar_priors'],fit_dic,fixed_args_loc,'','',None)
                             init_fit(fit_dic,fixed_args_loc,p_start,model_par_names(),fit_prop_dic)                          
 
                             #Initialize band fit results
@@ -1178,7 +1178,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             #Model parameters
                             #    - initialized with generic parameter values
                             p_start = Parameters()  
-                            par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['varpar_priors'],fit_dic,fixed_args_loc,'','')
+                            par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['varpar_priors'],fit_dic,fixed_args_loc,'','',None)
                             init_fit(fit_dic,fixed_args_loc,p_start,model_par_names(),fit_prop_dic)  
 
                             #------------------------------
@@ -2135,7 +2135,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
     
                     #Parameter initialization
                     p_start = Parameters()  
-                    par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['varpar_priors'],fit_dic,fixed_args_loc,'','')
+                    par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['varpar_priors'],fit_dic,fixed_args_loc,'','',None)
                     init_fit(fit_dic,fixed_args_loc,p_start,model_par_names(),fit_prop_dic) 
                 
                 #Retrieve previous fit

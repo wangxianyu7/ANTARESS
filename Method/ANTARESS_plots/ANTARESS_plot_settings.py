@@ -1857,13 +1857,14 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
                 #Plot master spectrum and mask at chosen step
                 # + 'cont': continuum-normalization
+                # + 'sel0': line selection with default telluric ranges and exclusion ranges (use to adjust regular spectrum and extrema search)
                 # + 'sel1': line selection with depth and width criteria
                 # + 'sel2': line selection with delta-position criterion
                 # + 'sel3': line selection with telluric contamination
                 # + 'sel4': line selection with morphological clipping (delta-maxima/line depth and asymetry parameter)
                 # + 'sel5': line selection with morphological clipping (depth and width criteria)
                 # + 'sel6': line selection with RV dispersion and telluric contamination
-                plot_settings[key_plot]['step']='cont'           
+                plot_settings[key_plot]['step']='sel1'           
         
                 #Overplot resampled spectra
                 if plot_settings[key_plot]['step']=='cont': 
@@ -1887,7 +1888,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['vald_sp']=True    & False 
 
                 #Plot line ranges in final plot 
-                plot_settings[key_plot]['line_ranges']=True    & False 
+                plot_settings[key_plot]['line_ranges']=True   # & False 
         
                 #Spectral range
                 # plot_settings[key_plot]['x_range']=[3700.,4000.]   
@@ -1961,14 +1962,32 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                         plot_settings[key_plot]['x_range']=[4430.,4450.]     
                         plot_settings[key_plot]['y_range']=[0.2,1.1]                     
 
-                # if gen_dic['star_name']=='HD189733':
-                #     plot_settings[key_plot]['rasterized'] = True  
-                #     if plot_settings[key_plot]['step']=='cont':                    
-                #         plot_settings[key_plot]['plot_norm'] = False
-                #         # plot_settings[key_plot]['plot_norm_reg'] = False
+                if gen_dic['star_name']=='HD189733':
+                    plot_settings[key_plot]['rasterized'] = True  
+                    # plot_settings[key_plot]['x_range']=[3700.,4200.]         
 
-                #         plot_settings[key_plot]['x_range']=[3770.,7890.] 
-                #         plot_settings[key_plot]['y_range']=[0.,1.5]  
+                    
+                    plot_settings[key_plot]['y_range']=[-0.05,1.2] 
+                    if plot_settings[key_plot]['step']=='cont':                    
+                        # plot_settings[key_plot]['x_range']=[3770.,7890.] 
+                        # plot_settings[key_plot]['x_range']=[6100.,7890.] 
+                        # plot_settings[key_plot]['x_range']=[6800.,7000.] 
+                        # plot_settings[key_plot]['x_range']=[7100.,7350.] 
+                        # plot_settings[key_plot]['x_range']=[7500.,7800.]   
+                        plot_settings[key_plot]['y_range']=[0.,1.8]  
+                        
+                        plot_settings[key_plot]['plot_norm'] = False
+                        # plot_settings[key_plot]['plot_norm_reg'] = False
+
+
+                plot_settings[key_plot]['x_range']=[4435.,4445.]  #Compa Mich, check blue
+                plot_settings[key_plot]['y_range']=[-0.05,1.2] 
+                
+                plot_settings[key_plot]['x_range']=[6235.,6245.]  #Check green
+                plot_settings[key_plot]['y_range']=[0.3,1.05] 
+                
+                plot_settings[key_plot]['x_range']=[7435.,7445.]  #Check red
+                plot_settings[key_plot]['y_range']=[0.6,1.05] 
 
         
         #---------------------------------
@@ -2004,7 +2023,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 #Display the following distribution information:
                 #    - 'hist' : histogram of line number
                 #    - 'cum_w' : cumulative of line weights (normalized)
-                plot_settings[key_plot]['dist_info'] = 'hist' 
+                plot_settings[key_plot]['dist_info'] = ['hist','cum_w'] 
                 
                 #Width range
                 plot_settings[key_plot]['x_range']=None
@@ -2063,7 +2082,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 #Display the following distribution information:
                 #    - 'hist' : histogram of line number
                 #    - 'cum_w' : cumulative of line weights (normalized)
-                plot_settings[key_plot]['dist_info'] = 'cum_w' 
+                plot_settings[key_plot]['dist_info'] = ['hist','cum_w'] 
 
                 #Width range
                 plot_settings[key_plot]['x_range']=None
@@ -2119,7 +2138,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 #Display the following distribution information:
                 #    - 'hist' : histogram of line number
                 #    - 'cum_w' : cumulative of line weights (normalized)
-                plot_settings[key_plot]['dist_info'] = 'hist' 
+                plot_settings[key_plot]['dist_info'] = ['hist','cum_w'] 
 
                 #RV deviation range
                 plot_settings[key_plot]['x_range']=None
@@ -2170,14 +2189,13 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 #Display the following distribution information:
                 #    - 'hist' : histogram of line number
                 #    - 'cum_w' : cumulative of line weights (normalized)
-                plot_settings[key_plot]['dist_info'] = 'cum_w' 
+                plot_settings[key_plot]['dist_info'] = ['hist','cum_w'] 
                 
                 #Depth ratio range
                 plot_settings[key_plot]['x_range']=None
 
                 #Histogram range
-                if plot_settings[key_plot]['dist_info'] == 'cum_w' :
-                    plot_settings[key_plot]['x_range_hist']=[0.95,1]
+                # plot_settings[key_plot]['x_range_hist']=[0.95,1]
 
                 # #Test thresholds on ratio between telluric and stellar line
                 # plot_settings[key_plot]['tell_star_depthR_max'] = 0.1
@@ -2264,7 +2282,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 #Display the following distribution information:
                 #    - 'hist' : histogram of line number
                 #    - 'cum_w' : cumulative of line weights (normalized)
-                plot_settings[key_plot]['dist_info'] = 'cum_w'                
+                plot_settings[key_plot]['dist_info'] = ['hist','cum_w']         
 
                 #Instrument to plot
                 #    - mask is always built from all available visits
@@ -2323,7 +2341,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 #Display the following distribution information:
                 #    - 'hist' : histogram of line number
                 #    - 'cum_w' : cumulative of line weights (normalized)
-                plot_settings[key_plot]['dist_info'] = 'cum_w'  
+                plot_settings[key_plot]['dist_info'] = ['hist','cum_w'] 
 
                 #Width
                 plot_settings[key_plot]['x_range']=None
@@ -2377,19 +2395,20 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 #Display the following distribution information:
                 #    - 'hist' : histogram of line number
                 #    - 'cum_w' : cumulative of line weights (normalized)
-                plot_settings[key_plot]['dist_info'] = 'hist'  
+                plot_settings[key_plot]['dist_info'] = ['hist','cum_w']  
 
                 #X range
                 plot_settings[key_plot]['x_range']=None
                 plot_settings[key_plot]['x_range']=[0.,15.]
+                plot_settings[key_plot]['x_range']=[0.,200.] #RV disp
 
                 #Y range
                 plot_settings[key_plot]['y_range']=None
                 # plot_settings[key_plot]['y_range']=[0.,2.]
 
-                #Histogram ranges
-                if plot_settings[key_plot]['dist_info'] == 'cum_w' : 
-                    plot_settings[key_plot]['x_range_hist']=[0.9,1]
+                # #Histogram ranges
+                # if plot_settings[key_plot]['dist_info'] == 'cum_w' : 
+                #     plot_settings[key_plot]['x_range_hist']=[0.9,1]
                 
                 #Marker size
                 plot_settings[key_plot]['markersize'] = 3.
@@ -2713,7 +2732,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             #    - set the requested color ('none' to remove points, '' to use the same color as other points)
             plot_settings[key_plot]['col_in']=''
             if gen_dic['star_name'] in ['WASP43','L98_59','GJ1214']:plot_settings[key_plot]['col_in']='red'
-            # if gen_dic['star_name'] in ['HD189733']:plot_settings[key_plot]['col_in']='none'
+            if gen_dic['star_name'] in ['HD189733']:plot_settings[key_plot]['col_in']='none'
             # plot_settings[key_plot]['col_in']='none'
 
     
@@ -2845,7 +2864,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             #Normalisation of values by their out-of-transit mean
             #    - can be useful for comparison between visits
             plot_settings[key_plot]['norm_ref']=True # &  False   
-            if gen_dic['star_name']=='HD189733':  plot_settings[key_plot]['norm_ref'] = True & False
+            if gen_dic['star_name']=='HD189733':  plot_settings[key_plot]['norm_ref'] = True #& False
     
             #Bornes du plot       
             if gen_dic['studied_pl']=='WASP_8b':
@@ -3009,11 +3028,13 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 
                   
             if gen_dic['star_name']=='HD189733':
-                plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20210810']['phase']= 0 
+                plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20210810']['phase']= 0
                 plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20210830']['phase']= 0
-                # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20210810']['snr_quad']= 0
-                # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20210830']['snr_quad']= 0 
-
+                # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20210810']['snr_quad']= 1
+                # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20210830']['snr_quad']= 1 
+                # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20210810']['AM']= 1
+                # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20210830']['AM']= 1 
+                
             if gen_dic['star_name']=='HD209458':
                 plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20190720']['phase']= 0
                 plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20190911']['phase']= 0
@@ -3225,8 +3246,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                     plot_settings[key_plot]['y_range']=[-10.,10.]
                 if gen_dic['star_name']=='55Cnc':
                     if ('ESPRESSO' in data_dic['DI']) and (gen_dic['n_instru']==1):plot_settings[key_plot]['y_range']=[-2.,2.]        
-                if gen_dic['star_name']=='HD189733':
-                    if plot_settings[key_plot]['col_in']=='none':plot_settings[key_plot]['y_range']=[-3.,3.]
+                # if gen_dic['star_name']=='HD189733':
+                #     if plot_settings[key_plot]['col_in']=='none':plot_settings[key_plot]['y_range']=[-3.,3.]
                 if gen_dic['star_name']=='HD209458':
                     if plot_settings[key_plot]['col_in']=='none':plot_settings[key_plot]['y_range']=[-8.,8.]
                 if gen_dic['star_name']=='WASP76':

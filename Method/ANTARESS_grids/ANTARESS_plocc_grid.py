@@ -187,8 +187,7 @@ def up_plocc_prop(inst,vis,par_list,args,param_in,transit_pl,nexp_fit,ph_fit,coo
 
 
 
-def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo_dic,system_prop_in,param,coord_pl_in,iexp_list, system_spot_prop_in = {}, out_ranges=False,Ftot_star=False):
-
+def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo_dic,system_prop_in,param,coord_pl_in,iexp_list,system_spot_prop_in = None , out_ranges=False,Ftot_star=False):
     r"""**Planet-occulted properties: exposure**
 
     Calculates average theoretical properties of the stellar surface occulted by all transiting planets during an exposure

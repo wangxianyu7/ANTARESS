@@ -288,7 +288,13 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
 
             #Duration of exposure
             data_to_bin[iexp_off]['t_dur'] = coord_dic[inst][vis_bin]['t_dur'][iexp]
+
+
         #----------------------------------------------------------------------------------------------
+
+        #Preparing an array that will contain the timestamp and duration of each binned exposure
+        binned_time = np.zeros(len(idx_to_bin_all),dtype=float)
+        binned_t_dur = np.zeros(len(idx_to_bin_all),dtype=float)
 
         #Processing and analyzing each new exposure 
 
@@ -313,16 +319,18 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
 
             #Saving new exposure  
             if not masterDI:np.savez_compressed(save_pref+str(i_new),data=data_exp_new,allow_pickle=True)
-
-            
+    
             #Calculate the timestamp (BJD) and duration of the binned exposure(s)
-            time_to_bin = np.zeros(len(idx_to_bin))
-            dur_to_bin = np.zeros(len(idx_to_bin))
+            time_to_bin = np.zeros(len(idx_to_bin),dtype=float)
+            dur_to_bin = np.zeros(len(idx_to_bin),dtype=float)
+
             for loc, indiv_idx in enumerate(idx_to_bin):
                 time_to_bin[loc] = data_to_bin[indiv_idx]['bjd']
                 dur_to_bin[loc] = data_to_bin[indiv_idx]['t_dur']
             binned_time[i_new] = np.average(time_to_bin)
             binned_t_dur[i_new] = np.average(dur_to_bin)
+
+           
 
             # # Stage Théo : Saving extra data for the module 'fit_ResProf'
             
@@ -390,6 +398,10 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             data_glob_new['idx_exp2in'][data_glob_new['idx_in']]=np.arange(data_glob_new['n_in_tr'])
             data_glob_new['idx_in2exp'] = np.arange(data_glob_new['n_exp'],dtype=int)[data_glob_new['idx_in']]
             data_glob_new['dim_in'] = [data_glob_new['n_in_tr']]+data_glob_new['dim_exp']
+ 
+            #Binned exposure timestamp and duration
+            data_glob_new['coord']['bjd'] = binned_time
+            data_glob_new['coord']['t_dur'] = binned_t_dur
 
 
             #Properties of planet-occulted and spot-occulted regions 
@@ -409,16 +421,11 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                         if 'lat__IS'+inst+'_VS'+vis_in+'_SP' in par:num_spots +=1
                     params['num_spots']=num_spots
                     params['inst']=inst
-                    params['vis']=vis_in
-
-                #Adding binned exposure timestamp and duration - there are needed for spot-occulted reion
-                data_glob_new['coord']['bjd'] = binned_time
-                data_glob_new['coord']['t_dur'] = binned_t_dur
-
+                    params['vis']=vis_in  
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
             if ('spec' in data_mode) and ('chrom' in data_dic['DI']['system_prop']):key_chrom+=['chrom']
-            data_glob_new['plocc_prop'],data_glob_new['spot_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,data_dic['DI']['system_prop'],params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True)            
+            data_glob_new['plocc_prop'],data_glob_new['spot_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,data_dic['DI']['system_prop'],params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True) 
 
 
         #---------------------------------------------------------------------------
@@ -1083,7 +1090,7 @@ def pre_calc_bin_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_b
 
 
  
-def resample_func(x_bd_low_in,x_bd_high_in,x_low_in_all,x_high_in_all,flux_in_all,err_in_all,remove_empty=True,dim_bin=0,cond_olap=1e-14,cond_def_in_all=None,multi=False,adj_xtab=True):
+def resample_func(x_bd_low_in,x_bd_high_in,x_low_in_all,x_high_in_all,flux_in_all,err_in_all,remove_empty=True,dim_bin=0,cond_def_in_all=None,multi=False,adj_xtab=True):
     r"""**General profiles binning**
 
     Bins input profiles into a new series of profiles, along the chosen dimension
