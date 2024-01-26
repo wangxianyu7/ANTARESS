@@ -499,7 +499,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
 
     ##################################################################################################
-    #%%% Module: stellar and planet-occulted grids
+    #%%% Module: stellar, spot-occulted, and planet-occulted grids
     ##################################################################################################
     
     #%%%% Activating module
@@ -617,7 +617,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #%%%% Spots
-    gen_dic['theo_spots'] = False #Samson: is this field still useful ?
+    gen_dic['theo_spots'] = False
     
     #%%%%% Discretization         
     theo_dic['nsub_Dspot']={} 

@@ -25,7 +25,7 @@ from ANTARESS_corrections.ANTARESS_calib import calc_gcal
 from ANTARESS_process.ANTARESS_plocc_spec import def_plocc_profiles
 from ANTARESS_conversions.ANTARESS_masks_gen import def_masks
 from ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
-from ANTARESS_grids.ANTARESS_spots import corr_spot,spot_occ_region_grid
+from ANTARESS_grids.ANTARESS_spots import spot_occ_region_grid
 from ANTARESS_conversions.ANTARESS_binning import process_bin_prof
 from ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
 from ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
@@ -115,6 +115,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             # #Correcting for spot contamination 
             # if gen_dic['correct_spots'] : 
             #     corr_spot(corr_spot_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo_dic, system_param)
+
             #Rescaling profiles to their correct flux level                  
             if gen_dic['flux_sc']:                   
                 rescale_profiles(data_dic[inst],inst,vis,data_dic,coord_dic,coord_dic[inst][vis]['t_dur_d'],gen_dic,plot_dic,system_param,theo_dic)   
@@ -863,7 +864,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #------------------------------------------------------------------------------
     #Spots
     #------------------------------------------------------------------------------
-    if 1==0:   #Samson: need for a generic condition to initialize or not spots
+    if gen_dic['theo_spots']:
     
         #Oversampling factor for spot-occulted regions
         #    - use the spot radius provided as input
@@ -1589,7 +1590,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             #Spots properties
                             if mock_dic['use_spots'] and (inst in mock_dic['spots_prop']) and (vis in mock_dic['spots_prop'][inst]):
                                 params_mock['use_spots']=True
-                                par_formatting(params_mock,mock_dic['spots_prop'][inst][vis],None,None,fixed_args,inst,vis) 
+                                par_formatting(params_mock,mock_dic['spots_prop'][inst][vis],None,None,fixed_args,inst,vis,mock_dic['intr_prof'][inst]['mode']) 
                                 
                                 #Figuring out the number of spots
                                 num_spots = 0
@@ -1712,7 +1713,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                         #Initializing stellar profiles
                         args_exp = init_custom_DI_prof(args_exp,gen_dic,data_dic['DI']['system_prop'],data_dic['DI']['spots_prop'],theo_dic,system_param['star'],param_exp)
-                        
+
                         #Initializing broadband scaling of intrinsic profiles into local profiles
                         #    - defined in forward mode at initialization, or defined in fit mode only if the stellar grid is not updated through the fit
                         #    - there are no default pipeline tables for this scaling because they depend on the local spectral tables of the line profiles
@@ -1750,7 +1751,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         DI_prof_exp = conv_st_prof_tab(None,None,None,fixed_args,args_exp,DI_prof_exp,fixed_args['FWHM_inst'])
                         
                         #Set negative flux values to null
-                        DI_prof_exp[DI_prof_exp] = 0.
+                        DI_prof_exp[DI_prof_exp<0.] = 0.
 
                         #Define number of photoelectrons extracted during the exposure
                         #   - the model is a density of photoelectrons per unit of time, with continuum set to the input mean flux density

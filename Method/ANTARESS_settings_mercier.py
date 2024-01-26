@@ -469,7 +469,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Defining spot properties 
     if gen_dic['star_name'] == 'AUMic': 
-        mock_dic['use_spots'] = True
+        mock_dic['use_spots'] = True  
         mock_dic['spots_prop']={
              'ESPRESSO':{
                  'mock_vis':{
@@ -763,7 +763,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
 
     ##################################################################################################
-    #%%% Module: stellar and planet-occulted grids
+    #%%% Module: stellar, spot-occulted, and planet-occulted grids
     ##################################################################################################
     
     #%%%% Activating module
@@ -880,7 +880,18 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - set to None for no oversampling
     theo_dic['rv_osamp_line_mod']=None
     
+    #%%%% Spots
+    #   - activates the use of spots, with the mock dataset or when fitting observational datasets.
+    gen_dic['theo_spots'] = False
     
+    #%%%%% Discretization         
+    theo_dic['nsub_Dspot']={} 
+
+
+    #%%%%% Exposure oversampling
+    theo_dic['n_oversamp_spot']={}  
+
+
     #%%%% Plot settings
     
     #%%%%% Planetary orbit discretization
@@ -915,6 +926,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     #Activating module
     gen_dic['theoPlOcc'] = True #  &  False
+    gen_dic['theo_spots'] = True #& False
 
     #Calculating/retrieving
     gen_dic['calc_theoPlOcc']=True  # &  False  
@@ -991,7 +1003,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Planetary system architecture
     plot_dic['system_view']=''   #png
-  
+
     if gen_dic['star_name']=='AUMic':
         #Range of planet-occulted properties
         plot_dic['plocc_ranges']=''    
@@ -1018,29 +1030,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
         #Transit chord discretization        
         plot_dic['nph_HR'] = 100
-
-    # '''   
-    # Calculating properties of spots
-    # ''' 
-
-    #Activate
-    gen_dic['theo_spots'] = True   &  False
-
-    # #Calculating/retrieving
-    # gen_dic['calc_theo_spots']=True   &  False  
-
-
-    # #Number and properties of spots in each visit
-    # theo_dic['spots_prop']={
-    #     'HARPN':{
-    #         '20200128':{
-    #             'spot1':{'RspRs':0.1},
-    #             'spot2':{'RspRs':0.1}},
-    #         '20201207':{
-    #             'spot1':{'RspRs':0.1},
-    #             'spot2':{'RspRs':0.1}}
-    #         }}      
-    
     
     
     
@@ -2670,7 +2659,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #      this is however not necessary: to account for oblateness but not GD, simply comment the 'GD_' fields
     #      otherwise GD will be estimated based on a blackbody flux integrated between GD_min and GD_max, at the resolution GD_dw
     data_dic['DI']['system_prop']={}
-      
+    
+    #%%%% Spot intensity settings
+    #    - same format as 'system_prop'
+    data_dic['DI']['spots_prop']={}
     
     #%%%% Transit light curve model
     #    - there are several possibilities to define the light curves, specific to each instrument and visit, via 'transit_prop':inst:vis
@@ -4464,7 +4456,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.5, 'bd':[0, 1]},
         'FWHM_ord0__IS__VS_':{'vary':True, 'guess':10, 'bd':[0, 20]},
         'veq':{'vary':True,'guess':7, 'bd':[0, 10]},
-        'Peq':{'vary':True,'guess':4, 'bd':[0, 10]},
                                             }
 
     #PC noise model
@@ -4485,7 +4476,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     'ctrst':{'mod':'uf','low':0,'high':1.},  
                     'FWHM':{'mod':'uf','low':0.,'high':20.},
                     'veq':{'mod':'uf', 'low':6., 'high':8.},
-                    'Peq':{'mod':'uf', 'low':4., 'high':5.},}
+                    }
     #Derived properties
     # glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','psi','om','b','ip','istar_deg_conv','fold_istar','lambda_deg','c0','CB_ms']
     # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg']
@@ -4494,7 +4485,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','lambda_deg','istar_deg_conv','fold_istar','psi']
     # glob_fit_dic['IntrProf']['modif_list'] = []
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg']
+        glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg', 'Peq_veq']
     # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','Peq_vsini'] 
     # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini'] 
     # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini','psi_lambda'] 
@@ -4508,6 +4499,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Calculating/retrieving
     glob_fit_dic['IntrProf']['mcmc_run_mode']='use'    
+    # glob_fit_dic['IntrProf']['mcmc_run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] == 'AUMic':
@@ -4516,6 +4508,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         #             'paths':['/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/antaress/Ongoing/AUMicb_Saved_data/Joined_fits/IntrProf/mcmc/raw_chains_walk24_steps1000.npz'],
         #             'nburn':[0]
         #             }  
+    #Re-starting
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['IntrProf']['mcmc_reboot']=''
 
     #Walkers
     if gen_dic['star_name'] == 'AUMic':
@@ -4567,7 +4562,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 #            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(166.,179.),(84.8,89.),(90.3,92.)],      #high istar
 #            'plot_HDI':True,
         'plot1s_1D':False,
-        'plot_best':False,
+        # 'plot_best':False,
             
             
 #            'major_int':[0.2,50.],

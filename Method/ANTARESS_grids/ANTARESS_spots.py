@@ -12,41 +12,46 @@ from ANTARESS_grids.ANTARESS_prof_grid import init_st_intr_prof, coadd_loc_line_
 from ANTARESS_analysis.ANTARESS_model_prof import calc_linevar_coord_grid, calc_polymodu
 
 
-"""
-
-Fonction which decides if a spot is visible or not, based on star inclination (istar), spot coordinates in star rest frame (long, lat) and spot angular size (ang).
-
-The fonction discretizes the spot circle and test for each point if it visible, thanks this calculation :
-
-    Let's P = (x_st, y_st, z_st) be a point of stellar surface (star rest frame), with X axis along stellar equator and Y axis along stellar spin.
-
-    Writing P in spherical coordinateed in star rest frame gives :
-
-    x_st = sin(long)cos(lat)
-    y_st = sin(lat)
-    z_st = cos(long)cos(lat)
-
-    We rotate this vector by angle (pi/2-istar) around X axis, moving it in the 'inclined' star frame (with Z now along the LOS, and Y the projected stellar spin):
-
-    x_sky = x_st
-    y_sky = sin(istar)y_st - cos(istar)z_st
-    z_sky = cos(istar)y_st + sin(istar)z_st,
-
-    with Y_sky axis along the line of sight and X_sky still along the star equator.
-
-    The condition for P to be visible then reads z_sky > 0, yielding :
-
-                                            cos(istar)sin(lat) + sin(istar)cos(long)cos(lat) > 0
-
-
-    With gravity darkening : we replace y_st by sin(lat)*(1-f), which yields :
-
-                                          cos(istar)sin(lat)(1-f) + sin(istar)cos(long)cos(lat) > 0
-
-"""
-
-
 def is_spot_visible(istar, long_rad, lat_rad, ang_rad, f_GD, RpoleReq) :
+    r"""**Spot visibility**
+
+    Performs a rough estimation of the visibility of a spot, based on star inclination (istar), spot coordinates in star rest frame (long, lat) and spot angular size (ang).
+    To do so, we discretize the spot edge and check if at least one point is visible. The visibilty criterion is derived as follows: 
+
+    Let :math:`\mathrm{P} = (x_{\mathrm{st}}, y_{\mathrm{st}}, z_{\mathrm{st}})` be a point on the stellar surface, in the star rest frame (i.e. X axis parallel to the star 
+    equator and  Y axis along the stellar spin), that is on the edge of a spot.
+    
+    Expressing P in spherical coordinates gives
+
+    .. math::
+        & x_{\mathrm{st}} = \mathrm{sin}(long) \mathrm{cos}(lat)
+        & y_{\mathrm{st}} = \mathrm{sin}(lat)
+        & z_{\mathrm{st}} = \mathrm{cos}(long) \mathrm{cos}(lat)
+    
+    Moving P to the 'inclined' star rest frame gives 
+
+    .. math::
+        & x_{\mathrm{sky}} = x_{\mathrm{st}}
+        & y_{\mathrm{sky}} = \mathrm{sin}(i_*) y_{\mathrm{st}} - \mathrm{cos}(i_*) z_{\mathrm{st}}
+        & z_{\mathrm{sky}} = \mathrm{cos}(i_*) y_{\mathrm{st}} + \mathrm{sin}(i_*) z_{\mathrm{st}}
+    
+    The condition for P to be visible is then :math:`z_{\mathrm{sky}} > 0` or 
+    .. math::
+        & \mathrm{cos}(i_*) \mathrm{sin}(lat) + \mathrm{sin}(i_*) \mathrm{cos}(long) \mathrm{cos}(lat) > 0
+
+    WIP : Doing this with gravity darkening
+
+    Args:
+        istar (float) : stellar inclination (in radians)
+        long_rad (float) : spot longitude (in radians)
+        lat_rad (float) : spot latitude (in radians)
+        ang_rad (float) : spot angular size (in radians)
+        f_GD (float) : oblateness coefficient.
+        RpoleReq (float) : pole to equatoral radius ratio.
+     
+    Returns:
+        spot_visible (bool) : spot visibility criterion.
+    """ 
     spot_visible = False
     
     for arg in np.linspace(0,2*np.pi, 20) :
@@ -82,25 +87,29 @@ def is_spot_visible(istar, long_rad, lat_rad, ang_rad, f_GD, RpoleReq) :
     return spot_visible
 
 
+  
+def retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd, exp_dur=None): 
+    r"""**Spot parameters: retrieval and formatting**
 
+    Transforms a dictionary with 'raw' spot properties in the format param_ISinstrument_VSvisit_SPspotname to a more convenient spot dictionary of the form : 
+    spot_prop = { spotname : {'lat' : , 'Tcenter' : , ....}}
+    The formatted contains the initial spot properties as well as additional derived spot properties, such as the longitude and latitude of the spot as well as 
+    its visibility criterion (see is_spot_visible).
+    We assume spot parameter are never defined as common across multiple visits / instruments.
 
-
-"""
-
-Fucntion which transforms a parameters list with spots properties (eg, lat__ISinst_VSvis_SPspot) into a more convenient dictionary of the form : 
-
-# spot_prop = {
-#   'spot1' : {lat : 0,   ang : 0,   Tcenter : 0,   flux : 0,   lat_rad_exp_center : 0,   sin_lat_exp_center : 0,    ... }
-#   'spot2  : { ... }
-#    }
-
-
-# We assume spot parameters are never defined as common for all visit or all inst.
-
-"""
-
-def retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd): 
-
+    Args:
+        star_params (dict) : star properties.
+        param (dict) : 'raw' spot properties.
+        inst (str) : instrument considered. Should match the instrument in the 'raw' spot parameter name (see format above).
+        vis (str) : visit considered. Should match the visit in the 'raw' spot parameter name (see format above).
+        t_BJD (float) : timestamp of the exposure considered. Needed to calculate the spot longitude.
+        exp_dur (float) : optional, duration of the exposure considered. If left as None, only the spot properties at the center of the exposure will be computed.
+                            Otherwise, the spot properties at the start, center and end of exposure will be computed. 
+     
+    Returns:
+        spots_prop (dict) : formatted spot dictionary.
+    
+    """ 
     spots_prop = {}
     for par in param : 
         # Parameter is spot-related and linked to the right visit and instrument
@@ -110,81 +119,151 @@ def retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd):
             if spot_name not in spots_prop : spots_prop[spot_name] = {}
             spots_prop[spot_name][spot_par] = param[par]
             
-    # Retrieve if spots are visible (at exposure center) 
+    # Retrieve properties, if spots are visible in the exposures considered
     for spot in spots_prop : 
-    
-        # Spot lattitude
+        
+        #Finding the times at the center, start and end of each exposure considered
+        t_bjd_center = deepcopy(t_bjd)
+        
+        # Spot lattitude - constant in time
         lat_rad = spots_prop[spot]['lat']*np.pi/180.
         
-        # Spot longitude
+        # Spot longitude - varies over time
         sin_lat = np.sin(lat_rad)
         P_spot = 2*np.pi/((1.-star_params['alpha_rot_spots']*sin_lat**2.-star_params['beta_rot_spots']*sin_lat**4.)*star_params['om_eq_spots']*3600.*24.)
         Tcen_sp = spots_prop[spot]['Tcenter'] - 2400000.
-        long_rad = (t_bjd-Tcen_sp)/P_spot * 2*np.pi
+        long_rad_center = (t_bjd_center-Tcen_sp)/P_spot * 2*np.pi
+        
         
         # Spot center coordinates in star rest frame
-        x_st = np.sin(long_rad)*np.cos(lat_rad)
-        y_st = np.sin(lat_rad)
-        z_st = np.cos(long_rad)*np.cos(lat_rad)
-    
+        #Exposure center
+        x_st_center = np.sin(long_rad_center)*np.cos(lat_rad)
+        y_st_center = np.sin(lat_rad)
+        z_st_center = np.cos(long_rad_center)*np.cos(lat_rad)
+
         # inclined frame
         istar = np.arccos(param['cos_istar'])
-        x_sky,y_sky,z_sky = frameconv_star_to_skystar(x_st,y_st,z_st,istar)
+        #Exposure center
+        x_sky_center,y_sky_center,z_sky_center = frameconv_star_to_skystar(x_st_center,y_st_center,z_st_center,istar)
        
+        #Store properties common across the exposure
+        spots_prop[spot]['ang_rad'] = spots_prop[spot]['ang'] * np.pi/180
+        
         # Store properties at exposure center
         spots_prop[spot]['lat_rad_exp_center'] = lat_rad
         spots_prop[spot]['sin_lat_exp_center'] = np.sin(lat_rad)
         spots_prop[spot]['cos_lat_exp_center'] = np.cos(lat_rad)
-        spots_prop[spot]['long_rad_exp_center'] = long_rad
-        spots_prop[spot]['sin_long_exp_center'] = np.sin(long_rad)
-        spots_prop[spot]['cos_long_exp_center'] = np.cos(long_rad)
-        spots_prop[spot]['x_sky_exp_center'] = x_sky
-        spots_prop[spot]['y_sky_exp_center'] = y_sky
-        spots_prop[spot]['z_sky_exp_center'] = z_sky
-        spots_prop[spot]['ang_rad'] = spots_prop[spot]['ang'] * np.pi/180
-        spots_prop[spot]['is_visible'] = is_spot_visible(istar,long_rad, lat_rad, spots_prop[spot]['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
+        spots_prop[spot]['long_rad_exp_center'] = long_rad_center
+        spots_prop[spot]['sin_long_exp_center'] = np.sin(long_rad_center)
+        spots_prop[spot]['cos_long_exp_center'] = np.cos(long_rad_center)
+        spots_prop[spot]['x_sky_exp_center'] = x_sky_center
+        spots_prop[spot]['y_sky_exp_center'] = y_sky_center
+        spots_prop[spot]['z_sky_exp_center'] = z_sky_center
+        spots_prop[spot]['is_center_visible'] = is_spot_visible(istar,long_rad_center, lat_rad, spots_prop[spot]['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
+
+        if exp_dur is not None:
+            t_dur_days = exp_dur/(24.*3600.)
+            t_bjd_start = t_bjd - t_dur_days/2
+            t_bjd_end = t_bjd + t_dur_days/2
+            long_rad_start = (t_bjd_start-Tcen_sp)/P_spot * 2*np.pi
+            long_rad_end = (t_bjd_end-Tcen_sp)/P_spot * 2*np.pi
+            
+            #Exposure start positions
+            x_st_start = np.sin(long_rad_start)*np.cos(lat_rad)
+            y_st_start = np.sin(lat_rad)
+            z_st_start = np.cos(long_rad_start)*np.cos(lat_rad)
+            x_sky_start,y_sky_start,z_sky_start = frameconv_star_to_skystar(x_st_start,y_st_start,z_st_start,istar)
+
+            #Exposure end position
+            x_st_end = np.sin(long_rad_end)*np.cos(lat_rad)
+            y_st_end = np.sin(lat_rad)
+            z_st_end = np.cos(long_rad_end)*np.cos(lat_rad)
+            x_sky_end,y_sky_end,z_sky_end = frameconv_star_to_skystar(x_st_end,y_st_end,z_st_end,istar)
+
+            # Store properties at exposure start
+            spots_prop[spot]['lat_rad_exp_start'] = lat_rad
+            spots_prop[spot]['sin_lat_exp_start'] = np.sin(lat_rad)
+            spots_prop[spot]['cos_lat_exp_start'] = np.cos(lat_rad)
+            spots_prop[spot]['long_rad_exp_start'] = long_rad_start
+            spots_prop[spot]['sin_long_exp_start'] = np.sin(long_rad_start)
+            spots_prop[spot]['cos_long_exp_start'] = np.cos(long_rad_start)
+            spots_prop[spot]['x_sky_exp_start'] = x_sky_start
+            spots_prop[spot]['y_sky_exp_start'] = y_sky_start
+            spots_prop[spot]['z_sky_exp_start'] = z_sky_start
+            spots_prop[spot]['is_start_visible'] = is_spot_visible(istar,long_rad_start, lat_rad, spots_prop[spot]['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
+
+            # Store properties at exposure end
+            spots_prop[spot]['lat_rad_exp_end'] = lat_rad
+            spots_prop[spot]['sin_lat_exp_end'] = np.sin(lat_rad)
+            spots_prop[spot]['cos_lat_exp_end'] = np.cos(lat_rad)
+            spots_prop[spot]['long_rad_exp_end'] = long_rad_end
+            spots_prop[spot]['sin_long_exp_end'] = np.sin(long_rad_end)
+            spots_prop[spot]['cos_long_exp_end'] = np.cos(long_rad_end)
+            spots_prop[spot]['x_sky_exp_end'] = x_sky_end
+            spots_prop[spot]['y_sky_exp_end'] = y_sky_end
+            spots_prop[spot]['z_sky_exp_end'] = z_sky_end
+            spots_prop[spot]['is_end_visible'] = is_spot_visible(istar,long_rad_end, lat_rad, spots_prop[spot]['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
+
 
     return spots_prop
-                      
 
 
-"""
 
-Function which calculates which tiles of the input sky grid are spotted
 
-2 options : 
 
-    + use_grid_dic = False : calculation will be performed on the   x_sky_grid, y_sky_grid, z_sky_grid   args (can be either a planetary or stellar grid),
-                             by moving these grids from inclined star to star rest frame
-    + use_grid_dic = True : calculation will be performed on the star grid contained in grid_dic['x/y/z_st'], which is already in star rest frame (no frame conversion needed). 
-                            This option is used for calculating spotted stellar tiles, when istar is not fitted.
-                            
-                            
-Calculation is straighforward : 
 
- - We rotate the star grid by the longitude of the spot around stellar spin : 
- 
-    x_sp_star =  x_st_grid*np.cos(long_rad) - z_st_grid*np.sin(long_rad)
-    y_sp_star =  deepcopy(y_st_grid)
-    z_sp_star =  x_st_grid*np.sin(long_rad) + z_st_grid*np.cos(long_rad)
+
+
+
+def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, star_param, use_grid_dic = False) :
+    r"""**'Spotted' tiles**
     
+    Identification of which cells on the provided grid are covered by spots a.k.a. which cells are 'spotted'. Two methods are available: 
+    - use_grid_dic = False : calculation will be performed on the x_sky_grid, y_sky_grid, z_sky_grid, by moving these grids from the inclined star frame to the star rest frame.
+                            This option can be used for identifiying spotted stellar tiles, when istar is fitted.
+    - use_grid_dic = True : calculation will be performed on the grid contained in grid_dic['x/y/z_st'], which is already in star rest frame (no frame conversion needed). 
+
+
+    To identify which cells in the provided grid are 'spotted', we move the grid cells to the spot reference frame and check which cells are within the spot. 
+    This is a necessary step to obtain the correct shape for the spots, as the spherical nature of the stellar surface must be accounted for. The calculation is as follows:
     
- - We rotate the new grid by the lattitude of the spot, moving it to the spot rest frame
- 
-    x_sp =   deepcopy(x_sp_star)
-    y_sp =   y_sp_star*np.cos(lat_rad) - z_sp_star*np.sin(lat_rad)
-    z_sp =   y_sp_star*np.sin(lat_rad) + z_sp_star*np.cos(lat_rad)
+    Using the x/y/z grid in the star rest frame (obtained either with a frame conversion function or from the grid dictionary), we rotate the x/y/z grid around the stellar spin axis 
+    to the longitude of the spot
+
+    .. math::
+        & x_{\mathrm{sp}'} = x_{\mathrm{st}} \mathrm{cos}(long) - z_{\mathrm{st}} \mathrm{sin}(long)
+        & y_{\mathrm{sp}'} = y_{\mathrm{st}}
+        & z_{\mathrm{sp}'} = x_{\mathrm{st}} \mathrm{sin}(long) + z_{\mathrm{st}} \mathrm{cos}(long)
+
+    We then rotate the new grid to the latitude of the spot to obtain the x/y/z grid in the spot rest frame
     
+    .. math::
+        & x_{\mathrm{sp}} = x_{\mathrm{sp}'}
+        & y_{\mathrm{sp}} = y_{\mathrm{sp}'} \mathrm{cos}(lat) - z_{\mathrm{sp}'} \mathrm{sin}(lat)
+        & z_{\mathrm{sp}} = y_{\mathrm{sp}'} \mathrm{sin}(lat) + z_{\mathrm{sp}'} \mathrm{cos}(lat)
     
- - We then check wich cells are within the spot by evaluing : 
- 
-                                            np.arctan2(np.sqrt(x_sp**2. + y_sp**2.),z_sp)     <     ang_sp
-    
+    Finally, we check which cells are within the spot
+
+    .. math::
+        & arctan2(\sqrt{x_{\mathrm{sp}}^{2} + y_{\mathrm{sp}}^{2}}, z_{\mathrm{sp}}) < R_{\mathrm{sp}}
+
+    With R_{\mathrm{sp}} the angular size of the spot in radians.
+
+
+    Args:
+        spot_prop (dict) : formatted spot properties (see retrieve_spots_prop_from_param).
+        x_sky_grid (1D array) : x coordinates of the stellar / planetary grid in the inclined star frame.
+        y_sky_grid (1D array) : y coordinates of the stellar / planetary grid in the inclined star frame.
+        z_sky_grid (1D array) : z coordinates of the stellar / planetary grid in the inclined star frame.
+        grid_dic (dict) : dictionary containing the x/y/z grids in various reference frames, including the star rest frame and inclined star frame.
+        star_param (dict) : star properties.
+        use_grid_dic (bool) : whether or not to use the grid_dic provided to retrieve the x/y/z grids in the star rest frame. Turned off by default.
      
-"""
-
-def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, param, use_grid_dic = False) :
-                                                
+    Returns:
+        spot_within_grid (bool) : a finer estimate of the spot visibility that can be obtained with is_spot_visible. Essentially, it tells us if at least one tile on the grid is 'spotted'.
+        cond_in_sp (1D array) : array of booleans telling us which cells in the original grid are 'spotted'.
+    
+    """                                      
 
     if use_grid_dic :
         cond_close_to_spot = (grid_dic['x_st_sky'] - spot_prop['x_sky_exp_center'])**2 + (grid_dic['y_st_sky'] - spot_prop['y_sky_exp_center'])**2 < spot_prop['ang_rad']**2
@@ -198,15 +277,15 @@ def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, 
         x_st_grid, y_st_grid, z_st_grid = frameconv_skystar_to_star(x_sky_grid[cond_close_to_spot],
                                                                                     y_sky_grid[cond_close_to_spot],
                                                                                     z_sky_grid[cond_close_to_spot],
-                                                                                    np.arccos(param['cos_istar']))
+                                                                                    np.arccos(star_param['cos_istar']))
         
         
     
     # Retrieve angular coordinates of spot
-    cos_long, sin_long, cos_lat, sin_lat =  spot_prop['cos_long_exp_center'],  spot_prop['sin_long_exp_center'],                             spot_prop['cos_lat_exp_center' ],  spot_prop['sin_lat_exp_center' ]
+    cos_long, sin_long, cos_lat, sin_lat = spot_prop['cos_long_exp_center'], spot_prop['sin_long_exp_center'], spot_prop['cos_lat_exp_center' ], spot_prop['sin_lat_exp_center' ]
     
     # Calculate coordinates in spot rest frame
-    x_sp =                         x_st_grid*cos_long - z_st_grid*sin_long
+    x_sp =                       x_st_grid*cos_long - z_st_grid*sin_long
     y_sp = y_st_grid*cos_lat  - (x_st_grid*sin_long + z_st_grid*cos_long)   *   sin_lat
     z_sp = y_st_grid*sin_lat  + (x_st_grid*sin_long + z_st_grid*cos_long)   *   cos_lat
     
@@ -224,136 +303,23 @@ def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, 
 
 
 
-   
-   
-   
-"""
-
-Function which transforms a parameters list with spots properties (eg, lat__ISinst_VSvis_SPspot) into a more convenient dictionary of the form : 
-
-# spot_prop = {
-#   'spot1' : {lat : 0,   ang : 0,   Tcenter : 0,   flux : 0,   lat_rad_exp_center : 0,   sin_lat_exp_center : 0,    ... }
-#   'spot2  : { ... }
-#    }
-
-
-# We assume spot parameters are never defined as common for all visit or all inst. 
-
-#This function also now returns the spot position at the start, center and end of exposure (really useful for oversampling later).
-
-"""
-
-def new_retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd, exp_dur): 
-
-    spots_prop = {}
-    for par in param : 
-        # Parameter is spot-related and linked to the right visit and instrument
-        if ('_SP' in par) and ('_IS'+inst in par) and ('_VS'+vis in par) : 
-            spot_name = par.split('_SP')[1]
-            spot_par = par.split('__IS')[0]
-            if spot_name not in spots_prop : spots_prop[spot_name] = {}
-            spots_prop[spot_name][spot_par] = param[par]
-            
-    # Retrieve properties, if spots are visible in the exposures considered
-    for spot in spots_prop : 
-        #Finding the times at the center, start and end of each exposure considered
-        t_dur_days = exp_dur/(24.*3600.)
-        t_bjd_center = t_bjd
-        t_bjd_start = t_bjd - t_dur_days/2
-        t_bjd_end = t_bjd + t_dur_days/2
-        # Spot lattitude - constant in time
-        lat_rad = spots_prop[spot]['lat']*np.pi/180.
-        
-        # Spot longitude - varies over time
-        sin_lat = np.sin(lat_rad)
-        P_spot = 2*np.pi/((1.-star_params['alpha_rot_spots']*sin_lat**2.-star_params['beta_rot_spots']*sin_lat**4.)*star_params['om_eq_spots']*3600.*24.)
-        Tcen_sp = spots_prop[spot]['Tcenter'] - 2400000.
-        long_rad_center = (t_bjd_center-Tcen_sp)/P_spot * 2*np.pi
-        long_rad_start = (t_bjd_start-Tcen_sp)/P_spot * 2*np.pi
-        long_rad_end = (t_bjd_end-Tcen_sp)/P_spot * 2*np.pi
-        
-        # Spot center coordinates in star rest frame
-        #Exposure center
-        x_st_center = np.sin(long_rad_center)*np.cos(lat_rad)
-        y_st_center = np.sin(lat_rad)
-        z_st_center = np.cos(long_rad_center)*np.cos(lat_rad)
-        #Exposure start
-        x_st_start = np.sin(long_rad_start)*np.cos(lat_rad)
-        y_st_start = np.sin(lat_rad)
-        z_st_start = np.cos(long_rad_start)*np.cos(lat_rad)
-        #Exposure end
-        x_st_end = np.sin(long_rad_end)*np.cos(lat_rad)
-        y_st_end = np.sin(lat_rad)
-        z_st_end = np.cos(long_rad_end)*np.cos(lat_rad)
-
-        # inclined frame
-        istar = np.arccos(param['cos_istar'])
-        #Exposure center
-        x_sky_center,y_sky_center,z_sky_center = frameconv_star_to_skystar(x_st_center,y_st_center,z_st_center,istar)
-        #Exposure start
-        x_sky_start,y_sky_start,z_sky_start = frameconv_star_to_skystar(x_st_start,y_st_start,z_st_start,istar)
-        #Exposure end
-        x_sky_end,y_sky_end,z_sky_end = frameconv_star_to_skystar(x_st_end,y_st_end,z_st_end,istar)
-       
-        #Store properties common across the exposure
-        spots_prop[spot]['ang_rad'] = spots_prop[spot]['ang'] * np.pi/180
-        # Store properties at exposure center
-        spots_prop[spot]['lat_rad_exp_center'] = lat_rad
-        spots_prop[spot]['sin_lat_exp_center'] = np.sin(lat_rad)
-        spots_prop[spot]['cos_lat_exp_center'] = np.cos(lat_rad)
-        spots_prop[spot]['long_rad_exp_center'] = long_rad_center
-        spots_prop[spot]['sin_long_exp_center'] = np.sin(long_rad_center)
-        spots_prop[spot]['cos_long_exp_center'] = np.cos(long_rad_center)
-        spots_prop[spot]['x_sky_exp_center'] = x_sky_center
-        spots_prop[spot]['y_sky_exp_center'] = y_sky_center
-        spots_prop[spot]['z_sky_exp_center'] = z_sky_center
-        spots_prop[spot]['is_center_visible'] = is_spot_visible(istar,long_rad_center, lat_rad, spots_prop[spot]['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
-        # Store properties at exposure start
-        spots_prop[spot]['lat_rad_exp_start'] = lat_rad
-        spots_prop[spot]['sin_lat_exp_start'] = np.sin(lat_rad)
-        spots_prop[spot]['cos_lat_exp_start'] = np.cos(lat_rad)
-        spots_prop[spot]['long_rad_exp_start'] = long_rad_start
-        spots_prop[spot]['sin_long_exp_start'] = np.sin(long_rad_start)
-        spots_prop[spot]['cos_long_exp_start'] = np.cos(long_rad_start)
-        spots_prop[spot]['x_sky_exp_start'] = x_sky_start
-        spots_prop[spot]['y_sky_exp_start'] = y_sky_start
-        spots_prop[spot]['z_sky_exp_start'] = z_sky_start
-        spots_prop[spot]['is_start_visible'] = is_spot_visible(istar,long_rad_start, lat_rad, spots_prop[spot]['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
-
-        # Store properties at exposure end
-        spots_prop[spot]['lat_rad_exp_end'] = lat_rad
-        spots_prop[spot]['sin_lat_exp_end'] = np.sin(lat_rad)
-        spots_prop[spot]['cos_lat_exp_end'] = np.cos(lat_rad)
-        spots_prop[spot]['long_rad_exp_end'] = long_rad_end
-        spots_prop[spot]['sin_long_exp_end'] = np.sin(long_rad_end)
-        spots_prop[spot]['cos_long_exp_end'] = np.cos(long_rad_end)
-        spots_prop[spot]['x_sky_exp_end'] = x_sky_end
-        spots_prop[spot]['y_sky_exp_end'] = y_sky_end
-        spots_prop[spot]['z_sky_exp_end'] = z_sky_end
-        spots_prop[spot]['is_end_visible'] = is_spot_visible(istar,long_rad_end, lat_rad, spots_prop[spot]['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
-
-    return spots_prop
-
-
-
-
 def spot_occ_region_grid(RspRs, nsub_Dsp):
     r"""**Spot grid** 
 
-    Defines grid discretizing the spot-occulted region
-      
+    Defines x/y/z grid discretizing the spot-occulted region with:
+
      - X axis is parallel to the star equator
      - Y axis is the projected spin axis
-     - Z axis is the LOS
+     - Z axis is along the LOS
 
     Args:
-        RspRs : The angular radius of the spot.
-        nsub_Dsp : The number of grid cells desired.
+        RspRs (int) : the angular radius of the spot.
+        nsub_Dsp (int) : the number of grid cells desired.
     
     Returns:
-        x_st_sky_grid : The x-coordinate of the grid cells.
-        y_st_sky_grid : The y-coordinate of the grid cells.
-        Ssub_Sstar : The surface of the grid cells.
+        x_st_sky_grid (1D dict) : The x-coordinates of the grid cells.
+        y_st_sky_grid (1D dict) : The y-coordinates of the grid cells.
+        Ssub_Sstar (float) : The surface of each grid cell.
     
     """ 
     #Subcell width (in units of Rstar) and surface (in units of Rstar^2 and pi*Rstar^2) 
@@ -377,33 +343,38 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
                                     coord_reg_dic_spot, range_reg_dic_spot, Focc_star_band, par_list, range_par_list, args, cb_band, pl_loc_x = {}, pl_loc_y = {}, oversamp_idx = None, RpRs = None, plocc = False) :
     
     r"""**Spot-occulted properties: define and update**
-    
-    Refine the spot-occulted grid and calculate the properties of the spot-occulted region.
-    Updates the average and summed properties from a spot-occulted stellar surface region during an exposure.
+
+    Identify the spot-occulted region in each exposure provided and calculate its properties. 
+    Update the provided dictionaries which contain the average and sum of the properties of interest over the spot-occulted region.
 
     Args:
-        line_occ_HP_band : string telling us the precision with which to process the exposure in this particular band.
-        cond_occ : Boolean telling us whether there is an occultation in the (oversampled) exposure and band considered.
-        spot_prop : Dictionary (formatted with new_retrieve_spots_prop_from_param) containing the spot properties.
-        iband : The index of the band used to calculate the spot LD properties.
-        system_spot_prop : Dictionary containing the spot LD properties.
-        star_params : Dictionary containing the stellar parameters.
-        Ssub_Sstar_sp : The cell surface from the grid used to discretize the spot-occulted region.
-        Ssub_Sstar_ref : The cell surface from the grid used to discretize the star.
-        Istar_norm_band : The total intensity of the star in the given band.
+        line_occ_HP_band (str) : the precision with which to process the exposure.
+        cond_occ (bool) : whether there is an occultation by at least one spot in the exposure considered.
+        spot_prop (dict) : formatted spot properties Dictionary (see retrieve_spots_prop_from_param).
+        iband (int) : index of the band used to retrieve the corresponding planet and spot limb-darkening properties.
+        system_spot_prop (dict) : spot limb-darkening properties.
+        star_params (dict) : star properties.
+        Ssub_Sstar_sp (float): surface of grid cells in the spot-occulted region grid.
+        Ssub_Sstar_ref (float) : surface of grid cells in the stellar grid.
+        Istar_norm_band (float) : total intensity of the star in the band considered.
         par_star : ???
-        sum_prop_dic_spot : Dictionary containing the value of all parameters of interest (par_list), summed over the region occulted by the spot of interest in the exposure considered, 
-                            and for the band of interest.
-        coord_reg_dic_spot : Dictionary containing the value of all parameters of interest (par_list), averaged over the region occulted by the spot of interest in the exposure considered, 
-                            and for the band of interest.
-        range_reg_dic_spot : Dictionary containing the range of average values the parameters of interest (range_par_list) can take during this exposure.
-        Focc_star_band : Float storing the total flux occulted by the spot considered in the exposure considered, in the band considered. 
-        par_list : List of parameters of interest, whose value in sum_prop_dict_spot will be updated.
-        range par_list : List of parameters of interest, whose range of values, stored in range_reg_dic_spot, will be updated.
-        args : Dictionary containing the parameters used to generate the intrinsic profiles (not sure this is all it contains).
-        cb_band : List containing the coefficients to calculate the convective blueshift RV contribution.
+        sum_prop_dic_spot (dict) : dictionary containing the value of all parameters of interest (par_list), summed over the spot-occulted region in the exposure considered, and for the band of interest.
+        coord_reg_dic_spot (dict) : dictionary containing the value of all parameters of interest (par_list), averaged over the spot-occulted region in the exposure considered, and for the band of interest.
+        range_reg_dic_spot (dict) : dictionary containing the range of average values the parameters of interest (range_par_list) can take during this exposure.
+        Focc_star_band (float) : total flux occulted by the spot in the exposure and band considered. 
+        par_list (list) : List of parameters of interest, whose value in sum_prop_dict_spot will be updated.
+        range par_list (list) : list of parameters of interest, whose range of values, stored in range_reg_dic_spot, will be updated.
+        args (dict) : parameters used to generate the intrinsic profiles.
+        cb_band (list) : coefficients used to calculate the convective blueshift RV contribution.
+        pl_loc_x (dict) : optional, x coordinates of the planets' oversampled positions in the exposure considered. Used to account for the cells in the spot-occulted region that are occulted by the planet.
+        pl_loc_y (dict) : optional, y coordinates of the planets' oversampled positions in the exposure considered. Used to account for the cells in the spot-occulted region that are occulted by the planet.
+        oversamp_idx (int) : optional, index of the oversampled exposure being processed.
+        RpRs (dict) : optional, planets' limb-darkening properties.
+        plocc (bool) : optional, whether the exposure considered is being occulted by planets or not. Turned off by default.
+    
     Returns:
-        Focc_star_band : The input Focc_star_band updated with the flux occulted by the spot in the exposure being processed.
+        Focc_star_band (float) : the input Focc_star_band updated with the flux occulted by the spot considered.
+        cond_occ (bool) : updated version of the input cond_occ. Tells us whether or not the spot occulted the exposure considered.
     
     """ 
     parameter_list = deepcopy(par_list)
@@ -591,145 +562,6 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
 ########################################################################################################################
 ########################################################################################################################
 
-'''
-Calculation of stellar surface properties from spotted regions
-    - we do not pre-calculate a grid to be shifted to the spot location, as with planets, because the projected area of the spot does not remain a disk
-'''
-def calc_spot_region_prop(bjd_sp,spot_prop,x_st_grid,y_st_grid,z_st_grid,Ssub_Sstar,r2_st_sky,par_star,LD_mod,ld_coeff,cb_band,par_list,range_par_list,range_reg,sum_prop_dic,Ftot_star_grid):
-
-    #Stellar surface period at spot latitude (days)
-    #    - accounting for differential rotation: 
-    # om(lat) = om_eq*(1-alpha*sin(th_lat)^2)
-    # P(lat) = 2*np.pi/(om_eq*(1-alpha*sin(th_lat)^2))
-    #    - th_lat is the angular latitude of the spot, counted between the stellar equator and the star-spot center axis  
-    th_lat_rad = spot_prop['th_lat']*np.pi/180.
-    lat_sp = np.sin(th_lat_rad)
-    P_spot = 2*np.pi/((1.-par_star['alpha_rot']*lat_sp**2.-par_star['beta_rot']*lat_sp**4.)*par_star['om_eq']*3600.*24.)
-
-    #Spot phase
-    #    - null phase corresponds to the crossing of the projected spin-axis
-    Tcen_sp = spot_prop['Tcenter'] - 2400000.  
-    ph_rad=(bjd_sp-Tcen_sp)/P_spot
-
-    #Grid coordinates from star rest frame to rotated star frame
-    #    - Xstar is the inclined LOS (by istar), Ystar its perpendicular in the star equatorial plane, Zstar the spin axis
-    #    - rotation by spot phase angle, so that X_sp_star is the projection of the star-spot axis onto the equatorial plane
-    x_sp_star =  x_st_grid*np.cos(ph_rad) + y_st_grid*np.sin(ph_rad)   
-    y_sp_star = -x_st_grid*np.sin(ph_rad) + y_st_grid*np.cos(ph_rad)
-    z_sp_star =  deepcopy(z_st_grid)
-
-    #Grid coordinates in 'spot rest frame'    
-    #    - Xsp axis is the star-spot center axis
-    #      Ysp axis is the perpendicular in the plane parallel to the stellar equatorial plane, in the direction of the stellar rotation
-    #      Zsp completes the referential
-    x_sp =  x_sp_star*np.cos(th_lat_rad) + z_sp_star*np.sin(th_lat_rad) 
-    y_sp =  y_sp_star
-    z_sp = -x_sp_star*np.sin(th_lat_rad) + z_sp_star*np.cos(th_lat_rad) 
-
-    #Cells within the spot
-    #    - ang_sp is the (half) angular size of the spot, so that its projected radius when the spot is seen face-on is Rstar*sin(ang_sp)
-    #    - condition is phi(cell) <= ang_sp, with phi counted from the star-spot center axis:
-    # phi(cell) = arctan( sqrt(Ysp^2 + Zsp^2)/Xsp ) 
-    phi_sp = np.arctan2(np.sqrt(y_sp**2. + z_sp**2.),x_sp)
-    cond_in_sp = phi_sp <= spot_prop['ang_sp']*np.pi/180.    
-    if True in cond_in_sp:
-        region_prop = {}
-
-        #Stellar flux from spot subcells
-        #    - assuming a specific intensity at disk center of 1, without LD and GD contributions
-        #    - Fr_sp is a flux scaling factor of the spot flux
-        flux_grid = np.ones(np.sum(cond_in_sp))*Ssub_Sstar*spot_prop['Fr_sp']
-
-        #Mu coordinate     
-        region_prop['mu'] = np.sqrt(1. - r2_st_sky[cond_in_sp]) 
-        
-        #Limb-darkening 
-        flux_grid*= calc_LD(LD_mod,region_prop['mu'],ld_coeff)        
-        
-        #Modify stellar flux from current spot
-        #    - we assume the effect of spots is cumulative
-        if Ftot_star_grid is not None:
-            Ftot_star_grid[cond_in_sp]*=spot_prop['Fr_sp']
-                         
-        #Processing requested properties
-        #    - obliquity is set to 0 as spots are assumed to evolve in planes parallel to the equator
-        sum_region_prop(par_list,flux_grid,region_prop,Ssub_Sstar,cb_band,range_par_list,range_reg,sum_prop_dic,par_star,0.,'')
-
-
-######## appeler avant calcul des prop planetaires
-######## updater et sauver la grille stellaire pour chaque exposition
-####### ensuite dans la routine planetaire, occulter la grill de l'expo, et faire gaffe a recalculer le flux total par expo aussi
-
-
-    
-    return Ftot_star_grid
-
-
-'''
-Sub-function to calculate theoretical properties of spots
-'''
-def calc_spots_prop(gen_dic,star_params,theo_dic,inst,data_dic):
-    print('   > Calculating properties of spots')    
-    if star_params['f_GD']>0.:stop('Spot processing undefined for oblate stars')
-
-    if (gen_dic['calc_theo_spots']):
-        print('         Calculating data')
-
-
-        
-        #Process spots in each requested visit
-        for vis in np.intersect1d(theo_dic['spots_prop'][inst],data_dic[inst]['visit_list']):
-            for spot in theo_dic['spots_prop'][inst][vis]:
-                spot_prop = theo_dic['spots_prop'][inst][vis][spot]
-    
-
-# faire une boucle d'oversampling et dedans, pour chaque expo, boucler sur les spots
-
-               # calc_spot_region_prop(bjd_osamp,spot_prop,theo_dic['x_st'],theo_dic['y_st'],theo_dic['z_st'],theo_dic['Ssub_Sstar'],theo_dic['r2_st_sky'],par_star,LD_law,ld_coeff)
-    
-
-    
-    ##boucler sur tous les spots d'abord
-    ##et ensuite boucler sur oversamp 
-    
-    
-                # #Coordinates of spot contour in 'spot rest frame'
-                # #    - Xsp axis is the star-spot center axis
-                # #      Ysp axis is the perpendicular in the plane parallel to the stellar equatorial plane, in the direction of the stellar rotation
-                # #      Zsp completes the referential
-                # nlimb = 501
-                # th_limb = 2*np.pi*np.arange(nlimb)/(nlimb-1.)
-                # x_sp = np.repeat(np.cos(ang_sp_rad) , nlimb)
-                # y_sp = np.sin( ang_sp_rad )*np.cos(th_limb)
-                # z_sp = np.sin( ang_sp_rad )*np.sin(th_limb)
-    
-
-
-
-###attention inclure ce calcul dans une sous-routine d'oversampling
-
-
-        ####  je pense que la meilleure approche c de faire comme pour les contacts du transit oblate
-        ####  je definis l'enveloppe HR du spot dans le ref ou il est aligne avec la LOS. Depend que de sa taille
-        ## ensuite je shifte les coord avec l'offset en phase (definir pr chaque spot un T0 comme les TTV)
-        ## ensuite je shifte l'offset en latitude
-        ## ensuite je peux identifier quelles cellules dans le ref stellaire (spin axis dans plan ciel) sont occultees
-        ## avec ca je peux utiliser mes routines deja existantes pour calculer les props des spots (RV et Ftot surtout)
-        
-        ## dans le custom model, je ferai pareil : dans une expo donnee je sais ou est le spot, j'identifie ses cellules, et au lieu de la CCF normale
-        ## je peux y mettre une CCF * facteur de scaling du flux (qui serait une autre des props des spots)
-
-### refechir a implementer spots avec transits: je prends les cells occultee par une planete, je checke si elles sont dans tous les spots, et si oui je change
-### le flux de ces cellules 
-
-
-        stop('spots')
-
-    
-    return None
-
-
-
 
 
 """
@@ -845,265 +677,6 @@ def corr_spot(corr_spot_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo
 
 
 
-#Function to calculate the properties of the region occulted by a single spot. The previous function (calc_spotted_region_prop) did it for all the spots considered.
-def new_calc_spotted_region_prop(spot_prop, grid_dic, star_params, LD_law, ld_coeff, gd_band, cb_band, param, coeff_ord2name, dim, func_prof_name, var_par_list, pol_mode) :
-    
-    # Nombre de cases de l'étoile
-    n_tiles = len(grid_dic['x_st_sky'])
-
-    # On stocke la liste des cases stellaires occultées par au moins 1 spot, et la liste des flux occultés par les spots sur chaque case. On cummule l'occultation des spots si 2 ou plus overlappent. 
-    flux_emitted_all_tiles_sp = np.ones(n_tiles, dtype = float)
-    cond_in_sp = np.zeros(n_tiles, dtype = bool)
-    spot_within_grid = False
-    if spot_prop['is_center_visible'] : 
-        if 'cos_istar' in var_par_list : use_grid_dic = False
-        else : use_grid_dic = True
-        spot_within_grid, cond_in_one_sp = calc_spotted_tiles(spot_prop,
-                                grid_dic['x_st_sky'], grid_dic['y_st_sky'], grid_dic['z_st_sky'], grid_dic,
-                                star_params, use_grid_dic)
-        if spot_within_grid:
-            flux_emitted_all_tiles_sp[cond_in_one_sp] *= spot_prop['ctrst']
-            cond_in_sp |= cond_in_one_sp
-                
-    flux_occulted_all_tiles_sp = 1 - flux_emitted_all_tiles_sp
-    
-    region_prop = {}
-    
-    # Star is effectively affected by (at least) one spot
-    if spot_within_grid :
-
-
-        ## Coordinates calculation
-
-        # Coordonnées x, y, z, r des régions spottées, référentiel incliné
-        region_prop['r_proj2_st_sky_sp']  = grid_dic['r2_st_sky'][cond_in_sp]
-        region_prop['x_st_sky_sp']        = grid_dic['x_st_sky'][cond_in_sp]
-        region_prop['y_st_sky_sp']        = grid_dic['y_st_sky'][cond_in_sp]
-        region_prop['z_st_sky_sp']        = grid_dic['z_st_sky'][cond_in_sp]
-
-        #Frame conversion from the inclined star frame to the 'star' frame
-        region_prop['x_st_sp'],region_prop['y_st_sp'],region_prop['z_st_sp'] = frameconv_skystar_to_star(region_prop['x_st_sky_sp'],
-                                                                                                                      region_prop['y_st_sky_sp'], 
-                                                                                                                      region_prop['z_st_sky_sp'], 
-                                                                                                                      np.arccos(param['cos_istar']))
-        
-
-
-        ## Flux calculation
-
-
-        # On garde uniquement les cases spottées, en gardant pour chaque case le flux du spot le plus sombre qui la recouvre (cf flux_occulted_all_tiles_sp)
-        region_prop['flux_sp'] = flux_occulted_all_tiles_sp[cond_in_sp]#*grid_dic['Ssub_Sstar']
-
-        # If GD is on AND istar is fitted, then we need to recalculate mu, LD and GD
-        if   (gd_band is not None)    and    ('cos_istar' in var_par_list)   :
-            
-            gd_sp, mu_sp = calc_GD(region_prop['x_st_sp'],
-                                   region_prop['y_st_sp'],
-                                   region_prop['z_st_sp'], 
-                                   star_params, gd_band, 
-                                   region_prop['x_st_sky_sp'],
-                                   region_prop['y_st_sky_sp'], 
-                                   np.arccos(param['cos_istar']))
-                                   
-            ld_sp = calc_LD(LD_law, mu_sp, ld_coeff) 
-        
-        # Otherwise it's ok, we can retrieve mu, LD and GD from those contained in grid_dic
-        else: 
-            mu_sp = grid_dic['mu_grid_star_achrom'][cond_in_sp][:,0]
-            gd_sp = grid_dic['gd_grid_star_achrom'][cond_in_sp][:,0]
-            ld_sp = grid_dic['ld_grid_star_achrom'][cond_in_sp][:,0]
-            
-
-        region_prop['flux_sp'] *= ld_sp
-        region_prop['flux_sp'] *= gd_sp
-        region_prop['mu_sp']    = mu_sp
-
-
-        #Limb-Darkening coefficient at mu
-        # region_prop['flux_sp'] *= LD_mu_func(LD_law,region_prop['mu_sp'],ld_coeff)
-
-        # Renormalisation to take into account that sum(Ftile) < 1 :
-        region_prop['flux_sp'] /= grid_dic['Ftot_star_achrom'][0]
-        
-
-        ## Radial velocity calculation
-        # Rotation speed
-        region_prop['RV_sp'] = calc_RVrot(region_prop['x_st_sky_sp'],region_prop['y_st_sp'],star_params['istar_rad'],param)
-
-        # Systemic velocity
-        region_prop['RV_sp'] += param['rv']
-
-        # Convectivd blueshift
-        CB_sp = np_poly(cb_band)(region_prop['mu_sp'])
-        region_prop['RV_sp'] += CB_sp
-
-
-        ## Other properties calculation : FW, ctrst, ...
-
-
-        # We store the coordinates associated with the chosen dimension( mu, r_proj,.. Add more possible coord choice ? )
-        if dim == 'mu'        : coord_prop = region_prop['mu_sp']
-        if dim == 'r_proj'    : coord_prop = np.sqrt(region_prop['r_proj2_st_sky_sp'])
-        
-        # FW et ctrst : always useful
-        region_prop['FWHM_sp']     = poly_prop_calc(param,coord_prop,coeff_ord2name['FWHM' ], pol_mode) 
-        region_prop['ctrst_sp']    = poly_prop_calc(param,coord_prop,coeff_ord2name['ctrst'], pol_mode)
-
-        # Cas à deux gaussiennes
-        if func_prof_name == 'dgauss' :
-            region_prop['amp_l2c_sp'] = poly_prop_calc(param,coord_prop,coeff_ord2name['amp_l2c'], pol_mode)
-            region_prop['rv_l2c_sp'] = poly_prop_calc(param,coord_prop,coeff_ord2name['rv_l2c'], pol_mode)
-            region_prop['FWHM_l2c_sp'] = poly_prop_calc(param,coord_prop,coeff_ord2name['FWHM_l2c'], pol_mode)
-
-        # Cas profil 'voigt'
-        if func_prof_name == 'voigt' :
-            region_prop['a_damp_pl'] = poly_prop_calc(param,coord_prop,coeff_ord2name['a_damp'], pol_mode)
-
-        #On retire les champs inutiles dans region_prop :
-        for key in ['r_proj2_st_sky_sp', 'x_st_sky_sp', 'y_st_sky_sp', 'z_st_sky_sp', 'x_st_sp', 'y_st_sp', 'z_st_sp', 'mu_sp'] :
-           region_prop.pop(key)
-    
-    return cond_in_sp, (   spot_within_grid and np.any(region_prop['flux_sp'] > 0)   ), region_prop
-
-
-
-
-
-"""
-
-Function which calculates the properties of the stellar surface elements occulted by the planetary grid (x_st_sky_pl , y_st_sky_pl)
-
-"""
-def get_planet_disk_prop(spots_prop, pl_loc, grid_dic,system_prop, x_pos_pl, y_pos_pl, star_params, LD_law, ld_coeff, gd_band, cb_band, param, coeff_ord2name, func_prof_name, Rp_Rs, var_par_list, pol_mode,args) :
-
-
-    # #Shift planet grid to current planet position
-    # x_st_sky_pl = x_pos_pl+grid_dic['x_st_sky_grid_pl'][pl_loc][  system_prop['cond_in_RpRs'][pl_loc][0]  ]
-    # y_st_sky_pl = y_pos_pl+grid_dic['y_st_sky_grid_pl'][pl_loc][  system_prop['cond_in_RpRs'][pl_loc][0]  ]
-
-    # #Distance to star center, squared
-    # r_proj2_sky_pl=x_st_sky_pl*x_st_sky_pl+y_st_sky_pl*y_st_sky_pl
-
-    # #Identifying planet subcells occulting the star
-    # #    - see model_star() for details on oblate star
-    # if star_params['f_GD']==0 :cond_pl_occ = ( r_proj2_sky_pl <=1. )
-    # else : z_st_sky_pl, cond_pl_occ = calc_zLOS_oblate(x_st_sky_pl, y_st_sky_pl, np.arccos(param['cos_istar']), star_params['RpoleReq'])[1:3]
-
-
-
-    #Star is effectively occulted
-    region_prop = {}
-
-    if True in cond_pl_occ:
-
-        ## Coordinates calculation
-
-        # # x, y, z, r of occulted cells, in the 'inclined' star frame
-        # region_prop['r_proj2_sky_pl']  = r_proj2_sky_pl[cond_pl_occ]
-        # region_prop['x_st_sky_pl'] = x_st_sky_pl[cond_pl_occ]
-        # region_prop['y_st_sky_pl'] = y_st_sky_pl[cond_pl_occ]
-        # if star_params['f_GD']>0.:region_prop['z_st_sky_pl']=z_st_sky_pl[cond_pl_occ]
-        # else:region_prop['z_st_sky_pl']=np.sqrt(1.-region_prop['r_proj2_sky_pl'])
-
-        # #Frame conversion from the inclined star frame to the 'star' frame
-        # region_prop['x_st_pl'],region_prop['y_st_pl'],region_prop['zstar_pl'] = frameconv_InclinedStar_to_Star(region_prop['x_st_sky_pl'],
-        #                             region_prop['y_st_sky_pl'], region_prop['z_st_sky_pl'], np.arccos(param['cos_istar']))
-
-        ## Flux calculation
-
-        # # Size of disk cells
-        # region_prop['flux_pl'] = np.ones(np.sum(cond_pl_occ))*grid_dic['Ssub_Sstar_pl'][pl_loc]
-
-
-        # # Mu coordinate and gravity-darkening
-        # #     - mu = cos(theta)), from 1 at the center of the disk to 0 at the limbs), with theta angle between LOS and local normal
-        # if gd_band is not None :
-        #     gd_grid,region_prop['mu_pl']=calc_GD(region_prop['x_st_pl'],
-        #                                         region_prop['y_st_pl'],
-        #                                         region_prop['zstar_pl'], 
-        #                                         star_params,gd_band,
-        #                                         region_prop['x_st_sky_pl'],
-        #                                         region_prop['y_st_sky_pl'], 
-        #                                         np.arccos([param['cos_istar']]))
-                                                
-        #     region_prop['flux_pl'] *= gd_grid   # We correct the flux from gravity darkening effect (larger flux at the pole)
-
-        # else: region_prop['mu_pl'] = np.sqrt(1. - region_prop['r_proj2_sky_pl']  )
-
-
-        # # Limb-Darkening coefficient at mu
-        # region_prop['flux_pl'] *= LD_mu_func(LD_law,region_prop['mu_pl'],ld_coeff)
-
-        # # Renormalisation to take into account that sum(Ftile) < 1 :
-        # region_prop['flux_pl'] /= grid_dic['Ftot_star_achrom'][0]
-
-
-        ## Spot effect on flux 
-        
-        # 'Base' flux level of the tiles : 1 if off-spot, and product of the spot flux if the tiles belongs to one or more spots (spot effect are assumed cumulative) :
-        spot_atenuation = np.ones(np.sum(cond_pl_occ))  
-        
-        for spot in spots_prop :
-            # Check if the spot is visible and 'close' to the planet center (in inclined star frame) : 
-            x_sp_sky, y_sp_sky, ang_sp = spots_prop[spot]['x_sky_exp_center'],spots_prop[spot]['y_sky_exp_center'],spots_prop[spot]['ang_rad']
-            if spots_prop[spot]['is_visible'] and (x_sp_sky - x_pos_pl)**2 + (y_sp_sky - y_pos_pl)**2 < (ang_sp + Rp_Rs)**2:
-                
-                spot_within_grid, spotted_tiles = calc_spotted_tiles(spots_prop[spot], region_prop['x_st_sky_pl'], region_prop['y_st_sky_pl'], region_prop['z_st_sky_pl'], {},
-                                                                     star_params, param, use_grid_dic = False)
-                                                                     
-                # Multiply spotted tiles flux by the spot flux                                                
-                if spot_within_grid :
-                    for i in range(np.sum(cond_pl_occ)):
-                        if spotted_tiles[i] : spot_atenuation[i] *= spots_prop[spot]['flux']  
-                        
-        region_prop['flux_pl'] *= spot_atenuation
-
-
-        ## Radial velocity calculation
-
-        # Vitesse de rotation
-        region_prop['RV_pl'] = calc_RVrot(region_prop['x_st_sky_pl'],region_prop['y_st_pl'],np.arccos(param['cos_istar']),param)
-
-        # Vitesse systémique
-        region_prop['RV_pl'] += param['rv']
-
-        # Convective blueshift
-        CB_pl = np_poly(cb_band)(region_prop['mu_pl'])
-        region_prop['RV_pl'] += CB_pl
-
-
-        ## Other properties calculation : FW, ctrst, ...
-        
-        # We store the coordinates associated with the chosen dimension( mu, r_proj,.. add more possible coord choice ? )
-        # if dim == 'mu'        : coord_prop = region_prop['mu_pl']
-        # if dim == 'r_proj'    : coord_prop = np.sqrt(region_prop['r_proj2_sky_pl'])
-        
-        coord_prop = args['linevar_coord_grid']
-        
-        # Contrast and FWHM, always used
-        region_prop['FWHM_pl']     = poly_prop_calc(param,coord_prop,coeff_ord2name['FWHM' ], pol_mode)
-        region_prop['ctrst_pl']    = poly_prop_calc(param,coord_prop,coeff_ord2name['ctrst'], pol_mode)
-
-        # Cas à deux gaussiennes
-        if func_prof_name == 'dgauss' :
-            region_prop['amp_l2c_pl'] = poly_prop_calc(param,coord_prop,coeff_ord2name['amp_l2c'], pol_mode)
-            region_prop['rv_l2c_pl'] = poly_prop_calc(param,coord_prop,coeff_ord2name['rv_l2c'], pol_mode)
-            region_prop['FWHM_l2c_pl'] = poly_prop_calc(param,coord_prop,coeff_ord2name['FWHM_l2c'], pol_mode)
-
-        # Cas d'un profil voigt
-        if func_prof_name == 'voigt' :
-            region_prop['a_damp_pl'] = poly_prop_calc(param,coord_prop,coeff_ord2name['a_damp'], pol_mode)
-
-        # On supprime les champs inutiles
-        for key in ['x_st_sky_pl', 'y_st_sky_pl', 'z_st_sky_pl', 'x_st_pl', 'y_st_pl', 'zstar_pl'] :
-            region_prop.pop(key)
-
-    # On renvoie si le disque recouvre l'étoile, et les propriétés de la région occultée.
-    return (   (True in cond_pl_occ) and np.any(region_prop['flux_pl'] > 0)   ), region_prop
-
-
-
 
 """
 
@@ -1130,7 +703,6 @@ def compute_deviation_profile(args, param, inst, vis, iexp,gen_dic,theo_dic,data
         # - tab_prop_spot['rv'][i_tile]   -> RV of the spotted tile number 'itile'
         # - tab_prop_spot['flux'][i_tile] -> flux level of the spotted tile number 'itile'
         # etc...
-
         cond_sp, spot_within_grid_all, tab_prop_sp = calc_spotted_region_prop(
                                                         spots_prop,
                                                         args['grid_dic'],

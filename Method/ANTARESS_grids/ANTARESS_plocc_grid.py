@@ -11,7 +11,8 @@ from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,calc_st_sky,calc_Isurf_grid,calc_RVrot
 from ANTARESS_analysis.ANTARESS_model_prof import calc_polymodu,polycoeff_def
 from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid
-from ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, new_calc_spotted_region_prop, new_retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop
+from ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop
+
 
 def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=False,spot_dic={}):
     r"""**Planet-occulted / spot properties: workflow**
@@ -188,18 +189,29 @@ def up_plocc_prop(inst,vis,par_list,args,param_in,transit_pl,nexp_fit,ph_fit,coo
 
 
 def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo_dic,system_prop_in,param,coord_pl_in,iexp_list,system_spot_prop_in = None , out_ranges=False,Ftot_star=False):
-    r"""**Planet-occulted properties: exposure**
+    r"""**Planet- and Spot-occulted properties: exposure**
 
-    Calculates average theoretical properties of the stellar surface occulted by all transiting planets during an exposure
-    
+    Calculates average theoretical properties of the stellar surface occulted by all spots and transiting planets during an exposure
      - we normalize all quantities by the flux emitted by the occulted regions
      - all positions are in units of Rstar 
     
     Args:
-        TBD
-    
+        key_chrom (list) : chromatic modes used (either chromatic, 'chrom', achromatic, 'achrom', or both).
+        args (dict) : parameters used to generate analytical profiles.
+        par_list_gen (list) : parameters whose value we want to calculate over each planet/spot-occulted region.
+        transit_pl (list) : list of transiting planets in the exposures considered.
+        system_param (dict) : system (star + planet + spot) properties.
+        theo_dic (dict) : parameters used to generate and describe the stellar grid and planet/spot-occulted regions grid.
+        system_prop_in (dict) : planet limb-darkening properties.
+        param (dict) : star properties.
+        coord_pl_in (dict) : dictionary containing the various coordinates of each planet (e.g., exposure time, exposure phase, exposure x/y/z coordinate)
+        iexp_list (list) : exposures to process.
+        system_spot_prop_in (dict) : optional, spot limb-darkening properties.
+        out_ranges (bool) : optional, whether or not to calculate the range of values the parameters of interest (par_list_gen) will take. Turned off by default.
+        Ftot_star (bool) : optional, whether or not to calculate the normalized stellar flux after accounting for the spot/planet occultations. Turned off by default.
     Returns:
-        TBD
+        surf_prop_dic (dict) : average value of all the properties of interest over all the planet-occulted regions, in each exposure and chromatic mode considered.
+        surf_prop_dic_spot (dict) : average value of all the properties of interest over all the spot-occulted regions, in each exposure and chromatic mode considered.
     
     """ 
     system_prop = deepcopy(system_prop_in)  
@@ -321,7 +333,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
             exp_time = coord_pl_in['bjd'][iexp]
 
             #Extract spot properties for the exposure we're considering.
-            spots_prop = new_retrieve_spots_prop_from_param(star_params, param, param['inst'], param['vis'], exp_time, coord_pl_in['t_dur'][iexp])
+            spots_prop = retrieve_spots_prop_from_param(star_params, param, param['inst'], param['vis'], exp_time, exp_dur=coord_pl_in['t_dur'][iexp])
 
             #Check if at least one spot is visible.
             #To do so, we need a more precise estimate of the spot location.
