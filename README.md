@@ -4,11 +4,10 @@ Read the documentation [here](https://obswww.unige.ch/~bourriev/antaress/doc/htm
 
 ## General approach
 
-First, define the system properties for the host star and its planets in [ANTARESS_systems.py](ANTARESS_systems.py).  
-Then, define your input datasets, and the modules to process and analyze them, in a copy of the default configuration file [ANTARESS_settings.py](ANTARESS_settings.py). You can name your own configuration file as `ANTARESS_settings_username.py`.  
-Finally, launch the workflow with the python command `ANTARESS_launcher(user = username)`. 
-
-Most fields in the configuration file have default values. However, we recommend you try out changing their values to process your specific datasets.
+Follow these steps to run ANTARESS:  
+1. Define the system properties for the host star and its planets in a copy of [ANTARESS_systems.py](ANTARESS_systems.py) that you can name `ANTARESS_settings_username.py`. The default file contains a mock system as example.  
+2. Define your input datasets, and the modules to process and analyze them, in a copy of the configuration file [ANTARESS_settings.py](ANTARESS_settings.py) that you can name `ANTARESS_settings_username.py`. Although the default file allows running ANTARESS with minimal intervention, any detailed analysis will require that you define your own settings.  
+3. Launch the workflow with the python command `ANTARESS_launcher(user = username)`. 
 
 Modules are grouped in three main categories:
 - [ ] Data first go through formatting and correction modules, some of which are specific to given instruments. Once data are set in the common ANTARESS format and corrected for instrumental/environmental effects, they can be processed in the same way by the subsequent modules. 
