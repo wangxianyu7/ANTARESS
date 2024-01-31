@@ -1,7 +1,18 @@
-.. ANTARESS documentation master file
+ANTARESS
+***********
 
-Welcome to ANTARESS's documentation!
-====================================
+About ANTARESS
+================
+
+TBD
+
+Doc Contents
+============
+
+.. toctree::
+   :maxdepth: 2
+
+   installation
 
 .. toctree::
    :maxdepth: 2
