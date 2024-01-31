@@ -1,9 +1,6 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Sat Aug  2 11:51:09 2014
 
-@author: vincent
-"""
 import numpy as np
 from math import pi
 from copy import deepcopy
@@ -15,7 +12,7 @@ from constant_data import c_light
 
 
 '''
-#Redefinition of usual functions
+Redefinition of usual numpy functions
 '''    
 np_append=np.append
 np_arange=np.arange
@@ -46,145 +43,276 @@ np_vstack=np.vstack
 np_zeros=np.zeros
 np_poly = np.polynomial.Polynomial
 
+
 def dataload_npz(path):
+    r"""**Npz retrieval.**
+    
+    Simplified call to function uploading `npz` file with `data` field.  
+    
+    Args:
+        TBD
+    
+    Returns:
+        None
+    
+    """ 
     return np.load(path+'.npz',allow_pickle=True)['data'].item()
+
+
 def datasave_npz(path,data):
+    r"""**Npz saving.**
+    
+    Simplified call to function saving `npz` file with `data` field.  
+    
+    Args:
+        TBD
+    
+    Returns:
+        None
+    
+    """
     return np.savez_compressed(path,data=data,allow_pickle=True)
 
+
 def np_where1D(cond):
-    return np.where(cond)[0]
-
-def is_odd(num):
-   return bool(num % 2)
-
-
-'''
-Default function returning 1
-'''
-def default_func(*x):return np.array([1.])
-
-
-
-
+    r"""**1D where.**
     
-'''
-Factorial of value
-'''
-def factrial(val):
-    return np.math.factorial(val)    
+    Simplified numpy `where` function in 1D.
+    
+    Args:
+        cond (conditional statement) :  condition on 1D array
+    
+    Returns:
+        idx_cond (array) : array of indexes validating condition
+    
+    """   
+    idx_cond = np.where(cond)[0]
+    return idx_cond
 
-'''
-Closest modulo function
-    given x, p, y, returns the value of x +- n*p closest to y 
-    equivalent to finding the largest n so that [ (x - y)/p ] +- n close to 0
-'''
+
+def is_odd(x):
+    r"""**Odd check.**
+    
+    Cheks whether a variable is odd.
+    
+    Args:
+        x (float) :  input variable
+    
+    Returns:
+        cond_odd (bool) : True if `x` is odd
+    
+    """  
+    cond_odd = bool(x % 2)
+    return cond_odd
+
+
+
+def default_func(*x):
+    r"""**Unity function.**
+    
+    Returns 1 for any set of input arguments (used as default function).
+    
+    Args:
+        x (various) :  input variables
+    
+    Returns:
+        gen_output (array) : unity array
+    
+    """    
+    gen_output = np.array([1.])
+    return gen_output
+
+
+
+
+def factrial(x):
+    r"""**Factorial.**
+    
+    Simplified call to numpy factorial of input variable.
+    
+    Args:
+        x (int) :  input variable.
+    
+    Returns:
+        fact_x (int) : factorial of `x`
+    
+    """ 
+    fact_x = np.math.factorial(x)   
+    return fact_x 
+
+
+
+
+
+
 def closest_mod(x,p,y):
-    return x - np.round((x-y)/p)*p
+    r"""**Closest modulo.**
+    
+    Given `x`, `p`, `y`, returns the value of :math:`x +- n \times p` closest to `y`. 
+    This is equivalent to finding the largest `n` so that :math:`[ (x - y)/p ] +- n` is closest to `0`.
+    
+    Args:
+        x (float or array) :  dividend.
+        p (float or array) :  divisor.
+        y (float or array) :  target.
+    
+    Returns:
+        r (float or array) : remainder
+    
+    """ 
+    r = x - np.round((x-y)/p)*p
+    return r
     
 
-'''
-Routine to calculate the convolution of a tabulated function with a continuously-defined kernel
-    - f_conv(x) = int( f(x-t)*k_norm(t)*dt), with f_conv and f in the same units, and thus k_norm in units of [dt-1]                
- with k_norm(t) = k(t)/int(k(u)*du), so that the integral of k_norm is 1
-    - expressed in the discrete domain, the convolution writes as (see http://www.exelisvis.com/docs/CONVOL.html):
- F_conv(x) = sum( i=0:m-1 ; F( x+i-hm ) * k(i) ) if hm <= x <= n-hm-1
-           = F(0) * sum(i=0,hm-x-1 ; k(i) ) + sum( i=hm-x:m-1 ; F( x+i-hm ) * k(i) ) if x < hm 
-           = sum( i=0:n-1+hm-x ; F( x+i-hm ) * k(i) ) + F(n-1) * sum(i=n+hm-x,m-1 ; k(i) )  if x > n-hm-1    
- with 'F' the function to be convolved (dimension 'n'), and 'm' the kernel (dimension 'k'). This can also be written
- with (j=x+i-hm ->  i=j-x+hm) and (m - hm = hm) as:   
- F_conv(x) = sum( j=x-hm:x+hm ; F( j ) * k(j-x+hm) ) if hm <= x <= n-hm-1      
-           = F(0) * sum(j=x-hm,-1 ; k(j-x+hm) ) + sum( j=0:x+hm ; F( j ) * k(j-x+hm) ) if x < hm 
-           = sum( j=x-hm:n-1 ; F( j ) * k(j-x+hm) ) + F(n-1) * sum(j=n,x+hm-1 ; k(j-x+hm) )  if x > n-hm-1     
- here we use extended edges, ie we repeat the values of F at the edge to compute their convolved values      
-    - here we take into account the (possibly variable) resolution of F, and use a function for the kernel to be able to calculate
- its value at any position. We define:
- + k[wcen](w) as the value of the kernel centered on wcen, at wavelength w. 
- + 'hw_kern' (ie hm) the interval between the kernel center and the wavelength point where the kernel falls below 1% of its max, ie where its 
- contribution to the convolution becomes negligible (~ 0.1% difference with the full kernel range) 
- + 'dw(j)' the width of the pixel at index j in the table of F
-    - we separate again three different cases:    
- + regular values: w(0)+hw_kern <= w(x) <= w(n-1)-hw_kern         
-       F_conv(x) = sum( j=js,je ; F( j ) * k[w(j)]( w(x) ) * dw(j) ) 
-   with js lowest index that gives   w(js) >= w(x) - hw_kern
-        je highest index that gives  w(je) <= w(x) + hw_kern
-   we cannot define js,je in terms of indexes because the resolution of F can be variable
- + lower edge: w(x) < w(0)+hw_kern 
-       F_conv(x) = F(0) * dw(0) * sum(j= -1 - int(hw_kern/dw(0)),-1 ; k[w(0)+dw(0)*j]( w(x) ) ) +
-                   sum( j=0:je ; F( j ) * k[w(j)]( w(x) ) * dw(j) )
-   with je highest index that gives w(je) <= w(x) + hw_kern 
- in that case, because hw_kern/dw(0) -1 < int(hw_kern/dw(0)) <= hw_kern/dw(0) the first pixel on which the kernel is centered on at
- w_jmin = w(0) - dw(0) - dw(0)*int( hw_kern/dw(0) ) verifies hw_kern<w(0)-w_jmin<=hw_kern+dw
- thus this is the farthest phantom pixel, when extending the table with pixels at the resolution of the first pixel, for which the kernel
- contributes significantly to the convolution (since the next extended pixel would be at more than hw_kern from the first pixel at w(0)) 
- + upper edge: w(x) > w(n-1)-hw_kern
-       F_conv(x) = sum( j=js:n-1 ; F( j ) * k[w(j)]( w(x) ) * dw(j) ) 
-                   + F(n-1) * dw(n-1) * sum(j=1,1+int(hw_kern/dw(n-1)) ; k[w(n-1)+dw(n-1)*j]( w(x) ) )  
-   with js lowest index that gives   w(js) >= w(x) - hw_kern
- in that case, because hw_kern/dw(n-1) -1 < int(hw_kern/dw(n-1)) <= hw_kern/dw(n-1) the last pixel on which the kernel is centered on at
- w_jmax = w(n-1) + dw(n-1) + dw(n-1)*int( hw_kern/dw(n-1) ) verifies hw_kern < w_jmax - w(n-1)  <= hw_kern +dw(n-1)   
-'''
-def convol_contin(wave_tab,dwave_tab,F_raw,kern,hw_kern):
- 
+
+def convol_contin(x_grid,dx_grid,y_tab,kern,hw_kern):
+    r"""**Convolution with tabulated kernel.**
+        
+    Convolves a tabulated profile `F` with a tabulated (continuously-defined) kernel `k`.
+    
+    The convolved profile is expressed as
+
+    .. math::     
+       F_\mathrm{conv}(x) &= \int_{t}( F(x-t) k_\mathrm{norm}(t) dt)              \\
+       \mathrm{where \,} &k_\mathrm{norm}(t) = \frac{k(t)}{\int_{u}(k(u) du)}
+        
+    With :math:`F_\mathrm{conv}` and `F` in the same units (thus :math:`k_\mathrm{norm}` in units of :math:`[dt^{-1}]`), and   
+    :math:`k_\mathrm{norm}` normalized to an integral unity.
+    
+    Expressed in the discrete domain, the convolution writes as (see `<http://www.exelisvis.com/docs/CONVOL.html>`_) 
+        
+    .. math::        
+       F_\mathrm{conv}(x) &= \sum_{i=0}^{m-1}( F( x+i-hm ) k(i) )    \mathrm{\, if \,} hm <= x <= n-hm-1   \\
+                          &= F(0) \sum_{i=0}^{hm-x-1} ( k(i) ) + \sum_{i=hm-x:m-1} ( F( x+i-hm ) k(i) ) \mathrm{\, if \,} x < hm        \\
+                          &= \sum_{i=0}^{n-1+hm-x} ( F( x+i-hm ) k(i) ) + F(n-1) \sum_{i=n+hm-x,m-1} ( k(i) )  \mathrm{\, if \,} x > n-hm-1    
+     
+    With `F` the function to be convolved (dimension `n`), and `m` the kernel (dimension `k`). This can also be written with :math:`(j=x+i-hm ->  i=j-x+hm)` and :math:`(m - hm = hm)` as:   
+
+    .. math::          
+       F_\mathrm{conv}(x) &= \sum_{j=x-hm}^{x+hm} ( F( j ) k(j-x+hm) )  \mathrm{\, if \,} hm <= x <= n-hm-1      \\  
+                          &= F(0) \sum_{j=x-hm}^{-1} ( k(j-x+hm) ) + \sum_{j=0}^{x+hm} ( F( j ) k(j-x+hm) )  \mathrm{\, if \,} x < hm   \\
+                          &= \sum_{j=x-hm}^{n-1} ( F( j ) k(j-x+hm) ) + F(n-1) \sum_{j=n}^{x+hm-1} ( k(j-x+hm) )   \mathrm{\, if \,} x > n-hm-1     
+    
+    Here we use extended edges, ie we repeat the values of `F` at the edge to compute their convolved values.      
+    
+    We take into account the (possibly variable) spectral sampling of `F`, and use a function for the kernel to be able to calculate its value at any position. We define
+
+        + :math:`k[\lambda_\mathrm{cen}](\lambda)` as the value of the kernel centered on :math:`\lambda_\mathrm{cen}`, at wavelength :math:`\lambda`. 
+        + :math:`\mathrm{hw}_\mathrm{kern}` (ie `hm`) the interval between the kernel center and the wavelength point where the kernel falls below 1\% of its max, ie where its 
+          contribution to the convolution becomes negligible (:math:`\sim` 0.1\% difference with the full kernel range) 
+        + `dw(j)` the width of the pixel at index `j` in the table of `F`
+        
+    We separate again three different cases
+    
+        + regular values (:math:`\lambda(0)+\mathrm{hw}_\mathrm{kern} <= \lambda(x) <= \lambda(n-1)-\mathrm{hw}_\mathrm{kern}`)
+          
+          .. math:: 
+             F_\mathrm{conv}(x) &= \sum_{ j=j_s}^{j_e }( F( j ) k[\lambda(j)]( \lambda(x) ) dw(j) )  \\
+             & j_s \mathrm{lowest \, index \,that\, gives}   \lambda(j_s) >= \lambda(x) - \mathrm{hw}_\mathrm{kern}  \\
+             & j_e \mathrm{highest \, index \,that \,gives}  \lambda(j_e) <= \lambda(x) + \mathrm{hw}_\mathrm{kern}
+          
+          We cannot define :math:`(j_s,j_e)` in terms of indexes because the resolution of `F` can be variable
+          
+        + lower edge (:math:`\lambda(x) < \lambda(0)+\mathrm{hw}_\mathrm{kern}`) 
+          
+          .. math::
+              F_\mathrm{conv}(x) &= F(0) dw(0) \sum_{j= -1 - int(\mathrm{hw}_\mathrm{kern}/dw(0))}^{-1} ( k[\lambda(0)+dw(0) j]( \lambda(x) ) ) + \sum_{ j=0}^{j_e} ( F( j ) k[\lambda(j)]( \lambda(x) ) dw(j) )\\
+              & j_e \mathrm{highest \, index \,that \,gives}  \lambda(j_e) <= \lambda(x) + \mathrm{hw}_\mathrm{kern} 
+        
+          In that case, because :math:`\mathrm{hw}_\mathrm{kern}/dw(0) -1 < int(\mathrm{hw}_\mathrm{kern}/dw(0)) <= \mathrm{hw}_\mathrm{kern}/dw(0)` the first pixel on which the kernel is centered on at
+          :math:`\lambda_{j_\mathrm{min}} = \lambda(0) - dw(0) - dw(0) int( \mathrm{hw}_\mathrm{kern}/dw(0) )` verifies :math:`\mathrm{hw}_\mathrm{kern}<\lambda(0)-\lambda_{j_\mathrm{min}}<=\mathrm{hw}_\mathrm{kern}+dw`
+          thus this is the farthest phantom pixel, when extending the table with pixels at the resolution of the first pixel, for which the kernel
+          contributes significantly to the convolution (since the next extended pixel would be at more than :math:`\mathrm{hw}_\mathrm{kern}` from the first pixel at :math`\lambda(0)`). 
+        
+        + upper edge (:math:`\lambda(x) > \lambda(n-1)-\mathrm{hw}_\mathrm{kern}`)
+          
+          .. math::
+              F_\mathrm{conv}(x) = \sum_{j=j_s}^{n-1}( F( j ) k[\lambda(j)]( \lambda(x) ) dw(j) ) + F(n-1) dw(n-1) \sum_{j=1}^{1+int(\mathrm{hw}_\mathrm{kern}/dw(n-1))}( k[\lambda(n-1)+dw(n-1) j]( \lambda(x) ) )  
+          
+          With :math:`j_s` lowest index that gives :math:`\lambda(j_s) >= \lambda(x) - \mathrm{hw}_\mathrm{kern}`.  
+          In that case, because :math:`\mathrm{hw}_\mathrm{kern}/dw(n-1) -1 < int(\mathrm{hw}_\mathrm{kern}/dw(n-1)) <= \mathrm{hw}_\mathrm{kern}/dw(n-1)` the last pixel on which the kernel is centered on at
+          :math:`\lambda_{j_\mathrm{max}} = \lambda(n-1) + dw(n-1) + dw(n-1) int( \mathrm{hw}_\mathrm{kern}/dw(n-1) )` verifies :math:`\mathrm{hw}_\mathrm{kern} < \lambda_{j_\mathrm{max}} - \lambda(n-1)  <= \mathrm{hw}_\mathrm{kern} +dw(n-1)`.  
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    
     #First/last wavelength pixels
-    n_pix=len(F_raw) 
-    wav0=wave_tab[0]
-    dwav0=dwave_tab[0]
-    dwavf=dwave_tab[n_pix-1]    
-    wavf=wave_tab[n_pix-1]
+    n_pix=len(y_tab) 
+    wav0=x_grid[0]
+    dwav0=dx_grid[0]
+    dwavf=dx_grid[n_pix-1]    
+    wavf=x_grid[n_pix-1]
     if 2.*hw_kern>(wavf-wav0):stop('Kernel too large compared to spectrum')
    
     #The convolved spectrum is defined on the same wavelength table as the original spectrum
     F_conv=np.zeros(n_pix)
  
     #We use directly the product spectrum x resolution 'F_dw'
-    F_dw=F_raw*dwave_tab
+    F_dw=y_tab*dx_grid
 
     #--------------------------------------------------------------------------------------------
     #Regular values: w(0)+hw_kern <= w(x) <= w(n-1)-hw_kern         
     #       F_conv(x) = sum( j=js,je ; F( j ) * k[w(j)]( w(x) ) * dw(j) ) 
     #   with js lowest index that gives   w(js) >= w(x) - hw_kern
     #        je highest index that gives  w(je) <= w(x) + hw_kern
-    id_reg=np.where( (wave_tab >= wav0 + hw_kern) & (wave_tab <= wavf - hw_kern))[0]
+    id_reg=np.where( (x_grid >= wav0 + hw_kern) & (x_grid <= wavf - hw_kern))[0]
     for ix in id_reg:
-        wavx=wave_tab[ix]
-        j_tab_reg=np.arange(( np.where(wave_tab >= wavx - hw_kern)[0] )[0],( np.where(wave_tab <= wavx + hw_kern)[0] )[-1]+1)
-        F_conv[ix]+=np.sum(F_dw[j_tab_reg]*kern(wavx,wave_tab[j_tab_reg]))
+        wavx=x_grid[ix]
+        j_tab_reg=np.arange(( np.where(x_grid >= wavx - hw_kern)[0] )[0],( np.where(x_grid <= wavx + hw_kern)[0] )[-1]+1)
+        F_conv[ix]+=np.sum(F_dw[j_tab_reg]*kern(wavx,x_grid[j_tab_reg]))
 
     #--------------------------------------------------------------------------------------------
     #Lower edge: w(x) < w(0)+hw_kern 
     #       F_conv(x) = F(0) * dw(0) * sum(j= -1 - int(hw_kern/dw(0)),-1 ; k[w(0)+dw(0)*j]( w(x) ) ) +
     #                   sum( j=0:je ; F( j ) * k[w(j)]( w(x) ) * dw(j) )
     #   with je highest index that gives w(je) <= w(x) + hw_kern 
-    id_low=np.where( (wave_tab < wav0 + hw_kern))[0]
+    id_low=np.where( (x_grid < wav0 + hw_kern))[0]
     for ix in id_low:
-        wavx=wave_tab[ix]        
+        wavx=x_grid[ix]        
         j_tab_low=np.arange(-1-int(hw_kern/dwav0),0)
-        j_tab_reg=np.arange(0,( np.where(wave_tab <= wavx + hw_kern)[0] )[-1]+1)          
+        j_tab_reg=np.arange(0,( np.where(x_grid <= wavx + hw_kern)[0] )[-1]+1)          
         F_conv[ix]+=F_dw[0]*np.sum(kern(wavx,wav0+dwav0*j_tab_low))+\
-                    np.sum(F_dw[j_tab_reg]*kern(wavx,wave_tab[j_tab_reg]))
+                    np.sum(F_dw[j_tab_reg]*kern(wavx,x_grid[j_tab_reg]))
 
     #--------------------------------------------------------------------------------------------
     #Upper edge: w(x) > w(n-1)-hw_kern
     #       F_conv(x) = sum( j=js:n-1 ; F( j ) * k[w(j)]( w(x) ) * dw(j) ) 
     #                   + F(n-1) * dw(n-1) * sum(j=1,1+int(hw_kern/dw(n-1)) ; k[w(n-1)+dw(n-1)*j]( w(x) ) )
     #   with js lowest index that gives w(js) >= w(x) - hw_kern  
-    id_high=np.where( (wave_tab > wavf - hw_kern))[0]
+    id_high=np.where( (x_grid > wavf - hw_kern))[0]
     for ix in id_high:
-        wavx=wave_tab[ix]        
-        j_tab_reg=np.arange(( np.where(wave_tab >= wavx - hw_kern)[0] )[0],n_pix)
+        wavx=x_grid[ix]        
+        j_tab_reg=np.arange(( np.where(x_grid >= wavx - hw_kern)[0] )[0],n_pix)
         j_tab_high=np.arange(1,1+int(hw_kern/dwavf)+1)          
-        F_conv[ix]+=np.sum(F_dw[j_tab_reg]*kern(wavx,wave_tab[j_tab_reg]))+\
+        F_conv[ix]+=np.sum(F_dw[j_tab_reg]*kern(wavx,x_grid[j_tab_reg]))+\
                     F_dw[n_pix-1]*np.sum(kern(wavx,wavf+dwavf*j_tab_high))    
     
     return F_conv
 
-'''
-Return all points between start and stop separated by step
-    - start + i*step <= stop
-'''
+
 def step_range(start,stop,step):
-    nsteps=int(round((stop-start)/step))+1		
-    return start+np.arange(nsteps)*step
+    r"""**Range with step.**
+    
+    Return all points `x` between :math:`x_\mathrm{start}` and :math:`x_\mathrm{stop}` separated by :math:`dx`
+    
+    .. math:: 
+       x = x_\mathrm{start} + i x_\mathrm{step} <= x_\mathrm{stop}
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """     
+    nsteps=int(round((stop-start)/step))+1	
+    x_grid = start+np.arange(nsteps)*step
+    return x_grid
 
 '''
 Return index of closest value in an array

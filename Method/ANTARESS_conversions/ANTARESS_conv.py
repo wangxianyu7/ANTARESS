@@ -297,13 +297,11 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
     data_vis['dim_all'] = [data_vis['n_in_visit'],data_dic[inst]['nord'],data_vis['nvel']]
     data_vis['dim_exp'] = [data_dic[inst]['nord'],data_vis['nvel']]
     data_vis['dim_ord'] = [data_vis['n_in_visit'],data_vis['nvel']]
-    if ('chrom' in data_dic['DI']['system_prop']):
-        data_dic['DI']['system_prop']['chrom_mode'] = 'achrom'
-        data_dic['DI']['system_prop'].pop('chrom')
+    if ('chrom' in data_vis['system_prop']):
+        data_vis['system_prop']['chrom_mode'] = 'achrom'
+        data_vis['system_prop'].pop('chrom')
 
     return None    
-    
- 
 
 def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
     r"""**CCF conversion** 
@@ -384,7 +382,7 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
         np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont']},allow_pickle=True)
     else:
         check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)
-        data_dic['Intr'][inst][vis]['mean_cont'] = dataload_npz(data_vis['proc_Intr_data_paths']+'_add')
+        data_dic['Intr'][inst][vis]['mean_cont'] = dataload_npz(data_vis['proc_Intr_data_paths']+'_add')['mean_cont']
 
     #Determine the correlation length for the visit
     if gen_dic['scr_search']:

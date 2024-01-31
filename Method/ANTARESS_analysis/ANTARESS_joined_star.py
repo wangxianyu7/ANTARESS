@@ -65,88 +65,93 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
     print('   > Fitting single stellar surface property')
     
     #Initializations
-    fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)    
-    fit_dic['save_dir']+=fit_prop_dic['prop']+'/'        
-
-    #Arguments to be passed to the fit function
-    #    - fit is performed on achromatic average properties
-    #    - the full stellar line profile are not calculated, since we only fit the average properties of the occulted regions
-    fixed_args.update({
-        'chrom_mode':'achrom',
-        'mode':'ana',  #to activate the calculation of line profile properties
-        'prop_fit':fit_prop_dic['prop']})
+    for prop_loc in fit_prop_dic['mod_prop']:  
+        fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
+        print('     - '+{'rv':'Surface RVs','FWHM':'Intrinsic line FWHM','ctrst':'Intrinsic line contrast','a_damp':'Intrinsic line damping coefficient'}[prop_loc])        
+        fit_dic['save_dir']+=prop_loc+'/'        
     
-    #Coordinate and property to calculate for the fit
-    fixed_args['par_list']+=[fixed_args['prop_fit']]
-    if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
-    else:fixed_args['coord_line']=fit_prop_dic['dim_fit']
-    fixed_args['par_list']+=[fixed_args['coord_line']]
-
-    #Construction of the fit tables
-    for par in ['s_val','y_val']:fixed_args[par]=np.zeros(0,dtype=float)
-    for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
-    idx_fit2vis={}
-    for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
-        init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
-        idx_fit2vis[inst] = {}
-        for vis in data_dic[inst]['visit_list']:
-            init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
-
-            #Visit is fitted
-            if vis is not None: 
-                data_vis=data_dic[inst][vis]
-                init_joined_routines_vis_fit('IntrProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
-
-                #Binned/original data
-                if fixed_args['bin_mode'][inst][vis]=='_bin':data_load = dataload_npz(gen_dic['save_data_dir']+'/Intrbin_prop/'+inst+'_'+vis)
-                else:data_load = dataload_npz(gen_dic['save_data_dir']+'/Introrig_prop/'+inst+'_'+vis)
-                
-                #Fit tables
-                idx_fit2vis[inst][vis] = range(fit_dic['nx_fit'],fit_dic['nx_fit']+len(fit_prop_dic['idx_in_fit'][inst][vis]))
-                fit_dic['nx_fit']+=len(fit_prop_dic['idx_in_fit'][inst][vis])
-                for i_in in fit_prop_dic['idx_in_fit'][inst][vis]:    
-                    fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
-                    fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))
-
-
-    fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)
-    fixed_args['nexp_fit'] = fit_dic['nx_fit']
-    fixed_args['x_val']=range(fixed_args['nexp_fit'])
-    fixed_args['fit_func'] = FIT_joined_IntrProp
+        #Arguments to be passed to the fit function
+        #    - fit is performed on achromatic average properties
+        #    - the full stellar line profile are not calculated, since we only fit the average properties of the occulted regions
+        fixed_args.update({
+            'rout_mode':'IntrProp',
+            'chrom_mode':'achrom',
+            'mode':'ana',  #to activate the calculation of line profile properties
+            'prop_fit':prop_loc})
+        
+        #Coordinate and property to calculate for the fit
+        fixed_args['par_list']+=[fixed_args['prop_fit']]
+        if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
+        else:fixed_args['coord_line']=fit_prop_dic['dim_fit']
+        fixed_args['par_list']+=[fixed_args['coord_line']]
     
-    #Uncertainties on the property are given a covariance matrix structure for consistency with the fit routine 
-    fixed_args['cov_val'] = np.array([fixed_args['s_val']**2.])
-    fixed_args['use_cov'] = False   
+        #Construction of the fit tables
+        for par in ['s_val','y_val']:fixed_args[par]=np.zeros(0,dtype=float)
+        for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
+        idx_fit2vis={}
+        for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
+            init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
+            idx_fit2vis[inst] = {}
+            for vis in data_dic[inst]['visit_list']:
+                init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
+    
+                #Visit is fitted
+                if vis is not None: 
+                    data_vis=data_dic[inst][vis]
+                    init_joined_routines_vis_fit('IntrProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
+    
+                    #Binned/original data
+                    if fixed_args['bin_mode'][inst][vis]=='_bin':data_load = dataload_npz(gen_dic['save_data_dir']+'/Intrbin_prop/'+inst+'_'+vis)
+                    else:data_load = dataload_npz(gen_dic['save_data_dir']+'/Introrig_prop/'+inst+'_'+vis)
+                  
+                    #Fit tables
+                    idx_fit2vis[inst][vis] = range(fit_dic['nx_fit'],fit_dic['nx_fit']+fixed_args['nexp_fit_all'][inst][vis])
+                    fit_dic['nx_fit']+=fixed_args['nexp_fit_all'][inst][vis]
+                    for i_in in fixed_args['idx_in_fit'][inst][vis]:    
+                        fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
+                        fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))
+    
+        fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)
+        fixed_args['nexp_fit'] = fit_dic['nx_fit']
+        fixed_args['x_val']=range(fixed_args['nexp_fit'])
+        fixed_args['fit_func'] = FIT_joined_IntrProp
+        
+        #Uncertainties on the property are given a covariance matrix structure for consistency with the fit routine 
+        fixed_args['cov_val'] = np.array([fixed_args['s_val']**2.])
+        fixed_args['use_cov'] = False   
+    
+        #Model fit and calculation
+        if prop_loc not in fit_prop_dic['mod_prop']:fit_prop_dic['mod_prop'][prop_loc] = {}
+        merged_chain,p_final = com_joint_fits('IntrProp',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'][prop_loc])   
+      
+        #Best-fit model and properties
+        fit_save={}
+        fixed_args['fit'] = False
+        mod_tab,coeff_line_dic,fit_save['prop_mod']= joined_IntrProp(p_final,fixed_args)
+      
+        #Save best-fit properties
+        fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'pol_mode':fit_prop_dic['pol_mode'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
+                         'merit':fit_dic['merit']})
+        if (plot_dic['prop_Intr']!='') or (plot_dic['chi2_fit_IntrProp']!=''):
+            key_list = ['prop_fit','err_prop_fit']
+            for key in key_list:fit_save[key] = {}
+            for inst in fixed_args['inst_list']:
+                for key in key_list:fit_save[key][inst] = {}
+                for vis in fixed_args['inst_vis_list'][inst]:
+                    fit_save['prop_fit'][inst][vis] = fixed_args['y_val'][idx_fit2vis[inst][vis]]
+                    fit_save['err_prop_fit'][inst][vis] = fixed_args['s_val'][idx_fit2vis[inst][vis]]
+        np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
+    
+        #Post-processing
+        fit_dic['p_null'] = deepcopy(p_final)
+        if fixed_args['prop_fit']=='rv':fit_dic['p_null']['veq'] = 0.
+        else:
+            for par in fit_dic['p_null']:fit_dic['p_null'][par]=0.
+            fit_dic['p_null']['cont']=1.
+        com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
 
-    #Model fit and calculation
-    merged_chain,p_final = com_joint_fits('IntrProp',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)   
+    print('     ----------------------------------')    
   
-    #Best-fit model and properties
-    fit_save={}
-    fixed_args['fit'] = False
-    mod_tab,coeff_line_dic,fit_save['prop_mod']= joined_IntrProp(p_final,fixed_args)
-  
-    #Save best-fit properties
-    fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'pol_mode':fit_prop_dic['pol_mode'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
-                     'merit':fit_dic['merit']})
-    if (plot_dic['prop_Intr']!='') or (plot_dic['chi2_fit_IntrProp']!=''):
-        key_list = ['prop_fit','err_prop_fit']
-        for key in key_list:fit_save[key] = {}
-        for inst in fixed_args['inst_list']:
-            for key in key_list:fit_save[key][inst] = {}
-            for vis in fixed_args['inst_vis_list'][inst]:
-                fit_save['prop_fit'][inst][vis] = fixed_args['y_val'][idx_fit2vis[inst][vis]]
-                fit_save['err_prop_fit'][inst][vis] = fixed_args['s_val'][idx_fit2vis[inst][vis]]
-    np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
-
-    #Post-processing
-    fit_dic['p_null'] = deepcopy(p_final)
-    if fit_prop_dic['prop']=='rv':fit_dic['p_null']['veq'] = 0.
-    else:
-        for par in fit_dic['p_null']:fit_dic['p_null'][par]=0.
-        fit_dic['p_null']['cont']=1.
-    com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
-
     return None
 
 
@@ -265,6 +270,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
 
     #Arguments to be passed to the fit function
     fixed_args.update({ 
+        'rout_mode':'IntrProf',
         'func_prof_name':fit_prop_dic['func_prof_name'],
         'mode':fit_prop_dic['mode'],
         'cen_bins':{},
@@ -474,7 +480,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fixed_args['fit_func'] = FIT_joined_IntrProf
   
     #Model fit and calculation
-    merged_chain,p_final = com_joint_fits('IntrProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)            
+    merged_chain,p_final = com_joint_fits('IntrProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'])            
 
     #PC correction
     if len(fit_prop_dic['PC_model'])>0:
@@ -539,7 +545,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fit_dic['p_null'] = deepcopy(p_final)
     for par in [ploc for ploc in fit_dic['p_null'] if 'ctrst' in ploc]:fit_dic['p_null'][par] = 0.    
     com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
-
+    print('     ----------------------------------')  
     return None
 
 
@@ -759,6 +765,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Arguments to be passed to the fit function
     fixed_args.update({
+        'rout_mode':'ResProf',
         'prior_func':fit_prop_dic['prior_func'],  
         'cen_bins' :{},
         'dcen_bins' :{},
@@ -914,7 +921,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['fit_func'] = FIT_joined_ResProf
     
     #Model fit and calculation
-    merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic)     
+    merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'])   
     
     #Best-fit model and properties
     fit_save={}
@@ -929,6 +936,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     for par in [ploc for ploc in fit_dic['p_null'] if 'ctrst' in ploc]:fit_dic['p_null'][par] = 0.    
     com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
     
+    print('     ----------------------------------')  
     
     return None
 

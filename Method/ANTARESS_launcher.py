@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from ANTARESS_main import ANTARESS_main
-from utils import stop
+from ANTARESS_process.ANTARESS_main import ANTARESS_main
 import importlib
 import os as os_system
 
@@ -18,11 +17,6 @@ def ANTARESS_launcher(nbook_dic = {} , user = ''):
         None
     
     """ 
-    from ANTARESS_systems import all_system_params
-
-    #Overwrite default system properties
-    if ('system' in nbook_dic) and (len(nbook_dic['system'])>0):
-        all_system_params.update(nbook_dic['system'])
 
     #Initializes main dictionaries
     gen_dic={}
@@ -62,22 +56,37 @@ def ANTARESS_launcher(nbook_dic = {} , user = ''):
             for key in ['DI','Intr']:
                 if key in nbook_dic['settings']['data_dic']:data_dic[key].update(nbook_dic['settings']['data_dic'][key])
         if 'glob_fit_dic' in nbook_dic['settings']:
-            if 'IntrProf' in nbook_dic['settings']['glob_fit_dic']:glob_fit_dic['IntrProf'].update(nbook_dic['settings']['glob_fit_dic']['IntrProf'])
+            for key in ['IntrProf','IntrProp']:
+                if key in nbook_dic['settings']['glob_fit_dic']:glob_fit_dic[key].update(nbook_dic['settings']['glob_fit_dic'][key])
         if 'plot_dic' in nbook_dic['settings']:plot_dic.update(nbook_dic['settings']['plot_dic'])
+      
+    #----------------------------------------------------------------------------------------------------    
     
-    #Moving to ANTARESS directory
-    antaress_dir = os_system.path.dirname(__file__).split('Method')[0]
-    gen_dic['save_dir']= antaress_dir+'Ongoing/'  
-    os_system.chdir(antaress_dir+'Method/')
-    
+    #Retrieve default or user-defined system properties
+    if user!='':systems_file = importlib.import_module('ANTARESS_systems_'+user)
+    else:systems_file = importlib.import_module('ANTARESS_systems')
+    all_system_params = systems_file.get_system_params()
+
+    #Overwrite with notebook settings
+    if ('system' in nbook_dic) and (len(nbook_dic['system'])>0):
+        all_system_params.update(nbook_dic['system'])
+        
+    #Retrieve chosen system
+    system_params = all_system_params[gen_dic['star_name']]
+
     print('****************************************')
     print('Launching ANTARESS')
     print('****************************************')
     print('')
 
+    #Moving to ANTARESS directory
+    antaress_dir = os_system.path.dirname(__file__).split('Method')[0]
+    gen_dic['save_dir']= antaress_dir+'Ongoing/'  
+    os_system.chdir(antaress_dir+'Method/')
+
     #Run over nominal settings properties
     if len(gen_dic['grid_run'])==0:
-        ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,all_system_params[gen_dic['star_name']],nbook_dic,user)
+        ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_params,nbook_dic,user)
     
     #Run over a grid of properties
     else:
@@ -92,7 +101,7 @@ def ANTARESS_launcher(nbook_dic = {} , user = ''):
             else:
                 print('Order :',str(iord))
                 gen_dic['orders4ccf'][inst]=[iord] 
-            ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,all_system_params[gen_dic['star_name']],nbook_dic,user)
+            ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_params,nbook_dic,user)
 
     print('End of workflow')
     return None

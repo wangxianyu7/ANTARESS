@@ -975,7 +975,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         disp_RV_lines = np.ones(nlines,dtype=float)*1e10
         disp_err_RV_lines = np.ones(nlines,dtype=float)*1e10
         for iline in range(nlines):
-            cond_def = (~np.isnan(RV_tab[0,iline,:])) & (~np.isnan(RV_tab[1,iline,:])) 
+            cond_def = (~np.isnan(RV_tab[0,iline,:])) & (~np.isnan(RV_tab[1,iline,:])) & (~np.isinf(RV_tab[0,iline,:])) & (~np.isinf(RV_tab[1,iline,:])) 
             if np.sum(cond_def)>0:
             
                 #Weighted average (m/s)
@@ -1079,7 +1079,9 @@ def RV_LBL(idx_RV_disp_sel,Niter,win_size,nlines,data_vis_paths,cont_func_dic,w_
                 RV_line = 0.
                 for it in range(Niter):
                     _, RV_line, RV_err_line, *_ = calculate_RV_line_by_line.get_RV_line_by_line2(wav_exp[cond_line_in_spec], err_exp_norm[cond_line_in_spec], flux_exp_norm[cond_line_in_spec],wav_mast_lineranges[iline], flux_mast_lineranges[iline], 0., RV_line, wline_loc)
-                RV_tab_exp[:,iline] = [RV_line,RV_err_line]
+                
+                #Store line with physical / useful values
+                if (np.abs(RV_line)<1000.) & (np.abs(RV_err_line)<1000.):RV_tab_exp[:,iline] = [RV_line,RV_err_line]
 
         RV_tab = np.append(RV_tab,RV_tab_exp[:,:,None],axis=2)   
 

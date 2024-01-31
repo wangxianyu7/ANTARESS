@@ -176,7 +176,7 @@ def loc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_di
                 else:scaled_data_paths=None
                 
             #Radial velocity shifts set to the opposite of the planet-occulted surface rv associated with current exposure
-            rv_surf_star,rv_surf_star_edge = def_surf_shift(data_dic['Intr']['align_mode'],dic_rv,i_in,data_exp_bin,ref_pl,data_vis['type'],data_dic['DI']['system_prop'],data_dic[inst][vis_bin]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis_bin]['nspec'])
+            rv_surf_star,rv_surf_star_edge = def_surf_shift(data_dic['Intr']['align_mode'],dic_rv,i_in,data_exp_bin,ref_pl,data_vis['type'],data_dic[inst]['system_prop'],data_dic[inst][vis_bin]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis_bin]['nspec'])
             rv_shift_cen = -rv_surf_star
             spec_dopshift_cen = gen_specdopshift(rv_surf_star)
             if rv_surf_star_edge is not None:
@@ -280,7 +280,7 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
         for key in ['coeff_ord2name','pol_mode','coord_line','linevar_par']:fixed_args[key] = data_prop[key]
     if data_dic['Intr']['plocc_prof_type']=='Intr':fixed_args['conv2intr'] = True
     else:fixed_args['conv2intr'] = False
-    chrom_mode = data_dic['DI']['system_prop']['chrom_mode']
+    chrom_mode = data_dic[inst][vis]['system_prop']['chrom_mode']
 
     #Activation of spectral conversion and resampling 
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_dic[inst][vis]['type']) 
@@ -308,7 +308,7 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
         #Initializing stellar profiles
         #    - can be defined using the first exposure table
         if isub==0:
-            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,system_param['star'],params)                  
+            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic[inst][vis]['system_prop'],{},theo_dic,system_param['star'],params)                  
 
             #Effective instrumental convolution
             fixed_args['FWHM_inst'] = get_FWHM_inst(inst,fixed_args,fixed_args['cen_bins'])
@@ -321,7 +321,7 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
 
         #Define broadband scaling of intrinsic profiles into local profiles
         if data_dic['Intr']['plocc_prof_type']=='Res':
-            theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],args_exp,args_exp['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
+            args_exp['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],args_exp,args_exp['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
 
         #Planet-occulted line profile 
         surf_prop_dic,spot_prop_dic = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_dic[inst][vis],[gen_dic[inst][vis]['idx_in2exp'][i_in]])
@@ -580,7 +580,7 @@ def loc_prof_rec(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,coord_dic):
         data_loc_exp = dataload_npz(data_vis['proc_'+data_dic['Intr']['plocc_prof_type']+'_data_paths']+str(iexp_eff))  
 
         #Radial velocity shifts set to the opposite of the planet-occulted surface rv associated with current exposure
-        rv_surf_star,rv_surf_star_edge = def_surf_shift(data_dic['Intr']['align_mode'],dic_rv,i_in,data_rec[isub],ref_pl,data_vis['type'],data_dic['DI']['system_prop'],data_dic[inst][vis]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'])
+        rv_surf_star,rv_surf_star_edge = def_surf_shift(data_dic['Intr']['align_mode'],dic_rv,i_in,data_rec[isub],ref_pl,data_vis['type'],data_dic[inst][vis]['system_prop'],data_dic[inst][vis]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'])
 
         #Aligning reconstructed profile at current exposure stellar surface rv 
         #    - reconstructed profile is already aligned in a null rest frame and resampled on a common table
