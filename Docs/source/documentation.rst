@@ -1,7 +1,5 @@
-.. ANTARESS documentation master file
-
-Welcome to ANTARESS's documentation!
-====================================
+Code documentation
+==================
 
 .. toctree::
    :maxdepth: 2
