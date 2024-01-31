@@ -74,8 +74,8 @@ You need to install the following packages to run ``ANTARESS``:
         
         brew install gsl
 
-    - set up the path to your local python installation in the `setup_lbl_fit.py <Method/ANTARESS_conversions/KitCat/setup_lbl_fit.py>`_ and run::
+    - set up the path to your local python installation in the `setup_lbl_fit.py <https://gitlab.unige.ch/bourrier/antaress/-/tree/0d7232f1a1b39757beb8a52762b9e95fd33b2591/Method/ANTARESS_conversions/KitCat/setup_lbl_fit.py>`_ and run::
     
         python setup_lbl_fit.py build
         
-      Then copy the compiled file ``calculate_RV_line_by_line3.cpython-XX-darwin.so`` into your `KitCat/ <Method/ANTARESS_conversions/KitCat/>`_ directory.  
+      Then copy the compiled file ``calculate_RV_line_by_line3.cpython-XX-darwin.so`` into your `KitCat/ <https://gitlab.unige.ch/bourrier/antaress/-/tree/0d7232f1a1b39757beb8a52762b9e95fd33b2591/Method/ANTARESS_conversions/KitCat/>`_ directory.  
