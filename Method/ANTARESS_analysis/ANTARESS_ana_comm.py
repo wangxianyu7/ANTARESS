@@ -136,7 +136,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
     if 'inst_vis_list' not in fixed_args:fixed_args['inst_vis_list']={inst:[vis]}
     for par in p_start:
  
-        #Parameter depend on instrument and visit
+        #Parameter depends on instrument and visit
         if ('__IS') and ('_VS') in par:
             root_par = par.split('__IS')[0]
             inst_vis_par = par.split('__IS')[1]
@@ -394,7 +394,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
     
     #Check for multi-transits
     #    - if two planets are transiting the properties derived from the fits to intrinsic profiles cannot be fitted, as the model only contains a single line profile
-    if rout_mode=='IntrProp':
+    if fixed_args['rout_mode']=='IntrProp':
         if len(data_vis['transit_pl'])>1:stop('Multi-planet transit must be modelled with full intrinsic profiles')
         fixed_args['transit_pl'][inst][vis]=[data_vis['transit_pl'][0]] 
     else:fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
@@ -408,12 +408,15 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
     else:
         data_vis_bin = None
         n_in_tr = data_vis['n_in_tr']    
-
+    
     #Fitted exposures
     fixed_args['inst_vis_list'][inst]+=[vis]
     fixed_args['idx_in_fit'][inst][vis] = fit_prop_dic['idx_in_fit'][inst][vis+fixed_args['bin_mode'][inst][vis]]
-    if fit_prop_dic['idx_in_fit'][inst][vis+fixed_args['bin_mode'][inst][vis]]=='all':fixed_args['idx_in_fit'][inst][vis]=range(n_in_tr)
+    if fit_prop_dic['idx_in_fit'][inst][vis]=='all':fixed_args['idx_in_fit'][inst][vis]=range(n_in_tr)
     else:fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],range(n_in_tr))
+    
+    #Keep defined intrinsic profiles
+    if 'Intr' in rout_mode:fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],data_dic['Intr'][inst][vis+fixed_args['bin_mode'][inst][vis]]['idx_def'])
     fixed_args['nexp_fit_all'][inst][vis]=len(fixed_args['idx_in_fit'][inst][vis])     
 
     #Store coordinates of fitted exposures in global table
@@ -440,7 +443,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
 #%%% Analysis functions
 ################################################################################################## 
 
-def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic):
+def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,mod_prop):
     r"""**Wrap-up for time-series fits.**
 
     Performs joint fits to time-series.
@@ -453,8 +456,8 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         
     """
     
-    #Model parameters
-    p_start = Parameters()      
+    #Fit parameters
+    p_start = Parameters()  
 
     #------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -505,33 +508,36 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     fixed_args,p_start = init_custom_DI_par(fixed_args,gen_dic,data_dic['DI']['system_prop'],fixed_args['system_param']['star'],p_start,[0.,None,None])
 
     #Condition to calculate CB
-    if ('c1_CB' in fit_prop_dic['mod_prop']) or ('c2_CB' in fit_prop_dic['mod_prop'])  or ('c3_CB' in fit_prop_dic['mod_prop']):fixed_args['par_list']+=['CB_RV']
+    if ('c1_CB' in mod_prop) or ('c2_CB' in mod_prop)  or ('c3_CB' in mod_prop):fixed_args['par_list']+=['CB_RV']
 
     #Fit spin-orbit angle by default when relevant
     #    - assuming common values to all datasets
-    if ((rout_mode=='IntrProp') and (fit_prop_dic['prop']=='rv')) or (rout_mode=='IntrProf'):
+    if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv')) or (rout_mode=='IntrProf'):
         for pl_loc in gen_dic['studied_pl']:
-            p_start.add_many(('lambda_rad__pl'+pl_loc, 0.,   True, -2.*np.pi,2.*np.pi,None))
+            if 'lambda_rad__pl'+pl_loc not in mod_prop:p_start.add_many(('lambda_rad__pl'+pl_loc, 0.,   True, -2.*np.pi,2.*np.pi,None))
 
+    #Initialize line properties
+    #    - using Gaussian line as defautl for intrinsic profiles
+    if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='ctrst')) or (rout_mode=='IntrProf'):    
+        if not any(['ctrst_' in prop for prop in mod_prop]):p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None))
+    if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode=='IntrProf'):    
+        if not any(['FWHM_' in prop for prop in mod_prop]):p_start.add_many(('FWHM_ord0__IS__VS_', 5.,   True, 0.,100.  ,None))
+        
     #Initializing stellar properties
-    if rout_mode=='IntrProp':    
+    if fixed_args['rout_mode']=='IntrProp':    
         fixed_args['grid_dic'] = deepcopy(theo_dic)
         fixed_args['grid_dic']['precision'] = 'low'      #to calculate intensity-weighted properties
-        line_type=None
-        
+        line_type='ana'                                  #to avoid raising warning, even though properties are not used to calculate a line profile
+
     #Initializing stellar profiles
     else:     
-
-        #Set default gaussian line
-        p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None),
-                         ('FWHM_ord0__IS__VS_' , 5.,    True, 0.,100.,None))
 
         #Profile grid
         fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,fixed_args['system_param']['star'],p_start)
         line_type = fixed_args['mode']
 
     #Parameter initialization
-    p_start = par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['priors'],fit_dic,fixed_args,'','',line_type)
+    p_start = par_formatting(p_start,mod_prop,fit_prop_dic['priors'],fit_dic,fixed_args,'','',line_type)
 
     #Stellar grid properties
     fixed_args['grid_dic'].update({'Ssub_Sstar_pl':theo_dic['Ssub_Sstar_pl'],'x_st_sky_grid_pl':theo_dic['x_st_sky_grid_pl'],'y_st_sky_grid_pl':theo_dic['y_st_sky_grid_pl'],'nsub_Dpl':theo_dic['nsub_Dpl'],'d_oversamp':theo_dic['d_oversamp'],'Istar_norm_achrom':theo_dic['Istar_norm_achrom']})             
@@ -589,17 +595,14 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     #Fit by chi2 minimization
     if fit_dic['fit_mod']=='chi2':
         fixed_args['fit'] = True
-        print('     ----------------------------------')
-        print('     Chi2 calculation')   
+        print('       Chi2 fit')   
         p_final = fit_minimization(ln_prob_func_lmfit,p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=fit_prop_dic['verbose'],fixed_args=fixed_args)[2]
-        print('     ----------------------------------')
  
     ########################################################################################################    
     #Fit par emcmc 
     elif fit_prop_dic['fit_mod']=='mcmc':  
         fixed_args['fit'] = True
-        print('     ----------------------------------')
-        print('     MCMC calculation')
+        print('       MCMC fit')
 
         #Default options
         if 'nwalkers' not in fit_prop_dic['mcmc_set']:fit_dic['nwalkers'] = 50
@@ -611,7 +614,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
       
         #Run MCMC
         if fit_prop_dic['mcmc_run_mode']=='use':
-            print('     Applying MCMC') 
+            print('         Applying MCMC') 
 
             #Complex prior function
             if (len(fixed_args['prior_func'])>0):fixed_args['global_ln_prior_func']=global_ln_prior_func
@@ -623,7 +626,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
        
         #Reuse MCMC
         elif fit_prop_dic['mcmc_run_mode']=='reuse':
-            print('     Retrieving MCMC') 
+            print('         Retrieving MCMC') 
             if len(fit_prop_dic['mcmc_reuse'])==0:
                 walker_chains=np.load(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name']+'.npz')['walker_chains']  #(nwalkers, nsteps, n_free)
             else:
@@ -639,7 +642,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     
         #Excluding parts of the chains
         if fit_dic['exclu_walk']:
-            print('     Excluding walkers manually')
+            print('       Excluding walkers manually')
             
             #Joined fit
             if gen_dic['fit_IntrProf']:
@@ -747,8 +750,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     #No fit is performed: guess parameters are kept
     else:
         fixed_args['fit'] = False
-        print('     ----------------------------------')
-        print('     Fixed model')
+        print('       Fixed model')
         p_final = deepcopy(p_start)   
     
     ########################################################################################################      
@@ -835,8 +837,8 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
         fit_properties.update({**star_param})
         
         #Chromatic intensity grid
-        if ('spec' in data_mode) and ('chrom' in data_dic['DI']['system_prop']):
-            fit_properties['chrom'] = data_dic['DI']['system_prop']['chrom']
+        if ('spec' in data_mode) and ('chrom' in data_inst['system_prop']):
+            fit_properties['chrom'] = data_inst['system_prop']['chrom']
         else:
             fit_properties['chrom'] = None        
                
@@ -1259,31 +1261,35 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             
             #Errors are reported from measured velocities
             fit_dic[iexp]['rv_res']=fit_dic[iexp]['rv']-fit_dic[iexp]['RVmod']
-            fit_dic[iexp]['err_rv_res']=fit_dic[iexp]['err_rv']
+            if prop_dic['fit_mod']!='':fit_dic[iexp]['err_rv_res']=fit_dic[iexp]['err_rv']
+            else:fit_dic[iexp]['err_rv_res'] = np.nan
 
-        #Systemic rv from master (rv(CDM/sun) in km/s)
-        #    - for CCFs, the disk-integrated master is centered in the CDM rest frame, hence its fit returns the systemic velocity         
-        #      we assume the master is defined well enough that the uncertainty on the velocity v(CDM/sun) is negligible
-        if (data_type=='DIbin') and ((vis_mode=='multivis') or (fit_dic['n_exp']==1)):
-            rv_sys,erv_sys=0.,0.
-            for iexp in iexp_def:
-                rv_sys+=fit_dic[iexp]['rv']
-                erv_sys+=np.mean(fit_dic[iexp]['err_rv'])**2.
-            rv_sys/=fit_dic['n_exp']
-            erv_sys = np.sqrt(erv_sys)/fit_dic['n_exp']
-            print('         Systemic rv from master profile =',"{0:.6f}".format(rv_sys),'+-',"{0:.6e}".format(erv_sys),'km/s')
-        
-        #Systemic rv from time-series
-        elif data_type=='DIorig':
-            rv_res_out = []
-            erv_res_out = []
-            for iexp in gen_dic[inst][vis]['idx_out']:
-                rv_res_out+=[fit_dic[iexp]['rv_res']]
-                erv_res_out+=[np.mean(fit_dic[iexp]['err_rv_res'])]
-            weights = 1./np.array(erv_res_out)**2.
-            rv_sys = np.sum(np.array(rv_res_out)*weights)/np.sum(weights)
-            erv_sys = 1./np.sqrt(np.sum(weights))
-            print('         Systemic rv from time-series =',"{0:.6f}".format(rv_sys),'+-',"{0:.6e}".format(erv_sys),'km/s')
+        #Systemic rv
+        if prop_dic['fit_mod']!='':
+
+            #From master (rv(CDM/sun) in km/s)
+            #    - for CCFs, the disk-integrated master is centered in the CDM rest frame, hence its fit returns the systemic velocity         
+            #      we assume the master is defined well enough that the uncertainty on the velocity v(CDM/sun) is negligible
+            if (data_type=='DIbin') and ((vis_mode=='multivis') or (fit_dic['n_exp']==1)):
+                rv_sys,erv_sys=0.,0.
+                for iexp in iexp_def:
+                    rv_sys+=fit_dic[iexp]['rv']
+                    erv_sys+=np.mean(fit_dic[iexp]['err_rv'])**2.
+                rv_sys/=fit_dic['n_exp']
+                erv_sys = np.sqrt(erv_sys)/fit_dic['n_exp']
+                print('         Systemic rv from master profile =',"{0:.6f}".format(rv_sys),'+-',"{0:.6e}".format(erv_sys),'km/s')
+            
+            #From time-series
+            elif data_type=='DIorig':
+                rv_res_out = []
+                erv_res_out = []
+                for iexp in gen_dic[inst][vis]['idx_out']:
+                    rv_res_out+=[fit_dic[iexp]['rv_res']]
+                    erv_res_out+=[np.mean(fit_dic[iexp]['err_rv_res'])]
+                weights = 1./np.array(erv_res_out)**2.
+                rv_sys = np.sum(np.array(rv_res_out)*weights)/np.sum(weights)
+                erv_sys = 1./np.sqrt(np.sum(weights))
+                print('         Systemic rv from time-series =',"{0:.6f}".format(rv_sys),'+-',"{0:.6e}".format(erv_sys),'km/s')
 
 
         #Saving data
@@ -1477,7 +1483,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
         #Grid initialization
         fixed_args['DI_grid'] = True
         fixed_args['conv2intr'] = False
-        fixed_args,p_start = init_custom_DI_par(fixed_args,gen_dic,data_dic['DI']['system_prop'],star_params,p_start,RV_guess_tab)
+        fixed_args,p_start = init_custom_DI_par(fixed_args,gen_dic,data_dic[inst]['system_prop'],star_params,p_start,RV_guess_tab)
 
         #Model function
         fixed_args['func_nam']=custom_DI_prof
@@ -1608,9 +1614,11 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     #Model initialization
     #    - must be done after the final parameter initialization
     if (model_choice=='custom') and (prof_type=='DI'):
-        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],theo_dic,star_params,p_start)
+        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic[inst]['system_prop'],theo_dic,star_params,p_start)
+        
+        #Flux grid will be updated within custom_DI_prof() if args['fit'] and args['var_star_grid']
         if (not fixed_args['fit']) or (not fixed_args['var_star_grid']):
-            theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],fixed_args['args_exp'],fixed_args['args_exp']['ncen_bins'],fixed_args['grid_dic']['nsub_star'])         
+            fixed_args['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],fixed_args['args_exp'],fixed_args['args_exp']['ncen_bins'],fixed_args['grid_dic']['nsub_star'])         
         
     #Fit initialization
     fit_dic['save_dir'] = fixed_args['save_dir']+'iexp'+str(fixed_args['iexp'])+'/'
@@ -1729,8 +1737,8 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     
     #Custom model
     if (model_choice=='custom') and (prof_type=='DI'):
-        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],theo_dic,star_params,p_final)
-        theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],fixed_args['args_exp'],fixed_args['args_exp']['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
+        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic[inst]['system_prop'],theo_dic,star_params,p_final)
+        fixed_args['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],fixed_args['args_exp'],fixed_args['args_exp']['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
             
     #Store final model
     output_prop_dic['cen_bins_HR']=fixed_args['cen_bins']       
@@ -2433,14 +2441,13 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
     # + new parameters are not used for model
     # + we calculate median and errors after chain are added   
     if (fit_dic['fit_mod'] in ['chi2','mcmc']) and ('modif_list' in fit_prop_dic) and len(fit_prop_dic['modif_list'])>0:
-        print('     ----------------------------------')
-        print('     Post-processing')
+        print('       Post-processing')
         modif_list = fit_prop_dic['modif_list']
     
         #Convert Rstar and Peq into veq
         #    - veq = (2*pi*Rstar/Peq)
         if 'veq_from_Peq_Rstar' in modif_list:
-            print('     + Deriving veq from Req and Rstar ')
+            print('        + Deriving veq from Req and Rstar ')
             
             if fit_dic['fit_mod']=='chi2': 
                 p_final['veq']=(2.*np.pi*p_final['Peq']*Rsun)/(p_final['Peq']*3600.*24.)
@@ -2457,8 +2464,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
     
         #Convert veq into veq*sin(istar) to be comparable with solid-body values
         #    - must be done before modification of istar chain
-        if 'vsini' in modif_list:
-            print('     + Converting veq to vsini')
+        if ('vsini' in modif_list) and ((fixed_args['rout_mode'] in ['IntrProf','ResProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):
+            print('        + Converting veq to vsini')
             if 'veq' in fixed_args['var_par_list']:iveq=np_where1D(fixed_args['var_par_list']=='veq')
             else:stop('Activate veq_from_Peq_Rstar')
             iistar = np_where1D(fixed_args['var_par_list']=='cos_istar')
@@ -2490,7 +2497,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
 
         #Replace cos(istar[rad]) by istar[deg]
         if ('istar_deg_conv' in modif_list) or ('istar_deg_add' in modif_list):
-            print('     + Converting cos(istar) to istar')
+            print('        + Converting cos(istar) to istar')
             conv_cosistar(modif_list,fixed_args,fit_dic,p_final,merged_chain)
 
         #-------------------------------------------------            
@@ -2499,7 +2506,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #    - only use if all other parameters are degenerate with istar
         #    - by default we fold over 0-90
         if ('fold_istar' in modif_list):        
-            print('     + Folding istar')
+            print('       + Folding istar')
             iistar = np_where1D(fixed_args['var_par_list']=='istar_deg')
             istar_temp=np.squeeze(merged_chain[:,iistar])
             w_gt_90=(istar_temp > 90.)
@@ -2512,7 +2519,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #      istar = np.arcsin( vsini*peq/(2*pi*Rstar) )
         if ('istar_Peq' in modif_list) or ('istar_Peq_vsini' in modif_list):
             if ('cos_istar' in fixed_args['var_par_list']):stop('    istar has been fitted')
-            print('     + Deriving istar from vsini and Peq')
+            print('        + Deriving istar from vsini and Peq')
             
             #Nominal values and 1s errors for Rstar (Rsun) and Peq (d)
             # Rstar_med = 0.850       #HD3167
@@ -2582,14 +2589,14 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
             elif fit_dic['fit_mod']=='mcmc':   
                 n_chain = len(merged_chain[:,0])
                 if 'istar_Peq_vsini' in modif_list:
-                    print('       Using external vsini')
+                    print('           Using external vsini')
                     if gen_dic['star_name']=='WASP47':
                         vsini_med = 1.80         
                         vsini_elow = 0.16
                         vsini_ehigh = 0.24   
                     vsini_chain = gen_hrand_chain(vsini_med,vsini_elow,vsini_ehigh,n_chain)
                 elif 'istar_Peq' in modif_list:
-                    print('       Using derived vsini')
+                    print('           Using derived vsini')
                     vsini_chain = np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']=='vsini')])
 
                 #Generate gaussian distribution for Rstar and Peq
@@ -2626,7 +2633,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #    - Peq = (2*pi*Rstar/veq)
         if 'Peq_veq' in modif_list:
             if ('cos_istar' in fixed_args['var_par_list']):stop('    istar has been fitted')
-            print('     + Deriving Peq from veq ')
+            print('        + Deriving Peq from veq ')
             
             #Nominal values and 1s errors for Rstar (Rsun) and Peq (d)
             Rstar_med = 0.850       #HD3167
@@ -2656,7 +2663,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #Add Peq using the value derived from vsini and independent measurement of Rstar and istar
         #    - Peq = (2*pi*Rstar*sin(istar)/vsini)
         if 'Peq_vsini' in modif_list:
-            print('     + Deriving Peq from vsini')
+            print('        + Deriving Peq from vsini')
             
             #Nominal values and 1s errors for Rstar (Rsun) 
             if gen_dic['star_name']=='Kepler25':
@@ -2699,7 +2706,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #    - psi = acos(sin(istar)*cos(lamba)*sin(ip) + cos(istar)*cos(ip))
         #    - must be done before modification of istar and lambda chains
         if ('psi' in modif_list) or ('psi_lambda' in modif_list):
-            print('     + Adding true obliquity')
+            print('        + Adding true obliquity')
             for pl_loc in fixed_args['lambda_rad_pl']:              
                 lambda_rad_pl = 'lambda_rad__pl'+pl_loc
                 if fit_dic['fit_mod']=='chi2':              
@@ -2717,7 +2724,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     
                     #Obliquity 
                     if 'psi_lambda' in modif_list:
-                        print('       Using external lambda')
+                        print('         Using external lambda')
                         if gen_dic['star_name']=='WASP47':
                             lambda_med = 0.         
                             lambda_elow = 24.
@@ -2728,7 +2735,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                         lambda_ehigh*=np.pi/180.
                         lamb_chain = {'':{'':gen_hrand_chain(lambda_med,lambda_elow,lambda_ehigh,n_chain)}}
                     elif 'psi' in modif_list:
-                        print('       Using derived lambda')
+                        print('         Using derived lambda')
                         if lambda_rad_pl in fixed_args['genpar_instvis']:
                             lamb_chain={}
                             for inst in fixed_args['genpar_instvis'][lambda_rad_pl]:
@@ -2740,11 +2747,11 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     
                     #Stellar inclination
                     if ('istar_deg' in fixed_args['var_par_list']):
-                        print('       Using derived istar')
+                        print('         Using derived istar')
                         istarN_chain=np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']=='istar_deg')]    )*np.pi/180. 
                         istarS_chain=np.pi-istarN_chain
                     else:
-                        print('       Using external istar')
+                        print('         Using external istar')
                         
                         #Complex PDF on istar
                         if pl_loc=='HD89345b':                        
@@ -2874,7 +2881,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #    - Om = np.arctan( -sin(lambda)*tan(ip) )
         #    - must be done before modification of ip and lambda chains
         if 'om' in modif_list:
-            print('     + Add argument of ascending node')
+            print('        + Add argument of ascending node')
             for pl_loc in fixed_args['lambda_rad_pl']:
                 lambda_rad_pl = 'lambda_rad__pl'+pl_loc
                 if ('inclin_rad__'+pl_loc not in fixed_args['var_par_list']):ip_loc=fixed_args['planets_params'][pl_loc]['inclin_rad'] 
@@ -2917,7 +2924,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #Add impact parameter
         #    - b = aRs*cos(ip)
         if ('b' in modif_list) and (fixed_args['fit_orbit']):
-            print('     + Adding impact parameter')
+            print('        + Adding impact parameter')
             for pl_loc in fixed_args['lambda_rad_pl']:
                 if ('inclin_rad__pl'+pl_loc not in fixed_args['var_par_list']):ip_loc=fixed_args['planets_params'][pl_loc]['inclin_rad'] 
                 else:iip=np_where1D(fixed_args['var_par_list']=='inclin_rad__pl'+pl_loc)[0]
@@ -2952,7 +2959,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #Orbital inclination
         #    - convert ip[rad] to ip[deg]
         if ('ip' in modif_list) and (fixed_args['fit_orbit']):
-            print('     + Converting ip in degrees')
+            print('        + Converting ip in degrees')
             for pl_loc in fixed_args['lambda_rad_pl']:
                 iip=np_where1D(fixed_args['var_par_list']=='inclin_rad__pl'+pl_loc)
                 if fit_dic['fit_mod']=='chi2':   
@@ -2961,7 +2968,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     merged_chain[:,iip]*=180./np.pi   
                     
                     #Fold ip over 0-90
-                    print('     + Folding ip')
+                    print('       + Folding ip')
                     ip_temp=np.squeeze(merged_chain[:,iip])
                     w_gt_90=(ip_temp > 90.)
                     if True in w_gt_90:
@@ -2977,8 +2984,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #-------------------------------------------------            
             
         #Convert lambda[rad] to lambda[deg]
-        if 'lambda_deg' in modif_list:  
-            print('     + Converting lambda in degrees')       
+        if ('lambda_deg' in modif_list) and ((fixed_args['rout_mode'] in ['IntrProf','ResProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):  
+            print('        + Converting lambda in degrees')       
             for pl_loc in fixed_args['lambda_rad_pl']:
                 lambda_rad_pl = 'lambda_rad__pl'+pl_loc
                 lambda_deg_pl = 'lambda_deg__pl'+pl_loc
@@ -3028,7 +3035,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                         elif pl_loc=='WASP76b':x_mid=-75. 
                         else:x_mid=np.median(merged_chain[:,ilamb])
         
-                        print('     + Folding '+lamb_name+' around ',x_mid)
+                        print('       + Folding '+lamb_name+' around ',x_mid)
                         mid_shift = x_mid-180.
                         lambda_temp=np.squeeze(merged_chain[:,ilamb])-mid_shift
                         w_gt_360=(lambda_temp > 360.)
@@ -3056,7 +3063,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #Retrieve zeroth order CB coefficient
         #    - independent of visits or planets
         if 'c0' in modif_list: 
-            print('     + Adding c0(CB)')
+            print('        + Adding c0(CB)')
             if fit_dic['fit_mod']=='chi2': 
                 p_final['c0_CB'] = calc_CB_RV(get_LD_coeff(fixed_args['system_prop']['achrom'],0),fixed_args['system_prop']['achrom']['LD'][0],p_final['c1_CB'],p_final['c2_CB'],p_final['c3_CB'],fixed_args['system_param']['star'])[0]            
                 sig_loc=np.nan  
@@ -3083,7 +3090,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
          
         #Convert CB coefficients from km/s to m/s
         if 'CB_ms' in modif_list: 
-            print('     + Converting CB coefficients to m/s') 
+            print('        + Converting CB coefficients to m/s') 
             ipar_mult_loc=[]
             for ipar_name in ['c0_CB','c1_CB','c2_CB','c3_CB']:
                 ipar_loc=np_where1D(fixed_args['var_par_list']==ipar_name)
@@ -3104,10 +3111,10 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #    - only for constant FWHM and contrast with no variation in mu
         #    - for double-gaussian profiles the values can be converted into the 'true' contrast and FWHM, either of the intrinsic or of the observed profile
         if ('CF0_meas_add' in modif_list) or ('CF0_meas_conv' in modif_list):  
-            print('     + Converting intrinsic ctrst and FWHM to measured values') 
+            print('        + Converting intrinsic ctrst and FWHM to measured values') 
             merged_chain = conv_CF_intr_meas(modif_list,fixed_args['inst_list'],fixed_args['inst_vis_list'],fixed_args,merged_chain,gen_dic,p_final,fit_dic,fit_prop_dic)
         if ('CF0_DG_add' in modif_list) or ('CF0_DG_conv' in modif_list):  
-            print('     + Converting DG ctrst and FWHM to true intrinsic values') 
+            print('        + Converting DG ctrst and FWHM to true intrinsic values') 
             merged_chain = conv_CF_intr_meas(modif_list,fixed_args['inst_list'],fixed_args['inst_vis_list'],fixed_args,merged_chain,gen_dic,p_final,fit_dic,fit_prop_dic)
             
     #---------------------------------------------------------------            
@@ -3124,9 +3131,6 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
 
     #Close save file
     fit_dic['file_save'].close() 
-
-    print('     ----------------------------------')    
-  
 
     return None
 

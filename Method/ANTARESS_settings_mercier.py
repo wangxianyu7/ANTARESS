@@ -763,7 +763,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
 
     ##################################################################################################
-    #%%% Module: stellar, spot-occulted, and planet-occulted grids
+    #%%% Module: stellar, spots, and planet-occulted grids
     ##################################################################################################
     
     #%%%% Activating module

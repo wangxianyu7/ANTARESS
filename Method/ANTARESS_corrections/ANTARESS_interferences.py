@@ -272,7 +272,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 tel_coord_HR['cond_westmer'][tel_coord_HR['cond_shift']] = False
                 
                 #Contact phases for main planet
-                contact_phases=calc_tr_contacts(data_dic['DI']['system_prop']['achrom'][gen_dic['studied_pl'][0]][0],system_param[gen_dic['studied_pl'][0]],plot_dic['stend_ph'],system_param['star'])
+                contact_phases=calc_tr_contacts(data_vis['system_prop']['achrom'][gen_dic['studied_pl'][0]][0],system_param[gen_dic['studied_pl'][0]],plot_dic['stend_ph'],system_param['star'])
 
             #------------------------------------------------------------------
 

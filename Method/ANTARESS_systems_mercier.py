@@ -295,6 +295,79 @@ def get_system_params():
                 'Kstar':20.,
             },           
         },
+
+        #------------------------------    
+
+        'V1298tau':{ 
+            'star':{   #Provided by A. Sozetti and G. Guilluy
+                'Rstar':1.345,     #David2019ApJL) 
+                'istar':90.,
+                'Mstar':1.101,
+                'veq':23.59, #-0.26 +0.31                           fitted from prior 24 +- 1.  (Calculated from LD fit with free LD coefficient (i), see LD)
+                'veq_spots':23.59,
+                },
+
+            'V1298tau_b':{   #Provided by A. Sozetti and G. Guilluy
+                'period':24.1396,           #David priv. comm.
+                'TCenter':2457067.0488,      #Set to visit-specific values
+                'ecc':0.,
+                'omega_deg':92.,
+                'Kstar':40.5,
+                'aRs':27.0,  #(Ggrav/(4*!dpi^2.))^(1./3.)*(Mstar)^(1./3.)*((Per)^(2./3.)/Rstar) = (2942.71377/(4*np.pi**2.))**(1./3.)*(1.101)**(1./3.)*(24.1414410**(2./3.)/1.345)    ;From Sozzetti et al. 2007
+                'inclination':89.00,   # -0.24+0.46                         David2019b
+                'TLength':6.42/24.,      #Feinstein2021
+                'lambda_proj':4.
+                }, 
+
+    },      
+
+    #------------------------------    
+
+        'AUMic':{
+
+            'star':{
+                'Rstar':0.75,                #+/- 0.03 #solar radii #Plavchan et al. 2020
+                'Mstar':0.50,                #+/- 0.03 #solar mass #Plavchan et al. 2020
+                'logg':4.39,                 #+/- 0.03 #computed from Plavchan et al. 2020 Rstar and Mstar values by Zicher et al. 2022
+                'veq':7.8,                   #+/- 0.3 #km/s #Klein et al. 2021
+                'istar':90,                  #unknown
+                # 'istar':30,                  #unknown
+                #'mag':5,                     #test
+                'mag':8.81,                  #+/- 0.10 #Johnson V magnitude (true value)
+                # 'f_GD':0.1947,              #test
+                # 'Tpole':8450.,              #test
+                # 'beta_GD':0.190,            #test
+                # 'veq_spots':7.8,
+                },
+
+            'AUMicb':{
+                #'period':2.407000,           #test
+                'period':8.463000,           #+/- 0.000002 #days #Martioli et al. 2021 (true value)
+                'TCenter':2458330.39051,     #+/- 0.00015 #days #Martioli et al. 2021
+                'ecc':0.04,                  #+0.045 -0.025 #Zicher et al. 2022
+                'omega_deg':179,             #+128 -125 #degrees #Zicher et al. 2022
+                'inclination':89.18,         #+0.53 - 0.45 #degrees #Gilbert et al. 2022
+                #'Kstar':8.9,                 #test
+                'Kstar':5.8,                 #+/- 2.5 #m/s #Zicher et al. 2022 (true value)
+                'TLength':3.50/24,           #+/- 0.08 #days #Martioli et al. 2021
+                #'aRs':8,                     #test
+                'aRs':18.5,                  #+1.3 - 1.4 #Rstar #Gilbert et al. 2022 (true value)
+                'lambda_proj':-4.70,         #+6.80 -6.40 #degrees #Hirano et al. 2020
+                },
+
+            # 'AUMicc':{ -- for plotting puposes -- 
+            #    'period':18.859019,          #+/- 0.000016 #days #Martioli et al. 2021
+            #    'TCenter':2458330.29051,     #+/- 0.00050 #days #Martioli et al. 2021
+            #    'ecc':0.041,                 #+0.047 -0.026 #Zicher et al. 2022
+            #    'omega_deg':153,             #+124 -94 #degrees #Zicher et al. 2022
+            #    'inclination':92,        #+0.40 -0.28 #degrees #Gilbert et al. 2022
+            #    'Kstar':8.5,                 #+/- 2.5 #m/s #Zhicert et al. 2022
+            #    'TLength':4.5/24,            #+/- 0.8 #days #Martioli et al. 2021
+            #    'aRs':31.7,                  #+2.6 -2.7 #Rstsr #Gilbert et al. 2022
+            #    'lambda_proj':0.,            #unknown
+
+                # },
+        },
     }
 
     return all_system_params

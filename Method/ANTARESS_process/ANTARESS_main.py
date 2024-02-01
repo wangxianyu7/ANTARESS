@@ -58,9 +58,9 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     ####################################################################################################################
     for inst in data_dic['instrum_list']:
         print('')
-        print('--------------------------------')
+        print('-----------------------')
         print('Processing instrument :',inst)        
-        print('--------------------------------')
+        print('-----------------------')
 
         #Initialize instrument tables and dictionaries
         init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system_param,plot_dic)
@@ -79,7 +79,8 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
         for vis in data_dic[inst]['visit_list']:
             print('  -----------------')
             print('  Processing visit: '+vis) 
-
+            print('  -----------------')
+          
             #Initialization of visit properties
             init_vis(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic)             
             
@@ -212,22 +213,26 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
         #    - beware that data from different visits should be comparable to be binned 
         #      this is not the case, e.g, with blazed 2D spectra or if the stellar line shape changed 
         if (data_dic[inst]['n_visits_inst']>1) and (gen_dic['binmultivis']):
-            print('--------------------------------')
-            print('  Processing combined visits')         
+            print('  --------------------------')
+            print('  Processing combined visits')  
+            print('  --------------------------')
             for data_type_gen in ['DI','Intr','Atm']:
                 bin_gen_functions(data_type_gen,'multivis',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic)
 
     ### end of instruments  
 
-
+    #Update generic properties   
+    if gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:
+        update_gen(data_dic,gen_dic) 
 
     ####################################################################################################################
     #Call to analysis function over combined visits and instruments
     ####################################################################################################################
     if gen_dic['multi_inst']:
-        print('--------------------------------')
+        print('-------------------------------')
         print('Processing combined instruments')        
-    
+        print('-------------------------------')
+        
         #Wrap-up function to fit intrinsic stellar profiles and surface RVs   
         if gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_ResProf'] :
             joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic)
@@ -828,6 +833,12 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             w_edge = def_edge_tab(data_dic['DI']['system_prop']['chrom']['w'][None,:][None,:])[0,0]    
             data_dic['DI']['system_prop']['chrom']['dw'] = w_edge[1::]-w_edge[0:-1]
             data_dic['DI']['system_prop']['chrom']['med_dw'] = np.median(data_dic['DI']['system_prop']['chrom']['dw'])
+
+    #Store properties at the stage of broadband scaling 
+    data_dic['DI']['system_prop_sc'] = deepcopy(data_dic['DI']['system_prop']) 
+    if gen_dic['DI_CCF'] and ('chrom' in data_dic['DI']['system_prop']):
+        data_dic['DI']['system_prop_sc']['chrom_mode'] = 'achrom'
+        data_dic['DI']['system_prop_sc'].pop('chrom') 
 
     #Default transit model
     if 'transit_prop' not in data_dic['DI']:data_dic['DI']['transit_prop']={}    
@@ -1717,7 +1728,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         #Initializing broadband scaling of intrinsic profiles into local profiles
                         #    - defined in forward mode at initialization, or defined in fit mode only if the stellar grid is not updated through the fit
                         #    - there are no default pipeline tables for this scaling because they depend on the local spectral tables of the line profiles
-                        theo_intr2loc(args_exp['grid_dic'],args_exp['system_prop'],args_exp,args_exp['ncen_bins'],theo_dic['nsub_star'])                        
+                        args_exp['Fsurf_grid_spec'] = theo_intr2loc(args_exp['grid_dic'],args_exp['system_prop'],args_exp,args_exp['ncen_bins'],theo_dic['nsub_star'])                        
                         
                         #Add jitter to the intrinsic profile properties (simulating stellar activity)
                         if (fixed_args['mode']=='ana') and (inst in mock_dic['drift_intr']) and (vis in mock_dic['drift_intr'][vis]) and (len(mock_dic['drift_intr'][inst][vis]>0)):
@@ -2497,6 +2508,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
     #Default transit model
     if (inst not in data_dic['DI']['transit_prop']):data_dic['DI']['transit_prop'][inst] = {}
 
+    #Duplicate chromatic properties so that they are not overwritten by conversions
+    data_dic[inst]['system_prop'] = deepcopy(data_dic['DI']['system_prop'])
+
     #Final processing
     if len(data_dic[inst]['visit_list'])>1:
         if (not data_dic[inst]['comm_sp_tab']):print('         Visits do not share a common spectral table')      
@@ -2643,6 +2657,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         gen_vis['idx_exp2in'] = np.zeros(data_vis['n_in_visit'],dtype=int)-1
         gen_vis['idx_exp2in'][gen_vis['idx_in']]=np.arange(data_vis['n_in_tr'])
         gen_vis['idx_in2exp'] = np.arange(data_vis['n_in_visit'],dtype=int)[gen_vis['idx_in']]        
+        
+        #Duplicate chromatic properties so that they are not overwritten by conversions
+        data_vis['system_prop'] = deepcopy(data_dic['DI']['system_prop'])
         
     #Total number of visits for current instrument
     gen_dic[inst]['n_visits'] = len(data_dic[inst]['visit_list'])
@@ -2792,6 +2809,9 @@ def update_inst(data_dic,inst,gen_dic):
         data_inst['tell_sp'] = False 
         data_inst['mean_gdet'] = False     
         data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_com' 
+        if ('chrom' in data_inst['system_prop']):
+            data_inst['system_prop']['chrom_mode'] = 'achrom'
+            data_inst['system_prop'].pop('chrom')
     else:
         data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com' 
     
@@ -2805,4 +2825,21 @@ def update_inst(data_dic,inst,gen_dic):
     return None
 
 
+def update_gen(data_dic,gen_dic):
+    r"""**Update: generic**
 
+    Updates generic fields for the workflow, once all instruments have been processed.
+    
+    Args:
+        TBD
+    
+    Returns:
+        None
+    
+    """     
+    if gen_dic['CCF_from_sp']:
+        if ('chrom' in data_dic['DI']['system_prop']):
+            data_dic['DI']['system_prop']['chrom_mode'] = 'achrom'
+            data_dic['DI']['system_prop'].pop('chrom')
+ 
+    return None

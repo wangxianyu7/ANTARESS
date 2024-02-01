@@ -115,6 +115,9 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             if len(np.unique(rest_frame))>1:stop('Incompatible rest frames') 
             rest_frame = np.unique(rest_frame)[0]
            
+            #System properties
+            system_prop = data_dic[inst]['system_prop']
+            
         #A single visit is processed
         #    - common table and dimensions are specific to this visit
         elif mode=='': 
@@ -125,6 +128,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             sysvel = data_dic['DI']['sysvel'][inst][vis_in]
             data_mode = data_inst[vis_in]['type']
             rest_frame = data_dic['DI'][inst][vis_in]['rest_frame']
+            system_prop = data_dic[inst][vis_in]['system_prop']
  
         #Store flags
         #    - 'FromAligned' set to True if binned profiles were aligned before
@@ -369,7 +373,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 phase_tab = conv_phase(coord_dic,inst,vis_save,system_param,bin_prop['ref_pl'],pl_loc,np.vstack((new_x_low,new_x_cen,new_x_high)))              
             
                 #Coordinates
-                x_pos_pl,y_pos_pl,z_pos_pl,Dprojp,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phase_tab,data_dic['DI']['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param['star'])
+                x_pos_pl,y_pos_pl,z_pos_pl,Dprojp,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phase_tab,system_prop['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param['star'])
                 data_glob_new['coord'][pl_loc] = {
                     'ecl':ecl_pl,
                     'st_ph':phase_tab[0],'cen_ph':phase_tab[1],'end_ph':phase_tab[2],
@@ -424,8 +428,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     params['vis']=vis_in  
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
-            if ('spec' in data_mode) and ('chrom' in data_dic['DI']['system_prop']):key_chrom+=['chrom']
-            data_glob_new['plocc_prop'],data_glob_new['spot_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,data_dic['DI']['system_prop'],params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True) 
+            if ('spec' in data_mode) and ('chrom' in system_prop):key_chrom+=['chrom']
+            data_glob_new['plocc_prop'],data_glob_new['spot_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True) 
 
 
         #---------------------------------------------------------------------------

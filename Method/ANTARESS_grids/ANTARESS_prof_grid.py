@@ -43,7 +43,7 @@ def custom_DI_prof(param,x,args=None):
 
             #Update broadband scaling of intrinsic profiles into local profiles
             #    - only necessary if stellar grid is updated
-            theo_intr2loc(args['grid_dic'],args['system_prop'],args,args['ncen_bins'],args['grid_dic']['nsub_star'])     
+            args['Fsurf_grid_spec'] = theo_intr2loc(args['grid_dic'],args['system_prop'],args,args['ncen_bins'],args['grid_dic']['nsub_star'])     
     
         #--------------------------------------------------------------------------------        
         #Updating intrinsic line profiles
@@ -268,7 +268,7 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
     #    - all stellar properties are initialized to default stellar values
     #      those defined as variable properties through the settings will be overwritten in 'par_formatting'
     for key,vary,bd_min,bd_max in zip(['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
-                                      [True,  False,     False,     False,  False,  False,  False,      False, False,    False,  False, False, False,False,  False,   False],
+                                      [False,  False,     False,     False,  False,  False,  False,      False, False,    False,  False, False, False,False,  False,   False],
                                       [0.,    None,       None,      None,   None,   None,   -1.,        0.,     0.,      0.,     0. , 0.,     0. ,  0.,     0. ,    0.],
                                       [1e4,   None,       None,      None,   None,   None,    1.,        1.,     1.,      1e5,    1.,  1e5,    1e5,  1e5,    100.,   100.]):
         if key in star_params:params.add_many((key, star_params[key],   vary,    bd_min,bd_max,None))
@@ -490,17 +490,17 @@ def theo_intr2loc(grid_dic,system_prop,fixed_args,ncen_bins,nsub_star):
         
         #Grid of broadband flux variations, at the spectral resolution of the local profiles
         #    - interpolation over the profile table if the full range of the profile is larger than the scale of chromatic variations, otherwise closest definition point
-        fixed_args['Fsurf_grid_spec'] = np.zeros([nsub_star,ncen_bins])
+        Fsurf_grid_spec = np.zeros([nsub_star,ncen_bins])
         if (fixed_args['edge_bins'][-1]-fixed_args['edge_bins'][0]>system_prop['chrom']['med_dw']):
             for icell in range(nsub_star):
-                fixed_args['Fsurf_grid_spec'][icell,:] = np_interp(fixed_args['cen_bins'],system_prop['chrom']['w'],Fsurf_grid_band[icell],left=Fsurf_grid_band[icell,0],right=Fsurf_grid_band[icell,-1])
+                Fsurf_grid_spec[icell,:] = np_interp(fixed_args['cen_bins'],system_prop['chrom']['w'],Fsurf_grid_band[icell],left=Fsurf_grid_band[icell,0],right=Fsurf_grid_band[icell,-1])
         else:
             iband = closest(system_prop['chrom']['w'],np.median(fixed_args['cen_bins']))
-            fixed_args['Fsurf_grid_spec'] = Fsurf_grid_band[:,iband][:,None]
+            Fsurf_grid_spec = Fsurf_grid_band[:,iband][:,None]
     else:
-        fixed_args['Fsurf_grid_spec'] = np.tile(grid_dic['Fsurf_grid_star_achrom'][:,0],[ncen_bins,1]).T       
+        Fsurf_grid_spec = np.tile(grid_dic['Fsurf_grid_star_achrom'][:,0],[ncen_bins,1]).T       
 
-    return None
+    return Fsurf_grid_spec
 
 
 
