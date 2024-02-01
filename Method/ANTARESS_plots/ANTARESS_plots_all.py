@@ -10863,8 +10863,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             params['beta_rot'] = star_params['beta_rot']   
                     else:stop('Mock spot properties undefined for this system.')    
                  
-                #Retrieve spot rotational velocity
-                star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
+                #Spot Equatorial rotation rate (rad/s)
+                if 'veq_spots' in star_params:star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
+                else:star_params['om_eq_spots']=star_params['om_eq']
 
                 #Calculate the flux of star grid, at all the exposures considered
                 star_flux_before_spot = deepcopy(Fsurf_grid_star[:,iband])

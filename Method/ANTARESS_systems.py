@@ -35,7 +35,7 @@ Star
  + used as effective temperature for stellar atmosphere grid and mask generation
     - beta_GD : gravity-darkening coefficient 
     - 'A_R', 'ksi_R', ('A_T', 'ksi_T'): radial–tangential macroturbulence properties
-      'eta_R', ('eta_T'): anisotropic faussian macroturbulence properties 
+      'eta_R', ('eta_T'): anisotropic gaussian macroturbulence properties 
  + only used if macroturbulence is activated, for analytical intrinsic profiles
  + set 'T' parameters equal to 'R' for isotropic macroturbulence
     - logg : surface gravity of the star in log(cgs)
@@ -1542,7 +1542,7 @@ all_system_params={
             # 'f_GD':0.1947,              #test
             # 'Tpole':8450.,              #test
             # 'beta_GD':0.190,            #test
-            'veq_spots':7.8,
+            # 'veq_spots':7.8,
         },
         'AUMicb':{
             #'period':2.407000,           #test

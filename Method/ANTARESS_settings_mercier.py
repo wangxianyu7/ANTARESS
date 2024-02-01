@@ -480,23 +480,23 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
                      # 'ctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
 
-                     # For the spot 'spot1' : 
-                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 30,
-                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
-                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 15,
-                     'ctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.8,
+                     # # For the spot 'spot1' : 
+                     # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 30,
+                     # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
+                     # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 15,
+                     # 'ctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.8,
                     
-                     # #For the spot 'spot2' : 
-                     'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
-                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 - 0.2,
-                     'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
-                     'ctrst__ISESPRESSO_VSmock_vis_SPspot2'    : 0.1,
+                     # # #For the spot 'spot2' : 
+                     # 'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
+                     # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 - 0.2,
+                     # 'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
+                     # 'ctrst__ISESPRESSO_VSmock_vis_SPspot2'    : 0.1,
 
                      # For the spot 'spot1' : -- plotting purposes
-                     # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 35,
-                     # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051 + 0.3,
-                     # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 15,
-                     # 'ctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.95,
+                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 0,
+                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
+                     'ctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.95,
                      
 
                      # #For the spot 'spot2' :  -- plotting purposes
@@ -961,16 +961,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Spot discretization
     if gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
-        # theo_dic['nsub_Dspot']={'spot1':50.}
+        # theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
+        theo_dic['nsub_Dspot']={'spot1':50.}
         
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
     #Exposure discretization
     if gen_dic['star_name']=='AUMic':
         theo_dic['n_oversamp']={'AUMicb':5.}#, 'AUMicc': 5.}
-        theo_dic['n_oversamp_spot']={'spot1':5., 'spot2':5.}
-        # theo_dic['n_oversamp_spot']={'spot1':5.}
+        # theo_dic['n_oversamp_spot']={'spot1':5., 'spot2':5.}
+        theo_dic['n_oversamp_spot']={'spot1':5.}
     
     if gen_dic['star_name']=='V1298tau':
         theo_dic['n_oversamp'] = {'V1298tau_b':5.}
@@ -2765,7 +2765,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         data_dic['DI']['spots_prop']={
                 'achrom':{
                     'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot1'] * np.pi/180],
-                    'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
+                    # 'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.3],
                     'LD_u2' : [0.16],
@@ -4421,7 +4421,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Exposures to be fitted
     if gen_dic['star_name'] == 'AUMic':
-     glob_fit_dic['IntrProf']['idx_in_fit'] = {'ESPRESSO':{'mock_vis':range(50)}}
+     glob_fit_dic['IntrProf']['idx_in_fit'] = {'ESPRESSO':{'mock_vis':range(30)}}
   
     if gen_dic['star_name'] == 'V1298tau':
      glob_fit_dic['IntrProf']['idx_in_fit'] = deepcopy(glob_fit_dic['IntrProp']['idx_in_fit'])
@@ -4453,9 +4453,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Fixed/variable properties   
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['IntrProf']['mod_prop']={
-        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.5, 'bd':[0, 1]},
-        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':10, 'bd':[0, 20]},
-        'veq':{'vary':True,'guess':7, 'bd':[0, 10]},
+        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.5, 'bd':[0.55, 0.8]},
+        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':10, 'bd':[7, 10]},
+        'veq':{'vary':True,'guess':7, 'bd':[7, 8]},
                                             }
 
     #PC noise model
@@ -4473,9 +4473,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Priors on variable properties
     if gen_dic['star_name'] == 'AUMic':
         glob_fit_dic['IntrProf']['priors']={
-                    'ctrst':{'mod':'uf','low':0,'high':1.},  
-                    'FWHM':{'mod':'uf','low':0.,'high':20.},
-                    'veq':{'mod':'uf', 'low':6., 'high':8.},
+                    'ctrst':{'mod':'uf','low':0,'high':1},  
+                    'FWHM':{'mod':'uf','low':0,'high':100},
+                    'veq':{'mod':'uf', 'low':0, 'high':100.},
                     }
     #Derived properties
     # glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','psi','om','b','ip','istar_deg_conv','fold_istar','lambda_deg','c0','CB_ms']
@@ -4498,15 +4498,15 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     
     #Calculating/retrieving
+    # glob_fit_dic['IntrProf']['mcmc_run_mode']='use'    
     glob_fit_dic['IntrProf']['mcmc_run_mode']='use'    
-    # glob_fit_dic['IntrProf']['mcmc_run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] == 'AUMic':
         glob_fit_dic['IntrProf']['mcmc_reuse']={}
         # glob_fit_dic['IntrProf']['mcmc_reuse']={
-        #             'paths':['/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/antaress/Ongoing/AUMicb_Saved_data/Joined_fits/IntrProf/mcmc/raw_chains_walk24_steps1000.npz'],
-        #             'nburn':[0]
+        #             'paths':['/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/antaress/Ongoing/AUMicb_Saved_data/Joined_fits/IntrProf/mcmc/raw_chains_walk24_steps2000.npz'],
+        #             'nburn':[500]
         #             }  
     #Re-starting
     if gen_dic['star_name'] == 'AUMic':
@@ -4514,7 +4514,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Walkers
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':24,'nsteps':500,'nburn':100}
+        glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':24,'nsteps':100,'nburn':25}
 
     #Complex priors        
          
@@ -4527,7 +4527,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Automatic exclusion of outlying chains
     glob_fit_dic['IntrProf']['exclu_walk_autom']=None  #  5.
     if gen_dic['star_name'] == 'AUMic':   
-            glob_fit_dic['IntrProf']['exclu_walk_autom']=None  #  5
+            glob_fit_dic['IntrProf']['exclu_walk_autom']= 5
 
 
     #Derived errors         
@@ -4562,7 +4562,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 #            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(166.,179.),(84.8,89.),(90.3,92.)],      #high istar
 #            'plot_HDI':True,
         'plot1s_1D':False,
-        # 'plot_best':False,
+        'plot_best':False,
             
             
 #            'major_int':[0.2,50.],

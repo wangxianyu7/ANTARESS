@@ -79,6 +79,13 @@ def resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,nexp,rv_osamp_line_mod):
     Theoretical profiles are directly calculated at the requested resolution, measured profiles are extracted at their native resolution.
 
     Args:
+        inst (str) : Instrument considered.
+        vis (str) : Visit considered.
+        isub (int) : Index of the exposure considered.
+        fixed_args (dict) : Parameters of the profiles considered.
+        gen_dic (dict) : General dictionary (?).
+        nexp (int) : Number of exposures in the visit considered.
+        rv_osamp_line_mode (float) : RV-space oversampling factor.
         TBD
     
     Returns:
@@ -162,10 +169,10 @@ def return_resolv(inst):
     Returns resolving power of a given spectrograph.
 
     Args:
-        TBD
+        inst (str) : Instrument / spectrograph considered.
     
     Returns:
-        TBD
+        inst_res (float) : Resolving power of the spectrograph.
     
     """
     inst_res = {        

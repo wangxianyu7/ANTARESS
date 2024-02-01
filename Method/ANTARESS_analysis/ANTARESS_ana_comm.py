@@ -339,7 +339,9 @@ def init_joined_routines_inst(inst,fit_prop_dic,fixed_args):
     Initializes properties for the joined fits to stellar and planetary lines.
 
     Args:
-        TBD
+        inst (str) : Instrument considered.
+        fit_prop_dic (dict) : Dictionary containing the parameters of the fitting process.
+        fixed_args (dict) : Dictionary containing the arguments that will be passed to the fitting function.
     
     Returns:
         TBD
@@ -359,7 +361,10 @@ def init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args):
     Initializes properties for the joined fits to stellar and planetary lines.
 
     Args:
-        TBD
+        inst (str) : Instrument considered.
+        vis (str) : Visit considered.
+        fit_prop_dic (dict) : Dictionary containing the parameters of the fitting process.
+        fixed_args (dict) : Dictionary containing the arguments that will be passed to the fitting function.
     
     Returns:
         TBD
