@@ -4088,6 +4088,25 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         plot_settings[key_plot]['plot_measRV']='det'
 
         #Color range
+        if gen_dic['star_name']=='AUMic':
+            plot_settings[key_plot]['v_range_all']={
+            'ESPRESSO':{
+                        'mock_vis':[-0.0075, 0.0075], #--base
+                        'mock_vis1':[-0.0075, 0.0075],
+                        'mock_vis2':[-0.0075, 0.0075],
+                        'mock_vis3':[-0.0075, 0.0075],
+                        'mock_vis4':[-0.0075, 0.0075],
+                        'mock_vis5':[-0.0075, 0.0075],
+                        'mock_vis6':[-0.0075, 0.0075],
+                        'mock_vis7':[-0.0075, 0.0075],
+                        'mock_vis8':[-0.0075, 0.0075],
+                        'mock_vis9':[-0.0075, 0.0075],
+                        }
+            }
+
+
+
+
         if gen_dic['studied_pl']=='WASP_8b':
             plot_settings[key_plot]['v_range_all']={
                 'HARPS':{'2008-10-04':[-0.005  ,  0.018]}
@@ -8165,44 +8184,60 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
 
         #Plot stellar spots
-        plot_settings[key_plot]['stellar_spot'] = {}
+        if (data_dic['DI']['spots_prop'] != {}):
 
-        # Number of positions of the spots to be plotted, equally distributed within the given time range.
-        plot_settings[key_plot]['n_image_spots'] = 15
-        
-        # time range (BJD) for ploting spots
-        plot_settings[key_plot]['time_range_spot'] = 2458330.39051   + np.array([-0.5, 0.1])
-        
-        # Use stellar rotation period to distribute the positions, instead of time
-        plot_settings[key_plot]['plot_spot_all_Peq'] = True    
+            #Activating spots in the system view
+            plot_settings[key_plot]['plot_spots'] = True
 
-        #Whether we want to plot the spot tracks or locations in the multi-exposure system views.
-        plot_settings[key_plot]['spot_overlap'] = True & False
+            #Spot properties can come from three sources for this plot:
+            #   - the mock dataset (mock_spot_prop) - from mock_dic
+            #   - fitted spot properties (fit_spot_prop) - from glob_fit_dic
+            #   - custom user-specified properties (custom_spot_prop) - parametrized below
 
-        if gen_dic['star_name']=='AUMic':
-            # plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' : 10, 'Tcenter' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
-            # plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
-            # plot_settings[key_plot]['stellar_spot']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
-            plot_settings[key_plot]['n_image_spots'] = 50
-            # plot_settings[key_plot]['n_image_spots'] = 50
+            plot_settings[key_plot]['mock_spot_prop'] = True & False
+            plot_settings[key_plot]['fit_spot_prop'] = True & False
+            plot_settings[key_plot]['custom_spot_prop'] = {}
+
+            # Number of positions of the spots to be plotted, equally distributed within the given time range.
+            plot_settings[key_plot]['n_image_spots'] = 15
             
-            plot_settings[key_plot]['time_range_spot'] = 2458330.39051+np.array([-0.7,0.7])
-            # plot_settings[key_plot]['time_range_spot'] = 2458330.39051   + np.array([-2.8, 1.9])
-            # plot_settings[key_plot]['time_range_spot'] = 2458330.39051+np.array([-2,2])/24.
+            # time range (BJD) for ploting spots
+            plot_settings[key_plot]['time_range_spot'] = 2458330.39051   + np.array([-0.5, 0.1])
             
-            plot_settings[key_plot]['plot_spot_all_Peq'] = False  
+            # Use stellar rotation period to distribute the positions, instead of time
+            plot_settings[key_plot]['plot_spot_all_Peq'] = True    
 
-            plot_settings[key_plot]['spot_overlap'] = False  
+            #Whether we want to plot the spot tracks or locations in the multi-exposure system views.
+            plot_settings[key_plot]['spot_overlap'] = True & False
 
-        elif gen_dic['star_name']=='V1298tau':
-            # plot_settings[key_plot]['stellar_spot']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'ctrst' : 0.6}   
-            plot_settings[key_plot]['n_image_spots'] = 40
-            
-            plot_settings[key_plot]['time_range_spot'] = 2457067.0488+np.array([-0.2, 0.2])
-            
-            plot_settings[key_plot]['plot_spot_all_Peq'] = False  
+            if gen_dic['star_name']=='AUMic':
+                plot_settings[key_plot]['plot_spots'] = True & False
 
-            plot_settings[key_plot]['spot_overlap'] = False  
+                plot_settings[key_plot]['mock_spot_prop'] = True & False
+
+                # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 10, 'Tcenter' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
+                # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
+                # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
+                plot_settings[key_plot]['n_image_spots'] = 50
+                # plot_settings[key_plot]['n_image_spots'] = 50
+                
+                plot_settings[key_plot]['time_range_spot'] = 2458330.39051+np.array([-0.7,0.7])
+                # plot_settings[key_plot]['time_range_spot'] = 2458330.39051   + np.array([-2.8, 1.9])
+                # plot_settings[key_plot]['time_range_spot'] = 2458330.39051+np.array([-2,2])/24.
+                
+                plot_settings[key_plot]['plot_spot_all_Peq'] = False  
+
+                plot_settings[key_plot]['spot_overlap'] = False  
+
+            elif gen_dic['star_name']=='V1298tau':
+                # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'ctrst' : 0.6}   
+                plot_settings[key_plot]['n_image_spots'] = 40
+                
+                plot_settings[key_plot]['time_range_spot'] = 2457067.0488+np.array([-0.2, 0.2])
+                
+                plot_settings[key_plot]['plot_spot_all_Peq'] = False  
+
+                plot_settings[key_plot]['spot_overlap'] = False  
 
                                      
         

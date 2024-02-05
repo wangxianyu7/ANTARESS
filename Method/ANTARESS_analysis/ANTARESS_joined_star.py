@@ -365,7 +365,6 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 if ncen_bins==0:stop('Empty trimmed range')                  
                 
                 fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
-                fit_prop_dic[inst][vis]['']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
                 fixed_args['ncen_bins'][inst][vis] = ncen_bins  
                 fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
 

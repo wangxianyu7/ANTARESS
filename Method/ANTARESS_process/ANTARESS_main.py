@@ -102,7 +102,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
 
             #Calculating theoretical properties of the planet-occulted and/or spotted regions 
-            if gen_dic['theoPlOcc'] or gen_dic['theo_spots']:
+            if gen_dic['theoPlOcc'] or (data_dic['DI']['spots_prop'] != {}):
                 calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'],spot_dic=mock_dic)
                 
             #Analyzing original disk-integrated profiles
@@ -875,7 +875,8 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #------------------------------------------------------------------------------
     #Spots
     #------------------------------------------------------------------------------
-    if gen_dic['theo_spots']:
+    #If spot activation has been triggered
+    if (data_dic['DI']['spots_prop'] != {}): #Remove trigger in mock_spots and add warning that DI spots prop need to be activated #Plots -> retrieve DI spots_prop 
     
         #Oversampling factor for spot-occulted regions
         #    - use the spot radius provided as input
@@ -917,6 +918,10 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             #Define a default grid size if the spot grid hasn't been defined (should be done outside of for loop)
             theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot], theo_dic['Ssub_Sstar_sp'][spot] = spot_occ_region_grid(spot_size, theo_dic['nsub_Dspot'][spot])
 
+        #Spot activation for the mock dataset
+        if (mock_dic['spots_prop'] != {}):
+            mock_dic['use_spots']=True
+
     #------------------------------------------------------------------------------------------------------------------------
     #Model star
     #------------------------------------------------------------------------------------------------------------------------
@@ -930,7 +935,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                     
     #Definition of model stellar grid to calculate local or disk-integrated properties
     #    - used througout the pipeline, unless stellar properties are fitted
-    if gen_dic['theoPlOcc'] or (gen_dic['theo_spots']) or (gen_dic['fit_DI_gen'] and (('custom' in data_dic['DI']['model'].values()) or ('RT_ani_macro' in data_dic['DI']['model'].values()))) or gen_dic['mock_data'] \
+    if gen_dic['theoPlOcc'] or (data_dic['DI']['spots_prop'] != {}) or (gen_dic['fit_DI_gen'] and (('custom' in data_dic['DI']['model'].values()) or ('RT_ani_macro' in data_dic['DI']['model'].values()))) or gen_dic['mock_data'] \
         or gen_dic['fit_ResProf'] or gen_dic['correct_spots'] or gen_dic['fit_IntrProf'] or gen_dic['loc_data_corr']:
             
         #Stellar grid

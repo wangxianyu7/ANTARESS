@@ -517,7 +517,10 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
             if 'lambda_rad__pl'+pl_loc not in mod_prop:p_start.add_many(('lambda_rad__pl'+pl_loc, 0.,   True, -2.*np.pi,2.*np.pi,None))
 
     #Initialize line properties
-    #    - using Gaussian line as defautl for intrinsic profiles
+    #    - using Gaussian line as default for intrinsic profiles
+    # Vincent : Issue here. The contrast and FWHM are defined in mod_prop but are not initialized in p_start anywhere. As a result, the following if loops will not add 
+    # contrast or FWHM to p_start since the 'if not any' loop will return False (i.e. there is a contrast parameter in mod_prop).
+
     if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='ctrst')) or (rout_mode=='IntrProf'):    
         if not any(['ctrst_' in prop for prop in mod_prop]):p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None))
     if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode=='IntrProf'):    
@@ -531,6 +534,10 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
 
     #Initializing stellar profiles
     else:     
+
+        #Set default gaussian line
+        p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None),
+                         ('FWHM_ord0__IS__VS_' , 5.,    True, 0.,100.,None))
 
         #Profile grid
         fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,fixed_args['system_param']['star'],p_start)

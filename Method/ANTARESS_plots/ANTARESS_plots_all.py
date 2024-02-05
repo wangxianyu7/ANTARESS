@@ -10060,7 +10060,16 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['plot_hidden_pole']= False  
 
         #Plot stellar spots
-        plot_options[key_plot]['stellar_spot'] = {}
+        #Activating spots in the system view
+        plot_options[key_plot]['plot_spots'] = True & False
+
+        #Spot properties can come from three sources for this plot:
+        #   - the mock dataset (mock_spot_prop) - from mock_dic
+        #   - fitted spot properties (fit_spot_prop) - from glob_fit_dic
+        #   - custom user-specified properties (custom_spot_prop) - parametrized below
+        plot_options[key_plot]['mock_spot_prop'] = True & False
+        plot_options[key_plot]['fit_spot_prop'] = True & False
+        plot_options[key_plot]['custom_spot_prop'] = {}
         
         #Number of positions of the spots to be plotted, equally distributed within the given time range.
         plot_options[key_plot]['n_image_spots'] = 15
@@ -10858,26 +10867,23 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #-------------------------------------------------------
             #Spotted cells 
             #-------------------------------------------------------
-            if gen_dic['theo_spots']:
+            if plot_options[key_plot]['plot_spots']:
+
                 #Retrieve spot parameters defined by the user in plot_settings, if they are provided.
-                if len(plot_options[key_plot]['stellar_spot'])>0:
+                #Custom spot properties
+                if len(plot_options[key_plot]['custom_spot_prop'])>0:
                     # Initialize params to use the retrieve_spots_prop_from_param function.
                     params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
 
-                    for spot in plot_options[key_plot]['stellar_spot'] : 
-                        params['lat__IS__VS__SP'+spot]     = plot_options[key_plot]['stellar_spot'][spot]['lat']
-                        params['ang__IS__VS__SP'+spot]     = plot_options[key_plot]['stellar_spot'][spot]['ang']
-                        params['Tcenter__IS__VS__SP'+spot] = plot_options[key_plot]['stellar_spot'][spot]['Tcenter']
-                        params['ctrst__IS__VS__SP'+spot]    = plot_options[key_plot]['stellar_spot'][spot]['ctrst']
+                    for spot in plot_options[key_plot]['custom_spot_prop'] : 
+                        params['lat__IS__VS__SP'+spot]     = plot_options[key_plot]['custom_spot_prop'][spot]['lat']
+                        params['ang__IS__VS__SP'+spot]     = plot_options[key_plot]['custom_spot_prop'][spot]['ang']
+                        params['Tcenter__IS__VS__SP'+spot] = plot_options[key_plot]['custom_spot_prop'][spot]['Tcenter']
+                        params['ctrst__IS__VS__SP'+spot]    = plot_options[key_plot]['custom_spot_prop'][spot]['ctrst']
 
-                # There should be another option here to plot the spot properties that we fitted for # 
-                #elif len(plot_options[key_plot]['bestfit_spot_parameters'])>0: ....
-                # Like plotting the system architecture with the best-fit results #
-                
-                else:
-                    # If the user did not provide any spot properties for the plotting (ANTARESS_plot_settings.py) then default to
-                    # the spot properties from the first instrument and visit provided in the mock dictionary section for the spots
-                    if mock_dic['spots_prop'] != {}:
+                #Mock dataset spot properties
+                elif plot_options[key_plot]['mock_spot_prop']:
+                    if (mock_dic['spots_prop'] != {}):
                             inst_to_use = plot_options[key_plot]['inst_to_plot'][0]
                             vis_to_use = plot_options[key_plot]['visits_to_plot'][inst_to_use][0]
 
@@ -10887,6 +10893,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             params['alpha_rot'] = star_params['alpha_rot']
                             params['beta_rot'] = star_params['beta_rot']   
                     else:stop('Mock spot properties undefined for this system.')    
+
+                #Fitted spot properties
+                elif plot_settings[key_plot]['fit_spot_prop']:
+                    stop('XXXX WIP XXXX')
+
+                else:stop('System view unavailable : Spot generation initialized with no spot properties provided')
                  
                 #Spot Equatorial rotation rate (rad/s)
                 if 'veq_spots' in star_params:star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
@@ -10901,7 +10913,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Defining a new flux array, such that we don't see the previous spot when plotting the next spot
                     Flux_for_nonredundant_spot_plotting = deepcopy(Fsurf_grid_star[:,iband])
 
-                    if len(plot_options[key_plot]['stellar_spot'])>0:
+                    if len(plot_options[key_plot]['custom_spot_prop'])>0:
                         spots_prop = retrieve_spots_prop_from_param(star_params, params, '_', '_', plot_t) 
                     else:
                         spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, plot_t) 
@@ -10931,7 +10943,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                     for t_exp in t_all_spot :
                         star_flux_exp = deepcopy(star_flux_before_spot)
-                        if len(plot_options[key_plot]['stellar_spot'])>0:
+                        if len(plot_options[key_plot]['custom_spot_prop'])>0:
                             spots_prop = retrieve_spots_prop_from_param(star_params, params, '_', '_', t_exp) 
                         else:
                             spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, t_exp) 
