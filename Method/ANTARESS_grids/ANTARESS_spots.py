@@ -1,6 +1,6 @@
 import numpy as np
 from copy import deepcopy
-from utils import np_poly,stop,check_data
+from ANTARESS_general.utils import np_poly,stop,check_data
 from itertools import product as it_product
 from ANTARESS_grids.ANTARESS_coord import frameconv_skystar_to_star,frameconv_star_to_skystar
 from ANTARESS_analysis.ANTARESS_model_prof import poly_prop_calc

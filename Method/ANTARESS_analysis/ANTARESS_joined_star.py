@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from utils import stop,np_where1D,dataload_npz
+from ANTARESS_general.utils import stop,np_where1D,dataload_npz
 from copy import deepcopy
 import numpy as np
 import scipy.linalg
@@ -119,7 +119,7 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
         #Uncertainties on the property are given a covariance matrix structure for consistency with the fit routine 
         fixed_args['cov_val'] = np.array([fixed_args['s_val']**2.])
         fixed_args['use_cov'] = False   
-    
+
         #Model fit and calculation
         if prop_loc not in fit_prop_dic['mod_prop']:fit_prop_dic['mod_prop'][prop_loc] = {}
         merged_chain,p_final = com_joint_fits('IntrProp',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'][prop_loc])   
@@ -206,7 +206,7 @@ def joined_IntrProp(param,args):
             #Properties associated with the transiting planet in the visit 
             pl_vis = args['transit_pl'][inst][vis][0]
             theo_vis = surf_prop_dic['achrom'][pl_vis]      
-
+            
             #Fit coordinate
             #    - only used for plots
             if (not args['fit']) and ('coeff_line' in args):coeff_line_dic[inst][vis] = args['coeff_line']
@@ -365,7 +365,6 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 if ncen_bins==0:stop('Empty trimmed range')                  
                 
                 fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
-                fit_prop_dic[inst][vis]['']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
                 fixed_args['ncen_bins'][inst][vis] = ncen_bins  
                 fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
 

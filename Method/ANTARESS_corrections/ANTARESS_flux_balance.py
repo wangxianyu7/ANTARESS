@@ -1,10 +1,10 @@
 import glob
 import numpy as np
-from utils import stop,np_where1D,dataload_npz,MAIN_multithread,gen_specdopshift,def_edge_tab,check_data
+from ANTARESS_general.utils import stop,np_where1D,dataload_npz,MAIN_multithread,gen_specdopshift,def_edge_tab,check_data
 from copy import deepcopy
 import bindensity as bind
 from scipy.interpolate import UnivariateSpline
-from constant_data import c_light
+from ANTARESS_general.constant_data import c_light
 from scipy import stats
 from ANTARESS_conversions.ANTARESS_binning import sub_calc_bins,sub_def_bins
 

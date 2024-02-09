@@ -1,8 +1,8 @@
 import numpy as np
 from itertools import product as it_product
 from copy import deepcopy
-from utils import stop,closest,np_poly,npint,np_interp,np_where1D,datasave_npz,dataload_npz,gen_specdopshift,check_data
-from constant_data import Rsun,c_light
+from ANTARESS_general.utils import stop,closest,np_poly,npint,np_interp,np_where1D,datasave_npz,dataload_npz,gen_specdopshift,check_data
+from ANTARESS_general.constant_data import Rsun,c_light
 import lmfit
 from lmfit import Parameters
 from ANTARESS_grids.ANTARESS_coord import frameconv_skyorb_to_skystar,frameconv_skystar_to_skyorb,frameconv_skystar_to_star,calc_pl_coord
@@ -121,7 +121,7 @@ def up_plocc_prop(inst,vis,par_list,args,param_in,transit_pl,nexp_fit,ph_fit,coo
         if args['fit_RpRs'] and ('RpRs__pl'+pl_loc in args['var_par_list']):
             args['system_prop']['achrom'][pl_loc][0]=param['RpRs__pl'+pl_loc] 
             args['grid_dic']['Ssub_Sstar_pl'][pl_loc],args['grid_dic']['x_st_sky_grid_pl'][pl_loc],args['grid_dic']['y_st_sky_grid_pl'][pl_loc],r_sub_pl2=occ_region_grid(args['system_prop']['achrom'][pl_loc][0],args['grid_dic']['nsub_Dpl'][pl_loc])  
-            args['system_prop']['achrom'],['cond_in_RpRs'][pl_loc] = [(r_sub_pl2<args['system_prop']['achrom'],[pl_loc][0]**2.)]        
+            args['system_prop']['achrom']['cond_in_RpRs'][pl_loc] = [(r_sub_pl2<args['system_prop']['achrom'][pl_loc][0]**2.)]        
 
         #Recalculate planet coordinates if relevant        
         if args['fit_orbit']:
@@ -236,16 +236,17 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
             if cond_spot:surf_prop_dic_spot[subkey_chrom]['line_prof']=np.zeros([args['ncen_bins'],n_exp],dtype=float)
 
     #Properties to be calculated
+    #    - properties in 'param' have the nominal values from system properties only if the property was not defined in the model property dictionary from settings 
     par_star = deepcopy(param)
-    star_params = system_param['star']
     par_list = ['Ftot']
     for par_loc in par_list_in:
         if par_loc=='rv':
             par_list+=['Rot_RV']
             if ('rv_line' in args['linevar_par_vis']):par_list+=['rv_line']
-            if ('Rstar' in param) and ('Peq' in param):par_star['veq'] = 2.*np.pi*param['Rstar']*Rsun/(param['Peq']*24.*3600.)
+            if ('Rstar' in par_star) and ('Peq' in par_star):par_star['veq'] = 2.*np.pi*par_star['Rstar']*Rsun/(par_star['Peq']*24.*3600.)
         elif (par_loc not in ['line_prof']):par_list+=[par_loc]
-    par_star['istar_rad']=np.arccos(par_star['cos_istar'])
+    cos_istar = (par_star['cos_istar']-(1.)) % 2 - 1.   #Reset cos_istar within -1 : 1
+    par_star['istar_rad']=np.arccos(cos_istar)
     cb_band_dic = {}
     for subkey_chrom in key_chrom:
         if Ftot_star:
@@ -300,7 +301,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
             exp_time = coord_pl_in['bjd'][iexp]
 
             #Extract spot properties for the exposure we're considering.
-            spots_prop = retrieve_spots_prop_from_param(star_params, param, param['inst'], param['vis'], exp_time, exp_dur=coord_pl_in['t_dur'][iexp])
+            spots_prop = retrieve_spots_prop_from_param(par_star, param, param['inst'], param['vis'], exp_time, exp_dur=coord_pl_in['t_dur'][iexp])
 
             #Check if at least one spot is visible.
             #To do so, we need a more precise estimate of the spot location.
@@ -312,7 +313,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                     #See if spot is *precisely* visible.
                     spot_within_grid, _ = calc_spotted_tiles(spots_prop[spot],
                                     theo_dic['x_st_sky'], theo_dic['y_st_sky'], theo_dic['z_st_sky'], theo_dic,
-                                    star_params, True)
+                                    par_star, True)
                     if spot_within_grid:
                         spot_within_grid_all[spot_index]=True
 
@@ -468,7 +469,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                 else:
                     x_oversamp_pl[pl_loc] = coord_pl_in[pl_loc]['st_pos'][0][iexp]+np.arange(n_osamp_exp)*dx_exp_in[pl_loc][i_in]/(n_osamp_exp-1.)  
                     y_oversamp_pl[pl_loc] = coord_pl_in[pl_loc]['st_pos'][1][iexp]+np.arange(n_osamp_exp)*dy_exp_in[pl_loc][i_in]/(n_osamp_exp-1.) 
-
+                    
             #Spot oversampled positions initialization
             if cond_spot:
                 x_oversamp_sp={}
@@ -514,7 +515,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                     reduced_spot_prop_oversamp[spot]['cos_long_exp_center'] = np.cos(temp_long)
                     reduced_spot_prop_oversamp[spot]['sin_lat_exp_center'] = np.sin(spots_prop_all_exp[iexp][spot]['lat_rad_exp_center'])
                     reduced_spot_prop_oversamp[spot]['sin_long_exp_center'] = np.sin(temp_long)
-                    spots_are_visible |= is_spot_visible(star_params['istar_rad'], temp_long, spots_prop_all_exp[iexp][spot]['lat_rad_exp_center'], reduced_spot_prop_oversamp[spot]['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
+                    spots_are_visible |= is_spot_visible(par_star['istar_rad'], temp_long, spots_prop_all_exp[iexp][spot]['lat_rad_exp_center'], reduced_spot_prop_oversamp[spot]['ang_rad'], par_star['f_GD'], par_star['RpoleReq'])
 
                 #------------------------------------------------------------
                 #Planet-occulted regions
@@ -530,12 +531,12 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                     #Largest possible square grid enclosing the planet shifted to current planet position     
                     x_st_sky_max = x_st_sky_pos+theo_dic['x_st_sky_grid_pl'][pl_loc]
                     y_st_sky_max = y_st_sky_pos+theo_dic['y_st_sky_grid_pl'][pl_loc]
-                    
+
                     #Calculating properties
                     for subkey_chrom in key_chrom:
                         for iband in range(system_prop[subkey_chrom]['nw']):
                             Focc_star_pl[subkey_chrom][iband],cond_occ_pl = calc_occ_region_prop(line_occ_HP[subkey_chrom][iband],cond_occ_pl,iband,args,system_prop[subkey_chrom],iosamp,pl_loc,pl_proc[subkey_chrom][iband],theo_dic['Ssub_Sstar_pl'][pl_loc],x_st_sky_max,y_st_sky_max,system_prop[subkey_chrom]['cond_in_RpRs'][pl_loc][iband],par_list,par_star,theo_dic['Istar_norm_'+subkey_chrom],\
-                                                                                  x_oversamp_pl,y_oversamp_pl,lambda_rad_pl,par_star,sum_prop_dic[subkey_chrom][pl_loc],coord_reg_dic[subkey_chrom][pl_loc],range_dic[subkey_chrom][pl_loc],range_par_list,Focc_star_pl[subkey_chrom][iband],star_params,cb_band_dic[subkey_chrom][iband],theo_dic, spot_occ=spots_are_visible, reduced_spot_prop=reduced_spot_prop_oversamp)
+                                                                                  x_oversamp_pl,y_oversamp_pl,lambda_rad_pl,par_star,sum_prop_dic[subkey_chrom][pl_loc],coord_reg_dic[subkey_chrom][pl_loc],range_dic[subkey_chrom][pl_loc],range_par_list,Focc_star_pl[subkey_chrom][iband],cb_band_dic[subkey_chrom][iband],theo_dic, spot_occ=spots_are_visible, reduced_spot_prop=reduced_spot_prop_oversamp)
             
                             #Cumulate line profile from planet-occulted cells
                             #    - in high-precision mode there is a single subkey_chrom and achromatic band, but several planets may have been processed
@@ -583,7 +584,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                         spot_prop_oversamp['sin_long_exp_center'] = np.sin(spot_prop_oversamp['long_rad_exp_center'])
                         spot_prop_oversamp['cos_lat_exp_center'] = np.cos(spot_prop_oversamp['lat_rad_exp_center'])
                         spot_prop_oversamp['sin_lat_exp_center'] = np.sin(spot_prop_oversamp['lat_rad_exp_center'])
-                        spot_prop_oversamp['is_visible'] = is_spot_visible(star_params['istar_rad'], spot_prop_oversamp['long_rad_exp_center'], spot_prop_oversamp['lat_rad_exp_center'], spot_prop_oversamp['ang_rad'], star_params['f_GD'], star_params['RpoleReq'])
+                        spot_prop_oversamp['is_visible'] = is_spot_visible(par_star['istar_rad'], spot_prop_oversamp['long_rad_exp_center'], spot_prop_oversamp['lat_rad_exp_center'], spot_prop_oversamp['ang_rad'], par_star['f_GD'], par_star['RpoleReq'])
     
                         #Going over the chromatic modes
                         for subkey_chrom in key_chrom:
@@ -591,8 +592,8 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                             #Going over the bands in each chromatic mode
                             for iband in range(system_spot_prop[subkey_chrom]['nw']):
                                 
-                                Focc_star_sp[subkey_chrom][iband], cond_occ_sp = new_new_calc_spotted_region_prop(line_occ_HP[subkey_chrom][iband], cond_occ_sp, spot_prop_oversamp, iband, system_spot_prop[subkey_chrom], star_params, theo_dic['Ssub_Sstar_sp'][spot], 
-                                                                theo_dic['Ssub_Sstar'], theo_dic['Istar_norm_'+subkey_chrom], par_star, sum_prop_dic[subkey_chrom][spot], coord_reg_dic[subkey_chrom][spot], 
+                                Focc_star_sp[subkey_chrom][iband], cond_occ_sp = new_new_calc_spotted_region_prop(line_occ_HP[subkey_chrom][iband], cond_occ_sp, spot_prop_oversamp, iband, system_spot_prop[subkey_chrom], par_star, theo_dic['Ssub_Sstar_sp'][spot], 
+                                                                theo_dic['Ssub_Sstar'], theo_dic['Istar_norm_'+subkey_chrom], sum_prop_dic[subkey_chrom][spot], coord_reg_dic[subkey_chrom][spot], 
                                                                 range_dic[subkey_chrom][spot], Focc_star_sp[subkey_chrom][iband], par_list, range_par_list, args, cb_band_dic[subkey_chrom][iband], 
                                                                 pl_loc_x = x_oversamp_pl, pl_loc_y = y_oversamp_pl, oversamp_idx = iosamp, RpRs = system_prop[subkey_chrom], plocc = (n_osamp_exp_eff_pl>=1))
     
@@ -743,7 +744,7 @@ def calc_mean_occ_region_line(precision,system_prop,i_in,key_chrom,n_osamp_exp_e
 
 
 def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl_loc,pl_proc_band,Ssub_Sstar,x_st_sky_max,y_st_sky_max,cond_in_RpRs,par_list,param,Istar_norm_band,x_pos_pl,y_pos_pl,lambda_rad_pl,par_star,sum_prop_dic_pl,\
-                         coord_reg_dic_pl,range_reg_pl,range_par_list,Focc_star_band,star_params,cb_band,theo_dic,spot_occ = False, reduced_spot_prop={}):
+                         coord_reg_dic_pl,range_reg_pl,range_par_list,Focc_star_band,cb_band,theo_dic,spot_occ = False, reduced_spot_prop={}):
     r"""**Planet-occulted properties: region**
 
     Calculates the average and summed properties from a planet-occulted stellar surface region during an exposure.
@@ -762,7 +763,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
     coord_grid['y_st_sky']=y_st_sky_max[cond_in_RpRs]   
 
     #Identifying occulted stellar cells in the sky-projected and star star rest frame
-    n_pl_occ = calc_st_sky(coord_grid,star_params)
+    n_pl_occ = calc_st_sky(coord_grid,par_star)
 
     #Making an array that will keep track of which cells are occulted by the spots
     if spot_occ:
@@ -805,7 +806,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
                 new_z_sky_grid = np.sqrt(1 - new_x_sky_grid**2 - new_y_sky_grid**2)
 
                 ##Move coordinates to the (non-inclined) star frame and then the spot reference frame
-                x_st_grid, y_st_grid, z_st_grid = frameconv_skystar_to_star(new_x_sky_grid, new_y_sky_grid, new_z_sky_grid, star_params['istar_rad'])
+                x_st_grid, y_st_grid, z_st_grid = frameconv_skystar_to_star(new_x_sky_grid, new_y_sky_grid, new_z_sky_grid, par_star['istar_rad'])
                 x_spot_grid = x_st_grid*reduced_spot_prop[spot]['cos_long_exp_center'] - z_st_grid*reduced_spot_prop[spot]['sin_long_exp_center']
                 y_spot_grid = y_st_grid*reduced_spot_prop[spot]['cos_lat_exp_center'] - (z_st_grid*reduced_spot_prop[spot]['cos_long_exp_center'] + x_st_grid*reduced_spot_prop[spot]['sin_long_exp_center']) * reduced_spot_prop[spot]['sin_lat_exp_center']
                 cond_in_sp = (x_spot_grid**2. + y_spot_grid**2. <= reduced_spot_prop[spot]['ang_rad']**2)
@@ -817,7 +818,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
 
         #Local flux grid over current planet-occulted region, in current band
         coord_grid['nsub_star'] = n_pl_occ
-        _,_,mu_grid_star,Fsurf_grid_star,Ftot_star,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_prop,coord_grid,star_params,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'pl',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
+        _,_,mu_grid_star,Fsurf_grid_star,Ftot_star,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'pl',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
         coord_grid['mu'] = mu_grid_star[:,0]
 
         #Accounting for the spots' emission
@@ -833,7 +834,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
         #Flux and number of cells occulted from all planets, cumulated over oversampled positions
         Focc_star_band+= Ftot_star[0]   
         sum_prop_dic_pl['nocc']+=coord_grid['nsub_star']
-    
+        
         #--------------------------------
 
         #Co-adding properties from current region to the cumulated values over oversampled planet positions 

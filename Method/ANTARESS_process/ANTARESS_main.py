@@ -1,11 +1,11 @@
 import numpy as np
-from utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data
+from ANTARESS_general.utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data
 from pathos.multiprocessing import cpu_count
 from copy import deepcopy
 import bindensity as bind
 from os import makedirs
 from os.path import exists as path_exist
-from constant_data import Rsun,Rjup,c_light,G_usi,Msun,AU_1
+from ANTARESS_general.constant_data import Rsun,Rjup,c_light,G_usi,Msun,AU_1
 import glob
 from astropy.io import fits
 from dace_query.spectroscopy import Spectroscopy
@@ -1760,7 +1760,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         DI_prof_exp = conv_st_prof_tab(None,None,None,fixed_args,args_exp,DI_prof_exp,fixed_args['FWHM_inst'])
                         
                         #Set negative flux values to null
-                        DI_prof_exp[DI_prof_exp] = 0.
+                        DI_prof_exp[DI_prof_exp<0.] = 0.
 
                         #Define number of photoelectrons extracted during the exposure
                         #   - the model is a density of photoelectrons per unit of time, with continuum set to the input mean flux density

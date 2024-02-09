@@ -3,18 +3,18 @@
 
 import numpy as np
 import os as os_system
-from utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz,air_index,gen_specdopshift
+from ANTARESS_general.utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz,air_index,gen_specdopshift
 from lmfit import Parameters
 from copy import deepcopy
 from math import pi,cos,sin,sqrt
 from pathos.multiprocessing import Pool
-from constant_data import c_light
+from ANTARESS_general.constant_data import c_light
 import numpy.ma as ma
 import bindensity as bind
 from itertools import product as it_product
 from matplotlib.ticker import MultipleLocator,MaxNLocator
 import copy
-from minim_routines import fit_minimization,ln_prob_func_lmfit
+from ANTARESS_general.minim_routines import fit_minimization
 from astropy.io import fits
 import glob
 import imageio
@@ -3947,7 +3947,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         for par in p_guess:
                             if p_guess[par].vary:nfree+=1.
                         fixed_args['idx_fit'] = np.ones(npts_fit,dtype=bool)
-                        result_loc,merit,p_best = fit_minimization(ln_prob_func_lmfit,p_guess,np.zeros(npts_fit),val_obs[idx_fit_loc],np.array([err_disp**2.]),fit_pol_sin,fixed_args=fixed_args)
+                        result_loc,merit,p_best = fit_minimization(p_guess,np.zeros(npts_fit),val_obs[idx_fit_loc],np.array([err_disp**2.]),fit_pol_sin,fixed_args=fixed_args)
                        
                         #Best fit    
                         p_obs = fit_pol_sin(p_best,np.zeros(npts_fit),args=fixed_args) 
@@ -10620,7 +10620,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 # col_pl = plot_settings[key_plot]['col_orb'][ipl]
                 # alph_pl = 0.8
                 plt.fill((x_pl_plot+RpRs*np.cos(2*pi*np.arange(101)/100.)),(y_pl_plot+RpRs*np.sin(2*pi*np.arange(101)/100.)),col_pl,zorder=40+2*n_pl+1,lw = 0,alpha=alph_pl)         
-                ax1.add_artist(plt.Circle((x_pl_plot,y_pl_plot),RpRs,color=plot_settings[key_plot]['col_orb'][ipl],fill=False,lw=1,zorder=40+2*n_pl+1)   )
+                ax1.add_artist(plt.Circle((x_pl_plot,y_pl_plot),RpRs,color=plot_options[key_plot]['col_orb'][ipl],fill=False,lw=1,zorder=40+2*n_pl+1)   )
                         
                 #Overlaying planet grid cell boundaries
                 if plot_options[key_plot]['pl_grid_overlay']:       
@@ -10828,7 +10828,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #-------------------------------------------------------
             #Spotted cells 
             #-------------------------------------------------------
-            if mock_dic['use_spots']:    #Samson: plotting spots should not depend on the use of mock_dic
+            if (1==0) and mock_dic['use_spots']:    #Samson: plotting spots should not depend on the use of mock_dic
                 #Retrieve spot parameters defined by the user in plot_settings, if they are provided.
                 if len(plot_options[key_plot]['stellar_spot'])>0:
                     # Initialize params to use the retrieve_spots_prop_from_param function.
@@ -10925,7 +10925,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             elif plot_options[key_plot]['disk_color']=='F':
                 val_disk=Fsurf_grid_star[:,iband]  
                 
-                if mock_dic['use_spots'] and not plot_options[key_plot]['spot_overlap'] and plot_options[key_plot]['t_BJD'] is not None:
+                if (1==0) and mock_dic['use_spots'] and not plot_options[key_plot]['spot_overlap'] and plot_options[key_plot]['t_BJD'] is not None:
                     val_disk = Flux_for_nonredundant_spot_plotting
                 
                 # cmap = plt.get_cmap('GnBu_r')
@@ -10954,7 +10954,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 max_f=np.nanmax(Fsurf_grid_star[:,iband])
                 color_f=cmap_f( (min_col+ (Fsurf_grid_star[:,iband]-min_f)*(max_col-min_col)/ (max_f-min_f)) )
 
-                if mock_dic['use_spots'] and not plot_options[key_plot]['spot_overlap'] and plot_options[key_plot]['t_BJD'] is not None:
+                if (1==0) and mock_dic['use_spots'] and not plot_options[key_plot]['spot_overlap'] and plot_options[key_plot]['t_BJD'] is not None:
                     min_f=np.nanmin(Flux_for_nonredundant_spot_plotting)
                     max_f=np.nanmax(Flux_for_nonredundant_spot_plotting)
                     color_f=cmap_f( (min_col+ (Flux_for_nonredundant_spot_plotting-min_f)*(max_col-min_col)/ (max_f-min_f)) )
@@ -10974,9 +10974,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Equi-radial velocities
             if (plot_options[key_plot]['n_equi'] is not None) and (plot_options[key_plot]['conf_system']=='sky_ste'): 
                 
-                #Range of RV from -veq to veq are discretized with 'n_equi' lines
-                dequiRV=2.*star_params['veq']/plot_options[key_plot]['n_equi']
-                equiRV_range=-star_params['veq']+0.5*dequiRV+dequiRV*np.arange(plot_options[key_plot]['n_equi'])
+                #Range of RV from -veq sin(istar) to veq sin(istar) are discretized with 'n_equi' lines
+                dequiRV=2.*star_params['vsini']/plot_options[key_plot]['n_equi']
+                equiRV_range=-star_params['vsini']+0.5*dequiRV+dequiRV*np.arange(plot_options[key_plot]['n_equi'])
                         
                 #Unique vertical cell coordinates
                 y_st_sky_grid_unique=np.unique(coord_grid['y_st_sky'])
@@ -11059,12 +11059,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             plt.close()
             
             #Store image for GIF generation
-            if images_to_make_GIF is not None:images_to_make_GIF.append(imageio.v2.imread(filename))
+            if images_to_make_GIF is not None:images_to_make_GIF.append(imageio.imread(filename))
 
         ### End of loop on plotted timesteps    
 
         #Produce and store the GIF.
-        if images_to_make_GIF is not None:imageio.mimsave(path_loc+'System.gif', images_to_make_GIF,duration=(1000 * 1/plot_options[key_plot]['fps']))
+        if images_to_make_GIF is not None:imageio.mimsave(path_loc+'System.gif', images_to_make_GIF,fps=plot_options[key_plot]['fps'])
 
 
 

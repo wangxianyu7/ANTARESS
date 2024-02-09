@@ -1,14 +1,14 @@
 import numpy as np
-from utils import stop,dataload_npz,datasave_npz,MAIN_multithread,np_where1D,init_parallel_func,gen_specdopshift,check_data
 from copy import deepcopy
 import bindensity as bind
 from scipy.interpolate import interp1d
-from constant_data import c_light
 from pathos.multiprocessing import Pool
+from ANTARESS_general.constant_data import c_light
 from ANTARESS_conversions.ANTARESS_binning import pre_calc_bin_prof,weights_bin_prof
 from ANTARESS_grids.ANTARESS_coord import excl_plrange
 from ANTARESS_process.ANTARESS_data_process import calc_Intr_mean_cont
 from ANTARESS_corrections.ANTARESS_detrend import corr_length_determination
+from ANTARESS_general.utils import stop,dataload_npz,datasave_npz,MAIN_multithread,np_where1D,init_parallel_func,gen_specdopshift,check_data
 
 
 def init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,mode,dir_save,data_dic):

@@ -7,6 +7,7 @@ Created on Thu Oct 19 22:39:27 2023
 """
 from copy import deepcopy
 import numpy as np
+import os as os_system
 
 '''
 Generic functions
@@ -14,27 +15,29 @@ Generic functions
 def init(nbook_type):
     input_nbook = {
         'settings' : {'gen_dic':{'data_dir_list':{}},
-                      'data_dic':{'DI':{'sysvel':{}}},
                       'mock_dic':{'visit_def':{},'sysvel':{},'intr_prof':{},'flux_cont':{},'set_err':{}},
+                      'data_dic':{'DI':{'sysvel':{}},
+                                  'Intr':{}},
+                      'glob_fit_dic':{'IntrProp':{},'IntrProf':{}},
                       'plot_dic':{}
                      },
-        'system' : {},    
-        'par' : {},
-        'plots' : {}}
-    
-    #Plot path
-    if nbook_type=='mock':
-        input_nbook['plot_path'] = '/Users/bourrier/Travaux/ANTARESS/Ongoing/Valinor_Plots/'
+        'system' : {},        #notebook inputs related to system properties
+        'par' : {},           #notebook inputs related to processing and analysis
+        'plots' : {}}         #notebook inputs related to plots
 
     return input_nbook
 
 def init_star(input_nbook):
     input_nbook['settings']['gen_dic']['star_name'] = input_nbook['par']['star_name']
+    if 'vsini' not in input_nbook['par']:vsini=1.
+    else:vsini = input_nbook['par']['vsini']
+    if 'istar' not in input_nbook['par']:istar=90.
+    else:istar = input_nbook['par']['istar']
     input_nbook['system'][input_nbook['par']['star_name']]={  
             'star':{
                 'Rstar':input_nbook['par']['Rs'],
-                'veq':input_nbook['par']['vsini'],
-                'istar':90, 
+                'veq':vsini,
+                'istar':istar, 
                 }}
     input_nbook['settings']['data_dic']['DI']['system_prop']={'achrom':{'LD':['quadratic'],'LD_u1' : [input_nbook['par']['ld_u1']],'LD_u2' : [input_nbook['par']['ld_u2']]}}
     return None   
@@ -51,10 +54,16 @@ def init_pl(input_nbook,pl_type):
         input_nbook['par']['main_pl'] = deepcopy(input_nbook['par']['planet_name'])
         input_nbook['settings']['gen_dic']['transit_pl']={input_nbook['par']['main_pl']:{}}
         input_nbook['system'][input_nbook['par']['star_name']][input_nbook['par']['planet_name']]['inclination']=input_nbook['par']['incl'] 
-        input_nbook['system'][input_nbook['par']['star_name']][input_nbook['par']['planet_name']]['lambda_proj']=input_nbook['par']['lambda'] 
+        if 'lambda' not in input_nbook['par']:lambda_pl=0.
+        else:lambda_pl = input_nbook['par']['lambda']        
+        input_nbook['system'][input_nbook['par']['star_name']][input_nbook['par']['planet_name']]['lambda_proj']=lambda_pl
         input_nbook['system'][input_nbook['par']['star_name']][input_nbook['par']['planet_name']]['aRs']=input_nbook['par']['aRs'] 
         input_nbook['settings']['data_dic']['DI']['system_prop']['achrom'][input_nbook['par']['planet_name']]=[input_nbook['par']['RpRs']]
     
+        #Paths
+        input_nbook['antaress_path'] = os_system.path.dirname(__file__).split('Notebooks')[0]
+        input_nbook['plot_path'] = input_nbook['antaress_path']+'/Ongoing/'+input_nbook['par']['main_pl']+'_Plots/'
+
     return None     
     
 def add_vis(input_nbook,mock=False):
@@ -63,11 +72,13 @@ def add_vis(input_nbook,mock=False):
     if inst not in input_nbook['settings']['gen_dic']['transit_pl'][input_nbook['par']['main_pl']]:
         input_nbook['settings']['gen_dic']['transit_pl'][input_nbook['par']['main_pl']][inst]=[]
     input_nbook['settings']['gen_dic']['transit_pl'][input_nbook['par']['main_pl']][inst]+=[vis]
+    
+    #Generating mock dataset
     if mock:
         input_nbook['settings']['gen_dic']['mock_data']=True
         if inst not in input_nbook['settings']['mock_dic']['visit_def']:
             input_nbook['settings']['mock_dic']['visit_def'][inst]={}
-        input_nbook['settings']['mock_dic']['visit_def'][inst] = { vis:{'exp_range':np.array(input_nbook['par']['range']),'nexp':int(input_nbook['par']['nexp'])}}
+        input_nbook['settings']['mock_dic']['visit_def'][inst][vis]={'exp_range':np.array(input_nbook['par']['range']),'nexp':int(input_nbook['par']['nexp'])}
         
         dbjd =  (input_nbook['settings']['mock_dic']['visit_def'][inst][vis]['exp_range'][1]-input_nbook['settings']['mock_dic']['visit_def'][inst][vis]['exp_range'][0])/input_nbook['settings']['mock_dic']['visit_def'][inst][vis]['nexp']
         n_in_visit = int((input_nbook['settings']['mock_dic']['visit_def'][inst][vis]['exp_range'][1]-input_nbook['settings']['mock_dic']['visit_def'][inst][vis]['exp_range'][0])/dbjd)
@@ -75,10 +86,23 @@ def add_vis(input_nbook,mock=False):
         bjd_exp_high = bjd_exp_low+dbjd      
         bjd_exp_all = 0.5*(bjd_exp_low+bjd_exp_high)
         input_nbook['par']['t_BJD'] = {'inst':inst,'vis':vis,'t':bjd_exp_all}
+    
+    #Processing observed dataset
     else:
-        if inst not in input_nbook['settings']['gen_dic']['data_dir_list']:
-            input_nbook['settings']['gen_dic']['data_dir_list'][inst]={}
-        input_nbook['settings']['gen_dic']['data_dir_list'][inst][vis] = input_nbook['par']['data_dir']
+        
+        #Mock dataset
+        if input_nbook['par']['data_dir']=='mock':
+            input_nbook['settings']['gen_dic']['calc_proc_data']=False
+            input_nbook['settings']['gen_dic']['mock_data']=True
+            if inst not in input_nbook['settings']['mock_dic']['visit_def']:
+                input_nbook['settings']['mock_dic']['visit_def'][inst]={}
+            input_nbook['settings']['mock_dic']['visit_def'][inst][vis]=None
+
+        #Observed dataset
+        else:
+            if inst not in input_nbook['settings']['gen_dic']['data_dir_list']:
+                input_nbook['settings']['gen_dic']['data_dir_list'][inst]={}
+            input_nbook['settings']['gen_dic']['data_dir_list'][inst][vis] = input_nbook['par']['data_dir']
 
     return None
 
@@ -93,8 +117,29 @@ def set_sysvel(input_nbook,mock=False):
         input_nbook['settings']['data_dic']['DI']['sysvel'][inst][vis] = input_nbook['par']['gamma']
     return None
 
-def ana_prof(input_nbook):
-    input_nbook['settings']['gen_dic']['fit_DI']=True
+def ana_prof(input_nbook,data_type,fit_mode = 'chi2'):
+    input_nbook['settings']['gen_dic']['fit_'+data_type]=True
+    
+    #Retrieval mode
+    if 'calc_fit_'+data_type in input_nbook['par']:input_nbook['settings']['gen_dic']['calc_fit_'+data_type] = input_nbook['par']['calc_fit_'+data_type]
+    
+    if ('fit_mode' in input_nbook['par']):
+        input_nbook['settings']['data_dic'][data_type]['fit_mod']=deepcopy(input_nbook['par']['fit_mode'])
+        input_nbook['par'].pop('fit_mode')
+        input_nbook['settings']['data_dic'][data_type]['progress']=False
+    if 'run_mode' in input_nbook['par']:
+        input_nbook['settings']['data_dic'][data_type]['mcmc_run_mode']=deepcopy(input_nbook['par']['run_mode'])   
+        if input_nbook['par']['run_mode']=='reuse':
+            input_nbook['settings']['data_dic'][data_type]['save_MCMC_chains']=''
+            input_nbook['settings']['data_dic'][data_type]['save_MCMC_corner']=''
+        input_nbook['par'].pop('run_mode')        
+        
+    #Manual priors
+    if ('priors' in input_nbook['par']):
+        input_nbook['settings']['data_dic'][data_type]['line_fit_priors']=deepcopy(input_nbook['par']['priors'])
+        for key in input_nbook['settings']['data_dic'][data_type]['line_fit_priors']:
+            input_nbook['settings']['data_dic'][data_type]['line_fit_priors'][key]['mod'] = 'uf'
+        input_nbook['par'].pop('priors')        
     return None
 
 def align_prof(input_nbook):
@@ -107,10 +152,94 @@ def flux_sc(input_nbook,mock=False):
         input_nbook['settings']['data_dic']['DI']['rescale_DI'] = False 
     return None
 
+def DImast_weight(input_nbook):
+    input_nbook['settings']['gen_dic']['DImast_weight']=True
+    return None
+
+def extract_res(input_nbook):
+    input_nbook['settings']['gen_dic']['res_data']=True
+    return None
+
 def extract_intr(input_nbook):
     input_nbook['settings']['gen_dic']['intr_data']=True
     return None
 
+def ana_jointprop(input_nbook,data_type,fit_mode = 'chi2'):
+    ana_jointcomm(input_nbook,data_type,'Prop')    
+    return None
+
+def ana_jointprof(input_nbook,data_type,fit_mode = 'chi2'):
+    ana_jointcomm(input_nbook,data_type,'Prof')  
+    return None
+
+def ana_jointcomm(input_nbook,data_type,ana_type):
+    input_nbook['settings']['gen_dic']['fit_'+data_type+ana_type]=True
+    input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['idx_in_fit'] = {input_nbook['par']['instrument']:{input_nbook['par']['night']:deepcopy(input_nbook['par']['idx_in_fit'])}}  
+    
+    #Default fitted properties
+    if (ana_type=='Prop'):
+        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'] = {
+            'rv':{},
+            'ctrst':{},
+            'FWHM':{}}
+        
+        for prop in input_nbook['par']['mod_prop']:
+            bd_prop = np.array(input_nbook['par']['mod_prop'][prop])
+
+            #RV model
+            if prop=='veq':
+                prop_main = 'rv'
+                prop_name = 'veq'
+            elif prop=='lambda':            
+                prop_main = 'rv'
+                prop_name = 'lambda_rad__pl'+input_nbook['par']['main_pl']   
+                bd_prop = np.array(input_nbook['par']['mod_prop']['lambda'])*np.pi/180.
+            elif prop in ['c1_CB','c2_CB']:              
+                prop_main = 'rv'
+                prop_name = prop           
+            elif prop=='alpha':
+                prop_main = 'rv'
+                prop_name = 'alpha_rot'
+            elif prop=='istar':
+                prop_main = 'rv'
+                prop_name = 'cos_istar'
+                bd_prop = np.cos(np.array(input_nbook['par']['mod_prop']['istar'])*np.pi/180.)                
+
+            #Line shape            
+            elif 'contrast' in prop:
+                ideg = int(prop.split('contrast_')[1])
+                prop_main = 'ctrst'
+                prop_name='ctrst_ord'+str(ideg)+'__IS__VS_'
+            elif 'FWHM' in prop:
+                ideg = int(prop.split('FWHM_')[1]) 
+                prop_main='FWHM'
+                prop_name='FWHM_ord'+str(ideg)+'__IS__VS_'
+            
+            mean_prop = np.mean(bd_prop)
+            input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'][prop_main][prop_name]={'vary':True,'guess':mean_prop,'bd':bd_prop}
+            
+    #Manual priors
+    if ('priors' in input_nbook['par']):
+        input_nbook['settings']['glob_fit_dic']['IntrProp']['priors']=deepcopy(input_nbook['par']['priors'])
+        for key in input_nbook['settings']['glob_fit_dic']['IntrProp']['priors']:
+            input_nbook['settings']['glob_fit_dic']['IntrProp']['priors'][key]['mod'] = 'uf'   
+        input_nbook['par'].pop('priors')
+
+    if ('fit_mode' in input_nbook['par']):
+        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_mod']=deepcopy(input_nbook['par']['fit_mode'])
+        input_nbook['par'].pop('fit_mode')
+        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['progress']=False
+    else:input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_mod']='chi2'
+    
+    if ('mcmc_set' in input_nbook['par']):
+        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mcmc_set']=deepcopy(input_nbook['par']['mcmc_set'])
+        input_nbook['par'].pop('mcmc_set')    
+        
+    return None
+
+def loc_prof_corr(input_nbook):
+    input_nbook['settings']['gen_dic']['loc_data_corr']=True
+    return None
 
 
 
@@ -122,8 +251,23 @@ def plot_system(input_nbook):
     input_nbook['plots']['system_view']={'t_BJD':input_nbook['par']['t_BJD'],'GIF_generation':True}
     return None
 
-def plot_prop(input_nbook):
-    input_nbook['settings']['plot_dic']['prop_raw'] = 'png' 
+def plot_prop(input_nbook,data_type):
+    input_nbook['settings']['plot_dic']['prop_'+data_type] = 'png' 
+    if 'prop' in input_nbook['par']: 
+        input_nbook['par']['prop'] = np.array(input_nbook['par']['prop'])
+        if 'contrast' in input_nbook['par']['prop']:input_nbook['par']['prop'][input_nbook['par']['prop']=='contrast']= 'ctrst'
+        input_nbook['plots']['prop_'+data_type+'_ordin'] = deepcopy(input_nbook['par']['prop'])
+        input_nbook['par'].pop('prop') 
+        
+    if (data_type=='Intr') and ('model' in input_nbook['par']):
+        prop_path = input_nbook['antaress_path']+'/Ongoing/'+input_nbook['par']['main_pl']+'_Saved_data/Joined_fits/'
+        if   input_nbook['par']['model']=='from_prop':prop_path+='/IntrProp/'
+        elif input_nbook['par']['model']=='from_prof':prop_path+='/IntrProf/'        
+        prop_path+=input_nbook['settings']['glob_fit_dic'][data_type+'Prop']['fit_mod']+'/'  
+        for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
+            input_nbook['plots']['prop_Intr_'+plot_prop]={
+                'IntrProp_path' : prop_path ,
+                'theo_HR_prop' : True}
     return None
 
 def plot_prof(input_nbook,data_type):
@@ -131,7 +275,11 @@ def plot_prof(input_nbook,data_type):
     input_nbook['plots'][data_type]={'GIF_generation':True,'shade_cont':True,'plot_line_model':True,'plot_prop':False} 
     if 'x_range' in input_nbook['par']:input_nbook['plots'][data_type]['x_range'] = deepcopy(input_nbook['par']['x_range'])
     if 'y_range' in input_nbook['par']:input_nbook['plots'][data_type]['y_range'] = deepcopy(input_nbook['par']['y_range'])
-    if data_type=='Intr_prof':input_nbook['plots'][data_type]['norm_prof'] = True
+    if data_type=='Intr_prof':
+        input_nbook['plots'][data_type]['norm_prof'] = True
+        if 'fit_type' in input_nbook['par']:
+            input_nbook['plots'][data_type]['fit_type'] = deepcopy(input_nbook['par']['fit_type'])
+            input_nbook['par'].pop('fit_type')  
     return None
 
 def plot_map(input_nbook,data_type):

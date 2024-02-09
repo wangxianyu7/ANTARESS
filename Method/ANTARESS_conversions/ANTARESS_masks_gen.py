@@ -1,9 +1,9 @@
 import numpy as np
-from utils import stop,np_where1D,dataload_npz,datasave_npz,air_index,gen_specdopshift
 from astropy.io import fits 
 from copy import deepcopy
 import os as os_system 
 import bindensity as bind
+from ANTARESS_general.utils import stop,np_where1D,dataload_npz,datasave_npz,air_index,gen_specdopshift
 
 
 

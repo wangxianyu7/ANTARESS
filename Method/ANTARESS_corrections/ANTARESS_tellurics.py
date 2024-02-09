@@ -1,12 +1,12 @@
 import numpy as np
 from lmfit import Parameters
-from utils import stop,np_where1D,npint,dataload_npz,MAIN_multithread,air_index,gen_specdopshift,def_edge_tab,check_data
+from ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,MAIN_multithread,air_index,gen_specdopshift,def_edge_tab,check_data
 from copy import deepcopy
 import bindensity as bind
 from astropy.io import fits
-from minim_routines import fit_minimization,ln_prob_func_lmfit
+from ANTARESS_general.minim_routines import fit_minimization
 from scipy import special
-from constant_data import N_avo,c_light_m,k_boltz,h_planck
+from ANTARESS_general.constant_data import N_avo,c_light_m,k_boltz,h_planck
 import scipy.linalg
 from ANTARESS_conversions.ANTARESS_conv import new_compute_CCF,check_CCF_mask_lines
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,calc_FWHM_inst,return_resolv
@@ -379,7 +379,7 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
         #Fit minimization for current molecule, through comparison between telluric CCF from data and model
         #    - unfitted pixels are removed from the chi2 table passed to residual() , so that they are then summed over the full tables
         fixed_args['idx_fit'] = np.ones(len(fixed_args['idx_mod']),dtype=bool)   
-        param_molecules[molec] = fit_minimization(ln_prob_func_lmfit,params,fixed_args['velccf'][fixed_args['idx_mod']],fixed_args['y_val'][fixed_args['idx_mod']],np.array([fixed_args['cov_val'][0,fixed_args['idx_mod']]]),fixed_args['fit_func'],verbose=False,fixed_args=fixed_args)[2]
+        param_molecules[molec] = fit_minimization(params,fixed_args['velccf'][fixed_args['idx_mod']],fixed_args['y_val'][fixed_args['idx_mod']],np.array([fixed_args['cov_val'][0,fixed_args['idx_mod']]]),fixed_args['fit_func'],verbose=False,fixed_args=fixed_args)[2]
                 
         #Store results for plotting
         if (tell_prop!=''):

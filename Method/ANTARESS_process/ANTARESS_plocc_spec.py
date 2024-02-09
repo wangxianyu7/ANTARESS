@@ -1,5 +1,5 @@
 import numpy as np
-from utils import stop,dataload_npz,datasave_npz,closest_arr,np_where1D,gen_specdopshift,check_data
+from ANTARESS_general.utils import stop,dataload_npz,datasave_npz,closest_arr,np_where1D,gen_specdopshift,check_data
 from scipy.interpolate import griddata
 from copy import deepcopy
 import bindensity as bind
@@ -258,7 +258,7 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
     #Retrieving selected model properties
     if ('IntrProf_prop_path' not in opt_dic):
         print('         Trying to retrieve chi2 fit by default')
-        opt_dic['IntrProf_prop_path']={inst:{vis:gen_dic['save_data_dir']+'/Joined_fits/Intr_prof/chi2/Fit_results'}}
+        opt_dic['IntrProf_prop_path']={inst:{vis:gen_dic['save_data_dir']+'/Joined_fits/IntrProf/chi2/Fit_results'}}
     data_prop = dataload_npz(opt_dic['IntrProf_prop_path'][inst][vis])
     params=data_prop['p_final'] 
     fixed_args={  

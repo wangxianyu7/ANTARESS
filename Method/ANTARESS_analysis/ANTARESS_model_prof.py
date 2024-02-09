@@ -1,11 +1,11 @@
 import numpy as np
-from utils import closest,init_parallel_func,np_where1D,stop
 from scipy import special
 from copy import deepcopy
 import lmfit
 import bindensity as bind
 from pathos.multiprocessing import Pool
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,conv_st_prof_tab
+from ANTARESS_general.utils import closest,init_parallel_func,np_where1D,stop
 
 ##################################################################################################    
 #%%% Model line profiles
