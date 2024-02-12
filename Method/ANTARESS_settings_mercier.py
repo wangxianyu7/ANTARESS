@@ -2882,6 +2882,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Intensity settings for the spots
     if gen_dic['star_name']=='AUMic':
+        data_dic['DI']['spots_prop'] = {}
         data_dic['DI']['spots_prop']={
                 'achrom':{
                     'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot1'] * np.pi/180],#--base
@@ -4639,7 +4640,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','lambda_deg','istar_deg_conv','fold_istar','psi']
     # glob_fit_dic['IntrProf']['modif_list'] = []
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg', 'Peq_veq']
+        # glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg', 'Peq_veq']
+        glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg']
     # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','Peq_vsini'] 
     # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini'] 
     # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini','psi_lambda'] 
@@ -4668,7 +4670,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Walkers
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':24,'nsteps':1000,'nburn':250}
+        glob_fit_dic['IntrProf']['mcmc_set']={'nwalkers':24,'nsteps':10,'nburn':5}
 
     #Complex priors        
          

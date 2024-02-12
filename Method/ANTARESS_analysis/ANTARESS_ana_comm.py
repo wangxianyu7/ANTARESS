@@ -1621,7 +1621,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     #Model initialization
     #    - must be done after the final parameter initialization
     if (model_choice=='custom') and (prof_type=='DI'):
-        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic[inst]['system_prop'],theo_dic,star_params,p_start)
+        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic[inst]['system_prop'],{},theo_dic,star_params,p_start)
         
         #Flux grid will be updated within custom_DI_prof() if args['fit'] and args['var_star_grid']
         if (not fixed_args['fit']) or (not fixed_args['var_star_grid']):
@@ -1744,7 +1744,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     
     #Custom model
     if (model_choice=='custom') and (prof_type=='DI'):
-        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic[inst]['system_prop'],theo_dic,star_params,p_final)
+        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic[inst]['system_prop'],{},theo_dic,star_params,p_final)
         fixed_args['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],fixed_args['args_exp'],fixed_args['args_exp']['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
             
     #Store final model
