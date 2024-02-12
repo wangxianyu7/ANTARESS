@@ -3,72 +3,44 @@ Code documentation
 
 .. toctree::
    :maxdepth: 2
-   :caption: General:
 
-   ANTARESS_launcher
-   ANTARESS_settings
-   ANTARESS_systems
-   constant_data
-   minim_routines
-   utils_plots
-   utils
+   documentation_general
 
 .. toctree::
    :maxdepth: 2
-   :caption: Corrections:
-
-   ANTARESS_sp_reduc
-   ANTARESS_tellurics
-   ANTARESS_flux_balance
-   ANTARESS_peaks
-   ANTARESS_interferences
-   ANTARESS_detrend
-   ANTARESS_calib
+   
+   documentation_launch
+ 
+.. toctree::
+   :maxdepth: 2
+   
+   documentation_corrections
 
 .. toctree::
    :maxdepth: 2
-   :caption: Processing:
-
-   ANTARESS_main
-   ANTARESS_data_process
-   ANTARESS_data_align		
-   ANTARESS_plocc_spec
+   
+   documentation_processing
 
 .. toctree::
    :maxdepth: 2
-   :caption: Analysis:
 
-   ANTARESS_ana_comm
-   ANTARESS_model_prof
-   ANTARESS_joined_atm
-   ANTARESS_joined_star
-   ANTARESS_inst_resp
+   documentation_analysis
 
 .. toctree::
    :maxdepth: 2
    :caption: Grids:
    
-   ANTARESS_coord
-   ANTARESS_star_grid
-   ANTARESS_plocc_grid
-   ANTARESS_spots
-   ANTARESS_prof_grid
+   documentation_grids
 
 .. toctree::
    :maxdepth: 2
-   :caption: Conversions:
-   
-   ANTARESS_masks_gen
-   ANTARESS_conv
-   ANTARESS_binning
-   ANTARESS_sp_cont
+
+   documentation_conversions
 
 .. toctree::
    :maxdepth: 2
-   :caption: Plots:
 
-   ANTARESS_plot_settings
-   ANTARESS_plots_all
+   documentation_plots
 
 Indices and tables
 ==================

@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.interpolate import interp1d
 from copy import deepcopy
-from utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab
+from ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab
 import astropy.convolution.convolve as astro_conv
 import bindensity as bind
 # from pysme import sme as SME
@@ -122,22 +122,22 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop,theo_dic
     #------------------------------------------------------------------------
     stargrid_prop = ['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T']
     
-    #Forward mode
-    #    - only if properties differ from default ones
-    if (not fixed_args['fit']):
-        up_grid = False
-        for par in params:
-            if ((par in stargrid_prop) and (params[par] != star_params[par])) or ((par in ['LD_u1','LD_u2','LD_u3','LD_u4']) and (params[par] != system_prop['achrom'][par][0])):up_grid = True
-        if up_grid:up_model_star(fixed_args,params)
-
     #Fit mode
     #    - grid will be updated in custom_DI_prof() if one of the properties vary
-    else:
+    if fixed_args['fit']:
         
         #Update condition
         fixed_args['var_star_grid']=False
         for par in params:
-            if ((par in stargrid_prop) and (params[par] != star_params[par])) or ((par in ['LD_u1','LD_u2','LD_u3','LD_u4']) and (params[par] != system_prop['achrom'][par][0])):fixed_args['var_star_grid']=True
+            if ((par in stargrid_prop) and (params[par] != star_params[par])) or ((par in ['LD_u1','LD_u2','LD_u3','LD_u4']) and (params[par] != system_prop['achrom'][par][0])):fixed_args['var_star_grid']=True    
+    
+    #Forward mode
+    #    - only if properties differ from default ones
+    else:
+        up_grid = False
+        for par in params:
+            if ((par in stargrid_prop) and (params[par] != star_params[par])) or ((par in ['LD_u1','LD_u2','LD_u3','LD_u4']) and (params[par] != system_prop['achrom'][par][0])):up_grid = True
+        if up_grid:up_model_star(fixed_args,params)
 
     #------------------------------------------------------------------------
     #Intrinsic line profile grid
@@ -282,7 +282,7 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
     params.add_many(('rv',        RV_guess_tab[0],                                  False,    RV_guess_tab[1],  RV_guess_tab[2],    None)) 
     for ideg in range(1,5):params.add_many(('c'+str(ideg)+'_pol',          0.,              False,    None,None,None)) 
 
-    return fixed_args,params    
+    return params    
 
 
 

@@ -1,11 +1,11 @@
 import numpy as np
-from utils import dataload_npz,np_where1D,stop,init_parallel_func,check_data
+from ANTARESS_general.utils import dataload_npz,np_where1D,stop,init_parallel_func,check_data
 import lmfit
 from lmfit import Parameters
 from scipy.interpolate import interp1d
 from scipy import stats
 from copy import deepcopy
-from minim_routines import fit_minimization,ln_prob_func_lmfit
+from ANTARESS_general.minim_routines import fit_minimization
 from pathos.multiprocessing import Pool
 from numpy.polynomial import Polynomial
 from ANTARESS_conversions.ANTARESS_binning import sub_calc_bins,sub_def_bins
@@ -318,7 +318,7 @@ def model_gain(iexp_glob_groups,iexp_gain_groups,minmax_def,plot_dic,nord,gdet_v
                     if (np.sum(cond_check)>nfree_gainfit):
                         var_fit = bin_ord_dic['gdet'][cond_check]
                         fixed_args['idx_fit'] = np.ones(np.sum(cond_check),dtype=bool)
-                        _,merit,_ = fit_minimization(ln_prob_func_lmfit,p_start,bin_ord_dic['cen_bins'][cond_check],bin_ord_dic['gdet'][cond_check],np.array([var_fit]),cal_piecewise_func,verbose=False,fixed_args=fixed_args)  
+                        _,merit,_ = fit_minimization(p_start,bin_ord_dic['cen_bins'][cond_check],bin_ord_dic['gdet'][cond_check],np.array([var_fit]),cal_piecewise_func,verbose=False,fixed_args=fixed_args)  
                         res_gdet = bin_ord_dic['gdet'][cond_check] - merit['fit']
                         cond_fit[cond_check] = np.abs(res_gdet)<=gcal_thresh['outliers']*np.std(res_gdet)
     
@@ -328,7 +328,7 @@ def model_gain(iexp_glob_groups,iexp_gain_groups,minmax_def,plot_dic,nord,gdet_v
                             fit_done = True
                             var_fit = bin_ord_dic['gdet'][cond_fit]*merit['chi2r'] 
                             fixed_args['idx_fit'] = np.ones(np.sum(cond_fit),dtype=bool)
-                            _,merit,p_best = fit_minimization(ln_prob_func_lmfit,p_start,bin_ord_dic['cen_bins'][cond_fit],bin_ord_dic['gdet'][cond_fit],np.array([var_fit]),cal_piecewise_func,verbose=False,fixed_args=fixed_args)                                              
+                            _,merit,p_best = fit_minimization(p_start,bin_ord_dic['cen_bins'][cond_fit],bin_ord_dic['gdet'][cond_fit],np.array([var_fit]),cal_piecewise_func,verbose=False,fixed_args=fixed_args)                                              
                             data_gain['gdet_inputs'][iord] = {'par':deepcopy(p_best),'args':deepcopy(fixed_args)}
     
                 #Fit could not be performed

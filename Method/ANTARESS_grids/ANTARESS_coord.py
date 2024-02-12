@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.optimize import newton
-from utils import np_where1D,npint,stop,closest
+from ANTARESS_general.utils import np_where1D,npint,stop,closest
 from copy import deepcopy
-from constant_data import G_usi,Mjup,Msun
+from ANTARESS_general.constant_data import G_usi,Mjup,Msun
 
 ##################################################################################################    
 #%% Coordinates
@@ -893,8 +893,8 @@ def calc_tr_contacts(RpRs,pl_params,stend_ph,star_params):
         w_fth=closest(Dprojplanet[w_aft],(1.+RpRs))
     
     #Contacts
-    if w_bef[w_first]==0:stop('Decrease start phase for contact determination')
-    if w_aft[w_fth]==n_pts_contacts:stop('Increase end phase for contact determination')
+    if w_bef[w_first]==0:stop('Start phase is too short for contact determination: increase "plot_dic["stend_ph"]"')
+    if w_aft[w_fth]==n_pts_contacts:stop('End phase is too short for contact determination: increase "plot_dic["stend_ph"]"')
     contact_phases[0]=ph_contacts[w_bef][w_first]      
     contact_phases[1]=ph_contacts[w_bef][w_scnd]     
     contact_phases[2]=ph_contacts[w_aft][w_thrd]     

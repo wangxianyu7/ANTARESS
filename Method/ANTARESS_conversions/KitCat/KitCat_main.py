@@ -16,8 +16,8 @@ import numpy              as     np
 import pandas             as     pd
 from   scipy.signal       import argrelextrema
 
-from utils import stop,np_where1D,dataload_npz,init_parallel_func,gen_specdopshift
-from constant_data import c_light,c_light_m
+from ANTARESS_general.utils import stop,np_where1D,dataload_npz,init_parallel_func,gen_specdopshift
+from ANTARESS_general.constant_data import c_light,c_light_m
 import bindensity as bind
 from copy import deepcopy
 from pathos.multiprocessing import Pool

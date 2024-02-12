@@ -1,14 +1,14 @@
 Installing ANTARESS
-=====================
+===================
 
 Latest stable release
------------------------
+---------------------
 
 ``ANTARESS`` will be available on the PyPI repository in the future. In the meantime, you can retrieve the code and install it following the instructions below.
 
 
 Current version
------------------------
+---------------
 
 ``ANTARESS`` is hosted at https://gitlab.unige.ch/bourrier/antaress.
 To download the repository containing the current version, you can use::
@@ -18,7 +18,7 @@ To download the repository containing the current version, you can use::
 This version is being developed and may not be stable.
 
 Manual installation
-------------
+-------------------
 
 You need to install the following packages to run ``ANTARESS``:
 
@@ -48,11 +48,11 @@ You need to install the following packages to run ``ANTARESS``:
 
           This installs Homebrew under `/usr/local/bin/brew` instead of the default for arm64 `/opt/homebrew/bin/brew`
 
-        - install gcc@9 (see `documentation <https://tenderlovemaking.com/2022/01/07/homebrew-rosetta-and-ruby.html>`_) by running::
+        - install `gcc@9  <https://tenderlovemaking.com/2022/01/07/homebrew-rosetta-and-ruby.html>`_ by running::
 
             $ arch -x86_64 /usr/local/bin/brew install gcc@9
 
-        - create a Conda environment to run under the intel x64_86 architecture (see `documentation <https://abpcomputing.web.cern.ch/guides/apple_silicon/>`_) and install ``PySME`` in this environment::   
+        - create a Conda environment to run under the `intel x64_86 architecture <https://abpcomputing.web.cern.ch/guides/apple_silicon/>`_ and install ``PySME`` in this environment::   
 
             CONDA_SUBDIR=osx-64 conda create -n envname python=3.11
 

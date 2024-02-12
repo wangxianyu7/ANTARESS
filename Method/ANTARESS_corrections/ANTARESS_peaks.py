@@ -1,5 +1,5 @@
 import numpy as np
-from utils import stop,np_where1D,init_parallel_func,dataload_npz,MAIN_multithread,gen_specdopshift,check_data
+from ANTARESS_general.utils import stop,np_where1D,init_parallel_func,dataload_npz,MAIN_multithread,gen_specdopshift,check_data
 from copy import deepcopy
 from PyAstronomy import pyasl
 import bindensity as bind

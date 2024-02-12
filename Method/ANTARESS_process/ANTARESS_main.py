@@ -1,11 +1,11 @@
 import numpy as np
-from utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data
+from ANTARESS_general.utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data
 from pathos.multiprocessing import cpu_count
 from copy import deepcopy
 import bindensity as bind
 from os import makedirs
 from os.path import exists as path_exist
-from constant_data import Rsun,Rjup,c_light,G_usi,Msun,AU_1
+from ANTARESS_general.constant_data import Rsun,Rjup,c_light,G_usi,Msun,AU_1
 import glob
 from astropy.io import fits
 from dace_query.spectroscopy import Spectroscopy

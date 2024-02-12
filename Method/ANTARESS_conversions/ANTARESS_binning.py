@@ -1,8 +1,8 @@
 import numpy as np
 import bindensity as bind
-from utils import stop,np_where1D,dataload_npz,default_func,check_data
+from ANTARESS_general.utils import stop,np_where1D,dataload_npz,default_func,check_data
 from copy import deepcopy
-from constant_data import c_light
+from ANTARESS_general.constant_data import c_light
 from ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase
 from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop
 

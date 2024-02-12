@@ -1,5 +1,5 @@
 import numpy as np
-from utils import np_where1D,dataload_npz,check_data
+from ANTARESS_general.utils import np_where1D,dataload_npz,check_data
 from copy import deepcopy
 from ANTARESS_corrections.ANTARESS_tellurics import corr_tell
 from ANTARESS_corrections.ANTARESS_flux_balance import def_Mstar,corr_Fbal,corr_Ftemp

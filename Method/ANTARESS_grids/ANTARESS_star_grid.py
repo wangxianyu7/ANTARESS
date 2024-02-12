@@ -1,7 +1,7 @@
 import numpy as np
 from itertools import product as it_product
-from utils import stop,planck
-from constant_data import G_usi,Msun
+from ANTARESS_general.utils import stop,planck
+from ANTARESS_general.constant_data import G_usi,Msun
 from ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate,frameconv_skystar_to_star
 
 

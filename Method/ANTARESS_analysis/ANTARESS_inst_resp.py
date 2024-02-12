@@ -1,7 +1,7 @@
 import numpy as np
-from utils import npint,stop,gen_specdopshift
+from ANTARESS_general.utils import npint,stop,gen_specdopshift
 import astropy.convolution.convolve as astro_conv
-from constant_data import c_light
+from ANTARESS_general.constant_data import c_light
 from copy import deepcopy
 import bindensity as bind
 

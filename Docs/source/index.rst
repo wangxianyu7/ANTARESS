@@ -1,8 +1,8 @@
 Advanced and Neat Techniques for the Accurate Retrieval of Exoplanetary and Stellar Spectra
-***********
+*******************************************************************************************
 
 About ANTARESS
-================
+==============
 
 The ``ANTARESS`` workflow, implemented as a Python-3 library, is a set of methods to process high-resolution spectroscopy datasets in a robust way and extract accurate exoplanetary and stellar spectra. While fast preliminary analysis can be run on order-merged 1D spectra and CCF, the workflow was optimally designed for extracted 2D echelle spectra. Input data from multiple instruments and epochs can be corrected for environmental and instrumental effects, processed homogeneously, and analyzed independently or jointly. 
 
@@ -16,7 +16,7 @@ Please cite:
     - TBD: if you use ANTARESS to extract and analyze spotted stellar spectra.
 
 Documentation
-============
+=============
 
 .. toctree::
    :maxdepth: 2

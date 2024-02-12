@@ -7,7 +7,7 @@ Created on Tue Jan  6 09:33:25 2015
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 import matplotlib.colors as colors
 import numpy as np
-from utils import stop
+from ANTARESS_general.utils import stop
 from copy import deepcopy
 
 
