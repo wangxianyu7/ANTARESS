@@ -6894,13 +6894,13 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # + 'FWHM_l2c': FWHM(lobe)/FWHM(core) of double gaussian components
         # + 'amp_l2c': contrast(lobe)/contrast(core) of double gaussian components
         plot_settings['prop_Intr_ordin']=['rv','rv_res','FWHM','ctrst']
-        plot_settings['prop_Intr_ordin']=['a_damp']        
+        plot_settings['prop_Intr_ordin']+=['a_damp']        
         # plot_settings['prop_Intr_ordin']=['rv','FWHM','ctrst']  
-        plot_settings['prop_Intr_ordin']=['ctrst']
+        # plot_settings['prop_Intr_ordin']=['ctrst']
         # plot_settings['prop_Intr_ordin']=['rv']
         # plot_settings['prop_Intr_ordin']=['FWHM']
         # plot_settings['prop_Intr_ordin']=['ctrst','FWHM']
-        plot_settings['prop_Intr_ordin']=['rv','rv_res']
+        # plot_settings['prop_Intr_ordin']=['rv','rv_res']
         # plot_settings['prop_Intr_ordin']=['rv_l2c','FWHM_l2c','amp_l2c'] 
         # plot_settings['prop_Intr_ordin']=['rv','true_FWHM','true_ctrst'] 
 
@@ -7341,9 +7341,11 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP76b_Saved_data/Joined_fits_save/IntrProf/CCF_from_IntrSpec/CONTCORR_CONTFIT/mcmc/mcmc_fg/'
 
             elif gen_dic['star_name']=='HD189733':
-                plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HD189733b_Saved_data/Joined_fits/IntrProp/mcmc/'   
+                # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HD189733b_Saved_data/Joined_fits/IntrProp/mcmc/'   
                 # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HD189733b_Saved_data/Joined_fits/IntrProp/chi2/'  
                 # plot_settings[key_plot]['IntrProp_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HD189733b_Saved_data/Joined_fits/IntrProp/' 
+                plot_settings[key_plot]['IntrProf_path']='/Users/bourrier/Travaux/ANTARESS/Ongoing/HD189733b_Saved_data/Joined_fits/IntrProf/mcmc/'  
+
 
             elif gen_dic['star_name']=='WASP69':
                 plot_settings[key_plot]['IntrProp_path']=None                   
@@ -7399,10 +7401,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['theo_obs_prof'] = False
     
                 #Plot high-resolution model from property fit
-                plot_settings[key_plot]['theo_HR_prop'] = True  #  & False
+                plot_settings[key_plot]['theo_HR_prop'] = True    & False
     
                 #Plot high-resolution model from profile fit
-                plot_settings[key_plot]['theo_HR_prof'] = True      & False
+                plot_settings[key_plot]['theo_HR_prof'] = True  #    & False
                 
                 #Plot high-resolution model from nominal values in ANTARESS_systems.py
                 plot_settings[key_plot]['theo_HR_nom'] = True  # &   False            
@@ -7502,11 +7504,11 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
                 #Plot residuals from high-resolution  model from property fit 
                 #    - overwrites the residuals calculated in the intrinsic profile analysis module using default system properties
-                plot_settings[key_plot]['theo_HR_prop'] = True  # & False
+                plot_settings[key_plot]['theo_HR_prop'] = True   & False
     
                 #Plot residuals from high-resolution model from profile fit 
                 #    - overwrites the residuals calculated in the intrinsic profile analysis module using default system properties
-                plot_settings[key_plot]['theo_HR_prof'] = True     & False            
+                plot_settings[key_plot]['theo_HR_prof'] = True  #   & False            
 
                 #Plot residuals from high-resolution model from nominal values in ANTARESS_systems.py
                 plot_settings[key_plot]['theo_HR_nom'] = True   &   False     
@@ -7538,7 +7540,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['theo_obs_prof'] = True & False
     
                 #Plot high-resolution model from property fit
-                plot_settings[key_plot]['theo_HR_prop'] = True # & False
+                plot_settings[key_plot]['theo_HR_prop'] = True  & False
     
                 #Plot high-resolution model from profile fit
                 plot_settings[key_plot]['theo_HR_prof'] = True #  &  False
@@ -7590,7 +7592,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['theo_obs_prof'] = False
     
                 #Plot high-resolution model from property fit
-                plot_settings[key_plot]['theo_HR_prop'] = True # & False
+                plot_settings[key_plot]['theo_HR_prop'] = True  & False
     
                 #Plot high-resolution model from profile fit
                 plot_settings[key_plot]['theo_HR_prof'] = True  # &  False
@@ -7634,7 +7636,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             #Damping coefficient
             if (plot_prop=='a_damp' ):
                 
-                plot_settings[key_plot]['theo_HR_prop'] = True # & False
+                plot_settings[key_plot]['theo_HR_prop'] = True  & False
+                plot_settings[key_plot]['theo_HR_prof'] = True # & False
                 
                 # plot_settings[key_plot]['y_range']=[0.,0.6]
 

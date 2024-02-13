@@ -22,4 +22,6 @@ Documentation
    :maxdepth: 2
 
    installation
+   getting_started
+   notebooks
    documentation

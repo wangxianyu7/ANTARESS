@@ -110,11 +110,12 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
                     for i_in in fixed_args['idx_in_fit'][inst][vis]:    
                         fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
                         fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))
-    
+
         fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)
         fixed_args['nexp_fit'] = fit_dic['nx_fit']
         fixed_args['x_val']=range(fixed_args['nexp_fit'])
         fixed_args['fit_func'] = FIT_joined_IntrProp
+        fixed_args['inside_fit'] = False
         
         #Uncertainties on the property are given a covariance matrix structure for consistency with the fit routine 
         fixed_args['cov_val'] = np.array([fixed_args['s_val']**2.])
@@ -123,7 +124,7 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
         #Model fit and calculation
         if prop_loc not in fit_prop_dic['mod_prop']:fit_prop_dic['mod_prop'][prop_loc] = {}
         merged_chain,p_final = com_joint_fits('IntrProp',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'][prop_loc])   
-      
+        
         #Best-fit model and properties
         fit_save={}
         fixed_args['fit'] = False
@@ -477,7 +478,8 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fixed_args['use_cov'] = False
     fixed_args['use_cov_eff'] = gen_dic['use_cov']
     fixed_args['fit_func'] = FIT_joined_IntrProf
-  
+    fixed_args['inside_fit'] = True    
+    
     #Model fit and calculation
     merged_chain,p_final = com_joint_fits('IntrProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'])            
 
@@ -546,9 +548,6 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
     print('     ----------------------------------')  
     return None
-
-
-
 
 
 
@@ -918,6 +917,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['use_cov'] = False
     fixed_args['use_cov_eff'] = gen_dic['use_cov']
     fixed_args['fit_func'] = FIT_joined_ResProf
+    fixed_args['inside_fit'] = True 
     
     #Model fit and calculation
     merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'])   

@@ -274,7 +274,7 @@ Calculation is straighforward :
 
 def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, param, use_grid_dic = False) :
 
-                                                
+    #Samson: check whether the zstar and sskystar coordinates need to be adapted in this routine                                            
 
     if use_grid_dic :
         cond_close_to_spot = (grid_dic['x_st_sky'] - spot_prop['x_sky_exp_center'])**2 + (grid_dic['y_st_sky'] - spot_prop['y_sky_exp_center'])**2 < spot_prop['ang_rad']**2
@@ -328,6 +328,8 @@ Function which calculates the properties of spot-occulted stellar cells
 """
 
 def calc_spotted_region_prop(spots_prop, grid_dic, star_params, LD_law, ld_coeff, gd_band, cb_band, param, coeff_ord2name, dim, func_prof_name, var_par_list, pol_mode) :
+    
+    #Samson: check whether the zstar and sskystar coordinates need to be adapted in this routine; the region_prop['y_st_sp'] may not be calculated properly
     
     # Nombre de cases de l'étoile
     n_tiles = len(grid_dic['x_st_sky'])
@@ -625,6 +627,8 @@ def compute_deviation_profile(args, param, inst, vis, iexp,gen_dic,theo_dic,data
 
 #Function to calculate the properties of the region occulted by a single spot. The previous function (calc_spotted_region_prop) did it for all the spots considered.
 def new_calc_spotted_region_prop(spot_prop, grid_dic, star_params, LD_law, ld_coeff, gd_band, cb_band, param, coeff_ord2name, dim, func_prof_name, var_par_list, pol_mode) :
+    
+    #Samson: check whether the zstar and sskystar coordinates need to be adapted in this routine; the region_prop['y_st_sp'] may not be calculated properly
     
     # Nombre de cases de l'étoile
     n_tiles = len(grid_dic['x_st_sky'])
@@ -926,6 +930,9 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
         Focc_star_band : The input Focc_star_band updated with the flux occulted by the spot in the exposure being processed.
     
     """ 
+    
+    #Samson: check whether the zstar and sskystar coordinates need to be adapted in this routine
+    
     parameter_list = deepcopy(par_list)
     range_parameter_list = deepcopy(range_par_list)
     #We have as input a grid discretizing the spot.
@@ -1321,6 +1328,7 @@ Function which calculates the properties of the stellar surface elements occulte
 
 def get_planet_disk_prop(spots_prop, pl_loc, grid_dic,system_prop, x_pos_pl, y_pos_pl, star_params, LD_law, ld_coeff, gd_band, cb_band, param, coeff_ord2name, func_prof_name, Rp_Rs, var_par_list, pol_mode,args) :
 
+    #Samson: check whether the zstar and sskystar coordinates need to be adapted in this routine
 
     # #Shift planet grid to current planet position
     # x_st_sky_pl = x_pos_pl+grid_dic['x_st_sky_grid_pl'][pl_loc][  system_prop['cond_in_RpRs'][pl_loc][0]  ]

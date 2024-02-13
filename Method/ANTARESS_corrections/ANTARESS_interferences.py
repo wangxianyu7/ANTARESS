@@ -2062,6 +2062,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     fixed_args_loc.update({
                         'par_list':[],
                         'fit_func':FIT_calc_wig_mod_nu_t,
+                        'inside_fit':False, 
                         'x_val':nu_all,
                         'y_val':Fr_all ,  
                         'cov_val':np.array([varFr_all]) , 

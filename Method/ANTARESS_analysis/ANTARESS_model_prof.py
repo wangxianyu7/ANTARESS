@@ -119,7 +119,7 @@ def voigt(param,x,args=None):
     #Voigt profile
     voigt_peak = special.wofz(1j*param['a_damp']).real
     voigt_mod = 1. - (param['ctrst']/voigt_peak)*special.wofz(z_tab).real
-                 
+  
     #Continuum        
     cont_pol = param['cont']*pol_cont(x,args,param)   
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from ANTARESS_process.ANTARESS_main import ANTARESS_main
+from ANTARESS_process.ANTARESS_main import ANTARESS_main,ANTARESS_settings_overwrite
 from ANTARESS_launch.ANTARESS_gridrun import ANTARESS_gridrun
 import importlib
 import os as os_system
@@ -89,39 +89,6 @@ def ANTARESS_launcher(nbook_dic = {} , user = ''):
 
     print('End of workflow')
     return None
-
-
-def ANTARESS_settings_overwrite(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic,input_dic):
-    r"""**ANTARESS settings overwrite.**
-    
-    Overwrites ANTARESS settings with inputs.  
-    
-    Args:
-        TBD
-    
-    Returns:
-        None
-    
-    """     
-  
-    #Overwriting full dictionaries
-    if 'gen_dic' in input_dic['settings']:gen_dic.update(input_dic['settings']['gen_dic'])
-    if 'mock_dic' in input_dic['settings']:mock_dic.update(input_dic['settings']['mock_dic'])
-    if 'data_dic' in input_dic['settings']:
-        for key in ['DI','Intr']:
-            if key in input_dic['settings']['data_dic']:data_dic[key].update(input_dic['settings']['data_dic'][key])
-    if 'glob_fit_dic' in input_dic['settings']:
-        for key in ['IntrProf','IntrProp']:
-            if key in input_dic['settings']['glob_fit_dic']:glob_fit_dic[key].update(input_dic['settings']['glob_fit_dic'][key])
-    if 'plot_dic' in input_dic['settings']:plot_dic.update(input_dic['settings']['plot_dic'])
-    
-    #Overwriting specific fields
-    if len(input_dic['orders4ccf'])>0:
-        for inst in input_dic['orders4ccf']:gen_dic['orders4ccf'][inst] = input_dic['orders4ccf'][inst]
-    
-    return None
-    
-
 
 
 
