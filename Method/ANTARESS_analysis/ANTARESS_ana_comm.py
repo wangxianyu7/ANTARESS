@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,gen_specdopshift,closest,def_edge_tab,gen_hrand_chain,check_data
+from ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,gen_specdopshift,closest,def_edge_tab,check_data
 from copy import deepcopy
 from lmfit import Parameters
 import lmfit
 import numpy as np
-from ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,save_fit_results,fit_merit,fit_minimization
+from ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,save_fit_results,fit_merit,fit_minimization,gen_hrand_chain
 from ANTARESS_general.constant_data import Rsun,c_light
 import bindensity as bind
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff
@@ -45,7 +45,10 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
 
     #Process default / additional parameters
     fixed_args['varpar_priors']={}
-    for par in np.unique( list(p_start.keys()) + list(model_prop.keys())  ):    
+    for par in np.unique( list(p_start.keys()) + list(model_prop.keys())  ):  
+        
+        #Activate jitter if requested as parameter
+        if par=='jitter':fixed_args['jitter'] = True
 
         #Overwrite default properties 
         if (par in model_prop):
@@ -108,7 +111,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                 #Range for walkers initialization
                 if (par in model_prop):fit_dic['uf_bd'][par]=model_prop_par['bd']
                 else:
-                    uf_bd=[-1e5,1e5]
+                    uf_bd=[-1e6,1e6]
                     if (not np.isinf(p_start[par].min)):uf_bd[0]=p_start[par].min
                     if (not np.isinf(p_start[par].max)):uf_bd[1]=p_start[par].max
                     fit_dic['uf_bd'][par]=uf_bd
@@ -117,11 +120,12 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                 if (par in priors_prop):
                     fixed_args['varpar_priors'][par] = priors_prop[par]                          
                 else:
-                    varpar_priors=[-1e5,1e5]
+                    if par == 'jitter':varpar_priors=[0.,1e6]
+                    else:varpar_priors=[-1e6,1e6]
                     if (not np.isinf(p_start[par].min)):varpar_priors[0]=p_start[par].min
                     if (not np.isinf(p_start[par].max)):varpar_priors[1]=p_start[par].max                
                     fixed_args['varpar_priors'][par]={'mod':'uf','low':varpar_priors[0],'high':varpar_priors[1]}
-
+             
                 #Change if guess value is beyond prior range
                 if fixed_args['varpar_priors'][par]['mod']=='uf':
                     if ((p_start[par].value<fixed_args['varpar_priors'][par]['low']) or (p_start[par].value>fixed_args['varpar_priors'][par]['high'])):p_start[par].value=0.5*(fixed_args['varpar_priors'][par]['low']+fixed_args['varpar_priors'][par]['high'])
@@ -553,23 +557,20 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         line_type='ana'                                  #to avoid raising warning, even though properties are not used to calculate a line profile
 
     #Initializing stellar profiles
-    else:     
-
-        #Set default gaussian line
-        p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None),
-                         ('FWHM_ord0__IS__VS_' , 5.,    True, 0.,100.,None))
-
-        #Profile grid
-        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,fixed_args['system_param']['star'],p_start)
-        line_type = fixed_args['mode']
+    else: line_type = fixed_args['mode']
 
     #Parameter initialization
     #    - default system properties are overwritten in p_start if they are defined in 'mod_prop', whether the model is fitted or called in forward mode
     p_start = par_formatting(p_start,mod_prop,fit_prop_dic['priors'],fit_dic,fixed_args,'','',line_type)
-
+   
+    #Initializing stellar profile grid
+    #    - must be done after 'par_formatting' to identify variable line parameters
+    if fixed_args['rout_mode']!='IntrProp':       
+        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,fixed_args['system_param']['star'],p_start)
+    
     #Stellar grid properties
     fixed_args['grid_dic'].update({'Ssub_Sstar_pl':theo_dic['Ssub_Sstar_pl'],'x_st_sky_grid_pl':theo_dic['x_st_sky_grid_pl'],'y_st_sky_grid_pl':theo_dic['y_st_sky_grid_pl'],'nsub_Dpl':theo_dic['nsub_Dpl'],'d_oversamp':theo_dic['d_oversamp'],'Istar_norm_achrom':theo_dic['Istar_norm_achrom']})             
-   
+
     #Determine if orbital and light curve properties are fitted or whether nominal values are used
     #    - this depends on whether parameters required to calculate coordinates of planet-occulted regions are fitted  
     #    - in case the model is calculate in forward mode, we activate the condition as well so that the nominal system properties are updated with those defined in 'mod_prop'  
@@ -616,13 +617,11 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         for par in par_orb: 
             if par+'__pl'+fixed_args['pl_loc'] not in p_start : 
                 p_start.add(par+'__pl'+fixed_args['pl_loc'] ,value=fixed_args['planet_params'][par], vary=False , min=None , max=None)
-            
-   
-            
+
     #Fit initialization
     init_fit(fit_dic,fixed_args,p_start,model_par_names(),fit_prop_dic)     
     merged_chain = None
-    
+
     ########################################################################################################   
 
     #Fit by chi2 minimization
@@ -764,7 +763,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
 
 
                 if gen_dic['star_name'] == 'HD189733':
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='cos_istar')],axis=1)>0.) )
+                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='cos_istar')],axis=1)<0.) )
 
 
 
@@ -1504,6 +1503,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
 
     #Generic fit function
     fixed_args['fit_func']=gen_fit_prof
+    fixed_args['inside_fit'] = False 
 
     #-------------------------------------------------------------------------------
     #Custom model for disk-integrated profiles
@@ -2209,13 +2209,14 @@ def prior_sini_geom(p_step_loc,fixed_args,prior_func_prop):
 
     Calculates :math:`\log(p)` for stellar inclination :math:`i_\star`.
     
-    Assumes isotropic distribution of stellar orientations (equivalent to draw a uniform distribution on :math:`\cos(i_\star)`)
+    Assumes isotropic distribution of stellar orientations (equivalent to draw a uniform distribution on :math:`\cos(i_\star)`) that favor
+    stellar inclination closer to 90:math:`^\circ`
     
     .. math::  
        &p(x) = \sin(i_\star(x))/2  \\
        &\ln(p(x)) = \ln(0.5 \sin(i_\star(x)))
       
-    Where `p` is normalized by the integral of :math:`\sin(i_\star)` over the definition space of :math:`i_\star` (0:180:math:`^\circ`), which is 2 
+    Where `p` is normalized by the integral of :math:`\sin(i_\star)` over the definition space of :math:`i_\star` (0:180:math:`^\circ`), which is 2. 
 
     Args:
         TBD
@@ -2223,9 +2224,9 @@ def prior_sini_geom(p_step_loc,fixed_args,prior_func_prop):
     Returns:
         TBD
         
-    """ 
-    sin_istar=np.sqrt(1.-p_step_loc['cos_istar']**2.)   
-    return np.log(0.5*sin_istar) 
+    """    
+    sin_istar=np.sqrt(1.-p_step_loc['cos_istar']**2.)  
+    return -np.log(0.5*sin_istar) 
 
 
 def prior_cosi(p_step_loc,fixed_args,prior_func_prop): 

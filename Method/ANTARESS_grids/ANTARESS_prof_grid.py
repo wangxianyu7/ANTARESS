@@ -255,7 +255,7 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
     r"""**Disk-integrated profile: parameter initialization**
 
     Initializes stellar parameters controlling either disk-integrated or local stellar grids. 
-    Fit parameters are initialized to default stellar properties
+    Fit parameters are initialized to default stellar properties.
 
     Args:
         TBD
@@ -281,7 +281,7 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
     params.add_many(('cont',      fixed_args['flux_cont'],                          False,    None,             None,               None))
     params.add_many(('rv',        RV_guess_tab[0],                                  False,    RV_guess_tab[1],  RV_guess_tab[2],    None)) 
     for ideg in range(1,5):params.add_many(('c'+str(ideg)+'_pol',          0.,              False,    None,None,None)) 
-
+    
     return params    
 
 
@@ -525,7 +525,7 @@ def calc_loc_line_prof(icell,rv_surf_star,Fsurf_cell_spec,flux_loc_cell,mu_cell,
     #    - model is always calculated in RV space, and later converted back to wavelength space if relevant
     #    - the model is directly calculated over the RV table at its requested position, rather than being pre-calculated and shifted
     if args['mode']=='ana':
-        input_cell = {'cont':1. , 'rv':rv_surf_star }
+        input_cell = {'cont':1. , 'rv':rv_surf_star,'c1_pol' : 0.,'c2_pol' : 0.,'c3_pol' : 0.,'c4_pol' : 0.}
         for pol_par in args['input_cell_all']:
             input_cell[pol_par] = args['input_cell_all'][pol_par][icell]
         flux_intr=args['func_prof'](input_cell,args['cen_bins'] )[0]

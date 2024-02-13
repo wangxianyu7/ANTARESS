@@ -124,7 +124,8 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
 
             #Telluric CCF minimization model
             fixed_args['fit_func'] = FIT_CCF_telluric_model
-      
+            fixed_args['inside_fit'] = False 
+            
         #Process each visit independently
         iord_list_ref = range(data_inst['nord_ref'])
         for ivisit,vis in enumerate(data_inst['visit_list']):

@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import numpy as np
-from ANTARESS_process.ANTARESS_main import ANTARESS_main
-from ANTARESS_launch.ANTARESS_launcher import ANTARESS_settings_overwrite
+from ANTARESS_process.ANTARESS_main import ANTARESS_main,ANTARESS_settings_overwrite
 
 def ANTARESS_gridrun(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_params,nbook_dic,user):
     r"""**ANTARESS grid run launch.**

@@ -414,6 +414,8 @@ def calc_st_sky(coord_grid,star_params):
 
     #Frame conversion from the inclined star frame to the 'star' frame 
     #    - positions in star rest frame (in units of stellar radius)
+    #    - the (x_st_sky,y_st_sky) coordinates of the planet-occulted region are the same as that of the planet, but the z_st_sky coordinates differ since the region is on the stellar surface
+    #      it must thus be calculated directly and not converted from the planet st_sky coordinates
     nsub_star = np.sum(cond_in_stphot)
     if (nsub_star>0):coord_grid['x_st'],coord_grid['y_st'],coord_grid['z_st']=frameconv_skystar_to_star(coord_grid['x_st_sky'],coord_grid['y_st_sky'],coord_grid['z_st_sky'],star_params['istar_rad'])
     

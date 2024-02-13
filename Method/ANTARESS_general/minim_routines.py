@@ -56,28 +56,30 @@ def ln_prior_func(p_step,fixed_args):
                     ln_p += - np.log(parprior['high']-parprior['low'])
                 else: 
                     ln_p += - np.inf  
+                    break
         
             #Gaussian prior
             #    pr(x) = exp(- chi2_x / 2.)
             #        with chi2_x = ( (x - x_constraint)/s_constraint  )^2
-            #    ln(pr(x)) = - chi2_x / 2.
+            #    pr(x) = exp(- ( (x - x_constraint)/sqrt(2)*s_constraint  )^2 )            
+            #    which can be normalized as 
+            #    pr_norm(x) = (1./(sqrt(2pi)*s_constraint )) * exp( - (( y_step - y_val )/(sqrt(2)*s_constraint)  )^2  )
+            #    ln(pr_norm(x)) =  - 0.5* ( ln( 2pi*s_constraint^2)  + chi2_x)     
             elif parprior['mod']=='gauss':
-                ln_p += -0.5*( (parval - parprior['val'])/parprior['s_val']  )**2.
+                ln_p += - 0.5*(np.log(2.*np.pi*parprior['s_val']**2.) + ( (parval - parprior['val'])/parprior['s_val']  )**2.)        
     
             #Gaussian prior with different halves
             elif parprior['mod']=='dgauss':
-                if (parval <= parprior['val']): 
-                    ln_p += -0.5*( (parval - parprior['val'])/parprior['low']  )**2.
-                else: 
-                    ln_p += -0.5*( (parval - parprior['val'])/parprior['high']  )**2.
+                if (parval <= parprior['val']):ln_p += - 0.5*(np.log(2.*np.pi*parprior['low']**2.) + ( (parval - parprior['val'])/parprior['low']  )**2.)                       
+                else:ln_p += - 0.5*(np.log(2.*np.pi*parprior['high']**2.) + ( (parval - parprior['val'])/parprior['high']  )**2.)   
     
             #Undefined prior
             else:
                 stop('Undefined prior')
     
-        #Additional priors using multiple parameters and complex functions
-        if 'global_ln_prior_func' in fixed_args: 
-            ln_p += fixed_args['global_ln_prior_func'](p_step,fixed_args)
+    #Additional priors using multiple parameters and complex functions
+    if ('global_ln_prior_func' in fixed_args) and (~ np.isinf(ln_p)): 
+        ln_p += fixed_args['global_ln_prior_func'](p_step,fixed_args)
 
     return ln_p
 
@@ -106,12 +108,16 @@ Calculation of ln(likelihood)
       note that it also writes as
  lnL(step) =   - sum(ln( [ 2pi*sn_val^2 ]^(1/2)) )  - chi2_step/2
  lnL(step) =   - sum(ln( 2pi*sn_val^2)/2 )  - chi2_step/2   
- lnL(step) =   - 0.5* ( sum(ln( 2pi*sn_val^2) )  - chi2_step)   
+ lnL(step) =   - 0.5* ( sum(ln( 2pi*sn_val^2) )  + chi2_step)   
       which is the form given on the emcee website
 '''
 def ln_lkhood_func_mcmc(p_step,fixed_args):
 
     #Model for current set of parameter values  
+    #    - fit_func returns either 
+    # + the model, in which case y_val is set to the data and s_val ; cov_val to its variance ; covariance)
+    # + a 'chi' array defined as the individual elements of 'chi2_step' below, in which case y_val is set to 0 and s_val to 1 (use_cov is set to False so that we enter the 'variance' condition below)
+    #   so that 'res' below equals 'y_step' which is 'chi', and 'chi2_step' is the sum of the 'chi' values squared
     y_step = fixed_args['fit_func'](p_step, fixed_args['x_val'],args=fixed_args)
     
     #Fitted pixels
@@ -135,7 +141,7 @@ def ln_lkhood_func_mcmc(p_step,fixed_args):
         
     #Use of variance alone
     else:
-        
+    
         #Modification of error bars on fitted values in case of jitter used as free parameter
         if (fixed_args['jitter']):sn_val=np.sqrt(fixed_args['cov_val'][0,idx_fit] + p_step['jitter']**2.)
         else:sn_val=np.sqrt(fixed_args['cov_val'][0,idx_fit])
@@ -145,7 +151,7 @@ def ln_lkhood_func_mcmc(p_step,fixed_args):
 
         #Ln likelihood
         ln_lkhood = - np.sum(np.log(np.sqrt(2.*np.pi)*sn_val)) - (chi2_step/2.)   
-    
+
     return ln_lkhood,chi2_step
     
 
@@ -196,7 +202,7 @@ def ln_prob_func_mcmc(p_step,fixed_args):
     #Set log-probability to -inf if likelihood is nan
     #    - happens when parameters go beyond their boundaries (hence ln_prior=-inf) but the model fails (hence ln_lkhood = nan)
     ln_prob=-np.inf if np.isnan(ln_lkhood) else ln_prior + ln_lkhood
-    
+  
     return ln_prob
 
 
@@ -333,7 +339,7 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
 
     #No jitter by default
     #    - can be used to reach a reduced chi2 of 1 by adding quadratically the adjusted jitter value to the measured errors
-    fixed_args['jitter']=False if ('jitter' not in fit_prop_dic) else fit_prop_dic['jitter']        
+    fixed_args['jitter']=False if ('jitter' not in fixed_args) else fixed_args['jitter']        
     
     #Default settings
     if fit_dic['fit_mod']=='mcmc':
@@ -521,7 +527,7 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
         walker_chains_last=np.load(fit_dic['mcmc_reboot'])['walker_chains'][:,-1,:]  #(nwalkers, nsteps, n_free)
   
         #Overwrite starting values of new chains
-        for ipar,par in enumerate(fixed_args['var_par_list']):
+        for ipar in range(len(fixed_args['var_par_list'])):
             fit_dic['initial_distribution'][:,ipar] = walker_chains_last[:,ipar] 
           
     else:
@@ -1243,6 +1249,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
 Fit results
 '''        
 def fit_merit(p_final_in,fixed_args,fit_dic,verbose):
+    if verbose:print('     Calculating merit values') 
 
     #Convert parameters() structure into dictionary 
     if fit_dic['fit_mod'] !='mcmc': 
@@ -1251,25 +1258,27 @@ def fit_merit(p_final_in,fixed_args,fit_dic,verbose):
         if fit_dic['fit_mod']=='chi2':
             fit_dic['sig_parfinal_err']={'1s':np.zeros([2,fit_dic['merit']['n_free']])}            
             for ipar,par in enumerate(fixed_args['var_par_list']): 
-                p_final[par]=p_final_in[par].value
                 fit_dic['sig_parfinal_err']['1s'][:,ipar]=p_final_in[par].stderr  
     else:p_final = deepcopy(p_final_in)
  
-    #Calculation of best-fit model equivalent to the observations
-    if verbose:print('     Calculating final model') 
-    fit_dic['y_mod']=fixed_args['fit_func'](p_final,fixed_args['x_val'],args=fixed_args)    
+    #Calculation of best-fit model equivalent to the observations, corresponding residuals, and RMS
+    #    - only in the case where the function does return the model
+    if not fixed_args['inside_fit']:
+        res_tab = fixed_args['y_val'] - fixed_args['fit_func'](p_final,fixed_args['x_val'],args=fixed_args) 
+        fit_dic['merit']['rms']=res_tab.std()       
+    else:fit_dic['merit']['rms']='Undefined'
 
     #Merit values 
     if fit_dic['fit_mod'] =='':fit_dic['merit']['mode']='forward'    
     else:fit_dic['merit']['mode']='fit'    
     fit_dic['merit']['dof']=fit_dic['nx_fit']-fit_dic['merit']['n_free']
-    res_tab = fixed_args['y_val'] - fit_dic['y_mod']
+    
     if fit_dic['fit_mod'] in ['','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
     elif fit_dic['fit_mod'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1] 
     fit_dic['merit']['red_chi2']=fit_dic['merit']['chi2']/fit_dic['merit']['dof']
     fit_dic['merit']['BIC']=fit_dic['merit']['chi2']+fit_dic['merit']['n_free']*np.log(fit_dic['nx_fit'])      
     fit_dic['merit']['AIC']=fit_dic['merit']['chi2']+2.*fit_dic['merit']['n_free']
-    fit_dic['merit']['rms']=1e3*res_tab.std()       
+    
     if verbose:
         print('     + Npts = ',fit_dic['nx_fit'])
         print('     + Nfree = ',fit_dic['merit']['n_free'])
@@ -1324,7 +1333,7 @@ def save_fit_results(part,fixed_args,fit_dic,fit_mod,p_final):
             np.savetxt(file_path,[['Nominal best-fit parameters']],fmt=['%s']) 
             np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])   
             np.savetxt(file_path,[['Fixed']],delimiter='\t',fmt=['%s'])
-            for ipar,parname in enumerate(fixed_args['fixed_par_val']):  
+            for parname in fixed_args['fixed_par_val']:  
                 np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
                 np.savetxt(file_path,[[parname+'\t'+"{0:.10e}".format(p_final[parname])]],delimiter='\t',fmt=['%s'])
             np.savetxt(file_path,[['-----------------']],fmt=['%s'])
@@ -1474,7 +1483,7 @@ def plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,merged
     #----------------------------------------------------------------
     #Loop on parameters
     med_par=np.median(merged_chain, axis=0)
-    for ipar,(parname,partxt) in enumerate(zip(var_par_list,var_par_names)):  
+    for ipar,parname in enumerate(var_par_list):  
         plt.ioff()
         plt.figure(figsize=(10, 6))
        
@@ -2192,5 +2201,33 @@ def hist2d(x, y, bins_2D=[20,20], range_par=None, weights=None, levels=None, smo
     
     
     
+def gen_hrand_chain(par_med,epar_low,epar_high,n_throws):
+    r"""**PDF generator**
+
+    Generates normal or half-normal distributions of a parameter.
+
+    Args:
+        TBD
     
+    Returns:
+        TBD
+    
+    """ 
+    if epar_high==epar_low:
+        hrand_chain = np.random.normal(par_med, epar_high, n_throws)
+    else:
+        if n_throws>1:
+            if n_throws<20:n_throws_half = 10*n_throws
+            else:n_throws_half = 2*n_throws
+            rand_draw_right = np.random.normal(loc=par_med, scale=epar_high, size=n_throws_half)
+            rand_draw_right = rand_draw_right[rand_draw_right>par_med]
+            rand_draw_right = rand_draw_right[0:int(n_throws/2)]
+            rand_draw_left = np.random.normal(loc=par_med, scale=epar_low, size=n_throws_half)
+            rand_draw_left = rand_draw_left[rand_draw_left<=par_med]
+            rand_draw_left = rand_draw_left[0:n_throws-int(n_throws/2)]
+            hrand_chain = np.append(rand_draw_left,rand_draw_right)
+        else:
+            if np.random.normal(loc=0., scale=1., size=1)>0:hrand_chain = np.random.normal(loc=par_med, scale=epar_high, size=1)
+            else:hrand_chain = np.random.normal(loc=par_med, scale=epar_low, size=1)
+    return hrand_chain    
     

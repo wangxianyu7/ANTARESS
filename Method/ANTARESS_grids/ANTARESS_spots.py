@@ -216,8 +216,9 @@ def retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd, exp_dur
 
 
 def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, star_param, use_grid_dic = False) :
-    r"""**'Spotted' tiles**
-    
+    #Samson: check whether the zstar and sskystar coordinates need to be adapted in this routine
+    r"""**'Spotted' tiles** 
+
     Identification of which cells on the provided grid are covered by spots a.k.a. which cells are 'spotted'. Two methods are available: 
     - use_grid_dic = False : calculation will be performed on the x_sky_grid, y_sky_grid, z_sky_grid, by moving these grids from the inclined star frame to the star rest frame.
                             This option can be used for identifiying spotted stellar tiles, when istar is fitted.
@@ -341,7 +342,7 @@ def spot_occ_region_grid(RspRs, nsub_Dsp):
 
 def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iband, system_prop, system_spot_prop, star_params, Ssub_Sstar_sp, Ssub_Sstar_ref, Istar_norm_band, sum_prop_dic_spot,\
                                     coord_reg_dic_spot, range_reg_dic_spot, Focc_star_band, par_list, range_par_list, args, cb_band, pl_loc_x = {}, pl_loc_y = {}, oversamp_idx = None, RpRs = None, plocc = False) :
-    
+    #Samson: check whether the zstar and sskystar coordinates need to be adapted in this routine; the region_prop['y_st_sp'] may not be calculated properly
     r"""**Spot-occulted properties: define and update**
 
     Identify the spot-occulted region in each exposure provided and calculate its properties. 
@@ -894,6 +895,8 @@ Function which calculates the properties of spot-occulted stellar cells
 
 def calc_spotted_region_prop(spots_prop, grid_dic, star_params, LD_law, ld_coeff, gd_band, cb_band, param, coeff_ord2name, dim, func_prof_name, var_par_list, pol_mode) :
     
+    #Samson: check whether the zstar and sskystar coordinates need to be adapted in this routine; the region_prop['y_st_sp'] may not be calculated properly
+    
     # Nombre de cases de l'étoile
     n_tiles = len(grid_dic['x_st_sky'])
 
@@ -1010,5 +1013,4 @@ def calc_spotted_region_prop(spots_prop, grid_dic, star_params, LD_law, ld_coeff
         for key in ['r_proj2_st_sky_sp', 'x_st_sky_sp', 'y_st_sky_sp', 'z_st_sky_sp', 'x_st_sp', 'y_st_sp', 'z_st_sp', 'mu_sp'] :
            region_prop.pop(key)
     
-
     return cond_in_sp, (   spot_within_grid and np.any(region_prop['flux_sp'] > 0)   ), region_prop
