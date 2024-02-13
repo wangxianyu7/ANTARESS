@@ -1,5 +1,4 @@
 import numpy as np
-from constant_data import Rjup,Rearth,AU_1,Rsun,Mearth,Mjup
 
 def get_system_params():
     r"""**Planetary system properties.**    

@@ -875,8 +875,14 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #------------------------------------------------------------------------------
     #Spots
     #------------------------------------------------------------------------------
+    #Need to initialize this
+    mock_dic['use_spots']=False
+
+    #Initialize spot use
+    gen_dic['studied_sp'] = list(gen_dic['transit_sp'].keys()) 
+
     #If spot activation has been triggered
-    if (data_dic['DI']['spots_prop'] != {}): #Remove trigger in mock_spots and add warning that DI spots prop need to be activated #Plots -> retrieve DI spots_prop 
+    if (data_dic['DI']['spots_prop'] != {}):
     
         #Oversampling factor for spot-occulted regions
         #    - use the spot radius provided as input
@@ -886,7 +892,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 theo_dic['d_oversamp_spot'][spot] = np.sin(data_dic['DI']['spots_prop']['achrom'][spot][0])/theo_dic['n_oversamp_spot'][spot]
     
         #Spot surface chromatic properties
-        #Need to define the LD coefficients if they are not defined
         for ideg in range(2,5):
             if 'LD_u'+str(ideg) not in data_dic['DI']['spots_prop']['achrom']:data_dic['DI']['spots_prop']['achrom']['LD_u'+str(ideg)] = [0.]
     
@@ -1372,10 +1377,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #Initializing dictionaries for visit
                 theo_dic[inst][vis]={}
                 data_dic['Atm'][inst][vis]={}   
-                data_inst[vis] = {'n_in_visit':n_in_visit,'transit_pl':[],'comm_sp_tab':True} 
+                data_inst[vis] = {'n_in_visit':n_in_visit,'transit_pl':[],'transit_sp':[],'comm_sp_tab':True} 
                 coord_dic[inst][vis] = {}
                 for pl_loc in gen_dic['studied_pl']:
                     if (inst in gen_dic['transit_pl'][pl_loc]) and (vis in gen_dic['transit_pl'][pl_loc][inst]):data_inst[vis]['transit_pl']+=[pl_loc]
+                for spot in gen_dic['studied_sp']:
+                    if (inst in gen_dic['transit_sp'][spot]) and (vis in gen_dic['transit_sp'][spot][inst]):data_inst[vis]['transit_sp']+=[spot]
                 data_prop[inst][vis] = {}
                 data_dic_temp={}
                 gen_dic[inst][vis] = {}
@@ -1401,6 +1408,11 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if pl_loc in data_inst[vis]['transit_pl']:
                         for key in ['ecl','cen_ph','st_ph','end_ph','ph_dur','rv_pl','v_pl']:coord_dic[inst][vis][pl_loc][key] = np.zeros(n_in_visit,dtype=float)*np.nan
                         for key in ['cen_pos','st_pos','end_pos']:coord_dic[inst][vis][pl_loc][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
+                for spot in gen_dic['studied_sp']:
+                    coord_dic[inst][vis][spot]={}
+                    for key in ['cen_pos','st_pos','end_pos']:coord_dic[inst][vis][spot][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
+                    for key in ['cen_tbjd','st_tbjd','end_tbjd']:coord_dic[inst][vis][spot][key] = np.zeros(n_in_visit,dtype=float)*np.nan
+
     
                     #Definition of mid-transit times for each planet associated with the visit 
                     if (pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst]):
@@ -1540,7 +1552,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis][pl_loc]['cen_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['st_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['end_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['ecl'][iexp],coord_dic[inst][vis][pl_loc]['rv_pl'][iexp],coord_dic[inst][vis][pl_loc]['v_pl'][iexp],\
                         coord_dic[inst][vis][pl_loc]['st_ph'][iexp],coord_dic[inst][vis][pl_loc]['cen_ph'][iexp],coord_dic[inst][vis][pl_loc]['end_ph'][iexp],coord_dic[inst][vis][pl_loc]['ph_dur'][iexp]=coord_expos(pl_loc,coord_dic,inst,vis,system_param['star'],
                                             system_param[pl_loc],coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic,data_dic['DI']['system_prop']['achrom'][pl_loc][0])                    
-                       
+                    for spot in data_inst[vis]['transit_sp']:
+                        coord_dic[inst][vis][spot]['cen_tbjd'][iexp]=coord_dic[inst][vis]['bjd'][iexp]
+                        coord_dic[inst][vis][spot]['st_tbjd'][iexp]=coord_dic[inst][vis]['bjd'][iexp]-coord_dic[inst][vis]['t_dur'][iexp]
+                        coord_dic[inst][vis][spot]['end_tbjd'][iexp]=coord_dic[inst][vis]['bjd'][iexp]+coord_dic[inst][vis]['t_dur'][iexp]
                     #--------------------------------------------------------------------------------------------------
         
                     #Initialize data at first exposure

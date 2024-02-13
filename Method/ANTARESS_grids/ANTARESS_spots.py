@@ -339,7 +339,7 @@ def spot_occ_region_grid(RspRs, nsub_Dsp):
 
 
 
-def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iband, system_spot_prop, star_params, Ssub_Sstar_sp, Ssub_Sstar_ref, Istar_norm_band, par_star, sum_prop_dic_spot,\
+def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iband, system_prop, system_spot_prop, star_params, Ssub_Sstar_sp, Ssub_Sstar_ref, Istar_norm_band, sum_prop_dic_spot,\
                                     coord_reg_dic_spot, range_reg_dic_spot, Focc_star_band, par_list, range_par_list, args, cb_band, pl_loc_x = {}, pl_loc_y = {}, oversamp_idx = None, RpRs = None, plocc = False) :
     
     r"""**Spot-occulted properties: define and update**
@@ -352,12 +352,12 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
         cond_occ (bool) : whether there is an occultation by at least one spot in the exposure considered.
         spot_prop (dict) : formatted spot properties Dictionary (see retrieve_spots_prop_from_param).
         iband (int) : index of the band used to retrieve the corresponding planet and spot limb-darkening properties.
+        system_prop (dict) : quiet star limb-darkening properties.
         system_spot_prop (dict) : spot limb-darkening properties.
-        star_params (dict) : star properties.
+        star_params (dict) : nominal star properties.
         Ssub_Sstar_sp (float): surface of grid cells in the spot-occulted region grid.
         Ssub_Sstar_ref (float) : surface of grid cells in the stellar grid.
         Istar_norm_band (float) : total intensity of the star in the band considered.
-        par_star : ???
         sum_prop_dic_spot (dict) : dictionary containing the value of all parameters of interest (par_list), summed over the spotted region in the exposure considered, and for the band of interest.
         coord_reg_dic_spot (dict) : dictionary containing the value of all parameters of interest (par_list), averaged over the spotted region in the exposure considered, and for the band of interest.
         range_reg_dic_spot (dict) : dictionary containing the range of average values the parameters of interest (range_par_list) can take during this exposure.
@@ -440,11 +440,15 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
     coord_grid['x_st'], coord_grid['y_st'], coord_grid['z_st'] = frameconv_skystar_to_star(coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], star_params['istar_rad'])
     
     #Retrieve the stellar flux grids over this local occulted-region grid.
-    ld_grid_occ, gd_grid_occ, mu_grid_occ, Fsurf_grid_occ, Ftot_occ, Istar_occ = calc_Isurf_grid([iband], coord_grid['nsub_star'], system_spot_prop, coord_grid, star_params, Ssub_Sstar_sp, Istar_norm_band, region='pl', Ssub_Sstar_ref=Ssub_Sstar_ref)
+    ld_grid_occ, gd_grid_occ, mu_grid_occ, Fsurf_grid_occ, Ftot_occ, Istar_occ = calc_Isurf_grid([iband], coord_grid['nsub_star'], system_prop, coord_grid, star_params, Ssub_Sstar_sp, Istar_norm_band, region='pl', Ssub_Sstar_ref=Ssub_Sstar_ref)
+
+    #Retrieve the flux grid for the spot's emission (since spots have different LD law compared to the 'quiet' stellar surface)
+    _,_,_,Fsurf_grid_emit,_,_ = calc_Isurf_grid([iband], coord_grid['nsub_star'], system_spot_prop, coord_grid, star_params, Ssub_Sstar_sp, Istar_norm_band, region='pl', Ssub_Sstar_ref=Ssub_Sstar_ref)
 
     #Scale the flux grid to the desired level
-    Fsurf_grid_occ *= par_star['cont']
-    Ftot_occ *= par_star['cont']
+    Fsurf_grid_occ *= star_params['cont']
+    Fsurf_grid_emit *= star_params['cont']
+    Ftot_occ *= star_params['cont']
 
     #--------------------------------
 
@@ -455,13 +459,13 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
     
     #--------------------------------
     #Co-adding properties from current region to the cumulated values over oversampled spot positions 
-    sum_region_spot_prop(line_occ_HP_band,iband,args,parameter_list,Fsurf_grid_occ[:,0],coord_grid,Ssub_Sstar_sp,cb_band,range_parameter_list,range_reg_dic_spot,sum_prop_dic_spot,coord_reg_dic_spot,par_star,spot_prop['ctrst'])     
+    sum_region_spot_prop(line_occ_HP_band,iband,args,parameter_list,Fsurf_grid_occ[:,0],Fsurf_grid_emit[:,0],coord_grid,Ssub_Sstar_sp,cb_band,range_parameter_list,range_reg_dic_spot,sum_prop_dic_spot,coord_reg_dic_spot,star_params,spot_prop['ctrst'])     
 
     return Focc_star_band, cond_occ
 
 
 
-def sum_region_spot_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,coord_grid,Ssub_Sstar,cb_band,range_par_list,range_reg,sum_prop_dic,coord_reg_dic,par_star,spot_contrast):
+def sum_region_spot_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,Fsurf_grid_emit_band,coord_grid,Ssub_Sstar,cb_band,range_par_list,range_reg,sum_prop_dic,coord_reg_dic,star_params,spot_contrast):
     r"""**Spotted region properties: calculations**
 
     Calculates the average and summed properties from a spotted stellar surface region during an exposure.
@@ -472,6 +476,7 @@ def sum_region_spot_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,co
         args (dict) : Parameters used to generate the intrinsic profiles.
         par_list (list) : List of parameters of interest, whose value in sum_prop_dic will be updated.
         Fsurf_grid_band (array) : Stellar flux grid over spotted region in the band of interest.
+        Fsurf_grid_emit_band (array) : Stellar flux grid over the spotted region, using the LD coefficients of the spot in the band of interest.
         coord_grid (dict) : Dictionary of coordinates for the spotted region.
         Ssub_Sstar (float) : Surface ratio of a spotted region grid cell to a stellar grid cell.
         cb_band (list) : Polynomial coefficients used to compute thr RV component of the planet-occulted region due to convective blueshift.
@@ -479,7 +484,7 @@ def sum_region_spot_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,co
         range_reg (dict) : Dictionary containing the range of average values the parameters of interest (range_par_list) can take during this exposure.
         sum_prop_dic (dict) : Dictionary containing the value of all parameters of interest (par_list), summed over the spotted region in the exposure considered, and for the band of interest.
         coord_reg_dic (dict) : Dictionary containing the value of all parameters of interest (par_list), averaged over the spotted region in the exposure considered, and for the band of interest.
-        par_star : ???
+        star_params : nominal star properties.
         spot_contrast (float) : Contrast level of the spot considered.
     Returns:
         None
@@ -522,7 +527,7 @@ def sum_region_spot_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,co
                 coord_grid[par_loc] = calc_polymodu(args['pol_mode'],args['coeff_line'][par_loc],linevar_coord_grid) 
     
             #Stellar-rotation induced radial velocity (km/s)
-            elif par_loc=='Rot_RV':coord_grid[par_loc] = calc_RVrot(coord_grid['x_st_sky'],coord_grid['y_st'],par_star['istar_rad'],par_star)[0]
+            elif par_loc=='Rot_RV':coord_grid[par_loc] = calc_RVrot(coord_grid['x_st_sky'],coord_grid['y_st'],star_params['istar_rad'],star_params)[0]
                          
             #Disk-integrated-corrected convective blueshift polynomial (km/s)
             elif par_loc=='CB_RV':coord_grid[par_loc] = np_poly(cb_band)(coord_grid['mu'])          
@@ -530,7 +535,7 @@ def sum_region_spot_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,co
             #Full RV (km/s)
             #    - accounting for an additional constant offset to model jitter or global shifts, and for visit-specific offset to model shifts specific to a given transition
             elif par_loc=='rv':
-                coord_grid[par_loc] = deepcopy(coord_grid['Rot_RV']) + par_star['rv']
+                coord_grid[par_loc] = deepcopy(coord_grid['Rot_RV']) + star_params['rv']
                 if 'CB_RV' in par_list:coord_grid[par_loc]+=coord_grid['CB_RV']
                 if 'rv_line' in par_list:coord_grid[par_loc]+=coord_grid['rv_line']
                 
@@ -565,16 +570,16 @@ def sum_region_spot_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,co
     if line_occ_HP_band=='high':    
         
         #Attribute intrinsic profile to each cell 
-        init_st_intr_prof(args,coord_grid,par_star)
+        init_st_intr_prof(args,coord_grid,star_params)
 
         #Calculate individual local line profiles from all region cells
         #    - analytical intrinsic profiles are fully calculated 
         #      theoretical and measured intrinsic profiles have been pre-defined and are just shifted to their position
         #    - in both cases a scaling is then applied to convert them into local profiles
-        line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_band,args['flux_intr_grid'],coord_grid['mu'],par_star,args)          
+        line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_band,args['flux_intr_grid'],coord_grid['mu'],star_params,args)          
         
         #Calculate profile emitted by the spot
-        emit_line_prof_grid = coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),(1-spot_contrast)*Fsurf_grid_band,args['flux_intr_grid'],coord_grid['mu'],par_star,args)          
+        emit_line_prof_grid = coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),(1-spot_contrast)*Fsurf_grid_emit_band,args['flux_intr_grid'],coord_grid['mu'],star_params,args)          
 
         #Coadd line profiles over spotted region
         sum_prop_dic['line_prof'] = np.sum((np.array(line_prof_grid)-np.array(emit_line_prof_grid)),axis=0)

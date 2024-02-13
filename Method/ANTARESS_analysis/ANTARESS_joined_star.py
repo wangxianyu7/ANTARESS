@@ -312,7 +312,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_dic[data_dic['instrum_list'][0]]['type'])                           
 
     #Construction of the fit tables
-    for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
+    for par in ['coord_pl_fit','coord_spot_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):  
         init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
@@ -759,158 +759,216 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
 
 
-    pl_loc = list(gen_dic['transit_pl'])[0]
+    pl_loc = list(gen_dic['transit_pl'])[0] # <- not sure this is necessary
      
 
     #Arguments to be passed to the fit function
     fixed_args.update({
         'rout_mode':'ResProf',
-        'prior_func':fit_prop_dic['prior_func'],  
+        'func_prof_name':fit_prop_dic['func_prof_name'],
+        'mode':fit_prop_dic['mode'],
         'cen_bins' :{},
+        'edge_bins':{},
         'dcen_bins' :{},
-        'cond_def' :{},
+        'dim_exp':{},
+        'ncen_bins':{},
         'cond_fit' :{},
-        'cond_model':{},
-        't_exp_bjd' : {},
+        'cond_def' :{},
         'flux':{},
         'cov' :{},
         'nexp_fit':0,
-        'nexp_fit_all':{},
         'FWHM_inst':{},
-        'inst_list':[],
-        'inst_vis_list':{},
-        'coord_line': fit_prop_dic['dim_fit'],
-        'transit_pl':{},
-        'pl_loc' : pl_loc,
-        'phase'     : {},
-   
-        'idx_in_fit' : {},
-        'idx_calc'   : {},
-        'n_in_visit' : {},
-        'data_mast'  : {},
-        'cont_DI_obs' : {},
-        'rescaling' : {},
-        'planet_params' : system_param[pl_loc],
-        'print_exp':False, 
-        'calc_pl_flux' : True,
-        'calc_pl_mean_prop' : False,
-        'pol_mode': fit_prop_dic['pol_mode'],
+        'n_pc':{},
+        'chrom_mode':data_dic['DI']['system_prop']['chrom_mode'],
+        'conv2intr':True,
+        'mac_mode':theo_dic['mac_mode'],
         })
-        
-    fixed_args['grid_dic']['cond_in_RpRs'] = {pl_loc : data_dic['DI']['system_prop']['achrom']['cond_in_RpRs'][pl_loc]}
-        
+    if len(fit_prop_dic['PC_model'])>0:
+        fixed_args.update({
+            'eig_res_matr':{},
+            'nx_fit_PCout':0.,
+            'n_free_PCout':0.,
+            'chi2_PCout':0.,
+            })
+    fit_save={'idx_trim_kept':{}}
     
-    #Coordinate to calculate for the fit : Mock Théo : only use 'r_prok' and 'mu'
-    fixed_args['coord_fit']=fit_prop_dic['dim_fit']
-    fixed_args['par_list']+=['rv',fixed_args['coord_fit']]
+    #Stellar surface coordinate required to calculate spectral line profiles
+    #    - other required properties are automatically added in the sub_calc_plocc_spot_prop() function
+    fixed_args['par_list']+=['line_prof']
+    if fixed_args['mode']=='ana':
+        if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
+        else:fixed_args['coord_line']=fit_prop_dic['dim_fit']
+        fixed_args['par_list']+=[fixed_args['coord_line']]
+    else:
+        fixed_args['par_list']+=['mu']
 
-    
+    #Activation of spectral conversion and resampling 
+    cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_dic[data_dic['instrum_list'][0]]['type'])    
+
     #Construction of the fit tables
+    #Initializing entries that will store the coordinates of the planets, of the spots, and the respective phase of the fitted exposures.
+    for par in ['coord_pl_fit','coord_spot_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
         init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
-          
-        for key in ['phase','cen_bins','dcen_bins','flux','cov','cond_def', 'cond_fit','cond_model','t_exp_bjd', 'rescaling','cont_DI_obs', 'n_in_visit', 'data_mast', 'idx_calc'] : fixed_args[key][inst]={}
-        fixed_args['FWHM_inst'][inst]=calc_FWHM_inst(inst)
+        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
+        if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
+        fit_save['idx_trim_kept'][inst] = {}
+        if (fixed_args['mode']=='ana') and (inst not in fixed_args['func_prof_name']):fixed_args['func_prof_name'][inst] = 'gauss'
+        if (inst in fit_prop_dic['order']):iord_sel =  fit_prop_dic['order'][inst]
+        else:iord_sel = 0
+
+        #Setting continuum range to default if undefined
+        if inst not in fit_prop_dic['cont_range']:fit_prop_dic['cont_range'] = data_dic['Res']['cont_range']
+        cont_range = fit_prop_dic['cont_range'][inst][iord_sel]
+
+        #Setting fitted range to default if undefined
+        if inst not in fit_prop_dic['fit_range']:fit_prop_dic['fit_range'][inst] = data_dic['Res']['fit_range'][inst]
         
+        #Setting trimmed range to default if undefined
+        if (inst in fit_prop_dic['trim_range']):trim_range = fit_prop_dic['trim_range'][inst]
+        else:trim_range = None 
+
+        #Processing visit
         for vis in data_dic[inst]['visit_list']:
             init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
 
             #Visit is fitted
-            if vis is not None: 
+            if fixed_args['bin_mode'][inst][vis] is not None: 
                 data_vis=data_dic[inst][vis]
-                data_vis_bin = init_joined_routines_vis_fit('ResProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
+                init_joined_routines_vis_fit('ResProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
+                data_com = dataload_npz(data_dic[inst][vis]['proc_com_data_paths'])             
+
+                #Instrumental convolution
+                if (inst not in fixed_args['FWHM_inst']):                
+                    fixed_args['FWHM_inst'][inst] = get_FWHM_inst(inst,fixed_args,data_com['cen_bins'][iord_sel])
+
+                #Trimming data
+                #    - the trimming is applied to the common table, so that all processed profiles keep the same dimension after trimming
+                #    - data is trimmed to the minimum range encompassing the continuum to limit useless computations
+                if (trim_range is not None):
+                    min_trim_range = trim_range[0]
+                    max_trim_range = trim_range[1]
+                else:
+                    if len(cont_range)==0:
+                        min_trim_range=-1e100
+                        max_trim_range=1e100
+                    else:
+                        min_trim_range = cont_range[0][0] + 3.*fixed_args['FWHM_inst'][inst]
+                        max_trim_range = cont_range[-1][1] - 3.*fixed_args['FWHM_inst'][inst]
+                idx_range_kept = np_where1D((data_com['edge_bins'][iord_sel,0:-1]>=min_trim_range) & (data_com['edge_bins'][iord_sel,1::]<=max_trim_range))
+                ncen_bins = len(idx_range_kept)
+                if ncen_bins==0:stop('Empty trimmed range')                  
                 
+                fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
+                fixed_args['ncen_bins'][inst][vis] = ncen_bins  
+                fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
 
+                #Enable PC noise model
+                if (inst in fit_prop_dic['PC_model']) and (vis in fit_prop_dic['PC_model'][inst]):
+                    if fixed_args['bin_mode'][inst][vis]=='_bin':stop('PC correction not available for binned data')
+                    data_pca = np.load(fit_prop_dic['PC_model'][inst][vis]['PC_path'],allow_pickle=True)['data'].item()  
 
-                #Fitted exposures (by default, we use all in-transit AND out-transit data. 
-                if fit_prop_dic['idx_in_fit'][inst][vis]=='all'    :    expo_fit = range(data_vis['n_in_visit'])
-                else    :   expo_fit = np.intersect1d(fit_prop_dic['idx_in_fit'][inst][vis],range(data_vis['n_in_visit']))
-                fixed_args['idx_in_fit'][inst][vis] = expo_fit
-                fixed_args['n_in_visit'][inst][vis] = data_vis['n_in_visit']
-
-                for key in ['phase','flux','cov','cond_def', 't_exp_bjd', 'cont_DI_obs', 'rescaling'] :
-                    fixed_args[key][inst][vis] = np.zeros(data_vis['n_in_visit'],dtype=object)
-                
-                # Number of fitted exposures during visit
-                fixed_args['nexp_fit_all'][inst][vis] = len(expo_fit) 
-
-                # Total number of fitted exposures 
-                fixed_args['nexp_fit'] += fixed_args['nexp_fit_all'][inst][vis]
-                       
-                # Store phase coordinates and BJD times of all visit exposure
-                coord_vis = coord_dic[inst][vis]
-                fixed_args['phase'][inst][vis] = np.vstack((coord_vis[pl_loc]['st_ph'],coord_vis[pl_loc]['cen_ph'],coord_vis[pl_loc]['end_ph'])) 
-                fixed_args['t_exp_bjd'][inst][vis] = coord_vis['bjd']
-
-                # Load master-out data for current vis
-                data_mast_vis = np.load(data_dic[inst][vis]['mast_DI_data_paths'][0]+'.npz',allow_pickle=True)['data'].item()
-
-                # Store which exposures must be calculated (fitted exposures + exposures used in the master-out)
-                fixed_args['idx_calc'][inst][vis] = np.union1d(   fixed_args['idx_in_fit'][inst][vis]  ,  data_mast_vis['idx_to_bin']  )
-                
-                #Mock Théo : We forget about triming range or idk
-                iord_sel = 0
-                nspec = data_vis['nspec']
-                
-                # Retrieving fitted exposures data :
-                for i_count, iexp in enumerate(  fixed_args['idx_calc'][inst][vis]  ) :
-                
-                    # Load light curve and DI prop data
-                    data_LC_vis = dataload_npz(data_vis['scaled_data_paths']+str(iexp))
-                    data_DI_prop_vis = np.load(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis+'.npz',  allow_pickle=True)['data'].item()
-                                            
-                    #Upload latest processed intrinsic data
-                    data_exp = np.load(data_vis['proc_Res_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item()
-                                            
-                    # Retrieve defined bins : 
-                    if i_count == 0 : 
-                        cen_bins  = data_exp['cen_bins']  [iord_sel,:]
-                        edge_bins = data_exp['edge_bins'] [iord_sel,:]
-                        dcen_bins  = cen_bins[1] - cen_bins[0]
-                        
-                        # Detecting bins over which models are calculated and fitted  (we calculate the model over the range it is fitted, + a 3*FW_inst margin for convolution)
-                        #    -> All tables will be relative to cen_bins[cond_in_model]   /!\  /!\  /!\
-                        if len(fit_prop_dic['fit_range'][inst][vis])==0 : 
-                            cond_in_fit   = np.ones(nspec,dtype=bool)
-                            cond_in_model = np.ones(nspec,dtype=bool)
-                        else:
-                            cond_in_fit   = np.zeros(nspec,dtype=bool)
-                            cond_in_model = np.zeros(nspec,dtype=bool)
-                            FW_inst = fixed_args['FWHM_inst'][inst]
-                            for bd_int in fit_prop_dic['fit_range'][inst][vis] : 
-                                cond_in_fit   |= (edge_bins[0:-1]>=bd_int[0]             )    &    (edge_bins[1:]<=bd_int[1]             )
-                                cond_in_model |= (edge_bins[0:-1]>=bd_int[0] - 3*FW_inst )    &    (edge_bins[1:]<=bd_int[1] + 3*FW_inst )
-                                                            
-                        # Store bins properties for the whole visit (edge bins are requested as arg of calc_bin_prof, but uselesss)
-                        fixed_args['cen_bins'] [inst][vis]  =  cen_bins [cond_in_model] 
-                        fixed_args['dcen_bins'] [inst][vis]  =  dcen_bins
-                        fixed_args['cond_fit'] [inst][vis]  =  cond_in_fit[cond_in_model]
-                                            
-                    # Retrieve profile and defined bins  (relative to cond_model)    ->    only for fitted exposures
-                    if iexp in  fixed_args['idx_in_fit'][inst][vis] : 
-                        for key in ['flux','cond_def']:fixed_args[key][inst][vis][iexp] = data_exp[key][iord_sel,cond_in_model]
-                        fixed_args['cov'][inst][vis][iexp] = data_exp['cov'][iord_sel][:,cond_in_model] 
-                        fit_dic['nx_fit']+=np.sum(fixed_args['cond_def'][inst][vis][iexp]  &  fixed_args['cond_fit'][inst][vis] )
-
-                    # Continuum level of the raw DI observations
-                    fixed_args['cont_DI_obs'] [inst][vis][iexp] = data_DI_prop_vis[iexp]['cont']
+                    #Accounting for PCA fit in merit values
+                    #    - PC have been fitted in the PCA module to the out-of-transit data
+                    if len(fit_prop_dic['PC_model'][inst][vis]['idx_out'])>0:
+                        if fit_prop_dic['PC_model'][inst][vis]['idx_out']=='all':idx_pc_out =  np.intersect1d(gen_dic[inst][vis]['idx_out'],data_pca['idx_corr'])
+                        else:idx_pc_out =  np.intersect1d(fit_prop_dic['PC_model'][inst][vis]['idx_out'],data_pca['idx_corr'])
                     
-                    # Rescaling factor calculated in the 'broadband flux scaling' module, to go from DI CCF to rescaled CCF
-                    LC_exp, scaling_exp  =  1-data_LC_vis['loc_flux_scaling'][iexp](cen_bins)  ,  data_LC_vis['glob_flux_scaling'][iexp]
-                    fixed_args['rescaling'][inst][vis][iexp] = (LC_exp / scaling_exp) [cond_in_model]
+                        #Increment :
+                        #    + number of fitted datapoints = number of pixels fitted per exposure in the PCA module
+                        #    + number of free parameters = number of PC fitted in the PCA module
+                        #    + chi2: chi2 for current exposure from the correction applied in the PCA module
+                        for idx_out in idx_pc_out:
+                            fixed_args['nx_fit_PCout']+=data_pca['nfit_tab'][idx_out]
+                            if fit_prop_dic['PC_model'][inst][vis]['noPC']:
+                                fixed_args['n_free_PCout']+=0. 
+                                fixed_args['chi2_PCout']+=data_pca['chi2null_tab'][idx_out]                                   
+                            else:
+                                fixed_args['n_free_PCout']+=data_pca['n_pc']
+                                fixed_args['chi2_PCout']+=data_pca['chi2_tab'][idx_out] 
+                                
+                    #Number of PC used for the fit
+                    #    - set by the correction applied in the PCA module, for consistency
+                    if fit_prop_dic['PC_model'][inst][vis]['noPC']:
+                        fixed_args['n_pc'][inst][vis] = None
+                    else:
+                        fixed_args['n_pc'][inst][vis]=data_pca['n_pc']
+                        fixed_args['eig_res_matr'][inst][vis] = {} 
 
-                # Store useful data for computing the master-out (in particular, weights !)
-                fixed_args['data_mast'][inst][vis] = {}
-                fixed_args['data_mast'][inst][vis]['idx_to_bin']     = data_mast_vis['idx_to_bin']
-                fixed_args['data_mast'][inst][vis]['dx_ov']          = data_mast_vis['dx_ov']
-                fixed_args['data_mast'][inst][vis]['cond_def']       = data_mast_vis['cond_def'][iord_sel,cond_in_model]
-                fixed_args['data_mast'][inst][vis]['weight']         = {}
-                for iexp_off in data_mast_vis['idx_to_bin'] : 
-                    fixed_args['data_mast'][inst][vis]['weight'][iexp_off] = data_mast_vis['weight'][iexp_off][iord_sel,cond_in_model]
-    
+                else:fixed_args['n_pc'][inst][vis] = None
+
+                #Fit tables
+                #    - models must be calculated over the full, continuous spectral tables to allow for convolution
+                #      the fit is then performed on defined pixels only
+                for key in ['dcen_bins','cen_bins','edge_bins','cond_fit','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
+                fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
+                fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
+                for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
+
+                    #Upload latest processed residual data
+                    if fixed_args['bin_mode'][inst][vis]=='_bin':data_exp = dataload_npz(gen_dic['save_data_dir']+'Resbin_data/'+inst+'_'+vis+'_phase'+str(i_in))               
+                    else:data_exp = dataload_npz(data_dic[inst][vis]['proc_Res_data_paths']+str(i_in))
+
+                    #Trimming profile         
+                    for key in ['cen_bins','flux','cond_def']:fixed_args[key][inst][vis][isub] = data_exp[key][iord_sel,idx_range_kept]
+                    fixed_args['edge_bins'][inst][vis][isub] = data_exp['edge_bins'][iord_sel,idx_range_kept[0]:idx_range_kept[-1]+2]   
+                    fixed_args['dcen_bins'][inst][vis][isub] = fixed_args['edge_bins'][inst][vis][isub][1::]-fixed_args['edge_bins'][inst][vis][isub][0:-1]  
+                    fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]
                     
+                    #Oversampled line profile model table
+                    if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
+
+                    #Initializing ranges in the relevant rest frame
+                    if len(cont_range)==0:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] = True    
+                    else:
+                        for bd_int in cont_range:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
+                    if len(fit_prop_dic['fit_range'][inst][vis])==0:fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] = True    
+                    else:
+                        for bd_int in fit_prop_dic['fit_range'][inst][vis]:fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])        
+
+                    #Accounting for undefined pixels
+                    fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]           
+                    fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]          
+                    fit_dic['nx_fit']+=np.sum(fit_prop_dic[inst][vis]['cond_def_fit_all'][isub])
+                    fixed_args['cond_fit'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]
+
+                    #Initialize PCs 
+                    if fixed_args['n_pc'][inst][vis] is not None:
+                    
+                        #PC matrix interpolated on current exposure table
+                        fixed_args['eig_res_matr'][inst][vis][i_in] = np.zeros([fixed_args['n_pc'][inst][vis],fixed_args['ncen_bins'][inst][vis]],dtype=float)
+                    
+                        #Process each PC
+                        for i_pc in range(fixed_args['n_pc'][inst][vis]):
+                            
+                            #PC profile
+                            fixed_args['eig_res_matr'][inst][vis][i_in][i_pc] = interp1d(data_pca['cen_bins'],data_pca['eig_res_matr'][i_pc],fill_value='extrapolate')(fixed_args['cen_bins'][inst][vis][isub])       
+                            
+                            #PC free amplitude
+                            pc_name = 'aPC_idxin'+str(i_in)+'_ord'+str(i_pc)+'__IS'+inst+'_VS'+vis
+                            fit_prop_dic['mod_prop'][pc_name]={'vary':True,'guess':0.} 
+                            if i_pc==0:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-4.,4.]
+                            elif i_pc==1:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-3.,2.]
+                            else:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-1.,1.]
+                            fit_prop_dic['priors'][pc_name]={'low':-100. ,'high':100.,'mod':'uf'}
+
+                #Number of fitted exposures
+                fixed_args['nexp_fit']+=fixed_args['nexp_fit_all'][inst][vis]
+
+    #Common data type
+    for idx_inst,inst in enumerate(data_dic['instrum_list']):
+        if idx_inst==0:fixed_args['type'] = data_dic[inst]['type']
+        elif fixed_args['type'] != data_dic[inst]['type']:stop('Incompatible data types')
+
+    #########################################
+    ####### SHOULD WORK UP UNTIL HERE #######
+    #########################################
+
     #Artificial observation table
     #    - covariance condition is set to False so that chi2 values calculated here are not further modified within the residual() function
+    #    - unfitted pixels are removed from the chi2 table passed to residual() , so that they are then summed over the full tables
+    if fit_dic['nx_fit']==0:stop('No points in fitted ranges')
+    fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)   
     fixed_args['x_val']=range(fit_dic['nx_fit'])
     fixed_args['y_val'] = np.zeros(fit_dic['nx_fit'],dtype=float)  
     fixed_args['s_val'] = np.ones(fit_dic['nx_fit'],dtype=float)          
@@ -922,21 +980,74 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #Model fit and calculation
     merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'])   
     
-    #Best-fit model and properties
-    fit_save={}
+    #PC correction
+    if len(fit_prop_dic['PC_model'])>0:
+        fit_save.update({'eig_res_matr':fixed_args['eig_res_matr'],'n_pc':fixed_args['n_pc'] })
+       
+        #Accouting for out-of-transit PCA fit in merit values
+        #    - PC have been fitted in the PCA module to the out-of-transit data
+        #      we include their merit values to those from RMR + PC fit 
+        if fixed_args['nx_fit_PCout']>0:
+            fit_dic_PCout = {}
+            fit_dic_PCout['nx_fit'] = fit_dic['nx_fit'] + fixed_args['nx_fit_PCout']
+            fit_dic_PCout['n_free']  = fit_dic['merit']['n_free'] + fixed_args['n_free_PCout']
+            fit_dic_PCout['dof'] = fit_dic_PCout['nx_fit'] - fit_dic_PCout['n_free']
+            fit_dic_PCout['chi2'] = fit_dic['merit']['chi2'] + fixed_args['chi2_PCout']          
+            fit_dic_PCout['red_chi2'] = fit_dic_PCout['chi2']/fit_dic_PCout['dof']
+            fit_dic_PCout['BIC']=fit_dic_PCout['chi2']+fit_dic_PCout['n_free']*np.log(fit_dic_PCout['nx_fit'])      
+            fit_dic_PCout['AIC']=fit_dic_PCout['chi2']+2.*fit_dic_PCout['n_free']  
+            
+            np.savetxt(fit_dic['file_save'],[['----------------------------------']],fmt=['%s'])
+            np.savetxt(fit_dic['file_save'],[['Merit values with out-of-transit PC fit']],fmt=['%s']) 
+            np.savetxt(fit_dic['file_save'],[['----------------------------------']],fmt=['%s']) 
+            np.savetxt(fit_dic['file_save'],[['Npts : '+str(fit_dic_PCout['nx_fit'])]],delimiter='\t',fmt=['%s']) 
+            np.savetxt(fit_dic['file_save'],[['Nfree : '+str(fit_dic_PCout['n_free'])]],delimiter='\t',fmt=['%s']) 
+            np.savetxt(fit_dic['file_save'],[['d.o.f : '+str(fit_dic_PCout['dof'])]],delimiter='\t',fmt=['%s']) 
+            np.savetxt(fit_dic['file_save'],[['Best chi2 : '+str(fit_dic_PCout['chi2'])]],delimiter='\t',fmt=['%s']) 
+            np.savetxt(fit_dic['file_save'],[['Reduced chi2 : '+str(fit_dic_PCout['red_chi2'])]],delimiter='\t',fmt=['%s'])
+            np.savetxt(fit_dic['file_save'],[['BIC : '+str(fit_dic_PCout['BIC'])]],delimiter='\t',fmt=['%s'])
+            np.savetxt(fit_dic['file_save'],[['AIC : '+str(fit_dic_PCout['AIC'])]],delimiter='\t',fmt=['%s'])
+            np.savetxt(fit_dic['file_save'],[['----------------------------------']],fmt=['%s']) 
+            np.savetxt(fit_dic['file_save'],[['']],fmt=['%s']) 
+
+    #Best-fit model and derived properties
+    fixed_args['fit'] = False
+    mod_dic,coeff_line_dic,mod_prop_dic = joined_ResProf(p_final,fixed_args)
 
     #Save best-fit properties
-    #    - with same structure as fit to individual CCFs 
-    fit_save.update({'p_final':p_final,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'dim_fit':fit_prop_dic['dim_fit'],'pol_mode':fit_prop_dic['pol_mode'],'genpar_instvis':fixed_args['genpar_instvis']})
+    #    - with same structure as fit to individual profiles 
+    fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
+                     'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par']})
+    if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
+    if (plot_dic['Res_prof']!='') or (plot_dic['Res_prof_res']!='') or (plot_dic['prop_Res']!='') or (plot_dic['sp_Res_1D']!=''):
+        for inst in fixed_args['inst_list']:
+            for vis in fixed_args['inst_vis_list'][inst]:
+                prof_fit_dic={'fit_range':fit_prop_dic['fit_range'][inst][vis]}
+                if fixed_args['bin_mode'][inst][vis]=='_bin':prof_fit_dic['loc_data_corr_path'] = gen_dic['save_data_dir']+'Resbin_data/'+inst+'_'+vis+'_phase'          
+                else:prof_fit_dic['loc_data_corr_path'] = data_dic[inst][vis]['proc_Res_data_paths']
+                for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
+                    prof_fit_dic[i_in]={
+                        'cen_bins':fixed_args['cen_bins'][inst][vis][isub],
+                        'flux':mod_dic[inst][vis][isub],
+                        'cond_def_fit':fit_prop_dic[inst][vis]['cond_def_fit_all'][isub],
+                        'cond_def_cont':fit_prop_dic[inst][vis]['cond_def_cont_all'][isub]
+                        }
+                    for pl_loc in fixed_args['transit_pl'][inst][vis]:
+                        prof_fit_dic[i_in][pl_loc] = {}
+                        for prop_loc in mod_prop_dic[inst][vis][pl_loc]:prof_fit_dic[i_in][pl_loc][prop_loc] = mod_prop_dic[inst][vis][pl_loc][prop_loc][isub]
+                    for spot in fixed_args['transit_sp'][inst][vis]:
+                        prof_fit_dic[i_in][spot] = {}
+                        for prop_loc in mod_prop_dic[inst][vis][spot]:prof_fit_dic[i_in][spot][prop_loc] = mod_prop_dic[inst][vis][spot][prop_loc][isub]
+
+                np.savez_compressed(fit_dic['save_dir']+'ResProf_fit_'+inst+'_'+vis+fixed_args['bin_mode'][inst][vis],data={'prof_fit_dic':prof_fit_dic},allow_pickle=True)
+
    
     #Post-processing    
     fit_dic['p_null'] = deepcopy(p_final)
     for par in [ploc for ploc in fit_dic['p_null'] if 'ctrst' in ploc]:fit_dic['p_null'][par] = 0.    
     com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
-    
     print('     ----------------------------------')  
-    
     return None
 
     

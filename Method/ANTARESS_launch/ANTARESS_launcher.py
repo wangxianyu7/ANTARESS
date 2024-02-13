@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from ANTARESS_process.ANTARESS_main import ANTARESS_main
-from ANTARESS_launch.ANTARESS_gridrun import ANTARESS_gridrun
+# from ANTARESS_launch.ANTARESS_gridrun import ANTARESS_gridrun
 import importlib
 import os as os_system
 
@@ -41,8 +41,8 @@ def ANTARESS_launcher(nbook_dic = {} , user = ''):
         }  
     
     #Retrieve default settings
-    from ANTARESS_launch.ANTARESS_settings import ANTARESS_settings
-    ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic)
+    # from ANTARESS_launch.ANTARESS_settings import ANTARESS_settings
+    # ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic)
     
     #Overwrite with user settings
     if user!='':

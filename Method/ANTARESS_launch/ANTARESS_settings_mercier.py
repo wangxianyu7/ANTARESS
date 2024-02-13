@@ -1,6 +1,5 @@
 import numpy as np
-from constant_data import Rjup,Rearth,Rsun,c_light
-from utils import stop
+from ANTARESS_general.utils import stop
 from copy import deepcopy
 from pathos.multiprocessing import cpu_count
 
@@ -217,7 +216,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
             }
         gen_dic['kepl_pl'] = ['V1298tau_b']
 
-    
+   #Transiting spots
+    if gen_dic['star_name']=='AUMic':
+        gen_dic['transit_sp'] = {
+            'spot1':{'ESPRESSO' : ['mock_vis']}, 
+            }
+
     #Plot settings    
     
     #Input data type
@@ -2407,13 +2411,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
         
     #Activating
-    gen_dic['fit_DI'] = True    #&  False
+    gen_dic['fit_DI'] = True    &  False
     gen_dic['fit_DIbin']=True   &  False
     gen_dic['fit_DIbinmultivis']=True    &  False
 
 
     #Calculating/Retrieving
-    gen_dic['calc_fit_DI']=True   #  &  False   
+    gen_dic['calc_fit_DI']=True    &  False   
     gen_dic['calc_fit_DIbin']=True   &  False  
     gen_dic['calc_fit_DIbinmultivis']=True    &  False  
 
@@ -2546,7 +2550,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['DI_prof_res']=''   #pdf
 
     #Housekeeping and derived properties 
-    plot_dic['prop_raw']='pdf'   #''          
+    plot_dic['prop_DI']=''   #''          
     
     
   
@@ -2889,9 +2893,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     # 'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis1']['ang__ISESPRESSO_VSmock_vis1_SPspot1'] * np.pi/180],#--grid run
                     # 'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
                     'LD' : ['quadratic'],
-                    'LD_u1' : [0.3],
+                    'LD_u1' : [0.35],
                     'LD_u2' : [0.16],
-
                 },
                 }
 
@@ -4194,194 +4197,306 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     ##################################################################################################       
     #%%% Module: fitting joined residual profiles    
     ##################################################################################################     
-            
+    # '''
+    # Fitting joined residual stellar profiles from combined (unbinned) instruments and visits 
+    #     - structure is similar to the joined intrinsic profiles fit
+    #     - fits are performed on all in-transit and out-transit exposures
+    #     - allows including spot properties (latitude, size, Tcenter, flux level) in the fitted properties
+        
+    # '''   
+
     #%%%% Activating 
-    gen_dic['fit_ResProf'] = False        
- 
-    ##### RECODER
+    gen_dic['fit_ResProf'] = False    
     
-        # '''
-        # Fitting joined residual stellar profiles from combined (unbinned) instruments and visits 
-        #     - structure is similar to the joined intrinsic profiles fit
-        #     - fits are performed on all in-transit and out-transit exposures
-        #     - allows including spot properties (latitude, size, Tcenter, flux level) in the fitted properties
+        
+    #%%%% Multi-threading
+    glob_fit_dic['ResProf']['nthreads'] = int(0.8*cpu_count())
+    
+    
+    #%%%% Fitted data
+    
+    #%%%%% Exposures to be fitted
+    #    - indexes are relative to in-transit tables
+    #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to []), set their value to 'all' for all in-transit exposures to be fitted
+    #    - add '_bin' at the end of a visit name for its binned exposures to be fitted instead of the original ones (must have been calculated with the binning module)
+    #      all other mentions of the visit (eg in parameter names) can still refer to the original visit name
+    glob_fit_dic['ResProf']['idx_in_fit']={}
+    
+    
+    #%%%%% Trimming
+    glob_fit_dic['ResProf']['trim_range'] = {}
+    
+    
+    #%%%%% Order to be fitted
+    glob_fit_dic['ResProf']['order']={}  
+    
+    
+    #%%%%% Continuum range
+    glob_fit_dic['ResProf']['cont_range'] = {}
+    
+                      
+    #%%%%% Spectral range(s) to be fitted
+    glob_fit_dic['ResProf']['fit_range'] = {}
+    
+    
+    #%%%% Line profile model         
+        
+    #%%%%% Transition wavelength
+    glob_fit_dic['ResProf']['line_trans']=None        
+    
+    
+    #%%%%% Model type
+    glob_fit_dic['ResProf']['mode'] = 'ana' 
+    
+     
+    #%%%%% Analytical profile
+    #    - default: 'gauss' 
+    glob_fit_dic['ResProf']['func_prof_name'] = {}
+    
+        
+    #%%%%% Analytical profile coordinate
+    #    - fit coordinate for the line properties of analytical profiles
+    #    - see possibilities in gen_dic['fit_IntrProp']
+    glob_fit_dic['ResProf']['dim_fit']='mu'
+    
+    
+    #%%%%% Analytical profile variation
+    #    - fit line property as absolute ('abs') or modulated ('modul') polynomial        
+    glob_fit_dic['ResProf']['pol_mode']='abs'  
+    
+    
+    #%%%%% Fixed/variable properties
+    #    - structure is the same as glob_fit_dic['IntrProp']['mod_prop']
+    #    - intrinsic properties define the lines before instrumental convolution, which can then be applied specifically to each instrument  
+    glob_fit_dic['ResProf']['mod_prop']={}
+                  
+    #%%%%% PC noise model
+    #    - indicate for each visit:
+    # + the path to the PC matrix, already reduced to the PC requested to correct the visit in the PCA module
+    #   beware that the correction will be applied only over the range of definition of the PC set in the PCA
+    #   beware that one PC adds the number of fitted intrinsic profiles to the free parameters of the joint fit
+    # + whether to account or not (idx_out = []) for the PCA fit in the calculation of the fit merit values, using all out exposures (idx_out = 'all') or a selection
+    # + set noPC = True to account for the chi2 of the null hypothesis (no noise) on the out-of-transit data, without including PC to the RMR fit
+    glob_fit_dic['ResProf']['PC_model']={}  
+
+    #%%%% Fit settings 
+        
+    #%%%%% Fitting mode
+    #    - 'chi2', 'mcmc', or ''
+    glob_fit_dic['ResProf']['fit_mod']='' 
+    
+    
+    #%%%%% Printing fits results
+    glob_fit_dic['ResProf']['verbose']= False
+    
+    
+    #%%%%% Priors on variable properties
+    #    - see gen_dic['fit_DI'] for details
+    glob_fit_dic['ResProf']['priors']={}
+    
+    
+    #%%%%% Derived properties
+    #    - each field calls a specific function (see routine for more details)
+    glob_fit_dic['ResProf']['modif_list'] = []
+    
+    
+    #%%%%% MCMC settings
+    
+    #%%%%%% Calculating/retrieving
+    glob_fit_dic['ResProf']['mcmc_run_mode']='use'
+    
+    
+    #%%%%%% Runs to re-use
+    #    - list of mcmc runs to reuse
+    #    - if 'reuse' is requested, leave empty to automatically retrieve the mcmc run available in the default directory
+    #  or set the list of mcmc runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
+    glob_fit_dic['ResProf']['mcmc_reuse']={} 
+    
+    
+    #%%%%%% Runs to re-start
+    #    - indicate path to a 'raw_chains' file
+    #      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'mcmc_set'
+    glob_fit_dic['ResProf']['mcmc_reboot']=''
+    
+    
+    #%%%%%% Walkers
+    glob_fit_dic['ResProf']['mcmc_set']={}
+    
+    
+    #%%%%%% Complex priors
+    glob_fit_dic['ResProf']['prior_func']={}     
+    
+        
+    #%%%%%% Walkers exclusion  
+    #    - define conditions within routine
+    glob_fit_dic['ResProf']['exclu_walk']=False       
+    
+    
+    #%%%%%% Automatic exclusion of outlying chains
+    #    - set to None, or exclusion threshold
+    glob_fit_dic['ResProf']['exclu_walk_autom']=None  
+    
+    
+    #%%%%%% Derived errors
+    #    - 'quant' or 'HDI'
+    glob_fit_dic['ResProf']['out_err_mode']='HDI'
+    glob_fit_dic['ResProf']['HDI']='1s'
+    
+    
+    #%%%%%% Derived lower/upper limits
+    glob_fit_dic['ResProf']['conf_limits']={}
+    
+    
+    #%%%% Plot settings
+    
+    #%%%%% MCMC chains
+    glob_fit_dic['ResProf']['save_MCMC_chains']=''  
+    
+    
+    #%%%%% MCMC corner plot
+    #    - see function for options
+    glob_fit_dic['ResProf']['corner_options']={}      
+    
+
+
+    #Activating 
+    gen_dic['fit_ResProf'] = True  &  False
+
+    # #Indexes of exposures to be fitted, in each visit
+    #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to []), set their value to 'all' for all in-transit exposures to be fitted
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['ResProf']['idx_in_fit'] = {'ESPRESSO':{'mock_vis':'all'}}
+    
+    #Trimming
+    glob_fit_dic['ResProf']['trim_range'] = deepcopy(data_dic['Intr']['fit_prof']['trim_range'])   
+
+    #Continuum range
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['ResProf']['cont_range']={'ESPRESSO':{0:[[-150.0,-70.0],[70.0,150.0]]}}
+
+    #Spectral range(s) to be fitted            
+    glob_fit_dic['ResProf']['fit_range'] = deepcopy(data_dic['Intr']['fit_range'])
+
+    #Model type
+
+    # Analytical profile
+    if gen_dic['star_name'] == 'AUMic' :
+        glob_fit_dic['ResProf']['func_prof_name']={'ESPRESSO':'gauss'}
+    
+    #Analytical profile coordinate
+    if gen_dic['star_name'] in ['AUMic','V1298tau']:glob_fit_dic['ResProf']['dim_fit']='r_proj'
+
+
+    #Analytical profile variation
+    if gen_dic['star_name'] in ['AUMic','V1298tau']:glob_fit_dic['ResProf']['pol_mode']='modul'  
+
+    
+    #Fixed/variable properties   
+    if gen_dic['star_name']=='AUMic':
+        glob_fit_dic['ResProf']['mod_prop']={
+        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.5, 'bd':[0.55, 0.8]},
+        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':10, 'bd':[7, 10]},
+        'veq':{'vary':True,'guess':7, 'bd':[7, 8]},
+                                            }
+    
+    #Fitting mode
+    if gen_dic['star_name'] == 'AUMic':
+        # glob_fit_dic['ResProf']['fit_mod']='chi2' 
+        glob_fit_dic['ResProf']['fit_mod']='mcmc' 
+
+
+    #Printing fits results
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['ResProf']['verbose']=True   & False
+    
+    #Priors on variable properties
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['ResProf']['priors']={
+                    'ctrst_ord0__IS__VS_':{'mod':'uf','low':0,'high':1},  
+                    'FWHM_ord0__IS__VS_':{'mod':'uf','low':0,'high':100},
+                    'veq':{'mod':'uf', 'low':0, 'high':100.},
+                    }
+
+    #Derived properties
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['ResProf']['modif_list'] = ['lambda_deg']
+    
+    #Calculating/retrieving
+    # glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
+    glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
+
+    #Re-using
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['ResProf']['mcmc_reuse']={}
+        # glob_fit_dic['ResProf']['mcmc_reuse']={
+        #             'paths':['/Users/samsonmercier/Desktop/UNIGE/Fall_Semester_2023-2024/antaress/Ongoing/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk24_steps2000.npz'],
+        #             'nburn':[500]
+        #             }  
+    #Re-starting
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['ResProf']['mcmc_reboot']=''
+
+    #Walkers
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':24,'nsteps':10,'nburn':5}
+
+    #Complex priors        
+         
+    #Walkers exclusion  
+    glob_fit_dic['ResProf']['exclu_walk']=True & False  
+    if gen_dic['star_name'] == 'AUMic':   
+        glob_fit_dic['ResProf']['exclu_walk']=True & False   
+    
+
+    #Automatic exclusion of outlying chains
+    glob_fit_dic['ResProf']['exclu_walk_autom']=None  #  5.
+    if gen_dic['star_name'] == 'AUMic':   
+            glob_fit_dic['ResProf']['exclu_walk_autom']= 5
+
+
+    #Derived errors         
+    if gen_dic['star_name'] == 'AUMic':  
+        glob_fit_dic['ResProf']['out_err_mode']= 'HDI'
+        glob_fit_dic['ResProf']['HDI']='1s'
+
+
+    #Derived lower/upper limits    
+
+    
+    #MCMC chains
+    glob_fit_dic['ResProf']['save_MCMC_chains']='png'   #png  
+    if gen_dic['star_name'] == 'AUMic': 
+        glob_fit_dic['ResProf']['save_MCMC_chains']='png'
+
+
+    #MCMC corner plot
+    glob_fit_dic['ResProf']['corner_options']={
+#            'bins_1D_par':[50,50,50,50],       #vsini, ip, lambda, b
+#            'bins_2D_par':[30,30,30,30], 
+#            'range_par':[(0.,320.),(88.,90.),(86.,91.),(0.,0.13)],
+        'plot_HDI':True , # & False,             
+
+#            'bins_1D_par':[50,50,50,45,50,50,50],       #veq, ip, alpha, istar, lambda, psi, b 
+##            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(1.,14.),(84.8,89.),(86.8,89.1),(0.055,0.145)],     #low istar
+##            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(166.,179.),(84.8,89.),(90.3,92.),(0.055,0.145)],      #high istar
+#            'plot_HDI':True,  
+
+#            'bins_1D_par':[50,50,50,45,50,50],       #veq, ip, alpha, istar, lambda, psi    FIG PAPER
+##            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(1.,14.),(84.8,89.),(86.8,89.1)],     #low istar
+#            'range_par':[(40.,300.),(87.8,89.2),(-0.6,0.5),(166.,179.),(84.8,89.),(90.3,92.)],      #high istar
+#            'plot_HDI':True,
+        'plot1s_1D':False,
+        'plot_best':False,
             
-        # '''  
-        # 
-    
-        #Activating 
-        #gen_dic['fit_ResProf'] = True  &  False
-    
-        # #Indexes of exposures to be fitted, in each visit
-        # #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to []), set their value to 'all' for all in-transit exposures to be fitted
-        # if gen_dic['star_name'] == 'V1298tau' :        
-        #     glob_fit_dic['ResProf']['idx_in_fit']={'HARPN':{'mock_vis': range(40,50)}} 
-        
-    
-        # #Model line
-        # #    - specific to the instrument
-        # if gen_dic['star_name'] == 'V1298tau' :
-        #     glob_fit_dic['ResProf']['func_prof_name']={'HARPN':'gauss'}
-    
-    
-        # #Fit coordinate for the line properties : mu or r_proj
-        # glob_fit_dic['ResProf']['dim_fit']='mu'
-    
-    
-        # #Define fitted range
-        # glob_fit_dic['ResProf']['fit_range'] = {}
-        # if gen_dic['star_name']=='V1298tau':
-        #     fit_range = [[-30,30]] 
-        #     glob_fit_dic['ResProf']['fit_range']['HARPN']={'mock_vis':fit_range} 
-    
-    
-        # #Fit mode
-        # #    - 'chi2', 'mcmc', or ''
-        # glob_fit_dic['ResProf']['fit_mod']='mcmc' 
-    
-    
-    
-    
-        # #Fit line property as absolute ('abs') or modulated ('modul') polynomial        
-        # glob_fit_dic['ResProf']['pol_mode']='abs'  
             
-        # #Model properties
-        # #    - we define here coefficients specific to the line model:
-        # # + polynomial coefficients to describe the line contrast and FWHM (km/s) variations with a chosen dimension
-        # # + core/lobe relations for double-gaussian models
-        # #    - properties names must be defined as 'prop__ISinst_VSvis'  
-        # # + 'inst' is the name of the instrument, which should be set to '_' for the property to be common to all instruments and their visits
-        # # + 'vis' is the name of the visit, which should be set to '_' for the property to be common to all visits of this instrument
-        # # + the properties set here define the lines before instrumental convolution, which is then applied automatically for each instrument 
-        # glob_fit_dic['ResProf']['mod_prop']={}
-        
-        
-        
-    
-                                          
-        
-        # if gen_dic['star_name']=='V1298tau' :
-        #     bjd_obs = 2458877.6306
-        #     bjd_sp1 = 2458877.6306 - 12/24
-        #     bjd_sp2 = 2458877.6306 +  5/24
-    
-    
-        #     glob_fit_dic['ResProf']['mod_prop']={'veq':{'vary':True,'guess':23.,'bd':[23,24],'physical':True},
-        #                                 'lambda_rad__plV1298tau_b':{'vary':True,'guess':0,'bd':[-np.pi , np.pi], 'physical':True},           
-        #                                 'ctrst_ord0__ISHARPN_VSmock_vis':{'vary':True ,'guess':0.7,'bd':[0,1]},   
-        #                                 'FWHM_ord0__ISHARPN_VSmock_vis': {'vary':True ,'guess':4, 'bd':[0.,10.]}, 
-                    
-        #                                 # # Pour le spot 'spot1' : 
-        #                                 # 'lat__ISHARPN_VSmock_vis_SPspot1'     : {'vary':True ,'guess':30,       'bd' : [-80,80]},
-        #                                 # 'Tcenter__ISHARPN_VSmock_vis_SPspot1' : {'vary':True ,'guess':bjd_sp1, 'bd' : [bjd_sp1-1/3, bjd_sp1+1/3]},
-        #                                 # 'ang__ISHARPN_VSmock_vis_SPspot1'     : {'vary':True ,'guess':20,      'bd' : [10,30]},
-        #                                 # 'flux__ISHARPN_VSmock_vis_SPspot1'    : {'vary':True ,'guess':0.4,     'bd' : [0,1]},
-        #                                 # 
-        #                                 # # Pour le spot 'spot2' : 
-        #                                 # 'lat__ISHARPN_VSmock_vis_SPspot2'     : {'vary':True ,'guess':40,       'bd' : [-80,80]},
-        #                                 # 'Tcenter__ISHARPN_VSmock_vis_SPspot2' : {'vary':True ,'guess':bjd_sp2, 'bd' : [bjd_sp2-1/3, bjd_sp2+1/3]},
-        #                                 # 'ang__ISHARPN_VSmock_vis_SPspot2'     : {'vary':True ,'guess':25,      'bd' : [10,30]},
-        #                                 # 'flux__ISHARPN_VSmock_vis_SPspot2'    : {'vary':True ,'guess':0.4,     'bd' : [0,1]},
-        #                                    }
-                                           
-                    
-    
-        # #------------------------------------------
-        # #MCMC options
-        # #------------------------------------------
-        
-        # #Run mcmc or retrieve results
-        # glob_fit_dic['ResProf']['mcmc_run_mode']='use'   # reuse
-    
-    
-    
-    
-        # #Walkers settings 
-        # glob_fit_dic['ResProf']['mcmc_set']={}
-        
-        # if gen_dic['star_name'] == 'V1298tau':
-        #     glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':20,'nsteps':1,'nburn':0}          
-    
-    
-            
-        # #Priors on variable model parameters
-        # #    - see gen_dic['fit_DI'] for details
-        # glob_fit_dic['ResProf']['priors']={}
-        # if gen_dic['star_name'] == 'V1298tau' :
-        #     bjd_obs = 2458877.6306
-        #     bjd_sp1 = 2458877.6306 - 12/24
-        #     bjd_sp2 = 2458877.6306 +  5/24
-    
-        #     glob_fit_dic['ResProf']['priors'].update({
-        #         'veq':{'mod':'uf','low':23.,'high':24.},    
-        #         'lambda_rad__plV1298tau_b':{'mod':'uf','low':-np.pi,'high':np.pi},       
-        #         'FWHM_ord0__ISHARPN_VSmock_vis':{'mod':'uf','low':0.,'high':10.},
-        #         'ctrst_ord0__ISHARPN_VSmock_vis':{'mod':'uf','low':0.,'high':1.},
-                    
-        #         # # Pour le spot 'spot1' : 
-        #         # 'lat__ISHARPN_VSmock_vis_SPspot1'     : {'mod':'uf' , 'low':-80,              'high':80},
-        #         # 'Tcenter__ISHARPN_VSmock_vis_SPspot1' : {'mod':'uf' , 'low':bjd_sp1-1/3,      'high':bjd_sp1+1/3},
-        #         # 'ang__ISHARPN_VSmock_vis_SPspot1'     : {'mod':'uf' , 'low':10,               'high':30},
-        #         # 'flux__ISHARPN_VSmock_vis_SPspot1'    : {'mod':'uf' , 'low':0,                'high':1},
-        #         # 
-        #         # # Pour le spot 'spot2' : 
-        #         # 'lat__ISHARPN_VSmock_vis_SPspot2'     : {'mod':'uf' , 'low':-80,           'high':80},
-        #         # 'Tcenter__ISHARPN_VSmock_vis_SPspot2' : {'mod':'uf' , 'low': bjd_sp2-1/3,  'high': bjd_sp2 + 1/3},
-        #         # 'ang__ISHARPN_VSmock_vis_SPspot2'     : {'mod':'uf' , 'low':10,            'high':30},
-        #         # 'flux__ISHARPN_VSmock_vis_SPspot2'    : {'mod':'uf' , 'low':0,             'high':1},
-                
-                                        
-        #                                 })
-    
-    
-    
-    
-    
-    
-    
-    
-        
-        # #Use complex prior function
-        # glob_fit_dic['ResProf']['prior_func']={}        
-    
-        # #Excluding manually some of the walkers
-        # #    - define conditions within routine
-        # glob_fit_dic['ResProf']['exclu_walk']=True   & False       
-    
-        # #Automatic exclusion of outlying chains
-        # #    - set to None, or exclusion threshold
-        # glob_fit_dic['ResProf']['exclu_walk_autom']=None  #  5.
-    
-        # #Define lower/upper limits to be calculated
-        # # glob_fit_dic['ResProf']['conf_limits']={'ecc_pl1':{'bound':0.,'type':'upper','level':['1s','3s']}} 
-    
-        # #Plot chains for MCMC parameters
-        # glob_fit_dic['ResProf']['save_MCMC_chains']='png'   #png  
-    
-        # #Choose list of modifications to be made to the final chains 
-        # #    - each field calls a specific function (see routine for more details)
-        # glob_fit_dic['ResProf']['modif_list'] = ['vsini','lambda_deg']
-    
-        # #Define HDI interval to be calculated 
-        # glob_fit_dic['ResProf']['HDI']='1s'   #None   #'3s'   
-    
-    
-    
-        
-        # #Options for corner plot
-        # #    - see function for options
-        # glob_fit_dic['ResProf']['corner_options']={
-        #     'plot_HDI':True , 
-        #     'plot1s_1D':False,
-        #     'color_levels':['deepskyblue','lime'],
-        #     'fontsize':8,
-        #     }    
-    
-    
-        # #Print on-screen fit information
-        # glob_fit_dic['ResProf']['verbose']=True  &  False
-    
-    
+#            'major_int':[0.2,50.],
+#            'minor_int':[0.1,10.],
+        'color_levels':['deepskyblue','lime'],
+        # 'fontsize':15,
+        'fontsize':10,
+#            'smooth2D':[0.05,5.] 
+#            'plot1s_1D':False
+        }
         
         
         
@@ -4628,8 +4743,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Priors on variable properties
     if gen_dic['star_name'] == 'AUMic':
         glob_fit_dic['IntrProf']['priors']={
-                    'ctrst':{'mod':'uf','low':0,'high':1},  
-                    'FWHM':{'mod':'uf','low':0,'high':100},
+                    'ctrst_ord0__IS__VS_':{'mod':'uf','low':0,'high':1},  
+                    'FWHM_ord0__IS__VS_':{'mod':'uf','low':0,'high':100},
                     'veq':{'mod':'uf', 'low':0, 'high':100.},
                     }
     #Derived properties
@@ -4641,7 +4756,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # glob_fit_dic['IntrProf']['modif_list'] = []
     if gen_dic['star_name'] == 'AUMic':
         # glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg', 'Peq_veq']
-        glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg']
+        glob_fit_dic['IntrProf']['modif_list'] = ['']
     # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','Peq_vsini'] 
     # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini'] 
     # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini','psi_lambda'] 

@@ -123,7 +123,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                     fixed_args['varpar_priors'][par]={'mod':'uf','low':varpar_priors[0],'high':varpar_priors[1]}
 
                 #Change if guess value is beyond prior range
-                if priors_prop[par]['mod']=='uf':
+                if fixed_args['varpar_priors'][par]['mod']=='uf':
                     if ((p_start[par].value<fixed_args['varpar_priors'][par]['low']) or (p_start[par].value>fixed_args['varpar_priors'][par]['high'])):p_start[par].value=0.5*(fixed_args['varpar_priors'][par]['low']+fixed_args['varpar_priors'][par]['high'])
                     if (fit_dic['uf_bd'][par][0]<fixed_args['varpar_priors'][par]['low']):fit_dic['uf_bd'][par][0]=fixed_args['varpar_priors'][par]['low']
                     if (fit_dic['uf_bd'][par][1]>fixed_args['varpar_priors'][par]['high']):fit_dic['uf_bd'][par][1]=fixed_args['varpar_priors'][par]['high']
@@ -314,7 +314,8 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
             
         #Global model properties        
         'system_param':deepcopy(system_param),
-        'system_prop':deepcopy(data_dic['DI']['system_prop']), 
+        'system_prop':deepcopy(data_dic['DI']['system_prop']),
+        'system_spot_prop':deepcopy(data_dic['DI']['spots_prop']), 
         'DI_grid':False,
         'coord_line':fit_prop_dic['dim_fit'],
         'pol_mode':fit_prop_dic['pol_mode'],
@@ -336,6 +337,7 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'prior_func':fit_prop_dic['prior_func'], 
         'inst_vis_list':{},
         'transit_pl':{},
+        'transit_sp':{},
         'bin_mode':{},
         'fit' : {'chi2':True,'':False,'mcmc':True}[fit_prop_dic['fit_mod']],     
         }
@@ -356,14 +358,14 @@ def init_joined_routines_inst(inst,fit_prop_dic,fixed_args):
         fixed_args (dict) : Dictionary containing the arguments that will be passed to the fitting function.
     
     Returns:
-        TBD
+        None
     
     """
     #Instrument is fitted
     fit_prop_dic[inst]={}
     fixed_args['inst_list']+=[inst]
     fixed_args['inst_vis_list'][inst]=[]  
-    for key in ['coord_pl_fit','ph_fit','nexp_fit_all','transit_pl','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
+    for key in ['coord_pl_fit','coord_spot_fit','ph_fit','nexp_fit_all','transit_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
 
     return None
 
@@ -379,7 +381,7 @@ def init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args):
         fixed_args (dict) : Dictionary containing the arguments that will be passed to the fitting function.
     
     Returns:
-        TBD
+        None
     
     """
     #Identify whether visit is fitted over original or binned exposures
@@ -403,13 +405,14 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
     
     """
     fit_prop_dic[inst][vis]={}
-    
     #Check for multi-transits
     #    - if two planets are transiting the properties derived from the fits to intrinsic profiles cannot be fitted, as the model only contains a single line profile
     if fixed_args['rout_mode']=='IntrProp':
         if len(data_vis['transit_pl'])>1:stop('Multi-planet transit must be modelled with full intrinsic profiles')
         fixed_args['transit_pl'][inst][vis]=[data_vis['transit_pl'][0]] 
-    else:fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
+    else:
+        fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
+        fixed_args['transit_sp'][inst][vis]=data_vis['transit_sp']
     
     #Binned data
     if fixed_args['bin_mode'][inst][vis]=='_bin':
@@ -438,12 +441,17 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
     else:
         sub_idx_in_fit = gen_dic[inst][vis]['idx_in'][fixed_args['idx_in_fit'][inst][vis]]
         coord_vis = coord_dic[inst][vis]
-    for par in ['coord_pl_fit','ph_fit']:fixed_args[par][inst][vis]={}
+    for par in ['coord_pl_fit','coord_spot_fit','ph_fit']:fixed_args[par][inst][vis]={}
     for pl_loc in fixed_args['transit_pl'][inst][vis]:
         fixed_args['ph_fit'][inst][vis][pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'][sub_idx_in_fit],coord_vis[pl_loc]['cen_ph'][sub_idx_in_fit],coord_vis[pl_loc]['end_ph'][sub_idx_in_fit]) ) 
         fixed_args['coord_pl_fit'][inst][vis][pl_loc] = {}
         for key in ['cen_pos','st_pos','end_pos']:fixed_args['coord_pl_fit'][inst][vis][pl_loc][key] = coord_vis[pl_loc][key][:,sub_idx_in_fit]    
         fixed_args['coord_pl_fit'][inst][vis][pl_loc]['ecl'] = coord_vis[pl_loc]['ecl'][sub_idx_in_fit]    
+    for spot in fixed_args['transit_sp'][inst][vis]:
+        fixed_args['coord_spot_fit'][inst][vis][spot] = {}
+        for key in ['cen_pos','st_pos','end_pos']:fixed_args['coord_spot_fit'][inst][vis][spot][key] = coord_vis[spot][key][:,sub_idx_in_fit]
+        for key in ['cen_tbjd','st_tbjd','end_tbjd']:fixed_args['coord_spot_fit'][inst][vis][spot][key]=coord_vis[spot][key][sub_idx_in_fit] 
+
 
     return data_vis_bin
     
