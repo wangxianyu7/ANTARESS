@@ -201,7 +201,7 @@ def joined_IntrProp(param,args):
             args['vis']=vis 
             
             #Calculate coordinates and properties of occulted regions 
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args['par_list'],args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
             surf_prop_dic,spotocc_prop = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
             
             #Properties associated with the transiting planet in the visit 
@@ -313,7 +313,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_dic[data_dic['instrum_list'][0]]['type'])                           
 
     #Construction of the fit tables
-    for par in ['coord_pl_fit','coord_spot_fit','ph_fit']:fixed_args[par]={}
+    for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):  
         init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
@@ -647,7 +647,7 @@ def joined_IntrProf(param,args):
                 
             #-----------------------------------------------------------
             #Calculate coordinates of occulted regions or use imported values
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,deepcopy(args['par_list']),args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -806,7 +806,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Construction of the fit tables
     #Initializing entries that will store the coordinates of the planets, of the spots, and the respective phase of the fitted exposures.
-    for par in ['coord_pl_fit','coord_spot_fit','ph_fit']:fixed_args[par]={}
+    for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
         init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
@@ -960,7 +960,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         elif fixed_args['type'] != data_dic[inst]['type']:stop('Incompatible data types')
 
     #########################################
-    ####### SHOULD WORK UP UNTIL HERE #######
+    #### CODE SHOULD WORK UP UNTIL HERE #####
     #########################################
 
     #Artificial observation table
@@ -1066,26 +1066,31 @@ def FIT_joined_ResProf(param,x_tab,args=None):
     """
     
     #Models over fitted spectral ranges
-    model_prof=joined_ResProf(param,args)
+    mod_dic=joined_ResProf(param,args)[0]
     
+    #Merit table
+    #    - because exposures are specific to each visit, defined on different bins, and stored as objects we define the output table as :
+    # chi = concatenate( exp, (obs(exp)-mod(exp))/err(exp)) ) or the equivalent with the covariance matrix
+    #      so that the merit function will compare chi to a table of same size filled with 0 and with errors of 1 in the residual() function (where the condition to use covariance has been set to False for this purpose)
+    #    - observed intrinsic profiles may have gaps, but due to the convolution the model must be calculated over the continuous table and then limited to fitted bins
     chi = np.zeros(0,dtype=float)
     if args['use_cov_eff']:
         for inst in args['inst_list']:
             for vis in args['inst_vis_list'][inst]:    
-                for iexp in args['idx_in_fit'][inst][vis]:
-                    cond_fit = args['cond_def'][inst][vis][iexp] & args['cond_fit'][inst][vis]
+                for iexp in range(args['nexp_fit_all'][inst][vis]):
                     L_mat = scipy.linalg.cholesky_banded(args['cov'][inst][vis][iexp], lower=True)
-                    res = args['flux'][inst][vis][iexp]-model_prof[inst][vis][iexp]
+                    res = args['flux'][inst][vis][iexp]-mod_dic[inst][vis][iexp]
+                    cond_fit = args['cond_fit'][inst][vis][iexp]
                     res[~cond_fit] = 0.  
                     chi_exp  = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)
                     chi = np.append( chi, chi_exp[cond_fit] ) 
     else:
         for inst in args['inst_list']:
             for vis in args['inst_vis_list'][inst]:    
-                for iexp in args['idx_in_fit'][inst][vis]:
-                    cond_fit = args['cond_def'][inst][vis][iexp] & args['cond_fit'][inst][vis]
-                    res = args['flux'][inst][vis][iexp][cond_fit]-model_prof[inst][vis][iexp][cond_fit]
-                    chi = np.append( chi, res/np.sqrt( args['cov'][inst][vis][iexp][0][cond_fit]) )
+                for isub in range(args['nexp_fit_all'][inst][vis]):
+                    cond_fit = args['cond_fit'][inst][vis][isub]
+                    res = args['flux'][inst][vis][isub][cond_fit]-mod_dic[inst][vis][isub][cond_fit]
+                    chi = np.append( chi, res/np.sqrt( args['cov'][inst][vis][isub][0][cond_fit]) )
                         
     return chi
 
@@ -1112,96 +1117,178 @@ def joined_ResProf(param,args):
         TBD
     
     """     
-    model_prof = {}
+    mod_dic = {}
+    mod_prop_dic = {}
+    coeff_line_dic = {}
+
+    #Updating theoretical line profile series
+    #    - we assume abundance is common to all instruments and visits
+    if (args['mode']=='theo') and (args['var_line']):  
+        for sp in args['abund_sp']:args['grid_dic']['sme_grid']['abund'][sp]=param['abund_'+sp]
+        gen_theo_intr_prof(args['grid_dic']['sme_grid'])
+
+    #Processing instruments
     for inst in args['inst_list']:
-        model_prof[inst]={}
+        args['inst']=inst
+        mod_dic[inst]={}
+        coeff_line_dic[inst]={}
+        mod_prop_dic[inst]={}
+
+        #Processing visits
         for vis in args['inst_vis_list'][inst]: 
+            args['vis']=vis
         
-        
-          
+            #Outputs
+            if not args['fit']:
+
+                #Coefficients describing the polynomial variation of spectral line properties as a function of the chosen coordinate
+                if ('coeff_line' in args):coeff_line_dic[inst][vis] = args['coeff_line']  
+                else:coeff_line_dic[inst][vis] = None              
+
+                #Properties of all planet-occulted and spotted regions used to calculate spectral line profiles
+                mod_prop_dic[inst][vis]={} 
+                linevar_par_list = ['rv']
+                if (len(args['linevar_par'])>0):linevar_par_list+=args['linevar_par'][inst][vis]
+                for pl_loc in args['transit_pl'][inst][vis]:
+                    mod_prop_dic[inst][vis][pl_loc]={}   
+                    for prop_loc in linevar_par_list:mod_prop_dic[inst][vis][pl_loc][prop_loc] = np.zeros(len(args['idx_in_fit'][inst][vis]))*np.nan  
+                for spot in args['transit_sp'][inst][vis]:
+                    mod_prop_dic[inst][vis][spot]={}   
+                    for prop_loc in linevar_par_list:mod_prop_dic[inst][vis][spot][prop_loc] = np.zeros(len(args['idx_in_fit'][inst][vis]))*np.nan  
+
+            #-----------------------------------------------------------
+            #Calculate coordinates of occulted and spotted regions or use imported values
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
+
+            #-----------------------------------------------------------
+            #Variable line model for each exposure 
+            #    - the intrinsic stellar line profile is convolved with the LSF kernel specific to each instrument
+            #    - we assume a flat continuum, set after the PC component so that intrinsic profiles models later on can be defined with a continuum unity
+            #-----------------------------------------------------------
+            mod_dic[inst][vis]=np.zeros(args['nexp_fit_all'][inst][vis],dtype=object)
+            for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
+
+                #Table for model calculation
+                args_exp = def_st_prof_tab(inst,vis,isub,args)
+
+                #Disk-integrated stellar line  
+                args_exp['nthreads']=1  
+                base_DI_prof = custom_DI_prof(param_val,None,args=args_exp)[0]
+
+                #Residual profile for current exposure
+                surf_prop_dic,surf_prop_dic_sp = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,[isub],system_spot_prop_in=args['system_spot_prop'])
+                sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[args['chrom_mode']]['line_prof'][:,0]
+                
+                #Conversion and resampling 
+                mod_dic[inst][vis][isub] = conv_st_prof_tab(inst,vis,isub,args,args_exp,sp_line_model,args['FWHM_inst'][inst])
+
+                #Add PC noise model
+                #    - added to the convolved profiles since PC are derived from observed data
+                if args['n_pc'][inst][vis] is not None:
+                    for i_pc in range(args['n_pc'][inst][vis]):mod_dic[inst][vis][isub]+=param_val[args['name_prop2input']['aPC_idxin'+str(i_in)+'_ord'+str(i_pc)+'__IS'+inst+'_VS'+vis]]*args['eig_res_matr'][inst][vis][i_in][i_pc]
+
+                #Set to continuum level
+                #    - profiles are internally calculated with a continuum unity
+                #    - intrinsic profiles have the same continuum level as out-of-transit disk-integrated profiles, but since the observed profile 
+                # continuum may not be well defined or has been scaled on a different range than the fitted one, it is difficult to measure its value
+                mod_dic[inst][vis][isub]*=param['cont']
+                
+                #Properties of all planet-occulted and spotted regions used to calculate spectral line profiles
+                if not args['fit']:
+                    for pl_loc in args['transit_pl'][inst][vis]:                    
+                        for prop_loc in mod_prop_dic[inst][vis][pl_loc]:mod_prop_dic[inst][vis][pl_loc][prop_loc][isub] = surf_prop_dic[args['chrom_mode']][pl_loc][prop_loc][0] 
+                    for spot in args['transit_sp'][inst][vis]:
+                        for prop_loc in mod_prop_dic[inst][vis][spot]:mod_prop_dic[inst][vis][spot][prop_loc][isub] = surf_prop_dic_sp[args['chrom_mode']][spot][prop_loc][0] 
+
+    return mod_dic, mod_prop_dic, coeff_line_dic
+
+
+
+
+
               
-            #Retrieve DI flux profiles
-            DI_data = {}
-            DI_data['flux'] = np.zeros(args['n_in_visit'][inst][vis], dtype = object)
+    #         #Retrieve DI flux profiles
+    #         DI_data = {}
+    #         DI_data['flux'] = np.zeros(args['n_in_visit'][inst][vis], dtype = object)
             
             
-            new_args = deepcopy(args)
-            fit_properties = {
-                'brband_w':None,
-                'func_prof_name':mock_dic['intr_prof'][inst]['func_prof_name'],
-                'flux_cont':mock_dic['intensity'][inst][vis]['I0']}
-            fit_properties.update(new_args['intr_prof'][inst])
-            new_args,param = init_custom_DI_prof(new_args,fit_properties,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,inst,vis,new_args['system_param']['star'],param,[rv_mock,None,None],False)
-            base_DI_prof = custom_DI_prof(param,None,args=new_args)[0]     
+    #         new_args = deepcopy(args)
+    #         fit_properties = {
+    #             'brband_w':None,
+    #             'func_prof_name':mock_dic['intr_prof'][inst]['func_prof_name'],
+    #             'flux_cont':mock_dic['intensity'][inst][vis]['I0']}
+    #         fit_properties.update(new_args['intr_prof'][inst])
+    #         new_args,param = init_custom_DI_prof(new_args,fit_properties,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,inst,vis,new_args['system_param']['star'],param,[rv_mock,None,None],False)
+    #         base_DI_prof = custom_DI_prof(param,None,args=new_args)[0]     
             
-            ##### attention a bien gerer le scaling intr->local ; idealement travailler avec les intr en transit pour ne pas avoir ce probleme
+    #         ##### attention a bien gerer le scaling intr->local ; idealement travailler avec les intr en transit pour ne pas avoir ce probleme
             
-            for iexp in args['idx_calc'][inst][vis]:
+    #         for iexp in args['idx_calc'][inst][vis]:
                                 
-                # Deviation profile and light curve depth
-                deviation_prof, occulted_flux = compute_deviation_profile(args, param, inst, vis, iexp,star_params,gen_dic,theo_dic,data_dic,coord_dic)[0:2]
-                DI_prof_exp = base_DI_prof - deviation_prof
-                cont_exp = 1 - occulted_flux
+    #             # Deviation profile and light curve depth
+    #             deviation_prof, occulted_flux = compute_deviation_profile(args, param, inst, vis, iexp,star_params,gen_dic,theo_dic,data_dic,coord_dic)[0:2]
+    #             DI_prof_exp = base_DI_prof - deviation_prof
+    #             cont_exp = 1 - occulted_flux
                 
-                # Set the continuum to the same as the corresponding exposure
-                DI_prof_exp *= args['cont_DI_obs'] [inst][vis][iexp] / cont_exp
+    #             # Set the continuum to the same as the corresponding exposure
+    #             DI_prof_exp *= args['cont_DI_obs'] [inst][vis][iexp] / cont_exp
                 
-                # Rescaling exposure at the same level as in the 'broadband flux scaling' module
-                DI_prof_exp *= args['rescaling'][inst][vis][iexp]
+    #             # Rescaling exposure at the same level as in the 'broadband flux scaling' module
+    #             DI_prof_exp *= args['rescaling'][inst][vis][iexp]
                 
-                # Convolving with instrumental FWHM
-                DI_prof_exp= convol_prof (DI_prof_exp, args['cen_bins'][inst][vis], args['FWHM_inst'][inst])
+    #             # Convolving with instrumental FWHM
+    #             DI_prof_exp= convol_prof (DI_prof_exp, args['cen_bins'][inst][vis], args['FWHM_inst'][inst])
                 
-                # Store exposure DI flux
-                DI_data['flux'][iexp] = DI_prof_exp
-                
-                
+    #             # Store exposure DI flux
+    #             DI_data['flux'][iexp] = DI_prof_exp
                 
                 
-            # Retrieve master_out from DI data 
-            data_to_bin = {}
-            for iexp_off in args['data_mast'][inst][vis]['idx_to_bin'] : 
-                
-                data_to_bin[iexp_off] = {}
-                data_to_bin[iexp_off]['flux']     = np.array([   DI_data['flux'][iexp_off]   ])
-                data_to_bin[iexp_off]['cond_def'] = np.array([   args['cond_def'][inst][vis][iexp]   ])
-                data_to_bin[iexp_off]['weight']   = np.array([   args['data_mast'][inst][vis]['weight'][iexp_off]     ])
-                data_to_bin[iexp_off]['cov']      = np.ones(   (1, 1, len(args['cen_bins'][inst][vis])),   dtype = float)
                 
                 
-            nspec = len( args['cen_bins'] [inst][vis])
-            master_out_flux = calc_bin_prof(args['data_mast'][inst][vis]['idx_to_bin'],   
-                                               1,   
-                                               [1,nspec] ,
-                                               nspec,  
-                                               data_to_bin, 
-                                               inst,      
-                                               len(args['data_mast'][inst][vis]['idx_to_bin']),  
-                                               args['cen_bins'] [inst][vis],   
-                                               {},   
-                                               args['data_mast'][inst][vis]['dx_ov']    
-                                               )['flux'][0]
+    #         # Retrieve master_out from DI data 
+    #         data_to_bin = {}
+    #         for iexp_off in args['data_mast'][inst][vis]['idx_to_bin'] : 
+                
+    #             data_to_bin[iexp_off] = {}
+    #             data_to_bin[iexp_off]['flux']     = np.array([   DI_data['flux'][iexp_off]   ])
+    #             data_to_bin[iexp_off]['cond_def'] = np.array([   args['cond_def'][inst][vis][iexp]   ])
+    #             data_to_bin[iexp_off]['weight']   = np.array([   args['data_mast'][inst][vis]['weight'][iexp_off]     ])
+    #             data_to_bin[iexp_off]['cov']      = np.ones(   (1, 1, len(args['cen_bins'][inst][vis])),   dtype = float)
+                
+                
+    #         nspec = len( args['cen_bins'] [inst][vis])
+    #         master_out_flux = calc_bin_prof(args['data_mast'][inst][vis]['idx_to_bin'],   
+    #                                            1,   
+    #                                            [1,nspec] ,
+    #                                            nspec,  
+    #                                            data_to_bin, 
+    #                                            inst,      
+    #                                            len(args['data_mast'][inst][vis]['idx_to_bin']),  
+    #                                            args['cen_bins'] [inst][vis],   
+    #                                            {},   
+    #                                            args['data_mast'][inst][vis]['dx_ov']    
+    #                                            )['flux'][0]
                 
                 
 
                 
-            # Calculate residual profiles
-            model_prof[inst][vis]=np.zeros(args['n_in_visit'][inst][vis], dtype = object)
-            for iexp in args['idx_in_fit'][inst][vis]:
+    #         # Calculate residual profiles
+    #         model_prof[inst][vis]=np.zeros(args['n_in_visit'][inst][vis], dtype = object)
+    #         for iexp in args['idx_in_fit'][inst][vis]:
                 
-                # Extracting the residual profile
-                model_prof[inst][vis][iexp] = master_out_flux - DI_data['flux'][iexp]
+    #             # Extracting the residual profile
+    #             model_prof[inst][vis][iexp] = master_out_flux - DI_data['flux'][iexp]
                 
                 
             
-                if iexp > 60 : 
-                    plt.plot(args['cen_bins'][inst][vis],  model_prof  [inst][vis][iexp], color = 'green')
-                    plt.plot(args['cen_bins'][inst][vis],  args['flux'][inst][vis][iexp], color = 'red')
-                    plt.show()
+    #             if iexp > 60 : 
+    #                 plt.plot(args['cen_bins'][inst][vis],  model_prof  [inst][vis][iexp], color = 'green')
+    #                 plt.plot(args['cen_bins'][inst][vis],  args['flux'][inst][vis][iexp], color = 'red')
+    #                 plt.show()
                 
 
             
-    return model_prof
+    # return model_prof
     
     
     

@@ -11,7 +11,7 @@ from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,calc_st_sky,calc_Isurf_grid,calc_RVrot
 from ANTARESS_analysis.ANTARESS_model_prof import calc_polymodu,polycoeff_def
 from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid
-from ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop
+from ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop, spot_occ_region_grid
 
 
 
@@ -83,15 +83,14 @@ def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_d
     return None
 
 
-def up_plocc_prop(inst,vis,par_list,args,param_in,transit_pl,nexp_fit,ph_fit,coord_pl_fit, transit_spots=[], coord_spot_fit={}):
-    r"""**Planet-occulted properties: update**
+def up_plocc_prop(inst,vis,args,param_in,transit_pl,nexp_fit,ph_fit,coord_pl_fit, transit_spots=[]):
+    r"""**Planet-occulted and spotted region properties: update**
 
     Updates properties of the planet-occulted region and planetary orbit for fitted step. 
 
     Args:
         inst (str) : Instrument considered.
         vis (str) : Visit considered. 
-        par_list (dict) : Not called in the function so could be removed.
         args (dict) : Additional parameters needed to evaluate the fitted function.
         param_in (dict) : Model parameters for the fitted step considered.
         transit_pl (list) : Transiting planets for the instrument and visit considered.
@@ -99,16 +98,13 @@ def up_plocc_prop(inst,vis,par_list,args,param_in,transit_pl,nexp_fit,ph_fit,coo
         ph_fit (dict) : Dictionary containing the phase of each planet.
         coord_pl_fit (dict) : Dictionary containing the various coordinates of each planet (e.g., exposure time, exposure x/y/z coordinate).
         transit_spots (list) : Spots present for the instrument and visit considered.
-        coord_spot_fit (dict) : Diction containing the various coordinates of eah spot.
     Returns:
         system_param_loc (dict) : System (star+planet+spot) properties.
         coord_pl (dict) : Updated planet coordinates.
-        coord_spot (dict) : Updated spot coordinates. XXXX WIP XXXX
         param (dict) : Model parameter names and values.
     
     """ 
     system_param_loc=deepcopy(args['system_param'])
-   
     #In case param_in is defined as a Parameters structure, retrieve values and define dictionary
     param={}
     if isinstance(param_in,lmfit.parameter.Parameters):
@@ -157,42 +153,26 @@ def up_plocc_prop(inst,vis,par_list,args,param_in,transit_pl,nexp_fit,ph_fit,coo
                 coord_pl[pl_loc]['end_pos'] = np.vstack((x_pos_pl[2],y_pos_pl[2]))
             else:coord_pl[pl_loc]['cen_pos'] = np.vstack((x_pos_pl,y_pos_pl))
             coord_pl[pl_loc]['ecl'] = ecl_pl
-
-    #Attempt at updating the spot-occulted region properties
-    # #Recalculate coordinates of occulted regions or use nominal values
-    # #    - the 'fit_X' conditions are only True if at least one parameter is varying, so that param_fit is True if fit_X is True
-    # if args['fit_orbit']:coord_spot = {}
-    # else:coord_spot = deepcopy(coord_spot_fit)
-    # for spot in transit_spots:
-
-    #     #Recalculate planet grid if relevant
-    #     if args['fit_spot_ang'] and ('spot_ang'+spot in args['var_par_list']):
-    #         args['system_spot_prop']['achrom'][spot][0]=param['spot_ang'+spot] 
-    #         args['grid_dic']['x_st_sky_grid_spot'][spot],args['grid_dic']['y_st_sky_grid_spot'][spot],args['grid_dic']['Ssub_Sstar_spot'][spot] = spot_occ_region_grid(args['system_spot_prop']['achrom'][spot][0],args['grid_dic']['nsub_Dspot'][spot])  
-
-    #     #Recalculate spot coordinates if relevant        
-    #     if args['fit_orbit']:
-    #         coord_spot[spot]={}
-    #         pl_params_loc = system_param_loc[spot]
             
-    #         #Update fitted system properties for current step 
-    #         if ('lambda_rad__pl'+pl_loc in args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
-    #         else:lamb_name = 'lambda_rad__pl'+pl_loc 
-    #         if (lamb_name in args['var_par_list']):pl_params_loc['lambda_rad'] = param[lamb_name]                     
-    #         if ('inclin_rad__pl'+pl_loc in args['var_par_list']):pl_params_loc['inclin_rad']=param['inclin_rad__pl'+pl_loc]       
-    #         if ('aRs__pl'+pl_loc in args['var_par_list']):pl_params_loc['aRs']=param['aRs__pl'+pl_loc]  
-            
-    #         #Calculate coordinates
-    #         #    - start/end phase have been set to None if no oversampling is requested, in which case start/end positions are not calculated
-    #         if args['grid_dic']['d_oversamp'] is not None:phases = ph_fit[pl_loc]
-    #         else:phases = ph_fit[pl_loc][1]
-    #         x_pos_pl,y_pos_pl,_,_,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phases,args['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param_loc['star'])
-    #         if args['grid_dic']['d_oversamp'] is not None:
-    #             coord_pl[pl_loc]['st_pos'] = np.vstack((x_pos_pl[0],y_pos_pl[0]))
-    #             coord_pl[pl_loc]['cen_pos'] = np.vstack((x_pos_pl[1],y_pos_pl[1]))
-    #             coord_pl[pl_loc]['end_pos'] = np.vstack((x_pos_pl[2],y_pos_pl[2]))
-    #         else:coord_pl[pl_loc]['cen_pos'] = np.vstack((x_pos_pl,y_pos_pl))
-    #         coord_pl[pl_loc]['ecl'] = ecl_pl
+    coord_pl['bjd']= coord_pl_fit['bjd']
+    coord_pl['t_dur']= coord_pl_fit['t_dur']
+
+    # Set up properties of spotted regions for the spot coordinate retrieval in sub_calc_plocc_spot_prop
+    for spot in transit_spots:
+        #Recalculate spot grid if relevant
+        if args['fit_spot_ang'][spot]:
+            args['system_spot_prop']['achrom'][spot][0]=param['ang__IS'+inst+'_VS'+vis+'_SP'+spot] * np.pi/180
+            args['grid_dic']['x_st_sky_grid_sp'][spot],args['grid_dic']['x_st_sky_grid_sp'][spot],args['grid_dic']['Ssub_Sstar_sp'][spot] = spot_occ_region_grid(args['system_spot_prop']['achrom'][spot][0],args['grid_dic']['nsub_Dspot'][spot])  
+
+    #Recalculate spot coordinates if relevant        
+    if args['fit_spot']:
+        #Trigger use of spots in the function computing the DI profile deviation
+        param['use_spots']=True
+        param['inst']=inst
+        param['vis']=vis
+        param['num_spots']=args['num_spots']
+        param['RpoleReq']=system_param_loc['star']['RpoleReq']
+        param['om_eq_spots']=system_param_loc['star']['om_eq_spots']
 
     return system_param_loc,coord_pl,param
 
@@ -217,7 +197,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
         system_param (dict) : system (star + planet + spot) properties.
         theo_dic (dict) : parameters used to generate and describe the stellar grid and planet/spot-occulted regions grid.
         system_prop_in (dict) : planet limb-darkening properties.
-        param (dict) : star properties.
+        param (dict) : fitted or fixed star/planet/spot properties.
         coord_pl_in (dict) : dictionary containing the various coordinates of each planet (e.g., exposure time, exposure phase, exposure x/y/z coordinate)
         iexp_list (list) : exposures to process.
         system_spot_prop_in (dict) : optional, spot limb-darkening properties.

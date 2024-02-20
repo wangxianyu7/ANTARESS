@@ -291,14 +291,18 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
                 inst_par = '_'
                 vis_par = '_'
                 pl_name = None
+                sp_name = None
                 if ('__IS') and ('_VS') in par:
                     inst_vis_par = par.split('__IS')[1]
                     inst_par  = inst_vis_par.split('_VS')[0]
-                    vis_par  = inst_vis_par.split('_VS')[1]       
+                    if ('_SP' in par):vis_par = (inst_vis_par.split('_VS')[1]).split('_SP')[0]
+                    else:vis_par  = inst_vis_par.split('_VS')[1]       
                     if ('__pl' in par):pl_name = (par.split('__IS')[0]).split('__pl')[1]
                 else:
-                    pl_name = par.split('__pl')[1]                                                                 
-                if pl_name is not None:par_name_loc+='['+pl_name+']'                             
+                    if ('__pl' in par):pl_name = par.split('__pl')[1]
+                if ('_SP' in par):sp_name = par.split('_SP')[1]
+                if pl_name is not None:par_name_loc+='['+pl_name+']'
+                if sp_name is not None:par_name_loc+='['+sp_name+']'                         
                 if inst_par != '_':
                     par_name_loc+='['+inst_par+']'
                     if vis_par != '_':par_name_loc+='('+vis_par+')'
@@ -320,6 +324,13 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
     fixed_args['iexp_par_list']=iexp_par_list
     fixed_args['exp_par_list']=exp_par_list
     fixed_args['var_par_names']=np.array(var_par_names,dtype='U50')
+
+    #Retrieve the number of spots that are present (whether their parameters are fixed or fitted)
+    spot_names=[]
+    for par in fixed_args['par_names']:
+        if 'SP' in par:
+            spot_names.append(par.split('_SP')[1])
+    fixed_args['num_spots']=len(np.unique(spot_names))
 
     #Update value of fixed parameters linked to variable parameters through an expression
     if len(fixed_args['linked_par_expr'])>0:

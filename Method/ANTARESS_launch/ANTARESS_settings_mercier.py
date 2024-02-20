@@ -1032,9 +1032,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     gen_dic['calc_theoPlOcc']=True  # &  False  
 
     # Precision
-    # theo_dic['precision'] = 'high'
+    theo_dic['precision'] = 'high'
     # theo_dic['precision'] = 'medium'
-    theo_dic['precision'] = 'low'
+    # theo_dic['precision'] = 'low'
 
 
     #Star discretization      
@@ -2887,16 +2887,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Intensity settings for the spots
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['spots_prop'] = {}
-        # data_dic['DI']['spots_prop']={
-        #         'achrom':{
-        #             'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot1'] * np.pi/180],#--base
-        #             # 'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis1']['ang__ISESPRESSO_VSmock_vis1_SPspot1'] * np.pi/180],#--grid run
-        #             # 'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
-        #             'LD' : ['quadratic'],
-        #             'LD_u1' : [0.35],
-        #             'LD_u2' : [0.16],
-        #         },
-        #         }
+        data_dic['DI']['spots_prop']={
+                'achrom':{
+                    'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot1'] * np.pi/180],#--base
+                    # 'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis1']['ang__ISESPRESSO_VSmock_vis1_SPspot1'] * np.pi/180],#--grid run
+                    # 'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
+                    'LD' : ['quadratic'],
+                    'LD_u1' : [0.35],
+                    'LD_u2' : [0.16],
+                },
+                }
 
     if gen_dic['star_name']=='V1298tau':
         data_dic['DI']['spots_prop']={
@@ -4360,7 +4360,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  &  False
+    gen_dic['fit_ResProf'] = True  #&  False
 
     # #Indexes of exposures to be fitted, in each visit
     #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to []), set their value to 'all' for all in-transit exposures to be fitted
@@ -4397,6 +4397,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.5, 'bd':[0.55, 0.8]},
         'FWHM_ord0__IS__VS_':{'vary':True, 'guess':10, 'bd':[7, 10]},
         'veq':{'vary':True,'guess':7, 'bd':[7, 8]},
+        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':-30, 'bd':[-50, -10]},
+        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051 - 0.3, 'bd':[2458330.39051 - 0.5, 2458330.39051]},
+        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':25, 'bd':[20, 30]},
+        'ctrst__ISESPRESSO_VSmock_vis_SPspot1'  : {'vary':True, 'guess':0.9, 'bd':[0, 0.95]},
                                             }
     
     #Fitting mode
@@ -4415,6 +4419,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     'ctrst_ord0__IS__VS_':{'mod':'uf','low':0,'high':1},  
                     'FWHM_ord0__IS__VS_':{'mod':'uf','low':0,'high':100},
                     'veq':{'mod':'uf', 'low':0, 'high':100.},
+                    'lat__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' :{'mod':'uf', 'low':2458330.39051 - 1., 'high':2458330.39051 +1.},
+                    'ang__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':0, 'high':50.},
+                    'cotrst__ISESPRESSO_VSmock_vis_SPspot1'  :{'mod':'uf', 'low':0, 'high':1},
+
                     }
 
     #Derived properties
@@ -4686,7 +4695,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     
     #Activating 
-    gen_dic['fit_IntrProf'] = True   #&  False
+    gen_dic['fit_IntrProf'] = True   &  False
 
 
     #Exposures to be fitted

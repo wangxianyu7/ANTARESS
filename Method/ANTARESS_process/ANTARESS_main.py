@@ -911,13 +911,16 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
 
     #Initialize spot use
     gen_dic['studied_sp'] = list(gen_dic['transit_sp'].keys()) 
+    theo_dic['x_st_sky_grid_sp']={}
+    theo_dic['y_st_sky_grid_sp']={}
+    theo_dic['Ssub_Sstar_sp'] = {}
+    theo_dic['d_oversamp_spot']={}
 
     #If spot activation has been triggered
     if (data_dic['DI']['spots_prop'] != {}):
     
         #Oversampling factor for spot-occulted regions
         #    - use the spot radius provided as input
-        theo_dic['d_oversamp_spot']={}
         for spot in theo_dic['n_oversamp_spot']:
             if (theo_dic['n_oversamp_spot'][spot]>0.):
                 theo_dic['d_oversamp_spot'][spot] = np.sin(data_dic['DI']['spots_prop']['achrom'][spot][0])/theo_dic['n_oversamp_spot'][spot]
@@ -943,9 +946,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 data_dic['DI']['spots_prop']['chrom']['med_dw'] = np.median(data_dic['DI']['spots_prop']['chrom']['dw'])
     
         #Definition of grids discretizing planets disk to calculate planet-occulted properties
-        theo_dic['x_st_sky_grid_sp']={}
-        theo_dic['y_st_sky_grid_sp']={}
-        theo_dic['Ssub_Sstar_sp'] = {}
         for spot in theo_dic['nsub_Dspot']:
             
             #Retrieve spot size
@@ -996,9 +996,15 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #------------------------------------------------------------------------------
     #Generic path names
     gen_dic['main_pl_text'] = ''
+    gen_dic['main_pl_sp_text'] = ''
     for pl_loc in gen_dic['studied_pl']:gen_dic['main_pl_text']+=pl_loc
     gen_dic['save_data_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Saved_data/'
     gen_dic['save_plot_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'
+    if (data_dic['DI']['spots_prop'] != {}):
+        for pl_loc in gen_dic['studied_pl']:gen_dic['main_pl_sp_text']+=pl_loc
+        for spot in gen_dic['studied_sp']:gen_dic['main_pl_sp_text']+=spot
+        # gen_dic['save_data_dir'] = gen_dic['save_dir']+gen_dic['main_pl_sp_text']+'_Saved_data/'
+        # gen_dic['save_plot_dir'] = gen_dic['save_dir']+gen_dic['main_pl_sp_text']+'_Plots/'
     gen_dic['add_txt_path']={'DI':'','Intr':'','Res':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
     gen_dic['data_type_gen']={'DI':'DI','Res':'Res','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
     gen_dic['type_name']={'DI':'disk-integrated','Res':'residual','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
@@ -1439,10 +1445,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if pl_loc in data_inst[vis]['transit_pl']:
                         for key in ['ecl','cen_ph','st_ph','end_ph','ph_dur','rv_pl','v_pl']:coord_dic[inst][vis][pl_loc][key] = np.zeros(n_in_visit,dtype=float)*np.nan
                         for key in ['cen_pos','st_pos','end_pos']:coord_dic[inst][vis][pl_loc][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
-                for spot in gen_dic['studied_sp']:
-                    coord_dic[inst][vis][spot]={}
-                    for key in ['cen_pos','st_pos','end_pos']:coord_dic[inst][vis][spot][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
-                    for key in ['cen_tbjd','st_tbjd','end_tbjd']:coord_dic[inst][vis][spot][key] = np.zeros(n_in_visit,dtype=float)*np.nan
 
     
                     #Definition of mid-transit times for each planet associated with the visit 
@@ -1583,10 +1585,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis][pl_loc]['cen_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['st_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['end_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['ecl'][iexp],coord_dic[inst][vis][pl_loc]['rv_pl'][iexp],coord_dic[inst][vis][pl_loc]['v_pl'][iexp],\
                         coord_dic[inst][vis][pl_loc]['st_ph'][iexp],coord_dic[inst][vis][pl_loc]['cen_ph'][iexp],coord_dic[inst][vis][pl_loc]['end_ph'][iexp],coord_dic[inst][vis][pl_loc]['ph_dur'][iexp]=coord_expos(pl_loc,coord_dic,inst,vis,system_param['star'],
                                             system_param[pl_loc],coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic,data_dic['DI']['system_prop']['achrom'][pl_loc][0])                    
-                    for spot in data_inst[vis]['transit_sp']:
-                        coord_dic[inst][vis][spot]['cen_tbjd'][iexp]=coord_dic[inst][vis]['bjd'][iexp]
-                        coord_dic[inst][vis][spot]['st_tbjd'][iexp]=coord_dic[inst][vis]['bjd'][iexp]-coord_dic[inst][vis]['t_dur'][iexp]
-                        coord_dic[inst][vis][spot]['end_tbjd'][iexp]=coord_dic[inst][vis]['bjd'][iexp]+coord_dic[inst][vis]['t_dur'][iexp]
+
                     #--------------------------------------------------------------------------------------------------
         
                     #Initialize data at first exposure
@@ -2700,7 +2699,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             cond_pre&=(coord_vis[pl_loc]['ecl']==-1.)
             cond_post&=(coord_vis[pl_loc]['ecl']==1.)
         gen_vis['idx_in']=np_where1D(cond_in)
-        gen_vis['idx_out']=np_where1D(~cond_in)  
+        gen_vis['idx_out']=np_where1D(~cond_in)
+        gen_vis['idx_in_and_out']=np.unique(np.sort(np.append(gen_vis['idx_in'], gen_vis['idx_out'])))  
         gen_vis['idx_pretr']=np_where1D(cond_pre)  
         gen_vis['idx_posttr']=np_where1D(cond_post) 
         data_vis['n_in_tr'] = len(gen_vis['idx_in'])

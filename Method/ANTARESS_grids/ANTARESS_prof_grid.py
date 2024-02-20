@@ -267,10 +267,10 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
     #Stellar grid properties
     #    - all stellar properties are initialized to default stellar values
     #      those defined as variable properties through the settings will be overwritten in 'par_formatting'
-    for key,vary,bd_min,bd_max in zip(['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
-                                      [False,  False,     False,     False,  False,  False,  False,      False, False,    False,  False, False, False,False,  False,   False],
-                                      [0.,    None,       None,      None,   None,   None,   -1.,        0.,     0.,      0.,     0. , 0.,     0. ,  0.,     0. ,    0.],
-                                      [1e4,   None,       None,      None,   None,   None,    1.,        1.,     1.,      1e5,    1.,  1e5,    1e5,  1e5,    100.,   100.]):
+    for key,vary,bd_min,bd_max in zip(['veq','veq_spots','alpha_rot','alpha_rot_spots','beta_rot','beta_rot_spots','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
+                                      [False,   False,      False,         False,        False,        False,        False, False,  False,    False,    False,  False,   False, False, False, False, False,  False,   False],
+                                      [0.,      0.,         None,          None,         None,         None,         None,  None,   None,     -1.,       0.,     0.,      0.,     0. ,   0.,    0. ,   0.,     0. ,      0.],
+                                      [1e4,     1e4,        None,          None,         None,         None,         None,  None,   None,      1.,       1.,     1.,      1e5,    1.,   1e5,    1e5,  1e5,    100.,    100.]):
         if key in star_params:params.add_many((key, star_params[key],   vary,    bd_min,bd_max,None))
 
     #Properties specific to disk-integrated profiles

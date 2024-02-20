@@ -277,7 +277,7 @@ def model_par_names():
         'eta_R':r'$\eta_{\rm R}$','eta_T':r'$\eta_{\rm T}$','ksi_R':r'\Ksi$_\mathrm{R}$','ksi_T':r'\Ksi$_\mathrm{T}$',
 
         # Stage Théo
-        'Tcenter' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'flux' : 'F$_{sp}$'
+        'Tcenter' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'ctrst' : 'F$_{sp}$'
         } 
     return name_dic
 
@@ -369,7 +369,7 @@ def init_joined_routines_inst(inst,fit_prop_dic,fixed_args):
     fit_prop_dic[inst]={}
     fixed_args['inst_list']+=[inst]
     fixed_args['inst_vis_list'][inst]=[]  
-    for key in ['coord_pl_fit','coord_spot_fit','ph_fit','nexp_fit_all','transit_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
+    for key in ['coord_pl_fit','ph_fit','nexp_fit_all','transit_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
 
     return None
 
@@ -420,22 +420,29 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
     
     #Binned data
     if fixed_args['bin_mode'][inst][vis]=='_bin':
-        data_vis_bin = dataload_npz(gen_dic['save_data_dir']+'/Intrbin_data/'+inst+'_'+vis+'_'+data_dic['Intr']['dim_bin']+'_add')
+        if fixed_args['rout_mode']=='IntrProf':data_vis_bin = dataload_npz(gen_dic['save_data_dir']+'/Intrbin_data/'+inst+'_'+vis+'_'+data_dic['Intr']['dim_bin']+'_add')
+        elif fixed_args['rout_mode']=='ResProf':data_vis_bin = dataload_npz(gen_dic['save_data_dir']+'/Resbin_data/'+inst+'_'+vis+'_'+data_dic['Res']['dim_bin']+'_add')
         n_in_tr = data_vis_bin['n_in_tr']
-
+        n_in_and_out_tr = data_vis_bin['n_in_tr'] + data_vis_bin['n_out_tr']
     #Original data
     else:
         data_vis_bin = None
-        n_in_tr = data_vis['n_in_tr']    
-    
+        n_in_tr = data_vis['n_in_tr']   
+        n_in_and_out_tr = data_vis['n_in_tr'] + data_vis['n_out_tr'] 
+
     #Fitted exposures
     fixed_args['inst_vis_list'][inst]+=[vis]
     fixed_args['idx_in_fit'][inst][vis] = fit_prop_dic['idx_in_fit'][inst][vis+fixed_args['bin_mode'][inst][vis]]
-    if fit_prop_dic['idx_in_fit'][inst][vis]=='all':fixed_args['idx_in_fit'][inst][vis]=range(n_in_tr)
-    else:fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],range(n_in_tr))
-    
+    if fixed_args['rout_mode']=='IntrProf':
+        if fit_prop_dic['idx_in_fit'][inst][vis]=='all':fixed_args['idx_in_fit'][inst][vis]=range(n_in_tr)
+        else:fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],range(n_in_tr))
+    elif fixed_args['rout_mode']=='ResProf':
+        if fit_prop_dic['idx_in_fit'][inst][vis]=='all':fixed_args['idx_in_fit'][inst][vis]=range(n_in_and_out_tr)
+        else:fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],range(n_in_and_out_tr))
+
     #Keep defined intrinsic profiles
     if 'Intr' in rout_mode:fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],data_dic['Intr'][inst][vis+fixed_args['bin_mode'][inst][vis]]['idx_def'])
+    elif fixed_args['rout_mode']=='ResProf':fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],data_dic['Res'][inst][vis+fixed_args['bin_mode'][inst][vis]]['idx_to_extract'])
     fixed_args['nexp_fit_all'][inst][vis]=len(fixed_args['idx_in_fit'][inst][vis])     
 
     #Store coordinates of fitted exposures in global table
@@ -443,18 +450,19 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
         sub_idx_in_fit = fixed_args['idx_in_fit'][inst][vis]
         coord_vis = data_vis_bin['coord']
     else:
-        sub_idx_in_fit = gen_dic[inst][vis]['idx_in'][fixed_args['idx_in_fit'][inst][vis]]
+        if fixed_args['rout_mode']=='IntrProf':sub_idx_in_fit = gen_dic[inst][vis]['idx_in'][fixed_args['idx_in_fit'][inst][vis]]
+        elif fixed_args['rout_mode']=='ResProf':
+            sub_idx_in_fit = gen_dic[inst][vis]['idx_in_and_out'][fixed_args['idx_in_fit'][inst][vis]]
         coord_vis = coord_dic[inst][vis]
-    for par in ['coord_pl_fit','coord_spot_fit','ph_fit']:fixed_args[par][inst][vis]={}
+
+    for par in ['coord_pl_fit','ph_fit']:fixed_args[par][inst][vis]={}
     for pl_loc in fixed_args['transit_pl'][inst][vis]:
         fixed_args['ph_fit'][inst][vis][pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'][sub_idx_in_fit],coord_vis[pl_loc]['cen_ph'][sub_idx_in_fit],coord_vis[pl_loc]['end_ph'][sub_idx_in_fit]) ) 
         fixed_args['coord_pl_fit'][inst][vis][pl_loc] = {}
         for key in ['cen_pos','st_pos','end_pos']:fixed_args['coord_pl_fit'][inst][vis][pl_loc][key] = coord_vis[pl_loc][key][:,sub_idx_in_fit]    
-        fixed_args['coord_pl_fit'][inst][vis][pl_loc]['ecl'] = coord_vis[pl_loc]['ecl'][sub_idx_in_fit]    
-    for spot in fixed_args['transit_sp'][inst][vis]:
-        fixed_args['coord_spot_fit'][inst][vis][spot] = {}
-        for key in ['cen_pos','st_pos','end_pos']:fixed_args['coord_spot_fit'][inst][vis][spot][key] = coord_vis[spot][key][:,sub_idx_in_fit]
-        for key in ['cen_tbjd','st_tbjd','end_tbjd']:fixed_args['coord_spot_fit'][inst][vis][spot][key]=coord_vis[spot][key][sub_idx_in_fit] 
+        fixed_args['coord_pl_fit'][inst][vis][pl_loc]['ecl'] = coord_vis[pl_loc]['ecl'][sub_idx_in_fit]  
+    fixed_args['coord_pl_fit'][inst][vis]['bjd']=coord_vis['bjd'][sub_idx_in_fit]
+    fixed_args['coord_pl_fit'][inst][vis]['t_dur']=coord_vis['t_dur'][sub_idx_in_fit]
 
 
     return data_vis_bin
@@ -536,18 +544,16 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     
     #Fit spin-orbit angle by default when relevant
     #    - assuming common values to all datasets
-    if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv')) or (rout_mode=='IntrProf'):
+    if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv')) or (rout_mode=='IntrProf') or (rout_mode=='ResProf'):
         for pl_loc in gen_dic['studied_pl']:
             if 'lambda_rad__pl'+pl_loc not in mod_prop:p_start.add_many(('lambda_rad__pl'+pl_loc, 0.,   True, -2.*np.pi,2.*np.pi,None))
         
     #Initialize line properties
     #    - using Gaussian line as default for intrinsic profiles
-    # Vincent : Issue here. The contrast and FWHM are defined in mod_prop but are not initialized in p_start anywhere. As a result, the following if loops will not add 
-    # contrast or FWHM to p_start since the 'if not any' loop will return False (i.e. there is a contrast parameter in mod_prop).
 
-    if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='ctrst')) or (rout_mode=='IntrProf'):    
+    if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='ctrst')) or (rout_mode=='IntrProf') or (rout_mode=='ResProf'):    
         if not any(['ctrst_' in prop for prop in mod_prop]):p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None))
-    if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode=='IntrProf'):    
+    if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode=='IntrProf') or (rout_mode=='ResProf'):    
         if not any(['FWHM_' in prop for prop in mod_prop]):p_start.add_many(('FWHM_ord0__IS__VS_', 5.,   True, 0.,100.  ,None))
         
     #Initializing stellar properties
@@ -565,20 +571,29 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
    
     #Initializing stellar profile grid
     #    - must be done after 'par_formatting' to identify variable line parameters
-    if fixed_args['rout_mode']!='IntrProp':       
-        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,fixed_args['system_param']['star'],p_start)
+    if fixed_args['rout_mode']!='IntrProp':  
+        if fixed_args['rout_mode']=='ResProf':     
+            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],data_dic['DI']['spots_prop'],theo_dic,fixed_args['system_param']['star'],p_start)
+        else:
+            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,fixed_args['system_param']['star'],p_start)
     
     #Stellar grid properties
-    fixed_args['grid_dic'].update({'Ssub_Sstar_pl':theo_dic['Ssub_Sstar_pl'],'x_st_sky_grid_pl':theo_dic['x_st_sky_grid_pl'],'y_st_sky_grid_pl':theo_dic['y_st_sky_grid_pl'],'nsub_Dpl':theo_dic['nsub_Dpl'],'d_oversamp':theo_dic['d_oversamp'],'Istar_norm_achrom':theo_dic['Istar_norm_achrom']})             
+    fixed_args['grid_dic'].update({'Ssub_Sstar_pl':theo_dic['Ssub_Sstar_pl'],'x_st_sky_grid_pl':theo_dic['x_st_sky_grid_pl'],'y_st_sky_grid_pl':theo_dic['y_st_sky_grid_pl'],'nsub_Dpl':theo_dic['nsub_Dpl'],'d_oversamp':theo_dic['d_oversamp'],'Istar_norm_achrom':theo_dic['Istar_norm_achrom']})
+    if fixed_args['rout_mode']=='ResProf':
+        fixed_args['grid_dic'].update({'Ssub_Sstar_sp':theo_dic['Ssub_Sstar_sp'],'x_st_sky_grid_sp':theo_dic['x_st_sky_grid_sp'],'y_st_sky_grid_sp':theo_dic['y_st_sky_grid_sp'],'nsub_Dspot':theo_dic['nsub_Dspot'],'d_oversamp_spot':theo_dic['d_oversamp_spot']})
 
     #Determine if orbital and light curve properties are fitted or whether nominal values are used
     #    - this depends on whether parameters required to calculate coordinates of planet-occulted regions are fitted  
     #    - in case the model is calculate in forward mode, we activate the condition as well so that the nominal system properties are updated with those defined in 'mod_prop'  
     par_orb=['inclin_rad','aRs','lambda_rad']
-    par_LC=['RpRs']    
+    par_LC=['RpRs'] 
+    par_spot=['lat', 'Tcenter', 'ang', 'ctrst']   
     for par in par_orb+par_LC:fixed_args[par+'_pl']=[]
+    for par in par_spot:fixed_args[par+'_sp']=[]
     fixed_args['fit_orbit']=False
     fixed_args['fit_RpRs']=False
+    fixed_args['fit_spot']=False
+    fixed_args['fit_spot_ang']={}
     for par in p_start:
         
         #Check if rootname of orbital/LC properties is one of the parameters left free to vary for a given planet    
@@ -596,27 +611,25 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                 else:pl_name = (par.split('__pl')[1])                 
                 if (p_start[par].vary) or fit_dic['fit_mod']=='':
                     fixed_args[par_check+'_pl'] += [pl_name]
-                    fixed_args['fit_RpRs']=True 
+                    fixed_args['fit_RpRs']=True
+
+         #Check if rootname of spot orbital properties is one of the parameters left free to vary for a given spot    
+        #    - if so, store name of spot for this property 
+        for par_check in par_spot:
+            if (par_check in par) and ('_SP' in par):
+                spot_name = par.split('_SP')[1]
+                if (p_start[par].vary) or fit_dic['fit_mod']=='':
+                    fixed_args[par_check+'_sp']+= [spot_name]
+                    fixed_args['fit_spot']=True
+                if 'ang' in par_check and p_start[par].vary:
+                    fixed_args['fit_spot_ang'][spot_name]=True  
 
     #Unique list of planets with variable properties                
     for par in par_orb:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
     for par in par_LC:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
     fixed_args['b_pl'] = list(np.unique(fixed_args['inclin_rad_pl']+fixed_args['aRs_pl']))
-   
-    # Stage Théo : on utilise des valeurs par défaut pour les propriétés suivantes (si elles ne sont pas fittées) : 
-    #    - CB coef, 'alpha_rot', 'beta_rot', 'cos_istar' , 'veq' : les valeurs définies dans fixed_args['star_params']
-    #    - aRs, inclin_rad, lambda_rad : les valeurs définies dans fixed_args['planet_params']
-    #    - 'rv' : la vitesse systémique des CCF_DI, pas important, fixée à 0 dans tous les cas. 
-    #    - 'slope' : demandée par Di_prof_from_intr, fixée à 0 si pas fitté
-    #
-    #           -> Philosophie : mettre dans param tout ce qui est susceptible d'être fitté, en jouant avec le champ 'vary'
-    #           -> param a la même tête quelque soit le fit mené, aux champs 'vary' près.
-        
-    if rout_mode == 'ResProf' : #   or    (rout_mode == 'IntrProf' and fit_prop_dic['use_version2'])  :
-
-        for par in par_orb: 
-            if par+'__pl'+fixed_args['pl_loc'] not in p_start : 
-                p_start.add(par+'__pl'+fixed_args['pl_loc'] ,value=fixed_args['planet_params'][par], vary=False , min=None , max=None)
+    #Unique list of spots with variable properties
+    for par in par_spot:fixed_args[par+'_sp'] = list(np.unique(fixed_args[par+'_sp']))
 
     #Fit initialization
     init_fit(fit_dic,fixed_args,p_start,model_par_names(),fit_prop_dic)     
@@ -2373,7 +2386,7 @@ def prior_contrast(p_step_loc,args_in,prior_func_prop):
         for vis in args['inst_vis_list'][inst]:   
             args['vis']=vis
             pl_vis = args['transit_pl'][inst][vis][0]
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,[args['coord_line']],args,p_step_loc,[pl_vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,p_step_loc,[pl_vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
             surf_prop_dic,spot_prop_dic = sub_calc_plocc_spot_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_pl_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
             ctrst_vis = surf_prop_dic[pl_vis]['ctrst'][0]       
             break_cond = (ctrst_vis<0.) | (ctrst_vis>1.)
