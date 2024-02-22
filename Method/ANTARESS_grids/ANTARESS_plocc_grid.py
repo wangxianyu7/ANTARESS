@@ -9,10 +9,9 @@ from ANTARESS_grids.ANTARESS_coord import frameconv_skyorb_to_skystar,frameconv_
 from ANTARESS_process.ANTARESS_data_align import align_data
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,calc_st_sky,calc_Isurf_grid,calc_RVrot
-from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid
 from ANTARESS_analysis.ANTARESS_model_prof import calc_polymodu,polycoeff_def
-# from ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop
-
+from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid
+from ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop, spot_occ_region_grid
 
 def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=False,spot_dic={}):
     r"""**Planet-occulted / spot properties: workflow**
@@ -26,7 +25,7 @@ def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_d
         TBD
     
     """ 
-    
+    #Samson: same as for mock_dic, the condition (inst in spot_dic) is sufficient, not need to define an additional field spot_dic['use_spots']
     #Check for spots
     if (inst in spot_dic) and (vis in spot_dic[inst]):
         txt_spot = ' and spotted '
@@ -84,16 +83,26 @@ def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_d
 
 
 
-def up_plocc_prop(inst,vis,par_list,args,param_in,transit_pl,nexp_fit,ph_fit,coord_pl_fit):
-    r"""**Planet-occulted properties: update**
+def up_plocc_prop(inst,vis,args,param_in,transit_pl,nexp_fit,ph_fit,coord_pl_fit, transit_spots=[]):
+    r"""**Planet-occulted and spotted region properties: update**
 
-    Updates properties of the planet-occulted region and planetary orbit for fitted step. 
+    Updates properties of the planet-occulted region, planetary orbit, and spotted region for fitted step. 
 
     Args:
-        TBD
+        inst (str) : Instrument considered.
+        vis (str) : Visit considered. 
+        args (dict) : Additional parameters needed to evaluate the fitted function.
+        param_in (dict) : Model parameters for the fitted step considered.
+        transit_pl (list) : Transiting planets for the instrument and visit considered.
+        nexp_fit : Not called in the function so could be removed.
+        ph_fit (dict) : Dictionary containing the phase of each planet.
+        coord_pl_fit (dict) : Dictionary containing the various coordinates of each planet (e.g., exposure time, exposure x/y/z coordinate).
+        transit_spots (list) : Spots present for the instrument and visit considered.
     
     Returns:
-        TBD
+        system_param_loc (dict) : System (star+planet+spot) properties.
+        coord_pl (dict) : Updated planet coordinates.
+        param (dict) : Model parameter names and values.
     
     """ 
     system_param_loc=deepcopy(args['system_param'])
@@ -146,6 +155,32 @@ def up_plocc_prop(inst,vis,par_list,args,param_in,transit_pl,nexp_fit,ph_fit,coo
                 coord_pl[pl_loc]['end_pos'] = np.vstack((x_pos_pl[2],y_pos_pl[2]))
             else:coord_pl[pl_loc]['cen_pos'] = np.vstack((x_pos_pl,y_pos_pl))
             coord_pl[pl_loc]['ecl'] = ecl_pl
+            
+    #Samson : are those two fields are only needed when spots are present ?         
+    # coord_pl['bjd']= coord_pl_fit['bjd']
+    # coord_pl['t_dur']= coord_pl_fit['t_dur']
+            
+    #Process spots
+    if len(transit_spots)>0:
+            
+        #Set up properties of spotted regions for the spot coordinate retrieval in sub_calc_plocc_spot_prop
+        for spot in transit_spots:
+            
+            #Recalculate spot grid if relevant
+            if args['fit_spot_ang'][spot]:
+                args['system_spot_prop']['achrom'][spot][0]=param['ang__IS'+inst+'_VS'+vis+'_SP'+spot] * np.pi/180
+                args['grid_dic']['x_st_sky_grid_sp'][spot],args['grid_dic']['x_st_sky_grid_sp'][spot],args['grid_dic']['Ssub_Sstar_sp'][spot] = spot_occ_region_grid(args['system_spot_prop']['achrom'][spot][0],args['grid_dic']['nsub_Dspot'][spot])  
+    
+        #Recalculate spot coordinates if relevant        
+        if args['fit_spot']:
+    
+            #Trigger use of spots in the function computing the DI profile deviation
+            param['use_spots']=True
+            param['inst']=inst
+            param['vis']=vis
+            param['num_spots']=args['num_spots']
+            param['RpoleReq']=system_param_loc['star']['RpoleReq']
+            param['om_eq_spots']=system_param_loc['star']['om_eq_spots']
 
     return system_param_loc,coord_pl,param
 
@@ -165,12 +200,12 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
     Args:
         key_chrom (list) : chromatic modes used (either chromatic, 'chrom', achromatic, 'achrom', or both).
         args (dict) : parameters used to generate analytical profiles.
-        par_list_gen (list) : parameters whose value we want to calculate over each planet/spot-occulted region.
+        par_list_gen (list) : parameters whose value we want to calculate over each planet-occulted/spotted region.
         transit_pl (list) : list of transiting planets in the exposures considered.
         system_param (dict) : system (star + planet + spot) properties.
         theo_dic (dict) : parameters used to generate and describe the stellar grid and planet/spot-occulted regions grid.
         system_prop_in (dict) : planet limb-darkening properties.
-        param (dict) : star properties.
+        param (dict) : fitted or fixed star/planet/spot properties.
         coord_pl_in (dict) : dictionary containing the various coordinates of each planet (e.g., exposure time, exposure phase, exposure x/y/z coordinate)
         iexp_list (list) : exposures to process.
         system_spot_prop_in (dict) : optional, spot limb-darkening properties.
@@ -248,20 +283,35 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
     cos_istar = (par_star['cos_istar']-(1.)) % 2 - 1.   #Reset cos_istar within -1 : 1
     par_star['istar_rad']=np.arccos(cos_istar)
     cb_band_dic = {}
+    if cond_spot:cb_band_spot_dic = {}
     for subkey_chrom in key_chrom:
+
+        #Disk-integrated stellar flux
         if Ftot_star:
             surf_prop_dic_pl[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
             if cond_spot:surf_prop_dic_spot[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
+
+        #Convective blueshift
+        #    - physically, it makes sense for us to define different CB coefficients for a spot since spotted regions are regions of magnetic suppression and would have different CB.
+        #However, we make the simplifying assumption that the c1_CB, c2_CB, and c3_CB coefficient are the same for the spotted region as for the quiet star regions, with c0_CB being
+        #the only coefficient that varies, and which is calculated with the same condition as before. 
+        #Even though our assumption is not correct, we think that the RV shift induced by the difference in CB for the spot can be captured in the RV parameter used to describe the
+        #line profiles with which the spotted region is tiled.
         cb_band_dic[subkey_chrom]={}  
+        if cond_spot:cb_band_spot_dic[subkey_chrom] = {}  
         if ('CB_RV' in par_list) or ('c0_CB' in par_list):     
             surf_prop_dic_pl[subkey_chrom]['c0_CB']=np.zeros(system_prop[subkey_chrom]['nw'])*np.nan
             if cond_spot:surf_prop_dic_spot[subkey_chrom]['c0_CB']=np.zeros(system_prop[subkey_chrom]['nw'])*np.nan
             for iband in range(system_prop[subkey_chrom]['nw']):
                 cb_band_dic[subkey_chrom][iband] = calc_CB_RV(get_LD_coeff(system_prop[subkey_chrom],iband),system_prop[subkey_chrom]['LD'][iband],par_star['c1_CB'],par_star['c2_CB'],par_star['c3_CB'],par_star) 
                 surf_prop_dic_pl[subkey_chrom]['c0_CB'][iband]=cb_band_dic[subkey_chrom][iband][0] 
-                if cond_spot:surf_prop_dic_spot[subkey_chrom]['c0_CB'][iband]=cb_band_dic[subkey_chrom][iband][0]
+                if cond_spot:
+                    cb_band_spot_dic[subkey_chrom][iband] = calc_CB_RV(get_LD_coeff(system_spot_prop[subkey_chrom],iband),system_spot_prop[subkey_chrom]['LD'][iband],par_star['c1_CB'],par_star['c2_CB'],par_star['c3_CB'],par_star) 
+                    surf_prop_dic_spot[subkey_chrom]['c0_CB'][iband]=cb_band_spot_dic[subkey_chrom][iband][0]
         else:
-            for iband in range(system_prop[subkey_chrom]['nw']):cb_band_dic[subkey_chrom][iband] = None
+            for iband in range(system_prop[subkey_chrom]['nw']):
+                cb_band_dic[subkey_chrom][iband] = None
+                if cond_spot:cb_band_spot_dic[subkey_chrom][iband] = None
     if 'rv' in par_list_in:par_list+=['rv']  #must be placed after all other RV contributions
 
     #List of parameters whose range we're interested in
@@ -330,8 +380,6 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                         for par_loc in par_list:
                             surf_prop_dic_spot[subkey_chrom][spot][par_loc]=np.zeros([system_spot_prop[subkey_chrom]['nw'],n_exp])*np.nan        
                         for par_loc in range_par_list:surf_prop_dic_spot[subkey_chrom][spot][par_loc+'_range']=np.zeros([system_spot_prop[subkey_chrom]['nw'],n_exp,2])*np.nan
-                        if ('line_prof' in par_list_in) and (theo_dic['precision']=='low'):
-                            surf_prop_dic_spot[subkey_chrom][spot]['rv_broad']=-1e100*np.ones([system_spot_prop[subkey_chrom]['nw'],n_exp])
 
             # Update cond_spots_all
             cond_spots_all[isub_exp]=spot_within_grid_all
@@ -342,7 +390,10 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
         #Storing the 'names' of the spots for later use.
         list_spot_names = list(spots_prop.keys())
 
-    
+    #If spots are not present, need to initialize the spot LD dictionary entry for later purposes
+    else:
+        for subkey_chrom in key_chrom:system_spot_prop[subkey_chrom]={}
+
     #Occulted planet zones properties
     n_osamp_exp_all = np.repeat(1,n_exp)
     lambda_rad_pl = {}

@@ -5,6 +5,17 @@ from copy import deepcopy
 from pathos.multiprocessing import cpu_count
 
 def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic):
+    r"""**ANTARESS default settings.**
+    
+    Initializes ANTARESS configuration settings with default values.  
+    
+    Args:
+        TBD
+    
+    Returns:
+        None
+    
+    """       
 
     ##################################################################################################    
     #%%% Settings: generic
@@ -1641,6 +1652,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - the constant level a0 is left undefined :  for contrast and FWHM models are normalized to their mean, and for RVs the level is controlled by the alignment module and sysvel
     #    - RV correction must be done in the input rest frame, as CCFs are corrected before being aligned
     #      if a FWHM correction is requested you must perform first the RV correction alone, then determine and fix the systemic velocity, then perform the FWHM correction  
+    #    - coefficients for the correction are derived using the plot routine 'prop_DI' (use the residual from the Keplerian RVs, ie the 'rv_res' property, to derive the coefficients for RV detrending)
     detrend_prof_dic['prop']={}    
     
             
@@ -1920,6 +1932,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - excluding manually some of the walkers
     #    - define conditions within routine
     data_dic['DI']['exclu_walk']=  False           
+
+
+    #%%%%%% Sample exclusion 
+    #    - exclude samples that do not fit within the requested ranges of the chosen parameter
+    #    - format is 'par' : [[x1,x2],[x3,x4],...] 
+    data_dic['DI']['exclu_samp']={}
         
     
     #%%%%%% Derived errors
@@ -3091,8 +3109,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - automatic exclusion of outlying chains
     #    - set to None, or exclusion threshold
     data_dic['Intr']['exclu_walk_autom']=None  
-    
-    
+
+
+    #%%%%%% Sample exclusion 
+    #    - see data_dic['DI']['exclu_samp']
+    data_dic['Intr']['exclu_samp']={}    
+
+
     #%%%%%% Derived errors
     #    - 'quant' or 'HDI'
     #    - if 'HDI' is selected:
@@ -3222,9 +3245,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - define conditions within routine
     glob_fit_dic['IntrProp']['exclu_walk']= False       
     
+    
     #%%%%%% Automatic exclusion of outlying chains
     #    - set to None, or exclusion threshold
     glob_fit_dic['IntrProp']['exclu_walk_autom']= None  
+
+
+    #%%%%%% Sample exclusion 
+    #    - see data_dic['DI']['exclu_samp']
+    glob_fit_dic['IntrProp']['exclu_samp']={}   
+    
     
     #%%%%%% Derived errors
     #    - 'quant' or 'HDI'
@@ -3620,6 +3650,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%%% Automatic exclusion of outlying chains
     #    - set to None, or exclusion threshold
     glob_fit_dic['IntrProf']['exclu_walk_autom']=None  
+
+
+    #%%%%%% Sample exclusion 
+    #    - see data_dic['DI']['exclu_samp']
+    glob_fit_dic['IntrProf']['exclu_samp']={}   
     
     
     #%%%%%% Derived errors

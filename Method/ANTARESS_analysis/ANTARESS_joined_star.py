@@ -201,7 +201,7 @@ def joined_IntrProp(param,args):
             args['vis']=vis 
             
             #Calculate coordinates and properties of occulted regions 
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args['par_list'],args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
             surf_prop_dic,spotocc_prop = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
             
             #Properties associated with the transiting planet in the visit 
@@ -313,7 +313,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_dic[data_dic['instrum_list'][0]]['type'])                           
 
     #Construction of the fit tables
-    for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
+    for par in ['coord_pl_fit','coord_spot_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):  
         init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
@@ -647,7 +647,7 @@ def joined_IntrProf(param,args):
                 
             #-----------------------------------------------------------
             #Calculate coordinates of occulted regions or use imported values
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,deepcopy(args['par_list']),args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -757,69 +757,83 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #Initializations
     fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
 
-
-    pl_loc = list(gen_dic['transit_pl'])[0]
-     
-
     #Arguments to be passed to the fit function
     fixed_args.update({
         'rout_mode':'ResProf',
-        'prior_func':fit_prop_dic['prior_func'],  
+        'func_prof_name':fit_prop_dic['func_prof_name'],
+        'mode':fit_prop_dic['mode'], 
         'cen_bins' :{},
+        'edge_bins':{},
         'dcen_bins' :{},
-        'cond_def' :{},
+        'dim_exp':{},
+        'ncen_bins':{},
         'cond_fit' :{},
-        'cond_model':{},
-        't_exp_bjd' : {},
+        'cond_def' :{},
         'flux':{},
         'cov' :{},
         'nexp_fit':0,
-        'nexp_fit_all':{},
         'FWHM_inst':{},
-        'inst_list':[],
-        'inst_vis_list':{},
-        'coord_line': fit_prop_dic['dim_fit'],
-        'transit_pl':{},
-        'pl_loc' : pl_loc,
-        'phase'     : {},
-   
-        'idx_in_fit' : {},
-        'idx_calc'   : {},
-        'n_in_visit' : {},
-        'data_mast'  : {},
-        'cont_DI_obs' : {},
-        'rescaling' : {},
-        'planet_params' : system_param[pl_loc],
-        'print_exp':False, 
-        'calc_pl_flux' : True,
-        'calc_pl_mean_prop' : False,
-        'pol_mode': fit_prop_dic['pol_mode'],
+        'n_pc':{},
+        'chrom_mode':data_dic['DI']['system_prop']['chrom_mode'],
+        'conv2intr':True,
+        'mac_mode':theo_dic['mac_mode'],
         })
         
-    fixed_args['grid_dic']['cond_in_RpRs'] = {pl_loc : data_dic['DI']['system_prop']['achrom']['cond_in_RpRs'][pl_loc]}
-        
-    
-    #Coordinate to calculate for the fit : Mock Théo : only use 'r_prok' and 'mu'
-    fixed_args['coord_fit']=fit_prop_dic['dim_fit']
-    fixed_args['par_list']+=['rv',fixed_args['coord_fit']]
+    if len(fit_prop_dic['PC_model'])>0:
+        fixed_args.update({
+            'eig_res_matr':{},
+            'nx_fit_PCout':0.,
+            'n_free_PCout':0.,
+            'chi2_PCout':0.,
+            })
+    fit_save={'idx_trim_kept':{}}
 
+    #Stellar surface coordinate required to calculate spectral line profiles
+    #    - other required properties are automatically added in the sub_calc_plocc_spot_prop() function
+    fixed_args['par_list']+=['line_prof']
+    if fixed_args['mode']=='ana':
+        if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
+        else:fixed_args['coord_line']=fit_prop_dic['dim_fit']
+        fixed_args['par_list']+=[fixed_args['coord_line']]
+    else:
+        fixed_args['par_list']+=['mu']
+
+    #Activation of spectral conversion and resampling 
+    cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_dic[data_dic['instrum_list'][0]]['type']) 
     
     #Construction of the fit tables
+    #Initializing entries that will store the coordinates of the planets, of the spots, and the respective phase of the fitted exposures.
+    for par in ['coord_pl_fit','coord_spot_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
         init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
           
-        for key in ['phase','cen_bins','dcen_bins','flux','cov','cond_def', 'cond_fit','cond_model','t_exp_bjd', 'rescaling','cont_DI_obs', 'n_in_visit', 'data_mast', 'idx_calc'] : fixed_args[key][inst]={}
-        fixed_args['FWHM_inst'][inst]=calc_FWHM_inst(inst)
+        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
+        if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
+        fit_save['idx_trim_kept'][inst] = {}
+        if (fixed_args['mode']=='ana') and (inst not in fixed_args['func_prof_name']):fixed_args['func_prof_name'][inst] = 'gauss'
+        if (inst in fit_prop_dic['order']):iord_sel =  fit_prop_dic['order'][inst]
+        else:iord_sel = 0
+
+        #Setting continuum range to default if undefined
+        if inst not in fit_prop_dic['cont_range']:fit_prop_dic['cont_range'] = data_dic['Res']['cont_range']
+        cont_range = fit_prop_dic['cont_range'][inst][iord_sel]
+
+        #Setting fitted range to default if undefined
+        if inst not in fit_prop_dic['fit_range']:fit_prop_dic['fit_range'][inst] = data_dic['Res']['fit_range'][inst]
         
+        #Setting trimmed range to default if undefined
+        if (inst in fit_prop_dic['trim_range']):trim_range = fit_prop_dic['trim_range'][inst]
+        else:trim_range = None 
+
+        #Processing visit
         for vis in data_dic[inst]['visit_list']:
             init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
 
             #Visit is fitted
-            if vis is not None: 
+            if fixed_args['bin_mode'][inst][vis] is not None: 
                 data_vis=data_dic[inst][vis]
-                data_vis_bin = init_joined_routines_vis_fit('ResProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
                 
-
+                #Samson: I've stopped implementing in this function because I see you removed stuff related to the master, and I think you may need it still.
 
                 #Fitted exposures (by default, we use all in-transit AND out-transit data. 
                 if fit_prop_dic['idx_in_fit'][inst][vis]=='all'    :    expo_fit = range(data_vis['n_in_visit'])

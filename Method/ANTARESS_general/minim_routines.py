@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time as time
 import emcee
-exec('log10=np.log10')  #necessaire pour l'utilisation de log10 dans les relations entre paramètres
+exec('log10=np.log10')  #necessary to use log10 in expressions linking parameters
 import logging
 from matplotlib.ticker import MaxNLocator
 from matplotlib.colors import LinearSegmentedColormap, colorConverter
@@ -29,13 +29,23 @@ from scipy import special
 from ANTARESS_plots.utils_plots import custom_axis,autom_y_tick_prop
 from ANTARESS_general.utils import np_where1D,stop,npint,init_parallel_func,get_time
 
+    
+##################################################################################################
+#%%% Probability distributions
+##################################################################################################   
 
-'''
-Functions for MCMC
-'''
-
-#Return natural logarithm of probability density function
 def ln_prior_func(p_step,fixed_args): 
+    r"""**Log(prior)**
+
+    Calculates the sum of natural logarithms from selected prior probability distributions.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
     ln_p = 0.
 
     #Priors on variable parameters
@@ -85,33 +95,59 @@ def ln_prior_func(p_step,fixed_args):
 
 
 
-'''
-Calculation of ln(likelihood)
-    - likelihood is defined as:
- L(step) = product( (1./(sqrt(2pi)*sn_val )) * exp( - (( y_step - y_val )/(sqrt(2)*sn_val)  )^2  ) )
-      avec
- sn_val = sqrt( s_val^2 + jitt^2 )
- s_val : error on fitted measurements
- jitt: an additional error term (jitter) added quadratically to measurement errors, if requested
-           it is then a variable parameter of the mcmc 
- y_step : values of modeles for current parameters values (p_step)
- y_val : measurements
-    - likelihood can write as:
- L(step) = product( (1./(sqrt(2pi)*sn_val ))) * product( exp( - (( y_step - y_val )/(sqrt(2)*sn_val)  )^2  )    )
-         = product( (1./(sqrt(2pi)*sn_val ))) * exp( - sum(  (( y_step - y_val )/(sqrt(2)*sn_val)  )^2 ) )
-         = product( (1./(sqrt(2pi)*sn_val ))) * exp( - chi2_step/2. )
- with chi2_step = sum(  (( y_step - y_val )/sn_val  )^2
-    - the ln of likelihood is used to avoid to avoid issues with large chi2 and small exponential values
-      for similar reasons we use in our calculation the sum of ln rather than the ln of the product 
- lnL(step) =     ln(product(  (1./(sqrt(2pi)*sn_val )) ))  + ln(exp(- chi2_step/2. )
- lnL(step) =   - sum(ln( sqrt(2pi)*sn_val )  - chi2_step/2. 
-      note that it also writes as
- lnL(step) =   - sum(ln( [ 2pi*sn_val^2 ]^(1/2)) )  - chi2_step/2
- lnL(step) =   - sum(ln( 2pi*sn_val^2)/2 )  - chi2_step/2   
- lnL(step) =   - 0.5* ( sum(ln( 2pi*sn_val^2) )  + chi2_step)   
-      which is the form given on the emcee website
-'''
 def ln_lkhood_func_mcmc(p_step,fixed_args):
+    r"""**Log(likelihood)**
+
+    Calculates the natural logarithm of the likelihood.
+    Likelihood is defined as
+    
+    .. math::      
+       L[\mathrm{step}](x) = \Pi_{x}{ \frac{1}{\sqrt{2 \pi} \sigma_\mathrm{val}^\mathrm{jitt}(x) } \exp^{ - (\frac{ y_\mathrm{mod}[\mathrm{step}](x) - y_\mathrm{val}(x) }{\sqrt{2} \sigma_\mathrm{val}^\mathrm{jitt}(x)  })^2  } }
+       
+    With 
+    
+        + :math:`y_\mathrm{mod}[\mathrm{step}]` : model for parameter values at current step  
+        + :math:`y_\mathrm{val}` : fitted measurements  
+        + :math:`\sigma_\mathrm{val}` : error on fitted measurements  
+        + :math:`\sigma_\mathrm{jitt}`: additional error term (jitter) added quadratically to measurement errors, if requested.  
+          It is then a variable parameter of the mcmc 
+        + :math:`\sigma_\mathrm{val}^\mathrm{jitt} = \sqrt{ \sigma_\mathrm{val}^2 + \sigma_\mathrm{jitt}^2 }`
+
+ 
+    Likelihood can also write as:
+
+    .. math::          
+       L[\mathrm{step}](x) &= \Pi_{x}{ \frac{1}{\sqrt{2 \pi} \sigma_\mathrm{val}^\mathrm{jitt}(x) }} \Pi_{x}{ \exp^{ - (\frac{ y_\mathrm{mod}[\mathrm{step}](x) - y_\mathrm{val}(x) }{\sqrt{2} \sigma_\mathrm{val}^\mathrm{jitt}(x)  })^2  }   }  \\
+                           &= \Pi_{x}{ \frac{1}{\sqrt{2 \pi} \sigma_\mathrm{val}^\mathrm{jitt}(x) }} \exp^{ - \sum_{x}{  (\frac{ y_\mathrm{mod}[\mathrm{step}](x) - y_\mathrm{val}(x) }{\sqrt{2} \sigma_\mathrm{val}^\mathrm{jitt}(x)  })^2 } }  \\
+                           &= \Pi_{x}{ \frac{1}{\sqrt{2 \pi} \sigma_\mathrm{val}^\mathrm{jitt}(x) }} \exp^{ - \frac{\chi^2[\mathrm{step}]}{2} }
+ 
+    With 
+
+    .. math:: 
+       \chi^2[\mathrm{step}] = \sum_{x}{ (\frac{ y_\mathrm{mod}[\mathrm{step}](x) - y_\mathrm{val}(x) }{\sqrt{2} \sigma_\mathrm{val}^\mathrm{jitt}(x)  })^2 }
+
+    The ln of likelihood is used to avoid to avoid issues with large :math:`\chi^2` and small exponential values.
+    For similar reasons we use in our calculation the sum of ln rather than the ln of the product 
+    
+    .. math::     
+       \ln{L[\mathrm{step}]}(x) &=     \ln(\Pi_{x}{ \frac{1}{\sqrt{2 \pi} \sigma_\mathrm{val}^\mathrm{jitt}(x) } })  + \ln(\exp{- \frac{\chi^2[\mathrm{step}]}{2}} )   \\
+       \ln{L[\mathrm{step}]}(x) &=   -\sum_{x}{ \ln( \sqrt{2 \pi} \sigma_\mathrm{val}^\mathrm{jitt}(x) )}  - \frac{\chi^2[\mathrm{step}]}{2}  
+                                    
+    Which also writes as (yielding the form given on the `emcee` website)                                    
+
+    .. math:: 
+       \ln{L[\mathrm{step}]}(x) &=   - \sum_{x}{  \ln( ( 2 \pi \sigma_\mathrm{val}^\mathrm{jitt}(x)^2 )^{0.5}) }  - \frac{\chi^2[\mathrm{step}]}{2}  \\
+       \ln{L[\mathrm{step}]}(x) &=   - \sum_{x}{ 0.5 \ln( 2 \pi \sigma_\mathrm{val}^\mathrm{jitt}(x)^2) }  - \frac{\chi^2[\mathrm{step}]}{2}        \\
+       \ln{L[\mathrm{step}]}(x) &=   - 0.5 ( \sum_{x}(  \ln( 2 \pi \sigma_\mathrm{val}^\mathrm{jitt}(x)^2) )  + \chi^2[\mathrm{step}])   
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
+    
 
     #Model for current set of parameter values  
     #    - fit_func returns either 
@@ -143,27 +179,34 @@ def ln_lkhood_func_mcmc(p_step,fixed_args):
     else:
     
         #Modification of error bars on fitted values in case of jitter used as free parameter
-        if (fixed_args['jitter']):sn_val=np.sqrt(fixed_args['cov_val'][0,idx_fit] + p_step['jitter']**2.)
-        else:sn_val=np.sqrt(fixed_args['cov_val'][0,idx_fit])
+        if (fixed_args['jitter']):sjitt_val=np.sqrt(fixed_args['cov_val'][0,idx_fit] + p_step['jitter']**2.)
+        else:sjitt_val=np.sqrt(fixed_args['cov_val'][0,idx_fit])
             
         #Chi2
-        chi2_step=np.sum(  np.power( res[idx_fit]/sn_val,2.) )
+        chi2_step=np.sum(  np.power( res[idx_fit]/sjitt_val,2.) )
 
         #Ln likelihood
-        ln_lkhood = - np.sum(np.log(np.sqrt(2.*np.pi)*sn_val)) - (chi2_step/2.)   
+        ln_lkhood = - np.sum(np.log(np.sqrt(2.*np.pi)*sjitt_val)) - (chi2_step/2.)   
 
     return ln_lkhood,chi2_step
     
 
 
-'''
-Full log-probability function 
-    - p_step contains the values of the variable parametes at current MCMC step
-    - fixed_args is a dictionary containing many parameters useful to the calculation of the function, in particular
- the values of input parameters that are fixed
-'''
-def ln_prob_func_mcmc(p_step,fixed_args):
 
+def ln_prob_func_mcmc(p_step,fixed_args):
+    r"""**Log-probability function: MCMC**
+
+    Calculates the complete log-probability function combining prior and likelihood.
+
+    Args:
+        p_step (dict) : contains the values of the variable parameters at current MCMC step
+        fixed_args (dict) : contains parameters useful to the calculation of the function, in particular the values of parameters that are fixed.
+    
+    Returns:
+        ln_prob (float) : log-probability
+    
+    """
+    
     #Combine fixed and chain parameters into single dictionary for model        
     p_step_all={}
 
@@ -206,16 +249,29 @@ def ln_prob_func_mcmc(p_step,fixed_args):
     return ln_prob
 
 
-'''
-Full log-probability function for lmfit
-    - CAUTION: minimizer() requires the objective function to return an array of residuals 'chi' of which it minimizes the sum of squares, ie 
- x = arg min(sum(chi**2)) 
-   = arg min(chi2)
-   = arg min(-2ln_prob) 
-      NB: lmfit expect chi as an array, but defining chi = [sqrt(-2ln_prob/len(y))] so that x = arg min( -2ln_prob ) seems to raise issues with error determination     
-'''  
+ 
 def ln_prob_func_lmfit(p_step, x_val, fixed_args=None):
+    r"""**Log-probability function: lmfit**
 
+    Calculates the complete log-probability function combining prior and likelihood.
+    The function `minimizer()` requires the objective function to return an array of residuals 'chi' of which it minimizes the sum of squares, ie 
+
+    .. math::    
+       x &= \arg \min(\sum_{k} \chi_{k}^2) \\ 
+         &= \arg \min(\chi^2)    \\
+         &= \arg \min(-2 \ln{P}) 
+         
+    The `lmfit` minimizer expects `\chi` as an array, but defining :math:`\chi = [\sqrt{-2 \ln{P}/n_{k}}]` so that :math:`x = \arg \min(-2 \mathrm{\ln{P}})` seems to raise issues with error determination. 
+      
+    Args:
+        p_step (dict) : contains the values of the variable parameters at current MCMC step
+        x_val (array) : mock grid, required to call `ln_prob_func_lmfit()` with `minimizer()` 
+        fixed_args (dict) : contains parameters useful to the calculation of the function, in particular the values of parameters that are fixed.
+    
+    Returns:
+        chi (array, float) : :math:`\chi` values
+    
+    """
     #Model for current set of parameter values  
     y_step = fixed_args['fit_func'](p_step, fixed_args['x_val'],args=fixed_args)
 
@@ -249,15 +305,23 @@ def ln_prob_func_lmfit(p_step, x_val, fixed_args=None):
 
 
 
+##################################################################################################
+#%%% TBD
+##################################################################################################   
 
-
-
-
-'''
-Initialization for chi2 and mcmc fits
-'''
 def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
+    r"""**Fit initialization**
 
+    Initializes lmfit and MCMC.
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
+    
     #Start counter
     fit_dic['st0']=get_time()     
 
@@ -357,6 +421,9 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
         #    - set to None, or exclusion threshold
         fit_dic['exclu_walk_autom']=None if ('exclu_walk_autom' not in fit_prop_dic) else fit_prop_dic['exclu_walk_autom'] 
 
+        #Excluding manually some of the samples
+        fit_dic['exclu_samp']={} if ('exclu_samp' not in fit_prop_dic) else fit_prop_dic['exclu_samp'] 
+
         #Quantiles calculated by default
         fit_dic['calc_quant']=True if ('calc_quant' not in fit_prop_dic) else fit_prop_dic['calc_quant'] 
 
@@ -394,6 +461,10 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
         #No calculation of envelopes
         #    - calculation of models using parameter values within their 1sigma range
         fit_dic['calc_envMCMC']=False if ('calc_envMCMC' not in fit_prop_dic) else fit_prop_dic['calc_envMCMC']
+        if fit_dic['calc_envMCMC']:
+            fit_dic['st_samp']=10 if ('st_samp' not in fit_prop_dic) else fit_prop_dic['st_samp']
+            fit_dic['end_samp']=10 if ('end_samp' not in fit_prop_dic) else fit_prop_dic['end_samp']
+            fit_dic['n_samp']=100 if ('n_samp' not in fit_prop_dic) else fit_prop_dic['n_samp']
 
         #On-screen printing of errors
         fit_dic['sig_list']=['1s'] if ('sig_list' not in fit_prop_dic) else fit_prop_dic['sig_list']  
@@ -702,17 +773,17 @@ def MCMC_thin_chains(corr_length,merged_chain):
     else:
         merged_chain=merged_chain[0::corr_length_max,:]
         print('Merged chain is thinned: '+str(len(merged_chain[:,0]))+' samples remaining')
-    nsteps_pb_all=len(merged_chain[:,0])
+    nsteps_final_merged=len(merged_chain[:,0])
 
-    return nsteps_pb_all,merged_chain  
+    return nsteps_final_merged,merged_chain  
 
   
   
 '''
 Retrieve random sample of parameters from the chain 
 '''
-def MCMC_retrieve_sample(fixed_args,fix_par_list,exp_par_list,iexp_par_list,ifix_par_list,par_names,fixed_par_val,calc_envMCMC,merged_chain,n_free,nsteps_pb_all,p_best_in,var_par_list,
-                         ivar_par_list,calc_sampMCMC,linked_par_expr,fit_dic,st_samp=10,end_samp=10,n_samp=100):  
+def MCMC_retrieve_sample(fixed_args,fix_par_list,exp_par_list,iexp_par_list,ifix_par_list,par_names,fixed_par_val,calc_envMCMC,merged_chain,n_free,nsteps_final_merged,p_best_in,var_par_list,
+                         ivar_par_list,calc_sampMCMC,linked_par_expr,fit_dic,st_samp,end_samp,n_samp):  
     
     #Number of model parameters
     n_par=len(p_best_in)    
@@ -720,7 +791,7 @@ def MCMC_retrieve_sample(fixed_args,fix_par_list,exp_par_list,iexp_par_list,ifix
     if (calc_envMCMC==True) or (calc_sampMCMC==True):        
       
         #Create array that will contain all input parameters (fixed and variable) at their position in the original ordered dictionary  
-        var_chain=np.zeros([nsteps_pb_all,n_par])
+        var_chain=np.zeros([nsteps_final_merged,n_par])
        
         #Variable parameters
         #    - 'ivar_par_list' contains their position in the original ordered dictionary
@@ -737,7 +808,7 @@ def MCMC_retrieve_sample(fixed_args,fix_par_list,exp_par_list,iexp_par_list,ifix
             for ipar_fix,par_fix in zip(ifix_par_list,fixed_args['fixed_par_val_noexp_list']):   
                 exec(str(par_fix)+'='+str(var_chain[0,ipar_fix]))            
             
-            for istep in range(nsteps_pb_all): 
+            for istep in range(nsteps_final_merged): 
 
                 #Attribute variable parameters values directly to their names so that they can be identified in the expressions
                 #    - we use indexes in the original order
@@ -772,7 +843,7 @@ def MCMC_retrieve_sample(fixed_args,fix_par_list,exp_par_list,iexp_par_list,ifix
 
         #Retrieve chain steps for which all parameters are within their 1 sigma range
         #    - fixed parameters do not need to be checked
-        cond_sig1=np.repeat(True,nsteps_pb_all)
+        cond_sig1=np.repeat(True,nsteps_final_merged)
         for ipar in ivar_par_list:
             cond_sig1=cond_sig1 & ((var_chain[:,ipar]>=sig1_par_range[0,ipar]) & (var_chain[:,ipar]<=sig1_par_range[1,ipar]))
         n_samp_sig1=np.sum(cond_sig1)
@@ -797,12 +868,12 @@ def MCMC_retrieve_sample(fixed_args,fix_par_list,exp_par_list,iexp_par_list,ifix
         #Draw nsample parameters from the chain to evaluate the model function there
         #    - we can draw the merged_chain with a fixed frequency along the chain, but it should be larger than the 
         # maximum correlation length
-        d_samp=int((nsteps_pb_all-end_samp-st_samp)/n_samp)
+        d_samp=int((nsteps_final_merged-end_samp-st_samp)/n_samp)
         if d_samp==0:
             par_sample=None
             calc_sampMCMC=False
         else:
-            sample_plot=np.arange(st_samp,nsteps_pb_all-end_samp,d_samp,dtype=int) 
+            sample_plot=np.arange(st_samp,nsteps_final_merged-end_samp,d_samp,dtype=int) 
 
             #Retrieve parameters set for the selected samples
             var_chain_samp=var_chain[sample_plot,:]
@@ -1136,26 +1207,38 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbos
         plot_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],walker_chains,burnt_chains,fit_dic['nsteps'],fit_dic['nsteps_pb_walk'],
                     fit_dic['nwalkers'],fit_dic['nburn'],keep_chain,low_thresh_par_val,high_thresh_par_val,fit_dic['exclu_walk_autom'],verbose=verbose)
      
-    #Remove chains if required, and merge them
-    #    - we reshape into (nwalkers*nsteps , n_free)
+    #Remove chains if required
     if (False in keep_chain):
         unburnt_chains = unburnt_chains[keep_chain]
         burnt_chains = burnt_chains[keep_chain]
-        fit_dic['nwalkers']=np.sum(keep_chain)    
-    merged_chain = burnt_chains.reshape((-1, n_free))       #(nsteps-nburn x nfree)	  
+        fit_dic['nwalkers']=np.sum(keep_chain)  
+        
+    #Merge chains
+    #    - we reshape into (nwalkers*(nsteps-nburn) , n_free)        
+    merged_chain = burnt_chains.reshape((-1, n_free))   
 
-    #Number of post burn-in points in the merged chain     
-    fit_dic['nsteps_pb_all']=fit_dic['nsteps_pb_walk']*fit_dic['nwalkers']     
+    #Manual exclusion of samples
+    if len(fit_dic['exclu_samp'])>0:
+        cond_keep = False
+        for par_loc in fit_dic['exclu_samp']:
+            ipar_loc = np_where1D(fixed_args['var_par_list']==par_loc)
+            if len(ipar_loc)>0:
+                for bd_int in fit_dic['exclu_samp'][par_loc]:
+                    cond_keep |= (merged_chain[:,ipar_loc[0]]>=bd_int[0]) & (merged_chain[:,ipar_loc[0]]<=bd_int[1]) 
+        merged_chain = merged_chain[cond_keep]
+ 
+    #Number of points remaining in the merged chain     
+    fit_dic['nsteps_final_merged']=len(merged_chain[:,0])
    
     #Saving MCMC information
     if fit_dic['save_outputs']:
         np.savetxt(fit_dic['file_save'],[['-----------------']],fmt=['%s'])
         np.savetxt(fit_dic['file_save'],[['MCMC run']],fmt=['%s'])      
         np.savetxt(fit_dic['file_save'],[['-----------------']],fmt=['%s']) 
-        np.savetxt(fit_dic['file_save'],[['nsteps_pb_all : ',str(fit_dic['nsteps_pb_all'])]],delimiter='\t',fmt=['%s','%s']) 
         np.savetxt(fit_dic['file_save'],[['nwalkers : ',str(fit_dic['nwalkers'])]],delimiter='\t',fmt=['%s','%s']) 
         np.savetxt(fit_dic['file_save'],[['nburn : ',str(fit_dic['nburn'])]],delimiter='\t',fmt=['%s','%s']) 
-        np.savetxt(fit_dic['file_save'],[['nsteps : ',str(fit_dic['nsteps'])]],delimiter='\t',fmt=['%s','%s']) 
+        np.savetxt(fit_dic['file_save'],[['nsteps (initial, per walker) : ',str(fit_dic['nsteps'])]],delimiter='\t',fmt=['%s','%s']) 
+        np.savetxt(fit_dic['file_save'],[['nsteps (final, all walkers) : ',str(fit_dic['nsteps_final_merged'])]],delimiter='\t',fmt=['%s','%s']) 
         np.savetxt(fit_dic['file_save'],[['']],fmt=['%s']) 
  
     #Calculate correlation lengths for each parameter
@@ -1165,24 +1248,25 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbos
         print(' > Thinning chains') 
 
         #Longueurs de correlation
-        corr_length=MCMC_corr_length(fit_dic,fit_dic['max_corr_length'],nthreads,fixed_args['var_par_list'],merged_chain,0,fit_dic['nsteps_pb_all'],verbose=True)        
+        corr_length=MCMC_corr_length(fit_dic,fit_dic['max_corr_length'],nthreads,fixed_args['var_par_list'],merged_chain,0,fit_dic['nsteps_final_merged'],verbose=True)        
  
         #Thin the chain by keeping only one point every maximum correlation length
         #    - in this way the merged_chain over all pararameters are uncorrelated
-        fit_dic['nsteps_pb_all'],merged_chain=MCMC_thin_chains(corr_length,merged_chain)
+        fit_dic['nsteps_final_merged'],merged_chain=MCMC_thin_chains(corr_length,merged_chain)
 
     #Best-fit parameters for model calculations
     p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=verbose,print_par=verbose,calc_quant=fit_dic['calc_quant'])
 
     #Plot merged chains for MCMC parameters
     if (fit_dic['save_MCMC_chains']!=''):
-        plot_merged_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],merged_chain,fit_dic['nsteps_pb_all'],verbose=verbose)
+        plot_merged_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],merged_chain,fit_dic['nsteps_final_merged'],verbose=verbose)
  
     #Save 1-sigma and envelope samples for plot in ANTARESS_main
-    if fit_dic['calc_envMCMC']:
-        par_sample_sig1,par_sample=MCMC_retrieve_sample(fixed_args,fixed_args['fix_par_list'],fixed_args['exp_par_list'],fixed_args['iexp_par_list'],fixed_args['ifix_par_list'],par_names,fixed_args['fixed_par_val'],fit_dic['calc_envMCMC'],merged_chain,fit_dic['merit']['n_free'],fit_dic['nsteps_pb_all'],
-                                                        p_final,fixed_args['var_par_list'],fixed_args['ivar_par_list'],fit_dic['calc_sampMCMC'],fixed_args['linked_par_expr'],fit_dic,st_samp=fit_dic['st_samp'],end_samp=fit_dic['end_samp'],n_samp=fit_dic['n_samp'])
-        print('Saved ',len(par_sample_sig1),'1-sigma samples and ',len(par_sample),' random samples')
+    if fit_dic['calc_envMCMC'] or fit_dic['calc_sampMCMC']:
+        par_sample_sig1,par_sample=MCMC_retrieve_sample(fixed_args,fixed_args['fix_par_list'],fixed_args['exp_par_list'],fixed_args['iexp_par_list'],fixed_args['ifix_par_list'],par_names,fixed_args['fixed_par_val'],fit_dic['calc_envMCMC'],merged_chain,fit_dic['merit']['n_free'],fit_dic['nsteps_final_merged'],
+                                                        p_final,fixed_args['var_par_list'],fixed_args['ivar_par_list'],fit_dic['calc_sampMCMC'],fixed_args['linked_par_expr'],fit_dic,fit_dic['st_samp'],fit_dic['end_samp'],fit_dic['n_samp'])
+        if fit_dic['calc_envMCMC']:print('Saved ',len(par_sample_sig1),'1-sigma samples')
+        if fit_dic['calc_sampMCMC']:print('Saved ',len(par_sample),' random samples')
         np.savez(fit_dic['save_dir']+'Sample_dics',par_sample_sig1=[par_sample_sig1],par_sample=[par_sample])    
     else:
         par_sample_sig1=None
@@ -1204,15 +1288,41 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
     np.savez(fit_dic['save_dir']+'merged_deriv_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name'],data=data_save,allow_pickle=True)
 
     #Plot correlation diagram for all param    
-    if fit_dic['save_MCMC_corner']!='':      
-        
+    if fit_dic['save_MCMC_corner']!='':
+        corner_options=fit_dic['corner_options'] if 'corner_options' in fit_dic else {}      
+
+        #Reduce to required parameters
+        var_par_list = np.array(fixed_args['var_par_list'])
+        var_par_names = np.array(fixed_args['var_par_names'])
+        if 'plot_par' in fit_dic['corner_options']:
+            ikept = []
+            for par_loc in fit_dic['corner_options']['plot_par']:
+                ipar = np_where1D(var_par_list==par_loc)
+                if len(ipar)>0:ikept+=[ipar[0]]
+                else:stop('Parameter '+par_loc+' was not fitted.')
+            if len(ikept)==0:stop('No parameters kept in corner plot')
+            var_par_list = var_par_list[ikept]
+            var_par_names = var_par_names[ikept] 
+            merged_chain = merged_chain[:,ikept] 
+            fit_dic['med_parfinal'] = fit_dic['med_parfinal'][ikept] 
+            fit_dic['HDI_interv'] = fit_dic['HDI_interv'][ikept] 
+            
+        #Remove constant parameters
+        for par_loc in var_par_list:
+            ipar = np_where1D(var_par_list==par_loc)[0]
+            if np.min(merged_chain[:,ipar])==np.max(merged_chain[:,ipar]):
+                var_par_list = np.delete(var_par_list,ipar)
+                var_par_names = np.delete(var_par_names,ipar)
+                merged_chain = np.delete(merged_chain,ipar,axis=1) 
+                fit_dic['med_parfinal'] = np.delete(fit_dic['med_parfinal'],ipar)
+                fit_dic['HDI_interv'] = np.delete( fit_dic['HDI_interv'],ipar,axis=0) 
+
         #Default options    
-        corner_options=fit_dic['corner_options'] if 'corner_options' in fit_dic else {}
         bins_1D_par=20 if 'bins_1D_par' not in corner_options else corner_options['bins_1D_par']
         bins_2D_par=20 if 'bins_2D_par' not in corner_options else corner_options['bins_2D_par']
-        range_par=None         if 'range_par' not in corner_options else corner_options['range_par']
-        major_int=None         if 'major_int' not in corner_options else corner_options['major_int']
-        minor_int=None  if 'minor_int' not in corner_options else corner_options['minor_int']
+        range_par=None if 'range_par' not in corner_options else corner_options['range_par']
+        major_int=None if 'major_int' not in corner_options else corner_options['major_int']
+        minor_int=None if 'minor_int' not in corner_options else corner_options['minor_int']
         color_levels='black'  if 'color_levels' not in corner_options else corner_options['color_levels']
         smooth2D=None if 'smooth2D' not in corner_options else corner_options['smooth2D']
         plot_HDI=False if 'plot_HDI' not in corner_options else corner_options['plot_HDI']        
@@ -1224,10 +1334,11 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
         else:
             label_kwargs=None
             tick_kwargs=None
-        
+       
         #Plot
         plot_MCMC_corner(fit_dic['save_MCMC_corner'],fit_dic['save_dir'],merged_chain,fit_dic['HDI_interv'],
-                         labels=fixed_args['var_par_names'],
+                         labels_raw = var_par_list,
+                         labels=var_par_names,
                          truths=best_val,
                          bins_1D_par=bins_1D_par,
                          bins_2D_par=bins_2D_par,
@@ -1466,7 +1577,7 @@ def plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,burnt_c
 
 
 
-def plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,merged_chain,nsteps_pb_all,verbose=True):
+def plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,merged_chain,nsteps_final_merged,verbose=True):
     if verbose:
         print(' -----------------------------------')
         print(' > Plotting merged chains')
@@ -1488,11 +1599,11 @@ def plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,merged
         plt.figure(figsize=(10, 6))
        
         #Median value
-        x_tab=[0,nsteps_pb_all]
+        x_tab=[0,nsteps_final_merged]
         plt.plot(x_tab,[med_par[ipar],med_par[ipar]],color='black',linestyle='--',zorder=10)               
 
         #Post-burn-in merged chain
-        x_tab=range(int(nsteps_pb_all))
+        x_tab=range(int(nsteps_final_merged))
         plt.plot(x_tab,merged_chain[x_tab,ipar],color='dodgerblue',linestyle='-',lw=lw_plot,zorder=0)
 
         #Plot frame  
@@ -1587,6 +1698,7 @@ def plot_MCMC_corner(save_mode,save_dir_MCMC,
                             #        axis is the list of samples and the next axis are the dimensions of
                             #        the space.
                      HDI_interv,     #HDI, or None if not requested
+                     labels_raw = None,
                      labels=None,     #iterable (ndim,)
                             #        A list of names for the dimensions. If a ``xs`` is a
                             #        ``pandas.DataFrame``, labels will default to column names.
@@ -1723,13 +1835,22 @@ def plot_MCMC_corner(save_mode,save_dir_MCMC,
     #    - if given as number, converted into array of relevant dimension
     if type(bins_1D_par) in [int,float]:bins_1D_par=np.repeat(bins_1D_par,npar).astype(int)
     elif type(bins_1D_par)==dict:
-        if labels is None:raise ValueError("Parameters must be named to be set in `range_par`")
+        if labels_raw is None:raise ValueError("Parameters must be named to be set in `range_par`")
         bins_1D_par_in = deepcopy(bins_1D_par)
         bins_1D_par = np.repeat(20,npar).astype(int)
         for par in bins_1D_par_in:
-            idx_par = np_where1D(labels==par)
-            if len(idx_par)>0:bins_1D_par[idx_par[0]] = bins_1D_par_in[par]       
+            idx_par = np_where1D(labels_raw==par)
+            if len(idx_par)>0:bins_1D_par[idx_par[0]] = bins_1D_par_in[par]
+            else:stop('Parameter'+par+' not in fitted list.')
     if type(bins_2D_par) in [int,float]:bins_2D_par=np.repeat(bins_2D_par,npar).astype(int)
+    elif type(bins_2D_par)==dict:
+        if labels_raw is None:raise ValueError("Parameters must be named to be set in `range_par`")
+        bins_2D_par_in = deepcopy(bins_2D_par)
+        bins_2D_par = np.repeat(20,npar).astype(int)
+        for par in bins_2D_par_in:
+            idx_par = np_where1D(labels_raw==par)
+            if len(idx_par)>0:bins_2D_par[idx_par[0]] = bins_2D_par_in[par] 
+            else:stop('Parameter'+par+' not in fitted list.')
 
     #Ticks interval undefined
     if major_int is None:major_int=np.repeat(None,npar)

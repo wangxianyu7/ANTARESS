@@ -89,7 +89,11 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
         n_exp = len(iexp_conv) 
         for iexp_sub,iexp in enumerate(iexp_conv):
             gen = deepcopy(data_type_gen)
-            iexp_eff = deepcopy(iexp)     #Effective index (relative to global or in-transit tables)
+            
+            #Retrieving data
+            #    - out-of-transit residual profiles are retrieved with global indexes
+            #    - in-transit intrinsic profiles are retrieved with in-transit indexes
+            iexp_eff = deepcopy(iexp)     
             if (gen=='Intr'):
                 if (iexp in gen_vis['idx_in']):iexp_eff = gen_vis['idx_exp2in'][iexp]    
                 else:gen = 'Res'
@@ -112,9 +116,10 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
             #Upload flux scaling
             #    - we compute the equivalent CCF of the broadband scaling for the propagation of broadband spectral scaling on disk-integrated profiles into weights
             #    - global flux scaling is not modified  
+            #    - scaling profiles are retrieved with global indexes
             if flux_sc:
                 data_proc['cen_bins'][iexp_sub] = data_exp['cen_bins'][ord_coadd]          
-                data_scaling_all[iexp]=dataload_npz(data_vis['scaled_'+gen+'_data_paths']+str(iexp_eff)) 
+                data_scaling_all[iexp]=dataload_npz(data_vis['scaled_'+gen+'_data_paths']+str(iexp)) 
 
             #Mean calibration profile over processed exposures
             #    - due to the various shifts of the processed spectra from the input rest frame, calibration profiles are not equivalent for a given line between exposure
@@ -219,7 +224,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
         #Computing final covariance matrix in artificial new order
         for iexp_sub,iexp in enumerate(iexp_conv):
             gen = deepcopy(data_type_gen)
-            iexp_eff = deepcopy(iexp)
+            iexp_eff = deepcopy(iexp)    #out- (global) or in-transit index
             cond_def_exp = (~np.isnan(CCF_all[iexp_sub,0]))[None,:] 
             data_CCF_exp={}
             if (data_type_gen=='Intr'):
@@ -262,9 +267,17 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
 
             #Redefine spectral scaling table
             if flux_sc:
+                
+                #Normalizing scaling CCF
+                #    - if 'null_loc_flux_scaling' then 'loc_flux_scaling_CCF' remains set to 0
                 if (not data_scaling_all[iexp]['null_loc_flux_scaling']):loc_flux_scaling_CCF[iexp_sub,:]/=norm_loc_flux_scaling_CCF[iexp_sub]
+                
+                #Defining the scaling CCF as a function
+                #    - if scaling light curves are chromtic we propagate the chromaticity into the scaling CCF
                 if not data_scaling_all[iexp]['chrom']:loc_flux_scaling_exp = np.poly1d(np.mean(loc_flux_scaling_CCF[iexp_sub]))                
                 else:loc_flux_scaling_exp = interp1d(cen_bins[0],loc_flux_scaling_CCF[iexp_sub],fill_value=(loc_flux_scaling_CCF[iexp_sub,0],loc_flux_scaling_CCF[iexp_sub,-1]), bounds_error=False)
+                
+                #Saving
                 data_scaling_all[iexp]['loc_flux_scaling'] = loc_flux_scaling_exp
                 data_scaling_all[iexp]['chrom'] = False
                 datasave_npz(dir_save[gen]+'_scaling_'+str(iexp),data_scaling_all[iexp])

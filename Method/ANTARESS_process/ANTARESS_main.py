@@ -1339,7 +1339,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     else:idx_ord_skysub = gen_dic['fibB_corr'][inst][vis]
                     
                 else:vis_path_skysub_exp = None
-        
+                
                 #Path of visits exposures
                 if inst not in ['EXPRES']:vis_path+='A'
                 vis_path_exp = np.array(glob.glob(vis_path+'.fits'))
@@ -1402,7 +1402,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #Initializing dictionaries for visit
                 theo_dic[inst][vis]={}
                 data_dic['Atm'][inst][vis]={}   
-                data_inst[vis] = {'n_in_visit':n_in_visit,'transit_pl':[],'comm_sp_tab':True} 
+                data_inst[vis] = {'n_in_visit':n_in_visit,'transit_pl':[],'transit_sp':[],'comm_sp_tab':True} 
                 coord_dic[inst][vis] = {}
                 for pl_loc in gen_dic['studied_pl']:
                     if (inst in gen_dic['transit_pl'][pl_loc]) and (vis in gen_dic['transit_pl'][pl_loc][inst]):data_inst[vis]['transit_pl']+=[pl_loc]

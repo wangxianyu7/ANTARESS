@@ -79,7 +79,13 @@ def resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,nexp,rv_osamp_line_mod):
     Theoretical profiles are directly calculated at the requested resolution, measured profiles are extracted at their native resolution.
 
     Args:
-        TBD
+        inst (str) : Instrument considered.
+        vis (str) : Visit considered.
+        isub (int) : Index of the exposure considered.
+        fixed_args (dict) : Parameters of the profiles considered.
+        gen_dic (dict) : General dictionary.
+        nexp (int) : Number of exposures in the visit considered.
+        rv_osamp_line_mode (float) : RV-space oversampling factor.
     
     Returns:
         TBD
@@ -162,10 +168,10 @@ def return_resolv(inst):
     Returns resolving power of a given spectrograph.
 
     Args:
-        TBD
+        inst (str) : Instrument / spectrograph considered.
     
     Returns:
-        TBD
+        inst_res (float) : Resolving power of the spectrograph.
     
     """
     inst_res = {        
@@ -182,6 +188,7 @@ def return_resolv(inst):
         'NIRPS_HE':75000.,
         'NIRPS_HA':88000.,
         'EXPRES':137500.,
+        'NIRSPEC':25000.,
     }[inst]  
     return inst_res
 
@@ -239,10 +246,12 @@ def convol_prof(prof_in,cen_bins,FWHM):
     Profile must be defined on a uniform spectral grid.
 
     Args:
-        TBD
+        prof_in (array, float) : original spectral profile.
+        cen_bins (array, float) : wavelength grid over which `prof_in` is defined.
+        FWHM (float) : width of the Gaussian LSF used to convolve `prof_in`.
     
     Returns:
-        TBD
+        prof_conv (array, float) : convolved spectral profile.
     
     """  
     
