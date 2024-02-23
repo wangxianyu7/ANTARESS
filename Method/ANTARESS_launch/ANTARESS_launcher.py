@@ -33,6 +33,7 @@ def ANTARESS_launcher(nbook_dic = {} , user = ''):
     theo_dic={}
     detrend_prof_dic={}
     glob_fit_dic={
+        'DIProp':{},
         'IntrProp':{},
         'ResProf':{},
         'IntrProf':{},

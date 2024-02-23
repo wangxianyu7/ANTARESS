@@ -28,6 +28,10 @@ def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic
         TBD
     
     """        
+    #Fitting disk-integrated stellar properties with a linked model
+    if gen_dic['fit_DIProp']:
+        main_joined_DIProp('DIProp',glob_fit_dic['DIProp'],gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic)   
+
     #Fitting stellar surface properties with a linked model
     if gen_dic['fit_IntrProp']:
         main_joined_IntrProp('IntrProp',glob_fit_dic['IntrProp'],gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic)    
@@ -43,6 +47,64 @@ def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic
     return None
 
 
+def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic):
+    r"""**Joined disk-integrated stellar property fits**
+
+    Main routine to fit a given disk-integrated stellar property with a joined model over instruments and visits.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    print('   > Fitting single disk-integrated stellar property')
+    
+    #Initializations
+    for prop_loc in fit_prop_dic['mod_prop']:  
+        fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
+        print('     - '+{'rv_res':'RV residuals','FWHM':'Line FWHM','ctrst':'Line contrast'}[prop_loc])        
+        fit_dic['save_dir']+=prop_loc+'/'       
+    
+        #Arguments to be passed to the fit function
+        fixed_args.update({
+            'rout_mode':'DIProp',
+            'prop_fit':prop_loc})    
+    
+        #Construction of the fit tables
+        for par in ['s_val','y_val']:fixed_args[par]=np.zeros(0,dtype=float)
+        idx_fit2vis={}
+        for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
+            init_joined_routines_inst('DIProp',inst,fit_prop_dic,fixed_args)
+            idx_fit2vis[inst] = {}
+            for vis in data_dic[inst]['visit_list']:
+                init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
+    
+                #Visit is fitted
+                if vis is not None: 
+                    data_vis=data_dic[inst][vis]
+                    init_joined_routines_vis_fit('DIProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
+    
+                    #Binned/original data
+                    if fixed_args['bin_mode'][inst][vis]=='_bin':data_load = dataload_npz(gen_dic['save_data_dir']+'/DIbin_prop/'+inst+'_'+vis)
+                    else:data_load = dataload_npz(gen_dic['save_data_dir']+'/DIorig_prop/'+inst+'_'+vis)
+                  
+                    #Fit tables
+                    idx_fit2vis[inst][vis] = range(fit_dic['nx_fit'],fit_dic['nx_fit']+fixed_args['nexp_fit_all'][inst][vis])
+                    fit_dic['nx_fit']+=fixed_args['nexp_fit_all'][inst][vis]
+                    for i_in in fixed_args['idx_in_fit'][inst][vis]:    
+                        fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
+                        fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))    
+    
+    
+    
+    return None
+
+
+
+
+
 
 
 
@@ -51,7 +113,7 @@ def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic
 
 
 def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic):
-    r"""**Joined stellar property fits**
+    r"""**Joined intrinsic stellar property fits**
 
     Main routine to fit a given stellar surface property from planet-occulted regions with a joined model over instruments and visits.
 
@@ -90,7 +152,7 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
         for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
         idx_fit2vis={}
         for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
-            init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
+            init_joined_routines_inst('IntrProp',inst,fit_prop_dic,fixed_args)
             idx_fit2vis[inst] = {}
             for vis in data_dic[inst]['visit_list']:
                 init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
@@ -315,7 +377,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     #Construction of the fit tables
     for par in ['coord_pl_fit','coord_spot_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):  
-        init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
+        init_joined_routines_inst('IntrProf',inst,fit_prop_dic,fixed_args)
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
@@ -805,7 +867,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #Initializing entries that will store the coordinates of the planets, of the spots, and the respective phase of the fitted exposures.
     for par in ['coord_pl_fit','coord_spot_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
-        init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
+        init_joined_routines_inst('ResProf',inst,fit_prop_dic,fixed_args)
           
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}

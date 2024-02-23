@@ -6,11 +6,11 @@ from copy import deepcopy
 from lmfit import Parameters
 import lmfit
 import numpy as np
-from ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,save_fit_results,fit_merit,fit_minimization,gen_hrand_chain
+from ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,save_fit_results,fit_merit,call_lmfit,gen_hrand_chain
 from ANTARESS_general.constant_data import Rsun,c_light
 import bindensity as bind
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff
-from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
+# from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
 from ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,custom_DI_prof,theo_intr2loc
 from ANTARESS_analysis.ANTARESS_model_prof import para_cust_mod_true_prop,proc_cust_mod_true_prop,cust_mod_true_prop,gauss_intr_prop,calc_biss,\
     dgauss,gauss_poly,voigt,gauss_herm_lin,gen_fit_prof
@@ -273,7 +273,7 @@ def model_par_names():
         'LD_u1':'LD$_1$','LD_u2':'LD$_2$','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
         'f_GD':'f$_{\rm GD}$','beta_GD':'$\beta_{\rm GD}$','Tpole':'T$_{\rm pole}$',
         'eta_R':r'$\eta_{\rm R}$','eta_T':r'$\eta_{\rm T}$','ksi_R':r'\Ksi$_\mathrm{R}$','ksi_T':r'\Ksi$_\mathrm{T}$',
-        'Tcenter' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'flux' : 'F$_{sp}$'
+        'Tcenter' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'ctrst_sp' : 'F$_{sp}$',
         } 
     return name_dic
 
@@ -288,7 +288,7 @@ def model_par_names():
 def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic):
     r"""**Joined fits: general initialization.**
 
-    Initializes properties for the joined fits to stellar and planetary lines.
+    Initializes properties for the joined fits to stellar and planetary lines and properties.
 
     Args:
         TBD
@@ -347,7 +347,7 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
 
     return fixed_args,fit_dic
 
-def init_joined_routines_inst(inst,fit_prop_dic,fixed_args):
+def init_joined_routines_inst(rout_mode,inst,fit_prop_dic,fixed_args):
     r"""**Joined fits: instrument initialization.**
 
     Initializes properties for the joined fits to stellar and planetary lines.
@@ -365,7 +365,9 @@ def init_joined_routines_inst(inst,fit_prop_dic,fixed_args):
     fit_prop_dic[inst]={}
     fixed_args['inst_list']+=[inst]
     fixed_args['inst_vis_list'][inst]=[]  
-    for key in ['coord_pl_fit','coord_spot_fit','ph_fit','nexp_fit_all','transit_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
+    for key in ['ph_fit','nexp_fit_all','transit_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
+    if ('Intr' in rout_mode) or ('Res' in rout_mode):
+        for key in ['coord_pl_fit','coord_spot_fit']:fixed_args[key][inst]={}
 
     return None
 
@@ -408,12 +410,11 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
     
     #Check for multi-transits
     #    - if two planets are transiting the properties derived from the fits to intrinsic profiles cannot be fitted, as the model only contains a single line profile
-    if fixed_args['rout_mode']=='IntrProp':
+    if rout_mode=='IntrProp':
         if len(data_vis['transit_pl'])>1:stop('Multi-planet transit must be modelled with full intrinsic profiles')
         fixed_args['transit_pl'][inst][vis]=[data_vis['transit_pl'][0]] 
     else:fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
-    fixed_args['transit_sp'][inst][vis]={} #data_vis['transit_sp']
-    print('RUN CALCPROC TO INITIALIZE')
+    fixed_args['transit_sp'][inst][vis]=data_vis['transit_sp']
 
     #Binned data
     if fixed_args['bin_mode'][inst][vis]=='_bin':
@@ -621,7 +622,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     if fit_dic['fit_mod']=='chi2':
         fixed_args['fit'] = True
         print('       Chi2 fit')   
-        p_final = fit_minimization(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=fit_prop_dic['verbose'],fixed_args=fixed_args)[2]
+        p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=fit_prop_dic['verbose'],fixed_args=fixed_args)[2]
 
     ########################################################################################################    
     #Fit par emcmc 
@@ -1658,7 +1659,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     #--------------------------------------------------------------
     #Fit by chi2 minimization
     if fit_prop_dic['fit_mod']=='chi2':
-        p_final = fit_minimization(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=verbose,fixed_args=fixed_args)[2]
+        p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=verbose,fixed_args=fixed_args)[2]
      
     #--------------------------------------------------------------   
     #Fit by emcmc 
@@ -2191,6 +2192,8 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
 
     return output_prop_dic
     
+
+
 
 
 

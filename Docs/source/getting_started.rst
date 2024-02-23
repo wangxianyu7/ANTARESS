@@ -10,8 +10,9 @@ Follow these steps to run ``ANTARESS``:
 
 2. Define your input datasets, and the modules to process and analyze them, in a copy of the configuration file `ANTARESS_settings.py <https://gitlab.unige.ch/bourrier/antaress/-/tree/0d7232f1a1b39757beb8a52762b9e95fd33b2591/Method/ANTARESS_launch/ANTARESS_settings.py>`_ that you can name `ANTARESS_settings_username.py`. Although the default file allows running ``ANTARESS`` with minimal intervention, any detailed analysis will require that you define your own settings.  
 
-3. Launch the workflow with the python command::
+3. Launch the workflow with the python commands::
 
+       from ANTARESS_launch.ANTARESS_launcher import ANTARESS_launcher 
        ANTARESS_launcher(user = username) 
 
 

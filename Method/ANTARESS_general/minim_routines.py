@@ -306,7 +306,7 @@ def ln_prob_func_lmfit(p_step, x_val, fixed_args=None):
 
 
 ##################################################################################################
-#%%% TBD
+#%%% Minimization routines
 ##################################################################################################   
 
 def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
@@ -489,11 +489,19 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
         
     return None
 
-'''
-Wrapper to minimization call
-    - covtofit must have banded matrix structure, ie (nd+1,n) where nd is the number of sub-diagonals
-'''
-def fit_minimization(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=None, xtol=1e-7, ftol=1e-7,verbose=False,fixed_args=None,show_correl=False):
+
+def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=None, xtol=1e-7, ftol=1e-7,verbose=False,fixed_args=None,show_correl=False):
+    r"""**Wrapper to lmfit**
+
+    Runs `lmfit` minimizer and outputs results and merit values.
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
 
     #Call to minimization
     #    - WARNING: it is essential to use scale_covar = False to prevent the covariance matrix to be scaled using the reduced chi2 (in which case errors on the
@@ -502,6 +510,7 @@ def fit_minimization(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', ma
     # param -> p_use
     # x -> xtofit
     # fixed_args ->  fixed_args
+    #    - covtofit must have banded matrix structure, ie (nd+1,n) where nd is the number of sub-diagonals
     argstofit=deepcopy(fixed_args)
     argstofit['fit_func'] = f_use
     argstofit['x_val'] = deepcopy(xtofit)
@@ -580,11 +589,19 @@ def fit_minimization(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', ma
     
 
 
-'''
-Wrapper to MCMC call
-'''
-def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True):
 
+def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True):
+    r"""**Wrapper to MCMC**
+
+    Runs `emcee` and outputs results and merit values.
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
     #Automatic definition of undefined priors                
     for par in fixed_args['var_par_list']:
         if par not in fixed_args['varpar_priors']:fixed_args['varpar_priors'][par]={'mod':'uf','low':-1e10,'high':1e10}
@@ -648,38 +665,23 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
     return walker_chains
 
   
-'''
-Calculation of correlation length
-'''  
-#Moyenne du produit des ecarts a la moyenne sur la premiere moitie de la chaine, et sur la meme longueur decalee successivement de 1 pixel
-#    - c'est la fonction la plus time-consuming
-def sub_MCMC_corr_length(pix_shift,d_par_di,d_par,idx_di):
-    corr_j_loc=np.array([np.mean(d_par_di*d_par[j+idx_di]) for j in pix_shift])
-    return corr_j_loc
-    
-def parallel_sub_MCMC_corr_length(pool_proc,func_input,nthreads,n_elem,y_inputs,common_args):
-    
-    #Indexes of chunks to be processed by each core       
-    ind_chunk_list=init_parallel_func(nthreads,n_elem)
-   
-    #1 array of n dictionary elements
-    chunked_args=[(y_inputs[0][ind_chunk[0]:ind_chunk[1]],)+common_args for ind_chunk in ind_chunk_list]	
 
-    #------------------------------------------------------------------------------------	     					
-    #Return the results from all cores as elements of a tuple
-    #    - arguments could be given whole to map(), and be automatically divided using an input 'chunksize', however for long arrays it takes 
-    # less time to do the chunking before
-    all_results=tuple(tab for tab in pool_proc.starmap(func_input,chunked_args))
-
-    #------------------------------------------------------------------------------------	 			
-    #Outputs: array with dimensions n 		
-    y_output=np.concatenate(tuple(all_results[i] for i in range(nthreads)))
-
-    return y_output
-
+##################################################################################################
+#%%% Post-processing
+##################################################################################################   
 
 def MCMC_corr_length(fit_dic,max_corr_length,nthreads,var_par_list,merged_chain,istart,iend,verbose=False):
+    r"""**MCMC post-proc: correlation length**
+
+    Calculates correlation length of MCMC chains.
+      
+    Args:
+        TBD
     
+    Returns:
+        TBD
+    
+    """    
     #--------------------------------------
     #Correlation length is calculated   
     if max_corr_length==0.:    
@@ -761,6 +763,36 @@ def MCMC_corr_length(fit_dic,max_corr_length,nthreads,var_par_list,merged_chain,
 
     return corr_length  
   
+#Moyenne du produit des ecarts a la moyenne sur la premiere moitie de la chaine, et sur la meme longueur decalee successivement de 1 pixel
+#    - c'est la fonction la plus time-consuming
+def sub_MCMC_corr_length(pix_shift,d_par_di,d_par,idx_di):
+    corr_j_loc=np.array([np.mean(d_par_di*d_par[j+idx_di]) for j in pix_shift])
+    return corr_j_loc
+    
+def parallel_sub_MCMC_corr_length(pool_proc,func_input,nthreads,n_elem,y_inputs,common_args):
+    
+    #Indexes of chunks to be processed by each core       
+    ind_chunk_list=init_parallel_func(nthreads,n_elem)
+   
+    #1 array of n dictionary elements
+    chunked_args=[(y_inputs[0][ind_chunk[0]:ind_chunk[1]],)+common_args for ind_chunk in ind_chunk_list]	
+
+    #------------------------------------------------------------------------------------	     					
+    #Return the results from all cores as elements of a tuple
+    #    - arguments could be given whole to map(), and be automatically divided using an input 'chunksize', however for long arrays it takes 
+    # less time to do the chunking before
+    all_results=tuple(tab for tab in pool_proc.starmap(func_input,chunked_args))
+
+    #------------------------------------------------------------------------------------	 			
+    #Outputs: array with dimensions n 		
+    y_output=np.concatenate(tuple(all_results[i] for i in range(nthreads)))
+
+    return y_output
+    
+  
+    
+  
+    
   
 '''
 Thin chains

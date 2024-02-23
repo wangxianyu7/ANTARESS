@@ -14,7 +14,7 @@ import bindensity as bind
 from itertools import product as it_product
 from matplotlib.ticker import MultipleLocator,MaxNLocator
 import copy
-from ANTARESS_general.minim_routines import fit_minimization
+from ANTARESS_general.minim_routines import call_lmfit
 from astropy.io import fits
 import glob
 import imageio
@@ -1204,6 +1204,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     data_path_all = [gen_dic['save_data_dir']+data_type_gen+'_data/1Dfrom2D/'+add_txt_path+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
                     rest_frame = data_add['rest_frame'] 
                 else: 
+                    
+                    #Disk-integrated profiles
                     if 'DI' in plot_mod:
 
                         #Master built from original data 
@@ -1211,29 +1213,33 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             data_path_all = [gen_dic['save_data_dir']+data_type_gen+'_data/Master/'+inst+'_'+vis+'_phase']
                             rest_frame = data_bin['rest_frame']
                             
-                        #Raw profiles
-                        elif (plot_mod=='DI_prof'):
-                            if ('spec' in data_type):  
-                                if plot_options['plot_post'] is not None:data_path_all = [data_path_dic[plot_options['plot_post']]+str(iexp) for iexp in iexp_plot]
-                                else:data_path_all = [None for iexp in iexp_plot]
-                            elif (data_type=='CCF'):data_path_all = [data_dic[inst][vis]['proc_DI_data_paths']+str(iexp) for iexp in iexp_plot]
-                            rest_frame = 'input'
-                            
-                        #Processed disk-integrated profiles
-                        else: 
-                            if ('spec' in data_type):                             
-                                if plot_options['step']=='sp_corr':
-                                    data_path = data_dic[inst][vis]['corr_exp_data_paths']
-                                    rest_frame='input'   
-                                elif plot_options['step']=='detrend':
-                                    data_path = gen_dic['save_data_dir']+'Detrend_prof/'+inst+'_'+vis+'_'  
-                                    rest_frame='input'                
-                                elif plot_options['step']=='aligned':
-                                    data_path = gen_dic['save_data_dir']+'Aligned_DI_data/'+inst+'_'+vis+'_' 
-                                    rest_frame='star'   
-                                elif plot_options['step']=='scaled':
-                                    data_path = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_' 
-                                    rest_frame = dataload_npz(data_path+'add')['rest_frame']
+                        #Disk-integrated profiles
+                        elif (plot_mod=='DI_prof'): 
+    
+                            #Spectral profiles
+                            if ('spec' in data_type):         
+                                
+                                #Over correction steps
+                                if ('plot_pre' in plot_options) or ('plot_post' in plot_options):
+                                    if plot_options['plot_post'] is not None:data_path_all = [data_path_dic[plot_options['plot_post']]+str(iexp) for iexp in iexp_plot]
+                                    else:data_path_all = [None for iexp in iexp_plot]
+                                
+                                #Over processing steps
+                                else:
+                                    if plot_options['step']=='sp_corr':
+                                        data_path = data_dic[inst][vis]['corr_exp_data_paths']
+                                        rest_frame='input'   
+                                    elif plot_options['step']=='detrend':
+                                        data_path = gen_dic['save_data_dir']+'Detrend_prof/'+inst+'_'+vis+'_'  
+                                        rest_frame='input'                
+                                    elif plot_options['step']=='aligned':
+                                        data_path = gen_dic['save_data_dir']+'Aligned_DI_data/'+inst+'_'+vis+'_' 
+                                        rest_frame='star'   
+                                    elif plot_options['step']=='scaled':
+                                        data_path = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_' 
+                                        rest_frame = dataload_npz(data_path+'add')['rest_frame']
+                                
+                            #CCF profiles
                             elif (data_type=='CCF'):
                                 if plot_options['step']=='raw':
                                     data_path = data_dic[inst][vis]['raw_exp_data_paths']
@@ -1244,8 +1250,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 elif plot_options['step']=='scaled':
                                     data_path = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_' 
                                     rest_frame = dataload_npz(data_path+'add')['rest_frame']
+                                elif plot_options['step']=='latest':
+                                    data_path = data_dic[inst][vis]['proc_DI_data_paths']
+                                    rest_frame = dataload_npz(data_path+'add')['rest_frame']                                    
                             data_path_all = [data_path+str(iexp) for iexp in iexp_plot]                  
-                                  
+                          
+                    #Other types of profiles
                     else:  
                         data_path_all = [gen_dic['save_data_dir']+txt_aligned+data_type_gen+'_data/'+add_txt_path+'/'+txt_conv+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]   
                         if 'Res' in plot_mod:rest_frame='star'   
@@ -1458,7 +1468,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Colors
                     col_exp = plot_options['color_dic'][inst][vis][isub]
                     col_exp_sec = plot_options['color_dic_sec'][inst][vis][isub]        
-                    
+              
                     #Upload data
                     if data_path_exp is not None:data_exp = dataload_npz(data_path_exp)
                     
@@ -1763,11 +1773,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                             else:var_loc = sc_fact*plot_options['data_permpeak']['cont_func_dic'][iord](cen_bins)*mean_flux/mean_flux_cont
                                             all_ax[key_frame].plot(cen_bins,var_loc,color='black',linestyle='-',lw=1,rasterized=plot_options['rasterized'],zorder=10,figure = all_figs[key_frame])                                 
                                                                             
-                                    #Plot other types of spectra
+                                    #Plot other types of profiles
                                     else:       
                                         
                                         #-------------------------
-                                        #Residual
+                                        #Residuals between data and models 
                                         if ('_res' in plot_mod):
                                             edge_loc = edge_bins[idx_def_fit_raw[0]:idx_def_fit_raw[-1]+2]
                                             x_loc = cen_bins[cond_fit_exp_raw]
@@ -1811,7 +1821,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                             evar_loc = sc_fact*err_exp/mean_flux  
                                             if plot_options['y_range'] is None:y_range_loc[key_frame] = [min(np.nanmin(var_loc),y_range_loc[key_frame][0]),max(np.nanmax(var_loc),y_range_loc[key_frame][1])]
                                             dy_range=y_range_loc[key_frame][1]-y_range_loc[key_frame][0]
-                                            
+                                       
                                             #Continuum level
                                             if plot_options['plot_cont_lev'] and ('Intr' in plot_mod):
                                                 if cond_mod:
@@ -1868,7 +1878,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                         if ('core' in mod_prop_exp): plt.plot(cen_bins,sc_fact*mod_prop_exp['core']/mean_flux,color='black',linestyle='--',lw=plot_options['lw_plot'])    
     
                                         #-------------------------
-                                        #Plotting data                                      
+                                        #Plotting original data                                      
                                         if (not plot_options['no_orig']):
                                             if plot_options['plot_err']:all_ax[key_frame].errorbar(x_loc,var_loc,yerr = evar_loc ,color=col_exp,linestyle='-',lw=plot_options['lw_plot'],marker=None,rasterized=plot_options['rasterized'],zorder=1,alpha=plot_options['alpha_err'],figure = all_figs[key_frame]) 
                                             all_ax[key_frame].plot(x_loc,var_loc,color=col_exp,linestyle=plot_options['ls_plot'],lw=plot_options['lw_plot'],marker=None,alpha=plot_options['alpha_symb'],rasterized=plot_options['rasterized'],zorder=2,drawstyle=plot_options['drawstyle'],figure = all_figs[key_frame])                                           
@@ -4038,7 +4048,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         for par in p_guess:
                             if p_guess[par].vary:nfree+=1.
                         fixed_args['idx_fit'] = np.ones(npts_fit,dtype=bool)
-                        result_loc,merit,p_best = fit_minimization(p_guess,np.zeros(npts_fit),val_obs[idx_fit_loc],np.array([err_disp**2.]),fit_pol_sin,fixed_args=fixed_args)
+                        result_loc,merit,p_best = call_lmfit(p_guess,np.zeros(npts_fit),val_obs[idx_fit_loc],np.array([err_disp**2.]),fit_pol_sin,fixed_args=fixed_args)
                        
                         #Best fit    
                         p_obs = fit_pol_sin(p_best,np.zeros(npts_fit),args=fixed_args) 

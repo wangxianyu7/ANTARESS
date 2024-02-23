@@ -58,7 +58,7 @@ def ANTARESS_settings_overwrite(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic
     if 'plot_dic' in input_dic['settings']:plot_dic.update(input_dic['settings']['plot_dic'])
     
     #Overwriting specific fields
-    if len(input_dic['orders4ccf'])>0:
+    if ('orders4ccf' in input_dic) and (len(input_dic['orders4ccf'])>0):
         for inst in input_dic['orders4ccf']:gen_dic['orders4ccf'][inst] = input_dic['orders4ccf'][inst]
     
     return None
@@ -269,8 +269,8 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
         print('Processing combined instruments')        
         print('-------------------------------')
         
-        #Wrap-up function to fit intrinsic stellar profiles and surface RVs   
-        if gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_ResProf'] :
+        #Wrap-up function to fit stellar profiles and their properties
+        if gen_dic['fit_DIProp'] or gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_ResProf'] :
             joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic)
     
         #Wrap-up function to fit atmospheric profiles and their properties

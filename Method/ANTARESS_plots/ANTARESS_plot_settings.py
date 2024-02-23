@@ -1301,6 +1301,9 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 plot_settings[key_plot]['pl_plot']='TOI858b'
                 plot_settings[key_plot]['y_range']=[0.55,1.05]      #CORALIE          
            
+            
+           
+            
             #Plot fitted line profile
             plot_settings[key_plot]['plot_line_model']=True  #& False
             if gen_dic['star_name'] in ['HD189733','WASP43','L98_59','GJ1214']:plot_settings[key_plot]['plot_line_model']=True 
@@ -2522,10 +2525,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         # plot_settings['prop_DI_ordin']=['AM', 'snr_quad','seeing','ha','na','ca','s','rhk']  #ESPRESSO
         # plot_settings['prop_DI_ordin']=['AM', 'snr','seeing','ha','na','ca','s']    #HARPS
         # plot_settings['prop_DI_ordin']=['AM', 'snr','ha','na','ca','s']    #HARPS-N
-        plot_settings['prop_DI_ordin']=['rv','rv_res','FWHM','ctrst']
+        # plot_settings['prop_DI_ordin']=['rv','rv_res','FWHM','ctrst']
         # plot_settings['prop_DI_ordin']+=['rv_pip']
         # plot_settings['prop_DI_ordin']=['rv_pip','rv_pip_res','FWHM_pip','ctrst_pip']
-        # plot_settings['prop_DI_ordin']=['rv_res','FWHM','ctrst']
+        plot_settings['prop_DI_ordin']=['rv_res','FWHM','ctrst']
         # plot_settings['prop_DI_ordin']=['biss_span']
         # plot_settings['prop_DI_ordin']=['rv_res','FWHM_voigt','ctrst']
         # plot_settings['prop_DI_ordin']=['rv_res','ctrst']
@@ -3065,13 +3068,19 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
                 # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20180902']['snr_quad']= 1
                 # plot_settings[key_plot]['deg_prop_fit']['ESPRESSO']['20181030']['snr_quad']= 0
 
-            # if gen_dic['star_name']=='WASP69':
-            #     var_corr = plot_settings[key_plot]['prop_DI_absc']
-            #     plot_settings[key_plot]['deg_prop_fit']['NIRPS_HE']['20230624'][var_corr]= 0
-            #     plot_settings[key_plot]['deg_prop_fit']['NIRPS_HE']['20230729'][var_corr]= 0
-            #     plot_settings[key_plot]['deg_prop_fit']['NIRPS_HE']['20230825'][var_corr]= 0
-                
-         
+            if gen_dic['star_name']=='WASP69':
+                var_corr = plot_settings[key_plot]['prop_DI_absc']
+                plot_settings[key_plot]['deg_prop_fit']['NIRPS_HE']['20230624'][var_corr]= 0
+                plot_settings[key_plot]['deg_prop_fit']['NIRPS_HE']['20230729'][var_corr]= 0
+                plot_settings[key_plot]['deg_prop_fit']['NIRPS_HE']['20230825'][var_corr]= 0
+                plot_settings[key_plot]['deg_prop_fit']['HARPN']['20160604'][var_corr]= 0
+                plot_settings[key_plot]['deg_prop_fit']['HARPN']['20160804'][var_corr]= 0              
+                # plot_settings[key_plot]['deg_prop_fit']['HARPS']['?'][var_corr]= 0
+                plot_settings[key_plot]['deg_prop_fit']['HARPS']['20230624'][var_corr]= 0  
+                plot_settings[key_plot]['deg_prop_fit']['HARPS']['20230729'][var_corr]= 0
+                plot_settings[key_plot]['deg_prop_fit']['HARPS']['20230825'][var_corr]= 0              
+
+
 
 
             #Multiplication/addition of sinusoidal component to the fit 
@@ -3791,10 +3800,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         plot_settings[key_plot]['plot_LC_imp'] = True & False
 
         #Print exposure indexes
-        plot_settings[key_plot]['plot_expid']=True & False
+        plot_settings[key_plot]['plot_expid']=True# & False
 
         #Print visit names
-        plot_settings[key_plot]['plot_vis']=True & False
+        plot_settings[key_plot]['plot_vis']=True #& False
 
         #Indexes of bands to plot
         #    - default is all
@@ -3806,7 +3815,8 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
 
         #Gap between visits light curves
         plot_settings[key_plot]['lc_gap']=0.
-        # plot_settings[key_plot]['lc_gap']=7e-4        
+        # plot_settings[key_plot]['lc_gap']=7e-4   
+        if gen_dic['star_name']=='WASP69':plot_settings[key_plot]['lc_gap']=4e-3       
         
         #Visits to plot
         if gen_dic['studied_pl']=='55Cnc_e':
@@ -3900,7 +3910,10 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
             plot_settings[key_plot]['color_dic']={'ESPRESSO':{'2019-08-25':'dodgerblue'},'HARPS':{'2018-08-18':'dodgerblue','2018-09-18':'red'}} 
         elif gen_dic['star_name']=='HD189733':
             plot_settings[key_plot]['color_dic']={'ESPRESSO':{'20210810':'dodgerblue','20210830':'red'}}         
-        
+        elif gen_dic['star_name']=='WASP69':
+            plot_settings[key_plot]['color_dic']={'HARPN':{'20160604':'orange','20160804':'purple'}}  
+            
+            
         #Bornes du plot
         if gen_dic['studied_pl']=='GJ436_b':
             plot_settings[key_plot]['x_range']=[-0.13,0.09]   #GJ436b    
