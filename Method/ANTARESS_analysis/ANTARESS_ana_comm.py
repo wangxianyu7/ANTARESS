@@ -330,6 +330,7 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         #Exposures to be fitted
         'nexp_fit_all':{},
         'idx_in_fit':{},
+        'master_out':{},
         
         #Intrinsic continuum flux
         #    - IntrProp: required for the intensity weighing but absolute value does not matter
@@ -368,8 +369,8 @@ def init_joined_routines_inst(inst,fit_prop_dic,fixed_args):
     #Instrument is fitted
     fit_prop_dic[inst]={}
     fixed_args['inst_list']+=[inst]
-    fixed_args['inst_vis_list'][inst]=[]  
-    for key in ['coord_pl_fit','ph_fit','nexp_fit_all','transit_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
+    fixed_args['inst_vis_list'][inst]=[] 
+    for key in ['coord_fit','ph_fit','nexp_fit_all','transit_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
 
     return None
 
@@ -455,14 +456,26 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
             sub_idx_in_fit = gen_dic[inst][vis]['idx_in_and_out'][fixed_args['idx_in_fit'][inst][vis]]
         coord_vis = coord_dic[inst][vis]
 
-    for par in ['coord_pl_fit','ph_fit']:fixed_args[par][inst][vis]={}
+    for par in ['coord_fit','ph_fit']:fixed_args[par][inst][vis]={}
+    
     for pl_loc in fixed_args['transit_pl'][inst][vis]:
         fixed_args['ph_fit'][inst][vis][pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'][sub_idx_in_fit],coord_vis[pl_loc]['cen_ph'][sub_idx_in_fit],coord_vis[pl_loc]['end_ph'][sub_idx_in_fit]) ) 
-        fixed_args['coord_pl_fit'][inst][vis][pl_loc] = {}
-        for key in ['cen_pos','st_pos','end_pos']:fixed_args['coord_pl_fit'][inst][vis][pl_loc][key] = coord_vis[pl_loc][key][:,sub_idx_in_fit]    
-        fixed_args['coord_pl_fit'][inst][vis][pl_loc]['ecl'] = coord_vis[pl_loc]['ecl'][sub_idx_in_fit]  
-    fixed_args['coord_pl_fit'][inst][vis]['bjd']=coord_vis['bjd'][sub_idx_in_fit]
-    fixed_args['coord_pl_fit'][inst][vis]['t_dur']=coord_vis['t_dur'][sub_idx_in_fit]
+        fixed_args['coord_fit'][inst][vis][pl_loc] = {}
+        for key in ['cen_pos','st_pos','end_pos']:
+            fixed_args['coord_fit'][inst][vis][pl_loc][key] = coord_vis[pl_loc][key][:,sub_idx_in_fit]    
+        fixed_args['coord_fit'][inst][vis][pl_loc]['ecl'] = coord_vis[pl_loc]['ecl'][sub_idx_in_fit]  
+    
+    if fixed_args['rout_mode']=='ResProf':
+        for spot in fixed_args['transit_sp'][inst][vis]:
+            fixed_args['coord_fit'][inst][vis][spot] = {}
+            for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
+                fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key][sub_idx_in_fit] 
+            for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
+                fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key][:,sub_idx_in_fit] 
+            fixed_args['coord_fit'][inst][vis][spot]['is_visible'] = coord_vis[spot]['is_visible'][:,sub_idx_in_fit] 
+
+    fixed_args['coord_fit'][inst][vis]['bjd']=coord_vis['bjd'][sub_idx_in_fit]
+    fixed_args['coord_fit'][inst][vis]['t_dur']=coord_vis['t_dur'][sub_idx_in_fit]
 
 
     return data_vis_bin
@@ -631,6 +644,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     #Unique list of spots with variable properties
     for par in par_spot:fixed_args[par+'_sp'] = list(np.unique(fixed_args[par+'_sp']))
 
+    #Store the number of threads - needed when fitting joined residual profiles
+    fixed_args['nthreads']=fit_prop_dic['nthreads']
+    
     #Fit initialization
     init_fit(fit_dic,fixed_args,p_start,model_par_names(),fit_prop_dic)     
     merged_chain = None
@@ -2386,8 +2402,8 @@ def prior_contrast(p_step_loc,args_in,prior_func_prop):
         for vis in args['inst_vis_list'][inst]:   
             args['vis']=vis
             pl_vis = args['transit_pl'][inst][vis][0]
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,p_step_loc,[pl_vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
-            surf_prop_dic,spot_prop_dic = sub_calc_plocc_spot_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_pl_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,p_step_loc,[pl_vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
+            surf_prop_dic,spot_prop_dic = sub_calc_plocc_spot_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
             ctrst_vis = surf_prop_dic[pl_vis]['ctrst'][0]       
             break_cond = (ctrst_vis<0.) | (ctrst_vis>1.)
             if True in break_cond:

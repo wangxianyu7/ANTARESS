@@ -5,6 +5,7 @@ from copy import deepcopy
 from ANTARESS_general.constant_data import c_light
 from ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase
 from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop
+from ANTARESS_grids.ANTARESS_spots import retrieve_spots_prop_from_param
 
 
 def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,mock_dic={},masterDI=False):
@@ -86,7 +87,6 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         #    - common table and dimensions are shared between visits
         #    - new coordinates are relative to a planet chosen as reference for the binned coordinates, which must be present in all binned visits 
         if mode=='multivis':
-
             #Retrieving table common to all visits
             #    - defined in input rest frame for spectra, and centered on the input systemic velocity for CCFs
             data_com = np.load(data_inst['proc_com_data_path']+'.npz',allow_pickle=True)['data'].item()      
@@ -100,7 +100,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             data_inst.update({vis_save:{'transit_pl':[]}})
             for vis_bin in vis_to_bin:data_inst[vis_save]['transit_pl']+=data_inst[vis_bin]['transit_pl']
             data_inst[vis_save]['transit_pl'] = list(np.unique(data_inst[vis_save]['transit_pl']))
-            
+
             #Mean systemic velocity 
             sysvel=0.
             for vis_bin in vis_to_bin:sysvel+=data_dic['DI']['sysvel'][inst][vis_bin]
@@ -136,7 +136,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         data_glob_new={'FromAligned':gen_dic['align_'+data_type_gen],'in_inbin' : False}
         
         #Automatic definition of reference planet 
-        #    - for single-transiting planet or if undefined    
+        #    - for single-transiting planet or if undefined   
         if (len(data_inst[vis_save]['transit_pl'])==1) or ('ref_pl' not in bin_prop):bin_prop['ref_pl'] = data_inst[vis_save]['transit_pl'][0]  
 
         #Initialize binning
@@ -407,25 +407,42 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             data_glob_new['coord']['bjd'] = binned_time
             data_glob_new['coord']['t_dur'] = binned_t_dur
 
-
             #Properties of planet-occulted and spot-occulted regions 
             params = deepcopy(system_param['star'])
             params.update({'rv':0.,'cont':1.}) 
             params['use_spots']=False
-            if mock_dic!={} and mock_dic['use_spots'] and (inst in mock_dic['spots_prop']):
+            if mock_dic['use_spots'] and (inst in mock_dic['spots_prop']):
                 if mode=='multivis':
                     print('WARNING: spots properties are not propagated for multiple visits.')
+                
                 elif vis_in in mock_dic['spots_prop'][inst]:
-                    for spot_param in list(mock_dic['spots_prop'][inst][vis_in].keys()):
-                        params[spot_param]=mock_dic['spots_prop'][inst][vis_in][spot_param]
-                        
-                    #Figuring out the number of spots
-                    num_spots = 0
-                    for par in params:
-                        if 'lat__IS'+inst+'_VS'+vis_in+'_SP' in par:num_spots +=1
-                    params['num_spots']=num_spots
-                    params['inst']=inst
-                    params['vis']=vis_in  
+                    #Trigger spot use
+                    params['use_spots']=True
+
+                    #Initialize entries for spot coordinates 
+                    for spot in data_dic[inst][vis_in]['transit_sp']:
+                        data_glob_new['coord'][spot]={}
+                        for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:data_glob_new['coord'][spot][key] = np.zeros(n_bin,dtype=float)*np.nan
+                        for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp','is_visible']:data_glob_new['coord'][spot][key] = np.zeros([3,n_bin],dtype=float)*np.nan
+
+                    #Retrieve spot coordinates/properties for new exposures
+                    mock_dic['spots_prop'][inst][vis_in]['cos_istar']=system_param['star']['cos_istar']
+
+                    for i_new in range(n_bin):
+
+                        spots_prop = retrieve_spots_prop_from_param(system_param['star'],mock_dic['spots_prop'][inst][vis_in],inst,vis_in,data_glob_new['coord']['bjd'][i_new],exp_dur=data_glob_new['coord']['t_dur'][i_new])
+
+                        for spot in data_dic[inst][vis_in]['transit_sp']:
+                            for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
+                                data_glob_new['coord'][spot][key][i_new] = spots_prop[spot][key]
+
+                            for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
+                                data_glob_new['coord'][spot][key][:, i_new] = [spots_prop[spot][key+'_start'],spots_prop[spot][key+'_center'],spots_prop[spot][key+'_end']]
+
+                            data_glob_new['coord'][spot]['is_visible'][:, i_new]=[spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]
+
+                    mock_dic['spots_prop'][inst][vis_in].pop('cos_istar')
+
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
             if ('spec' in data_mode) and ('chrom' in system_prop):key_chrom+=['chrom']

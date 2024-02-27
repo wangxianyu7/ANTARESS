@@ -2887,16 +2887,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Intensity settings for the spots
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['spots_prop'] = {}
-        data_dic['DI']['spots_prop']={
-                'achrom':{
-                    'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot1'] * np.pi/180],#--base
-                    # 'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis1']['ang__ISESPRESSO_VSmock_vis1_SPspot1'] * np.pi/180],#--grid run
-                    # 'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
-                    'LD' : ['quadratic'],
-                    'LD_u1' : [0.35],
-                    'LD_u2' : [0.16],
-                },
-                }
+        # data_dic['DI']['spots_prop']={
+        #         'achrom':{
+        #             'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot1'] * np.pi/180],#--base
+        #             # 'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis1']['ang__ISESPRESSO_VSmock_vis1_SPspot1'] * np.pi/180],#--grid run
+        #             # 'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
+        #             'LD' : ['quadratic'],
+        #             'LD_u1' : [0.35],
+        #             'LD_u2' : [0.16],
+        #         },
+        #         }
 
     if gen_dic['star_name']=='V1298tau':
         data_dic['DI']['spots_prop']={
@@ -2941,13 +2941,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Model time resolution   
 
     #Input light curves 
-    plot_dic['input_LC']=''  #pdf
+    plot_dic['input_LC']='pdf'  #pdf
 
     #Scaling light curves
-    plot_dic['spectral_LC']=''   #pdf
+    plot_dic['spectral_LC']='pdf'   #pdf
 
     #2D maps of disk-integrated profiles
-    plot_dic['map_DI_prof']=''   #png   
+    plot_dic['map_DI_prof']='pdf'   #png   
     
     
     
@@ -4212,7 +4212,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Multi-threading
     glob_fit_dic['ResProf']['nthreads'] = int(0.8*cpu_count())
     
-    
     #%%%% Fitted data
     
     #%%%%% Exposures to be fitted
@@ -4222,7 +4221,15 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #      all other mentions of the visit (eg in parameter names) can still refer to the original visit name
     glob_fit_dic['ResProf']['idx_in_fit']={}
     
-    
+    #%%%% Master out data
+
+    #%%%%% Exposures to be used in the calculation of the master-out
+    glob_fit_dic['ResProf']['idx_in_master_out']={}
+
+    #%%%%% Common table on which we want to define the master-out
+    #     - Define the borders and the number of points of the table (e.g. [low_end, high_end, num_pts].
+    glob_fit_dic['ResProf']['master_out_tab']=[]
+
     #%%%%% Trimming
     glob_fit_dic['ResProf']['trim_range'] = {}
     
@@ -4360,12 +4367,18 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  #&  False
+    gen_dic['fit_ResProf'] = True  &  False
 
     # #Indexes of exposures to be fitted, in each visit
     #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to []), set their value to 'all' for all in-transit exposures to be fitted
     if gen_dic['star_name'] == 'AUMic':
         glob_fit_dic['ResProf']['idx_in_fit'] = {'ESPRESSO':{'mock_vis':'all'}}
+        glob_fit_dic['ResProf']['idx_in_master_out'] = {'ESPRESSO':{'mock_vis':'all'}}
+
+    # Master-out RV table
+    if gen_dic['star_name']=='AUMic':
+        # glob_fit_dic['ResProf']['master_out_tab']=[-200, 200, 200]
+        glob_fit_dic['ResProf']['master_out_tab']=[]
     
     #Trimming
     glob_fit_dic['ResProf']['trim_range'] = deepcopy(data_dic['Intr']['fit_prof']['trim_range'])   
@@ -4447,7 +4460,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Walkers
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':24,'nsteps':10,'nburn':5}
+        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':18,'nsteps':5,'nburn':1}
 
     #Complex priors        
          

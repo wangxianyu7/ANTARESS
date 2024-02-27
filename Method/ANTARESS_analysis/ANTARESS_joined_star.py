@@ -7,10 +7,11 @@ import numpy as np
 import scipy.linalg
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
+import bindensity as bind
 from ANTARESS_analysis.ANTARESS_ana_comm import init_joined_routines,init_joined_routines_inst,init_joined_routines_vis,init_joined_routines_vis_fit,com_joint_fits,com_joint_postproc
 from ANTARESS_conversions.ANTARESS_binning import calc_bin_prof
 from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
-from ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,init_custom_DI_prof,custom_DI_prof
+from ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,theo_intr2loc,init_custom_DI_prof,custom_DI_prof
 from ANTARESS_grids.ANTARESS_spots import compute_deviation_profile
 from ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,get_FWHM_inst,resamp_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab
 
@@ -87,7 +88,7 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
     
         #Construction of the fit tables
         for par in ['s_val','y_val']:fixed_args[par]=np.zeros(0,dtype=float)
-        for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
+        for par in ['coord_fit','ph_fit']:fixed_args[par]={}
         idx_fit2vis={}
         for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
             init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
@@ -201,7 +202,7 @@ def joined_IntrProp(param,args):
             args['vis']=vis 
             
             #Calculate coordinates and properties of occulted regions 
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
             surf_prop_dic,spotocc_prop = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
             
             #Properties associated with the transiting planet in the visit 
@@ -313,7 +314,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_dic[data_dic['instrum_list'][0]]['type'])                           
 
     #Construction of the fit tables
-    for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
+    for par in ['coord_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):  
         init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
@@ -647,7 +648,7 @@ def joined_IntrProf(param,args):
                 
             #-----------------------------------------------------------
             #Calculate coordinates of occulted regions or use imported values
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -756,9 +757,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Initializations
     fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
-
-
-    pl_loc = list(gen_dic['transit_pl'])[0] # <- not sure this is necessary
      
 
     #Arguments to be passed to the fit function
@@ -790,6 +788,12 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
             'chi2_PCout':0.,
             })
     fit_save={'idx_trim_kept':{}}
+
+    #Define master-out dictionary
+    fixed_args['master_out']['idx_in_master_out']={}
+    fixed_args['master_out']['contrib_profs']={}
+    fixed_args['master_out']['master_out_tab']={}
+    fixed_args['raw_DI_profs']={}
     
     #Stellar surface coordinate required to calculate spectral line profiles
     #    - other required properties are automatically added in the sub_calc_plocc_spot_prop() function
@@ -806,9 +810,16 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Construction of the fit tables
     #Initializing entries that will store the coordinates of the planets, of the spots, and the respective phase of the fitted exposures.
-    for par in ['coord_pl_fit','ph_fit']:fixed_args[par]={}
+    for par in ['coord_fit','ph_fit']:fixed_args[par]={}
+    #Initialize variables to store the max and min limits of the fit tables
+    low_bound=1e100
+    high_bound=-1e100
+    num_pts=0
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
         init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
+        fixed_args['master_out']['idx_in_master_out'][inst]={}
+        fixed_args['master_out']['contrib_profs'][inst]={} 
+        fixed_args['raw_DI_profs'][inst]={}
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
@@ -830,6 +841,14 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         #Processing visit
         for vis in data_dic[inst]['visit_list']:
             init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
+
+            #Master-out properties - some visits can contribute to the master-out without being fitted
+            fixed_args['master_out']['idx_in_master_out'][inst][vis]={}
+            fixed_args['master_out']['contrib_profs'][inst][vis]={} 
+            fixed_args['raw_DI_profs'][inst][vis]={} 
+            fixed_args['master_out']['idx_in_master_out'][inst][vis] = fit_prop_dic['idx_in_master_out'][inst][vis+fixed_args['bin_mode'][inst][vis]]
+            if fit_prop_dic['idx_in_master_out'][inst][vis]=='all':fixed_args['master_out']['idx_in_master_out'][inst][vis]=gen_dic[inst][vis]['idx_out']
+            else:fixed_args['master_out']['idx_in_master_out'][inst][vis]=np.intersect1d(fixed_args['master_out']['idx_in_master_out'][inst][vis],gen_dic[inst][vis]['idx_out'])
 
             #Visit is fitted
             if fixed_args['bin_mode'][inst][vis] is not None: 
@@ -913,7 +932,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     fixed_args['edge_bins'][inst][vis][isub] = data_exp['edge_bins'][iord_sel,idx_range_kept[0]:idx_range_kept[-1]+2]   
                     fixed_args['dcen_bins'][inst][vis][isub] = fixed_args['edge_bins'][inst][vis][isub][1::]-fixed_args['edge_bins'][inst][vis][isub][0:-1]  
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]
-                    
+
                     #Oversampled line profile model table
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
 
@@ -951,17 +970,28 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                             else:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-1.,1.]
                             fit_prop_dic['priors'][pc_name]={'low':-100. ,'high':100.,'mod':'uf'}
 
+                    #Updating the limits of the fit tables
+                    low_bound=min(low_bound,np.min(fixed_args['edge_bins'][inst][vis][isub]))
+                    high_bound=max(high_bound,np.max(fixed_args['edge_bins'][inst][vis][isub]))
+                    num_pts=max(num_pts,len(fixed_args['edge_bins'][inst][vis][isub]))
+
                 #Number of fitted exposures
                 fixed_args['nexp_fit']+=fixed_args['nexp_fit_all'][inst][vis]
 
+    #Master-out table
+    if fit_prop_dic['master_out_tab']!=[]:
+        if len(fit_prop_dic['master_out_tab'])!=3:stop('Incorrect master-out table format. The format should be [low_bd, up_bd, num_pts].')
+        else:fixed_args['master_out']['master_out_tab']['edge_bins']=np.linspace(fit_prop_dic['master_out_tab'][0],fit_prop_dic['master_out_tab'][1],num=fit_prop_dic['master_out_tab'][2])
+    else:fixed_args['master_out']['master_out_tab']['edge_bins']=np.linspace(low_bound,high_bound,num=num_pts+1)
+    fixed_args['master_out']['master_out_tab']['dcen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][1::]-fixed_args['master_out']['master_out_tab']['edge_bins'][0:-1]
+    fixed_args['master_out']['master_out_tab']['cen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][:-1]+(fixed_args['master_out']['master_out_tab']['dcen_bins']/2)
+    fixed_args['master_out']['master_out_tab']['spec2rv']=False
+    fixed_args['master_out']['master_out_tab']['resamp']=True
+    fixed_args['master_out']['master_out_tab']['resamp_mode']=gen_dic['resamp_mode']
     #Common data type
     for idx_inst,inst in enumerate(data_dic['instrum_list']):
         if idx_inst==0:fixed_args['type'] = data_dic[inst]['type']
         elif fixed_args['type'] != data_dic[inst]['type']:stop('Incompatible data types')
-
-    #########################################
-    #### CODE SHOULD WORK UP UNTIL HERE #####
-    #########################################
 
     #Artificial observation table
     #    - covariance condition is set to False so that chi2 values calculated here are not further modified within the residual() function
@@ -1137,7 +1167,7 @@ def joined_ResProf(param,args):
         #Processing visits
         for vis in args['inst_vis_list'][inst]: 
             args['vis']=vis
-        
+
             #Outputs
             if not args['fit']:
 
@@ -1158,7 +1188,7 @@ def joined_ResProf(param,args):
 
             #-----------------------------------------------------------
             #Calculate coordinates of occulted and spotted regions or use imported values
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
+            system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -1168,19 +1198,56 @@ def joined_ResProf(param,args):
             mod_dic[inst][vis]=np.zeros(args['nexp_fit_all'][inst][vis],dtype=object)
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
 
-                #Table for model calculation
+                #Table for model calculation - wavelength table of the exposure considered
                 args_exp = def_st_prof_tab(inst,vis,isub,args)
 
-                #Disk-integrated stellar line  
-                args_exp['nthreads']=1  
+                #Disk-integrated stellar line  - define the base stellar profile
                 base_DI_prof = custom_DI_prof(param_val,None,args=args_exp)[0]
 
-                #Residual profile for current exposure
-                surf_prop_dic,surf_prop_dic_sp = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,[isub],system_spot_prop_in=args['system_spot_prop'])
+                #Model DI profile for current exposure accounting for deviations from the nominal profile - on the wavelength table of the exposure considered
+                surf_prop_dic,surf_prop_dic_sp = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
                 sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[args['chrom_mode']]['line_prof'][:,0]
+
+                #Store the model DI profiles for calculation of the residual profiles later
+                args['raw_DI_profs'][inst][vis][isub] = sp_line_model
+
+                #Re-sample model DI profile on a common grid - only done for exposures contributing to the master-out
+                if i_in in args['master_out']['idx_in_master_out'][inst][vis]:
+                    resamp_sp_line_model = conv_st_prof_tab(None, None, None,args['master_out']['master_out_tab'],args_exp,sp_line_model,args['FWHM_inst'][inst])
+
+                    #Store the re-sampled model DI profile that contributes to the master-out
+                    args['master_out']['contrib_profs'][inst][vis][i_in] = resamp_sp_line_model 
+
+
+    #Calculating the master-out (no weights for now)
+    args['master_out']['flux']=np.zeros(len(args['master_out']['master_out_tab']['cen_bins']), dtype=float)
+    args['master_out']['num_contrib_profs']=0
+
+    #Iterating over each wavelength in the master-out wavelength grid.
+    for idx_resamp in range(len(args['master_out']['master_out_tab']['cen_bins'])):
+
+        #Summing flux from all exposures, visits and instruments considered in the master-out
+        for inst in list(args['master_out']['idx_in_master_out'].keys()):
+            for vis in list(args['master_out']['idx_in_master_out'][inst].keys()):
+                if args['master_out']['contrib_profs'][inst][vis] != {}:
+                    for i_in in args['master_out']['idx_in_master_out'][inst][vis]:
+                        args['master_out']['flux'][idx_resamp]+=args['master_out']['contrib_profs'][inst][vis][i_in][idx_resamp]
+                        args['master_out']['num_contrib_profs']+=1
+
+    #Averaging
+    args['master_out']['num_contrib_profs']/=len(args['master_out']['master_out_tab']['cen_bins'])
+    args['master_out']['flux']/=args['master_out']['num_contrib_profs']
+
+    #Building residual profiles
+    for inst in args['inst_list']:
+        for vis in args['inst_vis_list'][inst]:
+            for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
                 
-                #Conversion and resampling 
-                mod_dic[inst][vis][isub] = conv_st_prof_tab(inst,vis,isub,args,args_exp,sp_line_model,args['FWHM_inst'][inst])
+                #Need to re-sample master on table of the exposure considered
+                resamp_master = bind.resampling(args['edge_bins'][inst][vis][isub],args['master_out']['master_out_tab']['edge_bins'],args['master_out']['flux'], kind=args['master_out']['master_out_tab']['resamp_mode'])
+                
+                #Calculate the residual profile on the wavelength table of the exposure considered (Isn't this gonna be an issue when making the residual map?)
+                mod_dic[inst][vis][isub] = resamp_master - args['raw_DI_profs'][inst][vis][isub]
 
                 #Add PC noise model
                 #    - added to the convolved profiles since PC are derived from observed data

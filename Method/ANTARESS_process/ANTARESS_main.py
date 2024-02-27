@@ -25,7 +25,7 @@ from ANTARESS_corrections.ANTARESS_calib import calc_gcal
 from ANTARESS_process.ANTARESS_plocc_spec import def_plocc_profiles
 from ANTARESS_conversions.ANTARESS_masks_gen import def_masks
 from ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
-from ANTARESS_grids.ANTARESS_spots import spot_occ_region_grid
+from ANTARESS_grids.ANTARESS_spots import spot_occ_region_grid, retrieve_spots_prop_from_param
 from ANTARESS_conversions.ANTARESS_binning import process_bin_prof
 from ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
 from ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
@@ -1000,11 +1000,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     for pl_loc in gen_dic['studied_pl']:gen_dic['main_pl_text']+=pl_loc
     gen_dic['save_data_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Saved_data/'
     gen_dic['save_plot_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'
-    if (data_dic['DI']['spots_prop'] != {}):
-        for pl_loc in gen_dic['studied_pl']:gen_dic['main_pl_sp_text']+=pl_loc
-        for spot in gen_dic['studied_sp']:gen_dic['main_pl_sp_text']+=spot
-        # gen_dic['save_data_dir'] = gen_dic['save_dir']+gen_dic['main_pl_sp_text']+'_Saved_data/'
-        # gen_dic['save_plot_dir'] = gen_dic['save_dir']+gen_dic['main_pl_sp_text']+'_Plots/'
     gen_dic['add_txt_path']={'DI':'','Intr':'','Res':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
     gen_dic['data_type_gen']={'DI':'DI','Res':'Res','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
     gen_dic['type_name']={'DI':'disk-integrated','Res':'residual','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
@@ -1445,8 +1440,11 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if pl_loc in data_inst[vis]['transit_pl']:
                         for key in ['ecl','cen_ph','st_ph','end_ph','ph_dur','rv_pl','v_pl']:coord_dic[inst][vis][pl_loc][key] = np.zeros(n_in_visit,dtype=float)*np.nan
                         for key in ['cen_pos','st_pos','end_pos']:coord_dic[inst][vis][pl_loc][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
+                for spot in gen_dic['studied_sp']:
+                    coord_dic[inst][vis][spot]={}
+                    for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:coord_dic[inst][vis][spot][key] = np.zeros(n_in_visit,dtype=float)*np.nan
+                    for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp','is_visible']:coord_dic[inst][vis][spot][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
 
-    
                     #Definition of mid-transit times for each planet associated with the visit 
                     if (pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst]):
                         coord_dic[inst][vis][pl_loc]['Tcenter'] = gen_dic['Tcenter_visits'][pl_loc][inst][vis]
@@ -1526,7 +1524,23 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if gen_dic['mock_data']:                
                         coord_dic[inst][vis]['bjd'][iexp] = bjd_exp_all[iexp]  - 2400000.  
                         coord_dic[inst][vis]['t_dur'][iexp] = (bjd_exp_high[iexp]-bjd_exp_low[iexp])*24.*3600.
-                
+
+                        if mock_dic['use_spots'] and (inst in mock_dic['spots_prop']) and (vis in mock_dic['spots_prop'][inst]):
+                            mock_dic['spots_prop'][inst][vis]['cos_istar']=system_param['star']['cos_istar']
+
+                            #Coordinates for each studied spot
+                            spots_prop = retrieve_spots_prop_from_param(system_param['star'], mock_dic['spots_prop'][inst][vis], inst, vis, coord_dic[inst][vis]['bjd'][iexp], exp_dur=coord_dic[inst][vis]['t_dur'][iexp])
+                            
+                            for spot in data_inst[vis]['transit_sp']:
+                                for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
+                                    coord_dic[inst][vis][spot][key][iexp] = spots_prop[spot][key]
+
+                                for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
+                                    coord_dic[inst][vis][spot][key][:, iexp] = [spots_prop[spot][key+'_start'],spots_prop[spot][key+'_center'],spots_prop[spot][key+'_end']]
+
+                                coord_dic[inst][vis][spot]['is_visible'][:, iexp]=[spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]
+                            
+                            mock_dic['spots_prop'][inst][vis].pop('cos_istar')
                     #Observational data
                     else:
                     
@@ -1585,7 +1599,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis][pl_loc]['cen_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['st_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['end_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['ecl'][iexp],coord_dic[inst][vis][pl_loc]['rv_pl'][iexp],coord_dic[inst][vis][pl_loc]['v_pl'][iexp],\
                         coord_dic[inst][vis][pl_loc]['st_ph'][iexp],coord_dic[inst][vis][pl_loc]['cen_ph'][iexp],coord_dic[inst][vis][pl_loc]['end_ph'][iexp],coord_dic[inst][vis][pl_loc]['ph_dur'][iexp]=coord_expos(pl_loc,coord_dic,inst,vis,system_param['star'],
                                             system_param[pl_loc],coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic,data_dic['DI']['system_prop']['achrom'][pl_loc][0])                    
-
                     #--------------------------------------------------------------------------------------------------
         
                     #Initialize data at first exposure
@@ -1649,17 +1662,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
 
                             #Spots properties
-                            if mock_dic['use_spots'] and (inst in mock_dic['spots_prop']) and (vis in mock_dic['spots_prop'][inst]):
-                                params_mock['use_spots']=True
-                                par_formatting(params_mock,mock_dic['spots_prop'][inst][vis],None,None,fixed_args,inst,vis,mock_dic['intr_prof'][inst]['mode']) 
-                                
-                                #Figuring out the number of spots
-                                num_spots = 0
-                                for par in params_mock:
-                                    if 'lat__IS'+inst+'_VS'+vis+'_SP' in par:num_spots+=1
-                                params_mock['num_spots']=num_spots
-                                params_mock['inst']=inst
-                                params_mock['vis']=vis
+                            if mock_dic['use_spots'] and (inst in mock_dic['spots_prop']) and (vis in mock_dic['spots_prop'][inst]):params_mock['use_spots']=True
                             else:params_mock['use_spots']=False 
 
 
@@ -1791,15 +1794,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         base_DI_prof = custom_DI_prof(param_exp,None,args=args_exp)[0]
 
                         #Deviation from nominal stellar profile 
-                        surf_prop_dic, surf_prop_dic_sp = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp], system_spot_prop_in=args_exp['system_spot_prop'])
+                        surf_prop_dic, surf_prop_dic_sp = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp],system_spot_prop_in=args_exp['system_spot_prop'])
 
                         #Correcting the disk-integrated profile for planet and spot contributions
-                        if param_exp['use_spots']:
-                            DI_prof_exp = base_DI_prof - surf_prop_dic[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0]
-                        
-                        #Correcting the disk-integrated profile for planet contribution alone
-                        else:
-                            DI_prof_exp = base_DI_prof - surf_prop_dic[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0]
+                        DI_prof_exp = base_DI_prof - surf_prop_dic[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0]
 
                         #Instrumental response 
                         #    - in RV space for analytical model, in wavelength space for theoretical profiles

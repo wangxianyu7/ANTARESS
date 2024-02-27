@@ -341,7 +341,7 @@ def spot_occ_region_grid(RspRs, nsub_Dsp):
 
 
 def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iband, system_prop, system_spot_prop, star_params, Ssub_Sstar_sp, Ssub_Sstar_ref, Istar_norm_band, sum_prop_dic_spot,\
-                                    coord_reg_dic_spot, range_reg_dic_spot, Focc_star_band, par_list, range_par_list, args, cb_band, pl_loc_x = {}, pl_loc_y = {}, oversamp_idx = None, RpRs = None, plocc = False) :
+                                    coord_reg_dic_spot, range_reg_dic_spot, Focc_star_band, Femit_star_band, par_list, range_par_list, args, cb_band, pl_loc_x = {}, pl_loc_y = {}, oversamp_idx = None, RpRs = None, plocc = False) :
     #Samson: check whether the zstar and sskystar coordinates need to be adapted in this routine; the region_prop['y_st_sp'] may not be calculated properly
     r"""**Spot-occulted properties: define and update**
 
@@ -363,6 +363,7 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
         coord_reg_dic_spot (dict) : dictionary containing the value of all parameters of interest (par_list), averaged over the spotted region in the exposure considered, and for the band of interest.
         range_reg_dic_spot (dict) : dictionary containing the range of average values the parameters of interest (range_par_list) can take during this exposure.
         Focc_star_band (float) : total flux occulted by the spot in the exposure and band considered. 
+        Femit_star_band (float) : total flux emitted by the spot in the exposure and band considered.
         par_list (list) : List of parameters of interest, whose value in sum_prop_dict_spot will be updated.
         range_par_list (list) : list of parameters of interest, whose range of values, stored in range_reg_dic_spot, will be updated.
         args (dict) : parameters used to generate the intrinsic profiles.
@@ -444,25 +445,27 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
     ld_grid_occ, gd_grid_occ, mu_grid_occ, Fsurf_grid_occ, Ftot_occ, Istar_occ = calc_Isurf_grid([iband], coord_grid['nsub_star'], system_prop, coord_grid, star_params, Ssub_Sstar_sp, Istar_norm_band, region='pl', Ssub_Sstar_ref=Ssub_Sstar_ref)
 
     #Retrieve the flux grid for the spot's emission (since spots have different LD law compared to the 'quiet' stellar surface)
-    _,_,_,Fsurf_grid_emit,_,_ = calc_Isurf_grid([iband], coord_grid['nsub_star'], system_spot_prop, coord_grid, star_params, Ssub_Sstar_sp, Istar_norm_band, region='pl', Ssub_Sstar_ref=Ssub_Sstar_ref)
+    _,_,_,Fsurf_grid_emit,Ftot_emit,_ = calc_Isurf_grid([iband], coord_grid['nsub_star'], system_spot_prop, coord_grid, star_params, Ssub_Sstar_sp, Istar_norm_band, region='pl', Ssub_Sstar_ref=Ssub_Sstar_ref)
 
     #Scale the flux grid to the desired level
     Fsurf_grid_occ *= star_params['cont']
     Fsurf_grid_emit *= star_params['cont']
     Ftot_occ *= star_params['cont']
+    Ftot_emit *= star_params['cont']
 
     #--------------------------------
 
     #Updating the provided dictionaries 
     coord_grid['mu'] = mu_grid_occ[:,0]
     Focc_star_band += Ftot_occ[0]
+    Femit_star_band += Ftot_emit[0]*(1-spot_prop['ctrst'])
     sum_prop_dic_spot['nocc'] += coord_grid['nsub_star']
     
     #--------------------------------
     #Co-adding properties from current region to the cumulated values over oversampled spot positions 
     sum_region_spot_prop(line_occ_HP_band,iband,args,parameter_list,Fsurf_grid_occ[:,0],Fsurf_grid_emit[:,0],coord_grid,Ssub_Sstar_sp,cb_band,range_parameter_list,range_reg_dic_spot,sum_prop_dic_spot,coord_reg_dic_spot,star_params,spot_prop['ctrst'])     
 
-    return Focc_star_band, cond_occ
+    return Focc_star_band, Femit_star_band, cond_occ
 
 
 
