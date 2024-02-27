@@ -29,6 +29,10 @@ def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic
         TBD
     
     """        
+    #Fitting disk-integrated stellar properties with a linked model
+    if gen_dic['fit_DIProp']:
+        main_joined_DIProp('DIProp',glob_fit_dic['DIProp'],gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic)   
+
     #Fitting stellar surface properties with a linked model
     if gen_dic['fit_IntrProp']:
         main_joined_IntrProp('IntrProp',glob_fit_dic['IntrProp'],gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic)    
@@ -44,6 +48,64 @@ def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic
     return None
 
 
+def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic):
+    r"""**Joined disk-integrated stellar property fits**
+
+    Main routine to fit a given disk-integrated stellar property with a joined model over instruments and visits.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    print('   > Fitting single disk-integrated stellar property')
+    
+    #Initializations
+    for prop_loc in fit_prop_dic['mod_prop']:  
+        fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
+        print('     - '+{'rv_res':'RV residuals','FWHM':'Line FWHM','ctrst':'Line contrast'}[prop_loc])        
+        fit_dic['save_dir']+=prop_loc+'/'       
+    
+        #Arguments to be passed to the fit function
+        fixed_args.update({
+            'rout_mode':'DIProp',
+            'prop_fit':prop_loc})    
+    
+        #Construction of the fit tables
+        for par in ['s_val','y_val']:fixed_args[par]=np.zeros(0,dtype=float)
+        idx_fit2vis={}
+        for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
+            init_joined_routines_inst('DIProp',inst,fit_prop_dic,fixed_args)
+            idx_fit2vis[inst] = {}
+            for vis in data_dic[inst]['visit_list']:
+                init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
+    
+                #Visit is fitted
+                if vis is not None: 
+                    data_vis=data_dic[inst][vis]
+                    init_joined_routines_vis_fit('DIProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
+    
+                    #Binned/original data
+                    if fixed_args['bin_mode'][inst][vis]=='_bin':data_load = dataload_npz(gen_dic['save_data_dir']+'/DIbin_prop/'+inst+'_'+vis)
+                    else:data_load = dataload_npz(gen_dic['save_data_dir']+'/DIorig_prop/'+inst+'_'+vis)
+                  
+                    #Fit tables
+                    idx_fit2vis[inst][vis] = range(fit_dic['nx_fit'],fit_dic['nx_fit']+fixed_args['nexp_fit_all'][inst][vis])
+                    fit_dic['nx_fit']+=fixed_args['nexp_fit_all'][inst][vis]
+                    for i_in in fixed_args['idx_in_fit'][inst][vis]:    
+                        fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
+                        fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))    
+    
+    
+    
+    return None
+
+
+
+
+
 
 
 
@@ -52,7 +114,7 @@ def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic
 
 
 def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic):
-    r"""**Joined stellar property fits**
+    r"""**Joined intrinsic stellar property fits**
 
     Main routine to fit a given stellar surface property from planet-occulted regions with a joined model over instruments and visits.
 
@@ -91,7 +153,7 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
         for par in ['coord_fit','ph_fit']:fixed_args[par]={}
         idx_fit2vis={}
         for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
-            init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
+            init_joined_routines_inst('IntrProp',inst,fit_prop_dic,fixed_args)
             idx_fit2vis[inst] = {}
             for vis in data_dic[inst]['visit_list']:
                 init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
@@ -316,7 +378,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     #Construction of the fit tables
     for par in ['coord_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):  
-        init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
+        init_joined_routines_inst('IntrProf',inst,fit_prop_dic,fixed_args)
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
@@ -757,7 +819,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Initializations
     fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
-     
 
     #Arguments to be passed to the fit function
     fixed_args.update({
@@ -780,6 +841,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         'conv2intr':True,
         'mac_mode':theo_dic['mac_mode'],
         })
+
     if len(fit_prop_dic['PC_model'])>0:
         fixed_args.update({
             'eig_res_matr':{},
@@ -794,7 +856,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['master_out']['contrib_profs']={}
     fixed_args['master_out']['master_out_tab']={}
     fixed_args['raw_DI_profs']={}
-    
+
     #Stellar surface coordinate required to calculate spectral line profiles
     #    - other required properties are automatically added in the sub_calc_plocc_spot_prop() function
     fixed_args['par_list']+=['line_prof']
@@ -1268,95 +1330,3 @@ def joined_ResProf(param,args):
                         for prop_loc in mod_prop_dic[inst][vis][spot]:mod_prop_dic[inst][vis][spot][prop_loc][isub] = surf_prop_dic_sp[args['chrom_mode']][spot][prop_loc][0] 
 
     return mod_dic, mod_prop_dic, coeff_line_dic
-
-
-
-
-
-              
-    #         #Retrieve DI flux profiles
-    #         DI_data = {}
-    #         DI_data['flux'] = np.zeros(args['n_in_visit'][inst][vis], dtype = object)
-            
-            
-    #         new_args = deepcopy(args)
-    #         fit_properties = {
-    #             'brband_w':None,
-    #             'func_prof_name':mock_dic['intr_prof'][inst]['func_prof_name'],
-    #             'flux_cont':mock_dic['intensity'][inst][vis]['I0']}
-    #         fit_properties.update(new_args['intr_prof'][inst])
-    #         new_args,param = init_custom_DI_prof(new_args,fit_properties,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,inst,vis,new_args['system_param']['star'],param,[rv_mock,None,None],False)
-    #         base_DI_prof = custom_DI_prof(param,None,args=new_args)[0]     
-            
-    #         ##### attention a bien gerer le scaling intr->local ; idealement travailler avec les intr en transit pour ne pas avoir ce probleme
-            
-    #         for iexp in args['idx_calc'][inst][vis]:
-                                
-    #             # Deviation profile and light curve depth
-    #             deviation_prof, occulted_flux = compute_deviation_profile(args, param, inst, vis, iexp,star_params,gen_dic,theo_dic,data_dic,coord_dic)[0:2]
-    #             DI_prof_exp = base_DI_prof - deviation_prof
-    #             cont_exp = 1 - occulted_flux
-                
-    #             # Set the continuum to the same as the corresponding exposure
-    #             DI_prof_exp *= args['cont_DI_obs'] [inst][vis][iexp] / cont_exp
-                
-    #             # Rescaling exposure at the same level as in the 'broadband flux scaling' module
-    #             DI_prof_exp *= args['rescaling'][inst][vis][iexp]
-                
-    #             # Convolving with instrumental FWHM
-    #             DI_prof_exp= convol_prof (DI_prof_exp, args['cen_bins'][inst][vis], args['FWHM_inst'][inst])
-                
-    #             # Store exposure DI flux
-    #             DI_data['flux'][iexp] = DI_prof_exp
-                
-                
-                
-                
-    #         # Retrieve master_out from DI data 
-    #         data_to_bin = {}
-    #         for iexp_off in args['data_mast'][inst][vis]['idx_to_bin'] : 
-                
-    #             data_to_bin[iexp_off] = {}
-    #             data_to_bin[iexp_off]['flux']     = np.array([   DI_data['flux'][iexp_off]   ])
-    #             data_to_bin[iexp_off]['cond_def'] = np.array([   args['cond_def'][inst][vis][iexp]   ])
-    #             data_to_bin[iexp_off]['weight']   = np.array([   args['data_mast'][inst][vis]['weight'][iexp_off]     ])
-    #             data_to_bin[iexp_off]['cov']      = np.ones(   (1, 1, len(args['cen_bins'][inst][vis])),   dtype = float)
-                
-                
-    #         nspec = len( args['cen_bins'] [inst][vis])
-    #         master_out_flux = calc_bin_prof(args['data_mast'][inst][vis]['idx_to_bin'],   
-    #                                            1,   
-    #                                            [1,nspec] ,
-    #                                            nspec,  
-    #                                            data_to_bin, 
-    #                                            inst,      
-    #                                            len(args['data_mast'][inst][vis]['idx_to_bin']),  
-    #                                            args['cen_bins'] [inst][vis],   
-    #                                            {},   
-    #                                            args['data_mast'][inst][vis]['dx_ov']    
-    #                                            )['flux'][0]
-                
-                
-
-                
-    #         # Calculate residual profiles
-    #         model_prof[inst][vis]=np.zeros(args['n_in_visit'][inst][vis], dtype = object)
-    #         for iexp in args['idx_in_fit'][inst][vis]:
-                
-    #             # Extracting the residual profile
-    #             model_prof[inst][vis][iexp] = master_out_flux - DI_data['flux'][iexp]
-                
-                
-            
-    #             if iexp > 60 : 
-    #                 plt.plot(args['cen_bins'][inst][vis],  model_prof  [inst][vis][iexp], color = 'green')
-    #                 plt.plot(args['cen_bins'][inst][vis],  args['flux'][inst][vis][iexp], color = 'red')
-    #                 plt.show()
-                
-
-            
-    # return model_prof
-    
-    
-    
-    

@@ -412,6 +412,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             params.update({'rv':0.,'cont':1.}) 
             params['use_spots']=False
             if mock_dic['use_spots'] and (inst in mock_dic['spots_prop']):
+                #Samson: I think we said there is no need to define mock_dic['use_spots'], the condition (inst in mock_dic['spots_prop']) is sufficient to activate or not the use of spots
                 if mode=='multivis':
                     print('WARNING: spots properties are not propagated for multiple visits.')
                 

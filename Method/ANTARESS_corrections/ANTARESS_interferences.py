@@ -10,7 +10,7 @@ import bindensity as bind
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d,CubicSpline
 from ANTARESS_general.constant_data import c_light
-from ANTARESS_general.minim_routines import init_fit,fit_merit,fit_minimization
+from ANTARESS_general.minim_routines import init_fit,fit_merit,call_lmfit
 from astropy.timeseries import LombScargle
 from scipy import stats
 import itertools
@@ -879,7 +879,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             #Fitting
                             fit_func_wig = wig_mod_cst
                             fixed_args['idx_fit'] = np.ones(len(Fr_bin_fit['nu']),dtype=bool)
-                            _,merit ,p_ord_best = fit_minimization(p_start,Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.array([Fr_bin_fit['varFr']]),fit_func_wig,verbose=False,fixed_args=fixed_args)
+                            _,merit ,p_ord_best = call_lmfit(p_start,Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.array([Fr_bin_fit['varFr']]),fit_func_wig,verbose=False,fixed_args=fixed_args)
     
                             #Save results of sampling fit for current exposure
                             fit_results={'RMS':merit['rms']}
@@ -1190,10 +1190,10 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 #Run fit over several iteration to converge, using the robust 'nelder' method
                                 fixed_args_loc['idx_fit'] = np.ones(len(Fr_bin_fit['nu']),dtype=bool)
                                 for it in range(gen_dic['wig_exp_fit']['nit']):
-                                    _,_ ,p_best = fit_minimization(p_best,Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.array([Fr_bin_fit['varFr']]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method=gen_dic['wig_exp_fit']['fit_method'])  
+                                    _,_ ,p_best = call_lmfit(p_best,Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.array([Fr_bin_fit['varFr']]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method=gen_dic['wig_exp_fit']['fit_method'])  
 
                                 #Determine uncertainties by running LM fit using Nelder-Mead solution as starting point
-                                _,_ ,p_best = fit_minimization(p_best,Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.array([Fr_bin_fit['varFr']]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method='leastsq')
+                                _,_ ,p_best = call_lmfit(p_best,Fr_bin_fit['nu'],Fr_bin_fit['Fr'],np.array([Fr_bin_fit['varFr']]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method='leastsq')
 
                                 #Store properties
                                 globexpfit_results = {}
@@ -1363,7 +1363,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                     fixed_args['idx_fit'] = np.ones(np.sum(cond_fit_all),dtype=bool)
                                     if np.sum(cond_fit_all)>6:   
                                         fit_prop = True
-                                        _,_,p_best = fit_minimization(p_best,nu_samp[cond_fit_all],prop_samp[cond_fit_all],var_fit,fit_func,verbose=False ,fixed_args=fixed_args)
+                                        _,_,p_best = call_lmfit(p_best,nu_samp[cond_fit_all],prop_samp[cond_fit_all],var_fit,fit_func,verbose=False ,fixed_args=fixed_args)
                                           
                                         #Successive fits with automatic identification and exclusion of outliers
                                         for it_res in range(nit_hyper):
@@ -1388,7 +1388,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                                 if nan_err:var_fit = np.array([np.repeat(np.std(res[cond_fit_all]),np.sum(cond_fit_all))])                                                  
                                                 else:var_fit = np.array([eprop_samp[cond_fit_all]])**2. 
                                                 fixed_args['idx_fit'] = np.ones(np.sum(cond_fit_all),dtype=bool)
-                                                _,merit,p_best = fit_minimization(p_best,nu_samp[cond_fit_all],prop_samp[cond_fit_all],var_fit,fit_func,verbose=False ,fixed_args=fixed_args)
+                                                _,merit,p_best = call_lmfit(p_best,nu_samp[cond_fit_all],prop_samp[cond_fit_all],var_fit,fit_func,verbose=False ,fixed_args=fixed_args)
                                   
                                         #Save results of current hyperparameter fit
                                         #    - only for variable properties, so that global fits remain initialized to generic parameter values if not fitted here
@@ -1863,7 +1863,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
        
                     #Fitting
                     fixed_args_loc['idx_fit'] = np.ones(np.sum(cond_fit_all),dtype=bool)
-                    _,merit,p_best = fit_minimization(p_best,x_var[cond_fit_all],y_var[cond_fit_all],var_fit**2.,fit_func,verbose=False ,fixed_args=fixed_args_loc)
+                    _,merit,p_best = call_lmfit(p_best,x_var[cond_fit_all],y_var[cond_fit_all],var_fit**2.,fit_func,verbose=False ,fixed_args=fixed_args_loc)
                       
                     #Successive fits with automatic identification and exclusion of outliers
                     if  (gen_dic['wig_exp_point_ana']['thresh'] is not None) and (fitted_par[par]):
@@ -1885,7 +1885,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 cond_fit_all[cond_sub]=False
                                 var_fit,fixed_args_loc = sub_prep(fixed_args_loc,cond_fit_all,res,sy_var)
                                 fixed_args_loc['idx_fit'] = np.ones(np.sum(cond_fit_all),dtype=bool)
-                                _,merit,p_best = fit_minimization(p_best,x_var[cond_fit_all],y_var[cond_fit_all],var_fit**2.,fit_func,verbose=False ,fixed_args=fixed_args_loc)
+                                _,merit,p_best = call_lmfit(p_best,x_var[cond_fit_all],y_var[cond_fit_all],var_fit**2.,fit_func,verbose=False ,fixed_args=fixed_args_loc)
               
                     #Save results of current hyperparameter fit
                     np.savetxt(file_save,[['Parameter '+par_root]],fmt=['%s']) 
@@ -2222,7 +2222,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         fixed_args_loc['idx_fit'] = np.ones(len(nu_all),dtype=bool)
                         for it in range(gen_dic['wig_vis_fit']['nit']):
                             print('               Iteration:',it+1,'/',gen_dic['wig_vis_fit']['nit'])
-                            p_best_curr = fit_minimization(p_best_curr,nu_all,Fr_all,np.array([varFr_all]),fixed_args_loc['fit_func'],verbose=True,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method=gen_dic['wig_vis_fit']['fit_method'])[2]
+                            p_best_curr = call_lmfit(p_best_curr,nu_all,Fr_all,np.array([varFr_all]),fixed_args_loc['fit_func'],verbose=True,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method=gen_dic['wig_vis_fit']['fit_method'])[2]
 
                             #Save results every n iterations
                             if it % gen_dic['wig_vis_fit']['n_save_it'] ==0:
@@ -2235,7 +2235,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 fit_dic['file_save'].close() 
                             
                         #Determine uncertainties by running LM fit using iterative solution as starting point
-                        _,merit,p_best_curr = fit_minimization(p_best_curr,nu_all,Fr_all,np.array([varFr_all]),fixed_args_loc['fit_func'],verbose=True ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method='leastsq')
+                        _,merit,p_best_curr = call_lmfit(p_best_curr,nu_all,Fr_all,np.array([varFr_all]),fixed_args_loc['fit_func'],verbose=True ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method='leastsq')
 
                         #Store best fit for current loop
                         for subpar in var_par_list:globvisfit_results['var_par_fit'][subpar][iloop,:] = [p_best_curr[subpar].value,p_best_curr[subpar].stderr] 
@@ -3299,10 +3299,10 @@ def wig_perio_sampling(comp_id_proc,plot_samp,samp_fit_dic,shift_off,ishift_comp
                 #Run fit over several iteration to converge, using the robust 'nelder' method
                 args['idx_fit'] = np.ones(len(samp_fit_dic['nu'][comp_id]),dtype=bool)
                 for it in range(args['nit']):
-                    _,_ ,p_temp_best = fit_minimization(p_temp_best,samp_fit_dic['nu'][comp_id],samp_fit_dic['flux'][comp_id],np.array([samp_fit_dic['var'][comp_id]]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=args,maxfev = args['max_nfev'],method='nelder')
+                    _,_ ,p_temp_best = call_lmfit(p_temp_best,samp_fit_dic['nu'][comp_id],samp_fit_dic['flux'][comp_id],np.array([samp_fit_dic['var'][comp_id]]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=args,maxfev = args['max_nfev'],method='nelder')
 
                 #Determine uncertainties by running LM fit using Nelder-Mead solution as starting point
-                _, merit,p_temp_best = fit_minimization(p_temp_best,samp_fit_dic['nu'][comp_id],samp_fit_dic['flux'][comp_id],np.array([samp_fit_dic['var'][comp_id]]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=args,maxfev = args['max_nfev'],method='leastsq')
+                _, merit,p_temp_best = call_lmfit(p_temp_best,samp_fit_dic['nu'][comp_id],samp_fit_dic['flux'][comp_id],np.array([samp_fit_dic['var'][comp_id]]),FIT_calc_wig_mod_nu,verbose=False ,fixed_args=args,maxfev = args['max_nfev'],method='leastsq')
                 
                 #Store best fit for variable parameters if current component is fitted
                 if comp_id == args['comp_id_max']:
@@ -4155,7 +4155,7 @@ def corr_fring(inst,gen_dic,data_inst,plot_dic,data_dic):
                                 wav_ov = data_exp['cen_bins'][iord]
                                 args = {}
                                 args['idx_fit'] = idx_ov_loc_ord[cond_def_ov]
-                                result, merit,p_best= fit_minimization(p_use,wav_ov,ratio_ov,cov_ratio_ov,fit_func,verbose=False,fixed_args=fixed_args)
+                                result, merit,p_best= call_lmfit(p_use,wav_ov,ratio_ov,cov_ratio_ov,fit_func,verbose=False,fixed_args=fixed_args)
                                 if (plot_dic['fring_corr']!=''):
                                     dic_fit['exp_ord_defring_all'][iord]=True
                                     dic_fit['idx_ov_ord_def_all'][iord] = idx_ov_loc_ord[cond_def_ov]

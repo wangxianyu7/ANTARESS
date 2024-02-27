@@ -6,11 +6,11 @@ from copy import deepcopy
 from lmfit import Parameters
 import lmfit
 import numpy as np
-from ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,save_fit_results,fit_merit,fit_minimization,gen_hrand_chain
+from ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,save_fit_results,fit_merit,call_lmfit,gen_hrand_chain
 from ANTARESS_general.constant_data import Rsun,c_light
 import bindensity as bind
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff
-from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
+# from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
 from ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,custom_DI_prof,theo_intr2loc
 from ANTARESS_analysis.ANTARESS_model_prof import para_cust_mod_true_prop,proc_cust_mod_true_prop,cust_mod_true_prop,gauss_intr_prop,calc_biss,\
     dgauss,gauss_poly,voigt,gauss_herm_lin,gen_fit_prof
@@ -253,13 +253,11 @@ def model_par_names():
     name_dic = {
         'veq':'v$_\mathrm{eq}$ (km s$^{-1}$)','vsini':'v$_\mathrm{eq}$sin i$_{*}$ (km/s)',
         'Peq':'P$_\mathrm{eq}$ (d)',
-        'alpha_rot':r'$\alpha_\mathrm{rot}$',   
-        'beta_rot':r'$\beta_\mathrm{rot}$',       
+        'alpha_rot':r'$\alpha_\mathrm{rot}$','beta_rot':r'$\beta_\mathrm{rot}$',       
         'cos_istar':r'cos(i$_{*}$)','istar_deg':'i$_{*}(^{\circ}$)',
         'lambda_rad':'$\lambda$', 
-        'c1_CB':'CB$_{1}$','c2_CB':'CB$_{2}$','c3_CB':'CB$_{3}$',  
-        'inclination':'i$_\mathrm{p}$ ($^{\circ}$)',
-        'inclin_rad':'i$_\mathrm{p}$ (rad)',
+        'c1_CB':'CB$_{1}$ (km s$^{-1}$)','c2_CB':'CB$_{2}$ (km s$^{-1}$)','c3_CB':'CB$_{3}$ (km s$^{-1}$)',  
+        'inclination':'i$_\mathrm{p}$ ($^{\circ}$)','inclin_rad':'i$_\mathrm{p}$ (rad)',
         'aRs':'a/R$_{*}$',
         'Rstar':'R$_{*}$',
         'ctrst':'C','ctrst_ord0':'C$_{0}$','ctrst_ord1':'C$_{1}$','ctrst_ord2':'C$_{2}$','ctrst_ord3':'C$_{3}$','ctrst_ord4':'C$_{4}$', 
@@ -292,7 +290,7 @@ def model_par_names():
 def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic):
     r"""**Joined fits: general initialization.**
 
-    Initializes properties for the joined fits to stellar and planetary lines.
+    Initializes properties for the joined fits to stellar and planetary lines and properties.
 
     Args:
         TBD
@@ -361,7 +359,7 @@ def init_joined_routines_inst(inst,fit_prop_dic,fixed_args):
         inst (str) : Instrument considered.
         fit_prop_dic (dict) : Dictionary containing the parameters of the fitting process.
         fixed_args (dict) : Dictionary containing the arguments that will be passed to the fitting function.
-    
+
     Returns:
         None
     
@@ -369,7 +367,7 @@ def init_joined_routines_inst(inst,fit_prop_dic,fixed_args):
     #Instrument is fitted
     fit_prop_dic[inst]={}
     fixed_args['inst_list']+=[inst]
-    fixed_args['inst_vis_list'][inst]=[] 
+    fixed_args['inst_vis_list'][inst]=[]  
     for key in ['coord_fit','ph_fit','nexp_fit_all','transit_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
 
     return None
@@ -412,13 +410,12 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
     fit_prop_dic[inst][vis]={}
     #Check for multi-transits
     #    - if two planets are transiting the properties derived from the fits to intrinsic profiles cannot be fitted, as the model only contains a single line profile
-    if fixed_args['rout_mode']=='IntrProp':
+    if rout_mode=='IntrProp':
         if len(data_vis['transit_pl'])>1:stop('Multi-planet transit must be modelled with full intrinsic profiles')
         fixed_args['transit_pl'][inst][vis]=[data_vis['transit_pl'][0]] 
-    else:
-        fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
-        fixed_args['transit_sp'][inst][vis]=data_vis['transit_sp']
-    
+    else:fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
+    fixed_args['transit_sp'][inst][vis]=data_vis['transit_sp']
+
     #Binned data
     if fixed_args['bin_mode'][inst][vis]=='_bin':
         if fixed_args['rout_mode']=='IntrProf':data_vis_bin = dataload_npz(gen_dic['save_data_dir']+'/Intrbin_data/'+inst+'_'+vis+'_'+data_dic['Intr']['dim_bin']+'_add')
@@ -455,14 +452,11 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
         elif fixed_args['rout_mode']=='ResProf':
             sub_idx_in_fit = gen_dic[inst][vis]['idx_in_and_out'][fixed_args['idx_in_fit'][inst][vis]]
         coord_vis = coord_dic[inst][vis]
-
     for par in ['coord_fit','ph_fit']:fixed_args[par][inst][vis]={}
-    
     for pl_loc in fixed_args['transit_pl'][inst][vis]:
         fixed_args['ph_fit'][inst][vis][pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'][sub_idx_in_fit],coord_vis[pl_loc]['cen_ph'][sub_idx_in_fit],coord_vis[pl_loc]['end_ph'][sub_idx_in_fit]) ) 
         fixed_args['coord_fit'][inst][vis][pl_loc] = {}
-        for key in ['cen_pos','st_pos','end_pos']:
-            fixed_args['coord_fit'][inst][vis][pl_loc][key] = coord_vis[pl_loc][key][:,sub_idx_in_fit]    
+        for key in ['cen_pos','st_pos','end_pos']:fixed_args['coord_fit'][inst][vis][pl_loc][key] = coord_vis[pl_loc][key][:,sub_idx_in_fit]    
         fixed_args['coord_fit'][inst][vis][pl_loc]['ecl'] = coord_vis[pl_loc]['ecl'][sub_idx_in_fit]  
     
     if fixed_args['rout_mode']=='ResProf':
@@ -476,7 +470,6 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
 
     fixed_args['coord_fit'][inst][vis]['bjd']=coord_vis['bjd'][sub_idx_in_fit]
     fixed_args['coord_fit'][inst][vis]['t_dur']=coord_vis['t_dur'][sub_idx_in_fit]
-
 
     return data_vis_bin
     
@@ -563,7 +556,6 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         
     #Initialize line properties
     #    - using Gaussian line as default for intrinsic profiles
-
     if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='ctrst')) or (rout_mode=='IntrProf') or (rout_mode=='ResProf'):    
         if not any(['ctrst_' in prop for prop in mod_prop]):p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None))
     if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode=='IntrProf') or (rout_mode=='ResProf'):    
@@ -657,7 +649,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     if fit_dic['fit_mod']=='chi2':
         fixed_args['fit'] = True
         print('       Chi2 fit')   
-        p_final = fit_minimization(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=fit_prop_dic['verbose'],fixed_args=fixed_args)[2]
+        p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=fit_prop_dic['verbose'],fixed_args=fixed_args)[2]
 
     ########################################################################################################    
     #Fit par emcmc 
@@ -699,8 +691,6 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                      fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
                      walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
                     
-                    
-    
         #Excluding parts of the chains
         if fit_dic['exclu_walk']:
             print('       Excluding walkers manually')
@@ -775,6 +765,8 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                 elif gen_dic['star_name'] == 'WASP76':
                     wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='lambda_rad__plWASP76b')],axis=1)<-1.1) )
 
+                elif gen_dic['star_name'] == 'HD189733':
+                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='cos_istar')],axis=1)<-0.35) )
 
             #Surface RV fit
             if gen_dic['fit_IntrProp']:
@@ -1447,6 +1439,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
         CCF_peak=min(flux_loc_fit)
         
     elif prof_type=='Atm':
+        
         #For atmospheric CCFs we take the maximum as guess
         CCF_peak=max(flux_loc_fit)
 
@@ -1566,7 +1559,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
         #Contrast and FWHM
         p_start.add_many(('ctrst',   ctrst_guess,   True,   0.,     1. ,        None),              
                          ('FWHM',    FWHM_guess,    True,   0.,     FWHM_max,   None))        
-        
+   
         #Simple inverted gaussian or Voigt profile
         if (model_choice in ['gauss','voigt']):
             
@@ -1693,7 +1686,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     #--------------------------------------------------------------
     #Fit by chi2 minimization
     if fit_prop_dic['fit_mod']=='chi2':
-        p_final = fit_minimization(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=verbose,fixed_args=fixed_args)[2]
+        p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=verbose,fixed_args=fixed_args)[2]
      
     #--------------------------------------------------------------   
     #Fit by emcmc 
@@ -1932,7 +1925,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                     elif fit_dic['fit_mod']=='mcmc':           
                         p_final_loc=deepcopy(p_final)
                         fixed_args['cen_bins_HR'] = output_prop_dic['cen_bins_HR']
-                        if fixed_args['nthreads']>1:chain_loc=para_cust_mod_true_prop(proc_cust_mod_true_prop,fixed_args['nthreads'],fit_dic['nsteps_pb_all'],[merged_chain],(fixed_args,p_final_loc,))                           
+                        if fixed_args['nthreads']>1:chain_loc=para_cust_mod_true_prop(proc_cust_mod_true_prop,fixed_args['nthreads'],fit_dic['nsteps_final_merged'],[merged_chain],(fixed_args,p_final_loc,))                           
                         else:chain_loc=proc_cust_mod_true_prop(merged_chain,fixed_args,p_final_loc)       
                         merged_chain=np.concatenate((merged_chain,chain_loc.T),axis=1)  
                     fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],['true_ctrst','true_FWHM','true_amp',])
@@ -2226,6 +2219,8 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
 
     return output_prop_dic
     
+
+
 
 
 
@@ -3168,7 +3163,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                 chain_loc=np.empty(0,dtype=float)            
                 p_final_loc={}
                 p_final_loc.update(fixed_args['fixed_par_val'])
-                for istep in range(fit_dic['nsteps_pb_all']): 
+                for istep in range(fit_dic['nsteps_final_merged']): 
                     for ipar,par in enumerate(fixed_args['var_par_list']):
                         p_final_loc[par]=merged_chain[istep,ipar]     
                         if len(fixed_args['linked_par_expr'])>0:exec(str(par)+'='+str(p_final_loc[par]))
@@ -3321,16 +3316,16 @@ def conv_CF_intr_meas(modif_list,inst_list,inst_vis_list,fixed_args,merged_chain
                 if varF:iFWHM_loc = np_where1D(fixed_args['var_par_list']==FWHM0_name)[0] 
                 if fixed_args['func_prof_name']=='gauss':
                     if varC:chain_ctrst0 = np.squeeze(merged_chain[:,ictrst_loc])
-                    else:chain_ctrst0=np.repeat(p_final[ctrst0_name],fit_dic['nsteps_pb_all'])
+                    else:chain_ctrst0=np.repeat(p_final[ctrst0_name],fit_dic['nsteps_final_merged'])
                     if varF:chain_FWHM0 = np.squeeze(merged_chain[:,iFWHM_loc])
-                    else:chain_FWHM0=np.repeat(p_final[FWHM0_name],fit_dic['nsteps_pb_all'])                             
+                    else:chain_FWHM0=np.repeat(p_final[FWHM0_name],fit_dic['nsteps_final_merged'])                             
                     chain_ctrst_temp,chain_FWHM_temp = gauss_intr_prop(chain_ctrst0,chain_FWHM0,fixed_args_loc['FWHM_inst'])                        
                 if fixed_args['func_prof_name']=='dgauss': 
                     if varC:fixed_args_loc['var_par_list'][ictrst_loc]='ctrst'
                     if varF:fixed_args_loc['var_par_list'][iFWHM_loc]='FWHM'
                     for par_sub in ['amp_l2c','FWHM_l2c','rv_l2c']:
                         if any(par_sub in par_loc for par_loc in fixed_args['var_par_list']):fixed_args_loc['var_par_list'][fixed_args['var_par_list']==fixed_args['name_prop2input'][par_sub+'__IS'+inst+'_VS'+vis]]=par_sub       
-                    if fit_prop_dic['nthreads']>1:chain_loc=para_cust_mod_true_prop(proc_cust_mod_true_prop,fit_prop_dic['nthreads'],fit_dic['nsteps_pb_all'],[merged_chain],(fixed_args_loc,p_final_loc,))                           
+                    if fit_prop_dic['nthreads']>1:chain_loc=para_cust_mod_true_prop(proc_cust_mod_true_prop,fit_prop_dic['nthreads'],fit_dic['nsteps_final_merged'],[merged_chain],(fixed_args_loc,p_final_loc,))                           
                     else:  chain_loc=proc_cust_mod_true_prop(merged_chain,fixed_args_loc,p_final_loc)   
                     chain_ctrst_temp = chain_loc[0]
                     chain_FWHM_temp = chain_loc[1]     

@@ -116,10 +116,6 @@ def calc_CB_RV(ld_coeff,LD_mod,c1_CB,c2_CB,c3_CB,star_params):
 
 
 
-
-'''
-
-'''
 def calc_GD(x_grid_star,y_grid_star,z_grid_star,star_params,gd_band,x_st_sky_grid,y_st_sky_grid):
     r"""**Gravity-darkening intensity**
 

@@ -5,6 +5,17 @@ from copy import deepcopy
 from pathos.multiprocessing import cpu_count
 
 def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic):
+    r"""**ANTARESS default settings.**
+    
+    Initializes ANTARESS configuration settings with default values.  
+    
+    Args:
+        TBD
+    
+    Returns:
+        None
+    
+    """       
 
     ##################################################################################################    
     #%%% Settings: generic
@@ -1640,7 +1651,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #      the sinusoidal coefficients are used if defined via 'sin'
     #    - the constant level a0 is left undefined :  for contrast and FWHM models are normalized to their mean, and for RVs the level is controlled by the alignment module and sysvel
     #    - RV correction must be done in the input rest frame, as CCFs are corrected before being aligned
-    #      if a FWHM correction is requested you must perform first the RV correction alone, then determine and fix the systemic velocity, then perform the FWHM correction  
+    #      if a FWHM correction is requested you must perform first the RV correction alone (if relevant), then determine and fix the systemic velocity, then perform the FWHM correction  
+    #    - coefficients for the correction are derived using the plot routine 'prop_DI' (use the residual from the Keplerian RVs, ie the 'rv_res' property, to derive the coefficients for RV detrending)
     detrend_prof_dic['prop']={}    
     
             
@@ -1920,6 +1932,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - excluding manually some of the walkers
     #    - define conditions within routine
     data_dic['DI']['exclu_walk']=  False           
+
+
+    #%%%%%% Sample exclusion 
+    #    - exclude samples that do not fit within the requested ranges of the chosen parameter
+    #    - format is 'par' : [[x1,x2],[x3,x4],...] 
+    data_dic['DI']['exclu_samp']={}
         
     
     #%%%%%% Derived errors
@@ -1954,6 +1972,155 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Housekeeping and derived properties 
     plot_dic['prop_DI']=''  
     
+
+
+
+
+    ##################################################################################################       
+    #%%% Module: fitting disk-integrated stellar properties
+    #    - fitting single stellar disk-integrated property with a common model for all instruments/visits, or independently for each visit 
+    #    - with properties derived from individual disk-integrated profiles
+    #    - this module is used to derive the detrending models to be applied to disk-integrated profiles
+    ##################################################################################################       
+    
+    #%%%% Activating 
+    gen_dic['fit_DIProp'] = False
+    
+    
+    #%%%% Multi-threading
+    glob_fit_dic['DIProp']['nthreads'] = int(0.8*cpu_count())
+    
+    
+    #%%%% Fitted data
+    
+    #%%%%% Exposures to be fitted
+    #    - indexes are relative to global tables
+    #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to [], which is the default value), set their value to 'all' for all out-transit exposures to be fitted
+    #    - add '_bin' at the end of a visit name for its binned exposures to be fitted instead of the original ones (must have been calculated with the binning module)
+    #      all other mentions of the visit (eg in parameter names) can still refer to the original visit name
+    glob_fit_dic['DIProp']['idx_in_fit'] = {}
+
+
+    #%%%% Fitted properties
+    #    - format is 
+    # mod_prop = { prop_main :{ prop_name : {'vary': bool ,'guess': x,'bd':[x_low,x_high]} } }
+    #      where 'prop_main' defines which variables are fitted
+    #    - typical variables:
+    # + 'rv_res': residuals between disk-integrated RVs and the Keplerian model
+    # + 'ctrst', 'FWHM': disk-integrated line properties
+    #    - properties can be fitted with polynomials, sinusoidals, or their combination
+    #    - structure is different from data_dic['DI']['mod_prop'], where properties are fitted independently for each instrument and visit
+    #      the names of properties varying as a function of 'dim_fit' and/or between visits must be defined as 'prop_name = prop_ordi__ISinst_VSvis'  
+    # + 'i' is the polynomial degree
+    # + 'inst' is the name of the instrument, which should be set to '_' for the property to be common to all instruments and their visits
+    # + 'vis' is the name of the visit, which should be set to '_' for the property to be common to all visits of this instrument 
+    #    - the names of properties specific to a given planet 'PL' must be defined as 'prop_name = prop_ordi__plPL'  
+    glob_fit_dic['DIProp']['mod_prop']={'rv':{}}
+    
+    
+    #%%%% Line property fit
+    
+    #%%%%% Coordinate
+    #    - the line properties will be fitted as a function of this coordinate
+    # +'mu' angle       
+    # +'xp_abs': absolute distance from projected orbital normal in the sky plane
+    # +'r_proj': distance from star center projected in the sky plane      
+    # +'abs_y_st' : sky-projected distance parallel to spin axis, absolute value   
+    # +'y_st2' : sky-projected distance parallel to spin axis, squared
+    glob_fit_dic['DIProp']['dim_fit']='r_proj'
+      
+    
+    #%%%%% Variation
+    #    - fit line property as absolute ('abs') or modulated ('modul') polynomial
+    glob_fit_dic['DIProp']['pol_mode']='abs'     
+
+    
+    #%%%% Fit settings
+    
+    #%%%%% Fitting mode 
+    #    - 'chi2', 'mcmc', ''
+    glob_fit_dic['DIProp']['fit_mod']='chi2'  
+    
+    
+    #%%%%% Printing fits results
+    glob_fit_dic['DIProp']['verbose'] = False
+
+
+    #%%%%% Monitor MCMC
+    glob_fit_dic['DIProp']['progress']= True
+    
+    
+    #%%%%% Priors on variable properties
+    #    - see gen_dic['fit_DI'] for details
+    glob_fit_dic['DIProp']['priors']={} 
+        
+    
+    #%%%%% Derived properties
+    #    - each field calls a specific function (see routine for more details)
+    glob_fit_dic['DIProp']['modif_list'] = []        
+    
+    
+    #%%%%% MCMC settings
+    
+    #%%%%%% Calculating/retrieving
+    #    - see data_dic['DI']['mcmc_run_mode']
+    glob_fit_dic['DIProp']['mcmc_run_mode']='use'
+    
+    
+    #%%%%%% Runs to re-use
+    glob_fit_dic['DIProp']['mcmc_reuse']={}
+    
+    
+    #%%%%%% Walkers 
+    glob_fit_dic['DIProp']['mcmc_set']={}
+    
+    
+    #%%%%%% Complex priors
+    glob_fit_dic['DIProp']['prior_func']={}  
+     
+    
+    #%%%%%% Walkers exclusion  
+    #    - define conditions within routine
+    glob_fit_dic['DIProp']['exclu_walk']= False       
+    
+    
+    #%%%%%% Automatic exclusion of outlying chains
+    #    - set to None, or exclusion threshold
+    glob_fit_dic['DIProp']['exclu_walk_autom']= None  
+
+
+    #%%%%%% Sample exclusion 
+    #    - see data_dic['DI']['exclu_samp']
+    glob_fit_dic['DIProp']['exclu_samp']={}   
+    
+    
+    #%%%%%% Derived errors
+    #    - 'quant' or 'HDI'
+    glob_fit_dic['DIProp']['out_err_mode']='HDI'  
+    
+    
+    #%%%%%% Derived lower/upper limits
+    glob_fit_dic['DIProp']['conf_limits']={}  
+    
+    
+    #%%%% Plot settings
+    
+    #%%%%% MCMC chains
+    glob_fit_dic['DIProp']['save_MCMC_chains']=''        
+    
+    
+    #%%%%% MCMC corner plot
+    #    - see function for options
+    glob_fit_dic['DIProp']['corner_options']={}
+    
+    
+    #%%%%% Chi2 values
+    #    - plot chi2 values for each datapoint
+    plot_dic['chi2_fit_DIProp']=''     
+
+
+
+
     
     
     
@@ -3091,8 +3258,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - automatic exclusion of outlying chains
     #    - set to None, or exclusion threshold
     data_dic['Intr']['exclu_walk_autom']=None  
-    
-    
+
+
+    #%%%%%% Sample exclusion 
+    #    - see data_dic['DI']['exclu_samp']
+    data_dic['Intr']['exclu_samp']={}    
+
+
     #%%%%%% Derived errors
     #    - 'quant' or 'HDI'
     #    - if 'HDI' is selected:
@@ -3222,9 +3394,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - define conditions within routine
     glob_fit_dic['IntrProp']['exclu_walk']= False       
     
+    
     #%%%%%% Automatic exclusion of outlying chains
     #    - set to None, or exclusion threshold
     glob_fit_dic['IntrProp']['exclu_walk_autom']= None  
+
+
+    #%%%%%% Sample exclusion 
+    #    - see data_dic['DI']['exclu_samp']
+    glob_fit_dic['IntrProp']['exclu_samp']={}   
+    
     
     #%%%%%% Derived errors
     #    - 'quant' or 'HDI'
@@ -3620,6 +3799,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%%% Automatic exclusion of outlying chains
     #    - set to None, or exclusion threshold
     glob_fit_dic['IntrProf']['exclu_walk_autom']=None  
+
+
+    #%%%%%% Sample exclusion 
+    #    - see data_dic['DI']['exclu_samp']
+    glob_fit_dic['IntrProf']['exclu_samp']={}   
     
     
     #%%%%%% Derived errors
