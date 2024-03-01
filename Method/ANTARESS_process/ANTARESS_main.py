@@ -150,7 +150,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
 
             #Rescaling profiles to their correct flux level                  
             if gen_dic['flux_sc']:                   
-                rescale_profiles(data_dic[inst],inst,vis,data_dic,coord_dic,coord_dic[inst][vis]['t_dur_d'],gen_dic,plot_dic,system_param,theo_dic)   
+                rescale_profiles(data_dic[inst],inst,vis,data_dic,coord_dic,coord_dic[inst][vis]['t_dur_d'],gen_dic,plot_dic,system_param,theo_dic,spot_dic=mock_dic)   
          
             #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
             if gen_dic['DImast_weight']:              
@@ -906,9 +906,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #------------------------------------------------------------------------------
     #Spots
     #------------------------------------------------------------------------------
-    #Need to initialize this
-    mock_dic['use_spots']=False
-
     #Initialize spot use
     gen_dic['studied_sp'] = list(gen_dic['transit_sp'].keys()) 
     theo_dic['x_st_sky_grid_sp']={}
@@ -953,10 +950,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     
             #Define a default grid size if the spot grid hasn't been defined (should be done outside of for loop)
             theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot], theo_dic['Ssub_Sstar_sp'][spot] = spot_occ_region_grid(spot_size, theo_dic['nsub_Dspot'][spot])
-
-        #Spot activation for the mock dataset
-        if (mock_dic['spots_prop'] != {}):
-            mock_dic['use_spots']=True
 
     #------------------------------------------------------------------------------------------------------------------------
     #Model star
@@ -1443,7 +1436,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 for spot in gen_dic['studied_sp']:
                     coord_dic[inst][vis][spot]={}
                     for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:coord_dic[inst][vis][spot][key] = np.zeros(n_in_visit,dtype=float)*np.nan
-                    for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp','is_visible']:coord_dic[inst][vis][spot][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
+                    for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:coord_dic[inst][vis][spot][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
+                    coord_dic[inst][vis][spot]['is_visible'] = np.zeros([3,n_in_visit],dtype=bool)
 
                     #Definition of mid-transit times for each planet associated with the visit 
                     if (pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst]):
@@ -1525,7 +1519,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis]['bjd'][iexp] = bjd_exp_all[iexp]  - 2400000.  
                         coord_dic[inst][vis]['t_dur'][iexp] = (bjd_exp_high[iexp]-bjd_exp_low[iexp])*24.*3600.
 
-                        if mock_dic['use_spots'] and (inst in mock_dic['spots_prop']) and (vis in mock_dic['spots_prop'][inst]):
+                        if (inst in mock_dic['spots_prop']):
                             mock_dic['spots_prop'][inst][vis]['cos_istar']=system_param['star']['cos_istar']
 
                             #Coordinates for each studied spot
@@ -1662,7 +1656,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
 
                             #Spots properties
-                            if mock_dic['use_spots'] and (inst in mock_dic['spots_prop']) and (vis in mock_dic['spots_prop'][inst]):params_mock['use_spots']=True
+                            if (inst in mock_dic['spots_prop']) and (data_dic['DI']['spots_prop'] != {}):params_mock['use_spots']=True
                             else:params_mock['use_spots']=False 
 
 

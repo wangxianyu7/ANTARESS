@@ -411,8 +411,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             params = deepcopy(system_param['star'])
             params.update({'rv':0.,'cont':1.}) 
             params['use_spots']=False
-            if mock_dic['use_spots'] and (inst in mock_dic['spots_prop']):
-                #Samson: I think we said there is no need to define mock_dic['use_spots'], the condition (inst in mock_dic['spots_prop']) is sufficient to activate or not the use of spots
+            if (inst in mock_dic['spots_prop']) and (data_dic['DI']['spots_prop'] != {}):
                 if mode=='multivis':
                     print('WARNING: spots properties are not propagated for multiple visits.')
                 
@@ -424,7 +423,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     for spot in data_dic[inst][vis_in]['transit_sp']:
                         data_glob_new['coord'][spot]={}
                         for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:data_glob_new['coord'][spot][key] = np.zeros(n_bin,dtype=float)*np.nan
-                        for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp','is_visible']:data_glob_new['coord'][spot][key] = np.zeros([3,n_bin],dtype=float)*np.nan
+                        for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:data_glob_new['coord'][spot][key] = np.zeros([3,n_bin],dtype=float)*np.nan
+                        data_glob_new['coord'][spot]['is_visible'] = np.zeros([3,n_bin],dtype=float)
 
                     #Retrieve spot coordinates/properties for new exposures
                     mock_dic['spots_prop'][inst][vis_in]['cos_istar']=system_param['star']['cos_istar']

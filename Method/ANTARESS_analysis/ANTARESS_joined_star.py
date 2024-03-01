@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import bindensity as bind
 from ANTARESS_analysis.ANTARESS_ana_comm import init_joined_routines,init_joined_routines_inst,init_joined_routines_vis,init_joined_routines_vis_fit,com_joint_fits,com_joint_postproc
-from ANTARESS_conversions.ANTARESS_binning import calc_bin_prof
+from ANTARESS_conversions.ANTARESS_binning import weights_bin_prof
 from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
 from ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,theo_intr2loc,init_custom_DI_prof,custom_DI_prof
 from ANTARESS_grids.ANTARESS_spots import compute_deviation_profile
-from ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,get_FWHM_inst,resamp_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab
+from ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,get_FWHM_inst,resamp_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab,convol_prof
 
 
 
@@ -853,8 +853,9 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Define master-out dictionary
     fixed_args['master_out']['idx_in_master_out']={}
-    fixed_args['master_out']['contrib_profs']={}
     fixed_args['master_out']['master_out_tab']={}
+    fixed_args['master_out']['scaled_data_paths']={}
+    fixed_args['master_out']['weights']={}
     fixed_args['raw_DI_profs']={}
 
     #Stellar surface coordinate required to calculate spectral line profiles
@@ -878,10 +879,11 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     high_bound=-1e100
     num_pts=0
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
-        init_joined_routines_inst(inst,fit_prop_dic,fixed_args)
+        init_joined_routines_inst('ResProf',inst,fit_prop_dic,fixed_args)
         fixed_args['master_out']['idx_in_master_out'][inst]={}
-        fixed_args['master_out']['contrib_profs'][inst]={} 
         fixed_args['raw_DI_profs'][inst]={}
+        fixed_args['master_out']['weights'][inst]={}
+        fixed_args['master_out']['scaled_data_paths'][inst]={}
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
@@ -905,12 +907,18 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
             init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
 
             #Master-out properties - some visits can contribute to the master-out without being fitted
-            fixed_args['master_out']['idx_in_master_out'][inst][vis]={}
-            fixed_args['master_out']['contrib_profs'][inst][vis]={} 
             fixed_args['raw_DI_profs'][inst][vis]={} 
+            fixed_args['master_out']['weights'][inst][vis]={}
+
+            fixed_args['master_out']['idx_in_master_out'][inst][vis]={}
             fixed_args['master_out']['idx_in_master_out'][inst][vis] = fit_prop_dic['idx_in_master_out'][inst][vis+fixed_args['bin_mode'][inst][vis]]
             if fit_prop_dic['idx_in_master_out'][inst][vis]=='all':fixed_args['master_out']['idx_in_master_out'][inst][vis]=gen_dic[inst][vis]['idx_out']
             else:fixed_args['master_out']['idx_in_master_out'][inst][vis]=np.intersect1d(fixed_args['master_out']['idx_in_master_out'][inst][vis],gen_dic[inst][vis]['idx_out'])
+
+            #Needed for weight calculation
+            fixed_args['master_out']['scaled_data_paths'][inst][vis]={}
+            if gen_dic['flux_sc']:fixed_args['master_out']['scaled_data_paths'][inst][vis] = data_dic[inst][vis]['scaled_DI_data_paths']
+            else:fixed_args['master_out']['scaled_data_paths'][inst][vis] = None
 
             #Visit is fitted
             if fixed_args['bin_mode'][inst][vis] is not None: 
@@ -1040,16 +1048,26 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 #Number of fitted exposures
                 fixed_args['nexp_fit']+=fixed_args['nexp_fit_all'][inst][vis]
 
-    #Master-out table
+    #Master-out
+    # - Common table
     if fit_prop_dic['master_out_tab']!=[]:
         if len(fit_prop_dic['master_out_tab'])!=3:stop('Incorrect master-out table format. The format should be [low_bd, up_bd, num_pts].')
         else:fixed_args['master_out']['master_out_tab']['edge_bins']=np.linspace(fit_prop_dic['master_out_tab'][0],fit_prop_dic['master_out_tab'][1],num=fit_prop_dic['master_out_tab'][2])
     else:fixed_args['master_out']['master_out_tab']['edge_bins']=np.linspace(low_bound,high_bound,num=num_pts+1)
     fixed_args['master_out']['master_out_tab']['dcen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][1::]-fixed_args['master_out']['master_out_tab']['edge_bins'][0:-1]
     fixed_args['master_out']['master_out_tab']['cen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][:-1]+(fixed_args['master_out']['master_out_tab']['dcen_bins']/2)
-    fixed_args['master_out']['master_out_tab']['spec2rv']=False
-    fixed_args['master_out']['master_out_tab']['resamp']=True
     fixed_args['master_out']['master_out_tab']['resamp_mode']=gen_dic['resamp_mode']
+
+    # - Calculation 
+    fixed_args['master_out']['flux']=np.zeros(len(fixed_args['master_out']['master_out_tab']['cen_bins']), dtype=float)
+
+    # - Weights
+    fixed_args['master_out']['nord']=1
+    fixed_args['master_out']['corr_Fbal']=gen_dic['corr_Fbal']
+    fixed_args['master_out']['corr_FbalOrd']=gen_dic['corr_FbalOrd']
+    fixed_args['master_out']['flux_sc']=gen_dic['flux_sc']
+    fixed_args['master_out']['save_data_dir']=gen_dic['save_data_dir']
+
     #Common data type
     for idx_inst,inst in enumerate(data_dic['instrum_list']):
         if idx_inst==0:fixed_args['type'] = data_dic[inst]['type']
@@ -1070,8 +1088,8 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['inside_fit'] = True 
     
     #Model fit and calculation
-    merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'])   
-    
+    merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'])
+
     #PC correction
     if len(fit_prop_dic['PC_model'])>0:
         fit_save.update({'eig_res_matr':fixed_args['eig_res_matr'],'n_pc':fixed_args['n_pc'] })
@@ -1104,6 +1122,10 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Best-fit model and derived properties
     fixed_args['fit'] = False
+    
+    #Initializing best-fit stellar profile generation
+    fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],data_dic['DI']['spots_prop'],theo_dic,fixed_args['system_param']['star'],p_final)
+
     mod_dic,coeff_line_dic,mod_prop_dic = joined_ResProf(p_final,fixed_args)
 
     #Save best-fit properties
@@ -1112,7 +1134,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
-    if (plot_dic['Res_prof']!='') or (plot_dic['Res_prof_res']!='') or (plot_dic['prop_Res']!='') or (plot_dic['sp_Res_1D']!=''):
+    if (plot_dic['Res_prof']!=''):
         for inst in fixed_args['inst_list']:
             for vis in fixed_args['inst_vis_list'][inst]:
                 prof_fit_dic={'fit_range':fit_prop_dic['fit_range'][inst][vis]}
@@ -1127,17 +1149,19 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                         }
                     for pl_loc in fixed_args['transit_pl'][inst][vis]:
                         prof_fit_dic[i_in][pl_loc] = {}
-                        for prop_loc in mod_prop_dic[inst][vis][pl_loc]:prof_fit_dic[i_in][pl_loc][prop_loc] = mod_prop_dic[inst][vis][pl_loc][prop_loc][isub]
+                        if np.abs(fixed_args['coord_fit'][inst][vis][pl_loc]['ecl'][isub])!=1:  
+                            for prop_loc in mod_prop_dic[inst][vis][pl_loc]:prof_fit_dic[i_in][pl_loc][prop_loc] = mod_prop_dic[inst][vis][pl_loc][prop_loc][isub]
                     for spot in fixed_args['transit_sp'][inst][vis]:
                         prof_fit_dic[i_in][spot] = {}
-                        for prop_loc in mod_prop_dic[inst][vis][spot]:prof_fit_dic[i_in][spot][prop_loc] = mod_prop_dic[inst][vis][spot][prop_loc][isub]
+                        if fixed_args['coord_fit'][inst][vis][spot]['is_visible'][1,i_in]:
+                            for prop_loc in mod_prop_dic[inst][vis][spot]:prof_fit_dic[i_in][spot][prop_loc] = mod_prop_dic[inst][vis][spot][prop_loc][isub]
 
                 np.savez_compressed(fit_dic['save_dir']+'ResProf_fit_'+inst+'_'+vis+fixed_args['bin_mode'][inst][vis],data={'prof_fit_dic':prof_fit_dic},allow_pickle=True)
 
    
     #Post-processing    
     fit_dic['p_null'] = deepcopy(p_final)
-    for par in [ploc for ploc in fit_dic['p_null'] if 'ctrst' in ploc]:fit_dic['p_null'][par] = 0.    
+    for par in [ploc for ploc in fit_dic['p_null'] if 'ctrst' in ploc]:fit_dic['p_null'][par] = 0.
     com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
     print('     ----------------------------------')  
     return None
@@ -1229,6 +1253,10 @@ def joined_ResProf(param,args):
         #Processing visits
         for vis in args['inst_vis_list'][inst]: 
             args['vis']=vis
+            cond_def_all=np.zeros([len(args['master_out']['idx_in_master_out'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=bool)
+            cond_undef_weights=np.zeros(len(args['master_out']['master_out_tab']['cen_bins']), dtype=bool)
+            args['master_out']['weights'][inst][vis]=np.zeros([len(args['master_out']['idx_in_master_out'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
+            contrib_profs=np.zeros([len(args['master_out']['idx_in_master_out'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
 
             #Outputs
             if not args['fit']:
@@ -1252,60 +1280,120 @@ def joined_ResProf(param,args):
             #Calculate coordinates of occulted and spotted regions or use imported values
             system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
 
+            if not args['fit']:args['coord_fit'][inst][vis]=coord_pl_sp
             #-----------------------------------------------------------
             #Variable line model for each exposure 
             #    - the intrinsic stellar line profile is convolved with the LSF kernel specific to each instrument
             #    - we assume a flat continuum, set after the PC component so that intrinsic profiles models later on can be defined with a continuum unity
             #-----------------------------------------------------------
             mod_dic[inst][vis]=np.zeros(args['nexp_fit_all'][inst][vis],dtype=object)
+
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
 
                 #Table for model calculation - wavelength table of the exposure considered
                 args_exp = def_st_prof_tab(inst,vis,isub,args)
 
-                #Disk-integrated stellar line  - define the base stellar profile
+                if not args['fit']:
+                    #Initializing broadband scaling of intrinsic profiles into local profiles
+                    args_exp['Fsurf_grid_spec'] = theo_intr2loc(args_exp['grid_dic'],args_exp['system_prop'],args_exp,args_exp['ncen_bins'],args_exp['grid_dic']['nsub_star']) 
+
+                #Disk-integrated stellar line - define the base stellar profile
                 base_DI_prof = custom_DI_prof(param_val,None,args=args_exp)[0]
 
                 #Model DI profile for current exposure accounting for deviations from the nominal profile - on the wavelength table of the exposure considered
                 surf_prop_dic,surf_prop_dic_sp = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
                 sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[args['chrom_mode']]['line_prof'][:,0]
 
+                #Set to continuum level
+                #    - profiles are internally calculated with a continuum unity
+                #    - intrinsic profiles have the same continuum level as out-of-transit disk-integrated profiles, but since the observed profile 
+                # continuum may not be well defined or has been scaled on a different range than the fitted one, it is difficult to measure its value
+                cont_line_model = sp_line_model * param['cont']
+
+                #Convolve model profiles to instrument resolution
+                conv_line_model = convol_prof(cont_line_model,args_exp['cen_bins'],args['FWHM_inst'][inst])
+
                 #Store the model DI profiles for calculation of the residual profiles later
-                args['raw_DI_profs'][inst][vis][isub] = sp_line_model
+                args['raw_DI_profs'][inst][vis][isub] = conv_line_model
 
-                #Re-sample model DI profile on a common grid - only done for exposures contributing to the master-out
+                #Loop over exposures contributing to the master-out
                 if i_in in args['master_out']['idx_in_master_out'][inst][vis]:
-                    resamp_sp_line_model = conv_st_prof_tab(None, None, None,args['master_out']['master_out_tab'],args_exp,sp_line_model,args['FWHM_inst'][inst])
+                    
+                    #Storing the index of the exposure considered in the array of master-out indices
+                    master_isub = np.where(args['master_out']['idx_in_master_out'][inst][vis]==i_in)[0][0]
 
-                    #Store the re-sampled model DI profile that contributes to the master-out
-                    args['master_out']['contrib_profs'][inst][vis][i_in] = resamp_sp_line_model 
+                    #Re-sample model DI profile on a common grid
+                    resamp_line_model = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],conv_line_model,kind=args['master_out']['master_out_tab']['resamp_mode'])
 
+                    #Making weights for the master-out
+                    raw_weights=weights_bin_prof(range(args['master_out']['nord']), args['master_out']['scaled_data_paths'][inst][vis],inst,vis,args['master_out']['corr_Fbal'],args['master_out']['corr_Fbal'],\
+                                                        args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'Res',args['type'],args['dim_exp'][inst][vis],None,\
+                                                        None,np.array([args_exp['cen_bins']]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([conv_line_model]),\
+                                                        np.array([args['cov'][inst][vis][isub]]),bdband_flux_sc=args['master_out']['flux_sc'])[0]
 
-    #Calculating the master-out (no weights for now)
-    args['master_out']['flux']=np.zeros(len(args['master_out']['master_out_tab']['cen_bins']), dtype=float)
-    args['master_out']['num_contrib_profs']=0
+                    # - Re-sample the weights
+                    resamp_weights = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],raw_weights,kind=args['master_out']['master_out_tab']['resamp_mode'])
 
-    #Iterating over each wavelength in the master-out wavelength grid.
-    for idx_resamp in range(len(args['master_out']['master_out_tab']['cen_bins'])):
+                    # - Set nan values and corresponding weights to 0 
+                    cond_def_all[master_isub] = ~np.isnan(resamp_line_model)
+                    resamp_weights[~cond_def_all[master_isub]] = 0.
+                    resamp_line_model[~cond_def_all[master_isub]] = 0.
 
-        #Summing flux from all exposures, visits and instruments considered in the master-out
-        for inst in list(args['master_out']['idx_in_master_out'].keys()):
-            for vis in list(args['master_out']['idx_in_master_out'][inst].keys()):
-                if args['master_out']['contrib_profs'][inst][vis] != {}:
-                    for i_in in args['master_out']['idx_in_master_out'][inst][vis]:
-                        args['master_out']['flux'][idx_resamp]+=args['master_out']['contrib_profs'][inst][vis][i_in][idx_resamp]
-                        args['master_out']['num_contrib_profs']+=1
+                    # - Find pixels where there is undefined or negative weights 
+                    cond_undef_weights |= ( (np.isnan(resamp_weights) | (resamp_weights<0) ) & cond_def_all[master_isub] ) 
 
-    #Averaging
-    args['master_out']['num_contrib_profs']/=len(args['master_out']['master_out_tab']['cen_bins'])
-    args['master_out']['flux']/=args['master_out']['num_contrib_profs']
+                    # - Store the weights 
+                    args['master_out']['weights'][inst][vis][master_isub] = resamp_weights
+
+                    #Store the contributing profiles to the master-out
+                    contrib_profs[master_isub] = resamp_line_model
+
+                #Properties of all planet-occulted and spotted regions used to calculate spectral line profiles
+                # - Since we are analyzing residual profiles, we have to check if the planets/spots are in the exposure considered.
+                # - If this is not the case, an entry for them in the surf_prop_dic/surf_prop_dic_sp won't be initialized
+                if not args['fit']:
+                    for pl_loc in args['transit_pl'][inst][vis]:  
+                        if np.abs(coord_pl_sp[pl_loc]['ecl'][isub])!=1:                
+                            for prop_loc in mod_prop_dic[inst][vis][pl_loc]:
+                                mod_prop_dic[inst][vis][pl_loc][prop_loc][isub] = surf_prop_dic[args['chrom_mode']][pl_loc][prop_loc][0]
+
+                    for spot in args['transit_sp'][inst][vis]:
+                        if coord_pl_sp[spot]['is_visible'][1,i_in]:
+                            for prop_loc in mod_prop_dic[inst][vis][spot]:
+                                mod_prop_dic[inst][vis][spot][prop_loc][isub] = surf_prop_dic_sp[args['chrom_mode']][spot][prop_loc][0]
+
+            # Defined bins in binned spectrum
+            cond_def_binned = np.sum(cond_def_all,axis=0)>0
+
+             #Disable weighing in all binned profiles for pixels validating at least one of these conditions:
+            # + 'cond_null_weights' : pixel has null weights at all defined flux values (weight_exp_all is null at undefined flux values, so if its sum is null in a pixel 
+            # fulfilling cond_def_binned it implies it is null at all defined flux values for this pixel)
+            # + 'cond_undef_weights' : if at least one profile has an undefined weight for a defined flux value, it messes up with the weighted average     
+            #    - in both cases we thus set all weights to a common value (arbitrarily set to unity for the pixel), ie no weighing is applied
+            #    - pixels with undefined flux values do not matter as their flux has been set to 0, so they can be attributed an arbitrary weight
+            cond_null_weights = (np.sum(args['master_out']['weights'][inst][vis],axis=0)==0.) & cond_def_binned
+            args['master_out']['weights'][inst][vis][:, cond_undef_weights | cond_null_weights] = 1.
+
+            #Global weight table - should this be included ?
+            #    - pixels that do not contribute to the binning (eg due to planetary range masking) have null flux and weight values, and thus do not contribute to the total weight
+            #    - weight tables only depend on each original exposure but their weight is specific to the new exposures and the original exposures it contains
+            # dx_ov = XXXX
+            # args['master_out']['weights'][inst][vis] *= dx_ov
+
+            #Normalization
+            glob_weights_tot = np.sum(args['master_out']['weights'][inst][vis],axis=0)
+            args['master_out']['weights'][inst][vis][:, cond_def_binned]/=glob_weights_tot[cond_def_binned]
+
+            #Perform the weighted average to retrieve the master-out
+            # - We can disregard the division by the sum of the weights since the weights are normalized
+            args['master_out']['flux'] += np.sum(contrib_profs*args['master_out']['weights'][inst][vis], axis=0)
 
     #Building residual profiles
     for inst in args['inst_list']:
         for vis in args['inst_vis_list'][inst]:
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
                 
-                #Need to re-sample master on table of the exposure considered
+                #Re-sample master on table of the exposure considered
                 resamp_master = bind.resampling(args['edge_bins'][inst][vis][isub],args['master_out']['master_out_tab']['edge_bins'],args['master_out']['flux'], kind=args['master_out']['master_out_tab']['resamp_mode'])
                 
                 #Calculate the residual profile on the wavelength table of the exposure considered (Isn't this gonna be an issue when making the residual map?)
@@ -1316,17 +1404,4 @@ def joined_ResProf(param,args):
                 if args['n_pc'][inst][vis] is not None:
                     for i_pc in range(args['n_pc'][inst][vis]):mod_dic[inst][vis][isub]+=param_val[args['name_prop2input']['aPC_idxin'+str(i_in)+'_ord'+str(i_pc)+'__IS'+inst+'_VS'+vis]]*args['eig_res_matr'][inst][vis][i_in][i_pc]
 
-                #Set to continuum level
-                #    - profiles are internally calculated with a continuum unity
-                #    - intrinsic profiles have the same continuum level as out-of-transit disk-integrated profiles, but since the observed profile 
-                # continuum may not be well defined or has been scaled on a different range than the fitted one, it is difficult to measure its value
-                mod_dic[inst][vis][isub]*=param['cont']
-                
-                #Properties of all planet-occulted and spotted regions used to calculate spectral line profiles
-                if not args['fit']:
-                    for pl_loc in args['transit_pl'][inst][vis]:                    
-                        for prop_loc in mod_prop_dic[inst][vis][pl_loc]:mod_prop_dic[inst][vis][pl_loc][prop_loc][isub] = surf_prop_dic[args['chrom_mode']][pl_loc][prop_loc][0] 
-                    for spot in args['transit_sp'][inst][vis]:
-                        for prop_loc in mod_prop_dic[inst][vis][spot]:mod_prop_dic[inst][vis][spot][prop_loc][isub] = surf_prop_dic_sp[args['chrom_mode']][spot][prop_loc][0] 
-
-    return mod_dic, mod_prop_dic, coeff_line_dic
+    return mod_dic,coeff_line_dic,mod_prop_dic

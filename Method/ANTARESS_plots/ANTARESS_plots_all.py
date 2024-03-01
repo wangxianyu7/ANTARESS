@@ -1213,7 +1213,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             rest_frame = data_bin['rest_frame']
                             
                         #Disk-integrated profiles
-                        elif (plot_mod=='DI_prof'): 
+                        # elif (plot_mod=='DI_prof'): 
+                        elif ('DI_prof' in plot_mod):
     
                             #Spectral profiles
                             if ('spec' in data_type):         
@@ -8244,6 +8245,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                
                         #Print visit names
                         if plot_options[key_plot]['plot_vis']:
+                            #Vincent - Possible fix for the "posx and posy should be finite values" Error
+                            #        - after looking online it seems like this error occurs when passing NaN values to plt.text
+                            var_plot[np.isnan(var_plot)]=0.
                             plt.text(0.,np.min(var_plot)+0.3*(np.max(var_plot)-np.min(var_plot)),vis,verticalalignment='center', horizontalalignment='center',fontsize=10.,zorder=4,color=col_vis) 
                   
                     #Time averaged light-curve within each exposure
@@ -8260,7 +8264,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         for iexp,(ph_loc,ph_dur_loc,flux_loc) in enumerate(zip(coord_vis['cen_ph'],coord_vis['ph_dur'],LC_flux_band_all[:,iband])):
     
                             #Exposures indexes (general above)
-                            if plot_options[key_plot]['plot_expid']:                   
+                            if plot_options[key_plot]['plot_expid']:                
                                 plt.text(ph_loc,flux_loc-vis_shift+0.1*Tdepth,str(iexp),verticalalignment='bottom', horizontalalignment='center',fontsize=4.,zorder=4,color=col_vis) 
     
                             #Observed exposure

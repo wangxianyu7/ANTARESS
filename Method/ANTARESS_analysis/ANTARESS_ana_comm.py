@@ -350,7 +350,7 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
 
     return fixed_args,fit_dic
 
-def init_joined_routines_inst(inst,fit_prop_dic,fixed_args):
+def init_joined_routines_inst(rout_mode,inst,fit_prop_dic,fixed_args):
     r"""**Joined fits: instrument initialization.**
 
     Initializes properties for the joined fits to stellar and planetary lines.
@@ -368,7 +368,9 @@ def init_joined_routines_inst(inst,fit_prop_dic,fixed_args):
     fit_prop_dic[inst]={}
     fixed_args['inst_list']+=[inst]
     fixed_args['inst_vis_list'][inst]=[]  
-    for key in ['coord_fit','ph_fit','nexp_fit_all','transit_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
+    for key in ['ph_fit','nexp_fit_all','transit_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
+    if ('Intr' in rout_mode) or ('Res' in rout_mode):
+        for key in ['coord_fit']:fixed_args[key][inst]={}
 
     return None
 
@@ -468,8 +470,8 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
                 fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key][:,sub_idx_in_fit] 
             fixed_args['coord_fit'][inst][vis][spot]['is_visible'] = coord_vis[spot]['is_visible'][:,sub_idx_in_fit] 
 
-    fixed_args['coord_fit'][inst][vis]['bjd']=coord_vis['bjd'][sub_idx_in_fit]
-    fixed_args['coord_fit'][inst][vis]['t_dur']=coord_vis['t_dur'][sub_idx_in_fit]
+        fixed_args['coord_fit'][inst][vis]['bjd']=coord_vis['bjd'][sub_idx_in_fit]
+        fixed_args['coord_fit'][inst][vis]['t_dur']=coord_vis['t_dur'][sub_idx_in_fit]
 
     return data_vis_bin
     

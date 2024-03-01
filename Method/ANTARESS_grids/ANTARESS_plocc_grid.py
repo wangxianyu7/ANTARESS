@@ -25,9 +25,8 @@ def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_d
         TBD
     
     """ 
-    #Samson: same as for mock_dic, the condition (inst in spot_dic) is sufficient, no need to define an additional field spot_dic['use_spots']
     #Check for spots
-    if spot_dic !={} and spot_dic['use_spots']:
+    if (inst in spot_dic):
         txt_spot = ' and spotted '
         cond_spot = True
     else:
@@ -144,12 +143,13 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,nexp_fit,ph_fit,coord_fit,tr
                 coords[pl_loc]['end_pos'] = np.vstack((x_pos_pl[2],y_pos_pl[2]))
             else:coords[pl_loc]['cen_pos'] = np.vstack((x_pos_pl,y_pos_pl))
             coords[pl_loc]['ecl'] = ecl_pl
-            
-    coords['bjd']= coord_fit['bjd']
-    coords['t_dur']= coord_fit['t_dur']
 
     #Process spots
     if len(transit_spots)>0:
+
+        #Store the time and duration of exposures - only used for spots
+        coords['bjd']= coord_fit['bjd']
+        coords['t_dur']= coord_fit['t_dur']
 
         # Set up properties of spotted regions for the spot coordinate retrieval in sub_calc_plocc_spot_prop
         for spot in transit_spots:
@@ -165,8 +165,9 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,nexp_fit,ph_fit,coord_fit,tr
             for spot in transit_spots:
                 coords[spot] = {}
                 for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:coords[spot][key] = np.zeros(len(coord_fit['bjd']),dtype=float)*np.nan
-                for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp','is_visible']:coords[spot][key] = np.zeros([3,len(coord_fit['bjd'])],dtype=float)*np.nan
-
+                for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:coords[spot][key] = np.zeros([3,len(coord_fit['bjd'])],dtype=float)*np.nan
+                coords[spot]['is_visible'] = np.zeros([3,len(coord_fit['bjd'])],dtype=bool)
+                
             #Retrieving the spot coordinates for all the times that we have
             for ifit_tstamp, fit_tstamp in enumerate(coord_fit['bjd']):
                 
@@ -417,7 +418,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
     dy_exp_in={}
     cond_transit_all = np.zeros([n_exp,len(transit_pl)],dtype=bool)
     for ipl,pl_loc in enumerate(transit_pl):
-        
+
         #Check for planet transit
         if np.sum(np.abs(coord_in[pl_loc]['ecl'][iexp_list])!=1.)>0:
             cond_transit_all[:,ipl]|=(np.abs(coord_in[pl_loc]['ecl'][iexp_list])!=1.)   
