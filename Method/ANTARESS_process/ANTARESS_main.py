@@ -1535,6 +1535,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 coord_dic[inst][vis][spot]['is_visible'][:, iexp]=[spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]
                             
                             mock_dic['spots_prop'][inst][vis].pop('cos_istar')
+
+                        data_dic['mock_flux_cont']=deepcopy(mock_dic['flux_cont'])
+
+                        data_dic['mock_set_err']=deepcopy(mock_dic['set_err'])
                     #Observational data
                     else:
                     
@@ -1802,7 +1806,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                         #Convolution, conversion and resampling 
                         DI_prof_exp = conv_st_prof_tab(None,None,None,fixed_args,args_exp,DI_prof_exp,fixed_args['FWHM_inst'])
-                        
+
                         #Set negative flux values to null
                         DI_prof_exp[DI_prof_exp<0.] = 0.
 
@@ -2484,7 +2488,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         
                     #Saving path to initialized raw data
                     #    - saving data per exposure to prevent size issue with npz files 
-                    data_exp = {key:data_dic_temp[key][iexp] for key in ['cen_bins','edge_bins','flux','cov','cond_def']}                    
+                    data_exp = {key:data_dic_temp[key][iexp] for key in ['cen_bins','edge_bins','flux','cov','cond_def']}
                     np.savez_compressed(data_inst[vis]['proc_DI_data_paths']+str(iexp),data=data_exp,allow_pickle=True)   
                                
                 #Check for empty orders

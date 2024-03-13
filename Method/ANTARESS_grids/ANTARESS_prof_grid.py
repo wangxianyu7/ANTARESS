@@ -63,7 +63,7 @@ def custom_DI_prof(param,x,args=None):
     #Coadding local line profiles over stellar disk
     #--------------------------------------------------------------------------------
     icell_list = np.arange(args['grid_dic']['nsub_star'])
-    
+
     #Multithreading
     #    - disabled with theoretical profiles, there seems to be an incompatibility with sme
     if (args['nthreads']>1) and (args['mode']!='theo'):
@@ -71,7 +71,7 @@ def custom_DI_prof(param,x,args=None):
     
     #Direct call
     else:flux_DI_sum=coadd_loc_line_prof(rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)
-    
+
     #Co-adding profiles
     DI_flux_norm = np.sum(flux_DI_sum,axis=0)
 

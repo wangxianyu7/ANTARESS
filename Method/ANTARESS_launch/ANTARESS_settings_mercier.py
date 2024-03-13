@@ -4364,6 +4364,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - see function for options
     glob_fit_dic['ResProf']['corner_options']={}      
     
+    #%%%%% Plot best-fit 2D residual map
+    glob_fit_dic['ResProf']['map_Res_prof']=''
 
 
     #Activating 
@@ -4410,13 +4412,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Fixed/variable properties   
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['ResProf']['mod_prop']={
-        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.5, 'bd':[0.55, 0.8]},
-        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':10, 'bd':[7, 10]},
-        'veq':{'vary':True,'guess':7, 'bd':[7, 8]},
-        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':-30, 'bd':[-50, -10]},
-        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051 - 0.3, 'bd':[2458330.39051 - 0.5, 2458330.39051]},
+        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.7, 'bd':[0.55, 0.8]},
+        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':8, 'bd':[7, 10]},
+        'veq':{'vary':True,'guess':7.79999999, 'bd':[7, 8]},
+        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':-28, 'bd':[-40, -20]},
+        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051 - 0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 - 0.2]},
         'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':25, 'bd':[20, 30]},
-        'ctrst__ISESPRESSO_VSmock_vis_SPspot1'  : {'vary':True, 'guess':0.9, 'bd':[0, 0.95]},
+        'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.9, 'bd':[0.7, 0.95]},
+        'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':-0.08203047484373349, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
     
     #Fitting mode
@@ -4432,14 +4435,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Priors on variable properties
     if gen_dic['star_name'] == 'AUMic':
         glob_fit_dic['ResProf']['priors']={
-                    'ctrst_ord0__IS__VS_':{'mod':'uf','low':0,'high':1},  
-                    'FWHM_ord0__IS__VS_':{'mod':'uf','low':0,'high':100},
-                    'veq':{'mod':'uf', 'low':0, 'high':100.},
+                    'ctrst_ord0__IS__VS_'                    :{'mod':'uf','low':0,'high':1},  
+                    'FWHM_ord0__IS__VS_'                     :{'mod':'uf','low':0,'high':100},
+                    'veq'                                    :{'mod':'uf', 'low':0, 'high':100.},
                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' :{'mod':'uf', 'low':2458330.39051 - 1., 'high':2458330.39051 +1.},
                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':0, 'high':50.},
-                    'cotrst__ISESPRESSO_VSmock_vis_SPspot1'  :{'mod':'uf', 'low':0, 'high':1},
-
+                    'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   :{'mod':'uf', 'low':0, 'high':1},
+                    'lambda_rad__plAUMicb'                   :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }
 
     #Derived properties
@@ -4523,7 +4526,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 #            'plot1s_1D':False
         }
         
-        
+    #%%%%% Plot best-fit 2D residual map
+    glob_fit_dic['ResProf']['map_Res_prof']='png'
         
         
         
