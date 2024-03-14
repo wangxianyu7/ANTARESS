@@ -5,7 +5,7 @@ from ANTARESS_general.constant_data import G_usi,Msun
 from ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate,frameconv_skystar_to_star
 
 
-def calc_RVrot(x_sky_st,y_st,istar_rad,st_par):
+def calc_RVrot(x_st_sky,y_st,istar_rad,st_par):
     r"""**Stellar rotational rv**
 
     Calculates radial velocity of stellar surface element from rotation (in km/s).     
@@ -47,7 +47,7 @@ def calc_RVrot(x_sky_st,y_st,istar_rad,st_par):
     
     """   
     Vrot = st_par['veq']*(1.-st_par['alpha_rot']*y_st**2.-st_par['beta_rot']*y_st**4.)
-    RVrot = x_sky_st*Vrot*np.sin(istar_rad) 
+    RVrot = x_st_sky*Vrot*np.sin(istar_rad) 
     return RVrot,Vrot
 
 
@@ -394,7 +394,7 @@ def calc_st_sky(coord_grid,star_params):
     coord_grid['r2_st_sky']=coord_grid['x_st_sky']*coord_grid['x_st_sky']+coord_grid['y_st_sky']*coord_grid['y_st_sky']
 
     #Oblate star
-    #    - the condition is that the 2nd order equation yielding zsky_st for a given (xsky_st,ysky_st) has at least one solution
+    #    - the condition is that the 2nd order equation yielding zst_sky for a given (xst_sky,yst_sky) has at least one solution
     if star_params['f_GD']>0.:
         coord_grid['z_st_sky'],cond_in_stphot=calc_zLOS_oblate(coord_grid['x_st_sky'],coord_grid['y_st_sky'],star_params['istar_rad'],star_params['RpoleReq'])[1:3]
         if True in cond_in_stphot:

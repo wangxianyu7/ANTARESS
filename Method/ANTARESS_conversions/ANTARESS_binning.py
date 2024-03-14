@@ -87,11 +87,12 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         if mode=='multivis':
 
             #Retrieving table common to all visits
-            #    - defined in input rest frame for spectra, and centered on the input systemic velocity for CCFs
-            data_com = np.load(data_inst['proc_com_data_path']+'.npz',allow_pickle=True)['data'].item()      
+            #    - defined in input rest frame for spectra
+            #    - centered on the input systemic velocity for DI CCFs and on 0 for intrinsic/atmospheric CCFs
+            data_com = dataload_npz(data_inst['proc_com_data_path'])
             dim_exp_com = data_inst['dim_exp']  
             nspec_com = data_inst['nspec'] 
-   
+      
             #Visits to include in the binning
             vis_to_bin = prop_dic['vis_in_bin'][inst] if ((inst in data_dic[data_type_gen]['vis_in_bin']) and (len(data_dic[data_type_gen]['vis_in_bin'][inst])>0)) else data_dic[inst]['visit_list']
 
@@ -120,7 +121,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         #A single visit is processed
         #    - common table and dimensions are specific to this visit
         elif mode=='': 
-            data_com = np.load(data_inst[vis_in]['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item() 
+            data_com = dataload_npz(data_inst[vis_in]['proc_com_data_paths'])
             dim_exp_com = data_inst[vis_in]['dim_exp']
             nspec_com = data_inst['nspec']
             vis_to_bin=[vis_in]
@@ -133,7 +134,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         #    - 'FromAligned' set to True if binned profiles were aligned before
         #    - 'in_inbin' set to True if binned profiles include at least one in-transit profile
         data_glob_new={'FromAligned':gen_dic['align_'+data_type_gen],'in_inbin' : False}
-        
+
         #Automatic definition of reference planet 
         #    - for single-transiting planet or if undefined    
         if (len(data_inst[vis_save]['transit_pl'])==1) or ('ref_pl' not in bin_prop):bin_prop['ref_pl'] = data_inst[vis_save]['transit_pl'][0]  
@@ -246,7 +247,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     if data_inst[vis_bin]['tell_sp']:tell_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['tell'][iord] , kind=gen_dic['resamp_mode']) 
                     if gen_dic['cal_weight'] and data_inst[vis_bin]['mean_gdet'] :mean_gdet_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['mean_gdet'][iord] , kind=gen_dic['resamp_mode'])                    
                 data_to_bin[iexp_off]['cond_def'] = ~np.isnan(data_to_bin[iexp_off]['flux'])  
-                
+
                 #Resample local stellar profile estimate
                 if (data_type_gen=='Atm'):
                     flux_est_loc_exp = np.zeros(dim_exp_com,dtype=float)
@@ -345,13 +346,13 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         #Store common table of binned profiles
         data_glob_new['cen_bins'] = data_com['cen_bins']
         data_glob_new['edge_bins'] = data_com['edge_bins']
- 
+        
         #---------------------------------------------------------------------------
         #Calculating associated properties 
         #    - calculation of theoretical properties of planet-occulted regions is only possible if data binned over phase
         #    - new coordinates are relative to the planet chosen as reference for the binned coordinates 
         #---------------------------------------------------------------------------
-        data_glob_new.update({'st_bindim':new_x_low,'end_bindim':new_x_high,'cen_bindim':new_x_cen,'n_exp':n_bin,'dim_all':[n_bin]+dim_exp_com,'dim_exp':dim_exp_com,'nspec':nspec_com,'rest_frame' : rest_frame })
+        data_glob_new.update({'st_bindim':new_x_low,'end_bindim':new_x_high,'cen_bindim':new_x_cen,'n_exp':n_bin,'dim_all':[n_bin]+dim_exp_com,'dim_exp':dim_exp_com,'nspec':nspec_com,'rest_frame' : rest_frame})
         if (prop_dic['dim_bin'] == 'phase'):  
 
             #Coordinates of planets for new exposures
@@ -363,10 +364,16 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             
                 #Phase conversion
                 phase_tab = conv_phase(coord_dic,inst,vis_save,system_param,bin_prop['ref_pl'],pl_loc,np.vstack((new_x_low,new_x_cen,new_x_high)))              
-            
+
+                #Transit center check
+                if mode=='multi_vis':
+                    for vis_bin in vis_to_bin:
+                        if (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis_bin in gen_dic['Tcenter_visits'][pl_loc][inst]):stop('WARNING: you are binning visits with TTVs')
+
                 #Coordinates
                 x_pos_pl,y_pos_pl,z_pos_pl,Dprojp,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phase_tab,system_prop['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param['star'])
                 data_glob_new['coord'][pl_loc] = {
+                    'Tcenter':coord_dic[inst][vis_to_bin[0]][pl_loc]['Tcenter'], 
                     'ecl':ecl_pl,
                     'st_ph':phase_tab[0],'cen_ph':phase_tab[1],'end_ph':phase_tab[2],
                     'st_pos':np.vstack((x_pos_pl[0],y_pos_pl[0],z_pos_pl[0])),

@@ -119,7 +119,10 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,nexp_fit,ph_fit,coord_pl_fit
         args['coeff_line'] = {}
         for par_loc in args['linevar_par'][inst][vis]:    
             args['coeff_line'][par_loc] = polycoeff_def(param,args['coeff_ord2name'][inst][vis][par_loc])
-          
+
+    #Instrument or visit-specific line continuum
+    if ('cont' in args['genpar_instvis']):param['cont'] = param[args['name_prop2input']['cont__IS'+inst+'_VS'+vis]] 
+
     #Recalculate coordinates of occulted regions or use nominal values
     #    - the 'fit_X' conditions are only True if at least one parameter is varying, so that param_fit is True if fit_X is True
     if args['fit_orbit']:coord_pl = {}
@@ -783,7 +786,7 @@ def calc_mean_occ_region_line(precision,system_prop,i_in,key_chrom,n_osamp_exp_e
         #Normalization into intrinsic profile
         #    - profiles used to tile the planet-occulted regions have mean unity, and are then scaled by the cell achromatic flux
         #      we normalize by the total planet-occulted flux
-        #    - high-precision profils is achromatic
+        #    - high-precision profile is achromatic
         #    - not required for low- and medium-precision because intrinsic profiles are not scaled to local flux upon calculation in plocc_prof()
         if (theo_dic['precision']=='high') and args['conv2intr']:
             Focc_star_achrom=Focc_star[key_chrom[-1]]/n_osamp_exp_eff
@@ -883,7 +886,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
         #Scale continuum level
         Fsurf_grid_star*=param['cont']
         Ftot_star*=param['cont']
-   
+       
         #Flux and number of cells occulted from all planets, cumulated over oversampled positions
         Focc_star_band+= Ftot_star[0]   
         sum_prop_dic_pl['nocc']+=coord_grid['nsub_star']

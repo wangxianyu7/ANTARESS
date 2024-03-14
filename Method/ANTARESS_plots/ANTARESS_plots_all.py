@@ -79,15 +79,17 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     
         #Function to calculate coordinates of planets and occulted regions in a given visit
         #    - in achromatic mode
-        def calc_occ_plot(theo_dic_loc,inst,vis,genpar_instvis,param_loc,args,system_param_loc,iband=0,par_list = ['rv','CB_RV','mu','xp_abs','r_proj','y_st','lat']):
+        def calc_occ_plot(data_bin,theo_dic_loc,inst,vis,genpar_instvis,param_loc,args,system_param_loc,iband=0,par_list = ['rv','CB_RV','mu','xp_abs','r_proj','y_st','lat']):
 
             #Generate high-resolution time table covering all planet transits   
             min_bjd = 1e100
             max_bjd = -1e100
             stend_ph = 1.3
+            if vis=='binned':coord_vis = data_bin['coord'] 
+            else:coord_vis = coord_dic[inst][vis]
             for pl_loc in gen_dic['studied_pl']:      
-                min_bjd = np.min([min_bjd, coord_dic[inst][vis][pl_loc]['Tcenter']+stend_ph*contact_phases[pl_loc][0]*system_param[pl_loc]['period']])        
-                max_bjd = np.max([max_bjd,coord_dic[inst][vis][pl_loc]['Tcenter'] +stend_ph*contact_phases[pl_loc][3]*system_param[pl_loc]['period']])   
+                min_bjd = np.min([min_bjd,coord_vis[pl_loc]['Tcenter']+stend_ph*contact_phases[pl_loc][0]*system_param[pl_loc]['period']])        
+                max_bjd = np.max([max_bjd,coord_vis[pl_loc]['Tcenter'] +stend_ph*contact_phases[pl_loc][3]*system_param[pl_loc]['period']])   
             bjd_HR=min_bjd+ ((max_bjd-min_bjd)/(plot_dic['nph_HR']-1.))*np.arange(plot_dic['nph_HR']) - 2400000.
 
             #-------------------------------------
@@ -101,7 +103,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             for pl_loc in gen_dic['studied_pl']:
 
                 #High-resolution phase table
-                phase_pl = get_timeorbit(pl_loc,coord_dic,inst,vis,bjd_HR,system_param_loc[pl_loc],None)[1]   
+                phase_pl = get_timeorbit(pl_loc,coord_vis,bjd_HR,system_param_loc[pl_loc],None)[1]   
 
                 #Overwrite default values     
                 if ('lambda_rad__pl'+pl_loc in genpar_instvis):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
@@ -362,10 +364,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     data_vis = data_inst[vis]
                     
                     #Data
-                    data_com = dataload_npz(data_vis['proc_com_data_paths'])   
+                    # data_com = dataload_npz(data_vis['proc_com_data_paths'])   
                     fixed_args_loc = {}
                     pl_ref,txt_conv,iexp_plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data,data_bin = sub_plot_prof_dir(inst,vis,plot_options,data_mode,'Map',add_txt_path,plot_mod,txt_aligned,data_type,data_type_gen)
-
+                    
                     #Order list
                     order_list = plot_options['orders_to_plot'] if len(plot_options['orders_to_plot'])>0 else range(nord_data) 
                     idx_sel_ord = order_list
@@ -408,10 +410,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Process selected ranges and orders
                     nord_proc = len(idx_sel_ord)
                     if nord_proc==0:stop('No orders left')
-                    dim_exp_proc = [nord_proc,data_vis['nspec']]
+                    if vis=='binned':nspec = data_inst['nspec']
+                    else:nspec = data_vis['nspec']
+                    dim_exp_proc = [nord_proc,nspec]
                     dim_all_proc = [nexp_plot]+dim_exp_proc
-                    cen_bins_com = data_com['cen_bins'][idx_sel_ord]
-                    edge_bins_com = data_com['edge_bins'][idx_sel_ord] 
+                    # cen_bins_com = data_com['cen_bins'][idx_sel_ord]
+                    # edge_bins_com = data_com['edge_bins'][idx_sel_ord] 
 
                     #Initializing tables   
                     low_sp_map = np.zeros(dim_all_proc)*np.nan
@@ -427,11 +431,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     params = deepcopy(system_param['star'])
                     params.update({'rv':0.,'cont':1.})  
                     if plot_options['theoRV_HR']:
-                        theo_HR_prop_plocc = calc_occ_plot(deepcopy(theo_dic),inst,vis,{},params,{},deepcopy(system_param))
+                        theo_HR_prop_plocc = calc_occ_plot(data_bin,deepcopy(theo_dic),inst,vis,{},params,{},deepcopy(system_param))
                     if plot_options['theoRV_HR_align']:
                         system_param_align = deepcopy(system_param)
                         system_param_align[pl_ref]['lambda_rad'] = 0.
-                        theo_HR_prop_plocc_align = calc_occ_plot(deepcopy(theo_dic),inst,vis,{},params,{},system_param_align)
+                        theo_HR_prop_plocc_align = calc_occ_plot(data_bin,deepcopy(theo_dic),inst,vis,{},params,{},system_param_align)
                         
                     #High-resolution orbital phase model
                     #    - rv of planet in star rest frame
@@ -551,7 +555,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             else:
                                 var_map[isub] = sc_fact*data_exp['flux']
                                 cond_def_map[isub] = data_exp['cond_def']
-                            
+
                         #Additional tables
                         low_edges = data_exp['edge_bins'][:,0:-1]
                         high_edges = data_exp['edge_bins'][:,1::]
@@ -1144,9 +1148,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Original exposure index
         nexp_plot = len(iexp_plot)
-        if ('DI' in plot_mod) or ('Res' in plot_mod) or (plot_mod=='map_pca_prof') or (('Atm' in plot_mod) and (plot_options['pl_atm_sign']=='Emission')):iexp_orig = iexp_plot
+        if (vis=='binned') or (('DI' in plot_mod) or ('Res' in plot_mod) or (plot_mod=='map_pca_prof') or (('Atm' in plot_mod) and (plot_options['pl_atm_sign']=='Emission'))):iexp_orig = iexp_plot
         elif ('Intr' in plot_mod) or (('Atm' in plot_mod) and (plot_options['pl_atm_sign']=='Absorption')):iexp_orig = gen_dic[inst][vis]['idx_in2exp'][iexp_plot]
-  
+            
+    
         #Indexes of master exposures
         if ('DI' in plot_mod) and (vis!='binned'):
             if (inst in plot_options['iexp_mast_list']) and (vis in plot_options['iexp_mast_list'][inst]):
@@ -1214,7 +1219,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             rest_frame = data_bin['rest_frame']
                             
                         #Disk-integrated profiles
-                        elif (plot_mod=='DI_prof'): 
+                        elif ('DI_prof' in plot_mod): 
     
                             #Spectral profiles
                             if ('spec' in data_type):         
@@ -2559,7 +2564,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                  
 
                 #Dispersion plots
-                if plot_options['print_disp'] & plot_options['plot_disp']:
+                if plot_options['print_disp']!=[] & plot_options['plot_disp']:
                 
                     #Frame
                     plt.ioff() 
@@ -3126,10 +3131,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             plt.plot(mid_x_bin,val_bin,color=bin_val_loc['color'],rasterized=plot_options['rasterized'],markeredgecolor=bin_val_loc['color'],markerfacecolor='None',marker='d',markersize=plot_options['markersize']+2,linestyle='',zorder=10,alpha=bin_val_loc['alpha_bin']) 
         else:
             if plot_options['plot_err']:
-                _,_,mid_x_bin,_,val_bin,eval_bin = resample_func(x_bd_low_eff,x_bd_high_eff,dic_val['st_x_all'],dic_val['end_x_all'],dic_val['val_all'],np.mean(dic_val['eval_all'],axis=0),remove_empty=True,dim_bin=0,cond_olap=1e-14)    
+                _,_,mid_x_bin,_,val_bin,eval_bin = resample_func(x_bd_low_eff,x_bd_high_eff,dic_val['st_x_all'],dic_val['end_x_all'],dic_val['val_all'],np.mean(dic_val['eval_all'],axis=0),remove_empty=True,dim_bin=0)    
                 plt.errorbar(mid_x_bin,val_bin,yerr=eval_bin,color=bin_val_loc['color'],rasterized=plot_options['rasterized'],markeredgecolor=bin_val_loc['color'],markerfacecolor='None',marker='d',markersize=plot_options['markersize']+2,linestyle='',zorder=10,alpha=bin_val_loc['alpha_bin']) 
             if plot_options['plot_HDI']:
-                _,_,mid_x_bin,_,val_bin,eval_bin = resample_func(x_bd_low_eff,x_bd_high_eff,dic_val['st_x_all'],dic_val['end_x_all'],dic_val['val_all'],np.mean(dic_val['HDI_all'],axis=0),remove_empty=True,dim_bin=0,cond_olap=1e-14)    
+                _,_,mid_x_bin,_,val_bin,eval_bin = resample_func(x_bd_low_eff,x_bd_high_eff,dic_val['st_x_all'],dic_val['end_x_all'],dic_val['val_all'],np.mean(dic_val['HDI_all'],axis=0),remove_empty=True,dim_bin=0)    
                 plt.errorbar(mid_x_bin,val_bin,yerr=eval_bin,color='black',rasterized=plot_options['rasterized'],markeredgecolor='black',markerfacecolor='None',marker='d',markersize=plot_options['markersize']+2,linestyle='',zorder=10,alpha=plot_options['alpha_symb']) 
 
         
@@ -3258,7 +3263,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 if (data_mode=='Intr') and (prop_mode in ['rv','rv_res']) and plot_options['theo_HR_nom'] : 
                     params = deepcopy(system_param['star'])
                     params.update({'rv':0.,'cont':1.})                 
-                    theo_HR_prop_plocc = calc_occ_plot(deepcopy(theo_dic),inst,vis,{},params,{},deepcopy(system_param))
+                    theo_HR_prop_plocc = calc_occ_plot(None,deepcopy(theo_dic),inst,vis,{},params,{},deepcopy(system_param))
                     if plot_options['prop_'+data_mode+'_absc']=='phase':xvar_HR=deepcopy(theo_HR_prop_plocc[pl_ref]['phase'])  
                     elif plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']:xvar_HR=deepcopy(theo_HR_prop_plocc[pl_ref][plot_options['prop_'+data_mode+'_absc']])  
                     elif plot_options['prop_'+data_mode+'_absc']=='y_st2':xvar_HR=theo_HR_prop_plocc[pl_ref]['y_st']**2.  
@@ -3274,7 +3279,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if (len(plot_options['contrib_theo_HR'])>0) or ((prop_mode=='rv_res') and (plot_options['mod_compos'] == 'SB')):
                         params['alpha_rot'] = 0.
                         params['beta_rot'] = 0.
-                        rv_sb_theo_HR_nom = calc_occ_plot(deepcopy(theo_dic),inst,vis,{},params,{},deepcopy(system_param))[pl_ref]['Rot_RV'][wsort]
+                        rv_sb_theo_HR_nom = calc_occ_plot(None,deepcopy(theo_dic),inst,vis,{},params,{},deepcopy(system_param))[pl_ref]['Rot_RV'][wsort]
                       
 
                     # #Save/replot manually 
@@ -3453,7 +3458,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         if plot_options['theo_HR_prop']:par_list_HR+=[prop_mode]
                                         elif plot_options['theo_HR_prof']:par_list_HR+=['ctrst','FWHM']
                                     
-                                    theo_HR_prop_loc = calc_occ_plot(theo_dic_in,inst,vis,data_fit_loc['genpar_instvis'],data_fit_loc['p_final'],data_fit_loc,deepcopy(system_param),par_list = par_list_HR)[pl_ref]
+                                    theo_HR_prop_loc = calc_occ_plot(data_bin,theo_dic_in,inst,vis,data_fit_loc['genpar_instvis'],data_fit_loc['p_final'],data_fit_loc,deepcopy(system_param),par_list = par_list_HR)[pl_ref]
                                     if plot_options['prop_'+data_mode+'_absc']=='phase':xvar_HR_loc=deepcopy(theo_HR_prop_loc['phase'])  
                                     elif plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']:xvar_HR_loc=deepcopy(theo_HR_prop_loc[plot_options['prop_'+data_mode+'_absc']])  
                                     elif plot_options['prop_'+data_mode+'_absc']=='y_st2':xvar_HR_loc=theo_HR_prop_loc['y_st']**2.  
@@ -3472,7 +3477,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                             params = deepcopy(data_fit_loc['p_final'])
                                             params['alpha_rot'] = 0.
                                             params['beta_rot'] = 0.
-                                            rv_sb_theo_HR = calc_occ_plot(theo_dic_in,inst,vis,data_fit_loc['genpar_instvis'],params,data_fit_loc,deepcopy(system_param),par_list = par_list_HR)[pl_ref]['Rot_RV'][wsort]
+                                            rv_sb_theo_HR = calc_occ_plot(data_bin,theo_dic_in,inst,vis,data_fit_loc['genpar_instvis'],params,data_fit_loc,deepcopy(system_param),par_list = par_list_HR)[pl_ref]['Rot_RV'][wsort]
 
                                         #Model components
                                         if len(plot_options['contrib_theo_HR'])>0:
@@ -3541,10 +3546,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         #-------------------------------------------------------                             
                         #Model from property fit
                         if (data_fit_prop is not None):
-                          
+                        
                             #Data-equivalent model
                             if plot_options['theo_obs_prop']:
-                                if data_fit_prop['coord_line']!=plot_options['prop_'+data_mode+'_absc']:stop('Plot and fit coordinates must match')
+                                if (prop_mode in ['rv','rv_res'] and plot_options['prop_'+data_mode+'_absc']!='phase') or (data_fit_prop['coord_line']!=plot_options['prop_'+data_mode+'_absc']):stop('Plot and fit coordinates must match')
                                 plt.plot(data_fit_prop['coord_mod'][inst][vis],data_fit_prop['prop_mod'][inst][vis],color='green',linestyle='',lw=1,marker='s',markersize=plot_options['markersize'],zorder=-1)
 
                             #High-resolution model
@@ -3904,7 +3909,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #-------------------------------------------------------
                     #Print dispersion of residuals to a reference 
                     #    - for in-transit selection we use the ou-of-transit mean as reference                                            
-                    if (plot_options['print_disp'] or plot_options['plot_disp']) and (not plot_options['no_orig']):                        
+                    if (plot_options['print_disp']!=[] or plot_options['plot_disp']) and (not plot_options['no_orig']):                        
                         if plot_options['disp_mod']=='all':idisp=range(len(val_obs))
                         elif plot_options['disp_mod']=='det':idisp=idx_in_plot_det 
                         elif data_mode=='DI':
@@ -3916,6 +3921,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         else:
                             eval_1D = np.mean(eval_obs[:,idisp],axis=0)                        
                             mean_val_plot = np.sum(val_obs[idisp]*(1/eval_1D**2.))/np.sum(1/eval_1D**2.)
+                        
+                        #Ratio of dispersion to mean error over selected points
                         disp_from_mean=(val_obs[idisp]-mean_val_plot).std()
                         if np.min(eval_1D)>0.:
                             eval_mean = np.mean(eval_1D)
@@ -3925,13 +3932,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             disp_err_R=np.nan
                         dytxt=i_visit*0.1
     
-                        #Print mean value over selected points, with dispersion from mean
+                        #Plot mean value over selected points
                         if plot_options['plot_disp'] and (((data_mode=='DI') and (prop_mode not in ['rv','rv_pip'])) or (data_mode=='Intr')):
                             x_tab = plot_options['x_range'] if plot_options['x_range'] is not None else [min(x_obs),max(x_obs)]
                             plt.plot(x_tab,[mean_val_plot,mean_val_plot],color=col_loc,linestyle='--',lw=plot_options['lw_plot']+0.2,zorder=0) 
-                        if plot_options['print_disp']:
-                            plt.text(0.2,1.1+dytxt,'w. mean['+prop_mode+'] ='+"{0:.5e}".format(mean_val_plot)+' +-'+"{0:.2e}".format(disp_from_mean)+' '+val_unit,verticalalignment='center', horizontalalignment='center',fontsize=10.,zorder=10,color=col_loc,transform=plt.gca().transAxes) 
                         
+                        #Print data quality information in the log and on the figure                       
+                        if plot_options['print_disp']!=[]:
                             if (prop_mode in ['rv_res','rv_pip_res']):
                                 # sc_txt = 100.
                                 # units = ' (cm/s)'
@@ -3941,17 +3948,19 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 sc_txt = 1.
                                 units = ''
                             
-                            print('       wm =',"{0:.5f}".format(sc_txt*mean_val_plot)+units)
-                            print('       <e> =',"{0:.5e}".format(sc_txt*eval_mean)+units)
-                            print('       std =',"{0:.5e}".format(sc_txt*disp_from_mean)+units)
-                            if (prop_mode not in ['rv_res','rv_pip_res']):
-                                print('       e_r =',"{0:.5f}".format(1e6*eval_mean/mean_val_plot)+' (ppm)')
-                                print('       std_r =',"{0:.5f}".format(1e6*disp_from_mean/mean_val_plot)+' (ppm)')
-                            
-                            #Print ratio of dispersion to mean error over selected points
-                            if np.min(eval_obs[:,idisp])!=0.:
-                                if (plot_options['print_disp']):plt.text(0.6,1.1+dytxt,'$\sigma$/<e> ='+"{0:.5e}".format(disp_err_R),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=10,color=col_loc,transform=plt.gca().transAxes) 
-                                print('       std/e =',"{0:.5e}".format(disp_err_R))
+                            if 'fig' in plot_options['print_disp']:
+                                plt.text(0.2,1.1+dytxt,'w. mean['+prop_mode+'] ='+"{0:.5e}".format(mean_val_plot)+' +-'+"{0:.2e}".format(disp_from_mean)+' '+val_unit,verticalalignment='center', horizontalalignment='center',fontsize=10.,zorder=10,color=col_loc,transform=plt.gca().transAxes) 
+                                if ~np.isnan(disp_err_R):plt.text(0.6,1.1+dytxt,'$\sigma$/<e> ='+"{0:.5e}".format(disp_err_R),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=10,color=col_loc,transform=plt.gca().transAxes) 
+                            if 'plot' in plot_options['print_disp']:
+                                if ~np.isnan(disp_err_R):plt.text(0.8,0.9-dytxt,'$\sigma$/<e> ='+"{0:.2e}".format(disp_err_R),verticalalignment='center', horizontalalignment='left',fontsize=12.,zorder=10,color=col_loc,transform=plt.gca().transAxes) 
+                            if 'log' in plot_options['print_disp']:                            
+                                print('       wm =',"{0:.5f}".format(sc_txt*mean_val_plot)+units)
+                                print('       <e> =',"{0:.5e}".format(sc_txt*eval_mean)+units)
+                                print('       std =',"{0:.5e}".format(sc_txt*disp_from_mean)+units)
+                                if (prop_mode not in ['rv_res','rv_pip_res']):
+                                    print('       e_r =',"{0:.5f}".format(1e6*eval_mean/mean_val_plot)+' (ppm)')
+                                    print('       std_r =',"{0:.5f}".format(1e6*disp_from_mean/mean_val_plot)+' (ppm)')
+                                if ~np.isnan(disp_err_R):print('       std/e =',"{0:.5e}".format(disp_err_R))
                                   
                         #Save dispersion values for analysis in external routine
                         if (data_mode=='DI') and plot_options['save_disp']:
@@ -5112,7 +5121,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         plot_options[key_plot]['plot_biss']=False
                 
         #Print dispersions
-        plot_options[key_plot]['print_disp'] = False  
+        plot_options[key_plot]['print_disp'] = []  
         
         #Plot HITRAN telluric lines for requested molecules
         plot_options[key_plot]['plot_tell_HITRANS']=[]
@@ -8230,7 +8239,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         
                     #Imported light curve
                     if plot_options[key_plot]['plot_LC_imp'] and (data_dic['DI']['transit_prop'][inst][vis]['mode']=='imp'):
-                        ph_imp=get_timeorbit(pl_ref , coord_dic,inst,vis, data_upload['imp_LC'][0], system_param[pl_ref], 0.)[1]
+                        ph_imp=get_timeorbit(pl_ref ,coord_dic[inst][vis], data_upload['imp_LC'][0], system_param[pl_ref], 0.)[1]
                         plt.plot(ph_imp,data_upload['imp_LC'][iband]-vis_shift,color=col_vis,linestyle='--',lw=plot_options[key_plot]['lw_plot'])  
                         
                     #HR light curve
@@ -10727,7 +10736,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #Planet at given position along the orbit
                 RpRs = plot_options[key_plot]['RpRs_pl'][ipl]
                 if plot_options[key_plot]['t_BJD'] is not None:
-                    phase_pl=get_timeorbit(pl_loc,coord_dic,plot_options[key_plot]['t_BJD']['inst'],plot_options[key_plot]['t_BJD']['vis'],plot_t,system_param[pl_loc],0.)[1]  
+                    phase_pl=get_timeorbit(pl_loc,coord_dic[plot_options[key_plot]['t_BJD']['inst']][plot_options[key_plot]['t_BJD']['vis']],plot_t,system_param[pl_loc],0.)[1]  
                     x_pl_sky,y_pl_sky,z_pl_sky= calc_pl_coord(system_param[pl_loc]['ecc'],system_param[pl_loc]['omega_rad'],system_param[pl_loc]['aRs'],system_param[pl_loc]['inclin_rad'],phase_pl,None,None,None)[0:3]               
                     if plot_options[key_plot]['conf_system']=='sky_ste': ang_orb = system_param[pl_loc]['lambda_rad']
                     if plot_options[key_plot]['conf_system']=='sky_orb': ang_orb = system_param[pl_loc]['lambda_rad']-lref    
