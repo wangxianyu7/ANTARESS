@@ -415,7 +415,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
         if len(data_vis['transit_pl'])>1:stop('Multi-planet transit must be modelled with full intrinsic profiles')
         fixed_args['transit_pl'][inst][vis]=[data_vis['transit_pl'][0]] 
     else:fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
-    # if ('Prof' in rout_mode):fixed_args['transit_sp'][inst][vis]=data_vis['transit_sp']
+    if rout_mode == 'ResProf':fixed_args['transit_sp'][inst][vis]=data_vis['transit_sp']
 
     #Binned data
     if fixed_args['bin_mode'][inst][vis]=='_bin':
@@ -643,7 +643,6 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     #Fit initialization
     init_fit(fit_dic,fixed_args,p_start,model_par_names(),fit_prop_dic)     
     merged_chain = None
-    print('1:', fit_prop_dic['fit_mode'])
     ########################################################################################################   
 
     #Fit by chi2 minimization
