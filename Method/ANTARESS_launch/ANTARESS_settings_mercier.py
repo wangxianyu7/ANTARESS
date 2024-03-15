@@ -3348,9 +3348,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #In-transit restriction
     data_dic['Res']['extract_in']=True  &  False
     
-    #Master visits
- 
-    #Master exposures
+   # %%%% Master visits
+    # if gen_dic['star_name']=='AUMic':
+    #     data_dic['Res']['vis_in_bin']={'ESPRESSO':['mock_vis']}  
+
+   #  %%%% Master exposures
+    # if gen_dic['star_name']=='AUMic':    
+    #     data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} 
+
     
 
     #Continuum range
@@ -4230,6 +4235,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #     - Define the borders and the number of points of the table (e.g. [low_end, high_end, num_pts].
     glob_fit_dic['ResProf']['master_out_tab']=[]
 
+    #%%%%% Reference planet
+    #     - Choosing which planet to use as the reference
+    glob_fit_dic['ResProf']['ref_pl']={}
+
     #%%%%% Trimming
     glob_fit_dic['ResProf']['trim_range'] = {}
     
@@ -4369,7 +4378,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  &  False
+    gen_dic['fit_ResProf'] = True  #&  False
 
     # Indexes of exposures to be fitted, in each visit
     #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to []), set their value to 'all' for all in-transit exposures to be fitted
@@ -4382,9 +4391,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     # Master-out RV table
     if gen_dic['star_name']=='AUMic':
-        # glob_fit_dic['ResProf']['master_out_tab']=[-200, 200, 200]
-        glob_fit_dic['ResProf']['master_out_tab']=[]
+        glob_fit_dic['ResProf']['master_out_tab']=[-90, 90, 200]
+        # glob_fit_dic['ResProf']['master_out_tab']=[]
     
+    # Reference planet
+    if gen_dic['star_name']=='AUMic':
+        glob_fit_dic['ResProf']['ref_pl']={'ESPRESSO':{'mock_vis':'AUMicb'}}
+
     #Trimming
     glob_fit_dic['ResProf']['trim_range'] = deepcopy(data_dic['Intr']['fit_prof']['trim_range'])   
 
@@ -4414,10 +4427,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         glob_fit_dic['ResProf']['mod_prop']={
         'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.7, 'bd':[0.55, 0.8]},
         'FWHM_ord0__IS__VS_':{'vary':True, 'guess':8, 'bd':[7, 10]},
-        'veq':{'vary':True,'guess':7.79999999, 'bd':[7, 8]},
-        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':-28, 'bd':[-40, -20]},
-        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051 - 0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 - 0.2]},
-        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':25, 'bd':[20, 30]},
+        'veq':{'vary':True,'guess':7.35, 'bd':[7, 8]},
+        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':-25, 'bd':[-40, -20]},
+        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051 - 0.35, 'bd':[2458330.39051 - 0.4, 2458330.39051 - 0.2]},
+        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':20, 'bd':[20, 30]},
         'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.9, 'bd':[0.7, 0.95]},
         'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':-0.08203047484373349, 'bd':[-2*np.pi, 2*np.pi]}
                                             }

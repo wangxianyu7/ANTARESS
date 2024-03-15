@@ -1536,8 +1536,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             
                             mock_dic['spots_prop'][inst][vis].pop('cos_istar')
 
-                        data_dic['mock_flux_cont']=deepcopy(mock_dic['flux_cont'])
-
                         data_dic['mock_set_err']=deepcopy(mock_dic['set_err'])
                     #Observational data
                     else:

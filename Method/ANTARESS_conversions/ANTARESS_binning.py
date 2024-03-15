@@ -557,7 +557,7 @@ def init_bin_prof(data_type,bin_prop,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bi
         new_x_low_in = min_x + new_dx*np.arange(new_nx)
         new_x_high_in = new_x_low_in+new_dx 
     
-    #Limiting contributing profiles to requested range along bin dimension            
+    #Limiting contributing profiles to requested range along bin dimension       
     cond_keep = (x_high_vis>=new_x_low_in[0]) &  (x_low_vis <=new_x_high_in[-1])
     x_low_vis = x_low_vis[cond_keep]
     x_high_vis = x_high_vis[cond_keep]         

@@ -822,6 +822,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Arguments to be passed to the fit function
     fixed_args.update({
+        'ref_pl':fit_prop_dic['ref_pl'],
         'rout_mode':'ResProf',
         'func_prof_name':fit_prop_dic['func_prof_name'],
         'mode':fit_prop_dic['mode'],
@@ -852,10 +853,14 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fit_save={'idx_trim_kept':{}}
 
     #Define master-out dictionary
+    fixed_args['master_out']['multivisit_list']={}
     fixed_args['master_out']['idx_in_master_out']={}
     fixed_args['master_out']['master_out_tab']={}
     fixed_args['master_out']['scaled_data_paths']={}
+    fixed_args['master_out']['multivisit_weights_total']={}
     fixed_args['master_out']['weights']={}
+    fixed_args['master_out']['flux']={}
+    fixed_args['master_out']['multivisit_flux']={}
     fixed_args['raw_DI_profs']={}
 
     #Profile generation
@@ -884,15 +889,38 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     low_bound=1e100
     high_bound=-1e100
     num_pts=0
+
+    # Master-out 
+    # - Common table
+    if fit_prop_dic['master_out_tab']!=[]:
+        if len(fit_prop_dic['master_out_tab'])!=3:stop('Incorrect master-out table format. The format should be [low_bd, up_bd, num_pts].')
+        else:fixed_args['master_out']['master_out_tab']['edge_bins']=np.linspace(fit_prop_dic['master_out_tab'][0],fit_prop_dic['master_out_tab'][1],num=fit_prop_dic['master_out_tab'][2])
+    else:stop('Undefined master-out table.')
+    fixed_args['master_out']['master_out_tab']['dcen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][1::]-fixed_args['master_out']['master_out_tab']['edge_bins'][0:-1]
+    fixed_args['master_out']['master_out_tab']['cen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][:-1]+(fixed_args['master_out']['master_out_tab']['dcen_bins']/2)
+    fixed_args['master_out']['master_out_tab']['resamp_mode']=gen_dic['resamp_mode']
+
+    # - Weights
+    fixed_args['master_out']['nord']=1
+    fixed_args['master_out']['corr_Fbal']=gen_dic['corr_Fbal']
+    fixed_args['master_out']['corr_FbalOrd']=gen_dic['corr_FbalOrd']
+    fixed_args['master_out']['flux_sc']=gen_dic['flux_sc']
+    fixed_args['master_out']['save_data_dir']=gen_dic['save_data_dir']
+
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
         init_joined_routines_inst('ResProf',inst,fit_prop_dic,fixed_args)
+        
         fixed_args['master_out']['idx_in_master_out'][inst]={}
         fixed_args['raw_DI_profs'][inst]={}
         fixed_args['master_out']['weights'][inst]={}
+        fixed_args['master_out']['flux'][inst]={}
         fixed_args['master_out']['scaled_data_paths'][inst]={}
         fixed_args['mock_set_err'][inst]={}
         fixed_args['idx_out'][inst]={}
         fixed_args['idx_in'][inst]={}
+        
+        if (inst not in fixed_args['ref_pl']) and (fixed_args['ref_pl']!={}):fixed_args['ref_pl'][inst]={}
+
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
@@ -911,39 +939,58 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         if (inst in fit_prop_dic['trim_range']):trim_range = fit_prop_dic['trim_range'][inst]
         else:trim_range = None 
 
+        #Defining visits used in the master-out calculation 
+        fixed_args['master_out']['multivisit_list'][inst]=[]
+        if (inst in data_dic['Res']['vis_in_bin']) and (len(data_dic['Res']['vis_in_bin'][inst])>1):fixed_args['master_out']['multivisit_list'][inst]=data_dic['Res']['vis_in_bin'][inst]
+        for multivisit in fixed_args['master_out']['multivisit_list'][inst]:
+            if multivisit not in data_dic[inst]['visit_list']:stop('Problem: '+multivisit+' was selected for master-out calculation but is not used in the fit.')
+        
+        #Defining multi-visit master-out and weights
+        if len(fixed_args['master_out']['multivisit_list'][inst])>0:
+            fixed_args['master_out']['multivisit_flux'][inst]=np.zeros(len(fixed_args['master_out']['master_out_tab']['cen_bins']), dtype=float)
+            fixed_args['master_out']['multivisit_weights_total'][inst]=np.zeros(len(fixed_args['master_out']['master_out_tab']['cen_bins']), dtype=float)
+
         #Processing visit
-        for vis in data_dic[inst]['visit_list']:
+        for vis_index, vis in enumerate(data_dic[inst]['visit_list']):
             init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
-
-            #Master-out properties - some visits can contribute to the master-out without being fitted
-            fixed_args['raw_DI_profs'][inst][vis]={} 
-            fixed_args['master_out']['weights'][inst][vis]={}
-
-            fixed_args['master_out']['idx_in_master_out'][inst][vis]={}
-            fixed_args['master_out']['idx_in_master_out'][inst][vis] = fit_prop_dic['idx_in_master_out'][inst][vis+fixed_args['bin_mode'][inst][vis]]
-            if fit_prop_dic['idx_in_master_out'][inst][vis]=='all':fixed_args['master_out']['idx_in_master_out'][inst][vis]=gen_dic[inst][vis]['idx_out']
-            else:fixed_args['master_out']['idx_in_master_out'][inst][vis]=np.intersect1d(fixed_args['master_out']['idx_in_master_out'][inst][vis],gen_dic[inst][vis]['idx_out'])
-
-            #Needed for weight calculation
-            fixed_args['master_out']['scaled_data_paths'][inst][vis]={}
-            if gen_dic['flux_sc']:fixed_args['master_out']['scaled_data_paths'][inst][vis] = data_dic[inst][vis]['scaled_DI_data_paths']
-            else:fixed_args['master_out']['scaled_data_paths'][inst][vis] = None
-
-            #Update the continuum flux level to match the mock data
-            fixed_args['mock_set_err'][inst][vis]={}
-            if 'mock' in vis:
-                fixed_args['flux_cont']=data_dic['mock_flux_cont'][inst][vis]
-                fixed_args['mock_set_err'][inst][vis]=data_dic['mock_set_err'][inst]
-
-             #Define in and out of transit exposures - needed for profile generation
-            fixed_args['idx_out'][inst][vis]=gen_dic[inst][vis]['idx_out']
-            fixed_args['idx_in'][inst][vis]=gen_dic[inst][vis]['idx_in']
 
             #Visit is fitted
             if fixed_args['bin_mode'][inst][vis] is not None: 
                 data_vis=data_dic[inst][vis]
                 init_joined_routines_vis_fit('ResProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
                 data_com = dataload_npz(data_dic[inst][vis]['proc_com_data_paths'])             
+
+                #Master-out properties
+                fixed_args['raw_DI_profs'][inst][vis]={} 
+                fixed_args['master_out']['weights'][inst][vis]={}
+                fixed_args['master_out']['idx_in_master_out'][inst][vis]=[]
+
+                # - Indexes
+                if (inst in fit_prop_dic['idx_in_master_out']) and (vis in fit_prop_dic['idx_in_master_out'][inst]):
+                    if fit_prop_dic['idx_in_master_out'][inst][vis]=='all':fixed_args['master_out']['idx_in_master_out'][inst][vis]=gen_dic[inst][vis]['idx_out']
+                    elif fit_prop_dic['idx_in_master_out'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=fit_prop_dic['idx_in_master_out'][inst][vis+fixed_args['bin_mode'][inst][vis]]
+
+                if (inst in data_dic['Res']['idx_in_bin']) and (vis in data_dic['Res']['idx_in_bin'][inst]):
+                        if data_dic['Res']['idx_in_bin'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=list(np.intersect1d(fixed_args['master_out']['idx_in_master_out'][inst][vis],data_dic['Res']['idx_in_bin'][inst][vis]))
+        
+                if len(fixed_args['master_out']['idx_in_master_out'][inst][vis])==0:stop('No exposures defined in visit '+vis+' for the master-out calculation.')
+
+                # - Needed for weight calculation
+                fixed_args['master_out']['scaled_data_paths'][inst][vis]={}
+                if gen_dic['flux_sc']:fixed_args['master_out']['scaled_data_paths'][inst][vis] = data_dic[inst][vis]['scaled_DI_data_paths']
+                else:fixed_args['master_out']['scaled_data_paths'][inst][vis] = None
+
+                # - Flux table
+                fixed_args['master_out']['flux'][inst][vis]=np.zeros([len(fixed_args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
+
+                #Define in and out of transit exposures - needed for profile generation
+                fixed_args['idx_out'][inst][vis]=gen_dic[inst][vis]['idx_out']
+                fixed_args['idx_in'][inst][vis]=gen_dic[inst][vis]['idx_in']
+
+                #Defining reference planet if left undefined
+                if fixed_args['ref_pl']=={}:fixed_args['ref_pl']={inst:{vis:data_dic[inst][vis]['transit_pl'][0]}}
+                elif (vis_index==0) and (vis not in fixed_args['ref_pl'][inst]):fixed_args['ref_pl'][inst][vis]=data_dic[inst][vis]['transit_pl'][0]
+                elif vis not in fixed_args['ref_pl'][inst]:fixed_args['ref_pl'][inst][vis]=fixed_args['ref_pl'][inst][data_dic[inst]['visit_list'][vis_index-1]]
 
                 #Instrumental convolution
                 if (inst not in fixed_args['FWHM_inst']):                
@@ -1066,27 +1113,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
                 #Number of fitted exposures
                 fixed_args['nexp_fit']+=fixed_args['nexp_fit_all'][inst][vis]
-
-    #Master-out
-    # - Common table
-    if fit_prop_dic['master_out_tab']!=[]:
-        if len(fit_prop_dic['master_out_tab'])!=3:stop('Incorrect master-out table format. The format should be [low_bd, up_bd, num_pts].')
-        else:fixed_args['master_out']['master_out_tab']['edge_bins']=np.linspace(fit_prop_dic['master_out_tab'][0],fit_prop_dic['master_out_tab'][1],num=fit_prop_dic['master_out_tab'][2])
-    else:fixed_args['master_out']['master_out_tab']['edge_bins']=np.linspace(low_bound,high_bound,num=num_pts+1)
-    fixed_args['master_out']['master_out_tab']['dcen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][1::]-fixed_args['master_out']['master_out_tab']['edge_bins'][0:-1]
-    fixed_args['master_out']['master_out_tab']['cen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][:-1]+(fixed_args['master_out']['master_out_tab']['dcen_bins']/2)
-    fixed_args['master_out']['master_out_tab']['resamp_mode']=gen_dic['resamp_mode']
-
-    # - Calculation 
-    fixed_args['master_out']['flux']=np.zeros(len(fixed_args['master_out']['master_out_tab']['cen_bins']), dtype=float)
-
-    # - Weights
-    fixed_args['master_out']['total_weights']=np.zeros(len(fixed_args['master_out']['master_out_tab']['cen_bins']), dtype=float)
-    fixed_args['master_out']['nord']=1
-    fixed_args['master_out']['corr_Fbal']=gen_dic['corr_Fbal']
-    fixed_args['master_out']['corr_FbalOrd']=gen_dic['corr_FbalOrd']
-    fixed_args['master_out']['flux_sc']=gen_dic['flux_sc']
-    fixed_args['master_out']['save_data_dir']=gen_dic['save_data_dir']
 
     #Common data type
     for idx_inst,inst in enumerate(data_dic['instrum_list']):
@@ -1330,11 +1356,6 @@ def joined_ResProf(param,args):
             #-----------------------------------------------------------
             mod_dic[inst][vis]=np.zeros(args['nexp_fit_all'][inst][vis],dtype=object)
 
-            #Figure out if the exposures are defined on a common solution
-            if len(args['cen_bins'][inst][vis][0])!=len(args['cen_bins'][inst][vis][1]):comm_sol=False
-            else:
-                if np.sum(args['cen_bins'][inst][vis][0]-args['cen_bins'][inst][vis][1])!=0:comm_sol=False
-                else:comm_sol=True
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
 
                 #Table for model calculation - wavelength table of the exposure considered
@@ -1350,7 +1371,7 @@ def joined_ResProf(param,args):
                 #Model DI profile for current exposure accounting for deviations from the nominal profile - on the wavelength table of the exposure considered
                 new_args_exp=deepcopy(args_exp)
                 new_args_exp['conv2intr']=False
-                surf_prop_dic,surf_prop_dic_sp = sub_calc_plocc_spot_prop([args['chrom_mode']],new_args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'],Ftot_star=True,fit_Ftot_star=True)
+                surf_prop_dic,surf_prop_dic_sp = sub_calc_plocc_spot_prop([args['chrom_mode']],new_args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
                 sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[args['chrom_mode']]['line_prof'][:,0]
 
                 #Properties of all planet-occulted and spotted regions used to calculate spectral line profiles
@@ -1372,43 +1393,9 @@ def joined_ResProf(param,args):
 
                 #Set negative flux values to null
                 conv_line_model[conv_line_model<0.] = 0.
-
-                #Define number of photoelectrons extracted during the exposure
-                #   - the model is a density of photoelectrons per unit of time, with continuum set to the input mean flux density
-                num_photelec_line_model = conv_line_model*args['coord_fit'][inst][vis]['t_dur'][isub] 
-                args['raw_DI_profs'][inst][vis][isub]=num_photelec_line_model
-
-                #Should add a step here if the data are not defined on a common wavelength/RV solution - skipped for now
-                if comm_sol:dcen_bin_comm = args['dcen_bins'][inst][vis][isub]
-                else:dcen_bin_comm = args['master_out']['master_out_tab']['dcen_bins']
-
-                #Flux scaling steps
-                true_line_model=num_photelec_line_model/args['coord_fit'][inst][vis]['t_dur'][isub]
-
-                # - Define light-curve flux at this exposure - Only adapted to simulated LC for the moment
-                if i_in in args['idx_out'][inst][vis]:LC_flux_band_all[isub,:]=1.
-                elif i_in in args['idx_in'][inst][vis]:LC_flux_band_all[isub,:]=surf_prop_dic[args['chrom_mode']]['Ftot_star'].T
-                #Storing
-                intermediate_profs.append(true_line_model)
-                
-            # - Define global flux scaling (requires inclusion of multiple orders)
-            intermediate_profs = np.array(intermediate_profs)
-            Tflux_all = np.sum(intermediate_profs * dcen_bin_comm, axis=1)
-            Tcen_bin_comm = np.sum(dcen_bin_comm)
-            if args['DI_scaling_val'] is None:Tflux_ref = np.median(Tflux_all)
-            else:Tflux_ref=Tcen_bin_comm*args['DI_scaling_val']
-            norm_exp_glob = Tflux_all/Tflux_ref
-
-            for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
-
-                # - Define local flux scaling
-                if (args['system_prop'][args['chrom_mode']]['nw']==1):loc_flux_scaling = np.poly1d([1.-LC_flux_band_all[isub,0]])
-                else:loc_flux_scaling = interp1d(args['system_prop'][args['chrom_mode']]['w'],1.-LC_flux_band_all[isub],fill_value=(1.-LC_flux_band_all[isub,0],1.-LC_flux_band_all[isub,-1]), bounds_error=False)
-                LC_exp_spec_ord = 1.-loc_flux_scaling(args['cen_bins'][inst][vis][isub])
-                final_line_model = args['raw_DI_profs'][inst][vis][isub] * (LC_exp_spec_ord/(args['coord_fit'][inst][vis]['t_dur'][isub]*norm_exp_glob[isub]))
-                
+                                
                 #Store the model DI profiles for calculation of the residual profiles later
-                args['raw_DI_profs'][inst][vis][isub] = final_line_model
+                args['raw_DI_profs'][inst][vis][isub] = conv_line_model
 
                 #Loop over exposures contributing to the master-out
                 if i_in in args['master_out']['idx_in_master_out'][inst][vis]:
@@ -1417,12 +1404,12 @@ def joined_ResProf(param,args):
                     master_isub = np.where(args['master_out']['idx_in_master_out'][inst][vis]==i_in)[0][0]
 
                     #Re-sample model DI profile on a common grid
-                    resamp_line_model = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],final_line_model,kind=args['master_out']['master_out_tab']['resamp_mode'])
+                    resamp_line_model = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],conv_line_model,kind=args['master_out']['master_out_tab']['resamp_mode'])
 
                     #Making weights for the master-out
-                    raw_weights=weights_bin_prof(range(args['master_out']['nord']), args['master_out']['scaled_data_paths'][inst][vis],inst,vis,args['master_out']['corr_Fbal'],args['master_out']['corr_Fbal'],\
+                    raw_weights=weights_bin_prof(range(args['master_out']['nord']), args['master_out']['scaled_data_paths'][inst][vis],inst,vis,args['master_out']['corr_Fbal'],args['master_out']['corr_FbalOrd'],\
                                                         args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'Res',args['type'],args['dim_exp'][inst][vis],None,\
-                                                        None,np.array([args['cen_bins'][inst][vis][isub]]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([final_line_model]),\
+                                                        None,np.array([args['cen_bins'][inst][vis][isub]]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([conv_line_model]),\
                                                         np.array([args['cov'][inst][vis][isub]]),bdband_flux_sc=args['master_out']['flux_sc'])[0]
 
                     # - Re-sample the weights
@@ -1445,7 +1432,7 @@ def joined_ResProf(param,args):
             # Defined bins in binned spectrum
             cond_def_binned = np.sum(cond_def_all,axis=0)>0
 
-             #Disable weighing in all binned profiles for pixels validating at least one of these conditions:
+            #Disable weighing in all binned profiles for pixels validating at least one of these conditions:
             # + 'cond_null_weights' : pixel has null weights at all defined flux values (weight_exp_all is null at undefined flux values, so if its sum is null in a pixel 
             # fulfilling cond_def_binned it implies it is null at all defined flux values for this pixel)
             # + 'cond_undef_weights' : if at least one profile has an undefined weight for a defined flux value, it messes up with the weighted average     
@@ -1454,30 +1441,37 @@ def joined_ResProf(param,args):
             cond_null_weights = (np.sum(args['master_out']['weights'][inst][vis],axis=0)==0.) & cond_def_binned
             args['master_out']['weights'][inst][vis][:, cond_undef_weights | cond_null_weights] = 1.
 
-            #Global weight table - need to include
+            #Global weight table
             #    - pixels that do not contribute to the binning (eg due to planetary range masking) have null flux and weight values, and thus do not contribute to the total weight
             #    - weight tables only depend on each original exposure but their weight is specific to the new exposures and the original exposures it contains
-            # dx_ov = XXXX
-            # args['master_out']['weights'][inst][vis] *= dx_ov
+            x_low = args['ph_fit'][inst][vis][args['ref_pl'][inst][vis]][0,args['master_out']['idx_in_master_out'][inst][vis]]
+            x_high = args['ph_fit'][inst][vis][args['ref_pl'][inst][vis]][2,args['master_out']['idx_in_master_out'][inst][vis]]
+            dx_ov_in = x_high - x_low
+            dx_ov_all = np.ones([len(args['master_out']['idx_in_master_out'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])],dtype=float) if (np.sum(dx_ov_in)==0) else dx_ov_in[:,None] 
+            args['master_out']['weights'][inst][vis] *= dx_ov_all
 
             #Storing normalization information
             glob_weights_tot = np.sum(args['master_out']['weights'][inst][vis][:, cond_def_binned],axis=0)
-            args['master_out']['total_weights'][cond_def_binned]+=glob_weights_tot
+            if vis in args['master_out']['multivisit_list'][inst]:args['master_out']['multivisit_weights_total'][inst][cond_def_binned]+=glob_weights_tot
 
             #Perform the weighted average to retrieve the master-out
             # - We can disregard the division by the sum of the weights since the weights are normalized
-            args['master_out']['flux'][cond_def_binned] += np.sum(contrib_profs[:, cond_def_binned]*args['master_out']['weights'][inst][vis][:, cond_def_binned], axis=0)
-
-    #Need to step out of the loops to finish the master-out calculation
-    args['master_out']['flux'] /= args['master_out']['total_weights']
+            if vis in args['master_out']['multivisit_list'][inst]:args['master_out']['multivisit_flux'][inst][cond_def_binned] += np.sum(contrib_profs[:, cond_def_binned]*args['master_out']['weights'][inst][vis][:, cond_def_binned], axis=0)
+            else:args['master_out']['flux'][inst][vis][cond_def_binned] = np.sum(contrib_profs[:, cond_def_binned]*args['master_out']['weights'][inst][vis][:, cond_def_binned], axis=0)/glob_weights_tot
+        
+        #Need to step out of the loops to finish the master-out calculation if multiple visits are combined
+        if len(args['master_out']['multivisit_list'][inst])>0:args['master_out']['multivisit_flux'][inst] /= args['master_out']['multivisit_weights_total'][inst]
 
     #Building residual profiles
-    for inst in args['inst_list']:
         for vis in args['inst_vis_list'][inst]:
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
                 
+                #Retrieving the master-out flux in the case where we combine multiple visits
+                if vis in args['master_out']['multivisit_list'][inst]:master_out_flux=args['master_out']['multivisit_flux'][inst]
+                else:master_out_flux=args['master_out']['flux'][inst][vis]
+
                 #Re-sample master on table of the exposure considered
-                resamp_master = bind.resampling(args['edge_bins'][inst][vis][isub],args['master_out']['master_out_tab']['edge_bins'],args['master_out']['flux'], kind=args['master_out']['master_out_tab']['resamp_mode'])
+                resamp_master = bind.resampling(args['edge_bins'][inst][vis][isub],args['master_out']['master_out_tab']['edge_bins'],master_out_flux, kind=args['master_out']['master_out_tab']['resamp_mode'])
 
                 #Calculate the residual profile on the wavelength table of the exposure considered (Isn't this gonna be an issue when making the residual map?)
                 mod_dic[inst][vis][isub] = resamp_master - args['raw_DI_profs'][inst][vis][isub]
@@ -1500,7 +1494,6 @@ def joined_ResProf(param,args):
             psm = ax.pcolormesh (x_data, t_data, y_data, cmap=cmap)
             fig.colorbar(psm, ax=ax)
             plt.show()
-    #         plt.savefig('/Users/samsonmercier/Downloads/NEW_TESTING_ERRORFIXED?_BestFit_Res_map.pdf')
-    # stop('PLO>TTING DIFFs')
+            # plt.savefig('/Users/samsonmercier/Downloads/NEW_TESTING_ERRORFIXED?_BestFit_Res_map.pdf')
 
     return mod_dic,coeff_line_dic,mod_prop_dic

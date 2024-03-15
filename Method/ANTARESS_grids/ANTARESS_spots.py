@@ -341,7 +341,7 @@ def spot_occ_region_grid(RspRs, nsub_Dsp):
 
 
 def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iband, system_prop, system_spot_prop, star_params, Ssub_Sstar_sp, Ssub_Sstar_ref, Istar_norm_band, sum_prop_dic_spot,\
-                                    coord_reg_dic_spot, range_reg_dic_spot, Focc_star_band, par_list, range_par_list, args, cb_band, pl_loc_x = {}, pl_loc_y = {}, oversamp_idx = None, RpRs = None, plocc = False, fit_Ftot_star=False) :
+                                    coord_reg_dic_spot, range_reg_dic_spot, Focc_star_band, par_list, range_par_list, args, cb_band, pl_loc_x = {}, pl_loc_y = {}, oversamp_idx = None, RpRs = None, plocc = False) :
     #Samson: check whether the zstar and sskystar coordinates need to be adapted in this routine; the region_prop['y_st_sp'] may not be calculated properly
     r"""**Spot-occulted properties: define and update**
 
@@ -450,9 +450,8 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
     #Scale the flux grid to the desired level
     Fsurf_grid_occ *= star_params['cont']
     Fsurf_grid_emit *= star_params['cont']
-    if not fit_Ftot_star:
-        Ftot_occ *= star_params['cont']
-        Ftot_emit *= star_params['cont']
+    Ftot_occ *= star_params['cont']
+    Ftot_emit *= star_params['cont']
 
     #--------------------------------
 
@@ -574,6 +573,8 @@ def sum_region_spot_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,Fs
     if line_occ_HP_band=='high':    
         
         #Attribute intrinsic profile to each cell 
+        init_st_intr_prof(args,coord_grid,star_params)
+        
         #Calculate individual local line profiles from all region cells
         #    - analytical intrinsic profiles are fully calculated 
         #      theoretical and measured intrinsic profiles have been pre-defined and are just shifted to their position
