@@ -253,7 +253,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 dbjd_HR = 1./(3600.*24.)
                 nbjd_HR = round((max_bjd-min_bjd)/dbjd_HR)
                 bjd_HR=min_bjd+dbjd_HR*np.arange(nbjd_HR)
-                cen_ph_HR = get_timeorbit(gen_dic['studied_pl'][0],coord_dic,inst,vis,bjd_HR, system_param[gen_dic['studied_pl'][0]], 0.)[1]
+                cen_ph_HR = get_timeorbit(gen_dic['studied_pl'][0],coord_dic[inst][vis],bjd_HR, system_param[gen_dic['studied_pl'][0]], 0.)[1]
                 az_HR = CubicSpline(coord_dic[inst][vis]['bjd'],data_prop[inst][vis]['az'])(bjd_HR)
                 alt_HR = CubicSpline(coord_dic[inst][vis]['bjd'],data_prop[inst][vis]['alt'])(bjd_HR) 
                 cen_ph_mer = cen_ph_HR[closest(az_HR,180.)]                 
@@ -395,7 +395,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 if not gen_dic['wig_exp_filt']['mode']:
                     fit_dic.update({
                         'merit':{},                    
-                        'fit_mod' : 'chi2'})
+                        'fit_mode' : 'chi2'})
     
                 #Equivalent tables for grouped exposures
                 tel_coord_expgroup = {
@@ -2028,8 +2028,8 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 #Initializations
                 fit_dic={'save_dir':gen_dic['save_data_dir']+'/Corr_data/Wiggles/Vis_fit/'+inst+'_'+vis+'/','merit':{}}
                 if (not os_system.path.exists(fit_dic['save_dir'])):os_system.makedirs(fit_dic['save_dir'])
-                if gen_dic['wig_vis_fit']['fixed']:fit_dic['fit_mod'] = ''
-                else:fit_dic['fit_mod'] = 'chi2'   
+                if gen_dic['wig_vis_fit']['fixed']:fit_dic['fit_mode'] = ''
+                else:fit_dic['fit_mode'] = 'chi2'   
                     
                 #Join tables for global model
                 for key in ['az','x_az','y_az','z_alt','cond_eastmer','cond_westmer','cond_shift']:fixed_args_loc[key] = tel_coord_vis[key][iexp_fit_list] 
@@ -2169,7 +2169,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     return wig_mast
 
                 #Fixed model
-                if fit_dic['fit_mod'] == '':
+                if fit_dic['fit_mode'] == '':
                     p_best = deepcopy(p_start)
 
                 #Fitted model 

@@ -252,6 +252,7 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
     
     """ 
     data_vis = data_dic[inst][vis]
+    
     def_iord = opt_dic['def_iord']
     if (data_dic['Intr']['align_mode']=='meas'):stop('This mode cannot be used with measured RVs')
 

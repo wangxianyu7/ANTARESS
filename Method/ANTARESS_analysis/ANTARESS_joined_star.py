@@ -83,7 +83,7 @@ def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
                 init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
     
                 #Visit is fitted
-                if vis is not None: 
+                if fixed_args['bin_mode'][inst][vis] is not None: 
                     data_vis=data_dic[inst][vis]
                     init_joined_routines_vis_fit('DIProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
     
@@ -97,8 +97,47 @@ def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
                     for i_in in fixed_args['idx_in_fit'][inst][vis]:    
                         fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
                         fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))    
+
+        fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)
+        fixed_args['nexp_fit'] = fit_dic['nx_fit']
+        fixed_args['x_val']=range(fixed_args['nexp_fit'])
+        fixed_args['fit_func'] = FIT_joined_DIProp
+        fixed_args['inside_fit'] = False    
+
+        #Uncertainties on the property are given a covariance matrix structure for consistency with the fit routine 
+        fixed_args['cov_val'] = np.array([fixed_args['s_val']**2.])
+        fixed_args['use_cov'] = False       
+
+        #Model fit and calculation
+        if prop_loc not in fit_prop_dic['mod_prop']:fit_prop_dic['mod_prop'][prop_loc] = {}
+        merged_chain,p_final = com_joint_fits('DIProp',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'][prop_loc])   
+        
+        #Best-fit model and properties
+        fit_save={}
+        fixed_args['fit'] = False
+        mod_tab,coeff_line_dic,fit_save['prop_mod']= joined_DIProp(p_final,fixed_args)
+      
+        #Save best-fit properties
+        fit_save.update({'p_final':p_final,'name_prop2input':fixed_args['name_prop2input'],'merit':fit_dic['merit']})
+        if (plot_dic['prop_DI']!='') or (plot_dic['chi2_fit_DIProp']!=''):
+            key_list = ['prop_fit','err_prop_fit']
+            for key in key_list:fit_save[key] = {}
+            for inst in fixed_args['inst_list']:
+                for key in key_list:fit_save[key][inst] = {}
+                for vis in fixed_args['inst_vis_list'][inst]:
+                    fit_save['prop_fit'][inst][vis] = fixed_args['y_val'][idx_fit2vis[inst][vis]]
+                    fit_save['err_prop_fit'][inst][vis] = fixed_args['s_val'][idx_fit2vis[inst][vis]]
+        np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
     
-    
+        #Post-processing
+        fit_dic['p_null'] = deepcopy(p_final)
+        if fixed_args['prop_fit']=='rv':fit_dic['p_null']['veq'] = 0.
+        else:
+            for par in fit_dic['p_null']:fit_dic['p_null'][par]=0.
+            fit_dic['p_null']['cont']=1.
+        com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
+
+    print('     ----------------------------------')    
     
     return None
 
@@ -159,7 +198,7 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
                 init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
     
                 #Visit is fitted
-                if vis is not None: 
+                if fixed_args['bin_mode'][inst][vis] is not None: 
                     data_vis=data_dic[inst][vis]
                     init_joined_routines_vis_fit('IntrProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
     
@@ -734,13 +773,13 @@ def joined_IntrProf(param,args):
                 #    - added to the convolved profiles since PC are derived from observed data
                 if args['n_pc'][inst][vis] is not None:
                     for i_pc in range(args['n_pc'][inst][vis]):mod_dic[inst][vis][isub]+=param_val[args['name_prop2input']['aPC_idxin'+str(i_in)+'_ord'+str(i_pc)+'__IS'+inst+'_VS'+vis]]*args['eig_res_matr'][inst][vis][i_in][i_pc]
-
+               
                 #Set to continuum level
                 #    - profiles are internally calculated with a continuum unity
                 #    - intrinsic profiles have the same continuum level as out-of-transit disk-integrated profiles, but since the observed profile 
                 # continuum may not be well defined or has been scaled on a different range than the fitted one, it is difficult to measure its value
-                mod_dic[inst][vis][isub]*=param['cont']
-                
+                mod_dic[inst][vis][isub]*=param_val['cont']
+             
                 #Properties of all planet-occulted regions used to calculate spectral line profiles
                 if not args['fit']:
                     for pl_loc in args['transit_pl'][inst][vis]:                    

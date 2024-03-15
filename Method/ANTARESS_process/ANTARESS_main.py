@@ -237,8 +237,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
         ### end of visits 
 
         #Update instrument properties   
-        if gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:
-            update_inst(data_dic,inst,gen_dic)        
+        update_inst(data_dic,inst,gen_dic)        
 
         #Processing binned profiles over multiple visits
         #    - beware that data from different visits should be comparable to be binned 
@@ -1876,7 +1875,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         # + 39 CCFs for each of the spectrograph order
                         # + last element is the total CCF over all orders (n_velocity size)                           
                         if data_inst['type']=='CCF': 
-            
+                      
                             #Bin centers
                             #    - we associate the velocity table to all exposures to keep the same structure as spectra
                             data_dic_temp['cen_bins'][iexp,0] = velccf
@@ -1898,20 +1897,19 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             #Construction of the total CCF
                             #    - we re-calculate the CCF rather than taking the total CCF stored in the last column of the matrix to be able to account for sky-correction in specific orders
                             #    - we use the input "gen_dic['orders4ccf'][inst]" rather than "gen_dic[inst]['orders4ccf']", which is used for CCF computed from spectral data 
-                            if inst not in gen_dic['orders4ccf']:flux_raw = np.sum(all_ccf[ range(gen_dic['norders_instru'][inst])],axis=0)     
-                            else:flux_raw = np.sum(all_ccf[gen_dic['orders4ccf'][inst]],axis=0)             
-
-                            #Error table
-                            if gen_dic[inst][vis]['flag_err']:
-                                if inst not in gen_dic['orders4ccf']:err_raw = np.sqrt(np.sum(all_eccf[range(gen_dic['norders_instru'][inst])]**2.,axis=0))      
-                                else:err_raw = np.sqrt(np.sum(all_eccf[gen_dic['orders4ccf'][inst]]**2.,axis=0))                              
+                            if inst not in gen_dic['orders4ccf']:flux_raw = np.nansum(all_ccf[ range(gen_dic['norders_instru'][inst])],axis=0)     
+                            else:flux_raw = np.nansum(all_ccf[gen_dic['orders4ccf'][inst]],axis=0)             
 
                             #Screening CCF
-                            if gen_dic[inst][vis]['scr_lgth']>1:
-                                flux_raw = flux_raw[idx_scr_bins]
-                                err_raw = err_raw[idx_scr_bins]
-                            err_raw = np.tile(err_raw,[data_inst['nord'],1])
+                            if gen_dic[inst][vis]['scr_lgth']>1:flux_raw = flux_raw[idx_scr_bins]
                             data_dic_temp['flux'][iexp,0] = flux_raw
+                            
+                            #Error table
+                            if gen_dic[inst][vis]['flag_err']:
+                                if inst not in gen_dic['orders4ccf']:err_raw = np.sqrt(np.nansum(all_eccf[range(gen_dic['norders_instru'][inst])]**2.,axis=0))      
+                                else:err_raw = np.sqrt(np.nansum(all_eccf[gen_dic['orders4ccf'][inst]]**2.,axis=0))                                                          
+                                if gen_dic[inst][vis]['scr_lgth']>1:err_raw = err_raw[idx_scr_bins]
+                                err_raw = np.tile(err_raw,[data_inst['nord'],1])
 
                         #-------------------------------------------------------------------------------------------------------------------------------------------
                                 
@@ -2072,7 +2070,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         if not gen_dic[inst][vis]['flag_err']:
                             cond_pos_exp = data_dic_temp['flux'][iexp]>=0.
                             data_dic_temp['flux'][iexp][~cond_pos_exp] = np.nan
-                            err_raw = np.zeros(data_inst[vis]['nspec'])
+                            err_raw = np.zeros(data_inst[vis]['dim_exp'],dtype=float)
                             err_raw[cond_pos_exp]=np.sqrt(data_dic_temp['flux'][iexp][cond_pos_exp]) 
 
 
@@ -2595,24 +2593,26 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                     #Estimate of systemic velocity for disk-integrated profiles
                     #    - as median of the RV corresponding to the CCF minima over the visit
-                    if key=='DI':
-                        idx_check = (RVcen_bins[0]>-500.) & (RVcen_bins[0]<500.) 
-                        idx_min_all = np.argmin(flux_all,axis=1)
-                        cen_RV = np.nanmedian(RVcen_bins[:,idx_check][:,idx_min_all])
-                        
-                    #Intrinsic and atmospheric profiles are fitted in the star rest frame
+                    #    - intrinsic and atmospheric profiles are fitted in the star rest frame
+                    idx_check = (RVcen_bins[0]>-500.) & (RVcen_bins[0]<500.) 
+                    idx_min_all = np.argmin(flux_all,axis=1)
+                    sys_RV = np.nanmedian(RVcen_bins[:,idx_check][:,idx_min_all])
+                    if key=='DI':cen_RV = sys_RV
                     else:cen_RV = 0.
 
-                    #Minimum/maximum velocity of the CCF range
+                    #Minimum/maximum velocity of the CCF range in the input rest frame
                     min_bin = np.max(np.nanmin(RVedge_bins))
-                    max_bin = np.min(np.nanmax(RVedge_bins))                        
-
+                    max_bin = np.min(np.nanmax(RVedge_bins)) 
+                    if key in ['Intr','Atm']:
+                        min_bin-=sys_RV
+                        max_bin-=sys_RV
+                       
                     #Excluded range for disk-integrated and intrinsic profiles 
                     #    - we assume +-3 vsini accounts for both rotational and thermal broadening of DI profiles, and for rotational shift + thermal broadening
                     if key in ['DI','Intr']:
                         min_exc = np.max([cen_RV - 3.*system_param['star']['vsini'] -5.,min_bin+5.])
                         max_exc = np.min([cen_RV + 3.*system_param['star']['vsini'] +5.,max_bin-5.])
-                        
+
                     #Excluded range for atmospheric profiles
                     #    - we account for a width of 20km/s over the range of studied orbital velocities, for all planets considered for atmospheric signals
                     elif key=='Atm':
@@ -2843,29 +2843,34 @@ def update_inst(data_dic,inst,gen_dic):
         None
     
     """ 
-    data_inst = data_dic[inst]
-    data_com_ref = dataload_npz(data_inst[data_inst['com_vis']]['proc_com_data_paths'])      
-    if gen_dic['spec_1D']:
-        data_inst['type']='spec1D' 
-        data_inst['mean_gdet'] = False     
-        data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com' 
-    elif gen_dic['CCF_from_sp']:
-        data_inst['type']='CCF'                 
-        data_inst['tell_sp'] = False 
-        data_inst['mean_gdet'] = False     
-        data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_com' 
-        if ('chrom' in data_inst['system_prop']):
-            data_inst['system_prop']['chrom_mode'] = 'achrom'
-            data_inst['system_prop'].pop('chrom')
-    else:
-        data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com' 
-    
+    data_inst = data_dic[inst] 
+    data_com_ref = dataload_npz(data_inst[data_inst['com_vis']]['proc_com_data_paths']) 
+    if data_inst['comm_sp_tab'] and (gen_dic['align_DI']) and (data_dic['DI']['type'][inst]=='CCF'):
+        data_inst['proc_com_data_path']=gen_dic['save_data_dir']+'Processed_data/'+inst+'_com_star'    
+    elif gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:
+        if gen_dic['spec_1D']:
+            data_inst['type']='spec1D' 
+            data_inst['mean_gdet'] = False     
+            data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com' 
+        elif gen_dic['CCF_from_sp']:
+            data_inst['type']='CCF'                 
+            data_inst['tell_sp'] = False 
+            data_inst['mean_gdet'] = False     
+            data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_com' 
+            if ('chrom' in data_inst['system_prop']):
+                data_inst['system_prop']['chrom_mode'] = 'achrom'
+                data_inst['system_prop'].pop('chrom')
+        else:
+            data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com' 
+        
     #Common instrument table is set to the table of the visit taken as reference
     np.savez_compressed(data_inst['proc_com_data_path'],data = data_com_ref,allow_pickle=True)  
-    data_inst['dim_exp'] = deepcopy(data_com_ref['dim_exp'])
-    data_inst['nspec'] = deepcopy(data_com_ref['nspec'])
-    data_inst['nord'] = 1
-    data_inst['comm_sp_tab']=True
+    
+    if gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:    
+        data_inst['dim_exp'] = deepcopy(data_com_ref['dim_exp'])
+        data_inst['nspec'] = deepcopy(data_com_ref['nspec'])
+        data_inst['nord'] = 1
+        data_inst['comm_sp_tab']=True
         
     return None
 

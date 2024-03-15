@@ -300,7 +300,35 @@ def ln_prob_func_lmfit(p_step, x_val, fixed_args=None):
     return chi
 
 
+def gen_hrand_chain(par_med,epar_low,epar_high,n_throws):
+    r"""**PDF generator**
 
+    Generates normal or half-normal distributions of a parameter.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    if epar_high==epar_low:
+        hrand_chain = np.random.normal(par_med, epar_high, n_throws)
+    else:
+        if n_throws>1:
+            if n_throws<20:n_throws_half = 10*n_throws
+            else:n_throws_half = 2*n_throws
+            rand_draw_right = np.random.normal(loc=par_med, scale=epar_high, size=n_throws_half)
+            rand_draw_right = rand_draw_right[rand_draw_right>par_med]
+            rand_draw_right = rand_draw_right[0:int(n_throws/2)]
+            rand_draw_left = np.random.normal(loc=par_med, scale=epar_low, size=n_throws_half)
+            rand_draw_left = rand_draw_left[rand_draw_left<=par_med]
+            rand_draw_left = rand_draw_left[0:n_throws-int(n_throws/2)]
+            hrand_chain = np.append(rand_draw_left,rand_draw_right)
+        else:
+            if np.random.normal(loc=0., scale=1., size=1)>0:hrand_chain = np.random.normal(loc=par_med, scale=epar_high, size=1)
+            else:hrand_chain = np.random.normal(loc=par_med, scale=epar_low, size=1)
+    return hrand_chain   
 
 
 
@@ -403,7 +431,7 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
         fixed_args['fixed_par_val_noexp_list']=[par for par in fixed_args['fixed_par_val'] if par not in fixed_args['linked_par_expr']]
 
     #Number of free parameters    
-    if fit_dic['fit_mod']=='':fit_dic['merit']['n_free'] = 0.
+    if fit_dic['fit_mode']=='':fit_dic['merit']['n_free'] = 0.
     else:fit_dic['merit']['n_free'] = len(var_par_list) 
 
     #Initialize save file
@@ -417,7 +445,7 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
     fixed_args['jitter']=False if ('jitter' not in fixed_args) else fixed_args['jitter']        
     
     #Default settings
-    if fit_dic['fit_mod']=='mcmc':
+    if fit_dic['fit_mode']=='mcmc':
 
         #Monitor progress
         fit_dic['progress']=True if ('progress' not in fit_prop_dic) else fit_prop_dic['progress'] 
@@ -675,16 +703,172 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
 
     return walker_chains
 
-  
+
 
 ##################################################################################################
 #%%% Post-processing
+##################################################################################################   
+       
+def fit_merit(p_final_in,fixed_args,fit_dic,verbose):
+    r"""**Post-proc: fit merit values**
+
+    Calculates various indicators of the best-fit merit.
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
+    if verbose:print('     Calculating merit values') 
+
+    #Convert parameters() structure into dictionary 
+    if fit_dic['fit_mode'] !='mcmc': 
+        p_final={}
+        for par in p_final_in:p_final[par]=p_final_in[par].value   
+        if fit_dic['fit_mode']=='chi2':
+            fit_dic['sig_parfinal_err']={'1s':np.zeros([2,fit_dic['merit']['n_free']])}            
+            for ipar,par in enumerate(fixed_args['var_par_list']): 
+                fit_dic['sig_parfinal_err']['1s'][:,ipar]=p_final_in[par].stderr  
+    else:p_final = deepcopy(p_final_in)
+ 
+    #Calculation of best-fit model equivalent to the observations, corresponding residuals, and RMS
+    #    - only in the case where the function does return the model
+    if not fixed_args['inside_fit']:
+        res_tab = fixed_args['y_val'] - fixed_args['fit_func'](p_final,fixed_args['x_val'],args=fixed_args) 
+        fit_dic['merit']['rms']=res_tab.std()       
+    else:fit_dic['merit']['rms']='Undefined'
+
+    #Merit values 
+    if fit_dic['fit_mode'] =='':fit_dic['merit']['mode']='forward'    
+    else:fit_dic['merit']['mode']='fit'    
+    fit_dic['merit']['dof']=fit_dic['nx_fit']-fit_dic['merit']['n_free']
+    
+    if fit_dic['fit_mode'] in ['','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
+    elif fit_dic['fit_mode'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1] 
+    fit_dic['merit']['red_chi2']=fit_dic['merit']['chi2']/fit_dic['merit']['dof']
+    fit_dic['merit']['BIC']=fit_dic['merit']['chi2']+fit_dic['merit']['n_free']*np.log(fit_dic['nx_fit'])      
+    fit_dic['merit']['AIC']=fit_dic['merit']['chi2']+2.*fit_dic['merit']['n_free']
+    
+    if verbose:
+        print('     + Npts = ',fit_dic['nx_fit'])
+        print('     + Nfree = ',fit_dic['merit']['n_free'])
+        print('     + d.o.f =',fit_dic['merit']['dof'])
+        print('     + Best chi2 = '+str(fit_dic['merit']['chi2']))
+        print('     + Reduced Chi2 ='+str(fit_dic['merit']['red_chi2']))
+        print('     + RMS of residuals = '+str(fit_dic['merit']['rms'])) 
+        print('     + BIC ='+str(fit_dic['merit']['BIC']))       
+        print('     + Parameters :')
+        for par in fixed_args['fixed_par_val']:print('        ',par,'=',"{0:.10e}".format(p_final[par]))                   
+        if fit_dic['fit_mode'] =='':
+            for par in fixed_args['var_par_list']:print('        ',par,'=',"{0:.10e}".format(p_final[par]))                
+        else:
+            for ipar,par in enumerate(fixed_args['var_par_list']):print('        ',par,'=',"{0:.10e}".format(p_final[par]),'+-',"{0:.10e}".format(fit_dic['sig_parfinal_err']['1s'][0,ipar]))   
+
+    #End counter
+    fit_dic['fit_dur'] = get_time()-fit_dic['st0']
+    if verbose:print('     Fit duration =',fit_dic['fit_dur'],' s')
+            
+    #Fit information
+    if fit_dic['save_outputs']:
+        save_fit_results('merit',fixed_args,fit_dic,fit_dic['fit_mode'],p_final)
+        save_fit_results('nominal',fixed_args,fit_dic,fit_dic['fit_mode'],p_final)    
+
+    return p_final
+    
+
+      
+def save_fit_results(part,fixed_args,fit_dic,fit_mode,p_final):
+    r"""**Post-proc: fit outputs**
+
+    Saves merit indicators of the best-fit model, as well as best-fit values and confidence intervals for the original and derived parameters.
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
+    file_path=fit_dic['file_save']
+
+    if part=='merit':
+        np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
+        np.savetxt(file_path,[['Merit values']],fmt=['%s']) 
+        np.savetxt(file_path,[['----------------------------------']],fmt=['%s']) 
+        np.savetxt(file_path,[['Duration : '+str(fit_dic['fit_dur'])+' s']],delimiter='\t',fmt=['%s']) 
+        np.savetxt(file_path,[['Npts : '+str(fit_dic['nx_fit'])]],delimiter='\t',fmt=['%s']) 
+        np.savetxt(file_path,[['Nfree : '+str(fit_dic['merit']['n_free'])]],delimiter='\t',fmt=['%s']) 
+        np.savetxt(file_path,[['d.o.f : '+str(fit_dic['merit']['dof'])]],delimiter='\t',fmt=['%s']) 
+        np.savetxt(file_path,[['Best chi2 : '+str(fit_dic['merit']['chi2'])]],delimiter='\t',fmt=['%s']) 
+        np.savetxt(file_path,[['Reduced chi2 : '+str(fit_dic['merit']['red_chi2'])]],delimiter='\t',fmt=['%s'])
+        np.savetxt(file_path,[['RMS of residuals : '+str(fit_dic['merit']['rms'])]],delimiter='\t',fmt=['%s']) 
+        np.savetxt(file_path,[['BIC : '+str(fit_dic['merit']['BIC'])]],delimiter='\t',fmt=['%s'])
+        np.savetxt(file_path,[['AIC : '+str(fit_dic['merit']['AIC'])]],delimiter='\t',fmt=['%s'])
+        np.savetxt(file_path,[['----------------------------------']],fmt=['%s']) 
+        np.savetxt(file_path,[['']],fmt=['%s']) 
+    
+    if part in ['nominal','derived']:
+        if part=='nominal':        
+            np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
+            np.savetxt(file_path,[['Nominal best-fit parameters']],fmt=['%s']) 
+            np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])   
+            np.savetxt(file_path,[['Fixed']],delimiter='\t',fmt=['%s'])
+            for parname in fixed_args['fixed_par_val']:  
+                np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
+                np.savetxt(file_path,[[parname+'\t'+"{0:.10e}".format(p_final[parname])]],delimiter='\t',fmt=['%s'])
+            np.savetxt(file_path,[['-----------------']],fmt=['%s'])
+        elif part=='derived': 
+            np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
+            np.savetxt(file_path,[['Derived parameters']],fmt=['%s']) 
+            np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])     
+
+            #Calculation of null model hypothesis
+            #    - to calculate chi2 (=BIC) with respect to a null level for comparison of best-fit model with null hypothesis
+            if 'p_null' in fit_dic:
+                if fit_dic['fit_mode'] in ['','chi2']: chi2_null=np.sum(ln_prob_func_lmfit(fit_dic['p_null'], fixed_args['x_val'], fixed_args=fixed_args)**2.)
+                elif fit_dic['fit_mode'] =='mcmc':chi2_null=ln_lkhood_func_mcmc(fit_dic['p_null'],fixed_args)[1]        
+                np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
+                np.savetxt(file_path,[['Null chi2 : '+str(chi2_null)]],delimiter='\t',fmt=['%s']) 
+                np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
+                np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
+                
+        np.savetxt(file_path,[['Parameters','med','-1s','+1s','med-1s','med+1s']],delimiter='\t',fmt=['%s']*6)
+        for ipar,parname in enumerate(fixed_args['var_par_list']):    
+            nom_val = p_final[parname]
+            if 'sig_parfinal_err' in fit_dic:
+                lower_sig= fit_dic['sig_parfinal_err']['1s'][0,ipar]
+                upper_sig= fit_dic['sig_parfinal_err']['1s'][1,ipar] 
+            else:
+                lower_sig = np.nan
+                upper_sig = np.nan
+            np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
+            data_save =parname+'\t'+"{0:.10e}".format(nom_val)+'\t'+"{0:.10e}".format(lower_sig)+'\t'+"{0:.10e}".format(upper_sig)+'\t'+"{0:.10e}".format(nom_val-lower_sig)+'\t'+"{0:.10e}".format(nom_val+upper_sig)
+            np.savetxt(file_path,[data_save],delimiter='\t',fmt=['%s']) 
+            if (fit_mode=='mcmc') and (part=='derived'):
+                if (fit_dic['HDI'] is not None):
+                    np.savetxt(file_path,['     HDI '+fit_dic['HDI']+' int : '+fit_dic['HDI_interv_txt'][ipar]],delimiter='\t',fmt=['%s'])
+                    np.savetxt(file_path,['     HDI '+fit_dic['HDI']+' err: '+fit_dic['HDI_sig_txt'][ipar]],delimiter='\t',fmt=['%s'])
+                if parname in fit_dic['conf_limits']:
+                    for lev in fit_dic['conf_limits'][parname]['level']: 
+                        np.savetxt(file_path,['     '+fit_dic['conf_limits'][parname]['limits'][lev]],delimiter='\t',fmt=['%s'])            
+        np.savetxt(file_path,[['']],fmt=['%s'])    
+
+    return None
+    
+    
+
+  
+
+##################################################################################################
+#%%%% MCMC analysis
 ##################################################################################################   
 
 def MCMC_corr_length(fit_dic,max_corr_length,nthreads,var_par_list,merged_chain,istart,iend,verbose=False):
     r"""**MCMC post-proc: correlation length**
 
-    Calculates correlation length of MCMC chains.
+    Calculates correlation length of each fitted parameter using MCMC chains.
       
     Args:
         TBD
@@ -726,7 +910,7 @@ def MCMC_corr_length(fit_dic,max_corr_length,nthreads,var_par_list,merged_chain,
                 if (nthreads>1):                
                     common_args=(d_param_di[:,ipar],d_param[:,ipar],idx_di)
                     chunkable_args=[np.arange(di)]
-                    corr_j=parallel_sub_MCMC_corr_length(Pool(processes=nthreads),sub_MCMC_corr_length,nthreads,di,chunkable_args,common_args)                           
+                    corr_j=parallel_sub_MCMC_corr_length(sub_MCMC_corr_length,nthreads,di,chunkable_args,common_args)                           
                 else:
                     corr_j=sub_MCMC_corr_length(np.arange(di),**common_args)
     
@@ -774,42 +958,65 @@ def MCMC_corr_length(fit_dic,max_corr_length,nthreads,var_par_list,merged_chain,
 
     return corr_length  
   
-#Moyenne du produit des ecarts a la moyenne sur la premiere moitie de la chaine, et sur la meme longueur decalee successivement de 1 pixel
-#    - c'est la fonction la plus time-consuming
+
 def sub_MCMC_corr_length(pix_shift,d_par_di,d_par,idx_di):
+    r"""**Chain correlation length**
+
+    Calculates correlation length over a given parameter chain.
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """     
+    #Average of product of deviation from the mean over the first half of the chain, and over the same length shifted successively by one pixel.
+    #    - time-consuming routine
     corr_j_loc=np.array([np.mean(d_par_di*d_par[j+idx_di]) for j in pix_shift])
+    
     return corr_j_loc
     
-def parallel_sub_MCMC_corr_length(pool_proc,func_input,nthreads,n_elem,y_inputs,common_args):
+def parallel_sub_MCMC_corr_length(func_input,nthreads,n_elem,y_inputs,common_args):
+    r"""**Multithreading routine for sub_MCMC_corr_length().**
+
+    Args:
+        func_input (function): multi-threaded function
+        nthreads (int): number of threads
+        n_elem (int): number of elements to thread
+        y_inputs (list): threadable function inputs 
+        common_args (tuple): common function inputs
     
-    #Indexes of chunks to be processed by each core       
+    Returns:
+        y_output (None or specific to func_input): function outputs 
+    
+    """      
+    pool_proc = Pool(processes=nthreads)   #cannot be passed through lmfit   
     ind_chunk_list=init_parallel_func(nthreads,n_elem)
-   
-    #1 array of n dictionary elements
-    chunked_args=[(y_inputs[0][ind_chunk[0]:ind_chunk[1]],)+common_args for ind_chunk in ind_chunk_list]	
-
-    #------------------------------------------------------------------------------------	     					
-    #Return the results from all cores as elements of a tuple
-    #    - arguments could be given whole to map(), and be automatically divided using an input 'chunksize', however for long arrays it takes 
-    # less time to do the chunking before
-    all_results=tuple(tab for tab in pool_proc.starmap(func_input,chunked_args))
-
-    #------------------------------------------------------------------------------------	 			
-    #Outputs: array with dimensions n 		
-    y_output=np.concatenate(tuple(all_results[i] for i in range(nthreads)))
-
+    chunked_args=[(y_inputs[0][ind_chunk[0]:ind_chunk[1]],)+common_args for ind_chunk in ind_chunk_list]	  #1 array of n dictionary elements
+    all_results=tuple(tab for tab in pool_proc.starmap(func_input,chunked_args)) 
+    y_output=np.concatenate(tuple(all_results[i] for i in range(nthreads)))   #array with dimensions n 		
+    pool_proc.close()
+    pool_proc.join() 	
     return y_output
     
   
     
   
     
-  
-'''
-Thin chains
-'''  
-def MCMC_thin_chains(corr_length,merged_chain):  
 
+def MCMC_thin_chains(corr_length,merged_chain):  
+    r"""**MCMC post-proc: thinning**
+
+    Thins chains based on their correlation length.
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
     corr_length_max=int(max(corr_length))
     if corr_length_max==0.:
         print('No thinning: correlation length is null')
@@ -822,12 +1029,20 @@ def MCMC_thin_chains(corr_length,merged_chain):
 
   
   
-'''
-Retrieve random sample of parameters from the chain 
-'''
+
 def MCMC_retrieve_sample(fixed_args,fix_par_list,exp_par_list,iexp_par_list,ifix_par_list,par_names,fixed_par_val,calc_envMCMC,merged_chain,n_free,nsteps_final_merged,p_best_in,var_par_list,
                          ivar_par_list,calc_sampMCMC,linked_par_expr,fit_dic,st_samp,end_samp,n_samp):  
+    r"""**MCMC post-proc: sampling**
+
+    Retrieve MCMC samples randomy or within 1 sigma from the best fit. 
+      
+    Args:
+        TBD
     
+    Returns:
+        TBD
+    
+    """ 
     #Number of model parameters
     n_par=len(p_best_in)    
     
@@ -866,7 +1081,7 @@ def MCMC_retrieve_sample(fixed_args,fix_par_list,exp_par_list,iexp_par_list,ifix
  
     #---------------------------------------------------
     #Retrieve model envelope 
-    #    - calculation of model within the +-1 sigma range of the parameters, or within the HDI intervals
+    #    - to calculate models within the +-1 sigma range of the parameters, or within the HDI intervals
     if calc_envMCMC:
 
         #Lower/upper boundaries of 1 sigma HDI range for each parameter (size 2 x n_par)
@@ -933,82 +1148,35 @@ def MCMC_retrieve_sample(fixed_args,fix_par_list,exp_par_list,iexp_par_list,ifix
   
   
   
-'''
-Calculation of HDI intervals
-'''  
-def calc_HDI_hist(chain_par,nbins_par,dbins_par):
+def MCMC_HDI(chain_par,nbins_par,dbins_par,bw_fact,frac_search,HDI_interv_par,HDI_interv_txt_par,HDI_sig_txt_par,med_par):
+    r"""**MCMC post-proc: HDI intervals**
+
+    Calculates Highest Density Intervals of fitted MCMC parameters.
+      
+    Args:
+        TBD
     
-    #Calculate PDF of the sample distribution with manual bin size
-    #    - normalized by total "mass" so that we get a density distribution
-    if (nbins_par is not None):nbins_par_loc = nbins_par
-    elif (dbins_par is not None):nbins_par_loc = int(np.ceil((np.max(chain_par)-np.min(chain_par))/dbins_par))        
-    hist_par,bin_edges_par=np.histogram(chain_par,bins=nbins_par_loc)
-    dbin_par=bin_edges_par[1::]-bin_edges_par[0:-1]
-    dens_par=hist_par/np.sum(hist_par*dbin_par)  
-        
-    return dbin_par,dens_par,bin_edges_par
-
-
-def calc_HDI_smooth(chain_par,bw_fact):
-
-    #Define smoothed density profile using Gaussian kernels      
-    #    - includes automatic bandwidth determination    
-    #    - works best for a unimodal distribution; bimodal or multi-modal distributions tend to be oversmoothed.
-    #    - default 'scott' approach used bw = npts**(-1./(dimension + 4))
-    dens_func = stats.gaussian_kde(chain_par,bw_method=bw_fact*len(chain_par)**(-1./5.))
+    Returns:
+        TBD
     
-    #Calculate density profile over HR grid
-    bin_edges_par = np.linspace(np.min(chain_par), np.max(chain_par), 2001)
-    dbin_par=bin_edges_par[1::]-bin_edges_par[0:-1]
-    bin_cen_par = 0.5*(bin_edges_par[1::]+bin_edges_par[0:-1])
-    dens_par = dens_func(bin_cen_par) 
-
-    return dbin_par,dens_par,bin_edges_par
-
-
-def sub_calc_HDI(dbin_par,dens_par,frac_search):
-  
-    #Indexes of bins sorted by decreasing order
-    isort = np.argsort(dens_par)[::-1]
-       
-    #Start adding bins until the requested fraction of the mass (q) is reached
-    frac_HDI = 0.
-    for isub,(hist_par_loc,dbin_par_loc) in enumerate(zip(dens_par[isort],dbin_par[isort])): 
-        frac_HDI += hist_par_loc*dbin_par_loc                  
-        if frac_HDI >= frac_search:break    
-        
-    #Keep only bins in 100*q% HDI
-    bins_in_HDI = isort[0:isub+1]
-  
-    #Sort bin indexes to find non-contiguous bins
-    if len(bins_in_HDI)>1:
-        sorted_binnumber = bins_in_HDI[np.argsort(bins_in_HDI)]
-        jumpind = np_where1D(  (sorted_binnumber[1::]-sorted_binnumber[0:-1]) > 1.)
-    else:
-        jumpind=[]
-        
-    return jumpind,bins_in_HDI,sorted_binnumber
-
-
-def calc_HDI(chain_par,nbins_par,dbins_par,bw_fact,frac_search,HDI_interv_par,HDI_interv_txt_par,HDI_sig_txt_par,med_par):
-    
+    """      
     #Perform preliminary calculation with default smoothed density profile  
-    dbin_par,dens_par,bin_edges_par = calc_HDI_smooth(chain_par,1.)
-    jumpind,bins_in_HDI,sorted_binnumber = sub_calc_HDI(dbin_par,dens_par,frac_search)
+    dbin_par,dens_par,bin_edges_par = PDF_smooth(chain_par,1.)
+    jumpind,bins_in_HDI,sorted_binnumber = prep_MCMC_HDI(dbin_par,dens_par,frac_search)
 
     #Alternative approach to avoid multiple intervals due to poor resolution of the PDF
     if (len(jumpind)>0) and ((nbins_par is not None) or (dbins_par is not None) or (bw_fact is not None)):
 
         #Calculate PDF of the sample distribution with manual bin size
         if (nbins_par is not None) or (dbins_par is not None):
-            dbin_par,dens_par,bin_edges_par = calc_HDI_hist(chain_par,nbins_par,dbins_par)
+            dbin_par,dens_par,bin_edges_par = PDF_hist(chain_par,nbins_par,dbins_par)
         
         #Define smoothed density profile using Gaussian kernels      
         else:
-            dbin_par,dens_par,bin_edges_par = calc_HDI_smooth(chain_par,bw_fact)
+            dbin_par,dens_par,bin_edges_par = PDF_smooth(chain_par,bw_fact)
             
         #Calculate intervals from density distribution
-        jumpind,bins_in_HDI,sorted_binnumber = sub_calc_HDI(dbin_par,dens_par,frac_search) 
+        jumpind,bins_in_HDI,sorted_binnumber = prep_MCMC_HDI(dbin_par,dens_par,frac_search) 
     
     #Single interval
     if len(jumpind)==0:
@@ -1036,14 +1204,147 @@ def calc_HDI(chain_par,nbins_par,dbins_par,bw_fact,frac_search,HDI_interv_par,HD
     HDI_frac_par=np.sum(dens_par[bins_in_HDI],dtype=float)/np.sum(dens_par,dtype=float)
     HDI_interv_txt_par+=' ('+"{0:.2f}".format(100.*HDI_frac_par)+' %)'    
 
-    return HDI_interv_txt_par,HDI_frac_par,HDI_sig_txt_par
+    return HDI_interv_txt_par,HDI_frac_par,HDI_sig_txt_par  
+  
+
+def prep_MCMC_HDI(dbin_par,dens_par,frac_search):
+    r"""**MCMC post-proc: HDI intervals initialization**
+
+    Preliminary analysis of sample to prepare HDI calculations.
+      
+    Args:
+        TBD
     
+    Returns:
+        TBD
     
-'''  
-Parameter estimates and confidence interval
-    - only variable parameters are processed
-'''  
+    """   
+    #Indexes of bins sorted by decreasing order
+    isort = np.argsort(dens_par)[::-1]
+       
+    #Start adding bins until the requested fraction of the mass (q) is reached
+    frac_HDI = 0.
+    for isub,(hist_par_loc,dbin_par_loc) in enumerate(zip(dens_par[isort],dbin_par[isort])): 
+        frac_HDI += hist_par_loc*dbin_par_loc                  
+        if frac_HDI >= frac_search:break    
+        
+    #Keep only bins in 100*q% HDI
+    bins_in_HDI = isort[0:isub+1]
+  
+    #Sort bin indexes to find non-contiguous bins
+    if len(bins_in_HDI)>1:
+        sorted_binnumber = bins_in_HDI[np.argsort(bins_in_HDI)]
+        jumpind = np_where1D(  (sorted_binnumber[1::]-sorted_binnumber[0:-1]) > 1.)
+    else:
+        jumpind=[]
+        
+    return jumpind,bins_in_HDI,sorted_binnumber
+
+    
+def PDF_hist(chain_par,nbins_par,dbins_par):
+    r"""**Histogram-based PDF**
+
+    Calculates sample distribution as an histogram with manual settings.
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    #Calculate PDF of a sample distribution with manual bin size
+    #    - normalized by total "mass" so that we get a density distribution
+    if (nbins_par is not None):nbins_par_loc = nbins_par
+    elif (dbins_par is not None):nbins_par_loc = int(np.ceil((np.max(chain_par)-np.min(chain_par))/dbins_par))        
+    hist_par,bin_edges_par=np.histogram(chain_par,bins=nbins_par_loc)
+    dbin_par=bin_edges_par[1::]-bin_edges_par[0:-1]
+    dens_par=hist_par/np.sum(hist_par*dbin_par)  
+        
+    return dbin_par,dens_par,bin_edges_par
+
+def PDF_smooth(chain_par,bw_fact):
+    r"""**Smoothed PDF**
+
+    Calculates sample distribution as a smoothed density profile using Gaussian kernels. 
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    #Define smoothed density profile using Gaussian kernels      
+    #    - includes automatic bandwidth determination    
+    #    - works best for a unimodal distribution; bimodal or multi-modal distributions tend to be oversmoothed.
+    #    - default 'scott' approach used bw = npts**(-1./(dimension + 4))
+    dens_func = stats.gaussian_kde(chain_par,bw_method=bw_fact*len(chain_par)**(-1./5.))
+    
+    #Calculate density profile over HR grid
+    bin_edges_par = np.linspace(np.min(chain_par), np.max(chain_par), 2001)
+    dbin_par=bin_edges_par[1::]-bin_edges_par[0:-1]
+    bin_cen_par = 0.5*(bin_edges_par[1::]+bin_edges_par[0:-1])
+    dens_par = dens_func(bin_cen_par) 
+
+    return dbin_par,dens_par,bin_edges_par
+
+
+def quantile(x, q, weights=None):
+    r"""**MCMC post-proc: quantiles**
+    
+    Compute sample quantiles with support for weighted samples.
+
+    Note:
+        When ``weights`` is ``None``, this method simply calls numpy's percentile function with the values of ``q`` multiplied by 100.
+
+    Args:
+        x (array, float): the samples.
+        
+        q (array, float): the list of quantiles to compute. These should all be in the range ``[0, 1]``.
+
+        weights (array, float): an optional weight corresponding to each sample. 
+
+    Returns:
+        quantiles (array, float): the sample quantiles computed at ``q``.
+
+    Raises:
+        ValueError: For invalid quantiles; ``q`` not in ``[0, 1]`` or dimension mismatch between ``x`` and ``weights``.
+
+    """
+    x = np.atleast_1d(x)
+    q = np.atleast_1d(q)
+
+    if np.any(q < 0.0) or np.any(q > 1.0):
+        raise ValueError("Quantiles must be between 0 and 1")
+
+    if weights is None:
+        return np.percentile(x, 100.0 * q)
+    else:
+        weights = np.atleast_1d(weights)
+        if len(x) != len(weights):
+            raise ValueError("Dimension mismatch: len(weights) != len(x)")
+        idx = np.argsort(x)
+        sw = weights[idx]
+        cdf = np.cumsum(sw)[:-1]
+        cdf /= cdf[-1]
+        cdf = np.append(0, cdf)
+        return np.interp(q, cdf, x[idx]).tolist()
+
+
+ 
 def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,calc_quant=True):
+    r"""**MCMC post-proc: best fit**
+
+    Calculates best estimates and confidence intervals for fitted MCMC parameters.
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """  
     n_par=len(merged_chain[0,:])
     
     #Median
@@ -1148,7 +1449,7 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,c
             bw_fact=None if (('HDI_bwf' not in fit_dic) or (parname not in fit_dic['HDI_bwf'])) else fit_dic['HDI_bwf'][parname]
             
             #HDI intervals
-            HDI_interv_txt[ipar],HDI_frac[ipar],HDI_sig_txt_par[ipar]=calc_HDI(merged_chain[:,ipar],nbins_par,dbins_par,bw_fact,frac_search,HDI_interv[ipar],HDI_interv_txt[ipar],HDI_sig_txt_par[ipar],med_par[ipar])
+            HDI_interv_txt[ipar],HDI_frac[ipar],HDI_sig_txt_par[ipar]=MCMC_HDI(merged_chain[:,ipar],nbins_par,dbins_par,bw_fact,frac_search,HDI_interv[ipar],HDI_interv_txt[ipar],HDI_sig_txt_par[ipar],med_par[ipar])
             
         #Convert into array
         HDI_interv=np.array(HDI_interv,dtype=object)   
@@ -1186,25 +1487,19 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,c
     
     
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''
-Common operations posterior to MCMC
-'''    
+   
 def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbose=True):    
+    r"""**MCMC post-proc: raw chains**
+
+    Process and analyze MCMC chains of original parameters.
+      
+    Args:
+        TBD
     
+    Returns:
+        TBD
+    
+    """
     #Burn-in
     fit_dic['nburn']=int(fit_dic['nburn'])    
 
@@ -1247,7 +1542,7 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbos
     #Plot burnt chains
     if (not os_system.path.exists(fit_dic['save_dir'])):os_system.makedirs(fit_dic['save_dir'])
     if (fit_dic['save_MCMC_chains']!=''):
-        plot_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],walker_chains,burnt_chains,fit_dic['nsteps'],fit_dic['nsteps_pb_walk'],
+        MCMC_plot_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],walker_chains,burnt_chains,fit_dic['nsteps'],fit_dic['nsteps_pb_walk'],
                     fit_dic['nwalkers'],fit_dic['nburn'],keep_chain,low_thresh_par_val,high_thresh_par_val,fit_dic['exclu_walk_autom'],verbose=verbose)
      
     #Remove chains if required
@@ -1302,7 +1597,7 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbos
 
     #Plot merged chains for MCMC parameters
     if (fit_dic['save_MCMC_chains']!=''):
-        plot_merged_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],merged_chain,fit_dic['nsteps_final_merged'],verbose=verbose)
+        MCMC_plot_merged_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],merged_chain,fit_dic['nsteps_final_merged'],verbose=verbose)
  
     #Save 1-sigma and envelope samples for plot in ANTARESS_main
     if fit_dic['calc_envMCMC'] or fit_dic['calc_sampMCMC']:
@@ -1319,7 +1614,17 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbos
     
     
 def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
+    r"""**MCMC post-proc: modified chains**
+
+    Analyze MCMC chains of modified parameters.
+      
+    Args:
+        TBD
     
+    Returns:
+        TBD
+    
+    """    
     #Parameter estimates and confidence interval
     #    - define confidence levels to be printed
     #    - use the modified chains that can contain different parameters than those used in the model
@@ -1379,7 +1684,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
             tick_kwargs=None
        
         #Plot
-        plot_MCMC_corner(fit_dic['save_MCMC_corner'],fit_dic['save_dir'],merged_chain,fit_dic['HDI_interv'],
+        MCMC_corner_plot(fit_dic['save_MCMC_corner'],fit_dic['save_dir'],merged_chain,fit_dic['HDI_interv'],
                          labels_raw = var_par_list,
                          labels=var_par_names,
                          truths=best_val,
@@ -1388,6 +1693,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
                          range_par=range_par,
                          major_int=major_int,
                          minor_int=minor_int,
+                         levels=(0.39346934028,0.86466471),
                          color_levels=color_levels,
                          smooth2D=smooth2D, 
                          plot_HDI=plot_HDI ,
@@ -1399,169 +1705,31 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
     
     
     
-'''
-Fit results
-'''        
-def fit_merit(p_final_in,fixed_args,fit_dic,verbose):
-    if verbose:print('     Calculating merit values') 
 
-    #Convert parameters() structure into dictionary 
-    if fit_dic['fit_mod'] !='mcmc': 
-        p_final={}
-        for par in p_final_in:p_final[par]=p_final_in[par].value   
-        if fit_dic['fit_mod']=='chi2':
-            fit_dic['sig_parfinal_err']={'1s':np.zeros([2,fit_dic['merit']['n_free']])}            
-            for ipar,par in enumerate(fixed_args['var_par_list']): 
-                fit_dic['sig_parfinal_err']['1s'][:,ipar]=p_final_in[par].stderr  
-    else:p_final = deepcopy(p_final_in)
+    
+
+  
+  
+  
+  
+  
+
+##################################################################################################
+#%%%% MCMC plots
+##################################################################################################   
  
-    #Calculation of best-fit model equivalent to the observations, corresponding residuals, and RMS
-    #    - only in the case where the function does return the model
-    if not fixed_args['inside_fit']:
-        res_tab = fixed_args['y_val'] - fixed_args['fit_func'](p_final,fixed_args['x_val'],args=fixed_args) 
-        fit_dic['merit']['rms']=res_tab.std()       
-    else:fit_dic['merit']['rms']='Undefined'
+def MCMC_plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,burnt_chains,nsteps,nsteps_pb_walk,nwalkers,nburn,keep_chain,low_thresh_par_val,high_thresh_par_val,exclu_walk_autom,verbose=True):
+    r"""**MCMC post-proc: walker chains plot**
 
-    #Merit values 
-    if fit_dic['fit_mod'] =='':fit_dic['merit']['mode']='forward'    
-    else:fit_dic['merit']['mode']='fit'    
-    fit_dic['merit']['dof']=fit_dic['nx_fit']-fit_dic['merit']['n_free']
+    Plots the chains for each fitted parameter over all walkers. 
+      
+    Args:
+        TBD
     
-    if fit_dic['fit_mod'] in ['','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
-    elif fit_dic['fit_mod'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1] 
-    fit_dic['merit']['red_chi2']=fit_dic['merit']['chi2']/fit_dic['merit']['dof']
-    fit_dic['merit']['BIC']=fit_dic['merit']['chi2']+fit_dic['merit']['n_free']*np.log(fit_dic['nx_fit'])      
-    fit_dic['merit']['AIC']=fit_dic['merit']['chi2']+2.*fit_dic['merit']['n_free']
+    Returns:
+        TBD
     
-    if verbose:
-        print('     + Npts = ',fit_dic['nx_fit'])
-        print('     + Nfree = ',fit_dic['merit']['n_free'])
-        print('     + d.o.f =',fit_dic['merit']['dof'])
-        print('     + Best chi2 = '+str(fit_dic['merit']['chi2']))
-        print('     + Reduced Chi2 ='+str(fit_dic['merit']['red_chi2']))
-        print('     + RMS of residuals = '+str(fit_dic['merit']['rms'])) 
-        print('     + BIC ='+str(fit_dic['merit']['BIC']))       
-        print('     + Parameters :')
-        for par in fixed_args['fixed_par_val']:print('        ',par,'=',"{0:.10e}".format(p_final[par]))                   
-        if fit_dic['fit_mod'] =='':
-            for par in fixed_args['var_par_list']:print('        ',par,'=',"{0:.10e}".format(p_final[par]))                
-        else:
-            for ipar,par in enumerate(fixed_args['var_par_list']):print('        ',par,'=',"{0:.10e}".format(p_final[par]),'+-',"{0:.10e}".format(fit_dic['sig_parfinal_err']['1s'][0,ipar]))   
-
-    #End counter
-    fit_dic['fit_dur'] = get_time()-fit_dic['st0']
-    if verbose:print('     Fit duration =',fit_dic['fit_dur'],' s')
-            
-    #Fit information
-    if fit_dic['save_outputs']:
-        save_fit_results('merit',fixed_args,fit_dic,fit_dic['fit_mod'],p_final)
-        save_fit_results('nominal',fixed_args,fit_dic,fit_dic['fit_mod'],p_final)    
-
-    return p_final
-    
-'''
-Saving fit results
-'''        
-def save_fit_results(part,fixed_args,fit_dic,fit_mod,p_final):
-    file_path=fit_dic['file_save']
-
-    if part=='merit':
-        np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
-        np.savetxt(file_path,[['Merit values']],fmt=['%s']) 
-        np.savetxt(file_path,[['----------------------------------']],fmt=['%s']) 
-        np.savetxt(file_path,[['Duration : '+str(fit_dic['fit_dur'])+' s']],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['Npts : '+str(fit_dic['nx_fit'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['Nfree : '+str(fit_dic['merit']['n_free'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['d.o.f : '+str(fit_dic['merit']['dof'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['Best chi2 : '+str(fit_dic['merit']['chi2'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['Reduced chi2 : '+str(fit_dic['merit']['red_chi2'])]],delimiter='\t',fmt=['%s'])
-        np.savetxt(file_path,[['RMS of residuals : '+str(fit_dic['merit']['rms'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['BIC : '+str(fit_dic['merit']['BIC'])]],delimiter='\t',fmt=['%s'])
-        np.savetxt(file_path,[['AIC : '+str(fit_dic['merit']['AIC'])]],delimiter='\t',fmt=['%s'])
-        np.savetxt(file_path,[['----------------------------------']],fmt=['%s']) 
-        np.savetxt(file_path,[['']],fmt=['%s']) 
-    
-    if part in ['nominal','derived']:
-        if part=='nominal':        
-            np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
-            np.savetxt(file_path,[['Nominal best-fit parameters']],fmt=['%s']) 
-            np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])   
-            np.savetxt(file_path,[['Fixed']],delimiter='\t',fmt=['%s'])
-            for parname in fixed_args['fixed_par_val']:  
-                np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
-                np.savetxt(file_path,[[parname+'\t'+"{0:.10e}".format(p_final[parname])]],delimiter='\t',fmt=['%s'])
-            np.savetxt(file_path,[['-----------------']],fmt=['%s'])
-        elif part=='derived': 
-            np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
-            np.savetxt(file_path,[['Derived parameters']],fmt=['%s']) 
-            np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])     
-
-            #Calculation of null model hypothesis
-            #    - to calculate chi2 (=BIC) with respect to a null level for comparison of best-fit model with null hypothesis
-            if 'p_null' in fit_dic:
-                if fit_dic['fit_mod'] in ['','chi2']: chi2_null=np.sum(ln_prob_func_lmfit(fit_dic['p_null'], fixed_args['x_val'], fixed_args=fixed_args)**2.)
-                elif fit_dic['fit_mod'] =='mcmc':chi2_null=ln_lkhood_func_mcmc(fit_dic['p_null'],fixed_args)[1]        
-                np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
-                np.savetxt(file_path,[['Null chi2 : '+str(chi2_null)]],delimiter='\t',fmt=['%s']) 
-                np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
-                np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
-                
-        np.savetxt(file_path,[['Parameters','med','-1s','+1s','med-1s','med+1s']],delimiter='\t',fmt=['%s']*6)
-        for ipar,parname in enumerate(fixed_args['var_par_list']):    
-            nom_val = p_final[parname]
-            if 'sig_parfinal_err' in fit_dic:
-                lower_sig= fit_dic['sig_parfinal_err']['1s'][0,ipar]
-                upper_sig= fit_dic['sig_parfinal_err']['1s'][1,ipar] 
-            else:
-                lower_sig = np.nan
-                upper_sig = np.nan
-            np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
-            data_save =parname+'\t'+"{0:.10e}".format(nom_val)+'\t'+"{0:.10e}".format(lower_sig)+'\t'+"{0:.10e}".format(upper_sig)+'\t'+"{0:.10e}".format(nom_val-lower_sig)+'\t'+"{0:.10e}".format(nom_val+upper_sig)
-            np.savetxt(file_path,[data_save],delimiter='\t',fmt=['%s']) 
-            if (fit_mod=='mcmc') and (part=='derived'):
-                if (fit_dic['HDI'] is not None):
-                    np.savetxt(file_path,['     HDI '+fit_dic['HDI']+' int : '+fit_dic['HDI_interv_txt'][ipar]],delimiter='\t',fmt=['%s'])
-                    np.savetxt(file_path,['     HDI '+fit_dic['HDI']+' err: '+fit_dic['HDI_sig_txt'][ipar]],delimiter='\t',fmt=['%s'])
-                if parname in fit_dic['conf_limits']:
-                    for lev in fit_dic['conf_limits'][parname]['level']: 
-                        np.savetxt(file_path,['     '+fit_dic['conf_limits'][parname]['limits'][lev]],delimiter='\t',fmt=['%s'])            
-        np.savetxt(file_path,[['']],fmt=['%s'])    
-
-    return None
-    
-    
-    
-
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-'''
-Plot functions
-'''  
-def plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,burnt_chains,nsteps,nsteps_pb_walk,nwalkers,nburn,keep_chain,low_thresh_par_val,high_thresh_par_val,exclu_walk_autom,verbose=True):
+    """
     if verbose:
         print(' -----------------------------------')
         print(' > Plotting chains')
@@ -1620,7 +1788,18 @@ def plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,burnt_c
 
 
 
-def plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,merged_chain,nsteps_final_merged,verbose=True):
+def MCMC_plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,merged_chain,nsteps_final_merged,verbose=True):
+    r"""**MCMC post-proc: merged chains plot**
+
+    Plots the cleaned, merged chains from all workers for each fitted parameter.
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
     if verbose:
         print(' -----------------------------------')
         print(' > Plotting merged chains')
@@ -1672,118 +1851,70 @@ def plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,merged
 
     
 
+    
+def MCMC_corner_plot(save_mode,save_dir_MCMC,xs,HDI_interv, 
+                     labels_raw = None,labels=None,truths=None,truth_color="#4682b4",bins_1D_par=20,bins_2D_par=20,quantiles=[0.15865525393145703,0.841344746068543],
+                     plot1s_1D=True,plot_HDI=False,color_1D_quant='darkorange',color_1D_HDI='green',levels=(0.39346934028,0.86466471,0.988891003),  
+                     plot_contours = True,color_levels='black',use_math_text=True,range_par=None,smooth1d=None,smooth2D=None,weights=None, color="k",  
+                     label_kwargs=None,tick_kwargs=None,show_titles=False,title_fmt=".2f",title_kwargs=None,scale_hist=False, 
+                     verbose=False, fig=None,major_int=None,minor_int=None,max_n_ticks=5, top_ticks=False, hist_kwargs=None, **hist2d_kwargs):
+    r"""**MCMC post-proc: corner plot**
 
+    Plots correlation diagram, showing the projections of a data set in a multi-dimensional space. kwargs are passed to MCMC_corner_plot_hist2d() or used for `matplotlib` styling.
+      
+    Args:
+        save_mode (str): extension of the figure (png, pdf, jpg) 
+        save_dir_MCMC (str): path of the directory in which the figure is saved
+        xs (array, float): Samples. This should be a 1- or 2-dimensional array with dimensions [nsamples, ndim]. 
+                           For a 1-D array this results in a simple histogram. 
+                           For a 2-D array, the zeroth axis is the list of samples and the next axis are the dimensions of the space.
+        HDI_interv (array, object): HDI intervals for each parameter
 
-"""
-Correlation diagram, showing the projections of a data set in a multi-dimensional space. kwargs are passed to hist2d() or used for `matplotlib` styling.
-
-    Parameters
-    ----------
-
-    weights : array_like[nsamples,]
-        The weight of each sample. If `None` (default), samples are given
-        equal weight.
-
-    color : str
-        A ``matplotlib`` style color for all histograms.
-
-    label_kwargs : dict
-        Any extra keyword arguments to send to the `set_xlabel` and
-        `set_ylabel` methods.
-
-    show_titles : bool
-        Displays a title above each 1-D histogram showing the 0.5 quantile
-        with the upper and lower errors supplied by the quantiles argument.
-
-    title_fmt : string
-        The format string for the quantiles given in titles. If you explicitly
-        set ``show_titles=True`` and ``title_fmt=None``, the labels will be
-        shown as the titles. (default: ``.2f``)
-
-    title_kwargs : dict
-        Any extra keyword arguments to send to the `set_title` command.
-
-
-    truth_color : str
-        A ``matplotlib`` style color for the ``truths`` makers.
-
-    scale_hist : bool
-        Should the 1-D histograms be scaled in such a way that the zero line
-        is visible?
-
-    verbose : bool
-        If true, print the values of the computed quantiles.
-
-    plot_contours : bool
-        Draw contours for dense regions of the plot.
-
-    max_n_ticks: int
-        Maximum number of ticks to try to use
-
-    top_ticks : bool
-        If true, label the top ticks of each axis
-
-    fig : matplotlib.Figure
-        Overplot onto the provided figure object.
-
-    hist_kwargs : dict
-        Any extra keyword arguments to send to the 1-D histogram plots.
-
-    **hist2d_kwargs
-        Any remaining keyword arguments are sent to `corner.hist2d` to generate
-        the 2-D histogram plots.
-
-"""    
-def plot_MCMC_corner(save_mode,save_dir_MCMC,
-                     xs,    #array_like[nsamples, ndim]
-                            #        The samples. This should be a 1- or 2-dimensional array. For a 1-D
-                            #        array this results in a simple histogram. For a 2-D array, the zeroth
-                            #        axis is the list of samples and the next axis are the dimensions of
-                            #        the space.
-                     HDI_interv,     #HDI, or None if not requested
-                     labels_raw = None,
-                     labels=None,     #iterable (ndim,)
-                            #        A list of names for the dimensions. If a ``xs`` is a
-                            #        ``pandas.DataFrame``, labels will default to column names.
-                     truths=None,    #iterable (ndim,)
-                            #        A list of reference values to indicate on the plots.  Individual
-                            #        values can be omitted by using ``None``. Typically the best-fit values
-                     bins_1D_par=20,bins_2D_par=20,     #int or array_like[ndim,]
-                            #        The number of bins to use in the 1D and 2D histograms, either as a fixed value for
-                            #        all dimensions, or as a list of integers for each dimension.
-                     quantiles=[0.15865525393145703,0.841344746068543],       #+-1sigma interval around the median for the 1D histogram 
-                     plot1s_1D=True,     #Plot 1 sigma confidence intervals around the median for the 1D histograms   
-                     plot_HDI=False, #Plot HDI if calculated 
-                     color_1D_quant='darkorange',                             #corresponding color
-                     #levels=(0.39346934028,0.86466471,0.988891003),          #1, 2, 3 sigma intervals defined by (1-np.exp(-0.5*(x sigma)**2.),) for the 2D histograms                  
-                     levels=(0.39346934028,0.86466471),                       #1, 2 sigma intervals defined by (1-np.exp(-0.5*(x sigma)**2.),) for the 2D histograms    
-                     color_levels='black',                                    #corresponding colors
-                     use_math_text=True,    #boolean
-                            #        If true, then axis tick labels for very large or small exponents will
-                            #        be displayed as powers of 10 rather than using `e`.
-                     range_par=None,    #iterable (ndim,)
-                            #        A list where each element is either a length 2 tuple containing
-                            #        lower and upper bounds or a float in range_par (0., 1.)
-                            #        giving the fraction of samples to include in bounds, e.g.,
-                            #        [(0.,10.), (1.,5), 0.999, etc.].
-                            #        If a fraction, the bounds are chosen to be equal-tailed.
-                     major_int=None,minor_int=None,   #list of tick intervals for each parameter 
-                            #        Some elements can be set to None, in which case 'max_n_ticks' is used 
-                     smooth1d=None,smooth2D=None, #float of list of float
-                            #       The standard deviation for Gaussian kernel passed to
-                            #       `scipy.ndimage.gaussian_filter` to smooth the 2-D and 1-D histograms
-                            #       respectively. If `None` (default), no smoothing is applied.
-                            #       If list, each element is associated with a parameter 
-
-
-             weights=None, color="k",  
-           label_kwargs=None,tick_kwargs=None,
-           show_titles=False, title_fmt=".2f", title_kwargs=None,
-           truth_color="#4682b4",
-           scale_hist=False, verbose=False, fig=None,
-           max_n_ticks=5, top_ticks=False, 
-           hist_kwargs=None, **hist2d_kwargs):
-
+        labels_raw (list, str): names of variable parameters, as used in the model
+        labels (list, str): names of variable fitted parameters, as used in the plots. If ``xs`` is a ``pandas.DataFrame``, labels will default to column names.
+        truths (array, float): a list of reference values to indicate on the plots.  Individual values can be omitted by using ``None``. Typically the best-fit values
+        truth_color (str): a ``matplotlib`` style color for the ``truths`` makers
+        bins_1D_par (int or dict): number of bins in the 1D histogram ranges (default 20)
+                                   if int, defines bins for all parameters
+                                   if dict, defines bins for parameters set as keys  
+        bins_2D_par (int or dict): same as `bins_1D_par` for the 2D histograms
+        quantiles (list, float): x-sigma confidence intervals around the median for the 1D histogram
+                                 default 1 and 2-sigma
+        plot1s_1D (bool): condition to plot 1D confidence intervals  
+        plot_HDI (bool): condition to plot HDI (if `HDI_interv`) is defined
+        color_1D_HDI (str): ``matplotlib`` style color for quantiles.
+        color_1D_quant (str): ``matplotlib`` style color for HDIs.
+        levels (tuple): sigma contours for the 2D histograms, defined as (1-np.exp(-0.5*(x sigma)**2.),)     
+                        default 1, 2, and 3 sigma
+        plot_contours (bool): draw contours for dense regions of the 2D histograms
+        color_levels (str): ``matplotlib`` style color for `plot_contours`
+        use_math_text (bool): if true, then axis tick labels for very large or small exponents will be displayed as powers of 10 rather than using `e`
+        range_par (list): each element is either a length 2 tuple containing lower and upper bounds, or a float in (0., 1.) giving the fraction of samples to include in bounds, e.g.,
+                          [(0.,10.), (1.,5), 0.999, etc.]. If a fraction, the bounds are chosen to be equal-tailed.
+        smooth1d, smooth2D (float or list of float): standard deviation for Gaussian kernel passed to `scipy.ndimage.gaussian_filter` to smooth the 2-D and 1-D histograms respectively. 
+                                                     If `None` (default), no smoothing is applied. If list, each element is associated with a parameter 
+        weights (array, float): weight of each sample. If `None` (default), samples are given equal weight.
+        color (str): A ``matplotlib`` style color for all histograms.
+        label_kwargs (dict): any extra keyword arguments to send to the `set_xlabel` and `set_ylabel` methods.
+        tick_kwargs (dict): any extra keyword arguments to send to the `tick_params` methods.    
+        show_titles (bool): displays a title above each 1-D histogram showing the 0.5 quantile with the upper and lower errors supplied by the quantiles argument.
+        title_fmt (str): the format string for the quantiles given in titles. If you explicitly set ``show_titles=True`` and ``title_fmt=None``, the labels will be
+                         shown as the titles. (default: ``.2f``)
+        title_kwargs (dict): any extra keyword arguments to send to the `set_title` command
+        scale_hist (bool): scale the 1-D histograms in such a way that the zero line is visible
+        verbose (bool): if true, print quantile and HDI values
+        fig (matplotlib.Figure): overplot onto the provided figure object
+        major_int, minor_int (list): list of major/minor tick intervals for each parameter.
+                                     Some elements can be set to None, in which case `max_n_ticks` is used 
+        max_n_ticks (int): maximum number of ticks to try to use
+        top_ticks (bool): if true, label the top ticks of each axis    
+        hist_kwargs (dict): any extra keyword arguments to send to the 1-D histogram plots.
+        **hist2d_kwargs: any remaining keyword arguments are sent to `corner.hist2d` to generate the 2-D histogram plots
+    
+    Returns:
+        None
+    
+    """
 
 
 
@@ -1963,12 +2094,15 @@ def plot_MCMC_corner(save_mode,save_dir_MCMC,
 
         #Replace quantiles with HDI 
         if (plot_HDI==True):
-       
+            if verbose:
+                print("HDI:") 
+                print(['['+str(HDI_sub[0])+';'+str(HDI_sub[1])+']' for HDI_sub in HDI_interv[i]])  
+                
             #Process each HDI interval
             for HDI_sub in HDI_interv[i]:
-                ax.axvline(HDI_sub[0], ls="dashed", color='green') 
-                ax.axvline(HDI_sub[1], ls="dashed", color='green')
-            
+                ax.axvline(HDI_sub[0], ls="dashed", color=color_1D_HDI) 
+                ax.axvline(HDI_sub[1], ls="dashed", color=color_1D_HDI)
+
         #Plot quantiles if wanted.
         if len(quantiles) > 0:
             qvalues = quantile(x, quantiles, weights=weights)
@@ -2055,7 +2189,7 @@ def plot_MCMC_corner(save_mode,save_dir_MCMC,
                 y = y.compressed()
 
             #Local 2D histogram
-            hist2d(y, x, ax=ax, range_par=[range_par[j], range_par[i]], weights=weights,
+            MCMC_corner_plot_hist2d(y, x, ax=ax, range_par=[range_par[j], range_par[i]], weights=weights,
                    color=color,levels=levels,color_levels=color_levels,rasterized=True, 
                    smooth=[smooth2D[j],smooth2D[i]], bins_2D=[bins_2D_par[j], bins_2D_par[i]],
                    **hist2d_kwargs)
@@ -2121,107 +2255,34 @@ def plot_MCMC_corner(save_mode,save_dir_MCMC,
     
 
 
-def quantile(x, q, weights=None):
-    """
-    Compute sample quantiles with support for weighted samples.
-
-    Note
-    ----
-    When ``weights`` is ``None``, this method simply calls numpy's percentile
-    function with the values of ``q`` multiplied by 100.
-
-    Parameters
-    ----------
-    x : array_like[nsamples,]
-       The samples.
-
-    q : array_like[nquantiles,]
-       The list of quantiles to compute. These should all be in the range
-       ``[0, 1]``.
-
-    weights : Optional[array_like[nsamples,]]
-        An optional weight corresponding to each sample. These
-
-    Returns
-    -------
-    quantiles : array_like[nquantiles,]
-        The sample quantiles computed at ``q``.
-
-    Raises
-    ------
-    ValueError
-        For invalid quantiles; ``q`` not in ``[0, 1]`` or dimension mismatch
-        between ``x`` and ``weights``.
-
-    """
-    x = np.atleast_1d(x)
-    q = np.atleast_1d(q)
-
-    if np.any(q < 0.0) or np.any(q > 1.0):
-        raise ValueError("Quantiles must be between 0 and 1")
-
-    if weights is None:
-        return np.percentile(x, 100.0 * q)
-    else:
-        weights = np.atleast_1d(weights)
-        if len(x) != len(weights):
-            raise ValueError("Dimension mismatch: len(weights) != len(x)")
-        idx = np.argsort(x)
-        sw = weights[idx]
-        cdf = np.cumsum(sw)[:-1]
-        cdf /= cdf[-1]
-        cdf = np.append(0, cdf)
-        return np.interp(q, cdf, x[idx]).tolist()
 
 
-def hist2d(x, y, bins_2D=[20,20], range_par=None, weights=None, levels=None, smooth=None,
+
+def MCMC_corner_plot_hist2d(x, y, bins_2D=[20,20], range_par=None, weights=None, levels=None, smooth=None,
            ax=None, color=None, plot_datapoints=True, plot_density=True,
            plot_contours=True, no_fill_contours=False, fill_contours=False,
            contour_kwargs=None, contourf_kwargs=None, data_kwargs=None,color_levels='black',
            **kwargs):
-    """
-    Plot a 2-D histogram of samples.
+    r"""**MCMC post-proc: 2-D histograms**
+    
+    Plots 2-D histograms of samples for correlation diagram
 
-    Parameters
-    ----------
-    x : array_like[nsamples,]
-       The samples.
+    Args:
+        x (array, float): The samples.    
+        y (array, float): The samples.    
+        levels (array, float): The contour levels to draw.    
+        ax (matplotlib.Axes): A axes instance on which to add the 2-D histogram.    
+        plot_datapoints (bool): Draw the individual data points.    
+        plot_density (bool): Draw the density colormap.    
+        plot_contours (bool): Draw the contours.    
+        no_fill_contours (bool): Add no filling at all to the contours (unlike setting ``fill_contours=False``, which still adds a white fill at the densest points).   
+        fill_contours (bool): Fill the contours.    
+        contour_kwargs (dict): Any additional keyword arguments to pass to the `contour` method.    
+        contourf_kwargs (dict): Any additional keyword arguments to pass to the `contourf` method.
+        data_kwargs (dict): Any additional keyword arguments to pass to the `plot` method when adding the individual data points.
 
-    y : array_like[nsamples,]
-       The samples.
-
-    levels : array_like
-        The contour levels to draw.
-
-    ax : matplotlib.Axes
-        A axes instance on which to add the 2-D histogram.
-
-    plot_datapoints : bool
-        Draw the individual data points.
-
-    plot_density : bool
-        Draw the density colormap.
-
-    plot_contours : bool
-        Draw the contours.
-
-    no_fill_contours : bool
-        Add no filling at all to the contours (unlike setting
-        ``fill_contours=False``, which still adds a white fill at the densest
-        points).
-
-    fill_contours : bool
-        Fill the contours.
-
-    contour_kwargs : dict
-        Any additional keyword arguments to pass to the `contour` method.
-
-    contourf_kwargs : dict
-        Any additional keyword arguments to pass to the `contourf` method.
-
-    data_kwargs : dict
-        Any additional keyword arguments to pass to the `plot` method when
-        adding the individual data points.
+    Returns:
+        None
 
     """
 
@@ -2362,36 +2423,8 @@ def hist2d(x, y, bins_2D=[20,20], range_par=None, weights=None, levels=None, smo
     ax.set_xlim(range_par[0])
     ax.set_ylim(range_par[1])    
     
+    return None
     
     
-    
-def gen_hrand_chain(par_med,epar_low,epar_high,n_throws):
-    r"""**PDF generator**
-
-    Generates normal or half-normal distributions of a parameter.
-
-    Args:
-        TBD
-    
-    Returns:
-        TBD
-    
-    """ 
-    if epar_high==epar_low:
-        hrand_chain = np.random.normal(par_med, epar_high, n_throws)
-    else:
-        if n_throws>1:
-            if n_throws<20:n_throws_half = 10*n_throws
-            else:n_throws_half = 2*n_throws
-            rand_draw_right = np.random.normal(loc=par_med, scale=epar_high, size=n_throws_half)
-            rand_draw_right = rand_draw_right[rand_draw_right>par_med]
-            rand_draw_right = rand_draw_right[0:int(n_throws/2)]
-            rand_draw_left = np.random.normal(loc=par_med, scale=epar_low, size=n_throws_half)
-            rand_draw_left = rand_draw_left[rand_draw_left<=par_med]
-            rand_draw_left = rand_draw_left[0:n_throws-int(n_throws/2)]
-            hrand_chain = np.append(rand_draw_left,rand_draw_right)
-        else:
-            if np.random.normal(loc=0., scale=1., size=1)>0:hrand_chain = np.random.normal(loc=par_med, scale=epar_high, size=1)
-            else:hrand_chain = np.random.normal(loc=par_med, scale=epar_low, size=1)
-    return hrand_chain    
+ 
     

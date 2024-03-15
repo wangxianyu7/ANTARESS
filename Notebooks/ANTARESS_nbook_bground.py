@@ -14,6 +14,7 @@ Generic functions
 '''
 def init(nbook_type):
     input_nbook = {
+        'type':nbook_type,
         'settings' : {'gen_dic':{'data_dir_list':{}},
                       'mock_dic':{'visit_def':{},'sysvel':{},'intr_prof':{},'flux_cont':{},'set_err':{}},
                       'data_dic':{'DI':{'sysvel':{}},
@@ -25,6 +26,8 @@ def init(nbook_type):
         'par' : {},           #notebook inputs related to processing and analysis
         'plots' : {}}         #notebook inputs related to plots
 
+    
+    
     return input_nbook
 
 def init_star(input_nbook):
@@ -124,7 +127,7 @@ def ana_prof(input_nbook,data_type,fit_mode = 'chi2'):
     if 'calc_fit_'+data_type in input_nbook['par']:input_nbook['settings']['gen_dic']['calc_fit_'+data_type] = input_nbook['par']['calc_fit_'+data_type]
     
     if ('fit_mode' in input_nbook['par']):
-        input_nbook['settings']['data_dic'][data_type]['fit_mod']=deepcopy(input_nbook['par']['fit_mode'])
+        input_nbook['settings']['data_dic'][data_type]['fit_mode']=deepcopy(input_nbook['par']['fit_mode'])
         input_nbook['par'].pop('fit_mode')
         input_nbook['settings']['data_dic'][data_type]['progress']=False
     if 'run_mode' in input_nbook['par']:
@@ -175,6 +178,13 @@ def ana_jointprof(input_nbook,data_type,fit_mode = 'chi2'):
 def ana_jointcomm(input_nbook,data_type,ana_type):
     input_nbook['settings']['gen_dic']['fit_'+data_type+ana_type]=True
     input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['idx_in_fit'] = {input_nbook['par']['instrument']:{input_nbook['par']['night']:deepcopy(input_nbook['par']['idx_in_fit'])}}  
+
+    #Fit mode
+    if ('fit_mode' in input_nbook['par']):
+        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_mode']=deepcopy(input_nbook['par']['fit_mode'])
+        input_nbook['par'].pop('fit_mode')
+        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['progress']=False
+    else:input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_mode']='chi2'
     
     #Default fitted properties
     if (ana_type=='Prop'):
@@ -183,6 +193,7 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
             'ctrst':{},
             'FWHM':{}}
         
+        #Guess ranges
         for prop in input_nbook['par']['mod_prop']:
             bd_prop = np.array(input_nbook['par']['mod_prop'][prop])
 
@@ -225,15 +236,13 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
             input_nbook['settings']['glob_fit_dic']['IntrProp']['priors'][key]['mod'] = 'uf'   
         input_nbook['par'].pop('priors')
 
-    if ('fit_mode' in input_nbook['par']):
-        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_mod']=deepcopy(input_nbook['par']['fit_mode'])
-        input_nbook['par'].pop('fit_mode')
-        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['progress']=False
-    else:input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_mod']='chi2'
-    
+    #Walkers
     if ('mcmc_set' in input_nbook['par']):
         input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mcmc_set']=deepcopy(input_nbook['par']['mcmc_set'])
-        input_nbook['par'].pop('mcmc_set')    
+        input_nbook['par'].pop('mcmc_set')  
+        
+    #Save chains by default
+    input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['save_MCMC_chains']='png' 
         
     return None
 
@@ -253,33 +262,42 @@ def plot_system(input_nbook):
 
 def plot_prop(input_nbook,data_type):
     input_nbook['settings']['plot_dic']['prop_'+data_type] = 'png' 
+    if input_nbook['type']=='RMR':
+        input_nbook['par']['prop'] = ['rv','contrast','FWHM']
+        input_nbook['par']['print_disp'] = ['plot']
     if 'prop' in input_nbook['par']: 
         input_nbook['par']['prop'] = np.array(input_nbook['par']['prop'])
         if 'contrast' in input_nbook['par']['prop']:input_nbook['par']['prop'][input_nbook['par']['prop']=='contrast']= 'ctrst'
         input_nbook['plots']['prop_'+data_type+'_ordin'] = deepcopy(input_nbook['par']['prop'])
-        input_nbook['par'].pop('prop') 
-        
+        input_nbook['par'].pop('prop')         
+        if ('print_disp' in input_nbook['par']):  
+            for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
+                input_nbook['plots']['prop_DI_'+plot_prop]={'print_disp':input_nbook['par']['print_disp']}
+            input_nbook['par'].pop('print_disp') 
     if (data_type=='Intr') and ('model' in input_nbook['par']):
         prop_path = input_nbook['antaress_path']+'/Ongoing/'+input_nbook['par']['main_pl']+'_Saved_data/Joined_fits/'
         if   input_nbook['par']['model']=='from_prop':prop_path+='/IntrProp/'
         elif input_nbook['par']['model']=='from_prof':prop_path+='/IntrProf/'        
-        prop_path+=input_nbook['settings']['glob_fit_dic'][data_type+'Prop']['fit_mod']+'/'  
+        prop_path+=input_nbook['settings']['glob_fit_dic'][data_type+'Prop']['fit_mode']+'/'  
         for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
             input_nbook['plots']['prop_Intr_'+plot_prop]={
                 'IntrProp_path' : prop_path ,
-                'theo_HR_prop' : True}
+                'theo_HR_prop' : True} 
     return None
 
 def plot_prof(input_nbook,data_type):
     input_nbook['settings']['plot_dic'][data_type] = 'png'
+    if input_nbook['type']=='RMR':
+        input_nbook['par']['fit_type'] = 'indiv'   #overplot fits to individual exposures 
+    
     input_nbook['plots'][data_type]={'GIF_generation':True,'shade_cont':True,'plot_line_model':True,'plot_prop':False} 
     if 'x_range' in input_nbook['par']:input_nbook['plots'][data_type]['x_range'] = deepcopy(input_nbook['par']['x_range'])
     if 'y_range' in input_nbook['par']:input_nbook['plots'][data_type]['y_range'] = deepcopy(input_nbook['par']['y_range'])
     if data_type=='Intr_prof':
         input_nbook['plots'][data_type]['norm_prof'] = True
-        if 'fit_type' in input_nbook['par']:
-            input_nbook['plots'][data_type]['fit_type'] = deepcopy(input_nbook['par']['fit_type'])
-            input_nbook['par'].pop('fit_type')  
+    if 'fit_type' in input_nbook['par']:
+        input_nbook['plots'][data_type]['fit_type'] = deepcopy(input_nbook['par']['fit_type'])
+        input_nbook['par'].pop('fit_type')  
     return None
 
 def plot_map(input_nbook,data_type):

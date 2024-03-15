@@ -1652,7 +1652,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - the constant level a0 is left undefined :  for contrast and FWHM models are normalized to their mean, and for RVs the level is controlled by the alignment module and sysvel
     #    - RV correction must be done in the input rest frame, as CCFs are corrected before being aligned
     #      if a FWHM correction is requested you must perform first the RV correction alone (if relevant), then determine and fix the systemic velocity, then perform the FWHM correction  
-    #    - coefficients for the correction are derived using the plot routine 'prop_DI' (use the residual from the Keplerian RVs, ie the 'rv_res' property, to derive the coefficients for RV detrending)
+    #    - coefficients for the correction are derived using the plot routine 'prop_DI' (use the residual from the Keplerian RVs, i.e. the 'rv_res' property, to derive the coefficients for RV detrending)
     detrend_prof_dic['prop']={}    
     
             
@@ -1873,7 +1873,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Fitting mode 
     #    - 'chi2', 'mcmc', ''
-    data_dic['DI']['fit_mod']='chi2'  
+    data_dic['DI']['fit_mode']='chi2'  
     
     
     #%%%%% Printing fits results
@@ -2039,7 +2039,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Fitting mode 
     #    - 'chi2', 'mcmc', ''
-    glob_fit_dic['DIProp']['fit_mod']='chi2'  
+    glob_fit_dic['DIProp']['fit_mode']='chi2'  
     
     
     #%%%%% Printing fits results
@@ -3199,7 +3199,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Fitting mode 
     #    - chi2 or MCMC
-    data_dic['Intr']['fit_mod']='chi2'
+    data_dic['Intr']['fit_mode']='chi2'
     
     
     #%%%%% Printing fits results
@@ -3350,7 +3350,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Fitting mode 
     #    - 'chi2', 'mcmc', ''
-    glob_fit_dic['IntrProp']['fit_mod']='chi2'  
+    glob_fit_dic['IntrProp']['fit_mode']='chi2'  
     
     
     #%%%%% Printing fits results
@@ -3483,7 +3483,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
         # #Fit mode
         # #    - 'chi2', 'mcmc', or ''
-        # glob_fit_dic['ResProf']['fit_mod']='mcmc' 
+        # glob_fit_dic['ResProf']['fit_mode']='mcmc' 
     
     
     
@@ -3742,7 +3742,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     #%%%%% Fitting mode
     #    - 'chi2', 'mcmc', or ''
-    glob_fit_dic['IntrProf']['fit_mod']='chi2' 
+    glob_fit_dic['IntrProf']['fit_mode']='chi2' 
     
     
     #%%%%% Printing fits results
@@ -4271,7 +4271,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Fitting mode 
     #    - chi2 or MCMC
-    data_dic['Atm']['fit_mod']='chi2'
+    data_dic['Atm']['fit_mode']='chi2'
     
     
     #%%%%% Printing fits results
@@ -4397,7 +4397,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Fitting mode 
     #    - 'chi2', 'mcmc', ''
-    glob_fit_dic['AtmProp']['fit_mod']='chi2'  
+    glob_fit_dic['AtmProp']['fit_mode']='chi2'  
     
     
     #%%%%% Printing fits results
@@ -4548,7 +4548,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     #%%%%% Fitting mode
     #    - 'chi2', 'mcmc', or ''
-    glob_fit_dic['AtmProf']['fit_mod']='chi2' 
+    glob_fit_dic['AtmProf']['fit_mode']='chi2' 
     
     
     #%%%%% Printing fits results
