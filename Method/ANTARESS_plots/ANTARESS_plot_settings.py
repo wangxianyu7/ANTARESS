@@ -4149,7 +4149,7 @@ def ANTARESS_plot_settings(plot_dic,gen_dic,data_dic,glob_fit_dic):
         if gen_dic['star_name']=='AUMic':
             plot_settings[key_plot]['v_range_all']={
             'ESPRESSO':{
-                        'mock_vis':[-0.0075, 0.0075], #--base
+                        # 'mock_vis':[-0.0075, 0.0075], #--base
                         'mock_vis1':[-0.0075, 0.0075],
                         'mock_vis2':[-0.0075, 0.0075],
                         'mock_vis3':[-0.0075, 0.0075],

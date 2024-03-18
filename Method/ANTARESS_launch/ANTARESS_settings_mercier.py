@@ -4391,8 +4391,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     # Master-out RV table
     if gen_dic['star_name']=='AUMic':
-        glob_fit_dic['ResProf']['master_out_tab']=[-90, 90, 200]
-        # glob_fit_dic['ResProf']['master_out_tab']=[]
+        # glob_fit_dic['ResProf']['master_out_tab']=[-90, 90, 200]
+        glob_fit_dic['ResProf']['master_out_tab']=[]
     
     # Reference planet
     if gen_dic['star_name']=='AUMic':

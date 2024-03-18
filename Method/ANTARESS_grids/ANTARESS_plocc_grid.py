@@ -223,8 +223,8 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
 
     Returns:
         surf_prop_dic_pl (dict) : average value of all the properties of interest over all the planet-occulted regions, in each exposure and chromatic mode considered.
-        surf_prop_dic_spot (dict) : average value of all the properties of interest over all the spot-occulted regions, in each exposure and chromatic mode considered.
-
+        surf_prop_dic_spot (dict) : average value of all the properties of interest over all the spotted regions, in each exposure and chromatic mode considered.
+        surf_prop_dic_common (dict) : average value of all the properties of interest considering the contributions from both the planet-occulted and spotted regions, in each exposure and chromatic mode considered.
     """ 
 
     system_prop = deepcopy(system_prop_in)
@@ -272,9 +272,11 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
     #Calculation of achromatic and/or chromatic values
     surf_prop_dic_pl = {}
     surf_prop_dic_spot = {}
+    surf_prop_dic_common = {}
     for subkey_chrom in key_chrom:
         surf_prop_dic_pl[subkey_chrom] = {}        
         surf_prop_dic_spot[subkey_chrom] = {}
+        surf_prop_dic_common[subkey_chrom] = {}
     if 'line_prof' in par_list_in:
         for subkey_chrom in key_chrom:
             surf_prop_dic_pl[subkey_chrom]['line_prof']=np.zeros([args['ncen_bins'],n_exp],dtype=float)
@@ -306,6 +308,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
         if Ftot_star:
             surf_prop_dic_pl[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
             surf_prop_dic_spot[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
+            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan
 
 
         #Convective blueshift
@@ -699,15 +702,19 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                 for subkey_chrom in key_chrom:
 
                     surf_prop_dic_pl[subkey_chrom]['Ftot_star'][:,i_in] = 1.
-                    if cond_spot:surf_prop_dic_spot[subkey_chrom]['Ftot_star'][:,i_in] = 1.
-                    
+                    surf_prop_dic_common[subkey_chrom]['Ftot_star'][:,i_in] = 1.
+                    if cond_spot:
+                        surf_prop_dic_spot[subkey_chrom]['Ftot_star'][:,i_in] = 1.
+
                     #Planets
                     if n_osamp_exp_eff_pl>0:
                         surf_prop_dic_pl[subkey_chrom]['Ftot_star'][:,i_in] -= Focc_star_pl[subkey_chrom]/(n_osamp_exp_eff_pl*theo_dic['Ftot_star_'+subkey_chrom])
+                        surf_prop_dic_common[subkey_chrom]['Ftot_star'][:,i_in] -= Focc_star_pl[subkey_chrom]/(n_osamp_exp_eff_pl*theo_dic['Ftot_star_'+subkey_chrom])
                     
                     #Spots
                     if cond_spot and (n_osamp_exp_eff_sp>0):
                         surf_prop_dic_spot[subkey_chrom]['Ftot_star'][:,i_in] -= (Focc_star_sp[subkey_chrom])/(n_osamp_exp_eff_sp*theo_dic['Ftot_star_'+subkey_chrom])
+                        surf_prop_dic_common[subkey_chrom]['Ftot_star'][:,i_in] -= (Focc_star_sp[subkey_chrom])/(n_osamp_exp_eff_sp*theo_dic['Ftot_star_'+subkey_chrom])
 
             #Local line profiles from current exposure
             if ('line_prof' in par_list_in):

@@ -929,14 +929,8 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     high_bound=-1e100
     num_pts=0
 
-    # Master-out 
+    # Master-out general properties
     # - Common table
-    if fit_prop_dic['master_out_tab']!=[]:
-        if len(fit_prop_dic['master_out_tab'])!=3:stop('Incorrect master-out table format. The format should be [low_bd, up_bd, num_pts].')
-        else:fixed_args['master_out']['master_out_tab']['edge_bins']=np.linspace(fit_prop_dic['master_out_tab'][0],fit_prop_dic['master_out_tab'][1],num=fit_prop_dic['master_out_tab'][2])
-    else:stop('Undefined master-out table.')
-    fixed_args['master_out']['master_out_tab']['dcen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][1::]-fixed_args['master_out']['master_out_tab']['edge_bins'][0:-1]
-    fixed_args['master_out']['master_out_tab']['cen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][:-1]+(fixed_args['master_out']['master_out_tab']['dcen_bins']/2)
     fixed_args['master_out']['master_out_tab']['resamp_mode']=gen_dic['resamp_mode']
 
     # - Weights
@@ -984,11 +978,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         for multivisit in fixed_args['master_out']['multivisit_list'][inst]:
             if multivisit not in data_dic[inst]['visit_list']:stop('Problem: '+multivisit+' was selected for master-out calculation but is not used in the fit.')
         
-        #Defining multi-visit master-out and weights
-        if len(fixed_args['master_out']['multivisit_list'][inst])>0:
-            fixed_args['master_out']['multivisit_flux'][inst]=np.zeros(len(fixed_args['master_out']['master_out_tab']['cen_bins']), dtype=float)
-            fixed_args['master_out']['multivisit_weights_total'][inst]=np.zeros(len(fixed_args['master_out']['master_out_tab']['cen_bins']), dtype=float)
-
         #Processing visit
         for vis_index, vis in enumerate(data_dic[inst]['visit_list']):
             init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
@@ -1018,9 +1007,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 fixed_args['master_out']['scaled_data_paths'][inst][vis]={}
                 if gen_dic['flux_sc']:fixed_args['master_out']['scaled_data_paths'][inst][vis] = data_dic[inst][vis]['scaled_DI_data_paths']
                 else:fixed_args['master_out']['scaled_data_paths'][inst][vis] = None
-
-                # - Flux table
-                fixed_args['master_out']['flux'][inst][vis]=np.zeros([len(fixed_args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
 
                 #Define in and out of transit exposures - needed for profile generation
                 fixed_args['idx_out'][inst][vis]=gen_dic[inst][vis]['idx_out']
@@ -1152,6 +1138,24 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
                 #Number of fitted exposures
                 fixed_args['nexp_fit']+=fixed_args['nexp_fit_all'][inst][vis]
+
+    if fit_prop_dic['master_out_tab']!=[]:
+        if len(fit_prop_dic['master_out_tab'])!=3:stop('Incorrect master-out table format. The format should be [low_bd, up_bd, num_pts].')
+        else:fixed_args['master_out']['master_out_tab']['edge_bins']=np.linspace(fit_prop_dic['master_out_tab'][0],fit_prop_dic['master_out_tab'][1],num=fit_prop_dic['master_out_tab'][2])
+    else:fixed_args['master_out']['master_out_tab']['edge_bins']=np.linspace(low_bound,high_bound,num=num_pts+1)
+    fixed_args['master_out']['master_out_tab']['dcen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][1::]-fixed_args['master_out']['master_out_tab']['edge_bins'][0:-1]
+    fixed_args['master_out']['master_out_tab']['cen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][:-1]+(fixed_args['master_out']['master_out_tab']['dcen_bins']/2)
+
+    #Defining necessary master-out tables
+    for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):
+        #Defining multi-visit master-out and weights
+        if len(fixed_args['master_out']['multivisit_list'][inst])>0:
+            fixed_args['master_out']['multivisit_flux'][inst]=np.zeros(len(fixed_args['master_out']['master_out_tab']['cen_bins']), dtype=float)
+            fixed_args['master_out']['multivisit_weights_total'][inst]=np.zeros(len(fixed_args['master_out']['master_out_tab']['cen_bins']), dtype=float)
+        
+        for vis in data_dic[inst]['visit_list']:
+                # Defining flux table
+                fixed_args['master_out']['flux'][inst][vis]=np.zeros([len(fixed_args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
 
     #Common data type
     for idx_inst,inst in enumerate(data_dic['instrum_list']):
@@ -1520,19 +1524,19 @@ def joined_ResProf(param,args):
                 if args['n_pc'][inst][vis] is not None:
                     for i_pc in range(args['n_pc'][inst][vis]):mod_dic[inst][vis][isub]+=param_val[args['name_prop2input']['aPC_idxin'+str(i_in)+'_ord'+str(i_pc)+'__IS'+inst+'_VS'+vis]]*args['eig_res_matr'][inst][vis][i_in][i_pc]
 
-            x_data=np.zeros([len(args['idx_in_fit'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-            y_data=np.zeros([len(args['idx_in_fit'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-            t_data=np.zeros([len(args['idx_in_fit'][inst][vis]),1], dtype=float)
-            for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
-                x_data[isub] = args['master_out']['master_out_tab']['cen_bins']
-                resamp_flux = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],mod_dic[inst][vis][isub],kind=args['master_out']['master_out_tab']['resamp_mode'])
-                y_data[isub] = resamp_flux
-                t_data[isub] = args['coord_fit'][inst][vis]['bjd'][isub]
-            fig, ax = plt.subplots(1, 1)
-            cmap = plt.get_cmap('jet')
-            psm = ax.pcolormesh (x_data, t_data, y_data, cmap=cmap)
-            fig.colorbar(psm, ax=ax)
-            plt.show()
+            # x_data=np.zeros([len(args['idx_in_fit'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
+            # y_data=np.zeros([len(args['idx_in_fit'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
+            # t_data=np.zeros([len(args['idx_in_fit'][inst][vis]),1], dtype=float)
+            # for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
+            #     x_data[isub] = args['master_out']['master_out_tab']['cen_bins']
+            #     resamp_flux = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],mod_dic[inst][vis][isub],kind=args['master_out']['master_out_tab']['resamp_mode'])
+            #     y_data[isub] = resamp_flux
+            #     t_data[isub] = args['coord_fit'][inst][vis]['bjd'][isub]
+            # fig, ax = plt.subplots(1, 1)
+            # cmap = plt.get_cmap('jet')
+            # psm = ax.pcolormesh (x_data, t_data, y_data, cmap=cmap)
+            # fig.colorbar(psm, ax=ax)
+            # plt.show()
             # plt.savefig('/Users/samsonmercier/Downloads/NEW_TESTING_ERRORFIXED?_BestFit_Res_map.pdf')
 
     return mod_dic,coeff_line_dic,mod_prop_dic
