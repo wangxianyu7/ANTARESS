@@ -1789,7 +1789,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         base_DI_prof = custom_DI_prof(param_exp,None,args=args_exp)[0]
 
                         #Deviation from nominal stellar profile 
-                        surf_prop_dic, surf_prop_dic_sp = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp],system_spot_prop_in=args_exp['system_spot_prop'])
+                        surf_prop_dic, surf_prop_dic_sp, surf_prop_dic_common = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp],system_spot_prop_in=args_exp['system_spot_prop'])
 
                         #Correcting the disk-integrated profile for planet and spot contributions
                         DI_prof_exp = base_DI_prof - surf_prop_dic[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0]

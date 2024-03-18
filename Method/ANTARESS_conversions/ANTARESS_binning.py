@@ -454,7 +454,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
             if ('spec' in data_mode) and ('chrom' in system_prop):key_chrom+=['chrom']
-            data_glob_new['plocc_prop'],data_glob_new['spot_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True) 
+            data_glob_new['plocc_prop'],data_glob_new['spot_prop'],data_glob_new['common_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True) 
 
 
         #---------------------------------------------------------------------------

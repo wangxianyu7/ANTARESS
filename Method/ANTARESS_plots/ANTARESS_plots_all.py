@@ -133,7 +133,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 coord_pl_in[pl_loc]['cen_pos'] = coord_pl_in[pl_loc]['cen_pos'][:,cond_occ_HR]
                 coord_pl_in[pl_loc]['phase'] = coord_pl_in[pl_loc]['phase'][cond_occ_HR]     
                 coord_pl_in[pl_loc]['ecl'] = coord_pl_in[pl_loc]['ecl'][cond_occ_HR] 
-            surf_prop_dic, surf_prop_dic_spot = sub_calc_plocc_spot_prop(['achrom'],args,par_list,gen_dic['studied_pl'],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))
+            surf_prop_dic, surf_prop_dic_spot, surf_prop_dic_common = sub_calc_plocc_spot_prop(['achrom'],args,par_list,gen_dic['studied_pl'],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))
             theo_HR_prop_plocc = surf_prop_dic['achrom']
             theo_HR_prop_plocc['nph_HR'] = coord_pl_in['nph_HR']
             for pl_loc in gen_dic['studied_pl']:
@@ -3333,7 +3333,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 theo_dic_samp = deepcopy(theo_dic)
                                 theo_dic_samp['d_oversamp'] = []
                                 for isamp in range(nsamp):
-                                    surf_prop_dic,_ = sub_calc_plocc_spot_prop(['achrom'],{},['rv'],[pl_loc],system_param,theo_dic_samp,data_dic['DI']['system_prop'],par_subsample[0][isamp],coord_pl_in_samp,range(theo_HR_prop_plocc['nph_HR']))        
+                                    surf_prop_dic,_,_ = sub_calc_plocc_spot_prop(['achrom'],{},['rv'],[pl_loc],system_param,theo_dic_samp,data_dic['DI']['system_prop'],par_subsample[0][isamp],coord_pl_in_samp,range(theo_HR_prop_plocc['nph_HR']))        
                                     RV_stsurf_HR_thread[isamp,:] =surf_prop_dic['achrom'][pl_loc]['rv'][0,:]                                
                                 return RV_stsurf_HR_thread
                             

@@ -2398,7 +2398,7 @@ def prior_contrast(p_step_loc,args_in,prior_func_prop):
             args['vis']=vis
             pl_vis = args['transit_pl'][inst][vis][0]
             system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,p_step_loc,[pl_vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
-            surf_prop_dic,spot_prop_dic = sub_calc_plocc_spot_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
+            surf_prop_dic,spot_prop_dic,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
             ctrst_vis = surf_prop_dic[pl_vis]['ctrst'][0]       
             break_cond = (ctrst_vis<0.) | (ctrst_vis>1.)
             if True in break_cond:

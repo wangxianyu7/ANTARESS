@@ -325,7 +325,7 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
             args_exp['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],args_exp,args_exp['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
 
         #Planet-occulted line profile 
-        surf_prop_dic,spot_prop_dic = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_dic[inst][vis],[gen_dic[inst][vis]['idx_in2exp'][i_in]])
+        surf_prop_dic,spot_prop_dic, common_prop_dic = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_dic[inst][vis],[gen_dic[inst][vis]['idx_in2exp'][i_in]])
         sp_line_model = surf_prop_dic[chrom_mode]['line_prof'][:,0]
 
         #Scaling to fitted intrinsic continuum level

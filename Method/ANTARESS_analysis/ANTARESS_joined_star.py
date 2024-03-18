@@ -304,7 +304,7 @@ def joined_IntrProp(param,args):
             
             #Calculate coordinates and properties of occulted regions 
             system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
-            surf_prop_dic,spotocc_prop = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
+            surf_prop_dic,spotocc_prop,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
             
             #Properties associated with the transiting planet in the visit 
             pl_vis = args['transit_pl'][inst][vis][0]
@@ -763,7 +763,7 @@ def joined_IntrProf(param,args):
                 args_exp = def_st_prof_tab(inst,vis,isub,args)
 
                 #Intrinsic profile for current exposure
-                surf_prop_dic,spotocc_prop = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,[isub])
+                surf_prop_dic,spotocc_prop,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,[isub])
                 sp_line_model = surf_prop_dic[args['chrom_mode']]['line_prof'][:,0]
                 
                 #Conversion and resampling 
@@ -1365,9 +1365,7 @@ def joined_ResProf(param,args):
             cond_def_all=np.zeros([len(args['master_out']['idx_in_master_out'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=bool)
             cond_undef_weights=np.zeros(len(args['master_out']['master_out_tab']['cen_bins']), dtype=bool)
             args['master_out']['weights'][inst][vis]=np.zeros([len(args['master_out']['idx_in_master_out'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-            intermediate_profs=[]
             contrib_profs=np.zeros([len(args['master_out']['idx_in_master_out'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-            LC_flux_band_all=np.zeros([len(args['idx_in_fit'][inst][vis]),args['system_prop'][args['chrom_mode']]['nw']])*np.nan
 
             #Outputs
             if not args['fit']:
@@ -1414,7 +1412,7 @@ def joined_ResProf(param,args):
                 #Model DI profile for current exposure accounting for deviations from the nominal profile - on the wavelength table of the exposure considered
                 new_args_exp=deepcopy(args_exp)
                 new_args_exp['conv2intr']=False
-                surf_prop_dic,surf_prop_dic_sp = sub_calc_plocc_spot_prop([args['chrom_mode']],new_args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
+                surf_prop_dic,surf_prop_dic_sp,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],new_args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
                 sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[args['chrom_mode']]['line_prof'][:,0]
 
                 #Properties of all planet-occulted and spotted regions used to calculate spectral line profiles

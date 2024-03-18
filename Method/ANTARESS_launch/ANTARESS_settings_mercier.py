@@ -4425,14 +4425,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Fixed/variable properties   
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['ResProf']['mod_prop']={
-        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.7, 'bd':[0.55, 0.8]},
-        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':8, 'bd':[7, 10]},
-        'veq':{'vary':True,'guess':7.35, 'bd':[7, 8]},
-        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':-25, 'bd':[-40, -20]},
-        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051 - 0.35, 'bd':[2458330.39051 - 0.4, 2458330.39051 - 0.2]},
-        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':20, 'bd':[20, 30]},
-        'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.9, 'bd':[0.7, 0.95]},
-        'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':-0.08203047484373349, 'bd':[-2*np.pi, 2*np.pi]}
+        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.2, 'bd':[0.15, 1]},
+        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':15, 'bd':[5, 20]},
+        'veq':{'vary':True,'guess':6, 'bd':[0, 10]},
+        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-70, 80]},
+        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 0.6, 2458330.39051 + 0.8]},
+        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':15, 'bd':[10, 50]},
+        'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.3, 'bd':[0, 0.99]},
+        'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
     
     #Fitting mode
