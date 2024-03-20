@@ -28,13 +28,13 @@ You need to install the following packages to run ``ANTARESS``:
         pip install package         
 
 - Resampling package 
-    - `bindensity documentation <https://obswww.unige.ch/~delisle/staging/bindensity/doc/>`_
-    - run::
+    - `bindensity documentation <https://obswww.unige.ch/~delisle/bindensity/doc/>`_
+    - install as a standard package::
     
-        pip install --extra-index-url https://vincent:cestpasfaux@obswww.unige.ch/~delisle/staging bindensity --upgrade
+        pip install bindensity
 
-    - do not use routines with non-continuous tables, as it will mess up with banded covariance matrixes
-    - beware of masking ranges, as undefined pixels (set to nan values) are propagated when resampling or combining profiles in the various pipeline modules.
+    - do not use ``bindensity`` with non-continuous grids, as it will mess up with banded covariance matrixes.
+    - beware when masking spectral ranges with ``ANTARESS``, as undefined pixels (set to nan values) are propagated by ``bindensity`` when resampling and will `spread` throughout the workflow.
 
 - Package ``pySME`` 
     - follow these instructions to install ``PySME`` on M1/M2 Macs.
