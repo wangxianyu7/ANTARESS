@@ -30,7 +30,6 @@ stages:
     - micromamba activate $PROJECT_NAME
     #Install here packages that failed to install via ${PROJECT_NAME}_env.yml
     - pip install PyAstronomy
-    - pip install --extra-index-url https://vincent:cestpasfaux@obswww.unige.ch/~delisle/staging bindensity --upgrade
     - pip install pysme-astro
 
 #Build distribution:
