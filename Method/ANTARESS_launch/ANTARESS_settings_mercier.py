@@ -218,6 +218,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
    #Transiting spots
     if gen_dic['star_name']=='AUMic':
+        # gen_dic['transit_sp'] = {}
         gen_dic['transit_sp'] = {
             'spot1':{'ESPRESSO' : ['mock_vis']}, 
             }
@@ -4430,7 +4431,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'veq':{'vary':True,'guess':6, 'bd':[0, 10]},
         'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-70, 80]},
         'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 0.6, 2458330.39051 + 0.8]},
-        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':15, 'bd':[10, 50]},
+        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':30, 'bd':[10, 50]},
         'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.3, 'bd':[0, 0.99]},
         'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
                                             }

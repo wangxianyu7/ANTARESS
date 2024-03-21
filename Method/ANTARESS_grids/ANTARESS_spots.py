@@ -2,7 +2,7 @@ import numpy as np
 from copy import deepcopy
 from ANTARESS_general.utils import np_poly,stop,check_data
 from itertools import product as it_product
-from ANTARESS_grids.ANTARESS_coord import frameconv_skystar_to_star,frameconv_star_to_skystar
+from ANTARESS_grids.ANTARESS_coord import frameconv_skystar_to_star,frameconv_star_to_skystar,frameconv_skyorb_to_skystar
 from ANTARESS_analysis.ANTARESS_model_prof import poly_prop_calc
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
 # from ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
@@ -215,7 +215,7 @@ def retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd, exp_dur
 
 
 
-def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, star_param, use_grid_dic = False) :
+def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, star_param, use_grid_dic = False, disc_exp = True) :
     #Samson: check whether the zstar and sskystar coordinates need to be adapted in this routine
     r"""**'Spotted' tiles** 
 
@@ -259,6 +259,7 @@ def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, 
         grid_dic (dict) : dictionary containing the x/y/z grids in various reference frames, including the star rest frame and inclined star frame.
         star_param (dict) : star properties.
         use_grid_dic (bool) : whether or not to use the grid_dic provided to retrieve the x/y/z grids in the star rest frame. Turned off by default.
+        disc_exp (bool) : whether we use the start, center and end of the exposures to figure out if the star is spotted and where the star is spotted, or just the center.
      
     Returns:
         spot_within_grid (bool) : a finer estimate of the spot visibility that can be obtained with is_spot_visible. Essentially, it tells us if at least one tile on the grid is 'spotted'.
@@ -266,35 +267,43 @@ def calc_spotted_tiles(spot_prop, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic, 
     
     """                                      
 
-    if use_grid_dic :
-        cond_close_to_spot = (grid_dic['x_st_sky'] - spot_prop['x_sky_exp_center'])**2 + (grid_dic['y_st_sky'] - spot_prop['y_sky_exp_center'])**2 < spot_prop['ang_rad']**2
-     
-        x_st_grid, y_st_grid, z_st_grid = grid_dic['x_st'][cond_close_to_spot], grid_dic['y_st'][cond_close_to_spot], grid_dic['z_st'][cond_close_to_spot]
+    if disc_exp:positions = ['start','center','end']
+    else:positions = ['center']
+    cond_in_sp = np.zeros(len(x_sky_grid), dtype=bool)
+
+    for pos in positions:
+
+        if use_grid_dic :
+            cond_close_to_spot = (grid_dic['x_st_sky'] - spot_prop['x_sky_exp_'+pos])**2 + (grid_dic['y_st_sky'] - spot_prop['y_sky_exp_'+pos])**2 < spot_prop['ang_rad']**2
+         
+            x_st_grid, y_st_grid, z_st_grid = grid_dic['x_st'][cond_close_to_spot], grid_dic['y_st'][cond_close_to_spot], grid_dic['z_st'][cond_close_to_spot]
+            
+            
+        else :  
+            cond_close_to_spot = (x_sky_grid - spot_prop['x_sky_exp_'+pos])**2 + (y_sky_grid - spot_prop['y_sky_exp_'+pos])**2 < spot_prop['ang_rad']**2
         
+            x_st_grid, y_st_grid, z_st_grid = frameconv_skystar_to_star(x_sky_grid[cond_close_to_spot],
+                                                                                        y_sky_grid[cond_close_to_spot],
+                                                                                        z_sky_grid[cond_close_to_spot],
+                                                                                        np.arccos(star_param['cos_istar']))
+            
+            
         
-    else :  
-        cond_close_to_spot = (x_sky_grid - spot_prop['x_sky_exp_center'])**2 + (y_sky_grid - spot_prop['y_sky_exp_center'])**2 < spot_prop['ang_rad']**2
+        # Retrieve angular coordinates of spot
+        cos_long, sin_long, cos_lat, sin_lat = spot_prop['cos_long_exp_'+pos], spot_prop['sin_long_exp_'+pos], spot_prop['cos_lat_exp_'+pos], spot_prop['sin_lat_exp_'+pos]
+        
+        # Calculate coordinates in spot rest frame
+        x_sp =                       x_st_grid*cos_long - z_st_grid*sin_long
+        y_sp = y_st_grid*cos_lat  - (x_st_grid*sin_long + z_st_grid*cos_long)   *   sin_lat
+        z_sp = y_st_grid*sin_lat  + (x_st_grid*sin_long + z_st_grid*cos_long)   *   cos_lat
+        
+        # Deduce which cells are within the spot
+        phi_sp = np.arctan2(np.sqrt(x_sp**2. + y_sp**2.),z_sp)
+        pos_cond_in_sp = cond_close_to_spot
+        pos_cond_in_sp[cond_close_to_spot] = (phi_sp <= spot_prop['ang_rad'])
     
-        x_st_grid, y_st_grid, z_st_grid = frameconv_skystar_to_star(x_sky_grid[cond_close_to_spot],
-                                                                                    y_sky_grid[cond_close_to_spot],
-                                                                                    z_sky_grid[cond_close_to_spot],
-                                                                                    np.arccos(star_param['cos_istar']))
-        
-        
-    
-    # Retrieve angular coordinates of spot
-    cos_long, sin_long, cos_lat, sin_lat = spot_prop['cos_long_exp_center'], spot_prop['sin_long_exp_center'], spot_prop['cos_lat_exp_center' ], spot_prop['sin_lat_exp_center' ]
-    
-    # Calculate coordinates in spot rest frame
-    x_sp =                       x_st_grid*cos_long - z_st_grid*sin_long
-    y_sp = y_st_grid*cos_lat  - (x_st_grid*sin_long + z_st_grid*cos_long)   *   sin_lat
-    z_sp = y_st_grid*sin_lat  + (x_st_grid*sin_long + z_st_grid*cos_long)   *   cos_lat
-    
-    # Deduce which cells are within the spot
-    phi_sp = np.arctan2(np.sqrt(x_sp**2. + y_sp**2.),z_sp)
-    cond_in_sp = cond_close_to_spot
-    cond_in_sp[cond_close_to_spot] = (phi_sp <= spot_prop['ang_rad'])
-        
+        cond_in_sp |= pos_cond_in_sp
+
     # Check if at least one tile is within the spot
     spot_within_grid = (True in cond_in_sp)   
     
@@ -597,6 +606,29 @@ def sum_region_spot_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,Fs
     return None
 
 
+def calc_plocced_tiles(pl_prop, x_sky_grid, y_sky_grid):
+    r"""**'Planet-occulted' tiles** 
+    
+    Args:
+        pl_prop (dict) : planet properties.
+        x_sky_grid (1D array) : x coordinates of the stellar / planetary grid in the inclined star frame. (at st, cen, and end)
+        y_sky_grid (1D array) : y coordinates of the stellar / planetary grid in the inclined star frame. (at st, cen, and end)
+     
+    Returns:
+        cond_in_pl (1D array) : array of booleans telling us which cells in the original grid are occulted by the planet.
+    
+    """          
+    cond_in_pl = np.zeros(len(x_sky_grid), dtype=bool)
+
+    for i in range(len(pl_prop['x_orb_exp'])):
+
+        pl_prop['x_sky_exp'],pl_prop['y_sky_exp'],_ = frameconv_skyorb_to_skystar(pl_prop['lambda'],pl_prop['x_orb_exp'][i],pl_prop['y_orb_exp'][i],0)
+     
+        pos_cond_close_to_pl = (x_sky_grid - pl_prop['x_sky_exp'])**2 + (y_sky_grid - pl_prop['y_sky_exp'])**2 < pl_prop['RpRs']**2  
+
+        cond_in_pl |=   pos_cond_close_to_pl
+
+    return cond_in_pl
 
 ########################################################################################################################
 ########################################################################################################################

@@ -1432,11 +1432,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if pl_loc in data_inst[vis]['transit_pl']:
                         for key in ['ecl','cen_ph','st_ph','end_ph','ph_dur','rv_pl','v_pl']:coord_dic[inst][vis][pl_loc][key] = np.zeros(n_in_visit,dtype=float)*np.nan
                         for key in ['cen_pos','st_pos','end_pos']:coord_dic[inst][vis][pl_loc][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
-                for spot in gen_dic['studied_sp']:
-                    coord_dic[inst][vis][spot]={}
-                    for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:coord_dic[inst][vis][spot][key] = np.zeros(n_in_visit,dtype=float)*np.nan
-                    for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:coord_dic[inst][vis][spot][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
-                    coord_dic[inst][vis][spot]['is_visible'] = np.zeros([3,n_in_visit],dtype=bool)
 
                     #Definition of mid-transit times for each planet associated with the visit 
                     if (pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst]):
@@ -1444,6 +1439,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     else:
                         norb = round((bjd_vis+2400000.-system_param[pl_loc]['TCenter'])/system_param[pl_loc]["period"])
                         coord_dic[inst][vis][pl_loc]['Tcenter']  = system_param[pl_loc]['TCenter']+norb*system_param[pl_loc]["period"]
+
+                for spot in gen_dic['studied_sp']:
+                    coord_dic[inst][vis][spot]={}
+                    for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:coord_dic[inst][vis][spot][key] = np.zeros(n_in_visit,dtype=float)*np.nan
+                    for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:coord_dic[inst][vis][spot][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
+                    coord_dic[inst][vis][spot]['is_visible'] = np.zeros([3,n_in_visit],dtype=bool)
 
                 #Observation properties
                 for key in ['AM','IWV_AM','TEMP','PRESS','seeing','colcorrmin','colcorrmax','mean_SNR','alt','az','BERV']:data_prop[inst][vis][key] = np.zeros(n_in_visit,dtype=float)*np.nan        

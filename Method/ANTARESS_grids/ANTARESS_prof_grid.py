@@ -13,7 +13,7 @@ from ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,po
 from ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
 
 
-def custom_DI_prof(param,x,args=None):
+def custom_DI_prof(param,x,args=None,unquiet_star=None):
     r"""**Disk-integrated profile: model function**
 
     Calculates custom disk-integrated stellar profile.
@@ -36,7 +36,7 @@ def custom_DI_prof(param,x,args=None):
 
         #Updating stellar grid
         #    - if stellar grid is different from the default one 
-        if args['var_star_grid']:
+        if args['var_star_grid'] and (unquiet_star is None):
             
             #Update variable stellar properties and stellar grid
             up_model_star(args,param)
@@ -64,10 +64,18 @@ def custom_DI_prof(param,x,args=None):
     #--------------------------------------------------------------------------------
     icell_list = np.arange(args['grid_dic']['nsub_star'])
 
+    if unquiet_star is not None:
+        rv_surf_star_grid=rv_surf_star_grid[~unquiet_star]
+        args['grid_dic']['mu']=args['grid_dic']['mu'][~unquiet_star]
+        args['flux_intr_grid']=args['flux_intr_grid'][~unquiet_star]
+        icell_list=icell_list[~unquiet_star]
+        args['Fsurf_grid_spec']=args['Fsurf_grid_spec'][~unquiet_star]
+
     #Multithreading
     #    - disabled with theoretical profiles, there seems to be an incompatibility with sme
     if (args['nthreads']>1) and (args['mode']!='theo'):
-        flux_DI_sum=MAIN_multithread(coadd_loc_line_prof,args['nthreads'],args['grid_dic']['nsub_star'],[rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,args,),output = True)                           
+        num_elements=len(icell_list)
+        flux_DI_sum=MAIN_multithread(coadd_loc_line_prof,args['nthreads'],num_elements,[rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,args,),output = True)                           
     
     #Direct call
     else:flux_DI_sum=coadd_loc_line_prof(rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)

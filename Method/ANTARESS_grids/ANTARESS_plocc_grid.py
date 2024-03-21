@@ -193,6 +193,9 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,nexp_fit,ph_fit,coord_fit,tr
             #Trigger use of spots in the function computing the DI profile deviation
             param['use_spots']=True
 
+    #Useful if spots are present but the spot parameters are fixed
+    else:param['use_spots']=False
+
     return system_param_loc,coords,param
 
 
@@ -381,17 +384,17 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
             for spot_index, spot in enumerate(list_spot_names):
 
                 #See if spot is visible at the center of the exposure.
-                if coord_in[spot]['is_visible'][1, iexp]:
+                if (np.sum(coord_in[spot]['is_visible'][:, iexp])>=1):
 
                     #Need to make a dictionary of spot coordinates which will be used in calc_spotted_tiles.
                     mini_spot_dic = {}
-                    mini_spot_dic['x_sky_exp_center']=coord_in[spot]['x_sky_exp'][1, iexp]
-                    mini_spot_dic['y_sky_exp_center']=coord_in[spot]['y_sky_exp'][1, iexp]
+                    mini_spot_dic['x_sky_exp_start'],mini_spot_dic['x_sky_exp_center'],mini_spot_dic['x_sky_exp_end']=coord_in[spot]['x_sky_exp'][:, iexp]
+                    mini_spot_dic['y_sky_exp_start'],mini_spot_dic['y_sky_exp_center'],mini_spot_dic['y_sky_exp_end']=coord_in[spot]['y_sky_exp'][:, iexp]
                     mini_spot_dic['ang_rad']=coord_in[spot]['ang_rad'][iexp]
-                    mini_spot_dic['cos_long_exp_center']=coord_in[spot]['cos_long_exp'][1, iexp]
-                    mini_spot_dic['sin_long_exp_center']=coord_in[spot]['sin_long_exp'][1, iexp]
-                    mini_spot_dic['cos_lat_exp_center']=coord_in[spot]['cos_lat_exp'][1, iexp]
-                    mini_spot_dic['sin_lat_exp_center']=coord_in[spot]['sin_lat_exp'][1, iexp]
+                    mini_spot_dic['cos_long_exp_start'],mini_spot_dic['cos_long_exp_center'],mini_spot_dic['cos_long_exp_end']=coord_in[spot]['cos_long_exp'][:, iexp]
+                    mini_spot_dic['sin_long_exp_start'],mini_spot_dic['sin_long_exp_center'],mini_spot_dic['sin_long_exp_end']=coord_in[spot]['sin_long_exp'][:, iexp]
+                    mini_spot_dic['cos_lat_exp_start'],mini_spot_dic['cos_lat_exp_center'],mini_spot_dic['cos_lat_exp_end']=coord_in[spot]['cos_lat_exp'][:, iexp]
+                    mini_spot_dic['sin_lat_exp_start'],mini_spot_dic['sin_lat_exp_center'],mini_spot_dic['sin_lat_exp_end']=coord_in[spot]['sin_lat_exp'][:, iexp]
 
                     #See if spot is *precisely* visible.
                     spot_within_grid, _ = calc_spotted_tiles(mini_spot_dic,

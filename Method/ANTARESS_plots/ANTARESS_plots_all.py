@@ -11085,7 +11085,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         for spot in spots_prop :
                             if spots_prop[spot]['is_center_visible']:
                                 _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
-                                                                        {}, params, use_grid_dic = False)
+                                                                        {}, params, use_grid_dic = False, disc_exp = False)
 
                                 # if t_exp == t_all_spot[int(len(t_all_spot)/2)+22]:
                                 star_flux_exp[spotted_tiles] *=  (1-spots_prop[spot]['ctrst'])
