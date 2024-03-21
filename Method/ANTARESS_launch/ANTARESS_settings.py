@@ -610,10 +610,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - can be relevant to fit profiles measured at low resolution
     #    - set to None for no oversampling
     theo_dic['rv_osamp_line_mod']=None
-
-
-    #%%%% Spots
-    gen_dic['theo_spots'] = False #Samson: is this field still useful ?
     
     #%%%%% Discretization         
     theo_dic['nsub_Dspot']={} 
@@ -2057,7 +2053,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['DIProp']['modif_list'] = []        
+    glob_fit_dic['DIProp']['deriv_prop'] = []        
     
     
     #%%%%% MCMC settings
@@ -2743,8 +2739,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%% Individual residual profiles
-    plot_dic['sp_loc']=''    
-    plot_dic['CCF_Res']=''      
+    plot_dic['Res_prof']=''       
     
     
     
@@ -3024,13 +3019,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['map_Intrbin']=''    
     
     
-    #%%%%% Individual binned profiles
-    plot_dic['sp_Intrbin']=''  
-    plot_dic['CCF_Intrbin']=''   
+    #%%%%% Individual binned profiles  
+    plot_dic['Intrbin']=''   
     
     
     #%%%%% Residuals from binned profiles
-    plot_dic['CCF_Intrbin_res']=''  
+    plot_dic['Intrbin_res']=''  
     
     
     #%%%%% Binned disk-integrated and intrinsic profiles comparison
@@ -3163,10 +3157,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
        
     
     #%%%%% Instrumental convolution
-    #    - apply instrumental convolution or not (default) to model
+    #    - apply instrumental convolution (default) or not to model
     #    - beware that most derived properties will correspond to the model before convolution
     #      this is particularly useful to match the intrinsic line properties from the joint intrinsic fit with values derived here from the individual fits
-    data_dic['Intr']['conv_model']=False  
+    data_dic['Intr']['conv_model']=True  
     
     
     #%%%%% Model type
@@ -3368,7 +3362,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['IntrProp']['modif_list'] = []        
+    glob_fit_dic['IntrProp']['deriv_prop'] = []        
     
     
     #%%%%% MCMC settings
@@ -3606,7 +3600,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
         # #Choose list of modifications to be made to the final chains 
         # #    - each field calls a specific function (see routine for more details)
-        # glob_fit_dic['ResProf']['modif_list'] = ['vsini','lambda_deg']
+        # glob_fit_dic['ResProf']['deriv_prop'] = ['vsini','lambda_deg']
     
         # #Define HDI interval to be calculated 
         # glob_fit_dic['ResProf']['HDI']='1s'   #None   #'3s'   
@@ -3653,7 +3647,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #   beware that the disk-integrated and intrinsic stellar profile have the same continuum, but it is not necessarily unity as set in the analytical and theoretical models, whose continuum must thus let free to vary 
     # - several options need to be controlled from within the function
     # - use plot_dic['prop_Intr']='' to plot the properties of the derived profiles
-    #   use plot_dic['CCF_Intrbin']='' to plot the derived profiles
+    #   use plot_dic['Intrbin']='' to plot the derived profiles
     #   use gen_dic['loc_data_corr'] to visualize the derived profiles
     # - to derive the stellar inclination from Rstar and Peq, use them as model parameters alongside cosistar, instead of veq  
     #   set priors on Rstar and Peq from the literature and a uniform prior on cosistar (=isotropic distribution), or more complex priors if relevant
@@ -3760,7 +3754,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['IntrProf']['modif_list'] = []
+    glob_fit_dic['IntrProf']['deriv_prop'] = []
     
     
     #%%%%% MCMC settings
@@ -3900,6 +3894,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%% 2D maps : residuals from theoretical intrinsic stellar profiles
+    #    - the map allows plotting the combined residuals from in-transit (intrinsic) and out-of-transit (residual) profiles
     #    - same format as 'map_Intr_prof_est'
     plot_dic['map_Intr_prof_res']=''   
     
@@ -4147,11 +4142,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['map_Atmbin']=''   
     
     #%%%%% Individual binned profiles
-    plot_dic['sp_Atmbin']=''  
-    plot_dic['CCF_Atmbin']=''    
+    plot_dic['Atmbin']=''    
 
     #%%%%% Residuals from binned profiles
-    plot_dic['CCF_Atmbin_res']=''  
+    plot_dic['Atmbin_res']=''  
 
 
 
@@ -4415,7 +4409,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['AtmProp']['modif_list'] = []        
+    glob_fit_dic['AtmProp']['deriv_prop'] = []        
     
     
     #%%%%% MCMC settings
@@ -4566,7 +4560,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['AtmProf']['modif_list'] = []
+    glob_fit_dic['AtmProf']['deriv_prop'] = []
     
     
     #%%%%% MCMC settings

@@ -219,8 +219,9 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
         fixed_args['nexp_fit'] = fit_dic['nx_fit']
         fixed_args['x_val']=range(fixed_args['nexp_fit'])
         fixed_args['fit_func'] = FIT_joined_IntrProp
+        fixed_args['mod_func'] = joined_IntrProp
         fixed_args['inside_fit'] = False
-        
+
         #Uncertainties on the property are given a covariance matrix structure for consistency with the fit routine 
         fixed_args['cov_val'] = np.array([fixed_args['s_val']**2.])
         fixed_args['use_cov'] = False   
@@ -232,7 +233,7 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
         #Best-fit model and properties
         fit_save={}
         fixed_args['fit'] = False
-        mod_tab,coeff_line_dic,fit_save['prop_mod']= joined_IntrProp(p_final,fixed_args)
+        mod_tab,coeff_line_dic,fit_save['prop_mod']= fixed_args['mod_func'](p_final,fixed_args)
       
         #Save best-fit properties
         fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'pol_mode':fit_prop_dic['pol_mode'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
@@ -322,7 +323,7 @@ def joined_IntrProp(param,args):
          
             #Appending over all visits
             mod_tab=np.append(mod_tab,mod_prop_dic[inst][vis])
- 
+
     return mod_tab,coeff_line_dic,mod_prop_dic
     
 
@@ -527,7 +528,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     
                     #Oversampled line profile model table
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
-
+               
                     #Initializing ranges in the relevant rest frame
                     if len(cont_range)==0:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] = True    
                     else:
@@ -582,6 +583,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fixed_args['use_cov'] = False
     fixed_args['use_cov_eff'] = gen_dic['use_cov']
     fixed_args['fit_func'] = FIT_joined_IntrProf
+    fixed_args['mod_func'] = joined_IntrProf
     fixed_args['inside_fit'] = True    
     
     #Model fit and calculation
@@ -620,7 +622,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
 
     #Best-fit model and derived properties
     fixed_args['fit'] = False
-    mod_dic,coeff_line_dic,mod_prop_dic = joined_IntrProf(p_final,fixed_args)
+    mod_dic,coeff_line_dic,mod_prop_dic = fixed_args['mod_func'](p_final,fixed_args)
 
     #Save best-fit properties
     #    - with same structure as fit to individual profiles 
@@ -1176,6 +1178,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['use_cov'] = False
     fixed_args['use_cov_eff'] = gen_dic['use_cov']
     fixed_args['fit_func'] = FIT_joined_ResProf
+    fixed_args['mod_func'] = joined_ResProf
     fixed_args['inside_fit'] = True 
     
     #Model fit and calculation
@@ -1217,7 +1220,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #Initializing best-fit stellar profile generation
     fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],data_dic['DI']['spots_prop'],theo_dic,fixed_args['system_param']['star'],p_final)
 
-    mod_dic,coeff_line_dic,mod_prop_dic = joined_ResProf(p_final,fixed_args)
+    mod_dic,coeff_line_dic,mod_prop_dic = fixed_args['mod_func'](p_final,fixed_args)
 
     #Save best-fit properties
     #    - with same structure as fit to individual profiles 

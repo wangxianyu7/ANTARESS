@@ -230,7 +230,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                                 par_input = root_par+'__IS'+inst+'_VS'+vis 
                                 fixed_args['name_prop2input'][par_input] = root_par+'__IS'+inst+'_VS'+vis   
                                 if deg_coeff is not None:fixed_args['coeff_ord2name'][inst][vis][gen_root_par][deg_coeff]=root_par+'__IS'+inst+'_VS'+vis  
-                    
+       
     return p_start
 
 
@@ -643,6 +643,35 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     #Fit initialization
     init_fit(fit_dic,fixed_args,p_start,model_par_names(),fit_prop_dic)     
     merged_chain = None
+    
+    ########################################################################################################  
+    #Calculating a first model to check all in-transit model exposures are defined
+    if fit_dic['fit_mode'] in ['chi2','mcmc'] and ('Intr' in rout_mode):
+        mod_dic,coeff_line_dic,mod_prop_dic = fixed_args['mod_func'](p_start,fixed_args)
+        if rout_mode=='IntrProp':
+            if True in np.isnan(mod_dic):
+                print('WARNING: the model planet does not occult the star over in-transit exposures at indexes:')
+                for inst in mod_prop_dic:
+                    for vis in mod_prop_dic[inst]:
+                        idx_unocc=np_where1D(np.isnan(mod_prop_dic[inst][vis]))
+                        if len(idx_unocc)>0:print('   ',idx_unocc,'in '+inst+' '+vis)
+                
+                print('Exclude them from the fit.')                
+                stop()
+
+        if rout_mode=='IntrProf':
+            cond_unocc=False
+            for inst in mod_prop_dic:
+                for vis in mod_prop_dic[inst]: 
+                    for pl_loc in mod_prop_dic[inst][vis]:
+                        idx_unocc=np_where1D(np.isnan(mod_prop_dic[inst][vis]['rv']))
+                        if len(idx_unocc)>0:
+                            cond_unocc=True
+                            print('   ',idx_unocc,'in '+inst+' '+vis+' for '+pl_loc)
+            if cond_unocc:
+                print('WARNING: the model planet does not occult the star over in-transit exposures at these indexes. Exclude them from the fit.')
+                stop()
+            
     ########################################################################################################   
 
     #Fit by chi2 minimization
@@ -658,11 +687,11 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         print('       MCMC fit')
 
         #Default options
-        if 'nwalkers' not in fit_prop_dic['mcmc_set']:fit_dic['nwalkers'] = 50
+        if 'nwalkers' not in fit_prop_dic['mcmc_set']:fit_dic['nwalkers'] = int(3*fit_dic['merit']['n_free'])
         else:fit_dic['nwalkers'] = fit_prop_dic['mcmc_set']['nwalkers']
-        if 'nsteps' not in fit_prop_dic['mcmc_set']:fit_dic['nsteps'] = 1000
+        if 'nsteps' not in fit_prop_dic['mcmc_set']:fit_dic['nsteps'] = 5000
         else:fit_dic['nsteps'] = fit_prop_dic['mcmc_set']['nsteps']
-        if 'nburn' not in fit_prop_dic['mcmc_set']:fit_dic['nburn'] = 200
+        if 'nburn' not in fit_prop_dic['mcmc_set']:fit_dic['nburn'] = 1000
         else:fit_dic['nburn'] = fit_prop_dic['mcmc_set']['nburn']
       
         #Run MCMC
@@ -2504,12 +2533,12 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
     # + combination/modification of MCMC chains to add new parameters
     # + new parameters are not used for model
     # + we calculate median and errors after chain are added   
-    if (fit_dic['fit_mode'] in ['chi2','mcmc']) and ('modif_list' in fit_prop_dic) and len(fit_prop_dic['modif_list'])>0:
+    if (fit_dic['fit_mode'] in ['chi2','mcmc']) and ('deriv_prop' in fit_prop_dic) and len(fit_prop_dic['deriv_prop'])>0:
         print('       Post-processing')
-        modif_list = fit_prop_dic['modif_list']
+        deriv_prop = fit_prop_dic['deriv_prop']
     
         #Fold cos(istar) within -1 : 1
-        if 'cosistar_fold' in modif_list:
+        if 'cosistar_fold' in deriv_prop:
             print('        + Folding cos(istar)')
             if fit_dic['fit_mode']=='chi2': 
                 cosistar = (p_final['cos_istar']-(1.)) % 2 - 1.
@@ -2522,7 +2551,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
     
         #Convert Rstar and Peq into veq
         #    - veq = (2*pi*Rstar/Peq)
-        if 'veq_from_Peq_Rstar' in modif_list:
+        if 'veq_from_Peq_Rstar' in deriv_prop:
             print('        + Deriving veq from Req and Rstar ')
             
             if fit_dic['fit_mode']=='chi2': 
@@ -2549,7 +2578,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
     
         #Convert veq into veq*sin(istar) to be comparable with solid-body values
         #    - must be done before modification of istar chain
-        if ('vsini' in modif_list) and ((fixed_args['rout_mode'] in ['IntrProf','ResProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):
+        if ('vsini' in deriv_prop) and ((fixed_args['rout_mode'] in ['IntrProf','ResProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):
             print('        + Converting veq to vsini')
             if 'veq' in fixed_args['var_par_list']:iveq=np_where1D(fixed_args['var_par_list']=='veq')
             else:stop('Activate veq_from_Peq_Rstar')
@@ -2586,16 +2615,16 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #-------------------------------------------------            
 
         #Replace cos(istar[rad]) by istar[deg]
-        if ('istar_deg_conv' in modif_list) or ('istar_deg_add' in modif_list):
+        if ('istar_deg_conv' in deriv_prop) or ('istar_deg_add' in deriv_prop):
             print('        + Converting cos(istar) to istar')
-            conv_cosistar(modif_list,fixed_args,fit_dic,p_final,merged_chain)
+            conv_cosistar(deriv_prop,fixed_args,fit_dic,p_final,merged_chain)
 
         #-------------------------------------------------            
 
         #Folding istar[deg] around 90
         #    - only use if all other parameters are degenerate with istar
         #    - by default we fold over 0-90
-        if ('fold_istar' in modif_list):        
+        if ('fold_istar' in deriv_prop):        
             print('       + Folding istar')
             iistar = np_where1D(fixed_args['var_par_list']=='istar_deg')
             istar_temp=np.squeeze(merged_chain[:,iistar])
@@ -2607,7 +2636,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #    - prefer the use of Peq and Rstar as fit parameters
         #    - vsini = veq*sin(istar) = (2*pi*Rstar/Peq)*sin(istar)
         #      istar = np.arcsin( vsini*peq/(2*pi*Rstar) )
-        if ('istar_Peq' in modif_list) or ('istar_Peq_vsini' in modif_list):
+        if ('istar_Peq' in deriv_prop) or ('istar_Peq_vsini' in deriv_prop):
             if ('cos_istar' in fixed_args['var_par_list']):stop('    istar has been fitted')
             print('        + Deriving istar from vsini and Peq')
             
@@ -2684,14 +2713,14 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                 fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))
             elif fit_dic['fit_mode']=='mcmc':   
                 n_chain = len(merged_chain[:,0])
-                if 'istar_Peq_vsini' in modif_list:
+                if 'istar_Peq_vsini' in deriv_prop:
                     print('           Using external vsini')
                     if gen_dic['star_name']=='WASP47':
                         vsini_med = 1.80         
                         vsini_elow = 0.16
                         vsini_ehigh = 0.24   
                     vsini_chain = gen_hrand_chain(vsini_med,vsini_elow,vsini_ehigh,n_chain)
-                elif 'istar_Peq' in modif_list:
+                elif 'istar_Peq' in deriv_prop:
                     print('           Using derived vsini')
                     if np.abs(p_final['cos_istar'])>1e-14:stop('             istar should have been fixed to 90 degrees')
                     iveq = np_where1D(fixed_args['var_par_list']=='veq')  
@@ -2711,8 +2740,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                 while n_good<n_chain:
                     Rstar_add = np.random.normal(Rstar_med, Rstar_err, n_chain-n_good)
                     Peq_add = gen_hrand_chain(Peq_med,Peq_elow,Peq_ehigh,n_chain-n_good)
-                    if 'istar_Peq_vsini' in modif_list:vsini_add = gen_hrand_chain(vsini_med,vsini_elow,vsini_ehigh,n_chain-n_good)
-                    elif 'istar_Peq' in modif_list:vsini_add = np.random.choice(vsini_chain,n_chain-n_good)
+                    if 'istar_Peq_vsini' in deriv_prop:vsini_add = gen_hrand_chain(vsini_med,vsini_elow,vsini_ehigh,n_chain-n_good)
+                    elif 'istar_Peq' in deriv_prop:vsini_add = np.random.choice(vsini_chain,n_chain-n_good)
                     sinistar_chain = np.append(sinistar_chain[cond_good],vsini_add*Peq_add/(2.*np.pi*Rstar_add))
                     cond_good = np.abs(sinistar_chain)<=1.
                     n_good = np.sum(cond_good)
@@ -2730,7 +2759,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #-------------------------------------------------
         #Add Peq using the value derived from veq and independent measurement of Rstar
         #    - Peq = (2*pi*Rstar/veq)
-        if 'Peq_veq' in modif_list:
+        if 'Peq_veq' in deriv_prop:
             if ('cos_istar' in fixed_args['var_par_list']):stop('    istar has been fitted')
             print('        + Deriving Peq from veq ')
             
@@ -2761,7 +2790,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #-------------------------------------------------
         #Add Peq using the value derived from vsini and independent measurement of Rstar and istar
         #    - Peq = (2*pi*Rstar*sin(istar)/vsini)
-        if 'Peq_vsini' in modif_list:
+        if 'Peq_vsini' in deriv_prop:
             print('        + Deriving Peq from vsini')
             
             #Nominal values and 1s errors for Rstar (Rsun) 
@@ -2804,7 +2833,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #Add true obliquity
         #    - psi = acos(sin(istar)*cos(lamba)*sin(ip) + cos(istar)*cos(ip))
         #    - must be done before modification of istar and lambda chains
-        if ('psi' in modif_list) or ('psi_lambda' in modif_list):
+        if ('psi' in deriv_prop) or ('psi_lambda' in deriv_prop):
             print('        + Adding true obliquity')
             for pl_loc in fixed_args['lambda_rad_pl']:              
                 lambda_rad_pl = 'lambda_rad__pl'+pl_loc
@@ -2822,7 +2851,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     n_chain = len(merged_chain[:,0])
                     
                     #Obliquity 
-                    if 'psi_lambda' in modif_list:
+                    if 'psi_lambda' in deriv_prop:
                         print('         Using external lambda')
                         if gen_dic['star_name']=='WASP47':
                             lambda_med = 0.         
@@ -2833,7 +2862,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                         lambda_elow*=np.pi/180.
                         lambda_ehigh*=np.pi/180.
                         lamb_chain = {'':{'':gen_hrand_chain(lambda_med,lambda_elow,lambda_ehigh,n_chain)}}
-                    elif 'psi' in modif_list:
+                    elif 'psi' in deriv_prop:
                         print('         Using derived lambda')
                         if lambda_rad_pl in fixed_args['genpar_instvis']:
                             lamb_chain={}
@@ -2983,7 +3012,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #Add argument of ascending node
         #    - Om = np.arctan( -sin(lambda)*tan(ip) )
         #    - must be done before modification of ip and lambda chains
-        if 'om' in modif_list:
+        if 'om' in deriv_prop:
             print('        + Add argument of ascending node')
             for pl_loc in fixed_args['lambda_rad_pl']:
                 lambda_rad_pl = 'lambda_rad__pl'+pl_loc
@@ -3026,7 +3055,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
             
         #Add impact parameter
         #    - b = aRs*cos(ip)
-        if ('b' in modif_list) and (fixed_args['fit_orbit']):
+        if ('b' in deriv_prop) and (fixed_args['fit_orbit']):
             print('        + Adding impact parameter')
             for pl_loc in fixed_args['lambda_rad_pl']:
                 if ('inclin_rad__pl'+pl_loc not in fixed_args['var_par_list']):ip_loc=fixed_args['planets_params'][pl_loc]['inclin_rad'] 
@@ -3061,7 +3090,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
             
         #Orbital inclination
         #    - convert ip[rad] to ip[deg]
-        if ('ip' in modif_list) and (fixed_args['fit_orbit']):
+        if ('ip' in deriv_prop) and (fixed_args['fit_orbit']):
             print('        + Converting ip in degrees')
             for pl_loc in fixed_args['lambda_rad_pl']:
                 iip=np_where1D(fixed_args['var_par_list']=='inclin_rad__pl'+pl_loc)
@@ -3087,7 +3116,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #-------------------------------------------------            
             
         #Convert lambda[rad] to lambda[deg]
-        if ('lambda_deg' in modif_list) and ((fixed_args['rout_mode'] in ['IntrProf','ResProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):  
+        if ('lambda_deg' in deriv_prop) and ((fixed_args['rout_mode'] in ['IntrProf','ResProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):  
             print('        + Converting lambda in degrees')       
             for pl_loc in fixed_args['lambda_rad_pl']:
                 lambda_rad_pl = 'lambda_rad__pl'+pl_loc
@@ -3165,7 +3194,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
          
         #Retrieve zeroth order CB coefficient
         #    - independent of visits or planets
-        if 'c0' in modif_list: 
+        if 'c0' in deriv_prop: 
             print('        + Adding c0(CB)')
             if fit_dic['fit_mode']=='chi2': 
                 p_final['c0_CB'] = calc_CB_RV(get_LD_coeff(fixed_args['system_prop']['achrom'],0),fixed_args['system_prop']['achrom']['LD'][0],p_final['c1_CB'],p_final['c2_CB'],p_final['c3_CB'],fixed_args['system_param']['star'])[0]            
@@ -3192,7 +3221,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #-------------------------------------------------            
          
         #Convert CB coefficients from km/s to m/s
-        if 'CB_ms' in modif_list: 
+        if 'CB_ms' in deriv_prop: 
             print('        + Converting CB coefficients to m/s') 
             ipar_mult_loc=[]
             for ipar_name in ['c0_CB','c1_CB','c2_CB','c3_CB']:
@@ -3213,12 +3242,12 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #Convert FWHM and contrast of true intrinsic stellar profiles into values for observed profiles
         #    - only for constant FWHM and contrast with no variation in mu
         #    - for double-gaussian profiles the values can be converted into the 'true' contrast and FWHM, either of the intrinsic or of the observed profile
-        if ('CF0_meas_add' in modif_list) or ('CF0_meas_conv' in modif_list):  
+        if ('CF0_meas_add' in deriv_prop) or ('CF0_meas_conv' in deriv_prop):  
             print('        + Converting intrinsic ctrst and FWHM to measured values') 
-            merged_chain = conv_CF_intr_meas(modif_list,fixed_args['inst_list'],fixed_args['inst_vis_list'],fixed_args,merged_chain,gen_dic,p_final,fit_dic,fit_prop_dic)
-        if ('CF0_DG_add' in modif_list) or ('CF0_DG_conv' in modif_list):  
+            merged_chain = conv_CF_intr_meas(deriv_prop,fixed_args['inst_list'],fixed_args['inst_vis_list'],fixed_args,merged_chain,gen_dic,p_final,fit_dic,fit_prop_dic)
+        if ('CF0_DG_add' in deriv_prop) or ('CF0_DG_conv' in deriv_prop):  
             print('        + Converting DG ctrst and FWHM to true intrinsic values') 
-            merged_chain = conv_CF_intr_meas(modif_list,fixed_args['inst_list'],fixed_args['inst_vis_list'],fixed_args,merged_chain,gen_dic,p_final,fit_dic,fit_prop_dic)
+            merged_chain = conv_CF_intr_meas(deriv_prop,fixed_args['inst_list'],fixed_args['inst_vis_list'],fixed_args,merged_chain,gen_dic,p_final,fit_dic,fit_prop_dic)
             
     #---------------------------------------------------------------            
     #Process:
@@ -3239,7 +3268,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
 
 
 
-def conv_cosistar(modif_list,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in):
+def conv_cosistar(deriv_prop,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in):
     r"""**Parameter conversion: cos(i_star)**
 
     Converts results from :math:`\chi^2` or mcmc fitting: from :math:`\cos(i_\star)` to :math:`i_\star`. 
@@ -3261,18 +3290,18 @@ def conv_cosistar(modif_list,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in
             #      di = dcosi/sin(i)                      
             p_final_in['istar_deg']= np.arccos(cosistar)*180./np.pi   
             sig_loc= (180./np.pi)*fit_dic_in['sig_parfinal_err']['1s'][0,iistar][0] / np.sqrt(1.-cosistar**2.)   
-            if ('istar_deg_conv') in modif_list:fit_dic_in['sig_parfinal_err']['1s'][:,iistar] = [[sig_loc],[sig_loc]]
-            elif ('istar_deg_add') in modif_list:fit_dic_in['sig_parfinal_err']['1s'] = np.hstack((fit_dic_in['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]])  )               
+            if ('istar_deg_conv') in deriv_prop:fit_dic_in['sig_parfinal_err']['1s'][:,iistar] = [[sig_loc],[sig_loc]]
+            elif ('istar_deg_add') in deriv_prop:fit_dic_in['sig_parfinal_err']['1s'] = np.hstack((fit_dic_in['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]])  )               
         elif fit_dic_in['fit_mode']=='mcmc':
             #Folding cos(istar) within -1 : 1
             cosistar_chain = (merged_chain_in[:,iistar]-(1.)) % 2 - 1.
             chain_loc = np.arccos(cosistar_chain)*180./np.pi     
-            if ('istar_deg_conv') in modif_list:merged_chain_in[:,iistar]= chain_loc
-            elif ('istar_deg_add') in modif_list:merged_chain_in=np.concatenate((merged_chain_in,chain_loc[:,None]),axis=1)  
-        if ('istar_deg_conv') in modif_list:    
+            if ('istar_deg_conv') in deriv_prop:merged_chain_in[:,iistar]= chain_loc
+            elif ('istar_deg_add') in deriv_prop:merged_chain_in=np.concatenate((merged_chain_in,chain_loc[:,None]),axis=1)  
+        if ('istar_deg_conv') in deriv_prop:    
             fixed_args_in['var_par_list'][iistar]='istar_deg'            
             fixed_args_in['var_par_names'][iistar]='i$_{*}(^{\circ}$)'   
-        elif ('istar_deg_add') in modif_list: 
+        elif ('istar_deg_add') in deriv_prop: 
             fixed_args_in['var_par_list']=np.append(fixed_args_in['var_par_list'],'istar_deg')
             fixed_args_in['var_par_names']=np.append(fixed_args_in['var_par_names'],'i$_{*}(^{\circ}$)') 
     else:
@@ -3282,7 +3311,7 @@ def conv_cosistar(modif_list,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in
 
 
 
-def conv_CF_intr_meas(modif_list,inst_list,inst_vis_list,fixed_args,merged_chain,gen_dic,p_final,fit_dic,fit_prop_dic):
+def conv_CF_intr_meas(deriv_prop,inst_list,inst_vis_list,fixed_args,merged_chain,gen_dic,p_final,fit_dic,fit_prop_dic):
     r"""**Parameter conversion: line contrast and FWHM**
 
     Converts results from :math:`\chi^2` or mcmc fitting: from intrinsic width and contrast to measured-like values. 
@@ -3299,7 +3328,7 @@ def conv_CF_intr_meas(modif_list,inst_list,inst_vis_list,fixed_args,merged_chain
         fixed_args['velccf_HR'] = gen_dic['RVstart_HR_mod'] + gen_dic['dRV_HR_mod']*np.arange(  int((gen_dic['RVend_HR_mod']-gen_dic['RVstart_HR_mod'])/gen_dic['dRV_HR_mod'])  )
     for inst in inst_list:               
         fixed_args_loc = deepcopy(fixed_args)
-        if ('CF0_DG_add' in modif_list) or ('CF0_DG_conv' in modif_list):fixed_args_loc['FWHM_inst']=None
+        if ('CF0_DG_add' in deriv_prop) or ('CF0_DG_conv' in deriv_prop):fixed_args_loc['FWHM_inst']=None
         else:fixed_args_loc['FWHM_inst'] = calc_FWHM_inst(inst,c_light)   
         for vis in inst_vis_list[inst]:
             if fixed_args['func_prof_name']=='gauss':
@@ -3342,20 +3371,20 @@ def conv_CF_intr_meas(modif_list,inst_list,inst_vis_list,fixed_args,merged_chain
                     else:  chain_loc=proc_cust_mod_true_prop(merged_chain,fixed_args_loc,p_final_loc)   
                     chain_ctrst_temp = chain_loc[0]
                     chain_FWHM_temp = chain_loc[1]     
-                if ('CF0_meas_add' in modif_list) or ('CF0_DG_add' in modif_list):   #add parameters
+                if ('CF0_meas_add' in deriv_prop) or ('CF0_DG_add' in deriv_prop):   #add parameters
                     if varC:merged_chain=np.concatenate((merged_chain,chain_ctrst_temp[:,None]),axis=1) 
                     if varF:merged_chain=np.concatenate((merged_chain,chain_FWHM_temp[:,None]),axis=1) 
-                elif ('CF0_meas_conv' in modif_list) or ('CF0_DG_conv' in modif_list):   #replace parameters
+                elif ('CF0_meas_conv' in deriv_prop) or ('CF0_DG_conv' in deriv_prop):   #replace parameters
                     if varC:merged_chain[:,ictrst_loc] = chain_ctrst_temp
                     if varF:merged_chain[:,iFWHM_loc] = chain_FWHM_temp              
-            if ('CF0_meas_add' in modif_list) or ('CF0_DG_add' in modif_list):
+            if ('CF0_meas_add' in deriv_prop) or ('CF0_DG_add' in deriv_prop):
                 if varC:
                     fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],[fixed_args['var_par_list'][ictrst_loc]+'_'+inst]))
                     fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],['Contrast$_\mathrm{'+inst+'}$']))
                 if varF:
                     fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'][fixed_args['var_par_list'][iFWHM_loc]+'_'+inst]))
                     fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names']['FWHM$_\mathrm{'+inst+'}$(km/s)']))
-            elif ('CF0_meas_conv' in modif_list) or ('CF0_DG_conv' in modif_list):
+            elif ('CF0_meas_conv' in deriv_prop) or ('CF0_DG_conv' in deriv_prop):
                 if varC:
                     fixed_args['var_par_list'][ictrst_loc] = fixed_args['var_par_list'][ictrst_loc]+'_'+inst
                     fixed_args['var_par_names'][ictrst_loc] = 'Contrast$_\mathrm{'+inst+'}$'

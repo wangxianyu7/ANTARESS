@@ -615,7 +615,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         data_dic['DI']['fit_MCCFout']=False
     if (not gen_dic['specINtype']) or (gen_dic['DI_CCF']):plot_dic['spectral_LC']=''
     if (not gen_dic['res_data']):
-        for key in ['map_Res_prof','sp_loc','CCF_Res']:plot_dic[key]=''    
+        for key in ['map_Res_prof','Res_prof']:plot_dic[key]=''    
     if not gen_dic['pl_atm']:
         for key in ['map_Atm_prof','sp_atm','CCFatm']:plot_dic[key]=''  
     else:
@@ -2579,12 +2579,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     else:iord_fit = data_dic[key]['fit_prof']['order'][inst]
                     cen_bins_all = np.zeros([0,data_vis['nspec']],dtype=float)
                     edge_bins_all = np.zeros([0,data_vis['nspec']+1],dtype=float)
-                    if key=='DI':flux_all = np.zeros([0,data_vis['nspec']],dtype=float)
+                    flux_all = np.zeros([0,data_vis['nspec']],dtype=float)
                     for iexp in range(data_vis['n_in_visit']):
                         data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))
                         cen_bins_all=np.append(cen_bins_all,[data_exp['cen_bins'][iord_fit]],axis=0)
                         edge_bins_all=np.append(edge_bins_all,[data_exp['edge_bins'][iord_fit]],axis=0)
-                        if key=='DI':flux_all=np.append(flux_all,[data_exp['flux'][iord_fit]],axis=0)
+                        flux_all=np.append(flux_all,[data_exp['flux'][iord_fit]],axis=0)
                     if (data_dic[key]['type'][inst]=='CCF'):
                         RVcen_bins = cen_bins_all
                         RVedge_bins = edge_bins_all

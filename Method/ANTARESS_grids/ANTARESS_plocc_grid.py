@@ -471,7 +471,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
 
     #Processing each exposure
     for i_in,(iexp,n_osamp_exp) in enumerate(zip(iexp_list,n_osamp_exp_all_total)):
-
+   
         #Planets in exposure
         transit_pl_exp = np.array(transit_pl)[cond_transit_all[i_in]]
 

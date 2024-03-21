@@ -339,7 +339,7 @@ def init_st_intr_prof(args,grid_dic,param):
                 for par_loc in args['linevar_par'][inst][vis]:     
                     args['coeff_line'][par_loc] = polycoeff_def(param,args['coeff_ord2name'][inst][vis][par_loc])
                     args['input_cell_all'][par_loc] = calc_polymodu(args['pol_mode'],args['coeff_line'][par_loc],grid_dic['linevar_coord_grid']) 
-                        
+                                        
     #Measured intrinsic profiles
     #    - attributing to each stellar cell the measured profile with closest coordinate
     elif (args['mode']=='Intrbin'):
@@ -537,7 +537,7 @@ def calc_loc_line_prof(icell,rv_surf_star,Fsurf_cell_spec,flux_loc_cell,mu_cell,
         for pol_par in args['input_cell_all']:
             input_cell[pol_par] = args['input_cell_all'][pol_par][icell]
         flux_intr=args['func_prof'](input_cell,args['cen_bins'] )[0]
-
+        
         #Convolve intrinsic profile with macroturbulence kernel
         if args['mac_mode'] is not None:
     

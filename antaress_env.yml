@@ -21,3 +21,4 @@ dependencies:
    - pandas
    - dace-query
    - statsmodels
+   - bindensity

@@ -1,9 +1,21 @@
 import numpy as np
+from ANTARESS_general.constant_data import Rjup,Rearth,Rsun,c_light
 from ANTARESS_general.utils import stop
 from copy import deepcopy
 from pathos.multiprocessing import cpu_count
 
 def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic):
+    r"""**ANTARESS default settings.**
+    
+    Initializes ANTARESS configuration settings with default values.  
+    
+    Args:
+        TBD
+    
+    Returns:
+        None
+    
+    """  
 
     ##################################################################################################    
     #%%% Settings: generic
@@ -405,7 +417,21 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - format is {inst:{value}}
     mock_dic['gcal']={}
        
-    
+
+    #%%%% Spots
+       
+    #%%%%% Properties
+    #    - spot inclusion is conditioned by this dictionary being filled in
+    #    - spots are defined by 4 parameters : 
+    # + 'lat' : constant latitude of the spot, in star rest frame
+    # + 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
+    # + 'ang' : the angular size (in deg) of the spot
+    # + 'ctrst' : the flux level of the spot surface, relative to the 'normal' surface of the star.
+    #    - format is {inst : {vis : {prop : val}}}
+    #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']    
+    mock_dic['spots_prop'] = {}
+
+
     #%%%% Noise settings
     
     #%%%%% Flux errors
@@ -429,21 +455,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - possibilities: RV shift, change in instrumental resolution (replacing nominal instrumental convolution)
     #    - format is {inst:{vis:{rv:value,resol:value}}
     mock_dic['drift_post'] = {}
-           
-    
-    
-    
-    #%%%% Spot settings           
-    # Spot activation is conditional on the creating of spot limb-darkening properties in data_dic['DI']['spots_prop']
-    
-    #%%%%% Properties
-    #    - spots are defined by 4 parameters : 
-    # + 'lat' : constant lattitutde of the spot, in star rest frame
-    # + 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
-    # + 'ang' : the angular size (in deg) of the spot
-    # + 'ctrst' : the flux level of the spot surface, relative to the 'normal' surface of the star.
-    #    - structure is par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']    
-    mock_dic['spots_prop'] = {}
     
          
     #Activating module
@@ -813,7 +824,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%%% Using stellar spectrum  
-    gen_dic['DImast_weight'] = True  
+    gen_dic['DImast_weight'] = False  
     
     
     #%%%%%% Plots: weighing master 
@@ -956,7 +967,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - set to default value if undefined
     #    - format is {'planet':value}
     theo_dic['nsub_Dpl']={} 
-    theo_dic['nsub_Dspot']={} 
     
     
     #%%%%% Exposure oversampling
@@ -966,7 +976,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - oversampling of the flux in the flux scaling module is controlled independently
     #    - format is {'planet':value}
     theo_dic['n_oversamp']={}
-    theo_dic['n_oversamp_spot']={}
     
     
     #%%%% Occulted profiles
@@ -1033,9 +1042,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     gen_dic['calc_theoPlOcc']=True  # &  False  
 
     # Precision
-    theo_dic['precision'] = 'high'
+    # theo_dic['precision'] = 'high'
     # theo_dic['precision'] = 'medium'
-    # theo_dic['precision'] = 'low'
+    theo_dic['precision'] = 'low'
 
 
     #Star discretization      
@@ -1674,15 +1683,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     ##################################################################################################
     #%%% Module: ESPRESSO "wiggles"
-    #    - run sequentially those steps :
-    # + 'wig_exp_init' to identify which ranges to include in the analysis, and which wiggle components are present
-    # + 'wig_exp_samp' to sample the frequency and amplitude of each wiggle component with nu, in a representative selection of exposure
-    # + 'wig_exp_nu_ana' to fit the sampled frequency and amplitude with polynomials of nu, to evaluate their degree and chromatic coefficients
-    # + 'wig_exp_fit' to fit the spectral wiggle model to each exposure individually, initialized by the results of 'wig_exp_nu_ana'   
-    # + 'wig_exp_point_ana' to fit the phase, and the chromatic coefficients of frequency and amplitude derived from 'wig_exp_fit', as a function of the telescope pointing coordinates 
-    # + 'wig_vis_fit' to fit the spectro-temporal wiggle model to all exposures together, initialized by the results of 'wig_exp_point_ana'
+    #    - this module is used to characterize and correct wiggles, using either an analytical model over the full visit, or a filter
+    #      the analytical model should be preferred whenever possible to keep as much as possible of the planetary and stellar feature at medium-resolution
+    #      if the wiggle pattern is however too complex to be captured by the model, apply the filter (low-resolution variations should have been previously corrected with the flux balance module)
     #    - wiggles are processed in wave_number space nu[1e-10 s-1] = c[m s-1]/w[A]
-    #      wiggle frequencies Fnu corresponds to wiggle periods Pw[A] = w[A]^2/(Fnu[1e10 s]*c[m s-1])
+    #      wiggle frequencies Fnu corresponds to wiggle periods Pw[A] = w[A]^2/(Fnu[1e10 s]*c[m s-1]) = w[A]^2*Pnu[1e-10 s-1]/c[m s-1]
     ##################################################################################################
     
     
@@ -1701,6 +1706,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%% Forced order normalization
     #    - transmission spectrum is normalized to unity over each order 
+    #    - the analytical wiggle model can only capture medium-frequency modulations around unity
+    #      low-frequency variations must be captured with the flux balance correction or with the wiggle filter, or later on in planetary spectra (it is in this later case 
+    # that normalization can be forced here temporarily)
     gen_dic['wig_norm_ord'] = True  
     
     
@@ -1764,9 +1772,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     gen_dic['wig_ord_fit'] = {}
     
     
-    #%%%% Fitting steps
+    #%%%% Analysis
     
-    #%%%%% Step 1: Screening 
+    #%%%%% Screening 
     #    - use 'plot_spec' to identify which ranges / orders are of poor quality and need to be excluded from the fit and/or the correction
     #      use as much of the ESPRESSO range as possible, but exclude the bluest orders where the noise is much larger than the wiggles
     #    - use 'plot_hist' to plot the periodogram from all exposures together, to identify the number and approximate frequency of wiggle components 
@@ -1777,8 +1785,22 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'y_range':None
         }
     
+    #%%%%% Filter
+    #    - characterize wiggles using a Savitzky–Golay filter of the binned transmission spectrum in each exposure 
+    #    - 'win': size of the smoothing window, in nu 
+    #    - 'deg': order of the polynomial used to fit the smoothed spectrum
+    gen_dic['wig_exp_filt']={
+        'mode':False,
+        'win':0.2,
+        'deg':3, 
+        'plot':True        
+        }
+
+    #%%%%% Analytical model   
+    #    - run the following steps sequentially to determine the model
     
-    #%%%%% Step 2: Chromatic sampling
+    #%%%%%% Step 1: Chromatic sampling
+    #    - to sample the frequency and amplitude of each wiggle component with nu, in a representative selection of exposure
     #    - sampling the frequency and amplitude of each wiggle component with nu
     #    - wiggle properties are sampled using a sliding periodogram
     #    - only a representative subset of exposures needs to be sampled, using 'wig_exp_in_fit'
@@ -1788,7 +1810,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #      thus, start by smapling the highest component, and proceed by including lower ones iteratively
     #    - 'freq_guess': define the polynomial coefficients describing the model frequency for each component 
     #                    these models control the definition of the sampling bands 
-    #    - 'nsamp' : number of cycles to sample for each component
+    #    - 'nsamp' : number of cycles to sample for each component, in a given band (defines the size of the sampling band, based on the guess frequency)
     #                must not be too high to ensure that the component frequency remains constant within the sampled bands 
     #    - 'sampbands_shifts': oversampling of sampling bands (nu in 1e-10 s-1)
     #                          adjust to the scale of the frequency or amplitude variations of each component
@@ -1820,10 +1842,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'fix_freq2expmod':[],
         'fix_freq2vismod':{},
         'plot':True
-        }      
+        }    
     
     
-    #%%%%% Step 3: Chromatic analysis
+    #%%%%% Step 2: Chromatic analysis
     #    - fitting the sampled frequency and amplitude with polynomials of nu
     #    - use this step to determine 'wig_deg_Freq' and 'wig_deg_Amp' for each component
     #    - 'comp_ids': component properties to analyze, among those sampled in 'wig_exp_samp'
@@ -1849,10 +1871,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     gen_dic['wig_deg_Amp'] = {comp_id:2 for comp_id in range(1,6)}
     
     
-    #%%%%% Step 4: Exposure fit 
+    #%%%%%% Step 3: Exposure fit 
+    #    - to fit the spectral wiggle model to each exposure individually, initialized by the results of 'wig_exp_nu_ana'   
     #    - fitting the spectral wiggle model to each exposure individually
     #    - 'comp_ids': components to include in the model
-    #    - 'init_chrom': initialize the fit using the results of 'wig_exp_nu_ana' on the closest exposure sampled in 'wig_exp_samp'
+    #    - 'init_chrom': initialize the fit guess values using the results of 'wig_exp_nu_ana' on the closest exposure sampled in 'wig_exp_samp'
     #                    running 'wig_exp_samp' on a selection of representative exposures sampling the wiggle variations is thus sufficient
     #                    beware to run 'wig_exp_nu_ana' with the same components used in 'wig_exp_fit'
     #    - 'freq_guess': define for each component the polynomial coefficients describing the model frequency 
@@ -1864,7 +1887,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - 'use': set to False to retrieve fits 
     #             useful to analyze their results using 'wig_exp_point_ana', and periodograms automatically produced for each exposure
     #    - 'fixed_pointpar': fix values of chosen properties ( > vis > [prop1,prop2,..]) to their model from 'wig_exp_point_ana'
-    #    - 'prior_par: bound properties with a uniform prior on the chosen range (common to all exposures) informed by 'wig_exp_point_ana'
+    #    - 'prior_par: bound properties with a uniform prior on the chosen range (common to all exposures, defined as par > {'low' : val, 'high' : val}). Use results from 'wig_exp_point_ana' to decide on the prior range.
+    #                  if par > {'guess' : val} is defined it will overwrite the default or chromatic initialization 
     #    - 'model_par': initialize property to its exposure value v(t) from the 'wig_exp_point_ana' model, and set a uniform prior in [ v(t)-model_par[par][0] ; v(t)+model_par[par][1] ]
     #    - 'plot': plot transmission spectra with their models, residuals, associated periodograms, and overall rms
     gen_dic['wig_exp_fit']={
@@ -1884,7 +1908,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         }     
     
     
-    #%%%%% Step 5: Pointing analysis
+    #%%%%%% Step 4 Pointing analysis
+    #    - to fit the phase, and the chromatic coefficients of frequency and amplitude derived from 'wig_exp_fit', as a function of the telescope pointing coordinates 
     #    - fitting the phase, and the chromatic coefficients of frequency and amplitude, as a function of the telescope pointing coordinates  
     #    - 'source': fitting coefficients derived from the sampling ('samp') or spectral ('glob') fits 
     #    - 'thresh': threshold for automatic outlier exclusion (set to None to prevent automatic exclusion)
@@ -1903,7 +1928,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'plot':True
         } 
     
-    #%%%%% Step 6: Global fit 
+    #%%%%%% Step 5: Global fit 
+    #    - to fit the spectro-temporal wiggle model to all exposures together, initialized by the results of 'wig_exp_point_ana'
     #    - fitting spectro-temporal model to all exposures together
     #    - by default the model is initialized using the results from 'wig_exp_point_ana'
     #    - options:
@@ -2328,6 +2354,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     data_dic['DI']['verbose']= False
     
     
+    #%%%%% Monitor MCMC
+    data_dic['DI']['progress']= True
+
+
     #%%%%% Priors on variable properties
     #    - structure is priors_CCF = { 'par_name' : {prior_mode: X, prior_val: Y} }
     #      where par_name is specific to the model selected, and prior_mode is one of the possibilities defined below
@@ -2378,6 +2408,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     data_dic['DI']['exclu_walk']=  False           
         
     
+    #%%%%%% Sample exclusion 
+    #    - exclude samples that do not fit within the requested ranges of the chosen parameter
+    #    - format is 'par' : [[x1,x2],[x3,x4],...] 
+    data_dic['DI']['exclu_samp']={}
+
+
     #%%%%%% Derived errors
     #    - 'quant' or 'HDI'
     #    - if 'HDI' is selected:
@@ -2408,7 +2444,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%% Housekeeping and derived properties 
-    plot_dic['prop_raw']=''  
+    plot_dic['prop_DI']=''  
     
         
     #Activating
@@ -2551,7 +2587,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['DI_prof_res']=''   #pdf
 
     #Housekeeping and derived properties 
-    plot_dic['prop_raw']=''   #''          
+    plot_dic['prop_DI']=''   #''          
     
     
   
@@ -2578,8 +2614,158 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #                                         'FWHM_ord0__IS__VS_' :{'vary':True  ,'HARPN':{'mock_vis':{'guess':4,'bd':[0.,10.]}}},
     #                                         })  
                                             
-                                            
-                                            
+      
+
+
+    ##################################################################################################       
+    #%%% Module: fitting disk-integrated stellar properties
+    #    - fitting single stellar disk-integrated property with a common model for all instruments/visits, or independently for each visit 
+    #    - with properties derived from individual disk-integrated profiles
+    #    - this module is used to derive the detrending models to be applied to disk-integrated profiles
+    ##################################################################################################       
+    
+    #%%%% Activating 
+    gen_dic['fit_DIProp'] = False
+    
+    
+    #%%%% Multi-threading
+    glob_fit_dic['DIProp']['nthreads'] = int(0.8*cpu_count())
+    
+    
+    #%%%% Fitted data
+    
+    #%%%%% Exposures to be fitted
+    #    - indexes are relative to global tables
+    #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to [], which is the default value), set their value to 'all' for all out-transit exposures to be fitted
+    #    - add '_bin' at the end of a visit name for its binned exposures to be fitted instead of the original ones (must have been calculated with the binning module)
+    #      all other mentions of the visit (eg in parameter names) can still refer to the original visit name
+    glob_fit_dic['DIProp']['idx_in_fit'] = {}
+
+
+    #%%%% Fitted properties
+    #    - format is 
+    # mod_prop = { prop_main :{ prop_name : {'vary': bool ,'guess': x,'bd':[x_low,x_high]} } }
+    #      where 'prop_main' defines which variables are fitted
+    #    - typical variables:
+    # + 'rv_res': residuals between disk-integrated RVs and the Keplerian model
+    # + 'ctrst', 'FWHM': disk-integrated line properties
+    #    - properties can be fitted with polynomials, sinusoidals, or their combination
+    #    - structure is different from data_dic['DI']['mod_prop'], where properties are fitted independently for each instrument and visit
+    #      the names of properties varying as a function of 'dim_fit' and/or between visits must be defined as 'prop_name = prop_ordi__ISinst_VSvis'  
+    # + 'i' is the polynomial degree
+    # + 'inst' is the name of the instrument, which should be set to '_' for the property to be common to all instruments and their visits
+    # + 'vis' is the name of the visit, which should be set to '_' for the property to be common to all visits of this instrument 
+    #    - the names of properties specific to a given planet 'PL' must be defined as 'prop_name = prop_ordi__plPL'  
+    glob_fit_dic['DIProp']['mod_prop']={'rv':{}}
+    
+    
+    #%%%% Line property fit
+    
+    #%%%%% Coordinate
+    #    - the line properties will be fitted as a function of this coordinate
+    # +'mu' angle       
+    # +'xp_abs': absolute distance from projected orbital normal in the sky plane
+    # +'r_proj': distance from star center projected in the sky plane      
+    # +'abs_y_st' : sky-projected distance parallel to spin axis, absolute value   
+    # +'y_st2' : sky-projected distance parallel to spin axis, squared
+    glob_fit_dic['DIProp']['dim_fit']='r_proj'
+      
+    
+    #%%%%% Variation
+    #    - fit line property as absolute ('abs') or modulated ('modul') polynomial
+    glob_fit_dic['DIProp']['pol_mode']='abs'     
+
+    
+    #%%%% Fit settings
+    
+    #%%%%% Fitting mode 
+    #    - 'chi2', 'mcmc', ''
+    glob_fit_dic['DIProp']['fit_mode']='chi2'  
+    
+    
+    #%%%%% Printing fits results
+    glob_fit_dic['DIProp']['verbose'] = False
+
+
+    #%%%%% Monitor MCMC
+    glob_fit_dic['DIProp']['progress']= True
+    
+    
+    #%%%%% Priors on variable properties
+    #    - see gen_dic['fit_DI'] for details
+    glob_fit_dic['DIProp']['priors']={} 
+        
+    
+    #%%%%% Derived properties
+    #    - each field calls a specific function (see routine for more details)
+    glob_fit_dic['DIProp']['deriv_prop'] = []        
+    
+    
+    #%%%%% MCMC settings
+    
+    #%%%%%% Calculating/retrieving
+    #    - see data_dic['DI']['mcmc_run_mode']
+    glob_fit_dic['DIProp']['mcmc_run_mode']='use'
+    
+    
+    #%%%%%% Runs to re-use
+    glob_fit_dic['DIProp']['mcmc_reuse']={}
+    
+    
+    #%%%%%% Walkers 
+    glob_fit_dic['DIProp']['mcmc_set']={}
+    
+    
+    #%%%%%% Complex priors
+    glob_fit_dic['DIProp']['prior_func']={}  
+     
+    
+    #%%%%%% Walkers exclusion  
+    #    - define conditions within routine
+    glob_fit_dic['DIProp']['exclu_walk']= False       
+    
+    
+    #%%%%%% Automatic exclusion of outlying chains
+    #    - set to None, or exclusion threshold
+    glob_fit_dic['DIProp']['exclu_walk_autom']= None  
+
+
+    #%%%%%% Sample exclusion 
+    #    - see data_dic['DI']['exclu_samp']
+    glob_fit_dic['DIProp']['exclu_samp']={}   
+    
+    
+    #%%%%%% Derived errors
+    #    - 'quant' or 'HDI'
+    glob_fit_dic['DIProp']['out_err_mode']='HDI'  
+    
+    
+    #%%%%%% Derived lower/upper limits
+    glob_fit_dic['DIProp']['conf_limits']={}  
+    
+    
+    #%%%% Plot settings
+    
+    #%%%%% MCMC chains
+    glob_fit_dic['DIProp']['save_MCMC_chains']=''        
+    
+    
+    #%%%%% MCMC corner plot
+    #    - see function for options
+    glob_fit_dic['DIProp']['corner_options']={}
+    
+    
+    #%%%%% Chi2 values
+    #    - plot chi2 values for each datapoint
+    plot_dic['chi2_fit_DIProp']=''     
+
+
+
+
+    
+    
+    
+                                
 
     ##################################################################################################
     #%%% Module: aligning disk-integrated profiles         
@@ -2888,16 +3074,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Intensity settings for the spots
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['spots_prop'] = {}
-        data_dic['DI']['spots_prop']={
-                'achrom':{
-                    'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot1'] * np.pi/180],#--base
-                    # 'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis1']['ang__ISESPRESSO_VSmock_vis1_SPspot1'] * np.pi/180],#--grid run
-                    # 'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
-                    'LD' : ['quadratic'],
-                    'LD_u1' : [0.35],
-                    'LD_u2' : [0.16],
-                },
-                }
+        # data_dic['DI']['spots_prop']={
+        #         'achrom':{
+        #             'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot1'] * np.pi/180],#--base
+        #             # 'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis1']['ang__ISESPRESSO_VSmock_vis1_SPspot1'] * np.pi/180],#--grid run
+        #             # 'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
+        #             'LD' : ['quadratic'],
+        #             'LD_u1' : [0.35],
+        #             'LD_u2' : [0.16],
+        #         },
+        #         }
 
     if gen_dic['star_name']=='V1298tau':
         data_dic['DI']['spots_prop']={
@@ -3136,6 +3322,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     data_dic['DI']['mask']['linedepth_cont_min'] = {}   
     data_dic['DI']['mask']['linedepth_min'] = {}  
     data_dic['DI']['mask']['linedepth_cont_max'] = {} 
+    data_dic['DI']['mask']['linedepth_max'] = {}      
+    data_dic['DI']['mask']['linedepth_contdepth'] = {} 
     
     
     #%%%%% Minimum depth and width
@@ -3165,10 +3353,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - telluric lines with ratio larger than minimum threshold are considered for exclusion
     #    - stellar lines with ratio larger than maximum threshold are excluded (the final threshold is applied after the VALD and morphological analysis)
     data_dic['DI']['mask']['tell_star_depthR_min'] = None
+    data_dic['DI']['mask']['tell_star_depthR_max'] = None
+    data_dic['DI']['mask']['tell_star_depthR_max_final'] = None
     
     
-    #%%%% VALD cross-validation     
-    
+    #%%%% VALD cross-validation 
+    #    - lines from the input VALD linelist are cross-matched with the lines identified by the module and stored for later use.
+    #    - this step has no impact on the line selection    
+
     #%%%%% Path to VALD linelist
     #    - set to None to prevent
     #    - see details in theo_dic['st_atm']
@@ -3213,7 +3405,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - lines with RV dispersion/mean error over the exposure series beyond this value are excluded
     #    - beware not to use this criterion when there are too few exposures
     data_dic['DI']['mask']['RVdisp2err_max'] = {}
-    
+    data_dic['DI']['mask']['RVdisp_max'] = {}
+
     
     #%%%% Plot settings 
     
@@ -3330,7 +3523,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%% Individual residual profiles
-    plot_dic['sp_loc']=''    
     plot_dic['Res_prof']=''      
     
     
@@ -3372,7 +3564,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['map_Res_prof']='png'   #png 
 
     #Individual residual profiles
-    plot_dic['sp_loc']=''    #png
     plot_dic['Res_prof']='pdf'   #pdf    
     
     
@@ -3734,12 +3925,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%% Individual binned profiles
-    plot_dic['sp_Intrbin']=''  
-    plot_dic['CCF_Intrbin']=''   
+    plot_dic['Intrbin']=''   
     
     
     #%%%%% Residuals from binned profiles
-    plot_dic['CCF_Intrbin_res']=''  
+    plot_dic['Intrbin_res']=''  
     
     
     #%%%%% Binned disk-integrated and intrinsic profiles comparison
@@ -3872,7 +4062,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - apply instrumental convolution or not (default) to model
     #    - beware that most derived properties will correspond to the model before convolution
     #      this is particularly useful to match the intrinsic line properties from the joint intrinsic fit with values derived here from the individual fits
-    data_dic['Intr']['conv_model']=False  
+    data_dic['Intr']['conv_model']=True  
     
     
     #%%%%% Model type
@@ -3905,13 +4095,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Fitting mode 
     #    - chi2 or MCMC
-    data_dic['Intr']['fit_mode']=''
+    data_dic['Intr']['fit_mode']='chi2'
     
     
     #%%%%% Printing fits results
     data_dic['Intr']['verbose'] = False  
     
     
+    #%%%%% Monitor MCMC
+    data_dic['Intr']['progress']= True
+
+
     #%%%%% Priors on variable properties
     #    - the width of the master disk-integrated profile can be used as upper limit
     data_dic['Intr']['line_fit_priors']={}
@@ -3941,7 +4135,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% MCMC settings
     
     #%%%%%% Calculating/retrieving
-    #    - set to 'reuse' if gen_dic['calc_fit_intr']=True, allow changing nburn and error definitions without running the mcmc again
+    #    - see data_dic['DI']['mcmc_run_mode']
     data_dic['Intr']['mcmc_run_mode']='use'
     
     
@@ -3961,6 +4155,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - set to None, or exclusion threshold
     data_dic['Intr']['exclu_walk_autom']=None  
     
+    
+    #%%%%%% Sample exclusion 
+    #    - see data_dic['DI']['exclu_samp']
+    data_dic['Intr']['exclu_samp']={}   
+
     
     #%%%%%% Derived errors
     #    - 'quant' or 'HDI'
@@ -4093,11 +4292,20 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     glob_fit_dic['IntrProp']['idx_in_fit'] = {}
     
     
-    #%%%% Fitted property
-    #    - adapt glob_fit_dic['IntrProp']['mod_prop'] to the chosen property
+    #%%%% Fitted properties
+    #    - format is 
+    # mod_prop = { prop_main :{ prop_name : {'vary': bool ,'guess': x,'bd':[x_low,x_high]} } }
+    #      where 'prop_main' defines which variables are fitted
+    #    - typical variables:
     # + 'rv': fitted using surface RV model
     # + 'ctrst', 'FWHM': fitted using polynomial models
-    glob_fit_dic['IntrProp']['prop'] = 'rv'
+    #    - structure is different from data_dic['DI']['mod_prop'], where properties are fitted independently for each instrument and visit
+    #      the names of properties varying as polynomials of 'dim_fit' and/or between visits must be defined as 'prop_name = prop_ordi__ISinst_VSvis'  
+    # + 'i' is the polynomial degree
+    # + 'inst' is the name of the instrument, which should be set to '_' for the property to be common to all instruments and their visits
+    # + 'vis' is the name of the visit, which should be set to '_' for the property to be common to all visits of this instrument 
+    #    - the names of properties specific to a given planet 'PL' must be defined as 'prop_name = prop_ordi__plPL'  
+    glob_fit_dic['IntrProp']['mod_prop']={'rv':{}}
     
     
     #%%%% Line property fit
@@ -4109,7 +4317,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # +'r_proj': distance from star center projected in the sky plane      
     # +'abs_y_st' : sky-projected distance parallel to spin axis, absolute value   
     # +'y_st2' : sky-projected distance parallel to spin axis, squared
-    glob_fit_dic['IntrProp']['dim_fit']='mu'
+    glob_fit_dic['IntrProp']['dim_fit']='r_proj'
       
     
     #%%%%% Variation
@@ -4117,25 +4325,21 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     glob_fit_dic['IntrProp']['pol_mode']='abs'     
     
     
-    #%%%%% Fixed/variable properties
-    #    - structure is different from data_dic['DI']['mod_prop'], where properties are fitted independently for each instrument and visit
-    #    - here the names of properties must be defined as 'prop__ISinst_VSvis'  
-    # + 'inst' is the name of the instrument, which should be set to '_' for the property to be common to all instruments and their visits
-    # + 'vis' is the name of the visit, which should be set to '_' for the property to be common to all visits of this instrument   
-    glob_fit_dic['IntrProp']['mod_prop']={}
-    
-    
     #%%%% Fit settings
     
     #%%%%% Fitting mode 
     #    - 'chi2', 'mcmc', ''
-    glob_fit_dic['IntrProp']['fit_mode']=''  
+    glob_fit_dic['IntrProp']['fit_mode']='chi2'  
     
     
     #%%%%% Printing fits results
     glob_fit_dic['IntrProp']['verbose'] = False
     
     
+    #%%%%% Monitor MCMC
+    glob_fit_dic['IntrProp']['progress']= True
+
+
     #%%%%% Priors on variable properties
     #    - see gen_dic['fit_DI'] for details
     glob_fit_dic['IntrProp']['priors']={} 
@@ -4143,15 +4347,20 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['IntrProp']['modif_list'] = []        
+    glob_fit_dic['IntrProp']['deriv_prop'] = []        
     
     
     #%%%%% MCMC settings
     
     #%%%%%% Calculating/retrieving
+    #    - see data_dic['DI']['mcmc_run_mode']
     glob_fit_dic['IntrProp']['mcmc_run_mode']='use'
     
     
+    #%%%%%% Runs to re-use
+    glob_fit_dic['IntrProp']['mcmc_reuse']={}
+
+
     #%%%%%% Walkers 
     glob_fit_dic['IntrProp']['mcmc_set']={}
     
@@ -4168,6 +4377,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - set to None, or exclusion threshold
     glob_fit_dic['IntrProp']['exclu_walk_autom']= None  
     
+
+    #%%%%%% Sample exclusion 
+    #    - see data_dic['DI']['exclu_samp']
+    glob_fit_dic['IntrProp']['exclu_samp']={}   
+
+
     #%%%%%% Derived errors
     #    - 'quant' or 'HDI'
     glob_fit_dic['IntrProp']['out_err_mode']='HDI'  
@@ -4314,7 +4529,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['ResProf']['modif_list'] = []
+    glob_fit_dic['ResProf']['deriv_prop'] = []
     
     
     #%%%%% MCMC settings
@@ -4379,7 +4594,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  #&  False
+    gen_dic['fit_ResProf'] = True  &  False
 
     # Indexes of exposures to be fitted, in each visit
     #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to []), set their value to 'all' for all in-transit exposures to be fitted
@@ -4461,7 +4676,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Derived properties
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['ResProf']['modif_list'] = ['lambda_deg']
+        glob_fit_dic['ResProf']['deriv_prop'] = ['lambda_deg']
     
     #Calculating/retrieving
     # glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
@@ -4565,7 +4780,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #   beware that the disk-integrated and intrinsic stellar profile have the same continuum, but it is not necessarily unity as set in the analytical and theoretical models, whose continuum must thus let free to vary 
     # - several options need to be controlled from within the function
     # - use plot_dic['prop_Intr']='' to plot the properties of the derived profiles
-    #   use plot_dic['CCF_Intrbin']='' to plot the derived profiles
+    #   use plot_dic['Intrbin']='' to plot the derived profiles
     #   use gen_dic['loc_data_corr'] to visualize the derived profiles
     # - to derive the stellar inclination from Rstar and Peq, use them as model parameters alongside cosistar, instead of veq  
     #   set priors on Rstar and Peq from the literature and a uniform prior on cosistar (=isotropic distribution), or more complex priors if relevant
@@ -4613,6 +4828,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%% Model type
+    #    - local stellar lines are always calculated numerically using ANTARESS stellar grid
+    #    - this field controls the type of elementary stellar lines (analytical, measured, or theoretical) used to tile the local stellar regions
     glob_fit_dic['IntrProf']['mode'] = 'ana' 
     
      
@@ -4652,13 +4869,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     #%%%%% Fitting mode
     #    - 'chi2', 'mcmc', or ''
-    glob_fit_dic['IntrProf']['fit_mode']='' 
+    glob_fit_dic['IntrProf']['fit_mode']='chi2' 
     
     
     #%%%%% Printing fits results
     glob_fit_dic['IntrProf']['verbose']= False
     
     
+    #%%%%% Monitor MCMC
+    glob_fit_dic['IntrProf']['progress']= True
+
+
     #%%%%% Priors on variable properties
     #    - see gen_dic['fit_DI'] for details
     glob_fit_dic['IntrProf']['priors']={}
@@ -4666,7 +4887,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['IntrProf']['modif_list'] = []
+    glob_fit_dic['IntrProf']['deriv_prop'] = []
     
     
     #%%%%% MCMC settings
@@ -4706,6 +4927,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     glob_fit_dic['IntrProf']['exclu_walk_autom']=None  
     
     
+     #%%%%%% Sample exclusion 
+    #    - see data_dic['DI']['exclu_samp']
+    glob_fit_dic['IntrProf']['exclu_samp']={} 
+
+
     #%%%%%% Derived errors
     #    - 'quant' or 'HDI'
     glob_fit_dic['IntrProf']['out_err_mode']='HDI'
@@ -4729,7 +4955,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     
     #Activating 
-    gen_dic['fit_IntrProf'] = True   &  False
+    gen_dic['fit_IntrProf'] = True   #&  False
 
 
     #Exposures to be fitted
@@ -4791,23 +5017,23 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     'veq':{'mod':'uf', 'low':0, 'high':100.},
                     }
     #Derived properties
-    # glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','psi','om','b','ip','istar_deg_conv','fold_istar','lambda_deg','c0','CB_ms']
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg']
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','ip']
-    # glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg','istar_deg_conv','Peq_veq']
-    #glob_fit_dic['IntrProf']['modif_list'] = ['veq_from_Peq_Rstar','vsini','lambda_deg','istar_deg_conv','fold_istar','psi']
-    # glob_fit_dic['IntrProf']['modif_list'] = []
+    # glob_fit_dic['IntrProf']['deriv_prop'] = ['veq_from_Peq_Rstar','vsini','psi','om','b','ip','istar_deg_conv','fold_istar','lambda_deg','c0','CB_ms']
+    # glob_fit_dic['IntrProf']['deriv_prop'] = ['vsini','lambda_deg']
+    # glob_fit_dic['IntrProf']['deriv_prop'] = ['vsini','lambda_deg','ip']
+    # glob_fit_dic['IntrProf']['deriv_prop'] = ['lambda_deg','istar_deg_conv','Peq_veq']
+    #glob_fit_dic['IntrProf']['deriv_prop'] = ['veq_from_Peq_Rstar','vsini','lambda_deg','istar_deg_conv','fold_istar','psi']
+    # glob_fit_dic['IntrProf']['deriv_prop'] = []
     if gen_dic['star_name'] == 'AUMic':
-        # glob_fit_dic['IntrProf']['modif_list'] = ['lambda_deg', 'Peq_veq']
-        glob_fit_dic['IntrProf']['modif_list'] = ['']
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','Peq_vsini'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['istar_Peq_vsini','psi_lambda'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','istar_Peq','psi'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','ip'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_meas_conv'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_DG_conv'] 
-    # glob_fit_dic['IntrProf']['modif_list'] = ['vsini','lambda_deg','CF0_meas_add','b','ip'] 
+        # glob_fit_dic['IntrProf']['deriv_prop'] = ['lambda_deg', 'Peq_veq']
+        glob_fit_dic['IntrProf']['deriv_prop'] = ['']
+    # glob_fit_dic['IntrProf']['deriv_prop'] = ['vsini','lambda_deg','Peq_vsini'] 
+    # glob_fit_dic['IntrProf']['deriv_prop'] = ['istar_Peq_vsini'] 
+    # glob_fit_dic['IntrProf']['deriv_prop'] = ['istar_Peq_vsini','psi_lambda'] 
+    # glob_fit_dic['IntrProf']['deriv_prop'] = ['vsini','lambda_deg','istar_Peq','psi'] 
+    # glob_fit_dic['IntrProf']['deriv_prop'] = ['vsini','lambda_deg','ip'] 
+    # glob_fit_dic['IntrProf']['deriv_prop'] = ['vsini','lambda_deg','CF0_meas_conv'] 
+    # glob_fit_dic['IntrProf']['deriv_prop'] = ['vsini','lambda_deg','CF0_DG_conv'] 
+    # glob_fit_dic['IntrProf']['deriv_prop'] = ['vsini','lambda_deg','CF0_meas_add','b','ip'] 
 
 
     
@@ -4999,6 +5225,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%% 2D maps : residuals from theoretical intrinsic stellar profiles
+    #    - the map allows plotting the combined residuals from in-transit (intrinsic) and out-of-transit (residual) profiles
     #    - same format as 'map_Intr_prof_est'
     plot_dic['map_Intr_prof_res']=''   
     
@@ -5246,11 +5473,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['map_Atmbin']=''   
     
     #%%%%% Individual binned profiles
-    plot_dic['sp_Atmbin']=''  
-    plot_dic['CCF_Atmbin']=''    
+    plot_dic['Atmbin']=''  
 
     #%%%%% Residuals from binned profiles
-    plot_dic['CCF_Atmbin_res']=''  
+    plot_dic['Atmbin_res']=''  
 
 
 
@@ -5370,13 +5596,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Fitting mode 
     #    - chi2 or MCMC
-    data_dic['Atm']['fit_mod']=''
+    data_dic['Atm']['fit_mod']='chi2'
     
     
     #%%%%% Printing fits results
     data_dic['Atm']['verbose'] = False  
     
     
+     #%%%%% Monitor MCMC
+    data_dic['Atm']['progress']= True
+
+
     #%%%%% Priors on variable properties
     data_dic['Atm']['line_fit_priors']={}
 
@@ -5434,10 +5664,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - from original or binned data
-    plot_dic['prop_Atm']=''  
-
-    #Plot residuals between CCFs and their fit
-    plot_dic['CCFatm_res']=''  # pdf
+    plot_dic['prop_Atm']=''
 
 
 
@@ -5496,13 +5723,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Fitting mode 
     #    - 'chi2', 'mcmc', ''
-    glob_fit_dic['AtmProp']['fit_mod']=''  
+    glob_fit_dic['AtmProp']['fit_mod']='chi2'  
     
     
     #%%%%% Printing fits results
     glob_fit_dic['AtmProp']['verbose'] = False
     
     
+    #%%%%% Monitor MCMC
+    glob_fit_dic['AtmProp']['progress']= True
+
+
     #%%%%% Priors on variable properties
     #    - see gen_dic['fit_DI'] for details
     glob_fit_dic['AtmProp']['priors']={} 
@@ -5510,12 +5741,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['AtmProp']['modif_list'] = []        
+    glob_fit_dic['AtmProp']['deriv_prop'] = []        
     
     
     #%%%%% MCMC settings
     
     #%%%%%% Calculating/retrieving
+    #    - see data_dic['DI']['mcmc_run_mode']
     glob_fit_dic['AtmProp']['mcmc_run_mode']='use'
     
     
@@ -5588,9 +5820,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Exposures to be fitted
     #    - same as in glob_fit_dic['IntrProf']
     #    - indexes are relative to in-transit or global tables depending on the signal type
-    #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to []), set their value to 'all' for all in-transit exposures to be fitted
-    #    - by default, all exposures with defined profiles will be fitted
-         
     glob_fit_dic['AtmProf']['idx_in_fit']={}
     
     
@@ -5645,13 +5874,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     #%%%%% Fitting mode
     #    - 'chi2', 'mcmc', or ''
-    glob_fit_dic['AtmProf']['fit_mod']='' 
+    glob_fit_dic['AtmProf']['fit_mod']='chi2' 
     
     
     #%%%%% Printing fits results
     glob_fit_dic['AtmProf']['verbose']= False
     
     
+    #%%%%% Monitor MCMC
+    glob_fit_dic['AtmProf']['progress']= True
+
+
     #%%%%% Priors on variable properties
     #    - see gen_dic['fit_DI'] for details
     glob_fit_dic['AtmProf']['priors']={}
@@ -5659,7 +5892,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['AtmProf']['modif_list'] = []
+    glob_fit_dic['AtmProf']['deriv_prop'] = []
     
     
     #%%%%% MCMC settings
