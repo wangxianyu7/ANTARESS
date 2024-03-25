@@ -10,7 +10,7 @@ from ANTARESS_process.ANTARESS_data_align import align_data
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,calc_st_sky,calc_Isurf_grid,calc_RVrot
 from ANTARESS_analysis.ANTARESS_model_prof import calc_polymodu,polycoeff_def
-from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid
+from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,OS_coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid
 from ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop, spot_occ_region_grid
 
 def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=False,spot_dic={}):
@@ -314,7 +314,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
         if Ftot_star:
             surf_prop_dic_pl[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
             surf_prop_dic_spot[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
-            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan
+            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.ones([system_prop[subkey_chrom]['nw'],n_exp])
 
 
         #Convective blueshift
@@ -471,7 +471,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
 
     #Processing each exposure
     for i_in,(iexp,n_osamp_exp) in enumerate(zip(iexp_list,n_osamp_exp_all_total)):
-   
+
         #Planets in exposure
         transit_pl_exp = np.array(transit_pl)[cond_transit_all[i_in]]
 
@@ -708,7 +708,6 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                 for subkey_chrom in key_chrom:
 
                     surf_prop_dic_pl[subkey_chrom]['Ftot_star'][:,i_in] = 1.
-                    surf_prop_dic_common[subkey_chrom]['Ftot_star'][:,i_in] = 1.
                     if cond_spot:
                         surf_prop_dic_spot[subkey_chrom]['Ftot_star'][:,i_in] = 1.
 
@@ -1142,8 +1141,12 @@ def sum_region_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,coord_g
         #    - analytical intrinsic profiles are fully calculated 
         #      theoretical and measured intrinsic profiles have been pre-defined and are just shifted to their position
         #    - in both cases a scaling is then applied to convert them into local profiles
-        line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_band,args['flux_intr_grid'],coord_grid['mu'],param,args)          
-      
+        # line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_band,args['flux_intr_grid'],coord_grid['mu'],param,args)
+        if not args['fit']:line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_band,args['flux_intr_grid'],coord_grid['mu'],param,args)          
+        else:
+            fit_Fsurf_grid_band = np.tile(Fsurf_grid_band, (args['ncen_bins'], 1)).T
+            line_prof_grid=OS_coadd_loc_line_prof(coord_grid['rv'],fit_Fsurf_grid_band,param,args)          
+
         #Coadd line profiles over planet-occulted region
         sum_prop_dic_pl['line_prof'] = np.sum(line_prof_grid,axis=0) 
   

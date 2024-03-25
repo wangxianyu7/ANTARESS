@@ -7012,7 +7012,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                
                         #Print visit names
                         if plot_set_key['plot_vis']:
-                            var_plot[np.isnan(var_plot)]=0.
                             plt.text(0.,np.min(var_plot)+0.3*(np.max(var_plot)-np.min(var_plot)),vis,verticalalignment='center', horizontalalignment='center',fontsize=10.,zorder=4,color=col_vis) 
                   
                     #Time averaged light-curve within each exposure

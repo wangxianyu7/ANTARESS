@@ -1042,14 +1042,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     gen_dic['calc_theoPlOcc']=True  # &  False  
 
     # Precision
-    # theo_dic['precision'] = 'high'
+    theo_dic['precision'] = 'high'
     # theo_dic['precision'] = 'medium'
-    theo_dic['precision'] = 'low'
+    # theo_dic['precision'] = 'low'
 
 
     #Star discretization      
     if gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dstar']=201.
+        theo_dic['nsub_Dstar']=51.
         # theo_dic['nsub_Dstar']=301. #-- for plotting purposes
     
     if gen_dic['star_name']=='V1298tau':
@@ -1064,7 +1064,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Planet discretization
     if gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dpl']= {'AUMicb':101.}#, 'AUMicc':101.}                
+        theo_dic['nsub_Dpl']= {'AUMicb':11.}#, 'AUMicc':101.}                
 
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dpl']={'V1298tau_b':101.}
@@ -1072,7 +1072,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Spot discretization
     if gen_dic['star_name']=='AUMic':
         # theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
-        theo_dic['nsub_Dspot']={'spot1':50.}
+        theo_dic['nsub_Dspot']={'spot1':11.}
         
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
@@ -3074,16 +3074,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Intensity settings for the spots
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['spots_prop'] = {}
-        # data_dic['DI']['spots_prop']={
-        #         'achrom':{
-        #             'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot1'] * np.pi/180],#--base
-        #             # 'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis1']['ang__ISESPRESSO_VSmock_vis1_SPspot1'] * np.pi/180],#--grid run
-        #             # 'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
-        #             'LD' : ['quadratic'],
-        #             'LD_u1' : [0.35],
-        #             'LD_u2' : [0.16],
-        #         },
-        #         }
+        data_dic['DI']['spots_prop']={
+                'achrom':{
+                    'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot1'] * np.pi/180],#--base
+                    # 'spot1' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis1']['ang__ISESPRESSO_VSmock_vis1_SPspot1'] * np.pi/180],#--grid run
+                    # 'spot2' : [mock_dic['spots_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_SPspot2'] * np.pi/180],
+                    'LD' : ['quadratic'],
+                    'LD_u1' : [0.35],
+                    'LD_u2' : [0.16],
+                },
+                }
 
     if gen_dic['star_name']=='V1298tau':
         data_dic['DI']['spots_prop']={
@@ -3542,12 +3542,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     data_dic['Res']['extract_in']=True  &  False
     
    # %%%% Master visits
-    # if gen_dic['star_name']=='AUMic':
-    #     data_dic['Res']['vis_in_bin']={'ESPRESSO':['mock_vis']}  
+    if gen_dic['star_name']=='AUMic':
+        data_dic['Res']['vis_in_bin']={'ESPRESSO':['mock_vis']}  
 
    #  %%%% Master exposures
-    # if gen_dic['star_name']=='AUMic':    
-    #     data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} 
+    if gen_dic['star_name']=='AUMic':    
+        data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} 
 
     
 
@@ -4596,14 +4596,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Activating 
     gen_dic['fit_ResProf'] = True  &  False
 
+    #Number of cores 
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['ResProf']['nthreads'] = 1
+    
     # Indexes of exposures to be fitted, in each visit
     #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to []), set their value to 'all' for all in-transit exposures to be fitted
     if gen_dic['star_name'] == 'AUMic':
         glob_fit_dic['ResProf']['idx_in_fit'] = {'ESPRESSO':{'mock_vis':'all'}}
-
-    # Master out-exposures
-    if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['ResProf']['idx_in_master_out'] = {'ESPRESSO':{'mock_vis':'all'}}
 
     # Master-out RV table
     if gen_dic['star_name']=='AUMic':
@@ -4641,13 +4641,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Fixed/variable properties   
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['ResProf']['mod_prop']={
-        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.2, 'bd':[0.15, 1]},
-        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':15, 'bd':[5, 20]},
-        'veq':{'vary':True,'guess':6, 'bd':[0, 10]},
-        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-70, 80]},
-        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 0.6, 2458330.39051 + 0.8]},
-        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':30, 'bd':[10, 50]},
-        'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.3, 'bd':[0, 0.99]},
+        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.7, 'bd':[0.15, 1]},
+        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':8, 'bd':[5, 20]},
+        'veq':{'vary':True,'guess':7.7999, 'bd':[0, 10]},
+        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':-30, 'bd':[-70, 80]},
+        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.09051, 'bd':[2458330.39051 - 0.6, 2458330.39051 + 0.8]},
+        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':25, 'bd':[10, 50]},
+        'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.9, 'bd':[0, 0.99]},
         'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
     
@@ -4955,7 +4955,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     
     #Activating 
-    gen_dic['fit_IntrProf'] = True   #&  False
+    gen_dic['fit_IntrProf'] = True   &  False
 
 
     #Exposures to be fitted

@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.interpolate import interp1d
 from copy import deepcopy
-from ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab
+from ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab,get_time
 import astropy.convolution.convolve as astro_conv
 import bindensity as bind
 # from pysme import sme as SME
@@ -27,7 +27,6 @@ def custom_DI_prof(param,x,args=None,unquiet_star=None):
         TBD
     
     """ 
-    
     #--------------------------------------------------------------------------------
     #Updating stellar grid and line profile grid
     #    - only if routine is called in fit mode, otherwise the default pipeline stellar grid and the scaling from init_custom_DI_prof() are used
@@ -75,10 +74,16 @@ def custom_DI_prof(param,x,args=None,unquiet_star=None):
     #    - disabled with theoretical profiles, there seems to be an incompatibility with sme
     if (args['nthreads']>1) and (args['mode']!='theo'):
         num_elements=len(icell_list)
+        # simplified_args={}
+        # for key in ['mode', 'mac_mode', 'input_cell_all', 'func_prof', 'cen_bins', 'nthreads']:simplified_args[key]=args[key]
         flux_DI_sum=MAIN_multithread(coadd_loc_line_prof,args['nthreads'],num_elements,[rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,args,),output = True)                           
-    
-    #Direct call
-    else:flux_DI_sum=coadd_loc_line_prof(rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)
+
+    # Direct call
+    else:
+        # flux_DI_sum=coadd_loc_line_prof(rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)
+        for pol_par in args['input_cell_all']:args['input_cell_all'][pol_par]=args['input_cell_all'][pol_par][~unquiet_star]
+        flux_DI_sum=OS_coadd_loc_line_prof(rv_surf_star_grid,args['Fsurf_grid_spec'],param,args)
+
 
     #Co-adding profiles
     DI_flux_norm = np.sum(flux_DI_sum,axis=0)
@@ -595,17 +600,42 @@ def coadd_loc_line_prof(rv_surf_star_grid,icell_list,Fsurf_grid_spec,flux_intr_g
         TBD
     
     """ 
+
     flux_DI_sum=[]
+    
     for isub,(icell,rv_surf_star,flux_intr_cell,mu_cell) in enumerate(zip(icell_list,rv_surf_star_grid,flux_intr_grid,mu_grid)):
         flux_DI_sum+=[calc_loc_line_prof(icell,rv_surf_star,Fsurf_grid_spec[isub],flux_intr_cell,mu_cell,args,param)]
+
     return flux_DI_sum
 
 
+def OS_coadd_loc_line_prof(rv_surf_star_grid, Fsurf_grid_spec, param, args):
+    r"""**Local line profile co-addition**
 
+    Oversimplified way of cumulating the local profiles from each cell of the stellar disk. 
+    This version assumes gaussian profiles to describe the CCF of eah cell.
 
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    #Define necessay grids    
+    true_rv_surf_star_grid = np.tile(rv_surf_star_grid, (args['ncen_bins'], 1)).T
+    model_table = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']), dtype=float) * args['cen_bins']
+    cont_grid = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']))
+    sqrt_log2 = np.sqrt(np.log(2.))
+    ctrst_grid = np.tile(args['input_cell_all']['ctrst'], (args['ncen_bins'], 1)).T
+    FWHM_grid = np.tile(args['input_cell_all']['FWHM'], (args['ncen_bins'], 1)).T
+    
+    #Make grid of profiles    
+    gaussian_line_grid = cont_grid*(1.-ctrst_grid*np.exp(-(2.*sqrt_log2*(model_table-true_rv_surf_star_grid)/FWHM_grid)**2))
 
+    gaussian_line_grid *= Fsurf_grid_spec
 
-
+    return gaussian_line_grid
 
 
 

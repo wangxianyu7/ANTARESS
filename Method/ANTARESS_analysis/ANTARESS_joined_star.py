@@ -998,12 +998,8 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 fixed_args['master_out']['idx_in_master_out'][inst][vis]=[]
 
                 # - Indexes
-                if (inst in fit_prop_dic['idx_in_master_out']) and (vis in fit_prop_dic['idx_in_master_out'][inst]):
-                    if fit_prop_dic['idx_in_master_out'][inst][vis]=='all':fixed_args['master_out']['idx_in_master_out'][inst][vis]=gen_dic[inst][vis]['idx_out']
-                    elif fit_prop_dic['idx_in_master_out'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=fit_prop_dic['idx_in_master_out'][inst][vis+fixed_args['bin_mode'][inst][vis]]
-
                 if (inst in data_dic['Res']['idx_in_bin']) and (vis in data_dic['Res']['idx_in_bin'][inst]):
-                        if data_dic['Res']['idx_in_bin'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=list(np.intersect1d(fixed_args['master_out']['idx_in_master_out'][inst][vis],data_dic['Res']['idx_in_bin'][inst][vis]))
+                        if data_dic['Res']['idx_in_bin'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=list(data_dic['Res']['idx_in_bin'][inst][vis])
         
                 if len(fixed_args['master_out']['idx_in_master_out'][inst][vis])==0:stop('No exposures defined in visit '+vis+' for the master-out calculation.')
 
@@ -1151,7 +1147,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['master_out']['master_out_tab']['cen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][:-1]+(fixed_args['master_out']['master_out_tab']['dcen_bins']/2)
 
     #Defining necessary master-out tables
-    for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):
+    for inst in data_dic['instrum_list']:
         #Defining multi-visit master-out and weights
         if len(fixed_args['master_out']['multivisit_list'][inst])>0:
             fixed_args['master_out']['multivisit_flux'][inst]=np.zeros(len(fixed_args['master_out']['master_out_tab']['cen_bins']), dtype=float)

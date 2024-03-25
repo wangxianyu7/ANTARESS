@@ -8,7 +8,7 @@ from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
 # from ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
 from ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate
 from ANTARESS_grids.ANTARESS_star_grid import calc_GD, calc_LD, calc_RVrot, calc_Isurf_grid
-from ANTARESS_grids.ANTARESS_prof_grid import init_st_intr_prof, coadd_loc_line_prof
+from ANTARESS_grids.ANTARESS_prof_grid import init_st_intr_prof, coadd_loc_line_prof, OS_coadd_loc_line_prof
 from ANTARESS_analysis.ANTARESS_model_prof import calc_linevar_coord_grid, calc_polymodu
 
 
@@ -588,10 +588,18 @@ def sum_region_spot_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,Fs
         #    - analytical intrinsic profiles are fully calculated 
         #      theoretical and measured intrinsic profiles have been pre-defined and are just shifted to their position
         #    - in both cases a scaling is then applied to convert them into local profiles
-        line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_band,args['flux_intr_grid'],coord_grid['mu'],star_params,args)          
-        
+        # line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_band,args['flux_intr_grid'],coord_grid['mu'],star_params,args) 
+        if not args['fit']:line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_band,args['flux_intr_grid'],coord_grid['mu'],star_params,args)          
+        else:
+            fit_Fsurf_grid_band = np.tile(Fsurf_grid_band, (args['ncen_bins'], 1)).T
+            line_prof_grid=OS_coadd_loc_line_prof(coord_grid['rv'],fit_Fsurf_grid_band,star_params,args)          
+
         #Calculate profile emitted by the spot
-        emit_line_prof_grid = coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),(1-spot_contrast)*Fsurf_grid_emit_band,args['flux_intr_grid'],coord_grid['mu'],star_params,args)          
+        # emit_line_prof_grid = coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),(1-spot_contrast)*Fsurf_grid_emit_band,args['flux_intr_grid'],coord_grid['mu'],star_params,args)
+        if not args['fit']:emit_line_prof_grid = coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),(1-spot_contrast)*Fsurf_grid_emit_band,args['flux_intr_grid'],coord_grid['mu'],star_params,args)          
+        else:
+            fit_Fsurf_grid_emit_band = np.tile((1-spot_contrast)*Fsurf_grid_emit_band, (args['ncen_bins'], 1)).T
+            emit_line_prof_grid = OS_coadd_loc_line_prof(coord_grid['rv'],fit_Fsurf_grid_emit_band,star_params,args)          
 
         #Coadd line profiles over spotted region
         sum_prop_dic['line_prof'] = np.sum((np.array(line_prof_grid)-np.array(emit_line_prof_grid)),axis=0)
