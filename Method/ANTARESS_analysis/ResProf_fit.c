@@ -20,6 +20,9 @@ double* C_OS_coadd_loc_line_prof(double* rv_surf_star_grid, double* ctrst_grid, 
     return gauss;
 }
 
+void free_gaussian_line_grid(double* ptr) {
+    free(ptr);
+}
 
 
 

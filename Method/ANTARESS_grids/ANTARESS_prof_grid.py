@@ -18,6 +18,7 @@ from ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_R
 so_file = getcwd()+"/ANTARESS_analysis/ResProf_fit.so"
 myfunctions = CDLL(so_file)
 fun_to_use = myfunctions.C_OS_coadd_loc_line_prof
+fun_to_free = myfunctions.free_gaussian_line_grid
 fun_to_use.argtypes = [np.ctypeslib.ndpointer(c_double),
                 np.ctypeslib.ndpointer(c_double),
                 np.ctypeslib.ndpointer(c_double),
@@ -26,6 +27,8 @@ fun_to_use.argtypes = [np.ctypeslib.ndpointer(c_double),
                 c_int,
                 c_int]
 fun_to_use.restype = c_void_p
+fun_to_free.argtypes = [np.ctypeslib.ndpointer(c_double)]
+fun_to_free.restype = None
 
 def custom_DI_prof(param,x,args=None,unquiet_star=None,custom_func=None):
     r"""**Disk-integrated profile: model function**
@@ -669,6 +672,7 @@ def use_C_OS_coadd_loc_line_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
         args['cen_bins'], Fsurf_grid_spec*10, ncen_bins, Fsurf_grid_spec_shape0)
     gauss_grid = np.frombuffer(cast(gauss_grid_ptr, POINTER(c_double * (ncen_bins * Fsurf_grid_spec_shape0))).contents, dtype=np.float64)
     truegauss_grid = gauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins))/10
+    fun_to_free(gauss_grid)
     return truegauss_grid
 
 
