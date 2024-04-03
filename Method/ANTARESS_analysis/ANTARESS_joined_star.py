@@ -1177,6 +1177,19 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['mod_func'] = joined_ResProf
     fixed_args['inside_fit'] = True 
     
+    #Optimization levels
+    fixed_args['C_OS_grid']=False
+    fixed_args['OS_grid'] = False
+    fixed_args['Opt_DI_calc'] = False
+    #Multithreading turned off for levels 1,2,3,4
+    if fit_prop_dic['Opt_Lvl']>=1:fit_prop_dic['nthreads']=1
+    #Optimized profile building turned on for levels 2,3,4
+    if fit_prop_dic['Opt_Lvl']>=2:fixed_args['Opt_DI_calc'] = True
+    #Over-simplified grid building turned on for levels 3,4
+    if fit_prop_dic['Opt_Lvl']>=3:fixed_args['OS_grid'] = True
+    #Over-simplified grid building turned on and coded in C for level 4
+    if fit_prop_dic['Opt_Lvl']==4:fixed_args['C_OS_grid'] = True
+
     #Model fit and calculation
     merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'])
 
@@ -1289,6 +1302,7 @@ def FIT_joined_ResProf(param,x_tab,args=None):
     """
     
     #Models over fitted spectral ranges
+    sto=get_time()
     print('1:', param)
     mod_dic=joined_ResProf(param,args)[0]
 
@@ -1316,6 +1330,8 @@ def FIT_joined_ResProf(param,x_tab,args=None):
                     res = args['flux'][inst][vis][isub][cond_fit]-mod_dic[inst][vis][isub][cond_fit]
                     chi = np.append( chi, res/np.sqrt( args['cov'][inst][vis][isub][0][cond_fit]) )
     print('chi-squared output:', chi)
+    print(get_time()-sto)
+    stop('STOP')
     return chi
 
 
@@ -1338,11 +1354,12 @@ def joined_ResProf(param,args):
     Returns:
         TBD
     
-    """     
+    """
     mod_dic = {}
     mod_prop_dic = {}
     coeff_line_dic = {}
 
+    #Processing instruments
     for inst in args['inst_list']:
         args['inst']=inst
         mod_dic[inst]={}
@@ -1351,7 +1368,6 @@ def joined_ResProf(param,args):
 
         #Processing visits
         for vis in args['inst_vis_list'][inst]:
-            
             args['vis']=vis
             cond_def_all=np.zeros([len(args['master_out']['idx_in_master_out'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=bool)
             cond_undef_weights=np.zeros(len(args['master_out']['master_out_tab']['cen_bins']), dtype=bool)
@@ -1379,60 +1395,67 @@ def joined_ResProf(param,args):
             #-----------------------------------------------------------
             #Updating the stellar grid -- necessary since we need to determine the 2D grid of booleans
             #on the most up to date version of the stellar grid
-            if args['fit'] and args['var_star_grid']:
-                param_up={}
-                if isinstance(param,lmfit.parameter.Parameters):
-                    for par in param:param_up[par]=param[par].value
-                else:param_up=param
-                up_model_star(args, param_up)
-                args['Fsurf_grid_spec'] = theo_intr2loc(args['grid_dic'],args['system_prop'],args,args['ncen_bins'][inst][vis],args['grid_dic']['nsub_star'])     
+            if args['Opt_DI_calc']:
+                if args['fit'] and args['var_star_grid']:
+                    param_up={}
+                    if isinstance(param,lmfit.parameter.Parameters):
+                        for par in param:param_up[par]=param[par].value
+                    else:param_up=param
+                    up_model_star(args, param_up)
+                    args['Fsurf_grid_spec'] = theo_intr2loc(args['grid_dic'],args['system_prop'],args,args['ncen_bins'][inst][vis],args['grid_dic']['nsub_star'])     
 
-            #Figuring out which cells of the stellar grid are never spotted or planet-occulted
+                #Figuring out which cells of the stellar grid are never spotted or planet-occulted
 
-            #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
-            #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
-            unquiet_star_grid = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-            
-            #Retrieve updated coordinates of occulted and spotted regions or use imported values
-            system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
-
-            if not args['fit']:args['coord_fit'][inst][vis]=coord_pl_sp
-
-            for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
-
-                #Figure out which cells are spotted
-                spotted_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-                for spot in args['transit_sp'][inst][vis]:
-                    if np.sum(coord_pl_sp[spot]['is_visible'][:, isub]):
-                        mini_spot_dic = {}
-                        mini_spot_dic['x_sky_exp_start'],mini_spot_dic['x_sky_exp_center'],mini_spot_dic['x_sky_exp_end']=coord_pl_sp[spot]['x_sky_exp'][:, isub]
-                        mini_spot_dic['y_sky_exp_start'],mini_spot_dic['y_sky_exp_center'],mini_spot_dic['y_sky_exp_end']=coord_pl_sp[spot]['y_sky_exp'][:, isub]
-                        mini_spot_dic['ang_rad']=coord_pl_sp[spot]['ang_rad'][isub]
-                        mini_spot_dic['cos_long_exp_start'],mini_spot_dic['cos_long_exp_center'],mini_spot_dic['cos_long_exp_end']=coord_pl_sp[spot]['cos_long_exp'][:, isub]
-                        mini_spot_dic['sin_long_exp_start'],mini_spot_dic['sin_long_exp_center'],mini_spot_dic['sin_long_exp_end']=coord_pl_sp[spot]['sin_long_exp'][:, isub]
-                        mini_spot_dic['cos_lat_exp_start'],mini_spot_dic['cos_lat_exp_center'],mini_spot_dic['cos_lat_exp_end']=coord_pl_sp[spot]['cos_lat_exp'][:, isub]
-                        mini_spot_dic['sin_lat_exp_start'],mini_spot_dic['sin_lat_exp_center'],mini_spot_dic['sin_lat_exp_end']=coord_pl_sp[spot]['sin_lat_exp'][:, isub]
-                        _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic, args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
-                        spotted_star_grid |= spot_spotted_star_grid
-
+                #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
+                #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
+                unquiet_star_grid = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
                 
-                #Figure out which cells are planet-occulted
-                plocced_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-                for pl_loc in args['transit_pl'][inst][vis]:
-                    if np.abs(coord_pl_sp[pl_loc]['ecl'][isub])!=1:
-                        mini_pl_dic = {}
-                        mini_pl_dic['x_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][0, isub], coord_pl_sp[pl_loc]['cen_pos'][0, isub], coord_pl_sp[pl_loc]['end_pos'][0, isub]]
-                        mini_pl_dic['y_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][1, isub], coord_pl_sp[pl_loc]['cen_pos'][1, isub], coord_pl_sp[pl_loc]['end_pos'][1, isub]]
-                        mini_pl_dic['RpRs']=args['system_prop']['achrom'][pl_loc][0]
-                        if ('lambda_rad__pl'+pl_loc in args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
-                        else:lamb_name = 'lambda_rad__pl'+pl_loc 
-                        mini_pl_dic['lambda']=param_val[lamb_name]
-                        pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'])
-                        plocced_star_grid |= pl_plocced_star_grid
+                #Retrieve updated coordinates of occulted and spotted regions or use imported values
+                system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
 
-                #Update the global 2D quiet star grid
-                unquiet_star_grid |= (spotted_star_grid | plocced_star_grid)
+                for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
 
+                    #Figure out which cells are spotted
+                    spotted_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
+                    for spot in args['transit_sp'][inst][vis]:
+                        if np.sum(coord_pl_sp[spot]['is_visible'][:, isub]):
+                            mini_spot_dic = {}
+                            mini_spot_dic['x_sky_exp_start'],mini_spot_dic['x_sky_exp_center'],mini_spot_dic['x_sky_exp_end']=coord_pl_sp[spot]['x_sky_exp'][:, isub]
+                            mini_spot_dic['y_sky_exp_start'],mini_spot_dic['y_sky_exp_center'],mini_spot_dic['y_sky_exp_end']=coord_pl_sp[spot]['y_sky_exp'][:, isub]
+                            mini_spot_dic['ang_rad']=coord_pl_sp[spot]['ang_rad'][isub]
+                            mini_spot_dic['cos_long_exp_start'],mini_spot_dic['cos_long_exp_center'],mini_spot_dic['cos_long_exp_end']=coord_pl_sp[spot]['cos_long_exp'][:, isub]
+                            mini_spot_dic['sin_long_exp_start'],mini_spot_dic['sin_long_exp_center'],mini_spot_dic['sin_long_exp_end']=coord_pl_sp[spot]['sin_long_exp'][:, isub]
+                            mini_spot_dic['cos_lat_exp_start'],mini_spot_dic['cos_lat_exp_center'],mini_spot_dic['cos_lat_exp_end']=coord_pl_sp[spot]['cos_lat_exp'][:, isub]
+                            mini_spot_dic['sin_lat_exp_start'],mini_spot_dic['sin_lat_exp_center'],mini_spot_dic['sin_lat_exp_end']=coord_pl_sp[spot]['sin_lat_exp'][:, isub]
+                            _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic, args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
+                            spotted_star_grid |= spot_spotted_star_grid
+
+                    
+                    #Figure out which cells are planet-occulted
+                    plocced_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
+                    for pl_loc in args['transit_pl'][inst][vis]:
+                        if np.abs(coord_pl_sp[pl_loc]['ecl'][isub])!=1:
+                            mini_pl_dic = {}
+                            mini_pl_dic['x_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][0, isub], coord_pl_sp[pl_loc]['cen_pos'][0, isub], coord_pl_sp[pl_loc]['end_pos'][0, isub]]
+                            mini_pl_dic['y_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][1, isub], coord_pl_sp[pl_loc]['cen_pos'][1, isub], coord_pl_sp[pl_loc]['end_pos'][1, isub]]
+                            mini_pl_dic['RpRs']=args['system_prop']['achrom'][pl_loc][0]
+                            if ('lambda_rad__pl'+pl_loc in args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
+                            else:lamb_name = 'lambda_rad__pl'+pl_loc 
+                            mini_pl_dic['lambda']=param_val[lamb_name]
+                            pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'])
+                            plocced_star_grid |= pl_plocced_star_grid
+
+                    #Update the global 2D quiet star grid
+                    unquiet_star_grid |= (spotted_star_grid | plocced_star_grid)
+
+            else:
+                #Initialize unquiet star grid
+                unquiet_star_grid = None
+
+                #Calculate coordinates of occulted and spotted regions or use imported values
+                system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
+            
+            if not args['fit']:args['coord_fit'][inst][vis]=coord_pl_sp
             #-----------------------------------------------------------
             #Variable line model for each exposure 
             #    - the intrinsic stellar line profile is convolved with the LSF kernel specific to each instrument

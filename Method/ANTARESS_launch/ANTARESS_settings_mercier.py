@@ -4511,6 +4511,23 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + set noPC = True to account for the chi2 of the null hypothesis (no noise) on the out-of-transit data, without including PC to the RMR fit
     glob_fit_dic['ResProf']['PC_model']={}  
 
+    #%%%%% Optimization levels
+    # + Level -1: nothing is turned on/off. In this default case multithreading is controlled by the number of threads provided by the user, un-optimized profile building is used
+    # and over-simplified grid building is not used.
+    # + Level 0: multithreading activated AND un-optimized profile building
+    # + Level 1: multithreading turned off AND un-optmized profile building
+    # + Level 2: multithreading turned off AND optimized profile building
+    # + Level 3: multithreading turned off AND optimized profile building AND over-simplified grid building
+    # + Level 4: multithreading turned off AND optimized profile building AND over-simplified grid building AND grid building function coded in C
+    #
+    # - Optimized profile building: We generate residual profiles by initially constructing profiles for each exposure. Each exposure's profile is built by removing the deviations 
+    # caused by spotted and occulted regions from the base disk-integrated profile. Subsequently, we create a master-out profile and subtract each exposure's profile from it to obtain 
+    # the residual profiles. To expedite this process, cells that are never spotted or occulted are identified and excluded from profile construction, resulting in faster model processing.
+    #
+    # - Over-simplified grid building: Instead of assigning complex profiles to individual cells and summing them for the entire disk, we now use Gaussian profiles for each cell. 
+    # Additionally, we optimize performance by representing the grid of profiles as an array rather than a list.
+    glob_fit_dic['ResProf']['Opt_Lvl']=-1
+    
     #%%%% Fit settings 
         
     #%%%%% Fitting mode
@@ -4594,11 +4611,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  &  False
+    gen_dic['fit_ResProf'] = True  #&  False
 
-    #Number of cores 
+    #%%%%% Optimization levels
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['ResProf']['nthreads'] = 1
+        glob_fit_dic['ResProf']['Opt_Lvl']=4
     
     # Indexes of exposures to be fitted, in each visit
     #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to []), set their value to 'all' for all in-transit exposures to be fitted

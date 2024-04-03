@@ -10,7 +10,7 @@ from ANTARESS_process.ANTARESS_data_align import align_data
 from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
 from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,calc_st_sky,calc_Isurf_grid,calc_RVrot
 from ANTARESS_analysis.ANTARESS_model_prof import calc_polymodu,polycoeff_def
-from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,OS_coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid
+from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,OS_coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid, use_C_OS_coadd_loc_line_prof
 from ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop, spot_occ_region_grid
 
 def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=False,spot_dic={}):
@@ -1129,7 +1129,7 @@ def sum_region_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,coord_g
                 range_reg_pl[par_loc+'_range'][iband][0]=np.min([range_reg_pl[par_loc+'_range'][iband][0],coord_reg_dic_pl[par_loc][iband]])
                 range_reg_pl[par_loc+'_range'][iband][1]=np.max([range_reg_pl[par_loc+'_range'][iband][1],coord_reg_dic_pl[par_loc][iband]])
      
-    #------------------------------------------------    
+    #------------------------------------------------ 
     #Calculate line profile from average of cell profiles over current region
     #    - this high precision mode is only possible for achromatic or closest-achromatic mode 
     if line_occ_HP_band=='high':    
@@ -1137,15 +1137,26 @@ def sum_region_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,coord_g
         #Attribute intrinsic profile to each cell 
         init_st_intr_prof(args,coord_grid,param)
 
+        #Whether to use the over-simplified grid building function or not
+        use_OS_grid=False
+        use_C_OS_grid=False
+        if 'OS_grid' in args and args['OS_grid']:use_OS_grid=True
+        if 'C_OS_grid' in args and args['C_OS_grid']:
+            use_OS_grid=False
+            use_C_OS_grid=True
+
         #Calculate individual local line profiles from all region cells
         #    - analytical intrinsic profiles are fully calculated 
         #      theoretical and measured intrinsic profiles have been pre-defined and are just shifted to their position
         #    - in both cases a scaling is then applied to convert them into local profiles
-        # line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_band,args['flux_intr_grid'],coord_grid['mu'],param,args)
         if not args['fit']:line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_band,args['flux_intr_grid'],coord_grid['mu'],param,args)          
         else:
-            fit_Fsurf_grid_band = np.tile(Fsurf_grid_band, (args['ncen_bins'], 1)).T
-            line_prof_grid=OS_coadd_loc_line_prof(coord_grid['rv'],fit_Fsurf_grid_band,param,args)          
+            if use_OS_grid:
+                fit_Fsurf_grid_band = np.tile(Fsurf_grid_band, (args['ncen_bins'], 1)).T
+                line_prof_grid=OS_coadd_loc_line_prof(coord_grid['rv'],fit_Fsurf_grid_band,args)
+            elif use_C_OS_grid:
+                line_prof_grid = use_C_OS_coadd_loc_line_prof(coord_grid['rv'],Fsurf_grid_band,args)
+            else:line_prof_grid=coadd_loc_line_prof(coord_grid['rv'],range(coord_grid['nsub_star']),Fsurf_grid_band,args['flux_intr_grid'],coord_grid['mu'],param,args)
 
         #Coadd line profiles over planet-occulted region
         sum_prop_dic_pl['line_prof'] = np.sum(line_prof_grid,axis=0) 

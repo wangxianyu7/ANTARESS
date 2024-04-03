@@ -9,11 +9,25 @@ import bindensity as bind
 # from pysme.abund         import Abund
 # from pysme.synthesize import synthesize_spectrum
 import lmfit
+from ctypes import CDLL,c_double,c_int,c_void_p,cast,POINTER
+from os import getcwd
 from ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
 from ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
 
+#Define the C function and its parameters used in the optimization
+so_file = getcwd()+"/ANTARESS_analysis/ResProf_fit.so"
+myfunctions = CDLL(so_file)
+fun_to_use = myfunctions.C_OS_coadd_loc_line_prof
+fun_to_use.argtypes = [np.ctypeslib.ndpointer(c_double),
+                np.ctypeslib.ndpointer(c_double),
+                np.ctypeslib.ndpointer(c_double),
+                np.ctypeslib.ndpointer(c_double),
+                np.ctypeslib.ndpointer(c_double),
+                c_int,
+                c_int]
+fun_to_use.restype = c_void_p
 
-def custom_DI_prof(param,x,args=None,unquiet_star=None):
+def custom_DI_prof(param,x,args=None,unquiet_star=None,custom_func=None):
     r"""**Disk-integrated profile: model function**
 
     Calculates custom disk-integrated stellar profile.
@@ -70,20 +84,31 @@ def custom_DI_prof(param,x,args=None,unquiet_star=None):
         icell_list=icell_list[~unquiet_star]
         args['Fsurf_grid_spec']=args['Fsurf_grid_spec'][~unquiet_star]
 
+    use_OS_grid=False
+    use_C_OS_grid=False
+    if 'OS_grid' in args and args['OS_grid']:use_OS_grid=True
+    if 'C_OS_grid' in args and args['C_OS_grid']:
+        use_OS_grid=False
+        use_C_OS_grid=True
+
     #Multithreading
     #    - disabled with theoretical profiles, there seems to be an incompatibility with sme
     if (args['nthreads']>1) and (args['mode']!='theo'):
         num_elements=len(icell_list)
-        # simplified_args={}
-        # for key in ['mode', 'mac_mode', 'input_cell_all', 'func_prof', 'cen_bins', 'nthreads']:simplified_args[key]=args[key]
-        flux_DI_sum=MAIN_multithread(coadd_loc_line_prof,args['nthreads'],num_elements,[rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,args,),output = True)                           
+        simplified_args={}
+        for key in ['mode', 'mac_mode', 'input_cell_all', 'func_prof', 'cen_bins', 'nthreads']:simplified_args[key]=args[key]
+        flux_DI_sum=MAIN_multithread(coadd_loc_line_prof,args['nthreads'],num_elements,[rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,simplified_args,),output = True)                           
 
     # Direct call
     else:
-        # flux_DI_sum=coadd_loc_line_prof(rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)
-        for pol_par in args['input_cell_all']:args['input_cell_all'][pol_par]=args['input_cell_all'][pol_par][~unquiet_star]
-        flux_DI_sum=OS_coadd_loc_line_prof(rv_surf_star_grid,args['Fsurf_grid_spec'],param,args)
-
+        if use_OS_grid:
+            for pol_par in args['input_cell_all']:args['input_cell_all'][pol_par]=args['input_cell_all'][pol_par][~unquiet_star]
+            flux_DI_sum=OS_coadd_loc_line_prof(rv_surf_star_grid,args['Fsurf_grid_spec'],args)
+        elif use_C_OS_grid:
+            for pol_par in args['input_cell_all']:args['input_cell_all'][pol_par]=args['input_cell_all'][pol_par][~unquiet_star]
+            Fsurf_grid_spec = args['Fsurf_grid_spec'][:, 0]
+            flux_DI_sum = use_C_OS_coadd_loc_line_prof(rv_surf_star_grid,Fsurf_grid_spec,args)
+        else:flux_DI_sum=coadd_loc_line_prof(rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)
 
     #Co-adding profiles
     DI_flux_norm = np.sum(flux_DI_sum,axis=0)
@@ -609,7 +634,7 @@ def coadd_loc_line_prof(rv_surf_star_grid,icell_list,Fsurf_grid_spec,flux_intr_g
     return flux_DI_sum
 
 
-def OS_coadd_loc_line_prof(rv_surf_star_grid, Fsurf_grid_spec, param, args):
+def OS_coadd_loc_line_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
     r"""**Local line profile co-addition**
 
     Oversimplified way of cumulating the local profiles from each cell of the stellar disk. 
@@ -637,5 +662,13 @@ def OS_coadd_loc_line_prof(rv_surf_star_grid, Fsurf_grid_spec, param, args):
 
     return gaussian_line_grid
 
+def use_C_OS_coadd_loc_line_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
+    Fsurf_grid_spec_shape0 = len(Fsurf_grid_spec)
+    ncen_bins = args['ncen_bins']
+    gauss_grid_ptr = fun_to_use(rv_surf_star_grid, args['input_cell_all']['ctrst'], args['input_cell_all']['FWHM'], 
+        args['cen_bins'], Fsurf_grid_spec*10, ncen_bins, Fsurf_grid_spec_shape0)
+    gauss_grid = np.frombuffer(cast(gauss_grid_ptr, POINTER(c_double * (ncen_bins * Fsurf_grid_spec_shape0))).contents, dtype=np.float64)
+    truegauss_grid = gauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins))/10
+    return truegauss_grid
 
 
