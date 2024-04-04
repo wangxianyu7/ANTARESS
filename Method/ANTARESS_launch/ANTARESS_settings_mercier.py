@@ -3564,7 +3564,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['map_Res_prof']='png'   #png 
 
     #Individual residual profiles
-    plot_dic['Res_prof']='pdf'   #pdf    
+    plot_dic['Res_prof']=''   #pdf    
     
     
     
@@ -4775,8 +4775,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Plot best-fit 2D residual map
     glob_fit_dic['ResProf']['map_Res_prof']='png'
         
-        
-        
+    #%%%% Plot settings
+    
+    #%%%%% Plot best-fit 2D residual map
+    plot_dic['map_BF_Res_prof']='png'   
+    
+    
+    #%%%%% 2D maps : Plot residuals from best-fit 2D residual map
+    plot_dic['map_BF_Res_prof_re']='png'   
         
         
         

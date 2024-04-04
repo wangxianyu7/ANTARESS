@@ -398,7 +398,8 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
         
         #Color map
         if 'map_DI' in key_plot:plot_options[key_plot]['cmap']="jet" 
-        if 'map_Res' in key_plot:plot_options[key_plot]['cmap']="jet"             
+        if 'map_Res' in key_plot:plot_options[key_plot]['cmap']="jet" 
+        if 'map_BF' in key_plot:plot_options[key_plot]['cmap']="jet"         
         elif 'map_Intr' in key_plot:plot_options[key_plot]['cmap']="afmhot_r" 
         elif 'map_Atm' in key_plot:plot_options[key_plot]['cmap']="winter"             
         
@@ -1522,9 +1523,25 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
 
+    ################################################################################################################  
+    #%%%% Best-fit profiles 
+    ################################################################################################################  
+    if (plot_dic['map_BF_Res_prof']!=''):
+        key_plot = 'map_BF_Res_prof'
 
+        
+        #%%%%% Generic settings
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
 
+    ################################################################################################################  
+    #%%%% Residual profiles 
+    ################################################################################################################  
+    if (plot_dic['map_BF_Res_prof_re']!=''):
+        key_plot = 'map_BF_Res_prof_re'
 
+        
+        #%%%%% Generic settings
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
 
 
     ################################################################################################################ 

@@ -26,7 +26,7 @@ def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_d
     
     """ 
     #Check for spots
-    if (inst in spot_dic):
+    if (inst in spot_dic['spots_prop']) and (data_dic['DI']['spots_prop'] != {}):
         txt_spot = ' and spotted '
         cond_spot = True
     else:

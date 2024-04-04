@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import bindensity as bind
 import lmfit
+import os
 from lmfit import Parameters
 from ANTARESS_analysis.ANTARESS_ana_comm import init_joined_routines,init_joined_routines_inst,init_joined_routines_vis,init_joined_routines_vis_fit,com_joint_fits,com_joint_postproc
 from ANTARESS_conversions.ANTARESS_binning import weights_bin_prof
@@ -907,7 +908,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['raw_DI_profs']={}
 
     #Profile generation
-    fixed_args['mock_set_err']={}
     fixed_args['idx_out']={}
     fixed_args['idx_in']={}
     fixed_args['DI_scaling_val']=data_dic['DI']['scaling_val']
@@ -952,7 +952,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         fixed_args['master_out']['weights'][inst]={}
         fixed_args['master_out']['flux'][inst]={}
         fixed_args['master_out']['scaled_data_paths'][inst]={}
-        fixed_args['mock_set_err'][inst]={}
         fixed_args['idx_out'][inst]={}
         fixed_args['idx_in'][inst]={}
         
@@ -1237,47 +1236,34 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
-    if (plot_dic['Res_prof']!=''):
+    if (plot_dic['map_BF_Res_prof']!='' or plot_dic['map_BF_Res_prof_re']!=''):
         for inst in fixed_args['inst_list']:
             for vis in fixed_args['inst_vis_list'][inst]:
-                prof_fit_dic={'fit_range':fit_prop_dic['fit_range'][inst][vis]}
-                if fixed_args['bin_mode'][inst][vis]=='_bin':prof_fit_dic['loc_data_corr_path'] = gen_dic['save_data_dir']+'Resbin_data/'+inst+'_'+vis+'_phase'          
-                else:prof_fit_dic['loc_data_corr_path'] = data_dic[inst][vis]['proc_Res_data_paths']
+
+                #Make directory to store best-fit results
+                save_exp_dir = gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fit_prop_dic['fit_mode']+'/'+inst+'/'+vis+'/'
+                if (not os.path.exists(save_exp_dir)):os.makedirs(save_exp_dir) 
+
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
-                    prof_fit_dic[i_in]={
-                        'cen_bins':fixed_args['cen_bins'][inst][vis][isub],
-                        'flux':mod_dic[inst][vis][isub],
-                        'cond_def_fit':fit_prop_dic[inst][vis]['cond_def_fit_all'][isub],
+                    prof_fit_dic={'fit_range':fit_prop_dic['fit_range'][inst][vis]}
+                    if fixed_args['bin_mode'][inst][vis]=='_bin':prof_fit_dic['loc_data_corr_path'] = gen_dic['save_data_dir']+'Resbin_data/'+inst+'_'+vis+'_phase'          
+                    else:prof_fit_dic['loc_data_corr_path'] = data_dic[inst][vis]['proc_Res_data_paths']
+                    prof_fit_dic={
+                        'edge_bins':np.array([fixed_args['edge_bins'][inst][vis][isub]]),
+                        'flux':np.array([mod_dic[inst][vis][isub]]),
+                        'cond_def_fit':np.array([fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]]),
                         'cond_def_cont':fit_prop_dic[inst][vis]['cond_def_cont_all'][isub]
                         }
                     for pl_loc in fixed_args['transit_pl'][inst][vis]:
-                        prof_fit_dic[i_in][pl_loc] = {}
+                        prof_fit_dic[pl_loc] = {}
                         if np.abs(fixed_args['coord_fit'][inst][vis][pl_loc]['ecl'][isub])!=1:  
-                            for prop_loc in mod_prop_dic[inst][vis][pl_loc]:prof_fit_dic[i_in][pl_loc][prop_loc] = mod_prop_dic[inst][vis][pl_loc][prop_loc][isub]
+                            for prop_loc in mod_prop_dic[inst][vis][pl_loc]:prof_fit_dic[pl_loc][prop_loc] = mod_prop_dic[inst][vis][pl_loc][prop_loc][isub]
                     for spot in fixed_args['transit_sp'][inst][vis]:
-                        prof_fit_dic[i_in][spot] = {}
+                        prof_fit_dic[spot] = {}
                         if fixed_args['coord_fit'][inst][vis][spot]['is_visible'][1,i_in]:
-                            for prop_loc in mod_prop_dic[inst][vis][spot]:prof_fit_dic[i_in][spot][prop_loc] = mod_prop_dic[inst][vis][spot][prop_loc][isub]
+                            for prop_loc in mod_prop_dic[inst][vis][spot]:prof_fit_dic[spot][prop_loc] = mod_prop_dic[inst][vis][spot][prop_loc][isub]
 
-                np.savez_compressed(fit_dic['save_dir']+'ResProf_fit_'+inst+'_'+vis+fixed_args['bin_mode'][inst][vis],data={'prof_fit_dic':prof_fit_dic},allow_pickle=True)
-    
-    #Plotting best-fit 2D residual map
-    if (fit_prop_dic['map_Res_prof']!=''):
-        for inst in fixed_args['inst_list']:
-            for vis in fixed_args['inst_vis_list'][inst]:
-                x_data=np.zeros([len(fixed_args['idx_in_fit'][inst][vis]),len(fixed_args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-                y_data=np.zeros([len(fixed_args['idx_in_fit'][inst][vis]),len(fixed_args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-                t_data=np.zeros([len(fixed_args['idx_in_fit'][inst][vis]),1], dtype=float)
-                for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
-                    x_data[isub] = fixed_args['master_out']['master_out_tab']['cen_bins']
-                    resamp_flux = bind.resampling(fixed_args['master_out']['master_out_tab']['edge_bins'],fixed_args['edge_bins'][inst][vis][isub],mod_dic[inst][vis][isub],kind=gen_dic['resamp_mode'])
-                    y_data[isub] = resamp_flux
-                    t_data[isub] = fixed_args['coord_fit'][inst][vis]['bjd'][isub]
-                fig, ax = plt.subplots(1, 1)
-                cmap = plt.get_cmap('jet')
-                psm = ax.pcolormesh (x_data, t_data, y_data, cmap=cmap)
-                fig.colorbar(psm, ax=ax)
-                plt.savefig(fit_dic['save_dir']+inst+'_'+vis+'_BestFit_Res_map.'+fit_prop_dic['map_Res_prof'])
+                    np.savez_compressed(save_exp_dir+'BestFit'+fixed_args['bin_mode'][inst][vis]+'_'+str(isub),data=prof_fit_dic,allow_pickle=True)
 
     #Post-processing    
     fit_dic['p_null'] = deepcopy(p_final)
@@ -1302,7 +1288,6 @@ def FIT_joined_ResProf(param,x_tab,args=None):
     """
     
     #Models over fitted spectral ranges
-    sto=get_time()
     print('1:', param)
     mod_dic=joined_ResProf(param,args)[0]
 
@@ -1330,8 +1315,6 @@ def FIT_joined_ResProf(param,x_tab,args=None):
                     res = args['flux'][inst][vis][isub][cond_fit]-mod_dic[inst][vis][isub][cond_fit]
                     chi = np.append( chi, res/np.sqrt( args['cov'][inst][vis][isub][0][cond_fit]) )
     print('chi-squared output:', chi)
-    print(get_time()-sto)
-    stop('STOP')
     return chi
 
 

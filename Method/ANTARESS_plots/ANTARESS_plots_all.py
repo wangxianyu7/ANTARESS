@@ -384,7 +384,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Order list
                     order_list = plot_options['orders_to_plot'] if len(plot_options['orders_to_plot'])>0 else range(nord_data) 
                     idx_sel_ord = order_list
-                    
+
                     #Frame
                     if plot_options['aligned']:title_name='Aligned '+title_name
                     xt_str={'input':'heliocentric','star':'star','surf':'surface','pl':'planet'}[rest_frame]
@@ -564,7 +564,18 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 #Plot scaling
                                 var_map[isub]*=sc_fact
                                 cond_def_map[isub] = ~np.isnan(var_map[isub])                             
-    
+                            
+                            elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
+                                cond_def_map[isub] = data_exp['cond_def_fit']
+                                
+                                flux_2_use = data_exp['flux']
+                                if plot_mod == 'map_BF_Res_prof_re':
+                                    raw_prof_loc = gen_dic['save_data_dir']+'Res_data/'+inst+'_'+vis+'_'+str(iexp)
+                                    raw_prof = dataload_npz(raw_prof_loc)
+                                    flux_2_use -= raw_prof['flux']
+                                
+                                var_map[isub] = sc_fact*flux_2_use
+
                             else:
                                 var_map[isub] = sc_fact*data_exp['flux']
                                 cond_def_map[isub] = data_exp['cond_def']
@@ -992,7 +1003,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             cb = plt.cm.ScalarMappable(cmap=cmap_2D,norm=plt.Normalize(vmin=v_range[0], vmax=v_range[1]))										
                             cb.set_array(v_range) 	
                         
-                            if plot_mod in ['map_DIbin','map_DI_prof','map_Res_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin','map_Intr_1D']:cbar_txt='flux'
+                            if plot_mod in ['map_DIbin','map_DI_prof','map_Res_prof','map_Intr_prof','map_BF_Res_prof','map_BF_Res_prof_re','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin','map_Intr_1D']:cbar_txt='flux'
                             elif plot_mod in ['map_Atm_prof','map_Atmbin','map_Atm_1D']:cbar_txt=plot_options['pl_atm_sign']
                             cbar_txt = scaled_title(plot_options['sc_fact10'],cbar_txt)  
                             if plot_options['reverse_2D']:
@@ -1019,6 +1030,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 else:
                                     add_str+='_'+plot_options['mode_loc_data_corr']  
                                     if plot_mod=='map_Intr_prof_res':add_str+='_res'
+                            elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
+                                add_str += 'BestFit'
+                                if plot_mod=='map_BF_Res_prof_re': add_str += 'Residual'
                             if ('bin' in plot_mod):add_str+='_'+plot_options['dim_plot'] 
                             plt.savefig(path_loc+'/'+add_str+'.'+save_res_map)                        
                             plt.close() 
@@ -1039,7 +1053,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         if 'DI' in plot_mod:data_type_gen = 'DI'
         elif 'Res' in plot_mod:data_type_gen = 'Res'
         elif 'Intr' in plot_mod:data_type_gen = 'Intr'
-        elif 'Atm' in plot_mod:data_type_gen = 'Atm'  
+        elif 'Atm' in plot_mod:data_type_gen = 'Atm'
         data_type = data_dic[data_type_gen]['type'][inst] 
         if ('bin' in plot_mod):data_mode = 'bin'
         else:data_mode = 'orig'   
@@ -1082,7 +1096,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         prof_fit_vis = None
         fit_results = None
         if plot_options['plot_line_model'] or plot_options['plot_line_model_HR'] or (('_res' in plot_mod) & (not plot_options['cont_only'])):
-            
+
             #Planet-occulted models from reconstruction
             if (('Res' in plot_mod) or ('Intr' in plot_mod)) and (plot_options['line_model']=='rec'):
                 prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
@@ -1213,6 +1227,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 else:
                     data_path_all+=[prof_fit_vis['loc_data_corr_outpath']+str(iexp) for iexp in iexp_out]
         
+        elif (plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']):
+            #Retrieving the bin mode
+            if vis+'_bin' in data_dic['Res']['idx_in_bin'][inst]:bin_mode='_bin'
+            else:bin_mode = ''
+            #Retrieving the best-fit exposures
+            data_path_all = [gen_dic['save_data_dir']+'Joined_fits/ResProf/'+glob_fit_dic['ResProf']['fit_mode']+'/'+inst+'/'+vis+'/'+'BestFit'+bin_mode+'_'+str(iexp) for iexp in iexp_plot]
+            rest_frame = 'star'
+
         #Measured data
         else:         
             if (data_mode == 'bin'):
@@ -1276,7 +1298,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                           
                     #Other types of profiles
                     else:  
-                        data_path_all = [gen_dic['save_data_dir']+txt_aligned+data_type_gen+'_data/'+add_txt_path+'/'+txt_conv+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]   
+                        data_path_all = [gen_dic['save_data_dir']+txt_aligned+data_type_gen+'_data/'+add_txt_path+'/'+txt_conv+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
                         if 'Res' in plot_mod:rest_frame='star'   
                         elif 'Intr' in plot_mod:
                             if plot_options['aligned']:rest_frame='surf' 
@@ -7181,7 +7203,29 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #Plot map
         sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot])
                    
+    ################################################################################################################  
+    #%%%% Best-fit profiles 
+    ################################################################################################################  
+    if ('map_BF_Res_prof' in plot_settings):
+        key_plot = 'map_BF_Res_prof'
 
+        print('-----------------------------------')
+        print('+ 2D map of best-fit residual profiles')    
+
+        #Plot map
+        sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot])
+
+    ################################################################################################################  
+    #%%%% Residual profiles 
+    ################################################################################################################  
+    if ('map_BF_Res_prof_re' in plot_settings):
+        key_plot = 'map_BF_Res_prof_re'
+
+        print('-----------------------------------')
+        print('+ 2D map of residuals for the best-fit residual profiles')    
+
+        #Plot map
+        sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot])
 
 
 
