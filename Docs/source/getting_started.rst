@@ -6,7 +6,7 @@ General approach
 
 Follow these steps to run ``ANTARESS``:  
 
-1. Define the system properties for the host star and its planets in a copy of `ANTARESS_systems.py <https://gitlab.unige.ch/bourrier/antaress/-/tree/0d7232f1a1b39757beb8a52762b9e95fd33b2591/Method/ANTARESS_launch/ANTARESS_systems.py>`_ that you can name `ANTARESS_settings_username.py`. The default file contains a mock system as example.  
+1. Define the system properties for the host star and its planets in a copy of `ANTARESS_systems.py <https://gitlab.unige.ch/bourrier/antaress/-/blob/b6757ac8287a883889dc1ca367ae2b764dbbcf45/Method/ANTARESS_launch/ANTARESS_systems.py>`_ that you can name `ANTARESS_settings_username.py`. The default file contains a mock system as example.  
 
 2. Define your input datasets, and the modules to process and analyze them, in a copy of the configuration file `ANTARESS_settings.py <https://gitlab.unige.ch/bourrier/antaress/-/tree/0d7232f1a1b39757beb8a52762b9e95fd33b2591/Method/ANTARESS_launch/ANTARESS_settings.py>`_ that you can name `ANTARESS_settings_username.py`. Although the default file allows running ``ANTARESS`` with minimal intervention, any detailed analysis will require that you define your own settings.  
 
