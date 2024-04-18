@@ -8,7 +8,7 @@ variables:
   LOGIN01: "129.194.61.6"
 
 stages:
-#  - build
+  - build
 #  - test
   - documentation
   - staging
@@ -32,15 +32,16 @@ stages:
     - pip install PyAstronomy
     - pip install pysme-astro
 
-#Build distribution:
-#  extends: .setup_env
-#  stage: build
-#  script:
+Build distribution:
+  extends: .setup_env
+  stage: build
+  script:
 #    - python setup.py sdist
-#  artifacts:
-#    paths:
-#      - dist/*.tar.gz
-#    expire_in: 1 day
+    - python -m build
+  artifacts:
+    paths:
+      - dist/*.tar.gz
+    expire_in: 1 day
 
 #Run test:
 #  extends: .setup_env
@@ -54,7 +55,7 @@ Generate documentation:
   extends: .setup_env
   stage: documentation
   script:
- #   - pip install dist/*.tar.gz
+    - pip install dist/*.tar.gz
     - cd Docs
     - chmod +x Make_doc
     - ./Make_doc
@@ -67,7 +68,7 @@ Deploy on Staging:
   extends: .setup_env
   stage: staging
   script:
-#    - rsync -v dist/*.tar.gz bourriev@${LOGIN01}:/www/people/bourriev/public/staging/${PROJECT_NAME}/
+    - rsync -v dist/*.tar.gz bourriev@${LOGIN01}:/www/people/bourriev/public/staging/${PROJECT_NAME}/
     - rsync -rv --delete Docs/build/html/ bourriev@${LOGIN01}:/www/people/bourriev/public/staging/${PROJECT_NAME}/doc
 
 Release and deploy on Production:
@@ -88,11 +89,11 @@ Release and deploy on Production:
     # Add release on gitlab (via gitlab API)
     - curl -X POST -H "PRIVATE-TOKEN:$RELEASE_TOKEN" -F "name=Release $PROJECT_NAME $TAG_VERSION" -F "tag_name=$TAG_VERSION" -F "ref=$TAG_VERSION" "https://gitlab.unige.ch/api/v4/projects/${PROJECT_ID}/releases"
     # Deploy on obswww.unige.ch/~bourriev/
-#     - rsync -v dist/*.tar.gz bourriev@${LOGIN01}:/www/people/bourriev/public/${PROJECT_NAME}/
+    - rsync -v dist/*.tar.gz bourriev@${LOGIN01}:/www/people/bourriev/public/${PROJECT_NAME}/
     - rsync -rv --delete Docs/build/html bourriev@${LOGIN01}:/www/people/bourriev/public/${PROJECT_NAME}/doc
     - rsync -rv --delete Docs/build/html bourriev@${LOGIN01}:/www/people/bourriev/public/${PROJECT_NAME}/doc_hist/${TAG_VERSION}
-#     # Deploy on Pypi
-#     - python -m twine upload dist/*.tar.gz
+    # Deploy on Pypi
+    - python -m twine upload dist/*.tar.gz
     # Upgrade to next version
     - MAJOR_DIGIT=`echo $VERSION | awk -F. '{print $1}'`
     - MINOR_DIGIT=`echo $VERSION | awk -F. '{print $2}'`
