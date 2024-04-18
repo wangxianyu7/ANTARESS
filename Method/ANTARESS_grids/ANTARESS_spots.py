@@ -111,13 +111,26 @@ def retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd, exp_dur
     
     """ 
     spots_prop = {}
+    ctrst_param = []
     for par in param : 
         # Parameter is spot-related and linked to the right visit and instrument
-        if ('_SP' in par) and ('_IS'+inst in par) and ('_VS'+vis in par) : 
-            spot_name = par.split('_SP')[1]
-            spot_par = par.split('__IS')[0]
-            if spot_name not in spots_prop : spots_prop[spot_name] = {}
-            spots_prop[spot_name][spot_par] = param[par]
+        if ('_SP' in par) and ('_IS'+inst in par) and ('_VS'+vis in par): 
+            if 'ctrst' not in par:
+                spot_par = par.split('__IS')[0]
+                spot_name = par.split('_SP')[1]
+                if spot_name not in spots_prop : spots_prop[spot_name] = {}
+                spots_prop[spot_name][spot_par] = param[par]
+            else:
+                ctrst_param.append(param[par])
+
+    #Ensuring that only one contrast is provided for the spots in each visit
+    if len(ctrst_param)>1:
+        stop('WARNING: All spots in a given visit must share a contrast value. Please provide only one spot contrast parameter.')
+    
+    #Assigning contrast value to each spot
+    for spot_name in spots_prop.keys():
+        spots_prop[spot_name]['ctrst'] = ctrst_param[0]
+
             
     # Retrieve properties, if spots are visible in the exposures considered
     for spot in spots_prop : 
@@ -349,7 +362,7 @@ def spot_occ_region_grid(RspRs, nsub_Dsp):
 
 
 
-def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iband, system_prop, system_spot_prop, star_params, Ssub_Sstar_sp, Ssub_Sstar_ref, Istar_norm_band, sum_prop_dic_spot,\
+def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iband, system_prop, system_spot_prop, star_params, sp_proc_band, spot_consid, Ssub_Sstar_sp, Ssub_Sstar_ref, Istar_norm_band, sum_prop_dic_spot,\
                                     coord_reg_dic_spot, range_reg_dic_spot, Focc_star_band, par_list, range_par_list, args, cb_band, pl_loc_x = {}, pl_loc_y = {}, oversamp_idx = None, RpRs = None, plocc = False) :
     #Samson: check whether the zstar and sskystar coordinates need to be adapted in this routine; the region_prop['y_st_sp'] may not be calculated properly
     r"""**Spot-occulted properties: define and update**
@@ -365,6 +378,8 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
         system_prop (dict) : quiet star limb-darkening properties.
         system_spot_prop (dict) : spot limb-darkening properties.
         star_params (dict) : nominal star properties.
+        sp_proc_band (list) : spots previously processed. Used to account for the overlap of spots.
+        spot_consid (str) : name of the spot being processed.
         Ssub_Sstar_sp (float): surface of grid cells in the spot-occulted region grid.
         Ssub_Sstar_ref (float) : surface of grid cells in the stellar grid.
         Istar_norm_band (float) : total intensity of the star in the band considered.
@@ -392,12 +407,12 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
     range_parameter_list = deepcopy(range_par_list)
     #We have as input a grid discretizing the spot.
     #We have a condition to find the cells in the input grid that are in the stellar grid.
-    cond_in_star = spot_prop['x_sky_grid']**2 + spot_prop['y_sky_grid']**2 < 1.
+    cond_in_star = spot_prop[spot_consid]['x_sky_grid']**2 + spot_prop[spot_consid]['y_sky_grid']**2 < 1.
 
     #We have a condition to figure out which cells in this input grid are occulted.
     ##Take the cells that are in the stellar grid.
-    new_x_sky_grid = spot_prop['x_sky_grid'][cond_in_star]
-    new_y_sky_grid = spot_prop['y_sky_grid'][cond_in_star]
+    new_x_sky_grid = spot_prop[spot_consid]['x_sky_grid'][cond_in_star]
+    new_y_sky_grid = spot_prop[spot_consid]['y_sky_grid'][cond_in_star]
 
     ##Retrieve the z-coordinate for the cells.
     new_z_sky_grid = np.sqrt(1 - new_x_sky_grid**2 - new_y_sky_grid**2)
@@ -405,13 +420,13 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
     ##Move coordinates to the star reference frame and then the spot reference frame
     x_st_grid, y_st_grid, z_st_grid = frameconv_skystar_to_star(new_x_sky_grid, new_y_sky_grid, new_z_sky_grid, star_params['istar_rad'])
 
-    x_spot_grid = x_st_grid*spot_prop['cos_long_exp_center'] - z_st_grid*spot_prop['sin_long_exp_center']
+    x_spot_grid = x_st_grid*spot_prop[spot_consid]['cos_long_exp_center'] - z_st_grid*spot_prop[spot_consid]['sin_long_exp_center']
 
-    y_spot_grid = y_st_grid*spot_prop['cos_lat_exp_center'] - (z_st_grid*spot_prop['cos_long_exp_center'] + x_st_grid*spot_prop['sin_long_exp_center']) * spot_prop['sin_lat_exp_center']
+    y_spot_grid = y_st_grid*spot_prop[spot_consid]['cos_lat_exp_center'] - (z_st_grid*spot_prop[spot_consid]['cos_long_exp_center'] + x_st_grid*spot_prop[spot_consid]['sin_long_exp_center']) * spot_prop[spot_consid]['sin_lat_exp_center']
 
-    z_spot_grid = y_st_grid*spot_prop['sin_lat_exp_center'] + (z_st_grid*spot_prop['cos_long_exp_center'] + x_st_grid*spot_prop['sin_long_exp_center']) * spot_prop['cos_lat_exp_center']
+    z_spot_grid = y_st_grid*spot_prop[spot_consid]['sin_lat_exp_center'] + (z_st_grid*spot_prop[spot_consid]['cos_long_exp_center'] + x_st_grid*spot_prop[spot_consid]['sin_long_exp_center']) * spot_prop[spot_consid]['cos_lat_exp_center']
 
-    cond_in_sp = x_spot_grid**2. + y_spot_grid**2. <= spot_prop['ang_rad']**2
+    cond_in_sp = x_spot_grid**2. + y_spot_grid**2. <= spot_prop[spot_consid]['ang_rad']**2
 
     #--------------------------------
     # Accounting for planet occultation of the spot
@@ -424,11 +439,28 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
 
     if plocc:
         for planet in list(pl_loc_x.keys()):
-            cond_in_planet_disk = (new_x_sky_grid[cond_in_sp] - pl_loc_x[planet][oversamp_idx])**2 + (new_y_sky_grid[cond_in_sp] - pl_loc_y[planet][oversamp_idx])**2 < RpRs[planet][iband]**2
+            cond_in_planet_disk = (spot_x_sky_grid - pl_loc_x[planet][oversamp_idx])**2 + (spot_y_sky_grid -  pl_loc_y[planet][oversamp_idx])**2 < RpRs[planet][iband]**2
             spot_x_sky_grid = spot_x_sky_grid[~cond_in_planet_disk]
             spot_y_sky_grid = spot_y_sky_grid[~cond_in_planet_disk]
             spot_z_sky_grid = spot_z_sky_grid[~cond_in_planet_disk]
             n_occ_sp -= np.sum(cond_in_planet_disk)
+
+    # Accounting for overlap with other spots - spot's have the same contrast so we can just remove the overlapping cells
+    if len(sp_proc_band)>0:
+        for sp_prev in sp_proc_band:
+
+            #Move current spot coordinates to the star reference frame and then the other spot's reference frame
+            updated_x_st_grid, updated_y_st_grid, updated_z_st_grid = frameconv_skystar_to_star(spot_x_sky_grid, spot_y_sky_grid, spot_z_sky_grid, star_params['istar_rad'])
+            x_prev_spot_grid = updated_x_st_grid*spot_prop[sp_prev]['cos_long_exp_center'] - updated_z_st_grid*spot_prop[sp_prev]['sin_long_exp_center']
+            y_prev_spot_grid = updated_y_st_grid*spot_prop[sp_prev]['cos_lat_exp_center'] - (updated_z_st_grid*spot_prop[sp_prev]['cos_long_exp_center'] + updated_x_st_grid*spot_prop[sp_prev]['sin_long_exp_center']) * spot_prop[sp_prev]['sin_lat_exp_center']
+            cond_in_prev_spot = x_prev_spot_grid**2. + y_prev_spot_grid**2 <= system_spot_prop[sp_prev][iband]**2
+
+            #Remove cells that overlap
+            spot_x_sky_grid = spot_x_sky_grid[~cond_in_prev_spot]
+            spot_y_sky_grid = spot_y_sky_grid[~cond_in_prev_spot]
+            spot_z_sky_grid = spot_z_sky_grid[~cond_in_prev_spot]
+            n_occ_sp -= np.sum(cond_in_prev_spot)
+    sp_proc_band += [spot_consid]
 
     #--------------------------------
 
@@ -466,12 +498,12 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
 
     #Updating the provided dictionaries 
     coord_grid['mu'] = mu_grid_occ[:,0]
-    Focc_star_band += ((Ftot_occ[0]*spot_prop['ctrst']) - (Ftot_emit[0]*(1-spot_prop['ctrst'])))
+    Focc_star_band += ((Ftot_occ[0]*spot_prop[spot_consid]['ctrst']) - (Ftot_emit[0]*(1-spot_prop[spot_consid]['ctrst'])))
     sum_prop_dic_spot['nocc'] += coord_grid['nsub_star']
     
     #--------------------------------
     #Co-adding properties from current region to the cumulated values over oversampled spot positions 
-    sum_region_spot_prop(line_occ_HP_band,iband,args,parameter_list,Fsurf_grid_occ[:,0],Fsurf_grid_emit[:,0],coord_grid,Ssub_Sstar_sp,cb_band,range_parameter_list,range_reg_dic_spot,sum_prop_dic_spot,coord_reg_dic_spot,star_params,spot_prop['ctrst'])     
+    sum_region_spot_prop(line_occ_HP_band,iband,args,parameter_list,Fsurf_grid_occ[:,0],Fsurf_grid_emit[:,0],coord_grid,Ssub_Sstar_sp,cb_band,range_parameter_list,range_reg_dic_spot,sum_prop_dic_spot,coord_reg_dic_spot,star_params,spot_prop[spot_consid]['ctrst'])     
 
     return Focc_star_band, cond_occ
 

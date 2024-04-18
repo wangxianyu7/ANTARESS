@@ -238,13 +238,19 @@ def ln_prob_func_mcmc(p_step,fixed_args):
     
     #Prior function
     ln_prior = ln_prior_func(p_step_all,fixed_args)
-        
-    #Likelihood function
-    ln_lkhood = ln_lkhood_func_mcmc(p_step_all,fixed_args)[0]
-    
-    #Set log-probability to -inf if likelihood is nan
-    #    - happens when parameters go beyond their boundaries (hence ln_prior=-inf) but the model fails (hence ln_lkhood = nan)
-    ln_prob=-np.inf if np.isnan(ln_lkhood) else ln_prior + ln_lkhood
+
+    #If the walker move to parameters outside the defined prior range, then the log-prior will be set to inf.
+    #As a result, there is no point in calculating the log-likelihood in this case.
+    if not np.isinf(ln_prior):
+
+        #Likelihood function
+        ln_lkhood = ln_lkhood_func_mcmc(p_step_all,fixed_args)[0]
+
+        #Set log-probability to -inf if likelihood is nan
+        #    - happens when parameters go beyond their boundaries (hence ln_prior=-inf) but the model fails (hence ln_lkhood = nan)
+        ln_prob=-np.inf if np.isnan(ln_lkhood) else ln_prior + ln_lkhood
+
+    else: ln_prob=-np.inf
   
     return ln_prob
 

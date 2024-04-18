@@ -96,7 +96,9 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
             #Chi2 fit
             #    - overwrite default priors
             if (fit_dic['fit_mode']=='chi2'):
-                if (par in priors_prop) and (priors_prop[par]['mod']=='uf'): 
+                if (par in priors_prop) and (priors_prop[par]['mod']=='uf'):
+                    if 'ang' in par and priors_prop[par]['high']>90:stop('Prior error: Spot angular size cannot exceed 90deg. Re-define your priors.')
+                    elif 'veq' in par and priors_prop[par]['low']<0:stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
                     p_start[par].min = priors_prop[par]['low']
                     p_start[par].max = priors_prop[par]['high']
 
@@ -115,12 +117,19 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                     if (not np.isinf(p_start[par].min)):uf_bd[0]=p_start[par].min
                     if (not np.isinf(p_start[par].max)):uf_bd[1]=p_start[par].max
                     fit_dic['uf_bd'][par]=uf_bd
+                if 'ang' in par and fit_dic['uf_bd'][par][1]>90:fit_dic['uf_bd'][par][1]=90
+                if 'veq' in par and fit_dic['uf_bd'][par][0]<0:fit_dic['uf_bd'][par][0]=0
                 
                 #Priors
                 if (par in priors_prop):
-                    fixed_args['varpar_priors'][par] = priors_prop[par]                          
+                    fixed_args['varpar_priors'][par] = priors_prop[par]
+                    if 'ang' in par and priors_prop[par]['high']>90:stop('Prior error: Spot angular size cannot exceed 90deg. Re-define your priors.')
+                    elif 'veq' in par and priors_prop[par]['low']<0:stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
+                          
                 else:
                     if par == 'jitter':varpar_priors=[0.,1e6]
+                    elif par == 'veq':varpar_priors=[0.,100.]
+                    elif 'ang' in par:varpar_priors=[0.,90.]
                     else:varpar_priors=[-1e6,1e6]
                     if (not np.isinf(p_start[par].min)):varpar_priors[0]=p_start[par].min
                     if (not np.isinf(p_start[par].max)):varpar_priors[1]=p_start[par].max                
@@ -624,7 +633,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         for par_check in par_spot:
             if (par_check in par) and ('_SP' in par):
                 spot_name = par.split('_SP')[1]
-                if (p_start[par].vary) or fit_dic['fit_mod']=='':
+                if (p_start[par].vary) or fit_dic['fit_mode']=='':
                     fixed_args[par_check+'_sp']+= [spot_name]
                     fixed_args['fit_spot']=True
                 if 'ang' in par_check and p_start[par].vary:

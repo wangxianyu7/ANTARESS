@@ -351,6 +351,7 @@ def get_system_params():
                 'TLength':3.50/24,           #+/- 0.08 #days #Martioli et al. 2021
                 #'aRs':8,                     #test
                 'aRs':18.5,                  #+1.3 - 1.4 #Rstar #Gilbert et al. 2022 (true value)
+                # 'lambda_proj':100,         
                 'lambda_proj':-4.70,         #+6.80 -6.40 #degrees #Hirano et al. 2020
                 },
 

@@ -556,7 +556,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      'lat__ISESPRESSO_VSmock_vis_SPspot1'     : -30,
                      'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051 - 0.3,
                      'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
-                     'ctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.9,
+
+                    #All spots in the a given visit must have the same contrast
+                    'ctrst__ISESPRESSO_VSmock_vis_SP'    : 0.9,
                     },
 
 
@@ -1049,7 +1051,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Star discretization      
     if gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dstar']=51.
+        # theo_dic['nsub_Dstar']=81.
+        theo_dic['nsub_Dstar']=111. #-- for fitting purposes
         # theo_dic['nsub_Dstar']=301. #-- for plotting purposes
     
     if gen_dic['star_name']=='V1298tau':
@@ -1064,7 +1067,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Planet discretization
     if gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dpl']= {'AUMicb':11.}#, 'AUMicc':101.}                
+        theo_dic['nsub_Dpl']= {'AUMicb':33.}#, 'AUMicc':101.} #-- for fitting purposes 
+        # theo_dic['nsub_Dpl']= {'AUMicb':23.}           
 
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dpl']={'V1298tau_b':101.}
@@ -1072,7 +1076,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Spot discretization
     if gen_dic['star_name']=='AUMic':
         # theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
-        theo_dic['nsub_Dspot']={'spot1':11.}
+        theo_dic['nsub_Dspot']={'spot1':33.} #-- for fitting purposes
+        # theo_dic['nsub_Dspot']={'spot1':51.}
         
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
@@ -4514,13 +4519,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Optimization levels
     # + Level -1: nothing is turned on/off. In this default case multithreading is controlled by the number of threads provided by the user, un-optimized profile building is used
     # and over-simplified grid building is not used.
-    # + Level 0: multithreading activated AND un-optimized profile building
-    # + Level 1: multithreading turned off AND un-optmized profile building
-    # + Level 2: multithreading turned off AND optimized profile building
-    # + Level 3: multithreading turned off AND optimized profile building AND over-simplified grid building
-    # + Level 4: multithreading turned off AND optimized profile building AND over-simplified grid building AND grid building function coded in C
+    # + Level 0: multithreading activated (AND Optimized profile building)
+    # + Level 1: multithreading turned off (AND Optimized profile building)
+    # + Level 2: multithreading turned off AND over-simplified grid building (AND Optimized profile building)
+    # + Level 3: multithreading turned off AND over-simplified grid building AND grid building function coded in C (AND Optimized profile building)
     #
-    # - Optimized profile building: We generate residual profiles by initially constructing profiles for each exposure. Each exposure's profile is built by removing the deviations 
+    # - Optimized profile building (always turned on): We generate residual profiles by initially constructing profiles for each exposure. Each exposure's profile is built by removing the deviations 
     # caused by spotted and occulted regions from the base disk-integrated profile. Subsequently, we create a master-out profile and subtract each exposure's profile from it to obtain 
     # the residual profiles. To expedite this process, cells that are never spotted or occulted are identified and excluded from profile construction, resulting in faster model processing.
     #
@@ -4615,7 +4619,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['ResProf']['Opt_Lvl']=4
+        glob_fit_dic['ResProf']['Opt_Lvl']=3
     
     # Indexes of exposures to be fitted, in each visit
     #    - define instruments and visits to be fitted (they will not be fitted if not used as keys, or if set to []), set their value to 'all' for all in-transit exposures to be fitted
@@ -4658,20 +4662,21 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Fixed/variable properties   
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['ResProf']['mod_prop']={
-        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.7, 'bd':[0.15, 1]},
-        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':8, 'bd':[5, 20]},
-        'veq':{'vary':True,'guess':7.7999, 'bd':[0, 10]},
-        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':-30, 'bd':[-70, 80]},
-        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.09051, 'bd':[2458330.39051 - 0.6, 2458330.39051 + 0.8]},
-        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':25, 'bd':[10, 50]},
-        'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.9, 'bd':[0, 0.99]},
+        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.15, 1]},
+        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
+        'veq':{'vary':True,'guess':5, 'bd':[1, 10]},
+        'cos_istar':{'vary':True,'guess':0.1, 'bd':[-1., 1.]},
+        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':5, 'bd':[-50, 10]},
+        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.1, 'bd':[2458330.39051 - 0.2, 2458330.39051 + 0.2]},
+        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':15, 'bd':[5, 32]},
+        'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
         'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
     
     #Fitting mode
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['ResProf']['fit_mode']='chi2' 
-        # glob_fit_dic['ResProf']['fit_mode']='mcmc' 
+        # glob_fit_dic['ResProf']['fit_mode']='chi2' 
+        glob_fit_dic['ResProf']['fit_mode']='mcmc' 
 
 
     #Printing fits results
@@ -4682,11 +4687,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name'] == 'AUMic':
         glob_fit_dic['ResProf']['priors']={
                     'ctrst_ord0__IS__VS_'                    :{'mod':'uf','low':0,'high':1},  
-                    'FWHM_ord0__IS__VS_'                     :{'mod':'uf','low':0,'high':100},
-                    'veq'                                    :{'mod':'uf', 'low':0, 'high':100.},
+                    'FWHM_ord0__IS__VS_'                     :{'mod':'uf','low':0,'high':30},
+                    'veq'                                    :{'mod':'uf', 'low':1., 'high':100.},
+                    'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' :{'mod':'uf', 'low':2458330.39051 - 1., 'high':2458330.39051 +1.},
-                    'ang__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':0, 'high':50.},
+                    'ang__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':0, 'high':30.},
                     'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   :{'mod':'uf', 'low':0, 'high':1},
                     'lambda_rad__plAUMicb'                   :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }
@@ -4712,7 +4718,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Walkers
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':18,'nsteps':5,'nburn':1}
+        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':18,'nsteps':1000,'nburn':200}
 
     #Complex priors        
          

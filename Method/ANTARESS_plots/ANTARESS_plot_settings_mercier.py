@@ -1526,7 +1526,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Best-fit profiles 
     ################################################################################################################  
-    if (plot_dic['map_BF_Res_prof']!=''):
+    if gen_dic['fit_ResProf'] and (plot_dic['map_BF_Res_prof']!=''):
         key_plot = 'map_BF_Res_prof'
 
         
@@ -1536,7 +1536,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Residual profiles 
     ################################################################################################################  
-    if (plot_dic['map_BF_Res_prof_re']!=''):
+    if gen_dic['fit_ResProf'] and (plot_dic['map_BF_Res_prof_re']!=''):
         key_plot = 'map_BF_Res_prof_re'
 
         
