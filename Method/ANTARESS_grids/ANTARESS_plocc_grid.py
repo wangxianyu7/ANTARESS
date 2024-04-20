@@ -167,6 +167,10 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,nexp_fit,ph_fit,coord_fit,tr
         #Recalculate spot coordinates if relevant        
         if args['fit_spot']:
 
+            #Update spot crossing time before doing spot parameters' retrieval
+            for par in param:
+                if 'Tcenter' in par:param[par] += args['spot_crosstime_supp'][inst][vis]
+
             #Initialize entries for spot coordinates 
             for spot in transit_spots:
                 coords[spot] = {}

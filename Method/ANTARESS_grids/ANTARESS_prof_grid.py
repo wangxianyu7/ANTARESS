@@ -30,7 +30,7 @@ fun_to_use.restype = c_void_p
 fun_to_free.argtypes = [np.ctypeslib.ndpointer(c_double)]
 fun_to_free.restype = None
 
-def custom_DI_prof(param,x,args=None,unquiet_star=None,custom_func=None):
+def custom_DI_prof(param,x,args=None,unquiet_star=None):
     r"""**Disk-integrated profile: model function**
 
     Calculates custom disk-integrated stellar profile.

@@ -640,7 +640,7 @@ def init_bin_prof(data_type,bin_prop,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bi
 
 
 
-def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,mean_gdet,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True):
+def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,mean_gdet,cen_bins,dt,flux_ref_exp,cov_ref_exp,ref_val=0.,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True):
     r"""**Binning routine: weights**
 
     Defines weights to be used when binning profiles.
@@ -768,7 +768,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     #--------------------------------------------------------     
 
     #Calculate weights at pixels where the master stellar spectrum is defined and positive
-    cond_def_weights = (~np.isnan(flux_ref_exp)) & (flux_ref_exp>0.)
+    cond_def_weights = (~np.isnan(flux_ref_exp)) & (flux_ref_exp>ref_val)
     if np.sum(cond_def_weights)==0:stop('Issue with master definition')
 
     #Spectral corrections

@@ -8950,6 +8950,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 #Custom spot properties
                 if len(plot_set_key['custom_spot_prop'])>0:
+                    print('   + With custom spot properties')
                     # Initialize params to use the retrieve_spots_prop_from_param function.
                     params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
 
@@ -8961,6 +8962,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 #Mock dataset spot properties
                 elif plot_set_key['mock_spot_prop']:
+                    print('   + With mock dataset spot properties')
                     if (mock_dic['spots_prop'] != {}):
                             inst_to_use = plot_set_key['inst_to_plot'][0]
                             vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
@@ -8974,7 +8976,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 #Fitted spot properties
                 elif plot_set_key['fit_spot_prop']:
-                    stop('XXXX WIP XXXX')
+                    print('   + With fitted spot properties')
+                    inst_to_use = plot_set_key['inst_to_plot'][0]
+                    vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
+
+                    if plot_set_key['fit_results_file'] !='':fit_res = dataload_npz(plot_set_key['fit_results_file'])
+                    else:stop('No best-fit output file provided.')
+                    params = fit_res['p_final']
 
                 else:stop('System view unavailable : Spot generation initialized with no spot properties provided')
   
@@ -8988,6 +8996,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #Check if we have provided times for the plotting
                 if plot_set_key['t_BJD'] is not None:
 
+                    #Accounting for spot overlap
+                    shared_spotted_tiles = np.zeros(len(coord_grid['x_st_sky']), dtype=bool)
+
                     #Defining a new flux array, such that we don't see the previous spot when plotting the next spot
                     Flux_for_nonredundant_spot_plotting = deepcopy(Fsurf_grid_star[:,iband])
 
@@ -8996,12 +9007,21 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     else:
                         spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, plot_t) 
                     
+                    #Defining a reference spot contrast - since all spots share the same contrast
+                    ref_ctrst = spots_prop[list(spots_prop.keys())[0]]['ctrst']
+
                     for spot in spots_prop :
                         if spots_prop[spot]['is_center_visible']: 
                             _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
                                                                    {}, params, use_grid_dic = False, disc_exp = False)
 
-                            star_flux_before_spot[spotted_tiles] *=  (1-spots_prop[spot]['ctrst'])
+                            #Accounting for spot overlap - figure out which cells of the stellar grid are spotted
+                            shared_spotted_tiles |= spotted_tiles
+
+                    #Accounting for spot overlap - all spots share the same contrast. As such we figure out which cells are spotted by either spot1, or spot2, or...
+                    #Once we have all the spotted cells we scale their flux with the shared contrast. This prevents us of counting shared cells multiple times and 
+                    #lowering their flux more than necessary.
+                    star_flux_before_spot[shared_spotted_tiles] *=  (1-ref_ctrst)
                     
                     if plot_set_key['spot_overlap']:      
                         Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
@@ -9012,7 +9032,15 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #If no times provided for the plotting, then generate some
                 else:
                     # Compute BJD of images 
-                    if plot_set_key['plot_spot_all_Peq'] : t_all_spot = np.linspace(0,2*np.pi/((1.-star_params['alpha_rot_spots']*sin_lat**2.-star_params['beta_rot_spots']*sin_lat**4.)*star_params['om_eq_spots']*3600.*24.),plot_set_key['n_image_spots'])
+                    if plot_set_key['plot_spot_all_Peq'] :
+                        #Getting reference spot and latitude
+                        for par in params:
+                            if 'lat' in par:
+                                ref_lat = params[par]
+                                break
+                        sin_lat = np.sin(ref_lat) 
+
+                        t_all_spot = np.linspace(0,2*np.pi/((1.-star_params['alpha_rot_spots']*sin_lat**2.-star_params['beta_rot_spots']*sin_lat**4.)*star_params['om_eq_spots']*3600.*24.),plot_set_key['n_image_spots'])
 
                     else:
                         dbjd =  (plot_set_key['time_range_spot'][1]-plot_set_key['time_range_spot'][0])/plot_set_key['n_image_spots']
@@ -9024,17 +9052,27 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     for t_exp in t_all_spot :
                         star_flux_exp = deepcopy(star_flux_before_spot)
                         
-                        if len(plot_set_key['stellar_spot'])>0:
+                        #Accounting for spot overlap
+                        shared_spotted_tiles = np.zeros(len(coord_grid['x_st_sky']), dtype=bool)
+
+                        if len(plot_set_key['custom_spot_prop'])>0:
                             spots_prop = retrieve_spots_prop_from_param(star_params, params, '_', '_', t_exp) 
                         else:
                             spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, t_exp) 
+                        
+                        #Defining a reference spot contrast - since all spots share the same contrast
+                        ref_ctrst = spots_prop[list(spots_prop.keys())[0]]['ctrst']
+
                         for spot in spots_prop :
                             if spots_prop[spot]['is_center_visible']:
                                 _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
                                                                         {}, params, use_grid_dic = False, disc_exp = False)
 
-                                # if t_exp == t_all_spot[int(len(t_all_spot)/2)+22]:
-                                star_flux_exp[spotted_tiles] *=  (1-spots_prop[spot]['ctrst'])
+                                #Accounting for spot overlap - figure out which cells of the stellar grid are spotted
+                                shared_spotted_tiles |= spotted_tiles
+                        
+                        # if t_exp == t_all_spot[int(len(t_all_spot)/2)+22]:
+                        star_flux_exp[shared_spotted_tiles] *=  (1-ref_ctrst)
 
                             #Testing how to make 
                             # if t_exp == t_all_spot[int(len(t_all_spot)/2)+22]:

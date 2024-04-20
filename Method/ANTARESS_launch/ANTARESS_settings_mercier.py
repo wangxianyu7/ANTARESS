@@ -547,15 +547,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      
 
                      # #For the spot 'spot2' :  -- plotting purposes
-                     # 'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -15,
+                     # 'lat__ISESPRESSO_VSmock_vis_SPspot2'     : 15,
                      # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 - 0.4,
                      # 'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
-                     # 'ctrst__ISESPRESSO_VSmock_vis_SPspot2'    : 0.85,
 
                     # For the spot 'spot1' : -- base grid run
                      'lat__ISESPRESSO_VSmock_vis_SPspot1'     : -30,
                      'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051 - 0.3,
-                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 60,
 
                     #All spots in the a given visit must have the same contrast
                     'ctrst__ISESPRESSO_VSmock_vis_SP'    : 0.9,
@@ -4547,7 +4546,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - see gen_dic['fit_DI'] for details
     glob_fit_dic['ResProf']['priors']={}
     
-    
+    #%%%%% Time supplement that is added for spot crossing time
+    #    - improves the precision of fit
+    glob_fit_dic['ResProf']['spot_Tcenter_supp']={}
+
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
     glob_fit_dic['ResProf']['deriv_prop'] = []
@@ -4667,12 +4669,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'veq':{'vary':True,'guess':5, 'bd':[1, 10]},
         'cos_istar':{'vary':True,'guess':0.1, 'bd':[-1., 1.]},
         'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':5, 'bd':[-50, 10]},
-        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.1, 'bd':[2458330.39051 - 0.2, 2458330.39051 + 0.2]},
-        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':15, 'bd':[5, 32]},
+        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':0.1, 'bd':[0.39051 - 0.2, 0.39051 + 0.2]},
+        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':55, 'bd':[50, 60]},
         'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
         'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
-    
+
     #Fitting mode
     if gen_dic['star_name'] == 'AUMic':
         # glob_fit_dic['ResProf']['fit_mode']='chi2' 
@@ -4691,11 +4693,15 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     'veq'                                    :{'mod':'uf', 'low':1., 'high':100.},
                     'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' :{'mod':'uf', 'low':2458330.39051 - 1., 'high':2458330.39051 +1.},
-                    'ang__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':0, 'high':30.},
+                    'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' :{'mod':'uf', 'low':0.39051 - 1., 'high':0.39051 +1.},
+                    'ang__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':0, 'high':89.},
                     'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   :{'mod':'uf', 'low':0, 'high':1},
                     'lambda_rad__plAUMicb'                   :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }
+
+    if gen_dic['star_name'] == 'AUMic':
+        glob_fit_dic['ResProf']['spot_crosstime_supp']={'ESPRESSO':{'mock_vis':2458330.}}
+
 
     #Derived properties
     if gen_dic['star_name'] == 'AUMic':

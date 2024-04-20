@@ -912,6 +912,9 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['idx_in']={}
     fixed_args['DI_scaling_val']=data_dic['DI']['scaling_val']
 
+    #Spot-crossing time supplement
+    fixed_args['spot_crosstime_supp']={}
+
     #Stellar surface coordinate required to calculate spectral line profiles
     #    - other required properties are automatically added in the sub_calc_plocc_spot_prop() function
     fixed_args['par_list']+=['line_prof']
@@ -954,6 +957,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         fixed_args['master_out']['scaled_data_paths'][inst]={}
         fixed_args['idx_out'][inst]={}
         fixed_args['idx_in'][inst]={}
+        fixed_args['spot_crosstime_supp'][inst]={}
         
         if (inst not in fixed_args['ref_pl']) and (fixed_args['ref_pl']!={}):fixed_args['ref_pl'][inst]={}
 
@@ -1010,6 +1014,11 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 #Define in and out of transit exposures - needed for profile generation
                 fixed_args['idx_out'][inst][vis]=gen_dic[inst][vis]['idx_out']
                 fixed_args['idx_in'][inst][vis]=gen_dic[inst][vis]['idx_in']
+
+                #Defining spot crossing time supplement
+                if (inst in fit_prop_dic['spot_crosstime_supp']) and (vis in fit_prop_dic['spot_crosstime_supp'][inst]) and (fit_prop_dic['spot_crosstime_supp'][inst][vis] is not None):
+                    fixed_args['spot_crosstime_supp'][inst][vis]=fit_prop_dic['spot_crosstime_supp'][inst][vis]
+                else:fixed_args['spot_crosstime_supp'][inst][vis]=0.
 
                 #Defining reference planet if left undefined
                 if fixed_args['ref_pl']=={}:fixed_args['ref_pl']={inst:{vis:data_dic[inst][vis]['transit_pl'][0]}}
@@ -1475,7 +1484,7 @@ def joined_ResProf(param,args):
                 conv_line_model = convol_prof(sp_line_model,args_exp['cen_bins'],args['FWHM_inst'][inst])
 
                 #Set negative flux values to null
-                conv_line_model[conv_line_model<0.] = 0.
+                conv_line_model[conv_line_model<base_DI_prof[0]-1] = 0.
                                 
                 #Store the model DI profiles for calculation of the residual profiles later
                 args['raw_DI_profs'][inst][vis][isub] = conv_line_model
@@ -1493,7 +1502,7 @@ def joined_ResProf(param,args):
                     raw_weights=weights_bin_prof(range(args['master_out']['nord']), args['master_out']['scaled_data_paths'][inst][vis],inst,vis,args['master_out']['corr_Fbal'],args['master_out']['corr_FbalOrd'],\
                                                         args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'Res',args['type'],args['dim_exp'][inst][vis],None,\
                                                         None,np.array([args['cen_bins'][inst][vis][isub]]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([conv_line_model]),\
-                                                        np.array([args['cov'][inst][vis][isub]]),bdband_flux_sc=args['master_out']['flux_sc'])[0]
+                                                        np.array([args['cov'][inst][vis][isub]]),ref_val=base_DI_prof[0]-1, bdband_flux_sc=args['master_out']['flux_sc'])[0]
 
                     # - Re-sample the weights
                     resamp_weights = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],raw_weights,kind=args['master_out']['master_out_tab']['resamp_mode'])

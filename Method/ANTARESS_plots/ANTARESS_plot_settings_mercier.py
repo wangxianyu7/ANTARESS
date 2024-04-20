@@ -2232,6 +2232,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['fit_spot_prop'] = True & False
         plot_settings[key_plot]['custom_spot_prop'] = {}
         
+        #%%%% Name of the file storing the best-fit results we want to plot
+        plot_settings[key_plot]['fit_results_file'] = ''
+
         #%%%% Number of positions of the spots to be plotted, equally distributed within the given time range.
         plot_settings[key_plot]['n_image_spots'] = 15
 
@@ -2272,6 +2275,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings[key_plot]['plot_spots'] = True #& False
 
             plot_settings[key_plot]['mock_spot_prop'] = True #& False
+
+            plot_settings[key_plot]['fit_spot_prop'] = True & False
+
+            plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
 
             # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 10, 'Tcenter' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
             # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
