@@ -8,8 +8,6 @@ Collection of classes.
 ###
 ### MODULES
 
-import ANTARESS_conversions.KitCat.Kitcat_functions                  as     myf
-from   ANTARESS_conversions.KitCat.Kitcat_functions                  import rm_outliers as rm_out
 
 import matplotlib.pyplot             as     plt
 import numpy                         as     np
@@ -18,6 +16,10 @@ import pandas                        as     pd
 from   matplotlib.collections        import LineCollection
 from   scipy.interpolate             import interp1d
 from   statsmodels.stats.weightstats import DescrStatsW
+
+from ..ANTARESS_conversions.KitCat import Kitcat_functions as myf
+from ..ANTARESS_conversions.KitCat.Kitcat_functions import rm_outliers as rm_out
+
 
 #np.warnings.filterwarnings('ignore', category=RuntimeWarning)
 

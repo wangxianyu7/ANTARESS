@@ -1,15 +1,17 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
 from lmfit import Parameters
-from ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,MAIN_multithread,air_index,gen_specdopshift,def_edge_tab,check_data
 from copy import deepcopy
 import bindensity as bind
 from astropy.io import fits
-from ANTARESS_general.minim_routines import call_lmfit
 from scipy import special
-from ANTARESS_general.constant_data import N_avo,c_light_m,k_boltz,h_planck
 import scipy.linalg
-from ANTARESS_conversions.ANTARESS_conv import new_compute_CCF,check_CCF_mask_lines
-from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,calc_FWHM_inst,return_resolv
+from ..ANTARESS_conversions.ANTARESS_conv import new_compute_CCF,check_CCF_mask_lines
+from ..ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,calc_FWHM_inst,return_resolv
+from ..ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,MAIN_multithread,air_index,gen_specdopshift,def_edge_tab,check_data
+from ..ANTARESS_general.constant_data import N_avo,c_light_m,k_boltz,h_planck
+from ..ANTARESS_general.minim_routines import call_lmfit
 
 
 

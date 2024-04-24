@@ -1,6 +1,5 @@
-import numpy as np
-from ANTARESS_general.constant_data import Rjup,Rearth,AU_1,Rsun,Mearth,Mjup
-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 def get_system_params():
     r"""**Planetary system properties.**    

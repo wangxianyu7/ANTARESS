@@ -1,12 +1,14 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import glob
 import numpy as np
-from ANTARESS_general.utils import stop,np_where1D,dataload_npz,MAIN_multithread,gen_specdopshift,def_edge_tab,check_data
 from copy import deepcopy
 import bindensity as bind
 from scipy.interpolate import UnivariateSpline
-from ANTARESS_general.constant_data import c_light
 from scipy import stats
-from ANTARESS_conversions.ANTARESS_binning import sub_calc_bins,sub_def_bins
+from ..ANTARESS_general.constant_data import c_light
+from ..ANTARESS_conversions.ANTARESS_binning import sub_calc_bins,sub_def_bins
+from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,MAIN_multithread,gen_specdopshift,def_edge_tab,check_data
 
 
 def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):

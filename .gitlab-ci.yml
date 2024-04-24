@@ -36,7 +36,6 @@ Build distribution:
   extends: .setup_env
   stage: build
   script:
-#    - python setup.py sdist
     - python -m build
   artifacts:
     paths:
@@ -55,7 +54,7 @@ Generate documentation:
   extends: .setup_env
   stage: documentation
   script:
-    - pip install dist/*.tar.gz
+ #   - pip install dist/*.tar.gz
     - cd Docs
     - chmod +x Make_doc
     - ./Make_doc

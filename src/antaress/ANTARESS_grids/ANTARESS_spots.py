@@ -1,15 +1,17 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
 from copy import deepcopy
-from ANTARESS_general.utils import np_poly,stop,check_data
 from itertools import product as it_product
-from ANTARESS_grids.ANTARESS_coord import frameconv_skystar_to_star,frameconv_star_to_skystar
-from ANTARESS_analysis.ANTARESS_model_prof import poly_prop_calc
-from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
-from ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
-from ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate
-from ANTARESS_grids.ANTARESS_star_grid import calc_GD, calc_LD, calc_RVrot, calc_Isurf_grid
-from ANTARESS_grids.ANTARESS_prof_grid import init_st_intr_prof, coadd_loc_line_prof
-from ANTARESS_analysis.ANTARESS_model_prof import calc_linevar_coord_grid, calc_polymodu
+from ..ANTARESS_general.utils import np_poly,stop,check_data
+from ..ANTARESS_grids.ANTARESS_coord import frameconv_skystar_to_star,frameconv_star_to_skystar
+from ..ANTARESS_analysis.ANTARESS_model_prof import poly_prop_calc
+from ..ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
+from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
+from ..ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate
+from ..ANTARESS_grids.ANTARESS_star_grid import calc_GD, calc_LD, calc_RVrot, calc_Isurf_grid
+from ..ANTARESS_grids.ANTARESS_prof_grid import init_st_intr_prof, coadd_loc_line_prof
+from ..ANTARESS_analysis.ANTARESS_model_prof import calc_linevar_coord_grid, calc_polymodu
 
 
 

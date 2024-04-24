@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
 from astropy.io import fits 
 from copy import deepcopy
 import os as os_system 
 import bindensity as bind
-from ANTARESS_general.utils import stop,np_where1D,dataload_npz,datasave_npz,air_index,gen_specdopshift
+from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,datasave_npz,air_index,gen_specdopshift
 
 
 

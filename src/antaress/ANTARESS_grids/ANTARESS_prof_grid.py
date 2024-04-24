@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
 from scipy.interpolate import interp1d
 from copy import deepcopy
-from ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab
 import astropy.convolution.convolve as astro_conv
 import bindensity as bind
 from pysme import sme as SME
@@ -9,8 +10,9 @@ from pysme.linelist.vald import ValdFile
 from pysme.abund         import Abund
 from pysme.synthesize import synthesize_spectrum
 import lmfit
-from ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
-from ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
+from ..ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
+from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
+from ..ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab
 
 
 def custom_DI_prof(param,x,args=None):
@@ -66,7 +68,7 @@ def custom_DI_prof(param,x,args=None):
     
     #Multithreading
     #    - disabled with theoretical profiles, there seems to be an incompatibility with sme
-    if (args['nthreads']>1) and (args['mode']!='theo'):
+    if (args['nthreads']>1) and (args['mode']!='theo') and ('prof_grid' not in args['unthreaded_op']) :
         flux_DI_sum=MAIN_multithread(coadd_loc_line_prof,args['nthreads'],args['grid_dic']['nsub_star'],[rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,args,),output = True)                           
     
     #Direct call
@@ -280,7 +282,7 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
     params.add_many(('cont',      fixed_args['flux_cont'],                          False,    None,             None,               None))
     params.add_many(('rv',        RV_guess_tab[0],                                  False,    RV_guess_tab[1],  RV_guess_tab[2],    None)) 
     for ideg in range(1,5):params.add_many(('c'+str(ideg)+'_pol',          0.,              False,    None,None,None)) 
-    
+
     return params    
 
 

@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
-from ANTARESS_general.constant_data import c_light
-from ANTARESS_general.utils import stop
 from copy import deepcopy
+from ..ANTARESS_general.utils import stop
 
 def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
     r"""**Default plot settings.**

@@ -1,10 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
-from ANTARESS_general.utils import stop,np_where1D,init_parallel_func,dataload_npz,MAIN_multithread,gen_specdopshift,check_data
 from copy import deepcopy
 from PyAstronomy import pyasl
 import bindensity as bind
 from pathos.multiprocessing import Pool
-from ANTARESS_conversions.ANTARESS_sp_cont import calc_spectral_cont
+from ..ANTARESS_conversions.ANTARESS_sp_cont import calc_spectral_cont
+from ..ANTARESS_general.utils import stop,np_where1D,init_parallel_func,dataload_npz,MAIN_multithread,gen_specdopshift,check_data
 
 def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
     r"""**Main cosmics correction routine.**    

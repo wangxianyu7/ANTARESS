@@ -1,8 +1,10 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
 from itertools import product as it_product
-from ANTARESS_general.utils import stop,planck
-from ANTARESS_general.constant_data import G_usi,Msun
-from ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate,frameconv_skystar_to_star
+from ..ANTARESS_general.utils import stop,planck
+from ..ANTARESS_general.constant_data import G_usi,Msun
+from ..ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate,frameconv_skystar_to_star
 
 
 def calc_RVrot(x_st_sky,y_st,istar_rad,st_par):

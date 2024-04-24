@@ -1,13 +1,7 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Wed Oct 18 11:21:31 2017
-
-@author: bourrier
-"""
-
 import numpy as np
 import matplotlib.pyplot as plt
-import time as time
 import emcee
 exec('log10=np.log10')  #necessary to use log10 in expressions linking parameters
 import logging
@@ -26,8 +20,8 @@ from scipy import stats
 from copy import deepcopy
 from lmfit import minimize, report_fit
 from scipy import special
-from ANTARESS_plots.utils_plots import custom_axis,autom_y_tick_prop
-from ANTARESS_general.utils import np_where1D,stop,npint,init_parallel_func,get_time
+from ..ANTARESS_plots.utils_plots import custom_axis,autom_y_tick_prop
+from ..ANTARESS_general.utils import np_where1D,stop,npint,init_parallel_func,get_time
 
     
 ##################################################################################################
@@ -660,7 +654,11 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
         backend = emcee.backends.HDFBackend(fit_dic['save_dir']+'monitor'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name+'.h5')
         backend.reset(fit_dic['nwalkers'], fit_dic['merit']['n_free'])
     else:backend=None
-   
+
+    #Multiprocessing
+    if nthreads>1:pool_proc = Pool(processes=nthreads)  
+    print('         Running with '+str(nthreads)+' threads')
+    
     #Call to MCMC
     st0=get_time()
     n_free=np.shape(fit_dic['initial_distribution'])[1]
@@ -668,7 +666,7 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
                                     n_free,                         #Number of free parameters in the model
                                     ln_prob_func_mcmc,              #Log-probability function 
                                     args=[fixed_args],              #Fixed arguments for the calculation of the likelihood and priors
-                                    threads=nthreads,               #Number of threads on computer
+                                    pool = pool_proc,
                                     backend=backend)                #Monitor chain progress 
 
     #Run MCMC
@@ -689,6 +687,11 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
 
     #Delete temporary chains after final walkers are saved
     if backend is not None:os_system.remove(fit_dic['save_dir']+'monitor'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name+'.h5')
+
+    #Close workers
+    if nthreads>1:    
+        pool_proc.close()
+        pool_proc.join() 	
 
     return walker_chains
 

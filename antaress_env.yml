@@ -1,3 +1,5 @@
+#Defining project development environment
+
 name: antaress
 channels:
    - conda-forge

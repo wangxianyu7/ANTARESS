@@ -1,10 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
-from ANTARESS_general.utils import np_where1D,dataload_npz,check_data
 from copy import deepcopy
-from ANTARESS_corrections.ANTARESS_tellurics import corr_tell
-from ANTARESS_corrections.ANTARESS_flux_balance import def_Mstar,corr_Fbal,corr_Ftemp
-from ANTARESS_corrections.ANTARESS_peaks import corr_cosm,MAIN_permpeak
-from ANTARESS_corrections.ANTARESS_interferences import MAIN_corr_wig,corr_fring
+from ..ANTARESS_general.utils import np_where1D,dataload_npz,check_data
+from ..ANTARESS_corrections.ANTARESS_tellurics import corr_tell
+from ..ANTARESS_corrections.ANTARESS_flux_balance import def_Mstar,corr_Fbal,corr_Ftemp
+from ..ANTARESS_corrections.ANTARESS_peaks import corr_cosm,MAIN_permpeak
+from ..ANTARESS_corrections.ANTARESS_interferences import MAIN_corr_wig,corr_fring
 
 def red_sp_data_instru(inst,data_dic,plot_dic,gen_dic,data_prop,coord_dic,system_param):
     r"""**Correction sequence for spectral data.**

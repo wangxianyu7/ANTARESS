@@ -1,8 +1,8 @@
-import numpy as np
-from ANTARESS_general.constant_data import Rjup,Rearth,Rsun,c_light
-from ANTARESS_general.utils import stop
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 from copy import deepcopy
 from pathos.multiprocessing import cpu_count
+import numpy as np
 
 def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic):
     r"""**ANTARESS default settings.**
@@ -24,7 +24,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Planetary system
     
     #%%%%% Star name
-    gen_dic['star_name']='' 
+    gen_dic['star_name']='Arda' 
     
     
     #%%%%% Transiting planets
@@ -565,7 +565,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'nlte':{},        
         'wav_min':5600.,'wav_max':6200.,'dwav':0.01,
         'mu_grid':np.logspace(-2.,0.,15),
-        'linelist': '/Users/bourrier/Travaux/ANTARESS/Method/Secondary/Implementations/SME/Long_Na_band.lin',
+        'linelist': '',
         'abund':{},
         'calc':True,
         }  
@@ -3663,7 +3663,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
         
     #%%%% Multi-threading
+    
+    #%%%%% Allocated threads
     glob_fit_dic['IntrProf']['nthreads'] = int(0.8*cpu_count())
+    
+    
+    #%%%%% Unthreaded operations
+    #    - all operations are multi-threaded by default, but overheads of sharing data between threads may counterbalance the benefits of threading the model
+    #    - select here which operations not to thread:
+    # + 'emcee'
+    glob_fit_dic['IntrProf']['unthreaded_op'] = []
     
     
     #%%%% Fitted data

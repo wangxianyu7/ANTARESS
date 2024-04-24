@@ -1,15 +1,17 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
-from ANTARESS_general.utils import dataload_npz,np_where1D,stop,init_parallel_func,check_data
 import lmfit
 from lmfit import Parameters
 from scipy.interpolate import interp1d
 from scipy import stats
 from copy import deepcopy
-from ANTARESS_general.minim_routines import call_lmfit
 from pathos.multiprocessing import Pool
 from numpy.polynomial import Polynomial
-from ANTARESS_conversions.ANTARESS_binning import sub_calc_bins,sub_def_bins
-from ANTARESS_analysis.ANTARESS_inst_resp import return_resolv
+from ..ANTARESS_conversions.ANTARESS_binning import sub_calc_bins,sub_def_bins
+from ..ANTARESS_analysis.ANTARESS_inst_resp import return_resolv
+from ..ANTARESS_general.utils import dataload_npz,np_where1D,stop,init_parallel_func,check_data
+from ..ANTARESS_general.minim_routines import call_lmfit
 
 
 

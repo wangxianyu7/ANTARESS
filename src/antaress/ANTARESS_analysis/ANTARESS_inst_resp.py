@@ -1,9 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
-from ANTARESS_general.utils import npint,stop,gen_specdopshift
 import astropy.convolution.convolve as astro_conv
-from ANTARESS_general.constant_data import c_light
 from copy import deepcopy
 import bindensity as bind
+from ..ANTARESS_general.utils import npint,stop,gen_specdopshift
+from ..ANTARESS_general.constant_data import c_light
+
 
    
 def return_pix_size(): 
@@ -27,11 +30,11 @@ def return_pix_size():
         #    ordre 10:  deltaV = 1.7240 km/s
         #    ordre 35:  deltaV = 1.7315 km/s
         #    ordre 60:  deltaV = 1.7326 km/s
-        #    pouvoir_resol = 55000 -> deltav_instru = 5.45 km/s          
+        #    resolving power = 55000 -> deltav_instru = 5.45 km/s          
         'CORALIE':1.73,
 
         #HARPS-N or HARPS: pix_size = 0.016 A ~ 0.8 km/s at 5890 A         
-        #    - pouvoir_resol = 120000 -> deltav_instru = 2.6km/s         
+        #    - resolving power = 120000 -> deltav_instru = 2.6km/s         
         'HARPN':0.82,
         'HARPS':0.82,
         
@@ -40,7 +43,7 @@ def return_pix_size():
         # 0.0496 A at 3021A (=4.920 km/s)
         # 0.0375 A at 2274A (=4.944 km/s)   
         #      we take pix_size ~ 4.93 km/s    
-        #    - with pouvoir_resol = 30000 -> deltav_instru = 9.9 km/s (2 bins)
+        #    - with resolving power = 30000 -> deltav_instru = 9.9 km/s (2 bins)
         'STIS_E230M':4.93,   
         
         #STIS G750L
@@ -54,21 +57,29 @@ def return_pix_size():
         #ESPRESSO in HR mode
         #    - pixel size = 0.5 km/s
         # 0.01 A at 6000A
-        #    - pouvoir_resol = 140000 -> deltav_instru = 2.1km/s           
+        #    - resolving power = 140000 -> deltav_instru = 2.1km/s           
         'ESPRESSO':0.5,
 
         #ESPRESSO in MR mode
         'ESPRESSO_MR':1.,
         
         #CARMENES   
-        #    pouvoir_resol = 93400 -> deltav_instru = 3.2 km/s   
+        #    optical resolving power = 93400 -> deltav_instru = 3.2 km/s   
         #    - 2.8 pixel / FWHM, so that pixel size = 1.1317 km/s             
         'CARMENES_VIS':1.1317,
+        #    near-infrared resolving power = 80400 -> deltav_instru = 3.72876 km/s   
+        #    - 2.3 pixel / FWHM, so that pixel size = 1.62 km/s   
+        'CARMENES_NIR':1.1317,
         
         'NIRPS_HA':0.93,
         'NIRPS_HE':0.93,  
         
-        'EXPRES':0.5
+        'EXPRES':0.5,
+        
+        'IRD':2.08442,
+        
+        'GIANO':3.1280284
+        
     }     
 
 
@@ -184,11 +195,14 @@ def return_resolv(inst):
         'STIS_G750L':1280.,         
         'ESPRESSO':140000.,
         'ESPRESSO_MR':70000.,
+        'CARMENES_NIR':80400.,
         'CARMENES_VIS':94600.,
         'NIRPS_HE':75000.,
         'NIRPS_HA':88000.,
         'EXPRES':137500.,
         'NIRSPEC':25000.,
+        'IRD':70000.,
+        'GIANO':50000.,
     }[inst]  
     return inst_res
 

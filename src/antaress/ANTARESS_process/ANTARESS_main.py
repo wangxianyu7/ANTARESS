@@ -1,36 +1,38 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
-from ANTARESS_general.utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data
 from pathos.multiprocessing import cpu_count
 from copy import deepcopy
 import bindensity as bind
 from os import makedirs
 from os.path import exists as path_exist
-from ANTARESS_general.constant_data import Rsun,Rjup,c_light,G_usi,Msun,AU_1
 import glob
 from astropy.io import fits
 from dace_query.spectroscopy import Spectroscopy
 from scipy.interpolate import CubicSpline
-from ANTARESS_analysis.ANTARESS_model_prof import calc_macro_ker_anigauss,calc_macro_ker_rt 
-from ANTARESS_grids.ANTARESS_star_grid import model_star
-from ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop
-from ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm
-from ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos
-from ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab
-from ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
-from ANTARESS_corrections.ANTARESS_sp_reduc import red_sp_data_instru
-from ANTARESS_analysis.ANTARESS_joined_star import joined_Star_ana
-from ANTARESS_analysis.ANTARESS_joined_atm import joined_Atm_ana
-from ANTARESS_plots.ANTARESS_plots_all import ANTARESS_plot_functions
-from ANTARESS_corrections.ANTARESS_calib import calc_gcal
-from ANTARESS_process.ANTARESS_plocc_spec import def_plocc_profiles
-from ANTARESS_conversions.ANTARESS_masks_gen import def_masks
-from ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
-from ANTARESS_grids.ANTARESS_spots import corr_spot,spot_occ_region_grid
-from ANTARESS_conversions.ANTARESS_binning import process_bin_prof
-from ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
-from ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
-from ANTARESS_analysis.ANTARESS_ana_comm import MAIN_single_anaprof
-from ANTARESS_conversions.ANTARESS_sp_cont import process_spectral_cont
+from ..ANTARESS_analysis.ANTARESS_model_prof import calc_macro_ker_anigauss,calc_macro_ker_rt 
+from ..ANTARESS_grids.ANTARESS_star_grid import model_star
+from ..ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop
+from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm
+from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos
+from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab
+from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
+from ..ANTARESS_corrections.ANTARESS_sp_reduc import red_sp_data_instru
+from ..ANTARESS_analysis.ANTARESS_joined_star import joined_Star_ana
+from ..ANTARESS_analysis.ANTARESS_joined_atm import joined_Atm_ana
+from ..ANTARESS_plots.ANTARESS_plots_all import ANTARESS_plot_functions
+from ..ANTARESS_corrections.ANTARESS_calib import calc_gcal
+from ..ANTARESS_process.ANTARESS_plocc_spec import def_plocc_profiles
+from ..ANTARESS_conversions.ANTARESS_masks_gen import def_masks
+from ..ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
+from ..ANTARESS_grids.ANTARESS_spots import corr_spot,spot_occ_region_grid
+from ..ANTARESS_conversions.ANTARESS_binning import process_bin_prof
+from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
+from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
+from ..ANTARESS_analysis.ANTARESS_ana_comm import MAIN_single_anaprof
+from ..ANTARESS_conversions.ANTARESS_sp_cont import process_spectral_cont
+from ..ANTARESS_general.utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data
+from ..ANTARESS_general.constant_data import Rsun,Rjup,c_light,G_usi,Msun,AU_1
 
 
 def ANTARESS_settings_overwrite(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic,input_dic):
@@ -68,7 +70,7 @@ def ANTARESS_settings_overwrite(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic
 
 
 
-def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_param,input_dic,user):
+def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_param,input_dic,input_path,custom_plot_settings):
     r"""**Main ANTARESS function.**
 
     Runs ANTARESS workflow. The pipeline is defined as modules than can be run independently. Each module takes as input the datasets produced by earlier modules, transforms or 
@@ -280,7 +282,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     #Call to plot functions
     ##############################################################################
     if gen_dic['plots_on']:
-        ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,mock_dic,input_dic,user)
+        ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,mock_dic,input_dic,input_path,custom_plot_settings)
 
     return None
     

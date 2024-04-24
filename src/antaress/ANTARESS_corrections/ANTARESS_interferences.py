@@ -1,25 +1,27 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import glob
 import numpy as np
 import lmfit
 from lmfit import Parameters
-from ANTARESS_general.utils import stop,np_where1D,is_odd,closest,dataload_npz,gen_specdopshift,check_data,datasave_npz
 from itertools import product as it_product
 from copy import deepcopy
 import os as os_system 
 import bindensity as bind
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d,CubicSpline
-from ANTARESS_general.constant_data import c_light
-from ANTARESS_general.minim_routines import init_fit,fit_merit,call_lmfit
 from astropy.timeseries import LombScargle
 from scipy import stats
 import itertools
 from scipy.signal import savgol_filter
 from matplotlib.ticker import MultipleLocator
-from ANTARESS_plots.utils_plots import autom_x_tick_prop,autom_y_tick_prop,custom_axis
-from ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof
-from ANTARESS_grids.ANTARESS_coord import get_timeorbit,calc_tr_contacts
-from ANTARESS_analysis.ANTARESS_ana_comm import model_par_names,par_formatting
+from ..ANTARESS_plots.utils_plots import autom_x_tick_prop,autom_y_tick_prop,custom_axis
+from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof
+from ..ANTARESS_grids.ANTARESS_coord import get_timeorbit,calc_tr_contacts
+from ..ANTARESS_analysis.ANTARESS_ana_comm import model_par_names,par_formatting
+from ..ANTARESS_general.utils import stop,np_where1D,is_odd,closest,dataload_npz,gen_specdopshift,check_data,datasave_npz
+from ..ANTARESS_general.constant_data import c_light
+from ..ANTARESS_general.minim_routines import init_fit,fit_merit,call_lmfit
 
 
 def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):

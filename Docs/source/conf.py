@@ -12,8 +12,8 @@ import glob
 #Identify whether doc is generated on gitlab or locally
 conf_path = os.path.abspath(os.path.dirname(__file__))
 if conf_path=='/builds/bourrier/antaress/Docs/source':
-	sys.path.insert(0, os.path.abspath('/builds/bourrier/antaress/Method/'))
-	for code_dir in glob.glob('/builds/bourrier/antaress/Method/ANTARESS_*/'):
+	sys.path.insert(0, os.path.abspath('/builds/bourrier/antaress/src/antaress/'))
+	for code_dir in glob.glob('/builds/bourrier/antaress/src/antaress/ANTARESS_*/'):
 		sys.path.insert(0, os.path.abspath(code_dir))
 
 	#Get release version
@@ -22,8 +22,8 @@ if conf_path=='/builds/bourrier/antaress/Docs/source':
 			if 'version' in line:
 				release = line.split('= "')[1].split('"')[0]
 else:
-	sys.path.insert(0, os.path.abspath('/Users/bourrier/Travaux/ANTARESS/Method/'))
-	for code_dir in glob.glob('/Users/bourrier/Travaux/ANTARESS/Method/ANTARESS_*/'):
+	sys.path.insert(0, os.path.abspath('/Users/bourrier/Travaux/ANTARESS/src/antaress/'))
+	for code_dir in glob.glob('/Users/bourrier/Travaux/ANTARESS/src/antaress/ANTARESS_*/'):
 		sys.path.insert(0, os.path.abspath(code_dir))
 
 # -- Project information -----------------------------------------------------

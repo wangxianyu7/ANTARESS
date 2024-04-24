@@ -1,9 +1,5 @@
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Jul 22 12:51:40 2014
-
-@author: bourrier
-"""
 from math import pi
 import numpy as np
 

@@ -9,19 +9,19 @@ KitCat - adapted to the ANTARESS workflow and upgraded by Vincent Bourrier
 # MODULES
 # =============================================================================
 
-import ANTARESS_conversions.KitCat.Kitcat_classes         as     myc
-import ANTARESS_conversions.KitCat.Kitcat_functions       as     myf
+
 import matplotlib.pylab   as     plt
 import numpy              as     np
 import pandas             as     pd
 from   scipy.signal       import argrelextrema
-
-from ANTARESS_general.utils import stop,np_where1D,dataload_npz,init_parallel_func,gen_specdopshift
-from ANTARESS_general.constant_data import c_light,c_light_m
 import bindensity as bind
 from copy import deepcopy
 from pathos.multiprocessing import Pool
-import ANTARESS_conversions.KitCat.calculate_RV_line_by_line3 as calculate_RV_line_by_line 
+from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,init_parallel_func,gen_specdopshift
+from ..ANTARESS_general.constant_data import c_light,c_light_m
+from ..ANTARESS_conversions.KitCat import Kitcat_classes         as     myc
+from ..ANTARESS_conversions.KitCat import Kitcat_functions       as     myf
+from ..ANTARESS_conversions.KitCat import calculate_RV_line_by_line3 as calculate_RV_line_by_line 
 
 
 def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_norm,gen_dic,save_data_paths,tell_spec,rv_sys,min_specdopshift_receiver_Earth,max_specdopshift_receiver_Earth,dic_sav,plot_spec,plot_ld,plot_ld_lw,plot_RVdev_fit,cont_func_dic,vis_iexp_in_bin,

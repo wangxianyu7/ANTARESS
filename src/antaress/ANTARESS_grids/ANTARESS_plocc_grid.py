@@ -1,17 +1,19 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
 from itertools import product as it_product
 from copy import deepcopy
-from ANTARESS_general.utils import stop,closest,np_poly,npint,np_interp,np_where1D,datasave_npz,dataload_npz,gen_specdopshift,check_data
-from ANTARESS_general.constant_data import Rsun,c_light
 import lmfit
 from lmfit import Parameters
-from ANTARESS_grids.ANTARESS_coord import frameconv_skyorb_to_skystar,frameconv_skystar_to_skyorb,frameconv_skystar_to_star,calc_pl_coord
-from ANTARESS_process.ANTARESS_data_align import align_data
-from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
-from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,calc_st_sky,calc_Isurf_grid,calc_RVrot
-from ANTARESS_analysis.ANTARESS_model_prof import calc_polymodu,polycoeff_def
-from ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid
-from ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop, spot_occ_region_grid
+from ..ANTARESS_grids.ANTARESS_coord import frameconv_skyorb_to_skystar,frameconv_skystar_to_skyorb,frameconv_skystar_to_star,calc_pl_coord
+from ..ANTARESS_process.ANTARESS_data_align import align_data
+from ..ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
+from ..ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,calc_st_sky,calc_Isurf_grid,calc_RVrot
+from ..ANTARESS_analysis.ANTARESS_model_prof import calc_polymodu,polycoeff_def
+from ..ANTARESS_grids.ANTARESS_prof_grid import coadd_loc_line_prof,calc_loc_line_prof,init_st_intr_prof,calc_linevar_coord_grid
+from ..ANTARESS_grids.ANTARESS_spots import is_spot_visible, calc_spotted_tiles, retrieve_spots_prop_from_param, new_new_calc_spotted_region_prop, spot_occ_region_grid
+from ..ANTARESS_general.utils import stop,closest,np_poly,npint,np_interp,np_where1D,datasave_npz,dataload_npz,gen_specdopshift,check_data
+from ..ANTARESS_general.constant_data import Rsun,c_light
 
 def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=False,spot_dic={}):
     r"""**Planet-occulted / spot properties: workflow**
@@ -844,8 +846,8 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,idx,pl
             for key in coord_grid:coord_grid[key] = coord_grid[key][cond_pl_occ_corr]
             n_pl_occ = np.sum(cond_pl_occ_corr)
       
-            #Store planet as processed in current band
-            pl_proc_band+=[pl_loc]     
+        #Store planet as processed in current band
+        pl_proc_band+=[pl_loc]     
 
         #--------------------------------
         #Account for spot occultation in planet-occulted region

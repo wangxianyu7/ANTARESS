@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-from ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,gen_specdopshift,closest,def_edge_tab,check_data
 from copy import deepcopy
 from lmfit import Parameters
 import lmfit
 import numpy as np
-from ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,save_fit_results,fit_merit,call_lmfit,gen_hrand_chain
-from ANTARESS_general.constant_data import Rsun,c_light
 import bindensity as bind
-from ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff
-# from ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
-from ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,custom_DI_prof,theo_intr2loc
-from ANTARESS_analysis.ANTARESS_model_prof import para_cust_mod_true_prop,proc_cust_mod_true_prop,cust_mod_true_prop,gauss_intr_prop,calc_biss,\
+from ..ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,gen_specdopshift,closest,def_edge_tab,check_data
+from ..ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,save_fit_results,fit_merit,call_lmfit,gen_hrand_chain
+from ..ANTARESS_general.constant_data import Rsun,c_light
+from ..ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff
+# from ..ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
+from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,custom_DI_prof,theo_intr2loc
+from ..ANTARESS_analysis.ANTARESS_model_prof import para_cust_mod_true_prop,proc_cust_mod_true_prop,cust_mod_true_prop,gauss_intr_prop,calc_biss,\
     dgauss,gauss_poly,voigt,gauss_herm_lin,gen_fit_prof
-from ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst
-from ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,def_st_prof_tab,cond_conv_st_prof_tab,resamp_st_prof_tab,get_FWHM_inst
-from ANTARESS_grids.ANTARESS_coord import excl_plrange
+from ..ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst
+from ..ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,def_st_prof_tab,cond_conv_st_prof_tab,resamp_st_prof_tab,get_FWHM_inst
+from ..ANTARESS_grids.ANTARESS_coord import excl_plrange
 
 
 ##################################################################################################    
@@ -658,7 +657,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     elif fit_prop_dic['fit_mode']=='mcmc':  
         fixed_args['fit'] = True
         print('       MCMC fit')
-
+        
         #Default options
         if 'nwalkers' not in fit_prop_dic['mcmc_set']:fit_dic['nwalkers'] = int(3*fit_dic['merit']['n_free'])
         else:fit_dic['nwalkers'] = fit_prop_dic['mcmc_set']['nwalkers']
@@ -666,7 +665,11 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         else:fit_dic['nsteps'] = fit_prop_dic['mcmc_set']['nsteps']
         if 'nburn' not in fit_prop_dic['mcmc_set']:fit_dic['nburn'] = 1000
         else:fit_dic['nburn'] = fit_prop_dic['mcmc_set']['nburn']
-      
+
+        #Disable multi-threading
+        if 'emcee' in fit_prop_dic['unthreaded_op']:mcmc_threads=1
+        else:mcmc_threads = fit_prop_dic['nthreads']
+
         #Run MCMC
         if fit_prop_dic['mcmc_run_mode']=='use':
             print('         Applying MCMC') 
@@ -675,7 +678,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
             if (len(fixed_args['prior_func'])>0):fixed_args['global_ln_prior_func']=global_ln_prior_func
 
             #Call to MCMC
-            walker_chains=call_MCMC(fit_prop_dic['nthreads'],fixed_args,fit_dic,run_name=fit_dic['run_name'])
+            walker_chains=call_MCMC(mcmc_threads,fixed_args,fit_dic,run_name=fit_dic['run_name'])
                
         #---------------------------------------------------------------  
        
@@ -803,7 +806,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         #    - 1-sigma and envelope samples for plot
         #    - plot of model parameter chains
         #    - save file 
-        p_final,merged_chain,par_sample_sig1,par_sample=postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,fit_prop_dic['nthreads'],fixed_args['par_names'])
+        p_final,merged_chain,par_sample_sig1,par_sample=postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,mcmc_threads,fixed_args['par_names'])
 
     ########################################################################################################  
     #No fit is performed: guess parameters are kept
@@ -2525,7 +2528,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #Convert Rstar and Peq into veq
         #    - veq = (2*pi*Rstar/Peq)
         if 'veq_from_Peq_Rstar' in deriv_prop:
-            print('        + Deriving veq from Req and Rstar ')
+            print('        + Deriving veq from Peq and Rstar ')
             
             if fit_dic['fit_mode']=='chi2': 
                 p_final['veq']=(2.*np.pi*p_final['Peq']*Rsun)/(p_final['Peq']*3600.*24.)
@@ -2598,7 +2601,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #    - only use if all other parameters are degenerate with istar
         #    - by default we fold over 0-90
         if ('fold_istar' in deriv_prop):        
-            print('       + Folding istar')
+            print('        + Folding istar')
             iistar = np_where1D(fixed_args['var_par_list']=='istar_deg')
             istar_temp=np.squeeze(merged_chain[:,iistar])
             w_gt_90=(istar_temp > 90.)
@@ -2836,7 +2839,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                         lambda_ehigh*=np.pi/180.
                         lamb_chain = {'':{'':gen_hrand_chain(lambda_med,lambda_elow,lambda_ehigh,n_chain)}}
                     elif 'psi' in deriv_prop:
-                        print('         Using derived lambda')
+                        print('           Using derived lambda')
                         if lambda_rad_pl in fixed_args['genpar_instvis']:
                             lamb_chain={}
                             for inst in fixed_args['genpar_instvis'][lambda_rad_pl]:
@@ -2848,11 +2851,11 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     
                     #Stellar inclination
                     if ('istar_deg' in fixed_args['var_par_list']):
-                        print('         Using derived istar')
+                        print('           Using derived istar')
                         istarN_chain=np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']=='istar_deg')]    )*np.pi/180. 
                         istarS_chain=np.pi-istarN_chain
                     else:
-                        print('         Using external istar')
+                        print('           Using external istar')
                         
                         #Complex PDF on istar
                         if pl_loc=='HD89345b':                        
@@ -2977,7 +2980,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                             fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiN__pl'+pl_loc+'__IS'+inst+'_VS'+vis,'PsiS__pl'+pl_loc+'__IS'+inst+'_VS'+vis]))
                             fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi_{N}$['+inst+']('+vis+')',pl_loc+'_$\psi_{S}$',pl_loc+'_$\psi$['+inst+']('+vis+')']))          
                 else:
-                    fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiN__pl'+pl_loc,'PsiS__pl'+pl_loc]))
+                    fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiN__pl'+pl_loc,'PsiS__pl'+pl_loc,'Psi__pl'+pl_loc]))
                     fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi_{N}$',pl_loc+'_$\psi_{S}$',pl_loc+'_$\psi$']))   
              
         #-------------------------------------------------
@@ -3140,7 +3143,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                         elif pl_loc=='WASP76b':x_mid=-75. 
                         else:x_mid=np.median(merged_chain[:,ilamb])
         
-                        print('       + Folding '+lamb_name+' around ',x_mid)
+                        print('        + Folding '+lamb_name+' around ',x_mid)
                         mid_shift = x_mid-180.
                         lambda_temp=np.squeeze(merged_chain[:,ilamb])-mid_shift
                         w_gt_360=(lambda_temp > 360.)

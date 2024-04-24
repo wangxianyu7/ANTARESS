@@ -1,8 +1,10 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
 from scipy.optimize import newton
-from ANTARESS_general.utils import np_where1D,npint,stop,closest
 from copy import deepcopy
-from ANTARESS_general.constant_data import G_usi,Mjup,Msun
+from ..ANTARESS_general.constant_data import G_usi,Mjup,Msun
+from ..ANTARESS_general.utils import np_where1D,npint,stop,closest
 
 ##################################################################################################    
 #%% Coordinates

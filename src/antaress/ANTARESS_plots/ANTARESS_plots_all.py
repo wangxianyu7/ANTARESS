@@ -1,39 +1,38 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
-
 import numpy as np
 import importlib
 import os as os_system
-from ANTARESS_general.utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz,air_index,gen_specdopshift
 from lmfit import Parameters
 from copy import deepcopy
 from math import pi,cos,sin,sqrt
 from pathos.multiprocessing import Pool
-from ANTARESS_general.constant_data import c_light
 import numpy.ma as ma
 import bindensity as bind
 from itertools import product as it_product
 from matplotlib.ticker import MultipleLocator,MaxNLocator
 import copy
-from ANTARESS_general.minim_routines import call_lmfit
 from astropy.io import fits
 import glob
 import imageio
-from ANTARESS_plots.utils_plots import custom_axis,autom_x_tick_prop,autom_y_tick_prop,stackrel,scaled_title,autom_range_ext,plot_shade_range
-from ANTARESS_conversions.ANTARESS_binning import resample_func,calc_bin_prof,weights_bin_prof
-from ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,return_pix_size
-from ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_mod_true_prop,voigt
-from ANTARESS_corrections.ANTARESS_detrend import detrend_prof_gen
-from ANTARESS_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
-from ANTARESS_grids.ANTARESS_coord import calc_pl_coord_plots,calc_pl_coord,calc_rv_star_HR,frameconv_skyorb_to_skystar,frameconv_skystar_to_skyorb,get_timeorbit,\
+from ..ANTARESS_general.constant_data import c_light
+from ..ANTARESS_general.minim_routines import call_lmfit
+from ..ANTARESS_general.utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz,air_index,gen_specdopshift
+from ..ANTARESS_plots.utils_plots import custom_axis,autom_x_tick_prop,autom_y_tick_prop,stackrel,scaled_title,autom_range_ext,plot_shade_range
+from ..ANTARESS_conversions.ANTARESS_binning import resample_func,calc_bin_prof,weights_bin_prof
+from ..ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,return_pix_size
+from ..ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_mod_true_prop,voigt
+from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof_gen
+from ..ANTARESS_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
+from ..ANTARESS_grids.ANTARESS_coord import calc_pl_coord_plots,calc_pl_coord,calc_rv_star_HR,frameconv_skyorb_to_skystar,frameconv_skystar_to_skyorb,get_timeorbit,\
     calc_zLOS_oblate,frameconv_star_to_skystar,calc_tr_contacts
-from ANTARESS_corrections.ANTARESS_calib import cal_piecewise_func
-from ANTARESS_grids.ANTARESS_star_grid import get_LD_coeff,calc_CB_RV,calc_RVrot,calc_Isurf_grid,calc_st_sky
-from ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_spot_prop
-from ANTARESS_grids.ANTARESS_spots import retrieve_spots_prop_from_param, calc_spotted_tiles, spot_occ_region_grid
+from ..ANTARESS_corrections.ANTARESS_calib import cal_piecewise_func
+from ..ANTARESS_grids.ANTARESS_star_grid import get_LD_coeff,calc_CB_RV,calc_RVrot,calc_Isurf_grid,calc_st_sky
+from ..ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_spot_prop
+from ..ANTARESS_grids.ANTARESS_spots import retrieve_spots_prop_from_param, calc_spotted_tiles, spot_occ_region_grid
 
 
-def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,mock_dic,nbook_dic,user):
+def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,mock_dic,nbook_dic,input_path,custom_plot_settings):
     print()
     print('-----------------------------------')
     print('Plots')  
@@ -52,9 +51,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,theo_dic)   
     
     #Overwrite with user settings
-    if user!='':
-        main_file = importlib.import_module('ANTARESS_plots.ANTARESS_plot_settings_'+user)
-        main_file.ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,theo_dic)    
+    if custom_plot_settings!='':import_module(input_path+custom_plot_settings).ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,theo_dic)
     
     #Overwrite with notebook settings
     if ('plots' not in nbook_dic):nbook_dic['plots'] = {}
@@ -3426,11 +3423,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     data_vis = data_dic[inst][vis]
                     prof_fit_vis = None
                     data_bin = None
+                    if vis not in plot_options['color_dic'][inst]:plot_options['color_dic'][inst][vis]='dodgerblue'                 
+                    if plot_options['color_dic'][inst][vis]=='jet':col_loc='dodgerblue'  
+                    else:col_loc = plot_options['color_dic'][inst][vis]
                     if data_mode=='DI':
                         if vis=='binned':
                             if plot_options['prop_'+data_mode+'_absc']!='phase':stop('Use correct binning dimension')
                             data_bin = dataload_npz(gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_phase')
-                            if gen_dic['fit_DIbin'] or gen_dic['fit_DIbinmultivis']:prof_fit_vis=np.load(gen_dic['save_data_dir']+'DIbin_prop/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item()  
+                            if gen_dic['fit_DIbin'] or gen_dic['fit_DIbinmultivis']:prof_fit_vis=dataload_npz(gen_dic['save_data_dir']+'DIbin_prop/'+inst+'_'+vis)
                         else:
                             coord_vis = coord_dic[inst][vis][pl_ref]
                             data_prop_vis = data_prop[inst][vis]
@@ -3611,7 +3611,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                        
                             #High-resolution model
                             if plot_options['theo_HR_prof']:  
-                                xvar_HR_loc,yvar_HR_loc = sub_plot_HR('from_prof',input_dic,'black')
+                                col_mod_prof = 'black'
+                                col_mod_prof = col_loc
+                                xvar_HR_loc,yvar_HR_loc = sub_plot_HR('from_prof',input_dic,col_mod_prof)
                                 
                     if vis=='binned':
                         n_exp_vis = data_bin['n_exp']
@@ -3816,15 +3818,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     else:idx_in_plot = range(len(x_obs))
                     n_exp_vis=len(idx_in_plot)
     
-                    #Colors
-                    if vis not in plot_options['color_dic'][inst]:plot_options['color_dic'][inst][vis]='dodgerblue'                
+                    #Colors             
                     if plot_options['color_dic'][inst][vis]=='jet':
                         cmap = plt.get_cmap('jet') 
-                        col_visit=np.array([cmap(0)]) if n_exp_vis==1 else cmap( np.arange(n_exp_vis)/(n_exp_vis-1.)) 
-                        col_loc='dodgerblue'  
+                        col_visit=np.array([cmap(0)]) if n_exp_vis==1 else cmap( np.arange(n_exp_vis)/(n_exp_vis-1.))  
                     else:
                         col_visit=np.repeat(plot_options['color_dic'][inst][vis],n_exp_vis)
-                        col_loc = plot_options['color_dic'][inst][vis]
             
                     #-------------------------------------------------------
 
@@ -3912,6 +3911,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     dic_all['end_x_all']=np.append(dic_all['end_x_all'],end_x_obs)
                     dic_all['val_all']=np.append(dic_all['val_all'],val_obs)
                     dic_all['eval_all']=np.append(dic_all['eval_all'],eval_obs,axis=1)
+                    dic_all['HDI_all']=np.append(dic_all['HDI_all'],HDIval_obs,axis=1)
                     dic_inst['x_all']=np.append(dic_inst['x_all'],x_obs)
                     dic_inst['st_x_all']=np.append(dic_inst['st_x_all'],st_x_obs)
                     dic_inst['end_x_all']=np.append(dic_inst['end_x_all'],end_x_obs)
@@ -4136,22 +4136,23 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Contacts
                     if plot_options['prop_'+data_mode+'_absc']=='phase':
                         for ipl,pl_loc in enumerate(data_dic[inst][vis]['transit_pl']):
-                            if pl_loc==pl_ref:
-                                cen_ph = 0.
-                                contact_phases_vis = contact_phases[pl_ref]
-                            else:
-                                contact_times = coord_dic[inst][vis][pl_loc]['Tcenter']+contact_phases[pl_loc]*system_param[pl_loc]["period"]
-                                contact_phases_vis = (contact_times-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"]  
-                                cen_ph = (coord_dic[inst][vis][pl_loc]['Tcenter']-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"] 
-                            ls_pl = {0:':',1:'--'}[ipl]
-                            for cont_ph in contact_phases_vis:
-                                plt.plot([cont_ph,cont_ph],[-1e6,1e6],color='black',linestyle=ls_pl,lw=plot_options['lw_plot'],zorder=0)
-                     
-                            #Overplot transit duration from system properties
-                            if (data_mode=='DI') and plot_options['plot_T14']:
-                                T14_phase = system_param[pl_loc]['TLength']/(system_param[pl_ref]['period'])
-                                plt.plot([cen_ph-0.5*T14_phase,cen_ph-0.5*T14_phase],[-1e6,1e6],color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=0)
-                                plt.plot([cen_ph+0.5*T14_phase,cen_ph+0.5*T14_phase],[-1e6,1e6],color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=0)                              
+                            if (i_visit==1) or ((pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst])):                               
+                                if pl_loc==pl_ref:
+                                    cen_ph = 0.
+                                    contact_phases_vis = contact_phases[pl_ref]
+                                else:
+                                    contact_times = coord_dic[inst][vis][pl_loc]['Tcenter']+contact_phases[pl_loc]*system_param[pl_loc]["period"]
+                                    contact_phases_vis = (contact_times-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"]  
+                                    cen_ph = (coord_dic[inst][vis][pl_loc]['Tcenter']-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"] 
+                                ls_pl = {0:':',1:'--'}[ipl]
+                                for cont_ph in contact_phases_vis:
+                                    plt.plot([cont_ph,cont_ph],[-1e6,1e6],color='black',linestyle=ls_pl,lw=plot_options['lw_plot'],zorder=0)
+                         
+                                #Overplot transit duration from system properties
+                                if (data_mode=='DI') and plot_options['plot_T14']:
+                                    T14_phase = system_param[pl_loc]['TLength']/(system_param[pl_ref]['period'])
+                                    plt.plot([cen_ph-0.5*T14_phase,cen_ph-0.5*T14_phase],[-1e6,1e6],color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=0)
+                                    plt.plot([cen_ph+0.5*T14_phase,cen_ph+0.5*T14_phase],[-1e6,1e6],color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=0)                              
     
                     #-------------------------------------------------------
                     #Predicted local RVs measurements from nominal system properties
