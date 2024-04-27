@@ -348,7 +348,7 @@ def get_system_params():
                 'inclination':89.18,         #+0.53 - 0.45 #degrees #Gilbert et al. 2022
                 #'Kstar':8.9,                 #test
                 'Kstar':5.8,                 #+/- 2.5 #m/s #Zicher et al. 2022 (true value)
-                'TLength':3.50/24,           #+/- 0.08 #days #Martioli et al. 2021
+                'TLength':3.55/24,           #+/- 0.08 #days #Martioli et al. 2021
                 #'aRs':8,                     #test
                 'aRs':18.5,                  #+1.3 - 1.4 #Rstar #Gilbert et al. 2022 (true value)
                 # 'lambda_proj':100,         
@@ -367,6 +367,309 @@ def get_system_params():
             #    'lambda_proj':0.,            #unknown
 
                 # },
+        },
+    
+    #--------------------------------------------------------------------------------
+    #------------------------------  MCMC run purposes ------------------------------ 
+    #--------------------------------------------------------------------------------
+        #Fast rotating star
+        #   + veq changes
+        'Capricorn':{
+            'star':{
+                'Rstar':0.75,                
+                'Mstar':0.50,                
+                'logg':4.39,                 
+                'veq':20,                  
+                'istar':90,                  
+                'mag':8.81,                  
+                },
+
+            'Capricorn_b':{
+                'period':8.463000,         
+                'TCenter':2458330.39051,     
+                'ecc':0.04,                  
+                'omega_deg':179,             
+                'inclination':89.18,         
+                'Kstar':5.8,                 
+                'TLength':3.55/24,           
+                'aRs':18.5,                  
+                'lambda_proj':-4.70,         
+                },
+        },
+        #--------------------------------------------------------------------------------
+        #Slow rotating star
+        #   + veq changes
+        'Cancer':{
+            'star':{
+                'Rstar':0.75,                
+                'Mstar':0.50,                
+                'logg':4.39,                 
+                'veq':0.2,                   
+                'istar':90,                  
+                'mag':8.81,                  
+                },
+
+            'Cancer_b':{
+                'period':8.463000,         
+                'TCenter':2458330.39051,     
+                'ecc':0.04,                  
+                'omega_deg':179,             
+                'inclination':89.18,         
+                'Kstar':5.8,                 
+                'TLength':3.55/24,           
+                'aRs':18.5,                  
+                'lambda_proj':-4.70,         
+                },
+        },
+        #--------------------------------------------------------------------------------
+        #Big transiting planet - Jupiter size and 1/2 mass
+        #   + RpRstar changes -> 0.1339
+        #   + TLength changes -> 3.85 hours
+        #   + Kstar changes -> 148.3
+        'Gemini':{
+            'star':{
+                'Rstar':0.75,                
+                'Mstar':0.50,                
+                'logg':4.39,                 
+                'veq':7.8,                   
+                'istar':90,                  
+                'mag':8.81,                  
+                },
+
+            'Gemini_b':{
+                'period':8.463000,         
+                'TCenter':2458330.39051,     
+                'ecc':0.04,                  
+                'omega_deg':179,             
+                'inclination':89.18,         
+                'Kstar':148.3,                 
+                'TLength':3.85/24,           
+                'aRs':18.5,                  
+                'lambda_proj':-4.70,         
+                },
+        },
+        #--------------------------------------------------------------------------------
+        #Small transiting panet - super-Earth size and mass
+        #   + RpRstar changes -> 0.0122
+        #   + TLength changes -> 3.41 hours
+        #   + Kstar changes -> 0.934
+        'Sagittarius':{
+            'star':{
+                'Rstar':0.75,                
+                'Mstar':0.50,                
+                'logg':4.39,                 
+                'veq':7.8,                   
+                'istar':90,                  
+                'mag':8.81,                  
+                },
+
+            'Sagittarius_b':{
+                'period':8.463000,         
+                'TCenter':2458330.39051,     
+                'ecc':0.04,                  
+                'omega_deg':179,             
+                'inclination':89.18,         
+                'Kstar':0.93,                 
+                'TLength':3.41/24,           
+                'aRs':18.5,                  
+                'lambda_proj':-4.70,         
+                },
+        },
+        #--------------------------------------------------------------------------------
+        #Big spot
+        'Leo':{
+            'star':{
+                'Rstar':0.75,           
+                'Mstar':0.50,                
+                'logg':4.39,                 
+                'veq':7.8,                   
+                'istar':90,                  
+                'mag':8.81,                  
+                },
+
+            'Leo_b':{
+                'period':8.463000,         
+                'TCenter':2458330.39051,     
+                'ecc':0.04,                  
+                'omega_deg':179,             
+                'inclination':89.18,         
+                'Kstar':5.8,                 
+                'TLength':3.55/24,           
+                'aRs':18.5,                  
+                'lambda_proj':-4.70,         
+                },
+        },
+        #--------------------------------------------------------------------------------
+        #Small spot
+        'Aquarius':{
+            'star':{
+                'Rstar':0.75,                
+                'Mstar':0.50,                
+                'logg':4.39,                 
+                'veq':7.8,                   
+                'istar':90,                  
+                'mag':8.81,                  
+                },
+
+            'Aquarius_b':{
+                'period':8.463000,         
+                'TCenter':2458330.39051,     
+                'ecc':0.04,                  
+                'omega_deg':179,             
+                'inclination':89.18,         
+                'Kstar':5.8,                 
+                'TLength':3.55/24,           
+                'aRs':18.5,                  
+                'lambda_proj':-4.70,         
+                },
+        },
+        #--------------------------------------------------------------------------------
+        #Dark spot
+        'Aries':{
+            'star':{
+                'Rstar':0.75,                
+                'Mstar':0.50,                
+                'logg':4.39,                 
+                'veq':7.8,                   
+                'istar':90,                  
+                'mag':8.81,                  
+                },
+
+            'Aries_b':{
+                'period':8.463000,         
+                'TCenter':2458330.39051,     
+                'ecc':0.04,                  
+                'omega_deg':179,             
+                'inclination':89.18,         
+                'Kstar':5.8,                 
+                'TLength':3.55/24,           
+                'aRs':18.5,                  
+                'lambda_proj':-4.70,         
+                },
+        },
+        #--------------------------------------------------------------------------------
+        #Bright spot
+        'Libra':{
+            'star':{
+                'Rstar':0.75,                
+                'Mstar':0.50,                
+                'logg':4.39,                 
+                'veq':7.8,                   
+                'istar':90,                  
+                'mag':8.81,                  
+                },
+
+            'Libra_b':{
+                'period':8.463000,         
+                'TCenter':2458330.39051,     
+                'ecc':0.04,                  
+                'omega_deg':179,             
+                'inclination':89.18,         
+                'Kstar':5.8,                 
+                'TLength':3.55/24,           
+                'aRs':18.5,                  
+                'lambda_proj':-4.70,         
+                },
+        },
+        #--------------------------------------------------------------------------------
+        #Low stellar inclination
+        #   + istar changes
+        'Taurus':{
+            'star':{
+                'Rstar':0.75,                
+                'Mstar':0.50,                
+                'logg':4.39,                 
+                'veq':7.8,                   
+                'istar':10,                  
+                'mag':8.81,                  
+                },
+
+            'Taurus_b':{
+                'period':8.463000,         
+                'TCenter':2458330.39051,     
+                'ecc':0.04,                  
+                'omega_deg':179,             
+                'inclination':89.18,         
+                'Kstar':5.8,                 
+                'TLength':3.55/24,           
+                'aRs':18.5,                  
+                'lambda_proj':-4.70,         
+                },
+        },
+        #--------------------------------------------------------------------------------
+        #High stellar inclination
+        #   + istar changes
+        'Scorpio':{
+            'star':{
+                'Rstar':0.75,                
+                'Mstar':0.50,                
+                'logg':4.39,                 
+                'veq':7.8,                   
+                'istar':110,                  
+                'mag':8.81,                  
+                },
+
+            'Scorpio_b':{
+                'period':8.463000,         
+                'TCenter':2458330.39051,     
+                'ecc':0.04,                  
+                'omega_deg':179,             
+                'inclination':89.18,         
+                'Kstar':5.8,                 
+                'TLength':3.55/24,           
+                'aRs':18.5,                  
+                'lambda_proj':-4.70,         
+                },
+        },
+        #--------------------------------------------------------------------------------
+        #Low obliquity
+        #   + lambda_proj changes
+        'Virgo':{
+            'star':{
+                'Rstar':0.75,                
+                'Mstar':0.50,                
+                'logg':4.39,                 
+                'veq':7.8,                   
+                'istar':90,                  
+                'mag':8.81,                  
+                },
+
+            'Virgo_b':{
+                'period':8.463000,         
+                'TCenter':2458330.39051,     
+                'ecc':0.04,                  
+                'omega_deg':179,             
+                'inclination':89.18,         
+                'Kstar':5.8,                 
+                'TLength':3.55/24,           
+                'aRs':18.5,                  
+                'lambda_proj':10,         
+                },
+        },
+        #--------------------------------------------------------------------------------
+        #High obliquity
+        #   + lambda_proj changes
+        'Pisces':{
+            'star':{
+                'Rstar':0.75,                
+                'Mstar':0.50,                
+                'logg':4.39,                 
+                'veq':7.8,                   
+                'istar':90,                  
+                'mag':8.81,                  
+                },
+
+            'Pisces_b':{
+                'period':8.463000,         
+                'TCenter':2458330.39051,     
+                'ecc':0.04,                  
+                'omega_deg':179,             
+                'inclination':89.18,         
+                'Kstar':5.8,                 
+                'TLength':3.55/24,           
+                'aRs':18.5,                  
+                'lambda_proj':110,         
+                },
         },
     }
 

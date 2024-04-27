@@ -498,7 +498,7 @@ def new_new_calc_spotted_region_prop(line_occ_HP_band, cond_occ, spot_prop, iban
 
     #Updating the provided dictionaries 
     coord_grid['mu'] = mu_grid_occ[:,0]
-    Focc_star_band += ((Ftot_occ[0]*spot_prop[spot_consid]['ctrst']) - (Ftot_emit[0]*(1-spot_prop[spot_consid]['ctrst'])))
+    Focc_star_band += (Ftot_occ[0] - (Ftot_emit[0]*(1-spot_prop[spot_consid]['ctrst'])))
     sum_prop_dic_spot['nocc'] += coord_grid['nsub_star']
     
     #--------------------------------

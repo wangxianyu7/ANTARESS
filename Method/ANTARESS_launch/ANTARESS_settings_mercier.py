@@ -202,8 +202,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Star name
 
-    gen_dic['star_name']='AUMic' # mercier
+    gen_dic['star_name']='AUMic'
     # gen_dic['star_name']='V1298tau'
+    # gen_dic['star_name']='Capricorn'
 
     #Transiting planets
     if gen_dic['star_name']=='AUMic':
@@ -228,9 +229,27 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
             }
         gen_dic['kepl_pl'] = ['V1298tau_b']
 
+    
+
+
+    if gen_dic['star_name']=='Capricorn':
+        gen_dic['transit_pl'] = {
+            'Capricorn_b':{'ESPRESSO' : ['mock_vis']}, 
+            }
+        gen_dic['kepl_pl'] = ['Capricorn_b']
+
+   
+
+
+
    #Transiting spots
     if gen_dic['star_name']=='AUMic':
         # gen_dic['transit_sp'] = {}
+        gen_dic['transit_sp'] = {
+            'spot1':{'ESPRESSO' : ['mock_vis']}, 
+            }
+
+    if gen_dic['star_name']=='Capricorn':
         gen_dic['transit_sp'] = {
             'spot1':{'ESPRESSO' : ['mock_vis']}, 
             }
@@ -244,6 +263,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='V1298tau':
         gen_dic['type']={'ESPRESSO':'CCF'}
   
+    if gen_dic['star_name']=='Capricorn':
+        gen_dic['type']={'ESPRESSO':'CCF'}   
+
     #Spectral frame
     gen_dic['sp_frame']='air'
     
@@ -324,6 +346,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Calculating/retrieving
     if gen_dic['star_name']=='AUMic':gen_dic['calc_proc_data']=True  #& False
     if gen_dic['star_name']=='V1298tau':gen_dic['calc_proc_data']=True  #& False
+    if gen_dic['star_name']=='Capricorn':gen_dic['calc_proc_data']=True  #& False
 
     
         
@@ -487,6 +510,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
             'ESPRESSO':{'mock_vis' :{'exp_range':2457067.0488+np.array([-0.25, 0.25]),'nexp':50}}}
 
     
+
+
+
+    if gen_dic['star_name']=='Capricorn':
+        mock_dic['visit_def']={
+            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30}}}
+
     #Spectral profile settings
     
     #Spectral table for disk-integrated profiles 
@@ -494,7 +524,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
     if gen_dic['star_name'] == 'V1298tau':
         mock_dic['DI_table']={'x_start':-150.,'x_end':150.,'dx':0.8}
-
+    if gen_dic['star_name'] == 'Capricorn' :
+        mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
 
     #Heliocentric stellar RV
     if gen_dic['star_name']=='AUMic':
@@ -514,7 +545,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name'] == 'V1298tau' : 
         mock_dic['sysvel']= {'ESPRESSO' : {'mock_vis' : 0.}}  
 
-    
+    if gen_dic['star_name'] == 'Capricorn' : 
+        mock_dic['sysvel']= {'ESPRESSO' : {'mock_vis' : 0.}} 
+
     #Defining spot properties 
     if gen_dic['star_name'] == 'AUMic': 
         mock_dic['spots_prop']={
@@ -554,71 +587,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     # For the spot 'spot1' : -- base grid run
                      'lat__ISESPRESSO_VSmock_vis_SPspot1'     : -30,
                      'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051 - 0.3,
-                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 60,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
 
                     #All spots in the a given visit must have the same contrast
                     'ctrst__ISESPRESSO_VSmock_vis_SP'    : 0.9,
-                    },
-
-
-
-
-
-
-                    #Grid Run
-                    'mock_vis1':{
-                     'lat__ISESPRESSO_VSmock_vis1_SPspot1'     : -30,
-                     'Tcenter__ISESPRESSO_VSmock_vis1_SPspot1' : 2458330.39051 - 0.7,
-                     'ang__ISESPRESSO_VSmock_vis1_SPspot1'     : 25,
-                     'ctrst__ISESPRESSO_VSmock_vis1_SPspot1'    : 0.9,
-                    },
-                    'mock_vis2':{
-                     'lat__ISESPRESSO_VSmock_vis2_SPspot1'     : -30,
-                     'Tcenter__ISESPRESSO_VSmock_vis2_SPspot1' : 2458330.39051 - 0.5,
-                     'ang__ISESPRESSO_VSmock_vis2_SPspot1'     : 25,
-                     'ctrst__ISESPRESSO_VSmock_vis2_SPspot1'    : 0.9,
-                    },
-                    'mock_vis3':{
-                     'lat__ISESPRESSO_VSmock_vis3_SPspot1'     : -30,
-                     'Tcenter__ISESPRESSO_VSmock_vis3_SPspot1' : 2458330.39051 - 0.3,
-                     'ang__ISESPRESSO_VSmock_vis3_SPspot1'     : 25,
-                     'ctrst__ISESPRESSO_VSmock_vis3_SPspot1'    : 0.9,
-                    },
-                    'mock_vis4':{
-                     'lat__ISESPRESSO_VSmock_vis4_SPspot1'     : -30,
-                     'Tcenter__ISESPRESSO_VSmock_vis4_SPspot1' : 2458330.39051 - 0.1,
-                     'ang__ISESPRESSO_VSmock_vis4_SPspot1'     : 25,
-                     'ctrst__ISESPRESSO_VSmock_vis4_SPspot1'    : 0.9,
-                    },
-                    'mock_vis5':{
-                     'lat__ISESPRESSO_VSmock_vis5_SPspot1'     : -30,
-                     'Tcenter__ISESPRESSO_VSmock_vis5_SPspot1' : 2458330.39051 - 0,
-                     'ang__ISESPRESSO_VSmock_vis5_SPspot1'     : 25,
-                     'ctrst__ISESPRESSO_VSmock_vis5_SPspot1'    : 0.9,
-                    },
-                    'mock_vis6':{
-                     'lat__ISESPRESSO_VSmock_vis6_SPspot1'     : -30,
-                     'Tcenter__ISESPRESSO_VSmock_vis6_SPspot1' : 2458330.39051 + 0.2,
-                     'ang__ISESPRESSO_VSmock_vis6_SPspot1'     : 25,
-                     'ctrst__ISESPRESSO_VSmock_vis6_SPspot1'    : 0.9,
-                    },
-                    'mock_vis7':{
-                     'lat__ISESPRESSO_VSmock_vis7_SPspot1'     : -30,
-                     'Tcenter__ISESPRESSO_VSmock_vis7_SPspot1' : 2458330.39051 + 0.4,
-                     'ang__ISESPRESSO_VSmock_vis7_SPspot1'     : 25,
-                     'ctrst__ISESPRESSO_VSmock_vis7_SPspot1'    : 0.9,
-                    },
-                    'mock_vis8':{
-                     'lat__ISESPRESSO_VSmock_vis8_SPspot1'     : -30,
-                     'Tcenter__ISESPRESSO_VSmock_vis8_SPspot1' : 2458330.39051 + 0.6,
-                     'ang__ISESPRESSO_VSmock_vis8_SPspot1'     : 25,
-                     'ctrst__ISESPRESSO_VSmock_vis8_SPspot1'    : 0.9,
-                    },
-                    'mock_vis9':{
-                     'lat__ISESPRESSO_VSmock_vis9_SPspot1'     : -30,
-                     'Tcenter__ISESPRESSO_VSmock_vis9_SPspot1' : 2458330.39051 + 0.8,
-                     'ang__ISESPRESSO_VSmock_vis9_SPspot1'     : 25,
-                     'ctrst__ISESPRESSO_VSmock_vis9_SPspot1'    : 0.9,
                     },
                 }
             }
@@ -642,6 +614,22 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                          }
                     }
                 }
+
+    if gen_dic['star_name'] == 'Capricorn': 
+        mock_dic['spots_prop']={
+             'ESPRESSO':{
+                 'mock_vis':{
+
+                    # For the spot 'spot1' : -- base grid run
+                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     : -30,
+                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051 - 0.3,
+                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
+
+                    #All spots in the a given visit must have the same contrast
+                    'ctrst__ISESPRESSO_VSmock_vis_SP'    : 0.9,
+                    },
+                }
+            }
 
     #Intrinsic stellar spectra             
     if gen_dic['star_name'] == 'AUMic' :
@@ -672,6 +660,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                         },
             'pol_mode' : 'modul'}}  
 
+    if gen_dic['star_name'] == 'Capricorn' :
+        mock_dic['intr_prof']={'ESPRESSO':{
+            'mode':'ana',        
+            'coord_line':'mu',
+            'func_prof_name': 'gauss',
+            'line_trans':None, 
+            'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,
+                        'FWHM_ord0__IS__VS_'  : 8 },
+            'pol_mode' : 'modul'}
+            }
+
     #Count continuum level
     if gen_dic['star_name'] == 'AUMic' :
         mock_dic['flux_cont']={'ESPRESSO':{
@@ -691,6 +690,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name'] == 'V1298tau' :
         mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e5}}   
     
+    if gen_dic['star_name'] == 'Capricorn' :
+        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e8}} 
+
     #Noise settings
     
     #Instrumental calibration           
@@ -700,10 +702,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name'] == 'V1298tau' : 
         mock_dic['gcal'] = {'ESPRESSO' : 1.}  
 
+    if gen_dic['star_name'] == 'Capricorn' : 
+        mock_dic['gcal'] = {'ESPRESSO' : 1.}   
+
     #Flux errors
     if gen_dic['star_name'] == 'AUMic': mock_dic['set_err']={'ESPRESSO':True}
     if gen_dic['star_name'] == 'V1298tau': mock_dic['set_err']={'ESPRESSO':True}
-    
+    if gen_dic['star_name'] == 'Capricorn': mock_dic['set_err']={'ESPRESSO':True}
+
     #Jitter on intrinsic profile properties
        
     
@@ -1048,6 +1054,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # theo_dic['precision'] = 'low'
 
 
+
     #Star discretization      
     if gen_dic['star_name']=='AUMic':
         # theo_dic['nsub_Dstar']=81.
@@ -1057,12 +1064,25 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dstar']=201.
             
+    if gen_dic['star_name']=='Capricorn':
+        theo_dic['nsub_Dstar']=111.
+
     #Stellar macroturbulence
     theo_dic['mac_mode'] = None
+
+
 
     #Theoretical stellar atmosphere
     if gen_dic['star_name']=='AUMic':
         theo_dic['st_atm']['calc']=False
+    
+    if gen_dic['star_name']=='V1298tau':
+        theo_dic['st_atm']['calc']=False
+    
+    if gen_dic['star_name']=='Capricorn':
+        theo_dic['st_atm']['calc']=False
+
+
 
     #Planet discretization
     if gen_dic['star_name']=='AUMic':
@@ -1072,6 +1092,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dpl']={'V1298tau_b':101.}
 
+    if gen_dic['star_name']=='Capricorn':
+        theo_dic['nsub_Dpl']= {'AUMicb':33.} #-- for fitting purposes 
+
     #Spot discretization
     if gen_dic['star_name']=='AUMic':
         # theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
@@ -1080,6 +1103,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
+    
+    if gen_dic['star_name']=='Capricorn':
+        theo_dic['nsub_Dspot']={'spot1':33.} #-- for fitting purposes
+
+
     #Exposure discretization
     if gen_dic['star_name']=='AUMic':
         theo_dic['n_oversamp']={'AUMicb':5.}#, 'AUMicc': 5.}
@@ -1089,6 +1117,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='V1298tau':
         theo_dic['n_oversamp'] = {'V1298tau_b':5.}
         theo_dic['n_oversamp_spot']={'spot1':5., 'spot2':5.}
+
+    if gen_dic['star_name']=='Capricorn':
+        theo_dic['n_oversamp']={'AUMicb':5.}
+        theo_dic['n_oversamp_spot']={'spot1':5.}
     #RV table        
 
     # #Oversampling 
@@ -1145,7 +1177,18 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         #Transit chord discretization        
         plot_dic['nph_HR'] = 100
     
-    
+    if gen_dic['star_name']=='Capricorn':
+        #Range of planet-occulted properties
+        plot_dic['plocc_ranges']=''    
+        
+        #Planet-occulted stellar regions
+        plot_dic['occulted_regions']='png'
+        
+        #Planetary system architecture
+        plot_dic['system_view']='png'   #png
+
+        #Transit chord discretization        
+        plot_dic['nph_HR'] = 100    
     
     
     
@@ -2483,11 +2526,15 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='V1298tau':
         data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}     
 
+    if gen_dic['star_name']=='Capricorn':
+        data_dic['DI']['fit_prof']['order']={'ESPRESSO':0} 
 
     #Continuum range
     if gen_dic['star_name']=='AUMic':data_dic['DI']['cont_range']['ESPRESSO']={0:[[-100.,-80.],[80.,100.]]} 
         
     if gen_dic['star_name']=='V1298tau':data_dic['DI']['cont_range']['ESPRESSO']={0:[[14.-90.,14.-40.],[14.+40.,14.+90.]]} 
+
+    if gen_dic['star_name']=='Capricorn':data_dic['DI']['cont_range']['ESPRESSO']={0:[[-100.,-80.],[80.,100.]]} 
 
     #Spectral range(s) to be fitted
     if gen_dic['star_name']=='AUMic':
@@ -2505,7 +2552,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         }  
 
     if gen_dic['star_name']=='V1298tau':data_dic['DI']['fit_range']['ESPRESSO']={'mock_vis':[[14.-90.,14.+90.]]}  
-            
+      
+    if gen_dic['star_name']=='Capricorn':data_dic['DI']['fit_range']['ESPRESSO']={'mock_vis':[[-100.,100.]]}  
     #Direct measurements
     # data_dic['DI']['meas_prop']={
     #     # 'EW':{'rv_range':[-5.,5.]},
@@ -2531,6 +2579,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='V1298tau':    
         data_dic['DI']['model']['ESPRESSO']='gauss'
 
+    if gen_dic['star_name']=='Capricorn':    
+        data_dic['DI']['model']['ESPRESSO']='gauss'
     #Intrinsic line properties  
     
 
@@ -2828,6 +2878,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='V1298tau':
         data_dic['DI']['sysvel']={'ESPRESSO' : {'mock_vis' : 0}} 
 
+    if gen_dic['star_name']=='Capricorn':
+        data_dic['DI']['sysvel']={'ESPRESSO' : {'mock_vis' : 0}} 
+
     #Plots: aligned disk-integrated profiles
     plot_dic['all_DI_data']=''     #pdf    
     
@@ -3075,6 +3128,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                 }
                 }
 
+    if gen_dic['star_name']=='Capricorn':
+        data_dic['DI']['system_prop']={
+                'achrom':{
+                    'Capricorn_b' : [0.0512],
+                    'LD' : ['quadratic'],
+                    'LD_u1' : [0.35],
+                    'LD_u2' : [0.16],
+                }
+                }  
+
     #Intensity settings for the spots
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['spots_prop'] = {}
@@ -3099,6 +3162,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
                 },
                 }
+
+
     #Transit light curve model    
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['transit_prop'].update({    
@@ -3122,6 +3187,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         data_dic['DI']['transit_prop'].update({
                 'ESPRESSO':{'mock_vis':{'mode':'model', 'dt':0.05}}
                 })  
+
 
     #Forcing in/out transit flag
 
@@ -4545,10 +4611,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Priors on variable properties
     #    - see gen_dic['fit_DI'] for details
     glob_fit_dic['ResProf']['priors']={}
-    
-    #%%%%% Time supplement that is added for spot crossing time
-    #    - improves the precision of fit
-    glob_fit_dic['ResProf']['spot_Tcenter_supp']={}
 
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
@@ -4617,7 +4679,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  #&  False
+    gen_dic['fit_ResProf'] = True  &  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] == 'AUMic':
@@ -4668,9 +4730,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'FWHM_ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
         'veq':{'vary':True,'guess':5, 'bd':[1, 10]},
         'cos_istar':{'vary':True,'guess':0.1, 'bd':[-1., 1.]},
-        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':5, 'bd':[-50, 10]},
-        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':0.1, 'bd':[0.39051 - 0.2, 0.39051 + 0.2]},
-        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':55, 'bd':[50, 60]},
+        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
+        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
+        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':15, 'bd':[10, 50]},
         'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
         'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -4693,15 +4755,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     'veq'                                    :{'mod':'uf', 'low':1., 'high':100.},
                     'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' :{'mod':'uf', 'low':0.39051 - 1., 'high':0.39051 +1.},
+                    'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' :{'mod':'uf', 'low':2458330.39051 - 1., 'high':2458330.39051 +1.},
                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':0, 'high':89.},
                     'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   :{'mod':'uf', 'low':0, 'high':1},
                     'lambda_rad__plAUMicb'                   :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }
-
-    if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['ResProf']['spot_crosstime_supp']={'ESPRESSO':{'mock_vis':2458330.}}
-
 
     #Derived properties
     if gen_dic['star_name'] == 'AUMic':
@@ -4724,7 +4782,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Walkers
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':18,'nsteps':1000,'nburn':200}
+        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':18,'nsteps':500,'nburn':100}
 
     #Complex priors        
          
@@ -5205,7 +5263,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%% Calculating/retrieving
-    gen_dic['calc_loc_data_corr']=True  
+    gen_dic['calc_loc_data_corr']=False  
     gen_dic['calc_loc_data_corr_bin']=True  
     
     
@@ -5266,9 +5324,88 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
    
         
-        
-        
-        
+##################################################################################################       
+    #%%% Module: estimates for planet-occulted profiles and spotted profiles
+    #    - use the module to generate:
+    # + local profiles that are then used to correct residual profiles from stellar contamination
+    # + intrinsic profiles that are corrected from measured ones to assess the quality of the estimates 
+    #    - the choice to use measured ('meas') or theoretical ('theo') stellar surface RVs to shift local profiles is set by data_dic['Intr']['align_mode']
+    ##################################################################################################     
+    
+    #%%%% Activating
+    #    - for original and binned exposures in each visit
+    gen_dic['res_loc_data_corr']=False
+    gen_dic['res_loc_data_corr_bin']=False
+    
+    
+    #%%%% Calculating/retrieving
+    gen_dic['calc_res_loc_data_corr']=False  
+    gen_dic['calc_res_loc_data_corr_bin']=True  
+    
+    
+    #%%%% Model definition
+    
+    #%%%%% Model type and options
+    #    - used to define the estimates for the local stellar flux profiles
+    #    - these options partly differ from those defining intrinsic profiles (see gen_dic['mock_data']) because local profiles are associated with observed exposures
+    # + 'def_iord': reconstructed order
+    # + 'def_range': define the range over which profiles are reconstructed
+    #    - set 'corr_mode' to:
+    # > 'DIbin': using the master-out
+    # + option to select visits contributing to the binned profiles (leave empty to use considered visit)
+    # + option to select exposures contributing to the binned profiles (leave empty to use all out-transit exposures)
+    # + option to select the phase range of contributing exposures
+    # > 'Intrbin': using binned intrinsic profiles series
+    # + option to select visits contributing to the binned profiles (leave empty to use considered visit)
+    # + the nearest binned profile along the binned dimension is used for a given exposure
+    # + option to select exposures contributing to the binned profiles
+    # + see possible bin dimensions in data_dic['Intr']['dim_bin']  
+    # + see possible bin table definition in data_dic['Intr']['prop_bin']
+    # > 'glob_mod': models derived from global fit to intrinsic profiles (default)
+    # + 'mode' : 'ana' or 'theo'
+    # + can be specific to the visit or common to all, depending on the fit
+    # + line coordinate choice is retrieved automatically 
+    # + indicate path to saved properties determining the line property variations in the processed dataset
+    # + default options are used if left undefined
+    # > 'indiv_mod': models fitted to each individual intrinsic profile in each visit
+    # + 'mode' : 'ana' or 'theo'
+    # + works only in exposures where the stellar line could be fitted after planet exclusion
+    # > 'rec_prof':
+    # + define each undefined pixel via a polynomial fit to defined pixels in complementary exposures
+    #   or via a 2D interpolation ('linear' or 'cubic') over complementary exposures and a narrow spectral band (defined in band_pix_hw pixels on each side of undefined pixels)
+    # + chose a dimension over which the fit/interpolation is performed         
+    # + option to select exposures contributing to the fit/interpolation
+    # > 'theo': use imported theoretical local intrinsic stellar profiles    
+    data_dic['Res']['opt_loc_data_corr']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
+    
+    if gen_dic['star_name']=='AUMic':
+        data_dic['Res']['opt_loc_data_corr'].update({'ResProf_prop_path':{
+                                                                'ESPRESSO':{
+                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/UNIGE/2023-2024/antaress/Ongoing/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
+                                                                            }
+                                                                        }
+                                                    })
+    #%%%% Plot settings
+    
+    #%%%%% 2D maps : "clean", theoretical planet-occulted and spotted profiles
+    #    - for original and binned exposures
+    #    - planet-occulted profiles retrieved in the case where spots were not included in the model
+    plot_dic['map_Res_prof_clean_sp_est']=''
+    plot_dic['map_Res_prof_clean_pl_est']=''   
+
+    #%%%%% 2D maps : "un-clean", theoretical planet-occulted and spotted profiles
+    #    - for original and binned exposures
+    #    - planet-occulted profiles retrieved in the case where spots were not included in the model
+    #    - computing both "clean" and "spotted" versions of these maps can help identify if planets occulted spots during the transit or not
+    plot_dic['map_Res_prof_unclean_sp_est']=''
+    plot_dic['map_Res_prof_unclean_pl_est']=''   
+    
+    #%%%%% 2D maps : residuals theoretical planet-occulted and spotted profiles (for "clean" and/or "unclean" profiles)
+    #    - same format as 'map_Res_prof_pl_est'
+    plot_dic['map_Res_prof_clean_sp_res']=''
+    plot_dic['map_Res_prof_clean_pl_res']=''
+    plot_dic['map_Res_prof_unclean_sp_res']=''
+    plot_dic['map_Res_prof_unclean_pl_res']=''      
         
         
         

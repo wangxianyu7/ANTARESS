@@ -22,7 +22,7 @@ from ANTARESS_analysis.ANTARESS_joined_star import joined_Star_ana
 from ANTARESS_analysis.ANTARESS_joined_atm import joined_Atm_ana
 from ANTARESS_plots.ANTARESS_plots_all import ANTARESS_plot_functions
 from ANTARESS_corrections.ANTARESS_calib import calc_gcal
-from ANTARESS_process.ANTARESS_plocc_spec import def_plocc_profiles
+from ANTARESS_process.ANTARESS_plocc_spec import def_plocc_profiles,def_plocc_spocc_profiles
 from ANTARESS_conversions.ANTARESS_masks_gen import def_masks
 from ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
 from ANTARESS_grids.ANTARESS_spots import spot_occ_region_grid, retrieve_spots_prop_from_param
@@ -205,6 +205,9 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             if gen_dic['loc_data_corr']:
                 def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
             
+            #Building estimates for local stellar profiles - including spots
+            if gen_dic['res_loc_data_corr']:
+                def_plocc_spocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
             #--------------------------------------------------------------------------------------------------
             #Processing atmospheric profiles
             data_type_gen = 'Atm'
@@ -1079,6 +1082,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     if gen_dic['loc_data_corr']:
         if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/')        
         if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')  
+    if gen_dic['res_loc_data_corr']:
+        if (not path_exist(gen_dic['save_data_dir']+'Spot_Loc_estimates/')):makedirs(gen_dic['save_data_dir']+'Spot_Loc_estimates/')        
+        if (not path_exist(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')  
     if (gen_dic['pl_atm']):
         if (not path_exist(gen_dic['save_data_dir']+'Atm_data/')):makedirs(gen_dic['save_data_dir']+'Atm_data/')        
         if (not path_exist(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')):makedirs(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')
@@ -2552,6 +2558,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
     #Duplicate chromatic properties so that they are not overwritten by conversions
     data_dic[inst]['system_prop'] = deepcopy(data_dic['DI']['system_prop'])
+    data_dic[inst]['spots_prop'] = deepcopy(data_dic['DI']['spots_prop'])
 
     #Final processing
     if len(data_dic[inst]['visit_list'])>1:
@@ -2705,6 +2712,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         
         #Duplicate chromatic properties so that they are not overwritten by conversions
         data_vis['system_prop'] = deepcopy(data_dic['DI']['system_prop'])
+        data_vis['spots_prop'] = deepcopy(data_dic['DI']['spots_prop'])
         
     #Total number of visits for current instrument
     gen_dic[inst]['n_visits'] = len(data_dic[inst]['visit_list'])

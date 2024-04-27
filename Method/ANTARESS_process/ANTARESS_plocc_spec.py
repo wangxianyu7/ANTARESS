@@ -5,7 +5,7 @@ from copy import deepcopy
 import bindensity as bind
 from ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,weights_bin_prof,init_bin_prof
 from ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc
-from ANTARESS_grids.ANTARESS_plocc_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_spot_prop
+from ANTARESS_grids.ANTARESS_plocc_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_spot_prop,up_plocc_prop
 from ANTARESS_grids.ANTARESS_coord import excl_plrange
 from ANTARESS_process.ANTARESS_data_align import align_data
 from ANTARESS_analysis.ANTARESS_inst_resp import def_st_prof_tab,cond_conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab,conv_st_prof_tab
@@ -64,7 +64,7 @@ def def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_para
             data_add['loc_data_corr_outpath'] = data_dic[inst][vis]['proc_Res_data_paths']
             data_add['rest_frame'] = data_dic['Intr'][inst][vis]['rest_frame']
         datasave_npz(gen_dic['save_data_dir']+'Loc_estimates/'+corr_mode+'/'+inst+'_'+vis+'_add',data_add)
-            
+
     #Checking that local data has been calculated for all exposures
     else:
         idx_est_loc = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+corr_mode+'/'+inst+'_'+vis+'_add')['idx_est_loc']
@@ -271,6 +271,16 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
         'inst':inst,
         'vis':vis,  
         'fit':False,
+        'conv2intr':True,
+        'ph_fit':data_prop['ph_fit'],
+        'system_param':system_param,
+        'genpar_instvis':data_prop['genpar_instvis'],
+        'name_prop2input':data_prop['name_prop2input'],
+        'fit_orbit':data_prop['fit_orbit'],
+        'fit_RpRs':data_prop['fit_RpRs'],
+        'var_par_list':data_prop['var_par_list'],
+        'system_prop':data_prop['system_prop'],
+        'grid_dic':data_prop['grid_dic'],
     } 
     if fixed_args['mode']=='ana':
         fixed_args.update({  
@@ -285,6 +295,9 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
 
     #Activation of spectral conversion and resampling 
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_dic[inst][vis]['type']) 
+
+    #Updating coordinates with the best-fit properties
+    _,coord_pl,_ = up_plocc_prop(inst,vis,fixed_args,params,data_dic[inst][vis]['transit_pl'],fixed_args['ph_fit'][inst][vis],coord_dic[inst][vis])
 
     #Processing in-transit exposures
     for isub,i_in in enumerate(range(data_dic[inst][vis]['n_in_tr'])):
@@ -325,7 +338,7 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
             args_exp['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],args_exp,args_exp['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
 
         #Planet-occulted line profile 
-        surf_prop_dic,spot_prop_dic, common_prop_dic = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_dic[inst][vis],[gen_dic[inst][vis]['idx_in2exp'][i_in]])
+        surf_prop_dic,spot_prop_dic, _ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl,[gen_dic[inst][vis]['idx_in2exp'][i_in]])
         sp_line_model = surf_prop_dic[chrom_mode]['line_prof'][:,0]
 
         #Scaling to fitted intrinsic continuum level
@@ -607,5 +620,214 @@ def loc_prof_rec(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,coord_dic):
 
     #Complementary data
     data_add={'idx_est_loc':idx_aligned}
+
+    return data_add
+
+
+
+def def_plocc_spocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic):
+    r"""**Planet-occulted and spotted exposure profiles.**
+    
+    Calls requested function to define planet-occulted and spotted profiles associated with each observed exposure
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    print('   > Building estimates for planet-occulted and spotted stellar profiles')
+    if data_dic[inst][vis]['spots_prop']=={}:stop('Spot properties are not provided. We recommended using the separate routine dedicated to the extraction of planet-occulted profiles instead.')
+    opt_dic = data_dic['Res']['opt_loc_data_corr'] 
+    corr_mode = opt_dic['corr_mode']
+    print('         Using global model')  
+
+    #Calculating
+    if (gen_dic['calc_res_loc_data_corr']):
+        print('         Calculating data')     
+             
+        
+        #Calculating the clean version of the data
+        opt_dic['clean_calc']=False
+        if (plot_dic['map_Res_prof_clean_pl_est']!='') or (plot_dic['map_Res_prof_clean_sp_est']!=''):
+            opt_dic['clean_calc']=True
+
+        #Using global profile model
+        if corr_mode=='glob_mod': 
+            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic)
+        
+        else:stop('WARNING: Only joined-fit results can be used at the moment. Set corr_mode to \'glob_mod\'')
+
+        #Saving complementary data for plots
+        if (plot_dic['map_Res_prof_clean_sp_res']!='') or (plot_dic['map_Res_prof_clean_pl_res']!='') or (plot_dic['map_Res_prof_unclean_sp_res']!='') or (plot_dic['map_Res_prof_unclean_pl_res']!=''):
+            data_add['loc_data_corr_path'] = data_dic[inst][vis]['proc_Res_data_paths']
+            data_add['rest_frame'] = data_dic['Res'][inst][vis]['rest_frame']
+        datasave_npz(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+corr_mode+'/'+inst+'_'+vis+'_add',data_add)
+
+    #Checking that local data has been calculated for all exposures
+    else:
+        idx_est_loc = dataload_npz(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+corr_mode+'/'+inst+'_'+vis+'_add')['idx_est_loc']
+        data_paths={i_in:gen_dic['save_data_dir']+'Spot_Loc_estimates/'+corr_mode+'/'+inst+'_'+vis+'_'+str(i_in) for i_in in idx_est_loc}
+        check_data(data_paths)
+
+    return None
+
+
+def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic):
+    r"""**Planet-occulted and spotted exposure profiles: global model**
+    
+    Sub-function to define planet-occulted and spotted profiles using line profile model fitted to all residual lines together.
+    This model can be based on analytical, or theoretical profiles.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    data_vis = data_dic[inst][vis]
+    
+    def_iord = opt_dic['def_iord']
+    if (data_dic['Intr']['align_mode']=='meas'):stop('This mode cannot be used with measured RVs')
+
+    #Retrieving selected model properties
+    if ('ResProf_prop_path' not in opt_dic):
+        print('         Trying to retrieve chi2 fit by default')
+        opt_dic['ResProf_prop_path']={inst:{vis:gen_dic['save_data_dir']+'/Joined_fits/ResProf/chi2/Fit_results'}}
+    data_prop = dataload_npz(opt_dic['ResProf_prop_path'][inst][vis])
+    params=data_prop['p_final'] 
+    fixed_args={  
+        'mode':opt_dic['mode'],
+        'type':data_dic[inst][vis]['type'],
+        'nord':data_dic[inst]['nord'],
+        'nthreads': opt_dic['nthreads'],
+        'resamp_mode' : gen_dic['resamp_mode'], 
+        'inst':inst,
+        'vis':vis,  
+        'fit':False,
+        'conv2intr':True,
+        'ph_fit':data_prop['ph_fit'],
+        'system_param':system_param,
+        'genpar_instvis':data_prop['genpar_instvis'],
+        'name_prop2input':data_prop['name_prop2input'],
+        'fit_orbit':data_prop['fit_orbit'],
+        'fit_RpRs':data_prop['fit_RpRs'],
+        'fit_spot_ang':data_prop['fit_spot_ang'],
+        'fit_spot':data_prop['fit_spot'],
+        'var_par_list':data_prop['var_par_list'],
+        'system_prop':data_prop['system_prop'],
+        'system_spot_prop':data_prop['system_spot_prop'],
+        'grid_dic':data_prop['grid_dic'],
+        'update_crosstime':False,
+    } 
+    if fixed_args['mode']=='ana':
+        fixed_args.update({  
+            'mac_mode':theo_dic['mac_mode'], 
+            'coeff_line':data_prop['coeff_line_dic'][inst][vis],
+            'func_prof_name':data_prop['func_prof_name'][inst]
+        })        
+        for key in ['coeff_ord2name','pol_mode','coord_line','linevar_par']:fixed_args[key] = data_prop[key]
+
+    chrom_mode = data_dic[inst][vis]['system_prop']['chrom_mode']
+
+    #Defining parameters for the clean version of profiles
+    if opt_dic['clean_calc']:
+        clean_params = deepcopy(params)
+        clean_params['use_spots']=False
+
+    #Activation of spectral conversion and resampling 
+    cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_dic[inst][vis]['type']) 
+
+    #Updating coordinates with the best-fit properties
+    _,coord_pl_sp,_ = up_plocc_prop(inst,vis,fixed_args,params,data_dic[inst][vis]['transit_pl'],fixed_args['ph_fit'][inst][vis],coord_dic[inst][vis],transit_spots=data_dic[inst][vis]['transit_sp'])
+    
+    #Processing exposures
+    n_in_and_out_tr = data_dic[inst][vis]['n_in_tr'] + data_dic[inst][vis]['n_out_tr']
+    for isub,iexp in enumerate(range(n_in_and_out_tr)):
+      
+        #Line profile considered
+        line_prof_cons = {}
+
+        #Upload spectral tables from residual profile of current exposure
+        data_loc_exp = dataload_npz(data_vis['proc_Res_data_paths']+str(iexp))
+
+        #Limit model table to requested definition range
+        if len(opt_dic['def_range'])==0:cond_calc_pix = np.ones(data_dic[inst][vis]['nspec'] ,dtype=bool)    
+        else:cond_calc_pix = (data_loc_exp['edge_bins'][def_iord][0:-1]>=opt_dic['def_range'][0]) & (data_loc_exp['edge_bins'][def_iord][1:]<=opt_dic['def_range'][1])             
+        idx_calc_pix = np_where1D(cond_calc_pix)
+
+        #Final table for model line profile
+        fixed_args['ncen_bins']=len(idx_calc_pix)
+        fixed_args['dim_exp'] = [1,fixed_args['ncen_bins']] 
+        fixed_args['cen_bins'] = data_loc_exp['cen_bins'][def_iord,idx_calc_pix]
+        fixed_args['edge_bins']=data_loc_exp['edge_bins'][def_iord,idx_calc_pix[0]:idx_calc_pix[-1]+2]
+        fixed_args['dcen_bins']=fixed_args['edge_bins'][1::] - fixed_args['edge_bins'][0:-1] 
+
+        #Initializing stellar profiles
+        #    - can be defined using the first exposure table
+        if isub==0:
+            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic[inst][vis]['system_prop'],data_dic[inst][vis]['spots_prop'],theo_dic,system_param['star'],params)                  
+
+            #Effective instrumental convolution
+            fixed_args['FWHM_inst'] = get_FWHM_inst(inst,fixed_args,fixed_args['cen_bins'])
+
+        #Resampled spectral table for model line profile
+        if fixed_args['resamp']:resamp_st_prof_tab(None,None,None,fixed_args,gen_dic,1,theo_dic['rv_osamp_line_mod'])
+        
+        #Table for model calculation
+        args_exp = def_st_prof_tab(None,None,None,fixed_args)      
+
+        #Define broadband scaling of intrinsic profiles into local profiles
+        args_exp['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],args_exp,args_exp['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
+
+        #Planet-occulted and spotted line profiles - unclean
+        surf_prop_dic,spot_prop_dic, _ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_sp,[iexp],system_spot_prop_in=fixed_args['system_spot_prop'])
+        pl_line_model = surf_prop_dic[chrom_mode]['line_prof'][:,0]
+        sp_line_model = spot_prop_dic[chrom_mode]['line_prof'][:,0]
+        line_prof_cons.update({'unclean_pl_flux':pl_line_model, 'unclean_sp_flux':sp_line_model})
+        
+        #Planet-occulted and spotted line profiles - clean
+        if opt_dic['clean_calc']:
+            #Only planet-occulted profiles
+            clean_surf_prop_dic,_,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],clean_params,coord_pl_sp,[iexp])
+            
+            #Only spotted profiles
+            _,clean_spot_prop_dic,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],[],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_sp,[iexp],system_spot_prop_in=fixed_args['system_spot_prop'])
+
+            clean_pl_line_model = clean_surf_prop_dic[chrom_mode]['line_prof'][:,0]
+            clean_sp_line_model = clean_spot_prop_dic[chrom_mode]['line_prof'][:,0]
+            line_prof_cons.update({'clean_pl_flux':clean_pl_line_model, 'clean_sp_flux':clean_sp_line_model})
+
+        data_store = {'cen_bins':data_loc_exp['cen_bins'],'edge_bins':data_loc_exp['edge_bins']}
+        
+        for line_pro in list(line_prof_cons.keys()):
+
+            line_prof = line_prof_cons[line_pro]
+
+            #Scaling to fitted continuum level
+            line_prof*=params['cont']
+ 
+            #Conversion and resampling 
+            flux_loc = conv_st_prof_tab(None,None,None,fixed_args,args_exp,line_prof,fixed_args['FWHM_inst'])
+
+            #Filling full table with defined reconstructed profile
+            flux_full = np.zeros(data_dic[inst][vis]['nspec'],dtype=float)*np.nan
+            flux_full[idx_calc_pix] = flux_loc
+
+            #Storing
+            data_store.update({line_pro:np.array([flux_full])})
+
+        cond_def_full = np.zeros(data_dic[inst][vis]['nspec'],dtype=bool)
+        cond_def_full[idx_calc_pix] = True
+        data_store.update({'cond_def':np.array([cond_def_full])})
+
+        #Saving estimate of local profile for current exposure                   
+        np.savez_compressed(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+corr_mode+'/'+inst+'_'+vis+'_'+str(iexp),
+                            data=data_store,allow_pickle=True)
+
+    #Complementary data
+    data_add={'idx_est_loc':range(n_in_and_out_tr),'cont':params['cont']}
 
     return data_add

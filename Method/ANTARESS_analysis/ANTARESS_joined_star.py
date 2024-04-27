@@ -307,7 +307,7 @@ def joined_IntrProp(param,args):
             args['vis']=vis 
             
             #Calculate coordinates and properties of occulted regions 
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
             surf_prop_dic,spotocc_prop,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
             
             #Properties associated with the transiting planet in the visit 
@@ -630,6 +630,9 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
+    #Information necessary for plotting the local profiles
+    fit_save.update({'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'],'grid_dic':fixed_args['grid_dic'],
+                  'var_par_list':fixed_args['var_par_list'], 'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs']})
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
     if (plot_dic['Intr_prof']!='') or (plot_dic['Intr_prof_res']!='') or (plot_dic['prop_Intr']!='') or (plot_dic['sp_Intr_1D']!=''):
         for inst in fixed_args['inst_list']:
@@ -754,7 +757,7 @@ def joined_IntrProf(param,args):
                 
             #-----------------------------------------------------------
             #Calculate coordinates of occulted regions or use imported values
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -914,6 +917,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Spot-crossing time supplement
     fixed_args['spot_crosstime_supp']={}
+    fixed_args['update_crosstime']=True
 
     #Stellar surface coordinate required to calculate spectral line profiles
     #    - other required properties are automatically added in the sub_calc_plocc_spot_prop() function
@@ -1016,9 +1020,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 fixed_args['idx_in'][inst][vis]=gen_dic[inst][vis]['idx_in']
 
                 #Defining spot crossing time supplement
-                if (inst in fit_prop_dic['spot_crosstime_supp']) and (vis in fit_prop_dic['spot_crosstime_supp'][inst]) and (fit_prop_dic['spot_crosstime_supp'][inst][vis] is not None):
-                    fixed_args['spot_crosstime_supp'][inst][vis]=fit_prop_dic['spot_crosstime_supp'][inst][vis]
-                else:fixed_args['spot_crosstime_supp'][inst][vis]=0.
+                fixed_args['spot_crosstime_supp'][inst][vis]=np.floor(fixed_args['coord_fit'][inst][vis]['bjd'][0])+2400000.
 
                 #Defining reference planet if left undefined
                 if fixed_args['ref_pl']=={}:fixed_args['ref_pl']={inst:{vis:data_dic[inst][vis]['transit_pl'][0]}}
@@ -1242,6 +1244,9 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
+    #Information necessary for plotting the local profiles
+    fit_save.update({'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'], 'system_spot_prop':fixed_args['system_spot_prop'], 'grid_dic':fixed_args['grid_dic'],
+                  'var_par_list':fixed_args['var_par_list'], 'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'], 'fit_spot':fixed_args['fit_spot'], 'fit_spot_ang':fixed_args['fit_spot_ang']})
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
     if (plot_dic['map_BF_Res_prof']!='' or plot_dic['map_BF_Res_prof_re']!=''):
         for inst in fixed_args['inst_list']:
@@ -1400,7 +1405,7 @@ def joined_ResProf(param,args):
             unquiet_star_grid = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
             
             #Retrieve updated coordinates of occulted and spotted regions or use imported values
-            system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
+            system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
 
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
 
@@ -1500,7 +1505,7 @@ def joined_ResProf(param,args):
 
                     #Making weights for the master-out
                     raw_weights=weights_bin_prof(range(args['master_out']['nord']), args['master_out']['scaled_data_paths'][inst][vis],inst,vis,args['master_out']['corr_Fbal'],args['master_out']['corr_FbalOrd'],\
-                                                        args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'Res',args['type'],args['dim_exp'][inst][vis],None,\
+                                                        args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'DI',args['type'],args['dim_exp'][inst][vis],None,\
                                                         None,np.array([args['cen_bins'][inst][vis][isub]]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([conv_line_model]),\
                                                         np.array([args['cov'][inst][vis][isub]]),ref_val=base_DI_prof[0]-1, bdband_flux_sc=args['master_out']['flux_sc'])[0]
 

@@ -351,6 +351,7 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'transit_pl':{},
         'transit_sp':{},
         'bin_mode':{},
+        'update_crosstime':False,
         'fit' : {'chi2':True,'':False,'mcmc':True}[fit_prop_dic['fit_mode']],     
         }
    
@@ -570,7 +571,18 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         if not any(['ctrst_' in prop for prop in mod_prop]):p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None))
     if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode=='IntrProf') or (rout_mode=='ResProf'):    
         if not any(['FWHM_' in prop for prop in mod_prop]):p_start.add_many(('FWHM_ord0__IS__VS_', 5.,   True, 0.,100.  ,None))
-        
+    
+    #Re-defining the spot's Tcenter bounds, guess and priors with the cross-time supplement
+    if fixed_args['update_crosstime']:
+        for inst in list(fixed_args['spot_crosstime_supp'].keys()):
+            for vis in list(fixed_args['spot_crosstime_supp'][inst].keys()):
+                for par in mod_prop:
+                    if ('Tcenter' in par) and (inst in par) and (vis in par):
+                        mod_prop[par]['guess'] -= fixed_args['spot_crosstime_supp'][inst][vis]
+                        mod_prop[par]['bd'] = list(np.array(mod_prop[par]['bd']))-fixed_args['spot_crosstime_supp'][inst][vis]
+                        fit_prop_dic['priors'][par]['low'] -= fixed_args['spot_crosstime_supp'][inst][vis]
+                        fit_prop_dic['priors'][par]['high'] -= fixed_args['spot_crosstime_supp'][inst][vis]
+    
     #Initializing stellar properties
     if fixed_args['rout_mode']=='IntrProp':    
         fixed_args['grid_dic'] = deepcopy(theo_dic)
@@ -637,7 +649,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                     fixed_args[par_check+'_sp']+= [spot_name]
                     fixed_args['fit_spot']=True
                 if 'ang' in par_check and p_start[par].vary:
-                    fixed_args['fit_spot_ang'][spot_name]=True  
+                    fixed_args['fit_spot_ang'][spot_name]=True
+                else:
+                    fixed_args['fit_spot_ang'][spot_name]=False  
 
     #Unique list of planets with variable properties                
     for par in par_orb:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
@@ -712,7 +726,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
 
             #Call to MCMC
             walker_chains=call_MCMC(fit_prop_dic['nthreads'],fixed_args,fit_dic,run_name=fit_dic['run_name'])
-               
+            
         #---------------------------------------------------------------  
        
         #Reuse MCMC
@@ -728,7 +742,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                      walker_chains_loc=np.load(mcmc_path)['walker_chains'][:,nburn::,:] 
                      fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
                      walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
-                    
+
         #Excluding parts of the chains
         if fit_dic['exclu_walk']:
             print('       Excluding walkers manually')
@@ -2435,7 +2449,7 @@ def prior_contrast(p_step_loc,args_in,prior_func_prop):
         for vis in args['inst_vis_list'][inst]:   
             args['vis']=vis
             pl_vis = args['transit_pl'][inst][vis][0]
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,p_step_loc,[pl_vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,p_step_loc,[pl_vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
             surf_prop_dic,spot_prop_dic,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
             ctrst_vis = surf_prop_dic[pl_vis]['ctrst'][0]       
             break_cond = (ctrst_vis<0.) | (ctrst_vis>1.)

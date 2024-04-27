@@ -74,7 +74,7 @@ def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_d
 
 
 
-def up_plocc_prop(inst,vis,args,param_in,transit_pl,nexp_fit,ph_fit,coord_fit,transit_spots=[]):
+def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_fit,coord_fit,transit_spots=[]):
 
     r"""**Planet-occulted and spotted region properties: update**
 
@@ -86,7 +86,6 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,nexp_fit,ph_fit,coord_fit,tr
         args (dict) : Additional parameters needed to evaluate the fitted function.
         param_in (dict) : Model parameters for the fitted step considered.
         transit_pl (list) : Transiting planets for the instrument and visit considered.
-        nexp_fit : Not called in the function so could be removed.
         ph_fit (dict) : Dictionary containing the phase of each planet.
         coord_fit (dict) : Dictionary containing the various coordinates of each planet (and spot) (e.g., exposure time, exposure x/y/z coordinate).
         transit_spots (list) : Spots present for the instrument and visit considered.
@@ -169,7 +168,7 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,nexp_fit,ph_fit,coord_fit,tr
 
             #Update spot crossing time before doing spot parameters' retrieval
             for par in param:
-                if 'Tcenter' in par:param[par] += args['spot_crosstime_supp'][inst][vis]
+                if ('Tcenter' in par) and args['update_crosstime']:param[par] += args['spot_crosstime_supp'][inst][vis]
 
             #Initialize entries for spot coordinates 
             for spot in transit_spots:
@@ -194,8 +193,8 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,nexp_fit,ph_fit,coord_fit,tr
                     coords[spot]['is_visible'][:, ifit_tstamp] = [spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]
 
 
-            #Trigger use of spots in the function computing the DI profile deviation
-            param['use_spots']=True
+        #Trigger use of spots in the function computing the DI profile deviation
+        param['use_spots']=True
 
     #Useful if spots are present but the spot parameters are fixed
     else:param['use_spots']=False

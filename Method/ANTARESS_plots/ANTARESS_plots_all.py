@@ -346,6 +346,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Options
             sc_fact=10**plot_options['sc_fact10']            
 
+            if plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
+                        'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+        
+                #Defining whether we're plotting the planet-occulted or spotted profiles and if they're clean or uncleaned
+                supp_name = plot_mod.split('_')[4]
+                corr_plot_mod = plot_mod.split('_')[3]
+
             #Plotting separate visits on different plots because of the possible overlap between exposures
             for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())):             
                 print('      - Instrument :',inst)
@@ -482,7 +489,34 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         #Data
                         else:     
                             
-                            if plot_mod in ['map_Intr_prof_est','map_Intr_prof_res']: 
+                            if plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
+                                            'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+                                
+                                cond_def_map[isub] = data_exp['cond_def']
+
+                                #Retrieving flux for these regions
+                                if '_est' in plot_mod:
+                                    var_map[isub] = data_exp[corr_plot_mod+'_'+supp_name+'_flux'] 
+
+                                #Building residuals
+                                elif '_res' in plot_mod:
+                                    data_exp_est = dataload_npz(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp)) 
+                                    var_map[isub] = data_exp['flux'] - data_exp_est[corr_plot_mod+'_'+supp_name+'_flux']
+
+                            
+                            elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
+                                cond_def_map[isub] = data_exp['cond_def_fit']
+                                
+                                flux_2_use = data_exp['flux']
+                                if plot_mod == 'map_BF_Res_prof_re':
+                                    raw_prof_loc = gen_dic['save_data_dir']+'Res_data/'+inst+'_'+vis+'_'+str(iexp)
+                                    raw_prof = dataload_npz(raw_prof_loc)
+                                    flux_2_use -= raw_prof['flux']
+                                
+                                var_map[isub] = flux_2_use
+
+                            
+                            elif plot_mod in ['map_Intr_prof_est','map_Intr_prof_res']: 
 
                                 #Check that model exists for in-transit profiles 
                                 if (gen_dic[inst][vis]['idx_exp2in'][iexp_or]==-1.) or \
@@ -564,17 +598,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 #Plot scaling
                                 var_map[isub]*=sc_fact
                                 cond_def_map[isub] = ~np.isnan(var_map[isub])                             
-                            
-                            elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
-                                cond_def_map[isub] = data_exp['cond_def_fit']
-                                
-                                flux_2_use = data_exp['flux']
-                                if plot_mod == 'map_BF_Res_prof_re':
-                                    raw_prof_loc = gen_dic['save_data_dir']+'Res_data/'+inst+'_'+vis+'_'+str(iexp)
-                                    raw_prof = dataload_npz(raw_prof_loc)
-                                    flux_2_use -= raw_prof['flux']
-                                
-                                var_map[isub] = sc_fact*flux_2_use
 
                             else:
                                 var_map[isub] = sc_fact*data_exp['flux']
@@ -1003,7 +1026,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             cb = plt.cm.ScalarMappable(cmap=cmap_2D,norm=plt.Normalize(vmin=v_range[0], vmax=v_range[1]))										
                             cb.set_array(v_range) 	
                         
-                            if plot_mod in ['map_DIbin','map_DI_prof','map_Res_prof','map_Intr_prof','map_BF_Res_prof','map_BF_Res_prof_re','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin','map_Intr_1D']:cbar_txt='flux'
+                            if plot_mod in ['map_DIbin','map_DI_prof','map_Res_prof','map_Intr_prof','map_BF_Res_prof','map_BF_Res_prof_re','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin',
+                                            'map_Intr_1D','map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est','map_Res_prof_clean_sp_res',
+                                            'map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:cbar_txt='flux'
                             elif plot_mod in ['map_Atm_prof','map_Atmbin','map_Atm_1D']:cbar_txt=plot_options['pl_atm_sign']
                             cbar_txt = scaled_title(plot_options['sc_fact10'],cbar_txt)  
                             if plot_options['reverse_2D']:
@@ -1025,15 +1050,24 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #Saving plot
                             plt.gcf().set_rasterized(plot_options['rasterized'])
                             add_str = 'iord'+str(iord)   
+                            
                             if plot_mod in ['map_Intr_prof_est','map_Intr_prof_res']:
                                 if plot_options['line_model']=='rec':add_str+='_rec'
                                 else:
                                     add_str+='_'+plot_options['mode_loc_data_corr']  
                                     if plot_mod=='map_Intr_prof_res':add_str+='_res'
+                            
                             elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
                                 add_str += 'BestFit'
                                 if plot_mod=='map_BF_Res_prof_re': add_str += 'Residual'
+                            
+                            elif plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
+                                            'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+                                prof_typ = plot_mod.split('_')[-1]
+                                add_str += '_'+corr_plot_mod+'_'+supp_name+'_'+prof_typ
+                            
                             if ('bin' in plot_mod):add_str+='_'+plot_options['dim_plot'] 
+                            
                             plt.savefig(path_loc+'/'+add_str+'.'+save_res_map)                        
                             plt.close() 
                
@@ -1098,8 +1132,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         if plot_options['plot_line_model'] or plot_options['plot_line_model_HR'] or (('_res' in plot_mod) & (not plot_options['cont_only'])):
 
             #Planet-occulted models from reconstruction
-            if (('Res' in plot_mod) or ('Intr' in plot_mod)) and (plot_options['line_model']=='rec'):
-                prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
+            if plot_options['line_model']=='rec':
+                if 'Intr' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
+                elif 'Res' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
                 
             #Line profile from best-fit
             else:
@@ -1199,9 +1234,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             rest_frame = 'star'
               
         #Reconstructed line profiles
-        elif '_est' in plot_mod:        
-             data_path_all = [gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
-             rest_frame = 'star'
+        elif '_est' in plot_mod:
+            if 'Intr' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
+            elif 'Res' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
+            rest_frame = 'star'
          
         #Residual maps from Intrinsic and out-of-transit Residual profiles
         #    - data_path_all contains the path to Intrinsic profiles, from which will later be subtracted the model profiles
@@ -1227,6 +1263,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 else:
                     data_path_all+=[prof_fit_vis['loc_data_corr_outpath']+str(iexp) for iexp in iexp_out]
         
+        #Residual maps from Residual profiles
+        #    - data_path_all contains the path to Residual profiles, from which will later be subtracted the model profiles
+        elif plot_mod in ['map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+            data_path_all = [prof_fit_vis['loc_data_corr_path']+str(iexp) for iexp in iexp_plot]
+            rest_frame = prof_fit_vis['rest_frame']              
+
         elif (plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']):
             #Retrieving the bin mode
             if vis+'_bin' in data_dic['Res']['idx_in_bin'][inst]:bin_mode='_bin'
@@ -1309,7 +1351,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             
         #Data dimensions
         if data_path_all[0] is not None:
-            dim_exp_data = list(np.shape(dataload_npz(data_path_all[0])['flux']))
+            flux_name='flux'
+            if ('Res_prof' in plot_mod) and ('_est' in plot_mod):
+                flux_supp = plot_mod.split('_')[4]
+                corr_plot_mod = plot_mod.split('_')[3]
+                flux_name=corr_plot_mod+'_'+flux_supp+'_flux'
+            dim_exp_data = list(np.shape(dataload_npz(data_path_all[0])[flux_name]))
             nord_data = dim_exp_data[0] 
         else:
             nord_data = None
@@ -7724,6 +7771,56 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Plot map
             sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot])    
 
+    
+
+
+    ################################################################################################################ 
+    #%%%% Estimates for residual profiles, including spots, and their residuals
+    ################################################################################################################ 
+    for key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
+                     'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+        if (key_plot in plot_settings):
+
+            ##############################################################################
+            #%%%% Un-cleaned estimates
+            if key_plot == 'map_Res_prof_unclean_sp_est':
+                print('-----------------------------------')
+                print('+ 2D map: un-cleaned theoretical spotted profiles') 
+            
+            if key_plot == 'map_Res_prof_unclean_pl_est':
+                print('-----------------------------------')
+                print('+ 2D map: un-cleaned theoretical planet-occulted profiles') 
+
+            ##############################################################################
+            #%%%% Cleaned estimates
+            if key_plot == 'map_Res_prof_clean_sp_est':
+                print('-----------------------------------')
+                print('+ 2D map: cleaned theoretical spotted profiles') 
+            
+            if key_plot == 'map_Res_prof_clean_pl_est':
+                print('-----------------------------------')
+                print('+ 2D map: cleaned theoretical planet-occulted profiles') 
+
+            ##############################################################################
+            #%%%% Residuals    
+            if key_plot == 'map_Res_prof_clean_sp_res':
+                print('-----------------------------------')
+                print('+ 2D map: residuals from cleaned spotted profiles') 
+
+            if key_plot == 'map_Res_prof_clean_pl_res':
+                print('-----------------------------------')
+                print('+ 2D map: residuals from cleaned planet-occulted profiles') 
+
+            if key_plot == 'map_Res_prof_unclean_sp_res':
+                print('-----------------------------------')
+                print('+ 2D map: residuals from un-cleaned spotted profiles') 
+
+            if key_plot == 'map_Res_prof_unclean_pl_res':
+                print('-----------------------------------')
+                print('+ 2D map: residuals from un-cleaned planet-occulted profiles') 
+
+            #Plot map
+            sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot])    
 
 
 
@@ -8950,7 +9047,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 #Custom spot properties
                 if len(plot_set_key['custom_spot_prop'])>0:
-                    print('   + With custom spot properties')
+                    if idx_pl==0: print('   + With custom spot properties')
                     # Initialize params to use the retrieve_spots_prop_from_param function.
                     params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
 
@@ -8962,7 +9059,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 #Mock dataset spot properties
                 elif plot_set_key['mock_spot_prop']:
-                    print('   + With mock dataset spot properties')
+                    if idx_pl==0: print('   + With mock dataset spot properties')
                     if (mock_dic['spots_prop'] != {}):
                             inst_to_use = plot_set_key['inst_to_plot'][0]
                             vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
@@ -8976,7 +9073,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 #Fitted spot properties
                 elif plot_set_key['fit_spot_prop']:
-                    print('   + With fitted spot properties')
+                    if idx_pl==0: print('   + With fitted spot properties')
                     inst_to_use = plot_set_key['inst_to_plot'][0]
                     vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
 

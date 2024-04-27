@@ -586,7 +586,19 @@ def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=N
     # ln_prob_func_lmfit    ln_prob_func_lmfit array (return of func():  {\rm Resid}
     # chisqr    chi-square: \chi^2 = \sum_i^N [{\rm Resid}_i]^2
     # redchi    reduced chi-square: \chi^2_{\nu}= {\chi^2} / {(N - N_{\rm varys})}
-    p_best=result.params 
+    p_best=result.params
+
+    #Update crossing times one last time
+    if fixed_args['update_crosstime']:
+        for inst in list(fixed_args['spot_crosstime_supp'].keys()):
+            for vis in list(fixed_args['spot_crosstime_supp'][inst].keys()):
+                for par in p_best:
+                    if ('Tcenter' in par) and (inst in par) and (vis in par):
+                        p_best[par].min += fixed_args['spot_crosstime_supp'][inst][vis]
+                        p_best[par].max += fixed_args['spot_crosstime_supp'][inst][vis]
+                        p_best[par].value += fixed_args['spot_crosstime_supp'][inst][vis]
+        fixed_args['update_crosstime'] = False
+
     merit={}
     
     #Model function with best-fit parameters
@@ -698,7 +710,16 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
     #    - sampler.chain is of shape (nwalkers, nsteps, n_free)
     #     - parameters have the same order as in 'initial_distribution' and 'var_par_list'
     walker_chains = sampler.chain    
- 
+
+    #Update crossing times one last time
+    if fixed_args['update_crosstime']:
+        for inst in list(fixed_args['spot_crosstime_supp'].keys()):
+            for vis in list(fixed_args['spot_crosstime_supp'][inst].keys()):
+                for ipar, par in enumerate(fixed_args['var_par_list']):
+                    if ('Tcenter' in par) and (inst in par) and (vis in par):
+                        walker_chains[:,:,ipar] += fixed_args['spot_crosstime_supp'][inst][vis]
+        fixed_args['update_crosstime'] = False
+
     #Save raw MCMC results 
     if save_raw:
         if (not os_system.path.exists(fit_dic['save_dir'])):os_system.makedirs(fit_dic['save_dir'])
