@@ -569,6 +569,9 @@ def init_tell_molec(tell_species,params_molec,range_mol_prop,qt_molec,M_mol_mole
         nu_rest_mod   = mol_prop['wave_number']  
 
         #Pressure shift correction of lines position
+        #    - P_0 in atm (1 atm = 101325 Pa)
+        #    - delta = air-pressure shift, in cm-1 atm-1
+        #    - nu in [cm-1]
         delta_air_mod = mol_prop['delta']
         nu_scaled_dic[molec] = nu_rest_mod + delta_air_mod * P_0
 

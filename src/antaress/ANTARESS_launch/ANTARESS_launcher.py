@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 import os as os_system
 import argparse
+#The following relative imports are necessary to create an executable command
 from ..ANTARESS_process.ANTARESS_main import ANTARESS_main,ANTARESS_settings_overwrite
 from ..ANTARESS_launch.ANTARESS_gridrun import ANTARESS_gridrun
 from ..ANTARESS_general.utils import import_module
-
+ 
 
 def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_settings = '',working_path='./',nbook_dic = {}):
     r"""**ANTARESS launch routine.**
@@ -76,7 +77,8 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
     
     #Code directory     
     code_dir = os_system.path.dirname(__file__).split('ANTARESS_launch')[0]
-    gen_dic['save_dir']= working_path
+    if working_path=='./':gen_dic['save_dir'] = os_system.getcwd()+'/'
+    else:gen_dic['save_dir']= working_path
     
     #Retrieve default or user-defined system properties
     if custom_systems!='':systems_file = import_module(working_path+custom_systems)
@@ -101,12 +103,12 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
     #Run over nominal settings properties
     #    - notebook settings have already been used to overwrite congiguration settings, and are only passed on to overwrite the plot settings if relevant
     if not gen_dic['grid_run']:
-        ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_params,nbook_dic,working_path,custom_plot_settings)
+        ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_params,nbook_dic,custom_plot_settings)
     
     #Run over a grid of properties
     #    - will overwrite default and notebook configuration settings
     else:
-        ANTARESS_gridrun(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_params,nbook_dic,working_path,custom_plot_settings)
+        ANTARESS_gridrun(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_params,nbook_dic,custom_plot_settings)
 
     print('End of workflow')
     return None

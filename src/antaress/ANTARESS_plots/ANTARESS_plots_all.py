@@ -17,7 +17,7 @@ import glob
 import imageio
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_general.minim_routines import call_lmfit
-from ..ANTARESS_general.utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz,air_index,gen_specdopshift
+from ..ANTARESS_general.utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz,air_index,gen_specdopshift,import_module
 from ..ANTARESS_plots.utils_plots import custom_axis,autom_x_tick_prop,autom_y_tick_prop,stackrel,scaled_title,autom_range_ext,plot_shade_range
 from ..ANTARESS_conversions.ANTARESS_binning import resample_func,calc_bin_prof,weights_bin_prof
 from ..ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,return_pix_size
@@ -32,7 +32,7 @@ from ..ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_
 from ..ANTARESS_grids.ANTARESS_spots import retrieve_spots_prop_from_param, calc_spotted_tiles, spot_occ_region_grid
 
 
-def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,mock_dic,nbook_dic,input_path,custom_plot_settings):
+def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,mock_dic,nbook_dic,custom_plot_settings):
     print()
     print('-----------------------------------')
     print('Plots')  
@@ -47,11 +47,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
     #Retrieve default settings
     plot_settings={}
-    from ANTARESS_plots.ANTARESS_plot_settings import ANTARESS_plot_settings
+    from ..ANTARESS_plots.ANTARESS_plot_settings import ANTARESS_plot_settings
     ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,theo_dic)   
     
     #Overwrite with user settings
-    if custom_plot_settings!='':import_module(input_path+custom_plot_settings).ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,theo_dic)
+    if custom_plot_settings!='':import_module(gen_dic['save_dir']+custom_plot_settings).ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,theo_dic)
     
     #Overwrite with notebook settings
     if ('plots' not in nbook_dic):nbook_dic['plots'] = {}

@@ -660,7 +660,8 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     #      the flux in a given pixel verifies:
     # F_true(w,t,v) = gcal(w,t,v)*N_true(w,t,v)
     # EF_true(w,t,v) = gcal(w,t,v)*sqrt(N_true(w,t,v))
-    #      summing the fluxes over a large band yields 
+    #      we estimate gcal over each order for S2D and the full spectral range for S1D
+    #      summing the flux densities over a large band yields 
     # TF_meas(t,v) ~ TF_true(t,v) = sum(w, F_true(w,t,v) ) = gcal(band,t,v)*sum(w over band, N_true(w,t,v) )
     #      thus
     # ETF_meas(t,v) ~ E[ TF_true(t,v) ]
@@ -672,20 +673,35 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     # gcal(band,t,v) = TF_meas(t,v)*(dt*dw)/sum(w over band, N_true(w,t,v) )
     # gcal(band,t,v) = TF_meas(t,v)*gcal(band,t,v)^2/ETF_meas(t,v)^2
     # gcal(band,t,v) = ETF_meas(t,v)^2 / TF_meas(t,v)
-    #      we estimate gcal over each order for S2D and the full spectral range for S1D
-    #      summing the flux densities over a large band yields 
-    # TF_meas(t,v) ~ TF_true(t,v) = sum(w, F_true(w,t,v) ) = gcal(band,t,v)*sum(w over band, N_true(w,t,v) ) 
-    #      thus
-    # ETF_meas(t,v) ~ E[ TF_true(t,v) ]
-    #               = E[ gcal(band,t,v)*sum(w over band, N_true(w,t,v) ) ]
-    #               = gcal(band,t,v)*E[ sum(w over band, N_true(w,t,v) ) ]
-    #               = gcal(band,t,v)*sqrt( sum(w over band, E[ N_true(w,t,v) )]^2 )
-    #               = gcal(band,t,v)*sqrt( sum(w over band, N_true(w,t,v) ) )  
-    #      and thus 
-    # gcal(band,t,v) = TF_meas(t,v)/sum(w over band, N_true(w,t,v) )
-    # gcal(band,t,v) = TF_meas(t,v)*gcal(band,t,v)^2/ETF_meas(t,v)^2
-    # gcal(band,t,v) = ETF_meas(t,v)^2 / TF_meas(t,v)
     #      we estimate gcal over each order and all exposures, and define gcal(band) as < t, v :  gcal(band,t,v) > 
+    #
+    #    - in the presence of red noise associated with the measured counts:
+    # ETF_meas(t,v) = gcal(band,t,v)*E[ sum(w over band, N_true(w,t,v) ) ]
+    #               = gcal(band,t,v)*sqrt( sum(w over band, E[ N_true(w,t,v) ]^2 + Ered(w)^2 )
+    #               = gcal(band,t,v)*sqrt( sum(w over band, N_true(w,t,v) + Ered(w)^2 )    
+    #               = gcal(band,t,v)*sqrt( sum(w over band, N_true(w,t,v) ) + TEred(band)^2 )
+    #      thus 
+    # sum(w over band, N_true(w,t,v) ) = ( ETF_meas(t,v)^2 / gcal(band,t,v)^2 ) - TEred(band)^2
+    #      and 
+    # gcal(band,t,v) = TF_meas(t,v)/sum(w over band, N_true(w,t,v) )               
+    # gcal(band,t,v) = TF_meas(t,v)/(( ETF_meas(t,v)^2 / gcal(band,t,v)^2 ) - TEred(band)^2 )
+    # ETF_meas(t,v)^2 / gcal(band,t,v) - gcal(band,t,v)*TEred(band)^2 = TF_meas(t,v)
+    # gcal(band,t,v)^2*TEred(band)^2 + TF_meas(t,v)*gcal(band,t,v) - ETF_meas(t,v)^2 = 0
+    #      with a = TEred(band)^2
+    #           b = TF_meas(t,v)
+    #           c = - ETF_meas(t,v)^2
+    #           gcal_white(band,t,v) = -c / b
+    #      taking the positive solution
+    # gcal(band,t,v) = ( -b + sqrt(  b^2 - 4*a*c ) ) / (2*a) 
+    #                = ( -TF_meas(t,v) + sqrt(  TF_meas(t,v)^2 + 4*TEred(band)^2*ETF_meas(t,v)^2 ) ) / (2*TEred(band)^2) 
+    #                = ( -TF_meas(t,v) + sqrt(  TF_meas(t,v)^2 + 4*TEred(band)^2*gcal_white(band,t,v)*TF_meas(t,v) ) ) / (2*TEred(band)^2) 
+    #      so that we could properly estimate the calibration profile in this way, knowing the red noise value
+    #      in practive we are still measuring the calibration as :
+    # gcal_meas(band,t,v) = ETF_meas(t,v)^2 / TF_meas(t,v)
+    #                     = gcal(band,t,v)^2 *( sum(w over band, N_true(w,t,v) ) + TEred(band)^2 ) / TF_meas(t,v)        
+    #                     = gcal(band,t,v)^2 *( TF_meas(t,v)/gcal(band,t,v) + TEred(band)^2 ) / TF_meas(t,v)   
+    #                     = gcal(band,t,v) + gcal(band,t,v)^2*TEred(band)^2/ TF_meas(t,v)
+    #      so that we are overestimating the true calibration profile (especially in region of low flux), and when scaling back to measured counts as N_meas(t,w) = F_meas(t,w)/gcal_meas(band) we are underestimating the true measured counts.
     #    - what matters for the weighing is the change in the precision on the flux over time in a given pixel:
     # + low-frequency variations linked to the overall flux level of the data (eg due to atmospheric diffusion)
     # + high-frequency variations linked to variations in the spectral flux distribution at the specific wavelength of the pixel
@@ -738,7 +754,30 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     #      we note that we neglected the differences between the Fsc_true and MFstar profiles that are due to the occulted local stellar lines and planetary atmospheric lines
     #    - even if the calibration remains constant in time and does not contribute to the weighing of disk-integrated spectra, it must always be set to a value consistent with error definitions in the pipeline,
     # so that EFsc_true is comparable with other error tables in the weighing of intrinsic and planetary profiles
-    #      calibration profiles are thus always estimated by default by the pipeline, either from the input error tables when available or from the imposed error table for consistency    
+    #      calibration profiles are thus always estimated by default by the pipeline, either from the input error tables when available or from the imposed error table for consistency   
+    #    - in region of low S/N the noise may not be poisson-dominated anymore. If we consider a constant red noise over time per pixel:
+    # EN_true(w,t,v)^2 = N_true(w,t,v) + Ered(w)^2
+    #      and thus 
+    # EFsc_true(w,t,v)^2 = LC_theo(band,t,v)^2*gcal(band)^2*Ccorr(w,t,v)^2*E( N_true(w,t,v) )^2/(dt*globF(t,v))^2
+    #                    = LC_theo(band,t,v)^2*gcal(band)^2*Ccorr(w,t,v)^2*( N_true(w,t,v) + Ered(w)^2 )/(dt*globF(t,v))^2    
+    #                    = EFsc_true_white(w,t,v)^2 + ( LC_theo(band,t,v)*gcal(band)*Ccorr(w,t,v)*Ered(w)/(dt*globF(t,v)))^2      
+    #       we can consider that the master spectrum has been defined as the weighted sum of n_out exposures, so that :
+    # MFstar_meas(t,w) ~ MFstar_true(t,w) = gcal(band,t,v)*sum(n_out, wstar(t_out,w)*Nstar_meas(t_out,w))
+    #      and its error is the quadratic sum of errors on each exposure, themselves the quadratic sum of photon-noise and red noise errors: 
+    # EMFstar_meas(t,w)^2 ~ EMFstar_true(t,w)^2 = gcal(band)^2*sum(n_out, wstar(t_out,w)^2*( Nstar_meas(t_out,w) + Ered(w)^2 ) )
+    #                                           = gcal(band)^2*( sum(n_out, wstar(t_out,w)^2*Nstar_meas(t_out,w)) + sum(n_out, wstar(t_out,w))*Ered(w)^2  )
+    #                                           = gcal(band)^2*( sum(n_out, wstar(t_out,w)^2*MFstar_meas(w,v)*(dt_out*globF(t_out,v))/(gcal(band)*Ccorr(w,t_out,v))) + Twstar(w)*Ered(w)^2  ) 
+    #                                           = gcal(band)*MFstar_meas(w,v)*sum(n_out, wstar(t_out,w)^2*(dt_out*globF(t_out,v))/Ccorr(w,t_out,v)) + gcal(band)^2*Twstar(w)*Ered(w)^2  
+    #                                           = gcal(band)*MFstar_meas(w,v)*Twstar2(w) + gcal(band)^2*Twstar(w)*Ered(w)^2 
+    #      so that 
+    # Ered(w)^2 = (EMFstar_meas(t,w)^2  -  gcal(band)*MFstar_meas(w,v)*Twstar2(w) )/(gcal(band)^2*Twstar(w))
+    #      and 
+    # EFsc_true(w,t,v)^2 = EFsc_true_white(w,t,v)^2 + Ered(w)^2*( LC_theo(band,t,v)*gcal(band)*Ccorr(w,t,v)/(dt*globF(t,v)))^2         
+    #                    = LC_theo(band,t,v)^2*(gcal(band)*Ccorr(w,t,v)* MFstar_meas(w,v)/(dt*globF(t,v))) + ( LC_theo(band,t,v)*gcal(band)*Ccorr(w,t,v)/(dt*globF(t,v)))^2 *(EMFstar_meas(t,w)^2  -  gcal(band)*MFstar_meas(w,v)*Twstar2(w) )/(gcal(band)^2*Twstar(w))        
+    #                    = LC_theo(band,t,v)^2*Ccorr(w,t,v)*[  gcal(band)*MFstar_meas(w,v) + (Ccorr(w,t,v)/(dt*globF(t,v)))*( EMFstar_meas(t,w)^2 - MFstar_meas(t,w)*gcal(band)*Twstar2(w) )/Twstar(w)  ]/(dt*globF(t,v))
+    #                    = LC_theo(band,t,v)^2*Ccorr(w,t,v)*[  gcal(band)*MFstar_meas(w,v)    - (Ccorr(w,t,v)/(dt*globF(t,v)))* MFstar_meas(t,w)*gcal(band)*Twstar2(w) /Twstar(w)         + (Ccorr(w,t,v)/(dt*globF(t,v)))*EMFstar_meas(t,w)^2/Twstar(w)  ]/(dt*globF(t,v))
+    #                    = LC_theo(band,t,v)^2*Ccorr(w,t,v)*[  MFstar_meas(w,v)*gcal(band)*( 1 - (Ccorr(w,t,v)*Twstar2(w)/(dt*globF(t,v)*Twstar(w)))) + (Ccorr(w,t,v)/(dt*globF(t,v)))*EMFstar_meas(t,w)^2/Twstar(w)  ]/(dt*globF(t,v))
+    #                    = LC_theo(band,t,v)^2*Ccorr(w,t,v)*[  MFstar_meas(w,v)*gcal(band)*( Twstar(w)*dt*globF(t,v) - Ccorr(w,t,v)*Twstar2(w)) + Ccorr(w,t,v)*EMFstar_meas(t,w)^2  ]/((dt*globF(t,v))^2*Twstar(w))
     #--------------------------------------------------------     
 
     #Calculate weights at pixels where the master stellar spectrum is defined and positive

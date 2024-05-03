@@ -70,7 +70,7 @@ def ANTARESS_settings_overwrite(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic
 
 
 
-def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_param,input_dic,input_path,custom_plot_settings):
+def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_param,input_dic,custom_plot_settings):
     r"""**Main ANTARESS function.**
 
     Runs ANTARESS workflow. The pipeline is defined as modules than can be run independently. Each module takes as input the datasets produced by earlier modules, transforms or 
@@ -282,7 +282,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     #Call to plot functions
     ##############################################################################
     if gen_dic['plots_on']:
-        ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,mock_dic,input_dic,input_path,custom_plot_settings)
+        ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,mock_dic,input_dic,custom_plot_settings)
 
     return None
     
@@ -2129,6 +2129,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             data_prop[inst][vis]['TEMP'][iexp] = hdr['HIERARCH '+facil_inst+' GEN AMBI TEMPERATURE'] + 273.15
                             
                         #Pressure (atm)
+                        #    - pressure is in hPa and must be converted into atm unit (1 atm = 101325 Pa = 1013.25 hPa)
                         if inst in ['HARPS','SOPHIE','ESPRESSO','NIRPS_HA','NIRPS_HE']:
                             if inst in ['SOPHIE','HARPS','NIRPS_HA','NIRPS_HE']:pre_txt=''                             
                             elif inst=='ESPRESSO':pre_txt = tel_inst

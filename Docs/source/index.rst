@@ -1,5 +1,12 @@
-Advanced and Neat Techniques for the Accurate Retrieval of Exoplanetary and Stellar Spectra
-*******************************************************************************************
+.. raw:: html
+
+    <style> .orange {color:orange} </style>
+
+.. role:: orange
+
+:orange:`A`\dvanced and :orange:`N`\eat :orange:`T`\echniques for the :orange:`A`\ccurate :orange:`R`\etrieval of :orange:`E`\xoplanetary and :orange:`S`\tellar :orange:`S`\pectra
+***********************************************************************************************************************************************************************************
+
 
 About ANTARESS
 ==============
@@ -20,8 +27,9 @@ Documentation
 
 .. toctree::
    :maxdepth: 2
+   :caption: Contents:
 
-   installation
-   getting_started
-   notebooks
-   documentation
+   Fixed_files/installation
+   Fixed_files/getting_started
+   Fixed_files/notebooks
+   Fixed_files/documentation
