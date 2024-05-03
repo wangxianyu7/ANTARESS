@@ -8,12 +8,7 @@
 import os
 import sys
 import antaress
-
-#Identify whether doc is generated on gitlab or locally
-conf_path = os.path.abspath(os.path.dirname(__file__))
-if conf_path=='/builds/bourrier/antaress/Docs/source':package_path = '/builds/bourrier/antaress' #Gitlab
-else:package_path = '../../' #Local
-sys.path.insert(0, os.path.abspath(package_path+'/src/antaress/'))
+sys.path.insert(0, os.path.abspath('../../src/antaress/'))
 
 # -- Project information -----------------------------------------------------
 project = 'ANTARESS'
@@ -21,7 +16,7 @@ copyright = '2023-2024, V. Bourrier'
 author = 'V. Bourrier & contributors'
 
 #Get release version
-with open(package_path+'/pyproject.toml', 'r') as f:
+with open('../../pyproject.toml', 'r') as f:
     for line in f.readlines():
         if 'version' in line:
             release = line.split('= "')[1].split('"')[0]  
