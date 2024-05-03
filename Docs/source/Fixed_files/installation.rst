@@ -103,4 +103,4 @@ A number of packages are required to run ``ANTARESS``. They should be installed 
     
         python setup_lbl_fit.py build
         
-      Then copy the compiled file :orange:`calculate_RV_line_by_line3.cpython-XX-darwin.so` into your `KitCat/ <https://gitlab.unige.ch/bourrier/antaress/-/tree/0d7232f1a1b39757beb8a52762b9e95fd33b2591/Method/ANTARESS_conversions/KitCat/>`_ directory.  
+      Then copy the compiled file :orange:`calculate_RV_line_by_line3.cpython-XX-darwin.so` into your `KitCat/ <https://gitlab.unige.ch/bourrier/antaress/-/blob/07f9aead9060dbc6fbe3a2f4006f07968f8fde0e/src/antaress/ANTARESS_conversions/KitCat/>`_ directory.  
