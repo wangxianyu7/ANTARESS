@@ -11,7 +11,7 @@ else
   echo "Local computer"
   DIR_PATH="../"    
 fi
-
+DIR_PATH="../" 
 #Delete existing package files
 rm -rf $DIR_PATH/Docs/source/Package_files/antaress*
 
