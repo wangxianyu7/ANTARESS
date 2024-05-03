@@ -1,6 +1,6 @@
 .. raw:: html
 
-    <style> .orange {color:orange} </style>
+    <style> .orange {color:DarkOrange} </style>
 
 .. role:: orange
 
@@ -18,9 +18,10 @@ The two main applications of the workflow are the extraction and analysis of pla
 Because the workflow is modular and its concepts are general, it can support new methods, be extended to additional spectrographs, and find a range of applications beyond the proposed scope. Look `here <https://obswww.unige.ch/~bourriev/antaress/doc/html/contributions.html>`_ if you are interested in collaborations or contributions to ``ANTARESS``.
 
 Please cite:
-    - TBD: if you use ANTARESS for any purpose.
-    - TBD: if you use ANTARESS to extract and analyze planetary spectra.
-    - TBD: if you use ANTARESS to extract and analyze spotted stellar spectra.
+
+- TBD: if you use ``ANTARESS`` for any purpose.
+- TBD: if you use ``ANTARESS`` to extract and analyze planetary spectra.
+- TBD: if you use ``ANTARESS`` to extract and analyze spotted stellar spectra.
 
 Documentation
 =============
@@ -30,6 +31,7 @@ Documentation
    :caption: Contents:
 
    Fixed_files/installation
+   Fixed_files/contributions
    Fixed_files/getting_started
    Fixed_files/notebooks
    Fixed_files/documentation

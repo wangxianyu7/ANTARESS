@@ -1,3 +1,15 @@
+.. raw:: html
+
+    <style> .orange {color:DarkOrange} </style>
+
+.. role:: orange
+
+.. raw:: html
+
+    <style> .green {color:green} </style>
+
+.. role:: green
+
 Getting started
 ===============
 
@@ -6,20 +18,38 @@ General approach
 
 Follow these steps to run ``ANTARESS``:  
 
-1. Define the system properties for the host star and its planets in a copy of `ANTARESS_systems.py <https://gitlab.unige.ch/bourrier/antaress/-/blob/b6757ac8287a883889dc1ca367ae2b764dbbcf45/Method/ANTARESS_launch/ANTARESS_systems.py>`_ that you can name `ANTARESS_settings_username.py`. The default file contains a mock system as example.  
+1. Create a working directory and copy the following configuration files inside:   
 
-2. Define your input datasets, and the modules to process and analyze them, in a copy of the configuration file `ANTARESS_settings.py <https://gitlab.unige.ch/bourrier/antaress/-/blob/05b5593c8bcdf5dfd983da0c0047feec47ae94db/Method/ANTARESS_launch/ANTARESS_settings.py>`_ that you can name `ANTARESS_settings_username.py`. Although the default file allows running ``ANTARESS`` with minimal intervention, any detailed analysis will require that you define your own settings.  
+- `ANTARESS_systems.py <https://gitlab.unige.ch/bourrier/antaress/-/blob/117044089b381164d18544ca512cf630f87c6f86/src/antaress/ANTARESS_launch/ANTARESS_systems.py>`_: to define the system properties for the host star and its planets. 
+  The default file contains a mock system as example, but you will certainly want to define your target one !  
 
-3. Launch the workflow with the python commands::
+- `ANTARESS_settings.py <https://gitlab.unige.ch/bourrier/antaress/-/blob/117044089b381164d18544ca512cf630f87c6f86/src/antaress/ANTARESS_launch/ANTARESS_settings.py>`_: to define your input datasets, and the modules to process and analyze them. 
+  Although the default file allows running the workflow with minimal intervention, any detailed analysis will require that you define your own settings.
 
-       from ANTARESS_launch.ANTARESS_launcher import ANTARESS_launcher 
-       ANTARESS_launcher(user = username) 
+- `ANTARESS_plot_settings.py <https://gitlab.unige.ch/bourrier/antaress/-/blob/5a4527e3426947d25682fe98c68b33f8c339815f/src/antaress/ANTARESS_plots/ANTARESS_plot_settings.py>`_: to define the settings controlling the plots from the workflow (see below).
+
+2. Move to the working directory and run the workflow from terminal with the command::
+
+    antaress --custom_systems ANTARESS_systems.py --custom_settings ANTARESS_settings.py --custom_plot_settings ANTARESS_plot_settings.py
+
+   Alternatively you can run the workflow from your python environment as::
+	
+	from antaress.ANTARESS_launch.ANTARESS_launcher import ANTARESS_launcher
+	ANTARESS_launcher(custom_systems = 'ANTARESS_systems_bourrier.py' , custom_settings = 'ANTARESS_settings_bourrier.py' , custom_plot_settings = 'ANTARESS_plot_settings_bourrier.py')
+	
+   You can also run the workflow from any location by setting the option :green:`working_path` to the path of your working directory.
+   
+   If you do not define one of the configuration files, the workflow will use the default one downloaded with the package. 
+
+3. Processed data and fit results will be saved in a sub-directory :orange:`PlName_Saved_data` of the working directory, where :orange:`PlName` is the name of the planet(s) you defined in :orange:`ANTARESS_systems.py`.    
+   
+   Plots will be saved in a sub-directory :orange:`PlName_Plots`.
 
 
 Modules
 -------
 
-Modules are grouped in three main categories:
+The workflow is organized as modules, which are grouped in three main categories:
 
 - ``Formatting/correction``: Data first go through these modules, some of which are specific to given instruments. Once data are set in the common ``ANTARESS`` format and corrected for instrumental/environmental effects, they can be processed in the same way by the subsequent modules. 
 
@@ -30,18 +60,18 @@ Modules are grouped in three main categories:
 
 ``Formatting/correction`` and ``Processing`` modules are ran successively, ie that data need to pass through an earlier module before it can be used by the next one. ``Analysis`` modules, in contrast, are applied to the outputs of various ``Processing`` modules throughout the pipeline. 
 
-Each module can be activated independently. Some of the ``Formatting/correction`` and ``Processing`` modules are optional, for example the ``Telluric correction`` module for space-borne data or the ``Flux scaling`` module for data with absolute photometry. Some modules are only activated if the pipeline is used for a specific goal, for example the ``CCF conversion`` of stellar spectra when the user requires the analysis of the Rossiter-McLaughlin effect.
+Each module can be activated independently through the configuration file ``ANTARESS_settings.py``. Some of the ``Formatting/correction`` and ``Processing`` modules are optional, for example the ``Telluric correction`` module for space-borne data or the ``Flux scaling`` module for data with absolute photometry. Some modules are only activated if the pipeline is used for a specific goal, for example the ``CCF conversion`` of stellar spectra when the user requires the analysis of the Rossiter-McLaughlin effect.
 
-In most modules you can choose to calculate data (in which case it will then be automatically saved on disk) or to retrieve it (in which case the pipeline will check these data already exists). This approach was mainly motivated by the fact that keeping all data in memory is not possible when processing S2D spectra, so that ``ANTARESS`` works by retrieving the relevant data from the disk in each module. 
+In most modules you can choose to compute data (`calculation mode`, in which case data is saved automatically on disk) or to retrieve it (`retrieval mode`, in which case the pipeline checks that data already exists on disk). This approach was mainly motivated by the fact that keeping all data in memory is not possible when processing S2D spectra, so that ``ANTARESS`` works by retrieving the relevant data from the disk in each module. 
 
 
 Plots
 -----
 
-Plots are generated at the end of the workflow processing, upon request.
+Plots are generated `at the end` of the workflow processing, upon request.
 
-At the end of each module settings in the `configuration file <https://gitlab.unige.ch/bourrier/antaress/-/blob/05b5593c8bcdf5dfd983da0c0047feec47ae94db/Method/ANTARESS_launch/ANTARESS_settings.py>`_, you can activate a given `plot_name` by setting `plot_dic['plot_name']` to a figure extension, such as `pdf`.
+At the end of each module in the main configuration file :orange:`ANTARESS_settings.py` you can activate a given :orange:`plot_name` by setting :orange:`plot_dic['plot_name']` to an extension, such as :orange:`pdf`.
 
-The plot settings are then controlled through the `plot configuration file <https://gitlab.unige.ch/bourrier/antaress/-/blob/05b5593c8bcdf5dfd983da0c0047feec47ae94db/Method/ANTARESS_plots/ANTARESS_plot_settings.py>`_. This file is a default, and can be copied into a `ANTARESS_plot_settings_username.py` (using the same `username` as in `ANTARESS_settings_username.py`) in which you can define your own plot settings.
+Some plots require specific outputs, which are not produced by default due to their large size. This means that if you activate a plot after running the workflow once and retrieving its results, it may not compute. You will simply have to run the workflow again in `calculation mode` for the relevant modules.
 
-Because plots may require specific outputs of large size, the latter are not generated by default. This means you need to activate the plot as described above for the workflow to save the required outputs when the module is ran.
+The plot settings are then controlled through the plot configuration file :orange:`ANTARESS_plot_settings.py`. All plots have default settings, but a large number of options are available so that you can adjust the plot contents and their format.

@@ -8,7 +8,7 @@ from ..ANTARESS_launch.ANTARESS_gridrun import ANTARESS_gridrun
 from ..ANTARESS_general.utils import import_module
  
 
-def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_settings = '',working_path='./',nbook_dic = {}):
+def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_settings = '',working_path='',nbook_dic = {}):
     r"""**ANTARESS launch routine.**
     
     Runs ANTARESS with default or manual settings.  
@@ -17,7 +17,7 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
         custom_systems (str): name of custom systems file (default "": ANTARESS_systems.py file is used)
         custom_settings (str): name of custom settings file (default "": ANTARESS_settings.py file is used)
         custom_plot_settings (str): name of custom plot settings file (default "": ANTARESS_plot_settings.py file is used)
-        working_path (str): path to the working directory, in which the workflow outputs will be stored (default "./": current directory is used)
+        working_path (str): path to the working directory, in which the workflow outputs will be stored (default "": current directory is used)
                             if custom files are used, they should be placed in the working directory 
     
     Returns:
@@ -31,7 +31,7 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
     parser.add_argument("--custom_systems",      type=str, default='',help = 'Name of custom systems file (default "": default file ANTARESS_systems.py is used)')
     parser.add_argument("--custom_settings",     type=str, default='',help = 'Name of custom settings file (default "": default file ANTARESS_settings.py is used)')
     parser.add_argument("--custom_plot_settings",type=str, default='',help = 'Name of custom plot settings file (default "": default file ANTARESS_plot_settings.py is used)')
-    parser.add_argument("--working_path", type=str, default='./' ,help = 'Path to user settings files (default "./": user files are retrieved from current directory)')
+    parser.add_argument("--working_path", type=str, default='' ,help = 'Path to user settings files (default "./": user files are retrieved from current directory)')
     parser.add_argument("--nbook_dic", type=dict, default={})
     input_args=parser.parse_args()
     custom_systems = input_args.custom_systems
@@ -77,7 +77,7 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
     
     #Code directory     
     code_dir = os_system.path.dirname(__file__).split('ANTARESS_launch')[0]
-    if working_path=='./':gen_dic['save_dir'] = os_system.getcwd()+'/'
+    if working_path=='':gen_dic['save_dir'] = os_system.getcwd()+'/'
     else:gen_dic['save_dir']= working_path
     
     #Retrieve default or user-defined system properties
