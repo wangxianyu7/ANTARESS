@@ -718,6 +718,9 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
                 for ipar, par in enumerate(fixed_args['var_par_list']):
                     if ('Tcenter' in par) and (inst in par) and (vis in par):
                         walker_chains[:,:,ipar] += fixed_args['spot_crosstime_supp'][inst][vis]
+                for par in fixed_args['fixed_par_val']:
+                    if ('Tcenter' in par) and (inst in par) and (vis in par):
+                        fixed_args['fixed_par_val'][par] += fixed_args['spot_crosstime_supp'][inst][vis]
         fixed_args['update_crosstime'] = False
 
     #Save raw MCMC results 

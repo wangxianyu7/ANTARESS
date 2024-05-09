@@ -329,7 +329,7 @@ def get_system_params():
                 'Mstar':0.50,                #+/- 0.03 #solar mass #Plavchan et al. 2020
                 'logg':4.39,                 #+/- 0.03 #computed from Plavchan et al. 2020 Rstar and Mstar values by Zicher et al. 2022
                 'veq':7.8,                   #+/- 0.3 #km/s #Klein et al. 2021
-                'istar':90,                  #unknown
+                'istar':89,                  #unknown
                 # 'istar':30,                  #unknown
                 #'mag':5,                     #test
                 'mag':8.81,                  #+/- 0.10 #Johnson V magnitude (true value)

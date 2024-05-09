@@ -103,6 +103,11 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_fit,coord_fit,transit_spo
         for par in param_in:param[par]=param_in[par].value
     else:param=param_in
 
+    #Update stellar parameters if necessary
+    if 'cos_istar' in args['var_par_list']:
+        system_param_loc['star']['cos_istar'] = param['cos_istar']
+        system_param_loc['star']['istar_rad'] = np.arccos(param['cos_istar'])
+
     #Coefficients describing the polynomial variation of spectral line properties as a function of the chosen coordinate
     #    - coefficients can be specific to a given spectral line model
     if (args['mode']=='ana') and (len(args['linevar_par'])>0):
@@ -115,7 +120,7 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_fit,coord_fit,transit_spo
 
     #Recalculate coordinates of occulted regions or use nominal values
     #    - the 'fit_X' conditions are only True if at least one parameter is varying, so that param_fit is True if fit_X is True
-    if args['fit_orbit']:coords = {}
+    if (args['fit_orbit'] & args['fit_spot']):coords = {}
     else:coords = deepcopy(coord_fit)
     for pl_loc in transit_pl:
 

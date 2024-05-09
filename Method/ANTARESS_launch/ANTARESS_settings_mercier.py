@@ -1,6 +1,4 @@
 import numpy as np
-from ANTARESS_general.constant_data import Rjup,Rearth,Rsun,c_light
-from ANTARESS_general.utils import stop
 from copy import deepcopy
 from pathos.multiprocessing import cpu_count
 
@@ -4679,7 +4677,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  &  False
+    gen_dic['fit_ResProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] == 'AUMic':
@@ -4726,15 +4724,24 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Fixed/variable properties   
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['ResProf']['mod_prop']={
-        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.15, 1]},
-        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
-        'veq':{'vary':True,'guess':5, 'bd':[1, 10]},
+        # 'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.15, 1]},
+        'ctrst_ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.15, 1]},
+        # 'FWHM_ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
+        'FWHM_ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[5, 15]},
+        # 'veq':{'vary':True,'guess':5, 'bd':[1, 10]},
+        'veq':{'vary':False,'guess':7.8, 'bd':[1, 10]},
         'cos_istar':{'vary':True,'guess':0.1, 'bd':[-1., 1.]},
-        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
-        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
-        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':15, 'bd':[10, 50]},
-        'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
-        'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
+        # 'cos_istar':{'vary':False,'guess':0.0175, 'bd':[-1., 1.]},
+        # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
+        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
+        # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
+        'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
+        # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':15, 'bd':[10, 50]},
+        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':25, 'bd':[10, 50]},
+        # 'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
+        'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':False, 'guess':0.9, 'bd':[0.3, 0.9]},
+        # 'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__plAUMicb'                   : {'vary':False, 'guess':-0.082, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
 
     #Fitting mode
@@ -4782,7 +4789,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Walkers
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':18,'nsteps':500,'nburn':100}
+        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':18,'nsteps':50,'nburn':10}
 
     #Complex priors        
          
@@ -5324,7 +5331,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
    
         
-##################################################################################################       
+    ##################################################################################################       
     #%%% Module: estimates for planet-occulted profiles and spotted profiles
     #    - use the module to generate:
     # + local profiles that are then used to correct residual profiles from stellar contamination
@@ -5482,6 +5489,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - common to all profiles, ie that they it be large enough to cover the full range of orbital RVs 
     data_dic['Atm']['cont_range']={}
 
+    #%%%% Presence of spots
+    data_dic['Atm']['use_spots']=False
+    data_dic['Atm']['spot_model']=''
 
     #%%%% Plots
 

@@ -97,8 +97,9 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
             #    - overwrite default priors
             if (fit_dic['fit_mode']=='chi2'):
                 if (par in priors_prop) and (priors_prop[par]['mod']=='uf'):
-                    if 'ang' in par and priors_prop[par]['high']>90:stop('Prior error: Spot angular size cannot exceed 90deg. Re-define your priors.')
-                    elif 'veq' in par and priors_prop[par]['low']<0:stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
+                    if ('ang' in par) and (priors_prop[par]['high']>90):stop('Prior error: Spot angular size cannot exceed 90deg. Re-define your priors.')
+                    elif ('veq' in par) and (priors_prop[par]['low']<0):stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
+                    elif ('Tcenter' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
                     p_start[par].min = priors_prop[par]['low']
                     p_start[par].max = priors_prop[par]['high']
 
@@ -118,18 +119,20 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                     if (not np.isinf(p_start[par].max)):uf_bd[1]=p_start[par].max
                     fit_dic['uf_bd'][par]=uf_bd
                 if 'ang' in par and fit_dic['uf_bd'][par][1]>90:fit_dic['uf_bd'][par][1]=90
-                if 'veq' in par and fit_dic['uf_bd'][par][0]<0:fit_dic['uf_bd'][par][0]=0
-                
+                elif 'veq' in par and fit_dic['uf_bd'][par][0]<0:fit_dic['uf_bd'][par][0]=0
+                elif ('Tcenter' in par) and ((fit_dic['uf_bd'][par][0] <= p_start[par].value - fixed_args['Peq']) or (fit_dic['uf_bd'][par][1] >= p_start[par].value + fixed_args['Peq'])):fit_dic['uf_bd'][par] = [p_start[par].value - fixed_args['Peq'] + 0.001, p_start[par].value + fixed_args['Peq'] - 0.001]
+
                 #Priors
                 if (par in priors_prop):
                     fixed_args['varpar_priors'][par] = priors_prop[par]
                     if 'ang' in par and priors_prop[par]['high']>90:stop('Prior error: Spot angular size cannot exceed 90deg. Re-define your priors.')
                     elif 'veq' in par and priors_prop[par]['low']<0:stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
-                          
+                    elif ('Tcenter' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
                 else:
                     if par == 'jitter':varpar_priors=[0.,1e6]
                     elif par == 'veq':varpar_priors=[0.,100.]
                     elif 'ang' in par:varpar_priors=[0.,90.]
+                    elif 'Tcenter' in par:varpar_priors=[p_start[par].value - fixed_args['Peq'] + 0.001, p_start[par].value + fixed_args['Peq'] - 0.001]
                     else:varpar_priors=[-1e6,1e6]
                     if (not np.isinf(p_start[par].min)):varpar_priors[0]=p_start[par].min
                     if (not np.isinf(p_start[par].max)):varpar_priors[1]=p_start[par].max                
@@ -583,6 +586,10 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                         fit_prop_dic['priors'][par]['low'] -= fixed_args['spot_crosstime_supp'][inst][vis]
                         fit_prop_dic['priors'][par]['high'] -= fixed_args['spot_crosstime_supp'][inst][vis]
     
+    #Retrieving the rotational period - to ser the priors on the Tcenter and prevent aliases
+    if 'veq' in mod_prop:fixed_args['Peq'] = (2*np.pi*fixed_args['system_param']['star']['Rstar_km'])/(mod_prop['veq']['guess']*24*3600)
+    else:fixed_args['Peq'] = (2*np.pi*fixed_args['system_param']['star']['Rstar_km'])/(fixed_args['system_param']['star']['veq']*24*3600)
+
     #Initializing stellar properties
     if fixed_args['rout_mode']=='IntrProp':    
         fixed_args['grid_dic'] = deepcopy(theo_dic)
@@ -742,6 +749,18 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                      walker_chains_loc=np.load(mcmc_path)['walker_chains'][:,nburn::,:] 
                      fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
                      walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
+
+            #Update crossing times one last time
+            if fixed_args['update_crosstime']:
+                for inst in list(fixed_args['spot_crosstime_supp'].keys()):
+                    for vis in list(fixed_args['spot_crosstime_supp'][inst].keys()):
+                        for ipar, par in enumerate(fixed_args['var_par_list']):
+                            if ('Tcenter' in par) and (inst in par) and (vis in par):
+                                walker_chains[:,:,ipar] += fixed_args['spot_crosstime_supp'][inst][vis]
+                        for par in fixed_args['fixed_par_val']:
+                            if ('Tcenter' in par) and (inst in par) and (vis in par):
+                                fixed_args['fixed_par_val'][par] += fixed_args['spot_crosstime_supp'][inst][vis]
+                fixed_args['update_crosstime'] = False
 
         #Excluding parts of the chains
         if fit_dic['exclu_walk']:

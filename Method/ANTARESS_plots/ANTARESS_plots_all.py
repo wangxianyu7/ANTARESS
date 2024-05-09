@@ -8728,6 +8728,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
             #Initialize a list to store the images used to make the GIF.
             images_to_make_GIF = [] 
+
+            #Initializing a list to store the image paths.
+            filenames = []
             
         else:images_to_make_GIF = None
         
@@ -9474,7 +9477,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
             
             #-----------------------	
-            filename = path_loc+'System'+str(idx_pl)+'_'+str(plot_t)+'.'+plot_dic['system_view']		
+            filename = path_loc+'System'+str(idx_pl)+'_'+str(plot_t)+'.'+plot_dic['system_view']
+            if images_to_make_GIF is not None:filenames += [filename]		
             plt.savefig(filename) 
             plt.close()
             
@@ -9484,9 +9488,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         ### End of loop on plotted timesteps    
 
         #Produce and store the GIF.
-        if images_to_make_GIF is not None:imageio.mimsave(path_loc+'System.gif', images_to_make_GIF,duration=(1000 * 1/plot_set_key['fps']))
-
-
+        if images_to_make_GIF is not None:
+            imageio.mimsave(path_loc+'System.gif', images_to_make_GIF,duration=(1000 * 1/plot_set_key['fps']))
+            for film in filenames:os_system.remove(film)
 
 
 
