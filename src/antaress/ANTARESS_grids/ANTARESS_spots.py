@@ -5,7 +5,6 @@ from copy import deepcopy
 from itertools import product as it_product
 from ..ANTARESS_general.utils import np_poly,stop,check_data
 from ..ANTARESS_grids.ANTARESS_coord import frameconv_skystar_to_star,frameconv_star_to_skystar,frameconv_skyorb_to_skystar,calc_zLOS_oblate
-from ..ANTARESS_analysis.ANTARESS_model_prof import 
 from ..ANTARESS_analysis.ANTARESS_inst_resp import convol_prof
 from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
 from ..ANTARESS_grids.ANTARESS_star_grid import calc_GD, calc_LD, calc_RVrot, calc_Isurf_grid
