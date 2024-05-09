@@ -354,7 +354,8 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'transit_sp':{},
         'bin_mode':{},
         'update_crosstime':False,
-        'fit' : {'chi2':True,'':False,'mcmc':True}[fit_prop_dic['fit_mode']],     
+        'fit' : {'chi2':True,'':False,'mcmc':True}[fit_prop_dic['fit_mode']], 
+        'unthreaded_op':fit_prop_dic['unthreaded_op'],        
         }
    
     #Checks

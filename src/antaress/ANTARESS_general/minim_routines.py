@@ -691,12 +691,21 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
     #Call to MCMC
     st0=get_time()
     n_free=np.shape(fit_dic['initial_distribution'])[1]
-    sampler = emcee.EnsembleSampler(fit_dic['nwalkers'],            #Number of walkers
-                                    n_free,                         #Number of free parameters in the model
-                                    ln_prob_func_mcmc,              #Log-probability function 
-                                    args=[fixed_args],              #Fixed arguments for the calculation of the likelihood and priors
-                                    pool = pool_proc,
-                                    backend=backend)                #Monitor chain progress 
+    if nthreads>1:
+        sampler = emcee.EnsembleSampler(fit_dic['nwalkers'],            #Number of walkers
+                                        n_free,                         #Number of free parameters in the model
+                                        ln_prob_func_mcmc,              #Log-probability function 
+                                        args=[fixed_args],              #Fixed arguments for the calculation of the likelihood and priors
+                                        pool = pool_proc,
+                                        backend=backend)                #Monitor chain progress
+    else:
+        sampler = emcee.EnsembleSampler(fit_dic['nwalkers'],            #Number of walkers
+                                        n_free,                         #Number of free parameters in the model
+                                        ln_prob_func_mcmc,              #Log-probability function 
+                                        args=[fixed_args],              #Fixed arguments for the calculation of the likelihood and priors
+                                        threads = nthreads,
+                                        backend=backend)                #Monitor chain progress
+
 
     #Run MCMC
     #    - possible options:

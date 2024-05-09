@@ -11,13 +11,12 @@ import bindensity as bind
 # from pysme.synthesize import synthesize_spectrum
 import lmfit
 from ctypes import CDLL,c_double,c_int,c_void_p,cast,POINTER
-from os import getcwd
 from ..ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
 from ..ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab
 
 #Define the C function and its parameters used in the optimization
-so_file = getcwd()+"/antaress/ANTARESS_analysis/ResProf_fit.so"
+so_file = "/Users/samsonmercier/anaconda3/envs/antaress_new_env/lib/python3.11/site-packages/antaress/ANTARESS_analysis/ResProf_fit.so"
 myfunctions = CDLL(so_file)
 fun_to_use = myfunctions.C_OS_coadd_loc_line_prof
 fun_to_free = myfunctions.free_gaussian_line_grid

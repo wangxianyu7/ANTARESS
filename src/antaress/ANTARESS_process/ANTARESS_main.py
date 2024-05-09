@@ -765,7 +765,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     gen_dic['all_pl'] = [pl_loc for pl_loc in system_param.keys() if pl_loc!='star']
 
     #Planets considered for transit
-    print('1:', gen_dic['transit_pl'], gen_dic['star_name'])
     gen_dic['studied_pl'] = list(gen_dic['transit_pl'].keys()) 
     txt_print = 'Study of: '+gen_dic['studied_pl'][0]
     if len(gen_dic['studied_pl'])>1:
@@ -1666,6 +1665,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 'inst':inst,
                                 'vis':vis, 
                                 'fit':False,
+                                'unthreaded_op':[],
                                 })
 
 
