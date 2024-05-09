@@ -1,5 +1,12 @@
-Advanced and Neat Techniques for the Accurate Retrieval of Exoplanetary and Stellar Spectra
-*******************************************************************************************
+.. raw:: html
+
+    <style> .orange {color:DarkOrange} </style>
+
+.. role:: orange
+
+:orange:`A`\dvanced and :orange:`N`\eat :orange:`T`\echniques for the :orange:`A`\ccurate :orange:`R`\etrieval of :orange:`E`\xoplanetary and :orange:`S`\tellar :orange:`S`\pectra
+***********************************************************************************************************************************************************************************
+
 
 About ANTARESS
 ==============
@@ -11,17 +18,20 @@ The two main applications of the workflow are the extraction and analysis of pla
 Because the workflow is modular and its concepts are general, it can support new methods, be extended to additional spectrographs, and find a range of applications beyond the proposed scope. Look `here <https://obswww.unige.ch/~bourriev/antaress/doc/html/contributions.html>`_ if you are interested in collaborations or contributions to ``ANTARESS``.
 
 Please cite:
-    - TBD: if you use ANTARESS for any purpose.
-    - TBD: if you use ANTARESS to extract and analyze planetary spectra.
-    - TBD: if you use ANTARESS to extract and analyze spotted stellar spectra.
+
+- TBD: if you use ``ANTARESS`` for any purpose.
+- TBD: if you use ``ANTARESS`` to extract and analyze planetary spectra.
+- TBD: if you use ``ANTARESS`` to extract and analyze spotted stellar spectra.
 
 Documentation
 =============
 
 .. toctree::
    :maxdepth: 2
+   :caption: Contents:
 
-   installation
-   getting_started
-   notebooks
-   documentation
+   Fixed_files/installation
+   Fixed_files/contributions
+   Fixed_files/getting_started
+   Fixed_files/notebooks
+   Fixed_files/documentation

@@ -36,7 +36,6 @@ Build distribution:
   extends: .setup_env
   stage: build
   script:
-#    - python setup.py sdist
     - python -m build
   artifacts:
     paths:
@@ -82,7 +81,8 @@ Release and deploy on Production:
     - git config --global user.email ''
     - git remote set-url origin "https://gitlab-ci-token:$RELEASE_TOKEN@gitlab.unige.ch/bourrier/${PROJECT_NAME}.git"
     # Tag (update version number in pyproject.toml)
-    - VERSION=$(grep version pyproject.toml | sed -e 's/.*version = "\([^"]*\)"/\1/')
+    #- VERSION=$(grep version pyproject.toml | sed -e 's/.*version = "\([^"]*\)"/\1/')
+    - VERSION=$(sed -n -e 's/^version = "\([^"]*\)"/\1/p' pyproject.toml)
     - TAG_VERSION="v$VERSION"
     - git tag -a "$TAG_VERSION" -m "Release $PROJECT_NAME $TAG_VERSION"
     - git push origin "$TAG_VERSION" --quiet -o ci.skip

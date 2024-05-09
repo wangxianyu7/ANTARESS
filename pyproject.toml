@@ -1,10 +1,12 @@
+#Providing pip with what is necessary for installation and usage of Python package.
+
 [build-system]
 requires = ["setuptools >= 61.0", "wheel", "numpy"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "antaress"
-version = "1.0.10"
+version = "1.1.1"
 authors = [
   { name = "Vincent Bourrier", email = "vincent.bourrier@unige.ch" },
 ]
@@ -14,10 +16,30 @@ requires-python = ">=3.8"
 classifiers = [
   "Programming Language :: Python :: 3",
   "License :: OSI Approved :: GNU Lesser General Public License v3 or later (LGPLv3+)",
-  "Operating System :: MacOS",
+  "Operating System :: OS Independent",
 ]
-dependencies = ["numpy", "scipy"]
+dependencies = [
+  "numpy>=1.16",
+  "scipy",
+  "matplotlib",
+  "imageio",
+  "pathos",
+  "mpmath",
+  "lmfit",
+  "batman-package",
+  "astropy",
+  "emcee",
+  "pandas",
+  "dace-query",
+  "statsmodels",
+  "bindensity",  
+  "PyAstronomy",
+  "pysme-astro",
+  ]
 
 [project.urls]
 Homepage = "https://gitlab.unige.ch/bourrier/ANTARESS"
 Issues = "https://gitlab.unige.ch/bourrier/ANTARESS/-/issues"
+
+[project.scripts]
+antaress = "antaress.ANTARESS_launch.ANTARESS_launcher:ANTARESS_launcher" 

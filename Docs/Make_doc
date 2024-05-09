@@ -1,26 +1,15 @@
 #!/bin/bash 
 echo "Generating ANTARESS doc files"
 
-MAKE_PATH=`pwd`
-echo "$MAKE_PATH"
-if [ "$MAKE_PATH" = "/builds/bourrier/antaress/Docs" ]
-then
-  DIR_PATH="/builds/bourrier/antaress"
-else
-  DIR_PATH="/Users/bourrier/Travaux/ANTARESS"
-fi
+#Delete existing package files
+rm -rf ../Docs/source/Package_files/antaress*
 
-#Create rst files from py files in Method/
-echo "  From py files in Method"
-sphinx-apidoc --force -o "$DIR_PATH/Docs/source/" "$DIR_PATH/Method/"
-
-
-#Create rst files from py files in Method/ANTARESS_* directories
-for file in `find $DIR_PATH/Method -type d -name "ANTARESS_*"`
-do
-  echo "  From py files in $file"
-  sphinx-apidoc --force -o "$DIR_PATH/Docs/source/" "$file"
-done
+#Generation of .rst files
+#    - the call on the overall package below generates one .rst per sub-package (ie, directories containing __init__.py), which then yields an html page with all modules (python files) together
+#      the call on individual packages would generate .rst files in which the paths of the modules associated with the sub-packages are not complete (.. automodule:: package.module instead of antaress.package.module), thus falling the module import later on.
+#    - the --separate option generates independent .rst files per module, which are then called through fixed .rst files so that the html sidebar displays custom names from those files rather than the full path of the packages 
+sphinx-apidoc --force --separate -o "../Docs/source/Package_files/" "../src/antaress/"        
 
 #Generate html files
+#    - existing html files are deleted first
 make clean html

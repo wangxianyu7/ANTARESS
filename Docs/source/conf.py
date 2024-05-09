@@ -7,30 +7,21 @@
 # -- Path setup --------------------------------------------------------------
 import os
 import sys
-import glob
-
-#Identify whether doc is generated on gitlab or locally
-conf_path = os.path.abspath(os.path.dirname(__file__))
-if conf_path=='/builds/bourrier/antaress/Docs/source':
-	sys.path.insert(0, os.path.abspath('/builds/bourrier/antaress/Method/'))
-	for code_dir in glob.glob('/builds/bourrier/antaress/Method/ANTARESS_*/'):
-		sys.path.insert(0, os.path.abspath(code_dir))
-
-	#Get release version
-	with open('/builds/bourrier/antaress/pyproject.toml', 'r') as f:
-		for line in f.readlines():
-			if 'version' in line:
-				release = line.split('= "')[1].split('"')[0]
-else:
-	sys.path.insert(0, os.path.abspath('/Users/bourrier/Travaux/ANTARESS/Method/'))
-	for code_dir in glob.glob('/Users/bourrier/Travaux/ANTARESS/Method/ANTARESS_*/'):
-		sys.path.insert(0, os.path.abspath(code_dir))
+import antaress
+sys.path.insert(0, os.path.abspath('../../src/antaress/'))
 
 # -- Project information -----------------------------------------------------
 project = 'ANTARESS'
 copyright = '2023-2024, V. Bourrier'
 author = 'V. Bourrier & contributors'
 
+#Get release version
+with open('../../pyproject.toml', 'r') as f:
+    for line in f.readlines():
+        if 'version' in line:
+            release = line.split('= "')[1].split('"')[0]  
+            break
+    
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
@@ -79,4 +70,19 @@ html_theme = "sphinx_book_theme"
 html_copy_source = True
 html_show_sourcelink = True
 html_sourcelink_suffix = ""
-html_theme_options = {'gitlab_url': 'https://gitlab.unige.ch/bourrier/antaress'}
+html_theme_options = {
+    "gitlab_url": "https://gitlab.unige.ch/bourrier/antaress",
+    "logo": {
+        "text": "ANTARESS "+release,
+    },
+    "navigation_with_keys":True,    
+    }
+html_logo = "./Fixed_files/antares_webp.png"
+html_favicon = "./Fixed_files/antares_webp.ico"
+
+html_sidebars = {
+    "**": ["navbar-logo.html","search-field.html","sbt-sidebar-nav.html"]
+}
+
+
+
