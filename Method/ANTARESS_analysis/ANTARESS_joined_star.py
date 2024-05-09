@@ -1237,7 +1237,15 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #Initializing best-fit stellar profile generation
     fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],data_dic['DI']['spots_prop'],theo_dic,fixed_args['system_param']['star'],p_final)
 
+    #Do 2 model calls, to have the model with and without planets
+    #   - With planets
     mod_dic,coeff_line_dic,mod_prop_dic = fixed_args['mod_func'](p_final,fixed_args)
+    #   - Without planets
+    new_fixed_args = deepcopy(fixed_args)
+    for inst in fixed_args['inst_list']:
+        for vis in fixed_args['inst_vis_list'][inst]:
+            new_fixed_args['transit_pl'][inst][vis]=[]
+    mod_dic_nopl = new_fixed_args['mod_func'](p_final,new_fixed_args)[0]
 
     #Save best-fit properties
     #    - with same structure as fit to individual profiles 
@@ -1263,6 +1271,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     prof_fit_dic={
                         'edge_bins':np.array([fixed_args['edge_bins'][inst][vis][isub]]),
                         'flux':np.array([mod_dic[inst][vis][isub]]),
+                        'flux_nopl':np.array([mod_dic_nopl[inst][vis][isub]]),
                         'cond_def_fit':np.array([fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]]),
                         'cond_def_cont':fit_prop_dic[inst][vis]['cond_def_cont_all'][isub]
                         }

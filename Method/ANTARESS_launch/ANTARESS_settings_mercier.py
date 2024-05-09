@@ -4789,7 +4789,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Walkers
     if gen_dic['star_name'] == 'AUMic':
-        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':18,'nsteps':50,'nburn':10}
+        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':18,'nsteps':10,'nburn':2}
 
     #Complex priors        
          
