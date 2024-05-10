@@ -1,10 +1,31 @@
 Notebooks
 =========
 
-Notebooks allow you to run a simplified version of the ``ANTARESS`` workflow. Their purpose is to help you familiarize with ``ANTARESS``. To exploit the workflow to its full capabilities, use the `configuration file <https://gitlab.unige.ch/bourrier/antaress/-/blob/159abec22b58321e4be190880667205c8728a0b7/src/antaress/ANTARESS_launch/ANTARESS_settings.py>`_.
+Motivation
+----------
 
-The following notebooks are available in the namesake `directory <https://gitlab.unige.ch/bourrier/antaress/-/blob/main/Notebooks/>`_:
+Notebooks allow you to run a simplified version of the ``ANTARESS`` workflow. Their purpose is to help you familiarize with ``ANTARESS``. To exploit the workflow to its full capabilities, run its executable with the `configuration files <https://obswww.unige.ch/~bourriev/antaress/doc/html/installation.html>`_.
+
+
+How to
+------
+
+Download ``ANTARESS`` `Notebook directory <https://gitlab.unige.ch/bourrier/antaress/-/blob/main/Notebooks/>`_ 
+
+Install `JupyterLab <https://jupyter.org/install>`_ in the same python environment as ``ANTARESS``.
+
+Launch ``JupyterLab`` from this environment and move to the downloaded Notebook directory. 
+
+Run your chosen notebook among the list below.
+
+
+Possibilities
+-------------
+
+The following notebooks are available:
 
 - `ANTARESS_nbook_mock <https://gitlab.unige.ch/bourrier/antaress/-/blob/main/Notebooks/ANTARESS_nbook_mock.ipynb>`_
     Use to generate a mock CCF dataset.
-    
+
+- `ANTARESS_nbook_RMR <https://gitlab.unige.ch/bourrier/antaress/-/blob/main/Notebooks/ANTARESS_nbook_RMR.ipynb>`_
+    Use to perform a Rossiter-McLaughlin `Revolutions` of a CCF dataset.    

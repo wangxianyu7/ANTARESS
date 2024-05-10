@@ -20,7 +20,7 @@ from scipy import stats
 from copy import deepcopy
 from lmfit import minimize, report_fit
 from scipy import special
-from ..ANTARESS_plots.utils_plots import custom_axis,autom_y_tick_prop
+from ..ANTARESS_plots.utils_plots import custom_axis,autom_tick_prop
 from ..ANTARESS_general.utils import np_where1D,stop,npint,init_parallel_func,get_time
 
     
@@ -1375,7 +1375,7 @@ def quantile(x, q, weights=None):
 
 
  
-def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,calc_quant=True):
+def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,calc_quant=True,verb_shift=''):
     r"""**MCMC post-proc: best fit**
 
     Calculates best estimates and confidence intervals for fitted MCMC parameters.
@@ -1504,33 +1504,33 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,c
     #----------------------------------------------------        
 
     #Print results
-    if verbose:
-        print('-------------------------------')      
-        print('Results')
-        print('-------------------------------')
-        print("Chain covariance: "+str(np.cov(np.transpose(merged_chain))))
-        print("Chain coefficient correlations: "+str(np.corrcoef(np.transpose(merged_chain))))
-    if print_par:
-        print('-------------------------------')                
+    if verbose or print_par:
+        print(verb_shift+'-------------------------------') 
+        print(verb_shift+'> Results')       
+    if verbose:    
+        print(verb_shift+"  Chain covariance: "+str(np.cov(np.transpose(merged_chain))))
+        print(verb_shift+"  Chain coefficient correlations: "+str(np.corrcoef(np.transpose(merged_chain))))
+    if print_par:              
         for ipar,parname in enumerate(fixed_args['var_par_list']):
-            print('Parameter '+parname)
-            print('  > med :'+"{0:.8e}".format(med_par[ipar]))            
+            if ipar>0:print(verb_shift+'-------------------------------') 
+            print(verb_shift+'Parameter '+parname)
+            print(verb_shift+'  med : '+"{0:.8e}".format(med_par[ipar]))            
             for sig in fit_dic['sig_list']:
-                print('  > '+sig+' err : -'+"{0:.3e}".format(sig_par_err[sig][0,ipar])+' +'+"{0:.3e}".format(sig_par_err[sig][1,ipar]))  
-                print('  > '+sig+' int : ['+"{0:.3e}".format(sig_par_val[sig][0,ipar])+' ; '+"{0:.3e}".format(sig_par_val[sig][1,ipar])+']')  
+                print(verb_shift+'  quant. '+sig+' err : -'+"{0:.3e}".format(sig_par_err[sig][0,ipar])+' +'+"{0:.3e}".format(sig_par_err[sig][1,ipar]))  
+                print(verb_shift+'            int : ['+"{0:.3e}".format(sig_par_val[sig][0,ipar])+' ; '+"{0:.3e}".format(sig_par_val[sig][1,ipar])+']')  
             if fit_dic['HDI'] is not None:
-                print('  > HDI '+fit_dic['HDI']+' err: '+str(HDI_sig_txt_par[ipar]))
-                print('  > HDI '+fit_dic['HDI']+' int : '+str(HDI_interv_txt[ipar]))
+                print(verb_shift+'  HDI    '+fit_dic['HDI']+' err : '+str(HDI_sig_txt_par[ipar]))
+                print(verb_shift+'            int : '+str(HDI_interv_txt[ipar]))
             if parname in fit_dic['conf_limits']:
                 for lev in fit_dic['conf_limits'][parname]['level']: 
-                    print('  > '+fit_dic['conf_limits'][parname]['limits'][lev] )
+                    print(verb_shift+'  > '+fit_dic['conf_limits'][parname]['limits'][lev] )
 
     return p_best,med_par,sig_par_val,sig_par_err,HDI_interv,HDI_interv_txt,HDI_sig_txt_par  
     
     
 
    
-def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbose=True):    
+def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbose=True,verb_shift=''):    
     r"""**MCMC post-proc: raw chains**
 
     Process and analyze MCMC chains of original parameters.
@@ -1585,7 +1585,7 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbos
     if (not os_system.path.exists(fit_dic['save_dir'])):os_system.makedirs(fit_dic['save_dir'])
     if (fit_dic['save_MCMC_chains']!=''):
         MCMC_plot_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],walker_chains,burnt_chains,fit_dic['nsteps'],fit_dic['nsteps_pb_walk'],
-                    fit_dic['nwalkers'],fit_dic['nburn'],keep_chain,low_thresh_par_val,high_thresh_par_val,fit_dic['exclu_walk_autom'],verbose=verbose)
+                    fit_dic['nwalkers'],fit_dic['nburn'],keep_chain,low_thresh_par_val,high_thresh_par_val,fit_dic['exclu_walk_autom'],verbose=verbose,verb_shift=verb_shift)
      
     #Remove chains if required
     if (False in keep_chain):
@@ -1635,11 +1635,11 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbos
         fit_dic['nsteps_final_merged'],merged_chain=MCMC_thin_chains(corr_length,merged_chain)
 
     #Best-fit parameters for model calculations
-    p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=verbose,print_par=verbose,calc_quant=fit_dic['calc_quant'])
+    p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=verbose,print_par=fit_dic['print_par'],calc_quant=fit_dic['calc_quant'],verb_shift=verb_shift)
 
     #Plot merged chains for MCMC parameters
     if (fit_dic['save_MCMC_chains']!=''):
-        MCMC_plot_merged_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],merged_chain,fit_dic['nsteps_final_merged'],verbose=verbose)
+        MCMC_plot_merged_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],merged_chain,fit_dic['nsteps_final_merged'],verbose=verbose,verb_shift=verb_shift)
  
     #Save 1-sigma and envelope samples for plot in ANTARESS_main
     if fit_dic['calc_envMCMC'] or fit_dic['calc_sampMCMC']:
@@ -1671,7 +1671,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
     #    - define confidence levels to be printed
     #    - use the modified chains that can contain different parameters than those used in the model
     #      the best-fit model will not be modified, but the PDFs, best-fit parameters and associated uncertainties will be derived from the modified chains
-    p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=False,print_par=False,calc_quant=fit_dic['calc_quant'])
+    p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=False,print_par=False,calc_quant=fit_dic['calc_quant'],verb_shift=fit_dic['verb_shift'])
 
     #Save merged chains for derived parameters and various estimates
     data_save = {'merged_chain':merged_chain,'HDI_interv':fit_dic['HDI_interv'],'sig_parfinal_val':fit_dic['sig_parfinal_val']['1s'],'var_par_list':fixed_args['var_par_list'],'var_par_names':fixed_args['var_par_names'],'med_parfinal':fit_dic['med_parfinal']}
@@ -1760,7 +1760,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
 #%%%% MCMC plots
 ##################################################################################################   
  
-def MCMC_plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,burnt_chains,nsteps,nsteps_pb_walk,nwalkers,nburn,keep_chain,low_thresh_par_val,high_thresh_par_val,exclu_walk_autom,verbose=True):
+def MCMC_plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,burnt_chains,nsteps,nsteps_pb_walk,nwalkers,nburn,keep_chain,low_thresh_par_val,high_thresh_par_val,exclu_walk_autom,verbose=True,verb_shift=''):
     r"""**MCMC post-proc: walker chains plot**
 
     Plots the chains for each fitted parameter over all walkers. 
@@ -1773,8 +1773,8 @@ def MCMC_plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,bu
     
     """
     if verbose:
-        print(' -----------------------------------')
-        print(' > Plotting chains')
+        print(verb_shift+'-----------------------------------')
+        print(verb_shift+'> Plotting walker chains')
 
     #Font size
     font_size=14
@@ -1816,7 +1816,7 @@ def MCMC_plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,bu
         y_max = np.max(chain[:,:,ipar])
         dy_range = y_max-y_min
         y_range = [y_min-0.05*dy_range,y_max+0.05*dy_range]    
-        ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+        ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
         custom_axis(plt,position=margins,
                     y_range=y_range,dir_y='out', 
                     ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
@@ -1830,7 +1830,7 @@ def MCMC_plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,bu
 
 
 
-def MCMC_plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,merged_chain,nsteps_final_merged,verbose=True):
+def MCMC_plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,merged_chain,nsteps_final_merged,verbose=True,verb_shift=''):
     r"""**MCMC post-proc: merged chains plot**
 
     Plots the cleaned, merged chains from all workers for each fitted parameter.
@@ -1843,8 +1843,8 @@ def MCMC_plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,m
     
     """
     if verbose:
-        print(' -----------------------------------')
-        print(' > Plotting merged chains')
+        print(verb_shift+'-----------------------------------')
+        print(verb_shift+'> Plotting merged chains')
 
     #Font size
     font_size=14
@@ -1877,7 +1877,7 @@ def MCMC_plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,m
         y_max = np.max(merged_chain[x_tab,ipar])
         dy_range = y_max-y_min
         y_range = [y_min-0.05*dy_range,y_max+0.05*dy_range]    
-        ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+        ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
         custom_axis(plt,position=margins,
                     # x_range=x_range,
                     y_range=y_range,dir_y='out', 

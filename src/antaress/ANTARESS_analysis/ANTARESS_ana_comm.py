@@ -314,6 +314,9 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
     #Fit dictionary
     fit_dic={
         'merit':{},
+        'verbose':fit_prop_dic['verbose'],
+        'verb_shift':'   ',
+        'print_par':fit_prop_dic['print_par'],
         'fit_mode':fit_prop_dic['fit_mode'],
         'uf_bd':{},
         'nx_fit':0,
@@ -736,7 +739,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
             if (len(fixed_args['prior_func'])>0):fixed_args['global_ln_prior_func']=global_ln_prior_func
 
             #Call to MCMC
-            walker_chains=call_MCMC(mcmc_threads,fixed_args,fit_dic,run_name=fit_dic['run_name'])
+            walker_chains=call_MCMC(mcmc_threads,fixed_args,fit_dic,run_name=fit_dic['run_name'],verbose=fit_dic['verbose'])
                
         #---------------------------------------------------------------  
        
@@ -876,7 +879,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         #    - 1-sigma and envelope samples for plot
         #    - plot of model parameter chains
         #    - save file 
-        p_final,merged_chain,par_sample_sig1,par_sample=postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,mcmc_threads,fixed_args['par_names'])
+        p_final,merged_chain,par_sample_sig1,par_sample=postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,mcmc_threads,fixed_args['par_names'],verbose=fit_dic['verbose'],verb_shift=fit_dic['verb_shift']+'    ')
 
     ########################################################################################################  
     #No fit is performed: guess parameters are kept

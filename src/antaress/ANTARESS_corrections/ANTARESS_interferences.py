@@ -15,7 +15,7 @@ from scipy import stats
 import itertools
 from scipy.signal import savgol_filter
 from matplotlib.ticker import MultipleLocator
-from ..ANTARESS_plots.utils_plots import autom_x_tick_prop,autom_y_tick_prop,custom_axis
+from ..ANTARESS_plots.utils_plots import autom_tick_prop,custom_axis
 from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof
 from ..ANTARESS_grids.ANTARESS_coord import get_timeorbit,calc_tr_contacts
 from ..ANTARESS_analysis.ANTARESS_ana_comm import model_par_names,par_formatting
@@ -2425,8 +2425,8 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             for cont_ph in contact_phases:plt.plot([cont_ph,cont_ph],y_range_plot,color='black',linestyle=':',lw=0.5,zorder=0)
 
                             #Frame
-                            xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_plot[1]-x_range_plot[0]) 
-                            ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_plot[1]-y_range_plot[0]) 
+                            xmajor_int,xminor_int,xmajor_form=autom_tick_prop(x_range_plot[1]-x_range_plot[0]) 
+                            ymajor_int,yminor_int,ymajor_form=autom_tick_prop(y_range_plot[1]-y_range_plot[0]) 
                             custom_axis(plt,position=[0.15,0.15,0.95,0.7],
                                         x_range=x_range_plot,xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
                                         y_range=y_range_plot,ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,dir_y='out',
@@ -2981,8 +2981,8 @@ def plot_screening(ibin2exp_fit,ibin2ord_fit,min_plot,max_plot,gen_dic,Fr_bin_fi
     plt.text(x_range[1]-0.1*dx_range,y_range[1]-0.2*dy_range,'RMS ='+"{0:.4e}".format(rms),verticalalignment='center', horizontalalignment='left',fontsize=9.,zorder=10,color='black')     
  
     #Frame
-    xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(x_range[1]-x_range[0])
-    ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(y_range[1]-y_range[0])  
+    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(x_range[1]-x_range[0])
+    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(y_range[1]-y_range[0])  
     xmajor_int = 1.
     xminor_int = 0.5
     custom_axis(plt,position=[0.15,0.15,0.95,0.7],

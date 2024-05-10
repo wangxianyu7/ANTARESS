@@ -1350,7 +1350,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     else:idx_ord_skysub = gen_dic['fibB_corr'][inst][vis]
                     
                 else:vis_path_skysub_exp = None
-                
+              
                 #Path of visits exposures
                 if inst not in ['EXPRES']:vis_path+='A'
                 vis_path_exp = np.array(glob.glob(vis_path+'.fits'))
@@ -1660,6 +1660,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 'type':data_inst[vis]['type'],  
                                 'nord':data_inst['nord'],
                                 'nthreads':mock_dic['nthreads'], 
+                                'unthreaded_op':mock_dic['unthreaded_op'], 
                                 'resamp_mode' : gen_dic['resamp_mode'], 
                                 'conv2intr':False,
                                 'inst':inst,
@@ -1825,7 +1826,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         if (inst in mock_dic['gcal']):mock_gcal = mock_dic['gcal'][inst]
                         else:mock_gcal = 1.
                         DI_prof_exp_Ftrue = mock_gcal*DI_prof_exp*coord_dic[inst][vis]['t_dur'][iexp] 
-
+                        
                         #Keplerian motion and systemic shift of the disk-integrated profile 
                         #    - we shift profiles from the star rest frame (source) to the solar barycentric rest frame (receiver)
                         #      see gen_specdopshift() :
@@ -2554,13 +2555,15 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         for vis in data_dic[inst]['visit_list']:     
             data_load = np.load(gen_dic['save_data_dir']+'Processed_data/Global/'+inst+'_'+vis+'.npz',allow_pickle=True)
             data_dic[inst][vis]=data_load['data_add'].item()
+            data_dic[inst][vis]['proc_DI_data_paths']  = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'
+            data_dic[inst][vis]['proc_com_data_paths'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com'
             coord_dic[inst][vis]=data_load['coord_add'].item()
             data_prop[inst][vis]=data_load['data_prop_add'].item() 
             gen_dic[inst][vis]=data_load['gen_add'].item()
             data_dic['DI'][inst][vis]=data_load['DI_data_add'].item()
             theo_dic[inst][vis]={}
             data_dic['Atm'][inst][vis]={} 
-
+            
     #Default transit model
     if (inst not in data_dic['DI']['transit_prop']):data_dic['DI']['transit_prop'][inst] = {}
 
