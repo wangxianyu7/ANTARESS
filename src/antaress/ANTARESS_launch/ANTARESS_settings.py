@@ -223,6 +223,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     mock_dic['nthreads'] = int(0.8*cpu_count())       
     
     
+    #%%%%% Unthreaded operations
+    #    - all operations are multi-threaded by default, but overheads of sharing data between threads may counterbalance the benefits of threading the model
+    #    - select here which operations not to thread:
+    # + 'prof_grid'
+    mock_dic['unthreaded_op'] = []    
+    
+    
     #%%%% Defining artificial visits
     #    - exposures are defined for each instrument/visit
     #    - exposures can be defined
@@ -1878,6 +1885,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     data_dic['DI']['verbose']= False
+    data_dic['DI']['print_par'] = True
 
     
     #%%%%% Monitor MCMC
@@ -2044,6 +2052,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     glob_fit_dic['DIProp']['verbose'] = False
+    glob_fit_dic['DIProp']['print_par'] = True
 
 
     #%%%%% Monitor MCMC
@@ -3202,6 +3211,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     data_dic['Intr']['verbose'] = False  
+    data_dic['Intr']['print_par'] = False  
     
     
     #%%%%% Monitor MCMC
@@ -3299,6 +3309,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%% Multi-threading
     glob_fit_dic['IntrProp']['nthreads'] = int(0.8*cpu_count())
+
+    
+    #%%%%% Unthreaded operations
+    #    - all operations are multi-threaded by default, but overheads of sharing data between threads may counterbalance the benefits of threading the model
+    #    - select here which operations not to thread:
+    # + 'emcee'
+    glob_fit_dic['IntrProp']['unthreaded_op'] = []  
     
     
     #%%%% Fitted data
@@ -3353,7 +3370,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     glob_fit_dic['IntrProp']['verbose'] = False
-
+    glob_fit_dic['IntrProp']['print_par'] = True
+    
 
     #%%%%% Monitor MCMC
     glob_fit_dic['IntrProp']['progress']= True
@@ -3754,6 +3772,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     glob_fit_dic['IntrProf']['verbose']= False
+    glob_fit_dic['IntrProf']['print_par'] = True
 
     
     #%%%%% Monitor MCMC
@@ -4283,6 +4302,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     data_dic['Atm']['verbose'] = False  
+    data_dic['Atm']['print_par'] = True
     
     
     #%%%%% Monitor MCMC
@@ -4409,6 +4429,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     glob_fit_dic['AtmProp']['verbose'] = False
+    glob_fit_dic['AtmProp']['print_par'] = True
     
     
     #%%%%% Monitor MCMC
@@ -4560,6 +4581,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Printing fits results
     glob_fit_dic['AtmProf']['verbose']= False
+    glob_fit_dic['AtmProf']['print_par'] = True
 
     
     #%%%%% Monitor MCMC

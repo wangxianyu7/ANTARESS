@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+from matplotlib.ticker import MultipleLocator, FormatStrFormatter,ScalarFormatter
 import matplotlib.colors as colors
 import numpy as np
 from copy import deepcopy
 from ..ANTARESS_general.utils import stop
 
 
-'''
-Symbols
-'''
+#%% Symbols
 degree_sign= u'\N{DEGREE SIGN}'
 
 
-'''
-Routine to define axis properties
-'''
+#%% Routines
+
 def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,position=None,colback=None,
 		    x_mode=None,y_mode=None,z_mode=None,
 		    x_title=None,y_title=None,z_title=None,x_title_dist=None,y_title_dist=None,z_title_dist=None,
@@ -33,12 +30,18 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
             hide_axis=None,
             right_axis=False,secy_title=None,secy_range=None,secy_title_dist=None,no_secyticks=None,secymajor_int=None,dir_secy=None,secyfont_size=None,
             secymajor_length=None,secymajor_thick=None,secyminor_length=None,secyminor_thick=None,secymajor_form=None,secyminor_int=None,secylab_col=None):
+    r"""**Plot axis.**
     
-						
-#TODO: en fait on peut ajouter dans une figure des sousplots ou on veut avec
-#ax=fig.add_axes([left,right,width,height])    en fraction de 0,1
-							
-					
+    General routines to set up plot axis to default or user-selected values.  
+    
+    Args:
+        TBD
+    
+    Returns:
+        None
+    
+    """ 
+		
     #Font
     #    - thick: 'light', 'normal', 'medium', 'semibold', 'bold', 'heavy', 'black'					
     font_size_loc=font_size if font_size is not None else 10.
@@ -48,18 +51,13 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
     plt.rcParams['pdf.fonttype'] = 42
 
     #Axis
-    if ax==None:
-        ax=plt.gca()
+    if ax==None:ax=plt.gca()
 
     #Axis frame position
     #    - corresponds to the corners of the image
     if position is not None:
         if fig is None:plt.subplots_adjust(left=position[0],bottom=position[1],right=position[2],top=position[3]) 
         else:fig.subplots_adjust(left=position[0],bottom=position[1],right=position[2],top=position[3]) 
-
-    #Set axis to log mode if required
-    if x_mode=='log':ax.set_xscale('log')
-    if y_mode=='log':ax.set_yscale('log')
 
     #Axis ranges
     if x_range is not None:ax.set_xlim([x_range[0], x_range[1]])
@@ -69,8 +67,15 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
     else:y_range = ax.get_ylim()
     dy_range = y_range[1]-y_range[0]
     if z_range is not None:ax.set_zlim([z_range[0], z_range[1]])
-    # else:z_range = ax.get_zlim()
-    # dz_range = z_range[1]-z_range[0]
+
+    #Set axis to log mode if required
+    if x_mode=='log':
+        ax.set_xscale('log')
+    if y_mode=='log':
+        ax.set_yscale('log')
+    if z_mode=='log':
+        ax.set_zscale('log')
+
 
     #Axis titles	
     xfont_size_loc=xfont_size if xfont_size is not None else 10.
@@ -138,8 +143,12 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
         
         #Major ticks label format		
         if xmajor_form is not None:ax.xaxis.set_major_formatter(FormatStrFormatter(xmajor_form))
+        if x_mode=='log':
+            if xmajor_form is not None:ax.xaxis.set_major_formatter(ScalarFormatter(xmajor_form))
+            else:ax.xaxis.set_major_formatter(ScalarFormatter())
 	
 	    #Interval between minor ticks	
+        if x_mode=='log':xminor_int=None
         if xminor_int is not None:ax.xaxis.set_minor_locator(MultipleLocator(xminor_int))		
 
         #Ticks labels color
@@ -179,8 +188,12 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
 
    	    #Major ticks label format		
         if ymajor_form is not None:ax.yaxis.set_major_formatter(FormatStrFormatter(ymajor_form))	
-  
+        if y_mode=='log':
+            if ymajor_form is not None:ax.yaxis.set_major_formatter(ScalarFormatter(ymajor_form))
+            else:ax.yaxis.set_major_formatter(ScalarFormatter())    
+
 	    #Interval between minor ticks	
+        if y_mode=='log':yminor_int=None
         if yminor_int is not None:
             n_ticks = int(ymajor_int/yminor_int)
             if n_ticks>50:yminor_int = ymajor_int/50.
@@ -298,19 +311,43 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
               
     return None 
 	
-'''
-Scaling factor
-'''
+
 def scaled_title(sc_fact10,y_title):
+    r"""**Title scaling.**
+    
+    Applies power-of-ten scaling to title value.  
+    
+    Args:
+        sc_fact10 (int): power of ten scaling
+        y_title (str): title
+    
+    Returns:
+        y_title (str): title preceded by scaling value
+    
+    """ 
     if sc_fact10!=0.:
         sc_sign='-' if sc_fact10<0. else ''
         y_title='10$^{'+sc_sign+'%i' % abs(sc_fact10)+'}$ '+y_title
     return y_title                        
 
-'''
-Automatic range extension
-'''
+
+
 def autom_range_ext(ax_range_in,ax_min,ax_max,ext_fact=0.05):  
+    r"""**Automatic range.**
+    
+    Defines axis range automatically.  
+    
+    Args:
+        ax_range_in (list): axis range to be set, if user-defined
+        ax_min (float): minimum value on the axis
+        ax_max (float): maximum value on the axis
+        ext_fact (float): extension of axis on both sides compared to min and max values
+    
+    Returns:
+        ax_range (list): axis range
+    
+    """ 
+
     if ax_range_in is None:
         ax_range = np.array([ax_min,ax_max])   
         dx_range=ax_range[1]-ax_range[0]
@@ -320,76 +357,79 @@ def autom_range_ext(ax_range_in,ax_min,ax_max,ext_fact=0.05):
     else:ax_range=ax_range_in
     return ax_range
 
-'''
-Automatic tick definition
-'''
-def autom_x_tick_prop(dax_range):   
-    if dax_range>1000.1:axmajor_int,axminor_int,axmajor_form=500.,100.,'%i' 
-    elif dax_range>200.1:axmajor_int,axminor_int,axmajor_form=100.,10.,'%i'     
-    elif dax_range>100.1:axmajor_int,axminor_int,axmajor_form=50.,10.,'%i' 
-    elif dax_range>50.1:axmajor_int,axminor_int,axmajor_form=10.,1.,'%i' 
-    elif dax_range>20.1:axmajor_int,axminor_int,axmajor_form=5.,1.,'%i' 
-    elif dax_range>15.1:axmajor_int,axminor_int,axmajor_form=4.,1,'%i'    
-    elif dax_range>10.1:axmajor_int,axminor_int,axmajor_form=2.,0.5,'%i'
-    elif dax_range>3.1:axmajor_int,axminor_int,axmajor_form=1.,0.5,'%i'     
-    elif dax_range>1.1:axmajor_int,axminor_int,axmajor_form=5e-1,1e-1,'%.1f'     
-    elif dax_range>5.1e-1:axmajor_int,axminor_int,axmajor_form=2e-1,1e-1,'%.1f'    
-    elif dax_range>1.1e-1:axmajor_int,axminor_int,axmajor_form=5e-2,1e-2,'%.2f'
-    elif dax_range>4.1e-2:axmajor_int,axminor_int,axmajor_form=1e-2,5e-3,'%.2f'
-    elif dax_range>1.1e-2:axmajor_int,axminor_int,axmajor_form=5e-3,1e-3,'%.3f'
-    elif dax_range>5.1e-3:axmajor_int,axminor_int,axmajor_form=2e-3,1e-3,'%.3f'    
-    elif dax_range>2.1e-3:axmajor_int,axminor_int,axmajor_form=1e-3,5e-4,'%.3f'      
-    elif dax_range>5.1e-4:axmajor_int,axminor_int,axmajor_form=5e-4,1e-4,'%.4f' 
-    elif dax_range>1.1e-4:axmajor_int,axminor_int,axmajor_form=2e-4,1e-4,'%.4f' 
-    else:axmajor_int,axminor_int,axmajor_form=None,None,None 
+
+def autom_tick_prop(dax_range):
+    r"""**Automatic ticks.**
     
+    Defines tick spacings and format automatically.  
+    
+    Args:
+        dax_range (float): axis extension
+    
+    Returns:
+        axmajor_int (float): major ticks spacing
+        axminor_int (float): minor ticks spacing
+        axmajor_form (str): major tick format
+    
+    """ 
+    if   dax_range>1e11+0.1:axmajor_int,axminor_int,axmajor_form=5e10,1e10,'%.1e' 
+    elif dax_range>1e10+0.1:axmajor_int,axminor_int,axmajor_form=5e9,1e9,'%.1e' 
+    elif dax_range>1e9+0.1: axmajor_int,axminor_int,axmajor_form=5e8,1e8,'%.1e'     
+    elif dax_range>1e8+0.1: axmajor_int,axminor_int,axmajor_form=5e7,1e7,'%.1e'     
+    elif dax_range>1e7+0.1: axmajor_int,axminor_int,axmajor_form=5e6,1e6,'%.1e' 
+    elif dax_range>1e6+0.1: axmajor_int,axminor_int,axmajor_form=5e5,1e5,'%.1e' 
+    elif dax_range>1e5+0.1: axmajor_int,axminor_int,axmajor_form=5e4,1e4,'%.1e' 
+    elif dax_range>1e4+0.1: axmajor_int,axminor_int,axmajor_form=5000.,1000.,'%.1e' 
+    elif dax_range>5e3+0.1: axmajor_int,axminor_int,axmajor_form=1000.,500.,'%i'     
+    elif dax_range>1e3+0.1: axmajor_int,axminor_int,axmajor_form=500.,100.,'%i' 
+    elif dax_range>500.1:   axmajor_int,axminor_int,axmajor_form=200.,50.,'%i' 
+    elif dax_range>200.1:   axmajor_int,axminor_int,axmajor_form=100.,10.,'%i'     
+    elif dax_range>100.1:   axmajor_int,axminor_int,axmajor_form=50.,10.,'%i' 
+    elif dax_range>50.1:    axmajor_int,axminor_int,axmajor_form=10.,1.,'%i' 
+    elif dax_range>20.1:    axmajor_int,axminor_int,axmajor_form=5.,1.,'%i' 
+    elif dax_range>15.1:    axmajor_int,axminor_int,axmajor_form=4.,1,'%i'    
+    elif dax_range>10.1:    axmajor_int,axminor_int,axmajor_form=2.,1.,'%i'
+    elif dax_range>6.1:     axmajor_int,axminor_int,axmajor_form=2.,1.,'%i' 
+    elif dax_range>3.5:     axmajor_int,axminor_int,axmajor_form=1.,0.5,'%i'  
+    elif dax_range>3.1:     axmajor_int,axminor_int,axmajor_form=1.,0.5,'%i'     
+    elif dax_range>1.1:     axmajor_int,axminor_int,axmajor_form=5e-1,1e-1,'%.1f'     
+    elif dax_range>7.1e-1:  axmajor_int,axminor_int,axmajor_form=2e-1,5e-2,'%.1f'     
+    elif dax_range>5.1e-1:  axmajor_int,axminor_int,axmajor_form=2e-1,5e-2,'%.1f'    
+    elif dax_range>3.1e-1:  axmajor_int,axminor_int,axmajor_form=1e-1,5e-2,'%.1f'     
+    elif dax_range>1.1e-1:  axmajor_int,axminor_int,axmajor_form=5e-2,1e-2,'%.2f'
+    elif dax_range>5.1e-2:  axmajor_int,axminor_int,axmajor_form=2e-2,1e-2,'%.2f'       
+    elif dax_range>4.1e-2:  axmajor_int,axminor_int,axmajor_form=1e-2,5e-3,'%.2f'
+    elif dax_range>3.1e-2:  axmajor_int,axminor_int,axmajor_form=1e-2,5e-3,'%.2f' 
+    elif dax_range>1.1e-2:  axmajor_int,axminor_int,axmajor_form=5e-3,1e-3,'%.3f'
+    elif dax_range>5.1e-3:  axmajor_int,axminor_int,axmajor_form=2e-3,1e-3,'%.3f'    
+    elif dax_range>2.1e-3:  axmajor_int,axminor_int,axmajor_form=1e-3,5e-4,'%.3f'   
+    elif dax_range>1.1e-3:  axmajor_int,axminor_int,axmajor_form=5e-4,1e-4,'%.4f'     
+    elif dax_range>5.1e-4:  axmajor_int,axminor_int,axmajor_form=5e-4,1e-4,'%.4f' 
+    elif dax_range>1.1e-4:  axmajor_int,axminor_int,axmajor_form=2e-4,1e-4,'%.4f' 
+    else:axmajor_int,axminor_int,axmajor_form=None,None,None 
     return axmajor_int,axminor_int,axmajor_form    
     
-def autom_y_tick_prop(dax_range): 
-    if dax_range>  1e11+0.1:axmajor_int,axminor_int,axmajor_form=5e10,1e10,'%.1e' 
-    elif dax_range>  1e10+0.1:axmajor_int,axminor_int,axmajor_form=5e9,1e9,'%.1e' 
-    elif dax_range>  1e9+0.1:axmajor_int,axminor_int,axmajor_form=5e8,1e8,'%.1e'     
-    elif dax_range>  1e8+0.1:axmajor_int,axminor_int,axmajor_form=5e7,1e7,'%.1e'     
-    elif dax_range>  1e7+0.1:axmajor_int,axminor_int,axmajor_form=5e6,1e6,'%.1e' 
-    elif dax_range>  1e6+0.1:axmajor_int,axminor_int,axmajor_form=5e5,1e5,'%.1e' 
-    elif dax_range>1e5+0.1:axmajor_int,axminor_int,axmajor_form=5e4,1e4,'%.1e' 
-    elif dax_range>10000.1:axmajor_int,axminor_int,axmajor_form=5000.,1000.,'%.1e' 
-    elif dax_range>5000.1:axmajor_int,axminor_int,axmajor_form=1000.,500.,'%i' 
-    elif dax_range>1000.1:axmajor_int,axminor_int,axmajor_form=500.,100.,'%i' 
-    elif dax_range>500.1:axmajor_int,axminor_int,axmajor_form=200.,50.,'%i' 
-    elif dax_range>200.1:axmajor_int,axminor_int,axmajor_form=50.,10.,'%i' 
-    elif dax_range>100.1:axmajor_int,axminor_int,axmajor_form=20.,5.,'%i' 
-    elif dax_range>50.1:axmajor_int,axminor_int,axmajor_form=10.,5.,'%i'     
-    elif dax_range>10.1:axmajor_int,axminor_int,axmajor_form=5.,1.,'%i' 
-    elif dax_range>6.1:axmajor_int,axminor_int,axmajor_form=2.,1.,'%i' 
-    elif dax_range>3.5:axmajor_int,axminor_int,axmajor_form=1.,0.5,'%i'     
-    elif dax_range>1.1:axmajor_int,axminor_int,axmajor_form=0.5,0.1,'%.1f' 
-    elif dax_range>0.71:axmajor_int,axminor_int,axmajor_form=0.2,0.05,'%.1f' 
-    elif dax_range>0.31:axmajor_int,axminor_int,axmajor_form=0.1,0.05,'%.1f'     
-    elif dax_range>0.11:axmajor_int,axminor_int,axmajor_form=0.05,0.01,'%.2f' 
-    elif dax_range>0.051:axmajor_int,axminor_int,axmajor_form=0.02,0.01,'%.2f'
-    elif dax_range>0.031:axmajor_int,axminor_int,axmajor_form=0.01,0.005,'%.2f'            
-    elif dax_range>0.011:axmajor_int,axminor_int,axmajor_form=0.005,0.001,'%.3f'
-    elif dax_range>5.1e-3:axmajor_int,axminor_int,axmajor_form=0.002,0.001,'%.3f'
-    elif dax_range>2.1e-3:axmajor_int,axminor_int,axmajor_form=0.001,0.0005,'%.3f'    
-    elif dax_range>1.1e-3:axmajor_int,axminor_int,axmajor_form=5e-4,1e-4,'%.4f'
-    elif dax_range>5.1e-4:axmajor_int,axminor_int,axmajor_form=2e-4,1e-4,'%.4f'
-    else:axmajor_int,axminor_int,axmajor_form=None,None,None  
-    return axmajor_int,axminor_int,axmajor_form
 
 
 
-
-
-'''
-Routine to adjust the size and position of the plot window, maintaining isotropy
-    #    - the variables corresponding to x and y must have the same units
-    #    - the lower left corner of the axis is set in input
-    #    - the variable 'x_pos1' and 'y_pos1' define the maximum value of the right side and the upper sides of the plot
-    #    - depending on the respective width/height of the plot, the larger side (within the axes) is set to 'max_window_size' 
-    # while the smallest side of the plot is then defined to have isotropy
-'''
 def adjust_isosize(real_bounds,xpos0,ypos0,xpos1,ypos1,max_window_size):
+    r"""**2D isotropic plot scaling.**
+    
+    Adjusts the size and position of the plot window, maintaining isotropy.
+    
+    Variables along the X and Y axis must have the same units.
+    
+    The lower left corner of the plot at `(xpos0,ypos0)` is taken as reference. 
+    The `(x_pos1,y_pos1)` defines the maximum extension of the plot at the top right corner. 
+    Depending on the respective width/height of the original plot, the larger side (within the axes) is scaled to `max_window_size` while the smallest side is then scaled by isotropy.    
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """     
 
     #We use a square plot
     height=max_window_size					
@@ -417,26 +457,44 @@ def adjust_isosize(real_bounds,xpos0,ypos0,xpos1,ypos1,max_window_size):
 	    ypos1=ypos1_temp
 					
     return width,height,[xpos0,ypos0,xpos1,ypos1]
-				
-'''
-Routine to adjust the size of a 3D plot
-'''
+
+
 def adjust_3D_isosize(ax,x_range,y_range,z_range):
+    r"""**3D isotropic plot scaling.**
+    
+    Adjusts the size of the plot window, maintaining isotropy.
+      
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
 
-	max_range = np.array([x_range[1]-x_range[0],y_range[1]-y_range[0], z_range[1]-z_range[0]]).max() / 2.0	
-	mean_x = 0.5*(x_range[1]+x_range[0])
-	mean_y = 0.5*(y_range[1]+y_range[0])
-	mean_z = 0.5*(z_range[1]+z_range[0])
-	ax.set_xlim(mean_x - max_range, mean_x + max_range)
-	ax.set_ylim(mean_y - max_range, mean_y + max_range)
-	ax.set_zlim(mean_z - max_range, mean_z + max_range)
-								
-	return ax							
+    """  
+    max_range = np.array([x_range[1]-x_range[0],y_range[1]-y_range[0], z_range[1]-z_range[0]]).max() / 2.0	
+    mean_x = 0.5*(x_range[1]+x_range[0])
+    mean_y = 0.5*(y_range[1]+y_range[0])
+    mean_z = 0.5*(z_range[1]+z_range[0])
+    ax.set_xlim(mean_x - max_range, mean_x + max_range)
+    ax.set_ylim(mean_y - max_range, mean_y + max_range)
+    ax.set_zlim(mean_z - max_range, mean_z + max_range)
+    
+    return ax							
 
-'''
-Routine to truncate a colormap
-'''
+
 def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
+    r"""**Colormap truncation.**
+    
+    Limits colormap to the chosen range for the plotted variable.
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """   
     new_cmap = colors.LinearSegmentedColormap.from_list('trunc({n},{a:.2f},{b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
         cmap(np.linspace(minval, maxval, n)))
     return new_cmap

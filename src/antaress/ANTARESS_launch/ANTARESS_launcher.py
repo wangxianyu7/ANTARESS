@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os as os_system
+import sys
 import argparse
+import json
 #The following relative imports are necessary to create an executable command
 from ..ANTARESS_process.ANTARESS_main import ANTARESS_main,ANTARESS_settings_overwrite
 from ..ANTARESS_launch.ANTARESS_gridrun import ANTARESS_gridrun
 from ..ANTARESS_general.utils import import_module
  
 
-def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_settings = '',working_path='',nbook_dic = {}):
+def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_settings = '',working_path='',nbook_dic = {} , exec_comm = True):
     r"""**ANTARESS launch routine.**
     
     Runs ANTARESS with default or manual settings.  
@@ -24,21 +26,22 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
         None
     
     """ 
-
+    
     #Read executable arguments
     #    - will be used when ANTARESS is called as an executable through terminal
-    parser=argparse.ArgumentParser(prog = "antaress",description='Launch ANTARESS workflow')
-    parser.add_argument("--custom_systems",      type=str, default='',help = 'Name of custom systems file (default "": default file ANTARESS_systems.py is used)')
-    parser.add_argument("--custom_settings",     type=str, default='',help = 'Name of custom settings file (default "": default file ANTARESS_settings.py is used)')
-    parser.add_argument("--custom_plot_settings",type=str, default='',help = 'Name of custom plot settings file (default "": default file ANTARESS_plot_settings.py is used)')
-    parser.add_argument("--working_path", type=str, default='' ,help = 'Path to user settings files (default "./": user files are retrieved from current directory)')
-    parser.add_argument("--nbook_dic", type=dict, default={})
-    input_args=parser.parse_args()
-    custom_systems = input_args.custom_systems
-    custom_settings = input_args.custom_settings
-    custom_plot_settings = input_args.custom_plot_settings
-    working_path = input_args.working_path
-    nbook_dic = input_args.nbook_dic
+    if exec_comm:
+        parser=argparse.ArgumentParser(prog = "antaress",description='Launch ANTARESS workflow')
+        parser.add_argument("--custom_systems",      type=str, default='',help = 'Name of custom systems file (default "": default file ANTARESS_systems.py is used)')
+        parser.add_argument("--custom_settings",     type=str, default='',help = 'Name of custom settings file (default "": default file ANTARESS_settings.py is used)')
+        parser.add_argument("--custom_plot_settings",type=str, default='',help = 'Name of custom plot settings file (default "": default file ANTARESS_plot_settings.py is used)')
+        parser.add_argument("--working_path", type=str, default='' ,help = 'Path to user settings files (default "./": user files are retrieved from current directory)')
+        parser.add_argument("-d", "--nbook_dic", type=json.loads, default={})
+        input_args=parser.parse_args()
+        custom_systems = input_args.custom_systems
+        custom_settings = input_args.custom_settings
+        custom_plot_settings = input_args.custom_plot_settings
+        working_path = input_args.working_path
+        nbook_dic = input_args.nbook_dic 
 
     #Initializes main dictionaries
     gen_dic={}

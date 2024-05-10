@@ -194,17 +194,18 @@ dico_all_gases={
  
     # Alumina (gamma alumina)
     #    - from Budaj+2015
+    #    - we assume sublimation releases 2 Al (Mg = 26.981539 amu) and 3 O (15.999 amu)
     'alumina':{
         'nature':'dust',
         'rho':2.9,
-        'Mg':np.nan,
+        'Mg':101.96, #=2*26.981539 + 3*15.999
         'L':np.nan,
         'Pinf':np.nan,
         'alpha':0.1 #arbitrary
     }, 
     # Ammonia
     #    - from Budaj+2015
-    'Ammonia':{   
+    'ammonia':{   
         'nature':'dust', 
         'rho': 0.88,
         'Mg':np.nan,
@@ -215,7 +216,7 @@ dico_all_gases={
     # Carbon at T=400°C 
     #    - opacity in Budaj+2015 is calculated for T=400°C
     #    - we assume the properties for Graphite in Van Lieshout et al. 2014 are valid for this type of carbon   
-    'carb400':{
+    'carbon0400':{
         'nature':'dust',
         'rho':1.435,            #Budaj+2015 (T=400°C). Van Lieshout et al. 2014 gives 2.16 for graphite 
         'Mg':12.011,            #Van Lieshout et al. 2014
@@ -225,7 +226,7 @@ dico_all_gases={
     },
     # Carbon at T=1000°C 
     #    - opacity in Budaj+2015 is calculated for T=1000°C
-    'carb1000':{
+    'carbon1000':{
         'nature':'dust',
         'rho':1.988,            #Budaj+2015 (T=400°C). Van Lieshout et al. 2014 gives 2.16 for graphite
         'Mg':12.011,            #Van Lieshout et al. 2014
@@ -235,7 +236,7 @@ dico_all_gases={
     },    
     # Corundum (Al2O3 = alpha alumina)
     #    - from Van Lieshout et al. 2014
-    'Corundum':{
+    'corundum':{
         'nature':'dust',
         'rho':2.9, #from Budaj+2015, for consistency with its opacity table (see note in their section 4.1)
         'Mg':101.961,
@@ -246,7 +247,7 @@ dico_all_gases={
     # Cryst. enstatite (MgSiO3)
     #    - from Van Lieshout et al. 2014
     #    - considered as an iron-free pyroxene in Budaj+2015
-    'Enstatite':{
+    'enstatite':{
         'nature':'dust',
         'rho':3.20,
         'Mg':100.389,
@@ -257,7 +258,7 @@ dico_all_gases={
     # Cryst. fayalite (Fe2SiO4)
     #    - from Van Lieshout et al. 2014
     #    - no associated cross-section
-    'Fayalite':{
+    'fayalite':{
         'nature':'dust',
         'rho':4.39,
         'Mg':203.774,
@@ -268,7 +269,7 @@ dico_all_gases={
     # Cryst. forsterite (Mg2SiO4)
     #    - from Van Lieshout et al. 2014
     #    - considered as an iron-free olivine in Budaj+2015
-    'Forsterite':{
+    'forsterite':{
         'nature':'dust',
         'rho':3.27,
         'Mg':140.694,
@@ -291,7 +292,7 @@ dico_all_gases={
     # Olivine
     #    - Budaj+2015 opacities are for iron-enriched olivine (Mg(1) Fe(1) SiO4) with half–half of Mg–Fe atoms 
     #      Kimura+2002 values are for (Mg(1.1) Fe(0.9) SiO(4) ) olivine     
-    'Olivine50':{
+    'olmg50':{
         'nature':'dust',
         'rho': 3.0,     #Budaj+2015 
         'Mg': 169.0809, #Kimura+2002
@@ -301,7 +302,7 @@ dico_all_gases={
     },       
     # Perovskite (CaTiO3)
     #    - from Budaj+2015
-    'Perovskite':{
+    'perovskite':{
         'nature':'dust',
         'rho': 4.1,
         'Mg':np.nan,
@@ -310,8 +311,8 @@ dico_all_gases={
         'alpha':0.1      #arbitrary
     },  
     # Pyroxene 20% iron
-    #    - opacity in Budaj+2015 is calculated for Mg(0.8) Fe(0.2) SiO3  , but note they correspond to SiO2 alone 
-    'Pyroxene80':{
+    #    - opacity in Budaj+2015 is calculated for Mg(0.8) Fe(0.2) SiO3, but note they correspond to SiO2 alone 
+    'pyrmg80':{
         'nature':'dust',
         'rho': 3.0,      #Budaj+2015  
         'Mg':106.6955,   #=0.8*24.305+0.2*55.845+28.0855+3.*15.999     
@@ -322,18 +323,18 @@ dico_all_gases={
     # Pyroxene 60% iron
     #    - opacity in Budaj+2015 is calculated for Mg(0.4) Fe(0.6) SiO3
     #      we assume the sublimation properties from Kimura+2002 are valid for this composition, but note they correspond to SiO2 alone 
-    'Pyroxene40':{
+    'pyrmg40':{
         'nature':'dust',
         'rho': 3.0,      #Budaj+2015
         'Mg':119.3115,   #=0.4*24.305+0.6*55.845+28.0855+3.*15.999
-        'L':9.61e6,     #Kimura et al. 2002
+        'L':5e6,     #Kimura et al. 2002
         'Pinf':3.13e10, #Kimura et al. 2002
         'alpha':0.1     #arbitrary
     }, 
     # Quartz (SiO2)
     #    - from Van Lieshout et al. 2014
     #    - no associated cross-section
-    'Quartz':{
+    'quartz':{
         'nature':'dust',
         'rho':2.60,
         'Mg':60.084,
@@ -365,7 +366,7 @@ dico_all_gases={
     },
     # Water Ice
     #    - from Budaj+2015
-    'wtrice':{
+    'waterice':{
         'nature':'dust',
         'rho': 1.0 ,
         'Mg':np.nan,
@@ -375,7 +376,7 @@ dico_all_gases={
     },
     # Water Liquid
     #    - from Budaj+2015
-    'wtrliq':{
+    'waterliq':{
         'nature':'dust',
         'rho': 1.0 ,
         'Mg':np.nan,
@@ -510,110 +511,6 @@ dico_all_processes={
     #Hydrogen photoionization
     'H0_XUV':{'type':'broadband','species':'H_0+_g','dependance':False},
 
-
-    #################################################################
-    #Tabulated processes
-    #    - file indicate path to tabulated cross-section, stored in 'EVE/Tabulated_cs/'
-    #################################################################
-
-    # Alumina (gamma alumina)
-    'alum_abs_scat':{
-        'type':'tabulated',
-        'species':'alumina',
-        'file':'Dust_Budaj2015/alumina_opac_all',
-        'dependance':True
-    }, 
-    # Ammonia
-    'ammo_abs_scat':{    
-        'type':'tabulated',
-        'species':'Ammonia',
-        'file':'Dust_Budaj2015/ammonia_opac_all',
-        'dependance':True
-    },
-    # Carbon at 400°C
-    'carb400_abs_scat':{
-        'type':'tabulated',
-        'species':'carb400',
-        'file':'Dust_Budaj2015/carbon0400_opac_all',
-        'dependance':True
-    },
-    # Carbon at 1000°C 
-    'carb1000_abs_scat':{
-        'type':'tabulated',
-        'species':'carb1000',
-        'file':'Dust_Budaj2015/carbon1000_opac_all',
-        'dependance':True
-    },    
-    # Corundum (Al2O3 = alpha alumina)
-    'corun_abs_scat':{
-        'type':'tabulated',
-        'species':'Corundum',
-        'file':'Dust_Budaj2015/corundum_opac_all',
-        'dependance':True
-    },  
-    # Enstatite
-    'ensta_abs_scat':{
-        'type':'tabulated',
-        'species':'Enstatite',
-        'file':'Dust_Budaj2015/enstatite_opac_all',
-        'dependance':True
-    },    
-    # Iron
-    'iron_abs_scat':{
-        'type':'tabulated',
-        'species':'iron',
-        'file':'Dust_Budaj2015/iron_opac_all',
-        'dependance':True
-    },   
-    # Forsterite
-    'fost_abs_scat':{
-        'type':'tabulated',
-        'species':'Forsterite',
-        'file':'Dust_Budaj2015/forsterite_opac_all',
-        'dependance':True
-    }, 
-    # Olivine
-    'olmg50_abs_scat':{
-        'type':'tabulated',
-        'species':'Olivine50',
-        'file':'Dust_Budaj2015/olmg50_opac_all',
-        'dependance':True
-    },    
-    # Perovskite (CaTiO3)
-    'perov_abs_scat':{
-        'type':'tabulated',
-        'species':'Perovskite',
-        'file':'Dust_Budaj2015/perovskite_opac_all',
-        'dependance':True
-    },    
-    # Pyroxene 60% iron
-    'pyr40_abs_scat':{
-        'type':'tabulated',
-        'species':'Pyroxene40',
-        'file':'Dust_Budaj2015/pyrmg40_opac_all',
-        'dependance':True
-    },
-    # Pyroxene 20% iron
-    'pyr80_abs_scat':{
-        'type':'tabulated',
-        'species':'Pyroxene80',
-        'file':'Dust_Budaj2015/pyrmg80_opac_all',
-        'dependance':True
-    },    
-    # Water Ice
-    'wtrice_abs_scat':{
-        'type':'tabulated',
-        'species':'wtrice',
-        'file':'Dust_Budaj2015/waterice_opac_all',
-        'dependance':True
-    },
-    # Water Liquid
-    'wtrliq_abs_scat':{
-        'type':'tabulated',
-        'species':'wtrliq',
-        'file':'Dust_Budaj2015/waterliq_opac_all',
-        'dependance':True
-    }
 
    
 }  

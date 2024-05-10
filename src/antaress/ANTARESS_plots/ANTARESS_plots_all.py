@@ -18,7 +18,7 @@ import imageio
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_general.minim_routines import call_lmfit
 from ..ANTARESS_general.utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz,air_index,gen_specdopshift,import_module
-from ..ANTARESS_plots.utils_plots import custom_axis,autom_x_tick_prop,autom_y_tick_prop,stackrel,scaled_title,autom_range_ext,plot_shade_range
+from ..ANTARESS_plots.utils_plots import custom_axis,autom_tick_prop,stackrel,scaled_title,autom_range_ext,plot_shade_range
 from ..ANTARESS_conversions.ANTARESS_binning import resample_func,calc_bin_prof,weights_bin_prof
 from ..ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,return_pix_size
 from ..ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_mod_true_prop,voigt
@@ -956,8 +956,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #----------------------------------------------
                                         
                             #Plot frame 
-                            xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
-                            ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0])                        
+                            xmajor_int,xminor_int,xmajor_form=autom_tick_prop(x_range_loc[1]-x_range_loc[0])
+                            ymajor_int,yminor_int,ymajor_form=autom_tick_prop(y_range_loc[1]-y_range_loc[0])                        
     
                             #Suppress ticks if exposures were plotted sequentially
                             no_xticks,no_yticks=False,False
@@ -2216,8 +2216,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         else:y_range_frame = plot_options['y_range']
         dx_range=x_range_frame[1]-x_range_frame[0]
         dy_range=y_range_frame[1]-y_range_frame[0]
-        xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-        ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+        xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+        ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
         custom_axis(plt,fig = fig_frame,ax=ax_frame,position=plot_options['margins'],x_range=x_range_frame,y_range=y_range_frame,
                     xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                     xmajor_form=xmajor_form,ymajor_form=ymajor_form,
@@ -2562,8 +2562,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         plot_shade_range(plt.gca(),data_com_wig['wig_range_fit'][vis],x_range_loc,y_range_loc,mode='fill',facecolor='dodgerblue',compl=True)                  
 
                     #Frame
-                    xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                    ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
                     if plot_options['sp_var']=='nu':x_title=r'Nu (10$^{-10}$s$^{-1}$)'
                     elif plot_options['sp_var']=='wav':x_title=r'Wavelength (A)'
                     custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
@@ -2644,8 +2644,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             plt.text(xtxt,ytxt,rms_txt,verticalalignment='center', horizontalalignment='left',fontsize=8.,zorder=10,color=col_loc)
             
                     #Frame                                                 
-                    xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                    ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
                     custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
                                 x_title=r'Orbital Phase',y_title='RMS (ppm)',font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
                     plt.savefig(path_loc+'Dispersion.'+plot_dic['trans_sp']) 
@@ -2785,8 +2785,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     y_title = scaled_title(plot_options['sc_fact10'],y_title)                       
                     dx_range=x_range_loc[1]-x_range_loc[0]
                     dy_range=y_range_loc[1]-y_range_loc[0]
-                    xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                    ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range) 
+                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range) 
                     custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
                                 xmajor_int=xmajor_int,xminor_int=xminor_int,
                                 ymajor_int=ymajor_int,yminor_int=yminor_int,
@@ -2898,8 +2898,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             y_title = scaled_title(plot_options['sc_fact10'],y_title)
                             dx_range=x_range_loc[1]-x_range_loc[0]
                             dy_range=y_range_loc[1]-y_range_loc[0]
-                            xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                            ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+                            xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                            ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
                             custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
                                         xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                                         xmajor_form=xmajor_form,ymajor_form=ymajor_form,
@@ -2982,8 +2982,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     y_title = scaled_title(plot_options['sc_fact10'],y_title)                   
                     dx_range=x_range_loc[1]-x_range_loc[0]
                     dy_range=y_range_loc[1]-y_range_loc[0]
-                    xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                    ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range) 
+                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range) 
                     custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
                                 xmajor_int=xmajor_int,xminor_int=xminor_int,
                                 ymajor_int=ymajor_int,yminor_int=yminor_int,
@@ -3044,8 +3044,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         y_title = scaled_title(plot_options['sc_fact10'],y_title) 
                         dx_range=x_range_loc[1]-x_range_loc[0]
                         dy_range=y_range_loc[1]-y_range_loc[0]
-                        xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                        ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+                        xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                        ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
                         custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
                                     xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                                     xmajor_form=xmajor_form,ymajor_form=ymajor_form,
@@ -3108,8 +3108,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         x_range_loc=autom_range_ext(plot_options['x_range'],x_min,x_max)
         y_range_loc=autom_range_ext(plot_options['y_range'],0.,y_max)
         if plot_options['title']:plt.title('$\Chi^2$ per exposure',fontsize=plot_options['font_size'])     
-        xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
-        ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0])                          
+        xmajor_int,xminor_int,xmajor_form=autom_tick_prop(x_range_loc[1]-x_range_loc[0])
+        ymajor_int,yminor_int,ymajor_form=autom_tick_prop(y_range_loc[1]-y_range_loc[0])                          
         custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
     		        xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
                     ymajor_form=ymajor_form,ymajor_int=ymajor_int,yminor_int=yminor_int,     
@@ -4448,8 +4448,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         if plot_options['retro_orbit']:x_range_loc=-np.array(x_range_loc)
 
         #Frame
-        xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
-        ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0])       
+        xmajor_int,xminor_int,xmajor_form=autom_tick_prop(x_range_loc[1]-x_range_loc[0])
+        ymajor_int,yminor_int,ymajor_form=autom_tick_prop(y_range_loc[1]-y_range_loc[0])       
         custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
                     dir_x = 'out',dir_y = 'out',
     		        xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
@@ -4893,8 +4893,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Set up the axes
             axes[1,0].set_xlim(x_range_loc)
             axes[1,0].set_ylim(y_range_loc)
-            xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-            ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+            xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+            ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
             axes[1,0].xaxis.set_major_locator(MultipleLocator(xmajor_int))
             axes[1,0].yaxis.set_major_locator(MultipleLocator(ymajor_int))
             x_lab_name = {
@@ -5131,8 +5131,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if plot_set_key['title']:plt.title('Calibration for visit '+vis+' in '+inst)
                     dx_range=x_range_loc[1]-x_range_loc[0]
                     dy_range=y_range_loc[1]-y_range_loc[0]
-                    xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                    ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)                    
+                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)                    
                     custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                                 xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                                 xmajor_form=xmajor_form,ymajor_form=ymajor_form,hide_axis=plot_set_key['hide_axis'],
@@ -5188,8 +5188,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         if plot_set_key['title']:plt.title('Calibration for visit '+vis+' in '+inst+' (order '+str(iord)+')')
                         dx_range=x_range_loc[1]-x_range_loc[0]
                         dy_range=y_range_loc[1]-y_range_loc[0]
-                        xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                        ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+                        xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                        ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
                         custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                                     xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                                     xmajor_form=xmajor_form,ymajor_form=ymajor_form,
@@ -5279,8 +5279,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 else:y_range_loc=np.array([y_min,y_max])                            
                                 dx_range=x_range_loc[1]-x_range_loc[0]        
                                 dy_range=y_range_loc[1]-y_range_loc[0]                         
-                                xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                                ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+                                xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                                ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
                                 custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
                                             x_title=r'Velocity in telluric rest frame (km s$^{-1}$)',y_title='Flux',font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
                                 plt.savefig(path_loc+molec+'_idx'+str(iexp)+'.'+plot_dic['tell_CCF']) 
@@ -5322,8 +5322,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         #Frame                         
                         dx_range=x_range_loc[1]-x_range_loc[0]        
                         dy_range=y_range_loc[1]-y_range_loc[0]                         
-                        xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                        ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+                        xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                        ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
                         custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
                                     x_title=r'Orbital Phase',y_title='Dispersion',font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
                         plt.savefig(path_loc+molec+'_disp.'+plot_dic['tell_CCF']) 
@@ -5422,8 +5422,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 y_range_loc = [ymin-0.05*dy_range,ymax+0.05*dy_range]  
                             dx_range=x_range_loc[1]-x_range_loc[0]        
                             dy_range=y_range_loc[1]-y_range_loc[0]     
-                            xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                            ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)
+                            xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                            ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
                             y_title = {'Temperature':'Temperature (K)','IWV_LOS':'Column density (cm$^{-2}$)','Pressure_ground':'Pressure (atm)'}[key]
                             custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
                                         x_title='Orbital phase',y_title=y_title,font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
@@ -5579,8 +5579,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #Plot frame  
                 if plot_set_key['title']:plt.title('Global flux balance for visit '+vis+' in '+inst)               
                 dx_range=x_range_loc[1]-x_range_loc[0]
-                xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)     
+                xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)     
                 if plot_set_key['sp_var'] == 'nu' :x_title=r'$\nu$ (10$^{-10}$s$^{-1}$)'
                 elif plot_set_key['sp_var'] == 'wav' :x_title='Wavelength (A)'
                 custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
@@ -5776,8 +5776,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Plot frame  
             if plot_set_key['title']:plt.title('Global flux balance for instrument '+inst)               
             dx_range=x_range_loc[1]-x_range_loc[0]
-            xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-            ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)     
+            xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+            ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)     
             if plot_set_key['sp_var'] == 'nu' :x_title=r'$\nu$ (10$^{-10}$s$^{-1}$)'
             elif plot_set_key['sp_var'] == 'wav' :x_title='Wavelength (A)'
             custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
@@ -6036,8 +6036,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #Plot frame  
                             if plot_set_key['title']:plt.title('Cosmics detections for visit '+vis+' in '+inst)
                             dx_range=x_range_loc[1]-x_range_loc[0]
-                            xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                            ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)  
+                            xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                            ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)  
                             custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                                         xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
                                         ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
@@ -6070,8 +6070,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if plot_set_key['title']:plt.title('Cosmics detections for visit '+vis+' in '+inst)
                     dx_range=x_range_loc[1]-x_range_loc[0]
                     dy_range=y_range_loc[1]-y_range_loc[0]
-                    xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                    ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)  
+                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)  
                     custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                                 xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
                                 ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
@@ -6150,8 +6150,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                       
                     #Plot frame  
                     if plot_set_key['title']:plt.title('Master for persistent peaks correction for visit '+vis+' in '+inst)
-                    xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                    ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)  
+                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)  
                     custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                                 xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
                                 ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
@@ -6659,8 +6659,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 ax.axhline(1.,color='black', lw=plot_set_key['lw_plot'],linestyle='--',zorder=10,rasterized=plot_set_key['rasterized'])              
     
                 #Frame
-                xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range) 
+                xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range) 
                 if data_type_gen=='DI':txt_rest='star'                 
                 elif data_type_gen=='Intr':txt_rest='surface'    
                 custom_axis(plt,ax=ax,position=plot_set_key['margins'] ,x_range=x_range_loc,y_range=y_range_loc,dir_y='out',dir_x='out', 
@@ -7064,8 +7064,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 if plot_set_key['title']:plt.title('Input light curves')
                 dx_range=x_range_loc[1]-x_range_loc[0]
                 dy_range=y_range_loc[1]-y_range_loc[0]
-                xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(dx_range)
-                ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(dy_range)               
+                xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)               
                 custom_axis(plt,position=plot_set_key['margins'] ,x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                 		     xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
                 		     ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
@@ -7259,8 +7259,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     x_range_loc=plot_set_key['x_range_var'] if plot_set_key['x_range_var'] is not None else np.array([0.,n_pc])
                     y_range_loc=plot_set_key['y_range_var'] if plot_set_key['y_range_var'] is not None else np.array([y_min,y_max])
                     if plot_set_key['title']:plt.title('PC variance for visit '+vis+' in '+inst)
-                    xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
-                    ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0]) 
+                    xmajor_int,xminor_int,xmajor_form=autom_tick_prop(x_range_loc[1]-x_range_loc[0])
+                    ymajor_int,yminor_int,ymajor_form=autom_tick_prop(y_range_loc[1]-y_range_loc[0]) 
                     custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                                 xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                                 xmajor_form=xmajor_form,ymajor_form=ymajor_form,
@@ -7302,8 +7302,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Plot frame  
                     x_range_loc=plot_set_key['x_range_rms'] if plot_set_key['x_range_rms'] is not None else np.array([np.min(cen_ph),np.max(cen_ph)])
                     if plot_set_key['title']:plt.title('RMS for visit '+vis+' in '+inst)
-                    xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
-                    ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0]) 
+                    xmajor_int,xminor_int,xmajor_form=autom_tick_prop(x_range_loc[1]-x_range_loc[0])
+                    ymajor_int,yminor_int,ymajor_form=autom_tick_prop(y_range_loc[1]-y_range_loc[0]) 
                     custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                                 xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                                 xmajor_form=xmajor_form,ymajor_form=ymajor_form,
@@ -7348,8 +7348,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                     #Plot frame  
                     if plot_set_key['title']:plt.title('Delta-BIC for visit '+vis+' in '+inst)
-                    xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
-                    ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0]) 
+                    xmajor_int,xminor_int,xmajor_form=autom_tick_prop(x_range_loc[1]-x_range_loc[0])
+                    ymajor_int,yminor_int,ymajor_form=autom_tick_prop(y_range_loc[1]-y_range_loc[0]) 
                     custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                                 xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                                 xmajor_form=xmajor_form,ymajor_form=ymajor_form,
@@ -7474,8 +7474,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     plt.plot(x_range_loc,[0,0],color='black',linestyle='--')
                     y_range_loc=plot_set_key['y_range_pc'] if plot_set_key['y_range_pc'] is not None else np.array([y_min,y_max])
                     if plot_set_key['title']:plt.title('PC profiles for visit '+vis+' in '+inst)
-                    xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
-                    ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0]) 
+                    xmajor_int,xminor_int,xmajor_form=autom_tick_prop(x_range_loc[1]-x_range_loc[0])
+                    ymajor_int,yminor_int,ymajor_form=autom_tick_prop(y_range_loc[1]-y_range_loc[0]) 
                     custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                                 xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                                 xmajor_form=xmajor_form,ymajor_form=ymajor_form,
@@ -7518,8 +7518,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             elif fft_loc=='corr':txt = 'corr. residual profiles'
                             elif fft_loc=='boot':txt = 'boot. corr. residual profiles'
                             plt.title('FFT from '+txt+' for visit '+vis+' in '+inst)
-                        xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
-                        ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0]) 
+                        xmajor_int,xminor_int,xmajor_form=autom_tick_prop(x_range_loc[1]-x_range_loc[0])
+                        ymajor_int,yminor_int,ymajor_form=autom_tick_prop(y_range_loc[1]-y_range_loc[0]) 
                         custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                                     xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                                     xmajor_form=xmajor_form,ymajor_form=ymajor_form,
@@ -7909,8 +7909,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             else:
                 dy_range = y_max-y_min
                 y_range_loc = np.array([y_min-0.05*dy_range,y_max+0.05*dy_range])                          
-            xmajor_int,xminor_int,xmajor_form=autom_x_tick_prop(x_range_loc[1]-x_range_loc[0])
-            ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_loc[1]-y_range_loc[0]) 
+            xmajor_int,xminor_int,xmajor_form=autom_tick_prop(x_range_loc[1]-x_range_loc[0])
+            ymajor_int,yminor_int,ymajor_form=autom_tick_prop(y_range_loc[1]-y_range_loc[0]) 
             custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
             		     xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
             		     ymajor_int=None,yminor_int=yminor_int,ymajor_form=ymajor_form,
@@ -9085,8 +9085,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         
             #-----------------------
             #Main axis 
-            xmajor_int,xminor_int,xmajor_form = autom_x_tick_prop(plot_set_key['x_range'][1]-plot_set_key['x_range'][0])
-            ymajor_int,yminor_int,ymajor_form = autom_y_tick_prop(plot_set_key['y_range'][1]-plot_set_key['y_range'][0])
+            xmajor_int,xminor_int,xmajor_form = autom_tick_prop(plot_set_key['x_range'][1]-plot_set_key['x_range'][0])
+            ymajor_int,yminor_int,ymajor_form = autom_tick_prop(plot_set_key['y_range'][1]-plot_set_key['y_range'][0])
             custom_axis(plt,ax=ax1,x_range=plot_set_key['x_range'],y_range=plot_set_key['y_range'],
                         xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                         # xmajor_int=0.5,xminor_int=0.1,ymajor_int=0.5,yminor_int=0.1,
