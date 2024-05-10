@@ -1666,7 +1666,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 'inst':inst,
                                 'vis':vis, 
                                 'fit':False,
-                                'unthreaded_op':[],
                                 })
 
 

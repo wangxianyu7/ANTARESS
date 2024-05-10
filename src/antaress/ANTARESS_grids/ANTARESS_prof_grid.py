@@ -97,7 +97,7 @@ def custom_DI_prof(param,x,args=None,unquiet_star=None):
 
     #Multithreading
     #    - disabled with theoretical profiles, there seems to be an incompatibility with sme
-    if (args['nthreads']>1 or 'prof_grid' not in args['unthreaded_op']) and (args['mode']!='theo'):
+    if (args['nthreads']>1) and (args['mode']!='theo') and ('prof_grid' not in args['unthreaded_op']) :
         num_elements=len(icell_list)
         simplified_args={}
         for key in ['mode', 'mac_mode', 'input_cell_all', 'func_prof', 'cen_bins', 'nthreads']:simplified_args[key]=args[key]

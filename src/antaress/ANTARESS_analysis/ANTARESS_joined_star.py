@@ -1189,7 +1189,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['C_OS_grid']=False
     fixed_args['OS_grid'] = False
     #Multithreading turned off for levels 1,2,3
-    if fit_prop_dic['Opt_Lvl']>=1:fit_prop_dic['nthreads']=1
+    if fit_prop_dic['Opt_Lvl']>=1:fixed_args['unthreaded_op'] += ['prof_grid']
     #Over-simplified grid building turned on for levels 2,3
     if fit_prop_dic['Opt_Lvl']>=2:fixed_args['OS_grid'] = True
     #Over-simplified grid building turned on and coded in C for level 3
