@@ -65,8 +65,7 @@ def init_pl(input_nbook,pl_type):
         input_nbook['settings']['data_dic']['DI']['system_prop']['achrom'][input_nbook['par']['planet_name']]=[input_nbook['par']['RpRs']]
     
         #Paths
-        input_nbook['antaress_path'] = os_system.path.dirname(__file__).split('Notebooks')[0]
-        input_nbook['plot_path'] = input_nbook['antaress_path']+'/Ongoing/'+input_nbook['par']['main_pl']+'_Plots/'
+        input_nbook['plot_path'] = input_nbook['working_path']+input_nbook['par']['main_pl']+'_Plots/'
 
     return None     
     
@@ -146,7 +145,7 @@ def ana_prof(input_nbook,data_type):
         input_nbook['settings']['data_dic'][data_type]['line_fit_priors']=deepcopy(input_nbook['par']['priors'])
         for key in input_nbook['settings']['data_dic'][data_type]['line_fit_priors']:
             input_nbook['settings']['data_dic'][data_type]['line_fit_priors'][key]['mod'] = 'uf'
-        input_nbook['par'].pop('priors')        
+        input_nbook['par'].pop('priors')   
     return None
 
 def align_prof(input_nbook):
@@ -308,7 +307,7 @@ def plot_prop(input_nbook,data_type):
             input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['plot_disp'] = False         
         
         #Models
-        prop_path = input_nbook['antaress_path']+'/Ongoing/'+input_nbook['par']['main_pl']+'_Saved_data/Joined_fits/'
+        prop_path = input_nbook['working_path']+input_nbook['par']['main_pl']+'_Saved_data/Joined_fits/'
         
         #Plot fit to joint properties if carried out
         if 'IntrProp' in input_nbook['fits']:
