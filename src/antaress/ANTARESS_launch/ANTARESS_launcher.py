@@ -99,7 +99,7 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
     print('Launching ANTARESS')
     print('****************************************')
     print('')
-    
+
     #Moving to code directory
     os_system.chdir(code_dir)
   

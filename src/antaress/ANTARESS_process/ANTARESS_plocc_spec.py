@@ -4,6 +4,7 @@ import numpy as np
 from scipy.interpolate import griddata
 from copy import deepcopy
 import bindensity as bind
+import glob
 from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,weights_bin_prof,init_bin_prof
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc
 from ..ANTARESS_grids.ANTARESS_plocc_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_spot_prop
@@ -260,8 +261,14 @@ def loc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,syste
 
     #Retrieving selected model properties
     if ('IntrProf_prop_path' not in opt_dic):
-        print('         Trying to retrieve chi2 fit by default')
-        opt_dic['IntrProf_prop_path']={inst:{vis:gen_dic['save_data_dir']+'/Joined_fits/IntrProf/chi2/Fit_results'}}
+        fit_subdirs = glob.glob(gen_dic['save_data_dir']+'/Joined_fits/IntrProf/*/')
+        if len(fit_subdirs)==0:stop('         No existing fit directory. Run a fit to the intrinsic line profiles.')
+        else:
+            fit_types = [fit_subdir.split('/')[-2] for fit_subdir in fit_subdirs]
+            if 'mcmc' in fit_types:fit_used  ='mcmc'
+            else:fit_used  ='chi2'
+            print('         Using existing '+fit_used+' fit as default')
+            opt_dic['IntrProf_prop_path']={inst:{vis:gen_dic['save_data_dir']+'/Joined_fits/IntrProf/'+fit_used+'/Fit_results'}}        
     data_prop = dataload_npz(opt_dic['IntrProf_prop_path'][inst][vis])
     params=data_prop['p_final'] 
     fixed_args={  

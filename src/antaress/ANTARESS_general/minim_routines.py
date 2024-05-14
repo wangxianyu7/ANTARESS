@@ -22,7 +22,6 @@ from lmfit import minimize, report_fit
 from scipy import special
 from ..ANTARESS_plots.utils_plots import custom_axis,autom_tick_prop
 from ..ANTARESS_general.utils import np_where1D,stop,npint,init_parallel_func,get_time
-
     
 ##################################################################################################
 #%%% Probability distributions
@@ -331,7 +330,7 @@ def gen_hrand_chain(par_med,epar_low,epar_high,n_throws):
 #%%% Minimization routines
 ##################################################################################################   
 
-def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
+def init_fit(fit_dic,fixed_args,p_start,fit_prop_dic,model_par_names,model_par_units):
     r"""**Fit initialization**
 
     Initializes lmfit and MCMC.
@@ -367,13 +366,14 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
     iexp_par_list=[]
     exp_par_list=[]
     var_par_names=[]
+    var_par_units=[]
     for ipar,par in enumerate(fixed_args['par_names']):
         if p_start[par].vary:
             var_par_list+=[par]
             ivar_par_list+=[ipar]
+            par_name_fit = par.split('__')[0]
+            par_name_loc = model_par_names(par_name_fit)
             if ('__' in par):
-                par_name_loc = par.split('__')[0]
-                if par_name_loc in par_names_txt:par_name_loc = par_names_txt[par_name_loc]
                 inst_par = '_'
                 vis_par = '_'
                 pl_name = None
@@ -388,10 +388,9 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
                 if inst_par != '_':
                     par_name_loc+='['+inst_par+']'
                     if vis_par != '_':par_name_loc+='('+vis_par+')'
-                var_par_names+=[par_name_loc]
-            else:
-                if par in par_names_txt:var_par_names+=[par_names_txt[par]]
-                else:var_par_names+=[par]
+            var_par_names+=[par_name_loc]
+            var_par_units+=[model_par_units(par_name_fit)]
+
         else:
             ifix_par_list+=[ipar]
             fix_par_list+=[par]
@@ -406,6 +405,7 @@ def init_fit(fit_dic,fixed_args,p_start,par_names_txt,fit_prop_dic):
     fixed_args['iexp_par_list']=iexp_par_list
     fixed_args['exp_par_list']=exp_par_list
     fixed_args['var_par_names']=np.array(var_par_names,dtype='U50')
+    fixed_args['var_par_units']=np.array(var_par_units,dtype='U50')
 
     #Update value of fixed parameters linked to variable parameters through an expression
     if len(fixed_args['linked_par_expr'])>0:
@@ -1338,7 +1338,7 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,c
     
     """  
     n_par=len(merged_chain[0,:])
-    
+  
     #Median
     med_par=np.median(merged_chain, axis=0)   
     
@@ -1460,20 +1460,21 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,c
     if verbose:    
         print(verb_shift+"  Chain covariance: "+str(np.cov(np.transpose(merged_chain))))
         print(verb_shift+"  Chain coefficient correlations: "+str(np.corrcoef(np.transpose(merged_chain))))
-    if print_par:              
-        for ipar,parname in enumerate(fixed_args['var_par_list']):
+    if print_par:             
+        for ipar,(parname,parunit) in enumerate(zip(fixed_args['var_par_list'],fixed_args['var_par_units'])):
             if ipar>0:print(verb_shift+'-------------------------------') 
-            print(verb_shift+'Parameter '+parname)
-            print(verb_shift+'  med : '+"{0:.8e}".format(med_par[ipar]))            
-            for sig in fit_dic['sig_list']:
-                print(verb_shift+'  quant. '+sig+' err : -'+"{0:.3e}".format(sig_par_err[sig][0,ipar])+' +'+"{0:.3e}".format(sig_par_err[sig][1,ipar]))  
-                print(verb_shift+'            int : ['+"{0:.3e}".format(sig_par_val[sig][0,ipar])+' ; '+"{0:.3e}".format(sig_par_val[sig][1,ipar])+']')  
+            print(verb_shift+'  Parameter '+parname+' ['+parunit+']')
+            print(verb_shift+'    med : '+"{0:.8e}".format(med_par[ipar]))            
             if fit_dic['HDI'] is not None:
-                print(verb_shift+'  HDI    '+fit_dic['HDI']+' err : '+str(HDI_sig_txt_par[ipar]))
-                print(verb_shift+'            int : '+str(HDI_interv_txt[ipar]))
+                print(verb_shift+'    HDI    '+fit_dic['HDI']+' err : '+str(HDI_sig_txt_par[ipar]))
+                print(verb_shift+'              int : '+str(HDI_interv_txt[ipar]))
+            else:
+                for sig in fit_dic['sig_list']:
+                    print(verb_shift+'    quant. '+sig+' err : -'+"{0:.3e}".format(sig_par_err[sig][0,ipar])+' +'+"{0:.3e}".format(sig_par_err[sig][1,ipar]))  
+                    print(verb_shift+'              int : ['+"{0:.3e}".format(sig_par_val[sig][0,ipar])+' ; '+"{0:.3e}".format(sig_par_val[sig][1,ipar])+']')  
             if parname in fit_dic['conf_limits']:
                 for lev in fit_dic['conf_limits'][parname]['level']: 
-                    print(verb_shift+'  > '+fit_dic['conf_limits'][parname]['limits'][lev] )
+                    print(verb_shift+'    '+fit_dic['conf_limits'][parname]['limits'][lev] )
 
     return p_best,med_par,sig_par_val,sig_par_err,HDI_interv,HDI_interv_txt,HDI_sig_txt_par  
     

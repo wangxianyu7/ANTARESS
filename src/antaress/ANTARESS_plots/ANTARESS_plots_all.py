@@ -80,8 +80,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         contact_phases={}
         for pl_loc in gen_dic['studied_pl']:
             contact_phases[pl_loc]=calc_tr_contacts(data_dic['DI']['system_prop']['achrom'][pl_loc][0],system_param[pl_loc],plot_dic['stend_ph'],system_param['star'])
-            T14_pl = (contact_phases[pl_loc][3]-contact_phases[pl_loc][0])*system_param[pl_loc]['period']
-            print('Numerical T14['+str(pl_loc)+']='+"{0:.6f}".format(T14_pl*24.)+' h')                  
+            system_param[pl_loc]['T14_num'] = (contact_phases[pl_loc][3]-contact_phases[pl_loc][0])*system_param[pl_loc]['period']
+            print('Numerical T14['+str(pl_loc)+']='+"{0:.6f}".format(system_param[pl_loc]['T14_num']*24.)+' h')                  
 
             #Stellar mass derived from orbital motion of main planets
             print('Numerical Kp_orb='+"{0:.2f}".format(system_param[pl_loc]['Kp_orb'])+' km/s (Mstar = '+"{0:.3f}".format(system_param[pl_loc]['Mstar_orb'])+' Msun)')  
@@ -345,7 +345,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
             #Plotting separate visits on different plots because of the possible overlap between exposures
             for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())):             
-                print('      - Instrument :',inst)
+                print('   - Instrument :',inst)
     
                 #Data to plot
                 maink_list = []
@@ -368,7 +368,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 #Plot for each visit
                 for ivis,vis in enumerate(np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst])):                 
-                    print('        - Visit :',vis)
+                    print('     - Visit :',vis)
                     data_inst=data_dic[inst]
                     data_vis = data_inst[vis]
                     
@@ -618,7 +618,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 high_ordi_tab[iexp_olap::]+=delta_exp
                                    
                     ordi_range = np.array([np.min(low_ordi_tab),np.max(high_ordi_tab)])
-                    print('      range for '+ordi_name+' table:',"{0:.5f}".format(ordi_range[0]),' ; ',"{0:.5f}".format(ordi_range[1]))
+                    if plot_options['verbose']:print('      range for '+ordi_name+' table:',"{0:.5f}".format(ordi_range[0]),' ; ',"{0:.5f}".format(ordi_range[1]))
                     
                     #Processing each order 
                     for iord in order_list:
@@ -698,7 +698,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 v_range=np.array(plot_options['v_range_all'][inst][vis])*sc_fact
                             else:
                                 v_range=np.array([np.nanmin(var_loc),np.nanmax(var_loc)])
-                                if data_type == 'CCF':print('      range for color table:',"{0:.5f}".format(v_range[0]),' ; ',"{0:.5f}".format(v_range[1]))
+                                if (data_type == 'CCF') and (plot_options['verbose']):print('      range for color table:',"{0:.5f}".format(v_range[0]),' ; ',"{0:.5f}".format(v_range[1]))
 
                             #Plot data for each exposure   
                             for iexp,(var_exp,low_phase_exp,high_phase_exp) in enumerate(zip(var_loc,low_ordi_tab_loc,high_ordi_tab_loc)):
@@ -1010,10 +1010,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             plt.gcf().set_rasterized(plot_options['rasterized'])
                             add_str = 'iord'+str(iord)   
                             if plot_mod in ['map_Intr_prof_est','map_Intr_prof_res']:
-                                if plot_options['line_model']=='rec':add_str+='_rec'
-                                else:
-                                    add_str+='_'+plot_options['mode_loc_data_corr']  
-                                    if plot_mod=='map_Intr_prof_res':add_str+='_res'
+                                add_str+='_'+plot_options['mode_loc_data_corr']+'_'+plot_options['line_model'] 
+                                if plot_mod=='map_Intr_prof_res':add_str+='_res'
                             if ('bin' in plot_mod):add_str+='_'+plot_options['dim_plot'] 
                             plt.savefig(path_loc+'/'+add_str+'.'+save_res_map)                        
                             plt.close() 
@@ -1077,11 +1075,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         prof_fit_vis = None
         fit_results = None
         if plot_options['plot_line_model'] or plot_options['plot_line_model_HR'] or (('_res' in plot_mod) & (not plot_options['cont_only'])):
-            
+        
             #Planet-occulted models from reconstruction
             if (('Res' in plot_mod) or ('Intr' in plot_mod)) and (plot_options['line_model']=='rec'):
                 prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
-                
+            
             #Line profile from best-fit
             else:
                 if (plot_options['fit_type']=='indiv'):
@@ -1325,7 +1323,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Plot for each instrument        
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
-            print('      - Instrument :',inst)
+            print('   - Instrument :',inst)
             for key in ['color_dic','color_dic_sec','color_dic_bin','color_dic_bin_sec']:
                 if inst not in plot_options[key]:plot_options[key][inst]={}
 
@@ -1382,7 +1380,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
             #Plot for each visit
             for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst]): 
-                print('        - Visit :',vis)
+                print('     - Visit :',vis)
                 data_inst=data_dic[inst]
 
                 #Data
@@ -2060,8 +2058,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
      
                                             #Store image for GIF generation
                                             if (images_to_make_GIF is not None): 
-                                                if (not plot_options['multi_exp']):images_to_make_GIF[iord].append(imageio.imread(filename))   
-                                                else:images_to_make_GIF.append(imageio.imread(filename))   
+                                                if (not plot_options['multi_exp']):images_to_make_GIF[iord].append(imageio.v2.imread(filename))   
+                                                else:images_to_make_GIF.append(imageio.v2.imread(filename))   
                 
                         ### End of loop on orders         
 
@@ -2095,10 +2093,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         for iord in images_to_make_GIF:
                             if (plot_mod in ['DI_prof','DImast','Res','Intr','atm']) and (data_dic['Res']['type'][inst]=='spec2D'):str_add='_iord'+str(iord)
                             else:str_add=''                            
-                            imageio.mimsave(path_loc+'/'+ref_name+str_add+'.gif', images_to_make_GIF[iord],fps=plot_options['fps'])
+                            imageio.mimsave(path_loc+'/'+ref_name+str_add+'.gif', images_to_make_GIF[iord],duration=(1000 * 1/plot_options['fps']))
                     
                     #Over order series, with multiple exposures per plot
-                    else:imageio.mimsave(path_loc+'/multi_exp_'+ref_name+'.gif', images_to_make_GIF,fps=plot_options['fps'])
+                    else:imageio.mimsave(path_loc+'/multi_exp_'+ref_name+'.gif', images_to_make_GIF,duration=(1000 * 1/plot_options['fps']))
 
                
         return None
@@ -2269,7 +2267,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         
         #Plot for each instrument        
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
-            print('      - Instrument :',inst)
+            print('   - Instrument :',inst)
             for key in ['color_dic','color_dic_sec','color_dic_bin','color_dic_bin_sec']:
                 if inst not in plot_options[key]:plot_options[key][inst]={}
                 data_type = data_dic['DI']['type'][inst]
@@ -2289,7 +2287,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             
             #Plot for each visit
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options['visits_to_plot'][inst]): 
-                print('        - Visit :',vis)
+                print('     - Visit :',vis)
                 if vis not in plot_options['color_dic'][inst]:plot_options['color_dic'][inst][vis] ='red' 
                 if vis not in plot_options['color_dic_bin'][inst]:plot_options['color_dic_bin'][inst][vis] ='limegreen' 
                 if vis not in plot_options['color_dic_sec'][inst]:plot_options['color_dic_sec'][inst][vis] ='dodgerblue' 
@@ -3435,8 +3433,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             coord_vis = coord_dic[inst][vis][pl_ref]
                             data_prop_vis = data_prop[inst][vis]
                             # if gen_dic['fit_DI'] or gen_dic['fit_DI_1D']:prof_fit_vis=np.load(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item()
-                            prof_fit_vis=np.load(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item()
-                        transit_prop_nom = (np.load(gen_dic['save_data_dir']+'Introrig_prop/PlOcc_Prop_'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item())['achrom'][pl_ref]
+                            prof_fit_vis=dataload_npz(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis)
+                        transit_prop_nom = dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/PlOcc_Prop_'+inst+'_'+vis)['achrom'][pl_ref]
 
                     elif data_mode=='Intr':
                         if data_type=='Introrig':
@@ -4136,7 +4134,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Contacts
                     if plot_options['prop_'+data_mode+'_absc']=='phase':
                         for ipl,pl_loc in enumerate(data_dic[inst][vis]['transit_pl']):
-                            if (i_visit==1) or ((pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst])):                               
+                            if (i_visit==0) or ((pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst])): 
                                 if pl_loc==pl_ref:
                                     cen_ph = 0.
                                     contact_phases_vis = contact_phases[pl_ref]
@@ -4147,13 +4145,18 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 ls_pl = {0:':',1:'--'}[ipl]
                                 for cont_ph in contact_phases_vis:
                                     plt.plot([cont_ph,cont_ph],[-1e6,1e6],color='black',linestyle=ls_pl,lw=plot_options['lw_plot'],zorder=0)
-                         
+                
                                 #Overplot transit duration from system properties
                                 if (data_mode=='DI') and plot_options['plot_T14']:
                                     T14_phase = system_param[pl_loc]['TLength']/(system_param[pl_ref]['period'])
                                     plt.plot([cen_ph-0.5*T14_phase,cen_ph-0.5*T14_phase],[-1e6,1e6],color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=0)
                                     plt.plot([cen_ph+0.5*T14_phase,cen_ph+0.5*T14_phase],[-1e6,1e6],color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=0)                              
-    
+
+                        #Use main planet contact as plot range if undefined
+                        if (plot_options['x_range'] is None) and (data_mode=='Intr'):
+                            delt_range = 0.05*system_param[pl_ref]['T14_num']/system_param[pl_ref]["period"]
+                            plot_options['x_range'] = np.array([contact_phases[pl_ref][0]-delt_range,contact_phases[pl_ref][3]+delt_range])   
+                                              
                     #-------------------------------------------------------
                     #Predicted local RVs measurements from nominal system properties
                     if (data_mode=='Intr') and ('predic' in plot_options) and (len(plot_options['predic'])>0) and (prop_mode=='rv') and (plot_options['prop_'+data_mode+'_absc']=='phase'):                 
@@ -4295,9 +4298,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('     Max X range =',np.array([x_min,x_max])  )
             print('     Max Y range =',np.array([y_min,y_max])  )                               
         if plot_options['x_range'] is not None:x_range_loc=plot_options['x_range']
-        else:
-            dx_range = x_max-x_min
-            x_range_loc = np.array([x_min-0.05*dx_range,x_max+0.05*dx_range])   
+        else:   
+            delt_range = 0.05*( x_max-x_min )
+            x_range_loc = np.array([x_min-delt_range,x_max+delt_range])   
         if plot_options['y_range'] is not None:y_range_loc=plot_options['y_range'] 
         else:
             dy_range = y_max-y_min
@@ -4460,7 +4463,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         elif data_mode=='Intr':sub_key = 'Intr'
         plt.savefig(path_loc+prop_mode+'_'+plot_options['prop_'+data_mode+'_absc']+'.'+plot_dic['prop_'+sub_key]) 
         plt.close()
-        print('   ---------------')
     		
         return None   
 
@@ -5215,11 +5217,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Process original visits   
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_set_key['visits_to_plot'].keys())): 
-            print('      - Instrument :',inst)
+            print('   - Instrument :',inst)
             if inst not in plot_set_key['color_dic']:plot_set_key['color_dic'][inst]={}
             if inst not in plot_set_key['color_dic_sec']:plot_set_key['color_dic_sec'][inst]={}
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_set_key['visits_to_plot'][inst]): 
-                print('        - Visit :',vis)
+                print('     - Visit :',vis)
                 if vis not in plot_set_key['color_dic'][inst]:plot_set_key['color_dic'][inst][vis]='red'
                 if vis not in plot_set_key['color_dic_sec'][inst]:plot_set_key['color_dic_sec'][inst][vis]='dodgerblue'
                 
@@ -5345,11 +5347,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Process original visits   
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_set_key['visits_to_plot'].keys())): 
-            print('      - Instrument :',inst)
+            print('   - Instrument :',inst)
             if inst not in plot_set_key['color_dic']:plot_set_key['color_dic'][inst]={}
             
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_set_key['visits_to_plot'][inst]): 
-                print('        - Visit :',vis)
+                print('     - Visit :',vis)
                 if vis not in plot_set_key['color_dic'][inst]:plot_set_key['color_dic'][inst][vis]='dodgerblue'
                 data_vis = data_dic[inst][vis]
                 cen_ph_vis = coord_dic[inst][vis][plot_set_key['pl_ref'][inst][vis]]['cen_ph']
@@ -6446,6 +6448,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                          'alt':'Telescope altitude','az':'Azimuth angle','TILT1 VAL1':'ESPRESSO TILT1 VAL1','TILT1 VAL2':'ESPRESSO TILT1 VAL2','TILT2 VAL1':'ESPRESSO TILT2 VAL1','TILT2 VAL2':'ESPRESSO TILT2 VAL2'}
             for ideg in range(1,5):txt_print['c'+str(ideg)+'_pol']=r'Polynomial continuum (deg. '+str(ideg)+')'
             for ideg in range(0,11):txt_print['PC'+str(ideg)]=r'Coefficient PCA (deg. '+str(ideg)+')'
+            print('   ---------------')
             print('   > '+txt_print[plot_prop])
 
             #%%%%% Plot   
@@ -7967,6 +7970,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             key_plot = 'prop_Intr_'+plot_prop 
             txt_print = {'rv':'RV','rv_res':'RV residuals','rv_l2c':'RV lobe-to-core difference','RV_lobe':'Lobe RV','FWHM':'FWHM','FWHM_voigt':'','FWHM_l2c':'FWHM lobe-to-core ratio','FWHM_lobe':'Lobe FWHM','true_FWHM':'True FWHM',
                          'ctrst':'Contrast','true_ctrst':'True contrast','amp':'Amplitude','amp_l2c':'Amplitude lobe-to-core ratio','amp_lobe':'Lobe amplitude','area':'Area','a_damp':'Damping coefficient'}
+            print('   ---------------')
             print('   > '+txt_print[plot_prop])
 
             #%%%%% Plot routine   
@@ -9102,12 +9106,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             plt.close()
             
             #Store image for GIF generation
-            if images_to_make_GIF is not None:images_to_make_GIF.append(imageio.imread(filename))
+            if images_to_make_GIF is not None:images_to_make_GIF.append(imageio.v2.imread(filename))
 
         ### End of loop on plotted timesteps    
 
         #Produce and store the GIF.
-        if images_to_make_GIF is not None:imageio.mimsave(path_loc+'System.gif', images_to_make_GIF,fps=plot_set_key['fps'])
+        if images_to_make_GIF is not None:imageio.mimsave(path_loc+'System.gif', images_to_make_GIF,duration=(1000 * 1/plot_set_key['fps']))
 
 
 

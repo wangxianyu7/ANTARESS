@@ -282,13 +282,17 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
         #Plot exposure indexes
         plot_options[key_plot]['plot_expid'] = True
         
-    #--------------------------------------        
+    #--------------------------------------   
+    #2D map settings     
     if ('map_' in key_plot) or ('bin' in key_plot) or ('prop_' in key_plot) or (key_plot in ['occulted_regions']):
 
         #Bin dimension
         #    - 'phase' (see details and routine)
         #    - coordinates are only available if binning was performed over 'phase'
         plot_options[key_plot]['dim_plot']='phase' 
+
+        #Print information
+        plot_options[key_plot]['verbose']=True 
 
     #--------------------------------------   
     if ('prop_' in key_plot):
@@ -1662,7 +1666,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
 
-            #%%%%% Mode to retrieve
+            #%%%%% Model to retrieve
             plot_settings[key_plot]['mode_loc_data_corr'] = 'glob_mod'
 
             ##############################################################################
@@ -1685,9 +1689,6 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
                 plot_settings[key_plot]['st_cont']=None
                 
         
-
-
-
 
  
     ################################################################################################################ 
