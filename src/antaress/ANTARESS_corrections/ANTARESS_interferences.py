@@ -18,7 +18,7 @@ from matplotlib.ticker import MultipleLocator
 from ..ANTARESS_plots.utils_plots import autom_tick_prop,custom_axis
 from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof
 from ..ANTARESS_grids.ANTARESS_coord import get_timeorbit,calc_tr_contacts
-from ..ANTARESS_analysis.ANTARESS_ana_comm import model_par_names,par_formatting
+from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
 from ..ANTARESS_general.utils import stop,np_where1D,is_odd,closest,dataload_npz,gen_specdopshift,check_data,datasave_npz
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_general.minim_routines import init_fit,fit_merit,call_lmfit
@@ -1002,7 +1002,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             #Model parameters
                             p_start = Parameters()  
                             par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['varpar_priors'],fit_dic,fixed_args_loc,'','',None)
-                            init_fit(fit_dic,fixed_args_loc,p_start,model_par_names(),fit_prop_dic)                          
+                            init_fit(fit_dic,fixed_args_loc,p_start,fit_prop_dic,model_par_names,model_par_units)                    
 
                             #Initialize band fit results
                             #    - we only store constant coefficients of the amplitude and frequency hyper-parameters, for the highest fitted component
@@ -1181,7 +1181,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             #    - initialized with generic parameter values
                             p_start = Parameters()  
                             par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['varpar_priors'],fit_dic,fixed_args_loc,'','',None)
-                            init_fit(fit_dic,fixed_args_loc,p_start,model_par_names(),fit_prop_dic)  
+                            init_fit(fit_dic,fixed_args_loc,p_start,fit_prop_dic,model_par_names,model_par_units)     
 
                             #------------------------------
     
@@ -2139,7 +2139,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     #Parameter initialization
                     p_start = Parameters()  
                     par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['varpar_priors'],fit_dic,fixed_args_loc,'','',None)
-                    init_fit(fit_dic,fixed_args_loc,p_start,model_par_names(),fit_prop_dic) 
+                    init_fit(fit_dic,fixed_args_loc,p_start,fit_prop_dic,model_par_names,model_par_units)     
                 
                 #Retrieve previous fit
                 if vis in gen_dic['wig_vis_fit']['reuse']:
@@ -2480,7 +2480,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             
                             #Frame
                             y_range_plot=np.array([y_min,y_max]) 
-                            ymajor_int,yminor_int,ymajor_form=autom_y_tick_prop(y_range_plot[1]-y_range_plot[0]) 
+                            ymajor_int,yminor_int,ymajor_form=autom_tick_prop(y_range_plot[1]-y_range_plot[0]) 
                             custom_axis(plt,position=[0.15,0.15,0.95,0.7],
                                         x_range=x_range_plot,xmajor_int=5,xminor_int=1.,
                                         y_range=y_range_plot,ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,dir_y='out',

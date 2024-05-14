@@ -499,39 +499,71 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
         cmap(np.linspace(minval, maxval, n)))
     return new_cmap
 
-'''
-Routine to reproduce the old stackrel
-'''
+
 def stackrel(val,sub,sup,form):
+    r"""**Stackrel truncation.**
+    
+    Print value with upper and lower error bars.
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
     form = deepcopy("{"+form+"}")
     return r"$"+form.format(val)+"\genfrac{}{}{0}{}{+"+form.format(sup)+"}{-"+form.format(sub)+"}$"
 
-'''Overrides plt.scatter to have various markers in one command'''
+
+
 def mscatter(plt ,x, y, ax=None, m=None, **kw):
+    r"""**Multiple markers.**
+    
+    Overrides plt.scatter to have various markers in one command.
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    import matplotlib.markers as mmarkers
 
-	import matplotlib.markers as mmarkers
+    if not ax: ax = plt.gca()
 
-	if not ax: ax = plt.gca()
+    sc = ax.scatter(x, y, **kw)
+    
+    if (m is not None) and (len(m) == len(x)):
+        paths = []
+        for marker in m:
+            if isinstance(marker, mmarkers.MarkerStyle):
+                marker_obj = marker
+            else:
+                marker_obj = mmarkers.MarkerStyle(marker)
+            path = marker_obj.get_path().transformed(marker_obj.get_transform())
+            paths.append(path)
+        sc.set_paths(paths)
+        
+    return sc
 
-	sc = ax.scatter(x, y, **kw)
 
-	if (m is not None) and (len(m) == len(x)):
-		paths = []
-		for marker in m:
-			if isinstance(marker, mmarkers.MarkerStyle):
-				marker_obj = marker
-			else:
-				marker_obj = mmarkers.MarkerStyle(marker)
-			path = marker_obj.get_path().transformed(marker_obj.get_transform())
-			paths.append(path)
-		sc.set_paths(paths)
-	
-	return sc
 
-'''
-Sub-function to shade ranges
-'''
+
+
 def plot_shade_range(ax,shade_range,x_range_loc,y_range_loc,mode='fill',facecolor='grey',zorder=-1,alpha=0.2,compl=False):
+    r"""**Shaded ranges.**
+    
+    Shades list of ranges.
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
     for i_int,bd_int in enumerate(shade_range):
         if compl:
             if (i_int==0 and bd_int[0]>x_range_loc[0]):

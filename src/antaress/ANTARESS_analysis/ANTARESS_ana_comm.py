@@ -245,19 +245,19 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
     return p_start
 
 
-def model_par_names():
+def model_par_names(par):
     r"""**Naming function**
 
-    Returns dictionary associating plain name to variable.
+    Returns name and unit of input variable for plot display.
 
     Args:
         None
 
     Returns:
-        name_dic (dict): dictionary of names
+        name_par (str): parameter name
 
     Example:
-        >>> model_par_names()[x]
+        >>> model_par_names(x)
         x_name
         
     """
@@ -288,9 +288,54 @@ def model_par_names():
         # Stage Théo
         'Tcenter' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'ctrst' : 'F$_{sp}$'
         } 
-    return name_dic
+    if par in name_dic:name_par = name_dic[par]
+    else:name_par = par
+    return name_par
 
+def model_par_units(par):
+    r"""**Unit function**
 
+    Returns plain text unit of input variable.
+
+    Args:
+        None
+
+    Returns:
+        unit_par (str): parameter unit
+
+    Example:
+        >>> model_par_units(x)
+        x_name
+        
+    """
+    unit_dic = {
+        'veq':'km/s','vsini':'km/s',
+        'Peq':'d',
+        'alpha_rot':'','beta_rot':'',       
+        'cos_istar':'','istar_deg':'deg',
+        'lambda_rad':'rad', 
+        'c1_CB':'km/s','c2_CB':'km/s','c3_CB':'km/s',  
+        'inclination':'deg','inclin_rad':'rad',
+        'aRs':'',
+        'Rstar':'Rsun',
+        'ctrst':'','ctrst_ord0':'','ctrst_ord1':'','ctrst_ord2':'','ctrst_ord3':'','ctrst_ord4':'', 
+        'FWHM_ord0':'km/s','FWHM_ord1':'km/s','FWHM_ord2':'km/s','FWHM_ord3':'km/s','FWHM_ord4':'km/s',
+        'FWHM_LOR':'km/s',
+        'a_damp':'',
+        'amp':'',
+        'rv':'km/s',
+        'FWHM':'km/s',
+        'rv_l2c':'km/s','amp_l2c':'','FWHM_l2c':'',
+        'cont':'',
+        'c1_pol':'','c2_pol':'','c3_pol':'','c4_pol':'',
+        'LD_u1':'','LD_u2':'','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
+        'f_GD':'f$_{\rm GD}$','beta_GD':'$\beta_{\rm GD}$','Tpole':'T$_{\rm pole}$',
+        'eta_R':r'$\eta_{\rm R}$','eta_T':r'$\eta_{\rm T}$','ksi_R':r'\Ksi$_\mathrm{R}$','ksi_T':r'\Ksi$_\mathrm{T}$',
+        'Tcenter' : 'BJD',
+        } 
+    if par in unit_dic:unit_par = unit_dic[par]
+    else:unit_par = ''
+    return unit_par
 
 
 
@@ -674,7 +719,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     fixed_args['nthreads']=fit_prop_dic['nthreads']
     
     #Fit initialization
-    init_fit(fit_dic,fixed_args,p_start,model_par_names(),fit_prop_dic)     
+    init_fit(fit_dic,fixed_args,p_start,fit_prop_dic,model_par_names,model_par_units)     
     merged_chain = None
     
     ########################################################################################################  
@@ -1740,6 +1785,8 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     fit_dic={
         'merit':{},
         'fit_mode':fit_prop_dic['fit_mode'],
+        'print_par':fit_prop_dic['print_par'],
+        'verb_shift':'',
         'uf_bd':{},
         'nx_fit':len(fixed_args['y_val'])
         }
@@ -1759,7 +1806,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
         
     #Fit initialization
     fit_dic['save_dir'] = fixed_args['save_dir']+'iexp'+str(fixed_args['iexp'])+'/'
-    init_fit(fit_dic,fixed_args,p_start,model_par_names(),fit_prop_dic)  
+    init_fit(fit_dic,fixed_args,p_start,fit_prop_dic,model_par_names,model_par_units)     
 
     #--------------------------------------------------------------
     #Fit by chi2 minimization
@@ -1916,7 +1963,8 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                     chain_loc=fixed_args['amp_sign']*ctrst_chain*cont_chain
                     merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)            
                 fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'amp')
-                fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],'Amp')       
+                fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],'Amp') 
+                fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],'')      
 
             #Integral under the gaussian model
             #    - formula valid if there is no asymetry to the gaussian shape:
@@ -1940,7 +1988,8 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                     chain_loc=np.abs(amp_chain)*FWHM_chain*np.sqrt(np.pi)/(2.*np.sqrt(np.log(2))) 
                     merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)   
                 fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'area')
-                fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],'Area')         
+                fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],'Area') 
+                fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],'')        
     
     
         if (prof_type in ['DI','Intr']):
@@ -1986,7 +2035,8 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                     chain_loc=0.5436*fwhm_lor_chain+ np.sqrt(0.2166*fwhm_lor_chain**2.+fwhm_gauss_chain**2.) 
                     merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)          
                 fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],['FWHM_LOR','FWHM_voigt'])
-                fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],['a$_\mathrm{damp}$','FWHM$_\mathrm{Voigt}$'])                
+                fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],['a$_\mathrm{damp}$','FWHM$_\mathrm{Voigt}$']) 
+                fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],['','km/s'])               
                     
     
             #True properties of the global line
@@ -2008,6 +2058,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                         merged_chain=np.concatenate((merged_chain,chain_loc.T),axis=1)  
                     fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],['true_ctrst','true_FWHM','true_amp',])
                     fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],['C$_\mathrm{true}$','FWHM$_\mathrm{true}$','A$_\mathrm{true}$'])
+                    fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],['','km/s',''])
         
                 #Stellar rotational velocity
                 if (model_choice=='custom') and ('vsini' in fit_prop_dic['deriv_prop']):
@@ -2039,7 +2090,8 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                         chain_loc = veq_chain*np.sqrt(1.-cosistar_chain*cosistar_chain)
                         merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)                 
                     fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'vsini')            
-                    fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],'v$_\mathrm{eq}$sin i$_{*}$ (km/s)')     
+                    fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],'v$_\mathrm{eq}$sin i$_{*}$ (km/s)')
+                    fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],'km/s')     
         
                     #Convert cos(istar[rad]) into istar[deg]
                     conv_cosistar('conv',fixed_args,fit_dic,p_final,merged_chain)
@@ -2090,6 +2142,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                     
                         fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],['cont_amp','amp'])
                         fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],['Acont','Amp'])
+                        fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],['',''])
         
         
                     #Lobe properties
@@ -2107,7 +2160,8 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                             chain_loc = merged_chain[:,irv] + rv_l2c_chain
                             merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)
                         fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],['RV_lobe'])
-                        fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],['rv$_\mathrm{lobe}$ (km s$^{-1}$)'])                    
+                        fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],['rv$_\mathrm{lobe}$ (km s$^{-1}$)'])  
+                        fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],['km/s'])                   
                     
                     if ('amp_lobe' in fit_prop_dic['deriv_prop']):            
                         if fit_dic['fit_mode']=='chi2': 
@@ -2122,7 +2176,8 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                             chain_loc=merged_chain[:,np_where1D(fixed_args['var_par_list']=='amp')[0]]*amp_l2c_chain
                             merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)
                         fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],['amp_lobe'])
-                        fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],['A$_\mathrm{lobe}$'])                    
+                        fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],['A$_\mathrm{lobe}$'])   
+                        fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],[''])                  
                     
                     if ('FWHM_lobe' in fit_prop_dic['deriv_prop']):                     
                         if fit_dic['fit_mode']=='chi2': 
@@ -2142,6 +2197,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                             merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)
                         fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],['FWHM_lobe'])
                         fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],['FWHM$_\mathrm{lobe}$ (km s$^{-1}$)'])
+                        fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],['km/s'])
             
 
          
@@ -2622,7 +2678,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                 chain_loc=(2.*np.pi*Rstar_chain*Rsun)/(np.squeeze(merged_chain[:,iPeq])*3600.*24.)
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
             fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'veq')
-            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],'v$_{eq}$(km/s)')
+            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],'v$_{eq}$ (km/s)')
+            fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],'km/s')
     
     
         #Convert veq into veq*sin(istar) to be comparable with solid-body values
@@ -2658,7 +2715,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                 veq_chain=deepcopy(merged_chain[:,iveq])            
                 merged_chain[:,iveq]=veq_chain*np.sqrt(1.-cosistar_chain*cosistar_chain)
             fixed_args['var_par_list'][iveq]='vsini'            
-            fixed_args['var_par_names'][iveq]=model_par_names()['vsini']             
+            fixed_args['var_par_names'][iveq]=model_par_names('vsini') 
+            fixed_args['var_par_units'][iveq]=model_par_units('vsini')            
     
             
         #-------------------------------------------------            
@@ -2803,7 +2861,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                 
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
             fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'istar_deg')
-            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],model_par_names()['istar_deg'])
+            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],model_par_names('istar_deg'))
+            fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],model_par_units('istar_deg'))
     
         #-------------------------------------------------
         #Add Peq using the value derived from veq and independent measurement of Rstar
@@ -2834,7 +2893,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                 chain_loc=(2.*np.pi*Rstar_chain)/(np.squeeze(merged_chain[:,iveq])*3600.*24.)
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
             fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'Peq')
-            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],model_par_names()['Peq'])
+            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],model_par_names('Peq'))
+            fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],model_par_units('Peq'))
     
         #-------------------------------------------------
         #Add Peq using the value derived from vsini and independent measurement of Rstar and istar
@@ -2875,7 +2935,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                 chain_loc=(2.*np.pi*Rstar_chain*sinistar_chain)/(np.squeeze(merged_chain[:,ivsini])*3600.*24.)
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
             fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'Peq')
-            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],model_par_names()['Peq'])   
+            fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],model_par_names('Peq'))  
+            fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],model_par_units('Peq')) 
     
         #-------------------------------------------------
                 
@@ -3051,10 +3112,12 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     for inst in fixed_args['genpar_instvis'][lambda_rad_pl]:
                         for vis in fixed_args['genpar_instvis'][lambda_rad_pl][inst]:
                             fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiN__pl'+pl_loc+'__IS'+inst+'_VS'+vis,'PsiS__pl'+pl_loc+'__IS'+inst+'_VS'+vis]))
-                            fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi_{N}$['+inst+']('+vis+')',pl_loc+'_$\psi_{S}$',pl_loc+'_$\psi$['+inst+']('+vis+')']))          
+                            fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi_{N}$['+inst+']('+vis+')',pl_loc+'_$\psi_{S}$',pl_loc+'_$\psi$['+inst+']('+vis+')']))   
+                            fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg','deg','deg']))        
                 else:
                     fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiN__pl'+pl_loc,'PsiS__pl'+pl_loc,'Psi__pl'+pl_loc]))
                     fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi_{N}$',pl_loc+'_$\psi_{S}$',pl_loc+'_$\psi$']))   
+                    fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg','deg','deg']))   
              
         #-------------------------------------------------
             
@@ -3096,9 +3159,11 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                         for vis in fixed_args['genpar_instvis'][lambda_rad_pl][inst]:
                             fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'Omega__pl'+pl_loc+'__IS'+inst+'_VS'+vis)
                             fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],pl_loc+'_$\Omega$['+inst+']('+vis+')') 
+                            fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],'deg') 
                 else:
                     fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'Omega__pl'+pl_loc)
-                    fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],pl_loc+'_$\Omega$')               
+                    fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],pl_loc+'_$\Omega$')  
+                    fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],'deg')               
 
         #-------------------------------------------------
             
@@ -3134,6 +3199,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)   
                 fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],pl_loc+'_b')
                 fixed_args['var_par_names']=np.append(fixed_args['var_par_names'],pl_loc+'_b')
+                fixed_args['var_par_units']=np.append(fixed_args['var_par_units'],'')
     
         #-------------------------------------------------            
             
@@ -3161,6 +3227,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     
                 fixed_args['var_par_list'][iip]='ip_deg__pl'+pl_loc            
                 fixed_args['var_par_names'][iip]='i$_\mathrm{p}$['+pl_loc+']($^{\circ}$)'  
+                fixed_args['var_par_units'][iip]='deg' 
     
         #-------------------------------------------------            
             
@@ -3184,7 +3251,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                         sig_temp  = fit_dic['sig_parfinal_err']['1s'][0,ilamb]*180./np.pi 
                         fit_dic['sig_parfinal_err']['1s'][:,ilamb] = sig_temp  
                         fixed_args['var_par_list'][ilamb]=new_lamb_name       
-                        fixed_args['var_par_names'][ilamb]= new_lamb_name_txt                           
+                        fixed_args['var_par_names'][ilamb]= new_lamb_name_txt   
+                        fixed_args['var_par_units'][ilamb]= 'deg'                         
                         return None
                     
                     if lambda_rad_pl in fixed_args['genpar_instvis']:
@@ -3228,7 +3296,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                             merged_chain[w_lt_0,ilamb] = lambda_temp[w_lt_0]+i_mod*360.+mid_shift
                 
                         fixed_args['var_par_list'][ilamb]=new_lamb_name
-                        fixed_args['var_par_names'][ilamb]=new_lamb_name_txt       
+                        fixed_args['var_par_names'][ilamb]=new_lamb_name_txt  
+                        fixed_args['var_par_units'][ilamb]='deg'      
                         
                         return None
     
@@ -3264,7 +3333,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     chain_loc=np.append(chain_loc,c0_CB)
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)   
             fixed_args['var_par_list']=np.append(fixed_args['var_par_list'],'c0_CB')
-            fixed_args['var_par_names'] = np.append(fixed_args['var_par_names'],'CB$_{0}$')           
+            fixed_args['var_par_names'] = np.append(fixed_args['var_par_names'],'CB$_{0}$')  
+            fixed_args['var_par_units'] = np.append(fixed_args['var_par_units'],'km/s')           
     
     
         #-------------------------------------------------            
@@ -3279,7 +3349,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                 if ipar_name=='c0_CB':fixed_args['var_par_names'][ipar_loc]='CB$_{0}$ (m s$^{-1}$)'
                 if ipar_name=='c1_CB':fixed_args['var_par_names'][ipar_loc]='CB$_{1}$ (m s$^{-1}$)'
                 if ipar_name=='c2_CB':fixed_args['var_par_names'][ipar_loc]='CB$_{2}$ (m s$^{-1}$)'
-                if ipar_name=='c3_CB':fixed_args['var_par_names'][ipar_loc]='CB$_{3}$ (m s$^{-1}$)'             
+                if ipar_name=='c3_CB':fixed_args['var_par_names'][ipar_loc]='CB$_{3}$ (m s$^{-1}$)'  
+                fixed_args['var_par_units'][ipar_loc]='m/s'            
                 if fit_dic['fit_mode']=='chi2': 
                     p_final[ipar_name]*=1e3 
                     fit_dic['sig_parfinal_err']['1s'][:,ipar_loc]*=1e3  
@@ -3350,9 +3421,11 @@ def conv_cosistar(deriv_prop,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in
         if ('istar_deg_conv') in deriv_prop:    
             fixed_args_in['var_par_list'][iistar]='istar_deg'            
             fixed_args_in['var_par_names'][iistar]='i$_{*}(^{\circ}$)'   
+            fixed_args_in['var_par_units'][iistar]='deg'   
         elif ('istar_deg_add') in deriv_prop: 
             fixed_args_in['var_par_list']=np.append(fixed_args_in['var_par_list'],'istar_deg')
             fixed_args_in['var_par_names']=np.append(fixed_args_in['var_par_names'],'i$_{*}(^{\circ}$)') 
+            fixed_args_in['var_par_units']=np.append(fixed_args_in['var_par_units'],'deg')
     else:
         if fit_dic_in['fit_mode']=='chi2':p_final_in['istar_deg']=np.arccos(p_final_in['cos_istar'])*180./np.pi  
         elif fit_dic_in['fit_mode']=='mcmc':fixed_args_in['fixed_par_val']['istar_deg']=np.arccos(p_final_in['cos_istar'])*180./np.pi                          
@@ -3430,16 +3503,20 @@ def conv_CF_intr_meas(deriv_prop,inst_list,inst_vis_list,fixed_args,merged_chain
                 if varC:
                     fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],[fixed_args['var_par_list'][ictrst_loc]+'_'+inst]))
                     fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],['Contrast$_\mathrm{'+inst+'}$']))
+                    fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['']))
                 if varF:
                     fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'][fixed_args['var_par_list'][iFWHM_loc]+'_'+inst]))
                     fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names']['FWHM$_\mathrm{'+inst+'}$(km/s)']))
+                    fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['km/s']))
             elif ('CF0_meas_conv' in deriv_prop) or ('CF0_DG_conv' in deriv_prop):
                 if varC:
                     fixed_args['var_par_list'][ictrst_loc] = fixed_args['var_par_list'][ictrst_loc]+'_'+inst
                     fixed_args['var_par_names'][ictrst_loc] = 'Contrast$_\mathrm{'+inst+'}$'
+                    fixed_args['var_par_units'][ictrst_loc] = ''
                 if varF:                                
                     fixed_args['var_par_list'][iFWHM_loc] = fixed_args['var_par_list'][iFWHM_loc]+'_'+inst
                     fixed_args['var_par_names'][iFWHM_loc] = 'FWHM$_\mathrm{'+inst+'}$(km/s)'
+                    fixed_args['var_par_units'][iFWHM_loc] = ''
 
     return merged_chain           
 
