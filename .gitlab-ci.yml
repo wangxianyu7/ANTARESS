@@ -5,7 +5,7 @@ default:
 variables:
   PROJECT_NAME: "antaress"
   PROJECT_ID: "8586"
-  LOGIN01: "129.194.61.6"
+  LOGIN01: "login01.astro.unige.ch"
 
 stages:
   - build
