@@ -815,9 +815,6 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
 
             line_prof = line_prof_cons[line_pro]
 
-            #Scaling to fitted continuum level
-            line_prof*=params['cont']
- 
             #Conversion and resampling 
             flux_loc = conv_st_prof_tab(None,None,None,fixed_args,args_exp,line_prof,fixed_args['FWHM_inst'])
 

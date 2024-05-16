@@ -583,7 +583,7 @@ def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=N
     p_best=result.params
 
     #Update crossing times one last time
-    if fixed_args['update_crosstime']:
+    if ('update_crosstime' in fixed_args) and fixed_args['update_crosstime']:
         for inst in list(fixed_args['spot_crosstime_supp'].keys()):
             for vis in list(fixed_args['spot_crosstime_supp'][inst].keys()):
                 for par in p_best:
@@ -719,7 +719,7 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
     walker_chains = sampler.chain    
 
     #Update crossing times one last time
-    if fixed_args['update_crosstime']:
+    if ('update_crosstime' in fixed_args) and fixed_args['update_crosstime']:
         for inst in list(fixed_args['spot_crosstime_supp'].keys()):
             for vis in list(fixed_args['spot_crosstime_supp'][inst].keys()):
                 for ipar, par in enumerate(fixed_args['var_par_list']):
