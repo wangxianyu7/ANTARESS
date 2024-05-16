@@ -3,12 +3,13 @@
 import numpy as np
 import bindensity as bind
 from copy import deepcopy
+from ..ANTARESS_grids.ANTARESS_spots import retrieve_spots_prop_from_param
 from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,default_func,check_data
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase
 from ..ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop
 
-def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,mock_dic={},masterDI=False):
+def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,spot_dic={},masterDI=False):
     r"""**Binning routine**
 
     Bins series of input spectral profile into a new series along the chosen temporal/spatial dimension.
@@ -329,18 +330,6 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             binned_time[i_new] = np.average(time_to_bin)
             binned_t_dur[i_new] = np.average(dur_to_bin)
            
-
-            # # Stage Théo : Saving extra data for the module 'fit_ResProf'
-            
-            # if (gen_dic['fit_ResProf'] and masterDI) : 
-            #     data_exp_new['idx_to_bin'] = idx_to_bin
-            #     data_exp_new['weight'] = {}
-            #     for iexp_off in idx_to_bin : data_exp_new['weight'][iexp_off] = data_to_bin[iexp_off]['weight']
-            #     data_exp_new['dx_ov'] = dx_ov
-
-
-
-
         #Store path to weighing master 
         if masterDI:
             np.savez_compressed(data_dic[inst][vis_in]['mast_'+data_type+'_data_paths'][0],data=data_exp_new,allow_pickle=True) 
@@ -408,29 +397,46 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             data_glob_new['coord']['bjd'] = binned_time
             data_glob_new['coord']['t_dur'] = binned_t_dur
 
-            #Properties of planet-occulted and spot regions 
+            #Properties of planet-occulted and spot-occulted regions 
             params = deepcopy(system_param['star'])
             params.update({'rv':0.,'cont':1.}) 
-            if mock_dic!={} and (inst in mock_dic['spots_prop']):
-                #Samson: I think we said there is no need to define mock_dic['use_spots'], the condition (inst in mock_dic['spots_prop']) is sufficient to activate or not the use of spots
+            params['use_spots']=False
+            if (inst in spot_dic):
                 if mode=='multivis':
                     print('WARNING: spots properties are not propagated for multiple visits.')
-                elif vis_in in mock_dic['spots_prop'][inst]:
-                    for spot_param in list(mock_dic['spots_prop'][inst][vis_in].keys()):
-                        params[spot_param]=mock_dic['spots_prop'][inst][vis_in][spot_param]
-                        
-                    #Figuring out the number of spots
-                    num_spots = 0
-                    for par in params:
-                        if 'lat__IS'+inst+'_VS'+vis_in+'_SP' in par:num_spots +=1
-                    params['num_spots']=num_spots
-                    params['inst']=inst
-                    params['vis']=vis_in  
+                elif vis_in in spot_dic[inst]:
+
+                    #Trigger spot use
+                    params['use_spots']=True
+
+                    #Initialize entries for spot coordinates 
+                    for spot in data_dic[inst][vis_in]['transit_sp']:
+                        data_glob_new['coord'][spot]={}
+                        for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:data_glob_new['coord'][spot][key] = np.zeros(n_bin,dtype=float)*np.nan
+                        for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:data_glob_new['coord'][spot][key] = np.zeros([3,n_bin],dtype=float)*np.nan
+                        data_glob_new['coord'][spot]['is_visible'] = np.zeros([3,n_bin],dtype=float)
+
+                    #Retrieve spot coordinates/properties for new exposures
+                    spot_dic[inst][vis_in]['cos_istar']=system_param['star']['cos_istar']
+
+                    for i_new in range(n_bin):
+                        spots_prop = retrieve_spots_prop_from_param(system_param['star'],spot_dic[inst][vis_in],inst,vis_in,data_glob_new['coord']['bjd'][i_new],exp_dur=data_glob_new['coord']['t_dur'][i_new])
+                        for spot in data_dic[inst][vis_in]['transit_sp']:
+                            for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
+                                data_glob_new['coord'][spot][key][i_new] = spots_prop[spot][key]
+
+                            for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
+                                data_glob_new['coord'][spot][key][:, i_new] = [spots_prop[spot][key+'_start'],spots_prop[spot][key+'_center'],spots_prop[spot][key+'_end']]
+
+                            data_glob_new['coord'][spot]['is_visible'][:, i_new]=[spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]
+
+                    spot_dic[inst][vis_in].pop('cos_istar')
+                                        
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
             if ('spec' in data_mode) and ('chrom' in system_prop):key_chrom+=['chrom']
-            data_glob_new['plocc_prop'],data_glob_new['spot_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True) 
-
+            data_glob_new['plocc_prop'],data_glob_new['spot_prop'],data_glob_new['common_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True)
+            
         #---------------------------------------------------------------------------
 
         #Saving global tables for new exposures
@@ -614,7 +620,7 @@ def init_bin_prof(data_type,bin_prop,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bi
 
 
 
-def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,mean_gdet,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True):
+def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,mean_gdet,cen_bins,dt,flux_ref_exp,cov_ref_exp,ref_val=0.,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True):
     r"""**Binning routine: weights**
 
     Defines weights to be used when binning profiles.
@@ -781,7 +787,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     #--------------------------------------------------------     
 
     #Calculate weights at pixels where the master stellar spectrum is defined and positive
-    cond_def_weights = (~np.isnan(flux_ref_exp)) & (flux_ref_exp>0.)
+    cond_def_weights = (~np.isnan(flux_ref_exp)) & (flux_ref_exp>ref_val)
     if np.sum(cond_def_weights)==0:stop('Issue with master definition')
 
     #Spectral corrections

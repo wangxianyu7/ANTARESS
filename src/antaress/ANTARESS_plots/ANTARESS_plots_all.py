@@ -145,7 +145,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 coord_pl_in[pl_loc]['cen_pos'] = coord_pl_in[pl_loc]['cen_pos'][:,cond_occ_HR]
                 coord_pl_in[pl_loc]['phase'] = coord_pl_in[pl_loc]['phase'][cond_occ_HR]     
                 coord_pl_in[pl_loc]['ecl'] = coord_pl_in[pl_loc]['ecl'][cond_occ_HR] 
-            surf_prop_dic, surf_prop_dic_spot = sub_calc_plocc_spot_prop(['achrom'],args,par_list,gen_dic['studied_pl'],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))
+            surf_prop_dic, surf_prop_dic_spot, surf_prop_dic_common = sub_calc_plocc_spot_prop(['achrom'],args,par_list,gen_dic['studied_pl'],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))
             theo_HR_prop_plocc = surf_prop_dic['achrom']
             theo_HR_prop_plocc['nph_HR'] = coord_pl_in['nph_HR']
             for pl_loc in gen_dic['studied_pl']:
@@ -343,6 +343,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Options
             sc_fact=10**plot_options['sc_fact10']            
 
+            if plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
+                        'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+        
+                #Defining whether we are plotting the planet-occulted or spotted profiles and if they are clean or uncleaned
+                supp_name = plot_mod.split('_')[4]
+                corr_plot_mod = plot_mod.split('_')[3]
+
             #Plotting separate visits on different plots because of the possible overlap between exposures
             for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())):             
                 print('   - Instrument :',inst)
@@ -478,7 +485,31 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         #Data
                         else:     
                             
-                            if plot_mod in ['map_Intr_prof_est','map_Intr_prof_res']: 
+                            if plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
+                                            'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+                                
+                                cond_def_map[isub] = data_exp['cond_def']
+                                #Retrieving flux for these regions
+                                if '_est' in plot_mod:
+                                    var_map[isub] = data_exp[corr_plot_mod+'_'+supp_name+'_flux'] 
+                                #Building residuals
+                                elif '_res' in plot_mod:
+                                    data_exp_est = dataload_npz(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp)) 
+                                    var_map[isub] = data_exp['flux'] - data_exp_est[corr_plot_mod+'_'+supp_name+'_flux']
+                            
+                            elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
+                                cond_def_map[isub] = data_exp['cond_def_fit']
+                                
+                                flux_2_use = data_exp['flux']
+                                if plot_mod == 'map_BF_Res_prof_re':
+                                    raw_prof_loc = gen_dic['save_data_dir']+'Res_data/'+inst+'_'+vis+'_'+str(iexp)
+                                    raw_prof = dataload_npz(raw_prof_loc)
+                                    flux_2_use -= raw_prof['flux']
+                                
+                                var_map[isub] = flux_2_use
+                            
+                            elif plot_mod in ['map_Intr_prof_est','map_Intr_prof_res']: 
+
 
                                 #Check that model exists for in-transit profiles 
                                 if (gen_dic[inst][vis]['idx_exp2in'][iexp_or]==-1.) or \
@@ -520,7 +551,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                 intr2res_sc = np.zeros(dim_exp_proc)*np.nan 
                                                 for iord in range(nord_proc):
     
-                                                    #Conversion from intrinsic to residual flux levels
+                                                    #Conversion from intrinsic to differential flux levels
                                                     loc_flux_scaling_exp_ord =  data_scaling['loc_flux_scaling'](data_exp['cen_bins'][iord])
                                                     intr2res_sc[iord] = loc_flux_scaling_exp_ord/(1. - loc_flux_scaling_exp_ord)                                                
     
@@ -544,17 +575,17 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                         if data_dic['Intr']['plocc_prof_type']=='Intr': 
                                                             intr_flux_est[iord] = data_exp_est['flux'][iord]
                                                         
-                                                        #Conversion from model residual to intrinsic profiles
+                                                        #Conversion from model differential to intrinsic profiles
                                                         elif data_dic['Intr']['plocc_prof_type']=='Res':          
                                                             intr_flux_est[iord] = data_exp_est['flux'][iord]/loc_flux_scaling_exp_ord
         
-                                                #Residuals
+                                                #Differential profiles
                                                 var_map[isub] =  (data_exp['flux'] - intr_flux_est)*intr2res_sc
 
                                             #Exosure is effectively out-transit
                                             else:var_map[isub]=data_exp['flux']                                                
                                                 
-                                        #Out-of-transit residual profile
+                                        #Out-of-transit differential profile
                                         else:var_map[isub]=data_exp['flux']
 
                                 #Plot scaling
@@ -867,7 +898,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #Modelled and measured local stellar surface RVs
                             if (data_type == 'CCF'):
     
-                                #Local stellar residual profiles
+                                #Local differential and intrinsic profiles
                                 if (plot_mod in ['map_Res_prof','map_Intr_prof_est','map_Intr_prof_res','map_Intrbin']) or ((plot_mod in ['map_Intr_prof']) and (not plot_options['aligned'])):
                                 
                                     #Model at each exposure                        
@@ -933,10 +964,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         RV_rest = 0.
                                         plot_rv = False
                                         
-                                        #Local stellar residual or atmospheric profiles
+                                        #Local differential profiles
                                         if (plot_mod=='map_Res_prof') and ('prof_fit_dic' in data_dic['Res'][inst][vis]) and (iexp in gen_dic[inst][vis]['idx_in']): 
                                             CCF_fit_loc = data_dic['Res'][inst][vis]['prof_fit_dic'][i_in] 
                                             plot_rv = True
+                                        
+                                        #Local atmospheric profiles
                                         if plot_mod=='map_Atm_prof':
                                             if (data_dic['Atm']['pl_atm_sign']=='Absorption') and (iexp in gen_dic[inst][vis]['idx_in']):CCF_fit_loc = data_dic['Atm'][inst][vis]['prof_fit_dic'][i_in]
                                             if data_dic['Atm']['pl_atm_sign']=='Emission':CCF_fit_loc = data_dic['Atm'][inst][vis]['prof_fit_dic'][iexp]
@@ -987,7 +1020,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             cb = plt.cm.ScalarMappable(cmap=cmap_2D,norm=plt.Normalize(vmin=v_range[0], vmax=v_range[1]))										
                             cb.set_array(v_range) 	
                         
-                            if plot_mod in ['map_DIbin','map_DI_prof','map_Res_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin','map_Intr_1D']:cbar_txt='flux'
+                            if plot_mod in ['map_DIbin','map_DI_prof','map_Res_prof','map_Intr_prof','map_BF_Res_prof','map_BF_Res_prof_re','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin',
+                                            'map_Intr_1D','map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est','map_Res_prof_clean_sp_res',
+                                            'map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:cbar_txt='flux'
                             elif plot_mod in ['map_Atm_prof','map_Atmbin','map_Atm_1D']:cbar_txt=plot_options['pl_atm_sign']
                             cbar_txt = scaled_title(plot_options['sc_fact10'],cbar_txt)  
                             if plot_options['reverse_2D']:
@@ -1012,6 +1047,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             if plot_mod in ['map_Intr_prof_est','map_Intr_prof_res']:
                                 add_str+='_'+plot_options['mode_loc_data_corr']+'_'+plot_options['line_model'] 
                                 if plot_mod=='map_Intr_prof_res':add_str+='_res'
+                            elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
+                                add_str += 'BestFit'
+                                if plot_mod=='map_BF_Res_prof_re': add_str += 'Differential'
+                            elif plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
+                                            'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+                                prof_typ = plot_mod.split('_')[-1]
+                                add_str += '_'+corr_plot_mod+'_'+supp_name+'_'+prof_typ                            
                             if ('bin' in plot_mod):add_str+='_'+plot_options['dim_plot'] 
                             plt.savefig(path_loc+'/'+add_str+'.'+save_res_map)                        
                             plt.close() 
@@ -1077,9 +1119,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         if plot_options['plot_line_model'] or plot_options['plot_line_model_HR'] or (('_res' in plot_mod) & (not plot_options['cont_only'])):
         
             #Planet-occulted models from reconstruction
-            if (('Res' in plot_mod) or ('Intr' in plot_mod)) and (plot_options['line_model']=='rec'):
-                prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
-            
+            if plot_options['line_model']=='rec':
+                if 'Intr' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
+                elif 'Res' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
+        
             #Line profile from best-fit
             else:
                 if (plot_options['fit_type']=='indiv'):
@@ -1178,9 +1221,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             rest_frame = 'star'
               
         #Reconstructed line profiles
-        elif '_est' in plot_mod:        
-             data_path_all = [gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
-             rest_frame = 'star'
+        elif '_est' in plot_mod:
+            if 'Intr' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
+            elif 'Res' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
+            rest_frame = 'star'
          
         #Residual maps from Intrinsic and out-of-transit Residual profiles
         #    - data_path_all contains the path to Intrinsic profiles, from which will later be subtracted the model profiles
@@ -1205,6 +1249,19 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     data_path_all+=[data_dic[inst][vis]['proc_Res_data_paths']+str(iexp) for iexp in iexp_out]
                 else:
                     data_path_all+=[prof_fit_vis['loc_data_corr_outpath']+str(iexp) for iexp in iexp_out]
+
+        #Residual maps from Residual profiles
+        #    - data_path_all contains the path to Residual profiles, from which will later be subtracted the model profiles
+        elif plot_mod in ['map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+            data_path_all = [prof_fit_vis['loc_data_corr_path']+str(iexp) for iexp in iexp_plot]
+            rest_frame = prof_fit_vis['rest_frame']              
+        elif (plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']):
+            #Retrieving the bin mode
+            if vis+'_bin' in data_dic['Res']['idx_in_bin'][inst]:bin_mode='_bin'
+            else:bin_mode = ''
+            #Retrieving the best-fit exposures
+            data_path_all = [gen_dic['save_data_dir']+'Joined_fits/ResProf/'+glob_fit_dic['ResProf']['fit_mode']+'/'+inst+'/'+vis+'/'+'BestFit'+bin_mode+'_'+str(iexp) for iexp in iexp_plot]
+            rest_frame = 'star'
         
         #Measured data
         else:         
@@ -1235,6 +1292,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 if ('plot_pre' in plot_options) or ('plot_post' in plot_options):
                                     if plot_options['plot_post'] is not None:data_path_all = [data_path_dic[plot_options['plot_post']]+str(iexp) for iexp in iexp_plot]
                                     else:data_path_all = [None for iexp in iexp_plot]
+                                    rest_frame='input'   
                                 
                                 #Over processing steps
                                 else:
@@ -1249,7 +1307,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                         rest_frame='star'   
                                     elif plot_options['step']=='scaled':
                                         data_path = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_' 
-                                        rest_frame = dataload_npz(data_path+'add')['rest_frame']
+                                        rest_frame = dataload_npz(data_path+'add')['rest_frame']                                   
+                                    data_path_all = [data_path+str(iexp) for iexp in iexp_plot] 
                                 
                             #CCF profiles
                             elif (data_type=='CCF'):
@@ -1265,7 +1324,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 elif plot_options['step']=='latest':
                                     data_path = data_dic[inst][vis]['proc_DI_data_paths']
                                     rest_frame = dataload_npz(data_path+'add')['rest_frame']                                    
-                            data_path_all = [data_path+str(iexp) for iexp in iexp_plot]                  
+                                data_path_all = [data_path+str(iexp) for iexp in iexp_plot]                  
                           
                     #Other types of profiles
                     else:  
@@ -1280,7 +1339,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             
         #Data dimensions
         if data_path_all[0] is not None:
-            dim_exp_data = list(np.shape(dataload_npz(data_path_all[0])['flux']))
+            if ('Res_prof' in plot_mod) and ('_est' in plot_mod):
+                flux_supp = plot_mod.split('_')[4]
+                corr_plot_mod = plot_mod.split('_')[3]
+                flux_name=corr_plot_mod+'_'+flux_supp+'_flux'
+            else:flux_name='flux'
+            dim_exp_data = list(np.shape(dataload_npz(data_path_all[0])[flux_name]))
             nord_data = dim_exp_data[0] 
         else:
             nord_data = None
@@ -2157,6 +2221,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
    
                 #Exposures used in master calculations
                 if iexp in iexp_mast_list:
+                    data4mast[maink][iexp]={}
                     for key in ['cen_bins','edge_bins','flux','cov','cond_def']:data4mast[maink][iexp][key]=deepcopy(data_proc[maink][iexp][key])
                     
                     #Weight definition   
@@ -2166,8 +2231,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Resampling if exposures do not share a common table
                     if (not data_vis['comm_sp_tab']):   
                         for isub in range(nord_proc):
-                            data4mast[maink][iexp]['flux'][isub],data4mast[maink][iexp]['cov'][isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub], data_proc[maink][iexp]['flux'][isub] , cov = data_proc[maink][iexp]['cov'][isub], kind=gen_dic['resamp_mode'])                                                        
-                            data4mast[maink][iexp]['weight'][isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub], data_proc[maink][iexp]['weight'][isub] ,kind=gen_dic['resamp_mode'])   
+                            data4mast[maink][iexp]['flux'][isub],data4mast[maink][iexp]['cov'][isub] = bind.resampling(edge_bins_com[isub], data4mast[maink][iexp]['edge_bins'][isub], data_proc[maink][iexp]['flux'][isub] , cov = data_proc[maink][iexp]['cov'][isub], kind=gen_dic['resamp_mode'])                                                        
+                            data4mast[maink][iexp]['weight'][isub] = bind.resampling(edge_bins_com[isub], data4mast[maink][iexp]['edge_bins'][isub], data4mast[maink][iexp]['weight'][isub] ,kind=gen_dic['resamp_mode'])   
                         data4mast[maink][iexp]['cond_def'] = ~np.isnan(data4mast[maink][iexp]['flux']) 
                         data4mast[maink][iexp]['cen_bins'] = cen_bins_com
                         data4mast[maink][iexp]['edge_bins'] = edge_bins_com
@@ -3341,7 +3406,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 theo_dic_samp = deepcopy(theo_dic)
                                 theo_dic_samp['d_oversamp'] = []
                                 for isamp in range(nsamp):
-                                    surf_prop_dic,_ = sub_calc_plocc_spot_prop(['achrom'],{},['rv'],[pl_loc],system_param,theo_dic_samp,data_dic['DI']['system_prop'],par_subsample[0][isamp],coord_pl_in_samp,range(theo_HR_prop_plocc['nph_HR']))        
+                                    surf_prop_dic,_,_ = sub_calc_plocc_spot_prop(['achrom'],{},['rv'],[pl_loc],system_param,theo_dic_samp,data_dic['DI']['system_prop'],par_subsample[0][isamp],coord_pl_in_samp,range(theo_HR_prop_plocc['nph_HR']))        
                                     RV_stsurf_HR_thread[isamp,:] =surf_prop_dic['achrom'][pl_loc]['rv'][0,:]                                
                                 return RV_stsurf_HR_thread
                             
@@ -5209,7 +5274,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     #%%%% Telluric CCF
     ################################################################################################################  
     if ('tell_CCF' in plot_settings):
-        key_plot = 'gcal'
+        key_plot = 'tell_CCF'
         plot_set_key = plot_settings[key_plot]
           
         print('-----------------------------------')
@@ -5502,8 +5567,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if plot_set_key['sp_var'] == 'nu' :x_range_loc = [c_light/data_com['edge_bins'][-1,-1],c_light/data_com['edge_bins'][0,0]]
                     elif plot_set_key['sp_var'] == 'wav' :x_range_loc = [data_com['edge_bins'][0,0],data_com['edge_bins'][-1,-1]]
                 if plot_set_key['plot_model']:
-                    if plot_set_key['sp_var'] == 'wav' :min_wav,max_wav = x_range_loc[0],x_range_loc[1]
-                    elif plot_set_key['sp_var'] == 'nu' :min_wav,max_wav = c_light/x_range_loc[1],c_light/x_range_loc[0] 
+                    if plot_set_key['sp_var'] == 'wav' :
+                        min_wav,max_wav = x_range_loc[0],x_range_loc[1]
+                    elif plot_set_key['sp_var'] == 'nu' :
+                        min_wav,max_wav = c_light/x_range_loc[1],c_light/x_range_loc[0] 
                     nspec_plot = int( np.floor(   np.log(max_wav/min_wav)/np.log( plot_set_key['dlnw_plot'] + 1. ) )  ) 
                     cen_bin_plot = min_wav*( plot_set_key['dlnw_plot'] + 1. )**(0.5+np.arange(nspec_plot))  
                     nu_bin_plot = c_light/cen_bin_plot[::-1]
@@ -5533,9 +5600,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                     #Best-fit model
                     if plot_set_key['plot_model']:
-                        y_mod = data_Fbal['corr_func'](nu_bin_plot)
-                        if plot_set_key['sp_var'] == 'nu' :mod_cen_bin_plot = nu_bin_plot
-                        elif plot_set_key['sp_var'] == 'wav' :mod_cen_bin_plot = cen_bin_plot
+                        if plot_set_key['sp_var'] == 'nu' :
+                            mod_cen_bin_plot = nu_bin_plot
+                            y_mod = data_Fbal['corr_func'](nu_bin_plot)
+                        elif plot_set_key['sp_var'] == 'wav' :
+                            mod_cen_bin_plot = cen_bin_plot
+                            y_mod = data_Fbal['corr_func'](nu_bin_plot[::-1])
                         plt.plot(mod_cen_bin_plot,lev_exp+y_mod,linestyle='-',color=col_visit[iexp],lw=1) 
 
                     #Plot exposure indexes
@@ -5732,9 +5802,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 #Best-fit model
                 if plot_set_key['plot_model']:
-                    y_mod = data_Fbal['corr_func_vis'](nu_bin_plot)
-                    if plot_set_key['sp_var'] == 'nu' :mod_cen_bin_plot = nu_bin_plot
-                    elif plot_set_key['sp_var'] == 'wav' :mod_cen_bin_plot = cen_bin_plot
+                    if plot_set_key['sp_var'] == 'nu' :
+                        mod_cen_bin_plot = nu_bin_plot
+                        y_mod = data_Fbal['corr_func_vis'](nu_bin_plot)
+                    elif plot_set_key['sp_var'] == 'wav' :
+                        mod_cen_bin_plot = cen_bin_plot
+                        y_mod = data_Fbal['corr_func_vis'](nu_bin_plot)[::-1]
                     plt.plot(mod_cen_bin_plot,lev_exp+y_mod,linestyle='-',color=col_visit,lw=1) 
 
                 #Plot visit names
@@ -5963,6 +6036,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     ################################################################################################################ 
     if ('cosm_corr' in plot_settings): 
         key_plot = 'cosm_corr'
+        plot_set_key=plot_settings[key_plot]
 
         print('-----------------------------------')
         print('+ Plotting cosmics correction')
@@ -6261,10 +6335,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Plot map
         sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot])
-                
-        
-        
-        
+
+
+
 
     ##################################################################################################
     #%%%% Binned profiles
@@ -7166,7 +7239,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
     ################################################################################################################  
-    #%% Residual profiles
+    #%% Differential profiles
     ################################################################################################################        
         
     ################################################################################################################  
@@ -7174,18 +7247,100 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     ################################################################################################################  
 
     ################################################################################################################  
-    #%%% Original profiles 
+    #%%%% Original profiles 
     ################################################################################################################  
     if ('map_Res_prof' in plot_settings):
         key_plot = 'map_Res_prof'
 
         print('-----------------------------------')
-        print('+ 2D map of residual profiles')    
+        print('+ 2D map : differential profiles')    
 
         #Plot map
         sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot])
                    
 
+                
+        
+
+    ################################################################################################################  
+    #%%%%% Best-fit profiles 
+    ################################################################################################################  
+    if ('map_BF_Res_prof' in plot_settings):
+        key_plot = 'map_BF_Res_prof'
+        print('-----------------------------------')
+        print('+ 2D map : best-fit differential profiles')    
+        
+        #Plot map
+        sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot])
+        
+        
+        
+        
+    ################################################################################################################  
+    #%%%%% Residual from best-fit profiles 
+    ################################################################################################################  
+    if ('map_BF_Res_prof_re' in plot_settings):
+        key_plot = 'map_BF_Res_prof_re'
+        
+        print('-----------------------------------')
+        print('+ 2D map : residuals from best-fit differential profiles') 
+        
+        #Plot map
+        sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot])
+
+
+        
+    ################################################################################################################ 
+    #%%%%% Estimates and residual profiles
+    ################################################################################################################ 
+    for key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
+                     'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+        if (key_plot in plot_settings):
+            ##############################################################################
+            #%%%%%% Un-cleaned estimates
+            if key_plot == 'map_Res_prof_unclean_sp_est':
+                print('-----------------------------------')
+                print('+ 2D map: un-cleaned theoretical spotted profiles') 
+            
+            if key_plot == 'map_Res_prof_unclean_pl_est':
+                print('-----------------------------------')
+                print('+ 2D map: un-cleaned theoretical planet-occulted profiles') 
+            ##############################################################################
+            #%%%%%% Cleaned estimates
+            if key_plot == 'map_Res_prof_clean_sp_est':
+                print('-----------------------------------')
+                print('+ 2D map: cleaned theoretical spotted profiles') 
+            
+            if key_plot == 'map_Res_prof_clean_pl_est':
+                print('-----------------------------------')
+                print('+ 2D map: cleaned theoretical planet-occulted profiles') 
+            ##############################################################################
+            #%%%%%% Residuals    
+            if key_plot == 'map_Res_prof_clean_sp_res':
+                print('-----------------------------------')
+                print('+ 2D map: residuals from cleaned spotted profiles') 
+            if key_plot == 'map_Res_prof_clean_pl_res':
+                print('-----------------------------------')
+                print('+ 2D map: residuals from cleaned planet-occulted profiles') 
+            if key_plot == 'map_Res_prof_unclean_sp_res':
+                print('-----------------------------------')
+                print('+ 2D map: residuals from un-cleaned spotted profiles') 
+            if key_plot == 'map_Res_prof_unclean_pl_res':
+                print('-----------------------------------')
+                print('+ 2D map: residuals from un-cleaned planet-occulted profiles') 
+            
+            #Plot map
+            sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot])  
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
 
 
@@ -7664,19 +7819,19 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
     ################################################################################################################ 
-    #%%%% Estimates for intrinsic stellar profiles, residuals from observed profiles
+    #%%%% Estimate and residual profiles
     ################################################################################################################ 
     for key_plot in ['map_Intr_prof_est','map_Intr_prof_res']:
         if (key_plot in plot_settings):
 
             ##############################################################################
-            #%%%% Estimates
+            #%%%%% Estimates
             if key_plot == 'map_Intr_prof_est':
                 print('-----------------------------------')
                 print('+ 2D map: theoretical intrinsic stellar profiles') 
 
             ##############################################################################
-            #%%%% Residuals    
+            #%%%%% Residuals    
             if key_plot == 'map_Intr_prof_res':
                 print('-----------------------------------')
                 print('+ 2D map: residuals from intrinsic stellar profiles') 
@@ -7853,7 +8008,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     new_dx =  (max_x-min_x)/bin_prop['nbins']
                     new_nx = int((max_x-min_x)/new_dx)
                     new_x_low = min_x + new_dx*np.arange(new_nx)
-                    new_x_high = new_x_low_in+new_dx 
+                    new_x_high = new_x_low+new_dx 
             
             #Plot all visits
             vis_list = np.intersect1d(list(data_dic[inst].keys()),plot_set_key['visits_to_plot'][inst])
@@ -8034,21 +8189,47 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 if orig_vis in list(data_dic['Res'][inst].keys()):
                     plt.ioff()        
                     fig = plt.figure(figsize=(size_x,size_y))
-        
+
                     #Oblate star
-                    #    - see definition of star boundary in 'system_view'
-                    if system_param['star']['f_GD']>0.:                        
-                        cen_sub=-1.+(np.arange(1000)+0.5)*d_sub            
-                        xy_sky_grid=np.array(list(it_product(cen_sub,cen_sub))) 
-                        x_grid_all = xy_sky_grid[:,0] 
-                        y_grid_all = xy_sky_grid[:,1]                        
-                        cond_in_stphot=calc_zLOS_oblate(x_grid_all,y_grid_all,system_param['star']['istar_rad'],system_param['star']['RpoleReq'])[2]               
-                        y_grid_all[~cond_in_stphot] = 0.         
-                        ysky_limb = np.nanmax(y_grid_all,axis=1)            
-                        xsky_limb = np.append(xsky_limb,xsky_limb[::-1])             
-                        ysky_limb = np.append(ysky_limb,-ysky_limb[::-1])
-                        plt.plot(xsky_limb,ysky_limb,zorder=1, color='black',lw=1)
-        
+                    #    - see definition of star boundary in 'system_view'        
+                    if system_param['star']['f_GD']>0.: 
+                        #Oblate star parameters
+                        star_params = system_param['star']
+                        Rpole = star_params['RpoleReq']
+                        mRp2 = (1. - Rpole**2.)
+                        istar_rad=star_params['istar_rad']
+                        ci = cos(istar_rad)
+                        si = sin(istar_rad)  
+                        #X position initialization
+                        r_inner=1.
+                        r_outer=1.7
+                        x_annulus = np.linspace(-r_outer, r_outer, 3000, endpoint=True)
+                        #Oblate star
+                        #there is no simple expression of the projection of the photosphere envelope in the plane of the sky
+                        #for each x value of the grid, we thus find the condition for y values on a grid to belong to the photosphere (ie, having defined z values), and we take the maximum of the y values fulfilling the condition   
+                        ygrid = np.linspace(-1., 1., 3000, endpoint=True)
+                        y_grid_all = np.tile(ygrid,(3000,1)) 
+                        Aquad =  1. - si**2.*mRp2 
+                        r_grid2 = x_annulus[:,None]**2.+ y_grid_all**2. 
+                        Bquad = 2.*y_grid_all*ci*si*mRp2        
+                        Cquad_in = y_grid_all**2.*si**2.*mRp2 + Rpole**2.*(r_grid2 - r_inner**2.)   
+                        det_in = Bquad**2.-4.*Aquad*Cquad_in
+                        cond_in = det_in<0.
+                        y_grid_in = deepcopy(y_grid_all)                
+                        y_grid_in[cond_in] = 0.         
+                        yin_up = np.nanmax(y_grid_in,axis=1)
+                        yin_down = -yin_up            
+                        #Finding the spot where we the yin_up values go to 0, so as to keep one of the zeros for plotting.
+                        #Finding indexes where yin_up is zero.
+                        up_zeros_indexes = np.where(yin_up==0)
+                        #Finding indexes where the zero to non-zero value switch occurs (happens at two places).
+                        zero_shift_index_low = np.where(np.diff(up_zeros_indexes[0])>1)[0][0]
+                        zero_shift_index_high = up_zeros_indexes[0][zero_shift_index_low+1]
+                        #The spot where we swap from zero to non-zero values is the same in yin_up and yin_down.
+                        #Plotting the oblate star outline
+                        plt.plot(x_annulus[zero_shift_index_low:zero_shift_index_high+1], yin_up[zero_shift_index_low:zero_shift_index_high+1], color="black",zorder=0,lw=1)
+                        plt.plot(x_annulus[zero_shift_index_low:zero_shift_index_high+1], yin_down[zero_shift_index_low:zero_shift_index_high+1], color="black",zorder=0,lw=1)  
+
                     #Spherical star
                     else: 
                         star_circle=plt.Circle((0.,0.),1.,color='black',fill=False,lw=1,zorder=0)   
@@ -8562,6 +8743,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
             #Initialize a list to store the images used to make the GIF.
             images_to_make_GIF = [] 
+
+            #Initializing a list to store the image paths.
+            filenames = []
             
         else:images_to_make_GIF = None
         
@@ -8875,52 +9059,80 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #-------------------------------------------------------
             #Spotted cells 
             #-------------------------------------------------------
-            if (1==0) and mock_dic['use_spots']:    #Samson: plotting spots should not depend on the use of mock_dic
-                #Retrieve spot parameters defined by the user in plot_settings, if they are provided.
-                if len(plot_set_key['stellar_spot'])>0:
+            if plot_set_key['plot_spots']:
+
+                #Custom spot properties
+                if len(plot_set_key['custom_spot_prop'])>0:
+                    if idx_pl==0: print('   + With custom spot properties')
+
                     # Initialize params to use the retrieve_spots_prop_from_param function.
                     params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
-                    for spot in plot_set_key['stellar_spot'] : 
-                        params['lat__IS__VS__SP'+spot]     = plot_set_key['stellar_spot'][spot]['lat']
-                        params['ang__IS__VS__SP'+spot]     = plot_set_key['stellar_spot'][spot]['ang']
-                        params['Tcenter__IS__VS__SP'+spot] = plot_set_key['stellar_spot'][spot]['Tcenter']
-                        params['atten__IS__VS__SP'+spot]    = plot_set_key['stellar_spot'][spot]['atten']
-                else:
-                # If the user did not provide any spot properties for the plotting (ANTARESS_plot_settings.py) then default to
-                # the spot properties from the first instrument and visit provided in the mock dictionary section for the spots.
+                    for spot in plot_set_key['custom_spot_prop'] : 
+                        params['lat__IS__VS__SP'+spot]     = plot_set_key['custom_spot_prop'][spot]['lat']
+                        params['ang__IS__VS__SP'+spot]     = plot_set_key['custom_spot_prop'][spot]['ang']
+                        params['Tcenter__IS__VS__SP'+spot] = plot_set_key['custom_spot_prop'][spot]['Tcenter']
+                        params['ctrst__IS__VS__SP'+spot]    = plot_set_key['custom_spot_prop'][spot]['ctrst']
+                    
+                #Mock dataset spot properties
+                elif plot_set_key['mock_spot_prop']:
+                    if idx_pl==0: print('   + With mock dataset spot properties')
+                    if (mock_dic['spots_prop'] != {}):
+                            inst_to_use = plot_set_key['inst_to_plot'][0]
+                            vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
+                            
+                            #Retrieve the spot parameters from the mock dictionary
+                            params = deepcopy(mock_dic['spots_prop'][inst_to_use][vis_to_use])
+                            params['cos_istar'] = star_params['cos_istar'] 
+                            params['alpha_rot'] = star_params['alpha_rot']
+                            params['beta_rot'] = star_params['beta_rot']   
+                    else:stop('Mock spot properties undefined for this system.')   
+                    
+                #Fitted spot properties
+                elif plot_set_key['fit_spot_prop']:
+                    if idx_pl==0: print('   + With fitted spot properties')
                     inst_to_use = plot_set_key['inst_to_plot'][0]
                     vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
-                    #Retrieve the spot parameters from the mock dictionary
-                    params = deepcopy(mock_dic['spots_prop'][inst_to_use][vis_to_use])
-                    params['cos_istar'] = star_params['cos_istar'] 
-                    params['alpha_rot'] = star_params['alpha_rot']
-                    params['beta_rot'] = star_params['beta_rot']       
-                 
-                #Retrieve spot rotational velocity
-                star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
+                    if plot_set_key['fit_results_file'] !='':fit_res = dataload_npz(plot_set_key['fit_results_file'])
+                    else:stop('No best-fit output file provided.')
+                    params = fit_res['p_final']
+                else:stop('System view unavailable : Spot generation initialized with no spot properties provided')
+  
+                #Spot Equatorial rotation rate (rad/s)
+                if 'veq_spots' in star_params:star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
+                else:star_params['om_eq_spots']=star_params['om_eq']
+
                 #Calculate the flux of star grid, at all the exposures considered
                 star_flux_before_spot = deepcopy(Fsurf_grid_star[:,iband])
-                for t_exp in t_all_spot :
-                    star_flux_exp = deepcopy(star_flux_before_spot)
-                    spots_prop = retrieve_spots_prop_from_param(system_param['star'], params, '_', '_', t_exp) 
 
                 #Check if we have provided times for the plotting
                 if plot_set_key['t_BJD'] is not None:
+                    
+                    #Accounting for spot overlap
+                    shared_spotted_tiles = np.zeros(len(coord_grid['x_st_sky']), dtype=bool)
+                                        
                     #Defining a new flux array, such that we don't see the previous spot when plotting the next spot
                     Flux_for_nonredundant_spot_plotting = deepcopy(Fsurf_grid_star[:,iband])
-                    if len(plot_set_key['stellar_spot'])>0:
+                    if len(plot_set_key['custom_spot_prop'])>0:
                         spots_prop = retrieve_spots_prop_from_param(star_params, params, '_', '_', plot_t) 
                     else:
                         spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, plot_t) 
+
+                    #Defining a reference spot contrast - since all spots share the same contrast
+                    ref_ctrst = spots_prop[list(spots_prop.keys())[0]]['ctrst']
+
                     for spot in spots_prop :
-                        if spots_prop[spot]['is_visible']: 
-                            _, spotted_tiles = calc_spotted_tiles( plot_set_key['spots_prop'][spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
-                                                                   {}, {}, params, use_grid_dic = False)
+                        if spots_prop[spot]['is_center_visible']: 
                             _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
-                                                                   {}, params, use_grid_dic = False)
-                                                                   
-                            star_flux_exp[spotted_tiles] *=  plot_set_key['spots_prop'][spot]['flux'] 
-                            star_flux_before_spot[spotted_tiles] *=  (1-spots_prop[spot]['atten'])
+                                                                   {}, params, use_grid_dic = False, disc_exp = False)
+
+                            #Accounting for spot overlap - figure out which cells of the stellar grid are spotted
+                            shared_spotted_tiles |= spotted_tiles
+                            
+                    #Accounting for spot overlap - all spots share the same contrast. As such we figure out which cells are spotted by either spot1, or spot2, or...
+                    #Once we have all the spotted cells we scale their flux with the shared contrast. This prevents us of counting shared cells multiple times and 
+                    #lowering their flux more than necessary.
+                    star_flux_before_spot[shared_spotted_tiles] *=  (1-ref_ctrst)
+
                     
                     if plot_set_key['spot_overlap']:      
                         Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
@@ -8929,7 +9141,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #If no times provided for the plotting, then generate some
                 else:
                     # Compute BJD of images 
-                    if plot_set_key['plot_spot_all_Peq'] : t_all_spot = np.linspace(   0  ,   2*np.pi/((1.-star_params['alpha_rot_spots']*sin_lat**2.-star_params['beta_rot_spots']*sin_lat**4.)*star_params['om_eq_spots']*3600.*24.) ,plot_set_key['n_image_spots'])
+                    if plot_set_key['plot_spot_all_Peq'] :
+                        #Getting reference spot and latitude
+                        for par in params:
+                            if 'lat' in par:
+                                ref_lat = params[par]
+                                break
+                        sin_lat = np.sin(ref_lat) 
+                        t_all_spot = np.linspace(0,2*np.pi/((1.-star_params['alpha_rot_spots']*sin_lat**2.-star_params['beta_rot_spots']*sin_lat**4.)*star_params['om_eq_spots']*3600.*24.),plot_set_key['n_image_spots'])
                     else:
                         dbjd =  (plot_set_key['time_range_spot'][1]-plot_set_key['time_range_spot'][0])/plot_set_key['n_image_spots']
                         n_in_visit = int((plot_set_key['time_range_spot'][1]-plot_set_key['time_range_spot'][0])/dbjd)
@@ -8938,19 +9157,27 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         t_all_spot = 0.5*(bjd_exp_low+bjd_exp_high) - 2400000.
                     for t_exp in t_all_spot :
                         star_flux_exp = deepcopy(star_flux_before_spot)
-                        if len(plot_set_key['stellar_spot'])>0:
+                        #Accounting for spot overlap
+                        shared_spotted_tiles = np.zeros(len(coord_grid['x_st_sky']), dtype=bool)
+                        if len(plot_set_key['custom_spot_prop'])>0:
                             spots_prop = retrieve_spots_prop_from_param(star_params, params, '_', '_', t_exp) 
                         else:
                             spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, t_exp) 
-                        for spot in spots_prop :
-                            if spots_prop[spot]['is_visible']:
-                                _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
-                                                                        {}, params, use_grid_dic = False)
-
-                                star_flux_exp[spotted_tiles] *=  (1-spots_prop[spot]['atten'])
                             
-                          
-                    Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_exp)
+                        #Defining a reference spot contrast - since all spots share the same contrast
+                        ref_ctrst = spots_prop[list(spots_prop.keys())[0]]['ctrst']
+                            
+                        for spot in spots_prop :
+                            if spots_prop[spot]['is_center_visible']:
+                                _, spotted_tiles = calc_spotted_tiles(spots_prop[spot], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], 
+                                                                       {}, params, use_grid_dic = False, disc_exp = False)
+
+                                #Accounting for spot overlap - figure out which cells of the stellar grid are spotted
+                                shared_spotted_tiles |= spotted_tiles
+                        
+                        star_flux_exp[shared_spotted_tiles] *=  (1-ref_ctrst)
+                        Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_exp)
+
 
         
 
@@ -8972,8 +9199,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             elif plot_set_key['disk_color']=='F':
                 val_disk=Fsurf_grid_star[:,iband]  
                 
-                if (1==0) and mock_dic['use_spots'] and not plot_set_key['spot_overlap'] and plot_set_key['t_BJD'] is not None:
-                    val_disk = Flux_for_nonredundant_spot_plotting
+                if plot_set_key['plot_spots'] and (not plot_set_key['spot_overlap']) and (plot_set_key['t_BJD'] is not None):val_disk = Flux_for_nonredundant_spot_plotting
+
                 
                 # cmap = plt.get_cmap('GnBu_r')
                 # cmap = plt.get_cmap('jet')
@@ -9001,7 +9228,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 max_f=np.nanmax(Fsurf_grid_star[:,iband])
                 color_f=cmap_f( (min_col+ (Fsurf_grid_star[:,iband]-min_f)*(max_col-min_col)/ (max_f-min_f)) )
 
-                if (1==0) and mock_dic['use_spots'] and not plot_set_key['spot_overlap'] and plot_set_key['t_BJD'] is not None:
+                if plot_set_key['plot_spots'] and (not plot_set_key['spot_overlap']) and (plot_set_key['t_BJD'] is not None): 
                     min_f=np.nanmin(Flux_for_nonredundant_spot_plotting)
                     max_f=np.nanmax(Flux_for_nonredundant_spot_plotting)
                     color_f=cmap_f( (min_col+ (Flux_for_nonredundant_spot_plotting-min_f)*(max_col-min_col)/ (max_f-min_f)) )
@@ -9101,7 +9328,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
             
             #-----------------------	
-            filename = path_loc+'System'+str(idx_pl)+'_'+str(plot_t)+'.'+plot_dic['system_view']		
+            filename = path_loc+'System'+str(idx_pl)+'_'+str(plot_t)+'.'+plot_dic['system_view']	
+            if images_to_make_GIF is not None:filenames += [filename]		
             plt.savefig(filename) 
             plt.close()
             
@@ -9111,7 +9339,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         ### End of loop on plotted timesteps    
 
         #Produce and store the GIF.
-        if images_to_make_GIF is not None:imageio.mimsave(path_loc+'System.gif', images_to_make_GIF,duration=(1000 * 1/plot_set_key['fps']))
+        if images_to_make_GIF is not None:
+            imageio.mimsave(path_loc+'System.gif', images_to_make_GIF,duration=(1000 * 1/plot_set_key['fps']))
+            for film in filenames:os_system.remove(film)
 
 
 
@@ -9206,7 +9436,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('+ Plotting all atmospheric profiles in each visit')
         
         #Plot        
-        sub_plot_all_prof(plot_options,'atm',plot_settings[key_plot])          
+        sub_plot_all_prof(plot_settings,'atm',plot_settings[key_plot])          
         
 
 

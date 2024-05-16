@@ -34,7 +34,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - for each planet, indicate the instrument and visits in which its transit should be taken into account (visit names are those given through 'data_dir_list')
     #      if the pipeline is runned with no data, indicate the names of the mock dataset created artifially with the pipeline
     #    - format is 'planet':{'inst':['vis']}
-    gen_dic['transit_pl']={}     
+    gen_dic['transit_pl']={}  
+    
+
+    #%%%%% Visible spots
+    gen_dic['transit_sp']={}  
     
     
     #%%%%% TTVs
@@ -619,9 +623,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     theo_dic['rv_osamp_line_mod']=None
 
 
-    #%%%% Spots
-    gen_dic['theo_spots'] = False #Samson: is this field still useful ?
-    
     #%%%%% Discretization         
     theo_dic['nsub_Dspot']={} 
 
@@ -3931,6 +3932,24 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['map_Intr_prof_res']=''   
     
    
+        
+        
+        
+        
+    ##################################################################################################       
+    #%%% Module: estimates for differential profiles 
+    ##################################################################################################     
+    
+    #%%%% Activating
+    #    - for original and binned exposures in each visit
+    gen_dic['diff_data_corr'] = False        
+        
+        
+        
+        
+        
+        
+        
         
         
         

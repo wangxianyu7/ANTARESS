@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from copy import deepcopy
-from ..ANTARESS_general.utils import stop
+from antaress.ANTARESS_general.utils import stop
 
 def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
     r"""**Default plot settings.**
@@ -2179,10 +2179,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%% Plot stellar poles
         plot_settings[key_plot]['plot_poles']=True  
-        plot_settings[key_plot]['plot_hidden_pole']= False  
-
+        plot_settings[key_plot]['plot_hidden_pole']= False 
+        
         #%%%% Plot stellar spots
-        plot_settings[key_plot]['stellar_spot'] = {}
+        plot_settings[key_plot]['plot_spots'] = False
         
         #%%%% Number of positions of the spots to be plotted, equally distributed within the given time range.
         plot_settings[key_plot]['n_image_spots'] = 15

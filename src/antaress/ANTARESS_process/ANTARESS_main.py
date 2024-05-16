@@ -22,10 +22,10 @@ from ..ANTARESS_analysis.ANTARESS_joined_star import joined_Star_ana
 from ..ANTARESS_analysis.ANTARESS_joined_atm import joined_Atm_ana
 from ..ANTARESS_plots.ANTARESS_plots_all import ANTARESS_plot_functions
 from ..ANTARESS_corrections.ANTARESS_calib import calc_gcal
-from ..ANTARESS_process.ANTARESS_plocc_spec import def_plocc_profiles
+from ..ANTARESS_process.ANTARESS_plocc_spec import def_in_plocc_profiles,def_diff_profiles
 from ..ANTARESS_conversions.ANTARESS_masks_gen import def_masks
 from ..ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
-from ..ANTARESS_grids.ANTARESS_spots import corr_spot,spot_occ_region_grid
+from ..ANTARESS_grids.ANTARESS_spots import spot_occ_region_grid,retrieve_spots_prop_from_param
 from ..ANTARESS_conversions.ANTARESS_binning import process_bin_prof
 from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
 from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
@@ -140,7 +140,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
 
             #Calculating theoretical properties of the planet-occulted and/or spotted regions 
-            if gen_dic['theoPlOcc'] or gen_dic['theo_spots']:
+            if gen_dic['theoPlOcc'] or (data_dic['DI']['spots_prop'] != {}):
                 calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'],spot_dic=mock_dic)
                 
             #Analyzing original disk-integrated profiles
@@ -208,9 +208,14 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             if gen_dic['bin']:
                 bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
 
-            #Building estimates for complete local stellar profiles
+            #Building estimates for planet-occulted stellar profiles in in-transit exposures
             if gen_dic['loc_data_corr']:
-                def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
+                def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
+
+            #Building estimates for differential profiles in all exposures
+            #    - in-transit profiles include planet-occulted and spotted stellar profiles
+            if gen_dic['diff_data_corr']:
+                def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
         
             #--------------------------------------------------------------------------------------------------
             #Processing atmospheric profiles
@@ -911,17 +916,24 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #------------------------------------------------------------------------------
     #Spots
     #------------------------------------------------------------------------------
-    if 1==0:   #Samson: need for a generic condition to initialize or not spots
-    
+
+    #Initialize spot use
+    gen_dic['studied_sp'] = list(gen_dic['transit_sp'].keys()) 
+    theo_dic['x_st_sky_grid_sp']={}
+    theo_dic['y_st_sky_grid_sp']={}
+    theo_dic['Ssub_Sstar_sp'] = {}
+    theo_dic['d_oversamp_spot']={}
+
+    #If spot activation has been triggered
+    if (data_dic['DI']['spots_prop'] != {}):
+
         #Oversampling factor for spot-occulted regions
         #    - use the spot radius provided as input
-        theo_dic['d_oversamp_spot']={}
         for spot in theo_dic['n_oversamp_spot']:
             if (theo_dic['n_oversamp_spot'][spot]>0.):
                 theo_dic['d_oversamp_spot'][spot] = np.sin(data_dic['DI']['spots_prop']['achrom'][spot][0])/theo_dic['n_oversamp_spot'][spot]
     
         #Spot surface chromatic properties
-        #Need to define the LD coefficients if they are not defined
         for ideg in range(2,5):
             if 'LD_u'+str(ideg) not in data_dic['DI']['spots_prop']['achrom']:data_dic['DI']['spots_prop']['achrom']['LD_u'+str(ideg)] = [0.]
     
@@ -942,9 +954,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 data_dic['DI']['spots_prop']['chrom']['med_dw'] = np.median(data_dic['DI']['spots_prop']['chrom']['dw'])
     
         #Definition of grids discretizing planets disk to calculate planet-occulted properties
-        theo_dic['x_st_sky_grid_sp']={}
-        theo_dic['y_st_sky_grid_sp']={}
-        theo_dic['Ssub_Sstar_sp'] = {}
         for spot in theo_dic['nsub_Dspot']:
             
             #Retrieve spot size
@@ -968,7 +977,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #    - used througout the pipeline, unless stellar properties are fitted
     if gen_dic['theoPlOcc'] or (gen_dic['theo_spots']) or (gen_dic['fit_DI_gen'] and (('custom' in data_dic['DI']['model'].values()) or ('RT_ani_macro' in data_dic['DI']['model'].values()))) or gen_dic['mock_data'] \
         or gen_dic['fit_ResProf'] or gen_dic['correct_spots'] or gen_dic['fit_IntrProf'] or gen_dic['loc_data_corr']:
-            
+
         #Stellar grid
         model_star('grid',theo_dic,grid_type,data_dic['DI']['system_prop'],theo_dic['nsub_Dstar'],star_params) 
        
@@ -1081,6 +1090,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     if gen_dic['loc_data_corr']:
         if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/')        
         if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')  
+    if gen_dic['diff_data_corr']:
+        if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/')        
+        if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')          
     if (gen_dic['pl_atm']):
         if (not path_exist(gen_dic['save_data_dir']+'Atm_data/')):makedirs(gen_dic['save_data_dir']+'Atm_data/')        
         if (not path_exist(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')):makedirs(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')
@@ -1407,6 +1419,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 coord_dic[inst][vis] = {}
                 for pl_loc in gen_dic['studied_pl']:
                     if (inst in gen_dic['transit_pl'][pl_loc]) and (vis in gen_dic['transit_pl'][pl_loc][inst]):data_inst[vis]['transit_pl']+=[pl_loc]
+                for spot in gen_dic['studied_sp']:
+                    if (inst in gen_dic['transit_sp'][spot]) and (vis in gen_dic['transit_sp'][spot][inst]):data_inst[vis]['transit_sp']+=[spot]                    
                 data_prop[inst][vis] = {}
                 data_dic_temp={}
                 gen_dic[inst][vis] = {}
@@ -1776,7 +1790,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         base_DI_prof = custom_DI_prof(param_exp,None,args=args_exp)[0]
 
                         #Deviation from nominal stellar profile 
-                        surf_prop_dic, surf_prop_dic_sp = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp], system_spot_prop_in=args_exp['system_spot_prop'])
+                        surf_prop_dic, surf_prop_dic_sp,_ = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp], system_spot_prop_in=args_exp['system_spot_prop'])
 
                         #Correcting the disk-integrated profile for planet and spot contributions
                         if param_exp['use_spots']:

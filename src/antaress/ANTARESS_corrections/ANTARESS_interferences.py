@@ -2970,7 +2970,7 @@ def plot_screening(ibin2exp_fit,ibin2ord_fit,min_plot,max_plot,gen_dic,Fr_bin_fi
  
     #Binned data
     #    - we use resample_func() rather than bind.resampling because input tables are not necessarily continuous, and because the calculations here are less generic than those in process_bin_prof()
-    plot_bin_spec(plt.gca(),Fr_bin_fit['low_nu'],Fr_bin_fit['high_nu'],Fr_bin_fit['Fr'],min_plot,max_plot,0.27/5.,Fr_bin_fit)
+    plot_bin_spec(plt.gca(),Fr_bin_fit['low_nu'],Fr_bin_fit['high_nu'],Fr_bin_fit['Fr'],min_plot,max_plot,0.27/5.)
 
     #Constant unity level
     plt.plot(x_range,[1.,1.],linestyle=':',color='black',zorder=-1,rasterized=fixed_args['rasterized'])

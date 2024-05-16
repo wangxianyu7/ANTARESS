@@ -4,6 +4,8 @@ import os as os_system
 import sys
 import argparse
 import json
+import logging
+from fontTools import configLogger
 #The following relative imports are necessary to create an executable command
 from ..ANTARESS_process.ANTARESS_main import ANTARESS_main,ANTARESS_settings_overwrite
 from ..ANTARESS_launch.ANTARESS_gridrun import ANTARESS_gridrun
@@ -26,6 +28,10 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
         None
     
     """ 
+    
+    # Suppress log messages from the fontTools package
+    fontTools_logger = logging.getLogger('fontTools')
+    fontTools_logger.addHandler(logging.NullHandler())
     
     #Read executable arguments
     #    - will be used when ANTARESS is called as an executable through terminal
