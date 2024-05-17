@@ -231,14 +231,21 @@ def ln_prob_func_mcmc(p_step,fixed_args):
     
     #Prior function
     ln_prior = ln_prior_func(p_step_all,fixed_args)
-        
-    #Likelihood function
-    ln_lkhood = ln_lkhood_func_mcmc(p_step_all,fixed_args)[0]
     
-    #Set log-probability to -inf if likelihood is nan
-    #    - happens when parameters go beyond their boundaries (hence ln_prior=-inf) but the model fails (hence ln_lkhood = nan)
-    ln_prob=-np.inf if np.isnan(ln_lkhood) else ln_prior + ln_lkhood
-  
+    #Undefined log-prior
+    #     - if the walker move to parameters outside the defined prior range, then the log-prior will be set to inf.
+    #       as a result, there is no point in calculating the log-likelihood in this case.
+    if not np.isinf(ln_prior):
+
+        #Likelihood function
+        ln_lkhood = ln_lkhood_func_mcmc(p_step_all,fixed_args)[0]
+
+        #Set log-probability to -inf if likelihood is nan
+        #    - happens when parameters go beyond their boundaries (hence ln_prior=-inf) but the model fails (hence ln_lkhood = nan)
+        ln_prob=-np.inf if np.isnan(ln_lkhood) else ln_prior + ln_lkhood
+
+    else: ln_prob=-np.inf
+
     return ln_prob
 
 
@@ -376,14 +383,22 @@ def init_fit(fit_dic,fixed_args,p_start,fit_prop_dic,model_par_names,model_par_u
             if ('__' in par):
                 inst_par = '_'
                 vis_par = '_'
-                pl_name = None
+                pl_name = None                
+                sp_name = None
+                
+                #Parameter depends on epoch
                 if ('__IS') and ('_VS') in par:
                     inst_vis_par = par.split('__IS')[1]
                     inst_par  = inst_vis_par.split('_VS')[0]
-                    vis_par  = inst_vis_par.split('_VS')[1]       
+                    vis_par  = inst_vis_par.split('_VS')[1]   
+                    if ('__sp' in par):sp_name = (par.split('__IS')[0]).split('__sp')[1]                    
                     if ('__pl' in par):pl_name = (par.split('__IS')[0]).split('__pl')[1]
+                
+                #Parameter does not depend on epoch
                 else:
-                    pl_name = par.split('__pl')[1]                                                                 
+                    if ('__sp' in par):sp_name = par.split('__sp')[1]   
+                    if ('__pl' in par):pl_name = par.split('__pl')[1]                                                                 
+                if sp_name is not None:par_name_loc+='['+sp_name+']'
                 if pl_name is not None:par_name_loc+='['+pl_name+']'                             
                 if inst_par != '_':
                     par_name_loc+='['+inst_par+']'
@@ -406,6 +421,13 @@ def init_fit(fit_dic,fixed_args,p_start,fit_prop_dic,model_par_names,model_par_u
     fixed_args['exp_par_list']=exp_par_list
     fixed_args['var_par_names']=np.array(var_par_names,dtype='U50')
     fixed_args['var_par_units']=np.array(var_par_units,dtype='U50')
+
+    #Retrieve the number of spots that are present (whether their parameters are fixed or fitted)
+    spot_names=[]
+    for par in fixed_args['par_names']:
+        if '__sp' in par:
+            spot_names.append(par.split('__sp')[1])
+    fixed_args['num_spots']=len(np.unique(spot_names))
 
     #Update value of fixed parameters linked to variable parameters through an expression
     if len(fixed_args['linked_par_expr'])>0:
@@ -655,20 +677,23 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
         backend.reset(fit_dic['nwalkers'], fit_dic['merit']['n_free'])
     else:backend=None
 
-    #Multiprocessing
-    if nthreads>1:pool_proc = Pool(processes=nthreads)  
-    print('         Running with '+str(nthreads)+' threads')
     
     #Call to MCMC
     st0=get_time()
     n_free=np.shape(fit_dic['initial_distribution'])[1]
-    sampler = emcee.EnsembleSampler(fit_dic['nwalkers'],            #Number of walkers
-                                    n_free,                         #Number of free parameters in the model
-                                    ln_prob_func_mcmc,              #Log-probability function 
-                                    args=[fixed_args],              #Fixed arguments for the calculation of the likelihood and priors
-                                    pool = pool_proc,
-                                    backend=backend)                #Monitor chain progress 
 
+    #Multiprocessing
+    if nthreads>1:
+        pool_proc = Pool(processes=nthreads)  
+        print('         Running with '+str(nthreads)+' threads')    
+        sampler = emcee.EnsembleSampler(fit_dic['nwalkers'],            #Number of walkers
+                                        n_free,                         #Number of free parameters in the model
+                                        ln_prob_func_mcmc,              #Log-probability function 
+                                        args=[fixed_args],              #Fixed arguments for the calculation of the likelihood and priors
+                                        pool = pool_proc,
+                                        backend=backend)                #Monitor chain progress 
+    else:sampler = emcee.EnsembleSampler(fit_dic['nwalkers'],n_free,ln_prob_func_mcmc,args=[fixed_args],backend=backend)         
+        
     #Run MCMC
     #    - possible options:
     # + iterations: number of iterations to run            
