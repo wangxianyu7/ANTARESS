@@ -1665,6 +1665,9 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
             'mac_mode':theo_dic['mac_mode'], 
             'inst':inst,
             'vis':vis})
+        
+        #Assuming no spots are fitted
+        fixed_args['unquiet_star'] = None
 
         #Grid initialization
         fixed_args['DI_grid'] = True

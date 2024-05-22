@@ -29,7 +29,7 @@ def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_d
     """ 
  
     #Check for spots
-    if (inst in spot_dic['spots_prop']) and (data_dic['DI']['spots_prop'] != {}):
+    if (spot_dic != {}) and (inst in spot_dic['spots_prop']):
         txt_spot = ' and spotted '
         cond_spot = True
     else:
@@ -1535,6 +1535,34 @@ def is_spot_visible(istar, long_rad, lat_rad, ang_rad, f_GD, RpoleReq) :
         spot_visible |= criterion
 
     return spot_visible
+
+def calc_plocced_tiles(pl_prop, x_sky_grid, y_sky_grid):
+    r"""**'Planet-occulted' tiles** 
+    
+    Args:
+        pl_prop (dict) : planet properties.
+        x_sky_grid (1D array) : x coordinates of the stellar / planetary grid in the inclined star frame. (at st, cen, and end)
+        y_sky_grid (1D array) : y coordinates of the stellar / planetary grid in the inclined star frame. (at st, cen, and end)
+     
+    Returns:
+        cond_in_pl (1D array) : array of booleans telling us which cells in the original grid are occulted by the planet.
+
+    """          
+    cond_in_pl = np.zeros(len(x_sky_grid), dtype=bool)
+
+    for i in range(len(pl_prop['x_orb_exp'])):
+
+                
+   
+   
+   
+        pl_prop['x_sky_exp'],pl_prop['y_sky_exp'],_ = frameconv_skyorb_to_skystar(pl_prop['lambda'],pl_prop['x_orb_exp'][i],pl_prop['y_orb_exp'][i],0)
+     
+        pos_cond_close_to_pl = (x_sky_grid - pl_prop['x_sky_exp'])**2 + (y_sky_grid - pl_prop['y_sky_exp'])**2 < pl_prop['RpRs']**2  
+
+        cond_in_pl |=   pos_cond_close_to_pl
+
+    return cond_in_pl
 
 
 
