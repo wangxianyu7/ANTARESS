@@ -77,6 +77,10 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
         print('         Fitting/correcting wiggles') 
         fixed_args = {'rasterized':True}
 
+        #Optional arguments to be passed to the fit functions
+        #    - common to all steps in the module
+        fixed_args['use_cov'] = False 
+
         #Wiggle filter
         if gen_dic['wig_exp_filt']['mode']: 
             if gen_dic['wig_norm_ord']:print("WARNING: it is advised to disable gen_dic['wig_norm_ord'] with filter mode")
@@ -87,10 +91,6 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
         #Analytical wiggle model
         else:
-
-            #Optional arguments to be passed to the fit functions
-            #    - common to all steps in the module
-            fixed_args['use_cov'] = False 
 
             #Reference nu for frequency calculations
             fixed_args['nu_ref'] = c_light/6000. 

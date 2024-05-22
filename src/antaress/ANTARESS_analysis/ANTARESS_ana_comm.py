@@ -9,12 +9,11 @@ from ..ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,gen_spec
 from ..ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,save_fit_results,fit_merit,call_lmfit,gen_hrand_chain
 from ..ANTARESS_general.constant_data import Rsun,c_light
 from ..ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff
-# from ..ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
-from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,custom_DI_prof,theo_intr2loc
+from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_spot_prop,up_plocc_prop
+from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,custom_DI_prof,theo_intr2loc,def_Cfunc_prof
 from ..ANTARESS_analysis.ANTARESS_model_prof import para_cust_mod_true_prop,proc_cust_mod_true_prop,cust_mod_true_prop,gauss_intr_prop,calc_biss,\
     dgauss,gauss_poly,voigt,gauss_herm_lin,gen_fit_prof
-from ..ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst
-from ..ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,def_st_prof_tab,cond_conv_st_prof_tab,resamp_st_prof_tab,get_FWHM_inst
+from ..ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,def_st_prof_tab,cond_conv_st_prof_tab,resamp_st_prof_tab,get_FWHM_inst,calc_FWHM_inst
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange
 
 
@@ -95,7 +94,10 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
             #Chi2 fit
             #    - overwrite default priors
             if (fit_dic['fit_mode']=='chi2'):
-                if (par in priors_prop) and (priors_prop[par]['mod']=='uf'): 
+                if (par in priors_prop) and (priors_prop[par]['mod']=='uf'):
+                    if ('ang' in par) and (priors_prop[par]['high']>90):stop('Prior error: Spot angular size cannot exceed 90 deg. Re-define your priors.')
+                    elif ('veq' in par) and (priors_prop[par]['low']<0):stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
+                    elif ('Tcenter' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
                     p_start[par].min = priors_prop[par]['low']
                     p_start[par].max = priors_prop[par]['high']
 
@@ -114,12 +116,21 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                     if (not np.isinf(p_start[par].min)):uf_bd[0]=p_start[par].min
                     if (not np.isinf(p_start[par].max)):uf_bd[1]=p_start[par].max
                     fit_dic['uf_bd'][par]=uf_bd
+                if 'ang' in par and fit_dic['uf_bd'][par][1]>90:fit_dic['uf_bd'][par][1]=90
+                elif 'veq' in par and fit_dic['uf_bd'][par][0]<0:fit_dic['uf_bd'][par][0]=0
+                elif ('Tcenter' in par) and ((fit_dic['uf_bd'][par][0] <= p_start[par].value - fixed_args['Peq']) or (fit_dic['uf_bd'][par][1] >= p_start[par].value + fixed_args['Peq'])):fit_dic['uf_bd'][par] = [p_start[par].value - fixed_args['Peq'] + 0.001, p_start[par].value + fixed_args['Peq'] - 0.001]
                 
                 #Priors
                 if (par in priors_prop):
-                    fixed_args['varpar_priors'][par] = priors_prop[par]                          
+                    fixed_args['varpar_priors'][par] = priors_prop[par]    
+                    if 'ang' in par and priors_prop[par]['high']>90:stop('Prior error: Spot angular size cannot exceed 90deg. Re-define your priors.')
+                    elif 'veq' in par and priors_prop[par]['low']<0:stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
+                    elif ('Tcenter' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
                 else:
                     if par == 'jitter':varpar_priors=[0.,1e6]
+                    elif par == 'veq':varpar_priors=[0.,100.]
+                    elif 'ang' in par:varpar_priors=[0.,90.]
+                    elif 'Tcenter' in par:varpar_priors=[p_start[par].value - fixed_args['Peq'] + 0.001, p_start[par].value + fixed_args['Peq'] - 0.001]
                     else:varpar_priors=[-1e6,1e6]
                     if (not np.isinf(p_start[par].min)):varpar_priors[0]=p_start[par].min
                     if (not np.isinf(p_start[par].max)):varpar_priors[1]=p_start[par].max                
@@ -272,7 +283,7 @@ def model_par_names(par):
         'LD_u1':'LD$_1$','LD_u2':'LD$_2$','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
         'f_GD':'f$_{\rm GD}$','beta_GD':'$\beta_{\rm GD}$','Tpole':'T$_{\rm pole}$',
         'eta_R':r'$\eta_{\rm R}$','eta_T':r'$\eta_{\rm T}$','ksi_R':r'\Ksi$_\mathrm{R}$','ksi_T':r'\Ksi$_\mathrm{T}$',
-        'Tcenter' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'ctrst_sp' : 'F$_{sp}$',
+        'Tcenter' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'Fctrst' : 'F$_{sp}$',
         } 
     if par in name_dic:name_par = name_dic[par]
     else:name_par = par
@@ -361,7 +372,7 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
             
         #Global model properties        
         'system_param':deepcopy(system_param),
-        'system_prop':deepcopy(data_dic['DI']['system_prop']), 
+        'system_prop':deepcopy(data_dic['DI']['system_prop']),
         'system_spot_prop':deepcopy(data_dic['DI']['spots_prop']), 
         'DI_grid':False,
         'coord_line':fit_prop_dic['dim_fit'],
@@ -372,8 +383,9 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         
         #Exposures to be fitted
         'nexp_fit_all':{},
-        'idx_in_fit':{},
-        
+        'idx_in_fit':{},        
+        'master_out':{},
+
         #Intrinsic continuum flux
         #    - IntrProp: required for the intensity weighing but absolute value does not matter
         #    - IntrProf: required for parameter initialization, but set within the fit function to the visit-specific flux
@@ -384,13 +396,21 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'prior_func':fit_prop_dic['prior_func'], 
         'inst_vis_list':{},
         'transit_pl':{},
+        'cond_transit_pl':False,
         'transit_sp':{},
+        'cond_transit_sp':False,
         'bin_mode':{},
-        'fit' : {'chi2':True,'':False,'mcmc':True}[fit_prop_dic['fit_mode']],     
+        'update_crosstime':False,
+        'fit' : {'chi2':True,'':False,'mcmc':True}[fit_prop_dic['fit_mode']], 
+        'unthreaded_op':fit_prop_dic['unthreaded_op'],     
         }
    
     #Checks
     if len(fit_prop_dic['idx_in_fit'])==0:stop('No exposures are included in the fit')
+    
+    #Initializes C-based profile calculation
+    if 1==0:
+        fixed_args['fun_to_use'],fixed_args['fun_to_free'] = def_Cfunc_prof()
 
     return fixed_args,fit_dic
 
@@ -413,8 +433,7 @@ def init_joined_routines_inst(rout_mode,inst,fit_prop_dic,fixed_args):
     fixed_args['inst_list']+=[inst]
     fixed_args['inst_vis_list'][inst]=[]  
     for key in ['ph_fit','nexp_fit_all','transit_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
-    if ('Intr' in rout_mode) or ('Res' in rout_mode):fixed_args['coord_pl_fit'][inst]={}
-    if ('Prof' in rout_mode):fixed_args['coord_spot_fit'][inst]={}
+    if ('Intr' in rout_mode) or ('Res' in rout_mode):fixed_args['coord_fit'][inst]={}
 
     return None
 
@@ -454,32 +473,48 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
     
     """
     fit_prop_dic[inst][vis]={}
-    
-    #Check for multi-transits
-    #    - if two planets are transiting the properties derived from the fits to intrinsic profiles cannot be fitted, as the model only contains a single line profile
-    if rout_mode=='IntrProp':
-        if len(data_vis['transit_pl'])>1:stop('Multi-planet transit must be modelled with full intrinsic profiles')
-        fixed_args['transit_pl'][inst][vis]=[data_vis['transit_pl'][0]] 
-    else:fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
-    # if ('Prof' in rout_mode):fixed_args['transit_sp'][inst][vis]=data_vis['transit_sp']
 
     #Binned data
     if fixed_args['bin_mode'][inst][vis]=='_bin':
-        data_vis_bin = dataload_npz(gen_dic['save_data_dir']+'/Intrbin_data/'+inst+'_'+vis+'_'+data_dic['Intr']['dim_bin']+'_add')
+        if 'Intr' in fixed_args['rout_mode']:data_vis_bin = dataload_npz(gen_dic['save_data_dir']+'/Intrbin_data/'+inst+'_'+vis+'_'+data_dic['Intr']['dim_bin']+'_add')
+        elif 'Res' in fixed_args['rout_mode']:data_vis_bin = dataload_npz(gen_dic['save_data_dir']+'/Resbin_data/'+inst+'_'+vis+'_'+data_dic['Res']['dim_bin']+'_add')  
+        data_mode = data_vis_bin['type']      
         n_in_tr = data_vis_bin['n_in_tr']
+        n_in_visit = data_vis_bin['n_in_visit']
 
     #Original data
     else:
         data_vis_bin = None
         n_in_tr = data_vis['n_in_tr']    
-    
+        n_in_visit = data_vis['n_in_visit']
+        data_mode = data_dic[inst][vis]['type']
+        
+    #Planets are transiting
+    if len(data_vis['transit_pl'] )>0:
+        fixed_args['cond_transit_pl'] = True
+        
+        #Check for multi-transits
+        #    - if two planets are transiting the properties derived from the fits to intrinsic profiles cannot be fitted, as the model only contains a single line profile
+        if rout_mode=='IntrProp':
+            if len(data_vis['transit_pl'])>1:stop('Multi-planet transit must be modelled with full intrinsic profiles')
+            fixed_args['transit_pl'][inst][vis]=[data_vis['transit_pl'][0]] 
+        else:fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
+        fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
+
+    #Spots are visible
+    if len(data_vis['transit_sp'] )>0:
+        fixed_args['cond_transit_sp'] = True    
+        fixed_args['transit_sp'][inst][vis]=data_vis['transit_sp']
+        
     #Fitted exposures
+    if rout_mode in ['DIprof', 'ResProf']:n_default_fit = n_in_visit
+    else: n_default_fit = n_in_tr
     fixed_args['inst_vis_list'][inst]+=[vis]
-    if fit_prop_dic['idx_in_fit'][inst][vis]=='all':fixed_args['idx_in_fit'][inst][vis]=range(n_in_tr)
-    else:fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fit_prop_dic['idx_in_fit'][inst][vis],range(n_in_tr))
-    
-    #Keep defined intrinsic profiles
-    if 'Intr' in rout_mode:fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],data_dic['Intr'][inst][vis+fixed_args['bin_mode'][inst][vis]]['idx_def'])
+    if fit_prop_dic['idx_in_fit'][inst][vis]=='all':fixed_args['idx_in_fit'][inst][vis]=range(n_default_fit)
+    else:fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fit_prop_dic['idx_in_fit'][inst][vis],range(n_default_fit))
+
+    #Keep defined profiles
+    if (data_mode in ['Intr','Res']):fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],data_dic[data_mode][inst][vis+fixed_args['bin_mode'][inst][vis]]['idx_def'])
     fixed_args['nexp_fit_all'][inst][vis]=len(fixed_args['idx_in_fit'][inst][vis])     
 
     #Store coordinates of fitted exposures in global table
@@ -487,21 +522,27 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
         sub_idx_in_fit = fixed_args['idx_in_fit'][inst][vis]
         coord_vis = data_vis_bin['coord']
     else:
-        sub_idx_in_fit = gen_dic[inst][vis]['idx_in'][fixed_args['idx_in_fit'][inst][vis]]
+        if rout_mode=='IntrProf':sub_idx_in_fit = gen_dic[inst][vis]['idx_in'][fixed_args['idx_in_fit'][inst][vis]]
+        else:sub_idx_in_fit = fixed_args['idx_in_fit'][inst][vis]
         coord_vis = coord_dic[inst][vis]
-    for par in ['coord_pl_fit','ph_fit']:fixed_args[par][inst][vis]={}
-    for pl_loc in fixed_args['transit_pl'][inst][vis]:
-        fixed_args['ph_fit'][inst][vis][pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'][sub_idx_in_fit],coord_vis[pl_loc]['cen_ph'][sub_idx_in_fit],coord_vis[pl_loc]['end_ph'][sub_idx_in_fit]) ) 
-        fixed_args['coord_pl_fit'][inst][vis][pl_loc] = {}
-        for key in ['cen_pos','st_pos','end_pos']:fixed_args['coord_pl_fit'][inst][vis][pl_loc][key] = coord_vis[pl_loc][key][:,sub_idx_in_fit]    
-        fixed_args['coord_pl_fit'][inst][vis][pl_loc]['ecl'] = coord_vis[pl_loc]['ecl'][sub_idx_in_fit]    
-    # if ('Prof' in rout_mode):
-    #     fixed_args['coord_spot_fit'][inst][vis]={}
-    #     for spot in fixed_args['transit_sp'][inst][vis]:
-    #         fixed_args['coord_spot_fit'][inst][vis][spot] = {}
-    #         for key in ['cen_pos','st_pos','end_pos']:fixed_args['coord_spot_fit'][inst][vis][spot][key] = coord_vis[spot][key][:,sub_idx_in_fit]
-    #         for key in ['cen_tbjd','st_tbjd','end_tbjd']:fixed_args['coord_spot_fit'][inst][vis][spot][key]=coord_vis[spot][key][sub_idx_in_fit] 
-
+    for par in ['coord_fit','ph_fit']:fixed_args[par][inst][vis]={}
+    if fixed_args['cond_transit_pl']:
+        for pl_loc in fixed_args['transit_pl'][inst][vis]:
+            fixed_args['ph_fit'][inst][vis][pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'][sub_idx_in_fit],coord_vis[pl_loc]['cen_ph'][sub_idx_in_fit],coord_vis[pl_loc]['end_ph'][sub_idx_in_fit]) ) 
+            fixed_args['coord_fit'][inst][vis][pl_loc] = {}
+            for key in ['cen_pos','st_pos','end_pos']:fixed_args['coord_fit'][inst][vis][pl_loc][key] = coord_vis[pl_loc][key][:,sub_idx_in_fit]    
+            fixed_args['coord_fit'][inst][vis][pl_loc]['ecl'] = coord_vis[pl_loc]['ecl'][sub_idx_in_fit]  
+    if fixed_args['cond_transit_sp']:
+        for spot in fixed_args['transit_sp'][inst][vis]:
+            fixed_args['coord_fit'][inst][vis][spot] = {}
+            for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
+                fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key][sub_idx_in_fit] 
+            for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
+                fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key][:,sub_idx_in_fit] 
+            fixed_args['coord_fit'][inst][vis][spot]['is_visible'] = coord_vis[spot]['is_visible'][:,sub_idx_in_fit] 
+        fixed_args['coord_fit'][inst][vis]['bjd']=coord_vis['bjd'][sub_idx_in_fit]
+        fixed_args['coord_fit'][inst][vis]['t_dur']=coord_vis['t_dur'][sub_idx_in_fit]
+    
     return data_vis_bin
     
     
@@ -581,19 +622,35 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     
     #Fit spin-orbit angle by default when relevant
     #    - assuming common values to all datasets
-    if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv')) or (rout_mode=='IntrProf'):
+    if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='rv')) or (rout_mode in ['IntrProf','ResProf']):
         for pl_loc in gen_dic['studied_pl']:
             if 'lambda_rad__pl'+pl_loc not in mod_prop:p_start.add_many(('lambda_rad__pl'+pl_loc, 0.,   True, -2.*np.pi,2.*np.pi,None))
         
     #Initialize line properties
     #    - using Gaussian line as default for intrinsic profiles
-    if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='ctrst')) or (rout_mode=='IntrProf'):    
+    if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='ctrst')) or (rout_mode in ['IntrProf','ResProf']):
         if not any(['ctrst_' in prop for prop in mod_prop]):p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None))
-    if ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode=='IntrProf'):    
+    if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode in ['IntrProf','ResProf']):
         if not any(['FWHM_' in prop for prop in mod_prop]):p_start.add_many(('FWHM_ord0__IS__VS_', 5.,   True, 0.,100.  ,None))
         
+    #Re-defining the spot's Tcenter bounds, guess and priors with the cross-time supplement
+    if fixed_args['update_crosstime']:
+        for inst in list(fixed_args['spot_crosstime_supp'].keys()):
+            for vis in list(fixed_args['spot_crosstime_supp'][inst].keys()):
+                for par in mod_prop:
+                    if ('Tcenter' in par) and (inst in par) and (vis in par):
+                        mod_prop[par]['guess'] -= fixed_args['spot_crosstime_supp'][inst][vis]
+                        mod_prop[par]['bd'] = list(np.array(mod_prop[par]['bd']))-fixed_args['spot_crosstime_supp'][inst][vis]
+                        fit_prop_dic['priors'][par]['low'] -= fixed_args['spot_crosstime_supp'][inst][vis]
+                        fit_prop_dic['priors'][par]['high'] -= fixed_args['spot_crosstime_supp'][inst][vis]
+    
+    #Retrieving the rotational period - to set the priors on the Tcenter and prevent aliases
+    #    - in days
+    if 'veq' in mod_prop:fixed_args['Peq'] = (2*np.pi*fixed_args['system_param']['star']['Rstar_km'])/(mod_prop['veq']['guess']*24*3600)
+    else:fixed_args['Peq'] = deepcopy(fixed_args['system_param']['star']['Peq'])
+        
     #Initializing stellar properties
-    if fixed_args['rout_mode']=='IntrProp':    
+    if rout_mode=='IntrProp':    
         fixed_args['grid_dic'] = deepcopy(theo_dic)
         fixed_args['grid_dic']['precision'] = 'low'      #to calculate intensity-weighted properties
         line_type='ana'                                  #to avoid raising warning, even though properties are not used to calculate a line profile
@@ -607,58 +664,75 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
    
     #Initializing stellar profile grid
     #    - must be done after 'par_formatting' to identify variable line parameters
-    if fixed_args['rout_mode']!='IntrProp':       
-        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,fixed_args['system_param']['star'],p_start)
-    
+    if rout_mode!='IntrProp':  
+        if fixed_args['cond_transit_sp']:     
+            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],data_dic['DI']['spots_prop'],theo_dic,fixed_args['system_param']['star'],p_start)
+        else:
+            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,fixed_args['system_param']['star'],p_start)
+
     #Stellar grid properties
-    fixed_args['grid_dic'].update({'Ssub_Sstar_pl':theo_dic['Ssub_Sstar_pl'],'x_st_sky_grid_pl':theo_dic['x_st_sky_grid_pl'],'y_st_sky_grid_pl':theo_dic['y_st_sky_grid_pl'],'nsub_Dpl':theo_dic['nsub_Dpl'],'d_oversamp':theo_dic['d_oversamp'],'Istar_norm_achrom':theo_dic['Istar_norm_achrom']})             
+    fixed_args['grid_dic'].update({'Ssub_Sstar_pl':theo_dic['Ssub_Sstar_pl'],'x_st_sky_grid_pl':theo_dic['x_st_sky_grid_pl'],'y_st_sky_grid_pl':theo_dic['y_st_sky_grid_pl'],'nsub_Dpl':theo_dic['nsub_Dpl'],'d_oversamp':theo_dic['d_oversamp'],'Istar_norm_achrom':theo_dic['Istar_norm_achrom']})
+    if fixed_args['cond_transit_sp']:
+        fixed_args['grid_dic'].update({'Ssub_Sstar_sp':theo_dic['Ssub_Sstar_sp'],'x_st_sky_grid_sp':theo_dic['x_st_sky_grid_sp'],'y_st_sky_grid_sp':theo_dic['y_st_sky_grid_sp'],'nsub_Dspot':theo_dic['nsub_Dspot'],'d_oversamp_spot':theo_dic['d_oversamp_spot']})
 
     #Determine if orbital and light curve properties are fitted or whether nominal values are used
     #    - this depends on whether parameters required to calculate coordinates of planet-occulted regions are fitted  
     #    - in case the model is calculate in forward mode, we activate the condition as well so that the nominal system properties are updated with those defined in 'mod_prop'  
-    par_orb=['inclin_rad','aRs','lambda_rad']
-    par_LC=['RpRs']    
-    for par in par_orb+par_LC:fixed_args[par+'_pl']=[]
-    fixed_args['fit_orbit']=False
-    fixed_args['fit_RpRs']=False
+    if fixed_args['cond_transit_pl']:
+        par_orb=['inclin_rad','aRs','lambda_rad']
+        par_LC=['RpRs']    
+        for par in par_orb+par_LC:fixed_args[par+'_pl']=[]
+        fixed_args['fit_orbit']=False
+        fixed_args['fit_RpRs']=False
+    if fixed_args['cond_transit_sp']:
+        par_spot=['lat', 'Tcenter', 'ang', 'ctrst']    
+        for par in par_spot:fixed_args[par+'_sp']=[]
+        fixed_args['fit_spot']=False
+        fixed_args['fit_spot_ang']=[]
     for par in p_start:
         
         #Check if rootname of orbital/LC properties is one of the parameters left free to vary for a given planet    
         #    - if so, store name of planet for this property
-        for par_check in par_orb:
-            if (par_check in par):
-                if ('__IS' in par):pl_name = (par.split('__pl')[1]).split('__IS')[0]                  
-                else:pl_name = (par.split('__pl')[1]) 
-                if (p_start[par].vary) or fit_dic['fit_mode']=='':
-                    fixed_args[par_check+'_pl']+= [pl_name]
-                    fixed_args['fit_orbit']=True                     
-        for par_check in par_LC:
-            if (par_check in par):
-                if ('__IS' in par):pl_name = (par.split('__pl')[1]).split('__IS')[0]                  
-                else:pl_name = (par.split('__pl')[1])                 
-                if (p_start[par].vary) or fit_dic['fit_mode']=='':
-                    fixed_args[par_check+'_pl'] += [pl_name]
-                    fixed_args['fit_RpRs']=True 
+        if fixed_args['cond_transit_pl']:
+            for par_check in par_orb:
+                if (par_check in par):
+                    if ('__IS' in par):pl_name = (par.split('__pl')[1]).split('__IS')[0]                  
+                    else:pl_name = (par.split('__pl')[1]) 
+                    if (p_start[par].vary) or fit_dic['fit_mode']=='':
+                        fixed_args[par_check+'_pl']+= [pl_name]
+                        fixed_args['fit_orbit']=True                     
+            for par_check in par_LC:
+                if (par_check in par):
+                    if ('__IS' in par):pl_name = (par.split('__pl')[1]).split('__IS')[0]                  
+                    else:pl_name = (par.split('__pl')[1])                 
+                    if (p_start[par].vary) or fit_dic['fit_mode']=='':
+                        fixed_args[par_check+'_pl'] += [pl_name]
+                        fixed_args['fit_RpRs']=True 
 
-    #Unique list of planets with variable properties                
-    for par in par_orb:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
-    for par in par_LC:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
-    fixed_args['b_pl'] = list(np.unique(fixed_args['inclin_rad_pl']+fixed_args['aRs_pl']))
+        #Check if rootname of spot orbital properties is one of the parameters left free to vary for a given spot    
+        #    - if so, store name of spot for this property 
+        if fixed_args['cond_transit_sp']:        
+            for par_check in par_spot:
+                if (par_check in par) and ('_SP' in par):
+                    spot_name = par.split('_SP')[1]
+                    if (p_start[par].vary) or fit_dic['fit_mode']=='':
+                        fixed_args[par_check+'_sp']+= [spot_name]
+                        fixed_args['fit_spot']=True
+                    if ('ang' in par_check) and p_start[par].vary:
+                             fixed_args['fit_spot_ang']+=[spot_name]
+            
+    #Unique list of planets with variable properties  
+    if fixed_args['cond_transit_pl']:                
+        for par in par_orb:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
+        for par in par_LC:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
+        fixed_args['b_pl'] = list(np.unique(fixed_args['inclin_rad_pl']+fixed_args['aRs_pl']))
    
-    # Stage Théo : on utilise des valeurs par défaut pour les propriétés suivantes (si elles ne sont pas fittées) : 
-    #    - CB coef, 'alpha_rot', 'beta_rot', 'cos_istar' , 'veq' : les valeurs définies dans fixed_args['star_params']
-    #    - aRs, inclin_rad, lambda_rad : les valeurs définies dans fixed_args['planet_params']
-    #    - 'rv' : la vitesse systémique des CCF_DI, pas important, fixée à 0 dans tous les cas. 
-    #    - 'slope' : demandée par Di_prof_from_intr, fixée à 0 si pas fitté
-    #
-    #           -> Philosophie : mettre dans param tout ce qui est susceptible d'être fitté, en jouant avec le champ 'vary'
-    #           -> param a la même tête quelque soit le fit mené, aux champs 'vary' près.
-        
-    if rout_mode == 'ResProf' : #   or    (rout_mode == 'IntrProf' and fit_prop_dic['use_version2'])  :
+    #Unique list of spots with variable properties
+    if fixed_args['cond_transit_sp']:  
+        for par in par_spot:fixed_args[par+'_sp'] = list(np.unique(fixed_args[par+'_sp']))
 
-        for par in par_orb: 
-            if par+'__pl'+fixed_args['pl_loc'] not in p_start : 
-                p_start.add(par+'__pl'+fixed_args['pl_loc'] ,value=fixed_args['planet_params'][par], vary=False , min=None , max=None)
+    #Store the number of threads - needed when fitting joined residual profiles
+    fixed_args['nthreads']=fit_prop_dic['nthreads']
 
     #Fit initialization
     init_fit(fit_dic,fixed_args,p_start,fit_prop_dic,model_par_names,model_par_units)     
@@ -702,7 +776,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
 
     ########################################################################################################    
     #Fit par emcmc 
-    elif fit_prop_dic['fit_mode']=='mcmc':  
+    elif fit_dic['fit_mode']=='mcmc':  
         fixed_args['fit'] = True
         print('       MCMC fit')
         
@@ -2461,8 +2535,8 @@ def prior_contrast(p_step_loc,args_in,prior_func_prop):
         for vis in args['inst_vis_list'][inst]:   
             args['vis']=vis
             pl_vis = args['transit_pl'][inst][vis][0]
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,p_step_loc,[pl_vis],args['nexp_fit_all'][inst][vis],args['ph_fit'][inst][vis],args['coord_pl_fit'][inst][vis])
-            surf_prop_dic,spot_prop_dic,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_pl_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,p_step_loc,[pl_vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
+            surf_prop_dic,spot_prop_dic,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
             ctrst_vis = surf_prop_dic[pl_vis]['ctrst'][0]       
             break_cond = (ctrst_vis<0.) | (ctrst_vis>1.)
             if True in break_cond:

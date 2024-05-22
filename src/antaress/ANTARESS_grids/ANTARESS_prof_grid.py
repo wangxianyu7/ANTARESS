@@ -10,9 +10,42 @@ from pysme.linelist.vald import ValdFile
 from pysme.abund         import Abund
 from pysme.synthesize import synthesize_spectrum
 import lmfit
+from ctypes import CDLL,c_double,c_int,c_void_p,cast,POINTER
+import os as os_system
 from ..ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
 from ..ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab
+
+def def_Cfunc_prof():
+    r"""**C profile calculation**
+
+    Defines the C function and its parameters used in the optimization
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+
+    code_dir = os_system.path.dirname(__file__).split('ANTARESS_grids')[0]
+    myfunctions = CDLL(code_dir+'/ANTARESS_analysis/C_grid/Gauss_star_grid.so')
+    fun_to_use = myfunctions.C_coadd_loc_gauss_prof
+    fun_to_free = myfunctions.free_gaussian_line_grid
+    fun_to_use.argtypes = [np.ctypeslib.ndpointer(c_double),
+                    np.ctypeslib.ndpointer(c_double),
+                    np.ctypeslib.ndpointer(c_double),
+                    np.ctypeslib.ndpointer(c_double),
+                    np.ctypeslib.ndpointer(c_double),
+                    c_int,
+                    c_int]
+    fun_to_use.restype = c_void_p
+    fun_to_free.argtypes = [np.ctypeslib.ndpointer(c_double)]
+    fun_to_free.restype = None
+    
+    return fun_to_use,fun_to_free
+
 
 
 def custom_DI_prof(param,x,args=None):
@@ -38,8 +71,8 @@ def custom_DI_prof(param,x,args=None):
 
         #Updating stellar grid
         #    - if stellar grid is different from the default one 
-        if args['var_star_grid']:
-            
+        if args['var_star_grid'] and (args['unquiet_star'] is None):
+
             #Update variable stellar properties and stellar grid
             up_model_star(args,param)
 
@@ -66,13 +99,44 @@ def custom_DI_prof(param,x,args=None):
     #--------------------------------------------------------------------------------
     icell_list = np.arange(args['grid_dic']['nsub_star'])
     
+    #Reducing grid to quiet cells
+    if args['unquiet_star'] is not None:
+        cond_quiet_star = ~args['unquiet_star']
+        rv_surf_star_grid=rv_surf_star_grid[cond_quiet_star]
+        args['grid_dic']['mu']=args['grid_dic']['mu'][cond_quiet_star]
+        args['flux_intr_grid']=args['flux_intr_grid'][cond_quiet_star]
+        icell_list=icell_list[cond_quiet_star]
+        args['Fsurf_grid_spec']=args['Fsurf_grid_spec'][cond_quiet_star]
+        nsub_star=len(icell_list)
+    else:
+        nsub_star = len(icell_list)
+        cond_quiet_star = np.repeat(True,nsub_star)
+
+    #Set up properties for fast line profile grid calculation
+    use_OS_grid=False
+    use_C_OS_grid=False
+    if 'OS_grid' in args and args['OS_grid']:use_OS_grid=True
+    if 'C_OS_grid' in args and args['C_OS_grid']:
+        use_OS_grid=False
+        use_C_OS_grid=True
+    
     #Multithreading
     #    - disabled with theoretical profiles, there seems to be an incompatibility with sme
     if (args['nthreads']>1) and (args['mode']!='theo') and ('prof_grid' not in args['unthreaded_op']) :
-        flux_DI_sum=MAIN_multithread(coadd_loc_line_prof,args['nthreads'],args['grid_dic']['nsub_star'],[rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,args,),output = True)                           
-    
+        simplified_args={}
+        for key in ['mode', 'mac_mode', 'input_cell_all', 'func_prof', 'cen_bins', 'nthreads']:simplified_args[key]=args[key]
+        flux_DI_sum=MAIN_multithread(coadd_loc_line_prof,args['nthreads'],nsub_star,[rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu']],(param,simplified_args,),output = True)              
+
     #Direct call
-    else:flux_DI_sum=coadd_loc_line_prof(rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)
+    else:
+        if use_OS_grid:
+            for pol_par in args['input_cell_all']:args['input_cell_all'][pol_par]=args['input_cell_all'][pol_par][cond_quiet_star]
+            flux_DI_sum=coadd_loc_gauss_prof(rv_surf_star_grid,args['Fsurf_grid_spec'],args)
+        elif use_C_OS_grid:
+            for pol_par in args['input_cell_all']:args['input_cell_all'][pol_par]=args['input_cell_all'][pol_par][cond_quiet_star]
+            Fsurf_grid_spec = args['Fsurf_grid_spec'][:, 0]
+            flux_DI_sum = use_C_coadd_loc_gauss_prof(rv_surf_star_grid,Fsurf_grid_spec,args)
+        else:flux_DI_sum=coadd_loc_line_prof(rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)
     
     #Co-adding profiles
     DI_flux_norm = np.sum(flux_DI_sum,axis=0)
@@ -268,10 +332,10 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
     #Stellar grid properties
     #    - all stellar properties are initialized to default stellar values
     #      those defined as variable properties through the settings will be overwritten in 'par_formatting'
-    for key,vary,bd_min,bd_max in zip(['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
-                                      [False,  False,     False,     False,  False,  False,  False,      False, False,    False,  False, False, False,False,  False,   False],
-                                      [0.,    None,       None,      None,   None,   None,   -1.,        0.,     0.,      0.,     0. , 0.,     0. ,  0.,     0. ,    0.],
-                                      [1e4,   None,       None,      None,   None,   None,    1.,        1.,     1.,      1e5,    1.,  1e5,    1e5,  1e5,    100.,   100.]):
+    for key,vary,bd_min,bd_max in zip(['veq','veq_spots','alpha_rot','alpha_rot_spots','beta_rot','beta_rot_spots','c1_CB','c2_CB','c3_CB','c1_CB_spots','c2_CB_spots','c3_CB_spots','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
+                                      [False,   False,      False,         False,        False,        False,        False, False,  False,   False,         False,          False,   False,    False,  False,   False, False, False, False, False,  False,   False],
+                                      [0.,      0.,         None,          None,         None,         None,         None,  None,   None,    None,          None,           None,     -1.,       0.,     0.,      0.,     0. ,   0.,    0. ,   0.,     0. ,      0.],
+                                      [1e4,     1e4,        None,          None,         None,         None,         None,  None,   None,    None,          None,           None,      1.,       1.,     1.,      1e5,    1.,   1e5,    1e5,  1e5,    100.,    100.]):
         if key in star_params:params.add_many((key, star_params[key],   vary,    bd_min,bd_max,None))
 
     #Properties specific to disk-integrated profiles
@@ -596,6 +660,56 @@ def coadd_loc_line_prof(rv_surf_star_grid,icell_list,Fsurf_grid_spec,flux_intr_g
 
 
 
+def coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
+    r"""**Local Gaussian line co-addition**
+
+    Oversimplified way of cumulating the local profiles from each cell of the stellar disk. 
+    This version assumes gaussian line profiles in each cell.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    #Define necessay grids    
+    true_rv_surf_star_grid = np.tile(rv_surf_star_grid, (args['ncen_bins'], 1)).T
+    model_table = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']), dtype=float) * args['cen_bins']
+    cont_grid = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']))
+    sqrt_log2 = np.sqrt(np.log(2.))
+    ctrst_grid = np.tile(args['input_cell_all']['ctrst'], (args['ncen_bins'], 1)).T
+    FWHM_grid = np.tile(args['input_cell_all']['FWHM'], (args['ncen_bins'], 1)).T
+    
+    #Make grid of profiles    
+    gaussian_line_grid = cont_grid*(1.-ctrst_grid*np.exp(-(2.*sqrt_log2*(model_table-true_rv_surf_star_grid)/FWHM_grid)**2))
+
+    gaussian_line_grid *= Fsurf_grid_spec
+
+    return gaussian_line_grid
+
+
+
+def use_C_coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
+    r"""**C++ local Gaussian line co-addition**
+
+    C++ implementation of `coadd_loc_gauss_prof()`.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    Fsurf_grid_spec_shape0 = len(Fsurf_grid_spec)
+    ncen_bins = args['ncen_bins']
+    gauss_grid_ptr = args['fun_to_use'](rv_surf_star_grid, args['input_cell_all']['ctrst'], args['input_cell_all']['FWHM'], 
+        args['cen_bins'], Fsurf_grid_spec*10, ncen_bins, Fsurf_grid_spec_shape0)
+    gauss_grid = np.frombuffer(cast(gauss_grid_ptr, POINTER(c_double * (ncen_bins * Fsurf_grid_spec_shape0))).contents, dtype=np.float64)
+    truegauss_grid = gauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins))/10
+    args['fun_to_free'](gauss_grid)
+    return truegauss_grid
 
 
 

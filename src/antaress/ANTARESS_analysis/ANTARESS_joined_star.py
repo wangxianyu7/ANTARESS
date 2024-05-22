@@ -7,10 +7,8 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz
 from ..ANTARESS_analysis.ANTARESS_ana_comm import init_joined_routines,init_joined_routines_inst,init_joined_routines_vis,init_joined_routines_vis_fit,com_joint_fits,com_joint_postproc
-from ..ANTARESS_conversions.ANTARESS_binning import weights_bin_prof
-from ..ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
-from ..ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,theo_intr2loc,init_custom_DI_prof,custom_DI_prof
-from ..ANTARESS_grids.ANTARESS_spots import calc_spotted_tiles,calc_plocced_tiles
+from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_spot_prop,up_plocc_prop
+from ..ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,init_custom_DI_prof,custom_DI_prof
 from ..ANTARESS_analysis.ANTARESS_inst_resp import get_FWHM_inst,resamp_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab,convol_prof
 
 
@@ -956,8 +954,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
             #Visit is fitted
             if fixed_args['bin_mode'][inst][vis] is not None: 
                 data_vis=data_dic[inst][vis]
-                
-                #Samson: I've stopped implementing in this function because I see you removed stuff related to the master, and I think you may need it still.
 
                 #Fitted exposures (by default, we use all in-transit AND out-transit data. 
                 if fit_prop_dic['idx_in_fit'][inst][vis]=='all'    :    expo_fit = range(data_vis['n_in_visit'])
@@ -1209,9 +1205,6 @@ def joined_ResProf(param,args):
                                                args['data_mast'][inst][vis]['dx_ov']    
                                                )['flux'][0]
                 
-                
-
-                
             # Calculate residual profiles
             model_prof[inst][vis]=np.zeros(args['n_in_visit'][inst][vis], dtype = object)
             for iexp in args['idx_in_fit'][inst][vis]:
@@ -1219,15 +1212,6 @@ def joined_ResProf(param,args):
                 # Extracting the residual profile
                 model_prof[inst][vis][iexp] = master_out_flux - DI_data['flux'][iexp]
                 
-                
-            
-                if iexp > 60 : 
-                    plt.plot(args['cen_bins'][inst][vis],  model_prof  [inst][vis][iexp], color = 'green')
-                    plt.plot(args['cen_bins'][inst][vis],  args['flux'][inst][vis][iexp], color = 'red')
-                    plt.show()
-                
-
-            
     return model_prof
     
     

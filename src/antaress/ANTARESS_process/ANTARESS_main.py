@@ -12,7 +12,7 @@ from dace_query.spectroscopy import Spectroscopy
 from scipy.interpolate import CubicSpline
 from ..ANTARESS_analysis.ANTARESS_model_prof import calc_macro_ker_anigauss,calc_macro_ker_rt 
 from ..ANTARESS_grids.ANTARESS_star_grid import model_star
-from ..ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop
+from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm
 from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab
@@ -25,7 +25,6 @@ from ..ANTARESS_corrections.ANTARESS_calib import calc_gcal
 from ..ANTARESS_process.ANTARESS_plocc_spec import def_in_plocc_profiles,def_diff_profiles
 from ..ANTARESS_conversions.ANTARESS_masks_gen import def_masks
 from ..ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
-from ..ANTARESS_grids.ANTARESS_spots import spot_occ_region_grid,retrieve_spots_prop_from_param
 from ..ANTARESS_conversions.ANTARESS_binning import process_bin_prof
 from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
 from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
@@ -723,8 +722,12 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         print('Star is oblate')
         star_params['RpoleReq']=1.-star_params['f_GD']
 
+    #Stellar equatorial rotation period (d)
+    #    - P = 2*pi*R/v
+    star_params['Peq'] = (2.*np.pi*star_params['Rstar_km'])/(star_params['veq']*24*3600)
+
     #Stellar equatorial rotation rate (rad/s)
-    #    - om = 2*pi/P
+    #    - om = 2*pi/P = v/R
     star_params['om_eq'] = star_params['veq']/star_params['Rstar_km']
 
     #Spot Equatorial rotation rate (rad/s)
@@ -960,7 +963,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             spot_size = data_dic['DI']['spots_prop']['achrom'][spot][0]
     
             #Define a default grid size if the spot grid hasn't been defined (should be done outside of for loop)
-            theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot], theo_dic['Ssub_Sstar_sp'][spot] = spot_occ_region_grid(spot_size, theo_dic['nsub_Dspot'][spot])
+            _,theo_dic['Ssub_Sstar_sp'][spot],theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot],_ = occ_region_grid(spot_size, theo_dic['nsub_Dspot'][spot],spot=True)
 
     #------------------------------------------------------------------------------------------------------------------------
     #Model star
