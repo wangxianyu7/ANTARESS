@@ -334,12 +334,16 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         spots_prop ={}
         iexp_list = range(data_vis['n_in_tr'])
     chrom_mode = data_vis['system_prop']['chrom_mode']
-
+  
     #Activation of spectral conversion and resampling 
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_vis['type']) 
 
     #Updating coordinates with the best-fit properties
-    _,coord_pl_sp,_ = up_plocc_prop(inst,vis,fixed_args,params,data_vis['transit_pl'],fixed_args['ph_fit'][inst][vis],coord_dic[inst][vis],transit_spots=transit_spots)
+    ph_rec = {}
+    coord_vis = coord_dic[inst][vis]
+    for pl_loc in data_vis['transit_pl']:
+        ph_rec[pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'],coord_vis[pl_loc]['cen_ph'],coord_vis[pl_loc]['end_ph']) ) 
+    _,coord_pl_sp,_ = up_plocc_prop(inst,vis,fixed_args,params,data_vis['transit_pl'],ph_rec,coord_vis,transit_spots=transit_spots)
 
     #Processing relevant exposures
     for isub,iexp in enumerate(iexp_list):
@@ -390,7 +394,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
             args_exp['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],args_exp,args_exp['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
     
         #Planet-occulted properties
-        surf_prop_dic,spot_prop_dic,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_vis['transit_pl'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_sp,[iexp],system_spot_prop_in=fixed_args['system_spot_prop'])
+        surf_prop_dic,spot_prop_dic,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_vis['transit_pl'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_sp,[iexp_glob],system_spot_prop_in=fixed_args['system_spot_prop'])
 
         #With spots
         if spot_on:
@@ -425,13 +429,13 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         
         #Exposure profiles
         for line_prof in list(line_prof_cons.keys()):
-    
+           
             #Scaling to fitted intrinsic continuum level
             #    - model profiles have been output with a continuum level unity (through the option 'conv2intr') and are thus scaled to the fitted level
-            if plocc_prof_type=='Intr':line_prof*=params['cont']
+            if plocc_prof_type=='Intr':line_prof_cons['flux']*=params['cont']
          
             #Conversion and resampling 
-            flux_loc = conv_st_prof_tab(None,None,None,fixed_args,args_exp,line_prof,fixed_args['FWHM_inst'])
+            flux_loc = conv_st_prof_tab(None,None,None,fixed_args,args_exp,line_prof_cons['flux'],fixed_args['FWHM_inst'])
         
             #Filling full table with defined reconstructed profile
             plocc_prof = np.zeros(data_vis['nspec'],dtype=float)*np.nan

@@ -353,6 +353,8 @@ def plot_map(input_nbook,data_type):
     if data_type=='Intr_prof':
         input_nbook['plots']['map_'+data_type]['norm_prof'] = True
         input_nbook['plots']['map_'+data_type]['theoRV_HR'] = True
+    elif data_type=='Intr_prof_est':
+        input_nbook['plots']['map_'+data_type]['line_model']='rec'
     elif data_type=='Intr_prof_res':
         input_nbook['plots']['map_'+data_type]['cont_only']=False
         input_nbook['plots']['map_'+data_type]['line_model']='rec'

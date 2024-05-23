@@ -522,8 +522,8 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
         sub_idx_in_fit = fixed_args['idx_in_fit'][inst][vis]
         coord_vis = data_vis_bin['coord']
     else:
-        if rout_mode=='IntrProf':sub_idx_in_fit = gen_dic[inst][vis]['idx_in'][fixed_args['idx_in_fit'][inst][vis]]
-        else:sub_idx_in_fit = fixed_args['idx_in_fit'][inst][vis]
+        if rout_mode=='ResProf':sub_idx_in_fit = fixed_args['idx_in_fit'][inst][vis]        
+        else:sub_idx_in_fit = gen_dic[inst][vis]['idx_in'][fixed_args['idx_in_fit'][inst][vis]]
         coord_vis = coord_dic[inst][vis]
     for par in ['coord_fit','ph_fit']:fixed_args[par][inst][vis]={}
     if fixed_args['cond_transit_pl']:

@@ -1199,8 +1199,8 @@ def MCMC_HDI(chain_par,nbins_par,dbins_par,bw_fact,frac_search,HDI_interv_par,HD
     if len(jumpind)==0:
         HDI_sub=[np.min(bin_edges_par[bins_in_HDI]),np.max(bin_edges_par[bins_in_HDI+1])]
         HDI_interv_par+=[HDI_sub]
-        HDI_interv_txt_par+='['+"{0:.8e}".format(HDI_sub[0])+' ; '+"{0:.8e}".format(HDI_sub[1])+']'
-        HDI_sig_txt_par+='[-'+"{0:.8e}".format(med_par-HDI_sub[0])+' +'+"{0:.3e}".format(HDI_sub[1]-med_par)+']'
+        HDI_interv_txt_par+='['+"{0:.3e}".format(HDI_sub[0])+' ; '+"{0:.3e}".format(HDI_sub[1])+']'
+        HDI_sig_txt_par+='[-'+"{0:.3e}".format(med_par-HDI_sub[0])+' +'+"{0:.3e}".format(HDI_sub[1]-med_par)+']'
     
     #Multiple intervals
     else:        
@@ -1211,8 +1211,8 @@ def MCMC_HDI(chain_par,nbins_par,dbins_par,bw_fact,frac_search,HDI_interv_par,HD
             else:jf=jumpind[i_int]
             HDI_sub=[bin_edges_par[sorted_binnumber[ji]],bin_edges_par[sorted_binnumber[jf]+1]]
             HDI_interv_par+=[HDI_sub]
-            HDI_interv_txt_par+='['+"{0:.8e}".format(HDI_sub[0])+' ; '+"{0:.8e}".format(HDI_sub[1])+']' 
-            HDI_sig_txt_par+='[-'+"{0:.8e}".format(med_par-HDI_sub[0])+' +'+"{0:.3e}".format(HDI_sub[1]-med_par)+']' 
+            HDI_interv_txt_par+='['+"{0:.3e}".format(HDI_sub[0])+' ; '+"{0:.3e}".format(HDI_sub[1])+']' 
+            HDI_sig_txt_par+='[-'+"{0:.3e}".format(med_par-HDI_sub[0])+' +'+"{0:.3e}".format(HDI_sub[1]-med_par)+']' 
    
     #Convert into array
     HDI_interv_par=np.array(HDI_interv_par)            
@@ -1489,7 +1489,7 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,c
         for ipar,(parname,parunit) in enumerate(zip(fixed_args['var_par_list'],fixed_args['var_par_units'])):
             if ipar>0:print(verb_shift+'-------------------------------') 
             print(verb_shift+'  Parameter '+parname+' ['+parunit+']')
-            print(verb_shift+'    med : '+"{0:.8e}".format(med_par[ipar]))            
+            print(verb_shift+'    med : '+"{0:.3e}".format(med_par[ipar]))            
             if fit_dic['HDI'] is not None:
                 print(verb_shift+'    HDI    '+fit_dic['HDI']+' err : '+str(HDI_sig_txt_par[ipar]))
                 print(verb_shift+'              int : '+str(HDI_interv_txt[ipar]))

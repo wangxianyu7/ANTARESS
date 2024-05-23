@@ -3938,6 +3938,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + can be specific to the visit or common to all, depending on the fit
     # + line coordinate choice is retrieved automatically 
     # + indicate path to saved properties determining the line property variations in the processed dataset
+    #   bulk system properties will be retrieved and used if fitted
     # + default options are used if left undefined
     # > 'indiv_mod': models fitted to each individual intrinsic profile in each visit
     # + 'mode' : 'ana' or 'theo'
