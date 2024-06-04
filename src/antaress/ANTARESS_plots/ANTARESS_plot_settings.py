@@ -15,6 +15,8 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
      - `wspace = width` : horizontal separation between subplots.      
        `hspace = height` : vertical separation between subplots. 
      - `title = bool` : show plot title.
+     - `font_size = float` : size for figure font.     
+     - `font_size_txt = float` : size for text font within plot.
      
     Args:
         plot_options (dic) : dictionary for all generic plot settings

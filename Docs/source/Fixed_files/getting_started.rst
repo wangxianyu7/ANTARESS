@@ -35,7 +35,7 @@ Follow these steps to run ``ANTARESS``:
    Alternatively you can run the workflow from your python environment as::
 	
 	from antaress.ANTARESS_launch.ANTARESS_launcher import ANTARESS_launcher
-	ANTARESS_launcher(custom_systems = 'ANTARESS_systems_bourrier.py' , custom_settings = 'ANTARESS_settings_bourrier.py' , custom_plot_settings = 'ANTARESS_plot_settings_bourrier.py')
+	ANTARESS_launcher(custom_systems = 'ANTARESS_systems.py' , custom_settings = 'ANTARESS_settings.py' , custom_plot_settings = 'ANTARESS_plot_settings.py')
 	
    You can also run the workflow from any location by setting the option :green:`working_path` to the path of your working directory.
    
@@ -60,7 +60,7 @@ The workflow is organized as modules, which are grouped in three main categories
 
 ``Formatting/correction`` and ``Processing`` modules are ran successively, ie that data need to pass through an earlier module before it can be used by the next one. ``Analysis`` modules, in contrast, are applied to the outputs of various ``Processing`` modules throughout the pipeline. 
 
-Each module can be activated independently through the configuration file ``ANTARESS_settings.py``. Some of the ``Formatting/correction`` and ``Processing`` modules are optional, for example the ``Telluric correction`` module for space-borne data or the ``Flux scaling`` module for data with absolute photometry. Some modules are only activated if the pipeline is used for a specific goal, for example the ``CCF conversion`` of stellar spectra when the user requires the analysis of the Rossiter-McLaughlin effect.
+Each module can be activated independently through the configuration file :orange:``ANTARESS_settings.py``. Some of the ``Formatting/correction`` and ``Processing`` modules are optional, for example the ``Telluric correction`` module for space-borne data or the ``Flux scaling`` module for data with absolute photometry. Some modules are only activated if the pipeline is used for a specific goal, for example the ``CCF conversion`` of stellar spectra when the user requires the analysis of the Rossiter-McLaughlin effect.
 
 In most modules you can choose to compute data (`calculation mode`, in which case data is saved automatically on disk) or to retrieve it (`retrieval mode`, in which case the pipeline checks that data already exists on disk). This approach was mainly motivated by the fact that keeping all data in memory is not possible when processing S2D spectra, so that ``ANTARESS`` works by retrieving the relevant data from the disk in each module. 
 

@@ -22,10 +22,14 @@ def init(nbook_type):
                       'glob_fit_dic':{'IntrProp':{},'IntrProf':{}},
                       'plot_dic':{}
                      },
-        'system' : {},        #notebook inputs related to system properties
-        'par' : {},           #notebook inputs related to processing and analysis
-        'fits':[],            #tracks which fits were performed
-        'plots' : {}}         #notebook inputs related to plots
+        #notebook inputs related to system properties
+        'system' : {},        
+        #notebook inputs related to processing and analysis
+        'par' : {'loc_prof_corr':False},          
+        #tracks which fits were performed
+        'fits':[],            
+        #notebook inputs related to plots
+        'plots' : {}}         
 
     
     
@@ -267,6 +271,7 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
 
 def loc_prof_corr(input_nbook):
     input_nbook['settings']['gen_dic']['loc_data_corr']=True
+    input_nbook['par']['loc_prof_corr'] = True
     return None
 
 
@@ -344,20 +349,26 @@ def plot_prof(input_nbook,data_type):
     return None
 
 def plot_map(input_nbook,data_type):
-    input_nbook['settings']['plot_dic']['map_'+data_type] = 'png'
-    input_nbook['plots']['map_'+data_type] = {}
-    input_nbook['plots']['map_'+data_type]['verbose'] = False
-    if 'v_range' in input_nbook['par']:
-        input_nbook['plots']['map_'+data_type].update({'v_range_all':{input_nbook['par']['instrument']:{input_nbook['par']['night']:deepcopy(input_nbook['par']['v_range'])}}}) 
-        input_nbook['par'].pop('v_range')
-    if data_type=='Intr_prof':
-        input_nbook['plots']['map_'+data_type]['norm_prof'] = True
-        input_nbook['plots']['map_'+data_type]['theoRV_HR'] = True
-    elif data_type=='Intr_prof_est':
-        input_nbook['plots']['map_'+data_type]['line_model']='rec'
-    elif data_type=='Intr_prof_res':
-        input_nbook['plots']['map_'+data_type]['cont_only']=False
-        input_nbook['plots']['map_'+data_type]['line_model']='rec'
+
+    #Activate plot related to intrinsic CCF model only if model was calculated
+    def_map = True
+    if data_type in ['Intr_prof_est','Intr_prof_res'] and (not input_nbook['par']['loc_prof_corr']):def_map=False
+
+    if def_map:
+        input_nbook['settings']['plot_dic']['map_'+data_type] = 'png'
+        input_nbook['plots']['map_'+data_type] = {}
+        input_nbook['plots']['map_'+data_type]['verbose'] = False
+        if 'v_range' in input_nbook['par']:
+            input_nbook['plots']['map_'+data_type].update({'v_range_all':{input_nbook['par']['instrument']:{input_nbook['par']['night']:deepcopy(input_nbook['par']['v_range'])}}}) 
+            input_nbook['par'].pop('v_range')
+        if data_type=='Intr_prof':
+            input_nbook['plots']['map_'+data_type]['norm_prof'] = True
+            input_nbook['plots']['map_'+data_type]['theoRV_HR'] = True
+        elif data_type=='Intr_prof_est':
+            input_nbook['plots']['map_'+data_type]['line_model']='rec'
+        elif data_type=='Intr_prof_res':
+            input_nbook['plots']['map_'+data_type]['cont_only']=False
+            input_nbook['plots']['map_'+data_type]['line_model']='rec'
     return None
 
 

@@ -11,6 +11,7 @@ import numpy.ma as ma
 import bindensity as bind
 from itertools import product as it_product
 from matplotlib.ticker import MultipleLocator,MaxNLocator
+import matplotlib as mpl
 import copy
 from astropy.io import fits
 import glob
@@ -177,11 +178,19 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     '''
     if any('map_' in key for key in list(plot_dic.keys())):
 
-        '''
-        Orbital and stellar tracks
-        '''
         def doppler_track_plots(key_track,line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,pl_list,pl_ref,theo_HR,line_range,iexp_plot,iexp_range,reverse_2D,data_type,x_range_loc,y_range_loc):
-      
+            r"""**Orbital and stellar tracks.**
+            
+            Plots the Doppler track (time vs RV or wavelength) of the planet orbital trajectory or transit chord.
+
+            Args:
+                TBD
+            
+            Returns:
+                TBD
+            
+            """
+
             #Masks
             for pl_loc in pl_list:
                 
@@ -420,7 +429,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         y_title=time_title  
 
                     #Colors    
-                    cmap_2D = copy.copy(plt.cm.get_cmap(plot_options['cmap'])) 
+                    cmap_2D = copy.copy(plt.get_cmap(plot_options['cmap'])) 
 
                     #Process selected ranges and orders
                     nord_proc = len(idx_sel_ord)
@@ -1016,7 +1025,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             else:cbar_pos=fig.add_axes([plot_options['margins'][2]+0.01,plot_options['margins'][1],0.015,(plot_options['margins'][3]-plot_options['margins'][1])])   
                         						
                             #Values	
-                            cb = plt.cm.ScalarMappable(cmap=cmap_2D,norm=plt.Normalize(vmin=v_range[0], vmax=v_range[1]))										
+                            cb = mpl.cm.ScalarMappable(cmap=cmap_2D,norm=plt.Normalize(vmin=v_range[0], vmax=v_range[1]))										
                             cb.set_array(v_range) 	
                         
                             if plot_mod in ['map_DIbin','map_DI_prof','map_Res_prof','map_Intr_prof','map_BF_Res_prof','map_BF_Res_prof_re','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin',
@@ -9307,7 +9316,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 elif plot_set_key['disk_color']=='F':
                     colbar_title=scaled_title(sc_fact10,'Flux')	
                     format_cbar="%.2f"	         								
-                cb = plt.cm.ScalarMappable(cmap=cmap,norm=plt.Normalize(vmin=min_val, vmax=max_val))										
+                cb = mpl.cm.ScalarMappable(cmap=cmap,norm=plt.Normalize(vmin=min_val, vmax=max_val))										
                 cb.set_array(val_disk)		
                 cbar=fig.colorbar(cb,cax=cbar_pos,format=format_cbar)	
                 cbar.ax.tick_params(labelsize=plot_set_key['font_size']) 

@@ -565,11 +565,31 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         TBD
         
     """
-    
-    #Fit parameters
-    p_start = Parameters()  
 
     #------------------------------------------------------------------------------------------------------------------------------------------------
+    #Set optimization level for line profile calculation
+    if 'Prof' in rout_mode:   
+    
+        #Optimization levels
+        fixed_args['C_OS_grid']=False
+        fixed_args['OS_grid'] = False
+        
+        #Multithreading turned off for levels 1,2,3
+        if fit_prop_dic['Opt_Lvl']>=1:fixed_args['unthreaded_op'] += ['prof_grid']
+        
+        #Over-simplified grid building turned on for levels 2,3
+        if fit_prop_dic['Opt_Lvl']>=2:fixed_args['OS_grid'] = True
+        
+        #Over-simplified grid building turned on and coded in C for level 3
+        if fit_prop_dic['Opt_Lvl']==3:fixed_args['C_OS_grid'] = True
+    
+        #Model fit and calculation
+        print('Opt Level:', fit_prop_dic['Opt_Lvl'])        
+    
+    #------------------------------------------------------------------------------------------------------------------------------------------------
+        
+    #Fit parameters
+    p_start = Parameters()  
 
     #Model parameters
     #    - we define here parameters common to the different fit routines, but they can be updated and specific parameters defined in the routines later

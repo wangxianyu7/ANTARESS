@@ -3557,12 +3557,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                  
     
     #%%%%% PC noise model
-    #    - indicate for each visit:
-    # + the path to the PC matrix, already reduced to the PC requested to correct the visit in the PCA module
-    #   beware that the correction will be applied only over the range of definition of the PC set in the PCA
-    #   beware that one PC adds the number of fitted intrinsic profiles to the free parameters of the joint fit
-    # + whether to account or not (idx_out = []) for the PCA fit in the calculation of the fit merit values, using all out exposures (idx_out = 'all') or a selection
-    # + set noPC = True to account for the chi2 of the null hypothesis (no noise) on the out-of-transit data, without including PC to the RMR fit
+    #    - TBD 
     glob_fit_dic['ResProf']['PC_model']={}  
 
 
@@ -3796,7 +3791,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + set noPC = True to account for the chi2 of the null hypothesis (no noise) on the out-of-transit data, without including PC to the RMR fit
     glob_fit_dic['IntrProf']['PC_model']={}  
     
+    
+    #%%%%% Optimization levels
+    #     - see 'glob_fit_dic['ResProf']' for details
+    glob_fit_dic['IntrProf']['Opt_Lvl']=-1    
                         
+    
     #%%%% Fit settings 
         
     #%%%%% Fitting mode

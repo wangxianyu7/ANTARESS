@@ -3,6 +3,7 @@
 import numpy as np
 import bindensity as bind
 from copy import deepcopy
+import glob
 from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,default_func,check_data
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase
@@ -229,6 +230,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             if masterDI:
                 dt_exp = 1.   
             else:
+                if len(np.array(glob.glob(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp]+'.npz')))==0:stop('No weighing master found. Activate "gen_dic["DImast_weight"]" and "gen_dic["calc_DImast"]".') 
                 data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp])         
                 dt_exp = coord_dic[inst][vis_bin]['t_dur'][iexp]
             if ((mode=='') and (not data_inst[vis_bin]['comm_sp_tab'])) or ((mode=='multivis') and (not data_inst['comm_sp_tab']) and (vis_bin!=data_inst['com_vis'])):
