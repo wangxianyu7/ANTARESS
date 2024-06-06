@@ -407,6 +407,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #      define position as [ [x1,x2] , [x3,x4] .. ] in the input rest frame
     #    - only relevant if part of the order is masked, otherwise remove the full order 
     #    - order indexes are relative to the effective order list, after orders are possibly excluded
+    #    - if several visits of a given instrument are processed together, it is advised to exclude the minimum ranges common to all of them so that CCF are comparable
+    #    - plot flux and transmission spectra after telluric and flux balance corrections to identify the ranges to exclude 
     gen_dic['masked_pix'] = {}
     
          

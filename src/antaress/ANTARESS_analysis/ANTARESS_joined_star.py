@@ -16,7 +16,7 @@ from ..ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,theo_intr2loc
 from ..ANTARESS_analysis.ANTARESS_inst_resp import get_FWHM_inst,resamp_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab,convol_prof
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star
 from ..ANTARESS_conversions.ANTARESS_binning import weights_bin_prof
-
+from ..ANTARESS_analysis.ANTARESS_model_prof import polycoeff_def
 
 
 
@@ -743,7 +743,10 @@ def joined_IntrProf(param,args):
             if not args['fit']:
 
                 #Coefficients describing the polynomial variation of spectral line properties as a function of the chosen coordinate
-                if ('coeff_line' in args):coeff_line_dic[inst][vis] = args['coeff_line']  
+                if ('coeff_line' in args):
+                    coeff_line_dic[inst][vis]={}
+                    for par_loc in args['linevar_par'][inst][vis]:    
+                        coeff_line_dic[inst][vis][par_loc] = polycoeff_def(param,args['coeff_ord2name'][inst][vis][par_loc]) 
                 else:coeff_line_dic[inst][vis] = None              
 
                 #Properties of all planet-occulted regions used to calculate spectral line profiles
@@ -1187,21 +1190,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['mod_func'] = joined_ResProf
     fixed_args['inside_fit'] = True 
 
-    #Optimization levels
-    fixed_args['C_OS_grid']=False
-    fixed_args['OS_grid'] = False
-    
-    #Multithreading turned off for levels 1,2,3
-    if fit_prop_dic['Opt_Lvl']>=1:fixed_args['unthreaded_op'] += ['prof_grid']
-    
-    #Over-simplified grid building turned on for levels 2,3
-    if fit_prop_dic['Opt_Lvl']>=2:fixed_args['OS_grid'] = True
-    
-    #Over-simplified grid building turned on and coded in C for level 3
-    if fit_prop_dic['Opt_Lvl']==3:fixed_args['C_OS_grid'] = True
-
     #Model fit and calculation
-    print('Opt Level:', fit_prop_dic['Opt_Lvl'])
     merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'])
 
     #PC correction

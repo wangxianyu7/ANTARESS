@@ -5289,6 +5289,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('+ Telluric CCF')
 
         #Process original visits   
+        if (len(plot_set_key['tell_CCF_lines'])==1):
+            y_title = 'CCF flux ('+plot_set_key['tell_CCF_lines'][0]+' linelist)'
+            hide_yticks = False
+        else:
+            y_title = 'CCF flux (master linelist)'
+            hide_yticks = True
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_set_key['visits_to_plot'].keys())): 
             print('   - Instrument :',inst)
             if inst not in plot_set_key['color_dic']:plot_set_key['color_dic'][inst]={}
@@ -5297,6 +5303,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 print('     - Visit :',vis)
                 if vis not in plot_set_key['color_dic'][inst]:plot_set_key['color_dic'][inst][vis]='red'
                 if vis not in plot_set_key['color_dic_sec'][inst]:plot_set_key['color_dic_sec'][inst][vis]='dodgerblue'
+                ls_dic = {'master':'--','full':'-'}
+                pos_dic= {'master':0.05,'full':0.55}
                 
                 #Create directory if required
                 path_loc = gen_dic['save_plot_dir']+'Spec_raw/Tell_corr/'+inst+'_'+vis+'/Tell_CCF/'
@@ -5307,7 +5315,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 else:iexp_plot_vis=np.arange(data_dic[inst][vis]['n_in_visit'])
                 if plot_set_key['print_disp'] is not None:
                     disp_dic = {}
-                    for molec in plot_set_key['tell_species']: disp_dic[molec] = np.zeros(len(iexp_plot_vis),dtype=float)*np.nan
+                    for molec in plot_set_key['tell_species']: 
+                        disp_dic[molec] = {}
+                        for line_key in plot_set_key['tell_CCF_lines']:
+                            disp_dic[molec][line_key] = np.zeros(len(iexp_plot_vis),dtype=float)*np.nan
                 for isub_exp,iexp in enumerate(iexp_plot_vis):
 
                     #Check if exposure was fitted
@@ -5327,25 +5338,57 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 x_max=-1e100
                                 y_min=1e100
                                 y_max=-1e100
-
-                                #Plot measured, model, and corrected telluric CCFs
-                                plt.plot(data_exp['velccf'],data_exp[molec]['ccf_uncorr_master'],color=plot_set_key['color_dic'][inst][vis],linestyle='-',lw=plot_set_key['lw_plot'],zorder=0)   
-                                plt.plot(data_exp['velccf'],data_exp[molec]['ccf_model_conv_master'],color='green',linestyle='-',lw=plot_set_key['lw_plot'],zorder=1)   
-                                plt.plot(data_exp['velccf'],data_exp[molec]['ccf_corr_master'],color=plot_set_key['color_dic_sec'][inst][vis],linestyle='-',lw=plot_set_key['lw_plot'],zorder=1)   
-                    
                                 if plot_set_key['x_range'] is None:
                                     x_min=np.min([np.min(data_exp['velccf']),x_min])
                                     x_max=np.max([np.max(data_exp['velccf']),x_max]) 
-                                if plot_set_key['y_range'] is None:
-                                    y_min=np.min([np.nanmin(data_exp[molec]['ccf_uncorr_master']),np.nanmin(data_exp[molec]['ccf_model_conv_master']),np.nanmin(data_exp[molec]['ccf_corr_master']),y_min])
-                                    y_max=np.max([np.nanmax(data_exp[molec]['ccf_uncorr_master']),np.nanmax(data_exp[molec]['ccf_model_conv_master']),np.nanmax(data_exp[molec]['ccf_corr_master']),y_max])                                        
                                 
-                                #Plot dispersion  
-                                if plot_set_key['print_disp'] is not None:
-                                    cond_disp = (~np.isnan(data_exp[molec]['ccf_corr_master'])) & (data_exp['velccf']>=plot_set_key['print_disp'][0]) & (data_exp['velccf']<=plot_set_key['print_disp'][1])
-                                    disp_CCF =  np.std(data_exp[molec]['ccf_corr_master'][cond_disp])
-                                    plt.text(0.05,1.1,'$\sigma$ ='+"{0:.2e}".format(disp_CCF),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=10,color='black',transform=plt.gca().transAxes) 
-                                    disp_dic[molec][isub_exp] = disp_CCF
+                                #Scaling for double axis
+                                if (len(plot_set_key['tell_CCF_lines'])==2):
+                                    min_sec = np.min(data_exp[molec]['ccf_uncorr_full'])
+                                    max_sec = np.max(data_exp[molec]['ccf_uncorr_full'])
+                                    min_main = np.min(data_exp[molec]['ccf_uncorr_master'])
+                                    max_main = np.max(data_exp[molec]['ccf_uncorr_master'])
+                                    def main2sec(x):return (x - min_main)*(max_sec-min_sec)/(max_main-min_main) + min_sec 
+                                    def sec2main(x):return (x - min_sec)*(max_main-min_main)/(max_sec-min_sec) +min_main   
+                                    ax = plt.gca()
+
+                                #Plot measured, model, and corrected telluric CCFs 
+                                #    - over the strong line selection used for the fit, and over the full linelist
+                                #    - the 'ccf_uncorr_master' and 'ccf_model_conv_master' were computed over the same linelist, but beware that the 'ccf_corr_master' was computed from a smallest linelist and is thus not exactly comparable
+                                #      this is because the strong lines used for the fit are typically deep, and may have been set to nan in the corrected spectra
+                                for line_key in plot_set_key['tell_CCF_lines']:                   
+                                    if (len(plot_set_key['tell_CCF_lines'])==1) or (line_key=='master'):
+                                        plt.plot(data_exp['velccf'],data_exp[molec]['ccf_uncorr_'+line_key],    color=plot_set_key['color_dic'][inst][vis],    linestyle=ls_dic[line_key],lw=plot_set_key['lw_plot'],zorder=0)   
+                                        plt.plot(data_exp['velccf'],data_exp[molec]['ccf_model_conv_'+line_key],color='green',                                 linestyle=ls_dic[line_key],lw=plot_set_key['lw_plot'],zorder=1)   
+                                        if np.nanmax(np.abs(data_exp[molec]['ccf_corr_'+line_key]))>0.:
+                                            plt.plot(data_exp['velccf'],data_exp[molec]['ccf_corr_'+line_key],      color=plot_set_key['color_dic_sec'][inst][vis],linestyle=ls_dic[line_key],lw=plot_set_key['lw_plot'],zorder=1)   
+                                    else:
+                                        ax.plot(data_exp['velccf'],sec2main(data_exp[molec]['ccf_uncorr_full']),    color=plot_set_key['color_dic'][inst][vis],    linestyle=ls_dic[line_key],lw=plot_set_key['lw_plot'],zorder=0)   
+                                        ax.plot(data_exp['velccf'],sec2main(data_exp[molec]['ccf_model_conv_full']),color='green',                                 linestyle=ls_dic[line_key],lw=plot_set_key['lw_plot'],zorder=1)   
+                                        if np.nanmax(np.abs(data_exp[molec]['ccf_corr_full']))>0.:
+                                            ax.plot(data_exp['velccf'],sec2main(data_exp[molec]['ccf_corr_full']),      color=plot_set_key['color_dic_sec'][inst][vis],linestyle=ls_dic[line_key],lw=plot_set_key['lw_plot'],zorder=1)   
+
+                                        #Secondary axis
+                                        secax = ax.secondary_yaxis('right', functions=(main2sec, sec2main))
+                                        secax.tick_params('y', which='major',direction='in',labelsize=plot_set_key['font_size'])
+                                        secax.set_ylabel('CCF flux (full linelist)',fontsize=plot_set_key['font_size'])                              
+                                
+                                    #Ranges
+                                    if plot_set_key['y_range'] is None:
+                                        y_min=np.min([np.nanmin(data_exp[molec]['ccf_uncorr_'+line_key]),np.nanmin(data_exp[molec]['ccf_model_conv_'+line_key]),y_min])
+                                        y_max=np.max([np.nanmax(data_exp[molec]['ccf_uncorr_'+line_key]),np.nanmax(data_exp[molec]['ccf_model_conv_'+line_key]),y_max])                                        
+                                
+                                    #Plot dispersions
+                                    if (plot_set_key['print_disp'] is not None):
+                                        if (np.nanmax(np.abs(data_exp[molec]['ccf_corr_'+line_key]))>0.):
+                                            cond_disp = (~np.isnan(data_exp[molec]['ccf_corr_'+line_key])) & (data_exp['velccf']>=plot_set_key['print_disp'][0]) & (data_exp['velccf']<=plot_set_key['print_disp'][1])
+                                            disp_CCF =  np.std(data_exp[molec]['ccf_corr_'+line_key][cond_disp])
+                                            disp_txt = "{0:.4e}".format(disp_CCF)
+                                        else:
+                                            disp_CCF = np.nan
+                                            disp_txt = 'Undefined'
+                                        plt.text(pos_dic[line_key],1.1,'$\sigma$['+line_key+'] ='+disp_txt,verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=10,color='black',transform=plt.gca().transAxes) 
+                                        disp_dic[molec][line_key][isub_exp] = disp_CCF
                                              
                                 #Frame
                                 x_range_loc=plot_set_key['x_range'] if plot_set_key['x_range'] is not None else np.array([x_min,x_max])
@@ -5357,7 +5400,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
                                 ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
                                 custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
-                                            x_title=r'Velocity in telluric rest frame (km s$^{-1}$)',y_title='Flux',font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
+                                            x_title=r'Velocity in telluric rest frame (km s$^{-1}$)',y_title=y_title,font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'],hide_yticks=hide_yticks)
                                 plt.savefig(path_loc+molec+'_idx'+str(iexp)+'.'+plot_dic['tell_CCF']) 
                                 plt.close()  
 
@@ -5374,27 +5417,29 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         y_max=-1e100                            
                         
                         #Plot defined exposures
-                        cond_def = ~np.isnan(disp_dic[molec][isub_exp])
-                        cen_ph_vis = coord_dic[inst][vis][plot_set_key['pl_ref'][inst][vis]]['cen_ph'][cond_def]
-                        disp_molec = disp_dic[molec][cond_def]
-                        plt.plot(cen_ph_vis,disp_molec,color='dodgerblue',linestyle='',zorder=1,marker='o',markersize=1.5)
+                        for line_key in disp_dic[molec]:
+                            cond_def = ~np.isnan(disp_dic[molec][line_key])
+                            if True in cond_def:
+                                cen_ph_vis = coord_dic[inst][vis][plot_set_key['pl_ref'][inst][vis]]['cen_ph'][cond_def]
+                                disp_molec = disp_dic[molec][line_key][cond_def]
+                                plt.plot(cen_ph_vis,disp_molec,color='dodgerblue',linestyle='',zorder=1,marker='o',markersize=1.5)
+    
+                                #Mean dispersion
+                                mean_disp = np.mean(disp_molec)
+                                plt.plot(x_range_loc,[mean_disp,mean_disp],color='dodgerblue',linestyle=ls_dic[line_key],zorder=1)
+                                plt.text(pos_dic[line_key],1.1,'$\sigma$['+line_key+'] ='+"{0:.4e}".format(mean_disp),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=10,color='black',transform=plt.gca().transAxes) 
+    
+                                #Boundaries
+                                x_min=np.min([np.nanmin(cen_ph_vis),x_min])
+                                x_max=np.max([np.nanmax(cen_ph_vis),x_max])                      
+                                y_min=np.min([np.nanmin(disp_molec),y_min])
+                                y_max=np.max([np.nanmax(disp_molec),y_max])                              
 
-                        #Boundaries
-                        x_min=np.min([np.nanmin(cen_ph_vis),x_min])
-                        x_max=np.max([np.nanmax(cen_ph_vis),x_max])                      
-                        y_min=np.min([np.nanmin(disp_molec),y_min])
-                        y_max=np.max([np.nanmax(disp_molec),y_max]) 
+                        #Frame    
                         dx_range = x_max-x_min
                         x_range_loc = [x_min-0.05*dx_range,x_max+0.05*dx_range] 
                         dy_range = y_max-y_min
-                        y_range_loc = [y_min-0.05*dy_range,y_max+0.05*dy_range]                              
-                        
-                        #Mean dispersion
-                        mean_disp = np.mean(disp_molec)
-                        plt.plot(x_range_loc,[mean_disp,mean_disp],color='dodgerblue',linestyle='-',zorder=1)
-                        plt.text(0.05,1.1,'$\sigma$ ='+"{0:.2e}".format(mean_disp),verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=10,color='black',transform=plt.gca().transAxes) 
-                        
-                        #Frame                         
+                        y_range_loc = [y_min-0.05*dy_range,y_max+0.05*dy_range]                      
                         dx_range=x_range_loc[1]-x_range_loc[0]        
                         dy_range=y_range_loc[1]-y_range_loc[0]                         
                         xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)

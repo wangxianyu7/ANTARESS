@@ -608,8 +608,8 @@ def calc_pl_coord_plots(n_pts_orbit,pl_params):
         X0_plot=aRs*(np.cos(Ecc_anom_plot)-ecc)
         Y0_plot=aRs*np.sqrt(1.-pow(ecc,2.))*np.sin(Ecc_anom_plot)
 
-        #Coord. in the XYZ simulation referential     
-        coord_orbit = [-X0_plot*np.cos(omega_bar) +  Y0_plot*np.sin(omega_bar),                  #Xsky
+        #Coord. in the XYZ sky-projected orbital referential     
+        coord_orbit = [-X0_plot*np.cos(omega_bar) +  Y0_plot*np.sin(omega_bar),           #Xsky
                       -( X0_plot*np.sin(omega_bar) +  Y0_plot*np.cos(omega_bar) )*c_ip,   #Ysky
                        ( X0_plot*np.sin(omega_bar) +  Y0_plot*np.cos(omega_bar) )*s_ip]   #Zsky
     

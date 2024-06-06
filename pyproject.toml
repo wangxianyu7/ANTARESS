@@ -43,3 +43,6 @@ Issues = "https://gitlab.unige.ch/bourrier/ANTARESS/-/issues"
 
 [project.scripts]
 antaress = "antaress.ANTARESS_launch.ANTARESS_launcher:ANTARESS_launcher" 
+
+[tool.setuptools.packages.find]
+where = ["src"]
