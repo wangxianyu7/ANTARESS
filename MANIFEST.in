@@ -1,1 +1,1 @@
-recursive-include src *.txt *.dat *.o *.c *.so *.fits
+recursive-include src *.txt
