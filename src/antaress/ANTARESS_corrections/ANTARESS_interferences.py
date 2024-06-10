@@ -18,7 +18,7 @@ from matplotlib.ticker import MultipleLocator
 from ..ANTARESS_plots.utils_plots import autom_tick_prop,custom_axis
 from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof
 from ..ANTARESS_grids.ANTARESS_coord import get_timeorbit,calc_tr_contacts
-from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
+from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting,model_par_names,model_par_units
 from ..ANTARESS_general.utils import stop,np_where1D,is_odd,closest,dataload_npz,gen_specdopshift,check_data,datasave_npz
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_general.minim_routines import init_fit,fit_merit,call_lmfit
@@ -186,6 +186,10 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             #    - RV relative to CDM are used since the correction is performed per visit, so that the systemic RV does not need to be set                
             rv_al_all = coord_dic[inst][vis]['RV_star_stelCDM'] 
 
+            #Reference planet for orbital phase
+            if len(data_dic[inst][vis]['transit_pl'])>0:pl_ref=data_dic[inst][vis]['transit_pl'][0]
+            else:pl_ref=gen_dic['studied_pl'][0]            
+
             #Target cartesian coordinates
             #    - coordinates in the plane of horizon, with the y axis pointing toward the north:
             # x = cos(th) = sin(az)
@@ -195,8 +199,9 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             # z = sin(alt)     
             fixed_args['z_mer']  = data_dic[inst][vis]['z_mer'] 
             tel_coord_vis={
+                'pl_ref':pl_ref,
                 't_dur' : coord_dic[inst][vis]['t_dur'], 
-                'cen_ph' : coord_dic[inst][vis][gen_dic['studied_pl'][0]]['cen_ph'],
+                'cen_ph' : coord_dic[inst][vis][pl_ref]['cen_ph'],
                 'az': data_prop_vis['az'],
                 'x_az' : np.sin(data_prop_vis['az']*np.pi/180.),
                 'y_az' : np.cos(data_prop_vis['az']*np.pi/180.), 
@@ -255,7 +260,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 dbjd_HR = 1./(3600.*24.)
                 nbjd_HR = round((max_bjd-min_bjd)/dbjd_HR)
                 bjd_HR=min_bjd+dbjd_HR*np.arange(nbjd_HR)
-                cen_ph_HR = get_timeorbit(gen_dic['studied_pl'][0],coord_dic[inst][vis],bjd_HR, system_param[gen_dic['studied_pl'][0]], 0.)[1]
+                cen_ph_HR = get_timeorbit(pl_ref,coord_dic[inst][vis],bjd_HR, system_param[pl_ref], 0.)[1]
                 az_HR = CubicSpline(coord_dic[inst][vis]['bjd'],data_prop[inst][vis]['az'])(bjd_HR)
                 alt_HR = CubicSpline(coord_dic[inst][vis]['bjd'],data_prop[inst][vis]['alt'])(bjd_HR) 
                 cen_ph_mer = cen_ph_HR[closest(az_HR,180.)]                 
@@ -274,7 +279,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 tel_coord_HR['cond_westmer'][tel_coord_HR['cond_shift']] = False
                 
                 #Contact phases for main planet
-                contact_phases=calc_tr_contacts(data_vis['system_prop']['achrom'][gen_dic['studied_pl'][0]][0],system_param[gen_dic['studied_pl'][0]],plot_dic['stend_ph'],system_param['star'])
+                contact_phases=calc_tr_contacts(data_vis['system_prop']['achrom'][pl_ref][0],system_param[pl_ref],plot_dic['stend_ph'],system_param['star'])
 
             #------------------------------------------------------------------
 
@@ -458,7 +463,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 #    - the wiggle master spectrum is in any case processed in the star rest frame, so that the stellar line do not contribute to weighing 
                 flux_ref = np.ones(data_vis['dim_exp'])
     
-                #Retrieving data that will be used in the binning to calculate a master profile
+                #Retrieving data that will be used in the fit and in the binning to calculate a master profile
                 #    - in the process_bin_prof() routine dedicated to the analysis of binned profiles, original exposures are resampled on a common table after 
                 # upload if relevant. Here the original data need to be resampled for each new exposure, thus here we just upload and store the profiles
                 #    - data is processed here in wavelength space
@@ -1254,10 +1259,10 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         
                         #Force axis ranges
                         x_range_var={
-                            'AmpGlob1_c0_off':[37.5,59.5],  #HD209 ANTARESS I
-                            'Freq1_c0_off':[37.5,59.5],
-                            'AmpGlob2_c0_off':[37.5,59.5],
-                            'Freq2_c0_off':[37.5,59.5],
+                            # 'AmpGlob1_c0_off':[37.5,59.5],  #HD209 ANTARESS I
+                            # 'Freq1_c0_off':[37.5,59.5],
+                            # 'AmpGlob2_c0_off':[37.5,59.5],
+                            # 'Freq2_c0_off':[37.5,59.5],
                             # 'AmpGlob1_c0_off':[37.,64.],  #WASP76
                             # 'Freq1_c0_off':[37.,64.],  #WASP76
                             # 'AmpGlob1_maxAmp_off':[37.,76.],  #HD29291
@@ -1265,13 +1270,17 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             # 'AmpGlob2_c0_off':[37.,60.],    #WASP76
                             # 'Freq2_c0_off':[37.,60.],     #WASP76
                             # 'Freq2_c0_off':[37.,76.],   #HD29291
+                            'AmpGlob1_c0_off':[37.,67.],  #TOI421
+                            'Freq1_c0_off':[37.,67.],
+                            'AmpGlob2_c0_off':[37.,67.],
+                            'Freq2_c0_off':[37.,67.],
                             }
                         x_range_res={}
                         y_range_var={
-                            'AmpGlob1_c0_off':[1.5e-4,2.6e-3],  #HD209 ANTARESS I
-                            'Freq1_c0_off':[3.6,3.85],
-                            'AmpGlob2_c0_off':[1e-4,8.5e-4],
-                            'Freq2_c0_off':[1.9,2.4],                            
+                            # 'AmpGlob1_c0_off':[1.5e-4,2.6e-3],  #HD209 ANTARESS I
+                            # 'Freq1_c0_off':[3.6,3.85],
+                            # 'AmpGlob2_c0_off':[1e-4,8.5e-4],
+                            # 'Freq2_c0_off':[1.9,2.4],                            
                             # 'AmpGlob1_c0_off':[0,0.006],
                             # 'Freq1_c0_off':[3.2,4.2],  #WASP76
                             # 'AmpGlob1_maxAmp_off':[0,0.01],  #HD29291
@@ -1284,12 +1293,17 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #     'Freq3_c0_off':[0.4,1.5],
                         #     'AmpGlob4_maxAmp_off':[0.0001,0.0004],
                         #     'Freq4_c0_off':[0.25,0.5],
+                        
+                            'AmpGlob1_c0_off':[1e-4,4.5e-3],  #TOI421
+                            'Freq1_c0_off':[3.5,4.5],
+                            'AmpGlob2_c0_off':[1e-5,1.5e-3],
+                            'Freq2_c0_off':[1.5,2.5],                        
                             }
                         y_range_res={
-                            'AmpGlob1_c0_off':[-5e-4,5e-4],  #HD209 ANTARESS I
-                            'Freq1_c0_off':[-0.15,0.15],
-                            'AmpGlob2_c0_off':[-2.5e-4,2.5e-4],
-                            'Freq2_c0_off':[-0.2,0.2], 
+                            # 'AmpGlob1_c0_off':[-5e-4,5e-4],  #HD209 ANTARESS I
+                            # 'Freq1_c0_off':[-0.15,0.15],
+                            # 'AmpGlob2_c0_off':[-2.5e-4,2.5e-4],
+                            # 'Freq2_c0_off':[-0.2,0.2], 
                         #     'AmpGlob3_maxAmp_off':[-0.0002,0.0002],
                         #     'Freq3_c0_off':[-0.5,0.5], 
                         #     'AmpGlob4_maxAmp_off':[-0.0001,0.0001],
@@ -2907,7 +2921,7 @@ def wig_perio_gen(calc_range,src_range,nu_in,flux_in,err_in,args,plot=False):
     
     return amp_guess,freq_guess,phi_guess,fap_max,ls,frequency, power,max_power
 
-def plot_bin_spec(ax,low_bins,high_bins,val_bins,min_plot,max_plot,dbin_plot):
+def plot_bin_spec(ax,low_bins,high_bins,val_bins,min_plot,max_plot,dbin_plot,color = 'goldenrod'):
     r"""**Wiggle plot : binned spectrum**
 
     Plot the binned transmission spectrum of an exposure.
@@ -2926,7 +2940,7 @@ def plot_bin_spec(ax,low_bins,high_bins,val_bins,min_plot,max_plot,dbin_plot):
     x_bd_low_in = min_plot + dbin_plot*np.arange(nbin_plot)
     x_bd_high_in = x_bd_low_in+dbin_plot 
     _,_,wav_bin_plot,_,Fr_bin_plot,_ = resample_func(x_bd_low_in,x_bd_high_in,low_bins,high_bins,val_bins,None)
-    ax.plot(wav_bin_plot,Fr_bin_plot,linestyle='-',marker='o',markersize=5,color='goldenrod',zorder=1)
+    ax.plot(wav_bin_plot,Fr_bin_plot,linestyle='-',marker='o',markersize=5,color=color,zorder=1)
     
     return None
 
@@ -2970,7 +2984,7 @@ def plot_screening(ibin2exp_fit,ibin2ord_fit,min_plot,max_plot,gen_dic,Fr_bin_fi
  
     #Binned data
     #    - we use resample_func() rather than bind.resampling because input tables are not necessarily continuous, and because the calculations here are less generic than those in process_bin_prof()
-    plot_bin_spec(plt.gca(),Fr_bin_fit['low_nu'],Fr_bin_fit['high_nu'],Fr_bin_fit['Fr'],min_plot,max_plot,0.27/5.)
+    plot_bin_spec(plt.gca(),Fr_bin_fit['low_nu'],Fr_bin_fit['high_nu'],Fr_bin_fit['Fr'],min_plot,max_plot,0.27/5.,color='black')
 
     #Constant unity level
     plt.plot(x_range,[1.,1.],linestyle=':',color='black',zorder=-1,rasterized=fixed_args['rasterized'])

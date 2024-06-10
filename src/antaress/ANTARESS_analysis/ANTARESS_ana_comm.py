@@ -1087,7 +1087,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
         
         #Binned data
         if bin_mode=='bin':   
-            data_bin = np.load(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+prop_dic['dim_bin']+'_add.npz',allow_pickle=True)['data'].item()
+            data_bin = dataload_npz(gen_dic['save_data_dir']+data_type_gen+'bin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det+'_'+prop_dic['dim_bin']+'_add')
             fit_dic['n_exp'] = data_bin['n_exp']
             rest_frame = data_bin['rest_frame']
      
@@ -1102,12 +1102,13 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             rest_frame = data_dic[data_type_gen][inst][vis]['rest_frame']
 
         #Upload analytical surface RVs
+        #    - for binned data, properties are averaged from the original data rather than computed directly
         if (('DI' in data_type) and (inst in prop_dic['occ_range'])) or ('Intr' in data_type):
             if len(data_inst[vis]['transit_pl'])>1:stop('Adapt model to multiple planets')
             else:
                 ref_pl = data_inst[vis]['transit_pl'][0]
                 if bin_mode=='':surf_rv_mod = dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/PlOcc_Prop_'+inst+'_'+vis)['achrom'][ref_pl]['rv'][0]
-                else:surf_rv_mod = data_bin['achrom'][ref_pl]['rv'][0]
+                else:surf_rv_mod = data_bin['plocc_prop']['achrom'][ref_pl]['rv'][0]
  
         #Disk-integrated profiles
         if 'DI' in data_type:
@@ -1251,13 +1252,10 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
                 if fit_properties['mode']=='Intrbin':
                     
                     #Check that profiles were aligned
-                    if fit_properties['vis']=='':vis_Intrbin = vis
-                    elif fit_properties['vis']=='binned':vis_Intrbin = 'binned'
-                    data_Intrbin = dataload_npz(gen_dic['save_data_dir']+'Intrbin_data/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_Intrbin+'_'+fit_properties['dim_bin']+'_add')
-                    if not data_Intrbin['FromAligned']:stop('Intrinsic profiles must be aligned before binning')
+                    if not data_bin['FromAligned']:stop('Intrinsic profiles must be aligned before binning')
     
                     #Central coordinate of binned profiles along chosen dimension
-                    fit_properties['cen_dim_Intrbin'] =data_Intrbin['cen_bindim']
+                    fit_properties['cen_dim_Intrbin'] =data_bin['cen_bindim']
 
             #Analytical model
             #    - intrinsic profile mode is set to analytical to activate conditions, even if intrinsic profiles are not used
@@ -1355,12 +1353,12 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
         #Retrieving binned intrinsic profiles for disk-integrated profile fitting
         #    - all binned profiles are defined over the same table
         if (data_type_gen=='DI') and (prop_dic['model'][inst]=='custom') and (fit_properties['mode']=='Intrbin'):
-            fit_properties['edge_bins_Intrbin'] = np.append(data_Intrbin['edge_bins'][iord_sel,idx_range_kept],data_Intrbin['edge_bins'][iord_sel,idx_range_kept[-1]+1]) 
+            fit_properties['edge_bins_Intrbin'] = np.append(data_bin['edge_bins'][iord_sel,idx_range_kept],data_bin['edge_bins'][iord_sel,idx_range_kept[-1]+1]) 
             dcen_bins_Intrbin = (fit_properties['edge_bins_Intrbin'][1::] - fit_properties['edge_bins_Intrbin'][0:-1])
-            fit_properties['flux_Intrbin'] = np.zeros([data_Intrbin['n_exp'],nspec],dtype=float)
-            cont_Intrbin = np.zeros(data_Intrbin['n_exp'])*np.nan
-            wcont_Intrbin = np.zeros(data_Intrbin['n_exp'])*np.nan            
-            for isub,iexp in enumerate(data_Intrbin['n_exp']):
+            fit_properties['flux_Intrbin'] = np.zeros([data_bin['n_exp'],nspec],dtype=float)
+            cont_Intrbin = np.zeros(data_bin['n_exp'])*np.nan
+            wcont_Intrbin = np.zeros(data_bin['n_exp'])*np.nan            
+            for isub,iexp in enumerate(data_bin['n_exp']):
                 data_Intrbin_loc = np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis_Intrbin+'_'+fit_properties['dim_bin']+str(iexp)+'.npz',allow_pickle=True)['data'].item()         
                 if False in data_Intrbin_loc['cond_def'][iord_sel,idx_range_kept] :stop('Binned intrinsic profiles must be fully defined to be used in the reconstruction')    
                 fit_properties['flux_Intrbin'][isub] = data_Intrbin_loc['flux'][iord_sel,idx_range_kept]
@@ -1451,14 +1449,30 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
                     fit_dic[iexp]['RV_lobe_res']=fit_dic[iexp]['RV_lobe']-fit_dic[iexp]['RVmod']
                     fit_dic[iexp]['err_RV_lobe_res']=fit_dic[iexp]['err_RV_lobe']  
 
-            elif data_type=='DIbin':    
-                fit_dic[iexp]['RVmod']=data_bin['RV_star_solCDM'][iexp]
+            #Binned disk-integrated profiles
+            elif data_type=='DIbin':  
+                
+                #Calculating residuals from null velocity if profiles were aligned
+                #    - the value will be relative to the systemic rv that was used
+                if data_bin['FromAligned']:fit_dic[iexp]['RVmod'] = 0.          
+                
+                #Calculating residuals from Keplerian (km/s) if profiles were kept in their original rest frame    
+                else:fit_dic[iexp]['RVmod']=data_bin['RV_star_solCDM'][iexp]
 
             #Calculating residuals from RRM model (km/s)
             #    - we report the errors on the local velocities
             elif data_type=='Introrig':
                 fit_dic[iexp]['RVmod']=surf_rv_mod[iexp] 
-               
+
+            #Binned intrinsic profiles
+            elif data_type=='Intrbin':    
+                
+                #Calculating residuals from null velocity if profiles were aligned
+                if data_bin['FromAligned']:fit_dic[iexp]['RVmod'] = 0. 
+                    
+                #Calculating residuals from RRM model (km/s) if profiles were kept in the star rest frame   
+                else:fit_dic[iexp]['RVmod']=surf_rv_mod[iexp]                 
+
             #Calculating residuals from orbital RVs (km/s)
             elif data_type=='Atmorig': 
                 fit_dic[iexp]['RVmod']=coord_dic[inst][vis]['rv_pl'][iexp_orig]

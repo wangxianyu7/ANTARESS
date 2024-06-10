@@ -1099,7 +1099,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         return data_type_gen,data_mode,data_type,add_txt_path,txt_aligned
 
     def get_data_path(plot_mod,data_type,inst,vis):
-        if (plot_mod=='DI_prof') and ('spec' in data_type):  
+        if (plot_mod=='DI_prof_corr') and ('spec' in data_type):  
             data_path_dic = {
                 'raw':data_dic[inst][vis]['uncorr_exp_data_paths'],
                 'all':data_dic[inst][vis]['corr_exp_data_paths'],
@@ -1179,7 +1179,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     path_loc = gen_dic['save_plot_dir']+main_path_txt
 
                     #Specific options
-                    if (plot_mod=='DI_prof') and ('spec' in data_type):   
+                    if (plot_mod=='DI_prof_corr') and ('spec' in data_type):   
     
                         #Cosmics
                         if (plot_options['plot_pre']!='cosm') and (plot_options['plot_post']!='cosm'):plot_options['det_cosm']=False
@@ -1206,10 +1206,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Original exposure index
         nexp_plot = len(iexp_plot)
-        if (vis=='binned') or (('DI' in plot_mod) or ('Res' in plot_mod) or (plot_mod=='map_pca_prof') or (('Atm' in plot_mod) and (plot_options['pl_atm_sign']=='Emission'))):iexp_orig = iexp_plot
+        if (vis=='binned') or (data_mode == 'bin') or (('DI' in plot_mod) or ('Res' in plot_mod) or (plot_mod=='map_pca_prof') or (('Atm' in plot_mod) and (plot_options['pl_atm_sign']=='Emission'))):iexp_orig = iexp_plot
         elif ('Intr' in plot_mod) or (('Atm' in plot_mod) and (plot_options['pl_atm_sign']=='Absorption')):iexp_orig = gen_dic[inst][vis]['idx_in2exp'][iexp_plot]
-            
-    
+             
         #Indexes of master exposures
         if ('DI' in plot_mod) and (vis!='binned'):
             if (inst in plot_options['iexp_mast_list']) and (vis in plot_options['iexp_mast_list'][inst]):
@@ -1297,7 +1296,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             if ('spec' in data_type):         
                                 
                                 #Over correction steps
-                                if ('plot_pre' in plot_options) or ('plot_post' in plot_options):
+                                if (plot_mod=='DI_prof_corr') and (('plot_pre' in plot_options) or ('plot_post' in plot_options)):
                                     if plot_options['plot_post'] is not None:data_path_all = [data_path_dic[plot_options['plot_post']]+str(iexp) for iexp in iexp_plot]
                                     else:data_path_all = [None for iexp in iexp_plot]
                                     rest_frame='input'   
@@ -1508,8 +1507,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 cen_bins_com = data_com['cen_bins'][idx_sel_ord]
                 edge_bins_com = data_com['edge_bins'][idx_sel_ord]                
 
-                #Pre-processing exposures  
-                if (plot_mod=='DI_prof') and ('spec' in data_type) and (not gen_dic['mock_data']):  
+                #Pre-processing exposures 
+                #    - for original profiles over correction steps
+                if (plot_mod=='DI_prof_corr') and ('spec' in data_type) and (not gen_dic['mock_data']):  
                     data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_inst[vis],data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc)
                 else:
                     data_proc={}
@@ -1559,7 +1559,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if (data_mode == 'orig'):       
 
                         #Specific options
-                        if (plot_mod=='DI_prof') and ('spec' in data_type):  
+                        if (plot_mod=='DI_prof_corr') and ('spec' in data_type):  
                                   
                             #Data at chosen steps
                             if plot_options['plot_pre'] is not None:
@@ -1677,7 +1677,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                     else:cond_def[ (cen_bins<plot_options['x_range'][0]) | (cen_bins>plot_options['x_range'][1]) ]=False
 
                                 #Conditions on disk-integrated spectra
-                                if (plot_mod=='DI_prof') and ('spec' in data_type):
+                                if (plot_mod=='DI_prof_corr') and ('spec' in data_type):
                                     
                                     #Only plot order if cosmics were detected
                                     if plot_options['det_cosm'] and (len(data_cosm['idx_cosm_exp'][iord])==0):plot_ord &= False     
@@ -1769,7 +1769,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                     else:mean_flux=1.
                                     
                                     #Plot DI spectra at various steps of the spectral corrections
-                                    if (plot_mod=='DI_prof') and ('spec' in data_type): 
+                                    if (plot_mod=='DI_prof_corr') and ('spec' in data_type): 
                                         
                                         #Plot spectrum before correction   
                                         if plot_options['plot_pre'] is not None:
@@ -1811,14 +1811,21 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                                 tell_loc = tell_exp[iord]
                                                 
                                                 #Scale telluric spectrum (between tell_min and tell_max) to min/max of plotted spectrum
-                                                tell_min = np.min(tell_loc[cond_def_exp])
-                                                tell_max = np.max(tell_loc[cond_def_exp])
-                                                min_f = np.min(var_loc[cond_def_exp])
-                                                max_f = np.max(var_loc[cond_def_exp])
+                                                #    - the scaling is performed over the vertical range, if defined
+                                                cond_def_in_plot = cond_def_exp & (cen_bins>x_range_loc[key_frame][0]) & (cen_bins<x_range_loc[key_frame][1])
+                                                tell_min = np.min(tell_loc[cond_def_in_plot])
+                                                tell_max = np.max(tell_loc[cond_def_in_plot])
+                                                if plot_options['y_range'] is None:
+                                                    min_f = np.min(var_loc[cond_def_in_plot])
+                                                    max_f = np.max(var_loc[cond_def_in_plot])
+                                                else:
+                                                    dy_range = np.diff(plot_options['y_range'])
+                                                    min_f = plot_options['y_range'][0]+0.05*dy_range
+                                                    max_f = plot_options['y_range'][1]-0.05*dy_range
                                                 def flux2tell(x):return (x -min_f )*(tell_max-tell_min)/(max_f-min_f) + tell_min 
                                                 def tell2flux(x):return (x - tell_min)*(max_f-min_f)/(tell_max-tell_min) +min_f 
-                                                all_ax[key_frame].plot(cen_bins,tell2flux(tell_loc),color='green',linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=-10,drawstyle=plot_options['drawstyle'],figure = all_figs[key_frame])   
-                                   
+                                                all_ax[key_frame].plot(cen_bins[cond_def_in_plot],tell2flux(tell_loc[cond_def_in_plot]),color='green',linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=-10,drawstyle=plot_options['drawstyle'],figure = all_figs[key_frame])   
+          
                                                 #Secondary axis
                                                 secax = all_ax[key_frame].secondary_yaxis('right', functions=(flux2tell, tell2flux))
                                                 secax.tick_params('y', which='major',direction='in',labelsize=plot_options['font_size'])
@@ -2443,7 +2450,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         calc_chrom_coord(p_best,fixed_args_loc)
 
                 #Data at chosen steps
-                data_path_dic = get_data_path('DI_prof','spec',inst,vis)
+                data_path_dic = get_data_path('DI_prof_corr','spec',inst,vis)
 
                 #Exposures to process
                 if (inst in plot_options['iexp_plot']) and (vis in plot_options['iexp_plot'][inst]):
@@ -6433,7 +6440,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     #%%%% Original spectra (correction steps) 
     ##################################################################################################
     if gen_dic['specINtype'] and (plot_dic['sp_raw']!=''):
-        key_plot = 'DI_prof'
+        key_plot = 'DI_prof_corr'
         
         print('-----------------------------------')
         print('+ Individual disk-integrated spectra')

@@ -213,7 +213,10 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
     plot_options[key_plot]['telldepth_min'] = 0.
     
     #Plot master used as reference for flux balance correction
-    plot_options[key_plot]['plot_mast'] = False        
+    plot_options[key_plot]['plot_mast'] = False    
+
+    #Plot stellar continuum
+    plot_options[key_plot]['st_cont']=None    
     
     #Plot spectra at two chosen steps of the correction process
     #    - set to None, or chose amongst:
@@ -798,14 +801,14 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     #    - in their input rest frame (typically heliocentric)
     ##################################################################################################
     if gen_dic['specINtype'] and (plot_dic['sp_raw']!=''):
-        key_plot = 'DI_prof'
+        key_plot = 'DI_prof_corr' #key must be different from 'DI_prof' to differentiate from original profile plot
 
         #%%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)        
 
         #%%%%% Plot spectra at two chosen steps of the correction process
         plot_settings[key_plot]['plot_pre']='raw'
-        plot_settings[key_plot]['plot_post']='all'
+        plot_settings[key_plot]['plot_postsub_plot_DI_transDI']='all'
 
         #%%%%% Plot binned data and errors
         plot_settings[key_plot]['plot_bin'] = True
@@ -1697,7 +1700,6 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
                 #%%%%%% Correct only for continuum level
                 plot_settings[key_plot]['cont_only']=True
                 plot_settings[key_plot]['plot_line_model'] = False
-                plot_settings[key_plot]['st_cont']=None
                 
         
 

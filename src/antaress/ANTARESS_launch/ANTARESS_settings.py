@@ -32,20 +32,20 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - required to retrieve parameters for the stellar system and light curve
     #    - for each planet, indicate the instrument and visits in which its transit should be taken into account (visit names are those given through 'data_dir_list')
     #      if the pipeline is runned with no data, indicate the names of the mock dataset created artifially with the pipeline
-    #    - format is 'planet':{'inst':['vis']}
+    #    - format: 'planet':{'inst':['vis']}
     gen_dic['transit_pl']={}  
     
 
     #%%%%% Visible spots
     #    - indicate names (defined here) of the visible spots to be processed
     #    - for each spot, indicate the instrument and visits in which its transit should be taken into account (visit names are those given through 'data_dir_list')
-    #    - format is 'spot':{'inst':['vis']}
+    #    - format: 'spot':{'inst':['vis']}
     gen_dic['transit_sp']={}  
     
     
     #%%%%% TTVs
     #    - if a visit is defined in this dictionary, the mid-transit time for this visit will be set to the specific value defined here
-    #    - format is {'planet':{'inst':{'vis': value}}}
+    #    - format: {'planet':{'inst':{'vis': value}}}
     gen_dic['Tcenter_visits'] = {}
     
     
@@ -113,7 +113,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - if no errors are provided with input tables, ANTARESS will automatically attribute a variance to flux values as sigma = sqrt(g_err*F)
     # where F is the number of photoelectrons received during an exposure. 
     #    - all error bars will be multiplied by sqrt(g_err) upon retrieval/definition
-    #    - format is 'g_err' = {inst : value}
+    #    - format: 'g_err' = {inst : value}
     #    - leave empty to prevent scaling
     gen_dic['g_err']={}
     
@@ -255,7 +255,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Heliocentric stellar RV
     #    - in km/s
     #    - keplerian motion is added automatically to each exposure using the gen_dic['kepl_pl'] planets
-    #    - format is 'sysvel' = {inst : {vis : value}}  
+    #    - format: 'sysvel' = {inst : {vis : value}}  
     mock_dic['sysvel']= {}  
         
     
@@ -287,14 +287,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Continuum level
     #    - mean flux density of the unocculted star over the 'DI_range' band (specific to each visit), ie number of photoelectrons received for an exposure time of 1s
-    #    - format is {inst:{vis:value}}
+    #    - format: {inst:{vis:value}}
     mock_dic['flux_cont']={}
     
     
     #%%%%% Instrumental gain
     #    - the final count level is proportional to 'flux_cont' x 'gcal' but we separate the two fields to control separately the stellar emission and instrumental gain
     #    - set to 1 if undefined
-    #    - format is {inst:{value}}
+    #    - format: {inst:{value}}
     mock_dic['gcal']={}
 
 
@@ -307,7 +307,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
     # + 'ang' : the angular size (in deg) of the spot
     # + 'ctrst' : the flux level of the spot surface, relative to the 'normal' surface of the star.
-    #    - format is {inst : {vis : {prop : val}}}
+    #    - format: {inst : {vis : {prop : val}}}
     #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']    
     mock_dic['spots_prop'] = {}
 
@@ -318,7 +318,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - controls error calculation
     #    - noise value is drawn for each pixel based on number of measured counts
     #    - leave undefined to prevent noise being defined
-    #    - format is {inst:bool}
+    #    - format: {inst:bool}
     mock_dic['set_err'] = {}    
      
      
@@ -326,14 +326,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - for analytical models only
     #    - used to simulate local stellar activity
     #    - defined individually for all exposures
-    #    - format is {inst:{vis:{prop1:value,prop2:value,...}}
+    #    - format: {inst:{vis:{prop1:value,prop2:value,...}}
     mock_dic['drift_intr'] = {}
            
     
     #%%%%% Systematic variations on disk-integrated profiles
     #    - for all types of models
     #    - possibilities: RV shift, change in instrumental resolution (replacing nominal instrumental convolution)
-    #    - format is {inst:{vis:{rv:value,resol:value}}
+    #    - format: {inst:{vis:{rv:value,resol:value}}
     mock_dic['drift_post'] = {}
 
                 
@@ -353,7 +353,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Paths to data directories
     #    - data must be stored in a unique directory for each instrument, and unique sub-directories for each instrument visit
     #    - the fields defined here will determine which instruments/visits are processed, and which names are used for each visit 
-    #    - format is {inst:{vis:path}}
+    #    - format: {inst:{vis:path}}
     gen_dic['data_dir_list']={'ESPRESSO':{'20151021':'default_path_TBD'}}
     
     
@@ -366,7 +366,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - if available
     #    - for each visit set the field to 'all' for all orders to be replaced by their sky-corrected version, or by a list of orders otherwise
     #      leave empty to use fiber-A data
-    #    - format is {inst:{vis:[iord] or 'all'}} where iord are original order indexes
+    #    - format: {inst:{vis:[iord] or 'all'}} where iord are original order indexes
     gen_dic['fibB_corr']={}
         
     
@@ -529,7 +529,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - number of subcells along the star diameter for model fits
     #    - must be an odd number
     #    - used (if model relevant) in gen_dic['fit_DI']
-    #    - format is : value
+    #    - format: : value
     theo_dic['nsub_Dstar']=101       
     
             
@@ -594,7 +594,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - beware to use a fine enough grid, depending on the system and dataset
     #    - must be an odd number
     #    - set to default value if undefined
-    #    - format is {'planet':value}
+    #    - format: {'planet':value}
     theo_dic['nsub_Dpl']={} 
     
     
@@ -603,7 +603,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - distance from start to end of exposure will be sampled by RpRs/n_oversamp
     #    - set to 0 or leave undefined to prevent oversampling, but beware that it must be defined to bin profiles over other dimensions than phase
     #    - oversampling of the flux in the flux scaling module is controlled independently
-    #    - format is {'planet':value}
+    #    - format: {'planet':value}
     theo_dic['n_oversamp']={}  
     
     
@@ -717,13 +717,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - applied over each order independently
     #    - if set to a larger value than an order width, calibration will not be fitted but set to the measured value over each order
     #      binw should be large enough to smoot out sharp variations in the model calibration profile
-    #    - format is : value
+    #    - format: : value
     gen_dic['gcal_binw'] = 0.5
     
     
     #%%%%% Temporal bin size
     #    - with low-SNR data it might be necessary to group exposures to perform the calibration estimates
-    #    - format is : value
+    #    - format: : value
     gen_dic['gcal_binN'] = 1    
     
     
@@ -733,7 +733,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - set the order of the polynomials (between 2 and 4)
     #    - beware that this calibration model will propagate into the weighing and the photoelectron rescaling, and thus sharp variations should be avoided 
     #    - if input data are CCFs or 'gcal_binw' is larger than the spectral order width, calibration is set to a constant value  
-    #    - format is : {prop : value}    
+    #    - format: : {prop : value}    
     gen_dic['gcal_edges']={'blue':0.3,'red':0.3}    
     gen_dic['gcal_deg']={'blue':4,'mid':2,'red':4}
     
@@ -742,7 +742,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     #%%%%% Threshold
     #    - calibration values above the global threshold, or outliers in the residuals from a preliminary fit, are sigma-clipped and not fitted
-    #    - format is : {inst : {prop : value} }   
+    #    - format: : {inst : {prop : value} }   
     gen_dic['gcal_thresh']={}
     
     
@@ -750,7 +750,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - in A
     #    - outliers are automatically excluded before fitting the final model
     #      we prevent this exclusion over the edges of the orders, where sharp variations are not well captured and can be attributed to outliers
-    #    - format is : {inst : [x1,x2] }  
+    #    - format: : {inst : [x1,x2] }  
     gen_dic['gcal_nooutedge']={}
     
     
@@ -790,7 +790,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%% Orders to be fitted
     #    - if left empty, all orders and the full spectrum is used
-    #    - format is {inst:{vis: [iord] }   
+    #    - format: {inst:{vis: [iord] }   
     gen_dic['tell_ord_fit'] = {}
     
     
@@ -898,7 +898,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
            
     
     #%%%%% Theoretical masters
-    #    - format is {inst:{vis:path}}
+    #    - format: {inst:{vis:path}}
     #    - set path to spectrum file (two columns: wavelength in star rest frame in A, flux density in arbitrary units)
     #      spectrum must be defined over a larger range than the processed spectra
     #    - only required if gen_dic['Fbal_vis']=='theo', to reset all spectra from different instruments to a common balance, or to reset spectra from a given visit 
@@ -959,6 +959,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #      for the correction relative to reference masters, binning is applied over full orders by default
     gen_dic['Fbal_bin_nu'] = 1.         
         
+    
+    #%%%%%% Phantom bins
+    #    - format: float
+    #    - range in 'nu' on the blue side of the fitted spectrum that is fitted with a linear model and mirrored in the fitted spectrum
+    #      this limits the divergence of the model on the blue side
+    #    - set to None to prevent 
+    gen_dic['Fbal_phantom_range'] = None  
+      
     
     #%%%%%% Uncertainty scaling
     #    - variance of fitted bins is put to the chosen power (0 = equal weights; 1 = original errors with no scaling; increase to give more weight to data with low errors)
@@ -1168,12 +1176,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Correction settings
     
     #%%%%% Exposures to be corrected
-    #    - format inst > vis > exp_list
+    #    - format: inst > vis > exp_list
     #    - leave empty for all exposures to be corrected
     gen_dic['permpeak_exp_corr']={}
     
     #%%%%% Orders to be corrected
-    #    - format inst > vis > ord_list
+    #    - format: inst > vis > ord_list
     #    - leave empty for all orders to be corrected
     gen_dic['permpeak_ord_corr']={}
     
@@ -1794,19 +1802,19 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - used to set the continuum level of models in fits, and for the contrast correction of CCFs
     #      unless requested as a variable parameter in 'mod_prop', the continuum level of the model is fixed to the value measured over 'cont_range'
     #      see details in 'mod_prop' regarding the fitting of the continuum for in-transit profiles
-    #    - format is {inst : { order : { [ [x1,x2] , [x3,x4] , [x5,x6] , ... ] }} in the input data frame
+    #    - format: {inst : { order : { [ [x1,x2] , [x3,x4] , [x5,x6] , ... ] }} in the input data frame
     #      ranges will be automatically shifted to the star rest frame when relevant
     data_dic['DI']['cont_range'] = {}
     
     
     #%%%%% Spectral range(s) to be fitted
-    #    - format is {inst : { vis : { [ [x1,x2] , [x3,x4] , [x5,x6] , ... ] } } } in the input data frame
+    #    - format: {inst : { vis : { [ [x1,x2] , [x3,x4] , [x5,x6] , ... ] } } } in the input data frame
     #      ranges will be automatically shifted to the star rest frame when relevant
     data_dic['DI']['fit_range']={}
     
     
     #%%%% Direct measurements
-    #    - format is {prop_name:{options}}
+    #    - format: {prop_name:{options}}
     #    - possibilities:
     # + equivalent width: 'EW' : {'rv_range':[rv1,rv2] single range over which the integral is performed, defined in the star rest frame}                         
     # + bissector: 'biss' : {'source':'obs' or 'mod',
@@ -1949,7 +1957,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #%%%%%% Sample exclusion 
     #    - exclude samples that do not fit within the requested ranges of the chosen parameter
-    #    - format is 'par' : [[x1,x2],[x3,x4],...] 
+    #    - format: 'par' : [[x1,x2],[x3,x4],...] 
     data_dic['DI']['exclu_samp']={}
         
     
@@ -1963,7 +1971,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%%% Derived lower/upper limits
-    #    - format is {par:{'bound':val,'type':str,'level':[...]}}
+    #    - format: {par:{'bound':val,'type':str,'level':[...]}}
     # where 'bound' sets the limit, 'type' is 'upper' or 'lower', 'level' is a list of thresholds ('1s', '2s', '3s')
     data_dic['DI']['conf_limits']={}   
     
@@ -2015,7 +2023,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #%%%% Fitted properties
-    #    - format is 
+    #    - format: 
     # mod_prop = { prop_main :{ prop_name : {'vary': bool ,'guess': x,'bd':[x_low,x_high]} } }
     #      where 'prop_main' defines which variables are fitted
     #    - typical variables:
@@ -2533,7 +2541,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Line selection: rejection ranges
     #    - lines within these ranges are excluded (check using plot_dic['DImask_spectra'] with step='cont')
     #    - defined in the star rest frame
-    #    - format is {inst:[[w1,w2],[w3,w4],..]}
+    #    - format: {inst:[[w1,w2],[w3,w4],..]}
     data_dic['DI']['mask']['line_rej_range'] = {}
     
      
@@ -2731,7 +2739,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
             
     
     #%%%% Continuum range
-    #    - format inst > ord > [ [x1,x2] , [x3,x4] , ... ] 
+    #    - format: inst > ord > [ [x1,x2] , [x3,x4] , ... ] 
     #    - used to set errors on local profiles from dispersion in their continuum, to set the continuum level or perform continuum correction of intrinsic profiles
     #    - x are defined in the star rest frame
     #      the ranges are common to all local profiles, ie that they must be large enough to cover the full range of RVs (with the width of the stellar
@@ -3334,7 +3342,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #%%%% Fitted properties
-    #    - format is 
+    #    - format: 
     # mod_prop = { prop_main :{ prop_name : {'vary': bool ,'guess': x,'bd':[x_low,x_high]} } }
     #      where 'prop_main' defines which variables are fitted
     #    - typical variables:
@@ -4312,7 +4320,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     
     #%%%% Direct measurements
-    #    - format is {prop_name:{options}}
+    #    - format: {prop_name:{options}}
     #    - possibilities:
     # + integrated signal: 'int_sign' : {'rv_range':[[rv1,rv2],[rv3,rv4]] exact ranges over which the integral is performed, in the planet rest frame, in km/s}
     data_dic['Atm']['meas_prop']={}
