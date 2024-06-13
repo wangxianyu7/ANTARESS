@@ -117,7 +117,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             print('  -----------------')
             print('  Processing visit: '+vis) 
             print('  -----------------')
-          
+    
             #Initialization of visit properties
             init_vis(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic)             
             
@@ -325,7 +325,7 @@ def bin_gen_functions(data_type_gen,mode,inst,gen_dic,data_dic,coord_dic,data_pr
     """ 
     #Binning profiles for analysis purpose 
     if gen_dic[data_type_gen+'bin'+mode]: 
-        process_bin_prof(mode,data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,mock_dic=mock_dic)
+        process_bin_prof(mode,data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,spot_dic=mock_dic)
 
     #Analyzing binned profiles
     if gen_dic['fit_'+data_type_gen+'bin'+mode]: 
@@ -2578,7 +2578,29 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         else:print('           All exposures in '+vis+' share a common spectral table')   
 
         #------------------------------------------------------------------------------------
-              
+
+        #Default systemic velocity
+        if (inst not in data_dic['DI']['sysvel']):data_dic['DI']['sysvel'][inst] = {}
+        if (vis not in data_dic['DI']['sysvel'][inst]):
+            data_dic['DI']['sysvel'][inst][vis] = 0.
+            print('         WARNING : sysvel set to 0 km/s for ',inst,' : ',vis)
+
+        #Define CCF resolution, range, and sysvel here so that spectral data needs not be uploaded again after processing
+        if gen_dic['CCF_from_sp'] or gen_dic['Intr_CCF']:
+          
+            #Velocity table in original frame
+            if gen_dic['dRV'] is None:dvelccf= gen_dic['pix_size_v'][inst]
+            else:dvelccf= gen_dic['dRV']  
+            n_vel = int((gen_dic['end_RV']-gen_dic['start_RV'])/dvelccf)+1
+            data_vis['nvel'] = n_vel
+            data_vis['velccf'] = gen_dic['start_RV']+dvelccf*np.arange(n_vel)
+
+            #Bin edges in velocity space
+            data_vis['edge_velccf'] = np.append(data_vis['velccf']-0.5*dvelccf,data_vis['velccf'][-1]+0.5*dvelccf)
+
+            #Shifting the CCFs velocity table by RV(CDM_star/CDM_sun)
+            for key in ['velccf','edge_velccf']:data_vis[key+'_star']=data_vis[key]-data_dic['DI']['sysvel'][inst][vis]  
+    
         #Automatic continuum and fit range
         #    - done here rather than in the 'calc_proc_data' condition so that ranges can be defined for already-processed observed or mock datasets, even if the analysis modules were not activated 
         # at the time of processing
@@ -2587,16 +2609,27 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 autom_cont = True if (inst not in data_dic[key]['cont_range']) else False
                 autom_fit = True if ((inst not in data_dic[key]['fit_range']) or (vis not in data_dic[key]['fit_range'][inst])) else False
                 if autom_cont or autom_fit:
+
+                    #Path to data used for automatic definition
+                    #    - if spectra are converted into CCFs, we cannot use the original spectral data
+                    if (data_dic[key]['type'][inst]=='CCF') and (data_dic[inst]['type']=='spec2D'):
+                        data_path = gen_dic['save_data_dir']+key+'_data/CCFfromSpec/'+gen_dic['add_txt_path'][key]+'/'+inst+'_'+vis+'_'
+                        nspec = data_vis['nvel']
+                    else:
+                        data_path = data_vis['proc_DI_data_paths']
+                        nspec = data_vis['nspec']
+                    
+                    #Processing CCF order or selected spectral order 
                     if (data_dic[key]['type'][inst]=='CCF'):iord_fit = 0
                     else:iord_fit = data_dic[key]['fit_prof']['order'][inst]
-                    cen_bins_all = np.zeros([0,data_vis['nspec']],dtype=float)
-                    edge_bins_all = np.zeros([0,data_vis['nspec']+1],dtype=float)
-                    flux_all = np.zeros([0,data_vis['nspec']],dtype=float)
+                    cen_bins_all = np.zeros([0,nspec],dtype=float)
+                    edge_bins_all = np.zeros([0,nspec+1],dtype=float)
+                    flux_all = np.zeros([0,nspec],dtype=float)   
                     for iexp in range(data_vis['n_in_visit']):
-                        data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))
-                        cen_bins_all=np.append(cen_bins_all,[data_exp['cen_bins'][iord_fit]],axis=0)
-                        edge_bins_all=np.append(edge_bins_all,[data_exp['edge_bins'][iord_fit]],axis=0)
-                        flux_all=np.append(flux_all,[data_exp['flux'][iord_fit]],axis=0)
+                        data_exp = dataload_npz(data_path+str(iexp))
+                        cen_bins_all=np.append(cen_bins_all,[data_exp['cen_bins'][iord_fit]],axis=0)     #dimension nexp x nspec
+                        edge_bins_all=np.append(edge_bins_all,[data_exp['edge_bins'][iord_fit]],axis=0)  #dimension nexp x nspec+1
+                        flux_all=np.append(flux_all,[data_exp['flux'][iord_fit]],axis=0)                 #dimension nexp x nspec
                     if (data_dic[key]['type'][inst]=='CCF'):
                         RVcen_bins = cen_bins_all
                         RVedge_bins = edge_bins_all
@@ -2607,9 +2640,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     #Estimate of systemic velocity for disk-integrated profiles
                     #    - as median of the RV corresponding to the CCF minima over the visit
                     #    - intrinsic and atmospheric profiles are fitted in the star rest frame
-                    idx_check = (RVcen_bins[0]>-500.) & (RVcen_bins[0]<500.) 
-                    idx_min_all = np.argmin(flux_all,axis=1)
-                    sys_RV = np.nanmedian(RVcen_bins[:,idx_check][:,idx_min_all])
+                    cond_check = (RVcen_bins[0]>-500.) & (RVcen_bins[0]<500.)
+                    idx_min_all = np.argmin(flux_all[:,cond_check],axis=1)    #dimension nexp (index of minimum over nspec_check for each exposure)
+                    sys_RV = np.nanmedian(np.take_along_axis(RVcen_bins[:,cond_check],idx_min_all[:,None],axis=1))
                     if key=='DI':cen_RV = sys_RV
                     else:cen_RV = 0.
 
@@ -2660,29 +2693,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         data_dic[key]['fit_range'][inst][vis] = [[min_contfit,max_contfit]]
 
         #------------------------------------------------------------------------------------
-    
-        #Default systemic velocity
-        if (inst not in data_dic['DI']['sysvel']):data_dic['DI']['sysvel'][inst] = {}
-        if (vis not in data_dic['DI']['sysvel'][inst]):
-            data_dic['DI']['sysvel'][inst][vis] = 0.
-            print('         WARNING : sysvel set to 0 km/s for ',inst,' : ',vis)
 
-        #Define CCF resolution, range, and sysvel here so that spectral data needs not be uploaded again after processing
-        if gen_dic['CCF_from_sp'] or gen_dic['Intr_CCF']:
-          
-            #Velocity table in original frame
-            if gen_dic['dRV'] is None:dvelccf= gen_dic['pix_size_v'][inst]
-            else:dvelccf= gen_dic['dRV']  
-            n_vel = int((gen_dic['end_RV']-gen_dic['start_RV'])/dvelccf)+1
-            data_vis['nvel'] = n_vel
-            data_vis['velccf'] = gen_dic['start_RV']+dvelccf*np.arange(n_vel)
-
-            #Bin edges in velocity space
-            data_vis['edge_velccf'] = np.append(data_vis['velccf']-0.5*dvelccf,data_vis['velccf'][-1]+0.5*dvelccf)
-
-            #Shifting the CCFs velocity table by RV(CDM_star/CDM_sun)
-            for key in ['velccf','edge_velccf']:data_vis[key+'_star']=data_vis[key]-data_dic['DI']['sysvel'][inst][vis]  
-    
         #Keplerian motion relative to the stellar CDM and the Sun (km/s)
         for iexp in range(data_dic[inst][vis]['n_in_visit']):
             coord_vis['RV_star_stelCDM'][iexp],coord_vis['RV_star_solCDM'][iexp] = calc_rv_star(coord_dic,inst,vis,system_param,gen_dic,coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic['DI']['sysvel'][inst][vis])

@@ -340,10 +340,13 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
     #      the exclusion is thus applied after the conversion, internally to the routine 
     CCF_from_spec('Intr',inst,vis,data_dic,gen_dic,data_dic['Intr'])
 
-    #Continuum pixels over all exposures
+    #Continuum pixels over all defined exposures
     #    - exclusion of planetary ranges is not required for intrinsic profiles if already applied to their definition, and if not already applied contamination is either negligible or neglected  
-    cond_def_cont_all  = np.zeros(data_inst[vis]['dim_all'],dtype=bool)
-    for i_in,iexp in zip(gen_vis['idx_exp2in'],range(data_vis['n_in_visit'])): 
+    #    - intrinsic profiles at the limbs may not be defined
+    iexp_conv = list(gen_dic[inst][vis]['idx_out'])+list(gen_dic[inst][vis]['idx_in'][data_dic['Intr'][inst][vis]['idx_def']])   
+    cond_def_cont_all  = np.zeros([len(iexp_conv)]+data_dic[inst][vis]['dim_exp'],dtype=bool)        
+    for isub,iexp in enumerate(iexp_conv):         
+        i_in = gen_vis['idx_exp2in'][iexp]
         if i_in ==-1:
             gen = 'Res'
             iexp_eff = iexp
@@ -357,15 +360,16 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
         for iord in range(data_dic[inst]['nord']):
             if iord in data_dic[gen]['cont_range'][inst]:
                 for bd_int in data_dic[gen]['cont_range'][inst][iord]:
-                    cond_def_cont_all[iexp,iord] |= ((data_exp['edge_bins'][iord,0:-1]>=bd_int[0]) & (data_exp['edge_bins'][iord,1:]<=bd_int[1]))        
-            else:cond_def_cont_all[iexp,iord] = True
-            cond_def_cont_all[iexp,iord] &= data_exp['cond_def'][iord]
+                    cond_def_cont_all[isub,iord] |= ((data_exp['edge_bins'][iord,0:-1]>=bd_int[0]) & (data_exp['edge_bins'][iord,1:]<=bd_int[1]))        
+            else:cond_def_cont_all[isub,iord] = True
+            cond_def_cont_all[isub,iord] &= data_exp['cond_def'][iord]
             if (gen=='Res') and ('Res_prof' in data_dic['Atm']['no_plrange']) and (iexp in data_dic['Atm'][inst][vis]['iexp_no_plrange']):     
-                cond_def_cont_all[iexp,iord] &= excl_plrange(cond_def_cont_all[iexp,iord],data_dic['Atm'][inst][vis]['exclu_range_star'],iexp,data_exp['edge_bins'][iord],'CCF')[0]
+                cond_def_cont_all[isub,iord] &= excl_plrange(cond_def_cont_all[isub,iord],data_dic['Atm'][inst][vis]['exclu_range_star'],iexp,data_exp['edge_bins'][iord],'CCF')[0]
 
     #Definition of continuum pixels and errors
     if data_dic['Intr']['disp_err']:print('         Setting errors on intrinsic CCFs to continuum dispersion')
-    for i_in,iexp in zip(gen_vis['idx_exp2in'],range(data_vis['n_in_visit'])): 
+    for isub,iexp in enumerate(iexp_conv):         
+        i_in = gen_vis['idx_exp2in'][iexp]
         if i_in ==-1:
             gen = 'Res'
             iexp_eff = iexp
@@ -381,7 +385,7 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
 
             #Continuum dispersion
             for iord in range(data_dic[inst]['nord']):
-                disp_cont=data_exp['flux'][iord,cond_def_cont_all[iexp,iord]].std() 
+                disp_cont=data_exp['flux'][iord,cond_def_cont_all[isub,iord]].std() 
 
                 #Error table
                 #    - scaled if requested
@@ -393,7 +397,7 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
 
     #Updating/correcting continuum level          
     if data_dic['Intr']['calc_cont']:           
-        data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
+        data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_dic['Intr'][inst][vis]['idx_def'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
         np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont']},allow_pickle=True)
     else:
         check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)
@@ -745,7 +749,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
     #Continuum level and correction
     if data_type_gen=='Intr': 
         if data_dic['Intr']['calc_cont']:           
-            data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_vis['n_in_tr'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
+            data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_dic['Intr'][inst][vis]['idx_def'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
             np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont']},allow_pickle=True)
         else:
             check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)

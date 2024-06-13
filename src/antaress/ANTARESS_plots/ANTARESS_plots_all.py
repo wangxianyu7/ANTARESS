@@ -1114,10 +1114,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
     def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_mod,txt_aligned,data_type,data_type_gen):
         inout_flag=None
-
+        
         #Data at chosen steps
         data_path_dic = get_data_path(plot_mod,data_type,inst,vis)
-
+        
         #Reference planet for the visit
         pl_ref=plot_options['pl_ref'][inst][vis] 
         
@@ -1391,7 +1391,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #Options
         sc_fact=10**plot_options['sc_fact10']
         hide_yticks=False  
-
+        
         #Plot for each instrument        
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
             print('   - Instrument :',inst)
@@ -1448,7 +1448,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #     ref_name = dim_bin_1D
             else:
                 ref_name = 'phase'  
-
+       
             #Plot for each visit
             for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst]): 
                 print('     - Visit :',vis)
@@ -1552,7 +1552,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Colors
                     col_exp = plot_options['color_dic'][inst][vis][isub]
                     col_exp_sec = plot_options['color_dic_sec'][inst][vis][isub]        
-              
+                    
                     #Upload data
                     if data_path_exp is not None:data_exp = dataload_npz(data_path_exp)
                     
@@ -1914,12 +1914,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                             dy_range=y_range_loc[key_frame][1]-y_range_loc[key_frame][0]
                                        
                                             #Continuum level
-                                            if plot_options['plot_cont_lev'] and ('Intr' in plot_mod):
-                                                if cond_mod:
-                                                    if (plot_options['line_model']=='fit'):
-                                                        if (plot_options['fit_type']=='indiv'):cont_lev = prof_fit_vis[iexp]['cont'] 
-                                                        elif (plot_options['fit_type']=='global'):cont_lev = fit_results['p_final']['cont'] 
-                                                    elif (plot_options['line_model']=='rec'):cont_lev = prof_fit_vis['cont']                                                     
+                                            if plot_options['plot_cont_lev'] and ('Intr' in plot_mod) and cond_mod:
+                                                if (plot_options['line_model']=='fit'):
+                                                    if (plot_options['fit_type']=='indiv'):cont_lev = prof_fit_vis[iexp]['cont'] 
+                                                    elif (plot_options['fit_type']=='global'):cont_lev = fit_results['p_final']['cont'] 
+                                                elif (plot_options['line_model']=='rec'):cont_lev = prof_fit_vis['cont']                                                     
                                                 intr_lev=sc_fact*cont_lev/mean_flux
                                                 plt.plot(x_range_ord,[intr_lev,intr_lev],linestyle='-',color='black',lw=plot_options['lw_plot'])                  
     
@@ -8852,10 +8851,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         grid_val,cdf_val = sem_norm_dist(system_param[pl_loc]['lambda_rad'],plot_set_key['lambdeg_err'][pl_loc][0]*np.pi/180.,plot_set_key['lambdeg_err'][pl_loc][1]*np.pi/180.)
                         rand_draw = np.random.uniform(low=0.0, high=1.0, size=plot_set_key['norb'])    
                         lambdarad_tab = np_interp(rand_draw,cdf_val,grid_val)
-                        lambdeg_range = [system_param[pl_loc]['lambda_rad']-plot_set_key['lambdeg_err'][pl_loc][0]*np.pi/180.,system_param[pl_loc]['lambda_rad']+plot_set_key['lambdeg_err'][pl_loc][1]*np.pi/180.]
+                        lambdrad_range = [system_param[pl_loc]['lambda_rad']-plot_set_key['lambdeg_err'][pl_loc][0]*np.pi/180.,system_param[pl_loc]['lambda_rad']+plot_set_key['lambdeg_err'][pl_loc][1]*np.pi/180.]
                     else:
                         lambdarad_tab = np.repeat(system_param[pl_loc]['lambda_rad'],plot_set_key['norb'])
-                        lambdeg_range=[-1e10,1e10]
+                        lambdrad_range=[-1e10,1e10]
                     if (pl_loc in plot_set_key['aRs_err']):
                         grid_val,cdf_val = sem_norm_dist(system_param[pl_loc]['aRs'],plot_set_key['aRs_err'][pl_loc][0],plot_set_key['aRs_err'][pl_loc][1])
                         rand_draw = np.random.uniform(low=0.0, high=1.0, size=plot_set_key['norb'])    
@@ -8877,7 +8876,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     else:b_range=[-1e10,1e10]
                  
                     #Keep orbits within selected 1 sigma ranges
-                    cond_keep = ((lambdarad_tab>=lambdeg_range[0]) & ((lambdarad_tab<=lambdeg_range[1]))) &\
+                    cond_keep = ((lambdarad_tab>=lambdrad_range[0]) & ((lambdarad_tab<=lambdrad_range[1]))) &\
                         ((aRs_tab>=aRs_range[0]) & ((aRs_tab<=aRs_range[1]))) &\
                         ((ip_tab>=ip_range[0]) & ((ip_tab<=ip_range[1])))    &\
                         ((b_tab>=b_range[0]) & ((b_tab<=b_range[1])))                   
@@ -8893,7 +8892,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         _,_,_ = plot_orb_func(ax1,plot_set_key['npts_orbits'][ipl],pl_params_orb,pl_loc,plot_settings[key_plot]['col_orb_samp'][ipl],0.2,0.03,40.+2*ipl,1)
              
                 #Planet at given position along the orbit
-                RpRs = plot_set_key['RpRs_pl'][ipl]
+                RpRs = plot_set_key['RpRs_pl'][pl_loc]
                 if plot_set_key['t_BJD'] is not None:
                     phase_pl=get_timeorbit(pl_loc,coord_dic[plot_set_key['t_BJD']['inst']][plot_set_key['t_BJD']['vis']],plot_t,system_param[pl_loc],0.)[1]  
                     x_pl_sky,y_pl_sky,z_pl_sky= calc_pl_coord(system_param[pl_loc]['ecc'],system_param[pl_loc]['omega_rad'],system_param[pl_loc]['aRs'],system_param[pl_loc]['inclin_rad'],phase_pl,None,None,None)[0:3]               

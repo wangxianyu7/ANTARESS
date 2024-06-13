@@ -3571,21 +3571,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     glob_fit_dic['ResProf']['PC_model']={}  
 
 
-    #%%%%% Optimization levels
-    # + Level -1: nothing is turned on/off. In this default case multithreading is controlled by the number of threads provided by the user, un-optimized profile building is used
-    # and over-simplified grid building is not used.
-    # + Level 0: multithreading activated (AND Optimized profile building)
-    # + Level 1: multithreading turned off (AND Optimized profile building)
-    # + Level 2: multithreading turned off AND over-simplified grid building (AND Optimized profile building)
-    # + Level 3: multithreading turned off AND over-simplified grid building AND grid building function coded in C (AND Optimized profile building)
-    #
-    # - Optimized profile building (always turned on): We generate residual profiles by initially constructing profiles for each exposure. Each exposure's profile is built by removing the deviations 
-    # caused by spotted and occulted regions from the base disk-integrated profile. Subsequently, we create a master-out profile and subtract each exposure's profile from it to obtain 
-    # the residual profiles. To expedite this process, cells that are never spotted or occulted are identified and excluded from profile construction, resulting in faster model processing.
-    #
-    # - Over-simplified grid building: Instead of assigning complex profiles to individual cells and summing them for the entire disk, we now use Gaussian profiles for each cell. 
+    #%%%%% Optimization levels 
+    #    - relevant when local line profiles are calculated in each cell of the stellar grid (theo_dic['precision'] = 'high')
+    #    - set 'Opt_Lvl' to:
+    # + 0: multithreading is controlled by the number of threads provided by the user AND over-simplified grid building is not used.
+    # + 1: multithreading turned off AND over-simplified grid building is not used.
+    # + 2: multithreading turned off AND over-simplified grid building is used
+    # + 3: multithreading turned off AND over-simplified grid building is used AND grid building function coded in C 
+    #    - over-simplified grid building: instead of assigning complex profiles to individual cells and summing them for the entire disk, we now use Gaussian profiles for each cell. 
     # Additionally, we optimize performance by representing the grid of profiles as an array rather than a list.
-    glob_fit_dic['ResProf']['Opt_Lvl']=-1
+    glob_fit_dic['ResProf']['Opt_Lvl']=0
     
     
     #%%%% Fit settings 
@@ -3729,6 +3724,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - all operations are multi-threaded by default, but overheads of sharing data between threads may counterbalance the benefits of threading the model
     #    - select here which operations not to thread:
     # + 'emcee'
+    # + 'prof_grid'
     glob_fit_dic['IntrProf']['unthreaded_op'] = []
     
     
@@ -3804,7 +3800,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Optimization levels
     #     - see 'glob_fit_dic['ResProf']' for details
-    glob_fit_dic['IntrProf']['Opt_Lvl']=-1    
+    glob_fit_dic['IntrProf']['Opt_Lvl']=0    
                         
     
     #%%%% Fit settings 

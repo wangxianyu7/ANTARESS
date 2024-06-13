@@ -82,14 +82,17 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
     yfont_size_loc=yfont_size if yfont_size is not None else 10. 
     zfont_size_loc=zfont_size if zfont_size is not None else 10. 
     if x_title is not None:
-            ax.set_xlabel(x_title,fontsize=xfont_size_loc,weight=font_thick_loc)
+        xtit_col = xlab_col if xlab_col is not None else 'black'
+        ax.set_xlabel(x_title,fontsize=xfont_size_loc,weight=font_thick_loc,color = xtit_col)
     if y_title is not None:
-            if (right_yticks=='on'):  #set title to right axis          
-                ax.set_ylabel(y_title,fontsize=yfont_size_loc,rotation=270,labelpad=22,weight=font_thick_loc)
-            else:            
-                ax.set_ylabel(y_title,fontsize=yfont_size_loc,weight=font_thick_loc) 
+        ytit_col = ylab_col if ylab_col is not None else 'black'
+        if (right_yticks=='on'):  #set title to right axis          
+            ax.set_ylabel(y_title,fontsize=yfont_size_loc,rotation=270,labelpad=22,weight=font_thick_loc,color = ytit_col)
+        else:            
+            ax.set_ylabel(y_title,fontsize=yfont_size_loc,weight=font_thick_loc,color = ytit_col) 
     if z_title is not None:   
-            ax.set_zlabel(z_title,fontsize=zfont_size_loc,weight=font_thick_loc)
+        ztit_col = ylab_col if ylab_col is not None else 'black'
+        ax.set_zlabel(z_title,fontsize=zfont_size_loc,weight=font_thick_loc,color = ztit_col)
                 
     #Axis title distance
     if x_title_dist is not None:ax.xaxis.labelpad = x_title_dist

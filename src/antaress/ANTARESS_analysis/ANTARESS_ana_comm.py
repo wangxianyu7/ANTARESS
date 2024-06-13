@@ -568,7 +568,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
 
     #------------------------------------------------------------------------------------------------------------------------------------------------
     #Set optimization level for line profile calculation
-    if 'Prof' in rout_mode:   
+    if ('Prof' in rout_mode) and (theo_dic['precision'] == 'high'):   
     
         #Optimization levels
         fixed_args['C_OS_grid']=False
@@ -584,7 +584,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         if fit_prop_dic['Opt_Lvl']==3:fixed_args['C_OS_grid'] = True
     
         #Model fit and calculation
-        print('Opt Level:', fit_prop_dic['Opt_Lvl'])        
+        print('       Optimization level:', fit_prop_dic['Opt_Lvl'])        
     
     #------------------------------------------------------------------------------------------------------------------------------------------------
         
@@ -643,8 +643,10 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     #Fit spin-orbit angle by default when relevant
     #    - assuming common values to all datasets
     if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='rv')) or (rout_mode in ['IntrProf','ResProf']):
-        for pl_loc in gen_dic['studied_pl']:
-            if 'lambda_rad__pl'+pl_loc not in mod_prop:p_start.add_many(('lambda_rad__pl'+pl_loc, 0.,   True, -2.*np.pi,2.*np.pi,None))
+        for inst in fixed_args['transit_pl']:
+            for vis in fixed_args['transit_pl'][inst]:
+                for pl_loc in fixed_args['transit_pl'][inst][vis]:
+                    if 'lambda_rad__pl'+pl_loc not in mod_prop:p_start.add_many(('lambda_rad__pl'+pl_loc, 0.,   True, -2.*np.pi,2.*np.pi,None))
         
     #Initialize line properties
     #    - using Gaussian line as default for intrinsic profiles
@@ -1359,7 +1361,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             cont_Intrbin = np.zeros(data_bin['n_exp'])*np.nan
             wcont_Intrbin = np.zeros(data_bin['n_exp'])*np.nan            
             for isub,iexp in enumerate(data_bin['n_exp']):
-                data_Intrbin_loc = np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis_Intrbin+'_'+fit_properties['dim_bin']+str(iexp)+'.npz',allow_pickle=True)['data'].item()         
+                data_Intrbin_loc = np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis_det+'_'+fit_properties['dim_bin']+str(iexp)+'.npz',allow_pickle=True)['data'].item()         
                 if False in data_Intrbin_loc['cond_def'][iord_sel,idx_range_kept] :stop('Binned intrinsic profiles must be fully defined to be used in the reconstruction')    
                 fit_properties['flux_Intrbin'][isub] = data_Intrbin_loc['flux'][iord_sel,idx_range_kept]
                 cov_loc = data_Intrbin_loc['cov'][iord_sel][:,idx_range_kept]
@@ -3132,6 +3134,10 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                             ip_mean = 86.71*np.pi/180.     
                             ip_high = 0.2*np.pi/180.
                             ip_low  = 0.2*np.pi/180.  
+                        elif pl_loc=='TOI421c':
+                            ip_mean = 88.03*np.pi/180.     
+                            ip_high = 0.05*np.pi/180.
+                            ip_low  = 0.05*np.pi/180. 
 
                         n_chain = len(merged_chain[:,0])
                         inclin_rad_chain = gen_hrand_chain(ip_mean,ip_low,ip_high,n_chain)
