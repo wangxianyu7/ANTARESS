@@ -35,6 +35,7 @@ dependencies = [
   "bindensity",  
   "PyAstronomy",
   "pysme-astro",
+  "jupyterlab",
   ]
 
 [project.urls]
