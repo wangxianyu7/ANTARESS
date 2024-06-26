@@ -10,8 +10,24 @@
 
 .. role:: green
 
+.. raw:: html
+
+    <style> .Magenta {color:Magenta} </style>
+
+.. role:: Magenta
+
 Getting started
 ===============
+
+Flowchart
+---------
+
+.. figure:: Flowchart/ANTARESS_flowchart.png
+  :width: 800
+  :alt: Chart of the ``ANTARESS`` process flow.
+  
+  Chart of the ``ANTARESS`` process flow.
+
 
 General approach
 ----------------
@@ -49,7 +65,7 @@ Follow these steps to run ``ANTARESS``:
 Modules
 -------
 
-The workflow is organized as modules, which are grouped in three main categories:
+The workflow is organized as modules, which are grouped in three main categories (see :magenta:``Flowchart figure`` above):
 
 - ``Formatting/correction``: Data first go through these modules, some of which are specific to given instruments. Once data are set in the common ``ANTARESS`` format and corrected for instrumental/environmental effects, they can be processed in the same way by the subsequent modules. 
 

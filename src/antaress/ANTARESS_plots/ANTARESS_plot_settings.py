@@ -17,7 +17,9 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
      - `title = bool` : show plot title.
      - `font_size = float` : size for figure font.     
      - `font_size_txt = float` : size for text font within plot.
-     
+     - `lw_plot = float` : linewidth.
+     - `ls_plot = str` : linestyle.
+
     Args:
         plot_options (dic) : dictionary for all generic plot settings
         key_plot (str) : identifier of current plot 
@@ -106,7 +108,7 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
     #Visits to plot
     #    - add '_bin' to the name of a visit to plot properties derived from intrinsic profiles binned within a visit
     #      use 'binned' as visit name to plot properties derived from intrinsic profiles binned over several visits
-    plot_options[key_plot]['visits_to_plot']=plot_dic['visits_to_plot']
+    plot_options[key_plot]['visits_to_plot']=deepcopy(plot_dic['visits_to_plot'])
     
     #Indexes of exposures to be plotted 
     plot_options[key_plot]['iexp_plot']={}
@@ -290,12 +292,18 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
         plot_options[key_plot]['plot_expid'] = True
         
     #--------------------------------------   
-    #2D map settings     
+    #Binned profiles settings     
     if ('map_' in key_plot) or ('bin' in key_plot) or ('prop_' in key_plot) or (key_plot in ['occulted_regions']):
 
         #Bin dimension
-        #    - 'phase' (see details and routine)
-        #    - coordinates are only available if binning was performed over 'phase'
+        #    - for 2D maps:
+        # + 'phase' : see details and routine
+        #             coordinates are only available if binning was performed over 'phase'
+        #    - for binned profiles:
+        # + 'phase'
+        # + 'xp_abs'
+        # + 'r_proj' 
+        #    - if not phase, exposures are plotted successively without respecting their actual positions, because of overlaps 
         plot_options[key_plot]['dim_plot']='phase' 
 
         #Print information
@@ -1010,12 +1018,20 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
             #%%%% Plot master spectrum and mask at chosen step
+            # + 'cont': continuum-normalization
+            # + 'sel0': line selection with default telluric ranges and exclusion ranges (use to adjust regular spectrum and extrema search)
+            # + 'sel1': line selection with depth and width criteria
+            # + 'sel2': line selection with delta-position criterion
+            # + 'sel3': line selection with telluric contamination
+            # + 'sel4': line selection with morphological clipping (delta-maxima/line depth and asymetry parameter)
+            # + 'sel5': line selection with morphological clipping (depth and width criteria)
+            # + 'sel6': line selection with RV dispersion and telluric contamination
             plot_settings[key_plot]['step']='cont'      
             
             #%%%% Plot various spectra
-            plot_settings[key_plot]['plot_raw'] = True
-            plot_settings[key_plot]['plot_norm'] = True
-            plot_settings[key_plot]['plot_norm_reg'] = True
+            plot_settings[key_plot]['plot_raw'] = True        #Original spectrum (blue)
+            plot_settings[key_plot]['plot_norm'] = True       #Normalized spectrum (grey)
+            plot_settings[key_plot]['plot_norm_reg'] = True   #Smoothed regular normalized spectrum (black, used in mask generation)
 
             #%%%% Print number of line selected in step
             plot_settings[key_plot]['print_nl']=True   

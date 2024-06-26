@@ -123,7 +123,7 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
     new_x_cen,_,_,x_cen_all,n_in_bin_all,idx_to_bin_all,dx_ov_all,_,idx_bin2orig,idx_bin2vis,idx_to_bin_unik = init_bin_prof(in_type,opt_dic[inst][vis],opt_dic['idx_in_bin'],dim_bin,coord_dic,inst,vis_to_bin,data_dic,gen_dic)
 
     #Find binned profile closest (along bin dimension ) to each processed in-transit exposure 
-    if corr_mode=='Intrbin':idx_bin_closest = closest_arr(new_x_cen, x_cen_all[idx_aligned])
+    if corr_mode=='Intrbin':idx_bin_closest = closest_arr(new_x_cen, x_cen_all[0][idx_aligned])
     
     #Processing in-transit exposures for which planet-occulted rv is known
     for isub,i_in in enumerate(idx_aligned):    

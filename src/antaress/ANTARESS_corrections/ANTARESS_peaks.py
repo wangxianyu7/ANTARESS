@@ -24,7 +24,8 @@ def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
     if (gen_dic['calc_cosm']):
         print('         Calculating data') 
         if (inst not in gen_dic['cosm_thresh']):gen_dic['cosm_thresh'][inst]={}
-
+        if (inst not in gen_dic['cosm_n_wings']):gen_dic['cosm_n_wings'][inst]=0
+        
         #Process each visit independently
         for ivisit,vis in enumerate(data_inst['visit_list']):
             data_vis=data_inst[vis]
@@ -90,7 +91,7 @@ def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
             
             #Processing all exposures    
             common_args = (data_vis['proc_DI_data_paths'],hcosm_ncomp,data_vis['n_in_visit'],cosm_ncomp,data_vis['dim_all'],gen_dic['al_cosm'],idx_ord_cc,cen_bins_all,cond_cc,flux_all,\
-                           gen_dic['pix_size_v'][inst],data_inst['type'],rv_al_all,err2_all,edge_bins_all,ord_corr_list,gen_dic['resamp_mode'],data_vis['dim_exp'],data_vis['nspec'],gen_dic['cosm_thresh'][inst][vis],plot_dic['cosm_corr'],proc_DI_data_paths_new)
+                           gen_dic['pix_size_v'][inst],data_inst['type'],rv_al_all,err2_all,edge_bins_all,ord_corr_list,gen_dic['resamp_mode'],data_vis['dim_exp'],data_vis['nspec'],gen_dic['cosm_thresh'][inst][vis],plot_dic['cosm_corr'],proc_DI_data_paths_new,gen_dic['cosm_n_wings'][inst])
             if gen_dic['cosm_nthreads']>1:MAIN_multithread(corr_cosm_vis,gen_dic['cosm_nthreads'],len(exp_corr_list),[exp_corr_list],common_args)                           
             else:corr_cosm_vis(exp_corr_list,*common_args)  
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
@@ -106,7 +107,7 @@ def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
 
 
 def corr_cosm_vis(iexp_group,proc_DI_data_paths,hcosm_ncomp,n_in_visit,cosm_ncomp,dim_all,al_cosm,idx_ord_cc,cen_bins_all,cond_cc,flux_all,pix_size_v,data_type,rv_al_all,err2_all,edge_bins_all,ord_corr_list,\
-                  resamp_mode,dim_exp,nspec,cosm_thresh,plot_cosm_corr,proc_DI_data_paths_new):
+                  resamp_mode,dim_exp,nspec,cosm_thresh,plot_cosm_corr,proc_DI_data_paths_new,cosm_n_wings):
     r"""**Cosmics correction routine per visit.**    
 
     Args:
@@ -208,7 +209,29 @@ def corr_cosm_vis(iexp_group,proc_DI_data_paths,hcosm_ncomp,n_in_visit,cosm_ncom
                 #      only the variance is modified, not the covariance (at this stage the covariance matrix should still be 1D)
                 cond_cosm_def = (SNR_diff_exp[0,iord,cond_def_exp]>cosm_thresh) & (SNR_diff_exp[1,iord,cond_def_exp]>cosm_thresh) 
                 if True in cond_cosm_def:
-                    idx_cosm_exp[iord] = np_where1D(cond_def_exp)[cond_cosm_def]     
+
+                    #Cosmic-flagged pixels in global order table
+                    idx_def_exp = np_where1D(cond_def_exp)
+                    idx_cosm_exp[iord] = idx_def_exp[cond_cosm_def]  
+                    
+                    #Flagging neighboring pixels
+                    if cosm_n_wings>0:
+                        idx_cosm_cen = deepcopy(idx_cosm_exp[iord])
+                        
+                        #Including pixels on each side of cosmic-flagged pixels
+                        for nsub in range(1,cosm_n_wings+1):
+                            idx_cosm_exp[iord] = np.concatenate((idx_cosm_cen-nsub,idx_cosm_exp[iord],idx_cosm_cen+nsub))
+                        
+                        #Removing duplicates
+                        idx_cosm_exp[iord] = np.unique(idx_cosm_exp[iord]) 
+                        
+                        #Removing indexes beyond order range
+                        idx_cosm_exp[iord] = idx_cosm_exp[iord][(idx_cosm_exp[iord]>=0) & (idx_cosm_exp[iord]<=nspec-1)]
+
+                        #Keeping defined pixels
+                        idx_cosm_exp[iord] = np.intersect1d(idx_cosm_exp[iord],idx_def_exp)
+
+                    #Replace flagged pixels
                     data_exp['flux'][iord,idx_cosm_exp[iord]] = mean_sp_loc[idx_cosm_exp[iord]]
                     data_exp['cov'][iord][0,idx_cosm_exp[iord]] = std_sp_loc[idx_cosm_exp[iord]]**2.                            
 

@@ -33,5 +33,6 @@ Documentation
    Fixed_files/installation
    Fixed_files/contributions
    Fixed_files/getting_started
+   Fixed_files/procedures
    Fixed_files/notebooks
    Fixed_files/documentation

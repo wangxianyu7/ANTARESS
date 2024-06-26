@@ -407,10 +407,6 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
    
     #Checks
     if len(fit_prop_dic['idx_in_fit'])==0:stop('No exposures are included in the fit')
-    
-    #Initializes C-based profile calculation
-    if 1==0:
-        fixed_args['fun_to_use'],fixed_args['fun_to_free'] = def_Cfunc_prof()
 
     return fixed_args,fit_dic
 
@@ -581,8 +577,12 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         if fit_prop_dic['Opt_Lvl']>=2:fixed_args['OS_grid'] = True
         
         #Over-simplified grid building turned on and coded in C for level 3
-        if fit_prop_dic['Opt_Lvl']==3:fixed_args['C_OS_grid'] = True
-    
+        if fit_prop_dic['Opt_Lvl']==3:
+            fixed_args['C_OS_grid'] = True
+                    
+            #Initializes C-based profile calculation
+            fixed_args['fun_to_use'],fixed_args['fun_to_free'] = def_Cfunc_prof()
+
         #Model fit and calculation
         print('       Optimization level:', fit_prop_dic['Opt_Lvl'])        
     
@@ -1514,7 +1514,8 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
 
         #Saving data
         fit_dic['cont_range'] = cont_range
-        fit_dic['fit_range'] = fit_range        
+        fit_dic['fit_range'] = fit_range  
+        fit_dic['idx_def'] = iexp_def        
         np.savez_compressed(save_path,data=fit_dic,allow_pickle=True)
         
     #Checking data has been calculated

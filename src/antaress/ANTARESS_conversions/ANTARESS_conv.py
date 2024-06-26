@@ -395,13 +395,19 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
             #Overwrite exposure data
             np.savez_compressed(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff),data=data_exp,allow_pickle=True)  
 
-    #Updating/correcting continuum level          
+    #Updating/correcting continuum level
+    loc_type = 'CCFIntr_from_SpecIntr'
+    print('         Intrinsic continuum calculations')
     if data_dic['Intr']['calc_cont']:           
-        data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_dic['Intr'][inst][vis]['idx_def'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
-        np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont']},allow_pickle=True)
+        data_dic['Intr'][inst][vis]['mean_cont'],cont_norm_flag=calc_Intr_mean_cont(data_dic['Intr'][inst][vis]['idx_def'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
+        np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont'],'cont_norm_flag':cont_norm_flag,'type':loc_type},allow_pickle=True)
     else:
-        check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)
-        data_dic['Intr'][inst][vis]['mean_cont'] = dataload_npz(data_vis['proc_Intr_data_paths']+'_add')['mean_cont']
+        check_flag = check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)
+        if not check_flag:stop('WARNING: calculate continuum for intrinsic CCF (origin: intrinsic spectra)')
+        data_add = dataload_npz(data_vis['proc_Intr_data_paths']+'_add')
+        if data_add['type']!=loc_type:stop('WARNING: continuum type incompatible with data, run extraction again.')
+        data_dic['Intr'][inst][vis]['mean_cont'] = data_add['mean_cont']
+        if data_add['cont_norm_flag']:print('         Correcting intrinsic continuum')
 
     #Determine the correlation length for the visit
     if gen_dic['scr_search']:
@@ -748,12 +754,18 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
 
     #Continuum level and correction
     if data_type_gen=='Intr': 
+        print('         Intrinsic continuum calculations')
+        loc_type = 'Spec1DIntr_from_Spec2DIntr'
         if data_dic['Intr']['calc_cont']:           
-            data_dic['Intr'][inst][vis]['mean_cont']=calc_Intr_mean_cont(data_dic['Intr'][inst][vis]['idx_def'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
-            np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont']},allow_pickle=True)
+            data_dic['Intr'][inst][vis]['mean_cont'],cont_norm_flag=calc_Intr_mean_cont(data_dic['Intr'][inst][vis]['idx_def'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
+            np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont'],'cont_norm_flag':cont_norm_flag,'type':loc_type},allow_pickle=True)
         else:
-            check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)
-            data_dic['Intr'][inst][vis]['mean_cont'] = dataload_npz(data_vis['proc_Intr_data_paths']+'_add')
+            check_flag = check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)
+            if not check_flag:stop('WARNING: calculate continuum for intrinsic spectra (origin: 2D spectra)')
+            data_add = dataload_npz(data_vis['proc_Intr_data_paths']+'_add')
+            if data_add['type']!=loc_type:stop('WARNING: continuum type incompatible with data, run extraction again.')
+            data_dic['Intr'][inst][vis]['mean_cont'] = data_add['mean_cont']
+            if data_add['cont_norm_flag']:print('         Correcting intrinsic continuum')
 
     return None
 
@@ -819,7 +831,9 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
         #Processing each order
         flux_ord_contr=[]
         cov_ord_contr=[] 
-        if tell_data_paths is not None:tell_ord_contr = np.zeros(nspec_1D, dtype=float)
+        if tell_data_paths is not None:
+            tell_ord_contr = np.zeros(nspec_1D, dtype=float)
+            cond_def_tell_ord_contr = np.zeros(nspec_1D, dtype=bool)
         if DImast_weight_data_paths is not None:
             flux_ref_ord_contr=[]
             cov_ref_ord_contr=[] 
@@ -841,7 +855,8 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
             #    - the master has followed the same shifts as the intrinsic or atmospheric profiles, but always remain either defined on the common table, or on a specific table different from the table of its associated exposure
             if tell_data_paths is not None:
                 tell_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],  data_exp['tell'][iord] ,kind=resamp_mode)
-                tell_temp[~cond_def] = 0.                    
+                tell_temp[~cond_def] = 0. 
+                cond_def_tell_ord_contr[cond_def] = True                   
                 tell_ord_contr+=tell_temp*glob_weight_all[iord]                     
             if DImast_weight_data_paths is not None:
                 flux_ref_temp,cov_ref_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], data_ref['flux'][iord] , cov = data_ref['cov'][iord] , kind=resamp_mode)  
@@ -879,6 +894,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
         if SpSstar_spec is not None:data_exp1D['SpSstar_spec'] =  SpSstar_spec_ord_contr[None,:]
         datasave_npz(dir_save[data_type]+str(iexp_eff),data_exp1D)
         if tell_data_paths is not None:
+            tell_ord_contr[~cond_def_tell_ord_contr] = 1.
             tell_1D = tell_ord_contr[None,:]
             datasave_npz(dir_save[data_type]+'_tell'+str(iexp_eff), {'tell':tell_1D})                 
         if DImast_weight_data_paths is not None:

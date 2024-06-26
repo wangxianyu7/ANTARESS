@@ -224,6 +224,13 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 delta_guid_RA = data_prop_vis['guid_coord'][1:,0] - data_prop_vis['guid_coord'][0:-1,0]    
                 delta_guid_DEC = data_prop_vis['guid_coord'][1:,1] - data_prop_vis['guid_coord'][0:-1,1]
                 iexp_guidchange =  np_where1D((np.abs(delta_guid_RA)>1e-2) | (np.abs(delta_guid_DEC)>1e-2)) 
+                
+                
+                #Manual fix for TOI421
+                if vis=='20231106':
+                    print('MANUAL CHANGE')
+                    iexp_guidchange = [35]
+                
                 if len(iexp_guidchange)>0:
                     if len(iexp_guidchange)>1:stop('             Check guide star coordinates')
                     print('             Guide star changed during visit: enabling offset')
@@ -1540,7 +1547,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         if os_system.path.exists(exp_path):hyper_fit_exp = np.load(exp_path,allow_pickle=True)['data'].item()  
                         else:fitted_exp = False
                     elif gen_dic['wig_exp_point_ana']['source']=='glob':
-                        hyper_fit_exp = np.load(path_dic['datapath_Global']+'/Fit_results_iexpGroup'+str(iexp_group)+'.npz',allow_pickle=True)['data'].item() 
+                        hyper_fit_exp = dataload_npz(path_dic['datapath_Global']+'/Fit_results_iexpGroup'+str(iexp_group))
                     if fitted_exp: 
                         if not cond_init_par:
                             for par in hyper_fit_exp:
@@ -1747,11 +1754,38 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     #     if par_root=='Freq2_c1':
                     #         sy_var[(tel_coord_expgroup['cen_ph'] >0.062)] = np.nan  
                         
-                    # if par_root=='Phi1':
-                    # # #     if vis=='20190720':
-                    # # #         y_var[(y_var<0.)]+=2.*np.pi
-                    # # #         y_var[(y_var>10.)]-=2.*np.pi
-                    # #         # y_var[(tel_coord_expgroup['cen_ph']<0.018) & (y_var<0.)]+=2.*np.pi
+                    # if vis=='20231106':
+                    #     if par_root=='Phi1':
+                    #         cond_neg = (hyper_par_tab['AmpGlob1_c0_off'][0]<-0.)
+                    #         y_var[cond_neg]+=np.pi                         
+                    #         y_var[(tel_coord_expgroup['cen_ph'] <-0.0065)]+=2.*np.pi
+                        # if par_root=='Phi2': 
+                        #     cond_neg = (hyper_par_tab['AmpGlob2_c0_off'][0]<-0.)
+                        #     y_var[cond_neg]+=np.pi       
+                    #         y_var[(tel_coord_expgroup['cen_ph'] <-0.0063)]-=2.*np.pi 
+                    #         y_var[  (tel_coord_expgroup['cen_ph'] >0.0035) & (y_var>-2.5)  ]-=2.*np.pi   
+                    #         y_var[  (tel_coord_expgroup['cen_ph'] <0) & (y_var<-6)  ]+=4.*np.pi 
+                    #         y_var[(y_var<-10.)]+=2.*np.pi
+                    #         y_var[  (tel_coord_expgroup['cen_ph'] <-0.004) & (y_var>3.)  ]-=2.*np.pi                              
+                    #         y_var[  (tel_coord_expgroup['cen_ph'] >0.005) & (y_var>-4.)  ]-=2.*np.pi   
+
+                    #         y_var[(y_var>5.)]-=2.*np.pi                            
+                    #         y_var[(y_var<-10.)]+=4.*np.pi
+                    #         y_var[(y_var<-4.)]+=np.pi
+                    #         y_var[(tel_coord_expgroup['cen_ph'] >-0.001)]+=np.pi
+                    #         y_var[(tel_coord_expgroup['cen_ph'] <0.0022)]+=np.pi
+                    #         y_var[(tel_coord_expgroup['cen_ph'] >0.004)]-=np.pi
+                    #         y_var[(y_var<-5.2)]+=np.pi
+               
+                    # sy_var[18:40] = np.nan                    
+                    # sy_var[31::] = np.nan  
+                    # sy_var[-1] = np.nan
+                    # sy_var[0:2] = sy_var[2]
+                
+               
+                    #         y_var[(tel_coord_expgroup['cen_ph'] <-0.006)]+=np.pi
+                    # #         y_var[(y_var>10.)]-=2.*np.pi
+                    #         # y_var[(tel_coord_expgroup['cen_ph']<0.018) & (y_var<0.)]+=2.*np.pi
                     #     if vis=='20180902':
                     # #         y_var[y_var<-1]+=2.*np.pi
                     # #         y_var[(tel_coord_expgroup['cen_ph']>0.02) & (y_var>3.)]-=np.pi  
@@ -1845,6 +1879,11 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     #     plt.plot(cen_ph_vis,data_prop_vis['alt'],marker='o',linestyle='')
                     #     plt.show()
                     #     stop()
+                    
+                    
+                    
+                    
+                    
   
                     #Fitting   
                     if (vis in gen_dic['wig_exp_point_ana']['fit_range']) and (par_root in gen_dic['wig_exp_point_ana']['fit_range'][vis]):
@@ -1918,7 +1957,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         plt.ioff()        
                         fig, ax = plt.subplots(2, 1, figsize=(20, 10),gridspec_kw = {'wspace':0, 'hspace':0.05, 'height_ratios':[70,30.]})
                         fontsize = 25
-                        plot_contact = False
+                        plot_contact = True #&False
                         plot_modHR = True #& False
                     
                         #Ranges
@@ -1956,7 +1995,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                         #Main planet contacts
                         if plot_contact:
-                            for cont_ph in contact_phases:ax[0].plot([cont_ph,cont_ph],y_range_plot,color='black',linestyle=':',zorder=0,lw=1.5)
+                            for cont_ph in contact_phases:ax[0].plot([cont_ph,cont_ph],y_range_plot,color='magenta',linestyle=':',zorder=0,lw=1.5)
 
                         #Guide shift and meridian crossing
                         ax[0].plot([cen_ph_mer,cen_ph_mer],y_range_plot,linestyle=':',color='black',zorder=1) 
@@ -1996,7 +2035,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                             #Main planet contacts
                             if plot_contact:
-                                for cont_ph in contact_phases:ax[1].plot([cont_ph,cont_ph],y_range_plot,color='black',linestyle=':',lw=1.5,zorder=0)
+                                for cont_ph in contact_phases:ax[1].plot([cont_ph,cont_ph],y_range_plot,color='magenta',linestyle=':',lw=1.5,zorder=0)
     
                             #Guide shift and meridian crossing
                             cen_ph_mer = cen_ph_HR[closest(az_HR,180.)]
