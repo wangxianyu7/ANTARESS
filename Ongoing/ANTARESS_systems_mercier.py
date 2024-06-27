@@ -364,15 +364,16 @@ def get_system_params():
         },
     
     #------------------------------    
-        # Wittrock+2023 values except for veq, which is from Donati+2023 
+        # Wittrock+2023 values except for veq and Rstar, which is from Donati+2023 
 
         'AU_Mic':{
 
             'star':{
-                'Rstar':0.744,                #+0.023 -0.021 #solar radii
+                'Rstar':0.82,                 #+/-0.02 #solar radii
                 'Mstar':0.510,                #+0.028 -0.027 #solar mass
                 'logg':4.404,                 #+0.026 -0.031
                 'veq':8.5,                    #+/- 0.3 #km/s <- will be fitted
+                'alpha_rot':0.034,
                 'istar':89,                   #unknown <- will be fitted
                 },
 
@@ -386,6 +387,33 @@ def get_system_params():
                 'TLength':3.4927/24,         #+0.0074 -0.0067 #days
                 'aRs':18.79,                 #+0.5 -0.59 #Rstar 
                 'lambda_proj':-4.70,         #+6.80 -6.40 #degrees <- Hirano+2020 value, but will be fitted
+                },
+        },
+
+    #------------------------------    
+        # Wittrock+2023 values except for veq, which is from Donati+2023 
+
+        'fakeAU_Mic':{
+
+            'star':{
+                'Rstar':0.82,                 #+/-0.02 #solar radii
+                'Mstar':0.510,                #+0.028 -0.027 #solar mass
+                'logg':4.404,                 #+0.026 -0.031
+                'veq':8.595,                    #+/- 0.3 #km/s <- will be fitted
+                'alpha_rot':0.034,
+                'istar':88,                   #unknown <- will be fitted
+                },
+
+            'fakeAU_Mic_b':{
+                'period':8.46308,            #+/- 0.00006 #days
+                'TCenter':22458330.39168,     #+0.00052 -0.00051 #days
+                'ecc':0.00577,               #+/- 0.00101
+                'omega_deg':88.43038,        #+/-0.05783 #degrees
+                'inclination':89.57917,      #+/- 0.37639 #degrees
+                'Kstar':0.31290,             #+/- 0.26983 #m/s
+                'TLength':3.4927/24,         #+0.0074 -0.0067 #days
+                'aRs':18.79,                 #+0.5 -0.59 #Rstar 
+                'lambda_proj':-2.96,         #+6.80 -6.40 #degrees <- Hirano+2020 value, but will be fitted
                 },
         },
     #--------------------------------------------------------------------------------

@@ -124,9 +124,10 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                 #Priors
                 if (par in priors_prop):
                     fixed_args['varpar_priors'][par] = priors_prop[par]
-                    if 'ang' in par and priors_prop[par]['high']>90:stop('Prior error: Spot angular size cannot exceed 90deg. Re-define your priors.')
-                    elif 'veq' in par and priors_prop[par]['low']<0:stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
-                    elif ('Tcenter' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
+                    if priors_prop[par]['mod']=='uf':
+                        if 'ang' in par and priors_prop[par]['high']>90:stop('Prior error: Spot angular size cannot exceed 90deg. Re-define your priors.')
+                        elif 'veq' in par and priors_prop[par]['low']<0:stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
+                        elif ('Tcenter' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
                 else:
                     if par == 'jitter':varpar_priors=[0.,1e6]
                     elif par == 'veq':varpar_priors=[0.,100.]
@@ -501,7 +502,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
 
     #Keep defined intrinsic profiles
     if 'Intr' in rout_mode:fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],data_dic['Intr'][inst][vis+fixed_args['bin_mode'][inst][vis]]['idx_def'])
-    elif fixed_args['rout_mode']=='ResProf':fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],data_dic['Res'][inst][vis+fixed_args['bin_mode'][inst][vis]]['idx_to_extract'])
+    elif fixed_args['rout_mode']=='ResProf':fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],data_dic['Res'][inst][vis+fixed_args['bin_mode'][inst][vis]]['idx_def'])
     fixed_args['nexp_fit_all'][inst][vis]=len(fixed_args['idx_in_fit'][inst][vis])     
 
     #Store coordinates of fitted exposures in global table
@@ -634,8 +635,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                         fit_prop_dic['priors'][par]['low'] -= fixed_args['spot_crosstime_supp'][inst][vis]
                         fit_prop_dic['priors'][par]['high'] -= fixed_args['spot_crosstime_supp'][inst][vis]
     
-    #Retrieving the rotational period - to ser the priors on the Tcenter and prevent aliases
+    #Retrieving the rotational period - to set the priors on the Tcenter and prevent aliases
     if 'veq' in mod_prop:fixed_args['Peq'] = (2*np.pi*fixed_args['system_param']['star']['Rstar_km'])/(mod_prop['veq']['guess']*24*3600)
+    elif 'Peq' in mod_prop:fixed_args['Peq'] = mod_prop['Peq']['guess']*24*3600
     else:fixed_args['Peq'] = (2*np.pi*fixed_args['system_param']['star']['Rstar_km'])/(fixed_args['system_param']['star']['veq']*24*3600)
 
     #Initializing stellar properties
@@ -675,7 +677,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     fixed_args['fit_orbit']=False
     fixed_args['fit_RpRs']=False
     fixed_args['fit_spot']=False
-    fixed_args['fit_spot_ang']={}
+    fixed_args['fit_spot_ang']=[]
     for par in p_start:
         
         #Check if rootname of orbital/LC properties is one of the parameters left free to vary for a given planet    
@@ -703,10 +705,8 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                 if (p_start[par].vary) or fit_dic['fit_mode']=='':
                     fixed_args[par_check+'_sp']+= [spot_name]
                     fixed_args['fit_spot']=True
-                if 'ang' in par_check and p_start[par].vary:
-                    fixed_args['fit_spot_ang'][spot_name]=True
-                else:
-                    fixed_args['fit_spot_ang'][spot_name]=False  
+                if ('ang' in par_check) and p_start[par].vary:
+                    fixed_args['fit_spot_ang']+=[spot_name]
 
     #Unique list of planets with variable properties                
     for par in par_orb:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
@@ -2672,7 +2672,10 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     print('           Using external Rstar')
                     if gen_dic['star_name']=='HD189733':
                         Rstar_med = 0.784  
-                        Rstar_err=0.007   
+                        Rstar_err=0.007
+                    if gen_dic['star_name']=='AU_Mic':
+                        Rstar_med = 0.82
+                        Rstar_err = 0.02 
                     Rstar_chain = np.random.normal(Rstar_med, Rstar_err, n_chain)
                 iPeq = np_where1D(fixed_args['var_par_list']=='Peq')
                 chain_loc=(2.*np.pi*Rstar_chain*Rsun)/(np.squeeze(merged_chain[:,iPeq])*3600.*24.)

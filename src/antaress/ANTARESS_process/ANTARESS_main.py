@@ -140,7 +140,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
 
             #Calculating theoretical properties of the planet-occulted and/or spotted regions 
             if gen_dic['theoPlOcc'] or (data_dic['DI']['spots_prop'] != {}):
-                calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'],spot_dic=mock_dic)
+                calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'],spot_dic=theo_dic)
                 
             #Analyzing original disk-integrated profiles
             if gen_dic['fit_'+data_type_gen]:
@@ -156,7 +156,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
 
             #Rescaling profiles to their correct flux level                  
             if gen_dic['flux_sc']:                   
-                rescale_profiles(data_dic[inst],inst,vis,data_dic,coord_dic,coord_dic[inst][vis]['t_dur_d'],gen_dic,plot_dic,system_param,theo_dic,spot_dic=mock_dic)   
+                rescale_profiles(data_dic[inst],inst,vis,data_dic,coord_dic,coord_dic[inst][vis]['t_dur_d'],gen_dic,plot_dic,system_param,theo_dic,spot_dic=theo_dic)   
          
             #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
             if gen_dic['DImast_weight']:              
@@ -509,6 +509,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if not gen_dic['flux_sc']:
             print('Automatic activation of flux scaling calculation')
             gen_dic['flux_sc'] = True
+            gen_dic['calc_flux_sc'] = True
 
     else:
         for key in ['map_Intr_prof','all_intr_data','Intr_prof']:plot_dic[key]=''
@@ -1113,10 +1114,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
 
     for key in ['IntrProp','IntrProf','AtmProf','AtmProp']:
         if (gen_dic['fit_'+key]) and (not path_exist(gen_dic['save_data_dir']+'Joined_fits/'+key+'/')):makedirs(gen_dic['save_data_dir']+'Joined_fits/'+key+'/') 
-    
-    # # Stage Théo
-    # if gen_dic['correct_spots'] and (not path_exist(gen_dic['save_data_dir']+'Spot_corr_DI_data/'+gen_dic['add_txt_path']['DI'])) :
-    #     makedirs(gen_dic['save_data_dir']+'Spot_corr_DI_data/'+gen_dic['add_txt_path']['DI'])   
 
     return coord_dic,data_prop
 
@@ -1406,6 +1403,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             vis_day-=1
                         vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)                    
                         print('           Date :',vis_yr,'/',vis_mt,'/',vis_day_txt)
+                        print('           Visit Midpoint: %.5f'%(bjd_vis+2400000.))
                 
                 else:
                     bjd_vis = np.mean(bjd_exp_all) - 2400000.                   
@@ -1531,20 +1529,21 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis]['bjd'][iexp] = bjd_exp_all[iexp]  - 2400000.  
                         coord_dic[inst][vis]['t_dur'][iexp] = (bjd_exp_high[iexp]-bjd_exp_low[iexp])*24.*3600.
 
-                        if (inst in mock_dic['spots_prop']):
+                        if (inst in mock_dic['spots_prop']) and (vis in mock_dic['spots_prop'][inst]):
                             mock_dic['spots_prop'][inst][vis]['cos_istar']=system_param['star']['cos_istar']
-
+                            
                             #Coordinates for each studied spot
                             spots_prop = retrieve_spots_prop_from_param(system_param['star'], mock_dic['spots_prop'][inst][vis], inst, vis, coord_dic[inst][vis]['bjd'][iexp], exp_dur=coord_dic[inst][vis]['t_dur'][iexp])
                             
                             for spot in data_inst[vis]['transit_sp']:
+                                
                                 for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
                                     coord_dic[inst][vis][spot][key][iexp] = spots_prop[spot][key]
-
+                                
                                 for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
                                     coord_dic[inst][vis][spot][key][:, iexp] = [spots_prop[spot][key+'_start'],spots_prop[spot][key+'_center'],spots_prop[spot][key+'_end']]
-
-                                coord_dic[inst][vis][spot]['is_visible'][:, iexp]=[spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]
+                                
+                                coord_dic[inst][vis][spot]['is_visible'][:, iexp]=[spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]                    
                             
                             mock_dic['spots_prop'][inst][vis].pop('cos_istar')
 
@@ -1709,7 +1708,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                     n_vel_vis = hdr['NAXIS1']
                                     
                                 #Velocity table and resolution
-                                velccf = start_rv+delta_rv*np.arange(n_vel_vis)  
+                                velccf = start_rv+delta_rv*np.arange(n_vel_vis)
 
                                 #Screening
                                 #    - check for oversampling, screening the profiles so that they are defined over uncorrelated points with a resolution similar to the instrumental pixel width.
@@ -1735,8 +1734,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                     velccf = velccf[idx_scr_bins]
             
                                 #Table dimensions                             
-                                data_inst[vis]['nspec'] = len(velccf) 
-    
+                                data_inst[vis]['nspec'] = len(velccf)
+
                             #----------------------------------------
                             
                             #Number of wavelength bins for spectra 
@@ -2249,7 +2248,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             data_prop[inst][vis]['piezo_prop'][iexp,3]=hdr['HIERARCH ESO INS'+ref_adc+' TILT2 VAL2']   
 
                         #Guide star coordinates
-                        if inst in ['ESPRESSO']:
+                        if (inst in ['ESPRESSO']) and (data_inst['type']=='spec2D'):
                             data_prop[inst][vis]['guid_coord'][iexp,0]=hdr['HIERARCH ESO ADA'+tel_inst+' GUID RA']
                             data_prop[inst][vis]['guid_coord'][iexp,1]=hdr['HIERARCH ESO ADA'+tel_inst+' GUID DEC']
 

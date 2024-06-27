@@ -886,8 +886,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             ##############################################################################
             #%%%%% Profile and its fit
             #    - ccfs are continuum-normalized for the purpose of the plot
-            if (key_plot=='DI_prof'):  
-                pass
+            if (key_plot=='DI_prof'): 
+                plot_settings[key_plot]['plot_line_model']=True
+                plot_settings[key_plot]['plot_prop']=True
+                plot_settings[key_plot]['norm_prof']=True
             
             ##############################################################################
             #%%%%% Residuals between the profile and its fit
@@ -2174,14 +2176,23 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
             plot_settings[key_plot]['t_BJD'] = None
             
+        if gen_dic['star_name']=='fakeAU_Mic':
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mockvisit1', 't':  2458702.77+ np.linspace(-0.5,0.5, 30)}
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
+            plot_settings[key_plot]['t_BJD'] = None
+                
         if gen_dic['star_name']=='V1298tau':
             plot_settings[key_plot]['t_BJD'] = None
 
         #Defining a boolean to decide whether we make a GIF
         #    - this is only used if we plot multiple exposures.
         plot_settings[key_plot]['GIF_generation']=True & False
+        
         if gen_dic['star_name']=='AUMic':
             plot_settings[key_plot]['GIF_generation']=True&False
+
+        if gen_dic['star_name']=='fakeAU_Mic':
+            plot_settings[key_plot]['GIF_generation']=True &False
 
         if gen_dic['star_name']=='V1298tau':
             plot_settings[key_plot]['GIF_generation']=True
@@ -2328,6 +2339,32 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings[key_plot]['plot_spot_all_Peq'] = False  
 
             plot_settings[key_plot]['spot_overlap'] = False  
+
+        if gen_dic['star_name']=='fakeAU_Mic':    
+
+            plot_settings[key_plot]['n_stcell']=81.
+
+            plot_settings[key_plot]['plot_spots'] = True #& False
+
+            plot_settings[key_plot]['mock_spot_prop'] = True #& False
+
+            plot_settings[key_plot]['fit_spot_prop'] = True & False
+
+            plot_settings[key_plot]['fit_results_file'] = ''
+
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 10, 'Tcenter' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
+            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
+            plot_settings[key_plot]['n_image_spots'] = 50
+            # plot_settings[key_plot]['n_image_spots'] = 50
+            
+            plot_settings[key_plot]['time_range_spot'] = 2458702.77+np.array([-0.7,0.7])
+            # plot_settings[key_plot]['time_range_spot'] = 2458330.39051   + np.array([-2.8, 1.9])
+            # plot_settings[key_plot]['time_range_spot'] = 2458330.39051+np.array([-2,2])/24.
+            
+            plot_settings[key_plot]['plot_spot_all_Peq'] = False  
+
+            plot_settings[key_plot]['spot_overlap'] = False 
 
         elif gen_dic['star_name']=='V1298tau':
             plot_settings[key_plot]['plot_spots'] = True #& False
