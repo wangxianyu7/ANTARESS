@@ -19,6 +19,15 @@
 Getting started
 ===============
 
+This page presents an overview of ``ANTARESS``. 
+
+Procedures to retrieve spectroscopic time-series of standard spectrographs can be found `here <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/data_access.html>`__
+
+Notebooks allowing you to run simplified applications of ``ANTARESS`` can be found `here <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/notebooks.html>`__
+
+Step-by-step tutorials to use ``ANTARESS`` to its full capabilities can be found `here <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures.html>`__
+
+
 Flowchart
 ---------
 

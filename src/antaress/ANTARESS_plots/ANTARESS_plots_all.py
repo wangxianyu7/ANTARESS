@@ -88,409 +88,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
 
-    '''
-    Sub-functions to plot individual transmission profiles 
-        - for disk-integrated data in the star rest frame
-        - a common master is used
-    '''
-    def sub_plot_DI_trans(plot_options,plot_mod,plot_ext):
-        
-        #Plot for each instrument        
-        for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
-            print('   - Instrument :',inst)
-            for key in ['color_dic','color_dic_sec','color_dic_bin','color_dic_bin_sec']:
-                if inst not in plot_options[key]:plot_options[key][inst]={}
-                data_type = data_dic['DI']['type'][inst]
-            
-            #Data to plot
-            maink_list = []
-            data_list = []
-            if plot_options['plot_pre'] is not None:
-                maink_list+=['pre']
-                data_list+=[plot_options['plot_pre']]
-            if plot_options['plot_post'] is not None:
-                maink_list+=['post']
-                data_list+=[plot_options['plot_post']]       
-
-            #Frame properties
-            title_name=''
-            
-            #Plot for each visit
-            for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options['visits_to_plot'][inst]): 
-                print('     - Visit :',vis)
-                if vis not in plot_options['color_dic'][inst]:plot_options['color_dic'][inst][vis] ='red' 
-                if vis not in plot_options['color_dic_bin'][inst]:plot_options['color_dic_bin'][inst][vis] ='limegreen' 
-                if vis not in plot_options['color_dic_sec'][inst]:plot_options['color_dic_sec'][inst][vis] ='dodgerblue' 
-                if vis not in plot_options['color_dic_bin_sec'][inst]:plot_options['color_dic_bin_sec'][inst][vis] ='orange' 
-  
-                #Create directory if required
-                path_loc = gen_dic['save_plot_dir']+'Spec_raw/DI_trans/'+inst+'_'+vis+'/'
-                if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
-
-                #Data
-                data_inst=data_dic[inst]
-                data_vis = data_inst[vis]
-                data_com = dataload_npz(data_vis['proc_com_data_paths'])
-                
-                rest_frame='star'
-                fixed_args_loc = {}
-                if 'wiggle' in data_list:
-                    data_com_wig = np.load(gen_dic['save_data_dir']+'/Corr_data/Wiggles/Vis_fit/'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item()   
-
-                    #Correction model
-                    if (vis in plot_options['wig_path_corr']):data_fit = (np.load(plot_options['wig_path_corr'][vis],allow_pickle=True)['data'].item())
-                    else:data_fit = dataload_npz(data_com_wig['corr_path'])
-                    if ('iexp2glob' not in data_fit):p_best = data_fit['p_best']
- 
-                #Spectral variable
-                if plot_options['aligned']:title_name='Aligned '+title_name
-                xt_str={'input':'heliocentric','star':'star','surf':'surface','pl':'planet'}[rest_frame]
-                if plot_options['x_range'] is not None:x_range_loc = plot_options['x_range']
-                if 'spec' in data_type:
-                    if plot_options['sp_var'] == 'nu' :
-                        if plot_options['x_range'] is None:x_range_loc = [c_light/9000.,c_light/3000.]
-                        x_title = r'$\nu$ in '+xt_str+' rest frame (10$^{-10}$s$^{-1}$)'
-                        
-                    elif plot_options['sp_var'] == 'wav' :
-                        if plot_options['x_range'] is None:x_range_loc = [3000.,9000.] 
-                        x_title = r'Wavelength in '+xt_str+' rest frame (A)'
-                        
-                else:x_title='Velocity in '+xt_str+' rest frame (km s$^{-1}$)'     
-                
-                #Selected ranges and orders
-                cond_sel = np.zeros(data_vis['dim_exp'],dtype=bool)
-                if plot_options['sp_var'] == 'nu' :edge_bins_var = c_light/data_com['edge_bins'][:,::-1]    
-                elif plot_options['sp_var'] == 'wav' :edge_bins_var = data_com['edge_bins']
-                cond_sel|=(edge_bins_var[:,0:-1]>x_range_loc[0]) & (edge_bins_var[:,1::]<x_range_loc[1])
-                idx_sel_ord = np_where1D(np.sum( cond_sel,axis=1 )>0 )
-                if len(plot_options['orders_to_plot'])>0:idx_sel_ord=np.intersect1d(idx_sel_ord,plot_options['orders_to_plot'])
-                cond_sel_proc = cond_sel[idx_sel_ord]
-                nord_proc = len(idx_sel_ord)
-                if nord_proc==0:stop('No orders left')
-                dim_exp_proc = [nord_proc,data_vis['nspec']]
-                edge_bins_var = edge_bins_var[idx_sel_ord]
-                cen_bins_com = data_com['cen_bins'][idx_sel_ord]
-                edge_bins_com = data_com['edge_bins'][idx_sel_ord]
-                if plot_options['x_range'] is None:x_range_loc = [np.max([x_range_loc[0],np.min(edge_bins_var)]),np.min([x_range_loc[1],np.max(edge_bins_var)])]
-                dx_range = x_range_loc[1]-x_range_loc[0]
-
-                #Retrieve wiggle model
-                if 'wiggle' in data_list:
-
-                    #Oversampled model spectral table
-                    if plot_options['plot_model']:
-                        dnu_HR = 0.02
-                        if plot_options['sp_var'] == 'nu' :min_nu,max_nu = x_range_loc[0],x_range_loc[1]
-                        else:min_nu,max_nu = c_light/x_range_loc[1],c_light/x_range_loc[0]
-                        min_nu_HR = min_nu-10.*dnu_HR
-                        max_nu_HR = max_nu+10.*dnu_HR
-                        n_nu_HR,fixed_args_loc['nu_HR']  = def_wig_tab(min_nu_HR,max_nu_HR,dnu_HR)            
-              
-                    #Pointing coordinate series
-                    if ('iexp2glob' not in data_fit):
-                        fixed_args_loc.update({
-                            'z_mer' : data_vis['z_mer'],
-                            'deg_Freq':data_com_wig['deg_Freq'], 
-                            'deg_Amp':data_com_wig['deg_Amp'], 
-                            'nu_ref':data_com_wig['nu_ref'],
-                            'comp_mod':data_com_wig['comp_ids'],
-                            'nexp_list':len(range(data_vis['n_in_visit'])),
-                            'stable_pointpar':data_fit['stable_pointpar']})                
-                        for key in ['az','x_az','y_az','z_alt','cond_eastmer','cond_westmer','cond_shift']:fixed_args_loc[key] = data_com_wig['tel_coord_vis'][key]                 
-                        calc_chrom_coord(p_best,fixed_args_loc)
-
-                #Data at chosen steps
-                data_path_dic = get_data_path('DI_prof_corr','spec',inst,vis,data_dic,gen_dic)
-
-                #Exposures to process
-                if (inst in plot_options['iexp_plot']) and (vis in plot_options['iexp_plot'][inst]):
-                    iexp_plot = plot_options['iexp_plot'][inst][vis]
-                else:iexp_plot = range(data_vis['n_in_visit'])   
-
-                #Indexes of master exposures
-                if (inst in plot_options['iexp_mast_list']) and (vis in plot_options['iexp_mast_list'][inst]):
-                    if plot_options['iexp_mast_list'][inst][vis]=='all':iexp_mast_list = np.arange(data_vis['n_in_visit'])
-                    else:iexp_mast_list = plot_options['iexp_mast_list'][inst][vis]
-                else:iexp_mast_list = gen_dic[inst][vis]['idx_out']
-                
-                #Pre-process all exposures
-                data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop)  
-     
-                #Calculate master for requested data steps
-                data_mast={}
-                disp_dic={}
-                for maink in maink_list:
-                
-                    #Calculate common master
-                    #    - defined over common table if exposures are defined over independent tables, or over common table shared by all exposures                       
-                    data_mast[maink] = calc_bin_prof(iexp_mast_list,nord_proc,dim_exp_proc,data_dic[inst]['nspec'],data4mast[maink],inst,len(iexp_mast_list),cen_bins_com,edge_bins_com)
-
-                    #Dispersion tables
-                    if plot_options['print_disp']:disp_dic[maink] = np.zeros([2,len(iexp_plot)])*np.nan 
-                
-                #Calculating and plotting transmission spectra
-                #    - all exposures are now defined in the star rest frame
-                print('           Processing and plotting exposures')
-                for isub_exp,iexp in enumerate(iexp_plot):
-                    plt.ioff()        
-                    fig = plt.figure(figsize=plot_options['fig_size'])
-            
-                    #Vertical range
-                    y_min=1e100
-                    y_max=-1e100
-
-                    #Adding progressively bins of current spectrum and master
-                    for maink,datak in zip(maink_list,data_list):
-               
-                        #Resampling common master on current exposure table
-                        if (not data_vis['comm_sp_tab']):
-                            data_mast_exp={'flux':np.zeros(dim_exp_proc,dtype=float)*np.nan,'cov':np.zeros(nord_proc,dtype=object)}
-                            for isub in range(nord_proc): 
-                                data_mast_exp['flux'][isub],data_mast_exp['cov'][isub] = bind.resampling(data_proc[maink][iexp]['edge_bins'][isub],edge_bins_com[isub],data_mast[maink]['flux'][isub] , cov = data_mast[maink]['cov'][isub], kind=gen_dic['resamp_mode'])                                                       
-                            data_mast_exp['cond_def'] = ~np.isnan(data_mast_exp['flux'])  
-    
-                        #Master table is shared by all exposures
-                        else:data_mast_exp = deepcopy(data_mast[maink])
-
-                        #Defined pixels in exposure and master over selected range
-                        cond_kept_all = data_proc[maink][iexp]['cond_def'] & data_mast_exp['cond_def'] & cond_sel_proc
-                        idx_proc_ord = np_where1D(np.sum( cond_kept_all,axis=1 )>0 )
-                        if len(idx_proc_ord)==0:stop('No orders left')
-                        if len(maink_list)==1:
-                            off_sign = 1.
-                            yoff=0.
-                        else:
-                            off_sign = {'pre':1.,'post':-1.}[maink] 
-                            yoff=0.5*plot_options['gap_exp']*off_sign
-                        raw_Fr_all = np.empty(0,dtype=float)
-                        bin_Fr_all = np.empty(0,dtype=float)
-                        for isub_ord in idx_proc_ord[::-1]:
-                            cond_kept_ord = cond_kept_all[isub_ord]
-                            mast_flux_ord=data_mast[maink]['flux'][isub_ord]
-                            flux_ord=data_proc[maink][iexp]['flux'][isub_ord]
-                            cov_ord=data_proc[maink][iexp]['cov'][isub_ord]
-                            
-                            #Spectral grid
-                            if plot_options['sp_var'] == 'nu' :                
-                                cen_bins_ord = c_light/data_proc[maink][iexp]['cen_bins'][isub_ord,::-1]
-                                edge_bins_ord = c_light/data_proc[maink][iexp]['edge_bins'][isub_ord,::-1]    
-                                
-                                #Order tables with nu 
-                                cond_kept_ord = cond_kept_ord[::-1]
-                                mast_flux_ord=mast_flux_ord[::-1]
-                                flux_ord=flux_ord[::-1]
-                                cov_ord=cov_ord[:,::-1]   
-                                    
-                            elif plot_options['sp_var'] == 'wav' :
-                                cen_bins_ord = data_proc[maink][iexp]['cen_bins'][isub_ord]
-                                edge_bins_ord = data_proc[maink][iexp]['edge_bins'][isub_ord]                            
-
-                            #Defining bins at the requested resolution over the range of original defined bins
-                            min_pix = np.nanmin(edge_bins_ord[0:-1][cond_kept_ord])
-                            max_pix = np.nanmax(edge_bins_ord[1::][cond_kept_ord])
-                            n_bins_init=int(np.ceil((max_pix-min_pix)/plot_options['bin_width']))
-                            bin_siz=(max_pix-min_pix)/n_bins_init
-                            bin_bd=np.append(min_pix+bin_siz*np.arange(n_bins_init,dtype=float),max_pix)  
-                            bin_dic={}
-                            bin_dic['cen_bins'] = 0.5*(bin_bd[0:-1]+bin_bd[1::])
-                            bin_dic['dcen_bins'] = (bin_bd[1::]-bin_bd[0:-1])
-
-                            #Resampling at lower resolution
-                            flux_rb,cov_rb = bind.resampling(bin_bd, edge_bins_ord, flux_ord , cov = cov_ord, kind=gen_dic['resamp_mode'])
-                            mast_rb = bind.resampling(bin_bd, edge_bins_ord, mast_flux_ord , kind=gen_dic['resamp_mode'])
-
-                            #New bins have constant width so that flux and flux density are equivalent
-                            bin_dic['Fr'] = flux_rb/mast_rb
-                            bin_dic['varFr'] = cov_rb[0]/mast_rb**2.
-                            conddef_bin = ~np.isnan(bin_dic['Fr'] )
-                            for key in ['Fr','varFr','cen_bins','dcen_bins']:bin_dic[key]=bin_dic[key][conddef_bin]
-
-                            #Set binned ratio over current order to a constant level unity   
-                            if plot_options['force_unity']:                     
-                                corr_Fr = np.sum(bin_dic['dcen_bins'])/np.sum(bin_dic['Fr']*bin_dic['dcen_bins'])  
-                                bin_dic['Fr']*=corr_Fr
-                                bin_dic['varFr']*=corr_Fr**2.
-                            else:corr_Fr=1.
-
-                            #Plot binned data
-                            bin_Fr_all = np.append(bin_Fr_all,bin_dic['Fr'])
-                            if plot_options['plot_bin']:
-                                if maink=='pre':col_loc = plot_options['color_dic_bin'][inst][vis]
-                                elif maink=='post':col_loc = plot_options['color_dic_bin_sec'][inst][vis]
-                                plt.plot(bin_dic['cen_bins'],yoff+bin_dic['Fr'],color=col_loc,linestyle='-',lw=plot_options['lw_plot'],marker=plot_options['marker'],markersize=plot_options['markersize'],drawstyle=plot_options['drawstyle'],zorder=1)   
-                                if plot_options['plot_bin_err']:plt.errorbar(bin_dic['cen_bins'],yoff+bin_dic['Fr'],yerr = np.sqrt(bin_dic['varFr']),color=col_loc,linestyle='',lw=plot_options['lw_plot'],marker=None,alpha=plot_options['alpha_err'],zorder=1) 
-
-                            #Plot transmission spectrum at original resolution
-                            if plot_options['plot_data']:
-                                cond_def_raw = (~np.isnan(flux_ord)) & (~np.isnan(mast_flux_ord))
-                                raw_Fr = corr_Fr*flux_ord[cond_def_raw]/mast_flux_ord[cond_def_raw]   
-                                raw_Fr_all = np.append(raw_Fr_all,raw_Fr)
-                                if maink=='pre':col_loc = plot_options['color_dic'][inst][vis]
-                                elif maink=='post':col_loc = plot_options['color_dic_sec'][inst][vis]
-                                plt.plot(cen_bins_ord[cond_def_raw], yoff+raw_Fr,color=col_loc,linestyle='-',lw=plot_options['lw_plot'],marker=plot_options['marker'],markersize=plot_options['markersize'],drawstyle=plot_options['drawstyle'],zorder=0,alpha = 0.5)   
-                                if plot_options['plot_err']:
-                                    raw_varFr = corr_Fr**2.*cov_ord[0][cond_def_raw]/mast_flux_ord[cond_def_raw]**2.    
-                                    plt.errorbar(cen_bins_ord[cond_def_raw], yoff+raw_Fr,yerr = np.sqrt(raw_varFr),color=col_loc,linestyle='-',lw=plot_options['lw_plot'],marker=None,markersize=plot_options['markersize'],zorder=0,alpha = 0.3)   
-
-                        #Range
-                        if plot_options['y_range'] is None:
-                            if plot_options['plot_data']:
-                                y_max=max(np.max(yoff+raw_Fr_all),y_max)
-                                y_min=min(np.min(yoff+raw_Fr_all),y_min)
-                            elif plot_options['plot_bin']:
-                                y_max=max(np.max(yoff+bin_Fr_all),y_max)
-                                y_min=min(np.min(yoff+bin_Fr_all),y_min)
-                     
-                        #Dispersions
-                        if plot_options['print_disp']:
-                            ytxt = 1. 
-                            if maink=='pre':xtxt =x_range_loc[0]+0.05*dx_range 
-                            if maink=='post':xtxt =x_range_loc[1]-0.4*dx_range
-                            rms_txt = 'RMS['+datak+'.]'
-                            if plot_options['plot_data']:
-                                rms_loc = (raw_Fr_all-1.).std()
-                                rms_txt += " = {0:.2e}".format(rms_loc)+' (raw)'
-                                disp_dic[maink][0,isub_exp]=rms_loc
-                            if plot_options['plot_bin']:
-                                rms_loc = (bin_Fr_all-1.).std()
-                                rms_txt += " = {0:.2e}".format(rms_loc)+' (bin)'
-                                disp_dic[maink][1,isub_exp]=rms_loc
-                            plt.text(xtxt,ytxt,rms_txt,verticalalignment='center', horizontalalignment='left',fontsize=8.,zorder=10,color=col_loc)
-
-                    #Plot model
-                    if ('wiggle' in data_list) and plot_options['plot_model']:
-                        if plot_options['sp_var']=='nu':x_HR = data_mod[iexp]['nu_HR']
-                        elif plot_options['sp_var']=='wav':x_HR = c_light/data_mod[iexp]['nu_HR']
-                        plt.plot(x_HR,0.5*plot_options['gap_exp']+data_mod[iexp]['wig_HR'],color='red',linestyle='-',lw=plot_options['lw_plot'],zorder=2)   
-
-                    #Plot level
-                    if len(maink_list)==1:
-                        plt.plot(x_range_loc,np.repeat(1.,2),color='limegreen',linestyle='--',lw=plot_options['lw_plot'],zorder=3)   
-                    else:
-                        plt.plot(x_range_loc,np.repeat(1.-0.5*plot_options['gap_exp'],2),color=col_loc,linestyle='--',lw=plot_options['lw_plot'],zorder=3)   
-                        plt.plot(x_range_loc,np.repeat(1.+0.5*plot_options['gap_exp'],2),color=col_loc,linestyle='--',lw=plot_options['lw_plot'],zorder=3)   
-                    
-                    #Plot order index
-                    y_range_loc = plot_options['y_range'] if plot_options['y_range'] is not None else [y_min,y_max]
-                    dy_range=y_range_loc[1]-y_range_loc[0]
-                    if plot_options['plot_idx_ord']:
-                        if plot_options['sp_var']=='nu':x_ord = c_light/gen_dic['wav_ord_inst'][inst]
-                        elif plot_options['sp_var']=='wav':x_ord = gen_dic['wav_ord_inst'][inst]
-                        if dx_range<2:dord=1
-                        elif dx_range<10:dord=2
-                        else:dord=4  
-                        for iord in np.arange(0,len(x_ord),dord):
-                            if (x_ord[iord]>x_range_loc[0]) and (x_ord[iord]<x_range_loc[1]):
-                                if is_odd(iord):delt_txt = 0.03
-                                else:delt_txt = 0.06
-                                plt.text(x_ord[iord],y_range_loc[1]+delt_txt*dy_range,str(iord),verticalalignment='center', horizontalalignment='center',fontsize=6.,zorder=15,color='black') 
-
-                    #Shade ranges not included in the fit
-                    if ('wiggle' in data_list) and (plot_options['shade_unfit']) and (vis in data_com_wig['wig_range_fit']):
-                        plot_shade_range(plt.gca(),data_com_wig['wig_range_fit'][vis],x_range_loc,y_range_loc,mode='fill',facecolor='dodgerblue',compl=True)                  
-
-                    #Frame
-                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
-                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
-                    if plot_options['sp_var']=='nu':x_title=r'Nu (10$^{-10}$s$^{-1}$)'
-                    elif plot_options['sp_var']=='wav':x_title=r'Wavelength (A)'
-                    custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
-                                x_title=x_title,y_title='Flux ratio',font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
-                    plt.savefig(path_loc+'idx'+str(iexp)+'.'+plot_dic['trans_sp']) 
-                    plt.close()      
-                 
-
-                #Dispersion plots
-                if plot_options['print_disp']!=[] & plot_options['plot_disp']:
-                
-                    #Frame
-                    plt.ioff() 
-                    fig = plt.figure(figsize=plot_options['fig_size'])
-                    x_min=1e100
-                    x_max=-1e100
-                    if (inst in plot_options['y_range_disp']) and (vis in plot_options['y_range_disp'][inst]):y_range_loc =  plot_options['y_range_disp'][inst][vis]
-                    else:
-                        y_range_loc=None
-                        y_min=1e100
-                        y_max=-1e100                            
-                    
-                    #Plot for requested step
-                    mean_disp = {}
-                    bin_types=[]
-                    if plot_options['plot_data']:bin_types+=['raw']
-                    if plot_options['plot_bin']:bin_types+=['bin']
-                    for maink in disp_dic:
-                        mean_disp[maink]={}
-                        for bin_type in bin_types:
-                            if bin_type=='raw':
-                                ibin=0
-                                if maink=='pre':col_loc = plot_options['color_dic'][inst][vis]
-                                elif maink=='post':col_loc = plot_options['color_dic_sec'][inst][vis]
-                            elif bin_type=='bin':
-                                ibin=1
-                                if maink=='pre':col_loc = plot_options['color_dic_bin'][inst][vis]
-                                elif maink=='post':col_loc = plot_options['color_dic_bin_sec'][inst][vis]
-                            cond_def = ~np.isnan(disp_dic[maink][ibin,isub_exp])
-                            cen_ph_vis = coord_dic[inst][vis][plot_options['pl_ref'][inst][vis]]['cen_ph'][cond_def]
-                            disp_maink = 1e6*disp_dic[maink][ibin,cond_def]
-                            plt.plot(cen_ph_vis,disp_maink,color=col_loc,linestyle='',zorder=1,marker='o',markersize=1.5)
-    
-                            #Boundaries
-                            x_min=np.min([np.nanmin(cen_ph_vis),x_min])
-                            x_max=np.max([np.nanmax(cen_ph_vis),x_max]) 
-                            dx_range = x_max-x_min
-                            x_range_loc = [x_min-0.05*dx_range,x_max+0.05*dx_range]     
-                            if (y_range_loc is None):
-                                y_min=np.min([np.nanmin(disp_maink),y_min])
-                                y_max=np.max([np.nanmax(disp_maink),y_max]) 
-
-                            #Mean dispersion
-                            mean_disp[maink][bin_type] = np.mean(disp_maink)
-                            plt.plot(x_range_loc,[mean_disp[maink][bin_type],mean_disp[maink][bin_type]],color=col_loc,linestyle='-',zorder=1,lw=0.5)
-
-                    #Ranges
-                    dx_range=x_range_loc[1]-x_range_loc[0]   
-                    if (y_range_loc is None):
-                        dy_range = y_max-y_min
-                        y_range_loc = [y_min-0.05*dy_range,y_max+0.05*dy_range]     
-                    dy_range=y_range_loc[1]-y_range_loc[0] 
-
-                    #Print on-screen   
-                    for bin_type in bin_types:     
-                        if bin_type=='raw':ytxt = y_range_loc[0]+0.6*dy_range   
-                        elif bin_type=='bin':ytxt = y_range_loc[0]+0.4*dy_range   
-                        for maink,datak in zip(maink_list,data_list): 
-                            if maink=='pre':
-                                xtxt =x_range_loc[0]+0.05*dx_range 
-                                if bin_type=='raw':col_loc = plot_options['color_dic'][inst][vis]
-                                elif bin_type=='bin':col_loc = plot_options['color_dic_bin'][inst][vis]
-                            if maink=='post':
-                                xtxt =x_range_loc[1]-0.4*dx_range
-                                if bin_type=='raw':col_loc = plot_options['color_dic_sec'][inst][vis]
-                                elif bin_type=='bin':col_loc = plot_options['color_dic_bin_sec'][inst][vis] 
-                            rms_txt = 'RMS['+datak+'.]'+ " = {0:.2e}".format(mean_disp[maink][bin_type])+' ('+bin_type+')'
-                            plt.text(xtxt,ytxt,rms_txt,verticalalignment='center', horizontalalignment='left',fontsize=8.,zorder=10,color=col_loc)
-            
-                    #Frame                                                 
-                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
-                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
-                    custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
-                                x_title=r'Orbital Phase',y_title='RMS (ppm)',font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
-                    plt.savefig(path_loc+'Dispersion.'+plot_dic['trans_sp']) 
-                    plt.close() 
-
-        return None
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -801,8 +398,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     plt.plot([0,0],y_range_loc,linestyle=':',lw=plot_options['lw_plot'],color='black')
     
                     #Reference level
-                    x_range_loc=np.array(plot_options['x_range']) if plot_options['x_range'] is not None else np.array([data_exp['cen_bins'][0,0]-5.,data_exp['cen_bins'][0,-1]+5.])     
-                    plt.plot(x_range_loc,[1.,1.],linestyle='-',lw=0.5,color='black')
+                    x_range_loc=np.array(plot_options['x_range']) if plot_options['x_range'] is not None else np.array([data_exp['cen_bins'][0,0]-5.,data_exp['cen_bins'][0,-1]+5.]) 
+                    if plot_options['ref_level']:plt.plot(x_range_loc,[1.,1.],linestyle='-',lw=0.5,color='black')
                
                     #Plot frame
                     if plot_options['title']:plt.title('Binned disk-integrated and intrinsic CCFs',fontsize=plot_options['font_size'])
@@ -1380,7 +977,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                             if (prop_mode in ['true_ctrst','ctrst']):yvar_HR_loc = ctrst_mod_HR
                   
                                     #Plot
-                                    if prop_mode != 'rv_res':plt.plot(xvar_HR_loc,yvar_HR_loc,color=col_loc,linestyle='--',lw=1,zorder=-1) 
+                                    ls_mod = '--'
+                                    ls_mod = '-'
+                                    if prop_mode != 'rv_res':plt.plot(xvar_HR_loc,yvar_HR_loc,color=col_loc,linestyle=ls_mod,lw=1,zorder=-1) 
                                     
                                     return xvar_HR_loc,yvar_HR_loc
                                 
@@ -1440,7 +1039,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #High-resolution model
                             if plot_options['theo_HR_prof']:  
                                 col_mod_prof = 'black'
-                                col_mod_prof = col_loc
+                                # col_mod_prof = col_loc
+                                col_mod_prof = 'limegreen'
                                 xvar_HR_loc,yvar_HR_loc = sub_plot_HR('from_prof',input_dic,col_mod_prof)
                                 
                     if vis=='binned':
@@ -1974,7 +1574,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                     cen_ph = (coord_dic[inst][vis][pl_loc]['Tcenter']-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"] 
                                 ls_pl = {0:':',1:'--'}[ipl]
                                 for cont_ph in contact_phases_vis:
-                                    plt.plot([cont_ph,cont_ph],[-1e6,1e6],color='black',linestyle=ls_pl,lw=plot_options['lw_plot'],zorder=0)
+                                    plt.plot([cont_ph,cont_ph],[-1e6,1e6],color=plot_options['col_contacts'],linestyle=ls_pl,lw=plot_options['lw_plot'],zorder=0)
                 
                                 #Overplot transit duration from system properties
                                 if (data_mode=='DI') and plot_options['plot_T14']:
@@ -2137,7 +1737,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             y_range_loc = np.array([y_min-0.05*dy_range,y_max+0.05*dy_range])  
 
         #Reference level
-        if plot_options['plot_ref']:
+        if plot_options['plot_reflev']:
            if ((data_mode=='DI') and (prop_mode in ['rv_res','rv_pip_res'])) or ((data_mode=='Intr') and (prop_mode in ['rv','rv_res'])):val_ref = 0.
            elif (data_mode=='DI') and plot_options['norm_ref']:val_ref = 1.
            else:val_ref = None
@@ -3861,7 +3461,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         
         print('-----------------------------------')
         print('+ Individual disk-integrated transmission spectra')
-        sub_plot_DI_trans(plot_settings[key_plot],key_plot,plot_dic[key_plot])               
+        sub_plot_DI_trans(plot_settings[key_plot],key_plot,plot_dic[key_plot],data_dic,gen_dic,coord_dic,data_prop,plot_dic)               
                         
 
 
@@ -4550,7 +4150,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         var_plot = data_upload['LC_HR'][:,iband]-vis_shift
                         y_min=min(np.min(var_plot),y_min)
                         y_max=max(np.max(var_plot),y_max)
-                        plt.plot(ph_plot,var_plot,color=col_vis,linestyle='-',lw=plot_set_key['lw_plot'])  
+                        plt.plot(ph_plot,var_plot,color='darkgoldenrod',linestyle='-',lw=plot_set_key['lw_plot'])  
                
                         #Print visit names
                         if plot_set_key['plot_vis']:
@@ -4599,7 +4199,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             contact_phases_vis = (contact_times-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"]
                         ls_pl = {0:':',1:'--'}[ipl]
                         for cont_ph in contact_phases_vis:
-                            plt.plot([cont_ph,cont_ph],y_range_loc,color='black',linestyle=ls_pl,lw=plot_set_key['lw_plot'])
+                            plt.plot([cont_ph,cont_ph],y_range_loc,color=plot_set_key['col_contacts'],linestyle=ls_pl,lw=plot_set_key['lw_plot'])
 
                 #Plot frame                 
                 if plot_set_key['title']:plt.title('Input light curves')
@@ -4687,7 +4287,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         
                 #Contacts
                 for cont_ph in contact_phases[pl_ref]:
-                    plt.plot([cont_ph,cont_ph],y_range_loc,color='black',linestyle=':',lw=1.)                
+                    plt.plot([cont_ph,cont_ph],y_range_loc,color=plot_set_key['col_contacts'],linestyle=':',lw=1.)                
                 
                 #Plot frame                 
                 if plot_set_key['title']:plt.title('Spectral light curves')
@@ -4920,7 +4520,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                     #Contacts
                     y_range_loc=plot_set_key['y_range_rms'] if plot_set_key['y_range_rms'] is not None else np.array([y_min,y_max])
-                    for cont_ph in contact_phases[pl_ref]:plt.plot([cont_ph,cont_ph],y_range_loc,color='black',linestyle=':',lw=plot_set_key['lw_plot'],zorder=0)
+                    for cont_ph in contact_phases[pl_ref]:plt.plot([cont_ph,cont_ph],y_range_loc,color=plot_set_key['col_contacts'],linestyle=':',lw=plot_set_key['lw_plot'],zorder=0)
 
                     #Plot frame  
                     x_range_loc=plot_set_key['x_range_rms'] if plot_set_key['x_range_rms'] is not None else np.array([np.min(cen_ph),np.max(cen_ph)])
@@ -4966,7 +4566,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Contacts
                     x_range_loc=plot_set_key['x_range_bic'] if plot_set_key['x_range_bic'] is not None else np.array([np.min(cen_ph),np.max(cen_ph)])
                     y_range_loc=plot_set_key['y_range_bic'] if plot_set_key['y_range_bic'] is not None else np.array([y_min,y_max])
-                    for cont_ph in contact_phases[pl_ref]:plt.plot([cont_ph,cont_ph],y_range_loc,color='black',linestyle=':',lw=plot_set_key['lw_plot'],zorder=0)
+                    for cont_ph in contact_phases[pl_ref]:plt.plot([cont_ph,cont_ph],y_range_loc,color=plot_set_key['col_contacts'],linestyle=':',lw=plot_set_key['lw_plot'],zorder=0)
                     plt.plot(x_range_loc,[0.,0.],color='black',linestyle='--',lw=plot_set_key['lw_plot'],zorder=0)
 
                     #Plot frame  
@@ -6133,7 +5733,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         #--------------------------------------------
         #Orbits
         #--------------------------------------------
-        def plot_orb_func(ax_plot,npts_orbits_plot,pl_params_plot,pl_ref,col_orb_plot,alph_front,alph_back,zord_plot,lw):
+        def plot_orb_func(ax_plot,npts_orbits_plot,pl_params_plot,pl_ref,col_orb_plot,alph_front,alph_back,zord_ref,dzord,lw):
             
             #Orbit coordinates
             coord_orbit_loc=calc_pl_coord_plots(npts_orbits_plot,pl_params_plot)
@@ -6164,7 +5764,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             cond_in_plot = (x_orbit_plot>=plot_set_key['x_range'][0]-0.1*dx_range) & (x_orbit_plot<=plot_set_key['x_range'][1]+0.1*dx_range) &  (y_orbit_plot>=plot_set_key['y_range'][0]-0.1*dy_range) & (y_orbit_plot<=plot_set_key['y_range'][1]+0.1*dy_range)
             w_front = (z_orbit_plot >= 0.) & cond_in_plot
             isort=np.argsort(x_orbit_plot[w_front])
-            ax_plot.plot(x_orbit_plot[w_front][isort],y_orbit_plot[w_front][isort],zorder=zord_plot, color=col_orb_plot,lw=plot_set_key['lw_plot'],alpha=alph_front)
+            ax_plot.plot(x_orbit_plot[w_front][isort],y_orbit_plot[w_front][isort],zorder=zord_ref + dzord, color=col_orb_plot,lw=plot_set_key['lw_plot'],alpha=alph_front)
 
             w_back = (z_orbit_plot < 0.) & cond_in_plot
             isort=np.argsort(x_orbit_plot[w_back])
@@ -6173,7 +5773,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             cond_novis_back = cond_novis[w_back][isort]
             x_orbit_back[cond_novis_back]=np.nan
             y_orbit_back[cond_novis_back]=np.nan           
-            ax_plot.plot(x_orbit_back,y_orbit_back,zorder=zord_plot, color=col_orb_plot,lw=plot_set_key['lw_plot'],alpha=alph_back)
+            ax_plot.plot(x_orbit_back,y_orbit_back,zorder=zord_ref - dzord, color=col_orb_plot,lw=plot_set_key['lw_plot'],alpha=alph_back)
 
             return x_orbit_plot,y_orbit_plot,z_orbit_plot            
 
@@ -6249,33 +5849,33 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
           
                 #Planet orbit	
                 #    - 'coord_orbit' is defined in the Sky-projected orbital frame: Xsky,Ysky,Zsky	
-                x_orbit_view,y_orbit_view,z_orbit_view  = plot_orb_func(ax1,plot_set_key['npts_orbits'][ipl],system_param[pl_loc],pl_loc,plot_set_key['col_orb'][ipl],1.,0.4,40.+2*ipl+1,2)
+                x_orbit_view,y_orbit_view,z_orbit_view  = plot_orb_func(ax1,plot_set_key['npts_orbits'][ipl],system_param[pl_loc],pl_loc,plot_set_key['col_orb'][ipl],1.,0.4,40.,2*ipl+1,2)
                 
                 #Uncertainty of planet orbit
                 if (pl_loc in plot_set_key['lambdeg_err']) or (pl_loc in plot_set_key['aRs_err']) or (pl_loc in plot_set_key['ip_err']):
                     if (pl_loc in plot_set_key['lambdeg_err']):
                         grid_val,cdf_val = sem_norm_dist(system_param[pl_loc]['lambda_rad'],plot_set_key['lambdeg_err'][pl_loc][0]*np.pi/180.,plot_set_key['lambdeg_err'][pl_loc][1]*np.pi/180.)
-                        rand_draw = np.random.uniform(low=0.0, high=1.0, size=plot_set_key['norb'])    
+                        rand_draw = np.random.uniform(low=0.0, high=1.0, size=plot_set_key['norb'][ipl])    
                         lambdarad_tab = np_interp(rand_draw,cdf_val,grid_val)
                         lambdrad_range = [system_param[pl_loc]['lambda_rad']-plot_set_key['lambdeg_err'][pl_loc][0]*np.pi/180.,system_param[pl_loc]['lambda_rad']+plot_set_key['lambdeg_err'][pl_loc][1]*np.pi/180.]
                     else:
-                        lambdarad_tab = np.repeat(system_param[pl_loc]['lambda_rad'],plot_set_key['norb'])
+                        lambdarad_tab = np.repeat(system_param[pl_loc]['lambda_rad'],plot_set_key['norb'][ipl])
                         lambdrad_range=[-1e10,1e10]
                     if (pl_loc in plot_set_key['aRs_err']):
                         grid_val,cdf_val = sem_norm_dist(system_param[pl_loc]['aRs'],plot_set_key['aRs_err'][pl_loc][0],plot_set_key['aRs_err'][pl_loc][1])
-                        rand_draw = np.random.uniform(low=0.0, high=1.0, size=plot_set_key['norb'])    
+                        rand_draw = np.random.uniform(low=0.0, high=1.0, size=plot_set_key['norb'][ipl])    
                         aRs_tab = np_interp(rand_draw,cdf_val,grid_val)    
                         aRs_range = [system_param[pl_loc]['aRs']-plot_set_key['aRs_err'][pl_loc][0],system_param[pl_loc]['aRs']+plot_set_key['aRs_err'][pl_loc][1]]               
                     else:
-                        aRs_tab = np.repeat(system_param[pl_loc]['aRs'],plot_set_key['norb'])
+                        aRs_tab = np.repeat(system_param[pl_loc]['aRs'],plot_set_key['norb'][ipl])
                         aRs_range=[0.,1e10]
                     if (pl_loc in plot_set_key['ip_err']):
                         grid_val,cdf_val = sem_norm_dist(system_param[pl_loc]['inclin_rad'],plot_set_key['ip_err'][pl_loc][0]*np.pi/180.,plot_set_key['ip_err'][pl_loc][1]*np.pi/180.)
-                        rand_draw = np.random.uniform(low=0.0, high=1.0, size=plot_set_key['norb'])    
+                        rand_draw = np.random.uniform(low=0.0, high=1.0, size=plot_set_key['norb'][ipl])    
                         ip_tab = np_interp(rand_draw,cdf_val,grid_val)
                         ip_range = [system_param[pl_loc]['inclin_rad']-plot_set_key['ip_err'][pl_loc][0]*np.pi/180.,system_param[pl_loc]['inclin_rad']+plot_set_key['ip_err'][pl_loc][1]*np.pi/180.]  
                     else:
-                        ip_tab = np.repeat(system_param[pl_loc]['inclin_rad'],plot_set_key['norb'])
+                        ip_tab = np.repeat(system_param[pl_loc]['inclin_rad'],plot_set_key['norb'][ipl])
                         ip_range=[-1e10,1e10]
                     b_tab = np.abs(aRs_tab*np.cos(ip_tab))
                     if (pl_loc in plot_set_key['b_range_all']):b_range=plot_set_key['b_range_all'][pl_loc]
@@ -6295,7 +5895,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         pl_params_orb['lambda_rad'] = lambdarad_loc
                         pl_params_orb['aRs'] = aRs_loc
                         pl_params_orb['inclin_rad'] = ip_loc
-                        _,_,_ = plot_orb_func(ax1,plot_set_key['npts_orbits'][ipl],pl_params_orb,pl_loc,plot_settings[key_plot]['col_orb_samp'][ipl],0.2,0.03,40.+2*ipl,1)
+                        _,_,_ = plot_orb_func(ax1,plot_set_key['npts_orbits'][ipl],pl_params_orb,pl_loc,plot_settings[key_plot]['col_orb_samp'][ipl],0.2,0.03,40.,2*ipl,1)
              
                 #Planet at given position along the orbit
                 RpRs = plot_set_key['RpRs_pl'][pl_loc]
@@ -6524,7 +6124,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #-------------------------------------------------------
             #Spotted cells 
             #-------------------------------------------------------
-            if plot_set_key['plot_spots']:
+            plot_spots = plot_set_key['mock_spot_prop'] | plot_set_key['fit_spot_prop'] | (len(plot_set_key['custom_spot_prop'])>0)
+            if plot_spots:
 
                 #Custom spot properties
                 if len(plot_set_key['custom_spot_prop'])>0:
@@ -6536,7 +6137,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         params['lat__IS__VS__SP'+spot]     = plot_set_key['custom_spot_prop'][spot]['lat']
                         params['ang__IS__VS__SP'+spot]     = plot_set_key['custom_spot_prop'][spot]['ang']
                         params['Tcenter__IS__VS__SP'+spot] = plot_set_key['custom_spot_prop'][spot]['Tcenter']
-                        params['ctrst__IS__VS__SP'+spot]    = plot_set_key['custom_spot_prop'][spot]['ctrst']
+                        params['fctrst__IS__VS__SP'+spot]    = plot_set_key['custom_spot_prop'][spot]['fctrst']
                     
                 #Mock dataset spot properties
                 elif plot_set_key['mock_spot_prop']:
@@ -6583,7 +6184,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, plot_t) 
 
                     #Defining a reference spot contrast - since all spots share the same contrast
-                    ref_ctrst = spots_prop[list(spots_prop.keys())[0]]['ctrst']
+                    ref_fctrst = spots_prop[list(spots_prop.keys())[0]]['fctrst']
 
                     for spot in spots_prop :
                         if spots_prop[spot]['is_center_visible']: 
@@ -6596,7 +6197,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Accounting for spot overlap - all spots share the same contrast. As such we figure out which cells are spotted by either spot1, or spot2, or...
                     #Once we have all the spotted cells we scale their flux with the shared contrast. This prevents us of counting shared cells multiple times and 
                     #lowering their flux more than necessary.
-                    star_flux_before_spot[shared_spotted_tiles] *=  (1-ref_ctrst)
+                    star_flux_before_spot[shared_spotted_tiles] *=  (1-ref_fctrst)
 
                     
                     if plot_set_key['spot_overlap']:      
@@ -6630,7 +6231,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, t_exp) 
                             
                         #Defining a reference spot contrast - since all spots share the same contrast
-                        ref_ctrst = spots_prop[list(spots_prop.keys())[0]]['ctrst']
+                        ref_fctrst = spots_prop[list(spots_prop.keys())[0]]['fctrst']
                             
                         for spot in spots_prop :
                             if spots_prop[spot]['is_center_visible']:
@@ -6640,7 +6241,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 #Accounting for spot overlap - figure out which cells of the stellar grid are spotted
                                 shared_spotted_tiles |= spotted_tiles
                         
-                        star_flux_exp[shared_spotted_tiles] *=  (1-ref_ctrst)
+                        star_flux_exp[shared_spotted_tiles] *=  (1-ref_fctrst)
                         Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_exp)
 
 
@@ -6664,7 +6265,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             elif plot_set_key['disk_color']=='F':
                 val_disk=Fsurf_grid_star[:,iband]  
                 
-                if plot_set_key['plot_spots'] and (not plot_set_key['spot_overlap']) and (plot_set_key['t_BJD'] is not None):val_disk = Flux_for_nonredundant_spot_plotting
+                if plot_spots and (not plot_set_key['spot_overlap']) and (plot_set_key['t_BJD'] is not None):val_disk = Flux_for_nonredundant_spot_plotting
 
                 
                 # cmap = plt.get_cmap('GnBu_r')
@@ -6693,7 +6294,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 max_f=np.nanmax(Fsurf_grid_star[:,iband])
                 color_f=cmap_f( (min_col+ (Fsurf_grid_star[:,iband]-min_f)*(max_col-min_col)/ (max_f-min_f)) )
 
-                if plot_set_key['plot_spots'] and (not plot_set_key['spot_overlap']) and (plot_set_key['t_BJD'] is not None): 
+                if plot_spots and (not plot_set_key['spot_overlap']) and (plot_set_key['t_BJD'] is not None): 
                     min_f=np.nanmin(Flux_for_nonredundant_spot_plotting)
                     max_f=np.nanmax(Flux_for_nonredundant_spot_plotting)
                     color_f=cmap_f( (min_col+ (Flux_for_nonredundant_spot_plotting-min_f)*(max_col-min_col)/ (max_f-min_f)) )
@@ -7107,13 +6708,18 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
         #Line profile from best-fit
         else:
             if (plot_options['fit_type']=='indiv'):
-                if not os_system.path.exists(gen_dic['save_data_dir']+data_type_gen+data_mode+'_prop/'+add_txt_path+inst+'_'+vis+'.npz'):stop('No existing fit results')
-                prof_fit_vis=dataload_npz(gen_dic['save_data_dir']+data_type_gen+data_mode+'_prop/'+add_txt_path+inst+'_'+vis)  
+                if not os_system.path.exists(gen_dic['save_data_dir']+data_type_gen+data_mode+'_prop/'+add_txt_path+inst+'_'+vis+'.npz'):
+                    print('WARNING: No existing fit results')
+                    prof_fit_vis = None
+                else:prof_fit_vis=dataload_npz(gen_dic['save_data_dir']+data_type_gen+data_mode+'_prop/'+add_txt_path+inst+'_'+vis)  
             elif (plot_options['fit_type']=='global'):
                 if (data_type_gen in ['Intr','Atm']) and (inst in glob_fit_dic['IntrProf']['idx_in_fit']) and (vis in glob_fit_dic['IntrProf']['idx_in_fit'][inst]):
-                    if not os_system.path.exists(gen_dic['save_data_dir']+'Joined_fits/IntrProf/IntrProf_fit_'+add_txt_path+inst+'_'+vis+'.npz'):stop('No existing fit results')
-                    prof_fit_vis=dataload_npz(gen_dic['save_data_dir']+'Joined_fits/IntrProf/IntrProf_fit_'+add_txt_path+inst+'_'+vis)['prof_fit_dic']  
-                    fit_results =dataload_npz(gen_dic['save_data_dir']+'Joined_fits/IntrProf/Fit_results')
+                    if not os_system.path.exists(gen_dic['save_data_dir']+'Joined_fits/IntrProf/IntrProf_fit_'+add_txt_path+inst+'_'+vis+'.npz'):
+                        print('WARNING: No existing fit results')
+                        prof_fit_vis = None
+                    else:
+                        prof_fit_vis=dataload_npz(gen_dic['save_data_dir']+'Joined_fits/IntrProf/IntrProf_fit_'+add_txt_path+inst+'_'+vis)['prof_fit_dic']  
+                        fit_results =dataload_npz(gen_dic['save_data_dir']+'Joined_fits/IntrProf/Fit_results')
    
     #Directories
     txt_mod=deepcopy(add_txt_path)
@@ -7870,7 +7476,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                                         evar_loc = sc_fact*err_exp/mean_flux  
                                         if plot_options['y_range'] is None:y_range_loc[key_frame] = [min(np.nanmin(var_loc),y_range_loc[key_frame][0]),max(np.nanmax(var_loc),y_range_loc[key_frame][1])]
                                         dy_range=y_range_loc[key_frame][1]-y_range_loc[key_frame][0]
-                                   
+                      
                                         #Continuum level
                                         if plot_options['plot_cont_lev'] and ('Intr' in plot_mod) and cond_mod:
                                             if (plot_options['line_model']=='fit'):
@@ -7879,7 +7485,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                                             elif (plot_options['line_model']=='rec'):cont_lev = prof_fit_vis['cont']                                                     
                                             intr_lev=sc_fact*cont_lev/mean_flux
                                             plt.plot(x_range_ord,[intr_lev,intr_lev],linestyle='-',color='black',lw=plot_options['lw_plot'])                  
-
+                             
                                         #Plot measurements 
                                         if plot_options['plot_biss'] and (('DI' in plot_mod) or ('Intr' in plot_mod)):                          
                                             plt.plot(mod_prop_exp['RV_biss'],sc_fact*mod_prop_exp['F_biss']/mean_flux,color='black',linestyle='--',lw=plot_options['lw_plot'])    
@@ -7954,7 +7560,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                                     if (not plot_options['multi_exp'] or isub==1):
     
                                         #Reference null level
-                                        if ('_res' in plot_mod):
+                                        if ('_res' in plot_mod) and plot_options['plot_reflev']:
                                             all_ax[key_frame].axhline(0.,color='black', lw=plot_options['lw_plot'],linestyle='--') 
     
                                         #Shade range requested in plot
@@ -8358,7 +7964,7 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
         #    - coordinates are normalized by Rstar, corresponding to the equatorial radius (and thus largest for an oblate star), so that the condition below is always conservative 
         cond_occ_HR |= Dprojplanet_HR <= (1.+data_dic['DI']['system_prop']['RpRs_max'][pl_loc])
 
-    #Planet-occulted properties
+    #Planet-occulted and spot properties
     coord_pl_in['nph_HR'] =  np.sum(cond_occ_HR)   
     bjd_HR = bjd_HR[cond_occ_HR]
     args['inst'] = inst
@@ -9660,6 +9266,411 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                     ### End of order                          
    
     return None
+
+
+
+##################################################################################################
+#%% Specific plot routines
+##################################################################################################
+
+
+'''
+Sub-functions to plot individual transmission profiles 
+    - for disk-integrated data in the star rest frame
+    - a common master is used
+'''
+def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,data_prop,plot_dic):
+    
+    #Plot for each instrument        
+    for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
+        print('   - Instrument :',inst)
+        for key in ['color_dic','color_dic_sec','color_dic_bin','color_dic_bin_sec']:
+            if inst not in plot_options[key]:plot_options[key][inst]={}
+            data_type = data_dic['DI']['type'][inst]
+        
+        #Data to plot
+        maink_list = []
+        data_list = []
+        if plot_options['plot_pre'] is not None:
+            maink_list+=['pre']
+            data_list+=[plot_options['plot_pre']]
+        if plot_options['plot_post'] is not None:
+            maink_list+=['post']
+            data_list+=[plot_options['plot_post']]       
+
+        #Frame properties
+        title_name=''
+        
+        #Plot for each visit
+        for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options['visits_to_plot'][inst]): 
+            print('     - Visit :',vis)
+            if vis not in plot_options['color_dic'][inst]:plot_options['color_dic'][inst][vis] ='red' 
+            if vis not in plot_options['color_dic_bin'][inst]:plot_options['color_dic_bin'][inst][vis] ='limegreen' 
+            if vis not in plot_options['color_dic_sec'][inst]:plot_options['color_dic_sec'][inst][vis] ='dodgerblue' 
+            if vis not in plot_options['color_dic_bin_sec'][inst]:plot_options['color_dic_bin_sec'][inst][vis] ='orange' 
+  
+            #Create directory if required
+            path_loc = gen_dic['save_plot_dir']+'Spec_raw/DI_trans/'+inst+'_'+vis+'/'
+            if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
+
+            #Data
+            data_inst=data_dic[inst]
+            data_vis = data_inst[vis]
+            data_com = dataload_npz(data_vis['proc_com_data_paths'])
+            
+            rest_frame='star'
+            fixed_args_loc = {}
+            if 'wiggle' in data_list:
+                data_com_wig = np.load(gen_dic['save_data_dir']+'/Corr_data/Wiggles/Vis_fit/'+inst+'_'+vis+'_add.npz',allow_pickle=True)['data'].item()   
+
+                #Correction model
+                if (vis in plot_options['wig_path_corr']):data_fit = (np.load(plot_options['wig_path_corr'][vis],allow_pickle=True)['data'].item())
+                else:data_fit = dataload_npz(data_com_wig['corr_path'])
+                if ('iexp2glob' not in data_fit):p_best = data_fit['p_best']
+ 
+            #Spectral variable
+            if plot_options['aligned']:title_name='Aligned '+title_name
+            xt_str={'input':'heliocentric','star':'star','surf':'surface','pl':'planet'}[rest_frame]
+            if plot_options['x_range'] is not None:x_range_loc = plot_options['x_range']
+            if 'spec' in data_type:
+                if plot_options['sp_var'] == 'nu' :
+                    if plot_options['x_range'] is None:x_range_loc = [c_light/9000.,c_light/3000.]
+                    x_title = r'$\nu$ in '+xt_str+' rest frame (10$^{-10}$s$^{-1}$)'
+                    
+                elif plot_options['sp_var'] == 'wav' :
+                    if plot_options['x_range'] is None:x_range_loc = [3000.,9000.] 
+                    x_title = r'Wavelength in '+xt_str+' rest frame (A)'
+                    
+            else:x_title='Velocity in '+xt_str+' rest frame (km s$^{-1}$)'     
+            
+            #Selected ranges and orders
+            cond_sel = np.zeros(data_vis['dim_exp'],dtype=bool)
+            if plot_options['sp_var'] == 'nu' :edge_bins_var = c_light/data_com['edge_bins'][:,::-1]    
+            elif plot_options['sp_var'] == 'wav' :edge_bins_var = data_com['edge_bins']
+            cond_sel|=(edge_bins_var[:,0:-1]>x_range_loc[0]) & (edge_bins_var[:,1::]<x_range_loc[1])
+            idx_sel_ord = np_where1D(np.sum( cond_sel,axis=1 )>0 )
+            if len(plot_options['orders_to_plot'])>0:idx_sel_ord=np.intersect1d(idx_sel_ord,plot_options['orders_to_plot'])
+            cond_sel_proc = cond_sel[idx_sel_ord]
+            nord_proc = len(idx_sel_ord)
+            if nord_proc==0:stop('No orders left')
+            dim_exp_proc = [nord_proc,data_vis['nspec']]
+            edge_bins_var = edge_bins_var[idx_sel_ord]
+            cen_bins_com = data_com['cen_bins'][idx_sel_ord]
+            edge_bins_com = data_com['edge_bins'][idx_sel_ord]
+            if plot_options['x_range'] is None:x_range_loc = [np.max([x_range_loc[0],np.min(edge_bins_var)]),np.min([x_range_loc[1],np.max(edge_bins_var)])]
+            dx_range = x_range_loc[1]-x_range_loc[0]
+
+            #Retrieve wiggle model
+            if 'wiggle' in data_list:
+
+                #Oversampled model spectral table
+                if plot_options['plot_model']:
+                    dnu_HR = 0.02
+                    if plot_options['sp_var'] == 'nu' :min_nu,max_nu = x_range_loc[0],x_range_loc[1]
+                    else:min_nu,max_nu = c_light/x_range_loc[1],c_light/x_range_loc[0]
+                    min_nu_HR = min_nu-10.*dnu_HR
+                    max_nu_HR = max_nu+10.*dnu_HR
+                    n_nu_HR,fixed_args_loc['nu_HR']  = def_wig_tab(min_nu_HR,max_nu_HR,dnu_HR)            
+          
+                #Pointing coordinate series
+                if ('iexp2glob' not in data_fit):
+                    fixed_args_loc.update({
+                        'z_mer' : data_vis['z_mer'],
+                        'deg_Freq':data_com_wig['deg_Freq'], 
+                        'deg_Amp':data_com_wig['deg_Amp'], 
+                        'nu_ref':data_com_wig['nu_ref'],
+                        'comp_mod':data_com_wig['comp_ids'],
+                        'nexp_list':len(range(data_vis['n_in_visit'])),
+                        'stable_pointpar':data_fit['stable_pointpar']})                
+                    for key in ['az','x_az','y_az','z_alt','cond_eastmer','cond_westmer','cond_shift']:fixed_args_loc[key] = data_com_wig['tel_coord_vis'][key]                 
+                    calc_chrom_coord(p_best,fixed_args_loc)
+
+            #Data at chosen steps
+            data_path_dic = get_data_path('DI_prof_corr','spec',inst,vis,data_dic,gen_dic)
+
+            #Exposures to process
+            if (inst in plot_options['iexp_plot']) and (vis in plot_options['iexp_plot'][inst]):
+                iexp_plot = plot_options['iexp_plot'][inst][vis]
+            else:iexp_plot = range(data_vis['n_in_visit'])   
+
+            #Indexes of master exposures
+            if (inst in plot_options['iexp_mast_list']) and (vis in plot_options['iexp_mast_list'][inst]):
+                if plot_options['iexp_mast_list'][inst][vis]=='all':iexp_mast_list = np.arange(data_vis['n_in_visit'])
+                else:iexp_mast_list = plot_options['iexp_mast_list'][inst][vis]
+            else:iexp_mast_list = gen_dic[inst][vis]['idx_out']
+            
+            #Pre-process all exposures
+            data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop)  
+ 
+            #Calculate master for requested data steps
+            data_mast={}
+            disp_dic={}
+            for maink in maink_list:
+            
+                #Calculate common master
+                #    - defined over common table if exposures are defined over independent tables, or over common table shared by all exposures                       
+                data_mast[maink] = calc_bin_prof(iexp_mast_list,nord_proc,dim_exp_proc,data_dic[inst]['nspec'],data4mast[maink],inst,len(iexp_mast_list),cen_bins_com,edge_bins_com)
+
+                #Dispersion tables
+                if plot_options['print_disp']:disp_dic[maink] = np.zeros([2,len(iexp_plot)])*np.nan 
+            
+            #Calculating and plotting transmission spectra
+            #    - all exposures are now defined in the star rest frame
+            print('           Processing and plotting exposures')
+            for isub_exp,iexp in enumerate(iexp_plot):
+                plt.ioff()        
+                fig = plt.figure(figsize=plot_options['fig_size'])
+        
+                #Vertical range
+                y_min=1e100
+                y_max=-1e100
+
+                #Adding progressively bins of current spectrum and master
+                for maink,datak in zip(maink_list,data_list):
+           
+                    #Resampling common master on current exposure table
+                    if (not data_vis['comm_sp_tab']):
+                        data_mast_exp={'flux':np.zeros(dim_exp_proc,dtype=float)*np.nan,'cov':np.zeros(nord_proc,dtype=object)}
+                        for isub in range(nord_proc): 
+                            data_mast_exp['flux'][isub],data_mast_exp['cov'][isub] = bind.resampling(data_proc[maink][iexp]['edge_bins'][isub],edge_bins_com[isub],data_mast[maink]['flux'][isub] , cov = data_mast[maink]['cov'][isub], kind=gen_dic['resamp_mode'])                                                       
+                        data_mast_exp['cond_def'] = ~np.isnan(data_mast_exp['flux'])  
+
+                    #Master table is shared by all exposures
+                    else:data_mast_exp = deepcopy(data_mast[maink])
+
+                    #Defined pixels in exposure and master over selected range
+                    cond_kept_all = data_proc[maink][iexp]['cond_def'] & data_mast_exp['cond_def'] & cond_sel_proc
+                    idx_proc_ord = np_where1D(np.sum( cond_kept_all,axis=1 )>0 )
+                    if len(idx_proc_ord)==0:stop('No orders left')
+                    if len(maink_list)==1:
+                        off_sign = 1.
+                        yoff=0.
+                    else:
+                        off_sign = {'pre':1.,'post':-1.}[maink] 
+                        yoff=0.5*plot_options['gap_exp']*off_sign
+                    raw_Fr_all = np.empty(0,dtype=float)
+                    bin_Fr_all = np.empty(0,dtype=float)
+                    for isub_ord in idx_proc_ord[::-1]:
+                        cond_kept_ord = cond_kept_all[isub_ord]
+                        mast_flux_ord=data_mast[maink]['flux'][isub_ord]
+                        flux_ord=data_proc[maink][iexp]['flux'][isub_ord]
+                        cov_ord=data_proc[maink][iexp]['cov'][isub_ord]
+                        
+                        #Spectral grid
+                        if plot_options['sp_var'] == 'nu' :                
+                            cen_bins_ord = c_light/data_proc[maink][iexp]['cen_bins'][isub_ord,::-1]
+                            edge_bins_ord = c_light/data_proc[maink][iexp]['edge_bins'][isub_ord,::-1]    
+                            
+                            #Order tables with nu 
+                            cond_kept_ord = cond_kept_ord[::-1]
+                            mast_flux_ord=mast_flux_ord[::-1]
+                            flux_ord=flux_ord[::-1]
+                            cov_ord=cov_ord[:,::-1]   
+                                
+                        elif plot_options['sp_var'] == 'wav' :
+                            cen_bins_ord = data_proc[maink][iexp]['cen_bins'][isub_ord]
+                            edge_bins_ord = data_proc[maink][iexp]['edge_bins'][isub_ord]                            
+
+                        #Defining bins at the requested resolution over the range of original defined bins
+                        min_pix = np.nanmin(edge_bins_ord[0:-1][cond_kept_ord])
+                        max_pix = np.nanmax(edge_bins_ord[1::][cond_kept_ord])
+                        n_bins_init=int(np.ceil((max_pix-min_pix)/plot_options['bin_width']))
+                        bin_siz=(max_pix-min_pix)/n_bins_init
+                        bin_bd=np.append(min_pix+bin_siz*np.arange(n_bins_init,dtype=float),max_pix)  
+                        bin_dic={}
+                        bin_dic['cen_bins'] = 0.5*(bin_bd[0:-1]+bin_bd[1::])
+                        bin_dic['dcen_bins'] = (bin_bd[1::]-bin_bd[0:-1])
+
+                        #Resampling at lower resolution
+                        flux_rb,cov_rb = bind.resampling(bin_bd, edge_bins_ord, flux_ord , cov = cov_ord, kind=gen_dic['resamp_mode'])
+                        mast_rb = bind.resampling(bin_bd, edge_bins_ord, mast_flux_ord , kind=gen_dic['resamp_mode'])
+
+                        #New bins have constant width so that flux and flux density are equivalent
+                        bin_dic['Fr'] = flux_rb/mast_rb
+                        bin_dic['varFr'] = cov_rb[0]/mast_rb**2.
+                        conddef_bin = ~np.isnan(bin_dic['Fr'] )
+                        for key in ['Fr','varFr','cen_bins','dcen_bins']:bin_dic[key]=bin_dic[key][conddef_bin]
+
+                        #Set binned ratio over current order to a constant level unity   
+                        if plot_options['force_unity']:                     
+                            corr_Fr = np.sum(bin_dic['dcen_bins'])/np.sum(bin_dic['Fr']*bin_dic['dcen_bins'])  
+                            bin_dic['Fr']*=corr_Fr
+                            bin_dic['varFr']*=corr_Fr**2.
+                        else:corr_Fr=1.
+
+                        #Plot binned data
+                        bin_Fr_all = np.append(bin_Fr_all,bin_dic['Fr'])
+                        if plot_options['plot_bin']:
+                            if maink=='pre':col_loc = plot_options['color_dic_bin'][inst][vis]
+                            elif maink=='post':col_loc = plot_options['color_dic_bin_sec'][inst][vis]
+                            plt.plot(bin_dic['cen_bins'],yoff+bin_dic['Fr'],color=col_loc,linestyle='-',lw=plot_options['lw_plot'],marker=plot_options['marker'],markersize=plot_options['markersize'],drawstyle=plot_options['drawstyle'],zorder=1)   
+                            if plot_options['plot_bin_err']:plt.errorbar(bin_dic['cen_bins'],yoff+bin_dic['Fr'],yerr = np.sqrt(bin_dic['varFr']),color=col_loc,linestyle='',lw=plot_options['lw_plot'],marker=None,alpha=plot_options['alpha_err'],zorder=1) 
+
+                        #Plot transmission spectrum at original resolution
+                        if plot_options['plot_data']:
+                            cond_def_raw = (~np.isnan(flux_ord)) & (~np.isnan(mast_flux_ord))
+                            raw_Fr = corr_Fr*flux_ord[cond_def_raw]/mast_flux_ord[cond_def_raw]   
+                            raw_Fr_all = np.append(raw_Fr_all,raw_Fr)
+                            if maink=='pre':col_loc = plot_options['color_dic'][inst][vis]
+                            elif maink=='post':col_loc = plot_options['color_dic_sec'][inst][vis]
+                            plt.plot(cen_bins_ord[cond_def_raw], yoff+raw_Fr,color=col_loc,linestyle='-',lw=plot_options['lw_plot'],marker=plot_options['marker'],markersize=plot_options['markersize'],drawstyle=plot_options['drawstyle'],zorder=0,alpha = 0.5)   
+                            if plot_options['plot_err']:
+                                raw_varFr = corr_Fr**2.*cov_ord[0][cond_def_raw]/mast_flux_ord[cond_def_raw]**2.    
+                                plt.errorbar(cen_bins_ord[cond_def_raw], yoff+raw_Fr,yerr = np.sqrt(raw_varFr),color=col_loc,linestyle='-',lw=plot_options['lw_plot'],marker=None,markersize=plot_options['markersize'],zorder=0,alpha = 0.3)   
+
+                    #Range
+                    if plot_options['y_range'] is None:
+                        if plot_options['plot_data']:
+                            y_max=max(np.max(yoff+raw_Fr_all),y_max)
+                            y_min=min(np.min(yoff+raw_Fr_all),y_min)
+                        elif plot_options['plot_bin']:
+                            y_max=max(np.max(yoff+bin_Fr_all),y_max)
+                            y_min=min(np.min(yoff+bin_Fr_all),y_min)
+                 
+                    #Dispersions
+                    if plot_options['print_disp']:
+                        ytxt = 1. 
+                        if maink=='pre':xtxt =x_range_loc[0]+0.05*dx_range 
+                        if maink=='post':xtxt =x_range_loc[1]-0.4*dx_range
+                        rms_txt = 'RMS['+datak+'.]'
+                        if plot_options['plot_data']:
+                            rms_loc = (raw_Fr_all-1.).std()
+                            rms_txt += " = {0:.2e}".format(rms_loc)+' (raw)'
+                            disp_dic[maink][0,isub_exp]=rms_loc
+                        if plot_options['plot_bin']:
+                            rms_loc = (bin_Fr_all-1.).std()
+                            rms_txt += " = {0:.2e}".format(rms_loc)+' (bin)'
+                            disp_dic[maink][1,isub_exp]=rms_loc
+                        plt.text(xtxt,ytxt,rms_txt,verticalalignment='center', horizontalalignment='left',fontsize=8.,zorder=10,color=col_loc)
+
+                #Plot model
+                if ('wiggle' in data_list) and plot_options['plot_model']:
+                    if plot_options['sp_var']=='nu':x_HR = data_mod[iexp]['nu_HR']
+                    elif plot_options['sp_var']=='wav':x_HR = c_light/data_mod[iexp]['nu_HR']
+                    plt.plot(x_HR,0.5*plot_options['gap_exp']+data_mod[iexp]['wig_HR'],color='red',linestyle='-',lw=plot_options['lw_plot'],zorder=2)   
+
+                #Plot level
+                if len(maink_list)==1:
+                    plt.plot(x_range_loc,np.repeat(1.,2),color='limegreen',linestyle='--',lw=plot_options['lw_plot'],zorder=3)   
+                else:
+                    plt.plot(x_range_loc,np.repeat(1.-0.5*plot_options['gap_exp'],2),color=col_loc,linestyle='--',lw=plot_options['lw_plot'],zorder=3)   
+                    plt.plot(x_range_loc,np.repeat(1.+0.5*plot_options['gap_exp'],2),color=col_loc,linestyle='--',lw=plot_options['lw_plot'],zorder=3)   
+                
+                #Plot order index
+                y_range_loc = plot_options['y_range'] if plot_options['y_range'] is not None else [y_min,y_max]
+                dy_range=y_range_loc[1]-y_range_loc[0]
+                if plot_options['plot_idx_ord']:
+                    if plot_options['sp_var']=='nu':x_ord = c_light/gen_dic['wav_ord_inst'][inst]
+                    elif plot_options['sp_var']=='wav':x_ord = gen_dic['wav_ord_inst'][inst]
+                    if dx_range<2:dord=1
+                    elif dx_range<10:dord=2
+                    else:dord=4  
+                    for iord in np.arange(0,len(x_ord),dord):
+                        if (x_ord[iord]>x_range_loc[0]) and (x_ord[iord]<x_range_loc[1]):
+                            if is_odd(iord):delt_txt = 0.03
+                            else:delt_txt = 0.06
+                            plt.text(x_ord[iord],y_range_loc[1]+delt_txt*dy_range,str(iord),verticalalignment='center', horizontalalignment='center',fontsize=6.,zorder=15,color='black') 
+
+                #Shade ranges not included in the fit
+                if ('wiggle' in data_list) and (plot_options['shade_unfit']) and (vis in data_com_wig['wig_range_fit']):
+                    plot_shade_range(plt.gca(),data_com_wig['wig_range_fit'][vis],x_range_loc,y_range_loc,mode='fill',facecolor='dodgerblue',compl=True)                  
+
+                #Frame
+                xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
+                if plot_options['sp_var']=='nu':x_title=r'Nu (10$^{-10}$s$^{-1}$)'
+                elif plot_options['sp_var']=='wav':x_title=r'Wavelength (A)'
+                custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
+                            x_title=x_title,y_title='Flux ratio',font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
+                plt.savefig(path_loc+'idx'+str(iexp)+'.'+plot_dic['trans_sp']) 
+                plt.close()      
+             
+
+            #Dispersion plots
+            if plot_options['print_disp']!=[] & plot_options['plot_disp']:
+            
+                #Frame
+                plt.ioff() 
+                fig = plt.figure(figsize=plot_options['fig_size'])
+                x_min=1e100
+                x_max=-1e100
+                if (inst in plot_options['y_range_disp']) and (vis in plot_options['y_range_disp'][inst]):y_range_loc =  plot_options['y_range_disp'][inst][vis]
+                else:
+                    y_range_loc=None
+                    y_min=1e100
+                    y_max=-1e100                            
+                
+                #Plot for requested step
+                mean_disp = {}
+                bin_types=[]
+                if plot_options['plot_data']:bin_types+=['raw']
+                if plot_options['plot_bin']:bin_types+=['bin']
+                for maink in disp_dic:
+                    mean_disp[maink]={}
+                    for bin_type in bin_types:
+                        if bin_type=='raw':
+                            ibin=0
+                            if maink=='pre':col_loc = plot_options['color_dic'][inst][vis]
+                            elif maink=='post':col_loc = plot_options['color_dic_sec'][inst][vis]
+                        elif bin_type=='bin':
+                            ibin=1
+                            if maink=='pre':col_loc = plot_options['color_dic_bin'][inst][vis]
+                            elif maink=='post':col_loc = plot_options['color_dic_bin_sec'][inst][vis]
+                        cond_def = ~np.isnan(disp_dic[maink][ibin,isub_exp])
+                        cen_ph_vis = coord_dic[inst][vis][plot_options['pl_ref'][inst][vis]]['cen_ph'][cond_def]
+                        disp_maink = 1e6*disp_dic[maink][ibin,cond_def]
+                        plt.plot(cen_ph_vis,disp_maink,color=col_loc,linestyle='',zorder=1,marker='o',markersize=1.5)
+
+                        #Boundaries
+                        x_min=np.min([np.nanmin(cen_ph_vis),x_min])
+                        x_max=np.max([np.nanmax(cen_ph_vis),x_max]) 
+                        dx_range = x_max-x_min
+                        x_range_loc = [x_min-0.05*dx_range,x_max+0.05*dx_range]     
+                        if (y_range_loc is None):
+                            y_min=np.min([np.nanmin(disp_maink),y_min])
+                            y_max=np.max([np.nanmax(disp_maink),y_max]) 
+
+                        #Mean dispersion
+                        mean_disp[maink][bin_type] = np.mean(disp_maink)
+                        plt.plot(x_range_loc,[mean_disp[maink][bin_type],mean_disp[maink][bin_type]],color=col_loc,linestyle='-',zorder=1,lw=0.5)
+
+                #Ranges
+                dx_range=x_range_loc[1]-x_range_loc[0]   
+                if (y_range_loc is None):
+                    dy_range = y_max-y_min
+                    y_range_loc = [y_min-0.05*dy_range,y_max+0.05*dy_range]     
+                dy_range=y_range_loc[1]-y_range_loc[0] 
+
+                #Print on-screen   
+                for bin_type in bin_types:     
+                    if bin_type=='raw':ytxt = y_range_loc[0]+0.6*dy_range   
+                    elif bin_type=='bin':ytxt = y_range_loc[0]+0.4*dy_range   
+                    for maink,datak in zip(maink_list,data_list): 
+                        if maink=='pre':
+                            xtxt =x_range_loc[0]+0.05*dx_range 
+                            if bin_type=='raw':col_loc = plot_options['color_dic'][inst][vis]
+                            elif bin_type=='bin':col_loc = plot_options['color_dic_bin'][inst][vis]
+                        if maink=='post':
+                            xtxt =x_range_loc[1]-0.4*dx_range
+                            if bin_type=='raw':col_loc = plot_options['color_dic_sec'][inst][vis]
+                            elif bin_type=='bin':col_loc = plot_options['color_dic_bin_sec'][inst][vis] 
+                        rms_txt = 'RMS['+datak+'.]'+ " = {0:.2e}".format(mean_disp[maink][bin_type])+' ('+bin_type+')'
+                        plt.text(xtxt,ytxt,rms_txt,verticalalignment='center', horizontalalignment='left',fontsize=8.,zorder=10,color=col_loc)
+        
+                #Frame                                                 
+                xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
+                custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
+                            x_title=r'Orbital Phase',y_title='RMS (ppm)',font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
+                plt.savefig(path_loc+'Dispersion.'+plot_dic['trans_sp']) 
+                plt.close() 
+
+    return None
+
+
+
+
+
 
 
 

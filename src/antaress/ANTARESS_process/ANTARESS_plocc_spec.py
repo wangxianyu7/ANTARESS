@@ -20,7 +20,7 @@ def def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_p
     
     Calls requested function to define planet-occulted profiles associated with each observed exposure
     
-     - local profiles are used to correct residual profiles from stellar contamination
+     - local profiles are used to correct differential profiles from stellar contamination
      - intrinsic profiles are used to assess fit quality
 
     Args:
@@ -128,7 +128,7 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
     #Processing in-transit exposures for which planet-occulted rv is known
     for isub,i_in in enumerate(idx_aligned):    
     
-        #Upload spectral tables from residual or intrinsic profile of current exposure
+        #Upload spectral tables from differential or intrinsic profile of current exposure
         if data_dic['Intr']['plocc_prof_type']=='Intr':iexp_eff = i_in
         elif data_dic['Intr']['plocc_prof_type']=='Res':iexp_eff = gen_dic[inst][vis]['idx_in2exp'][i_in]
         data_loc_exp = dataload_npz(data_vis['proc_'+data_dic['Intr']['plocc_prof_type']+'_data_paths']+str(iexp_eff))
@@ -332,7 +332,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         else:fixed_args['conv2intr'] = False 
         transit_spots={}
         spots_prop ={}
-        iexp_list = range(data_vis['n_in_tr'])
+        iexp_list = data_dic[prof_type][inst][vis]['idx_def']
     chrom_mode = data_vis['system_prop']['chrom_mode']
   
     #Activation of spectral conversion and resampling 
@@ -355,7 +355,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
             iexp_glob =iexp
             iexp_eff = iexp
 
-        #Upload spectral tables from residual profile of current exposure
+        #Upload spectral tables from differential profile of current exposure
         data_loc_exp = dataload_npz(data_vis['proc_'+plocc_prof_type+'_data_paths']+str(iexp_eff))
     
         #Limit model table to requested definition range
@@ -678,7 +678,7 @@ def plocc_prof_rec(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,coord_dic):
     #Processing in-transit exposures with reconstructed intrinsic profiles
     for isub,i_in in enumerate(idx_aligned):
 
-        #Upload residual or intrinsic profile for current exposure to get its spectral tables
+        #Upload differential or intrinsic profile for current exposure to get its spectral tables
         if data_dic['Intr']['plocc_prof_type']=='Intr':iexp_eff = i_in
         else:iexp_eff = gen_dic[inst][vis]['idx_in2exp'][i_in]
         data_loc_exp = dataload_npz(data_vis['proc_'+data_dic['Intr']['plocc_prof_type']+'_data_paths']+str(iexp_eff))  

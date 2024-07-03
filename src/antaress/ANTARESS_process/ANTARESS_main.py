@@ -171,11 +171,11 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
 
             #--------------------------------------------------------------------------------------------------
-            #Processing residual and intrinsic stellar profiles
+            #Processing differential and intrinsic stellar profiles
             data_type_gen = 'Intr'
             #--------------------------------------------------------------------------------------------------
 
-            #Extracting residual profiles
+            #Extracting differential profiles
             if (gen_dic['res_data']):
                 extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
 
@@ -183,11 +183,11 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             if gen_dic['intr_data']:
                 extract_intr_profiles(data_dic,gen_dic,inst,vis,system_param['star'],coord_dic,theo_dic,plot_dic)
         
-            #Converting out-of-transit residual and intrinsic spectra into CCFs
+            #Converting out-of-transit differential and intrinsic spectra into CCFs
             if gen_dic[data_type_gen+'_CCF']:
                 ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
                   
-            #Applying PCA to out-of transit residual profiles
+            #Applying PCA to out-of transit differential profiles
             if (gen_dic['pca_ana']):
                 pc_analysis(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
 
@@ -199,7 +199,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             if gen_dic['align_'+data_type_gen]: 
                 align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)
 
-            #Processing converted 2D intrinsic and residual profiles
+            #Processing converted 2D intrinsic and differential profiles
             if gen_dic['spec_1D']:                
                 conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
 
@@ -505,7 +505,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     if gen_dic['pca_ana']:gen_dic['intr_data'] = True
     if gen_dic['intr_data']:
         if not gen_dic['res_data']:
-            print('Automatic activation of residual profile extraction')
+            print('Automatic activation of differential profile extraction')
             gen_dic['res_data'] = True
         if not gen_dic['flux_sc']:
             print('Automatic activation of flux scaling calculation')
@@ -578,7 +578,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #Set final data mode for each type of profiles
     #    - the general instrument and visit dictionaries contain a field type that represents the mode of the data at the current stage of the pipeline
     #    - here we set the final mode for each type of profile, so that they can be retrieved in their original mode for plotting
-    #      eg, if profiles are converted into CCF at the Residual stage, we keep the information that disk-integrated profiles were in spectral mode
+    #      eg, if profiles are converted into CCF at the differential stage, we keep the information that disk-integrated profiles were in spectral mode
     for key in ['DI','Res','Intr','Atm']:data_dic[key]['type'] = {inst:deepcopy(gen_dic['type'][inst]) for inst in gen_dic['type']}
     for inst in gen_dic['type']:
         if 'spec' in gen_dic['type'][inst]: 
@@ -662,7 +662,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #Additional properties
     data_prop={}
 
-    #Standard-deviation curves with bin size for the out-of-transit residual CCFs
+    #Standard-deviation curves with bin size for the out-of-transit differential CCFs
     #    - defining the maximum size of the binning window, and the binning size for the sliding window (we will average the bins in windows of width bin_size from 1 to 40 (arbitrary))
     if gen_dic['scr_search']:
         gen_dic['scr_srch_max_binwin']=40.     
@@ -1008,7 +1008,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     gen_dic['save_plot_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'
     gen_dic['add_txt_path']={'DI':'','Intr':'','Res':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
     gen_dic['data_type_gen']={'DI':'DI','Res':'Res','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
-    gen_dic['type_name']={'DI':'disk-integrated','Res':'residual','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
+    gen_dic['type_name']={'DI':'disk-integrated','Res':'differential','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
 
     #------------------------------------------------------------------------------------------------------------------------
 
@@ -1716,7 +1716,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 #      scr_lgth = bin size/CCF_step
                                 #   with CCF typically oversampled, CCF_step is lower than the bin size and we keep about one CCF point every bin size   
                                 # + if the correlation length is chosen, then it may depend on the visit conditions but should be constant for a given visit. In that case 
-                                # the number of screened bins has already been set in 'scr_lgth' for the visit, using the empirical estimation on the residuals CCFs            
+                                # the number of screened bins has already been set in 'scr_lgth' for the visit, using the empirical estimation on the differential CCFs            
                                 if vis not in gen_dic['scr_lgth'][inst]:
                                     gen_dic[inst][vis]['scr_lgth']=int(round(gen_dic['pix_size_v'][inst]/delta_rv))
                                     if gen_dic[inst][vis]['scr_lgth']<=1:gen_dic[inst][vis]['scr_lgth']=1  

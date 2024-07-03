@@ -2083,7 +2083,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 #Initializations
                 fit_dic={'save_dir':gen_dic['save_data_dir']+'/Corr_data/Wiggles/Vis_fit/'+inst+'_'+vis+'/','merit':{}}
                 if (not os_system.path.exists(fit_dic['save_dir'])):os_system.makedirs(fit_dic['save_dir'])
-                if gen_dic['wig_vis_fit']['fixed']:fit_dic['fit_mode'] = ''
+                if gen_dic['wig_vis_fit']['fixed']:fit_dic['fit_mode'] = 'fixed'
                 else:fit_dic['fit_mode'] = 'chi2'   
                     
                 #Join tables for global model
@@ -2224,7 +2224,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     return wig_mast
 
                 #Fixed model
-                if fit_dic['fit_mode'] == '':
+                if fit_dic['fit_mode'] == 'fixed':
                     p_best = deepcopy(p_start)
 
                 #Fitted model 

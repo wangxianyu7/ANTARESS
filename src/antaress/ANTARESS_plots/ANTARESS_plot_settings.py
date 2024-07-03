@@ -19,6 +19,7 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
      - `font_size_txt = float` : size for text font within plot.
      - `lw_plot = float` : linewidth.
      - `ls_plot = str` : linestyle.
+     - `col_contacts = str` : color for transit contacts
 
     Args:
         plot_options (dic) : dictionary for all generic plot settings
@@ -53,6 +54,9 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
     #Linestyle
     plot_options[key_plot]['ls_plot']='-'
     
+    #Color for transit contacts
+    plot_options[key_plot]['col_contacts']='black'
+
     #Axis thickness
     plot_options[key_plot]['axis_thick']=1  
     
@@ -261,8 +265,8 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
     #Measured values
     plot_options[key_plot]['print_mes']=False
     
-    #Aligned profiles
-    plot_options[key_plot]['ref_level']=False
+    #Plot reference level
+    plot_options[key_plot]['plot_reflev']=False
 
     #Plot reference velocity
     plot_options[key_plot]['plot_refvel']=True  
@@ -1541,7 +1545,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         
     ################################################################################################################  
-    #%% Residual profiles
+    #%% Differential profiles
     ################################################################################################################        
         
     ################################################################################################################  
@@ -1805,7 +1809,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
             #%%%%% Plot reference level
-            plot_settings[key_plot]['ref_level'] = False
+            plot_settings[key_plot]['plot_reflev'] = False
 
             ##############################################################################
             #%%%%% Profile and its fit
@@ -2159,7 +2163,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['col_orb_samp'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
             
         #%%%% Number of orbits drawn randomly
-        plot_settings[key_plot]['norb']=2500
+        plot_settings[key_plot]['norb']=np.repeat(100,len(plot_settings[key_plot]['pl_to_plot'])) 
 
         #%%%% Ranges of orbital parameters
         plot_settings[key_plot]['lambdeg_err']={}
@@ -2210,9 +2214,18 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Plot stellar poles
         plot_settings[key_plot]['plot_poles']=True  
         plot_settings[key_plot]['plot_hidden_pole']= False 
+
+        #%%%% Source for spots
+        #    - spot properties can come from three sources for this plot:
+        # + the mock dataset (mock_spot_prop) - from mock_dic
+        # + fitted spot properties (fit_spot_prop) - from glob_fit_dic
+        # + custom user-specified properties (custom_spot_prop) - parameterized below
+        plot_settings[key_plot]['mock_spot_prop'] = False
+        plot_settings[key_plot]['fit_spot_prop'] = False
+        plot_settings[key_plot]['custom_spot_prop'] = {}
         
-        #%%%% Plot stellar spots
-        plot_settings[key_plot]['plot_spots'] = False
+        #%%%% Path to the file storing the best-fit spot results to plot
+        plot_settings[key_plot]['fit_results_file'] = ''
         
         #%%%% Number of positions of the spots to be plotted, equally distributed within the given time range.
         plot_settings[key_plot]['n_image_spots'] = 15

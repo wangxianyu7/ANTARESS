@@ -177,7 +177,7 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_grid,coord_grid, transit_
             #Initialize entries for spot coordinates 
             for spot in transit_spots:
                 coords[spot] = {}
-                for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:coords[spot][key] = np.zeros(len(coords['bjd']),dtype=float)*np.nan
+                for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'fctrst']:coords[spot][key] = np.zeros(len(coords['bjd']),dtype=float)*np.nan
                 for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:coords[spot][key] = np.zeros([3,len(coords['bjd'])],dtype=float)*np.nan
                 coords[spot]['is_visible'] = np.zeros([3,len(coords['bjd'])],dtype=bool)
                 
@@ -186,7 +186,7 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_grid,coord_grid, transit_
                 spots_prop = retrieve_spots_prop_from_param(system_param_loc['star'],param,inst,vis,fit_tstamp,exp_dur=coords['t_dur'][ifit_tstamp])
                 for spot in transit_spots:
 
-                    for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
+                    for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'fctrst']:
                         coords[spot][key][ifit_tstamp] = spots_prop[spot][key]
 
                     for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
@@ -565,7 +565,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                 reduced_spot_prop_oversamp={}
                 for spot in spots_in_exp:
                     reduced_spot_prop_oversamp[spot]={}
-                    reduced_spot_prop_oversamp[spot]['ctrst']=coord_in[spot]['ctrst'][iexp]
+                    reduced_spot_prop_oversamp[spot]['fctrst']=coord_in[spot]['fctrst'][iexp]
                     reduced_spot_prop_oversamp[spot]['ang_rad']=coord_in[spot]['ang_rad'][iexp]
                     temp_long = np.arcsin(coord_oversamp['x'][spot][iosamp] / np.cos(coord_in[spot]['lat_rad_exp'][1,iexp]))
                     reduced_spot_prop_oversamp[spot]['cos_lat_exp_center'] = np.cos(coord_in[spot]['lat_rad_exp'][1,iexp])
@@ -628,7 +628,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                         x_st_sky_max_sp = coord_oversamp['x'][spot][iosamp] + theo_dic['x_st_sky_grid_sp'][spot]
                         y_st_sky_max_sp = coord_oversamp['y'][spot][iosamp] + theo_dic['y_st_sky_grid_sp'][spot]
                         spot_prop_oversamp[spot] = {}
-                        spot_prop_oversamp[spot]['ctrst'] = coord_in[spot]['ctrst'][iexp]
+                        spot_prop_oversamp[spot]['fctrst'] = coord_in[spot]['fctrst'][iexp]
                         spot_prop_oversamp[spot]['x_sky_grid'] = x_st_sky_max_sp
                         spot_prop_oversamp[spot]['y_sky_grid'] = y_st_sky_max_sp
                         spot_prop_oversamp[spot]['x_sky_exp_center'] = coord_oversamp['x'][spot][iosamp]
@@ -666,10 +666,10 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                                     surf_prop_dic_spot[subkey_chrom]['line_prof'][:,isub_exp]+=sum_prop_dic[subkey_chrom][spot]['line_prof']
 
                                 emit_coord_reg_dic = deepcopy(coord_reg_dic)
-                                emit_coord_reg_dic[subkey_chrom][spot]['Ftot'][iband] *= (1-spot_prop_oversamp[spot]['ctrst'])
+                                emit_coord_reg_dic[subkey_chrom][spot]['Ftot'][iband] *= (1-spot_prop_oversamp[spot]['fctrst'])
 
                                 emit_surf_prop_dic_spot = deepcopy(surf_prop_dic_spot)
-                                emit_surf_prop_dic_spot[subkey_chrom][spot]['Ftot'][iband] *= (1-spot_prop_oversamp[spot]['ctrst'])
+                                emit_surf_prop_dic_spot[subkey_chrom][spot]['Ftot'][iband] *= (1-spot_prop_oversamp[spot]['fctrst'])
 
                     #Star was effectively occulted at oversampled position
                     if cond_occ_sp:
@@ -922,7 +922,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
             
             #Retrieve the flux-grid with the LD coefficients of the spot
             _,_,_,Fsurf_spot_emit_grid,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_spot_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'pl',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
-            Fsurf_grid_star[:, iband] = np.where(coord_grid['gen_spot_flag_map'] == True, Fsurf_grid_star[:, iband] - (Fsurf_spot_emit_grid[:, iband] * reduced_spot_prop[ref_spot]['ctrst']), Fsurf_grid_star[:, iband])
+            Fsurf_grid_star[:, iband] = np.where(coord_grid['gen_spot_flag_map'] == True, Fsurf_grid_star[:, iband] - (Fsurf_spot_emit_grid[:, iband] * reduced_spot_prop[ref_spot]['fctrst']), Fsurf_grid_star[:, iband])
             Ftot_star = np.sum(Fsurf_grid_star, axis=0)
 
         #Scale continuum level
@@ -1486,7 +1486,7 @@ def is_spot_visible(istar, long_rad, lat_rad, ang_rad, f_GD, RpoleReq) :
         istar (float) : stellar inclination (in radians)
         long_rad (float) : spot longitude (in radians)
         lat_rad (float) : spot latitude (in radians)
-        ang_rad (float) : spot angular size (in radians)
+        ang_rad (float) : spot half-angular size (in radians)
         f_GD (float) : oblateness coefficient.
         RpoleReq (float) : pole to equatoral radius ratio.
      
@@ -1583,25 +1583,25 @@ def retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd, exp_dur
     """ 
 
     spots_prop = {}
-    ctrst_param = []
+    fctrst_param = []
     for par in param : 
         # Parameter is spot-related and linked to the right visit and instrument
         if ('_SP' in par) and ('_IS'+inst in par) and ('_VS'+vis in par): 
-            if 'ctrst' not in par:
+            if 'fctrst' not in par:
                 spot_par = par.split('__IS')[0]
                 spot_name = par.split('_SP')[1]
                 if spot_name not in spots_prop : spots_prop[spot_name] = {}
                 spots_prop[spot_name][spot_par] = param[par]
             else:
-                ctrst_param.append(param[par])
+                fctrst_param.append(param[par])
 
     #Ensuring that only one contrast is provided for the spots in each visit
-    if len(ctrst_param)>1:
+    if len(fctrst_param)>1:
         stop('WARNING: All spots in a given visit must share a contrast value. Please provide only one spot contrast parameter.')
     
     #Assigning contrast value to each spot
     for spot_name in spots_prop.keys():
-        spots_prop[spot_name]['ctrst'] = ctrst_param[0]
+        spots_prop[spot_name]['fctrst'] = fctrst_param[0]
  
     # Retrieve properties, if spots are visible in the exposures considered
     for spot in spots_prop : 
@@ -1609,7 +1609,7 @@ def retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd, exp_dur
         #Finding the times at the center, start and end of each exposure considered
         t_bjd_center = deepcopy(t_bjd)
 
-        # Spot lattitude - constant in time
+        # Spot latitude - constant in time
         lat_rad = spots_prop[spot]['lat']*np.pi/180.
         
         # Spot longitude - varies over time
@@ -1630,9 +1630,9 @@ def retrieve_spots_prop_from_param(star_params, param, inst, vis, t_bjd, exp_dur
         #Exposure center
         x_sky_center,y_sky_center,z_sky_center = frameconv_star_to_skystar(x_st_center,y_st_center,z_st_center,istar)
 
-       
         #Store properties common across the exposure
         spots_prop[spot]['ang_rad'] = spots_prop[spot]['ang'] * np.pi/180
+        
         # Store properties at exposure center
         spots_prop[spot]['lat_rad_exp_center'] = lat_rad
         spots_prop[spot]['sin_lat_exp_center'] = np.sin(lat_rad)
@@ -1924,7 +1924,7 @@ def calc_spotted_region_prop(line_occ_HP_band,cond_occ,spot_prop,iband,system_pr
 
     #Updating the provided dictionaries 
     coord_grid['mu'] = mu_grid_occ[:,0]
-    Focc_star_band += (Ftot_occ[0] - (Ftot_emit[0]*(1-spot_prop[spot_consid]['ctrst'])))
+    Focc_star_band += (Ftot_occ[0] - (Ftot_emit[0]*(1-spot_prop[spot_consid]['fctrst'])))
     sum_prop_dic_spot['nocc'] += coord_grid['nsub_star']
     
     #Distance from projected orbital normal in the sky plane, in absolute value
@@ -1933,7 +1933,7 @@ def calc_spotted_region_prop(line_occ_HP_band,cond_occ,spot_prop,iband,system_pr
     
     #--------------------------------
     #Co-adding properties from current region to the cumulated values over oversampled spot positions 
-    sum_region_prop(line_occ_HP_band,iband,args,parameter_list,Fsurf_grid_occ[:,0],Fsurf_grid_emit[:,0],coord_grid,Ssub_Sstar_sp,cb_band,range_parameter_list,range_reg,sum_prop_dic_spot,coord_reg_dic_spot,par_star,None,spot_prop[spot_consid]['ctrst']) 
+    sum_region_prop(line_occ_HP_band,iband,args,parameter_list,Fsurf_grid_occ[:,0],Fsurf_grid_emit[:,0],coord_grid,Ssub_Sstar_sp,cb_band,range_parameter_list,range_reg,sum_prop_dic_spot,coord_reg_dic_spot,par_star,None,spot_prop[spot_consid]['fctrst']) 
 
     return Focc_star_band, cond_occ
 

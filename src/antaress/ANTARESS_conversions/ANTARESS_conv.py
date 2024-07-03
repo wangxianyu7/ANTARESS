@@ -31,7 +31,7 @@ def init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,mode,dir_save,data_d
         if data_type_gen=='Intr':
             iexp_conv = list(gen_dic[inst][vis]['idx_out'])+list(gen_dic[inst][vis]['idx_in'][prop_dic[inst][vis]['idx_def']])    #Global indexes
             data_type_key = ['Res','Intr']
-            print('   > Converting OT residual and intrinsic spectra into '+txt_print)
+            print('   > Converting OT differential and intrinsic spectra into '+txt_print)
         else:iexp_conv = range(data_dic[inst][vis]['n_in_visit'])    #Global indexes
     if data_type_gen in ['DI','Atm']:  
         if data_type_gen=='Atm': 
@@ -62,7 +62,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
     iexp_conv,data_type_key,_ = init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,'CCFfromSpec',dir_save,data_dic)
 
     #New paths
-    #    - intrinsic and out-of-transit residual profiles are stored separately, contrary to global tables  
+    #    - intrinsic and out-of-transit differential profiles are stored separately, contrary to global tables  
     flux_sc = False
     if data_type_gen in ['Intr','Atm']:
         dir_mast={}
@@ -93,7 +93,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
             gen = deepcopy(data_type_gen)
             
             #Retrieving data
-            #    - out-of-transit residual profiles are retrieved with global indexes
+            #    - out-of-transit differential profiles are retrieved with global indexes
             #    - in-transit intrinsic profiles are retrieved with in-transit indexes
             iexp_eff = deepcopy(iexp)     
             if (gen=='Intr'):
@@ -234,7 +234,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
                     iexp_eff = gen_vis['idx_exp2in'][iexp] 
                     
                     #Set to nan planetary ranges in intrinsic CCFs
-                    #    - this is not done for disk-integrated and residual CCFs, as planetary signals need to be kept in them to be later extracted (planetary ranges are temporarily excluded when analyzing CCFs from those profiles)
+                    #    - this is not done for disk-integrated and differential CCFs, as planetary signals need to be kept in them to be later extracted (planetary ranges are temporarily excluded when analyzing CCFs from those profiles)
                     if ('Intr' in data_dic['Atm']['no_plrange']) and (iexp in data_dic['Atm'][inst][vis]['iexp_no_plrange']):
                         cond_in_pl = ~( np.ones(data_vis['nvel'],dtype=bool) & excl_plrange(cond_def_exp[0],data_dic['Atm'][inst][vis]['exclu_range_star'],iexp,edge_bins[0],'CCF')[0])
                         CCF_all[iexp_sub,0,cond_in_pl]=np.nan
@@ -321,7 +321,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
 def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
     r"""**CCF conversion** 
     
-    Wrap-up for conversion of out-of-transit residual and intrinsic spectra into CCFs.
+    Wrap-up for conversion of out-of-transit differential and intrinsic spectra into CCFs.
     
     Args:
         TDB
@@ -356,7 +356,7 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
         data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
 
         #Continuum ranges
-        #    - if planetary contamination is excluded from residual out-of-transit profiles, define a large enough initial continuum range if the planet has a wide velocimetric motion 
+        #    - if planetary contamination is excluded from differential out-of-transit profiles, define a large enough initial continuum range if the planet has a wide velocimetric motion 
         for iord in range(data_dic[inst]['nord']):
             if iord in data_dic[gen]['cont_range'][inst]:
                 for bd_int in data_dic[gen]['cont_range'][inst][iord]:
@@ -380,7 +380,7 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
     
         #Definition of errors on based on the dispersion in the continuum
         #    - attributing constant error to all points, if requested
-        #    - if atmospheric profiles are extracted this operation must be done on residual profiles, and not intrinsic ones, so that errors can then be propagated         
+        #    - if atmospheric profiles are extracted this operation must be done on differential profiles, and not intrinsic ones, so that errors can then be propagated         
         if data_dic['Intr']['disp_err']: 
 
             #Continuum dispersion
