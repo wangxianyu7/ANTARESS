@@ -4,8 +4,14 @@
 
 .. role:: orange
 
-:orange:`A`\dvanced and :orange:`N`\eat :orange:`T`\echniques for the :orange:`A`\ccurate :orange:`R`\etrieval of :orange:`E`\xoplanetary and :orange:`S`\tellar :orange:`S`\pectra
-***********************************************************************************************************************************************************************************
+.. raw:: html
+
+    <style> .lskblue {color:LightSkyBlue} </style>
+
+.. role:: lskblue
+
+:lskblue:`A`\dvanced and :lskblue:`N`\eat :lskblue:`T`\echniques for the :lskblue:`A`\ccurate :lskblue:`R`\etrieval of :lskblue:`E`\xoplanetary and :lskblue:`S`\tellar :lskblue:`S`\pectra
+*******************************************************************************************************************************************************************************************
 
 
 About ANTARESS
