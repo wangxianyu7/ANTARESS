@@ -72,12 +72,12 @@ html_sourcelink_suffix = ""
 html_theme_options = {
     "gitlab_url": "https://gitlab.unige.ch/bourrier/antaress",
     "logo": {
-        "text": "ANTARESS "+release,
+        "text": "Version "+release,
     },
     "navigation_with_keys":True,    
     }
-html_logo = "./Fixed_files/antares_webp.png"
-html_favicon = "./Fixed_files/antares_webp.ico"
+html_logo = "./Fixed_files/antaress_webp.png"
+html_favicon = "./Fixed_files/antaress_icon.ico"
 
 html_sidebars = {
     "**": ["navbar-logo.html","search-field.html","sbt-sidebar-nav.html"]
