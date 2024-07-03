@@ -820,7 +820,10 @@ def CCF_telluric_model(params,velccf,args=None):
     #Telluric CCFs
     n_ccf = len(velccf)
     ccf_uncorr     = np.zeros(n_ccf,dtype=float)
-    if args['ccf_corr']:ccf_corr     = np.zeros(n_ccf,dtype=float)
+    if args['ccf_corr']:
+        ccf_corr     = np.zeros(n_ccf,dtype=float)
+        norm_cont_corr = 0.
+        ord_coadd_eff_corr = []
     nord_coadd = len(args['iord_fit_list'])
     cov_uncorr_ord = np.zeros(nord_coadd,dtype=object)
     nd_cov_uncorr_ord=np.zeros(nord_coadd,dtype=int) 
@@ -876,7 +879,6 @@ def CCF_telluric_model(params,velccf,args=None):
             flux_ord = args['flux'][iord,idx_def_ord[0]:idx_def_ord[-1]+1]        
             cov_ord = args['cov'][iord][:,idx_def_ord[0]:idx_def_ord[-1]+1] 
             gdet_ord = args['mean_gdet'][iord,idx_def_ord[0]:idx_def_ord[-1]+1] 
-            if args['ccf_corr']:flux_corr_ord = args['flux_corr'][iord][idx_def_ord[0]:idx_def_ord[-1]+1] 
             cond_def_ord = args['cond_def'][iord,idx_def_ord[0]:idx_def_ord[-1]+1]        
             idx_maskL_kept = check_CCF_mask_lines(1,np.array([edge_bins_ord]),np.array([cond_def_ord]),CCF_line_wav_scaled,args['edge_velccf'])
             if len(idx_maskL_kept)>0:
@@ -892,7 +894,6 @@ def CCF_telluric_model(params,velccf,args=None):
                 ccf_uncorr_ord,    cov_ccf_uncorr_ord      = new_compute_CCF(edge_bins_ord,flux_ord,cov_ord,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gdet_ord)[0:2]
                 cov_uncorr_ord[isub_ord] = cov_ccf_uncorr_ord 
                 nd_cov_uncorr_ord[isub_ord] = np.shape(cov_ccf_uncorr_ord)[0]
-                if args['ccf_corr']:ccf_corr_ord = new_compute_CCF(edge_bins_ord,flux_corr_ord,None,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gdet_ord)[0]
                 ccf_model_conv_ord = new_compute_CCF(edge_bins_mod,telluric_spectrum_conv,None,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1)[0]
                
                 #Normalize CCFs and co-add
@@ -901,8 +902,26 @@ def CCF_telluric_model(params,velccf,args=None):
                 cont_data = np.nanmedian(ccf_uncorr_ord[cond_cont_ccf])
                 norm_cont+=cont_data
                 ccf_uncorr+=ccf_uncorr_ord
-                if args['ccf_corr']:ccf_corr+=ccf_corr_ord
                 ccf_model_conv+=ccf_model_conv_ord*cont_data/np.nanmedian(ccf_model_conv_ord[cond_cont_ccf])
+
+                #Compute CCF from corrected spectrum independently
+                #    - the strong lines used for the fit are typically deep, and may have been set to nan in the corrected spectra
+                #      the 'ccf_uncorr_master' and 'ccf_model_conv_master' are thus computed over the same linelist because they are the ones directly compared and the spectra have the same defined lines, but the 'ccf_corr_master' needs to be computed independently
+                if args['ccf_corr']:
+                    cond_def = ~np.isnan(args['flux_corr'][iord])
+                    idx_def_ord = np_where1D(cond_def)
+                    cen_bins_ord = args['cen_bins_earth'][iord,idx_def_ord[0]:idx_def_ord[-1]+1]        
+                    edge_bins_ord = args['edge_bins_earth'][iord,idx_def_ord[0]:idx_def_ord[-1]+2]
+                    flux_corr_ord = args['flux_corr'][iord][idx_def_ord[0]:idx_def_ord[-1]+1] 
+                    cond_def_ord = cond_def[idx_def_ord[0]:idx_def_ord[-1]+1]        
+                    idx_maskL_kept = check_CCF_mask_lines(1,np.array([edge_bins_ord]),np.array([cond_def_ord]),CCF_line_wav_scaled,args['edge_velccf'])
+                    if len(idx_maskL_kept)>0:
+                        ord_coadd_eff_corr+=[isub_ord]
+                        sij_ccf       = np.ones(len(idx_maskL_kept))
+                        wave_line_ccf = CCF_line_wav_scaled[idx_maskL_kept]
+                        ccf_corr_ord = new_compute_CCF(edge_bins_ord,flux_corr_ord,None,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gdet_ord)[0]
+                        norm_cont_corr+=np.nanmedian(ccf_corr_ord[cond_cont_ccf])
+                        ccf_corr+=ccf_corr_ord
 
     #Check for absence of telluric absorption
     if len(ord_coadd_eff)==0:stop('No telluric absorption calculated: check starting values')
@@ -918,7 +937,9 @@ def CCF_telluric_model(params,velccf,args=None):
     #Mean CCF over all orders
     ccf_uncorr_master=ccf_uncorr/norm_cont
     cov_uncorr/=norm_cont**2.
-    if args['ccf_corr']:ccf_corr_master=ccf_corr/norm_cont
+    if args['ccf_corr']:
+        ccf_corr_master=ccf_corr
+        if (len(ord_coadd_eff_corr)>0):ccf_corr_master/=norm_cont_corr
     else:ccf_corr_master = None
     ccf_model_conv_master=ccf_model_conv/norm_cont
   

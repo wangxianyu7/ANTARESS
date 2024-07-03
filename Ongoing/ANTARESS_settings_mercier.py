@@ -5689,12 +5689,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%% Activating
     #    - for original and binned exposures in each visit
-    gen_dic['res_loc_data_corr']=False
+    gen_dic['diff_data_corr']=False
     gen_dic['res_loc_data_corr_bin']=False
     
     
     #%%%% Calculating/retrieving
-    gen_dic['calc_res_loc_data_corr']=False  
+    gen_dic['calc_diff_data_corr']=False  
     gen_dic['calc_res_loc_data_corr_bin']=True  
     
     

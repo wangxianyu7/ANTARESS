@@ -17,11 +17,11 @@ from   scipy.signal       import argrelextrema
 import bindensity as bind
 from copy import deepcopy
 from pathos.multiprocessing import Pool
-from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,init_parallel_func,gen_specdopshift
-from ..ANTARESS_general.constant_data import c_light,c_light_m
-from ..ANTARESS_conversions.KitCat import Kitcat_classes         as     myc
-from ..ANTARESS_conversions.KitCat import Kitcat_functions       as     myf
-from ..ANTARESS_conversions.KitCat import calculate_RV_line_by_line3 as calculate_RV_line_by_line 
+from antaress.ANTARESS_general.utils import stop,np_where1D,dataload_npz,init_parallel_func,gen_specdopshift
+from antaress.ANTARESS_general.constant_data import c_light,c_light_m
+from antaress.ANTARESS_conversions.KitCat import Kitcat_classes         as     myc
+from antaress.ANTARESS_conversions.KitCat import Kitcat_functions       as     myf
+from antaress.ANTARESS_conversions.KitCat import calculate_RV_line_by_line3 as calculate_RV_line_by_line 
 
 
 def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_norm,gen_dic,save_data_paths,tell_spec,rv_sys,min_specdopshift_receiver_Earth,max_specdopshift_receiver_Earth,dic_sav,plot_spec,plot_ld,plot_ld_lw,plot_RVdev_fit,cont_func_dic,vis_iexp_in_bin,
@@ -48,6 +48,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     flux_norm = myf.smooth(flux_mask_norm, kernel_smooth, shape=kernel_prof)
 
     #Resampling master and telluric spectrum on oversampled regular grid
+    #    - do not use linear interpolation for oversampling, as it creates step-like structures
     if (inst in mask_dic['dw_reg']):dw_reg = mask_dic['dw_reg'][inst]    
     else:
         dw_reg={'ESPRESSO':0.001}
@@ -58,7 +59,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     edge_bins_reg = np.linspace(edge_bins_mast[0],edge_bins_mast[-1],n_reg)
     cen_bins_reg = 0.5*(edge_bins_reg[0:-1]+edge_bins_reg[1::])
     dw_reg = cen_bins_reg[1]-cen_bins_reg[0]
-    flux_norm_reg = bind.resampling(edge_bins_reg, edge_bins_mast, flux_norm, kind=gen_dic['resamp_mode'])   
+    flux_norm_reg = bind.resampling(edge_bins_reg, edge_bins_mast, flux_norm, kind='cubic')  
     cond_undef_reg = np.isnan(flux_norm_reg)
     flux_norm_reg[cond_undef_reg] = 0.
 
@@ -102,7 +103,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         wave_maxima = np.insert(wave_maxima,-1,cen_bins_reg[-1])    
         flux_maxima = np.insert(flux_maxima,-1,flux_norm_reg[-1]) 
         index_maxima = np.insert(index_maxima,-1,len(cen_bins_reg)-1)
-    
+
     #Extrema
     wave_extrema = np.append(wave_minima,wave_maxima)
     idx_sort = wave_extrema.argsort()
@@ -129,7 +130,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         flux_extrema = np.delete(flux_extrema,delete_liste)       
         wave_extrema = np.delete(wave_extrema,delete_liste)       
         index_extrema = np.delete(index_extrema,delete_liste)       
-    
+
     #Retrieve unique minima/maxima
     #    - maxima table have one more value than minima table
     minima = np_where1D(flag_extrema==-1)
@@ -156,15 +157,15 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #    - shifted from the Earth (source) into the star (receiver) rest frame. We neglect the Keplerian and BERV motions.
     #      see gen_specdopshift():
     # w_star ~ w_starbar = w_solbar * (1+ rv[solbar/starbar]/c)) ~ w_Earth * (1+ rv_sys/c))
-    line_rej_range = np.array([[6865,6930],[7590,7705]])*gen_specdopshift(rv_sys)
-    if (inst in mask_dic['line_rej_range']):line_rej_range = np.append(line_rej_range,np.array(mask_dic['line_rej_range'][inst]),axis=0)
-    cond_rej = np.repeat(False,nlines)
-    for bd_int in line_rej_range:  
-        cond_rej |= ((matrix_wave[:,0]>bd_int[0]) & ((matrix_wave[:,0]<bd_int[1])))
-    mask_line=~cond_rej
-    matrix_wave = matrix_wave[mask_line]
-    matrix_flux = matrix_flux[mask_line]
-    matrix_index = matrix_index[mask_line] 
+    if (inst in mask_dic['line_rej_range']):
+        cond_rej = np.repeat(False,nlines)
+        for bd_int in mask_dic['line_rej_range'][inst]:  
+            cond_rej |= ((matrix_wave[:,0]>bd_int[0]) & ((matrix_wave[:,0]<bd_int[1])))
+        mask_line=~cond_rej
+        matrix_wave = matrix_wave[mask_line]
+        matrix_flux = matrix_flux[mask_line]
+        matrix_index = matrix_index[mask_line]
+    else:mask_dic['line_rej_range'][inst]=np.array([[]])
 
     #Issue warning
     if np.min(matrix_wave[:,0])<3000.:print('         WARNING: expect bad RASSINE normalisation below 3000 A')
@@ -198,7 +199,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         dic_sav['sel0'].update({'nl_mask_pre':nlines,'nl_mask_post':len(Dico['w_minima'])})                   
         for key in ['f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel0'][key] = np.array(Dico[key])
         dic_sav['sel0']['w_lines'] = np.array(Dico['w_minima'])
-        dic_sav['line_rej_range'] = line_rej_range    
+        dic_sav['line_rej_range'] = mask_dic['line_rej_range'][inst]    
 
     #=============================================================================  
     #RV weights 

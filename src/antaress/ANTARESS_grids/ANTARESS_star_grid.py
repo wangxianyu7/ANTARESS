@@ -258,11 +258,12 @@ def get_LD_coeff(transit_prop,iband):
     Args:
         transit_prop (dict) : dictionary containing the planet/spot limb-darkening properties.
         iband (int) : index of the band considered.
-    
+
     Returns:
         ld_coeff (list) : formatted list of the limb-darkening coefficients used.
     
-    """    
+    """     
+
     LD_mod = transit_prop['LD'][iband]
     #Uniform
     if LD_mod == 'uniform':

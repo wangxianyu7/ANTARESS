@@ -18,7 +18,7 @@ from matplotlib.ticker import MultipleLocator
 from ..ANTARESS_plots.utils_plots import autom_tick_prop,custom_axis
 from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof
 from ..ANTARESS_grids.ANTARESS_coord import get_timeorbit,calc_tr_contacts
-from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
+from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting,model_par_names,model_par_units
 from ..ANTARESS_general.utils import stop,np_where1D,is_odd,closest,dataload_npz,gen_specdopshift,check_data,datasave_npz
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_general.minim_routines import init_fit,fit_merit,call_lmfit
@@ -77,6 +77,10 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
         print('         Fitting/correcting wiggles') 
         fixed_args = {'rasterized':True}
 
+        #Optional arguments to be passed to the fit functions
+        #    - common to all steps in the module
+        fixed_args['use_cov'] = False 
+
         #Wiggle filter
         if gen_dic['wig_exp_filt']['mode']: 
             if gen_dic['wig_norm_ord']:print("WARNING: it is advised to disable gen_dic['wig_norm_ord'] with filter mode")
@@ -87,10 +91,6 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
         #Analytical wiggle model
         else:
-
-            #Optional arguments to be passed to the fit functions
-            #    - common to all steps in the module
-            fixed_args['use_cov'] = False 
 
             #Reference nu for frequency calculations
             fixed_args['nu_ref'] = c_light/6000. 
@@ -186,6 +186,10 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             #    - RV relative to CDM are used since the correction is performed per visit, so that the systemic RV does not need to be set                
             rv_al_all = coord_dic[inst][vis]['RV_star_stelCDM'] 
 
+            #Reference planet for orbital phase
+            if len(data_dic[inst][vis]['transit_pl'])>0:pl_ref=data_dic[inst][vis]['transit_pl'][0]
+            else:pl_ref=gen_dic['studied_pl'][0]            
+
             #Target cartesian coordinates
             #    - coordinates in the plane of horizon, with the y axis pointing toward the north:
             # x = cos(th) = sin(az)
@@ -195,8 +199,9 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             # z = sin(alt)     
             fixed_args['z_mer']  = data_dic[inst][vis]['z_mer'] 
             tel_coord_vis={
+                'pl_ref':pl_ref,
                 't_dur' : coord_dic[inst][vis]['t_dur'], 
-                'cen_ph' : coord_dic[inst][vis][gen_dic['studied_pl'][0]]['cen_ph'],
+                'cen_ph' : coord_dic[inst][vis][pl_ref]['cen_ph'],
                 'az': data_prop_vis['az'],
                 'x_az' : np.sin(data_prop_vis['az']*np.pi/180.),
                 'y_az' : np.cos(data_prop_vis['az']*np.pi/180.), 
@@ -219,6 +224,13 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 delta_guid_RA = data_prop_vis['guid_coord'][1:,0] - data_prop_vis['guid_coord'][0:-1,0]    
                 delta_guid_DEC = data_prop_vis['guid_coord'][1:,1] - data_prop_vis['guid_coord'][0:-1,1]
                 iexp_guidchange =  np_where1D((np.abs(delta_guid_RA)>1e-2) | (np.abs(delta_guid_DEC)>1e-2)) 
+                
+                
+                #Manual fix for TOI421
+                if vis=='20231106':
+                    print('MANUAL CHANGE')
+                    iexp_guidchange = [35]
+                
                 if len(iexp_guidchange)>0:
                     if len(iexp_guidchange)>1:stop('             Check guide star coordinates')
                     print('             Guide star changed during visit: enabling offset')
@@ -255,7 +267,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 dbjd_HR = 1./(3600.*24.)
                 nbjd_HR = round((max_bjd-min_bjd)/dbjd_HR)
                 bjd_HR=min_bjd+dbjd_HR*np.arange(nbjd_HR)
-                cen_ph_HR = get_timeorbit(gen_dic['studied_pl'][0],coord_dic[inst][vis],bjd_HR, system_param[gen_dic['studied_pl'][0]], 0.)[1]
+                cen_ph_HR = get_timeorbit(pl_ref,coord_dic[inst][vis],bjd_HR, system_param[pl_ref], 0.)[1]
                 az_HR = CubicSpline(coord_dic[inst][vis]['bjd'],data_prop[inst][vis]['az'])(bjd_HR)
                 alt_HR = CubicSpline(coord_dic[inst][vis]['bjd'],data_prop[inst][vis]['alt'])(bjd_HR) 
                 cen_ph_mer = cen_ph_HR[closest(az_HR,180.)]                 
@@ -274,7 +286,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 tel_coord_HR['cond_westmer'][tel_coord_HR['cond_shift']] = False
                 
                 #Contact phases for main planet
-                contact_phases=calc_tr_contacts(data_vis['system_prop']['achrom'][gen_dic['studied_pl'][0]][0],system_param[gen_dic['studied_pl'][0]],plot_dic['stend_ph'],system_param['star'])
+                contact_phases=calc_tr_contacts(data_vis['system_prop']['achrom'][pl_ref][0],system_param[pl_ref],plot_dic['stend_ph'],system_param['star'])
 
             #------------------------------------------------------------------
 
@@ -458,7 +470,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 #    - the wiggle master spectrum is in any case processed in the star rest frame, so that the stellar line do not contribute to weighing 
                 flux_ref = np.ones(data_vis['dim_exp'])
     
-                #Retrieving data that will be used in the binning to calculate a master profile
+                #Retrieving data that will be used in the fit and in the binning to calculate a master profile
                 #    - in the process_bin_prof() routine dedicated to the analysis of binned profiles, original exposures are resampled on a common table after 
                 # upload if relevant. Here the original data need to be resampled for each new exposure, thus here we just upload and store the profiles
                 #    - data is processed here in wavelength space
@@ -1254,10 +1266,10 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         
                         #Force axis ranges
                         x_range_var={
-                            'AmpGlob1_c0_off':[37.5,59.5],  #HD209 ANTARESS I
-                            'Freq1_c0_off':[37.5,59.5],
-                            'AmpGlob2_c0_off':[37.5,59.5],
-                            'Freq2_c0_off':[37.5,59.5],
+                            # 'AmpGlob1_c0_off':[37.5,59.5],  #HD209 ANTARESS I
+                            # 'Freq1_c0_off':[37.5,59.5],
+                            # 'AmpGlob2_c0_off':[37.5,59.5],
+                            # 'Freq2_c0_off':[37.5,59.5],
                             # 'AmpGlob1_c0_off':[37.,64.],  #WASP76
                             # 'Freq1_c0_off':[37.,64.],  #WASP76
                             # 'AmpGlob1_maxAmp_off':[37.,76.],  #HD29291
@@ -1265,13 +1277,17 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             # 'AmpGlob2_c0_off':[37.,60.],    #WASP76
                             # 'Freq2_c0_off':[37.,60.],     #WASP76
                             # 'Freq2_c0_off':[37.,76.],   #HD29291
+                            'AmpGlob1_c0_off':[37.,67.],  #TOI421
+                            'Freq1_c0_off':[37.,67.],
+                            'AmpGlob2_c0_off':[37.,67.],
+                            'Freq2_c0_off':[37.,67.],
                             }
                         x_range_res={}
                         y_range_var={
-                            'AmpGlob1_c0_off':[1.5e-4,2.6e-3],  #HD209 ANTARESS I
-                            'Freq1_c0_off':[3.6,3.85],
-                            'AmpGlob2_c0_off':[1e-4,8.5e-4],
-                            'Freq2_c0_off':[1.9,2.4],                            
+                            # 'AmpGlob1_c0_off':[1.5e-4,2.6e-3],  #HD209 ANTARESS I
+                            # 'Freq1_c0_off':[3.6,3.85],
+                            # 'AmpGlob2_c0_off':[1e-4,8.5e-4],
+                            # 'Freq2_c0_off':[1.9,2.4],                            
                             # 'AmpGlob1_c0_off':[0,0.006],
                             # 'Freq1_c0_off':[3.2,4.2],  #WASP76
                             # 'AmpGlob1_maxAmp_off':[0,0.01],  #HD29291
@@ -1284,12 +1300,17 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #     'Freq3_c0_off':[0.4,1.5],
                         #     'AmpGlob4_maxAmp_off':[0.0001,0.0004],
                         #     'Freq4_c0_off':[0.25,0.5],
+                        
+                            'AmpGlob1_c0_off':[1e-4,4.5e-3],  #TOI421
+                            'Freq1_c0_off':[3.5,4.5],
+                            'AmpGlob2_c0_off':[1e-5,1.5e-3],
+                            'Freq2_c0_off':[1.5,2.5],                        
                             }
                         y_range_res={
-                            'AmpGlob1_c0_off':[-5e-4,5e-4],  #HD209 ANTARESS I
-                            'Freq1_c0_off':[-0.15,0.15],
-                            'AmpGlob2_c0_off':[-2.5e-4,2.5e-4],
-                            'Freq2_c0_off':[-0.2,0.2], 
+                            # 'AmpGlob1_c0_off':[-5e-4,5e-4],  #HD209 ANTARESS I
+                            # 'Freq1_c0_off':[-0.15,0.15],
+                            # 'AmpGlob2_c0_off':[-2.5e-4,2.5e-4],
+                            # 'Freq2_c0_off':[-0.2,0.2], 
                         #     'AmpGlob3_maxAmp_off':[-0.0002,0.0002],
                         #     'Freq3_c0_off':[-0.5,0.5], 
                         #     'AmpGlob4_maxAmp_off':[-0.0001,0.0001],
@@ -1526,7 +1547,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         if os_system.path.exists(exp_path):hyper_fit_exp = np.load(exp_path,allow_pickle=True)['data'].item()  
                         else:fitted_exp = False
                     elif gen_dic['wig_exp_point_ana']['source']=='glob':
-                        hyper_fit_exp = np.load(path_dic['datapath_Global']+'/Fit_results_iexpGroup'+str(iexp_group)+'.npz',allow_pickle=True)['data'].item() 
+                        hyper_fit_exp = dataload_npz(path_dic['datapath_Global']+'/Fit_results_iexpGroup'+str(iexp_group))
                     if fitted_exp: 
                         if not cond_init_par:
                             for par in hyper_fit_exp:
@@ -1733,11 +1754,38 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     #     if par_root=='Freq2_c1':
                     #         sy_var[(tel_coord_expgroup['cen_ph'] >0.062)] = np.nan  
                         
-                    # if par_root=='Phi1':
-                    # # #     if vis=='20190720':
-                    # # #         y_var[(y_var<0.)]+=2.*np.pi
-                    # # #         y_var[(y_var>10.)]-=2.*np.pi
-                    # #         # y_var[(tel_coord_expgroup['cen_ph']<0.018) & (y_var<0.)]+=2.*np.pi
+                    # if vis=='20231106':
+                    #     if par_root=='Phi1':
+                    #         cond_neg = (hyper_par_tab['AmpGlob1_c0_off'][0]<-0.)
+                    #         y_var[cond_neg]+=np.pi                         
+                    #         y_var[(tel_coord_expgroup['cen_ph'] <-0.0065)]+=2.*np.pi
+                        # if par_root=='Phi2': 
+                        #     cond_neg = (hyper_par_tab['AmpGlob2_c0_off'][0]<-0.)
+                        #     y_var[cond_neg]+=np.pi       
+                    #         y_var[(tel_coord_expgroup['cen_ph'] <-0.0063)]-=2.*np.pi 
+                    #         y_var[  (tel_coord_expgroup['cen_ph'] >0.0035) & (y_var>-2.5)  ]-=2.*np.pi   
+                    #         y_var[  (tel_coord_expgroup['cen_ph'] <0) & (y_var<-6)  ]+=4.*np.pi 
+                    #         y_var[(y_var<-10.)]+=2.*np.pi
+                    #         y_var[  (tel_coord_expgroup['cen_ph'] <-0.004) & (y_var>3.)  ]-=2.*np.pi                              
+                    #         y_var[  (tel_coord_expgroup['cen_ph'] >0.005) & (y_var>-4.)  ]-=2.*np.pi   
+
+                    #         y_var[(y_var>5.)]-=2.*np.pi                            
+                    #         y_var[(y_var<-10.)]+=4.*np.pi
+                    #         y_var[(y_var<-4.)]+=np.pi
+                    #         y_var[(tel_coord_expgroup['cen_ph'] >-0.001)]+=np.pi
+                    #         y_var[(tel_coord_expgroup['cen_ph'] <0.0022)]+=np.pi
+                    #         y_var[(tel_coord_expgroup['cen_ph'] >0.004)]-=np.pi
+                    #         y_var[(y_var<-5.2)]+=np.pi
+               
+                    # sy_var[18:40] = np.nan                    
+                    # sy_var[31::] = np.nan  
+                    # sy_var[-1] = np.nan
+                    # sy_var[0:2] = sy_var[2]
+                
+               
+                    #         y_var[(tel_coord_expgroup['cen_ph'] <-0.006)]+=np.pi
+                    # #         y_var[(y_var>10.)]-=2.*np.pi
+                    #         # y_var[(tel_coord_expgroup['cen_ph']<0.018) & (y_var<0.)]+=2.*np.pi
                     #     if vis=='20180902':
                     # #         y_var[y_var<-1]+=2.*np.pi
                     # #         y_var[(tel_coord_expgroup['cen_ph']>0.02) & (y_var>3.)]-=np.pi  
@@ -1831,6 +1879,11 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     #     plt.plot(cen_ph_vis,data_prop_vis['alt'],marker='o',linestyle='')
                     #     plt.show()
                     #     stop()
+                    
+                    
+                    
+                    
+                    
   
                     #Fitting   
                     if (vis in gen_dic['wig_exp_point_ana']['fit_range']) and (par_root in gen_dic['wig_exp_point_ana']['fit_range'][vis]):
@@ -1904,7 +1957,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         plt.ioff()        
                         fig, ax = plt.subplots(2, 1, figsize=(20, 10),gridspec_kw = {'wspace':0, 'hspace':0.05, 'height_ratios':[70,30.]})
                         fontsize = 25
-                        plot_contact = False
+                        plot_contact = True #&False
                         plot_modHR = True #& False
                     
                         #Ranges
@@ -1942,7 +1995,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                         #Main planet contacts
                         if plot_contact:
-                            for cont_ph in contact_phases:ax[0].plot([cont_ph,cont_ph],y_range_plot,color='black',linestyle=':',zorder=0,lw=1.5)
+                            for cont_ph in contact_phases:ax[0].plot([cont_ph,cont_ph],y_range_plot,color='magenta',linestyle=':',zorder=0,lw=1.5)
 
                         #Guide shift and meridian crossing
                         ax[0].plot([cen_ph_mer,cen_ph_mer],y_range_plot,linestyle=':',color='black',zorder=1) 
@@ -1982,7 +2035,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                             #Main planet contacts
                             if plot_contact:
-                                for cont_ph in contact_phases:ax[1].plot([cont_ph,cont_ph],y_range_plot,color='black',linestyle=':',lw=1.5,zorder=0)
+                                for cont_ph in contact_phases:ax[1].plot([cont_ph,cont_ph],y_range_plot,color='magenta',linestyle=':',lw=1.5,zorder=0)
     
                             #Guide shift and meridian crossing
                             cen_ph_mer = cen_ph_HR[closest(az_HR,180.)]
@@ -2907,7 +2960,7 @@ def wig_perio_gen(calc_range,src_range,nu_in,flux_in,err_in,args,plot=False):
     
     return amp_guess,freq_guess,phi_guess,fap_max,ls,frequency, power,max_power
 
-def plot_bin_spec(ax,low_bins,high_bins,val_bins,min_plot,max_plot,dbin_plot):
+def plot_bin_spec(ax,low_bins,high_bins,val_bins,min_plot,max_plot,dbin_plot,color = 'goldenrod'):
     r"""**Wiggle plot : binned spectrum**
 
     Plot the binned transmission spectrum of an exposure.
@@ -2926,7 +2979,7 @@ def plot_bin_spec(ax,low_bins,high_bins,val_bins,min_plot,max_plot,dbin_plot):
     x_bd_low_in = min_plot + dbin_plot*np.arange(nbin_plot)
     x_bd_high_in = x_bd_low_in+dbin_plot 
     _,_,wav_bin_plot,_,Fr_bin_plot,_ = resample_func(x_bd_low_in,x_bd_high_in,low_bins,high_bins,val_bins,None)
-    ax.plot(wav_bin_plot,Fr_bin_plot,linestyle='-',marker='o',markersize=5,color='goldenrod',zorder=1)
+    ax.plot(wav_bin_plot,Fr_bin_plot,linestyle='-',marker='o',markersize=5,color=color,zorder=1)
     
     return None
 
@@ -2970,7 +3023,7 @@ def plot_screening(ibin2exp_fit,ibin2ord_fit,min_plot,max_plot,gen_dic,Fr_bin_fi
  
     #Binned data
     #    - we use resample_func() rather than bind.resampling because input tables are not necessarily continuous, and because the calculations here are less generic than those in process_bin_prof()
-    plot_bin_spec(plt.gca(),Fr_bin_fit['low_nu'],Fr_bin_fit['high_nu'],Fr_bin_fit['Fr'],min_plot,max_plot,0.27/5.,Fr_bin_fit)
+    plot_bin_spec(plt.gca(),Fr_bin_fit['low_nu'],Fr_bin_fit['high_nu'],Fr_bin_fit['Fr'],min_plot,max_plot,0.27/5.,color='black')
 
     #Constant unity level
     plt.plot(x_range,[1.,1.],linestyle=':',color='black',zorder=-1,rasterized=fixed_args['rasterized'])

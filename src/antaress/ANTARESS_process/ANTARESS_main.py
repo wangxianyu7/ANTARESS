@@ -12,7 +12,7 @@ from dace_query.spectroscopy import Spectroscopy
 from scipy.interpolate import CubicSpline
 from ..ANTARESS_analysis.ANTARESS_model_prof import calc_macro_ker_anigauss,calc_macro_ker_rt 
 from ..ANTARESS_grids.ANTARESS_star_grid import model_star
-from ..ANTARESS_grids.ANTARESS_plocc_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop
+from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm
 from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab
@@ -22,10 +22,9 @@ from ..ANTARESS_analysis.ANTARESS_joined_star import joined_Star_ana
 from ..ANTARESS_analysis.ANTARESS_joined_atm import joined_Atm_ana
 from ..ANTARESS_plots.ANTARESS_plots_all import ANTARESS_plot_functions
 from ..ANTARESS_corrections.ANTARESS_calib import calc_gcal
-from ..ANTARESS_process.ANTARESS_plocc_spec import def_plocc_profiles,def_plocc_spocc_profiles
+from ..ANTARESS_process.ANTARESS_plocc_spec import def_in_plocc_profiles,def_diff_profiles
 from ..ANTARESS_conversions.ANTARESS_masks_gen import def_masks
 from ..ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
-from ..ANTARESS_grids.ANTARESS_spots import spot_occ_region_grid,retrieve_spots_prop_from_param
 from ..ANTARESS_conversions.ANTARESS_binning import process_bin_prof
 from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
 from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
@@ -117,7 +116,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             print('  -----------------')
             print('  Processing visit: '+vis) 
             print('  -----------------')
-          
+    
             #Initialization of visit properties
             init_vis(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic)             
             
@@ -141,7 +140,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             #Calculating theoretical properties of the planet-occulted and/or spotted regions 
             if gen_dic['theoPlOcc'] or (data_dic['DI']['spots_prop'] != {}):
                 calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'],spot_dic=theo_dic)
-                
+
             #Analyzing original disk-integrated profiles
             if gen_dic['fit_'+data_type_gen]:
                 MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
@@ -160,7 +159,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
          
             #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
             if gen_dic['DImast_weight']:              
-                process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDI=True,mock_dic=mock_dic)
+                process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDIweigh=True,spot_dic=data_dic['DI']['spots_prop'])
 
             #Processing converted 2D disk-integrated profiles
             if gen_dic['spec_1D']:                
@@ -207,13 +206,15 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             if gen_dic['bin']:
                 bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
 
-            #Building estimates for complete local stellar profiles
+            #Building estimates for planet-occulted stellar profiles in in-transit exposures
             if gen_dic['loc_data_corr']:
-                def_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
-            
-            #Building estimates for local stellar profiles - including spots
-            if gen_dic['res_loc_data_corr']:
-                def_plocc_spocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
+                def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
+
+            #Building estimates for differential profiles in all exposures
+            #    - in-transit profiles include planet-occulted and spotted stellar profiles
+            if gen_dic['diff_data_corr']:
+                def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
+
             #--------------------------------------------------------------------------------------------------
             #Processing atmospheric profiles
             data_type_gen = 'Atm'
@@ -324,7 +325,7 @@ def bin_gen_functions(data_type_gen,mode,inst,gen_dic,data_dic,coord_dic,data_pr
     """ 
     #Binning profiles for analysis purpose 
     if gen_dic[data_type_gen+'bin'+mode]: 
-        process_bin_prof(mode,data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,mock_dic=mock_dic)
+        process_bin_prof(mode,data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,spot_dic=mock_dic)
 
     #Analyzing binned profiles
     if gen_dic['fit_'+data_type_gen+'bin'+mode]: 
@@ -722,8 +723,12 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         print('Star is oblate')
         star_params['RpoleReq']=1.-star_params['f_GD']
 
+    #Stellar equatorial rotation period (d)
+    #    - P = 2*pi*R/v
+    star_params['Peq'] = (2.*np.pi*star_params['Rstar_km'])/(star_params['veq']*24*3600)
+
     #Stellar equatorial rotation rate (rad/s)
-    #    - om = 2*pi/P
+    #    - om = 2*pi/P = v/R
     star_params['om_eq'] = star_params['veq']/star_params['Rstar_km']
 
     #Spot Equatorial rotation rate (rad/s)
@@ -915,6 +920,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #------------------------------------------------------------------------------
     #Spots
     #------------------------------------------------------------------------------
+
     #Initialize spot use
     gen_dic['studied_sp'] = list(gen_dic['transit_sp'].keys()) 
     theo_dic['x_st_sky_grid_sp']={}
@@ -924,7 +930,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
 
     #If spot activation has been triggered
     if (data_dic['DI']['spots_prop'] != {}):
-    
+
         #Oversampling factor for spot-occulted regions
         #    - use the spot radius provided as input
         for spot in theo_dic['n_oversamp_spot']:
@@ -958,7 +964,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             spot_size = data_dic['DI']['spots_prop']['achrom'][spot][0]
     
             #Define a default grid size if the spot grid hasn't been defined (should be done outside of for loop)
-            theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot], theo_dic['Ssub_Sstar_sp'][spot] = spot_occ_region_grid(spot_size, theo_dic['nsub_Dspot'][spot])
+            _,theo_dic['Ssub_Sstar_sp'][spot],theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot],_ = occ_region_grid(spot_size, theo_dic['nsub_Dspot'][spot],spot=True)
 
     #------------------------------------------------------------------------------------------------------------------------
     #Model star
@@ -975,7 +981,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #    - used througout the pipeline, unless stellar properties are fitted
     if gen_dic['theoPlOcc'] or (data_dic['DI']['spots_prop'] != {}) or (gen_dic['fit_DI_gen'] and (('custom' in data_dic['DI']['model'].values()) or ('RT_ani_macro' in data_dic['DI']['model'].values()))) or gen_dic['mock_data'] \
         or gen_dic['fit_ResProf'] or gen_dic['correct_spots'] or gen_dic['fit_IntrProf'] or gen_dic['loc_data_corr']:
-            
+
         #Stellar grid
         model_star('grid',theo_dic,grid_type,data_dic['DI']['system_prop'],theo_dic['nsub_Dstar'],star_params) 
        
@@ -1088,10 +1094,10 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     if (gen_dic['intr_data']) and (not path_exist(gen_dic['save_data_dir']+'Intr_data/')):makedirs(gen_dic['save_data_dir']+'Intr_data/')
     if gen_dic['loc_data_corr']:
         if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/')        
-        if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')  
-    if gen_dic['res_loc_data_corr']:
-        if (not path_exist(gen_dic['save_data_dir']+'Spot_Loc_estimates/')):makedirs(gen_dic['save_data_dir']+'Spot_Loc_estimates/')        
-        if (not path_exist(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')  
+        if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')
+    if gen_dic['diff_data_corr']:
+        if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/')        
+        if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')          
     if (gen_dic['pl_atm']):
         if (not path_exist(gen_dic['save_data_dir']+'Atm_data/')):makedirs(gen_dic['save_data_dir']+'Atm_data/')        
         if (not path_exist(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')):makedirs(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')
@@ -1416,7 +1422,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 for pl_loc in gen_dic['studied_pl']:
                     if (inst in gen_dic['transit_pl'][pl_loc]) and (vis in gen_dic['transit_pl'][pl_loc][inst]):data_inst[vis]['transit_pl']+=[pl_loc]
                 for spot in gen_dic['studied_sp']:
-                    if (inst in gen_dic['transit_sp'][spot]) and (vis in gen_dic['transit_sp'][spot][inst]):data_inst[vis]['transit_sp']+=[spot]
+                    if (inst in gen_dic['transit_sp'][spot]) and (vis in gen_dic['transit_sp'][spot][inst]):data_inst[vis]['transit_sp']+=[spot]                    
                 data_prop[inst][vis] = {}
                 data_dic_temp={}
                 gen_dic[inst][vis] = {}
@@ -1665,6 +1671,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 'inst':inst,
                                 'vis':vis, 
                                 'fit':False,
+                                'unquiet_star':None,
                                 })
 
 
@@ -1801,7 +1808,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         base_DI_prof = custom_DI_prof(param_exp,None,args=args_exp)[0]
 
                         #Deviation from nominal stellar profile 
-                        surf_prop_dic, surf_prop_dic_sp, surf_prop_dic_common = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp],system_spot_prop_in=args_exp['system_spot_prop'])
+                        surf_prop_dic, surf_prop_dic_sp,_ = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp], system_spot_prop_in=args_exp['system_spot_prop'])
 
                         #Correcting the disk-integrated profile for planet and spot contributions
                         DI_prof_exp = base_DI_prof - surf_prop_dic[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0]
@@ -2248,7 +2255,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             data_prop[inst][vis]['piezo_prop'][iexp,3]=hdr['HIERARCH ESO INS'+ref_adc+' TILT2 VAL2']   
 
                         #Guide star coordinates
-                        if (inst in ['ESPRESSO']) and (data_inst['type']=='spec2D'):
+                        if (inst in ['ESPRESSO']) and (data_inst['type']=='spec2D') :
                             data_prop[inst][vis]['guid_coord'][iexp,0]=hdr['HIERARCH ESO ADA'+tel_inst+' GUID RA']
                             data_prop[inst][vis]['guid_coord'][iexp,1]=hdr['HIERARCH ESO ADA'+tel_inst+' GUID DEC']
 
@@ -2581,7 +2588,29 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         else:print('           All exposures in '+vis+' share a common spectral table')   
 
         #------------------------------------------------------------------------------------
-              
+
+        #Default systemic velocity
+        if (inst not in data_dic['DI']['sysvel']):data_dic['DI']['sysvel'][inst] = {}
+        if (vis not in data_dic['DI']['sysvel'][inst]):
+            data_dic['DI']['sysvel'][inst][vis] = 0.
+            print('         WARNING : sysvel set to 0 km/s for ',inst,' : ',vis)
+
+        #Define CCF resolution, range, and sysvel here so that spectral data needs not be uploaded again after processing
+        if gen_dic['CCF_from_sp'] or gen_dic['Intr_CCF']:
+          
+            #Velocity table in original frame
+            if gen_dic['dRV'] is None:dvelccf= gen_dic['pix_size_v'][inst]
+            else:dvelccf= gen_dic['dRV']  
+            n_vel = int((gen_dic['end_RV']-gen_dic['start_RV'])/dvelccf)+1
+            data_vis['nvel'] = n_vel
+            data_vis['velccf'] = gen_dic['start_RV']+dvelccf*np.arange(n_vel)
+
+            #Bin edges in velocity space
+            data_vis['edge_velccf'] = np.append(data_vis['velccf']-0.5*dvelccf,data_vis['velccf'][-1]+0.5*dvelccf)
+
+            #Shifting the CCFs velocity table by RV(CDM_star/CDM_sun)
+            for key in ['velccf','edge_velccf']:data_vis[key+'_star']=data_vis[key]-data_dic['DI']['sysvel'][inst][vis]  
+    
         #Automatic continuum and fit range
         #    - done here rather than in the 'calc_proc_data' condition so that ranges can be defined for already-processed observed or mock datasets, even if the analysis modules were not activated 
         # at the time of processing
@@ -2590,16 +2619,27 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 autom_cont = True if (inst not in data_dic[key]['cont_range']) else False
                 autom_fit = True if ((inst not in data_dic[key]['fit_range']) or (vis not in data_dic[key]['fit_range'][inst])) else False
                 if autom_cont or autom_fit:
+
+                    #Path to data used for automatic definition
+                    #    - if spectra are converted into CCFs, we cannot use the original spectral data
+                    if (data_dic[key]['type'][inst]=='CCF') and (data_dic[inst]['type']=='spec2D'):
+                        data_path = gen_dic['save_data_dir']+key+'_data/CCFfromSpec/'+gen_dic['add_txt_path'][key]+'/'+inst+'_'+vis+'_'
+                        nspec = data_vis['nvel']
+                    else:
+                        data_path = data_vis['proc_DI_data_paths']
+                        nspec = data_vis['nspec']
+                    
+                    #Processing CCF order or selected spectral order 
                     if (data_dic[key]['type'][inst]=='CCF'):iord_fit = 0
                     else:iord_fit = data_dic[key]['fit_prof']['order'][inst]
-                    cen_bins_all = np.zeros([0,data_vis['nspec']],dtype=float)
-                    edge_bins_all = np.zeros([0,data_vis['nspec']+1],dtype=float)
-                    flux_all = np.zeros([0,data_vis['nspec']],dtype=float)
+                    cen_bins_all = np.zeros([0,nspec],dtype=float)
+                    edge_bins_all = np.zeros([0,nspec+1],dtype=float)
+                    flux_all = np.zeros([0,nspec],dtype=float)   
                     for iexp in range(data_vis['n_in_visit']):
-                        data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))
-                        cen_bins_all=np.append(cen_bins_all,[data_exp['cen_bins'][iord_fit]],axis=0)
-                        edge_bins_all=np.append(edge_bins_all,[data_exp['edge_bins'][iord_fit]],axis=0)
-                        flux_all=np.append(flux_all,[data_exp['flux'][iord_fit]],axis=0)
+                        data_exp = dataload_npz(data_path+str(iexp))
+                        cen_bins_all=np.append(cen_bins_all,[data_exp['cen_bins'][iord_fit]],axis=0)     #dimension nexp x nspec
+                        edge_bins_all=np.append(edge_bins_all,[data_exp['edge_bins'][iord_fit]],axis=0)  #dimension nexp x nspec+1
+                        flux_all=np.append(flux_all,[data_exp['flux'][iord_fit]],axis=0)                 #dimension nexp x nspec
                     if (data_dic[key]['type'][inst]=='CCF'):
                         RVcen_bins = cen_bins_all
                         RVedge_bins = edge_bins_all
@@ -2610,9 +2650,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     #Estimate of systemic velocity for disk-integrated profiles
                     #    - as median of the RV corresponding to the CCF minima over the visit
                     #    - intrinsic and atmospheric profiles are fitted in the star rest frame
-                    idx_check = (RVcen_bins[0]>-500.) & (RVcen_bins[0]<500.) 
-                    idx_min_all = np.argmin(flux_all,axis=1)
-                    sys_RV = np.nanmedian(RVcen_bins[:,idx_check][:,idx_min_all])
+                    cond_check = (RVcen_bins[0]>-500.) & (RVcen_bins[0]<500.)
+                    idx_min_all = np.argmin(flux_all[:,cond_check],axis=1)    #dimension nexp (index of minimum over nspec_check for each exposure)
+                    sys_RV = np.nanmedian(np.take_along_axis(RVcen_bins[:,cond_check],idx_min_all[:,None],axis=1))
                     if key=='DI':cen_RV = sys_RV
                     else:cen_RV = 0.
 
@@ -2663,29 +2703,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         data_dic[key]['fit_range'][inst][vis] = [[min_contfit,max_contfit]]
 
         #------------------------------------------------------------------------------------
-    
-        #Default systemic velocity
-        if (inst not in data_dic['DI']['sysvel']):data_dic['DI']['sysvel'][inst] = {}
-        if (vis not in data_dic['DI']['sysvel'][inst]):
-            data_dic['DI']['sysvel'][inst][vis] = 0.
-            print('         WARNING : sysvel set to 0 km/s for ',inst,' : ',vis)
 
-        #Define CCF resolution, range, and sysvel here so that spectral data needs not be uploaded again after processing
-        if gen_dic['CCF_from_sp'] or gen_dic['Intr_CCF']:
-          
-            #Velocity table in original frame
-            if gen_dic['dRV'] is None:dvelccf= gen_dic['pix_size_v'][inst]
-            else:dvelccf= gen_dic['dRV']  
-            n_vel = int((gen_dic['end_RV']-gen_dic['start_RV'])/dvelccf)+1
-            data_vis['nvel'] = n_vel
-            data_vis['velccf'] = gen_dic['start_RV']+dvelccf*np.arange(n_vel)
-
-            #Bin edges in velocity space
-            data_vis['edge_velccf'] = np.append(data_vis['velccf']-0.5*dvelccf,data_vis['velccf'][-1]+0.5*dvelccf)
-
-            #Shifting the CCFs velocity table by RV(CDM_star/CDM_sun)
-            for key in ['velccf','edge_velccf']:data_vis[key+'_star']=data_vis[key]-data_dic['DI']['sysvel'][inst][vis]  
-    
         #Keplerian motion relative to the stellar CDM and the Sun (km/s)
         for iexp in range(data_dic[inst][vis]['n_in_visit']):
             coord_vis['RV_star_stelCDM'][iexp],coord_vis['RV_star_solCDM'][iexp] = calc_rv_star(coord_dic,inst,vis,system_param,gen_dic,coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic['DI']['sysvel'][inst][vis])

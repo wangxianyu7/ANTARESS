@@ -12,7 +12,10 @@ from ..ANTARESS_general.constant_data import c_light
 def return_pix_size(): 
     r"""**Spectrograph sampling**
 
-    Returns width of detector pixel in rv space (km/s)
+    Returns width of detector pixel in rv space (km/s).
+    
+    .. math:: 
+       \Delta \lambda = \lambda_\mathrm{ref} \Delta v/c 
 
     Args:
         TBD
@@ -159,7 +162,7 @@ def def_st_prof_tab(inst,vis,isub,args):
         TBD
     
     """  
-    args_exp = deepcopy(args)
+    args_exp=dict(args)   #avoid using deepcopy which does not work with ctypes objects containing pointers
     if args['resamp']:suff='_HR'
     else:suff=''
     if (inst is None):

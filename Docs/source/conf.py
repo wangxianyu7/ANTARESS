@@ -7,7 +7,6 @@
 # -- Path setup --------------------------------------------------------------
 import os
 import sys
-import antaress
 sys.path.insert(0, os.path.abspath('../../src/antaress/'))
 
 # -- Project information -----------------------------------------------------

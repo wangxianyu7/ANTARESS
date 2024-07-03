@@ -7,6 +7,5 @@ Grid routines
 
    ../Package_files/antaress.ANTARESS_grids.ANTARESS_coord
    ../Package_files/antaress.ANTARESS_grids.ANTARESS_star_grid
-   ../Package_files/antaress.ANTARESS_grids.ANTARESS_plocc_grid
-   ../Package_files/antaress.ANTARESS_grids.ANTARESS_spots
+   ../Package_files/antaress.ANTARESS_grids.ANTARESS_occ_grid
    ../Package_files/antaress.ANTARESS_grids.ANTARESS_prof_grid

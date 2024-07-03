@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from copy import deepcopy
-from ..ANTARESS_general.utils import stop
+from antaress.ANTARESS_general.utils import stop
 
-def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
+def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
     r"""**Default plot settings.**
     
     Set default values for the following fields. 
@@ -15,7 +15,11 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
      - `wspace = width` : horizontal separation between subplots.      
        `hspace = height` : vertical separation between subplots. 
      - `title = bool` : show plot title.
-     
+     - `font_size = float` : size for figure font.     
+     - `font_size_txt = float` : size for text font within plot.
+     - `lw_plot = float` : linewidth.
+     - `ls_plot = str` : linestyle.
+
     Args:
         plot_options (dic) : dictionary for all generic plot settings
         key_plot (str) : identifier of current plot 
@@ -104,7 +108,7 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
     #Visits to plot
     #    - add '_bin' to the name of a visit to plot properties derived from intrinsic profiles binned within a visit
     #      use 'binned' as visit name to plot properties derived from intrinsic profiles binned over several visits
-    plot_options[key_plot]['visits_to_plot']=plot_dic['visits_to_plot']
+    plot_options[key_plot]['visits_to_plot']=deepcopy(plot_dic['visits_to_plot'])
     
     #Indexes of exposures to be plotted 
     plot_options[key_plot]['iexp_plot']={}
@@ -153,11 +157,13 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
     plot_options[key_plot]['plot_stexc']=False
     
     #Reference planet for each visit
+    #    - set to first transit planet if it exists, or to first planet overall otherwise
     plot_options[key_plot]['pl_ref']={}
     for inst in plot_options[key_plot]['visits_to_plot']:
         plot_options[key_plot]['pl_ref'][inst]={'binned':gen_dic['studied_pl'][0]}
         for vis in plot_options[key_plot]['visits_to_plot'][inst]:
-            plot_options[key_plot]['pl_ref'][inst][vis]=gen_dic['studied_pl'][0]
+            if len(data_dic[inst][vis]['transit_pl'])>0:plot_options[key_plot]['pl_ref'][inst][vis]=data_dic[inst][vis]['transit_pl'][0]
+            else:plot_options[key_plot]['pl_ref'][inst][vis]=gen_dic['studied_pl'][0]
 
     #Shade range not used for fitting
     plot_options[key_plot]['shade_unfit']=False
@@ -209,7 +215,10 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
     plot_options[key_plot]['telldepth_min'] = 0.
     
     #Plot master used as reference for flux balance correction
-    plot_options[key_plot]['plot_mast'] = False        
+    plot_options[key_plot]['plot_mast'] = False    
+
+    #Plot stellar continuum
+    plot_options[key_plot]['st_cont']=None    
     
     #Plot spectra at two chosen steps of the correction process
     #    - set to None, or chose amongst:
@@ -283,12 +292,18 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
         plot_options[key_plot]['plot_expid'] = True
         
     #--------------------------------------   
-    #2D map settings     
+    #Binned profiles settings     
     if ('map_' in key_plot) or ('bin' in key_plot) or ('prop_' in key_plot) or (key_plot in ['occulted_regions']):
 
         #Bin dimension
-        #    - 'phase' (see details and routine)
-        #    - coordinates are only available if binning was performed over 'phase'
+        #    - for 2D maps:
+        # + 'phase' : see details and routine
+        #             coordinates are only available if binning was performed over 'phase'
+        #    - for binned profiles:
+        # + 'phase'
+        # + 'xp_abs'
+        # + 'r_proj' 
+        #    - if not phase, exposures are plotted successively without respecting their actual positions, because of overlaps 
         plot_options[key_plot]['dim_plot']='phase' 
 
         #Print information
@@ -397,6 +412,7 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
 
         #Overplot RV(pl/star) model 
         plot_options[key_plot]['theoRVpl_HR']=False
+        plot_options[key_plot]['theoRVpl_HR_align']=False
 
         #Plot zero line markers
         plot_options[key_plot]['plot_zermark']= True 
@@ -447,7 +463,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'DImast'
         
         #%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
 
 
     ################################################################################################################  
@@ -461,7 +477,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'gcal'
         
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
 
         #%%%% Plot best-fit exposure models in each order plot
         plot_settings[key_plot]['plot_best_exp'] = True
@@ -490,7 +506,14 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'tell_CCF'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
+
+        #%%%% Plot axis boundaries
+        plot_settings[key_plot]['margins']=[0.15,0.15,0.85,0.88]  
+
+        #%%%%% CCF to plot
+        #    - plot CCF computed over strong linelist used in the fit, and full linelist
+        plot_settings[key_plot]['tell_CCF_lines'] = ['master','full']
 
         #%%%%% Molecules to plot
         plot_settings[key_plot]['tell_species'] = gen_dic['tell_species']
@@ -508,7 +531,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'tell_prop'
         
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
 
         #%%%%% Molecules to plot
         plot_settings[key_plot]['tell_species'] = gen_dic['tell_species']
@@ -532,7 +555,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'glob_mast'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)        
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)        
 
         #%%%%% Plot global master over all visits    
         plot_settings[key_plot]['glob_mast_all']=None 
@@ -551,7 +574,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'Fbal_corr'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)         
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
 
         #%%%%% Plot order indexes
         plot_settings[key_plot]['plot_idx_ord'] = True
@@ -580,7 +603,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'Fbal_corr_DRS'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
         
   
     
@@ -593,7 +616,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'Fbal_corr_vis'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)         
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
 
         #%%%%% Plot order indexes
         plot_settings[key_plot]['plot_idx_ord'] = True
@@ -623,7 +646,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'Fbal_corr_ord' 
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)          
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)          
 
 
 
@@ -640,7 +663,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'Ftemp_corr'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
         
 
 
@@ -657,7 +680,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'cosm_corr'
 
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)         
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
 
         #%%%% Cosmic marker
         plot_settings[key_plot]['markcosm'] = True  
@@ -686,7 +709,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'permpeak_corr'
 
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)          
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)          
         
         
         
@@ -707,7 +730,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'fring_corr'
 
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
         
         
         
@@ -733,7 +756,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'map_DI_prof'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
 
         #%%%%% Profiles to plot
         #    - 'sp_corr' : spectral profiles have been corrected
@@ -754,7 +777,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'map_DIbin'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
      
         
      
@@ -768,7 +791,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'map_DI_1D'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
         
         
         
@@ -787,14 +810,14 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     #    - in their input rest frame (typically heliocentric)
     ##################################################################################################
     if gen_dic['specINtype'] and (plot_dic['sp_raw']!=''):
-        key_plot = 'DI_prof'
+        key_plot = 'DI_prof_corr' #key must be different from 'DI_prof' to differentiate from original profile plot
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)        
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)        
 
         #%%%%% Plot spectra at two chosen steps of the correction process
         plot_settings[key_plot]['plot_pre']='raw'
-        plot_settings[key_plot]['plot_post']='all'
+        plot_settings[key_plot]['plot_postsub_plot_DI_transDI']='all'
 
         #%%%%% Plot binned data and errors
         plot_settings[key_plot]['plot_bin'] = True
@@ -834,7 +857,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'trans_sp'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
         
         #%%%%% Plot spectra at two chosen steps of the correction process
         plot_settings[key_plot]['plot_pre']='raw'
@@ -879,7 +902,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
     
             #%%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)                 
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)                 
 
             #%%%%% Choose profiles to plot
             #    - 'raw' : input profiles
@@ -906,7 +929,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
     
             #%%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
             ##############################################################################
             #%%%%% Profile and its fit
@@ -937,7 +960,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'sp_DI_1D' 
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
 
  
 
@@ -964,7 +987,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'all_DI_data'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)        
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)        
 
         #%%%%% Data type
         plot_settings[key_plot]['data_type']='CCF' 
@@ -992,15 +1015,23 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
             #%%%% Plot master spectrum and mask at chosen step
+            # + 'cont': continuum-normalization
+            # + 'sel0': line selection with default telluric ranges and exclusion ranges (use to adjust regular spectrum and extrema search)
+            # + 'sel1': line selection with depth and width criteria
+            # + 'sel2': line selection with delta-position criterion
+            # + 'sel3': line selection with telluric contamination
+            # + 'sel4': line selection with morphological clipping (delta-maxima/line depth and asymetry parameter)
+            # + 'sel5': line selection with morphological clipping (depth and width criteria)
+            # + 'sel6': line selection with RV dispersion and telluric contamination
             plot_settings[key_plot]['step']='cont'      
             
             #%%%% Plot various spectra
-            plot_settings[key_plot]['plot_raw'] = True
-            plot_settings[key_plot]['plot_norm'] = True
-            plot_settings[key_plot]['plot_norm_reg'] = True
+            plot_settings[key_plot]['plot_raw'] = True        #Original spectrum (blue)
+            plot_settings[key_plot]['plot_norm'] = True       #Normalized spectrum (grey)
+            plot_settings[key_plot]['plot_norm_reg'] = True   #Smoothed regular normalized spectrum (black, used in mask generation)
 
             #%%%% Print number of line selected in step
             plot_settings[key_plot]['print_nl']=True   
@@ -1028,7 +1059,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
             #%%%% Number of bins in histograms
             plot_settings[key_plot]['dist_info'] = ['hist','cum_w']
@@ -1059,7 +1090,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
             #%%%% Number of bins in histograms
             plot_settings[key_plot]['dist_info'] = ['hist','cum_w']
@@ -1094,7 +1125,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
             #%%%% Number of bins in histograms
             plot_settings[key_plot]['dist_info'] =['hist','cum_w']
@@ -1125,7 +1156,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
             #%%%% Number of bins in histograms
             plot_settings[key_plot]['dist_info'] =['hist','cum_w']
@@ -1154,7 +1185,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
             #%%%% Figure size
             plot_settings[key_plot]['fig_size'] = (12,15)
@@ -1182,7 +1213,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)        
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)        
 
             #%%%% Number of bins in histograms
             plot_settings[key_plot]['dist_info'] =['hist','cum_w']
@@ -1213,7 +1244,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)       
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)       
 
             #%%%% Number of bins in histograms
             plot_settings[key_plot]['dist_info'] =['hist','cum_w']
@@ -1245,7 +1276,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)        
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)        
 
             #%%%% Number of bins in histograms
             plot_settings[key_plot]['dist_info'] =['hist','cum_w']
@@ -1342,7 +1373,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             key_plot = 'prop_DI_'+plot_prop 
 
             #%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)               
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)               
 
             #%%%% Print and plot mean value and dispersion 
             plot_settings[key_plot]['disp_mod']='out' 
@@ -1457,7 +1488,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'input_LC'
 
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
         
         #%%%% Plot exposure-averaged light curves used for scaling
         plot_settings[key_plot]['plot_LC_exp'] = True
@@ -1496,7 +1527,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'spectral_LC'
         
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
         #%%%% Wavelengths to plot (A)
         plot_settings[key_plot]['wav_LC']=[5500.]
@@ -1525,7 +1556,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
 
 
@@ -1544,7 +1575,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'Res_prof'
         
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
         #%%%%% Overplot estimates for local stellar profiles
         plot_settings[key_plot]['estim_loc']= False 
@@ -1564,7 +1595,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'pca_ana'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
         
         #%%%%% Subplots
         plot_settings[key_plot]['pc_var'] = True 
@@ -1600,7 +1631,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'scr_search'
         
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
 
 
@@ -1630,7 +1661,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'map_Intr_prof'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
         #%%%%% Plot aligned profiles
         plot_settings[key_plot]['aligned']=False
@@ -1645,7 +1676,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'map_Intrbin'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
 
     ##################################################################################################
@@ -1655,7 +1686,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'map_Intr_1D'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
 
     ##################################################################################################
@@ -1665,7 +1696,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
             #%%%%% Model to retrieve
             plot_settings[key_plot]['mode_loc_data_corr'] = 'glob_mod'
@@ -1687,7 +1718,6 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
                 #%%%%%% Correct only for continuum level
                 plot_settings[key_plot]['cont_only']=True
                 plot_settings[key_plot]['plot_line_model'] = False
-                plot_settings[key_plot]['st_cont']=None
                 
         
 
@@ -1699,7 +1729,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'map_pca_prof'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)         
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
 
         #%%%%% Colormap
         plot_settings[key_plot]['cmap'] = 'Spectral'
@@ -1725,7 +1755,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'all_intr_data'
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)         
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
 
         #%%%%% Data type
         plot_settings[key_plot]['data_type']='CCF' 
@@ -1743,7 +1773,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)                    
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)                    
 
             #%%%%% Model from the global fit to all profiles ('global')
             plot_settings[key_plot]['fit_type']='global'   
@@ -1773,7 +1803,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
     
             #%%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
             #%%%%% Plot reference level
             plot_settings[key_plot]['ref_level'] = False
@@ -1800,7 +1830,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             if plot_dic[key_plot]!='':
 
                 #%%%%% Generic settings
-                plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+                plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
     
                 ##############################################################################
                 #%%%%% Profile and its fit
@@ -1825,7 +1855,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'chi2_fit_IntrProp'
 
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
         #%%%% Threshold to identify and print outliers
         plot_settings[key_plot]['chi2_thresh']=3.  
@@ -1848,7 +1878,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'plocc_ranges'
 
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
         #%%%% Choose values to plot among
         plot_settings[key_plot]['x_prop']='r_proj' 
@@ -1878,7 +1908,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
             #%%%% Figure size
             plot_settings[key_plot]['fig_size']=(10,5)
@@ -1948,7 +1978,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             key_plot = 'prop_Intr_'+plot_prop 
 
             #%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
             #%%%% Print and plot mean value and dispersion 
             plot_settings[key_plot]['disp_mod']='all'  
@@ -2047,7 +2077,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'binned_DI_Intr'
 
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
         #%%%% Data type
         plot_settings[key_plot]['data_type']='CCF' 
@@ -2080,7 +2110,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'occulted_regions'
 
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)         
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
 
         #%%%% Plot full orbit
         plot_settings[key_plot]['plot_orb']=True        
@@ -2103,7 +2133,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'system_view'
 
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
 
         #%%%% Default planets to plot
         #    - set to transiting ones if undefined
@@ -2144,7 +2174,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['yorb_dir'] = np.repeat(-0.5,len(plot_settings[key_plot]['pl_to_plot'])) 
 
         #%%%% Apparent size of the planet
-        plot_settings[key_plot]['RpRs_pl'] = [data_dic['DI']['system_prop']['achrom'][pl_loc][0] for pl_loc in plot_settings[key_plot]['pl_to_plot']]
+        plot_settings[key_plot]['RpRs_pl'] = {pl_loc:data_dic['DI']['system_prop']['achrom'][pl_loc][0] for pl_loc in plot_settings[key_plot]['pl_to_plot']}
        
         #%%%% Orbit colors
         plot_settings[key_plot]['col_orb'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
@@ -2201,15 +2231,12 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%% Plot stellar poles
         plot_settings[key_plot]['plot_poles']=True  
-        plot_settings[key_plot]['plot_hidden_pole']= False  
-
-        #Activating spots in the system view
+        plot_settings[key_plot]['plot_hidden_pole']= False 
+        
+        #%%%% Plot stellar spots
         plot_settings[key_plot]['plot_spots'] = False
 
-        #%%%% Plot stellar spots
-        plot_settings[key_plot]['stellar_spot'] = {}
-
-        #Spot properties can come from three sources for this plot:
+        #%%%% Spot properties can come from three sources for this plot:
         #   - the mock dataset (mock_spot_prop) - from mock_dic
         #   - fitted spot properties (fit_spot_prop) - from glob_fit_dic
         #   - custom user-specified properties (custom_spot_prop) - parametrized below
@@ -2314,7 +2341,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'map_Atm_prof'  
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
         #%%%%% Plot profiles in star (False) or planet rest frame (True)
         plot_settings[key_plot]['aligned']=False
@@ -2331,7 +2358,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'map_Atmbin'  
 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)         
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
 
 
             
@@ -2344,7 +2371,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'map_Atm_1D' 
         
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
 
 
@@ -2366,7 +2393,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'all_atm_data'
                 
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
         #%%%%% Data type
         plot_settings[key_plot]['data_type']='CCF' 
@@ -2383,7 +2410,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)                    
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)                    
 
             #%%%%% Model from the global fit to all profiles ('global')
             plot_settings[key_plot]['fit_type']='global'   
@@ -2416,7 +2443,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
     
             #%%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
             ##############################################################################
             #%%%%% Profile and its fit
@@ -2441,7 +2468,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             if plot_dic[key_plot]!='':
 
                 #%%%%% Generic settings
-                plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+                plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
     
                 ##############################################################################
                 #%%%%% Profile and its fit
@@ -2464,7 +2491,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         key_plot = 'chi2_fit_AtmProp'
 
         #%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)  
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
         #%%%% Threshold to identify and print outliers
         plot_settings[key_plot]['chi2_thresh']=3.  

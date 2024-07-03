@@ -6,9 +6,10 @@ from copy import deepcopy
 import bindensity as bind
 from scipy.interpolate import UnivariateSpline
 from scipy import stats
+import numpy.polynomial.polynomial as poly
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_conversions.ANTARESS_binning import sub_calc_bins,sub_def_bins
-from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,MAIN_multithread,gen_specdopshift,def_edge_tab,check_data
+from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,MAIN_multithread,gen_specdopshift,def_edge_tab,check_data,is_odd
 
 
 def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
@@ -28,7 +29,7 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
     
     """ 
     print('   > Calculating stellar masters')   
-
+    
     #Calculating data
     if (gen_dic['calc_glob_mast']):
         print('         Calculating data')    
@@ -167,7 +168,7 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
                 np.savez_compressed(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_theo',data = {'edge_bins':edge_wav_Mstar,'cen_bins':wav_Mstar,'flux':Mstar_ref},allow_pickle=True) 
     
         ### End of visits  
-
+        
         #Instrument reference master
         #    - all masters may not have the same flux balance, and are thus only co-added at bins where all masters are defined to prevent introducing flux distortions
         #    - if required for multi-visit scaling
@@ -180,7 +181,7 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
                 if gen_dic['glob_mast_mode']=='mean':  Mstar_ref[iord,cond_def_Mast[iord]] = np.mean(Mstar_vis_all[:,iord,cond_def_Mast[iord]],axis=0)
                 elif gen_dic['glob_mast_mode']=='med': Mstar_ref[iord,cond_def_Mast[iord]] = np.median(Mstar_vis_all[:,iord,cond_def_Mast[iord]],axis=0)
             np.savez_compressed(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_meas',data = {'edge_bins':edge_wav_Mstar,'cen_bins':wav_Mstar,'flux':Mstar_ref,'cond_def':cond_def_Mast},allow_pickle=True) 
-
+            
     #Defining paths and checking data were calculated
     else:
         for vis in data_inst['visit_list']:  
@@ -452,7 +453,7 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
             #Processing all exposures    
             iexp_all = range(data_vis['n_in_visit'])
             common_args = (data_vis['proc_DI_data_paths'],inst,vis,gen_dic['save_data_dir'],range_fit,data_vis['dim_exp'],iord_fit_list,gen_dic['Fbal_bin_nu'],data_dic['DI']['scaling_range'],gen_dic['Fbal_mod'],gen_dic['Fbal_deg'][inst][vis],gen_dic['Fbal_smooth'][inst][vis],gen_dic['Fbal_clip'],data_inst['nord'],data_vis['nspec'],gen_dic['Fbal_range_corr'],\
-                            plot_dic['Fbal_corr'],plot_dic['sp_raw'],gen_dic['Fbal_binw_ord'],plot_dic['Fbal_corr_ord'],proc_DI_data_paths_new,gen_dic['Fbal_ord_clip'],gen_dic['resamp_mode'],gen_dic['Fbal_deg_ord'][inst][vis],gen_dic['Fbal_expvar'],data_dic[inst][vis]['mean_gdet_DI_data_paths'],corr_func_vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'])
+                            plot_dic['Fbal_corr'],plot_dic['sp_raw'],gen_dic['Fbal_binw_ord'],plot_dic['Fbal_corr_ord'],proc_DI_data_paths_new,gen_dic['Fbal_ord_clip'],gen_dic['resamp_mode'],gen_dic['Fbal_deg_ord'][inst][vis],gen_dic['Fbal_expvar'],data_dic[inst][vis]['mean_gdet_DI_data_paths'],corr_func_vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['Fbal_phantom_range'])
             if gen_dic['Fbal_nthreads']>1:tot_Fr_all = MAIN_multithread(corrFbal_vis,gen_dic['Fbal_nthreads'],data_vis['n_in_visit'],[iexp_all],common_args,output = True)                           
             else:tot_Fr_all = corrFbal_vis(iexp_all,*common_args)  
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
@@ -473,7 +474,7 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
 
 
 def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,dim_exp,iord_fit_list,Fbal_bin_nu,scaling_range,Fbal_mod,Fbal_deg,Fbal_smooth,Fbal_clip,nord,nspec,Fbal_range_corr,\
-                 plot_Fbal_corr,plot_sp_raw,Fbal_binw_ord,plot_Fbal_corr_ord,proc_DI_data_paths_new,Fbal_ord_clip,resamp_mode,Fbal_deg_ord,Fbal_expvar,mean_gdet_DI_data_paths,corr_func_vis,corr_Fbal,corr_FbalOrd):
+                 plot_Fbal_corr,plot_sp_raw,Fbal_binw_ord,plot_Fbal_corr_ord,proc_DI_data_paths_new,Fbal_ord_clip,resamp_mode,Fbal_deg_ord,Fbal_expvar,mean_gdet_DI_data_paths,corr_func_vis,corr_Fbal,corr_FbalOrd,Fbal_phantom_range):
     r"""**Flux balance correction per visit.**    
 
     Determines and applies flux balance correction in each visit.    
@@ -531,27 +532,58 @@ def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,
             #    - each order of 2D spectra is processed independently, but contributes to the global binned table  
             bin_exp_dic={}
             for key in ['Fr','varFr','Fmast_tot','cen_bins','low_bins','high_bins','idx_ord_bin']:bin_exp_dic[key] = np.zeros(0,dtype=float) 
-            iord_fit_list_def = np.intersect1d(iord_fit_list,np_where1D(np.sum(cond_fit_all,axis=1)))                
+            iord_fit_list_def = np.intersect1d(iord_fit_list,np_where1D(np.sum(cond_fit_all,axis=1)))
+            iord_fit_list_def = iord_fit_list_def[np.argsort(iord_fit_list_def)]
+            nfilled_bins = {}
+            bin_exp_dic_ord = {}
             for iord in iord_fit_list_def:
-                
+            
                 #Force binning of full order at bluest wavelengths
                 #    - prevent spline from diverging
                 if (inst=='ESPRESSO') and (iord in [0,1]):Fbal_bin_nu_loc = 1000.
                 else:Fbal_bin_nu_loc = deepcopy(Fbal_bin_nu)
 
-                #Defining bins
-                var_ord = data_exp['cov'][iord][0][::-1]/mean_gdet_exp[iord]**2. 
+                #Defining new bins 
+                var_ord = data_exp['cov'][iord][0][::-1]/mean_gdet_exp[iord]**2.
                 bin_bd,raw_loc_dic = sub_def_bins(Fbal_bin_nu_loc,np_where1D(cond_fit_all[iord][::-1]),low_nu_exp[iord],high_nu_exp[iord],dnu_exp[iord],nu_bins_exp[iord],count_exp[iord],Mstar_loc=count_mast_exp[iord],var1D_loc=var_ord)
       
-                #Process bins
-                nfilled_bins=0
+                #Process new bins
+                nfilled_bins[iord] = 0
                 for ibin,(low_bin_loc,high_bin_loc) in enumerate(zip(bin_bd[0:-1],bin_bd[1:])):
-                    bin_loc_dic,nfilled_bins = sub_calc_bins(low_bin_loc,high_bin_loc,raw_loc_dic,nfilled_bins,calc_Fr=True)
-                    if len(bin_loc_dic)>0:
-                        for key in bin_loc_dic:bin_exp_dic[key] = np.append( bin_exp_dic[key] , bin_loc_dic[key])
+                    bin_exp_dic_ord[iord],nfilled_bins[iord] = sub_calc_bins(low_bin_loc,high_bin_loc,raw_loc_dic,nfilled_bins[iord],calc_Fr=True)
+                    
+                #Average ESPRESSO slices
+                #    - new bins are naturally ordered and should match between slices
+                if (inst=='ESPRESSO'):
+                    
+                    #Even slice
+                    #    - directly stored if no associated odd slice
+                    if ~is_odd(iord):
+                        if ((iord+1) not in iord_fit_list_def):cond_store = True
+                        else:cond_store = False
+                        
+                    #Odd slice
+                    #    - stored in any case, either directly if no associated even slice or as the average of both
+                    else:
+                        cond_store = True
+                        if ((iord-1) in iord_fit_list_def):
+                            bin_exp_dic_group = {}
+                            for key in ['Fr','Fmast_tot','cen_bins']:bin_exp_dic_group[key] = 0.5*(bin_exp_dic_ord[iord][key]+bin_exp_dic_ord[iord-1][key])
+                            bin_exp_dic_group['varFr'] = 0.5*np.sqrt(bin_exp_dic_ord[iord]['varFr']**2.+bin_exp_dic_ord[iord-1]['varFr']**2.)
+                            bin_exp_dic_group['low_bins'] = np.minimum(bin_exp_dic_ord[iord]['low_bins'],bin_exp_dic_ord[iord-1]['low_bins'])
+                            bin_exp_dic_group['high_bins'] = np.maximum(bin_exp_dic_ord[iord]['high_bins'],bin_exp_dic_ord[iord-1]['high_bins'])
+                            nfilled_bins.pop(iord-1)
+                            bin_exp_dic_ord[iord] = bin_exp_dic_group
+                        
+                #Storing new bins
+                if (len(bin_exp_dic_ord[iord])>0) & ((inst!='ESPRESSO') or ((inst=='ESPRESSO') & cond_store)):    
+                    for key in bin_exp_dic_ord[iord]:bin_exp_dic[key] = np.append( bin_exp_dic[key] , bin_exp_dic_ord[iord][key])
+                    bin_exp_dic_ord.pop(iord)
 
-                #Store index of order to which the bin belongs to
-                bin_exp_dic['idx_ord_bin'] = np.append(bin_exp_dic['idx_ord_bin'],np.repeat(iord,nfilled_bins))
+                    #Store index of order to which the bin belongs to
+                    #    - even slice for ESPRESSO
+                    bin_exp_dic['idx_ord_bin'] = np.append(bin_exp_dic['idx_ord_bin'],np.repeat(iord,nfilled_bins[iord]))
+                    nfilled_bins.pop(iord)
 
             #Fitted values
             #    - we divide by the exposure-to-master flux ratio C(t), so that only the relative flux balance around the mean exposure flux is corrected for 
@@ -560,15 +592,40 @@ def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,
             cen_bins_fit = bin_exp_dic['cen_bins'][id_sort]
             norm_Fr_fit = bin_exp_dic['Fr'][id_sort]/tot_Fr_all[isub_exp]
             norm_varFr_fit = bin_exp_dic['varFr'][id_sort]/tot_Fr_all[isub_exp]**2.
-            n_bins = len(norm_Fr_fit)
-            cond_fit = np.repeat(True,n_bins)
+
+            #Phantom bins
+            #    - we add artificial bins on the blue side of the spectrum to prevent the fit from diverging
+            if Fbal_phantom_range is not None:
+
+                #Fit linear model over bluest part of the spectrum
+                nu_min = np.min(cen_bins_fit)
+                nu_max = np.max(cen_bins_fit)
+                nu_mid = 0.5*(nu_min+nu_max)
+                nu_min_blue = nu_max-Fbal_phantom_range
+                cond_blue = (cen_bins_fit>=nu_min_blue) & (cen_bins_fit<=nu_max)  
+                coeffs_blue = poly.polyfit(cen_bins_fit[cond_blue]-nu_mid,norm_Fr_fit[cond_blue],1)            
+    
+                #Define new bins
+                n_phantom = np.sum(cond_blue)
+                dbin_phantom = (nu_max - nu_min_blue)/n_phantom
+                cen_bins_phantom = nu_max + dbin_phantom + dbin_phantom*np.arange(n_phantom) 
+                norm_Fr_phantom = poly.polyval(cen_bins_phantom-nu_mid, coeffs_blue)
+                gain_blue = np.mean(norm_varFr_fit[cond_blue]**2. / norm_Fr_fit[cond_blue])
+                norm_varFr_blue = np.sqrt(gain_blue*norm_Fr_phantom)
+                
+                #Add to blue side of the fitted spectrum
+                cen_bins_fit = np.append(cen_bins_fit,cen_bins_phantom)
+                norm_Fr_fit = np.append(norm_Fr_fit,norm_Fr_phantom)
+                norm_varFr_fit = np.append(norm_varFr_fit,norm_varFr_blue)
 
             #Uncertainty scaling
             #    - we scale errors because large uncertainties in some parts of the spectra (typically in the blue for ground-based spectra) may bias the polynomial fit in these regions. 
             w_Fr_fit = 1./norm_varFr_fit**Fbal_expvar
-            w_Fr_fit = w_Fr_fit/np.mean(w_Fr_fit)
+            w_Fr_fit = w_Fr_fit/np.mean(w_Fr_fit)            
 
             #Remove extreme outliers
+            n_bins = len(norm_Fr_fit)
+            cond_fit = np.repeat(True,n_bins)
             if Fbal_clip:
                 med_prop = np.median(norm_Fr_fit)
                 res = norm_Fr_fit - med_prop
@@ -635,6 +692,7 @@ def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,
                     dic_sav['uncorrected_data_path'] = deepcopy(proc_DI_data_paths+str(iexp)) #save path to data before correction 
                 if (plot_Fbal_corr!=''):
                     dic_sav['Fbal_T_binned_all'] = bin_exp_dic['Fr'][::-1]
+                    if Fbal_phantom_range is not None:cond_fit = cond_fit[0:-n_phantom]  #removing phantom bins
                     dic_sav['cond_fit'] = np.zeros(n_bins,dtype=bool)
                     dic_sav['cond_fit'][id_sort] = cond_fit[::-1]                       
 
@@ -763,7 +821,7 @@ def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,
 
 
 def corrFbal_totFr(nord,cond_def_sp_mast,scaling_range,low_wav,high_wav,dwav,flux_sp,flux_mast):
-    r"""    
+    r"""**Spectrum-to-reference ratio.**      
 
     Calculates the mean flux ratio between a given spectrum and a reference
     

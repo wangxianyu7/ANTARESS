@@ -15,7 +15,7 @@ The ``ANTARESS`` workflow, implemented as a Python-3 library, is a set of method
 
 The two main applications of the workflow are the extraction and analysis of planet-occulted stellar spectra along the transit chord, and planetary atmospheric spectra in absorption and emission. Stellar spectra, cleaned from planetary contamination, provide direct comparison with theoretical stellar models and enable a spectral and spatial mapping of the photosphere, allowing in particular to derive the orbital architecture of planetary systems thanks to the Rossiter-McLaughlin Revolutions technique. Planetary spectra, cleaned from stellar contamination, in turn provide direct comparison with theoretical atmospheric models and enable a spectral and longitudinal mapping of the atmospheric layers.
 
-Because the workflow is modular and its concepts are general, it can support new methods, be extended to additional spectrographs, and find a range of applications beyond the proposed scope. Look `here <https://obswww.unige.ch/~bourriev/antaress/doc/html/contributions.html>`_ if you are interested in collaborations or contributions to ``ANTARESS``.
+Because the workflow is modular and its concepts are general, it can support new methods, be extended to additional spectrographs, and find a range of applications beyond the proposed scope. Look `here <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/contributions.html>`_ if you are interested in collaborations or contributions to ``ANTARESS``.
 
 Please cite:
 
@@ -33,5 +33,6 @@ Documentation
    Fixed_files/installation
    Fixed_files/contributions
    Fixed_files/getting_started
+   Fixed_files/procedures
    Fixed_files/notebooks
    Fixed_files/documentation

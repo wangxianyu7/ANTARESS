@@ -5,7 +5,7 @@ from astropy.io import fits
 from copy import deepcopy
 import os as os_system 
 import bindensity as bind
-from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,datasave_npz,air_index,gen_specdopshift
+from antaress.ANTARESS_general.utils import stop,np_where1D,dataload_npz,datasave_npz,air_index,gen_specdopshift
 
 
 
@@ -79,9 +79,10 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
         nspec = len(flux_mast[0])
         
         #Continuum-normalisation
-        cont_func_dic = dataload_npz(gen_dic['save_data_dir']+'Stellar_cont_DI/'+inst+'_'+vis_det+'/St_cont')['cont_func_dic']
+        #    - nan gaps are left as is. They will broaden when the master spectrum is smoothed, but this is better than filling in the gaps with artificial values
+        # (especially zero values that creates sharp variations in the smoothed spectrum)
+        cont_func_dic = dataload_npz(gen_dic['save_data_dir']+'Stellar_cont_DI/St_cont_'+inst+'_'+vis_det)['cont_func_dic']
         flux_mast_norm = flux_mast[0]
-        flux_mast_norm[~cond_def_mast[0]] = 0.
         flux_mast_norm[cond_def_mast[0]] /=cont_func_dic(cen_bins_mast[0,cond_def_mast[0]])
 
         #---------------------------------------------------------------------------------------------------------------------
@@ -144,7 +145,7 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
 
         #Mask generation
         #    - defined in the stellar (for disk-integrated profiles) or surface (for intrinsic profiles) rest frames
-        from ANTARESS_conversions.KitCat import KitCat_main
+        from antaress.ANTARESS_conversions.KitCat import KitCat_main
         mask_waves,mask_weights,mask_info = KitCat_main.kitcat_mask(mask_dic,mask_dic['fwhm_ccf'],cen_bins_mast[0],inst,edge_bins_mast[0],flux_mast_norm,gen_dic,save_data_paths,tell_spec,data_dic['DI']['sysvel'][inst][vis_bin],min_specdopshift_receiver_Earth,
                                                         max_specdopshift_receiver_Earth,dic_sav,plot_dic[data_type_gen+'mask_spectra'],plot_dic[data_type_gen+'mask_ld'],plot_dic[data_type_gen+'mask_ld_lw'],plot_dic[data_type_gen+'mask_RVdev_fit'],cont_func_dic,
                                                         data_bin['vis_iexp_in_bin'],data_type_gen,data_dic,plot_dic[data_type_gen+'mask_tellcont'],plot_dic[data_type_gen+'mask_vald_depthcorr'],plot_dic[data_type_gen+'mask_morphasym'],

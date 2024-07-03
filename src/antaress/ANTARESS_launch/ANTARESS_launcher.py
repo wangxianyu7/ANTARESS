@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os as os_system
-import sys
 import argparse
 import json
+import logging
 #The following relative imports are necessary to create an executable command
 from ..ANTARESS_process.ANTARESS_main import ANTARESS_main,ANTARESS_settings_overwrite
 from ..ANTARESS_launch.ANTARESS_gridrun import ANTARESS_gridrun
@@ -26,6 +26,10 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
         None
     
     """ 
+    
+    #Suppress log messages from the fontTools package
+    fontTools_logger = logging.getLogger('fontTools')
+    fontTools_logger.addHandler(logging.NullHandler())
     
     #Read executable arguments
     #    - will be used when ANTARESS is called as an executable through terminal
@@ -77,12 +81,14 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
         ANTARESS_settings_overwrite(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic,nbook_dic)
 
     #----------------------------------------------------------------------------------------------------    
-    
-    #Code directory     
-    code_dir = os_system.path.dirname(__file__).split('ANTARESS_launch')[0]
+
+    #Working directory
     if working_path=='':gen_dic['save_dir'] = os_system.getcwd()+'/'
     else:gen_dic['save_dir']= working_path
     
+    #Code directory     
+    code_dir = os_system.path.dirname(__file__).split('ANTARESS_launch')[0]
+
     #Retrieve default or user-defined system properties
     if custom_systems!='':systems_file = import_module(working_path+custom_systems)
     else:systems_file = import_module(code_dir+'ANTARESS_launch/ANTARESS_systems.py')

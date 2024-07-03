@@ -22,10 +22,14 @@ def init(nbook_type):
                       'glob_fit_dic':{'IntrProp':{},'IntrProf':{}},
                       'plot_dic':{}
                      },
-        'system' : {},        #notebook inputs related to system properties
-        'par' : {},           #notebook inputs related to processing and analysis
-        'fits':[],            #tracks which fits were performed
-        'plots' : {}}         #notebook inputs related to plots
+        #notebook inputs related to system properties
+        'system' : {},        
+        #notebook inputs related to processing and analysis
+        'par' : {'loc_prof_corr':False},          
+        #tracks which fits were performed
+        'fits':[],            
+        #notebook inputs related to plots
+        'plots' : {}}         
 
     
     
@@ -65,8 +69,7 @@ def init_pl(input_nbook,pl_type):
         input_nbook['settings']['data_dic']['DI']['system_prop']['achrom'][input_nbook['par']['planet_name']]=[input_nbook['par']['RpRs']]
     
         #Paths
-        input_nbook['antaress_path'] = os_system.path.dirname(__file__).split('Notebooks')[0]
-        input_nbook['plot_path'] = input_nbook['antaress_path']+'/Ongoing/'+input_nbook['par']['main_pl']+'_Plots/'
+        input_nbook['plot_path'] = input_nbook['working_path']+input_nbook['par']['main_pl']+'_Plots/'
 
     return None     
     
@@ -146,7 +149,7 @@ def ana_prof(input_nbook,data_type):
         input_nbook['settings']['data_dic'][data_type]['line_fit_priors']=deepcopy(input_nbook['par']['priors'])
         for key in input_nbook['settings']['data_dic'][data_type]['line_fit_priors']:
             input_nbook['settings']['data_dic'][data_type]['line_fit_priors'][key]['mod'] = 'uf'
-        input_nbook['par'].pop('priors')        
+        input_nbook['par'].pop('priors')   
     return None
 
 def align_prof(input_nbook):
@@ -181,11 +184,8 @@ def ana_jointprof(input_nbook,data_type):
 
 def ana_jointcomm(input_nbook,data_type,ana_type):
     input_nbook['fits']+=[data_type+ana_type]
-    if 'calc_fit' in input_nbook['par']:
-        input_nbook['settings']['gen_dic']['fit_'+data_type+ana_type]=deepcopy(input_nbook['par']['calc_fit'])
-        input_nbook['par'].pop('calc_fit')
-    input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['idx_in_fit'] = {input_nbook['par']['instrument']:{input_nbook['par']['night']:deepcopy(input_nbook['par']['idx_in_fit'])}}  
-
+    input_nbook['settings']['gen_dic']['fit_'+data_type+ana_type] = True 
+    
     #Fit mode
     if ('fit_mode' in input_nbook['par']):
         input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_mode']=deepcopy(input_nbook['par']['fit_mode'])
@@ -193,6 +193,12 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
         input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['progress']=False
     else:input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_mode']='chi2'
     
+    #Running the module, but retrieving the results if MCMC was used already
+    if ('calc_fit' in input_nbook['par']) and (not input_nbook['par']['calc_fit']) and (input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_mode']=='mcmc'):
+        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mcmc_run_mode'] = 'reuse'
+        input_nbook['par'].pop('calc_fit')
+    input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['idx_in_fit'] = {input_nbook['par']['instrument']:{input_nbook['par']['night']:deepcopy(input_nbook['par']['idx_in_fit'])}}  
+
     #Fitted properties
     if (ana_type=='Prop'):
         input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'] = {
@@ -260,11 +266,12 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
         
     #Save chains by default
     input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['save_MCMC_chains']='png' 
-        
+   
     return None
 
 def loc_prof_corr(input_nbook):
     input_nbook['settings']['gen_dic']['loc_data_corr']=True
+    input_nbook['par']['loc_prof_corr'] = True
     return None
 
 
@@ -308,7 +315,7 @@ def plot_prop(input_nbook,data_type):
             input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['plot_disp'] = False         
         
         #Models
-        prop_path = input_nbook['antaress_path']+'/Ongoing/'+input_nbook['par']['main_pl']+'_Saved_data/Joined_fits/'
+        prop_path = input_nbook['working_path']+input_nbook['par']['main_pl']+'_Saved_data/Joined_fits/'
         
         #Plot fit to joint properties if carried out
         if 'IntrProp' in input_nbook['fits']:
@@ -342,11 +349,26 @@ def plot_prof(input_nbook,data_type):
     return None
 
 def plot_map(input_nbook,data_type):
-    input_nbook['settings']['plot_dic']['map_'+data_type] = 'png'
-    input_nbook['plots']['map_'+data_type]={'v_range_all':{input_nbook['par']['instrument']:{input_nbook['par']['night']:deepcopy(input_nbook['par']['v_range'])}}}  
-    if data_type=='Intr_prof':
-        input_nbook['plots']['map_'+data_type]['norm_prof'] = True
-        input_nbook['plots']['map_'+data_type]['theoRV_HR'] = True
+
+    #Activate plot related to intrinsic CCF model only if model was calculated
+    def_map = True
+    if data_type in ['Intr_prof_est','Intr_prof_res'] and (not input_nbook['par']['loc_prof_corr']):def_map=False
+
+    if def_map:
+        input_nbook['settings']['plot_dic']['map_'+data_type] = 'png'
+        input_nbook['plots']['map_'+data_type] = {}
+        input_nbook['plots']['map_'+data_type]['verbose'] = False
+        if 'v_range' in input_nbook['par']:
+            input_nbook['plots']['map_'+data_type].update({'v_range_all':{input_nbook['par']['instrument']:{input_nbook['par']['night']:deepcopy(input_nbook['par']['v_range'])}}}) 
+            input_nbook['par'].pop('v_range')
+        if data_type=='Intr_prof':
+            input_nbook['plots']['map_'+data_type]['norm_prof'] = True
+            input_nbook['plots']['map_'+data_type]['theoRV_HR'] = True
+        elif data_type=='Intr_prof_est':
+            input_nbook['plots']['map_'+data_type]['line_model']='rec'
+        elif data_type=='Intr_prof_res':
+            input_nbook['plots']['map_'+data_type]['cont_only']=False
+            input_nbook['plots']['map_'+data_type]['line_model']='rec'
     return None
 
 

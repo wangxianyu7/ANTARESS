@@ -9,15 +9,15 @@ import bindensity as bind
 import lmfit
 import os
 from lmfit import Parameters
-from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star
+from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz
 from ..ANTARESS_analysis.ANTARESS_ana_comm import init_joined_routines,init_joined_routines_inst,init_joined_routines_vis,init_joined_routines_vis_fit,com_joint_fits,com_joint_postproc
-from ..ANTARESS_conversions.ANTARESS_binning import weights_bin_prof
-from ..ANTARESS_grids.ANTARESS_plocc_grid import sub_calc_plocc_spot_prop,up_plocc_prop
+from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_spot_prop,up_plocc_prop,calc_spotted_tiles, calc_plocced_tiles
 from ..ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,theo_intr2loc,init_custom_DI_prof,custom_DI_prof
-from ..ANTARESS_grids.ANTARESS_spots import calc_spotted_tiles, calc_plocced_tiles
 from ..ANTARESS_analysis.ANTARESS_inst_resp import get_FWHM_inst,resamp_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab,convol_prof
-from ..ANTARESS_general.constant_data import c_light
+from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star
+from ..ANTARESS_conversions.ANTARESS_binning import weights_bin_prof
+from ..ANTARESS_analysis.ANTARESS_model_prof import polycoeff_def
 
 
 def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic):
@@ -628,7 +628,8 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     #Save best-fit properties
     #    - with same structure as fit to individual profiles 
     fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
-                     'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par']})
+                     'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
+                     'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'],'grid_dic':fixed_args['grid_dic'],'var_par_list':fixed_args['var_par_list'], 'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     #Information necessary for plotting the local profiles
     fit_save.update({'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'],'grid_dic':fixed_args['grid_dic'],
@@ -744,7 +745,10 @@ def joined_IntrProf(param,args):
             if not args['fit']:
 
                 #Coefficients describing the polynomial variation of spectral line properties as a function of the chosen coordinate
-                if ('coeff_line' in args):coeff_line_dic[inst][vis] = args['coeff_line']  
+                if ('coeff_line' in args):
+                    coeff_line_dic[inst][vis]={}
+                    for par_loc in args['linevar_par'][inst][vis]:    
+                        coeff_line_dic[inst][vis][par_loc] = polycoeff_def(param,args['coeff_ord2name'][inst][vis][par_loc]) 
                 else:coeff_line_dic[inst][vis] = None              
 
                 #Properties of all planet-occulted regions used to calculate spectral line profiles
@@ -773,7 +777,7 @@ def joined_IntrProf(param,args):
                 #Intrinsic profile for current exposure
                 surf_prop_dic,spotocc_prop,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,[isub])
                 sp_line_model = surf_prop_dic[args['chrom_mode']]['line_prof'][:,0]
-                
+
                 #Conversion and resampling 
                 mod_dic[inst][vis][isub] = conv_st_prof_tab(inst,vis,isub,args,args_exp,sp_line_model,args['FWHM_inst'][inst])
 
@@ -935,6 +939,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #Construction of the fit tables
     #Initializing entries that will store the coordinates of the planets, of the spots, and the respective phase of the fitted exposures.
     for par in ['coord_fit','ph_fit']:fixed_args[par]={}
+
     #Initialize variables to store the max and min limits of the fit tables
     low_bound=1e100
     high_bound=-1e100
@@ -950,10 +955,9 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['master_out']['corr_FbalOrd']=gen_dic['corr_FbalOrd']
     fixed_args['master_out']['flux_sc']=gen_dic['flux_sc']
     fixed_args['master_out']['save_data_dir']=gen_dic['save_data_dir']
-
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
         init_joined_routines_inst('ResProf',inst,fit_prop_dic,fixed_args)
-        
+
         fixed_args['master_out']['idx_in_master_out'][inst]={}
         fixed_args['raw_DI_profs'][inst]={}
         fixed_args['master_out']['weights'][inst]={}
@@ -981,14 +985,14 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         
         #Setting trimmed range to default if undefined
         if (inst in fit_prop_dic['trim_range']):trim_range = fit_prop_dic['trim_range'][inst]
-        else:trim_range = None
- 
+        else:trim_range = None 
+
         #Defining visits used in the master-out calculation 
         fixed_args['master_out']['multivisit_list'][inst]=[]
         if (inst in data_dic['Res']['vis_in_bin']) and (len(data_dic['Res']['vis_in_bin'][inst])>1):fixed_args['master_out']['multivisit_list'][inst]=data_dic['Res']['vis_in_bin'][inst]
         for multivisit in fixed_args['master_out']['multivisit_list'][inst]:
             if multivisit not in data_dic[inst]['visit_list']:stop('Problem: '+multivisit+' was selected for master-out calculation but is not used in the fit.')
-        
+
         #Processing visit
         for vis_index, vis in enumerate(data_dic[inst]['visit_list']):
             init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
@@ -996,8 +1000,9 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
             #Visit is fitted
             if fixed_args['bin_mode'][inst][vis] is not None: 
                 data_vis=data_dic[inst][vis]
+
                 init_joined_routines_vis_fit('ResProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
-                data_com = dataload_npz(data_dic[inst][vis]['proc_com_data_paths'])             
+                data_com = dataload_npz(data_dic[inst][vis]['proc_com_data_paths'])  
 
                 #Master-out properties
                 fixed_args['raw_DI_profs'][inst][vis]={} 
@@ -1046,8 +1051,8 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                         max_trim_range = cont_range[-1][1] - 3.*fixed_args['FWHM_inst'][inst]
                 idx_range_kept = np_where1D((data_com['edge_bins'][iord_sel,0:-1]>=min_trim_range) & (data_com['edge_bins'][iord_sel,1::]<=max_trim_range))
                 ncen_bins = len(idx_range_kept)
-                if ncen_bins==0:stop('Empty trimmed range')                  
-                
+                if ncen_bins==0:stop('Empty trimmed range') 
+
                 fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
                 fixed_args['ncen_bins'][inst][vis] = ncen_bins  
                 fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
@@ -1062,7 +1067,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     if len(fit_prop_dic['PC_model'][inst][vis]['idx_out'])>0:
                         if fit_prop_dic['PC_model'][inst][vis]['idx_out']=='all':idx_pc_out =  np.intersect1d(gen_dic[inst][vis]['idx_out'],data_pca['idx_corr'])
                         else:idx_pc_out =  np.intersect1d(fit_prop_dic['PC_model'][inst][vis]['idx_out'],data_pca['idx_corr'])
-                    
+
                         #Increment :
                         #    + number of fitted datapoints = number of pixels fitted per exposure in the PCA module
                         #    + number of free parameters = number of PC fitted in the PCA module
@@ -1103,7 +1108,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     for key in ['cen_bins','flux','cond_def']:fixed_args[key][inst][vis][isub] = data_exp[key][iord_sel,idx_range_kept]
                     fixed_args['edge_bins'][inst][vis][isub] = data_exp['edge_bins'][iord_sel,idx_range_kept[0]:idx_range_kept[-1]+2]   
                     fixed_args['dcen_bins'][inst][vis][isub] = fixed_args['edge_bins'][inst][vis][isub][1::]-fixed_args['edge_bins'][inst][vis][isub][0:-1]  
-                    fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]                              
+                    fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]
 
                     #Oversampled line profile model table
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
@@ -1122,7 +1127,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     fit_dic['nx_fit']+=np.sum(fit_prop_dic[inst][vis]['cond_def_fit_all'][isub])
                     fixed_args['cond_fit'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]
                     fit_prop_dic[inst][vis]['cond_def_plot_all'][isub] = np.isin(np.linspace(0,len(data_com['cen_bins'][0]),len(data_com['cen_bins'][0]), endpoint=False, dtype=int), idx_range_kept)
-
 
                     #Initialize PCs 
                     if fixed_args['n_pc'][inst][vis] is not None:
@@ -1179,7 +1183,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #    - covariance condition is set to False so that chi2 values calculated here are not further modified within the residual() function
     #    - unfitted pixels are removed from the chi2 table passed to residual() , so that they are then summed over the full tables
     if fit_dic['nx_fit']==0:stop('No points in fitted ranges')
-    fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)   
+    fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)  
     fixed_args['x_val']=range(fit_dic['nx_fit'])
     fixed_args['y_val'] = np.zeros(fit_dic['nx_fit'],dtype=float)  
     fixed_args['s_val'] = np.ones(fit_dic['nx_fit'],dtype=float)          
@@ -1189,19 +1193,8 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['fit_func'] = FIT_joined_ResProf
     fixed_args['mod_func'] = joined_ResProf
     fixed_args['inside_fit'] = True 
-    
-    #Optimization levels
-    fixed_args['C_OS_grid']=False
-    fixed_args['OS_grid'] = False
-    #Multithreading turned off for levels 1,2,3
-    if fit_prop_dic['Opt_Lvl']>=1:fixed_args['unthreaded_op'] += ['prof_grid']
-    #Over-simplified grid building turned on for levels 2,3
-    if fit_prop_dic['Opt_Lvl']>=2:fixed_args['OS_grid'] = True
-    #Over-simplified grid building turned on and coded in C for level 3
-    if fit_prop_dic['Opt_Lvl']==3:fixed_args['C_OS_grid'] = True
 
     #Model fit and calculation
-    print('Opt Level:', fit_prop_dic['Opt_Lvl'])
     merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'])
 
     #PC correction
@@ -1236,7 +1229,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Best-fit model and derived properties
     fixed_args['fit'] = False
-    
+
     #Initializing best-fit stellar profile generation
     fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],data_dic['DI']['spots_prop'],theo_dic,fixed_args['system_param']['star'],p_final)
 
@@ -1255,6 +1248,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
+
     #Information necessary for plotting the local profiles
     fit_save.update({'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'], 'system_spot_prop':fixed_args['system_spot_prop'], 'grid_dic':fixed_args['grid_dic'],
                   'var_par_list':fixed_args['var_par_list'], 'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'], 'fit_spot':fixed_args['fit_spot'], 'fit_spot_ang':fixed_args['fit_spot_ang']})
@@ -1293,9 +1287,9 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fit_dic['p_null'] = deepcopy(p_final)
     for par in [ploc for ploc in fit_dic['p_null'] if 'ctrst' in ploc]:fit_dic['p_null'][par] = 0.
     com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
-
+    
     print('     ----------------------------------')
-      
+    
     return None
 
     
@@ -1342,6 +1336,7 @@ def FIT_joined_ResProf(param,x_tab,args=None):
                     chi = np.append( chi, res/np.sqrt( args['cov'][inst][vis][isub][0][cond_fit]) )
 
     return chi
+
 
 
 
@@ -1427,7 +1422,7 @@ def joined_ResProf(param,args):
             #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
             #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
             unquiet_star_grid = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-            
+
             #Retrieve updated coordinates of occulted and spotted regions or use imported values
             system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
 
@@ -1456,7 +1451,6 @@ def joined_ResProf(param,args):
                         _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic, args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
                         spotted_star_grid |= spot_spotted_star_grid
 
-                
                 #Figure out which cells are planet-occulted
                 plocced_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
                 for pl_loc in args['transit_pl'][inst][vis]:
@@ -1484,8 +1478,8 @@ def joined_ResProf(param,args):
             #Defining the base stellar profile
             # # Table for model calculation - wavelength table of the exposure considered
             args_DI = def_st_prof_tab(inst,vis,0,args)
-            
-            # # Initializing broadband scaling of intrinsic profiles into local profiles
+
+            # Initializing broadband scaling of intrinsic profiles into local profiles
             if not args['fit']:
                 args_DI['Fsurf_grid_spec'] = theo_intr2loc(args_DI['grid_dic'],args_DI['system_prop'],args_DI,args_DI['ncen_bins'],args_DI['grid_dic']['nsub_star']) 
 
@@ -1595,7 +1589,7 @@ def joined_ResProf(param,args):
         for vis in args['inst_vis_list'][inst]:
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
                 
-                #Retrieving the master-out flux in the case where we combine multiple visits
+                #Retrieving the master-out flux
                 if vis in args['master_out']['multivisit_list'][inst]:master_out_flux=args['master_out']['multivisit_flux'][inst]
                 else:master_out_flux=args['master_out']['flux'][inst][vis]
 
@@ -1624,5 +1618,5 @@ def joined_ResProf(param,args):
             # fig.colorbar(psm, ax=ax)
             # plt.show()
             # plt.savefig('/Users/samsonmercier/Downloads/NEW_TESTING_ERRORFIXED?_BestFit_Res_map.pdf')
-
+            
     return mod_dic,coeff_line_dic,mod_prop_dic

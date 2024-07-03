@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "antaress"
-version = "1.1.1"
+version = "1.1.5"
 authors = [
   { name = "Vincent Bourrier", email = "vincent.bourrier@unige.ch" },
 ]
@@ -35,6 +35,7 @@ dependencies = [
   "bindensity",  
   "PyAstronomy",
   "pysme-astro",
+  "jupyterlab",
   ]
 
 [project.urls]
@@ -43,3 +44,6 @@ Issues = "https://gitlab.unige.ch/bourrier/ANTARESS/-/issues"
 
 [project.scripts]
 antaress = "antaress.ANTARESS_launch.ANTARESS_launcher:ANTARESS_launcher" 
+
+[tool.setuptools.packages.find]
+where = ["src"]

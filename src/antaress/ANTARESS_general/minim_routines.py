@@ -231,9 +231,10 @@ def ln_prob_func_mcmc(p_step,fixed_args):
     
     #Prior function
     ln_prior = ln_prior_func(p_step_all,fixed_args)
-
-    #If the walker move to parameters outside the defined prior range, then the log-prior will be set to inf.
-    #As a result, there is no point in calculating the log-likelihood in this case.
+    
+    #Undefined log-prior
+    #     - if the walker move to parameters outside the defined prior range, then the log-prior will be set to inf.
+    #       as a result, there is no point in calculating the log-likelihood in this case.
     if not np.isinf(ln_prior):
 
         #Likelihood function
@@ -244,7 +245,7 @@ def ln_prob_func_mcmc(p_step,fixed_args):
         ln_prob=-np.inf if np.isnan(ln_lkhood) else ln_prior + ln_lkhood
 
     else: ln_prob=-np.inf
-  
+
     return ln_prob
 
 
@@ -382,19 +383,23 @@ def init_fit(fit_dic,fixed_args,p_start,fit_prop_dic,model_par_names,model_par_u
             if ('__' in par):
                 inst_par = '_'
                 vis_par = '_'
-                pl_name = None
+                pl_name = None                
                 sp_name = None
+                
+                #Parameter depends on epoch
                 if ('__IS') and ('_VS') in par:
                     inst_vis_par = par.split('__IS')[1]
                     inst_par  = inst_vis_par.split('_VS')[0]
-                    if ('_SP' in par):vis_par = (inst_vis_par.split('_VS')[1]).split('_SP')[0]
-                    else:vis_par  = inst_vis_par.split('_VS')[1]       
+                    vis_par  = inst_vis_par.split('_VS')[1]   
+                    if ('__sp' in par):sp_name = (par.split('__IS')[0]).split('__sp')[1]                    
                     if ('__pl' in par):pl_name = (par.split('__IS')[0]).split('__pl')[1]
+                
+                #Parameter does not depend on epoch
                 else:
-                    if ('__pl' in par):pl_name = par.split('__pl')[1]
-                if ('_SP' in par):sp_name = par.split('_SP')[1]
-                if pl_name is not None:par_name_loc+='['+pl_name+']'
-                if sp_name is not None:par_name_loc+='['+sp_name+']'                         
+                    if ('__sp' in par):sp_name = par.split('__sp')[1]   
+                    if ('__pl' in par):pl_name = par.split('__pl')[1]                                                                 
+                if sp_name is not None:par_name_loc+='['+sp_name+']'
+                if pl_name is not None:par_name_loc+='['+pl_name+']'                             
                 if inst_par != '_':
                     par_name_loc+='['+inst_par+']'
                     if vis_par != '_':par_name_loc+='('+vis_par+')'
@@ -420,8 +425,8 @@ def init_fit(fit_dic,fixed_args,p_start,fit_prop_dic,model_par_names,model_par_u
     #Retrieve the number of spots that are present (whether their parameters are fixed or fitted)
     spot_names=[]
     for par in fixed_args['par_names']:
-        if 'SP' in par:
-            spot_names.append(par.split('_SP')[1])
+        if '__sp' in par:
+            spot_names.append(par.split('__sp')[1])
     fixed_args['num_spots']=len(np.unique(spot_names))
 
     #Update value of fixed parameters linked to variable parameters through an expression
@@ -684,29 +689,23 @@ def call_MCMC(nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True
         backend.reset(fit_dic['nwalkers'], fit_dic['merit']['n_free'])
     else:backend=None
 
-    #Multiprocessing
-    if nthreads>1:pool_proc = Pool(processes=nthreads)  
-    print('         Running with '+str(nthreads)+' threads')
     
     #Call to MCMC
     st0=get_time()
     n_free=np.shape(fit_dic['initial_distribution'])[1]
+
+    #Multiprocessing
     if nthreads>1:
+        pool_proc = Pool(processes=nthreads)  
+        print('         Running with '+str(nthreads)+' threads')    
         sampler = emcee.EnsembleSampler(fit_dic['nwalkers'],            #Number of walkers
                                         n_free,                         #Number of free parameters in the model
                                         ln_prob_func_mcmc,              #Log-probability function 
                                         args=[fixed_args],              #Fixed arguments for the calculation of the likelihood and priors
                                         pool = pool_proc,
-                                        backend=backend)                #Monitor chain progress
-    else:
-        sampler = emcee.EnsembleSampler(fit_dic['nwalkers'],            #Number of walkers
-                                        n_free,                         #Number of free parameters in the model
-                                        ln_prob_func_mcmc,              #Log-probability function 
-                                        args=[fixed_args],              #Fixed arguments for the calculation of the likelihood and priors
-                                        threads = nthreads,
-                                        backend=backend)                #Monitor chain progress
-
-
+                                        backend=backend)                #Monitor chain progress 
+    else:sampler = emcee.EnsembleSampler(fit_dic['nwalkers'],n_free,ln_prob_func_mcmc,args=[fixed_args],backend=backend)         
+        
     #Run MCMC
     #    - possible options:
     # + iterations: number of iterations to run            
@@ -1224,8 +1223,8 @@ def MCMC_HDI(chain_par,nbins_par,dbins_par,bw_fact,frac_search,HDI_interv_par,HD
     if len(jumpind)==0:
         HDI_sub=[np.min(bin_edges_par[bins_in_HDI]),np.max(bin_edges_par[bins_in_HDI+1])]
         HDI_interv_par+=[HDI_sub]
-        HDI_interv_txt_par+='['+"{0:.8e}".format(HDI_sub[0])+' ; '+"{0:.8e}".format(HDI_sub[1])+']'
-        HDI_sig_txt_par+='[-'+"{0:.8e}".format(med_par-HDI_sub[0])+' +'+"{0:.3e}".format(HDI_sub[1]-med_par)+']'
+        HDI_interv_txt_par+='['+"{0:.3e}".format(HDI_sub[0])+' ; '+"{0:.3e}".format(HDI_sub[1])+']'
+        HDI_sig_txt_par+='[-'+"{0:.3e}".format(med_par-HDI_sub[0])+' +'+"{0:.3e}".format(HDI_sub[1]-med_par)+']'
     
     #Multiple intervals
     else:        
@@ -1236,8 +1235,8 @@ def MCMC_HDI(chain_par,nbins_par,dbins_par,bw_fact,frac_search,HDI_interv_par,HD
             else:jf=jumpind[i_int]
             HDI_sub=[bin_edges_par[sorted_binnumber[ji]],bin_edges_par[sorted_binnumber[jf]+1]]
             HDI_interv_par+=[HDI_sub]
-            HDI_interv_txt_par+='['+"{0:.8e}".format(HDI_sub[0])+' ; '+"{0:.8e}".format(HDI_sub[1])+']' 
-            HDI_sig_txt_par+='[-'+"{0:.8e}".format(med_par-HDI_sub[0])+' +'+"{0:.3e}".format(HDI_sub[1]-med_par)+']' 
+            HDI_interv_txt_par+='['+"{0:.3e}".format(HDI_sub[0])+' ; '+"{0:.3e}".format(HDI_sub[1])+']' 
+            HDI_sig_txt_par+='[-'+"{0:.3e}".format(med_par-HDI_sub[0])+' +'+"{0:.3e}".format(HDI_sub[1]-med_par)+']' 
    
     #Convert into array
     HDI_interv_par=np.array(HDI_interv_par)            
@@ -1514,7 +1513,7 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,c
         for ipar,(parname,parunit) in enumerate(zip(fixed_args['var_par_list'],fixed_args['var_par_units'])):
             if ipar>0:print(verb_shift+'-------------------------------') 
             print(verb_shift+'  Parameter '+parname+' ['+parunit+']')
-            print(verb_shift+'    med : '+"{0:.8e}".format(med_par[ipar]))            
+            print(verb_shift+'    med : '+"{0:.3e}".format(med_par[ipar]))            
             if fit_dic['HDI'] is not None:
                 print(verb_shift+'    HDI    '+fit_dic['HDI']+' err : '+str(HDI_sig_txt_par[ipar]))
                 print(verb_shift+'              int : '+str(HDI_interv_txt[ipar]))
