@@ -1,4 +1,0 @@
-Intrinsic CCFs
-==============
-
-TBD

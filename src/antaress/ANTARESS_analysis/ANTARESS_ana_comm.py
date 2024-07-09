@@ -499,7 +499,6 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
             if len(data_vis['transit_pl'])>1:stop('Multi-planet transit must be modelled with full intrinsic profiles')
             fixed_args['transit_pl'][inst][vis]=[data_vis['transit_pl'][0]] 
         else:fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
-        fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
 
     #Spots are visible
     if len(data_vis['transit_sp'] )>0:
