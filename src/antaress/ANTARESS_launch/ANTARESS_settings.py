@@ -622,6 +622,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - set to None for no oversampling
     theo_dic['rv_osamp_line_mod']=None
 
+    #%%%% Spot
+
+    #%%%%% Nominal spot properties
+    #    - spot properties used to calculate the broadband flux scaling and determine properties of the local regions
+    #    - structure should follow the same as mock_dic['spots_prop']
+    theo_dic['spots_prop']={}
 
     #%%%%% Discretization         
     theo_dic['nsub_Dspot']={} 
@@ -3881,7 +3887,6 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% MCMC settings
     
     #%%%%%% Calculating/retrieving
-    #    - see data_dic['DI']['mcmc_run_mode']
     glob_fit_dic['IntrProf']['mcmc_run_mode']='use'
     
     
@@ -4026,27 +4031,94 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
         
     ##################################################################################################       
-    #%%% Module: estimates for differential profiles 
+    #%%% Module: estimates for planet-occulted profiles and spotted profiles
+    #    - use the module to generate:
+    # + local profiles that are then used to correct residual profiles from stellar contamination
+    # + intrinsic profiles that are corrected from measured ones to assess the quality of the estimates 
+    #    - the choice to use measured ('meas') or theoretical ('theo') stellar surface RVs to shift local profiles is set by data_dic['Intr']['align_mode']
     ##################################################################################################     
     
     #%%%% Activating
     #    - for original and binned exposures in each visit
-    gen_dic['diff_data_corr'] = False        
+    gen_dic['diff_data_corr']=False
+    gen_dic['res_loc_data_corr_bin']=False
+    
+    
+    #%%%% Calculating/retrieving
+    gen_dic['calc_diff_data_corr']=False  
+    gen_dic['calc_res_loc_data_corr_bin']=True  
+    
+    
+    #%%%% Model definition
+    
+    #%%%%% Model type and options
+    #    - used to define the estimates for the local stellar flux profiles
+    #    - these options partly differ from those defining intrinsic profiles (see gen_dic['mock_data']) because local profiles are associated with observed exposures
+    # + 'def_iord': reconstructed order
+    # + 'def_range': define the range over which profiles are reconstructed
+    #    - set 'corr_mode' to:
+    # > 'DIbin': using the master-out
+    # + option to select visits contributing to the binned profiles (leave empty to use considered visit)
+    # + option to select exposures contributing to the binned profiles (leave empty to use all out-transit exposures)
+    # + option to select the phase range of contributing exposures
+    # > 'Intrbin': using binned intrinsic profiles series
+    # + option to select visits contributing to the binned profiles (leave empty to use considered visit)
+    # + the nearest binned profile along the binned dimension is used for a given exposure
+    # + option to select exposures contributing to the binned profiles
+    # + see possible bin dimensions in data_dic['Intr']['dim_bin']  
+    # + see possible bin table definition in data_dic['Intr']['prop_bin']
+    # > 'glob_mod': models derived from global fit to intrinsic profiles (default)
+    # + 'mode' : 'ana' or 'theo'
+    # + can be specific to the visit or common to all, depending on the fit
+    # + line coordinate choice is retrieved automatically 
+    # + indicate path to saved properties determining the line property variations in the processed dataset
+    # + default options are used if left undefined
+    # > 'indiv_mod': models fitted to each individual intrinsic profile in each visit
+    # + 'mode' : 'ana' or 'theo'
+    # + works only in exposures where the stellar line could be fitted after planet exclusion
+    # > 'rec_prof':
+    # + define each undefined pixel via a polynomial fit to defined pixels in complementary exposures
+    #   or via a 2D interpolation ('linear' or 'cubic') over complementary exposures and a narrow spectral band (defined in band_pix_hw pixels on each side of undefined pixels)
+    # + chose a dimension over which the fit/interpolation is performed         
+    # + option to select exposures contributing to the fit/interpolation
+    # > 'theo': use imported theoretical local intrinsic stellar profiles    
+    data_dic['Res']['opt_loc_data_corr']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
+    
+    if gen_dic['star_name']=='AUMic':
+        data_dic['Res']['opt_loc_data_corr'].update({'ResProf_prop_path':{
+                                                                'ESPRESSO':{
+                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/UNIGE/2023-2024/antaress/Ongoing/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
+                                                                            }
+                                                                        }
+                                                    })
+    #%%%% Plot settings
+    
+    #%%%%% 2D maps : "clean", theoretical planet-occulted and spotted profiles
+    #    - for original and binned exposures
+    #    - planet-occulted profiles retrieved in the case where spots were not included in the model
+    plot_dic['map_Res_prof_clean_sp_est']=''
+    plot_dic['map_Res_prof_clean_pl_est']=''   
+
+    #%%%%% 2D maps : "un-clean", theoretical planet-occulted and spotted profiles
+    #    - for original and binned exposures
+    #    - planet-occulted profiles retrieved in the case where spots were not included in the model
+    #    - computing both "clean" and "spotted" versions of these maps can help identify if planets occulted spots during the transit or not
+    plot_dic['map_Res_prof_unclean_sp_est']=''
+    plot_dic['map_Res_prof_unclean_pl_est']=''   
+    
+    #%%%%% 2D maps : residuals theoretical planet-occulted and spotted profiles (for "clean" and/or "unclean" profiles)
+    #    - same format as 'map_Res_prof_pl_est'
+    plot_dic['map_Res_prof_clean_sp_res']=''
+    plot_dic['map_Res_prof_clean_pl_res']=''
+    plot_dic['map_Res_prof_unclean_sp_res']=''
+    plot_dic['map_Res_prof_unclean_pl_res']=''      
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+     
+
+
+
         
     
     ##################################################################################################
@@ -4118,6 +4190,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Continuum range
     #    - common to all profiles, ie that they it be large enough to cover the full range of orbital RVs 
     data_dic['Atm']['cont_range']={}
+
+
+    #%%%% Presence of spots
+    data_dic['Atm']['spot_model']=''
 
 
     #%%%% Plots

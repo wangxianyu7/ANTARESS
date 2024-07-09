@@ -311,7 +311,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         'fit_spot':data_prop['fit_spot'],
         'system_spot_prop':data_prop['system_spot_prop'],
         'update_crosstime':False,    
-        'conv2intr' :True,           
+        'conv2intr' :False,           
             })
         transit_spots=data_vis['transit_sp']
         iexp_list = range(data_vis['n_in_visit'])
