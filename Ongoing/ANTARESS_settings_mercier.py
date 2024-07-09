@@ -204,8 +204,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Star name
 
-    # gen_dic['star_name']='AUMic'
-    gen_dic['star_name']='AU_Mic'
+    gen_dic['star_name']='AUMic'
+    # gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
     # gen_dic['star_name']='Capricorn'
@@ -520,7 +520,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
          
     #Activating module
-    gen_dic['mock_data'] =  True & False
+    gen_dic['mock_data'] =  True #& False
 
     #Setting number of threads 
     mock_dic['nthreads'] = 2 
