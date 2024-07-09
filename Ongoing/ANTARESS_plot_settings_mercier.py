@@ -2205,7 +2205,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['yorb_dir'] = np.repeat(-0.5,len(plot_settings[key_plot]['pl_to_plot'])) 
 
         #%%%% Apparent size of the planet
-        plot_settings[key_plot]['RpRs_pl'] = [data_dic['DI']['system_prop']['achrom'][pl_loc][0] for pl_loc in plot_settings[key_plot]['pl_to_plot']]
+        plot_settings[key_plot]['RpRs_pl'] = {pl_loc:data_dic['DI']['system_prop']['achrom'][pl_loc][0] for pl_loc in plot_settings[key_plot]['pl_to_plot']}
        
         #%%%% Orbit colors
         plot_settings[key_plot]['col_orb'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))

@@ -881,7 +881,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     if gen_dic['star_name']=='AU_Mic':
-        gen_dic['data_dir_list']={'ESPRESSO':{'visit1':'/Users/samsonmercier/Desktop/Work/UNIGE/2023-2024/AUMic_data/2019-08-06'}}
+        gen_dic['data_dir_list']={'ESPRESSO':{'visit1':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/AUMic_data/2019-08-06'}}
         # gen_dic['fibB_corr']={'ESPRESSO':{'visit1':'all'}}
 
     #---------------------------------------------------------------------------------------------
@@ -1252,21 +1252,23 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # theo_dic['rv_osamp_line_mod']=0.5 #None  #1.
     # print('ATTENTION rv_osamp_line_mod')
 
-    # if gen_dic['star_name']=='AU_Mic':
-    #     theo_dic['spots_prop']={
-    #     'ESPRESSO':{
-    #              'visit1':{
+    if gen_dic['star_name']=='AUMic':
+        theo_dic['spots_prop']={
+        'ESPRESSO':{
+                 'visit1':{
 
-    #                 # For the spot 'spot1' : -- base grid run
-    #                  'lat__ISESPRESSO_VSvisit1_SPspot1'     : 0,
-    #                  'Tcenter__ISESPRESSO_VSvisit1_SPspot1' : 2458330.39080-0.8,
-    #                  'ang__ISESPRESSO_VSvisit1_SPspot1'     : 10,
+                    # For the spot 'spot1' : -- base grid run
+                     'lat__ISESPRESSO_VSvisit1_SPspot1'     : 0,
+                     'Tcenter__ISESPRESSO_VSvisit1_SPspot1' : 2458330.39080-0.8,
+                     'ang__ISESPRESSO_VSvisit1_SPspot1'     : 10,
 
-    #                 #All spots in the a given visit must have the same contrast
-    #                 'ctrst__ISESPRESSO_VSvisit1_SP'    : 0.35,
-    #                 },
-    #             }
-    #     }
+                    #All spots in the a given visit must have the same contrast
+                    'ctrst__ISESPRESSO_VSvisit1_SP'    : 0.35,
+                    },
+                }
+        }
+    if gen_dic['star_name']=='AUMic':
+        theo_dic['spots_prop'] = mock_dic['spots_prop']
 
 
     #Plot settings
@@ -3886,7 +3888,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #2D maps of residual profiles
-    plot_dic['map_Res_prof']='pdf'   #png 
+    plot_dic['map_Res_prof']='png'   #png 
 
     #Individual residual profiles
     plot_dic['Res_prof']=''   #pdf    
@@ -4955,7 +4957,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  &  False
+    gen_dic['fit_ResProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
@@ -5111,24 +5113,24 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         glob_fit_dic['ResProf']['deriv_prop'] = ['lambda_deg']
     
     #Calculating/retrieving
-    # glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
-    glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
+    glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
+    # glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
         glob_fit_dic['ResProf']['mcmc_reuse']={}
-        glob_fit_dic['ResProf']['mcmc_reuse']={
-                    'paths':['/Users/samsonmercier/Desktop/Work/UNIGE/2023-2024/ANTARESS Backup/Backups/AU_Mic_b_MCMCs/Ongoing_30:05_best/AU_Mic_b_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk56_steps1000.npz',
-                             '/Users/samsonmercier/Desktop/Work/UNIGE/2023-2024/ANTARESS Backup/Backups/AU_Mic_b_MCMCs/Ongoing_01:06/AU_Mic_b_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk56_steps6000.npz'],
-                    'nburn':[0,0]
-                    }  
+        # glob_fit_dic['ResProf']['mcmc_reuse']={
+        #             'paths':['/Users/samsonmercier/Desktop/Work/UNIGE/2023-2024/ANTARESS Backup/Backups/AU_Mic_b_MCMCs/Ongoing_30:05_best/AU_Mic_b_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk56_steps1000.npz',
+        #                      '/Users/samsonmercier/Desktop/Work/UNIGE/2023-2024/ANTARESS Backup/Backups/AU_Mic_b_MCMCs/Ongoing_01:06/AU_Mic_b_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk56_steps6000.npz'],
+        #             'nburn':[0,0]
+        #             }  
     #Re-starting
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
         glob_fit_dic['ResProf']['mcmc_reboot']=''
 
     #Walkers
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
-        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':56,'nsteps':6000,'nburn':1200}
+        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':32,'nsteps':10,'nburn':2}
 
     #Complex priors        
          

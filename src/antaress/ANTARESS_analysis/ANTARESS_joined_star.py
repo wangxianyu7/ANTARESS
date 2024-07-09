@@ -1011,7 +1011,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
                 # - Indexes
                 if (inst in data_dic['Res']['idx_in_bin']) and (vis in data_dic['Res']['idx_in_bin'][inst]):
-                        if data_dic['Res']['idx_in_bin'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=list(data_dic['Res']['idx_in_bin'][inst][vis])
+                    if data_dic['Res']['idx_in_bin'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=list(data_dic['Res']['idx_in_bin'][inst][vis])
         
                 if len(fixed_args['master_out']['idx_in_master_out'][inst][vis])==0:stop('No exposures defined in visit '+vis+' for the master-out calculation.')
 
@@ -1340,7 +1340,7 @@ def FIT_joined_ResProf(param,x_tab,args=None):
 
 
 
-def joined_ResProf(param,args):
+def joined_ResProf(param,fixed_args):
     r"""**Model function: joined residual profiles**
 
     Defines the joined model for residual profiles. This is done in three steps
@@ -1359,6 +1359,8 @@ def joined_ResProf(param,args):
         TBD
     
     """
+    args = deepcopy(fixed_args)
+
     mod_dic = {}
     mod_prop_dic = {}
     coeff_line_dic = {}
@@ -1421,7 +1423,7 @@ def joined_ResProf(param,args):
 
             #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
             #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
-            unquiet_star_grid = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
+            args['unquiet_star'] = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
 
             #Retrieve updated coordinates of occulted and spotted regions or use imported values
             system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
@@ -1466,7 +1468,7 @@ def joined_ResProf(param,args):
                         plocced_star_grid |= pl_plocced_star_grid
 
                 #Update the global 2D quiet star grid
-                unquiet_star_grid |= (spotted_star_grid | plocced_star_grid)
+                args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid)
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -1483,7 +1485,7 @@ def joined_ResProf(param,args):
             if not args['fit']:
                 args_DI['Fsurf_grid_spec'] = theo_intr2loc(args_DI['grid_dic'],args_DI['system_prop'],args_DI,args_DI['ncen_bins'],args_DI['grid_dic']['nsub_star']) 
 
-            base_DI_prof = custom_DI_prof(param_val,None,args=args_DI,unquiet_star=unquiet_star_grid)[0]
+            base_DI_prof = custom_DI_prof(param_val,None,args=args_DI)[0]
 
             #Making profiles for each exposure
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
@@ -1524,7 +1526,7 @@ def joined_ResProf(param,args):
                 if i_in in args['master_out']['idx_in_master_out'][inst][vis]:
                     
                     #Storing the index of the exposure considered in the array of master-out indices
-                    master_isub = np.where(args['master_out']['idx_in_master_out'][inst][vis]==i_in)[0][0]
+                    master_isub = args['master_out']['idx_in_master_out'][inst][vis].index(i_in)
 
                     #Re-sample model DI profile on a common grid
                     resamp_line_model = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],conv_line_model,kind=args['master_out']['master_out_tab']['resamp_mode'])

@@ -9263,7 +9263,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                             raw_prof = dataload_npz(raw_prof_loc)
                             flux_2_use -= raw_prof['flux']
                         
-                        var_map[isub] = flux_2_use
+                        var_map[isub][0][cond_def_map[isub][0]] = flux_2_use[0]
                     
                     elif plot_mod in ['map_Intr_prof_est','map_Intr_prof_res']: 
 
@@ -9360,8 +9360,12 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                     low_sp_map[isub] = c_light/low_edges
                     high_sp_map[isub] = c_light/high_edges                     
                 elif plot_options['sp_var'] == 'wav' :
-                    low_sp_map[isub] = low_edges
-                    high_sp_map[isub]= high_edges
+                    if plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
+                        low_sp_map[isub][0][cond_def_map[isub][0]] = low_edges[0]
+                        high_sp_map[isub][0][cond_def_map[isub][0]]= high_edges[0]
+                    else:
+                        low_sp_map[isub] = low_edges
+                        high_sp_map[isub]= high_edges
 
             ### End of exposure processing
  

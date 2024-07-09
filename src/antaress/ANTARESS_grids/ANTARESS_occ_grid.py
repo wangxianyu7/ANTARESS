@@ -325,10 +325,10 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
 
         #Disk-integrated stellar flux
         if Ftot_star:
-            surf_prop_dic_pl[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
+            surf_prop_dic_pl[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan
+            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
             if cond_spot:
                 surf_prop_dic_spot[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
-                surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.ones([system_prop[subkey_chrom]['nw'],n_exp])
 
         #Convective blueshift
         #    - physically, it makes sense for us to define different CB coefficients for a spot since spotted regions are regions of magnetic suppression and would have different CB.
@@ -567,7 +567,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                    
                     #If we want to oversample
                     else:
-                        for key in ['x','y','z']:coord_in[spot][key+'_sky_exp'][0,iexp] + np.arange(n_osamp_exp)*dcoord_exp_in_sp[key][spot]/(n_osamp_exp-1.)                
+                        for key in ['x','y','z']:coord_oversamp[key][spot] = coord_in[spot][key+'_sky_exp'][0,iexp] + np.arange(n_osamp_exp)*dcoord_exp_in_sp[key][spot]/(n_osamp_exp-1.)                
 
             #Variables to keep track of how many oversampled positions in this exposure were occulting the star
             n_osamp_exp_eff_pl = 0
@@ -1956,8 +1956,8 @@ def calc_spotted_region_prop(line_occ_HP_band,cond_occ,spot_prop,iband,system_pr
     sum_prop_dic_spot['nocc'] += coord_grid['nsub_star']
     
     #Distance from projected orbital normal in the sky plane, in absolute value
-    if 'xp_abs' in par_list : par_list.remove('xp_abs')
-    if 'xp_abs' in range_par_list : range_par_list.remove('xp_abs')    
+    if 'xp_abs' in parameter_list : parameter_list.remove('xp_abs')
+    if 'xp_abs' in range_parameter_list : range_parameter_list.remove('xp_abs')    
     
     #--------------------------------
     #Co-adding properties from current region to the cumulated values over oversampled spot positions 
