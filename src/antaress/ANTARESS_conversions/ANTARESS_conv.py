@@ -399,7 +399,7 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
     loc_type = 'CCFIntr_from_SpecIntr'
     print('         Intrinsic continuum calculations')
     if data_dic['Intr']['calc_cont']:           
-        data_dic['Intr'][inst][vis]['mean_cont'],cont_norm_flag=calc_Intr_mean_cont(data_dic['Intr'][inst][vis]['idx_def'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
+        data_dic['Intr'][inst][vis]['mean_cont'],cont_norm_flag=calc_Intr_mean_cont(data_dic['Intr'][inst][vis]['idx_def'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst],loc_type)
         np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont'],'cont_norm_flag':cont_norm_flag,'type':loc_type},allow_pickle=True)
     else:
         check_flag = check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)
@@ -757,7 +757,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
         print('         Intrinsic continuum calculations')
         loc_type = 'Spec1DIntr_from_Spec2DIntr'
         if data_dic['Intr']['calc_cont']:           
-            data_dic['Intr'][inst][vis]['mean_cont'],cont_norm_flag=calc_Intr_mean_cont(data_dic['Intr'][inst][vis]['idx_def'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst])
+            data_dic['Intr'][inst][vis]['mean_cont'],cont_norm_flag=calc_Intr_mean_cont(data_dic['Intr'][inst][vis]['idx_def'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst],loc_type)
             np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont'],'cont_norm_flag':cont_norm_flag,'type':loc_type},allow_pickle=True)
         else:
             check_flag = check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)

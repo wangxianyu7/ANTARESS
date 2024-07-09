@@ -10,7 +10,7 @@ from ..ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper
 from ..ANTARESS_general.constant_data import Rsun,c_light
 from ..ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff
 from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_spot_prop,up_plocc_prop
-from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,custom_DI_prof,theo_intr2loc,def_Cfunc_prof
+from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,custom_DI_prof,theo_intr2loc,CFunctionWrapper
 from ..ANTARESS_analysis.ANTARESS_model_prof import para_cust_mod_true_prop,proc_cust_mod_true_prop,cust_mod_true_prop,gauss_intr_prop,calc_biss,\
     dgauss,gauss_poly,voigt,gauss_herm_lin,gen_fit_prof
 from ..ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,def_st_prof_tab,cond_conv_st_prof_tab,resamp_st_prof_tab,get_FWHM_inst,calc_FWHM_inst
@@ -122,10 +122,14 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                 
                 #Priors
                 if (par in priors_prop):
-                    fixed_args['varpar_priors'][par] = priors_prop[par]    
-                    if 'ang' in par and priors_prop[par]['high']>90:stop('Prior error: Spot angular size cannot exceed 90deg. Re-define your priors.')
-                    elif 'veq' in par and priors_prop[par]['low']<0:stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
-                    elif ('Tcenter' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
+                    fixed_args['varpar_priors'][par] = priors_prop[par] 
+                    
+                    #Prior check on standard properties
+                    #    - for uniform priors only
+                    if priors_prop[par]['mod']=='uf': 
+                        if 'ang' in par and priors_prop[par]['high']>90:stop('Prior error: Spot angular size cannot exceed 90deg. Re-define your priors.')
+                        elif 'veq' in par and priors_prop[par]['low']<0:stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
+                        elif ('Tcenter' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
                 else:
                     if par == 'jitter':varpar_priors=[0.,1e6]
                     elif par == 'veq':varpar_priors=[0.,100.]
@@ -581,7 +585,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
             fixed_args['C_OS_grid'] = True
                     
             #Initializes C-based profile calculation
-            fixed_args['fun_to_use'],fixed_args['fun_to_free'] = def_Cfunc_prof()
+            fixed_args['c_function_wrapper'] = CFunctionWrapper()
 
         #Model fit and calculation
         print('       Optimization level:', fit_prop_dic['Opt_Lvl'])        
@@ -741,7 +745,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                         fixed_args[par_check+'_sp']+= [spot_name]
                         fixed_args['fit_spot']=True
                     if ('ang' in par_check) and p_start[par].vary:
-                             fixed_args['fit_spot_ang']+=[spot_name]
+                        fixed_args['fit_spot_ang']+=[spot_name]
             
     #Unique list of planets with variable properties  
     if fixed_args['cond_transit_pl']:                
@@ -1964,8 +1968,9 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     fixed_args['args_exp'] = def_st_prof_tab(None,None,None,fixed_args)
     
     #Custom model
+    #    - for now, no spots allowed
     if (model_choice=='custom') and (prof_type=='DI'):
-        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic[inst]['system_prop'],theo_dic,star_params,p_final)
+        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic[inst]['system_prop'],{},theo_dic,star_params,p_final)
         fixed_args['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],fixed_args['args_exp'],fixed_args['args_exp']['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
             
     #Store final model
@@ -3098,16 +3103,18 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     
                 #Mutual inclinations for the two degenerate configurations (in deg)
                 im_chainA = np.arccos( np.cos(inclin_rad_chain_pl1)*np.cos(inclin_rad_chain_pl2)+np.cos(lamb_chain_pl2 - lamb_chain_pl1)*np.sin(inclin_rad_chain_pl1)*np.sin(inclin_rad_chain_pl2) )*180./np.pi
+                merged_chain=np.concatenate((merged_chain,im_chainA[:,None]),axis=1) 
                 im_chainB = np.arccos(-np.cos(inclin_rad_chain_pl1)*np.cos(inclin_rad_chain_pl2)+np.cos(lamb_chain_pl2 + lamb_chain_pl1)*np.sin(inclin_rad_chain_pl1)*np.sin(inclin_rad_chain_pl2) )*180./np.pi
+                merged_chain=np.concatenate((merged_chain,im_chainB[:,None]),axis=1) 
                 
                 #Combined distributions
                 #    - the two configurations are equiprobable
                 im_chain_glob = 0.5*(im_chainA+im_chainB)   
                 merged_chain=np.concatenate((merged_chain,im_chain_glob[:,None]),axis=1) 
 
-            fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['imut__pl'+pl_loc1+'__pl'+pl_loc2]))
-            fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],['i$_\mathrm{mut}$['+pl_loc1+';'+pl_loc2+']']))   
-            fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg']))   
+            fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['imutA__pl'+pl_loc1+'__pl'+pl_loc2,'imutB__pl'+pl_loc1+'__pl'+pl_loc2,'imut__pl'+pl_loc1+'__pl'+pl_loc2]))
+            fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],['i$_\mathrm{mut,A}$['+pl_loc1+';'+pl_loc2+']','i$_\mathrm{mut,B}$['+pl_loc1+';'+pl_loc2+']','i$_\mathrm{mut}$['+pl_loc1+';'+pl_loc2+']']))   
+            fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg','deg','deg']))  
 
         #-------------------------------------------------
             

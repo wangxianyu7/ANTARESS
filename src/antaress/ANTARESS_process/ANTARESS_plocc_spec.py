@@ -328,9 +328,9 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         'system_spot_prop':{},          
             })
         plocc_prof_type = data_dic['Intr']['plocc_prof_type']
-        if data_dic['Intr']['plocc_prof_type']=='Intr':fixed_args['conv2intr'] = True
+        if plocc_prof_type=='Intr':fixed_args['conv2intr'] = True
         else:fixed_args['conv2intr'] = False 
-        transit_spots={}
+        transit_spots=[]
         spots_prop ={}
         iexp_list = data_dic[prof_type][inst][vis]['idx_def']
     chrom_mode = data_vis['system_prop']['chrom_mode']
@@ -424,18 +424,18 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
             save_path = gen_dic['save_data_dir']+'Loc_estimates/'+corr_mode+'/'+inst+'_'+vis+'_'+str(iexp)
     
             #Planet-occulted line profile 
-            sp_line_model = surf_prop_dic[chrom_mode]['line_prof'][:,0]
-            line_prof_cons = {'flux':sp_line_model}
+            pl_line_model = surf_prop_dic[chrom_mode]['line_prof'][:,0]
+            line_prof_cons = {'flux':pl_line_model}
         
         #Exposure profiles
         for line_prof in list(line_prof_cons.keys()):
            
             #Scaling to fitted intrinsic continuum level
             #    - model profiles have been output with a continuum level unity (through the option 'conv2intr') and are thus scaled to the fitted level
-            if plocc_prof_type=='Intr':line_prof_cons['flux']*=params['cont']
+            if plocc_prof_type=='Intr':line_prof_cons[line_prof]*=params['cont']
          
             #Conversion and resampling 
-            flux_loc = conv_st_prof_tab(None,None,None,fixed_args,args_exp,line_prof_cons['flux'],fixed_args['FWHM_inst'])
+            flux_loc = conv_st_prof_tab(None,None,None,fixed_args,args_exp,line_prof_cons[line_prof],fixed_args['FWHM_inst'])
         
             #Filling full table with defined reconstructed profile
             plocc_prof = np.zeros(data_vis['nspec'],dtype=float)*np.nan
@@ -737,7 +737,7 @@ def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param
     print('         Using global model')  
 
     #Calculating
-    if (gen_dic['calc_res_loc_data_corr']):
+    if (gen_dic['calc_diff_data_corr']):
         print('         Calculating data')     
              
         #Calculating the clean version of the data
@@ -747,7 +747,7 @@ def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param
 
         #Using global profile model
         if corr_mode=='glob_mod': 
-            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,False)
+            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,True)
         
         else:stop('WARNING: Only joined-fit results can be used at the moment. Set corr_mode to \'glob_mod\'')
 

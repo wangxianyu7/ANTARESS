@@ -19,15 +19,15 @@ follow the tutorials to define ``ANTARESS`` configuration files and run its exec
 .. toctree::
    :maxdepth: 2
 
-   procedures_reduc
+   procedures_reduc/procedures_reduc
 
 
 .. toctree::
    :maxdepth: 2
 
-   procedures_CCF
+   procedures_CCF/procedures_CCF
    
 .. toctree::
    :maxdepth: 2
 
-   procedures_RM
+   procedures_RM/procedures_RM

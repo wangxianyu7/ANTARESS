@@ -827,7 +827,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Correction settings
     
     #%%%%% Threshold 
-    #    - flux values where telluric contrast is deeper than this threshold (between 0 and 1) are set to nan
+    #    - flux values where telluric contrast is deeper than this threshold (between 0 for no telluric absorption and 1 for full telluric absorption) are set to nan
     gen_dic['tell_thresh_corr'] = 0.9      
     
     
@@ -2806,14 +2806,18 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     data_dic['Intr']['cont_range'] = {}
     
     
-    #%%%% Calculating/retrieving continuum 
-    #    - concerns continuum measurement and correction
+    #%%%% Calculating/retrieving continuum in each order
+    #    - used for continuum correction and for plots
     data_dic['Intr']['calc_cont'] = True
     
     
     #%%%% Continuum correction
     #    - the continuum might show differences between exposures because of imprecisions on the flux balance correction
-    #      this option correct for these deviations and update the flux scaling values accordingly
+    #      this option corrects for these deviations and update the flux scaling values accordingly
+    #    - the correction is applied order per order using pixels defined in all exposures, and may thus not be accurate in orders with low S/R and few defined pixels, especially for exposures with low flux at the stellar limbs
+    #    - the correction is applied to the final processed intrinsic spectra, ie that if you want to generate intrinsic CCF or 1D spectra be sure to activate the corresponding modules when calling the correction for the first time, otherwise it will be
+    # applied to the raw intrinsic spectra with less accuracy
+    #    - beware that intrinsic profiles are overwritten by this correction: re-run the extraction without continuum correction in case you disable it 
     data_dic['Intr']['cont_norm'] = False
     
     
@@ -3430,6 +3434,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + 'lambda_deg' : converts lambda[rad] to lambda[deg]
     #                  lambda[deg] is folded over x+[-180;180], with x set by the subfield 'pl_name' if defined, or to the median of the chains by default
     #                  define x so that the peak of the PDF is well centered in the folded range
+    # + 'i_mut' : adds mutual inclination between the orbital planes of two transiting planets, if relevant, using their fitted 'lambda'     
+    # + 'b' : adds impact parameter, using fixed or fitted 'aRs' and 'ip'
+    # + 'ip' : converts fitted orbital inclination from radian to degrees.    
     #    - user-provided measurements of a parameter 'par' are defined as subfields with format
     # par : {'val' : val, 's_val' : val} or par : {'val' : val, 's_val_low' : val, 's_val_high' : val} 
     #      units for par :

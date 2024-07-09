@@ -9,6 +9,7 @@ import bindensity as bind
 import lmfit
 import os
 from lmfit import Parameters
+from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz
 from ..ANTARESS_analysis.ANTARESS_ana_comm import init_joined_routines,init_joined_routines_inst,init_joined_routines_vis,init_joined_routines_vis_fit,com_joint_fits,com_joint_postproc
 from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_spot_prop,up_plocc_prop,calc_spotted_tiles, calc_plocced_tiles
@@ -320,7 +321,6 @@ def joined_IntrProp(param,args):
             system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
             surf_prop_dic,spotocc_prop,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
 
-            
             #Properties associated with the transiting planet in the visit 
             pl_vis = args['transit_pl'][inst][vis][0]
             theo_vis = surf_prop_dic['achrom'][pl_vis]      
@@ -884,7 +884,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         'ref_pl':fit_prop_dic['ref_pl'],
         'rout_mode':'ResProf',
         'func_prof_name':fit_prop_dic['func_prof_name'],
-        'mode':fit_prop_dic['mode'], 
+        'mode':fit_prop_dic['mode'],
         'cen_bins' :{},
         'edge_bins':{},
         'dcen_bins' :{},
@@ -1017,13 +1017,13 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 fixed_args['master_out']['weights'][inst][vis]={}
                 fixed_args['master_out']['idx_in_master_out'][inst][vis]=[]
 
-                # - Indexes
+                #Indexes
                 if (inst in data_dic['Res']['idx_in_bin']) and (vis in data_dic['Res']['idx_in_bin'][inst]):
-                        if data_dic['Res']['idx_in_bin'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=list(data_dic['Res']['idx_in_bin'][inst][vis])
+                    if data_dic['Res']['idx_in_bin'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=list(data_dic['Res']['idx_in_bin'][inst][vis])
         
                 if len(fixed_args['master_out']['idx_in_master_out'][inst][vis])==0:stop('No exposures defined in visit '+vis+' for the master-out calculation.')
 
-                # - Needed for weight calculation
+                #Needed for weight calculation
                 fixed_args['master_out']['scaled_data_paths'][inst][vis]={}
                 if gen_dic['flux_sc']:fixed_args['master_out']['scaled_data_paths'][inst][vis] = data_dic[inst][vis]['scaled_DI_data_paths']
                 else:fixed_args['master_out']['scaled_data_paths'][inst][vis] = None
@@ -1103,6 +1103,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 #    - models must be calculated over the full, continuous spectral tables to allow for convolution
                 #      the fit is then performed on defined pixels only
                 for key in ['dcen_bins','cen_bins','edge_bins','cond_fit','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
+                fit_prop_dic[inst][vis]['cond_def_plot_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],len(data_com['cen_bins'][0])],dtype=bool)
                 fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
                 fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
@@ -1132,7 +1133,8 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]           
                     fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]          
                     fit_dic['nx_fit']+=np.sum(fit_prop_dic[inst][vis]['cond_def_fit_all'][isub])
-                    fixed_args['cond_fit'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]
+                    fixed_args['cond_fit'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]                    
+                    fit_prop_dic[inst][vis]['cond_def_plot_all'][isub] = np.isin(np.linspace(0,len(data_com['cen_bins'][0]),len(data_com['cen_bins'][0]), endpoint=False, dtype=int), idx_range_kept)
 
                     #Initialize PCs 
                     if fixed_args['n_pc'][inst][vis] is not None:
@@ -1275,7 +1277,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                         'edge_bins':np.array([fixed_args['edge_bins'][inst][vis][isub]]),
                         'flux':np.array([mod_dic[inst][vis][isub]]),
                         'flux_nopl':np.array([mod_dic_nopl[inst][vis][isub]]),
-                        'cond_def_fit':np.array([fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]]),
+                        'cond_def_fit':np.array([fit_prop_dic[inst][vis]['cond_def_plot_all'][isub]]),
                         'cond_def_cont':fit_prop_dic[inst][vis]['cond_def_cont_all'][isub]
                         }
                     for pl_loc in fixed_args['transit_pl'][inst][vis]:
@@ -1347,7 +1349,7 @@ def FIT_joined_ResProf(param,x_tab,args=None):
 
 
    
-def joined_ResProf(param,args):
+def joined_ResProf(param,fixed_args):
     r"""**Model function: joined differential profiles**
 
     Defines the joined model for differential profiles. This is done in three steps
@@ -1366,9 +1368,21 @@ def joined_ResProf(param,args):
         TBD
     
     """
+    args = deepcopy(fixed_args)
     mod_dic = {}
     mod_prop_dic = {}
     coeff_line_dic = {}
+
+    #Updating spectral grid for master out
+    if 'rv_shift' in param:
+        for key in ['cen_bins', 'edge_bins']:
+            if 'spec' in args['type']:
+                args['master_out']['master_out_tab'][key] = args['master_out']['master_out_tab'][key] * (1 - param['rv_shift']/c_light)
+            else:
+                args['master_out']['master_out_tab'][key] = args['master_out']['master_out_tab'][key] - param['rv_shift']
+
+    #Updating equatorial period
+    if ('Peq' in args['var_par_list']) or ('Peq' in args['fix_par_list']):param['veq'] = (2*np.pi*args['system_param']['star']['Rstar_km'])/(param['Peq']*24*3600)
 
     #Processing instruments
     for inst in args['inst_list']:
@@ -1418,12 +1432,20 @@ def joined_ResProf(param,args):
 
             #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
             #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
-            unquiet_star_grid = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
+            args['unquiet_star'] = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
 
             #Retrieve updated coordinates of occulted and spotted regions or use imported values
             system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
 
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
+
+                #Update the spectral grid of the exposures considered
+                if 'rv_shift' in param:
+                    for key in ['cen_bins', 'edge_bins']:
+                        if 'spec' in args['type']:
+                            args[key][inst][vis][isub] = args[key][inst][vis][isub] * (1 - param['rv_shift']/c_light)
+                        else:
+                            args[key][inst][vis][isub] = args[key][inst][vis][isub] - param['rv_shift']
 
                 #Figure out which cells are spotted
                 spotted_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
@@ -1455,7 +1477,7 @@ def joined_ResProf(param,args):
                         plocced_star_grid |= pl_plocced_star_grid
 
                 #Update the global 2D quiet star grid
-                unquiet_star_grid |= (spotted_star_grid | plocced_star_grid)
+                args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid)
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -1468,11 +1490,10 @@ def joined_ResProf(param,args):
             # # Table for model calculation - wavelength table of the exposure considered
             args_DI = def_st_prof_tab(inst,vis,0,args)
 
-            # # Initializing broadband scaling of intrinsic profiles into local profiles
+            #Initializing broadband scaling of intrinsic profiles into local profiles
             if not args['fit']:
                 args_DI['Fsurf_grid_spec'] = theo_intr2loc(args_DI['grid_dic'],args_DI['system_prop'],args_DI,args_DI['ncen_bins'],args_DI['grid_dic']['nsub_star']) 
-
-            base_DI_prof = custom_DI_prof(param_val,None,args=args_DI,unquiet_star=unquiet_star_grid)[0]
+            base_DI_prof = custom_DI_prof(param_val,None,args=args_DI)[0]
 
             #Making profiles for each exposure
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
@@ -1513,7 +1534,7 @@ def joined_ResProf(param,args):
                 if i_in in args['master_out']['idx_in_master_out'][inst][vis]:
                     
                     #Storing the index of the exposure considered in the array of master-out indices
-                    master_isub = np.where(args['master_out']['idx_in_master_out'][inst][vis]==i_in)[0][0]
+                    master_isub = args['master_out']['idx_in_master_out'][inst][vis].index(i_in)
 
                     #Re-sample model DI profile on a common grid
                     resamp_line_model = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],conv_line_model,kind=args['master_out']['master_out_tab']['resamp_mode'])
@@ -1578,7 +1599,7 @@ def joined_ResProf(param,args):
         for vis in args['inst_vis_list'][inst]:
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
                 
-                #Retrieving the master-out flux in the case where we combine multiple visits
+                #Retrieving the master-out flux
                 if vis in args['master_out']['multivisit_list'][inst]:master_out_flux=args['master_out']['multivisit_flux'][inst]
                 else:master_out_flux=args['master_out']['flux'][inst][vis]
 

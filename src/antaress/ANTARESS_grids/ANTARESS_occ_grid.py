@@ -109,6 +109,12 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_grid,coord_grid, transit_
     if 'cos_istar' in args['var_par_list']:
         system_param_loc['star']['cos_istar'] = param['cos_istar']
         system_param_loc['star']['istar_rad'] = np.arccos(param['cos_istar'])
+    if ('veq_spots' in args['var_par_list']):
+        system_param_loc['star']['om_eq_spots'] = param['veq_spots']/system_param_loc['star']['Rstar_km']
+    elif ('veq' in args['var_par_list']):
+        system_param_loc['star']['om_eq_spots'] = param['veq']/system_param_loc['star']['Rstar_km']
+    if ('alpha_rot' in args['var_par_list']):
+        system_param_loc['star']['alpha_rot_spots'] = param['alpha_rot']
 
     #Coefficients describing the polynomial variation of spectral line properties as a function of the chosen coordinate
     #    - coefficients can be specific to a given spectral line model
@@ -166,7 +172,6 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_grid,coord_grid, transit_
                 args['system_spot_prop']['achrom'][spot][0]=param['ang__IS'+inst+'_VS'+vis+'_SP'+spot] * np.pi/180
                 _,args['grid_dic']['Ssub_Sstar_sp'][spot],args['grid_dic']['x_st_sky_grid_sp'][spot],args['grid_dic']['y_st_sky_grid_sp'][spot],_ = occ_region_grid(args['system_spot_prop']['achrom'][spot][0],args['grid_dic']['nsub_Dspot'][spot],spot=True)  
 
-    
         #Recalculate spot coordinates if relevant        
         if args['fit_spot']:
     
@@ -283,6 +288,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
     for subkey_chrom in key_chrom:
         surf_prop_dic_pl[subkey_chrom] = {}        
         surf_prop_dic_spot[subkey_chrom] = {}
+        surf_prop_dic_common[subkey_chrom] = {}
     if 'line_prof' in par_list_in:
         for subkey_chrom in key_chrom:
             surf_prop_dic_pl[subkey_chrom]['line_prof']=np.zeros([args['ncen_bins'],n_exp],dtype=float)
@@ -307,9 +313,9 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
         #Disk-integrated stellar flux
         if Ftot_star:
             surf_prop_dic_pl[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
+            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
             if cond_spot:
                 surf_prop_dic_spot[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
-                surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.ones([system_prop[subkey_chrom]['nw'],n_exp])
 
         #Convective blueshift
         #    - physically, it makes sense for us to define different CB coefficients for a spot since spotted regions are regions of magnetic suppression and would have different CB.
@@ -546,7 +552,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
                    
                     #If we want to oversample
                     else:
-                        for key in ['x','y','z']:coord_in[spot][key+'_sky_exp'][0,iexp] + np.arange(n_osamp_exp)*dcoord_exp_in_sp[key][spot]/(n_osamp_exp-1.)                
+                        for key in ['x','y','z']:coord_oversamp[key][spot] = coord_in[spot][key+'_sky_exp'][0,iexp] + np.arange(n_osamp_exp)*dcoord_exp_in_sp[key][spot]/(n_osamp_exp-1.)            
 
             #Variables to keep track of how many oversampled positions in this exposure were occulting the star
             n_osamp_exp_eff_pl = 0
@@ -831,7 +837,6 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
         theo_dic (dict) : parameters used to generate and describe the stellar grid and planet-occulted regions grid.
         spot_occ (bool) : Optional, whether spotted regions are present in the oversampled exposure considered. Default is False.
         reduced_spot_prop (dict) : Optional, spot properties used to account for the possible presence of spotted cells in the planet-occulted region. Default is an empty dictionary.
-        fit_Ftot_star (bool) : Optional, whether to include the continuum in the calculation of Focc_star_band.
     
     Returns:
         Focc_star_band (float) : the input Focc_star_band updated with the flux occulted by the planet considered.
@@ -1928,8 +1933,8 @@ def calc_spotted_region_prop(line_occ_HP_band,cond_occ,spot_prop,iband,system_pr
     sum_prop_dic_spot['nocc'] += coord_grid['nsub_star']
     
     #Distance from projected orbital normal in the sky plane, in absolute value
-    if 'xp_abs' in par_list : par_list.remove('xp_abs')
-    if 'xp_abs' in range_par_list : range_par_list.remove('xp_abs')    
+    if 'xp_abs' in parameter_list : parameter_list.remove('xp_abs')
+    if 'xp_abs' in range_parameter_list : range_parameter_list.remove('xp_abs') 
     
     #--------------------------------
     #Co-adding properties from current region to the cumulated values over oversampled spot positions 

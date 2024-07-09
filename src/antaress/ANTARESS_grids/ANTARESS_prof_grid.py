@@ -16,35 +16,54 @@ from ..ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
 from ..ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab
 
-def def_Cfunc_prof():
+class CFunctionWrapper:
     r"""**C profile calculation**
 
-    Defines the C function and its parameters used in the optimization
+    Defines the C function used in the optimization.
+    The implementation of a class and the getstate and setstate functions is necessary to use the C function when pickling is used in emcee (when multiprocessing is used).
 
-    Args:
-        TBD
-    
-    Returns:
-        TBD
-    
     """ 
+    def __init__(self):
+        self._initialize_functions()
 
-    code_dir = os_system.path.dirname(__file__).split('ANTARESS_grids')[0]
-    myfunctions = CDLL(code_dir+'/ANTARESS_analysis/C_grid/Gauss_star_grid.so')
-    fun_to_use = myfunctions.C_coadd_loc_gauss_prof
-    fun_to_free = myfunctions.free_gaussian_line_grid
-    fun_to_use.argtypes = [np.ctypeslib.ndpointer(c_double),
-                    np.ctypeslib.ndpointer(c_double),
-                    np.ctypeslib.ndpointer(c_double),
-                    np.ctypeslib.ndpointer(c_double),
-                    np.ctypeslib.ndpointer(c_double),
-                    c_int,
-                    c_int]
-    fun_to_use.restype = c_void_p
-    fun_to_free.argtypes = [np.ctypeslib.ndpointer(c_double)]
-    fun_to_free.restype = None
-    
-    return fun_to_use,fun_to_free
+    def _initialize_functions(self):
+        code_dir = os_system.path.dirname(__file__).split('ANTARESS_grids')[0]
+        self.myfunctions = CDLL(code_dir + '/ANTARESS_analysis/C_grid/Gauss_star_grid.so')
+        self.fun_to_use = self.myfunctions.C_coadd_loc_gauss_prof
+        self.fun_to_use.argtypes = [
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            c_int,
+            c_int,
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS")
+        ]
+        self.fun_to_use.restype = None
+
+    def coadd_loc_gauss_prof(self, rv_surf_star_grid, ctrst_grid, FWHM_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, gauss_grid):
+        self.fun_to_use(rv_surf_star_grid, ctrst_grid, FWHM_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, gauss_grid)
+
+    def __getstate__(self):
+        # When pickling, we remove the ctypes function pointer
+        state = self.__dict__.copy()
+        del state['myfunctions']
+        del state['fun_to_use']
+        return state
+
+    def __setstate__(self, state):
+        # When unpickling, we re-initialize the ctypes function pointer
+        self.__dict__.update(state)
+        self._initialize_functions()
+
+
+
+
+
+
+
+
 
 
 
@@ -704,11 +723,10 @@ def use_C_coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
     """ 
     Fsurf_grid_spec_shape0 = len(Fsurf_grid_spec)
     ncen_bins = args['ncen_bins']
-    gauss_grid_ptr = args['fun_to_use'](rv_surf_star_grid, args['input_cell_all']['ctrst'], args['input_cell_all']['FWHM'], 
-        args['cen_bins'], Fsurf_grid_spec*10, ncen_bins, Fsurf_grid_spec_shape0)
-    gauss_grid = np.frombuffer(cast(gauss_grid_ptr, POINTER(c_double * (ncen_bins * Fsurf_grid_spec_shape0))).contents, dtype=np.float64)
-    truegauss_grid = gauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins))/10
-    args['fun_to_free'](gauss_grid)
+    gauss_grid = np.zeros((Fsurf_grid_spec_shape0, ncen_bins), dtype=np.float64).flatten()
+    c_function_wrapper = args['c_function_wrapper']
+    c_function_wrapper.coadd_loc_gauss_prof(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec * 10,ncen_bins,Fsurf_grid_spec_shape0,gauss_grid)
+    truegauss_grid = gauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins)) / 10
     return truegauss_grid
 
 

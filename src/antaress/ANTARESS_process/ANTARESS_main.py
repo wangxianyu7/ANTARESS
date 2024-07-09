@@ -12,7 +12,7 @@ from dace_query.spectroscopy import Spectroscopy
 from scipy.interpolate import CubicSpline
 from ..ANTARESS_analysis.ANTARESS_model_prof import calc_macro_ker_anigauss,calc_macro_ker_rt 
 from ..ANTARESS_grids.ANTARESS_star_grid import model_star
-from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop
+from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop,retrieve_spots_prop_from_param
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm
 from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab
@@ -140,7 +140,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
 
             #Calculating theoretical properties of the planet-occulted and/or spotted regions 
             if gen_dic['theoPlOcc'] or (data_dic['DI']['spots_prop'] != {}):
-                calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'],spot_dic=data_dic['DI']['spots_prop'])
+                calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'],spot_dic=theo_dic)
                 
             #Analyzing original disk-integrated profiles
             if gen_dic['fit_'+data_type_gen]:
@@ -160,7 +160,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
          
             #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
             if gen_dic['DImast_weight']:              
-                process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDIweigh=True,spot_dic=data_dic['DI']['spots_prop'])
+                process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDIweigh=True,spot_dic=theo_dic)
 
             #Processing converted 2D disk-integrated profiles
             if gen_dic['spec_1D']:                
@@ -563,7 +563,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     if (plot_dic['glob_mast']!='') and gen_dic['glob_mast']:
         plot_dic['glob_mast']==''
         print('Disabling "glob_mast" plot')
-    if (plot_dic['Fbal_corr_vis']!='') and (~gen_dic['corr_Fbal'] or gen_dic['Fbal_vis'] is None):        
+    if (plot_dic['Fbal_corr_vis']!='') and ((not gen_dic['corr_Fbal']) or (gen_dic['Fbal_vis'] is None)):        
         plot_dic['Fbal_corr_vis']==''
         print('Disabling "Fbal_corr_vis" plot')        
 
@@ -978,7 +978,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                     
     #Definition of model stellar grid to calculate local or disk-integrated properties
     #    - used througout the pipeline, unless stellar properties are fitted
-    if gen_dic['theoPlOcc'] or (gen_dic['theo_spots']) or (gen_dic['fit_DI_gen'] and (('custom' in data_dic['DI']['model'].values()) or ('RT_ani_macro' in data_dic['DI']['model'].values()))) or gen_dic['mock_data'] \
+    if gen_dic['theoPlOcc'] or (data_dic['DI']['spots_prop'] != {}) or (gen_dic['fit_DI_gen'] and (('custom' in data_dic['DI']['model'].values()) or ('RT_ani_macro' in data_dic['DI']['model'].values()))) or gen_dic['mock_data'] \
         or gen_dic['fit_ResProf'] or gen_dic['correct_spots'] or gen_dic['fit_IntrProf'] or gen_dic['loc_data_corr']:
 
         #Stellar grid
@@ -1003,6 +1003,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #------------------------------------------------------------------------------
     #Generic path names
     gen_dic['main_pl_text'] = ''
+    gen_dic['main_pl_sp_text'] = ''
     for pl_loc in gen_dic['studied_pl']:gen_dic['main_pl_text']+=pl_loc
     gen_dic['save_data_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Saved_data/'
     gen_dic['save_plot_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'
@@ -1118,10 +1119,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
 
     for key in ['IntrProp','IntrProf','AtmProf','AtmProp']:
         if (gen_dic['fit_'+key]) and (not path_exist(gen_dic['save_data_dir']+'Joined_fits/'+key+'/')):makedirs(gen_dic['save_data_dir']+'Joined_fits/'+key+'/') 
-    
-    # # Stage Théo
-    # if gen_dic['correct_spots'] and (not path_exist(gen_dic['save_data_dir']+'Spot_corr_DI_data/'+gen_dic['add_txt_path']['DI'])) :
-    #     makedirs(gen_dic['save_data_dir']+'Spot_corr_DI_data/'+gen_dic['add_txt_path']['DI'])   
 
     return coord_dic,data_prop
 
@@ -1411,7 +1408,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             vis_day-=1
                         vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)                    
                         print('           Date :',vis_yr,'/',vis_mt,'/',vis_day_txt)
-                
+                        print('           Visit midpoint: %.5f'%(bjd_vis+2400000.))
+
                 else:
                     bjd_vis = np.mean(bjd_exp_all) - 2400000.                   
                         
@@ -1456,6 +1454,13 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     else:
                         norb = round((bjd_vis+2400000.-system_param[pl_loc]['TCenter'])/system_param[pl_loc]["period"])
                         coord_dic[inst][vis][pl_loc]['Tcenter']  = system_param[pl_loc]['TCenter']+norb*system_param[pl_loc]["period"]
+
+                #Initializes spot-related properties
+                for spot in gen_dic['studied_sp']:
+                    coord_dic[inst][vis][spot]={}
+                    for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:coord_dic[inst][vis][spot][key] = np.zeros(n_in_visit,dtype=float)*np.nan
+                    for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:coord_dic[inst][vis][spot][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
+                    coord_dic[inst][vis][spot]['is_visible'] = np.zeros([3,n_in_visit],dtype=bool)
 
                 #Observation properties
                 for key in ['AM','IWV_AM','TEMP','PRESS','seeing','colcorrmin','colcorrmax','mean_SNR','alt','az','BERV']:data_prop[inst][vis][key] = np.zeros(n_in_visit,dtype=float)*np.nan        
@@ -1529,6 +1534,18 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if gen_dic['mock_data']:                
                         coord_dic[inst][vis]['bjd'][iexp] = bjd_exp_all[iexp]  - 2400000.  
                         coord_dic[inst][vis]['t_dur'][iexp] = (bjd_exp_high[iexp]-bjd_exp_low[iexp])*24.*3600.
+                        if (inst in mock_dic['spots_prop']) and (vis in mock_dic['spots_prop'][inst]):
+                            mock_dic['spots_prop'][inst][vis]['cos_istar']=system_param['star']['cos_istar']
+                            
+                            #Coordinates for each studied spot
+                            spots_prop = retrieve_spots_prop_from_param(system_param['star'], mock_dic['spots_prop'][inst][vis], inst, vis, coord_dic[inst][vis]['bjd'][iexp], exp_dur=coord_dic[inst][vis]['t_dur'][iexp])                            
+                            for spot in data_inst[vis]['transit_sp']:                               
+                                for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
+                                    coord_dic[inst][vis][spot][key][iexp] = spots_prop[spot][key]                               
+                                for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
+                                    coord_dic[inst][vis][spot][key][:, iexp] = [spots_prop[spot][key+'_start'],spots_prop[spot][key+'_center'],spots_prop[spot][key+'_end']]                                
+                                coord_dic[inst][vis][spot]['is_visible'][:, iexp]=[spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]                                                
+                            mock_dic['spots_prop'][inst][vis].pop('cos_istar')
                 
                     #Observational data
                     else:
@@ -1653,17 +1670,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 })
 
                             #Spots properties
-                            if (inst in mock_dic['spots_prop']) and (vis in mock_dic['spots_prop'][inst]):
-                                params_mock['use_spots']=True
-                                par_formatting(params_mock,mock_dic['spots_prop'][inst][vis],None,None,fixed_args,inst,vis) 
-                                
-                                #Figuring out the number of spots
-                                num_spots = 0
-                                for par in params_mock:
-                                    if 'lat__IS'+inst+'_VS'+vis+'_SP' in par:num_spots+=1
-                                params_mock['num_spots']=num_spots
-                                params_mock['inst']=inst
-                                params_mock['vis']=vis
+                            if (inst in mock_dic['spots_prop']) and (data_dic['DI']['spots_prop'] != {}):params_mock['use_spots']=True
                             else:params_mock['use_spots']=False 
                                 
                         #Observational data            
@@ -1797,12 +1804,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         surf_prop_dic, surf_prop_dic_sp,_ = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp], system_spot_prop_in=args_exp['system_spot_prop'])
 
                         #Correcting the disk-integrated profile for planet and spot contributions
-                        if param_exp['use_spots']:
-                            DI_prof_exp = base_DI_prof - surf_prop_dic[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0]
-                        
-                        #Correcting the disk-integrated profile for planet contribution alone
-                        else:
-                            DI_prof_exp = base_DI_prof - surf_prop_dic[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0]
+                        DI_prof_exp = base_DI_prof - surf_prop_dic[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0]
 
                         #Instrumental response 
                         #    - in RV space for analytical model, in wavelength space for theoretical profiles
@@ -2565,6 +2567,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
     #Duplicate chromatic properties so that they are not overwritten by conversions
     data_dic[inst]['system_prop'] = deepcopy(data_dic['DI']['system_prop'])
+    data_dic[inst]['spots_prop'] = deepcopy(data_dic['DI']['spots_prop'])
 
     #Final processing
     if len(data_dic[inst]['visit_list'])>1:
@@ -2576,6 +2579,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         gen_vis = gen_dic[inst][vis] 
         if (not data_vis['comm_sp_tab']):print('           Exposures in '+vis+' do not share a common spectral table')      
         else:print('           All exposures in '+vis+' share a common spectral table')   
+
+        #Initialize all exposures as being defined
+        data_dic['DI'][inst][vis]['idx_def'] = np.arange(data_vis['n_in_visit'],dtype=int)
 
         #------------------------------------------------------------------------------------
 
@@ -2702,7 +2708,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         if (inst in gen_dic['fibB_corr']) and (vis in gen_dic['fibB_corr'][inst]):print('          ',vis,'is sky-corrected') 
 
         #Indices of in/out exposures in global tables
-        print('   > '+str(data_vis['n_in_visit'])+' exposures')  
+        print('           '+str(data_vis['n_in_visit'])+' exposures in '+vis)  
         if ('in' in data_dic['DI']['idx_ecl']) and (inst in data_dic['DI']['idx_ecl']['in']) and (vis in data_dic['DI']['idx_ecl']['in'][inst]):
             for iexp in data_dic['DI']['idx_ecl']['in'][inst][vis]:
                 for pl_loc in data_vis['transit_pl']:coord_vis[pl_loc]['ecl'][iexp] = 3*np.sign(coord_vis[pl_loc]['ecl'][iexp]) 
@@ -2728,6 +2734,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         
         #Duplicate chromatic properties so that they are not overwritten by conversions
         data_vis['system_prop'] = deepcopy(data_dic['DI']['system_prop'])
+        data_vis['spots_prop'] = deepcopy(data_dic['DI']['spots_prop'])
         
     #Total number of visits for current instrument
     gen_dic[inst]['n_visits'] = len(data_dic[inst]['visit_list'])
@@ -2849,7 +2856,7 @@ def init_vis(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic):
                 plAtm_vis['exclu_range_star']['spec'][pl_loc][:,:,iexp_no_plrange] = data_dic['Atm']['CCF_mask_wav'][:,None,None]*gen_specdopshift(data_dic['Atm']['plrange'])[:,None]*gen_specdopshift(coord_vis[pl_loc]['rv_pl'][iexp_no_plrange],v_s = coord_vis[pl_loc]['v_pl'][iexp_no_plrange])  
 
                 plAtm_vis['exclu_range_input']['spec'][pl_loc] = np.zeros([len(data_dic['Atm']['CCF_mask_wav']),2,data_vis['n_in_visit']])*np.nan
-                plAtm_vis['exclu_range_input']['spec'][pl_loc][:,:,iexp_no_plrange] = plAtm_vis['exclu_range_star']['spec'][pl_loc][:,:,iexp_no_plrange]*gen_specdopshift(coord_vis[pl_loc]['RV_star_stelCDM'][iexp_no_plrange])*gen_specdopshift(data_dic['DI']['sysvel'][inst][vis])    
+                plAtm_vis['exclu_range_input']['spec'][pl_loc][:,:,iexp_no_plrange] = plAtm_vis['exclu_range_star']['spec'][pl_loc][:,:,iexp_no_plrange]*gen_specdopshift(coord_vis['RV_star_stelCDM'][iexp_no_plrange])*gen_specdopshift(data_dic['DI']['sysvel'][inst][vis])    
                 
     return None
 

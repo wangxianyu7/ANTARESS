@@ -95,393 +95,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
 
-    '''
-    Sub-function to plot all profiles from a given visit together
-        - for disk-integrated and intrinsic data
-    '''
-    def sub_plot_all_prof(plot_options,plot_mod,plot_ext):
-        sc_fact=10**plot_options['sc_fact10']
-
-        #Plot frame  
-        if plot_mod=='glob_mast':
-            xt_str='input'
-            title_name='disk-integrated'
-            y_title='Flux'
-        else:
-            if plot_mod=='DI':
-                xt_str='star'
-                title_name='disk-integrated'
-                y_title='Flux'
-            elif plot_mod=='Intr':           
-                xt_str='local'  
-                title_name='intrinsic' 
-                y_title='Flux' 
-            elif plot_mod=='Atm':           
-                xt_str='planet'  
-                title_name='atmospheric '+plot_options['pl_atm_sign']   
-                if plot_options['pl_atm_sign']=='Absorption':y_title='Absorption'
-                elif plot_options['pl_atm_sign']=='Emission':y_title='Flux'
-        plot_options['add_txt_path'] = {'DI':'','Intr':'','Atm':plot_options['pl_atm_sign']+'/'}
-        if plot_mod!='glob_mast':add_txt_path = plot_options['add_txt_path'][plot_mod]
-        suff_txt_path = {'DI':'_','glob_mast':'','Intr':'_','Atm':'_'}[plot_mod]
-        
-        #Plot for each instrument
-        for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())):   
-            if plot_mod=='glob_mast':data_type = gen_dic['type'][inst]   
-            else:data_type = data_dic[plot_mod]['type'][inst]
-        
-            #Plot for each visit
-            for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options['visits_to_plot'][inst]): 
-                print('     - visit '+vis)
-                data_vis = data_dic[inst][vis]
-                if plot_mod=='glob_mast':
-                    path_loc = gen_dic['save_plot_dir']+'Spec_raw/FluxBalance/Global_master/'+inst+'_'+vis+'/' 
-                    al_txt = 'Aligned '
-                    sav_txt = ''
-                elif plot_mod in ['DI','Intr','Atm']:
-                    if plot_options['aligned']:
-                        sav_txt = 'Aligned_'
-                        al_txt = 'Aligned '
-                    else:
-                        sav_txt = ''
-                        al_txt = '' 
-                    path_loc = gen_dic['save_plot_dir']+sav_txt+plot_mod+'_data/'+add_txt_path+inst+'_'+vis+'_All/'                     
-                if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)   
- 
-                #Exposures to plot
-                if (plot_mod=='glob_mast'):
-                    if plot_options['plot_input']:iexp_plot = range(data_vis['n_in_visit'])
-                    else:iexp_plot=[0]           
-                else:
-                    if plot_mod=='DI':iexp_plot = range(data_vis['n_in_visit'])
-                    elif plot_mod=='Intr':iexp_plot = data_dic[plot_mod][inst][vis]['idx_def']          
-                    elif plot_mod=='Atm': iexp_plot = data_dic[plot_mod][inst][vis]['idx_def']             
-                if ('iexp_plot' in plot_options) and (inst in plot_options['iexp_plot']) and (vis in plot_options['iexp_plot'][inst]):
-                    iexp_plot = np.intersect1d(iexp_plot,plot_options['iexp_plot'][inst][vis])
-                nexp_plot=len(iexp_plot)                
-                
-                #Visit colors                
-                if (inst in plot_options['color_dic']) and (vis in plot_options['color_dic'][inst]) and not ((plot_mod=='glob_mast') and ('spec' in data_type)):
-                    col_visit=np.repeat(plot_options['color_dic'][inst][vis],nexp_plot)
-                else:
-                    cmap = plt.get_cmap('jet') 
-                    col_visit=np.array([cmap(0)]) if nexp_plot==1 else cmap( np.arange(nexp_plot)/(nexp_plot-1.))
-
-                #------------------------------------------------------------------------------------------
-                        
-                #Paths
-                if plot_mod in['DI','Intr','Atm']:path_exp = gen_dic['save_data_dir']+sav_txt+plot_mod+'_data/'+add_txt_path+inst+'_'+vis+suff_txt_path    
-
-                #Plotting CCF profiles
-                if data_type=='CCF':
-                    plt.ioff()                    
-                    plt.figure(figsize=plot_options['fig_size'])
-                    
-                    #Plotting each exposure
-                    y_range_loc=sc_fact*np.array(plot_options['y_range']) if plot_options['y_range'] is not None else [1e100,-1e100] 
-                    for isub,iexp in enumerate(iexp_plot):
-                        
-                        #Retrieving data
-                        data_exp=np.load(path_exp+str(iexp)+'.npz',allow_pickle=True)['data'].item()   
-                        var_loc=sc_fact*data_exp['flux'][0]
-                 
-                        #Approximate normalization to set CCFs to comparable levels for the plot or to a mean unity                       
-                        if plot_mod=='DI':           
-                            if len(data_dic['DI']['scaling_range'])>0:
-                                cond_def_scal=False 
-                                for bd_int in data_dic['DI']['scaling_range']:cond_def_scal |= (data_exp['edge_bins'][0,0:-1]>=bd_int[0]) & (data_exp['edge_bins'][0,1:]<=bd_int[1])   
-                            else:cond_def_scal=True                                               
-                            cond_def_scal&=data_exp['cond_def'][0]
-                            mean_flux=np.mean(var_loc[cond_def_scal])                         
-                 
-                        #Normalizing unscaled DI CCF so that they can be comparable
-                        if plot_mod=='DI':var_loc/=mean_flux
-                        plt.plot(data_exp['cen_bins'][0],var_loc ,color=col_visit[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'])    
-                        if plot_options['y_range'] is None:y_range_loc = [0.99*min(np.nanmin(var_loc),y_range_loc[0]),1.01*max(np.nanmax(var_loc),y_range_loc[1])]
-                        if isub==0:                            
-                            x_range_loc=np.array(plot_options['x_range']) if plot_options['x_range'] is not None else np.array([data_exp['cen_bins'][0,0]-5.,data_exp['cen_bins'][0,-1]+5.])                       
-                            
-                            #Oplot pixels effectively used as continuum
-                            #    - only pixels within the requested range common to all exposures after planetary ranges are excluded are kept
-                            # if plot_options['plot_cont']:plt.plot(data_exp['cen_bins'][0][cond_cont],var_loc[cond_cont],color='black',linestyle='',marker='d',markersize=1,zorder=10,rasterized=plot_options['rasterized'])      
-                            
-                    #Plot frame               
-                    if plot_options['title']:plt.title(al_txt+title_name+' CCFs in '+xt_str+' rest frame',fontsize=plot_options['font_size'])
-                    y_title = scaled_title(plot_options['sc_fact10'],y_title)                       
-                    dx_range=x_range_loc[1]-x_range_loc[0]
-                    dy_range=y_range_loc[1]-y_range_loc[0]
-                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
-                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range) 
-                    custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
-                                xmajor_int=xmajor_int,xminor_int=xminor_int,
-                                ymajor_int=ymajor_int,yminor_int=yminor_int,
-                                xmajor_form=xmajor_form,ymajor_form=ymajor_form,
-                                x_title='Velocity in '+xt_str+' rest frame (km s$^{-1}$)',y_title=y_title,
-                                font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
-                  						
-
-                    plt.savefig(path_loc+data_type+'.'+plot_ext) 
-                    plt.close()    
-                                
-                #------------------------------------------------------------------------------------------
-                        
-                #Plotting spectral profiles
-                elif 'spec' in data_type:
-                        
-                    #Retrieving data
-                    if plot_mod=='glob_mast':
-                        data_mast_vis = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_meas.npz',allow_pickle=True)['data'].item() 
-                        path_exp = data_mast_vis['proc_DI_data_paths']
-                        if plot_options['glob_mast_all']=='meas':data_mast_vis_all = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_meas.npz',allow_pickle=True)['data'].item()  
-                        elif plot_options['glob_mast_all']=='theo':data_mast_vis_all = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_theo.npz',allow_pickle=True)['data'].item()        
-                    cond_def_exp_all={}
-                    wav_exp_all={}
-                    edge_bins_exp_all={}
-                    sp_exp_all={}
-                    for iexp in iexp_plot:                    
-                        data_exp=np.load(path_exp+str(iexp)+'.npz',allow_pickle=True)['data'].item()    
-                        cond_def_exp_all[iexp] = data_exp['cond_def']
-                        wav_exp_all[iexp] = data_exp['cen_bins']
-                        edge_bins_exp_all[iexp] = data_exp['edge_bins']
-                        sp_exp_all[iexp] = data_exp['flux']    
-
-                        #Shift individual exposures to the star rest frame in which master is defined
-                        if plot_mod=='glob_mast': 
-                            dop_sh = data_mast_vis['specdopshift_star_solbar'][iexp]    
-                            wav_exp_all[iexp]*=dop_sh
-                            edge_bins_exp_all[iexp]*=dop_sh
-
-                    #Order list
-                    order_list = plot_options['orders_to_plot'] if len(plot_options['orders_to_plot'])>0 else range(data_dic[inst]['nord']) 
-                        
-                    #Plot each order of spectra for all exposures
-                    for iord in order_list:
-
-                        #Plot order if it overlaps with the requested window
-                        plot_ord=False
-                        min_wav = np.min([edge_bins_exp_all[iexp][iord][0:-1][cond_def_exp_all[iexp][iord]][0] for iexp in iexp_plot])
-                        max_wav = np.max([edge_bins_exp_all[iexp][iord][1::][cond_def_exp_all[iexp][iord]][-1] for iexp in iexp_plot])
-                        if plot_options['x_range'] is not None:
-                            if (max_wav>=plot_options['x_range'][0]) and (min_wav<=plot_options['x_range'][1]):plot_ord=True
-                            x_range_loc = deepcopy(plot_options['x_range'])
-                        else:
-                            drange = max_wav-min_wav
-                            x_range_loc = [min_wav-0.02*drange,max_wav+0.02*drange]     
-                            plot_ord=True
-                        if plot_ord:                                         
-                            plt.ioff()                    
-                            plt.figure(figsize=plot_options['fig_size'])
-                            y_range_loc=sc_fact*np.array(plot_options['y_range']) if plot_options['y_range'] is not None else [1e100,-1e100] 
-
-                            #Resampling
-                            if plot_options['resample'] is not None:
-                                n_reg = int(np.ceil((x_range_loc[1]-x_range_loc[0])/plot_options['resample']))
-                                edge_bins_reg = np.linspace(x_range_loc[0],x_range_loc[1],n_reg)
-                                cen_bins_reg = 0.5*(edge_bins_reg[0:-1]+edge_bins_reg[1::])
-
-                            #Plot all exposures
-                            if plot_options['plot_input']:
-                                for isub,iexp in enumerate(iexp_plot):
-                                    cond_def_tab = cond_def_exp_all[iexp][iord] & (wav_exp_all[iexp][iord]>x_range_loc[0]) & (wav_exp_all[iexp][iord]<x_range_loc[1])
-                                    wav_tab = wav_exp_all[iexp][iord][cond_def_tab]
-                                    var_loc=sc_fact*sp_exp_all[iexp][iord][cond_def_tab]
-                                    plt.plot(wav_tab,var_loc,color=col_visit[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=1,alpha=plot_options['alpha_symb']) 
-                                    if plot_options['y_range'] is None:y_range_loc = [0.99*min(sc_fact*np.nanmin(var_loc),y_range_loc[0]),1.01*max(sc_fact*np.nanmax(var_loc),y_range_loc[1])]                        
-
-                                    #Resampling
-                                    if plot_options['resample'] is not None:
-                                        var_resamp = bind.resampling(edge_bins_reg, edge_bins_exp_all[iexp][iord], sc_fact*sp_exp_all[iexp][iord], kind=gen_dic['resamp_mode'])   
-                                        plt.plot(cen_bins_reg,var_resamp,color=col_visit[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=2)                            
-                            
-                            
-                            #Plot master
-                            if plot_mod=='glob_mast':
-
-                                #Global master of current visit
-                                if plot_options['glob_mast_vis']:
-                                    cond_in_plot = (data_mast_vis['cen_bins'][iord]>x_range_loc[0]) & (data_mast_vis['cen_bins'][iord]<x_range_loc[1])
-                                    plt.plot(data_mast_vis['cen_bins'][iord,cond_in_plot],sc_fact*data_mast_vis['flux'][iord,cond_in_plot],color='black',linestyle='-',lw=plot_options['lw_plot']+0.5,rasterized=False,zorder=2) 
-                                    if plot_options['y_range'] is None:y_range_loc = [0.99*min(sc_fact*np.nanmin(data_mast_vis['flux'][iord,cond_in_plot]),y_range_loc[0]),1.01*max(sc_fact*np.nanmax(data_mast_vis['flux'][iord,cond_in_plot]),y_range_loc[1])] 
-                                                  
-                                #Global master over all visits
-                                if plot_options['glob_mast_all'] is not None:
-                                    cond_in_plot = (data_mast_vis_all['cen_bins'][iord]>x_range_loc[0]) & (data_mast_vis_all['cen_bins'][iord]<x_range_loc[1])
-                                    plt.plot(data_mast_vis_all['cen_bins'][iord,cond_in_plot],sc_fact*data_mast_vis_all['flux'][iord,cond_in_plot],color='dimgrey',linestyle='-',lw=plot_options['lw_plot']+1,rasterized=False,zorder=2) 
-                                    if plot_options['y_range'] is None:y_range_loc = [0.99*min(sc_fact*np.nanmin(data_mast_vis_all['flux'][iord,cond_in_plot]),y_range_loc[0]),1.01*max(sc_fact*np.nanmax(data_mast_vis_all['flux'][iord,cond_in_plot]),y_range_loc[1])] 
-
-                            #Overplot stellar lines
-                            if len(plot_options['st_lines_wav'])>0:
-                                st_lines_wav = np.array(plot_options['st_lines_wav'])
-                                cond_in_plot = (st_lines_wav>x_range_loc[0]) & (st_lines_wav<x_range_loc[1])
-                                for st_line_wav in st_lines_wav[cond_in_plot]:plt.axvline(x=st_line_wav,color='black',ls='--',lw=1,alpha=0.6)  
-
-                            #Plot frame  
-                            if data_type=='spec1D':str_add=''
-                            elif data_type=='spec2D':str_add=' (iord = '+str(iord)+')'                        
-                            if plot_options['title']:plt.title(al_txt+title_name+' spectra in '+xt_str+' rest frame'+str_add)
-                            y_title='Flux'
-                            y_title = scaled_title(plot_options['sc_fact10'],y_title)
-                            dx_range=x_range_loc[1]-x_range_loc[0]
-                            dy_range=y_range_loc[1]-y_range_loc[0]
-                            xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
-                            ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
-                            custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
-                                        xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
-                                        xmajor_form=xmajor_form,ymajor_form=ymajor_form,
-                                        x_title='Wavelength in '+xt_str+' rest frame (A)',y_title=y_title,
-                                        font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
-            
-                            if (data_type=='spec2D'):str_add='_iord'+str(iord)
-                            else:str_add=''
-                            plt.savefig(path_loc+data_type+str_add+'.'+plot_ext) 
-                            plt.close() 
-      
-        return None    
 
 
 
 
-
-    '''
-    Sub-function to compare series of binned disk-integrated and intrinsic profiles
-        - for aligned disk-integrated and intrinsic data
-    '''
-    def sub_plot_DI_Intr_binprof(plot_options,plot_ext):
-        sc_fact=10**plot_options['sc_fact10']
-
-        #Plot for each instrument
-        for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())):   
-            print('  > Instrument: '+inst)
-                
-            #Plot for each visit
-            for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst]): 
-                print('     - Visit : '+vis)
-                path_loc = gen_dic['save_plot_dir']+'Compa_DI_intr_series/'+inst+'_'+vis+'/' 
-                if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)   
-   
-                #Exposures to plot
-                data_DIbin = np.load(gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot_DI']+'_add.npz',allow_pickle=True)['data'].item()
-                iexp_plot_DI = np.arange(data_DIbin['n_exp'],dtype=int) 
-                nexp_plot_DI=len(iexp_plot_DI) 
-
-                data_Intrbin = np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot_intr']+'_add.npz',allow_pickle=True)['data'].item()                    
-                iexp_plot_intr = np.arange(data_Intrbin['n_exp'],dtype=int) 
-                nexp_plot_intr=len(iexp_plot_intr) 
-
-                #Visit colors  
-                if 'DI' in plot_options['color_dic']:col_DI=np.repeat(plot_options['color_dic']['DI'],nexp_plot_DI)
-                else:col_DI=np.array([cmap(0)]) if nexp_plot_DI==1 else cmap( np.arange(nexp_plot_DI)/(nexp_plot_DI-1.))
-                if 'Intr' in plot_options['color_dic']:col_intr=np.repeat(plot_options['color_dic']['Intr'],nexp_plot_intr)
-                else:col_intr=np.array([cmap(0)]) if nexp_plot_intr==1 else cmap( np.arange(nexp_plot_intr)/(nexp_plot_intr-1.))
-    
-                #------------------------------------------------------------------------------------------
-                        
-                #Plotting CCF profiles
-                if plot_options['data_type']=='CCF':
-                    plt.ioff()                    
-                    plt.figure(figsize=plot_options['fig_size'])
-                    
-                    #Plotting each exposure
-                    y_range_loc=sc_fact*np.array(plot_options['y_range']) if plot_options['y_range'] is not None else [1e100,-1e100] 
-                    for isub,iexp in enumerate(iexp_plot_DI):             
-                        data_exp=np.load(gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot_DI']+str(iexp)+'.npz' ,allow_pickle=True)['data'].item()    
-                        var_loc=sc_fact*data_exp['flux'][0]
-                        plt.plot(data_exp['cen_bins'][0],var_loc ,color=col_DI[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'])    
-                        if plot_options['y_range'] is None:y_range_loc = [0.99*min(np.nanmin(var_loc),y_range_loc[0]),1.01*max(np.nanmax(var_loc),y_range_loc[1])]
-                    for isub,iexp in enumerate(iexp_plot_intr):                
-                        data_exp=np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot_intr']+str(iexp)+'.npz' ,allow_pickle=True)['data'].item()    
-                        var_loc=sc_fact*data_exp['flux'][0]
-                        plt.plot(data_exp['cen_bins'][0],var_loc ,color=col_intr[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'])    
-                        if plot_options['y_range'] is None:y_range_loc = [0.99*min(np.nanmin(var_loc),y_range_loc[0]),1.01*max(np.nanmax(var_loc),y_range_loc[1])]
-
-                    #Central null velocity
-                    plt.plot([0,0],y_range_loc,linestyle=':',lw=plot_options['lw_plot'],color='black')
-    
-                    #Reference level
-                    x_range_loc=np.array(plot_options['x_range']) if plot_options['x_range'] is not None else np.array([data_exp['cen_bins'][0,0]-5.,data_exp['cen_bins'][0,-1]+5.]) 
-                    if plot_options['ref_level']:plt.plot(x_range_loc,[1.,1.],linestyle='-',lw=0.5,color='black')
-               
-                    #Plot frame
-                    if plot_options['title']:plt.title('Binned disk-integrated and intrinsic CCFs',fontsize=plot_options['font_size'])
-                    y_title='Flux'
-                    y_title = scaled_title(plot_options['sc_fact10'],y_title)                   
-                    dx_range=x_range_loc[1]-x_range_loc[0]
-                    dy_range=y_range_loc[1]-y_range_loc[0]
-                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
-                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range) 
-                    custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
-                                xmajor_int=xmajor_int,xminor_int=xminor_int,
-                                ymajor_int=ymajor_int,yminor_int=yminor_int,
-                                xmajor_form=xmajor_form,ymajor_form=ymajor_form,
-                                x_title='Velocity (km s$^{-1}$)',y_title=y_title,
-                                font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])                 						
-                    plt.savefig(path_loc+'CCF.'+plot_ext) 
-                    plt.close()    
-                                
-                #------------------------------------------------------------------------------------------
-                        
-                #Plotting spectral profiles
-                elif 'spec' in plot_options['data_type']:
-                        
-                    #Retrieving data
-                    cond_def_exp_DI={}
-                    wav_exp_DI={}
-                    sp_exp_DI={}
-                    for iexp in iexp_plot_DI:
-                        data_exp=np.load(gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot_DI']+str(iexp)+'.npz' ,allow_pickle=True)['data'].item() 
-                        cond_def_exp_DI[iexp] = data_exp['cond_def']
-                        wav_exp_DI[iexp] = data_exp['cen_bins']
-                        sp_exp_DI[iexp] = data_exp['flux']                                
-                    cond_def_exp_intr={}
-                    wav_exp_intr={}
-                    sp_exp_intr={}
-                    for iexp in iexp_plot_intr:
-                        data_exp=np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot_intr']+str(iexp)+'.npz' ,allow_pickle=True)['data'].item()                             
-                        cond_def_exp_intr[iexp] = data_exp['cond_def']
-                        wav_exp_intr[iexp] = data_exp['cen_bins']
-                        sp_exp_intr[iexp] = data_exp['flux']  
-                        
-                    #Plot each order of spectra for all exposures
-                    for iord in range(data_dic[inst]['nord']):
-                        plt.ioff()                    
-                        plt.figure(figsize=plot_options['fig_size'])
-                        y_range_loc=sc_fact*plot_options['y_range'] if plot_options['y_range'] is not None else [1e100,-1e100] 
-    
-                        for isub,iexp in enumerate(iexp_plot_DI):
-                            cond_def_tab = cond_def_exp_DI[iexp][iord]
-                            wav_tab = wav_exp_DI[iexp][iord][cond_def_tab]
-                            var_loc=sc_fact*sp_exp_DI[iexp][iord][cond_def_tab]
-                            plt.plot(wav_tab,var_loc,color=col_DI[iexp],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=1) 
-                            if plot_options['y_range'] is None:y_range_loc = [0.99*min(np.nanmin(var_loc),y_range_loc[0]),1.01*max(np.nanmax(var_loc),y_range_loc[1])]                        
-                        for isub,iexp in enumerate(iexp_plot_intr):
-                            cond_def_tab = cond_def_exp_intr[iexp][iord]
-                            wav_tab = wav_exp_intr[iexp][iord][cond_def_tab]
-                            var_loc=sc_fact*sp_exp_intr[iexp][iord][cond_def_tab]
-                            plt.plot(wav_tab,var_loc,color=col_intr[iexp],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=1) 
-                            if plot_options['y_range'] is None:y_range_loc = [0.99*min(np.nanmin(var_loc),y_range_loc[0]),1.01*max(np.nanmax(var_loc),y_range_loc[1])]                        
-                        
-                        #Plot frame  
-                        if isub==0: x_range_loc=np.array(plot_options['x_range']) if plot_options['x_range'] is not None else np.array([wav_tab[0]-0.02,wav_tab[-1]+0.02])  
-                        if plot_options['data_type']=='spec1D':str_add=''
-                        elif plot_options['data_type']=='spec2D':str_add=' (iord = '+str(iord)+')'                        
-                        if plot_options['title']==True:plt.title('Binned disk-integrated and intrinsic '+str_add)
-                        y_title='Flux'
-                        y_title = scaled_title(plot_options['sc_fact10'],y_title) 
-                        dx_range=x_range_loc[1]-x_range_loc[0]
-                        dy_range=y_range_loc[1]-y_range_loc[0]
-                        xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
-                        ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
-                        custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
-                                    xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
-                                    xmajor_form=xmajor_form,ymajor_form=ymajor_form,
-                                    x_title='Wavelength (A)',y_title=y_title,
-                                    font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
-                        str_add=''
-                        if (plot_options['data_type']=='spec2D'):str_add='_iord'+str(iord)
-                        plt.savefig(path_loc+'spectra'+str_add+'.'+plot_ext) 
-                        plt.close() 
-      
-        return None 
 
 
     '''
@@ -2124,6 +1741,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     if ('gcal' in plot_settings):
         key_plot = 'gcal'
         plot_set_key = plot_settings[key_plot]
+        sc_fact=10**plot_set_key['sc_fact10']
 
         print('-----------------------------------')
         print('+ Instrumental calibration estimates')     
@@ -2209,9 +1827,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Mean calibration over each order, for all orders and all exposures 
                     for isub_iexp in range(len(iexp_plot)):
                         if ('spec' in data_dic['DI']['type'][inst]):plt.plot(gdet_cen_binned_mean[:,isub_iexp],gdet_meas_binned_mean[:,isub_iexp],linestyle='',marker='o',markerfacecolor=col_visit[isub_iexp],markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],rasterized=plot_set_key['rasterized'],color = col_visit[isub_iexp])
-                        plt.plot(cen_bins_mean[:,isub_iexp],gdet_bins_mean[:,isub_iexp],linestyle='-',marker='.',markerfacecolor=col_visit[isub_iexp],markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],rasterized=plot_set_key['rasterized'],color = col_visit[isub_iexp])            
+                        plt.plot(cen_bins_mean[:,isub_iexp],gdet_bins_mean[:,isub_iexp]*sc_fact,linestyle='-',marker='.',markerfacecolor=col_visit[isub_iexp],markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],rasterized=plot_set_key['rasterized'],color = col_visit[isub_iexp])            
                     x_range_loc = plot_set_key['x_range'] if plot_set_key['x_range'] is not None else [np.nanmin(cen_bins_mean),np.nanmax(cen_bins_mean)] 
-                    y_range_loc = plot_set_key['y_range'] if plot_set_key['y_range'] is not None else [np.nanmin(gdet_bins_mean),np.nanmax(gdet_bins_mean)] 
+                    y_range_loc = plot_set_key['y_range'] if plot_set_key['y_range'] is not None else [np.nanmin(gdet_bins_mean*sc_fact),np.nanmax(gdet_bins_mean*sc_fact)] 
                    
                     #Plot frame  
                     if plot_set_key['title']:plt.title('Calibration for visit '+vis+' in '+inst)
@@ -2219,10 +1837,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     dy_range=y_range_loc[1]-y_range_loc[0]
                     xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
                     ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)                    
+                    y_title = 'Calibration'
+                    y_title = scaled_title(plot_set_key['sc_fact10'],y_title)        
                     custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                                 xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                                 xmajor_form=xmajor_form,ymajor_form=ymajor_form,hide_axis=plot_set_key['hide_axis'],
-                                x_title='Wavelength (A)',y_title=r'10$^{-5}$ Calibration',
+                                x_title='Wavelength (A)',y_title=y_title,
                                 font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
                     plt.savefig(path_loc+'Global'+'.'+plot_dic[key_plot],transparent=plot_set_key['transparent']) 
                     plt.close()                     
@@ -2244,25 +1864,27 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             #Mesured calibration estimate
                             #    - all calculated bins are shown (ie, with positive integrated flux) are shown
                             #    - bins used for the fit are filled
-                            if len(gdet_meas_binned_all[isub_ord,isub_iexp])>0:
+                            if plot_set_key['plot_meas_exp'] and (len(gdet_meas_binned_all[isub_ord,isub_iexp])>0):
                                 cond_fit_ord = cond_fit_all[isub_ord,isub_iexp]
-                                plt.plot(gdet_cen_binned_all[isub_ord,isub_iexp][cond_fit_ord],gdet_meas_binned_all[isub_ord,isub_iexp][cond_fit_ord]/norm_gdet[isub_ord,isub_iexp],linestyle='',marker='o',markerfacecolor=col_visit[isub_iexp],markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],zorder=0,rasterized=plot_set_key['rasterized'])
-                                plt.plot(gdet_cen_binned_all[isub_ord,isub_iexp][~cond_fit_ord],gdet_meas_binned_all[isub_ord,isub_iexp][~cond_fit_ord]/norm_gdet[isub_ord,isub_iexp],linestyle='',marker='o',markerfacecolor='None',markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],zorder=0,rasterized=plot_set_key['rasterized'])
+                                var_loc = sc_fact*gdet_meas_binned_all[isub_ord,isub_iexp][cond_fit_ord]/norm_gdet[isub_ord,isub_iexp]
+                                plt.plot(gdet_cen_binned_all[isub_ord,isub_iexp][cond_fit_ord],var_loc,linestyle='',marker='o',markerfacecolor=col_visit[isub_iexp],markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],zorder=0,rasterized=plot_set_key['rasterized'])
+                                plt.plot(gdet_cen_binned_all[isub_ord,isub_iexp][~cond_fit_ord],sc_fact*gdet_meas_binned_all[isub_ord,isub_iexp][~cond_fit_ord]/norm_gdet[isub_ord,isub_iexp],linestyle='',marker='o',markerfacecolor='None',markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],zorder=0,rasterized=plot_set_key['rasterized'])
                                 if np.sum(cond_fit_ord):
-                                    y_min=np.min([np.nanmin(gdet_meas_binned_all[isub_ord,isub_iexp][cond_fit_ord]/norm_gdet[isub_ord,isub_iexp]),y_min])
-                                    y_max=np.max([np.nanmax(gdet_meas_binned_all[isub_ord,isub_iexp][cond_fit_ord]/norm_gdet[isub_ord,isub_iexp]),y_max]) 
+                                    y_min=np.min([np.nanmin(var_loc),y_min])
+                                    y_max=np.max([np.nanmax(var_loc),y_max]) 
                                
                             #Best-fit calculated over the defined spectral table
                             if plot_set_key['plot_best_exp'] and (gdet_bins_all[isub_ord,isub_iexp] is not None):
-                                plt.plot(cen_bins_all[isub_ord,isub_iexp],gdet_bins_all[isub_ord,isub_iexp]/norm_gdet[isub_ord,isub_iexp],linestyle='-',color=col_visit[isub_iexp],lw=0.5,rasterized=plot_set_key['rasterized'],zorder=0,alpha=0.5) 
-                                y_min=np.min([np.min(gdet_bins_all[isub_ord,isub_iexp]/norm_gdet[isub_ord,isub_iexp]),y_min])
-                                y_max=np.max([np.max(gdet_bins_all[isub_ord,isub_iexp]/norm_gdet[isub_ord,isub_iexp]),y_max]) 
+                                var_loc = sc_fact*gdet_bins_all[isub_ord,isub_iexp]/norm_gdet[isub_ord,isub_iexp]
+                                plt.plot(cen_bins_all[isub_ord,isub_iexp],var_loc,linestyle='-',color=col_visit[isub_iexp],lw=0.5,rasterized=plot_set_key['rasterized'],zorder=0,alpha=0.5) 
+                                y_min=np.min([np.min(var_loc),y_min])
+                                y_max=np.max([np.max(var_loc),y_max]) 
                             
                         #Mean calibration profile over all exposures
                         #    - shown on table of first exposure, as calculated from input data
                         #    - this is the profile used to rescale homogeneously all exposures from flux to count values
                         if plot_set_key['mean_gdet'] and (not plot_set_key['norm_exp']):
-                            plt.plot(cen_bins_all[isub_ord,0],mean_gdet_func[iord](cen_bins_all[isub_ord,0])*1e-3,linestyle='--',color='black',lw=1,rasterized=plot_set_key['rasterized'],zorder=10) 
+                            plt.plot(cen_bins_all[isub_ord,0],sc_fact*mean_gdet_func[iord](cen_bins_all[isub_ord,0])*1e-3,linestyle='--',color='black',lw=1,rasterized=plot_set_key['rasterized'],zorder=10) 
 
                         #Transitions of polynomials
                         y_range_loc=plot_set_key['y_range_ord'] if plot_set_key['y_range_ord'] is not None else np.array([y_min,y_max])
@@ -2276,10 +1898,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         dy_range=y_range_loc[1]-y_range_loc[0]
                         xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
                         ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
+                        y_title = 'Calibration'
+                        y_title = scaled_title(plot_set_key['sc_fact10'],y_title)                         
                         custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                                     xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                                     xmajor_form=xmajor_form,ymajor_form=ymajor_form,
-                                    x_title='Wavelength (A)',y_title=r'10$^{-3}$ Calibration',hide_axis=plot_set_key['hide_axis'],
+                                    x_title='Wavelength (A)',y_title=y_title,hide_axis=plot_set_key['hide_axis'],
                                     font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
                         plt.savefig(path_loc+'ord'+str(iord)+'.'+plot_dic['gcal_ord'],transparent=plot_set_key['transparent']) 
                         plt.close() 
@@ -2580,7 +2204,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         print('-----------------------------------')
         print('+ Global scaling master')
-        sub_plot_all_prof(plot_settings[key_plot],key_plot,plot_dic[key_plot])   
+        sub_plot_all_prof(plot_settings[key_plot],key_plot,plot_dic[key_plot],data_dic,gen_dic)   
 
 
 
@@ -3147,7 +2771,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             idx_cosm_tab=data_cosm['idx_cosm_exp'][iord]
                             n_cosmics_vis[isub,isub_ord] = len(idx_cosm_tab)
                         else:n_cosmics_vis[isub,isub_ord]=0
-                        if (not plot_set_key['detcosm']) or (n_cosmics_vis[isub,isub_ord]>0):                         
+             
+                        if (not plot_set_key['det_cosm']) or (n_cosmics_vis[isub,isub_ord]>0):                         
                             wav_tab=data_exp['cen_bins'][iord]     
                             plt.ioff()        
                             plt.figure(figsize=plot_set_key['fig_size'])
@@ -3193,7 +2818,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     plt.ioff()        
                     plt.figure(figsize=plot_set_key['fig_size'])
                     cmap = plt.get_cmap('jet') 
-                    col_tab = cmap( np.arange(nexp_list)/(nexp_list-1.))
+                    col_tab=np.array([cmap(0)]) if nexp_list==1 else cmap( np.arange(nexp_list)/(nexp_list-1.))
                     
                     #Plot boundaries
                     x_range_loc = plot_set_key['x_range'] if plot_set_key['x_range'] is not None else [gen_dic['wav_ord_inst'][inst][order_list][0],gen_dic['wav_ord_inst'][inst][order_list][-1]]
@@ -3554,7 +3179,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         print('-----------------------------------')
         print('+ Profiles aligned in star rest frame')
-        sub_plot_all_prof(plot_settings[key_plot],'DI',plot_dic['all_DI_data'])                 
+        sub_plot_all_prof(plot_settings[key_plot],'DI',plot_dic['all_DI_data'],data_dic,gen_dic)                 
                                             
                     
             
@@ -4938,7 +4563,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         print('-----------------------------------')
         print('+ All intrinsic profiles')
-        sub_plot_all_prof(plot_settings[key_plot],'Intr',plot_dic[key_plot])             
+        sub_plot_all_prof(plot_settings[key_plot],'Intr',plot_dic[key_plot],data_dic,gen_dic)             
                         
 
 
@@ -5210,7 +4835,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('+ Plotting binned disk-integrated and intrinsic profiles')
              
         #Plot
-        sub_plot_DI_Intr_binprof(plot_settings,plot_dic[key_plot])     
+        sub_plot_DI_Intr_binprof(plot_settings,plot_dic[key_plot],data_dic,gen_dic)     
 
  
 
@@ -6502,7 +6127,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('+ Plotting all atmospheric profiles in each visit')
         
         #Plot        
-        sub_plot_all_prof(plot_settings,'atm',plot_settings[key_plot])          
+        sub_plot_all_prof(plot_settings,'atm',plot_settings[key_plot],data_dic,gen_dic)          
         
 
 
@@ -9224,7 +8849,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                     #Values	
                     cb = mpl.cm.ScalarMappable(cmap=cmap_2D,norm=plt.Normalize(vmin=v_range[0], vmax=v_range[1]))										
                     cb.set_array(v_range) 	
-                
+                    cbar_txt = ''
                     if plot_mod in ['map_DIbin','map_DI_prof','map_Res_prof','map_Intr_prof','map_BF_Res_prof','map_BF_Res_prof_re','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin',
                                     'map_Intr_1D','map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est','map_Res_prof_clean_sp_res',
                                     'map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:cbar_txt='flux'
@@ -9266,6 +8891,259 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                     ### End of order                          
    
     return None
+
+
+
+
+##################################################################################################
+#%%% Sub-routines for profiles
+##################################################################################################
+
+'''
+Sub-function to plot all profiles from a given visit together
+'''
+def sub_plot_all_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic):
+    sc_fact=10**plot_options['sc_fact10']
+
+    #Plot frame  
+    if plot_mod=='glob_mast':
+        xt_str='input'
+        title_name='disk-integrated'
+        y_title='Flux'
+    else:
+        if plot_mod=='DI':
+            xt_str='star'
+            title_name='disk-integrated'
+            y_title='Flux'
+        elif plot_mod=='Intr':           
+            xt_str='local'  
+            title_name='intrinsic' 
+            y_title='Flux' 
+        elif plot_mod=='Atm':           
+            xt_str='planet'  
+            title_name='atmospheric '+plot_options['pl_atm_sign']   
+            if plot_options['pl_atm_sign']=='Absorption':y_title='Absorption'
+            elif plot_options['pl_atm_sign']=='Emission':y_title='Flux'
+    plot_options['add_txt_path'] = {'DI':'','Intr':'','Atm':plot_options['pl_atm_sign']+'/'}
+    if plot_mod!='glob_mast':add_txt_path = plot_options['add_txt_path'][plot_mod]
+    suff_txt_path = {'DI':'_','glob_mast':'','Intr':'_','Atm':'_'}[plot_mod]
+    
+    #Plot for each instrument
+    for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())):   
+        if plot_mod=='glob_mast':data_type = gen_dic['type'][inst]   
+        else:data_type = data_dic[plot_mod]['type'][inst]
+    
+        #Plot for each visit
+        for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options['visits_to_plot'][inst]): 
+            print('     - visit '+vis)
+            data_vis = data_dic[inst][vis]
+            if plot_mod=='glob_mast':
+                path_loc = gen_dic['save_plot_dir']+'Spec_raw/FluxBalance/Global_master/'+inst+'_'+vis+'/' 
+                al_txt = 'Aligned '
+                sav_txt = ''
+            elif plot_mod in ['DI','Intr','Atm']:
+                if plot_options['aligned']:
+                    sav_txt = 'Aligned_'
+                    al_txt = 'Aligned '
+                else:
+                    sav_txt = ''
+                    al_txt = '' 
+                path_loc = gen_dic['save_plot_dir']+sav_txt+plot_mod+'_data/'+add_txt_path+inst+'_'+vis+'_All/'                     
+            if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)   
+ 
+            #Exposures to plot
+            if (plot_mod=='glob_mast'):
+                if plot_options['plot_input']:iexp_plot = range(data_vis['n_in_visit'])
+                else:iexp_plot=[0]           
+            else:
+                if plot_mod=='DI':iexp_plot = range(data_vis['n_in_visit'])
+                elif plot_mod=='Intr':iexp_plot = data_dic[plot_mod][inst][vis]['idx_def']          
+                elif plot_mod=='Atm': iexp_plot = data_dic[plot_mod][inst][vis]['idx_def']             
+            if ('iexp_plot' in plot_options) and (inst in plot_options['iexp_plot']) and (vis in plot_options['iexp_plot'][inst]):
+                iexp_plot = np.intersect1d(iexp_plot,plot_options['iexp_plot'][inst][vis])
+            nexp_plot=len(iexp_plot)                
+            
+            #Visit colors                
+            if (inst in plot_options['color_dic']) and (vis in plot_options['color_dic'][inst]) and not ((plot_mod=='glob_mast') and ('spec' in data_type)):
+                col_visit=np.repeat(plot_options['color_dic'][inst][vis],nexp_plot)
+            else:
+                cmap = plt.get_cmap('jet') 
+                col_visit=np.array([cmap(0)]) if nexp_plot==1 else cmap( np.arange(nexp_plot)/(nexp_plot-1.))
+
+            #------------------------------------------------------------------------------------------
+                    
+            #Paths
+            if plot_mod in['DI','Intr','Atm']:path_exp = gen_dic['save_data_dir']+sav_txt+plot_mod+'_data/'+add_txt_path+inst+'_'+vis+suff_txt_path    
+
+            #Plotting CCF profiles
+            if data_type=='CCF':
+                plt.ioff()                    
+                plt.figure(figsize=plot_options['fig_size'])
+                
+                #Plotting each exposure
+                y_range_loc=sc_fact*np.array(plot_options['y_range']) if plot_options['y_range'] is not None else [1e100,-1e100] 
+                for isub,iexp in enumerate(iexp_plot):
+                    
+                    #Retrieving data
+                    data_exp=np.load(path_exp+str(iexp)+'.npz',allow_pickle=True)['data'].item()   
+                    var_loc=sc_fact*data_exp['flux'][0]
+             
+                    #Approximate normalization to set CCFs to comparable levels for the plot or to a mean unity                       
+                    if plot_mod=='DI':           
+                        if len(data_dic['DI']['scaling_range'])>0:
+                            cond_def_scal=False 
+                            for bd_int in data_dic['DI']['scaling_range']:cond_def_scal |= (data_exp['edge_bins'][0,0:-1]>=bd_int[0]) & (data_exp['edge_bins'][0,1:]<=bd_int[1])   
+                        else:cond_def_scal=True                                               
+                        cond_def_scal&=data_exp['cond_def'][0]
+                        mean_flux=np.mean(var_loc[cond_def_scal])                         
+             
+                    #Normalizing unscaled DI CCF so that they can be comparable
+                    if plot_mod=='DI':var_loc/=mean_flux
+                    plt.plot(data_exp['cen_bins'][0],var_loc ,color=col_visit[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'])    
+                    if plot_options['y_range'] is None:y_range_loc = [0.99*min(np.nanmin(var_loc),y_range_loc[0]),1.01*max(np.nanmax(var_loc),y_range_loc[1])]
+                    if isub==0:                            
+                        x_range_loc=np.array(plot_options['x_range']) if plot_options['x_range'] is not None else np.array([data_exp['cen_bins'][0,0]-5.,data_exp['cen_bins'][0,-1]+5.])                       
+                        
+                        #Oplot pixels effectively used as continuum
+                        #    - only pixels within the requested range common to all exposures after planetary ranges are excluded are kept
+                        # if plot_options['plot_cont']:plt.plot(data_exp['cen_bins'][0][cond_cont],var_loc[cond_cont],color='black',linestyle='',marker='d',markersize=1,zorder=10,rasterized=plot_options['rasterized'])      
+                        
+                #Plot frame               
+                if plot_options['title']:plt.title(al_txt+title_name+' CCFs in '+xt_str+' rest frame',fontsize=plot_options['font_size'])
+                y_title = scaled_title(plot_options['sc_fact10'],y_title)                       
+                dx_range=x_range_loc[1]-x_range_loc[0]
+                dy_range=y_range_loc[1]-y_range_loc[0]
+                xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range) 
+                custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
+                            xmajor_int=xmajor_int,xminor_int=xminor_int,
+                            ymajor_int=ymajor_int,yminor_int=yminor_int,
+                            xmajor_form=xmajor_form,ymajor_form=ymajor_form,
+                            x_title='Velocity in '+xt_str+' rest frame (km s$^{-1}$)',y_title=y_title,
+                            font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
+              						
+
+                plt.savefig(path_loc+data_type+'.'+plot_ext) 
+                plt.close()    
+                            
+            #------------------------------------------------------------------------------------------
+                    
+            #Plotting spectral profiles
+            elif 'spec' in data_type:
+                    
+                #Retrieving data
+                if plot_mod=='glob_mast':
+                    data_mast_vis = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_meas.npz',allow_pickle=True)['data'].item() 
+                    path_exp = data_mast_vis['proc_DI_data_paths']
+                    if plot_options['glob_mast_all']=='meas':data_mast_vis_all = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_meas.npz',allow_pickle=True)['data'].item()  
+                    elif plot_options['glob_mast_all']=='theo':data_mast_vis_all = np.load(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_theo.npz',allow_pickle=True)['data'].item()        
+                cond_def_exp_all={}
+                wav_exp_all={}
+                edge_bins_exp_all={}
+                sp_exp_all={}
+                for iexp in iexp_plot:                    
+                    data_exp=np.load(path_exp+str(iexp)+'.npz',allow_pickle=True)['data'].item()    
+                    cond_def_exp_all[iexp] = data_exp['cond_def']
+                    wav_exp_all[iexp] = data_exp['cen_bins']
+                    edge_bins_exp_all[iexp] = data_exp['edge_bins']
+                    sp_exp_all[iexp] = data_exp['flux']    
+
+                    #Shift individual exposures to the star rest frame in which master is defined
+                    if plot_mod=='glob_mast': 
+                        dop_sh = data_mast_vis['specdopshift_star_solbar'][iexp]    
+                        wav_exp_all[iexp]*=dop_sh
+                        edge_bins_exp_all[iexp]*=dop_sh
+
+                #Order list
+                order_list = plot_options['orders_to_plot'] if len(plot_options['orders_to_plot'])>0 else range(data_dic[inst]['nord']) 
+                    
+                #Plot each order of spectra for all exposures
+                for iord in order_list:
+
+                    #Plot order if it overlaps with the requested window
+                    plot_ord=False
+                    min_wav = np.min([edge_bins_exp_all[iexp][iord][0:-1][cond_def_exp_all[iexp][iord]][0] for iexp in iexp_plot])
+                    max_wav = np.max([edge_bins_exp_all[iexp][iord][1::][cond_def_exp_all[iexp][iord]][-1] for iexp in iexp_plot])
+                    if plot_options['x_range'] is not None:
+                        if (max_wav>=plot_options['x_range'][0]) and (min_wav<=plot_options['x_range'][1]):plot_ord=True
+                        x_range_loc = deepcopy(plot_options['x_range'])
+                    else:
+                        drange = max_wav-min_wav
+                        x_range_loc = [min_wav-0.02*drange,max_wav+0.02*drange]     
+                        plot_ord=True
+                    if plot_ord:                                         
+                        plt.ioff()                    
+                        plt.figure(figsize=plot_options['fig_size'])
+                        y_range_loc=sc_fact*np.array(plot_options['y_range']) if plot_options['y_range'] is not None else [1e100,-1e100] 
+
+                        #Resampling
+                        if plot_options['resample'] is not None:
+                            n_reg = int(np.ceil((x_range_loc[1]-x_range_loc[0])/plot_options['resample']))
+                            edge_bins_reg = np.linspace(x_range_loc[0],x_range_loc[1],n_reg)
+                            cen_bins_reg = 0.5*(edge_bins_reg[0:-1]+edge_bins_reg[1::])
+
+                        #Plot all exposures
+                        if plot_options['plot_input']:
+                            for isub,iexp in enumerate(iexp_plot):
+                                cond_def_tab = cond_def_exp_all[iexp][iord] & (wav_exp_all[iexp][iord]>x_range_loc[0]) & (wav_exp_all[iexp][iord]<x_range_loc[1])
+                                wav_tab = wav_exp_all[iexp][iord][cond_def_tab]
+                                var_loc=sc_fact*sp_exp_all[iexp][iord][cond_def_tab]
+                                plt.plot(wav_tab,var_loc,color=col_visit[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=1,alpha=plot_options['alpha_symb']) 
+                                if plot_options['y_range'] is None:y_range_loc = [0.99*min(sc_fact*np.nanmin(var_loc),y_range_loc[0]),1.01*max(sc_fact*np.nanmax(var_loc),y_range_loc[1])]                        
+
+                                #Resampling
+                                if plot_options['resample'] is not None:
+                                    var_resamp = bind.resampling(edge_bins_reg, edge_bins_exp_all[iexp][iord], sc_fact*sp_exp_all[iexp][iord], kind=gen_dic['resamp_mode'])   
+                                    plt.plot(cen_bins_reg,var_resamp,color=col_visit[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=2)                            
+                        
+                        
+                        #Plot master
+                        if plot_mod=='glob_mast':
+
+                            #Global master of current visit
+                            if plot_options['glob_mast_vis']:
+                                cond_in_plot = (data_mast_vis['cen_bins'][iord]>x_range_loc[0]) & (data_mast_vis['cen_bins'][iord]<x_range_loc[1])
+                                plt.plot(data_mast_vis['cen_bins'][iord,cond_in_plot],sc_fact*data_mast_vis['flux'][iord,cond_in_plot],color='black',linestyle='-',lw=plot_options['lw_plot']+0.5,rasterized=False,zorder=2) 
+                                if plot_options['y_range'] is None:y_range_loc = [0.99*min(sc_fact*np.nanmin(data_mast_vis['flux'][iord,cond_in_plot]),y_range_loc[0]),1.01*max(sc_fact*np.nanmax(data_mast_vis['flux'][iord,cond_in_plot]),y_range_loc[1])] 
+                                              
+                            #Global master over all visits
+                            if plot_options['glob_mast_all'] is not None:
+                                cond_in_plot = (data_mast_vis_all['cen_bins'][iord]>x_range_loc[0]) & (data_mast_vis_all['cen_bins'][iord]<x_range_loc[1])
+                                plt.plot(data_mast_vis_all['cen_bins'][iord,cond_in_plot],sc_fact*data_mast_vis_all['flux'][iord,cond_in_plot],color='dimgrey',linestyle='-',lw=plot_options['lw_plot']+1,rasterized=False,zorder=2) 
+                                if plot_options['y_range'] is None:y_range_loc = [0.99*min(sc_fact*np.nanmin(data_mast_vis_all['flux'][iord,cond_in_plot]),y_range_loc[0]),1.01*max(sc_fact*np.nanmax(data_mast_vis_all['flux'][iord,cond_in_plot]),y_range_loc[1])] 
+
+                        #Overplot stellar lines
+                        if len(plot_options['st_lines_wav'])>0:
+                            st_lines_wav = np.array(plot_options['st_lines_wav'])
+                            cond_in_plot = (st_lines_wav>x_range_loc[0]) & (st_lines_wav<x_range_loc[1])
+                            for st_line_wav in st_lines_wav[cond_in_plot]:plt.axvline(x=st_line_wav,color='black',ls='--',lw=1,alpha=0.6)  
+
+                        #Plot frame  
+                        if data_type=='spec1D':str_add=''
+                        elif data_type=='spec2D':str_add=' (iord = '+str(iord)+')'                        
+                        if plot_options['title']:plt.title(al_txt+title_name+' spectra in '+xt_str+' rest frame'+str_add)
+                        y_title='Flux'
+                        y_title = scaled_title(plot_options['sc_fact10'],y_title)
+                        dx_range=x_range_loc[1]-x_range_loc[0]
+                        dy_range=y_range_loc[1]-y_range_loc[0]
+                        xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                        ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
+                        custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
+                                    xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
+                                    xmajor_form=xmajor_form,ymajor_form=ymajor_form,
+                                    x_title='Wavelength in '+xt_str+' rest frame (A)',y_title=y_title,
+                                    font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
+        
+                        if (data_type=='spec2D'):str_add='_iord'+str(iord)
+                        else:str_add=''
+                        plt.savefig(path_loc+data_type+str_add+'.'+plot_ext) 
+                        plt.close() 
+  
+    return None    
+
+
+
+
 
 
 
@@ -9587,7 +9465,7 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
              
 
             #Dispersion plots
-            if plot_options['print_disp']!=[] & plot_options['plot_disp']:
+            if (plot_options['print_disp']!=[]) & plot_options['plot_disp']:
             
                 #Frame
                 plt.ioff() 
@@ -9671,11 +9549,146 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
 
 
 
+'''
+Sub-function to compare series of binned disk-integrated and intrinsic profiles
+    - for aligned disk-integrated and intrinsic data
+'''
+def sub_plot_DI_Intr_binprof(plot_options,plot_ext,data_dic,gen_dic):
+    sc_fact=10**plot_options['sc_fact10']
+    cmap = plt.get_cmap('rainbow')
 
+    #Plot for each instrument
+    for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())):   
+        print('  > Instrument: '+inst)
+            
+        #Plot for each visit
+        for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst]): 
+            print('     - Visit : '+vis)
+            path_loc = gen_dic['save_plot_dir']+'Compa_DI_intr_series/'+inst+'_'+vis+'/' 
+            if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)   
+   
+            #Exposures to plot
+            data_DIbin = np.load(gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot_DI']+'_add.npz',allow_pickle=True)['data'].item()
+            iexp_plot_DI = np.arange(data_DIbin['n_exp'],dtype=int) 
+            nexp_plot_DI=len(iexp_plot_DI) 
 
+            data_Intrbin = np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot_intr']+'_add.npz',allow_pickle=True)['data'].item()                    
+            iexp_plot_intr = np.arange(data_Intrbin['n_exp'],dtype=int) 
+            nexp_plot_intr=len(iexp_plot_intr) 
 
+            #Visit colors  
+            if 'DI' in plot_options['color_dic']:col_DI=np.repeat(plot_options['color_dic']['DI'],nexp_plot_DI)
+            else:col_DI=np.array([cmap(0)]) if nexp_plot_DI==1 else cmap( np.arange(nexp_plot_DI)/(nexp_plot_DI-1.))
+            if 'Intr' in plot_options['color_dic']:col_intr=np.repeat(plot_options['color_dic']['Intr'],nexp_plot_intr)
+            else:col_intr=np.array([cmap(0)]) if nexp_plot_intr==1 else cmap( np.arange(nexp_plot_intr)/(nexp_plot_intr-1.))
 
+            #------------------------------------------------------------------------------------------
+                    
+            #Plotting CCF profiles
+            if plot_options['data_type']=='CCF':
+                plt.ioff()                    
+                plt.figure(figsize=plot_options['fig_size'])
+                
+                #Plotting each exposure
+                y_range_loc=sc_fact*np.array(plot_options['y_range']) if plot_options['y_range'] is not None else [1e100,-1e100] 
+                for isub,iexp in enumerate(iexp_plot_DI):             
+                    data_exp=np.load(gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot_DI']+str(iexp)+'.npz' ,allow_pickle=True)['data'].item()    
+                    var_loc=sc_fact*data_exp['flux'][0]
+                    plt.plot(data_exp['cen_bins'][0],var_loc ,color=col_DI[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'])    
+                    if plot_options['y_range'] is None:y_range_loc = [0.99*min(np.nanmin(var_loc),y_range_loc[0]),1.01*max(np.nanmax(var_loc),y_range_loc[1])]
+                for isub,iexp in enumerate(iexp_plot_intr):                
+                    data_exp=np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot_intr']+str(iexp)+'.npz' ,allow_pickle=True)['data'].item()    
+                    var_loc=sc_fact*data_exp['flux'][0]
+                    plt.plot(data_exp['cen_bins'][0],var_loc ,color=col_intr[isub],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'])    
+                    if plot_options['y_range'] is None:y_range_loc = [0.99*min(np.nanmin(var_loc),y_range_loc[0]),1.01*max(np.nanmax(var_loc),y_range_loc[1])]
 
+                #Central null velocity
+                plt.plot([0,0],y_range_loc,linestyle=':',lw=plot_options['lw_plot'],color='black')
 
+                #Reference level
+                x_range_loc=np.array(plot_options['x_range']) if plot_options['x_range'] is not None else np.array([data_exp['cen_bins'][0,0]-5.,data_exp['cen_bins'][0,-1]+5.]) 
+                if plot_options['ref_level']:plt.plot(x_range_loc,[1.,1.],linestyle='-',lw=0.5,color='black')
+           
+                #Plot frame
+                if plot_options['title']:plt.title('Binned disk-integrated and intrinsic CCFs',fontsize=plot_options['font_size'])
+                y_title='Flux'
+                y_title = scaled_title(plot_options['sc_fact10'],y_title)                   
+                dx_range=x_range_loc[1]-x_range_loc[0]
+                dy_range=y_range_loc[1]-y_range_loc[0]
+                xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range) 
+                custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
+                            xmajor_int=xmajor_int,xminor_int=xminor_int,
+                            ymajor_int=ymajor_int,yminor_int=yminor_int,
+                            xmajor_form=xmajor_form,ymajor_form=ymajor_form,
+                            x_title='Velocity (km s$^{-1}$)',y_title=y_title,
+                            font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])                 						
+                plt.savefig(path_loc+'CCF.'+plot_ext) 
+                plt.close()    
+                            
+            #------------------------------------------------------------------------------------------
+                    
+            #Plotting spectral profiles
+            elif 'spec' in plot_options['data_type']:
+                    
+                #Retrieving data
+                cond_def_exp_DI={}
+                wav_exp_DI={}
+                sp_exp_DI={}
+                for iexp in iexp_plot_DI:
+                    data_exp=np.load(gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot_DI']+str(iexp)+'.npz' ,allow_pickle=True)['data'].item() 
+                    cond_def_exp_DI[iexp] = data_exp['cond_def']
+                    wav_exp_DI[iexp] = data_exp['cen_bins']
+                    sp_exp_DI[iexp] = data_exp['flux']                                
+                cond_def_exp_intr={}
+                wav_exp_intr={}
+                sp_exp_intr={}
+                for iexp in iexp_plot_intr:
+                    data_exp=np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis+'_'+plot_options['dim_plot_intr']+str(iexp)+'.npz' ,allow_pickle=True)['data'].item()                             
+                    cond_def_exp_intr[iexp] = data_exp['cond_def']
+                    wav_exp_intr[iexp] = data_exp['cen_bins']
+                    sp_exp_intr[iexp] = data_exp['flux']  
+                    
+                #Plot each order of spectra for all exposures
+                for iord in range(data_dic[inst]['nord']):
+                    plt.ioff()                    
+                    plt.figure(figsize=plot_options['fig_size'])
+                    y_range_loc=sc_fact*plot_options['y_range'] if plot_options['y_range'] is not None else [1e100,-1e100] 
+
+                    for isub,iexp in enumerate(iexp_plot_DI):
+                        cond_def_tab = cond_def_exp_DI[iexp][iord]
+                        wav_tab = wav_exp_DI[iexp][iord][cond_def_tab]
+                        var_loc=sc_fact*sp_exp_DI[iexp][iord][cond_def_tab]
+                        plt.plot(wav_tab,var_loc,color=col_DI[iexp],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=1) 
+                        if plot_options['y_range'] is None:y_range_loc = [0.99*min(np.nanmin(var_loc),y_range_loc[0]),1.01*max(np.nanmax(var_loc),y_range_loc[1])]                        
+                    for isub,iexp in enumerate(iexp_plot_intr):
+                        cond_def_tab = cond_def_exp_intr[iexp][iord]
+                        wav_tab = wav_exp_intr[iexp][iord][cond_def_tab]
+                        var_loc=sc_fact*sp_exp_intr[iexp][iord][cond_def_tab]
+                        plt.plot(wav_tab,var_loc,color=col_intr[iexp],linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=1) 
+                        if plot_options['y_range'] is None:y_range_loc = [0.99*min(np.nanmin(var_loc),y_range_loc[0]),1.01*max(np.nanmax(var_loc),y_range_loc[1])]                        
+                    
+                    #Plot frame  
+                    if isub==0: x_range_loc=np.array(plot_options['x_range']) if plot_options['x_range'] is not None else np.array([wav_tab[0]-0.02,wav_tab[-1]+0.02])  
+                    if plot_options['data_type']=='spec1D':str_add=''
+                    elif plot_options['data_type']=='spec2D':str_add=' (iord = '+str(iord)+')'                        
+                    if plot_options['title']==True:plt.title('Binned disk-integrated and intrinsic '+str_add)
+                    y_title='Flux'
+                    y_title = scaled_title(plot_options['sc_fact10'],y_title) 
+                    dx_range=x_range_loc[1]-x_range_loc[0]
+                    dy_range=y_range_loc[1]-y_range_loc[0]
+                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
+                    custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
+                                xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
+                                xmajor_form=xmajor_form,ymajor_form=ymajor_form,
+                                x_title='Wavelength (A)',y_title=y_title,
+                                font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
+                    str_add=''
+                    if (plot_options['data_type']=='spec2D'):str_add='_iord'+str(iord)
+                    plt.savefig(path_loc+'spectra'+str_add+'.'+plot_ext) 
+                    plt.close() 
+  
+    return None 
 
 

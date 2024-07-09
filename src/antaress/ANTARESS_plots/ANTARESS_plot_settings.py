@@ -19,7 +19,8 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
      - `font_size_txt = float` : size for text font within plot.
      - `lw_plot = float` : linewidth.
      - `ls_plot = str` : linestyle.
-     - `col_contacts = str` : color for transit contacts
+     - `col_contacts = str` : color for transit contacts.
+     - `axis_thick = float` : thickness for plot axis.
 
     Args:
         plot_options (dic) : dictionary for all generic plot settings
@@ -103,6 +104,9 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
     
     #FPS for gif
     plot_options[key_plot]['fps'] = 5
+    
+    #Print information
+    plot_options[key_plot]['verbose']=True 
 
     #--------------------------------------
 
@@ -310,9 +314,6 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
         #    - if not phase, exposures are plotted successively without respecting their actual positions, because of overlaps 
         plot_options[key_plot]['dim_plot']='phase' 
 
-        #Print information
-        plot_options[key_plot]['verbose']=True 
-
     #--------------------------------------   
     if ('prop_' in key_plot):
 
@@ -329,9 +330,6 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
 
         #Print min/max values (to adjust plot ranges)
         plot_options[key_plot]['plot_bounds']=False
-        
-        #Reference level
-        plot_options[key_plot]['plot_ref'] = True            
 
         #Print and plot mean value and dispersion 
         plot_options[key_plot]['plot_disp']=True    
@@ -482,6 +480,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
+
+        #%%%% Plot measured values in each order plot
+        plot_settings[key_plot]['plot_meas_exp'] = True 
 
         #%%%% Plot best-fit exposure models in each order plot
         plot_settings[key_plot]['plot_best_exp'] = True
@@ -691,7 +692,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['ncosm'] = True  
 
         #%%%% Plot orders with detected cosmics only  
-        plot_settings[key_plot]['detcosm'] = True
+        plot_settings[key_plot]['det_cosm'] = True
 
         #%%%% Plot number of cosmics per order
         plot_settings[key_plot]['cosm_vs_ord']=True         
