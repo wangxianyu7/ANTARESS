@@ -55,6 +55,16 @@ def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
     r"""**Joined disk-integrated stellar property fits**
 
     Main routine to fit a given disk-integrated stellar property with a joined model over instruments and visits.
+    
+    
+ on fait ici pour pouvoir inclure des modeles physiques, eg les sinusoides des pulsations, et fitter ainsi en combinant
+ les systematiques doivent par contre etre specifiques a chaque visite
+
+  faire generique pour analyser aussi prop des profils spectraux   
+  
+    Analyzes time-series of properties derived from disk-integrated profiles with various parameters to search for systematic trends and characterize stellar variations.
+    
+    Results of the analysis are saved, to be used in the detrending module. 
 
     Args:
         TBD
@@ -309,7 +319,7 @@ def joined_IntrProp(param,args):
             #Calculate coordinates and properties of occulted regions 
             system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
             surf_prop_dic,spotocc_prop,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
-            
+
             #Properties associated with the transiting planet in the visit 
             pl_vis = args['transit_pl'][inst][vis][0]
             theo_vis = surf_prop_dic['achrom'][pl_vis]      
@@ -855,7 +865,7 @@ def joined_IntrProf(param,args):
 
 
 def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):    
-    r"""**Joined residual profiles fits**
+    r"""**Joined differential profiles fits**
 
     Main routine to fit a given stellar surface property from planet-occulted regions with a joined model over instruments and visits.
 
@@ -866,7 +876,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         TBD
     
     """ 
-    print('   > Fitting joined residual stellar CCFs, including spots')
+    print('   > Fitting joined differential stellar CCFs, including spots')
 
     #Initializations
     fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
@@ -1009,13 +1019,13 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 fixed_args['master_out']['weights'][inst][vis]={}
                 fixed_args['master_out']['idx_in_master_out'][inst][vis]=[]
 
-                # - Indexes
+                #Indexes
                 if (inst in data_dic['Res']['idx_in_bin']) and (vis in data_dic['Res']['idx_in_bin'][inst]):
                     if data_dic['Res']['idx_in_bin'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=list(data_dic['Res']['idx_in_bin'][inst][vis])
         
                 if len(fixed_args['master_out']['idx_in_master_out'][inst][vis])==0:stop('No exposures defined in visit '+vis+' for the master-out calculation.')
 
-                # - Needed for weight calculation
+                #Needed for weight calculation
                 fixed_args['master_out']['scaled_data_paths'][inst][vis]={}
                 if gen_dic['flux_sc']:fixed_args['master_out']['scaled_data_paths'][inst][vis] = data_dic[inst][vis]['scaled_DI_data_paths']
                 else:fixed_args['master_out']['scaled_data_paths'][inst][vis] = None
@@ -1096,11 +1106,12 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 #      the fit is then performed on defined pixels only
                 fit_prop_dic[inst][vis]['cond_def_plot_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],len(data_com['cen_bins'][0])],dtype=bool)
                 for key in ['dcen_bins','cen_bins','edge_bins','cond_fit','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
+                fit_prop_dic[inst][vis]['cond_def_plot_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],len(data_com['cen_bins'][0])],dtype=bool)
                 fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
                 fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
 
-                    #Upload latest processed residual data
+                    #Upload latest processed differential data
                     if fixed_args['bin_mode'][inst][vis]=='_bin':data_exp = dataload_npz(gen_dic['save_data_dir']+'Resbin_data/'+inst+'_'+vis+'_phase'+str(i_in))               
                     else:data_exp = dataload_npz(data_dic[inst][vis]['proc_Res_data_paths']+str(i_in))
 
@@ -1125,7 +1136,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]           
                     fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]          
                     fit_dic['nx_fit']+=np.sum(fit_prop_dic[inst][vis]['cond_def_fit_all'][isub])
-                    fixed_args['cond_fit'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]
+                    fixed_args['cond_fit'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]                    
                     fit_prop_dic[inst][vis]['cond_def_plot_all'][isub] = np.isin(np.linspace(0,len(data_com['cen_bins'][0]),len(data_com['cen_bins'][0]), endpoint=False, dtype=int), idx_range_kept)
 
                     #Initialize PCs 
@@ -1296,7 +1307,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
 
 def FIT_joined_ResProf(param,x_tab,args=None):
-    r"""**Fit function: joined residual stellar profiles**
+    r"""**Fit function: joined differential stellar profiles**
 
     Calls corresponding model function for optimization
 
@@ -1340,17 +1351,20 @@ def FIT_joined_ResProf(param,x_tab,args=None):
 
 
 
-def joined_ResProf(param,fixed_args):
-    r"""**Model function: joined residual profiles**
 
-    Defines the joined model for residual profiles. This is done in three steps
+
+   
+def joined_ResProf(param,fixed_args):
+    r"""**Model function: joined differential profiles**
+
+    Defines the joined model for differential profiles. This is done in three steps
     
      1. We calculate all DI profiles of the star (fitted exposures + exposures that contributed to the master-out), and we scale 
         them at the same value as after the `Broadband flux Scaling module`.
 
      2. We compute the master out, with same weights as those used in the corresponding module.
     
-     3. We extract residual profiles as :math:`F_\mathrm{res} = F_\mathrm{out} - F_\mathrm{sc}`   
+     3. We extract differential profiles as :math:`F_\mathrm{res} = F_\mathrm{out} - F_\mathrm{sc}`   
 
     Args:
         TBD
@@ -1359,13 +1373,13 @@ def joined_ResProf(param,fixed_args):
         TBD
     
     """
-    args = deepcopy(fixed_args)
-
+    args = deepcopy(fixed_args) 
     mod_dic = {}
     mod_prop_dic = {}
     coeff_line_dic = {}
 
-    #Re-defining solution for master out
+
+    #Updating spectral grid for master out
     if 'rv_shift' in param:
         for key in ['cen_bins', 'edge_bins']:
             if 'spec' in args['type']:
@@ -1373,6 +1387,8 @@ def joined_ResProf(param,fixed_args):
             else:
                 args['master_out']['master_out_tab'][key] = args['master_out']['master_out_tab'][key] - param['rv_shift']
 
+
+    #Updating equatorial period
     if ('Peq' in args['var_par_list']) or ('Peq' in args['fix_par_list']):param['veq'] = (2*np.pi*args['system_param']['star']['Rstar_km'])/(param['Peq']*24*3600)
 
     #Processing instruments
@@ -1430,7 +1446,8 @@ def joined_ResProf(param,fixed_args):
 
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
 
-                #Re-define the spectral/solution of the exposures considered
+
+                #Update the spectral grid of the exposures considered
                 if 'rv_shift' in param:
                     for key in ['cen_bins', 'edge_bins']:
                         if 'spec' in args['type']:
@@ -1481,10 +1498,9 @@ def joined_ResProf(param,fixed_args):
             # # Table for model calculation - wavelength table of the exposure considered
             args_DI = def_st_prof_tab(inst,vis,0,args)
 
-            # Initializing broadband scaling of intrinsic profiles into local profiles
+            #Initializing broadband scaling of intrinsic profiles into local profiles
             if not args['fit']:
                 args_DI['Fsurf_grid_spec'] = theo_intr2loc(args_DI['grid_dic'],args_DI['system_prop'],args_DI,args_DI['ncen_bins'],args_DI['grid_dic']['nsub_star']) 
-
             base_DI_prof = custom_DI_prof(param_val,None,args=args_DI)[0]
 
             #Making profiles for each exposure
@@ -1500,7 +1516,7 @@ def joined_ResProf(param,fixed_args):
                 sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[args['chrom_mode']]['line_prof'][:,0]
 
                 #Properties of all planet-occulted and spotted regions used to calculate spectral line profiles
-                # - Since we are analyzing residual profiles, we have to check if the planets/spots are in the exposure considered.
+                # - Since we are analyzing differential profiles, we have to check if the planets/spots are in the exposure considered.
                 # - If this is not the case, an entry for them in the surf_prop_dic/surf_prop_dic_sp won't be initialized
                 if not args['fit']:
                     for pl_loc in args['transit_pl'][inst][vis]:  
@@ -1519,7 +1535,7 @@ def joined_ResProf(param,fixed_args):
                 #Set negative flux values to null
                 conv_line_model[conv_line_model<base_DI_prof[0]-1] = 0.
                                 
-                #Store the model DI profiles for calculation of the residual profiles later
+                #Store the model DI profiles for calculation of the differential profiles later
                 args['raw_DI_profs'][inst][vis][isub] = conv_line_model
 
                 #Loop over exposures contributing to the master-out
@@ -1587,7 +1603,7 @@ def joined_ResProf(param,fixed_args):
         #Need to step out of the loops to finish the master-out calculation if multiple visits are combined
         if len(args['master_out']['multivisit_list'][inst])>0:args['master_out']['multivisit_flux'][inst] /= args['master_out']['multivisit_weights_total'][inst]
 
-    #Building residual profiles
+        #Building differential profiles
         for vis in args['inst_vis_list'][inst]:
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
                 
@@ -1598,7 +1614,7 @@ def joined_ResProf(param,fixed_args):
                 #Re-sample master on table of the exposure considered
                 resamp_master = bind.resampling(args['edge_bins'][inst][vis][isub],args['master_out']['master_out_tab']['edge_bins'],master_out_flux, kind=args['master_out']['master_out_tab']['resamp_mode'])
 
-                #Calculate the residual profile on the wavelength table of the exposure considered (Isn't this gonna be an issue when making the residual map?)
+                #Calculate the differential profile on the wavelength table of the exposure considered (Isn't this gonna be an issue when making the residual map?)
                 mod_dic[inst][vis][isub] = resamp_master - args['raw_DI_profs'][inst][vis][isub]
 
                 #Add PC noise model

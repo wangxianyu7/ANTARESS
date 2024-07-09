@@ -159,7 +159,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
          
             #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
             if gen_dic['DImast_weight']:              
-                process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDIweigh=True,spot_dic=data_dic['DI']['spots_prop'])
+                process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDIweigh=True,spot_dic=theo_dic)
 
             #Processing converted 2D disk-integrated profiles
             if gen_dic['spec_1D']:                
@@ -170,23 +170,23 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
 
             #--------------------------------------------------------------------------------------------------
-            #Processing residual and intrinsic stellar profiles
+            #Processing differential and intrinsic stellar profiles
             data_type_gen = 'Intr'
             #--------------------------------------------------------------------------------------------------
 
-            #Extracting residual profiles
+            #Extracting differential profiles
             if (gen_dic['res_data']):
                 extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
 
             #Extracting intrinsic stellar profiles
             if gen_dic['intr_data']:
                 extract_intr_profiles(data_dic,gen_dic,inst,vis,system_param['star'],coord_dic,theo_dic,plot_dic)
-      
-            #Converting out-of-transit residual and intrinsic spectra into CCFs
+        
+            #Converting out-of-transit differential and intrinsic spectra into CCFs
             if gen_dic[data_type_gen+'_CCF']:
                 ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
-      
-            #Applying PCA to out-of transit residual profiles
+                  
+            #Applying PCA to out-of transit differential profiles
             if (gen_dic['pca_ana']):
                 pc_analysis(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
 
@@ -198,7 +198,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             if gen_dic['align_'+data_type_gen]: 
                 align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)
 
-            #Processing converted 2D intrinsic and residual profiles
+            #Processing converted 2D intrinsic and differential profiles
             if gen_dic['spec_1D']:                
                 conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
 
@@ -505,7 +505,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     if gen_dic['pca_ana']:gen_dic['intr_data'] = True
     if gen_dic['intr_data']:
         if not gen_dic['res_data']:
-            print('Automatic activation of residual profile extraction')
+            print('Automatic activation of differential profile extraction')
             gen_dic['res_data'] = True
         if not gen_dic['flux_sc']:
             print('Automatic activation of flux scaling calculation')
@@ -564,7 +564,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     if (plot_dic['glob_mast']!='') and gen_dic['glob_mast']:
         plot_dic['glob_mast']==''
         print('Disabling "glob_mast" plot')
-    if (plot_dic['Fbal_corr_vis']!='') and (~gen_dic['corr_Fbal'] or gen_dic['Fbal_vis'] is None):        
+    if (plot_dic['Fbal_corr_vis']!='') and ((not gen_dic['corr_Fbal']) or (gen_dic['Fbal_vis'] is None)):        
         plot_dic['Fbal_corr_vis']==''
         print('Disabling "Fbal_corr_vis" plot')        
 
@@ -579,7 +579,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #Set final data mode for each type of profiles
     #    - the general instrument and visit dictionaries contain a field type that represents the mode of the data at the current stage of the pipeline
     #    - here we set the final mode for each type of profile, so that they can be retrieved in their original mode for plotting
-    #      eg, if profiles are converted into CCF at the Residual stage, we keep the information that disk-integrated profiles were in spectral mode
+    #      eg, if profiles are converted into CCF at the differential stage, we keep the information that disk-integrated profiles were in spectral mode
     for key in ['DI','Res','Intr','Atm']:data_dic[key]['type'] = {inst:deepcopy(gen_dic['type'][inst]) for inst in gen_dic['type']}
     for inst in gen_dic['type']:
         if 'spec' in gen_dic['type'][inst]: 
@@ -663,7 +663,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #Additional properties
     data_prop={}
 
-    #Standard-deviation curves with bin size for the out-of-transit residual CCFs
+    #Standard-deviation curves with bin size for the out-of-transit differential CCFs
     #    - defining the maximum size of the binning window, and the binning size for the sliding window (we will average the bins in windows of width bin_size from 1 to 40 (arbitrary))
     if gen_dic['scr_search']:
         gen_dic['scr_srch_max_binwin']=40.     
@@ -1010,7 +1010,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     gen_dic['save_plot_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'
     gen_dic['add_txt_path']={'DI':'','Intr':'','Res':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
     gen_dic['data_type_gen']={'DI':'DI','Res':'Res','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
-    gen_dic['type_name']={'DI':'disk-integrated','Res':'residual','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
+    gen_dic['type_name']={'DI':'disk-integrated','Res':'differential','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
 
     #------------------------------------------------------------------------------------------------------------------------
 
@@ -1409,8 +1409,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             vis_day-=1
                         vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)                    
                         print('           Date :',vis_yr,'/',vis_mt,'/',vis_day_txt)
-                        print('           Visit Midpoint: %.5f'%(bjd_vis+2400000.))
-                
+                        print('           Visit midpoint: %.5f'%(bjd_vis+2400000.))
+
                 else:
                     bjd_vis = np.mean(bjd_exp_all) - 2400000.                   
                         
@@ -1456,9 +1456,11 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         norb = round((bjd_vis+2400000.-system_param[pl_loc]['TCenter'])/system_param[pl_loc]["period"])
                         coord_dic[inst][vis][pl_loc]['Tcenter']  = system_param[pl_loc]['TCenter']+norb*system_param[pl_loc]["period"]
 
+
+                #Initializes spot-related properties
                 for spot in gen_dic['studied_sp']:
                     coord_dic[inst][vis][spot]={}
-                    for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:coord_dic[inst][vis][spot][key] = np.zeros(n_in_visit,dtype=float)*np.nan
+                    for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'fctrst']:coord_dic[inst][vis][spot][key] = np.zeros(n_in_visit,dtype=float)*np.nan
                     for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:coord_dic[inst][vis][spot][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
                     coord_dic[inst][vis][spot]['is_visible'] = np.zeros([3,n_in_visit],dtype=bool)
 
@@ -1534,25 +1536,19 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if gen_dic['mock_data']:                
                         coord_dic[inst][vis]['bjd'][iexp] = bjd_exp_all[iexp]  - 2400000.  
                         coord_dic[inst][vis]['t_dur'][iexp] = (bjd_exp_high[iexp]-bjd_exp_low[iexp])*24.*3600.
-
                         if (inst in mock_dic['spots_prop']) and (vis in mock_dic['spots_prop'][inst]):
                             mock_dic['spots_prop'][inst][vis]['cos_istar']=system_param['star']['cos_istar']
                             
                             #Coordinates for each studied spot
-                            spots_prop = retrieve_spots_prop_from_param(system_param['star'], mock_dic['spots_prop'][inst][vis], inst, vis, coord_dic[inst][vis]['bjd'][iexp], exp_dur=coord_dic[inst][vis]['t_dur'][iexp])
-                            
-                            for spot in data_inst[vis]['transit_sp']:
-                                
-                                for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
-                                    coord_dic[inst][vis][spot][key][iexp] = spots_prop[spot][key]
-                                
+                            spots_prop = retrieve_spots_prop_from_param(system_param['star'], mock_dic['spots_prop'][inst][vis], inst, vis, coord_dic[inst][vis]['bjd'][iexp], exp_dur=coord_dic[inst][vis]['t_dur'][iexp])                            
+                            for spot in data_inst[vis]['transit_sp']:                               
+                                for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'fctrst']:
+                                    coord_dic[inst][vis][spot][key][iexp] = spots_prop[spot][key]                               
                                 for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
-                                    coord_dic[inst][vis][spot][key][:, iexp] = [spots_prop[spot][key+'_start'],spots_prop[spot][key+'_center'],spots_prop[spot][key+'_end']]
-                                
-                                coord_dic[inst][vis][spot]['is_visible'][:, iexp]=[spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]                    
-                            
+                                    coord_dic[inst][vis][spot][key][:, iexp] = [spots_prop[spot][key+'_start'],spots_prop[spot][key+'_center'],spots_prop[spot][key+'_end']]                                
+                                coord_dic[inst][vis][spot]['is_visible'][:, iexp]=[spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]                                                
                             mock_dic['spots_prop'][inst][vis].pop('cos_istar')
-
+                
                     #Observational data
                     else:
                     
@@ -1730,7 +1726,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 #      scr_lgth = bin size/CCF_step
                                 #   with CCF typically oversampled, CCF_step is lower than the bin size and we keep about one CCF point every bin size   
                                 # + if the correlation length is chosen, then it may depend on the visit conditions but should be constant for a given visit. In that case 
-                                # the number of screened bins has already been set in 'scr_lgth' for the visit, using the empirical estimation on the residuals CCFs            
+                                # the number of screened bins has already been set in 'scr_lgth' for the visit, using the empirical estimation on the differential CCFs            
                                 if vis not in gen_dic['scr_lgth'][inst]:
                                     gen_dic[inst][vis]['scr_lgth']=int(round(gen_dic['pix_size_v'][inst]/delta_rv))
                                     if gen_dic[inst][vis]['scr_lgth']<=1:gen_dic[inst][vis]['scr_lgth']=1  
@@ -2587,6 +2583,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         if (not data_vis['comm_sp_tab']):print('           Exposures in '+vis+' do not share a common spectral table')      
         else:print('           All exposures in '+vis+' share a common spectral table')   
 
+        #Initialize all exposures as being defined
+        data_dic['DI'][inst][vis]['idx_def'] = np.arange(data_vis['n_in_visit'],dtype=int)
+
         #------------------------------------------------------------------------------------
 
         #Default systemic velocity
@@ -2712,7 +2711,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         if (inst in gen_dic['fibB_corr']) and (vis in gen_dic['fibB_corr'][inst]):print('          ',vis,'is sky-corrected') 
 
         #Indices of in/out exposures in global tables
-        print('   > '+str(data_vis['n_in_visit'])+' exposures')  
+        print('           '+str(data_vis['n_in_visit'])+' exposures in '+vis)  
         if ('in' in data_dic['DI']['idx_ecl']) and (inst in data_dic['DI']['idx_ecl']['in']) and (vis in data_dic['DI']['idx_ecl']['in'][inst]):
             for iexp in data_dic['DI']['idx_ecl']['in'][inst][vis]:
                 for pl_loc in data_vis['transit_pl']:coord_vis[pl_loc]['ecl'][iexp] = 3*np.sign(coord_vis[pl_loc]['ecl'][iexp]) 
@@ -2861,7 +2860,7 @@ def init_vis(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic):
                 plAtm_vis['exclu_range_star']['spec'][pl_loc][:,:,iexp_no_plrange] = data_dic['Atm']['CCF_mask_wav'][:,None,None]*gen_specdopshift(data_dic['Atm']['plrange'])[:,None]*gen_specdopshift(coord_vis[pl_loc]['rv_pl'][iexp_no_plrange],v_s = coord_vis[pl_loc]['v_pl'][iexp_no_plrange])  
 
                 plAtm_vis['exclu_range_input']['spec'][pl_loc] = np.zeros([len(data_dic['Atm']['CCF_mask_wav']),2,data_vis['n_in_visit']])*np.nan
-                plAtm_vis['exclu_range_input']['spec'][pl_loc][:,:,iexp_no_plrange] = plAtm_vis['exclu_range_star']['spec'][pl_loc][:,:,iexp_no_plrange]*gen_specdopshift(coord_vis[pl_loc]['RV_star_stelCDM'][iexp_no_plrange])*gen_specdopshift(data_dic['DI']['sysvel'][inst][vis])    
+                plAtm_vis['exclu_range_input']['spec'][pl_loc][:,:,iexp_no_plrange] = plAtm_vis['exclu_range_star']['spec'][pl_loc][:,:,iexp_no_plrange]*gen_specdopshift(coord_vis['RV_star_stelCDM'][iexp_no_plrange])*gen_specdopshift(data_dic['DI']['sysvel'][inst][vis])    
                 
     return None
 

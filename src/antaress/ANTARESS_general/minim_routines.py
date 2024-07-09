@@ -436,7 +436,7 @@ def init_fit(fit_dic,fixed_args,p_start,fit_prop_dic,model_par_names,model_par_u
         fixed_args['fixed_par_val_noexp_list']=[par for par in fixed_args['fixed_par_val'] if par not in fixed_args['linked_par_expr']]
 
     #Number of free parameters    
-    if fit_dic['fit_mode']=='':fit_dic['merit']['n_free'] = 0.
+    if fit_dic['fit_mode']=='fixed':fit_dic['merit']['n_free'] = 0.
     else:fit_dic['merit']['n_free'] = len(var_par_list) 
 
     #Initialize save file
@@ -782,11 +782,11 @@ def fit_merit(p_final_in,fixed_args,fit_dic,verbose):
     else:fit_dic['merit']['rms']='Undefined'
 
     #Merit values 
-    if fit_dic['fit_mode'] =='':fit_dic['merit']['mode']='forward'    
+    if fit_dic['fit_mode'] =='fixed':fit_dic['merit']['mode']='forward'    
     else:fit_dic['merit']['mode']='fit'    
     fit_dic['merit']['dof']=fit_dic['nx_fit']-fit_dic['merit']['n_free']
     
-    if fit_dic['fit_mode'] in ['','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
+    if fit_dic['fit_mode'] in ['fixed','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
     elif fit_dic['fit_mode'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1] 
     fit_dic['merit']['red_chi2']=fit_dic['merit']['chi2']/fit_dic['merit']['dof']
     fit_dic['merit']['BIC']=fit_dic['merit']['chi2']+fit_dic['merit']['n_free']*np.log(fit_dic['nx_fit'])      
@@ -802,7 +802,7 @@ def fit_merit(p_final_in,fixed_args,fit_dic,verbose):
         print('     + BIC ='+str(fit_dic['merit']['BIC']))       
         print('     + Parameters :')
         for par in fixed_args['fixed_par_val']:print('        ',par,'=',"{0:.10e}".format(p_final[par]))                   
-        if fit_dic['fit_mode'] =='':
+        if fit_dic['fit_mode'] =='fixed':
             for par in fixed_args['var_par_list']:print('        ',par,'=',"{0:.10e}".format(p_final[par]))                
         else:
             for ipar,par in enumerate(fixed_args['var_par_list']):print('        ',par,'=',"{0:.10e}".format(p_final[par]),'+-',"{0:.10e}".format(fit_dic['sig_parfinal_err']['1s'][0,ipar]))   
@@ -868,7 +868,7 @@ def save_fit_results(part,fixed_args,fit_dic,fit_mode,p_final):
             #Calculation of null model hypothesis
             #    - to calculate chi2 (=BIC) with respect to a null level for comparison of best-fit model with null hypothesis
             if 'p_null' in fit_dic:
-                if fit_dic['fit_mode'] in ['','chi2']: chi2_null=np.sum(ln_prob_func_lmfit(fit_dic['p_null'], fixed_args['x_val'], fixed_args=fixed_args)**2.)
+                if fit_dic['fit_mode'] in ['fixed','chi2']: chi2_null=np.sum(ln_prob_func_lmfit(fit_dic['p_null'], fixed_args['x_val'], fixed_args=fixed_args)**2.)
                 elif fit_dic['fit_mode'] =='mcmc':chi2_null=ln_lkhood_func_mcmc(fit_dic['p_null'],fixed_args)[1]        
                 np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
                 np.savetxt(file_path,[['Null chi2 : '+str(chi2_null)]],delimiter='\t',fmt=['%s']) 

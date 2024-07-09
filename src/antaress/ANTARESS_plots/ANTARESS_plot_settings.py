@@ -19,6 +19,8 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
      - `font_size_txt = float` : size for text font within plot.
      - `lw_plot = float` : linewidth.
      - `ls_plot = str` : linestyle.
+     - `col_contacts = str` : color for transit contacts.
+     - `axis_thick = float` : thickness for plot axis.
 
     Args:
         plot_options (dic) : dictionary for all generic plot settings
@@ -53,6 +55,9 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
     #Linestyle
     plot_options[key_plot]['ls_plot']='-'
     
+    #Color for transit contacts
+    plot_options[key_plot]['col_contacts']='black'
+
     #Axis thickness
     plot_options[key_plot]['axis_thick']=1  
     
@@ -99,6 +104,9 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
     
     #FPS for gif
     plot_options[key_plot]['fps'] = 5
+    
+    #Print information
+    plot_options[key_plot]['verbose']=True 
 
     #--------------------------------------
 
@@ -261,8 +269,8 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
     #Measured values
     plot_options[key_plot]['print_mes']=False
     
-    #Aligned profiles
-    plot_options[key_plot]['ref_level']=False
+    #Plot reference level
+    plot_options[key_plot]['plot_reflev']=False
 
     #Plot reference velocity
     plot_options[key_plot]['plot_refvel']=True  
@@ -306,9 +314,6 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
         #    - if not phase, exposures are plotted successively without respecting their actual positions, because of overlaps 
         plot_options[key_plot]['dim_plot']='phase' 
 
-        #Print information
-        plot_options[key_plot]['verbose']=True 
-
     #--------------------------------------   
     if ('prop_' in key_plot):
 
@@ -325,9 +330,6 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
 
         #Print min/max values (to adjust plot ranges)
         plot_options[key_plot]['plot_bounds']=False
-        
-        #Reference level
-        plot_options[key_plot]['plot_ref'] = True            
 
         #Print and plot mean value and dispersion 
         plot_options[key_plot]['plot_disp']=True    
@@ -478,6 +480,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
+
+        #%%%% Plot measured values in each order plot
+        plot_settings[key_plot]['plot_meas_exp'] = True 
 
         #%%%% Plot best-fit exposure models in each order plot
         plot_settings[key_plot]['plot_best_exp'] = True
@@ -687,7 +692,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['ncosm'] = True  
 
         #%%%% Plot orders with detected cosmics only  
-        plot_settings[key_plot]['detcosm'] = True
+        plot_settings[key_plot]['det_cosm'] = True
 
         #%%%% Plot number of cosmics per order
         plot_settings[key_plot]['cosm_vs_ord']=True         
@@ -1541,7 +1546,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         
     ################################################################################################################  
-    #%% Residual profiles
+    #%% Differential profiles
     ################################################################################################################        
         
     ################################################################################################################  
@@ -1806,7 +1811,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
 
             #%%%%% Plot reference level
-            plot_settings[key_plot]['ref_level'] = False
+            plot_settings[key_plot]['plot_reflev'] = False
 
             ##############################################################################
             #%%%%% Profile and its fit
@@ -2181,7 +2186,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['col_orb_samp'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
             
         #%%%% Number of orbits drawn randomly
-        plot_settings[key_plot]['norb']=2500
+        plot_settings[key_plot]['norb']=np.repeat(100,len(plot_settings[key_plot]['pl_to_plot'])) 
 
         #%%%% Ranges of orbital parameters
         plot_settings[key_plot]['lambdeg_err']={}
@@ -2232,17 +2237,18 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Plot stellar poles
         plot_settings[key_plot]['plot_poles']=True  
         plot_settings[key_plot]['plot_hidden_pole']= False 
-        
-        #%%%% Plot stellar spots
-        plot_settings[key_plot]['plot_spots'] = False
 
-        #%%%% Spot properties can come from three sources for this plot:
-        #   - the mock dataset (mock_spot_prop) - from mock_dic
-        #   - fitted spot properties (fit_spot_prop) - from glob_fit_dic
-        #   - custom user-specified properties (custom_spot_prop) - parametrized below
-        plot_settings[key_plot]['mock_spot_prop'] = True & False
-        plot_settings[key_plot]['fit_spot_prop'] = True & False
+        #%%%% Source for spots
+        #    - spot properties can come from three sources for this plot:
+        # + the mock dataset (mock_spot_prop) - from mock_dic
+        # + fitted spot properties (fit_spot_prop) - from glob_fit_dic
+        # + custom user-specified properties (custom_spot_prop) - parameterized below
+        plot_settings[key_plot]['mock_spot_prop'] = False
+        plot_settings[key_plot]['fit_spot_prop'] = False
         plot_settings[key_plot]['custom_spot_prop'] = {}
+        
+        #%%%% Path to the file storing the best-fit spot results to plot
+        plot_settings[key_plot]['fit_results_file'] = ''
         
         #%%%% Number of positions of the spots to be plotted, equally distributed within the given time range.
         plot_settings[key_plot]['n_image_spots'] = 15

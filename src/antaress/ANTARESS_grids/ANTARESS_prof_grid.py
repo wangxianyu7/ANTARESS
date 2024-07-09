@@ -16,10 +16,13 @@ from ..ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
 from ..ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab
 
-#Defines the C function used in the optimization
-# - The implementation of a class and the getstate and setstate functions is necessary to use the C function
-# - when pickling is used in emcee (when multiprocessing is used).
 class CFunctionWrapper:
+    r"""**C profile calculation**
+
+    Defines the C function used in the optimization.
+    The implementation of a class and the getstate and setstate functions is necessary to use the C function when pickling is used in emcee (when multiprocessing is used).
+
+    """ 
     def __init__(self):
         self._initialize_functions()
 
@@ -53,6 +56,16 @@ class CFunctionWrapper:
         # When unpickling, we re-initialize the ctypes function pointer
         self.__dict__.update(state)
         self._initialize_functions()
+
+
+
+
+
+
+
+
+
+
 
 def custom_DI_prof(param,x,args=None):
     r"""**Disk-integrated profile: model function**

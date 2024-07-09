@@ -38,7 +38,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
     fit_used=False
     if isinstance(p_start,lmfit.parameter.Parameters):
         par_struct = True
-        if (fit_dic['fit_mode']!=''):fit_used=True
+        if (fit_dic['fit_mode']!='fixed'):fit_used=True
     else:par_struct = False
 
     #Process default / additional parameters
@@ -122,12 +122,14 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
 
                 #Priors
                 if (par in priors_prop):
-                    fixed_args['varpar_priors'][par] = priors_prop[par]
-                    if priors_prop[par]['mod']=='uf':
+                    fixed_args['varpar_priors'][par] = priors_prop[par] 
+                    
+                    #Prior check on standard properties
+                    #    - for uniform priors only
+                    if priors_prop[par]['mod']=='uf': 
                         if 'ang' in par and priors_prop[par]['high']>90:stop('Prior error: Spot angular size cannot exceed 90deg. Re-define your priors.')
                         elif 'veq' in par and priors_prop[par]['low']<0:stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
                         elif ('Tcenter' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
-
                 else:
                     if par == 'jitter':varpar_priors=[0.,1e6]
                     elif par == 'veq':varpar_priors=[0.,100.]
@@ -285,7 +287,7 @@ def model_par_names(par):
         'LD_u1':'LD$_1$','LD_u2':'LD$_2$','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
         'f_GD':'f$_{\rm GD}$','beta_GD':'$\beta_{\rm GD}$','Tpole':'T$_{\rm pole}$',
         'eta_R':r'$\eta_{\rm R}$','eta_T':r'$\eta_{\rm T}$','ksi_R':r'\Ksi$_\mathrm{R}$','ksi_T':r'\Ksi$_\mathrm{T}$',
-        'Tcenter' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'Fctrst' : 'F$_{sp}$',
+        'Tcenter' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'fctrst' : 'F$_{sp}$',
         } 
     if par in name_dic:name_par = name_dic[par]
     else:name_par = par
@@ -403,7 +405,7 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'cond_transit_sp':False,
         'bin_mode':{},
         'update_crosstime':False,
-        'fit' : {'chi2':True,'':False,'mcmc':True}[fit_prop_dic['fit_mode']], 
+        'fit' : {'chi2':True,'fixed':False,'mcmc':True}[fit_prop_dic['fit_mode']], 
         'unthreaded_op':fit_prop_dic['unthreaded_op'],     
         }
    
@@ -497,7 +499,6 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
             if len(data_vis['transit_pl'])>1:stop('Multi-planet transit must be modelled with full intrinsic profiles')
             fixed_args['transit_pl'][inst][vis]=[data_vis['transit_pl'][0]] 
         else:fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
-        fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
 
     #Spots are visible
     if len(data_vis['transit_sp'] )>0:
@@ -533,7 +534,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
     if fixed_args['cond_transit_sp']:
         for spot in fixed_args['transit_sp'][inst][vis]:
             fixed_args['coord_fit'][inst][vis][spot] = {}
-            for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
+            for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'fctrst']:
                 fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key][sub_idx_in_fit] 
             for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
                 fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key][:,sub_idx_in_fit] 
@@ -709,7 +710,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         fixed_args['fit_orbit']=False
         fixed_args['fit_RpRs']=False
     if fixed_args['cond_transit_sp']:
-        par_spot=['lat', 'Tcenter', 'ang', 'ctrst']    
+        par_spot=['lat', 'Tcenter', 'ang', 'fctrst']    
         for par in par_spot:fixed_args[par+'_sp']=[]
         fixed_args['fit_spot']=False
         fixed_args['fit_spot_ang']=[]
@@ -722,14 +723,14 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                 if (par_check in par):
                     if ('__IS' in par):pl_name = (par.split('__pl')[1]).split('__IS')[0]                  
                     else:pl_name = (par.split('__pl')[1]) 
-                    if (p_start[par].vary) or fit_dic['fit_mode']=='':
+                    if (p_start[par].vary) or fit_dic['fit_mode']=='fixed':
                         fixed_args[par_check+'_pl']+= [pl_name]
                         fixed_args['fit_orbit']=True                     
             for par_check in par_LC:
                 if (par_check in par):
                     if ('__IS' in par):pl_name = (par.split('__pl')[1]).split('__IS')[0]                  
                     else:pl_name = (par.split('__pl')[1])                 
-                    if (p_start[par].vary) or fit_dic['fit_mode']=='':
+                    if (p_start[par].vary) or fit_dic['fit_mode']=='fixed':
                         fixed_args[par_check+'_pl'] += [pl_name]
                         fixed_args['fit_RpRs']=True 
 
@@ -739,7 +740,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
             for par_check in par_spot:
                 if (par_check in par) and ('_SP' in par):
                     spot_name = par.split('_SP')[1]
-                    if (p_start[par].vary) or fit_dic['fit_mode']=='':
+                    if (p_start[par].vary) or fit_dic['fit_mode']=='fixed':
                         fixed_args[par_check+'_sp']+= [spot_name]
                         fixed_args['fit_spot']=True
                     if ('ang' in par_check) and p_start[par].vary:
@@ -755,7 +756,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     if fixed_args['cond_transit_sp']:  
         for par in par_spot:fixed_args[par+'_sp'] = list(np.unique(fixed_args[par+'_sp']))
 
-    #Store the number of threads - needed when fitting joined residual profiles
+    #Store the number of threads - needed when fitting joined differential profiles
     fixed_args['nthreads']=fit_prop_dic['nthreads']
     
     #Fit initialization
@@ -1495,11 +1496,11 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             
             #Errors are reported from measured velocities
             fit_dic[iexp]['rv_res']=fit_dic[iexp]['rv']-fit_dic[iexp]['RVmod']
-            if prop_dic['fit_mode']!='':fit_dic[iexp]['err_rv_res']=fit_dic[iexp]['err_rv']
+            if prop_dic['fit_mode']!='fixed':fit_dic[iexp]['err_rv_res']=fit_dic[iexp]['err_rv']
             else:fit_dic[iexp]['err_rv_res'] = np.nan
 
         #Systemic rv
-        if prop_dic['fit_mode']!='':
+        if prop_dic['fit_mode']!='fixed':
 
             #From master (rv(CDM/sun) in km/s)
             #    - for CCFs, the disk-integrated master is centered in the CDM rest frame, hence its fit returns the systemic velocity         
@@ -1848,7 +1849,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
         'uf_bd':{},
         'nx_fit':len(fixed_args['y_val'])
         }
-    fixed_args['fit'] = {'chi2':True,'':False,'mcmc':True}[fit_prop_dic['fit_mode']]
+    fixed_args['fit'] = {'chi2':True,'fixed':False,'mcmc':True}[fit_prop_dic['fit_mode']]
 
     #Parameter initialization
     p_start = par_formatting(p_start,model_prop,line_fit_priors,fit_dic,fixed_args,inst,vis,fixed_args['mode'])
@@ -1910,7 +1911,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
 
     #--------------------------------------------------------------   
     #Fixed model
-    elif fit_prop_dic['fit_mode']=='': 
+    elif fit_prop_dic['fit_mode']=='fixed': 
         p_final = p_start
   
     #Merit values     
@@ -1978,6 +1979,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     fixed_args['args_exp'] = def_st_prof_tab(None,None,None,fixed_args)
     
     #Custom model
+    #    - for now, no spots allowed
     if (model_choice=='custom') and (prof_type=='DI'):
         fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic[inst]['system_prop'],{},theo_dic,star_params,p_final)
         fixed_args['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],fixed_args['args_exp'],fixed_args['args_exp']['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
@@ -1991,7 +1993,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     #    - with chi2 fit: best-fit value and error of the derived parameter are defined here 
     #      with mcmc fit: the chain of the derived parameter is defined here, and its best-fit value and error are then derived in postMCMCwrapper_2()
     ########################################################################################################  
-    if (fit_prop_dic['thresh_area'] is not None) or (fit_prop_dic['thresh_amp'] is not None):fit_prop_dic['deriv_prop'] += ['amp'] 
+    if (fit_prop_dic['thresh_area'] is not None) or (fit_prop_dic['thresh_amp'] is not None):fit_prop_dic['deriv_prop']['amp']={} 
     if len(fit_prop_dic['deriv_prop'])>0:
         
         if (model_choice in ['gauss','voigt']):
@@ -2003,7 +2005,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                 #                       C = (mean continuum flux -  CCF minimum) / mean continuum flux)        
                 #                       C = -amp / cont 
                 #Amplitude is defined as amp = -C*cont  
-                if fit_dic['fit_mode'] in ['chi2','']:
+                if fit_dic['fit_mode'] in ['chi2','fixed']:
                     p_final['amp']=fixed_args['amp_sign']*p_final['ctrst']*p_final['cont']                
                     if fit_dic['fit_mode']=='chi2':                   
                         #d[A]  = sqrt( (err(C)/cont)^2 + (err(cont)/C)^2 )   
@@ -2028,7 +2030,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
             #    - formula valid if there is no asymetry to the gaussian shape:
             # A = 0.5*amp*FWHM*sqrt(pi/ln(2))
             if ('area' in fit_prop_dic['deriv_prop']) and (model_choice=='gauss') and (p_final['skewA']==0.) and (p_final['kurtA']==0.):    
-                if fit_dic['fit_mode'] in ['chi2','']:
+                if fit_dic['fit_mode'] in ['chi2','fixed']:
                     p_final['area']=np.abs(p_final['amp'])*p_final['FWHM']*np.sqrt(np.pi)/(2.*np.sqrt(np.log(2))) 
                     if fit_dic['fit_mode']=='chi2':                 
                         if 'amp' in fixed_args['var_par_list']:err_amp= fit_dic['sig_parfinal_err']['1s'][0,np_where1D(fixed_args['var_par_list']=='amp')[0]]  
@@ -2068,7 +2070,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
             # with fV = fG*fa independent
             #      sfV = sqrt( (fa*sfG)^2 + (fG*sfa)^2 )    
             if (model_choice=='voigt') and (('FWHM_LOR' in fit_prop_dic['deriv_prop']) or ('FWHM_voigt' in fit_prop_dic['deriv_prop'])):
-                if fit_dic['fit_mode'] in ['chi2','']:
+                if fit_dic['fit_mode'] in ['chi2','fixed']:
                     sln2 = np.sqrt(np.log(2.))
                     p_final['FWHM_LOR'] = p_final['a_damp']*p_final['FWHM']/sln2
                     p_final['FWHM_voigt'] = 0.5436*p_final['FWHM_LOR']+ np.sqrt(0.2166*p_final['FWHM_LOR']**2.+p_final['FWHM']**2.)                 
@@ -2101,7 +2103,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
             #    - mesured on the high-resolution model, after instrumental convolution if requested
             if (model_choice in ['dgauss','custom']):
                 if any([par_name in fit_prop_dic['deriv_prop'] for par_name in ['true_ctrst','true_FWHM','true_amp']]):
-                    if fit_dic['fit_mode'] in ['chi2','']:
+                    if fit_dic['fit_mode'] in ['chi2','fixed']:
                         p_final['true_ctrst'],p_final['true_FWHM'],p_final['true_amp'] = cust_mod_true_prop(p_final,output_prop_dic['cen_bins_HR'],fixed_args)  
                         if fit_dic['fit_mode']=='chi2': 
                             sig_loc=np.nan
@@ -2696,7 +2698,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
     # + combination/modification of MCMC chains to add new parameters
     # + new parameters are not used for model
     # + we calculate median and errors after chain are added   
-    if (fit_dic['fit_mode'] in ['chi2','mcmc']) and ('deriv_prop' in fit_prop_dic) and len(fit_prop_dic['deriv_prop'])>0:
+    if (fit_dic['fit_mode'] in ['chi2','mcmc']) and ('deriv_prop' in fit_prop_dic) and (len(fit_prop_dic['deriv_prop'])>0):
         print('       Post-processing')
         deriv_prop = fit_prop_dic['deriv_prop']
     
@@ -2728,13 +2730,9 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     Rstar_chain = np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']=='Rstar')])
                 else:
                     print('           Using external Rstar')
-                    if gen_dic['star_name']=='HD189733':
-                        Rstar_med = 0.784  
-                        Rstar_err=0.007
-                    if gen_dic['star_name']=='AU_Mic':
-                        Rstar_med = 0.82
-                        Rstar_err = 0.02 
-                    Rstar_chain = np.random.normal(Rstar_med, Rstar_err, n_chain)
+                    Rstar_dic = deepcopy(deriv_prop['veq_from_Peq_Rstar']['Rstar'])
+                    if 's_val' in Rstar_dic:Rstar_chain = np.random.normal(Rstar_dic['val'], Rstar_dic['s_val'], n_chain)
+                    else:Rstar_chain = gen_hrand_chain(Rstar_dic['val'],Rstar_dic['s_val_low'],Rstar_dic['s_val_high'],n_chain)                    
                 iPeq = np_where1D(fixed_args['var_par_list']=='Peq')
                 chain_loc=(2.*np.pi*Rstar_chain*Rsun)/(np.squeeze(merged_chain[:,iPeq])*3600.*24.)
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
@@ -2800,104 +2798,44 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
             if True in w_gt_90:merged_chain[w_gt_90,iistar]=180.-istar_temp[w_gt_90]
 
         #-------------------------------------------------
-        #Add istar using the value derived from vsini and independent measurement of Peq and Rstar
-        #    - prefer the use of Peq and Rstar as fit parameters
+        #Add istar using the fitted value for vsini / an  external value for vsini, and independent measurements of Peq and Rstar
         #    - vsini = veq*sin(istar) = (2*pi*Rstar/Peq)*sin(istar)
         #      istar = np.arcsin( vsini*peq/(2*pi*Rstar) )
         if ('istar_Peq' in deriv_prop) or ('istar_Peq_vsini' in deriv_prop):
             if ('cos_istar' in fixed_args['var_par_list']):stop('    istar has been fitted')
-            print('        + Deriving istar from vsini and Peq')
-            
-            #Nominal values and 1s errors for Rstar (Rsun) and Peq (d)
-            # Rstar_med = 0.850       #HD3167
-            # Rstar_err = 0.020
-            # Peq_med = 23.52         #HD3167
-            # Peq_err = 2.87
-            # Rstar_med = 0.438       #GJ436
-            # Rstar_err = 0.013
-            # Peq_med = 44.09       
-            # Peq_err = 0.08
-            if gen_dic['star_name']=='HAT_P3':
-                Rstar_med = 0.85       
-                Rstar_err = 0.021
-                Peq_med = 19.9 
-                Peq_elow = 1.5
-                Peq_ehigh = 1.5
-            elif gen_dic['star_name']=='HAT_P11':
-                Rstar_med = 0.74       
-                Rstar_err = 0.01
-                Peq_med = 30.5       
-                Peq_elow = 3.2
-                Peq_ehigh = 4.1
-            # Rstar_med = 0.901       #Kepler-63
-            # Rstar_err = 0.0245
-            # Peq_med = 5.401
-            # Peq_err =   0.014  
-            elif gen_dic['star_name']=='WASP107':            
-                Rstar_med = 0.67       
-                Rstar_err = 0.02
-                Peq_med = 17.1
-                Peq_elow = 1.
-                Peq_ehigh = 1.  
-            # Rstar_med = 1.273       #HIP 41378
-            # Rstar_err = 0.015
-            # Peq_med = 6.4
-            # Peq_err = 0.8  
-            elif gen_dic['star_name']=='Kepler25':
-                Rstar_med = 1.316       
-                Rstar_err = 0.016
-                Peq_med = 23.147         
-                Peq_elow = 0.039
-                Peq_ehigh = 0.039
-            elif gen_dic['star_name']=='WASP47':
-                Rstar_med = 1.137       
-                Rstar_err = 0.013
-                Peq_med = 39.4         
-                Peq_elow = 4.5
-                Peq_ehigh = 2.2
-            elif gen_dic['star_name']=='WASP166':
-                Rstar_med = 1.22       
-                Rstar_err = 0.06
-                Peq_med = 12.3      
-                Peq_elow = 1.9
-                Peq_ehigh = 1.9                
-            elif gen_dic['star_name']=='WASP69':
-                Rstar_med = 0.813  
-                Rstar_err=0.028 
-                Peq_med = 23.07 
-                Peq_elow =  0.16 
-                Peq_ehigh = 0.16 
-                 
+            print('        + Deriving istar from vsini, Peq, and Rstar')
+            if ('istar_Peq' in deriv_prop):key_loc = 'istar_Peq'
+            elif ('istar_Peq_vsini' in deriv_prop):key_loc = 'istar_Peq_vsini'
+
             #Conversions
-            Rstar_med*=Rsun
-            Rstar_err*=Rsun
-            Peq_med*=24.*3600.
-            Peq_elow*=24.*3600.
-            Peq_ehigh*=24.*3600.
+            Rstar_dic = deepcopy(deriv_prop[key_loc]['Rstar'])
+            Peq_dic = deepcopy(deriv_prop[key_loc]['Peq'])            
+            for subpar in Rstar_dic:Rstar_dic[subpar]*=Rsun 
+            for subpar in Peq_dic:Peq_dic[subpar]*=24.*3600.
             
             if fit_dic['fit_mode']=='chi2':             
-                p_final['istar_deg']=np.arcsin(p_final['vsini']*Peq_med/(2.*np.pi*Rstar_med))*180./np.pi
+                p_final['istar_deg']=np.arcsin(p_final['vsini']*Peq_dic['val']/(2.*np.pi*Rstar_dic['val']))*180./np.pi
                 sig_loc=np.nan
                 fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))
             elif fit_dic['fit_mode']=='mcmc':   
                 n_chain = len(merged_chain[:,0])
                 if 'istar_Peq_vsini' in deriv_prop:
                     print('           Using external vsini')
-                    if gen_dic['star_name']=='WASP47':
-                        vsini_med = 1.80         
-                        vsini_elow = 0.16
-                        vsini_ehigh = 0.24   
-                    vsini_chain = gen_hrand_chain(vsini_med,vsini_elow,vsini_ehigh,n_chain)
+                    vsini_dic = deepcopy(deriv_prop[key_loc]['vsini'])            
+                    if 's_val' in vsini_dic:vsini_chain = np.random.normal(vsini_dic['val'], vsini_dic['s_val'], n_chain)
+                    else:vsini_chain = gen_hrand_chain(vsini_dic['val'],vsini_dic['s_val_low'],vsini_dic['s_val_high'],n_chain)                    
                 elif 'istar_Peq' in deriv_prop:
                     print('           Using derived vsini')
                     if np.abs(p_final['cos_istar'])>1e-14:stop('             istar should have been fixed to 90 degrees')
                     iveq = np_where1D(fixed_args['var_par_list']=='veq')  
-                    if len(iveq)==0:stop('             veq not fitted properties')
+                    if len(iveq)==0:stop('             veq not in fitted properties')
                     vsini_chain = np.squeeze(merged_chain[:,iveq])
 
                 #Generate gaussian distribution for Rstar and Peq
-                Rstar_chain = np.random.normal(Rstar_med, Rstar_err, n_chain)
-                Peq_chain = gen_hrand_chain(Peq_med,Peq_elow,Peq_ehigh,n_chain)
+                if 's_val' in Rstar_dic:Rstar_chain = np.random.normal(Rstar_dic['val'], Rstar_dic['s_val'], n_chain)
+                else:Rstar_chain = gen_hrand_chain(Rstar_dic['val'],Rstar_dic['s_val_low'],Rstar_dic['s_val_high'],n_chain)
+                if 's_val' in Peq_dic:Peq_chain = np.random.normal(Peq_dic['val'], Peq_dic['s_val'], n_chain)
+                else:Peq_chain = gen_hrand_chain(Peq_dic['val'],Peq_dic['s_val_low'],Peq_dic['s_val_high'],n_chain)
 
                 #Calculate sin(istar) chain
                 sinistar_chain = vsini_chain*Peq_chain/(2.*np.pi*Rstar_chain)
@@ -2906,9 +2844,14 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                 cond_good = np.abs(sinistar_chain)<=1.
                 n_good = np.sum(cond_good)
                 while n_good<n_chain:
-                    Rstar_add = np.random.normal(Rstar_med, Rstar_err, n_chain-n_good)
-                    Peq_add = gen_hrand_chain(Peq_med,Peq_elow,Peq_ehigh,n_chain-n_good)
-                    if 'istar_Peq_vsini' in deriv_prop:vsini_add = gen_hrand_chain(vsini_med,vsini_elow,vsini_ehigh,n_chain-n_good)
+                    n_add = n_chain-n_good
+                    if 's_val' in Rstar_dic:Rstar_add = np.random.normal(Rstar_dic['val'], Rstar_dic['s_val'], n_add)
+                    else:Rstar_add = gen_hrand_chain(Rstar_dic['val'],Rstar_dic['s_val_low'],Rstar_dic['s_val_high'],n_add)
+                    if 's_val' in Peq_dic:Peq_add = np.random.normal(Peq_dic['val'], Peq_dic['s_val'], n_add)
+                    else:Peq_add = gen_hrand_chain(Peq_dic['val'],Peq_dic['s_val_low'],Peq_dic['s_val_high'],n_add)                    
+                    if 'istar_Peq_vsini' in deriv_prop:
+                        if 's_val' in vsini_dic:vsini_add = np.random.normal(vsini_dic['val'], vsini_dic['s_val'], n_add)
+                        else:vsini_add = gen_hrand_chain(vsini_dic['val'],vsini_dic['s_val_low'],vsini_dic['s_val_high'],n_add) 
                     elif 'istar_Peq' in deriv_prop:vsini_add = np.random.choice(vsini_chain,n_chain-n_good)
                     sinistar_chain = np.append(sinistar_chain[cond_good],vsini_add*Peq_add/(2.*np.pi*Rstar_add))
                     cond_good = np.abs(sinistar_chain)<=1.
@@ -2931,23 +2874,19 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         if 'Peq_veq' in deriv_prop:
             if ('cos_istar' in fixed_args['var_par_list']):stop('    istar has been fitted')
             print('        + Deriving Peq from veq ')
-            
-            #Nominal values and 1s errors for Rstar (Rsun) and Peq (d)
-            Rstar_med = 0.850       #HD3167
-            Rstar_err = 0.020
-    
-            #Conversions
-            Rstar_med*=Rsun
-            Rstar_err*=Rsun
+            Rstar_dic = deepcopy(deriv_prop['Peq_veq']['Rstar'])
+            for subpar in Rstar_dic:Rstar_dic[subpar]*=Rsun 
             
             if fit_dic['fit_mode']=='chi2': 
-                p_final['Peq_d']=(2.*np.pi*Rstar_med)/(p_final['veq']*3600.*24.)
+                p_final['Peq_d']=(2.*np.pi*Rstar_dic['val'])/(p_final['veq']*3600.*24.)
                 sig_loc=np.nan
                 fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))
-            elif fit_dic['fit_mode']=='mcmc':   
+            elif fit_dic['fit_mode']=='mcmc': 
+                n_chain = len(merged_chain[:,0])
             
                 #Generate gaussian distribution for Rstar
-                Rstar_chain = np.random.normal(Rstar_med, Rstar_err, len(merged_chain[:,0]))
+                if 's_val' in Rstar_dic:Rstar_chain = np.random.normal(Rstar_dic['val'], Rstar_dic['s_val'], n_chain)
+                else:Rstar_chain = gen_hrand_chain(Rstar_dic['val'],Rstar_dic['s_val_low'],Rstar_dic['s_val_high'],n_chain)
                 
                 #Calculate Peq chain
                 iveq = np_where1D(fixed_args['var_par_list']=='veq')
@@ -2962,34 +2901,21 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
         #    - Peq = (2*pi*Rstar*sin(istar)/vsini)
         if 'Peq_vsini' in deriv_prop:
             print('        + Deriving Peq from vsini')
+            Rstar_dic = deepcopy(deriv_prop['Peq_vsini']['Rstar'])
+            for subpar in Rstar_dic:Rstar_dic[subpar]*=Rsun 
+            istar_dic = deepcopy(deriv_prop['Peq_vsini']['istar'])
+            for subpar in istar_dic:istar_dic[subpar]*=np.pi/180.     
             
-            #Nominal values and 1s errors for Rstar (Rsun) 
-            if gen_dic['star_name']=='Kepler25':
-                Rstar_med = 1.316       
-                Rstar_err = 0.016
-
-                
-            #Generate distribution for istar
-            if gen_dic['star_name']=='Kepler25':
-                istar_mean = 66.7*np.pi/180.    
-                istar_high = 12.1*np.pi/180.
-                istar_low  = 7.4*np.pi/180.
-    
-            #Conversions
-            Rstar_med*=Rsun
-            Rstar_err*=Rsun
-
             if fit_dic['fit_mode']=='chi2': 
                 stop('TBD')
             elif fit_dic['fit_mode']=='mcmc':  
                 n_chain = len(merged_chain[:,0])
-            
-                #Generate gaussian distribution for Rstar
-                Rstar_chain = np.random.normal(Rstar_med, Rstar_err,n_chain )
-                
-                #Generate distribution for sin(istar) 
-                sinistar_chain = np.sin(gen_hrand_chain(istar_mean,istar_low,istar_high,n_chain))
-                
+                if 's_val' in Rstar_dic:Rstar_chain = np.random.normal(Rstar_dic['val'], Rstar_dic['s_val'], n_chain)
+                else:Rstar_chain = gen_hrand_chain(Rstar_dic['val'],Rstar_dic['s_val_low'],Rstar_dic['s_val_high'],n_chain)
+                if 's_val' in istar_dic:istar_chain = np.random.normal(istar_dic['val'], istar_dic['s_val'], n_chain)
+                else:istar_chain = gen_hrand_chain(istar_dic['val'],istar_dic['s_val_low'],istar_dic['s_val_high'],n_chain)
+                sinistar_chain = np.sin(istar_chain)
+
                 #Calculate Peq chain
                 if 'vsini' not in fixed_args['var_par_list']:stop('Add vsini chain')
                 ivsini = np_where1D(fixed_args['var_par_list']=='vsini')
@@ -3001,11 +2927,11 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
     
         #-------------------------------------------------
                 
-        #Add true obliquity
+        #Add 3D spin-orbit angle
         #    - psi = acos(sin(istar)*cos(lamba)*sin(ip) + cos(istar)*cos(ip))
         #    - must be done before modification of istar and lambda chains
         if ('psi' in deriv_prop) or ('psi_lambda' in deriv_prop):
-            print('        + Adding true obliquity')
+            print('        + Adding 3D spin-orbit angle')
             for pl_loc in fixed_args['lambda_rad_pl']:              
                 lambda_rad_pl = 'lambda_rad__pl'+pl_loc
                 if fit_dic['fit_mode']=='chi2':              
@@ -3024,17 +2950,15 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     #Obliquity 
                     if 'psi_lambda' in deriv_prop:
                         print('         Using external lambda')
-                        if gen_dic['star_name']=='WASP47':
-                            lambda_med = 0.         
-                            lambda_elow = 24.
-                            lambda_ehigh = 24.  
-                            
-                        lambda_med*=np.pi/180.
-                        lambda_elow*=np.pi/180.
-                        lambda_ehigh*=np.pi/180.
-                        lamb_chain = {'':{'':gen_hrand_chain(lambda_med,lambda_elow,lambda_ehigh,n_chain)}}
+                        key_loc = 'psi_lambda'
+                        lamb_dic = deepcopy(deriv_prop[key_loc]['lambda_pl'+pl_loc])
+                        for subpar in lamb_dic:lamb_dic[subpar]*=np.pi/180.  
+                        if 's_val' in lamb_dic:lamb_chain = np.random.normal(lamb_dic['val'], lamb_dic['s_val'], n_chain)
+                        else:lamb_chain = gen_hrand_chain(lamb_dic['val'],lamb_dic['s_val_low'],lamb_dic['s_val_high'],n_chain)                            
+                        lamb_chain = {'':{'':lamb_chain}}
                     elif 'psi' in deriv_prop:
                         print('           Using derived lambda')
+                        key_loc = 'psi'
                         if lambda_rad_pl in fixed_args['genpar_instvis']:
                             lamb_chain={}
                             for inst in fixed_args['genpar_instvis'][lambda_rad_pl]:
@@ -3047,11 +2971,30 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     #Stellar inclination
                     if ('istar_deg' in fixed_args['var_par_list']):
                         print('           Using derived istar')
-                        istarN_chain=np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']=='istar_deg')]    )*np.pi/180. 
-                        istarS_chain=np.pi-istarN_chain
+                        istar_chain=np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']=='istar_deg')]    )*np.pi/180. 
+                        if np.median(istar_chain)<=np.pi/2:
+                            istarN_chain = istar_chain
+                            istarS_chain=np.pi-istarN_chain
+                        else:
+                            istarS_chain = istar_chain
+                            istarN_chain=np.pi-istarS_chain                            
                     else:
                         print('           Using external istar')
+
+                        #Gaussian or half-gaussian PDFs on istar                   
+                        istar_dic = deepcopy(deriv_prop[key_loc]['istar'])
+                        for subpar in istar_dic:istar_dic[subpar]*=np.pi/180.      
+                        if 's_val' in istar_dic:istar_chain = np.random.normal(istar_dic['val'], istar_dic['s_val'], n_chain)
+                        else:istar_chain = gen_hrand_chain(istar_dic['val'],istar_dic['s_val_low'],istar_dic['s_val_high'],n_chain)
                         
+                        #Symmetrical PDF around 90°                        
+                        if istar_dic['val']<=np.pi/2:
+                            istarN_chain = istar_chain
+                            istarS_chain=np.pi-istarN_chain
+                        else:                            
+                            istarS_chain = istar_chain
+                            istarN_chain=np.pi-istarS_chain                            
+
                         #Complex PDF on istar
                         if pl_loc=='HD89345b':                        
                             istar_mean = 37.*np.pi/180. 
@@ -3063,6 +3006,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                             rand_draw_left = rand_draw_left[(rand_draw_left<=istar_mean) & (rand_draw_left>=0.)]
                             rand_draw_left = rand_draw_left[0:n_chain-len(rand_draw_right)]   
                             istarN_chain = np.append(rand_draw_left,rand_draw_right)
+                            istarS_chain=np.pi-istarN_chain
                     
                             # #Check distribution
                             # hist_val, bin_edg_val = np.histogram(istarN_chain, bins=50,density=True)
@@ -3077,88 +3021,16 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                             # plt.show()
                             # stop()                            
 
-                        #Gaussian or half-gaussian PDFs on istar
-                        else:                    
-    
-                            #Generate distribution for istar
-                            if pl_loc=='Kepler25c':
-                                istar_mean = 66.7*np.pi/180.    
-                                istar_high = 12.1*np.pi/180.
-                                istar_low  = 7.4*np.pi/180.
-                            elif pl_loc=='Kepler63b':
-                                istar_mean = 138.*np.pi/180.    
-                                istar_high = 7.*np.pi/180.
-                                istar_low  = 7.*np.pi/180.                                
-                            elif pl_loc=='HAT_P11b':
-                                # istar_mean = 80.*np.pi/180.    
-                                # istar_high = 5.*np.pi/180.
-                                # istar_low  = 3.*np.pi/180.
 
-                                istar_mean = 160.*np.pi/180.    
-                                istar_high = 9.*np.pi/180.
-                                istar_low  = 19.*np.pi/180.
-                            istarN_chain = gen_hrand_chain(istar_mean,istar_low,istar_high,n_chain)
-
-                        #Symmetrical PDF around 90°
-                        istarS_chain=np.pi-istarN_chain
-                    
-                    
-                    
-                    
-                    
                     #Orbital inclination
                     if ('inclin_rad__pl'+pl_loc in fixed_args['var_par_list']):
                         inclin_rad_chain=np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']=='inclin_rad__pl'+pl_loc)])
                     else:
-                        
-                        #Generate distribution for ip
-                        if pl_loc=='HAT_P3b':
-                            ip_mean = 86.31*np.pi/180.    
-                            ip_high = 0.19*np.pi/180.
-                            ip_low  = 0.19*np.pi/180.
-                        elif pl_loc=='HAT_P11b':
-                            ip_mean = 89.05*np.pi/180.    
-                            ip_high = 0.15*np.pi/180.
-                            ip_low  = 0.09*np.pi/180.
-                        elif pl_loc=='Kepler25c':
-                            ip_mean = 87.236*np.pi/180.    
-                            ip_high = 0.039*np.pi/180.
-                            ip_low  = 0.042*np.pi/180.
-                        elif pl_loc=='HD89345b':
-                            ip_mean = 87.68*np.pi/180.    
-                            ip_high = 0.1*np.pi/180.
-                            ip_low  = 0.1*np.pi/180.
-                        elif pl_loc=='Kepler63b':
-                            ip_mean = 87.806*np.pi/180.    
-                            ip_high = 0.018*np.pi/180.
-                            ip_low  = 0.019*np.pi/180.                            
-                        elif pl_loc=='WASP107b':
-                            ip_mean = 89.56*np.pi/180.    
-                            ip_high = 0.078*np.pi/180.
-                            ip_low  = 0.078*np.pi/180.  
-                        elif pl_loc=='HIP41378d':
-                            ip_mean = 89.80*np.pi/180.     
-                            ip_high = 0.02*np.pi/180.
-                            ip_low  = 0.02*np.pi/180.  
-                        elif pl_loc=='WASP47d':
-                            ip_mean = 89.55*np.pi/180.     
-                            ip_high = 0.30*np.pi/180.
-                            ip_low  = 0.27*np.pi/180.  
-                        elif pl_loc=='WASP166b':
-                            ip_mean = 87.95*np.pi/180.     
-                            ip_high = 0.59*np.pi/180.
-                            ip_low  = 0.62*np.pi/180.  
-                        elif pl_loc=='WASP69b':
-                            ip_mean = 86.71*np.pi/180.     
-                            ip_high = 0.2*np.pi/180.
-                            ip_low  = 0.2*np.pi/180.  
-                        elif pl_loc=='TOI421c':
-                            ip_mean = 88.03*np.pi/180.     
-                            ip_high = 0.05*np.pi/180.
-                            ip_low  = 0.05*np.pi/180. 
-
                         n_chain = len(merged_chain[:,0])
-                        inclin_rad_chain = gen_hrand_chain(ip_mean,ip_low,ip_high,n_chain)
+                        ip_dic = deepcopy(deriv_prop[key_loc]['ip_pl'+pl_loc])
+                        for subpar in ip_dic:ip_dic[subpar]*=np.pi/180.  
+                        if 's_val' in ip_dic:inclin_rad_chain = np.random.normal(ip_dic['val'], ip_dic['s_val'], n_chain)
+                        else:inclin_rad_chain = gen_hrand_chain(ip_dic['val'],ip_dic['s_val_low'],ip_dic['s_val_high'],n_chain)                          
                     
                     for inst in lamb_chain:
                         for vis in lamb_chain[inst]:
@@ -3183,14 +3055,85 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                     fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiN__pl'+pl_loc,'PsiS__pl'+pl_loc,'Psi__pl'+pl_loc]))
                     fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi_{N}$',pl_loc+'_$\psi_{S}$',pl_loc+'_$\psi$']))   
                     fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg','deg','deg']))   
+
              
+        #-------------------------------------------------                
+        #Calculation of mutual inclination
+        #    - cos(i_m)=cos(i_b)*cos(i_c)+cos(Omega)*sin(i_b)*sin(i_c)
+        #      Omega = om_c - om_b     difference between longitudes of ascending nodes
+        #      taking the sky-projected node line of the star as a reference for the longitude of the ascending node, there are two possible
+        # solutions corresponding to the same RM signal:
+        # om =  lambda, i = ip
+        # om = -lambda, i = 180 - ip
+        #      for two planets, there are thus four combinations (considering that i_m ranges between 0 and 180):
+        # A : (i_b,l_b) and (i_c,l_c)
+        #     cos(i_mA)=cos(i_b)*cos(i_c)+cos(l_c - l_b)*sin(i_b)*sin(i_c)    
+        # B : (180-i_b,-l_b) and (i_c,l_c)
+        #     cos(i_mB)=cos(180 - i_b)*cos(i_c)+cos(l_c + l_b)*sin(180 - i_b)*sin(i_c)  
+        #              =-cos(i_b)*cos(i_c)+cos(l_c + l_b)*sin(i_b)*sin(i_c)  
+        # C : (i_b,l_b) and (180-i_c,-l_c) 
+        #     cos(i_mC)=cos(i_b)*cos(180 - i_c)+cos(-l_c - l_b)*sin(i_b)*sin(180 - i_c)
+        #              =-cos(i_b)*cos(i_c)+cos(l_c + l_b)*sin(i_b)*sin(i_c)
+        #              =cos(i_mB)
+        # D : (180-i_b,-l_b) and (180-i_c,-l_c) 
+        #     cos(i_mD)=cos(180 - i_b)*cos(180 - i_c)+cos(-l_c + l_b)*sin(180 - i_b)*sin(180 - i_c)     
+        #              =cos(i_b)*cos(i_c)+cos(l_c - l_b)*sin(i_b)*sin(i_c) 
+        #              =cos(i_mA)
+        #      thus in the end there are only two possible solutions (A=D, B=C)
+        if 'i_mut' in deriv_prop:
+            if len(fixed_args['lambda_rad_pl'])<2:stop('WARNING: mutual inclination cannot be derived for a single planet !')
+            if len(fixed_args['lambda_rad_pl'])>2:stop('WARNING: mutual inclination derivation not coded for more than 2 planets')
+            pl_loc1 = fixed_args['lambda_rad_pl'][0]
+            pl_loc2 = fixed_args['lambda_rad_pl'][1]
+            lambda_rad_pl1 = 'lambda_rad__pl'+pl_loc1
+            lambda_rad_pl2 = 'lambda_rad__pl'+pl_loc2
+            if (lambda_rad_pl1 in fixed_args['genpar_instvis']) or (lambda_rad_pl2 in fixed_args['genpar_instvis']):stop('WARNING: mutual inclination derivation not coded for visit-dependent obliquities')
+            print('        + Adding mutual inclination between '+pl_loc1+' and '+pl_loc2)           
+            if fit_dic['fit_mode']=='chi2':
+                stop('TBD')
+            elif fit_dic['fit_mode']=='mcmc': 
+                n_chain = len(merged_chain[:,0])
+                lamb_chain_pl1 = np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']==lambda_rad_pl1)]  ) 
+                lamb_chain_pl2 = np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']==lambda_rad_pl2)]  )
+
+                #Orbital inclination
+                if ('inclin_rad__pl'+pl_loc1 in fixed_args['var_par_list']):
+                    inclin_rad_chain_pl1=np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']=='inclin_rad__pl'+pl_loc1)])
+                else:
+                    ip_dic = deepcopy(deriv_prop['i_mut']['ip_pl'+pl_loc1])
+                    for subpar in ip_dic:ip_dic[subpar]*=np.pi/180.  
+                    if 's_val' in ip_dic:inclin_rad_chain_pl1 = np.random.normal(ip_dic['val'], ip_dic['s_val'], n_chain)
+                    else:inclin_rad_chain_pl1 = gen_hrand_chain(ip_dic['val'],ip_dic['s_val_low'],ip_dic['s_val_high'],n_chain)                          
+                if ('inclin_rad__pl'+pl_loc2 in fixed_args['var_par_list']):
+                    inclin_rad_chain_pl2=np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']=='inclin_rad__pl'+pl_loc2)])
+                else:                                
+                    ip_dic = deepcopy(deriv_prop['i_mut']['ip_pl'+pl_loc2])
+                    for subpar in ip_dic:ip_dic[subpar]*=np.pi/180.  
+                    if 's_val' in ip_dic:inclin_rad_chain_pl2 = np.random.normal(ip_dic['val'], ip_dic['s_val'], n_chain)
+                    else:inclin_rad_chain_pl2 = gen_hrand_chain(ip_dic['val'],ip_dic['s_val_low'],ip_dic['s_val_high'],n_chain) 
+                    
+                #Mutual inclinations for the two degenerate configurations (in deg)
+                im_chainA = np.arccos( np.cos(inclin_rad_chain_pl1)*np.cos(inclin_rad_chain_pl2)+np.cos(lamb_chain_pl2 - lamb_chain_pl1)*np.sin(inclin_rad_chain_pl1)*np.sin(inclin_rad_chain_pl2) )*180./np.pi
+                merged_chain=np.concatenate((merged_chain,im_chainA[:,None]),axis=1) 
+                im_chainB = np.arccos(-np.cos(inclin_rad_chain_pl1)*np.cos(inclin_rad_chain_pl2)+np.cos(lamb_chain_pl2 + lamb_chain_pl1)*np.sin(inclin_rad_chain_pl1)*np.sin(inclin_rad_chain_pl2) )*180./np.pi
+                merged_chain=np.concatenate((merged_chain,im_chainB[:,None]),axis=1) 
+                
+                #Combined distributions
+                #    - the two configurations are equiprobable
+                im_chain_glob = 0.5*(im_chainA+im_chainB)   
+                merged_chain=np.concatenate((merged_chain,im_chain_glob[:,None]),axis=1) 
+
+            fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['imutA__pl'+pl_loc1+'__pl'+pl_loc2,'imutB__pl'+pl_loc1+'__pl'+pl_loc2,'imut__pl'+pl_loc1+'__pl'+pl_loc2]))
+            fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],['i$_\mathrm{mut,A}$['+pl_loc1+';'+pl_loc2+']','i$_\mathrm{mut,B}$['+pl_loc1+';'+pl_loc2+']','i$_\mathrm{mut}$['+pl_loc1+';'+pl_loc2+']']))   
+            fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg','deg','deg']))  
+
         #-------------------------------------------------
             
         #Add argument of ascending node
         #    - Om = np.arctan( -sin(lambda)*tan(ip) )
         #    - must be done before modification of ip and lambda chains
         if 'om' in deriv_prop:
-            print('        + Add argument of ascending node')
+            print('        + Adding argument of ascending node')
             for pl_loc in fixed_args['lambda_rad_pl']:
                 lambda_rad_pl = 'lambda_rad__pl'+pl_loc
                 if ('inclin_rad__'+pl_loc not in fixed_args['var_par_list']):ip_loc=fixed_args['planets_params'][pl_loc]['inclin_rad'] 
@@ -3333,20 +3276,9 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                         merged_chain[:,ilamb]*=180./np.pi  
             
                         #Fold lambda over x+[-180;180]
-                        #    - choose final range so that the best-fit is not close to a boundary
                         #    - we want lambda in x+[-180;180] ie lambda-x+180 in 0;360
                         #      we fold over 0;360 and then get back to the final range
-                        if pl_loc=='GJ436_b':x_mid=70.
-                        elif pl_loc=='HD3167_b':x_mid=80.
-                        elif pl_loc=='HD3167_c':x_mid=-110.                
-                        elif pl_loc=='HAT_P3b':x_mid=0.               
-                        elif pl_loc=='K2_105b':x_mid=-80.         
-                        elif pl_loc=='HD89345b':x_mid=70. 
-                        elif pl_loc=='WASP107b':x_mid=-160. 
-                        elif pl_loc=='Kepler25c':x_mid=80. 
-                        elif pl_loc=='WASP156b':x_mid=80. 
-                        elif pl_loc=='55Cnc_e' and ('20140226' in lamb_name):x_mid = -100.
-                        elif pl_loc=='WASP76b':x_mid=-75. 
+                        if pl_loc in deriv_prop['lambda_deg']:x_mid = deriv_prop['lambda_deg'][pl_loc]
                         else:x_mid=np.median(merged_chain[:,ilamb])
         
                         print('        + Folding '+lamb_name+' around ',x_mid)

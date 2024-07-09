@@ -414,10 +414,6 @@ def polycoeff_def(param,coeff_ord2name_polpar):
     return coeff_grid_polpar
 
 
-
-
-
-# Stage Théo : fusion des 2 dernières fonctions. 
 def poly_prop_calc(param,fit_coord_grid,coeff_ord2name_polpar, pol_mode):
 
     #Polynomial coefficients 

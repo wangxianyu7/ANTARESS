@@ -17,7 +17,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
      - for a given visit or between several visits
      - binned profiles are calculated as weighted means with weights specific to the type of profiles
      - binned profiles are used for analysis purposes
-     - master profiles used to extract residual profiles from each exposure are calculated in `extract_res_profiles()` 
+     - master profiles used to extract differential profiles from each exposure are calculated in `extract_res_profiles()` 
 
     Args:
         TBD
@@ -168,7 +168,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         #      for each new bin, the binning routine is called with the list of original index that it will use
         #    - different binned profiles might use the same original exposures, which is why we use 'idx_to_bin_unik' to pre-process only once original exposures 
         data_to_bin={}
-        if (not masterDIweigh):
+        if (data_type_gen=='DI') and (not masterDIweigh):
             data_glob_new['RV_star_solCDM'] = np.zeros(n_bin,dtype=float)
             data_glob_new['RV_star_stelCDM'] = np.zeros(n_bin,dtype=float)
         data_glob_new['vis_iexp_in_bin']={vis_bin:{} for vis_bin in vis_to_bin}
@@ -375,100 +375,99 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         #    - if different planets are transiting in multiple binned visits coordinates cannot be defined (in that case only an out-of-transit master should be calculated)
         #---------------------------------------------------------------------------
         data_glob_new.update({'st_bindim':new_x_low,'end_bindim':new_x_high,'cen_bindim':new_x_cen,'n_exp':n_bin,'dim_all':[n_bin]+dim_exp_com,'dim_exp':dim_exp_com,'nspec':nspec_com,'rest_frame' : rest_frame})
-        if data_type in ['DI','Res']:  
-            if (not masterDIweigh) and (prop_dic['dim_bin'] == 'phase') and (not bin_prop['multi_flag']):  
+        if (not masterDIweigh) and (prop_dic['dim_bin'] == 'phase') and (not bin_prop['multi_flag']):  
 
-                #Coordinates of planets for new exposures
-                #    - phase is associated with the reference planet of the first binned visit, and must be converted into phases of the other planets in each and all visits 
-                ecl_all = np.zeros(data_glob_new['n_exp'],dtype=bool)
-                data_glob_new['coord'] = {}
-                for pl_loc in data_dic[inst][vis_save]['transit_pl']:
-                    pl_params_loc=system_param[pl_loc]
-                
-                    #Phase conversion
-                    phase_tab = conv_phase(coord_dic,inst,vis_save,system_param,ref_pl[vis_save],pl_loc,np.vstack((new_x_low,new_x_cen,new_x_high)))              
-    
-                    #Transit center check
-                    if mode=='multi_vis':
-                        for vis_bin in vis_to_bin:
-                            if (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis_bin in gen_dic['Tcenter_visits'][pl_loc][inst]):stop('WARNING: you are binning visits with TTVs')
-    
-                    #Coordinates
-                    x_pos_pl,y_pos_pl,z_pos_pl,Dprojp,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phase_tab,system_prop['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param['star'])
-                    data_glob_new['coord'][pl_loc] = {
-                        'Tcenter':coord_dic[inst][vis_to_bin[0]][pl_loc]['Tcenter'], 
-                        'ecl':ecl_pl,
-                        'st_ph':phase_tab[0],'cen_ph':phase_tab[1],'end_ph':phase_tab[2],
-                        'st_pos':np.vstack((x_pos_pl[0],y_pos_pl[0],z_pos_pl[0])),
-                        'cen_pos':np.vstack((x_pos_pl[1],y_pos_pl[1],z_pos_pl[1])),
-                        'end_pos':np.vstack((x_pos_pl[2],y_pos_pl[2],z_pos_pl[2]))}
-    
-                    #Exposure considered out-of-transit if no planet at all is transiting
-                    ecl_all |= abs(ecl_pl)!=1            
-      
-                    #Orbital rv of current planet in star rest frame
-                    if data_dic['Atm']['exc_plrange']:
-                        data_glob_new['coord'][pl_loc]['rv_pl'] = np.zeros(len(phase_tab[1]))*np.nan
-                        dphases = phase_tab[2] - phase_tab[0]
-                        for isub,dph_loc in enumerate(dphases):
-                            nt_osamp_RV=max(int(dph_loc/data_dic['Atm']['dph_osamp_RVpl']),2)
-                            dph_osamp_loc=dph_loc/nt_osamp_RV
-                            ph_osamp_loc = phase_tab[0]+dph_osamp_loc*(0.5+np.arange(nt_osamp_RV))
-                            data_glob_new['coord'][pl_loc]['rv_pl'][isub]=system_param['star']['RV_conv_fact']*np.mean(calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],ph_osamp_loc,None,None,None,rv_LOS=True,omega_p=pl_params_loc['omega_p'])[6])
-    
-                #In-transit data
-                data_glob_new['idx_exp2in'] = np.zeros(data_glob_new['n_exp'],dtype=int)-1
-                data_glob_new['idx_in']=np_where1D(ecl_all)
-                data_glob_new['idx_out']=np_where1D(~ecl_all)
-                data_glob_new['n_in_tr'] = len(data_glob_new['idx_in'])
-                data_glob_new['idx_exp2in'][data_glob_new['idx_in']]=np.arange(data_glob_new['n_in_tr'])
-                data_glob_new['idx_in2exp'] = np.arange(data_glob_new['n_exp'],dtype=int)[data_glob_new['idx_in']]
-                data_glob_new['dim_in'] = [data_glob_new['n_in_tr']]+data_glob_new['dim_exp']
-     
-                #Binned exposure timestamp and duration
-                data_glob_new['coord']['bjd'] = binned_time
-                data_glob_new['coord']['t_dur'] = binned_t_dur
-    
-                #Properties of planet-occulted and spot-occulted regions 
-                params = deepcopy(system_param['star'])
-                params.update({'rv':0.,'cont':1.}) 
-                params['use_spots']=False
-                if (inst in spot_dic):
-                    if mode=='multivis':
-                        print('WARNING: spots properties are not propagated for multiple visits.')
-                    elif vis_in in spot_dic[inst]:
-    
-                        #Trigger spot use
-                        params['use_spots']=True
-    
-                        #Initialize entries for spot coordinates 
+            #Coordinates of planets for new exposures
+            #    - phase is associated with the reference planet of the first binned visit, and must be converted into phases of the other planets in each and all visits 
+            ecl_all = np.zeros(data_glob_new['n_exp'],dtype=bool)
+            data_glob_new['coord'] = {}
+            for pl_loc in data_dic[inst][vis_save]['transit_pl']:
+                pl_params_loc=system_param[pl_loc]
+            
+                #Phase conversion
+                phase_tab = conv_phase(coord_dic,inst,vis_save,system_param,ref_pl[vis_save],pl_loc,np.vstack((new_x_low,new_x_cen,new_x_high)))              
+
+                #Transit center check
+                if mode=='multi_vis':
+                    for vis_bin in vis_to_bin:
+                        if (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis_bin in gen_dic['Tcenter_visits'][pl_loc][inst]):stop('WARNING: you are binning visits with TTVs')
+
+                #Coordinates
+                x_pos_pl,y_pos_pl,z_pos_pl,Dprojp,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phase_tab,system_prop['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param['star'])
+                data_glob_new['coord'][pl_loc] = {
+                    'Tcenter':coord_dic[inst][vis_to_bin[0]][pl_loc]['Tcenter'], 
+                    'ecl':ecl_pl,
+                    'st_ph':phase_tab[0],'cen_ph':phase_tab[1],'end_ph':phase_tab[2],
+                    'st_pos':np.vstack((x_pos_pl[0],y_pos_pl[0],z_pos_pl[0])),
+                    'cen_pos':np.vstack((x_pos_pl[1],y_pos_pl[1],z_pos_pl[1])),
+                    'end_pos':np.vstack((x_pos_pl[2],y_pos_pl[2],z_pos_pl[2]))}
+
+                #Exposure considered out-of-transit if no planet at all is transiting
+                ecl_all |= abs(ecl_pl)!=1            
+  
+                #Orbital rv of current planet in star rest frame
+                if data_dic['Atm']['exc_plrange']:
+                    data_glob_new['coord'][pl_loc]['rv_pl'] = np.zeros(len(phase_tab[1]))*np.nan
+                    dphases = phase_tab[2] - phase_tab[0]
+                    for isub,dph_loc in enumerate(dphases):
+                        nt_osamp_RV=max(int(dph_loc/data_dic['Atm']['dph_osamp_RVpl']),2)
+                        dph_osamp_loc=dph_loc/nt_osamp_RV
+                        ph_osamp_loc = phase_tab[0]+dph_osamp_loc*(0.5+np.arange(nt_osamp_RV))
+                        data_glob_new['coord'][pl_loc]['rv_pl'][isub]=system_param['star']['RV_conv_fact']*np.mean(calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],ph_osamp_loc,None,None,None,rv_LOS=True,omega_p=pl_params_loc['omega_p'])[6])
+
+            #In-transit data
+            data_glob_new['idx_exp2in'] = np.zeros(data_glob_new['n_exp'],dtype=int)-1
+            data_glob_new['idx_in']=np_where1D(ecl_all)
+            data_glob_new['idx_out']=np_where1D(~ecl_all)
+            data_glob_new['n_in_tr'] = len(data_glob_new['idx_in'])
+            data_glob_new['idx_exp2in'][data_glob_new['idx_in']]=np.arange(data_glob_new['n_in_tr'])
+            data_glob_new['idx_in2exp'] = np.arange(data_glob_new['n_exp'],dtype=int)[data_glob_new['idx_in']]
+            data_glob_new['dim_in'] = [data_glob_new['n_in_tr']]+data_glob_new['dim_exp']
+ 
+            #Binned exposure timestamp and duration
+            data_glob_new['coord']['bjd'] = binned_time
+            data_glob_new['coord']['t_dur'] = binned_t_dur
+
+            #Properties of planet-occulted and spot-occulted regions 
+            params = deepcopy(system_param['star'])
+            params.update({'rv':0.,'cont':1.}) 
+            params['use_spots']=False
+            if (inst in spot_dic):
+                if mode=='multivis':
+                    print('WARNING: spots properties are not propagated for multiple visits.')
+                elif vis_in in spot_dic[inst]:
+
+                    #Trigger spot use
+                    params['use_spots']=True
+
+                    #Initialize entries for spot coordinates 
+                    for spot in data_dic[inst][vis_in]['transit_sp']:
+                        data_glob_new['coord'][spot]={}
+                        for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:data_glob_new['coord'][spot][key] = np.zeros(n_bin,dtype=float)*np.nan
+                        for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:data_glob_new['coord'][spot][key] = np.zeros([3,n_bin],dtype=float)*np.nan
+                        data_glob_new['coord'][spot]['is_visible'] = np.zeros([3,n_bin],dtype=float)
+
+                    #Retrieve spot coordinates/properties for new exposures
+                    spot_dic[inst][vis_in]['cos_istar']=system_param['star']['cos_istar']
+
+                    for i_new in range(n_bin):
+                        spots_prop = retrieve_spots_prop_from_param(system_param['star'],spot_dic[inst][vis_in],inst,vis_in,data_glob_new['coord']['bjd'][i_new],exp_dur=data_glob_new['coord']['t_dur'][i_new])
                         for spot in data_dic[inst][vis_in]['transit_sp']:
-                            data_glob_new['coord'][spot]={}
-                            for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:data_glob_new['coord'][spot][key] = np.zeros(n_bin,dtype=float)*np.nan
-                            for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:data_glob_new['coord'][spot][key] = np.zeros([3,n_bin],dtype=float)*np.nan
-                            data_glob_new['coord'][spot]['is_visible'] = np.zeros([3,n_bin],dtype=float)
-    
-                        #Retrieve spot coordinates/properties for new exposures
-                        spot_dic[inst][vis_in]['cos_istar']=system_param['star']['cos_istar']
-    
-                        for i_new in range(n_bin):
-                            spots_prop = retrieve_spots_prop_from_param(system_param['star'],spot_dic[inst][vis_in],inst,vis_in,data_glob_new['coord']['bjd'][i_new],exp_dur=data_glob_new['coord']['t_dur'][i_new])
-                            for spot in data_dic[inst][vis_in]['transit_sp']:
-                                for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
-                                    data_glob_new['coord'][spot][key][i_new] = spots_prop[spot][key]
-    
-                                for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
-                                    data_glob_new['coord'][spot][key][:, i_new] = [spots_prop[spot][key+'_start'],spots_prop[spot][key+'_center'],spots_prop[spot][key+'_end']]
-    
-                                data_glob_new['coord'][spot]['is_visible'][:, i_new]=[spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]
-    
-                        spot_dic[inst][vis_in].pop('cos_istar')
-                                            
-                par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
-                key_chrom = ['achrom']
-                if ('spec' in data_mode) and ('chrom' in system_prop):key_chrom+=['chrom']
-                data_glob_new['plocc_prop'],data_glob_new['spot_prop'],data_glob_new['common_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True)
+                            for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
+                                data_glob_new['coord'][spot][key][i_new] = spots_prop[spot][key]
 
+                            for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
+                                data_glob_new['coord'][spot][key][:, i_new] = [spots_prop[spot][key+'_start'],spots_prop[spot][key+'_center'],spots_prop[spot][key+'_end']]
+
+                            data_glob_new['coord'][spot]['is_visible'][:, i_new]=[spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]
+
+                    spot_dic[inst][vis_in].pop('cos_istar')
+                                        
+            par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
+            key_chrom = ['achrom']
+            if ('spec' in data_mode) and ('chrom' in system_prop):key_chrom+=['chrom']
+            data_glob_new['plocc_prop'],data_glob_new['spot_prop'],data_glob_new['common_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True)
+            
         #---------------------------------------------------------------------------
 
         #Saving global tables for new exposures
@@ -917,12 +916,12 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
             return err_ref_ord2 + calc_EFsc2(flux_sc_ord,flux_ref_ord,spec_corr_ord)
 
         #--------------------------------------------------------    
-        #Definition of errors on residual spectra
+        #Definition of errors on differential spectra
         #-------------------------------------------------------- 
         #    - see rescale_profiles(), extract_res_profiles(), the profiles are defined as:
         # Fres(w,t,v) = ( MFstar(w,v) - Fsc(w,t,v) )
         #      where profiles have been scaled to comparable levels and can be seen as (temporal) flux densities
-        #    - we want to use as weights the errors on the true residual flux:
+        #    - we want to use as weights the errors on the true differential flux:
         # EFres_true(w,t,v) = E[  MFstar_true(w,v) - Fsc_true(w,t,v) ]
         #                   = sqrt( EMFstar_true(w,v)^2 + EFsc_true(w,t,v)^2 )  
         #      where we assume that the two profiles are independent, and that the error on the master flux averaged over several exposures approximates well the error on the true flux, even within a single bin, so that:          

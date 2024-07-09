@@ -488,7 +488,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + 'lat' : constant latitude of the spot, in star rest frame
     # + 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
     # + 'ang' : the angular size (in deg) of the spot
-    # + 'ctrst' : the flux level of the spot surface, relative to the 'normal' surface of the star.
+    # + 'fctrst' : the flux level of the spot surface, relative to the 'normal' surface of the star.
     #    - format is {inst : {vis : {prop : val}}}
     #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']    
     mock_dic['spots_prop'] = {}
@@ -603,25 +603,25 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 30,
                      # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
                      # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
-                     # 'ctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
+                     # 'fctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
 
                      # # For the spot 'spot1' : 
                      # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 30,
                      # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
                      # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 15,
-                     # 'ctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.8,
+                     # 'fctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.8,
                     
                      # # #For the spot 'spot2' : 
                      # 'lat__ISESPRESSO_VSmock_vis_SPspot2'     : -20,
                      # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2458330.39051 - 0.2,
                      # 'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
-                     # 'ctrst__ISESPRESSO_VSmock_vis_SPspot2'    : 0.1,
+                     # 'fctrst__ISESPRESSO_VSmock_vis_SPspot2'    : 0.1,
 
                      # For the spot 'spot1' : -- plotting purposes
                      # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : 0,
                      # 'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2458330.39051,
                      # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
-                     # 'ctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.95,
+                     # 'fctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.95,
                      
 
                      # #For the spot 'spot2' :  -- plotting purposes
@@ -635,7 +635,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
 
                     #All spots in the a given visit must have the same contrast
-                    'ctrst__ISESPRESSO_VSmock_vis_SP'    : 0.9,
+                    'fctrst__ISESPRESSO_VSmock_vis_SP'    : 0.9,
                     },
                 }
             }
@@ -655,7 +655,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      'Tcenter__ISESPRESSO_VSmockvisit1_SPspot2' : 2458702.77, 
                      'ang__ISESPRESSO_VSmockvisit1_SPspot2'     : 12, #12
 
-                     'ctrst__ISESPRESSO_VSmockvisit1_SP'    : 0.55
+                     'fctrst__ISESPRESSO_VSmockvisit1_SP'    : 0.55
                          }
                     }
                 }
@@ -669,13 +669,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      'lat__ISESPRESSO_VSmock_vis_SPspot1'     : -30,
                      'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : 2457067.0488 - 12/24,
                      'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 20,
-                     'ctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
+                     'fctrst__ISESPRESSO_VSmock_vis_SPspot1'    : 0.4,
                     
                      # For the spot 'spot2' : 
                      'lat__ISESPRESSO_VSmock_vis_SPspot2'     : 40,
                      'Tcenter__ISESPRESSO_VSmock_vis_SPspot2' : 2457067.0488 + 5/24,
                      'ang__ISESPRESSO_VSmock_vis_SPspot2'     : 25,
-                     'ctrst__ISESPRESSO_VSmock_vis_SPspot2'    : 0.6
+                     'fctrst__ISESPRESSO_VSmock_vis_SPspot2'    : 0.6
                          }
                     }
                 }
@@ -691,7 +691,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      'ang__ISESPRESSO_VSmock_vis_SPspot1'     : 25,
 
                     #All spots in the a given visit must have the same contrast
-                    'ctrst__ISESPRESSO_VSmock_vis_SP'    : 0.9,
+                    'fctrst__ISESPRESSO_VSmock_vis_SP'    : 0.9,
                     },
                 }
             }
@@ -1263,7 +1263,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                      'ang__ISESPRESSO_VSvisit1_SPspot1'     : 10,
 
                     #All spots in the a given visit must have the same contrast
-                    'ctrst__ISESPRESSO_VSvisit1_SP'    : 0.35,
+                    'fctrst__ISESPRESSO_VSvisit1_SP'    : 0.35,
                     },
                 }
         }
@@ -4957,7 +4957,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  #&  False
+    gen_dic['fit_ResProf'] = True  &  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
@@ -5029,8 +5029,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
         'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':15, 'bd':[10, 50]},
         # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':25, 'bd':[10, 50]},
-        # 'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
-        'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':False, 'guess':0.9, 'bd':[0.3, 0.9]},
+        # 'fctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
+        'fctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':False, 'guess':0.9, 'bd':[0.3, 0.9]},
         # 'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
         'lambda_rad__plAUMicb'                   : {'vary':False, 'guess':-0.082, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -5053,7 +5053,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'Tcenter__ISESPRESSO_VSvisit1_SPspot2' : {'vary':True, 'guess':2458702.77+0.2, 'bd':[2458702.77 - 0.9, 2458702.77 + 0.9]},
         'ang__ISESPRESSO_VSvisit1_SPspot2'     : {'vary':True, 'guess':25, 'bd':[1, 80]},
 
-        'ctrst__ISESPRESSO_VSvisit1_SP'   : {'vary':True, 'guess':0.9, 'bd':[0.01, 0.99]},
+        'fctrst__ISESPRESSO_VSvisit1_SP'   : {'vary':True, 'guess':0.9, 'bd':[0.01, 0.99]},
         'rv_shift'                        : {'vary':True, 'guess': 1, 'bd':[-5, 5]},  
 
         'lambda_rad__plAU_Mic_b'                   : {'vary':True, 'guess':0, 'bd':[-2*np.pi, 2*np.pi]}
@@ -5079,7 +5079,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
                     'Tcenter__ISESPRESSO_VSmock_vis_SPspot1' :{'mod':'uf', 'low':2458330.39051 - 1., 'high':2458330.39051 +1.},
                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':0, 'high':89.},
-                    'ctrst__ISESPRESSO_VSmock_vis_SPspot1'   :{'mod':'uf', 'low':0, 'high':1},
+                    'fctrst__ISESPRESSO_VSmock_vis_SPspot1'   :{'mod':'uf', 'low':0, 'high':1},
                     'lambda_rad__plAUMicb'                   :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }
 
@@ -5101,7 +5101,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                     'Tcenter__ISESPRESSO_VSvisit1_SPspot2' :{'mod':'uf', 'low':2458702.77 - 1., 'high':2458702.77 + 1.},
                     'ang__ISESPRESSO_VSvisit1_SPspot2'     :{'mod':'uf', 'low':0, 'high':89.},
 
-                    'ctrst__ISESPRESSO_VSvisit1_SP'   :{'mod':'uf', 'low':0, 'high':1},
+                    'fctrst__ISESPRESSO_VSvisit1_SP'   :{'mod':'uf', 'low':0, 'high':1},
 
                     'rv_shift'   :{'mod':'uf', 'low':-10, 'high':10},
 

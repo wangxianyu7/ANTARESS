@@ -554,7 +554,7 @@ def calc_pl_coord(ecc,omega_bar,aRs,inclin,ph_loc,RpRs,lambda_rad,star_params,rv
     return xp_loc,yp_loc,zp_loc,Dprojplanet,vxp_loc,vyp_loc,vzp_loc , vp_loc, ecl_loc   
     
     
-def calc_pl_coord_plots(n_pts_orbit,pl_params):  
+def calc_pl_coord_plots(n_pts_orbit,pl_params,unit = 'Rs'):  
     r"""**Planet orbit: for plots.**
     
     Defines planetary orbit coordinates for plot and contact times.
@@ -576,22 +576,19 @@ def calc_pl_coord_plots(n_pts_orbit,pl_params):
     #Orbital properties
     #    - Inclin is the inclination from the LOS to the normal to the orbital plane
     ecc=pl_params['ecc']
-    aRs=pl_params['aRs']
-    Inclin=pl_params['inclin_rad']
-    c_ip = np.cos(Inclin)
-    s_ip = np.sin(Inclin)
-    omega_bar=pl_params['omega_rad']
+    inclin=pl_params['inclin_rad'] 
  
     #Circular orbit  
     if (ecc<1e-4):    
         n_pts_orbit=int(n_pts_orbit)
-        ph_plot=np.arange(n_pts_orbit+1.)/n_pts_orbit
-        X0_plot= aRs*np.cos(2.*np.pi*ph_plot)
-        Y0_plot= aRs*np.sin(2.*np.pi*ph_plot)
-        coord_orbit=[Y0_plot,              #Xsky
-                     -X0_plot*c_ip,        #Ysky 
-                      X0_plot*s_ip]        #Zsky   
-  
+        
+        #True anomaly
+        true_anom=2.*np.pi*np.arange(n_pts_orbit+1.)/n_pts_orbit
+
+        #Coordinates in the orbit plane with semi-major axis as X axis =  orbital plane oriented toward the Earth         
+        XorbE_norm= np.cos(true_anom)
+        YorbE_norm= np.sin(true_anom)
+        
     #Elliptic orbit 
     else:
         
@@ -599,21 +596,36 @@ def calc_pl_coord_plots(n_pts_orbit,pl_params):
         #    - we set a high resolution around the periastron   
         #    - see planet_coord for details  
         n_pts_horbit=int(n_pts_orbit/2.)
-        ph_plot=-(0.05)+(0.1/n_pts_horbit)*np.arange(n_pts_horbit+1)
-        ph_plot=np.append(ph_plot,(0.05)+((1-0.1 )/n_pts_horbit)*np.arange(n_pts_horbit+1))
-        Mean_anom_plot=2.*np.pi*ph_plot
+        phase=-(0.05)+(0.1/n_pts_horbit)*np.arange(n_pts_horbit+1)
+        phase=np.append(phase,(0.05)+((1-0.1 )/n_pts_horbit)*np.arange(n_pts_horbit+1))
+
+        #Mean anomaly    
+        #    - null by definition at the periapsis: we use a higher resolution aroung the periapsis        
+        Mean_anom_plot=2.*np.pi*phase
+        
+        #Eccentric anomaly
         Ecc_anom_plot=np.array([newton(Kepler_func,Mean_anom_plot[i],args=(Mean_anom_plot[i],ecc,)) for i in range(len(Mean_anom_plot))])
     
-        #Coord. in the orbit plane with semi-major axis as X axis    
-        X0_plot=aRs*(np.cos(Ecc_anom_plot)-ecc)
-        Y0_plot=aRs*np.sqrt(1.-pow(ecc,2.))*np.sin(Ecc_anom_plot)
+        #Coordinates in the orbital plane with semi-major axis as X axis    
+        Xorb_norm=(np.cos(Ecc_anom_plot)-ecc)
+        Yorb_norm=np.sqrt(1.-pow(ecc,2.))*np.sin(Ecc_anom_plot)
 
-        #Coord. in the XYZ sky-projected orbital referential     
-        coord_orbit = [-X0_plot*np.cos(omega_bar) +  Y0_plot*np.sin(omega_bar),           #Xsky
-                      -( X0_plot*np.sin(omega_bar) +  Y0_plot*np.cos(omega_bar) )*c_ip,   #Ysky
-                       ( X0_plot*np.sin(omega_bar) +  Y0_plot*np.cos(omega_bar) )*s_ip]   #Zsky
+        #Conversion from orbital plane with semi-major axis as X axis to orbital plane oriented toward the Earth
+        c_om=np.cos(pl_params['omega_rad'])
+        s_om=np.sin(pl_params['omega_rad'])
+        XorbE_norm =  Xorb_norm*s_om +  Yorb_norm*c_om
+        YorbE_norm = -Xorb_norm*c_om +  Yorb_norm*s_om        
+
+    #Conversion from orbital plane oriented toward the Earth, to the sky-projected orbital referential    
+    coord_orbit_sky_p = np.array([ YorbE_norm,                  #Xsky
+                                  -XorbE_norm*np.cos(inclin),   #Ysky
+                                   XorbE_norm*np.sin(inclin)])  #Zsky
     
-    return coord_orbit    
+    #Conversion to units of Rstar or au
+    if unit=='Rs':  coord_orbit_sky_p*=pl_params['aRs']
+    elif unit=='au':coord_orbit_sky_p*=pl_params['a_planet']
+    
+    return coord_orbit_sky_p    
     
 
 
@@ -1037,7 +1049,7 @@ def pl_limb_in_oblate_star(nlimb,RpRs,xp_st_sk,yp_st_sk,star_params):
 #%% Frame change
 ################################################################################################## 
 
-def frameconv_skyorb_to_skystar(lambd,xin,yin,zin):
+def frameconv_skyorb_to_skystar(lambd,x_skorb,y_skorb,z_skorb):
     r"""**Frame: sky-projected, orbital to stellar.**
 
     Converts coordinates from the classical sky-projected orbital frame, to the sky-projected (inclined) stellar frame.
@@ -1056,12 +1068,14 @@ def frameconv_skyorb_to_skystar(lambd,xin,yin,zin):
         None
     
     """ 
-    xout = xin*np.cos(lambd) - yin*np.sin(lambd)
-    yout = xin*np.sin(lambd) + yin*np.cos(lambd)
-    zout=deepcopy(zin)
-    return xout,yout,zout
+    c_lamb=np.cos(lambd) 
+    s_lamb=np.sin(lambd) 
+    x_skst = x_skorb*c_lamb - y_skorb*s_lamb
+    y_skst = x_skorb*s_lamb + y_skorb*c_lamb
+    z_skst=deepcopy(z_skorb)
+    return x_skst,y_skst,z_skst
 
-def frameconv_skystar_to_skyorb(lambd,xin,yin,zin):
+def frameconv_skystar_to_skyorb(lambd,x_skst,y_skst,z_skst):
     r"""**Frame: sky-projected, stellar to orbital.**
 
     Converts coordinates from the sky-projected (inclined) stellar frame to the classical sky-projected orbital frame.
@@ -1073,10 +1087,12 @@ def frameconv_skystar_to_skyorb(lambd,xin,yin,zin):
         None
     
     """ 
-    xout = xin*np.cos(lambd)+yin*np.sin(lambd) 
-    yout = -xin*np.sin(lambd)+yin*np.cos(lambd) 
-    zout=deepcopy(zin)  
-    return xout,yout,zout
+    c_lamb=np.cos(lambd) 
+    s_lamb=np.sin(lambd) 
+    x_skorb =  x_skst*c_lamb+y_skst*s_lamb
+    y_skorb = -x_skst*s_lamb+y_skst*c_lamb
+    z_skorb=deepcopy(z_skst)  
+    return x_skorb,y_skorb,z_skorb
 
 
 

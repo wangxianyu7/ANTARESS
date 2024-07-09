@@ -299,10 +299,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Properties
     #    - spot inclusion is conditioned by this dictionary being filled in
     #    - spots are defined by 4 parameters : 
-    # + 'lat' : constant latitude of the spot, in star rest frame
-    # + 'Tcenter' : Time (bjd) at wich the spot is at longitude 0
-    # + 'ang' : the angular size (in deg) of the spot
-    # + 'ctrst' : the flux level of the spot surface, relative to the 'normal' surface of the star.
+    # + 'lat' : constant latitude of the spot, in star rest frame (in deg)
+    # + 'Tcenter' : Time (bjd) at which the spot is at longitude 0
+    # + 'ang' : half-angular size (in deg) of the spot
+    # + 'fctrst' : the flux level of the spot surface, relative to the quiet surface of the star.
     #    - format: {inst : {vis : {prop : val}}}
     #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']    
     mock_dic['spots_prop'] = {}
@@ -827,7 +827,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Correction settings
     
     #%%%%% Threshold 
-    #    - flux values where telluric contrast is deeper than this threshold (between 0 and 1) are set to nan
+    #    - flux values where telluric contrast is deeper than this threshold (between 0 for no telluric absorption and 1 for full telluric absorption) are set to nan
     gen_dic['tell_thresh_corr'] = 0.9      
     
     
@@ -1895,7 +1895,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Fit settings     
     
     #%%%%% Fitting mode 
-    #    - 'chi2', 'mcmc', ''
+    #    - 'chi2', 'mcmc', 'fixed'
     data_dic['DI']['fit_mode']='chi2'  
     
     
@@ -1921,7 +1921,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%% Derived properties
-    data_dic['DI']['deriv_prop']=['']
+    data_dic['DI']['deriv_prop']={}
     
     
     #%%%%% Detection thresholds
@@ -1959,7 +1959,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #%%%%%% Sample exclusion 
-    #    - exclude samples that do not fit within the requested ranges of the chosen parameter
+    #    - keep samples within the requested ranges of the chosen parameter (on original fit parameters)
     #    - format: 'par' : [[x1,x2],[x3,x4],...] 
     data_dic['DI']['exclu_samp']={}
         
@@ -2062,7 +2062,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Fit settings
     
     #%%%%% Fitting mode 
-    #    - 'chi2', 'mcmc', ''
+    #    - 'chi2', 'mcmc', 'fixed'
     glob_fit_dic['DIProp']['fit_mode']='chi2'  
     
     
@@ -2082,7 +2082,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['DIProp']['deriv_prop'] = []        
+    glob_fit_dic['DIProp']['deriv_prop'] = {}  
     
     
     #%%%%% MCMC settings
@@ -2806,14 +2806,18 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     data_dic['Intr']['cont_range'] = {}
     
     
-    #%%%% Calculating/retrieving continuum 
-    #    - concerns continuum measurement and correction
+    #%%%% Calculating/retrieving continuum in each order
+    #    - used for continuum correction and for plots
     data_dic['Intr']['calc_cont'] = True
     
     
     #%%%% Continuum correction
     #    - the continuum might show differences between exposures because of imprecisions on the flux balance correction
-    #      this option correct for these deviations and update the flux scaling values accordingly
+    #      this option corrects for these deviations and update the flux scaling values accordingly
+    #    - the correction is applied order per order using pixels defined in all exposures, and may thus not be accurate in orders with low S/R and few defined pixels, especially for exposures with low flux at the stellar limbs
+    #    - the correction is applied to the final processed intrinsic spectra, ie that if you want to generate intrinsic CCF or 1D spectra be sure to activate the corresponding modules when calling the correction for the first time, otherwise it will be
+    # applied to the raw intrinsic spectra with less accuracy
+    #    - beware that intrinsic profiles are overwritten by this correction: re-run the extraction without continuum correction in case you disable it 
     data_dic['Intr']['cont_norm'] = False
     
     
@@ -3255,7 +3259,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                  
         
     #%%%%% Derived properties
-    data_dic['Intr']['deriv_prop'] = []
+    data_dic['Intr']['deriv_prop'] = {}
     
       
     #%%%%% Detection thresholds    
@@ -3395,7 +3399,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Fit settings
     
     #%%%%% Fitting mode 
-    #    - 'chi2', 'mcmc', ''
+    #    - 'chi2', 'mcmc', 'fixed'
     glob_fit_dic['IntrProp']['fit_mode']='chi2'  
     
     
@@ -3414,8 +3418,35 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     
     #%%%%% Derived properties
-    #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['IntrProp']['deriv_prop'] = []        
+    #    - options:
+    # + 'cosistar_fold' : folds cos(istar) within -1 : 1 (not required if constrained with prior)
+    # + 'veq_from_Peq_Rstar' : converts 'Rstar' and 'Peq' into 'veq'
+    #                          'Peq' must be a fit parameter; 'Rstar' can be a fit parameter or a user-provided measurement
+    # + 'vsini' : converts 'veq' into veq*sin(istar) using fitted or fixed 'istar'
+    # + 'istar_deg_conv' : replaces cos(istar) by istar[deg]
+    # + 'istar_Peq' : derive the stellar inclination from the fitted 'vsini' and user-provided measurements of 'Rstar' and 'Peq'
+    #                 warning: it is better to fit directly for 'Peq', 'cosistar', and 'Rstar'
+    # + 'istar_Peq_vsini' : derive the stellar inclination from user-provided measurements of 'Rstar','Peq', and 'vsini'
+    # + 'Peq_veq' : adds 'Peq' using the fitted 'veq' and a user-provided measurement of 'Rstar'
+    # + 'Peq_vsini' : adds 'Peq' using the fitted 'vsini' and user-provided measurements for 'Rstar' and 'istar' 
+    # + 'psi' : adds 3D spin-orbit angle for all planets using the fitted 'lambda', and fitted or user-provided measurements for 'istar' and 'ip_plNAME'
+    # + 'psi_lambda' : adds 3D spin-orbit angle using user-provided measurements of 'lambda', and fitted or user-provided measurements for 'istar' and 'ip'
+    # + 'lambda_deg' : converts lambda[rad] to lambda[deg]
+    #                  lambda[deg] is folded over x+[-180;180], with x set by the subfield 'pl_name' if defined, or to the median of the chains by default
+    #                  define x so that the peak of the PDF is well centered in the folded range
+    # + 'i_mut' : adds mutual inclination between the orbital planes of two transiting planets, if relevant, using their fitted 'lambda'     
+    # + 'b' : adds impact parameter, using fixed or fitted 'aRs' and 'ip'
+    # + 'ip' : converts fitted orbital inclination from radian to degrees.    
+    #    - user-provided measurements of a parameter 'par' are defined as subfields with format
+    # par : {'val' : val, 's_val' : val} or par : {'val' : val, 's_val_low' : val, 's_val_high' : val} 
+    #      units for par :
+    # + stellar radius 'Rstar' : Rsun
+    # + stellar inclination 'istar' : deg
+    # + equatorial rotation period 'Peq' : days
+    # + sky-projected rotational velocity 'vsini' : km/s
+    # + sky-projected spin-orbit angle 'lambda_plNAME' : deg
+    # + orbital inclination 'ip_plNAME' : deg
+    glob_fit_dic['IntrProp']['deriv_prop'] = {}  
     
     
     #%%%%% MCMC settings
@@ -3604,7 +3635,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Fit settings 
         
     #%%%%% Fitting mode
-    #    - 'chi2', 'mcmc', or ''
+    #    - 'chi2', 'mcmc', or 'fixed'
     glob_fit_dic['ResProf']['fit_mode']='' 
     
     
@@ -3620,7 +3651,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['ResProf']['deriv_prop'] = []
+    glob_fit_dic['ResProf']['deriv_prop'] = {}
     
     
     #%%%%% MCMC settings
@@ -3824,7 +3855,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Fit settings 
         
     #%%%%% Fitting mode
-    #    - 'chi2', 'mcmc', or ''
+    #    - 'chi2', 'mcmc', or 'fixed'
     glob_fit_dic['IntrProf']['fit_mode']='chi2' 
     
     
@@ -3844,7 +3875,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['IntrProf']['deriv_prop'] = []
+    glob_fit_dic['IntrProf']['deriv_prop'] = {}
     
     
     #%%%%% MCMC settings
@@ -4391,7 +4422,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
         
     #%%%%% Derived properties
-    data_dic['Atm']['deriv_prop'] = []
+    data_dic['Atm']['deriv_prop'] = {}
     
       
     #%%%%% Detection thresholds    
@@ -4500,7 +4531,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Fit settings
     
     #%%%%% Fitting mode 
-    #    - 'chi2', 'mcmc', ''
+    #    - 'chi2', 'mcmc', 'fixed'
     glob_fit_dic['AtmProp']['fit_mode']='chi2'  
     
     
@@ -4520,7 +4551,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['AtmProp']['deriv_prop'] = []        
+    glob_fit_dic['AtmProp']['deriv_prop'] = {}        
     
     
     #%%%%% MCMC settings
@@ -4652,7 +4683,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Fit settings 
         
     #%%%%% Fitting mode
-    #    - 'chi2', 'mcmc', or ''
+    #    - 'chi2', 'mcmc', or 'fixed'
     glob_fit_dic['AtmProf']['fit_mode']='chi2' 
     
     
@@ -4672,7 +4703,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['AtmProf']['deriv_prop'] = []
+    glob_fit_dic['AtmProf']['deriv_prop'] = {}
     
     
     #%%%%% MCMC settings

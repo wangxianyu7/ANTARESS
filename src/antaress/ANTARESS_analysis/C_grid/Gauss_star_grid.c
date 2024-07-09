@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-void C_coadd_loc_gauss_prof(double* rv_surf_star_grid, double* ctrst_grid, double* FWHM_grid, double* args_cen_bins, double* Fsurf_grid_spec, int args_ncen_bins, int Fsurf_grid_spec_shape_0, double* gauss_grid)
+void C_coadd_loc_gauss_prof(double* rv_surf_star_grid, double* ctrst_grid, double* FWHM_grid, double* args_cen_bins, double* Fsurf_grid_spec, int args_ncen_bins, int Fsurf_grid_spec_shape_0, double* gauss_grid) 
 {
     double X = 2.0 * sqrt(log(2.0));
 
@@ -17,5 +17,3 @@ void C_coadd_loc_gauss_prof(double* rv_surf_star_grid, double* ctrst_grid, doubl
         }
     }
 }
-
-

@@ -13,6 +13,12 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
      - `wspace = width` : horizontal separation between subplots.      
        `hspace = height` : vertical separation between subplots. 
      - `title = bool` : show plot title.
+     - `font_size = float` : size for figure font.     
+     - `font_size_txt = float` : size for text font within plot.
+     - `lw_plot = float` : linewidth.
+     - `ls_plot = str` : linestyle.
+     - `col_contacts = str` : color for transit contacts.
+     - `axis_thick = float` : thickness for plot axis.
      
     Args:
         plot_options (dic) : dictionary for all generic plot settings
@@ -47,6 +53,9 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
     #Linestyle
     plot_options[key_plot]['ls_plot']='-'
     
+    #Color for transit contacts
+    plot_options[key_plot]['col_contacts']='black'
+
     #Axis thickness
     plot_options[key_plot]['axis_thick']=1  
     
