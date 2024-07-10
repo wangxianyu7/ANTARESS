@@ -922,16 +922,20 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
 
     #Initialize spot use
     gen_dic['studied_sp'] = list(gen_dic['transit_sp'].keys()) 
+    if len(gen_dic['studied_sp'])!=len(np.unique(gen_dic['studied_sp'])):stop('Spots must have unique names in each visit')
     theo_dic['x_st_sky_grid_sp']={}
     theo_dic['y_st_sky_grid_sp']={}
     theo_dic['Ssub_Sstar_sp'] = {}
     theo_dic['d_oversamp_spot']={}
 
-    #If spot activation has been triggered
-    if (data_dic['DI']['spots_prop'] != {}):
+    #Spot activation triggered
+    if len(gen_dic['studied_sp'])>0:
+        print('Spots are simulated')
 
         #Oversampling factor for spot-occulted regions
-        #    - use the spot radius provided as input
+        #    - input corresponds to the half-angular opening of the spot
+        #      taking the largest projected radius of the spot if placed along the LOS:
+        # sin(ang) = Rproj/Rstar
         for spot in theo_dic['n_oversamp_spot']:
             if (theo_dic['n_oversamp_spot'][spot]>0.):
                 theo_dic['d_oversamp_spot'][spot] = np.sin(data_dic['DI']['spots_prop']['achrom'][spot][0])/theo_dic['n_oversamp_spot'][spot]
@@ -957,13 +961,20 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 data_dic['DI']['spots_prop']['chrom']['med_dw'] = np.median(data_dic['DI']['spots_prop']['chrom']['dw'])
     
         #Definition of grids discretizing planets disk to calculate planet-occulted properties
-        for spot in theo_dic['nsub_Dspot']:
+        for spot in gen_dic['studied_sp']:
             
-            #Retrieve spot size
-            spot_size = data_dic['DI']['spots_prop']['achrom'][spot][0]
+            #Maximum projected spot radius
+            RspRs_max = np.sin(data_dic['DI']['spots_prop']['achrom'][spot][0])
+
+            #Default grid scaled from a 51x51 grid for a spot with projected radius equal to a hot Jupiter transiting a solar-size star
+            #    - dsub_ref = (2*Rjup/Rsun)*(1/51)
+            #      nsub_Dspot = int(2*RpRs/dsub_ref) = int( 51*RpRs*Rsun/Rjup ) = int( 51*sin(ang)*Rsun/Rjup )  
+            if (spot not in theo_dic['nsub_Dspot']):
+                theo_dic['nsub_Dspot'][pl_loc] =int( 51.*RspRs_max*Rsun/Rjup ) 
+                print('Default nsub_Dspot['+str(spot)+']='+str(theo_dic['nsub_Dspot'][spot]))
     
-            #Define a default grid size if the spot grid hasn't been defined (should be done outside of for loop)
-            _,theo_dic['Ssub_Sstar_sp'][spot],theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot],_ = occ_region_grid(spot_size, theo_dic['nsub_Dspot'][spot],spot=True)
+            #Corresponding spot grid
+            _,theo_dic['Ssub_Sstar_sp'][spot],theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot],_ = occ_region_grid(RspRs_max, theo_dic['nsub_Dspot'][spot],spot=True)
 
     #------------------------------------------------------------------------------------------------------------------------
     #Model star
@@ -1458,7 +1469,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #Initializes spot-related properties
                 for spot in gen_dic['studied_sp']:
                     coord_dic[inst][vis][spot]={}
-                    for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:coord_dic[inst][vis][spot][key] = np.zeros(n_in_visit,dtype=float)*np.nan
+                    for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'fctrst']:coord_dic[inst][vis][spot][key] = np.zeros(n_in_visit,dtype=float)*np.nan
                     for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:coord_dic[inst][vis][spot][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
                     coord_dic[inst][vis][spot]['is_visible'] = np.zeros([3,n_in_visit],dtype=bool)
 
@@ -1540,7 +1551,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             #Coordinates for each studied spot
                             spots_prop = retrieve_spots_prop_from_param(system_param['star'], mock_dic['spots_prop'][inst][vis], inst, vis, coord_dic[inst][vis]['bjd'][iexp], exp_dur=coord_dic[inst][vis]['t_dur'][iexp])                            
                             for spot in data_inst[vis]['transit_sp']:                               
-                                for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
+                                for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'fctrst']:
                                     coord_dic[inst][vis][spot][key][iexp] = spots_prop[spot][key]                               
                                 for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
                                     coord_dic[inst][vis][spot][key][:, iexp] = [spots_prop[spot][key+'_start'],spots_prop[spot][key+'_center'],spots_prop[spot][key+'_end']]                                
