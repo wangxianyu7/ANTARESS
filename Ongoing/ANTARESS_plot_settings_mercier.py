@@ -2173,6 +2173,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Number of points in the planet orbits
         plot_settings[key_plot]['npts_orbits'] = np.repeat(10000,len(plot_settings[key_plot]['pl_to_plot'])) 
 
+        #%%%% Number of points in the spot orbits
+        plot_settings[key_plot]['npts_orbits_sp'] = 10000
+
         #%%%% Position of planets along their orbit
         plot_settings[key_plot]['t_BJD'] = None
 
@@ -2217,9 +2220,12 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['RpRs_pl'] = {pl_loc:data_dic['DI']['system_prop']['achrom'][pl_loc][0] for pl_loc in plot_settings[key_plot]['pl_to_plot']}
        
         #%%%% Orbit colors
+        # - Planets
         plot_settings[key_plot]['col_orb'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
         plot_settings[key_plot]['col_orb_samp'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
-            
+        # - Spots
+        plot_settings[key_plot]['col_orb_sp'] = 'greenyellow'
+
         #%%%% Number of orbits drawn randomly
         plot_settings[key_plot]['norb']=2500
 
@@ -2329,14 +2335,14 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             plot_settings[key_plot]['plot_spots'] = True #& False
 
-            plot_settings[key_plot]['mock_spot_prop'] = True #& False
+            plot_settings[key_plot]['mock_spot_prop'] = True & False
 
             plot_settings[key_plot]['fit_spot_prop'] = True & False
 
             plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
 
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 10, 'Tcenter' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
-            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
+            plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 20, 'fctrst' : 0.8}
+            plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+0.7, 'ang' : 25}
             # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
             plot_settings[key_plot]['n_image_spots'] = 50
             # plot_settings[key_plot]['n_image_spots'] = 50
@@ -2347,7 +2353,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             
             plot_settings[key_plot]['plot_spot_all_Peq'] = False  
 
-            plot_settings[key_plot]['spot_overlap'] = False  
+            plot_settings[key_plot]['spot_overlap'] = False
 
         if gen_dic['star_name']=='fakeAU_Mic':    
 

@@ -2796,11 +2796,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                                     }
 
     #Derived properties
-    # data_dic['DI']['deriv_prop']=['amp','area','true_ctrst','true_FWHM','true_amp']   #generic
-    # data_dic['DI']['deriv_prop']+=['FWHM_LOR','FWHM_voigt']   #voigt
-    # data_dic['DI']['deriv_prop']+=['cont_amp','RV_lobe','amp_lobe','FWHM_lobe']    #double-gaussian
-    # data_dic['DI']['deriv_prop']+=['vsini']    #custom
-    data_dic['DI']['deriv_prop']=['']
+    deriv_prop=[]
+    # deriv_prop=['amp','area','true_ctrst','true_FWHM','true_amp']   #generic
+    # deriv_prop+=['FWHM_LOR','FWHM_voigt']   #voigt
+    # deriv_prop+=['cont_amp','RV_lobe','amp_lobe','FWHM_lobe']    #double-gaussian
+    # deriv_prop+=['vsini']    #custom
+    for par_loc in deriv_prop:data_dic['DI']['deriv_prop'][par_loc]={}
 
 
     #Calculating/retrieving

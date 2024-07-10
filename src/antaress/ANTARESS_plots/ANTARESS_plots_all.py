@@ -5763,7 +5763,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         params['lat__IS__VS__SP'+spot]     = plot_set_key['custom_spot_prop'][spot]['lat']
                         params['ang__IS__VS__SP'+spot]     = plot_set_key['custom_spot_prop'][spot]['ang']
                         params['Tcenter__IS__VS__SP'+spot] = plot_set_key['custom_spot_prop'][spot]['Tcenter']
-                        params['fctrst__IS__VS__SP'+spot]    = plot_set_key['custom_spot_prop'][spot]['fctrst']
+                        if 'fctrst' in plot_set_key['custom_spot_prop'][spot].keys(): params['fctrst__IS__VS__SP'+spot] = plot_set_key['custom_spot_prop'][spot]['fctrst']
                     
                 #Mock dataset spot properties
                 elif plot_set_key['mock_spot_prop']:
@@ -6031,7 +6031,30 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                         Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_exp)
 
+                #Spot orbit
+                # - Generating array of times at which we want to retrieve the spot center coordinates
+                orbit_t = np.linspace(0,2*np.pi/((1.-star_params['alpha_rot_spots']*spots_prop[list(spots_prop.keys())[0]]['sin_lat_exp_center']**2.-star_params['beta_rot_spots']*spots_prop[list(spots_prop.keys())[0]]['sin_lat_exp_center']**4.)*star_params['om_eq_spots']*3600.*24.),plot_set_key['npts_orbits_sp'])
+                num_spots = len(list(spots_prop.keys()))
+                
+                # - Dictionary in which we will store the spot center coordinates
+                orb_coords = {'x':np.zeros([num_spots, plot_set_key['npts_orbits_sp']], dtype=float),'y':np.zeros([num_spots, plot_set_key['npts_orbits_sp']], dtype=float),'z':np.zeros([num_spots, plot_set_key['npts_orbits_sp']], dtype=float)}
+                
+                for i_t, t in enumerate(orbit_t) :
+                    if len(plot_set_key['custom_spot_prop'])>0:
+                        orb_spots_prop = retrieve_spots_prop_from_param(star_params, params, '_', '_', t) 
+                    else:
+                        orb_spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, t) 
+                    for ispot, spot in enumerate(list(orb_spots_prop.keys())):
+                        orb_coords['x'][ispot, i_t] = orb_spots_prop[spot]['x_sky_exp_center']
+                        orb_coords['y'][ispot, i_t] = orb_spots_prop[spot]['y_sky_exp_center']
+                        orb_coords['z'][ispot, i_t] = orb_spots_prop[spot]['z_sky_exp_center']
 
+                # - Only plotting the spot orbit lines that are in the front hemisphere of the star
+                for ispot in range(num_spots):
+                    pos_x = orb_coords['x'][ispot, :][orb_coords['z'][ispot, :]>0]
+                    pos_y = orb_coords['y'][ispot, :][orb_coords['z'][ispot, :]>0]
+
+                    ax1.plot(pos_x, pos_y, color=plot_set_key['col_orb_sp'],lw=plot_set_key['lw_plot'],alpha=1.)
     
             #------------------------------------------------------------          
             #Color table (from 0 to 1)

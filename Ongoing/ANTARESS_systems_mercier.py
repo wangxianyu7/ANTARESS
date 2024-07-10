@@ -1,274 +1,147 @@
 import numpy as np
+from antaress.ANTARESS_general.constant_data import Rjup,Rearth,AU_1,Rsun,Mearth,Mjup
 
+'''
+Properties of studied planetary systems
+-----------------------------------------------------------------
+Star
+-----------------------------------------------------------------
+    - veq : true equatorial rotational velocity [km/s]
+    - istar : stellar inclination [deg]
+ + angle counted from the LOS toward the stellar spin axis
+ + defined in 0 ; 180
+    - dstar: distance sun-star [pc]
+ + unused
+    - Mstar: stellar mass [Msun]
+ + only used if Kstar is not defined
+    - SystV: systemic velocity [km/s]
+ + unused
+    - Rstar: stellar radius [Rsun]
+ + used to calculate planet orbital RV in star rest frame
+ + used as Req if star's oblateness is accounted for
+    - alpha_rot, beta_rot : differential rotation coefficients 
+ + DR law is defined as omega = omega_eq(1-alpha_rot*ylat^2-beta_rot*ylat^4)
+ + if the star rotates in the same direction at all latitudes, we must ensure alpha_rot+beta_rot<1
+ + defined in percentage of rotation rate
+    - c1, c2 and c3 : coefficients of the mu-dependent CB velocity polynomial [km/s] 
+ + law is RV_CB = c3*mu^3 + c2*mu^2d + c1*mu + c0
+ + c0 is degenerate with higher-order coefficients and defined independently 
+    - mag : magnitude in the band corresponding to the input light curve
+            used only in plot routine to estimate errors on local RVs
+    - f_GD : star's oblateness
+ + defined as (Req-Rpole)/Req
+    - Tpole : stellar temperature at pole [K]
+ + used to account for gravity-darkening
+ + used as effective temperature for stellar atmosphere grid and mask generation
+    - beta_GD : gravity-darkening coefficient 
+    - 'A_R', 'ksi_R', ('A_T', 'ksi_T'): radial–tangential macroturbulence properties
+      'eta_R', ('eta_T'): anisotropic faussian macroturbulence properties 
+ + only used if macroturbulence is activated, for analytical intrinsic profiles
+ + set 'T' parameters equal to 'R' for isotropic macroturbulence
+    - logg : surface gravity of the star in log(cgs)
+    - vmic and vmac: micro and macroturbulence (km/s)
+ + only used for stellar atmosphere grid 
+    
+-----------------------------------------------------------------
+Planets
+-----------------------------------------------------------------
+    - period: Orbital Period [days]
+    - TCenter: Epoch of Transit Center [bjd]
+ + calculated from Tperi if unknown and eccentric orbit
+    - Tperi: Epoch of periastron [bjd]
+    - TLength: Duration of Transit [days]
+ + only used to estimate the range of the phase table in the light curve plot
+    - ecc: Orbital Eccentricity []
+    - omega_deg: argument of Periastron [deg]
+    - inclination: Orbital inclination [deg]    
+ + counted from the LOS to the normal of the orbital plane     
+ + defined in 0 ; 90      
+    - lambda_proj : sky-projected obliquity [deg]
+ + angle counted from the sky-projected stellar spin axis (or rather, from the axis Yperp, which corresponds to the projection of Ystar when istar = istar_in in 0 ; 180) toward the sky-projected normal to the orbital plane
+ + defined in -180 ; 180  
+    - Kstar: Velocity Semi-Amplitude induced by the planet on the star [m/s]
+    - Msini: Mpl*sin(inclination) [Mjup]
+ + unused, except if Kstar is not defined  
+    - aRs: semi-Major Axis [Rs]
+-----------------------------------------------------------------
+Note on degeneracies
+-----------------------------------------------------------------
+    - for more details see the definition of the axis system in ANTARESS_all_routines.py and in Cegla+2016
+    - we distinguish between the values given as input here for ip_in ([0;90]), lambda_in (x+[0;360]), and istar_in ([0;180]) and the true angles that can take any value between 0 and 360
+      note that the angle ranges could be inverted between lambda and istar
+      the reason is that degeneracies prevent distinguishing some of the true angle values, except in specific cases
+    - the true 3D spin-orbit angle is defined as psi = acos(sin(istar)*cos(lamba)*sin(ip) + cos(istar)*cos(ip)) 
+    - with solid body rotation, any istar is equivalent, and there is a degeneracy between
+ 1. (ip,lambda) = (ip_in   , lambda_in)    associated with omega = lambda_in
+ 2. (ip,lambda) = (pi-ip_in,-lambda_in)    associated with omega = -lambda_in
+      both solutions yield the same xperp coordinate
+      omega is the longitude of the ascending node of the planetary orbit (taking the ascending node of the stellar equatorial plane as reference)   
+    - if the absolute value of sin(istar) is known, via the combination of Peq and veq sin(istar), the following configurations are degenerate 
+      the coordinate probed by the velocity field is xperp*sin(istar)
+      the other coordinate probed is |sin(istar)|
+      only combinations of angles that conserve both quantities are allowed below   
+ 1. (ip,lambda,istar) = (ip_in   , lambda_in   , istar_in)          
+         default xperp,yperp,ystar
+         default xperp*sin(istar_in) and |sin(istar_in)|
+         default psi = psi_in    
+    (ip,lambda,istar) = (ip_in   , pi+lambda_in   , -istar_in)  
+         same as 1. rotated around the LOS: yields -xperp,-yperp,ystar,psi_in  
+    (ip,lambda,istar) = (-ip_in   , pi+lambda_in   , pi+istar_in) 
+         same as 1. rotated around the LOS: yields -xperp,-yperp,ystar,pi-psi_in  
+ 2. (ip,lambda,istar) = (pi-ip_in   , -lambda_in   , pi-istar_in) 
+         yields xperp,-yperp, -ystar,psi_in 
+    (ip,lambda,istar) = (pi+ip_in   , -lambda_in   , istar_in) 
+         yields xperp,-yperp, -ystar,pi-psi_in  
+    (ip,lambda,istar) = (pi-ip_in   , pi-lambda_in   , pi+istar_in) 
+         same as 2. rotated around the LOS: yields -xperp,yperp,-ystar,psi_in 
+    (ip,lambda,istar) = (pi+ip_in   , pi-lambda_in   , -istar_in) 
+         same as 2. rotated around the LOS: yields -xperp,yperp,-ystar,pi-psi_in
+ 3. (ip,lambda,istar) = (ip_in   , lambda_in   , pi-istar_in) 
+         yields xperp,yperp, ystar2 = sin(istar_in)*yperp - cos(istar_in)*sin(ip_in), psi2 = acos(sin(istar_in)*cos(lamba_in)*sin(ip_in) - cos(istar_in)*cos(ip_in))    
+    (ip,lambda,istar) = (ip_in   , pi+lambda_in   , pi+istar_in) 
+         same as 3. rotated around the LOS: yields -xperp,-yperp,ystar2,psi2
+    (ip,lambda,istar) = (-ip_in   , pi+lambda_in   , -istar_in) 
+         same as 3. rotated around the LOS: yields -xperp,-yperp,ystar2,pi - psi2
+ 4. (ip,lambda,istar) = (pi-ip_in   , -lambda_in   , istar_in)
+         yields xperp,-yperp,-ystar2,psi2
+    (ip,lambda,istar) = (pi+ip_in   , -lambda_in   , pi-istar_in) 
+         yields xperp,-yperp,-ystar2,pi-psi2
+    (ip,lambda,istar) = (pi-ip_in   , pi-lambda_in   , -istar_in) 
+         same as 4. rotated around the LOS: yields -xperp,yperp,-ystar2,psi2   
+    (ip,lambda,istar) = (pi+ip_in   , pi-lambda_in   , pi+istar_in) 
+         same as 4. rotated around the LOS: yields -xperp,yperp,-ystar2,pi-psi2      
+    - if the absolute stellar latitude is constrained (eg with differential rotation), then there is a degeneracy between two configurations, which yield the same Psi 
+      the coordinate probed by the velocity field is xperp*sin(istar)
+      the other coordinate probed is ystar^2
+      only combinations of angles that conserve both quantities are allowed
+      fewer configurations than in the above case are allowed since |ystar| is more constraining than |sin(istar)|
+ 1. (ip,lambda,istar) = (ip_in   , lambda_in   , istar_in)          
+         conserves xperp*sin(istar) and ystar^2
+         yields psi = psi_in 
+    (ip,lambda,istar) = (ip_in   , pi+lambda_in,-istar_in)          
+         conserves -xperp*sin(-istar) and (ystar)^2
+         yields psi = psi_in 
+         this configuration is the same as 1., rotating the whole system by pi around the LOS (ie, yielding xperp' = -xperp and yperp' = -yperp in the sky-projected frame)
+ 2. (ip,lambda,istar) = (pi-ip_in,-lambda_in   , pi-istar_in)       
+         conserves xperp*sin(istar) and (-ystar)^2
+         yields psi = psi_in
+    (ip,lambda,istar) = (pi-ip_in,pi-lambda_in , pi+istar_in)       
+         conserves -xperp*(-sin(istar)) and (-ystar)^2
+         yields psi = psi_in
+         this configuration is the same as 2., rotating the whole system by pi around the LOS (ie, yielding xperp' = -xperp and yperp' = yperp in the sky-projected frame) 
+ 3. (ip,lambda,istar) = (-ip_in  , lambda_in   , pi-istar_in)       
+         conserves xperp*sin(istar) and (ystar)^2
+         yields psi = pi - psi_in
+    (ip,lambda,istar) = (-ip_in  , pi+lambda_in, pi+istar_in)       
+         conserves -xperp*(-sin(istar)) and (ystar)^2
+         this configuration is the same as 3., rotating the whole system by pi around the LOS (ie, yielding xperp' = -xperp and yperp' = -yperp in the sky-projected frame) 
+         yields psi = pi - psi_in
+    but this configuration is not authorized for a transiting planet (it would yield the transit behind the star)
+    note that if several planets are constrained, only combinations of 1. together, or 2. together, are possible since they must share the same istar    
+
+'''
 def get_system_params():
-    r"""**Planetary system properties.**    
 
-    Returns dictionary with properties of planetary systems. Format with minimum required properties is 
-    
-    >>> all_system_params={
-        'star_name':{
-            'star':{
-                'Rstar': val,
-                'istar': val,
-                'veq':   val 
-                },      
-            'planet_b':{
-                'period':    val,
-                'TCenter':   val,
-                'ecc':       val,     
-                'omega_deg': val,          
-                'Kstar':     val
-            },           
-        },
-    }
-      
-    Additional planets can be associated with a given system. Required and optional properties are defined as follows.
-    
-    **Star properties**
-    
-     - `veq` [km/s] : equatorial rotational velocity 
-     
-     - `istar` [deg] : stellar inclination 
-     
-         + angle counted from the LOS toward the stellar spin axis
-         + defined in [ 0 ; 180 ] deg
-      
-     - `dstar` [pc]: distance Sun-star
-
-     - `Mstar` [Msun] : stellar mass 
-        
-         + only used if `Kstar` is not defined
-         
-     - `Rstar` [Rsun]: stellar radius
-        
-         + used to calculate the planet orbital rv in the star rest frame
-         + used as `Req` if the star's oblateness is accounted for
-         
-      - `alpha_rot`, `beta_rot` [] : differential rotation coefficients 
-     
-          + differential rotation is defined as :math:`\Omega = \Omega_\mathrm{eq} (1-\alpha_\mathrm{rot} y_\mathrm{lat}^2-\beta_\mathrm{rot} y_\mathrm{lat}^4)`
-          + the pipeline checks that :math:`\alpha_\mathrm{rot}+\beta_\mathrm{rot}<1` (assuming that the star rotates in the same direction at all latitudes)
-          + defined in percentage of rotation rate
-         
-      - `ci` [km/s] : coefficients of the :math:`\mu`-dependent convective blueshift velocity polynomial
-    
-          + convective blueshift is defined as :math:`\mathrm{rv}_\mathrm{cb} = \sum_{i}{c_i \mu^i}` 
-          + :math:`c_0` is degenerate with higher-order coefficients and defined independently
-          
-      - `V` [] : stellar magnitude 
-           
-           + assumed to correspond  to the achromatic band of the transit light curve
-           + only used in plots to estimate errors on surface rv
-          
-      - `f_GD` [] : stellar oblateness
-    
-          + defined as :math:`(R_\mathrm{eq}-R_\mathrm{pole})/R_\mathrm{eq}`
-         
-      - `Tpole` [K] : stellar temperature at pole 
-     
-          + used to account for gravity-darkening
-          + used as effective temperature for stellar atmosphere grid and mask generation
-         
-      - `beta_GD` [K] : gravity-darkening coefficient 
-     
-      - `A_R`, `ksi_R`, (`A_T`, `ksi_T`) : radial–tangential macroturbulence properties
-        `eta_R`, (`eta_T`) : anisotropic faussian macroturbulence properties 
-       
-          + only used if macroturbulence is activated, for analytical intrinsic profiles
-          + set `_T` parameters equal to `_R` for isotropic macroturbulence
-         
-      - `logg` [log(cgs)] : surface gravity of the star 
-     
-          + only used for the stellar atmosphere grid    
-         
-      - `vmic` and `vmac` [km/s] : micro and macroturbulence 
-     
-          + only used for the stellar atmosphere grid 
-     
-        
-    **Planet properties**
-
-      - `period` [days] : orbital period 
-     
-      - `TCenter` [bjd] : epoch of transit center 
-     
-          + calculated from `Tperi` if unknown, and orbit is eccentric
-         
-      - `Tperi` [bjd] : epoch of periastron 
-     
-      - `TLength` [days] : duration of transit 
-     
-          + only used to estimate the range of the phase table in the light curve plot
-         
-      - `ecc` [] : orbital eccentricity 
-     
-      - `omega_deg` [deg] : argument of periastron
-     
-      - `inclination` [deg] : orbital inclination
-     
-          + counted from the LOS to the normal of the orbital plane     
-          + defined in [ 0 ; 90 ] deg      
-         
-      - `lambda_proj` [deg] : sky-projected obliquity
-     
-          + angle counted from the sky-projected stellar spin axis (or rather, from the axis :math:`Y_{\star \mathrm{sky}}`, which corresponds to the projection of :math:`Y_{\star}` when :math:`i_{\star} = i_{\star \mathrm{in}}` in [ 0 ; 180 ]) toward the sky-projected normal to the orbital plane
-          + defined in [ -180 ; 180 ] deg        
-         
-      - `Kstar` [m/s] : rv semi-amplitude induced by the planet on the star 
-     
-      - `Msini` [Mjup] : Mpl*sin(inclination) 
-     
-          + only used to calculate `Kstar` if undefined  
-         
-      - `aRs` [Rs] : semi-major axis 
-     
-    
-    Notes
-    -----
-
-      - this is a note about degeneracies on a planetary system orbital architecture.
-        See the definition of the axis systems in Bourrier+2024 (ANTARESS I).
-     
-      - we distinguish between the values given as input here for :math:`i_\mathrm{p,in}` ([0;90]), :math:`\lambda_\mathrm{in}` (x+[0;360]), and :math:`i_{\star \mathrm{in}}` ([0;180]) and the true angles that can take any value between 0 and 360.
-        Note that the angle ranges could be inverted between :math:`\lambda` and :math:`i_{\star}`.
-        The reason is that degeneracies prevent distinguishing some of the true angle values, except in specific cases.
-          
-      - the true 3D spin-orbit angle is defined as :math:`\psi = \arccos(\sin(i_{\star}) \cos(\lambda) \sin(i_p) + \cos(i_{\star}) \cos(i_p))`. 
-     
-      - with solid body rotation, any :math:`i_{\star}` is equivalent, and there is a degeneracy between
-     
-          1. :math:`(i_\mathrm{p},\lambda) = (i_\mathrm{p,in},\lambda_\mathrm{in})` associated with :math:`\omega = \lambda_\mathrm{in}`
-          2. :math:`(i_\mathrm{p},\lambda) = (\pi-i_\mathrm{p,in},-\lambda_\mathrm{in})` associated with :math:`\omega = -\lambda_\mathrm{in}`
-          
-        Both solutions yield the same :math:`x_{\star \mathrm{sky}}` coordinate.
-        :math:`\omega` is the longitude of the ascending node of the planetary orbit (taking the ascending node of the stellar equatorial plane as reference).  
-          
-      - if the absolute value of :math:`\sin(i_{\star})` is known, via the combination of :math:`P_\mathrm{eq}` and :math:`v_\mathrm{eq} \sin(i_{\star})`, then the following configurations are degenerate. 
-        The coordinate probed by the velocity field is :math:`x_{\star \mathrm{sky}} \sin(i_{\star})`.
-        The other coordinate probed is :math:`|\sin(i_{\star})|`.
-        Only combinations of angles that conserve both quantities are allowed.  
-          
-          1. :math:`(i_\mathrm{p},\lambda,i_{\star}) = (i_\mathrm{p,in}   , \lambda_\mathrm{in}   , i_{\star \mathrm{in}})`
-          
-                  default :math:`x_{\star \mathrm{sky}},y_{\star \mathrm{sky}},y_{\star}`.  
-                 
-                  default :math:`x_{\star \mathrm{sky}} \sin(i_{\star \mathrm{in}})` and :math:`|\sin(i_{\star \mathrm{in}})|`.  
-                 
-                  default :math:`\psi = \psi_\mathrm{in}`.     
-                 
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (i_\mathrm{p,in}   , \pi+\lambda_\mathrm{in}   , -i_{\star \mathrm{in}})` 
-            
-                  same as 1. rotated around the LOS: yields :math:`-x_{\star \mathrm{sky}},-y_{\star \mathrm{sky}},y_{\star},\psi_\mathrm{in}`  
-                 
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (-i_\mathrm{p,in}   , \pi+\lambda_\mathrm{in}   , \pi+i_{\star \mathrm{in}})` 
-            
-                  same as 1. rotated around the LOS: yields :math:`-x_{\star \mathrm{sky}},-y_{\star \mathrm{sky}},y_{\star},\pi-\psi_\mathrm{in}` 
-                 
-          2. :math:`(i_\mathrm{p},\lambda,i_{\star}) = (\pi-i_\mathrm{p,in}   , -\lambda_\mathrm{in}   , \pi-i_{\star \mathrm{in}})` 
-         
-                  yields :math:`x_{\star \mathrm{sky}},-y_{\star \mathrm{sky}}, -y_{\star},\psi_\mathrm{in}` 
-                 
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (\pi+i_\mathrm{p,in}   , -\lambda_\mathrm{in}   , i_{\star \mathrm{in}})` 
-            
-                  yields :math:`x_{\star \mathrm{sky}},-y_{\star \mathrm{sky}}, -y_{\star},\pi-\psi_\mathrm{in}`  
-                 
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (\pi-i_\mathrm{p,in}   , \pi-\lambda_\mathrm{in}   , \pi+i_{\star \mathrm{in}})` 
-            
-                  same as 2. rotated around the LOS: yields :math:`-x_{\star \mathrm{sky}},y_{\star \mathrm{sky}},-y_{\star},\psi_\mathrm{in}` 
-                 
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (\pi+i_\mathrm{p,in}   , \pi-\lambda_\mathrm{in}   , -i_{\star \mathrm{in}})` 
-            
-                  same as 2. rotated around the LOS: yields :math:`-x_{\star \mathrm{sky}},y_{\star \mathrm{sky}},-y_{\star},\pi-\psi_\mathrm{in}`
-                 
-          3. :math:`(i_\mathrm{p},\lambda,i_{\star}) = (i_\mathrm{p,in}   , \lambda_\mathrm{in}   , \pi-i_{\star \mathrm{in}})` 
-         
-                  yields :math:`x_{\star \mathrm{sky}},y_{\star \mathrm{sky}}, y_{\star,2} = \sin(i_{\star \mathrm{in}}) y_{\star \mathrm{sky}} - \cos(i_{\star \mathrm{in}}) \sin(i_\mathrm{p,in}), \psi_2 = \arccos(\sin(i_{\star \mathrm{in}}) \cos(\lambda_\mathrm{in}) \sin(i_\mathrm{p,in}) - \cos(i_{\star \mathrm{in}}) \cos(i_\mathrm{p,in}))`,     
-                  where :math:`(y_{\star,2},\psi_2)` are associated with another possible system configuration that cannot be related to :math:`(y_{\star},\psi)`
-            
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (i_\mathrm{p,in}   , \pi+\lambda_\mathrm{in}   , \pi+i_{\star \mathrm{in}})` 
-            
-                  same as 3. rotated around the LOS: yields :math:`-x_{\star \mathrm{sky}},-y_{\star \mathrm{sky}},y_{\star,2},\psi_2`
-            
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (-i_\mathrm{p,in}   , \pi+\lambda_\mathrm{in}   , -i_{\star \mathrm{in}})` 
-            
-                  same as 3. rotated around the LOS: yields :math:`-x_{\star \mathrm{sky}},-y_{\star \mathrm{sky}},y_{\star,2},\pi - \psi_2`
-                 
-          4. :math:`(i_\mathrm{p},\lambda,i_{\star}) = (\pi-i_\mathrm{p,in}   , -\lambda_\mathrm{in}   , i_{\star \mathrm{in}})`
-         
-                  yields :math:`x_{\star \mathrm{sky}},-y_{\star \mathrm{sky}},-y_{\star,2},\psi_2`
-            
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (\pi+i_\mathrm{p,in}   , -\lambda_\mathrm{in}   , \pi-i_{\star \mathrm{in}})` 
-            
-                  yields :math:`x_{\star \mathrm{sky}},-y_{\star \mathrm{sky}},-y_{\star,2},\pi-\psi_2`
-            
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (\pi-i_\mathrm{p,in}   , \pi-\lambda_\mathrm{in}   , -i_{\star \mathrm{in}})` 
-            
-                  same as 4. rotated around the LOS: yields :math:`-x_{\star \mathrm{sky}},y_{\star \mathrm{sky}},-y_{\star,2},\psi_2`   
-            
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (\pi+i_\mathrm{p,in}   , \pi-\lambda_\mathrm{in}   , \pi+i_{\star \mathrm{in}})` 
-            
-                  same as 4. rotated around the LOS: yields :math:`-x_{\star \mathrm{sky}},y_{\star \mathrm{sky}},-y_{\star,2},\pi-\psi_2` 
-             
-      - if the absolute stellar latitude is constrained (eg with differential rotation), then there is a degeneracy between two configurations, which yield the same :math:`\psi`. 
-        The coordinate probed by the velocity field is :math:`x_{\star \mathrm{sky}} \sin(i_{\star})`.
-        The other coordinate probed is :math:`y_{\star}^2`
-        Only combinations of angles that conserve both quantities are allowed.
-        Fewer configurations than in the previous case are allowed since :math:`|y_{\star}|` is more constraining than :math:`|\sin(i_{\star})|`.
-              
-
-          1. :math:`(i_\mathrm{p},\lambda,i_{\star}) = (i_\mathrm{p,in}   , \lambda_\mathrm{in}   , i_{\star \mathrm{in}})`
-         
-                  conserves :math:`x_{\star \mathrm{sky}} \sin(i_{\star})` and :math:`y_{\star}^2`.
-                 
-                  yields :math:`\psi = \psi_\mathrm{in}`. 
-                 
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (i_\mathrm{p,in}   , \pi+\lambda_\mathrm{in},-i_{\star \mathrm{in}})`
-            
-                  conserves :math:`-x_{\star \mathrm{sky}} \sin(-i_{\star})` and :math:`y_{\star}^2`.
-                 
-                  yields :math:`\psi = \psi_\mathrm{in}`. 
-                 
-                  this configuration is the same as 1., rotating the whole system by :math:`\pi` around the LOS (ie, yielding :math:`x_{\star \mathrm{sky}} = -x_{\star \mathrm{sky}}` and :math:`y_{\star \mathrm{sky}} = -y_{\star \mathrm{sky}}` in the sky-projected frame).
-                 
-          2. :math:`(i_\mathrm{p},\lambda,i_{\star}) = (\pi-i_\mathrm{p,in},-\lambda_\mathrm{in}   , \pi-i_{\star \mathrm{in}})` 
-         
-                  conserves :math:`x_{\star \mathrm{sky}} \sin(i_{\star})` and :math:`(-y_{\star})^2`.
-                 
-                  yields :math:`\psi = \psi_\mathrm{in}`
-                 
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (\pi-i_\mathrm{p,in},\pi-\lambda_\mathrm{in} , \pi+i_{\star \mathrm{in}})`   
-            
-                  conserves :math:`-x_{\star \mathrm{sky}} (-\sin(i_{\star}))` and :math:`(-y_{\star})^2`.
-                 
-                  yields :math:`\psi = \psi_\mathrm{in}`.
-                 
-                  this configuration is the same as 2., rotating the whole system by :math:`\pi` around the LOS (ie, yielding :math:`x_{\star \mathrm{sky}} = -x_{\star \mathrm{sky}}` and :math:`y_{\star \mathrm{sky}} = y_{\star \mathrm{sky}}` in the sky-projected frame) 
-                 
-          3. :math:`(i_\mathrm{p},\lambda,i_{\star}) = (-i_\mathrm{p,in}  , \lambda_\mathrm{in}   , \pi-i_{\star \mathrm{in}})`  
-         
-                  conserves :math:`x_{\star \mathrm{sky}} \sin(i_{\star})` and :math:`y_{\star}^2`.
-                 
-                  yields :math:`\psi = \pi - \psi_\mathrm{in}`.
-                 
-            :math:`(i_\mathrm{p},\lambda,i_{\star}) = (-i_\mathrm{p,in}  , \pi+\lambda_\mathrm{in}, \pi+i_{\star \mathrm{in}})`     
-            
-                  conserves :math:`-x_{\star \mathrm{sky}} (-\sin(i_{\star}))` and :math:`y_{\star}^2`.
-                 
-                  this configuration is the same as 3., rotating the whole system by :math:`\pi` around the LOS (ie, yielding :math:`x_{\star \mathrm{sky}} = -x_{\star \mathrm{sky}}` and :math:`y_{\star \mathrm{sky}} = -y_{\star \mathrm{sky}}` in the sky-projected frame).
-                 
-                  yields :math:`\psi = \pi - \psi_\mathrm{in}`.
-                 
-            but this configuration is not authorized for a transiting planet (it would yield the transit behind the star).
-            Note that if several planets are constrained, only combinations of 1. together, or 2. together, are possible since they must share the same :math:`i_{\star}`    
-    
-
-    Args:
-        None
-    
-    Returns:
-        all_system_params (dict) : dictionary with planetary system properties
-    
-    """        
     all_system_params={
     
         'Arda':{
@@ -718,7 +591,7 @@ def get_system_params():
                 'lambda_proj':110,         
                 },
         },
-    }
+    } ##end of systems
 
     return all_system_params
 
