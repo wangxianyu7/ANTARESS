@@ -97,7 +97,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                 if (par in priors_prop) and (priors_prop[par]['mod']=='uf'):
                     if ('ang' in par) and (priors_prop[par]['high']>90):stop('Prior error: Spot angular size cannot exceed 90 deg. Re-define your priors.')
                     elif ('veq' in par) and (priors_prop[par]['low']<0):stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
-                    elif ('Tcenter' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
+                    elif ('Tc_sp' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
                     p_start[par].min = priors_prop[par]['low']
                     p_start[par].max = priors_prop[par]['high']
 
@@ -118,7 +118,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                     fit_dic['uf_bd'][par]=uf_bd
                 if 'ang' in par and fit_dic['uf_bd'][par][1]>90:fit_dic['uf_bd'][par][1]=90
                 elif 'veq' in par and fit_dic['uf_bd'][par][0]<0:fit_dic['uf_bd'][par][0]=0
-                elif ('Tcenter' in par) and ((fit_dic['uf_bd'][par][0] <= p_start[par].value - fixed_args['Peq']) or (fit_dic['uf_bd'][par][1] >= p_start[par].value + fixed_args['Peq'])):fit_dic['uf_bd'][par] = [p_start[par].value - fixed_args['Peq'] + 0.001, p_start[par].value + fixed_args['Peq'] - 0.001]
+                elif ('Tc_sp' in par) and ((fit_dic['uf_bd'][par][0] <= p_start[par].value - fixed_args['Peq']) or (fit_dic['uf_bd'][par][1] >= p_start[par].value + fixed_args['Peq'])):fit_dic['uf_bd'][par] = [p_start[par].value - fixed_args['Peq'] + 0.001, p_start[par].value + fixed_args['Peq'] - 0.001]
                 
                 #Priors
                 if (par in priors_prop):
@@ -129,12 +129,12 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                     if priors_prop[par]['mod']=='uf': 
                         if 'ang' in par and priors_prop[par]['high']>90:stop('Prior error: Spot angular size cannot exceed 90deg. Re-define your priors.')
                         elif 'veq' in par and priors_prop[par]['low']<0:stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
-                        elif ('Tcenter' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
+                        elif ('Tc_sp' in par) and ((priors_prop[par]['low'] <= p_start[par].value - fixed_args['Peq']) or (priors_prop[par]['high'] >= p_start[par].value + fixed_args['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
                 else:
                     if par == 'jitter':varpar_priors=[0.,1e6]
                     elif par == 'veq':varpar_priors=[0.,100.]
                     elif 'ang' in par:varpar_priors=[0.,90.]
-                    elif 'Tcenter' in par:varpar_priors=[p_start[par].value - fixed_args['Peq'] + 0.001, p_start[par].value + fixed_args['Peq'] - 0.001]
+                    elif 'Tc_sp' in par:varpar_priors=[p_start[par].value - fixed_args['Peq'] + 0.001, p_start[par].value + fixed_args['Peq'] - 0.001]
                     else:varpar_priors=[-1e6,1e6]
                     if (not np.isinf(p_start[par].min)):varpar_priors[0]=p_start[par].min
                     if (not np.isinf(p_start[par].max)):varpar_priors[1]=p_start[par].max                
@@ -287,7 +287,7 @@ def model_par_names(par):
         'LD_u1':'LD$_1$','LD_u2':'LD$_2$','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
         'f_GD':'f$_{\rm GD}$','beta_GD':'$\beta_{\rm GD}$','Tpole':'T$_{\rm pole}$',
         'eta_R':r'$\eta_{\rm R}$','eta_T':r'$\eta_{\rm T}$','ksi_R':r'\Ksi$_\mathrm{R}$','ksi_T':r'\Ksi$_\mathrm{T}$',
-        'Tcenter' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'fctrst' : 'F$_{sp}$',
+        'Tc_sp' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'fctrst' : 'F$_{sp}$',
         } 
     if par in name_dic:name_par = name_dic[par]
     else:name_par = par
@@ -332,7 +332,7 @@ def model_par_units(par):
         'LD_u1':'','LD_u2':'','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
         'f_GD':'f$_{\rm GD}$','beta_GD':'$\beta_{\rm GD}$','Tpole':'T$_{\rm pole}$',
         'eta_R':r'$\eta_{\rm R}$','eta_T':r'$\eta_{\rm T}$','ksi_R':r'\Ksi$_\mathrm{R}$','ksi_T':r'\Ksi$_\mathrm{T}$',
-        'Tcenter' : 'BJD',
+        'Tc_sp' : 'BJD',
         } 
     if par in unit_dic:unit_par = unit_dic[par]
     else:unit_par = ''
@@ -395,7 +395,6 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         #    - IntrProf: required for parameter initialization, but set within the fit function to the visit-specific flux
         'flux_cont':1.,     
         
-        
         'inst_list':[],
         'prior_func':fit_prop_dic['prior_func'], 
         'inst_vis_list':{},
@@ -404,11 +403,15 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'transit_sp':{},
         'cond_transit_sp':False,
         'bin_mode':{},
-        'update_crosstime':False,
         'fit' : {'chi2':True,'fixed':False,'mcmc':True}[fit_prop_dic['fit_mode']], 
         'unthreaded_op':fit_prop_dic['unthreaded_op'],     
         }
-   
+ 
+    if len(gen_dic['studied_sp'])>0:    
+        fixed_args.update({
+            'spot_coord_par':gen_dic['spot_coord_par'],        
+        })
+          
     #Checks
     if len(fit_prop_dic['idx_in_fit'])==0:stop('No exposures are included in the fit')
 
@@ -460,7 +463,7 @@ def init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args):
 
     return None
 
-def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic):
+def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic):
     r"""**Joined fits: initialization.**
 
     Initializes properties for the joined fits to stellar and planetary lines.
@@ -481,30 +484,38 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
         data_mode = data_vis_bin['type']      
         n_in_tr = data_vis_bin['n_in_tr']
         n_in_visit = data_vis_bin['n_in_visit']
+        transit_pl = data_vis_bin['transit_pl']
+        transit_sp = data_vis_bin['transit_sp']
+        bin_mode = data_vis_bin['mode']
 
     #Original data
     else:
-        data_vis_bin = None
+        bin_mode = None
         n_in_tr = data_vis['n_in_tr']    
         n_in_visit = data_vis['n_in_visit']
-        data_mode = data_dic[inst][vis]['type']
-        
+        data_mode = data_vis['type']
+        transit_pl = data_vis['transit_pl']
+        transit_sp = data_vis['transit_sp']
+
     #Planets are transiting
-    if len(data_vis['transit_pl'] )>0:
+    if len(transit_pl)>0:
         fixed_args['cond_transit_pl'] = True
         
         #Check for multi-transits
         #    - if two planets are transiting the properties derived from the fits to intrinsic profiles cannot be fitted, as the model only contains a single line profile
         if rout_mode=='IntrProp':
             if len(data_vis['transit_pl'])>1:stop('Multi-planet transit must be modelled with full intrinsic profiles')
-            fixed_args['transit_pl'][inst][vis]=[data_vis['transit_pl'][0]] 
-        else:fixed_args['transit_pl'][inst][vis]=data_vis['transit_pl'] 
+            fixed_args['transit_pl'][inst][vis]=[transit_pl[0]] 
+        else:fixed_args['transit_pl'][inst][vis]=transit_pl
 
     #Spots are visible
-    if len(data_vis['transit_sp'] )>0:
+    #    - spots cannot be processed from multi-visit bins
+    if len(transit_sp)>0:
         fixed_args['cond_transit_sp'] = True    
-        fixed_args['transit_sp'][inst][vis]=data_vis['transit_sp']
-        
+        fixed_args['transit_sp'][inst][vis]=transit_sp
+        if theo_dic['precision'] != 'high':stop('WARNING : spot simulation requires "theo_dic["precision"] = "high"" ')
+    else:fixed_args['transit_sp'][inst][vis] = []
+
     #Fitted exposures
     if rout_mode in ['DIprof', 'ResProf']:n_default_fit = n_in_visit
     else: n_default_fit = n_in_tr
@@ -517,6 +528,8 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
     fixed_args['nexp_fit_all'][inst][vis]=len(fixed_args['idx_in_fit'][inst][vis])     
 
     #Store coordinates of fitted exposures in global table
+    #    - planet-occulted and spotted regions coordinates were calculated with the nominal properties from ANTARESS_systems and theo_dic
+    #    - if relevant, they will be updated during the fitting process
     if fixed_args['bin_mode'][inst][vis]=='_bin':
         sub_idx_in_fit = fixed_args['idx_in_fit'][inst][vis]
         coord_vis = data_vis_bin['coord']
@@ -534,15 +547,13 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_prop_dic,fixed_args,data
     if fixed_args['cond_transit_sp']:
         for spot in fixed_args['transit_sp'][inst][vis]:
             fixed_args['coord_fit'][inst][vis][spot] = {}
-            for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'fctrst']:
-                fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key][sub_idx_in_fit] 
-            for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
-                fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key][:,sub_idx_in_fit] 
+            for key in ['Tc_sp',  'ang_rad', 'lat_rad', 'fctrst']:fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key]
+            for key in fixed_args['spot_coord_par']:fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key][:,sub_idx_in_fit] 
             fixed_args['coord_fit'][inst][vis][spot]['is_visible'] = coord_vis[spot]['is_visible'][:,sub_idx_in_fit] 
         fixed_args['coord_fit'][inst][vis]['bjd']=coord_vis['bjd'][sub_idx_in_fit]
         fixed_args['coord_fit'][inst][vis]['t_dur']=coord_vis['t_dur'][sub_idx_in_fit]
-    
-    return data_vis_bin
+
+    return bin_mode
     
     
 
@@ -657,18 +668,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         if not any(['ctrst_' in prop for prop in mod_prop]):p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None))
     if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode in ['IntrProf','ResProf']):
         if not any(['FWHM_' in prop for prop in mod_prop]):p_start.add_many(('FWHM_ord0__IS__VS_', 5.,   True, 0.,100.  ,None))
-        
-    #Re-defining the spot's Tcenter bounds, guess and priors with the cross-time supplement
-    if fixed_args['update_crosstime']:
-        for inst in list(fixed_args['spot_crosstime_supp'].keys()):
-            for vis in list(fixed_args['spot_crosstime_supp'][inst].keys()):
-                for par in mod_prop:
-                    if ('Tcenter' in par) and (inst in par) and (vis in par):
-                        mod_prop[par]['guess'] -= fixed_args['spot_crosstime_supp'][inst][vis]
-                        mod_prop[par]['bd'] = list(np.array(mod_prop[par]['bd']))-fixed_args['spot_crosstime_supp'][inst][vis]
-                        fit_prop_dic['priors'][par]['low'] -= fixed_args['spot_crosstime_supp'][inst][vis]
-                        fit_prop_dic['priors'][par]['high'] -= fixed_args['spot_crosstime_supp'][inst][vis]
-    
+
     #Retrieving the rotational period - to set the priors on the Tcenter and prevent aliases
     #    - in days
     if 'veq' in mod_prop:fixed_args['Peq'] = (2*np.pi*fixed_args['system_param']['star']['Rstar_km'])/(mod_prop['veq']['guess']*24*3600)
@@ -681,7 +681,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         line_type='ana'                                  #to avoid raising warning, even though properties are not used to calculate a line profile
 
     #Initializing stellar profiles
-    else: line_type = fixed_args['mode']
+    else:
+        fixed_args['grid_dic'] = {'precision':theo_dic['precision']}
+        line_type = fixed_args['mode']
 
     #Parameter initialization
     #    - default system properties are overwritten in p_start if they are defined in 'mod_prop', whether the model is fitted or called in forward mode
@@ -690,16 +692,15 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     #Initializing stellar profile grid
     #    - must be done after 'par_formatting' to identify variable line parameters
     if rout_mode!='IntrProp':  
-        if fixed_args['cond_transit_sp']:     
-            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],data_dic['DI']['spots_prop'],theo_dic,fixed_args['system_param']['star'],p_start)
-        else:
-            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],{},theo_dic,fixed_args['system_param']['star'],p_start)
+        if fixed_args['cond_transit_sp']:spots_prop = data_dic['DI']['system_prop']
+        else:spots_prop={}
+        fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],spots_prop,theo_dic,fixed_args['system_param']['star'],p_start)
 
     #Stellar grid properties
     fixed_args['grid_dic'].update({'Ssub_Sstar_pl':theo_dic['Ssub_Sstar_pl'],'x_st_sky_grid_pl':theo_dic['x_st_sky_grid_pl'],'y_st_sky_grid_pl':theo_dic['y_st_sky_grid_pl'],'nsub_Dpl':theo_dic['nsub_Dpl'],'d_oversamp':theo_dic['d_oversamp'],'Istar_norm_achrom':theo_dic['Istar_norm_achrom']})
     if fixed_args['cond_transit_sp']:
         fixed_args['grid_dic'].update({'Ssub_Sstar_sp':theo_dic['Ssub_Sstar_sp'],'x_st_sky_grid_sp':theo_dic['x_st_sky_grid_sp'],'y_st_sky_grid_sp':theo_dic['y_st_sky_grid_sp'],'nsub_Dspot':theo_dic['nsub_Dspot'],'d_oversamp_spot':theo_dic['d_oversamp_spot']})
-
+    
     #Determine if orbital and light curve properties are fitted or whether nominal values are used
     #    - this depends on whether parameters required to calculate coordinates of planet-occulted regions are fitted  
     #    - in case the model is calculate in forward mode, we activate the condition as well so that the nominal system properties are updated with those defined in 'mod_prop'  
@@ -710,14 +711,15 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         fixed_args['fit_orbit']=False
         fixed_args['fit_RpRs']=False
     if fixed_args['cond_transit_sp']:
-        par_spot=['lat', 'Tcenter', 'ang', 'fctrst']    
+        par_spot=['lat', 'Tc_sp', 'ang', 'fctrst']    
         for par in par_spot:fixed_args[par+'_sp']=[]
         fixed_args['fit_spot']=False
         fixed_args['fit_spot_ang']=[]
     for par in p_start:
-        
-        #Check if rootname of orbital/LC properties is one of the parameters left free to vary for a given planet    
-        #    - if so, store name of planet for this property
+
+        #Check if rootname of orbital/LC or spot properties is one of the parameters left free to vary for a given planet or spot    
+        #    - if so, store name of planet or spot for this property
+        #    - 'fit_X' conditions are activated if model is 'fixed' so that coordinates are re-calculated in case system properties are amongst the properties of the fixed model
         if fixed_args['cond_transit_pl']:
             for par_check in par_orb:
                 if (par_check in par):
@@ -733,9 +735,6 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                     if (p_start[par].vary) or fit_dic['fit_mode']=='fixed':
                         fixed_args[par_check+'_pl'] += [pl_name]
                         fixed_args['fit_RpRs']=True 
-
-        #Check if rootname of spot orbital properties is one of the parameters left free to vary for a given spot    
-        #    - if so, store name of spot for this property 
         if fixed_args['cond_transit_sp']:        
             for par_check in par_spot:
                 if (par_check in par) and ('_SP' in par):
@@ -745,7 +744,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                         fixed_args['fit_spot']=True
                     if ('ang' in par_check) and p_start[par].vary:
                         fixed_args['fit_spot_ang']+=[spot_name]
-            
+                        
     #Unique list of planets with variable properties  
     if fixed_args['cond_transit_pl']:                
         for par in par_orb:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
@@ -755,6 +754,21 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     #Unique list of spots with variable properties
     if fixed_args['cond_transit_sp']:  
         for par in par_spot:fixed_args[par+'_sp'] = list(np.unique(fixed_args[par+'_sp']))
+
+        #Redefining spot's Tcenter bounds, guess and priors with the cross-time supplement
+        if fixed_args['fit_spot']:
+            for inst in fixed_args['transit_sp']:
+                for vis in fixed_args['transit_sp'][inst]:
+                    for spot in fixed_args['transit_sp'][inst][vis]:
+                        par = 'Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot
+                        p_start[par].value -= fixed_args['spot_crosstime_supp'][inst][vis]
+                        p_start[par].min-= fixed_args['spot_crosstime_supp'][inst][vis]
+                        p_start[par].max-= fixed_args['spot_crosstime_supp'][inst][vis]
+                        if (fit_dic['fit_mode']!='fixed'):
+                            fit_dic['uf_bd'][par] -= fixed_args['spot_crosstime_supp'][inst][vis]
+                            if fixed_args['varpar_priors'][par]['mod']!='uf':stop('WARNING: use uniform prior for Tc_sp')                        
+                            fixed_args['varpar_priors'][par]['low'] -= fixed_args['spot_crosstime_supp'][inst][vis]
+                            fixed_args['varpar_priors'][par]['high'] -= fixed_args['spot_crosstime_supp'][inst][vis]
 
     #Store the number of threads - needed when fitting joined differential profiles
     fixed_args['nthreads']=fit_prop_dic['nthreads']
@@ -961,6 +975,21 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
         fixed_args['fit'] = False
         print('       Fixed model')
         p_final = deepcopy(p_start)   
+    
+    ########################################################################################################   
+    #Update of fit properties     
+
+    #Redefining spot's Tcenter bounds, guess and priors with the cross-time supplement
+    if fixed_args['cond_transit_sp'] and fixed_args['fit_spot']:
+        for inst in fixed_args['transit_sp']:
+            for vis in fixed_args['transit_sp'][inst]:
+                for spot in fixed_args['transit_sp'][inst][vis]:
+                    par = 'Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot
+                    if fit_dic['fit_mode'] in ['fixed','chi2']:
+                        p_final[par] += fixed_args['spot_crosstime_supp'][inst][vis]
+                    else:
+                        merged_chain[:,np_where1D(fixed_args['var_par_list']==par)[0]]+= fixed_args['spot_crosstime_supp'][inst][vis]    
+                    fixed_args['spot_crosstime_supp'][inst][vis] = 0.
     
     ########################################################################################################      
 

@@ -309,8 +309,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         fixed_args.update({          
         'fit_spot_ang':data_prop['fit_spot_ang'],
         'fit_spot':data_prop['fit_spot'],
-        'system_spot_prop':data_prop['system_spot_prop'],
-        'update_crosstime':False,    
+        'system_spot_prop':data_prop['system_spot_prop'],    
         'conv2intr' :False,           
             })
         transit_spots=data_vis['transit_sp']
@@ -325,7 +324,8 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         
     else:
         fixed_args.update({          
-        'system_spot_prop':{},          
+        'system_spot_prop':{},
+        'spot_coord_par':gen_dic['spot_coord_par'],          
             })
         plocc_prof_type = data_dic['Intr']['plocc_prof_type']
         if plocc_prof_type=='Intr':fixed_args['conv2intr'] = True

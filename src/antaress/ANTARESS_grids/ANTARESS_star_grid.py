@@ -7,7 +7,7 @@ from ..ANTARESS_general.constant_data import G_usi,Msun
 from ..ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate,frameconv_skystar_to_star
 
 
-def calc_RVrot(x_st_sky,y_st,istar_rad,st_par):
+def calc_RVrot(x_st_sky,y_st,istar_rad,veq,alpha_rot,beta_rot):
     r"""**Stellar rotational rv**
 
     Calculates radial velocity of stellar surface element from rotation (in km/s).     
@@ -48,7 +48,7 @@ def calc_RVrot(x_st_sky,y_st,istar_rad,st_par):
         TBD
     
     """   
-    Vrot = st_par['veq']*(1.-st_par['alpha_rot']*y_st**2.-st_par['beta_rot']*y_st**4.)
+    Vrot = veq*(1.-alpha_rot*y_st**2.-beta_rot*y_st**4.)
     RVrot = x_st_sky*Vrot*np.sin(istar_rad) 
     return RVrot,Vrot
 
@@ -369,6 +369,7 @@ def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params,Ssu
         Itot_star_chrom = np.sum(Isurf_grid_star,axis=0)
         if system_prop['nw']>1:Istar_norm = np.sum(system_prop['dw'][None,:]*Itot_star_chrom)/np.sum(system_prop['dw'])
         else:Istar_norm = np.mean(Itot_star_chrom)
+    
     #Flux values from stellar cells, normalized by total stellar flux
     if region == 'star':Fsurf_grid_star = Isurf_grid_star / Istar_norm                                  #fcell = I*SpSs/Ftot, where Ftot = sum(I*SpSs) = Itot*SpSs                            
     elif region == 'pl':Fsurf_grid_star = Isurf_grid_star*Ssub_Sstar / (Istar_norm*Ssub_Sstar_ref)      #fcell = I_pl*SpSs_pl/Ftot = I_pl*SpSs_pl/(Itot*SpSs)
@@ -468,6 +469,10 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params):
         for key in ['x','y','z']: grid_dic[key+'_st'] = coord_grid[key+'_st'] 
         grid_dic['r_proj'] = np.sqrt(coord_grid['r2_st_sky'])  
  
+    #Velocity grid
+    #    - surface rv properties are stored as grid to allow distingguishing between quiet and spotted cells
+    for key in ['veq','alpha_rot','beta_rot']:grid_dic[key] = star_params[key]    
+ 
     #Spectral grid
     #    - the grid is used to model disk-integrated profile and thus only need to be chromatic if they are not in CCF format
     #    - all tables nonetheless have the same structure in ncell x nband
@@ -510,8 +515,10 @@ def up_model_star(args,param):
     #Update potentially variable stellar properties
     for ideg in range(1,5):
         if ('LD_u'+str(ideg)) in param:args['system_prop']['achrom'].update({'LD_u'+str(ideg):[param['LD_u'+str(ideg)]]}) 
-    args['star_params'].update({'f_GD':param['f_GD'],'RpoleReq':1.-param['f_GD'],'beta_GD':param['beta_GD'],'Tpole':param['Tpole'],
-                                'istar_rad':np.arccos(param['cos_istar']),'om_eq' : param['veq']/args['star_params']['Rstar_km']})
+    for par in ['veq','alpha_rot','beta_rot','veq_spots','alpha_rot_spots','beta_rot_spots','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T']:
+        if par in param:args['star_params'][par] = param[par]
+    args['star_params'].update({'RpoleReq':1.-param['f_GD'],'istar_rad':np.arccos(param['cos_istar']),
+                                'om_eq' : param['veq']/args['star_params']['Rstar_km'],'om_eq_spots' : param['veq_spots']/args['star_params']['Rstar_km']})
 
     #Update stellar grid
     #    - physical sky-projected grid and broadband intensity variations            

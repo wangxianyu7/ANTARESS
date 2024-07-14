@@ -99,7 +99,7 @@ def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
                 #Visit is fitted
                 if fixed_args['bin_mode'][inst][vis] is not None: 
                     data_vis=data_dic[inst][vis]
-                    init_joined_routines_vis_fit('DIProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
+                    init_joined_routines_vis_fit('DIProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic)
     
                     #Binned/original data
                     if fixed_args['bin_mode'][inst][vis]=='_bin':data_load = dataload_npz(gen_dic['save_data_dir']+'/DIbin_prop/'+inst+'_'+vis)
@@ -214,7 +214,7 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
                 #Visit is fitted
                 if fixed_args['bin_mode'][inst][vis] is not None: 
                     data_vis=data_dic[inst][vis]
-                    init_joined_routines_vis_fit('IntrProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
+                    init_joined_routines_vis_fit('IntrProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic)
     
                     #Binned/original data
                     if fixed_args['bin_mode'][inst][vis]=='_bin':data_load = dataload_npz(gen_dic['save_data_dir']+'/Intrbin_prop/'+inst+'_'+vis)
@@ -319,7 +319,7 @@ def joined_IntrProp(param,args):
             
             #Calculate coordinates and properties of occulted regions 
             system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
-            surf_prop_dic,spotocc_prop,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
+            surf_prop_dic,spotocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
 
             #Properties associated with the transiting planet in the visit 
             pl_vis = args['transit_pl'][inst][vis][0]
@@ -458,7 +458,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
             #Visit is fitted
             if fixed_args['bin_mode'][inst][vis] is not None:   
                 data_vis=data_dic[inst][vis]
-                init_joined_routines_vis_fit('IntrProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)   
+                init_joined_routines_vis_fit('IntrProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic)
                 data_com = dataload_npz(data_dic[inst][vis]['proc_com_data_paths'])             
                 
                 #Instrumental convolution
@@ -578,10 +578,28 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 #Number of fitted exposures
                 fixed_args['nexp_fit']+=fixed_args['nexp_fit_all'][inst][vis]
 
-    #Common data type
-    for idx_inst,inst in enumerate(data_dic['instrum_list']):
+    #Spot-crossing time supplement
+    #    - to avoid fitting timing values on the order of 2400000 we use as fitted property Tspot - <Tvisit> and add back <Tvisit> within the model 
+    if fixed_args['cond_transit_sp']:
+        fixed_args['spot_crosstime_supp']={}
+
+    #Final processing
+    for idx_inst,inst in enumerate(fixed_args['inst_list']):
+        
+        #Common data type        
         if idx_inst==0:fixed_args['type'] = data_dic[inst]['type']
         elif fixed_args['type'] != data_dic[inst]['type']:stop('Incompatible data types')
+        
+        #Spots
+        if fixed_args['cond_transit_sp']:
+            fixed_args['spot_crosstime_supp'][inst]={}
+
+        #Visits
+        for vis in fixed_args['inst_vis_list'][inst]:
+            
+            #Defining spot crossing time supplement
+            if fixed_args['cond_transit_sp']:
+                fixed_args['spot_crosstime_supp'][inst][vis]=np.floor(fixed_args['coord_fit'][inst][vis]['bjd'][0])+2400000.
 
     #Artificial observation table
     #    - covariance condition is set to False so that chi2 values calculated here are not further modified within the residual() function
@@ -640,7 +658,8 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     #    - with same structure as fit to individual profiles 
     fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
-                     'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'],'grid_dic':fixed_args['grid_dic'],'var_par_list':fixed_args['var_par_list'], 'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs']})
+                     'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'],'grid_dic':fixed_args['grid_dic'],'var_par_list':fixed_args['var_par_list'], 'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'],
+                     'system_spot_prop':fixed_args['system_spot_prop']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
     if (plot_dic['Intr_prof']!='') or (plot_dic['Intr_prof_res']!='') or (plot_dic['prop_Intr']!='') or (plot_dic['sp_Intr_1D']!=''):
@@ -687,36 +706,14 @@ def FIT_joined_IntrProf(param,x_tab,args=None):
     mod_dic=joined_IntrProf(param,args)[0]
    
     #Merit table
-    #    - because exposures are specific to each visit, defined on different bins, and stored as objects we define the output table as :
-    # chi = concatenate( exp, (obs(exp)-mod(exp))/err(exp)) ) or the equivalent with the covariance matrix
-    #      so that the merit function will compare chi to a table of same size filled with 0 and with errors of 1 in the residual() function (where the condition to use covariance has been set to False for this purpose)
-    #    - observed intrinsic profiles may have gaps, but due to the convolution the model must be calculated over the continuous table and then limited to fitted bins
-    chi = np.zeros(0,dtype=float)
-    if args['use_cov_eff']:
-        for inst in args['inst_list']:
-            for vis in args['inst_vis_list'][inst]:    
-                for iexp in range(args['nexp_fit_all'][inst][vis]):
-                    L_mat = scipy.linalg.cholesky_banded(args['cov'][inst][vis][iexp], lower=True)
-                    res = args['flux'][inst][vis][iexp]-mod_dic[inst][vis][iexp]
-                    cond_fit = args['cond_fit'][inst][vis][iexp]
-                    res[~cond_fit] = 0.  
-                    chi_exp  = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)
-                    chi = np.append( chi, chi_exp[cond_fit] )                     
-
-    else:
-        for inst in args['inst_list']:
-            for vis in args['inst_vis_list'][inst]:    
-                for isub in range(args['nexp_fit_all'][inst][vis]):
-                    cond_fit = args['cond_fit'][inst][vis][isub]
-                    res = args['flux'][inst][vis][isub][cond_fit]-mod_dic[inst][vis][isub][cond_fit]
-                    chi = np.append( chi, res/np.sqrt( args['cov'][inst][vis][isub][0][cond_fit]) )
-         
+    chi = calc_chi_Prof(mod_dic,args)
+    
     return chi
 
 
 
 
-def joined_IntrProf(param,args):
+def joined_IntrProf(param,fixed_args):
     r"""**Model function: joined intrinsic stellar profiles**
 
     Defines the joined model for intrinsic stellar profiles.
@@ -728,6 +725,7 @@ def joined_IntrProf(param,args):
         TBD
     
     """ 
+    args = deepcopy(fixed_args)
     mod_dic = {}
     mod_prop_dic = {}
     coeff_line_dic = {}
@@ -737,6 +735,9 @@ def joined_IntrProf(param,args):
     if (args['mode']=='theo') and (args['var_line']):  
         for sp in args['abund_sp']:args['grid_dic']['sme_grid']['abund'][sp]=param['abund_'+sp]
         gen_theo_intr_prof(args['grid_dic']['sme_grid'])
+       
+    #Updating equatorial period
+    if ('Peq' in args['var_par_list']) or ('Peq' in args['fix_par_list']):param['veq'] = (2*np.pi*args['system_param']['star']['Rstar_km'])/(param['Peq']*24*3600)
        
     #Processing instruments
     for inst in args['inst_list']:
@@ -750,26 +751,11 @@ def joined_IntrProf(param,args):
             args['vis']=vis
 
             #Outputs
-            if not args['fit']:
+            if not args['fit']:outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param)
 
-                #Coefficients describing the polynomial variation of spectral line properties as a function of the chosen coordinate
-                if ('coeff_line' in args):
-                    coeff_line_dic[inst][vis]={}
-                    for par_loc in args['linevar_par'][inst][vis]:    
-                        coeff_line_dic[inst][vis][par_loc] = polycoeff_def(param,args['coeff_ord2name'][inst][vis][par_loc]) 
-                else:coeff_line_dic[inst][vis] = None              
-
-                #Properties of all planet-occulted regions used to calculate spectral line profiles
-                mod_prop_dic[inst][vis]={} 
-                linevar_par_list = ['rv']
-                if (len(args['linevar_par'])>0):linevar_par_list+=args['linevar_par'][inst][vis]
-                for pl_loc in args['transit_pl'][inst][vis]:
-                    mod_prop_dic[inst][vis][pl_loc]={}   
-                    for prop_loc in linevar_par_list:mod_prop_dic[inst][vis][pl_loc][prop_loc] = np.zeros(len(args['idx_in_fit'][inst][vis]))*np.nan  
-                
             #-----------------------------------------------------------
-            #Calculate coordinates of occulted regions or use imported values
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
+            #Retrieve updated coordinates of occulted regions or use imported values
+            system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -783,8 +769,11 @@ def joined_IntrProf(param,args):
                 args_exp = def_st_prof_tab(inst,vis,isub,args)
 
                 #Intrinsic profile for current exposure
-                surf_prop_dic,spotocc_prop,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,[isub])
-                sp_line_model = surf_prop_dic[args['chrom_mode']]['line_prof'][:,0]
+                #    - occulted stellar cells (from planet and spots) are automatically identified within sub_calc_plocc_spot_prop() 
+                #    - see joined_ResProf() for details about spot contribution
+                #    - the planet-occulted profile is calculated over both quiet and spotted cells
+                surf_prop_dic,spotocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
+                sp_line_model = surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] 
 
                 #Conversion and resampling 
                 mod_dic[inst][vis][isub] = conv_st_prof_tab(inst,vis,isub,args,args_exp,sp_line_model,args['FWHM_inst'][inst])
@@ -898,7 +887,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         'FWHM_inst':{},
         'n_pc':{},
         'chrom_mode':data_dic['DI']['system_prop']['chrom_mode'],
-        'conv2intr':True,
+        'conv2intr':False,
         'mac_mode':theo_dic['mac_mode'],
         })
         
@@ -926,10 +915,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['idx_out']={}
     fixed_args['idx_in']={}
     fixed_args['DI_scaling_val']=data_dic['DI']['scaling_val']
-
-    #Spot-crossing time supplement
-    fixed_args['spot_crosstime_supp']={}
-    fixed_args['update_crosstime']=True
 
     #Stellar surface coordinate required to calculate spectral line profiles
     #    - other required properties are automatically added in the sub_calc_plocc_spot_prop() function
@@ -973,7 +958,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         fixed_args['master_out']['scaled_data_paths'][inst]={}
         fixed_args['idx_out'][inst]={}
         fixed_args['idx_in'][inst]={}
-        fixed_args['spot_crosstime_supp'][inst]={}
         
         if (inst not in fixed_args['ref_pl']) and (fixed_args['ref_pl']!={}):fixed_args['ref_pl'][inst]={}
           
@@ -1009,7 +993,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
             if fixed_args['bin_mode'][inst][vis] is not None: 
                 data_vis=data_dic[inst][vis]
 
-                init_joined_routines_vis_fit('ResProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic)
+                init_joined_routines_vis_fit('ResProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic)
                 data_com = dataload_npz(data_dic[inst][vis]['proc_com_data_paths'])  
 
                 #Master-out properties
@@ -1031,9 +1015,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 #Define in and out of transit exposures - needed for profile generation
                 fixed_args['idx_out'][inst][vis]=gen_dic[inst][vis]['idx_out']
                 fixed_args['idx_in'][inst][vis]=gen_dic[inst][vis]['idx_in']
-
-                #Defining spot crossing time supplement
-                fixed_args['spot_crosstime_supp'][inst][vis]=np.floor(fixed_args['coord_fit'][inst][vis]['bjd'][0])+2400000.
 
                 #Defining reference planet if left undefined
                 if fixed_args['ref_pl']=={}:fixed_args['ref_pl']={inst:{vis:data_dic[inst][vis]['transit_pl'][0]}}
@@ -1171,21 +1152,35 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['master_out']['master_out_tab']['dcen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][1::]-fixed_args['master_out']['master_out_tab']['edge_bins'][0:-1]
     fixed_args['master_out']['master_out_tab']['cen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][:-1]+(fixed_args['master_out']['master_out_tab']['dcen_bins']/2)
 
-    #Defining necessary master-out tables
-    for inst in data_dic['instrum_list']:
+    #Spot-crossing time supplement
+    if fixed_args['cond_transit_sp']:
+        fixed_args['spot_crosstime_supp']={}
+
+    #Final processing
+    for idx_inst,inst in enumerate(fixed_args['inst_list']):
+
+        #Common data type   
+        if idx_inst==0:fixed_args['type'] = data_dic[inst]['type']
+        elif fixed_args['type'] != data_dic[inst]['type']:stop('Incompatible data types')
+
+        #Spots
+        if fixed_args['cond_transit_sp']:
+            fixed_args['spot_crosstime_supp'][inst]={}
+        
         #Defining multi-visit master-out and weights
         if len(fixed_args['master_out']['multivisit_list'][inst])>0:
             fixed_args['master_out']['multivisit_flux'][inst]=np.zeros(len(fixed_args['master_out']['master_out_tab']['cen_bins']), dtype=float)
             fixed_args['master_out']['multivisit_weights_total'][inst]=np.zeros(len(fixed_args['master_out']['master_out_tab']['cen_bins']), dtype=float)
         
-        for vis in data_dic[inst]['visit_list']:
-                # Defining flux table
-                fixed_args['master_out']['flux'][inst][vis]=np.zeros([len(fixed_args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
+        #Visits
+        for vis in fixed_args['inst_vis_list'][inst]:
+            
+            #Defining spot crossing time supplement
+            if fixed_args['cond_transit_sp']:
+                fixed_args['spot_crosstime_supp'][inst][vis]=np.floor(fixed_args['coord_fit'][inst][vis]['bjd'][0])+2400000.
 
-    #Common data type
-    for idx_inst,inst in enumerate(data_dic['instrum_list']):
-        if idx_inst==0:fixed_args['type'] = data_dic[inst]['type']
-        elif fixed_args['type'] != data_dic[inst]['type']:stop('Incompatible data types')
+            #Defining flux table
+            fixed_args['master_out']['flux'][inst][vis]=np.zeros([len(fixed_args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
          
     #Artificial observation table
     #    - covariance condition is set to False so that chi2 values calculated here are not further modified within the residual() function
@@ -1319,29 +1314,8 @@ def FIT_joined_ResProf(param,x_tab,args=None):
     mod_dic=joined_ResProf(param,args)[0]
 
     #Merit table
-    #    - because exposures are specific to each visit, defined on different bins, and stored as objects we define the output table as :
-    # chi = concatenate( exp, (obs(exp)-mod(exp))/err(exp)) ) or the equivalent with the covariance matrix
-    #      so that the merit function will compare chi to a table of same size filled with 0 and with errors of 1 in the residual() function (where the condition to use covariance has been set to False for this purpose)
-    #    - observed intrinsic profiles may have gaps, but due to the convolution the model must be calculated over the continuous table and then limited to fitted bins
-    chi = np.zeros(0,dtype=float)
-    if args['use_cov_eff']:
-        for inst in args['inst_list']:
-            for vis in args['inst_vis_list'][inst]:    
-                for iexp in range(args['nexp_fit_all'][inst][vis]):
-                    L_mat = scipy.linalg.cholesky_banded(args['cov'][inst][vis][iexp], lower=True)
-                    res = args['flux'][inst][vis][iexp]-mod_dic[inst][vis][iexp]
-                    cond_fit = args['cond_fit'][inst][vis][iexp]
-                    res[~cond_fit] = 0.  
-                    chi_exp  = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)
-                    chi = np.append( chi, chi_exp[cond_fit] ) 
-    else:
-        for inst in args['inst_list']:
-            for vis in args['inst_vis_list'][inst]:    
-                for isub in range(args['nexp_fit_all'][inst][vis]):
-                    cond_fit = args['cond_fit'][inst][vis][isub]
-                    res = args['flux'][inst][vis][isub][cond_fit]-mod_dic[inst][vis][isub][cond_fit]
-                    chi = np.append( chi, res/np.sqrt( args['cov'][inst][vis][isub][0][cond_fit]) )
-
+    chi = calc_chi_Prof(mod_dic,args)
+    
     return chi
 
 
@@ -1356,10 +1330,41 @@ def joined_ResProf(param,fixed_args):
     
      1. We calculate all DI profiles of the star (fitted exposures + exposures that contributed to the master-out), and we scale 
         them at the same value as after the `Broadband flux Scaling module`.
+        A given out-of-transit profile corresponds to 
 
+        .. math:: 
+           F_\mathrm{DI}(t_\mathrm{out}) &= \sum_{k} dF_\mathrm{quiet}(k) + \sum_{i(t)} dF_\mathrm{quiet}(i(t)) + \sum_{j(t)} dF_\mathrm{spot}(j(t))   \\ 
+
+        Where stellar cells are either quiet or spotted, and `k` indicates cells that are never spotted. 
+        Other cells nature depend on time because the spot and planet are moving. 
+        A given in-transit profile corresponds to 
+
+        .. math::         
+           F_\mathrm{DI}(t_\mathrm{in})  &= \sum_{k} dF_\mathrm{quiet}(k) + \sum_{i(t),nopl} dF_\mathrm{quiet}(i(t)) + \sum_{i(t),pl} dF_\mathrm{quiet}(i(t)) + \sum_{j(t),nopl} dF_\mathrm{spot}(j(t))  + \sum_{j(t),pl} dF_\mathrm{spot}(j(t))   \\       
+                                         &= \sum_{k} dF_\mathrm{quiet}(k) + \sum_{i(t),nopl} dF_\mathrm{quiet}(i(t)) + \sum_{j(t),nopl} dF_\mathrm{spot}(j(t))  \\       
+
+        Where the `pl` cells are occulted by the planet at time `t` and thus null. 
+        
      2. We compute the master out, with same weights as those used in the corresponding module.
-    
-     3. We extract differential profiles as :math:`F_\mathrm{res} = F_\mathrm{out} - F_\mathrm{sc}`   
+        The master out writes (neglecting weights) as 
+
+     .. math:: 
+        F_\mathrm{DI}(out) = \sum_{k} dF_\mathrm{quiet}(k) + <_{t_\mathrm{out}} \sum_{i(t)} dF_\mathrm{quiet}(i(t)) + \sum_{j(t)} dF_\mathrm{spot}(j(t)) >  \\ 
+
+     3. We extract differential profiles as :math:`F_\mathrm{diff} = F_\mathrm{out} - F_\mathrm{sc}`, corresponding to 
+
+        .. math:: 
+           F_\mathrm{diff}(t_\mathrm{out}) &= <_{t_\mathrm{out}} \sum_{i(t)} dF_\mathrm{quiet}(i(t)) + \sum_{j(t)} dF_\mathrm{spot}(j(t)) > - \sum_{i(t)} dF_\mathrm{quiet}(i(t)) + \sum_{j(t)} dF_\mathrm{spot}(j(t))   \\ 
+           F_\mathrm{diff}(t_\mathrm{in})  &=  <_{t_\mathrm{out}} \sum_{i(t)} dF_\mathrm{quiet}(i(t)) + \sum_{j(t)} dF_\mathrm{spot}(j(t)) - \sum_{i(t),nopl} dF_\mathrm{quiet}(i(t)) - \sum_{j(t),nopl} dF_\mathrm{spot}(j(t))> 
+
+        If the spot is fixed, then
+
+        .. math:: 
+           F_\mathrm{diff}(t_\mathrm{out}) &= 0  \\ 
+           F_\mathrm{diff}(t_\mathrm{in})  &=  \sum_{i(t)} dF_\mathrm{quiet}(i(t)) + \sum_{j} dF_\mathrm{spot}(j) - \sum_{i(t),nopl} dF_\mathrm{quiet}(i(t)) - \sum_{j,nopl} dF_\mathrm{spot}(j) 
+                                           &=  \sum_{i(t),pl} dF_\mathrm{quiet}(i(t)) + \sum_{j,pl} dF_\mathrm{spot}(j) 
+
+        In that case in-transit differential profiles can be fitted directly with the `joined_IntrProf` routine, calculating the quiet or spotted profiles of planet-occulted cells.
 
     Args:
         TBD
@@ -1400,25 +1405,10 @@ def joined_ResProf(param,fixed_args):
             contrib_profs=np.zeros([len(args['master_out']['idx_in_master_out'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
 
             #Outputs
-            if not args['fit']:
-
-                #Coefficients describing the polynomial variation of spectral line properties as a function of the chosen coordinate
-                if ('coeff_line' in args):coeff_line_dic[inst][vis] = args['coeff_line']  
-                else:coeff_line_dic[inst][vis] = None              
-
-                #Properties of all planet-occulted and spotted regions used to calculate spectral line profiles
-                mod_prop_dic[inst][vis]={} 
-                linevar_par_list = ['rv']
-                if (len(args['linevar_par'])>0):linevar_par_list+=args['linevar_par'][inst][vis]
-                for pl_loc in args['transit_pl'][inst][vis]:
-                    mod_prop_dic[inst][vis][pl_loc]={}   
-                    for prop_loc in linevar_par_list:mod_prop_dic[inst][vis][pl_loc][prop_loc] = np.zeros(len(args['idx_in_fit'][inst][vis]))*np.nan  
-                for spot in args['transit_sp'][inst][vis]:
-                    mod_prop_dic[inst][vis][spot]={}   
-                    for prop_loc in linevar_par_list:mod_prop_dic[inst][vis][spot][prop_loc] = np.zeros(len(args['idx_in_fit'][inst][vis]))*np.nan  
+            if not args['fit']:outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param) 
 
             #-----------------------------------------------------------
-            #Updating the stellar grid -- necessary since we need to determine the 2D grid of booleans
+            #Updating the stellar grid -- necessary to determine the global 2D quiet star grid
             #on the most up to date version of the stellar grid
             if args['fit'] and args['var_star_grid']:
                 param_up={}
@@ -1428,15 +1418,16 @@ def joined_ResProf(param,fixed_args):
                 up_model_star(args, param_up)
                 args['Fsurf_grid_spec'] = theo_intr2loc(args['grid_dic'],args['system_prop'],args,args['ncen_bins'][inst][vis],args['grid_dic']['nsub_star'])     
 
+            #Retrieve updated coordinates of occulted and spotted regions or use imported values
+            system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
+            
+            #-----------------------------------------------------------
             #Figuring out which cells of the stellar grid are never spotted or planet-occulted
-
+            #-----------------------------------------------------------
+            
             #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
             #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
             args['unquiet_star'] = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-
-            #Retrieve updated coordinates of occulted and spotted regions or use imported values
-            system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
-
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
 
                 #Update the spectral grid of the exposures considered
@@ -1452,14 +1443,8 @@ def joined_ResProf(param,fixed_args):
                 for spot in args['transit_sp'][inst][vis]:
                     if np.sum(coord_pl_sp[spot]['is_visible'][:, isub]):
                         mini_spot_dic = {}
-                        mini_spot_dic['x_sky_exp_start'],mini_spot_dic['x_sky_exp_center'],mini_spot_dic['x_sky_exp_end']=coord_pl_sp[spot]['x_sky_exp'][:, isub]
-                        mini_spot_dic['y_sky_exp_start'],mini_spot_dic['y_sky_exp_center'],mini_spot_dic['y_sky_exp_end']=coord_pl_sp[spot]['y_sky_exp'][:, isub]
-                        mini_spot_dic['ang_rad']=coord_pl_sp[spot]['ang_rad'][isub]
-                        mini_spot_dic['cos_long_exp_start'],mini_spot_dic['cos_long_exp_center'],mini_spot_dic['cos_long_exp_end']=coord_pl_sp[spot]['cos_long_exp'][:, isub]
-                        mini_spot_dic['sin_long_exp_start'],mini_spot_dic['sin_long_exp_center'],mini_spot_dic['sin_long_exp_end']=coord_pl_sp[spot]['sin_long_exp'][:, isub]
-                        mini_spot_dic['cos_lat_exp_start'],mini_spot_dic['cos_lat_exp_center'],mini_spot_dic['cos_lat_exp_end']=coord_pl_sp[spot]['cos_lat_exp'][:, isub]
-                        mini_spot_dic['sin_lat_exp_start'],mini_spot_dic['sin_lat_exp_center'],mini_spot_dic['sin_lat_exp_end']=coord_pl_sp[spot]['sin_lat_exp'][:, isub]
-                        _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic, args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
+                        for par_spot in args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp[spot][par_spot][:, isub]
+                        _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic,coord_pl_sp[spot]['ang_rad'], args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
                         spotted_star_grid |= spot_spotted_star_grid
         
                 #Figure out which cells are planet-occulted
@@ -1477,17 +1462,15 @@ def joined_ResProf(param,fixed_args):
                         plocced_star_grid |= pl_plocced_star_grid
 
                 #Update the global 2D quiet star grid
+                #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots and planets in one of the processed exposure
+                #      contributions from the other cells do not need to be calculated because they are removed when computing differential profiles
                 args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid)
 
             #-----------------------------------------------------------
-            #Variable line model for each exposure 
-            #    - the intrinsic stellar line profile is convolved with the LSF kernel specific to each instrument
-            #    - we assume a flat continuum, set after the PC component so that intrinsic profiles models later on can be defined with a continuum unity
-            #-----------------------------------------------------------
-            mod_dic[inst][vis]=np.zeros(args['nexp_fit_all'][inst][vis],dtype=object)
-
             #Defining the base stellar profile
-            # # Table for model calculation - wavelength table of the exposure considered
+            #-----------------------------------------------------------
+            
+            #Table for model calculation - wavelength table of the exposure considered
             args_DI = def_st_prof_tab(inst,vis,0,args)
 
             #Initializing broadband scaling of intrinsic profiles into local profiles
@@ -1495,16 +1478,20 @@ def joined_ResProf(param,fixed_args):
                 args_DI['Fsurf_grid_spec'] = theo_intr2loc(args_DI['grid_dic'],args_DI['system_prop'],args_DI,args_DI['ncen_bins'],args_DI['grid_dic']['nsub_star']) 
             base_DI_prof = custom_DI_prof(param_val,None,args=args_DI)[0]
 
-            #Making profiles for each exposure
+            #Making profile for each exposure
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
 
                 #Table for model calculation - wavelength table of the exposure considered
-                args_exp = def_st_prof_tab(inst,vis,isub,args)
+                args_exp = deepcopy(def_st_prof_tab(inst,vis,isub,args))
 
                 #Model DI profile for current exposure accounting for deviations from the nominal profile - on the wavelength table of the exposure considered
-                new_args_exp=deepcopy(args_exp)
-                new_args_exp['conv2intr']=False
-                surf_prop_dic,surf_prop_dic_sp,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],new_args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
+                #    - we subtract from the quiet disk-integrated stellar profile:
+                # + the total local profile from regions occulted by all transiting planets, accounting for their overlaps
+                #   occulted cells may be spotted 
+                # + the total deviation profile from spotted regions, which is the difference between the quiet stellar emission and the spotted emission 
+                #   cells occulted by planets do not contribute to this profile 
+                #    - occulted stellar cells (from planet and spots) are automatically identified within sub_calc_plocc_spot_prop() 
+                surf_prop_dic,surf_prop_dic_sp,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
                 sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[args['chrom_mode']]['line_prof'][:,0]
 
                 #Properties of all planet-occulted and spotted regions used to calculate spectral line profiles
@@ -1562,7 +1549,7 @@ def joined_ResProf(param,fixed_args):
                     #Store the contributing profiles to the master-out
                     contrib_profs[master_isub] = resamp_line_model
 
-            # Defined bins in binned spectrum
+            #Defined bins in binned spectrum
             cond_def_binned = np.sum(cond_def_all,axis=0)>0
 
             #Disable weighing in all binned profiles for pixels validating at least one of these conditions:
@@ -1595,8 +1582,17 @@ def joined_ResProf(param,fixed_args):
         #Need to step out of the loops to finish the master-out calculation if multiple visits are combined
         if len(args['master_out']['multivisit_list'][inst])>0:args['master_out']['multivisit_flux'][inst] /= args['master_out']['multivisit_weights_total'][inst]
 
+        #-----------------------------------------------------------
         #Building differential profiles
+        #-----------------------------------------------------------
         for vis in args['inst_vis_list'][inst]:
+            
+            #-----------------------------------------------------------
+            #Variable line model for each exposure 
+            #    - the intrinsic stellar line profile is convolved with the LSF kernel specific to each instrument
+            #    - we assume a flat continuum, set after the PC component so that intrinsic profiles models later on can be defined with a continuum unity
+            #-----------------------------------------------------------
+            mod_dic[inst][vis]=np.zeros(args['nexp_fit_all'][inst][vis],dtype=object)
             for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
                 
                 #Retrieving the master-out flux
@@ -1617,6 +1613,77 @@ def joined_ResProf(param,fixed_args):
     return mod_dic,coeff_line_dic,mod_prop_dic
 
     
+def calc_chi_Prof(mod_dic,args):
+    r"""**Fit function: merit grid**
+
+    Calculates merit table for optimization.
     
+    Because exposures are specific to each visit, defined on different bins, and stored as objects we define the output table as : 
+        
+        chi = concatenate( exp, (obs(exp)-mod(exp))/err(exp)) ) 
+
+    Or the equivalent with the covariance matrix, so that the merit function will compare chi to a table of same size filled with 0 and with errors of 1 
+    in the residual() function (where the condition to use covariance has been set to False for this purpose)
     
+    Observed intrinsic profiles may have gaps, but due to the convolution the model must be calculated over the continuous table and then limited to fitted bins
     
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    """
+
+    chi = np.zeros(0,dtype=float)
+    if args['use_cov_eff']:
+        for inst in args['inst_list']:
+            for vis in args['inst_vis_list'][inst]:    
+                for iexp in range(args['nexp_fit_all'][inst][vis]):
+                    L_mat = scipy.linalg.cholesky_banded(args['cov'][inst][vis][iexp], lower=True)
+                    res = args['flux'][inst][vis][iexp]-mod_dic[inst][vis][iexp]
+                    cond_fit = args['cond_fit'][inst][vis][iexp]
+                    res[~cond_fit] = 0.  
+                    chi_exp  = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)
+                    chi = np.append( chi, chi_exp[cond_fit] )                     
+
+    else:
+        for inst in args['inst_list']:
+            for vis in args['inst_vis_list'][inst]:    
+                for isub in range(args['nexp_fit_all'][inst][vis]):
+                    cond_fit = args['cond_fit'][inst][vis][isub]
+                    res = args['flux'][inst][vis][isub][cond_fit]-mod_dic[inst][vis][isub][cond_fit]
+                    chi = np.append( chi, res/np.sqrt( args['cov'][inst][vis][isub][0][cond_fit]) )
+         
+    return chi    
+    
+def outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param):
+    r"""**Fit function: outputs**
+
+    Defines outputs for profile fit functions
+    
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    """
+    
+    #Coefficients describing the polynomial variation of spectral line properties as a function of the chosen coordinate
+    if ('coeff_line' in args):
+        coeff_line_dic[inst][vis]={}
+        for par_loc in args['linevar_par'][inst][vis]:    
+            coeff_line_dic[inst][vis][par_loc] = polycoeff_def(param,args['coeff_ord2name'][inst][vis][par_loc]) 
+    else:coeff_line_dic[inst][vis] = None              
+    
+    #Properties of all planet-occulted regions used to calculate spectral line profiles
+    mod_prop_dic[inst][vis]={} 
+    linevar_par_list = ['rv']
+    if (len(args['linevar_par'])>0):linevar_par_list+=args['linevar_par'][inst][vis]
+    for pl_loc in args['transit_pl'][inst][vis]:
+        mod_prop_dic[inst][vis][pl_loc]={}   
+        for prop_loc in linevar_par_list:mod_prop_dic[inst][vis][pl_loc][prop_loc] = np.zeros(len(args['idx_in_fit'][inst][vis]))*np.nan  
+    for spot in args['transit_sp'][inst][vis]:
+        mod_prop_dic[inst][vis][spot]={}   
+        for prop_loc in linevar_par_list:mod_prop_dic[inst][vis][spot][prop_loc] = np.zeros(len(args['idx_in_fit'][inst][vis]))*np.nan      
+         
+    return None      

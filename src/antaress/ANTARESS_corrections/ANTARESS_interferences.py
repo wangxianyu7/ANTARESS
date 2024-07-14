@@ -228,8 +228,8 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 
                 #Manual fix for TOI421
                 if vis=='20231106':
-                    print('MANUAL CHANGE')
-                    iexp_guidchange = [35]
+                    print('MANUAL CHANGE at 28')
+                    iexp_guidchange = [28]
                 
                 if len(iexp_guidchange)>0:
                     if len(iexp_guidchange)>1:stop('             Check guide star coordinates')
