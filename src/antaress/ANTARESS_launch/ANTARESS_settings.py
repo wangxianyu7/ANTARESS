@@ -629,11 +629,23 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - structure should follow the same as mock_dic['spots_prop']
     theo_dic['spots_prop']={}
 
-    #%%%%% Discretization         
+    #%%%% Spots
+
+    #%%%%% Nominal properties
+    #    - same as mock_dic['spots_prop']
+    #    - only required for forward simulation of spots, otherwise defined through mock_dic to generate dataset and in each relevant fitting module 
+    theo_dic['spots_prop']={}
+
+
+    #%%%%% Discretization     
+    #    - format is {spot : val}} 
+    # where each simulated spot must be associated with a unique name
     theo_dic['nsub_Dspot']={} 
 
 
-    #%%%%% Exposure oversampling
+    #%%%%% Exposure oversampling     
+    #    - format is {spot : val}} 
+    # where each simulated spot must be associated with a unique name
     theo_dic['n_oversamp_spot']={}  
     
     
@@ -4040,13 +4052,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%% Activating
     #    - for original and binned exposures in each visit
-    gen_dic['diff_data_corr']=False
-    gen_dic['res_loc_data_corr_bin']=False
-    
+    gen_dic['diff_data_corr'] = False        
+    gen_dic['res_loc_data_corr_bin']=False        
+
     
     #%%%% Calculating/retrieving
-    gen_dic['calc_diff_data_corr']=False  
-    gen_dic['calc_res_loc_data_corr_bin']=True  
+    gen_dic['calc_diff_data_corr'] = False        
+    gen_dic['calc_res_loc_data_corr_bin']=False  
     
     
     #%%%% Model definition
@@ -4091,6 +4103,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                                                                             }
                                                                         }
                                                     })
+
     #%%%% Plot settings
     
     #%%%%% 2D maps : "clean", theoretical planet-occulted and spotted profiles
@@ -4111,7 +4124,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     plot_dic['map_Res_prof_clean_sp_res']=''
     plot_dic['map_Res_prof_clean_pl_res']=''
     plot_dic['map_Res_prof_unclean_sp_res']=''
-    plot_dic['map_Res_prof_unclean_pl_res']=''      
+    plot_dic['map_Res_prof_unclean_pl_res']=''   
+        
+        
+        
+        
+        
+        
+        
+        
+        
         
         
         

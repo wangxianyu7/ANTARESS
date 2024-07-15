@@ -1352,9 +1352,9 @@ def occ_region_grid(RregRs, nsub_Dreg , spot = False):
 
     Args:
         RregRs (float) : the radius of the region in the XY plane. 
-                         Because it is normalized by the stellar radius, `RregRs` also corresponds to the (half) angle defining the chord of the region along the stellar surface. 
                          For a planet the projected region keeps a constant radius in the XY plane and its angular aperture increases toward the limbs.
-                         For a spot the angular aperture is fixed and it is the radius of the projection that decreases toward the limb. The input `RregRs` corresponds to the angular aperture and thus defines the largest square enclosing the spot as it would be seen at the center of the star.   
+                         For a spot it is the angular aperture that is fixed and the radius of the projection that decreases toward the limb. 
+                         `RregRs` is then the sine of the (half) angle defining the chord of the spotted region, corresponding to the maximum projected radius of the spot as it would be seen at the center of the star, and defines the largest square enclosing the spot.     
         nsub_Dreg (int) : the number of grid cells desired.
     
     Returns:
