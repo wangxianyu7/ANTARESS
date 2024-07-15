@@ -12,7 +12,7 @@ from dace_query.spectroscopy import Spectroscopy
 from scipy.interpolate import CubicSpline
 from ..ANTARESS_analysis.ANTARESS_model_prof import calc_macro_ker_anigauss,calc_macro_ker_rt 
 from ..ANTARESS_grids.ANTARESS_star_grid import model_star
-from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop,retrieve_spots_prop_from_param
+from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop,retrieve_spots_prop_from_param,calc_plocced_tiles,calc_spotted_tiles
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm
 from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab
@@ -1607,8 +1607,47 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis][pl_loc]['cen_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['st_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['end_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['ecl'][iexp],coord_dic[inst][vis][pl_loc]['rv_pl'][iexp],coord_dic[inst][vis][pl_loc]['v_pl'][iexp],\
                         coord_dic[inst][vis][pl_loc]['st_ph'][iexp],coord_dic[inst][vis][pl_loc]['cen_ph'][iexp],coord_dic[inst][vis][pl_loc]['end_ph'][iexp],coord_dic[inst][vis][pl_loc]['ph_dur'][iexp]=coord_expos(pl_loc,coord_dic,inst,vis,system_param['star'],
                                             system_param[pl_loc],coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic,data_dic['DI']['system_prop']['achrom'][pl_loc][0])                    
-                    #--------------------------------------------------------------------------------------------------
-        
+                #--------------------------------------------------------------------------------------------------
+                
+                #Building unquiet_star grid
+
+                # - Initialization
+                unquiet_star_grid = np.zeros(theo_dic['nsub_star'], dtype=bool)
+
+                for isub_exp,iexp in enumerate(range(n_in_visit)):
+
+                    #Figure out which cells are spotted
+                    spotted_star_grid=np.zeros(theo_dic['nsub_star'], dtype=bool)
+                    for spot in data_inst[vis]['transit_sp']:
+                        if np.sum(coord_dic[inst][vis][spot]['is_visible'][:, isub_exp])>0:
+                            mini_spot_dic = {}
+                            mini_spot_dic['x_sky_exp_start'],mini_spot_dic['x_sky_exp_center'],mini_spot_dic['x_sky_exp_end']=coord_dic[inst][vis][spot]['x_sky_exp'][:, isub_exp]
+                            mini_spot_dic['y_sky_exp_start'],mini_spot_dic['y_sky_exp_center'],mini_spot_dic['y_sky_exp_end']=coord_dic[inst][vis][spot]['y_sky_exp'][:, isub_exp]
+                            mini_spot_dic['ang_rad']=coord_dic[inst][vis][spot]['ang_rad'][isub_exp]
+                            mini_spot_dic['cos_long_exp_start'],mini_spot_dic['cos_long_exp_center'],mini_spot_dic['cos_long_exp_end']=coord_dic[inst][vis][spot]['cos_long_exp'][:, isub_exp]
+                            mini_spot_dic['sin_long_exp_start'],mini_spot_dic['sin_long_exp_center'],mini_spot_dic['sin_long_exp_end']=coord_dic[inst][vis][spot]['sin_long_exp'][:, isub_exp]
+                            mini_spot_dic['cos_lat_exp_start'],mini_spot_dic['cos_lat_exp_center'],mini_spot_dic['cos_lat_exp_end']=coord_dic[inst][vis][spot]['cos_lat_exp'][:, isub_exp]
+                            mini_spot_dic['sin_lat_exp_start'],mini_spot_dic['sin_lat_exp_center'],mini_spot_dic['sin_lat_exp_end']=coord_dic[inst][vis][spot]['sin_lat_exp'][:, isub_exp]
+                            _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic, theo_dic['x_st_sky'], theo_dic['y_st_sky'], theo_dic['z_st_sky'], theo_dic, system_param['star'], use_grid_dic=True)
+                            spotted_star_grid |= spot_spotted_star_grid
+
+                    #Figure out which cells are planet-occulted
+                    plocced_star_grid=np.zeros(theo_dic['nsub_star'], dtype=bool)
+                    for pl_loc in data_inst[vis]['transit_pl']:
+                        if np.abs(coord_dic[inst][vis][pl_loc]['ecl'][isub_exp])!=1:
+                            mini_pl_dic = {}
+                            mini_pl_dic['x_orb_exp']=[coord_dic[inst][vis][pl_loc]['st_pos'][0, isub_exp], coord_dic[inst][vis][pl_loc]['cen_pos'][0, isub_exp], coord_dic[inst][vis][pl_loc]['end_pos'][0, isub_exp]]
+                            mini_pl_dic['y_orb_exp']=[coord_dic[inst][vis][pl_loc]['st_pos'][1, isub_exp], coord_dic[inst][vis][pl_loc]['cen_pos'][1, isub_exp], coord_dic[inst][vis][pl_loc]['end_pos'][1, isub_exp]]
+                            mini_pl_dic['RpRs']=data_dic['DI']['system_prop']['achrom'][pl_loc][0]
+                            mini_pl_dic['lambda']=system_param[pl_loc]['lambda_proj']
+                            pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, theo_dic['x_st_sky'], theo_dic['y_st_sky'])
+                            plocced_star_grid |= pl_plocced_star_grid
+
+                    #Update the global 2D quiet star grid
+                    unquiet_star_grid |= plocced_star_grid#(spotted_star_grid | plocced_star_grid)
+                #--------------------------------------------------------------------------------------------------
+                for isub_exp,iexp in enumerate(range(n_in_visit)):
+
                     #Initialize data at first exposure
                     if isub_exp==0:
  
@@ -1667,7 +1706,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 'inst':inst,
                                 'vis':vis, 
                                 'fit':False,
-                                'unquiet_star':None,
+                                'unquiet_star':unquiet_star_grid,
+                                # 'unquiet_star':None,
                                 })
 
 

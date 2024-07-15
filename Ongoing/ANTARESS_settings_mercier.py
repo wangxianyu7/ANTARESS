@@ -1252,21 +1252,21 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # theo_dic['rv_osamp_line_mod']=0.5 #None  #1.
     # print('ATTENTION rv_osamp_line_mod')
 
-    if gen_dic['star_name']=='AUMic':
-        theo_dic['spots_prop']={
-        'ESPRESSO':{
-                 'visit1':{
+    # if gen_dic['star_name']=='AUMic':
+    #     theo_dic['spots_prop']={
+    #     'ESPRESSO':{
+    #              'visit1':{
 
-                    # For the spot 'spot1' : -- base grid run
-                     'lat__ISESPRESSO_VSvisit1_SPspot1'     : 0,
-                     'Tcenter__ISESPRESSO_VSvisit1_SPspot1' : 2458330.39080-0.8,
-                     'ang__ISESPRESSO_VSvisit1_SPspot1'     : 10,
+    #                 # For the spot 'spot1' : -- base grid run
+    #                  'lat__ISESPRESSO_VSvisit1_SPspot1'     : 0,
+    #                  'Tcenter__ISESPRESSO_VSvisit1_SPspot1' : 2458330.39080-0.8,
+    #                  'ang__ISESPRESSO_VSvisit1_SPspot1'     : 10,
 
-                    #All spots in the a given visit must have the same contrast
-                    'fctrst__ISESPRESSO_VSvisit1_SP'    : 0.35,
-                    },
-                }
-        }
+    #                 #All spots in the a given visit must have the same contrast
+    #                 'fctrst__ISESPRESSO_VSvisit1_SP'    : 0.35,
+    #                 },
+    #             }
+    #     }
     if gen_dic['star_name']=='AUMic':
         theo_dic['spots_prop'] = mock_dic['spots_prop']
 

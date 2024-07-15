@@ -14,7 +14,7 @@ from ctypes import CDLL,c_double,c_int,c_void_p,cast,POINTER
 import os as os_system
 from ..ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
-from ..ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab
+from ..ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab,get_pw10
 
 class CFunctionWrapper:
     r"""**C profile calculation**
@@ -724,11 +724,12 @@ def use_C_coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
         TBD
     
     """ 
+    sc_10 = get_pw10(np.mean(Fsurf_grid_spec))
     Fsurf_grid_spec_shape0 = len(Fsurf_grid_spec)
     ncen_bins = args['ncen_bins']
     gauss_grid = np.zeros((Fsurf_grid_spec_shape0, ncen_bins), dtype=np.float64).flatten()
     c_function_wrapper = args['c_function_wrapper']
-    c_function_wrapper.coadd_loc_gauss_prof(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec * 10,ncen_bins,Fsurf_grid_spec_shape0,gauss_grid)
-    truegauss_grid = gauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins)) / 10
+    c_function_wrapper.coadd_loc_gauss_prof(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec / sc_10,ncen_bins,Fsurf_grid_spec_shape0,gauss_grid)
+    truegauss_grid = gauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins)) * sc_10
     return truegauss_grid
 

@@ -6045,9 +6045,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     else:
                         orb_spots_prop = retrieve_spots_prop_from_param(star_params, params, inst_to_use, vis_to_use, t) 
                     for ispot, spot in enumerate(list(orb_spots_prop.keys())):
-                        orb_coords['x'][ispot, i_t] = orb_spots_prop[spot]['x_sky_exp_center']
-                        orb_coords['y'][ispot, i_t] = orb_spots_prop[spot]['y_sky_exp_center']
-                        orb_coords['z'][ispot, i_t] = orb_spots_prop[spot]['z_sky_exp_center']
+                        for key in ['x', 'y', 'z']:
+                            orb_coords[key][ispot, i_t] = orb_spots_prop[spot][key+'_sky_exp_center']
 
                 # - Only plotting the spot orbit lines that are in the front hemisphere of the star
                 for ispot in range(num_spots):

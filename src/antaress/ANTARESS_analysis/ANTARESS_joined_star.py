@@ -1456,7 +1456,7 @@ def joined_ResProf(param,fixed_args):
                 #Figure out which cells are spotted
                 spotted_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
                 for spot in args['transit_sp'][inst][vis]:
-                    if np.sum(coord_pl_sp[spot]['is_visible'][:, isub]):
+                    if np.sum(coord_pl_sp[spot]['is_visible'][:, isub])>0:
                         mini_spot_dic = {}
                         mini_spot_dic['x_sky_exp_start'],mini_spot_dic['x_sky_exp_center'],mini_spot_dic['x_sky_exp_end']=coord_pl_sp[spot]['x_sky_exp'][:, isub]
                         mini_spot_dic['y_sky_exp_start'],mini_spot_dic['y_sky_exp_center'],mini_spot_dic['y_sky_exp_end']=coord_pl_sp[spot]['y_sky_exp'][:, isub]
