@@ -2185,7 +2185,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             # plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':2454560.806755574+np.array([0.5])/24. }
 
         if gen_dic['star_name']=='AUMic':
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,30)}
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.9,0.2,30)}
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
             plot_settings[key_plot]['t_BJD'] = None
             
@@ -2348,7 +2348,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings[key_plot]['n_image_spots'] = 50
             # plot_settings[key_plot]['n_image_spots'] = 50
             
-            plot_settings[key_plot]['time_range_spot'] = 2458330.39051+np.array([-0.7,0.7])
+            plot_settings[key_plot]['time_range_spot'] = 2458330.39051+np.array([-0.15,0.15])
             # plot_settings[key_plot]['time_range_spot'] = 2458330.39051   + np.array([-2.8, 1.9])
             # plot_settings[key_plot]['time_range_spot'] = 2458330.39051+np.array([-2,2])/24.
             

@@ -300,9 +300,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - spot inclusion is conditioned by this dictionary being filled in
     #    - spots are defined by 4 parameters : 
     # + 'lat' : constant latitude of the spot, in star rest frame (in deg)
-    # + 'Tcenter' : Time (bjd) at which the spot is at longitude 0
+    # + 'Tc_sp' : Time (bjd) at which the spot is at longitude 0
     # + 'ang' : half-angular size (in deg) of the spot
-    # + 'fctrst' : the flux level of the spot surface, relative to the quiet surface of the star.
+    # + 'fctrst' : the flux level of the spot surface, relative to the quiet surface of the star
+    #              0 = no emission, 1 = maximum emission (no contrast with the stellar surface) 
     #    - format: {inst : {vis : {prop : val}}}
     #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']    
     mock_dic['spots_prop'] = {}
@@ -618,7 +619,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Oversampling 
     #    - for all analytical line models in the pipeline
     #    - in km/s (profiles in wavelength space are modelled in RV space and then converted) 
-    #    - can be relevant to fit profiles measured at low resolution
+    #    - can be relevant to fit profiles measured at low resolution and for fast rotators
     #    - set to None for no oversampling
     theo_dic['rv_osamp_line_mod']=None
 
@@ -633,7 +634,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #%%%%% Nominal properties
     #    - same as mock_dic['spots_prop']
-    #    - only required for forward simulation of spots, otherwise defined through mock_dic to generate dataset and in each relevant fitting module 
+    #    - required for the calculation of nominal spot coordinates used throughout the pipeline
     theo_dic['spots_prop']={}
 
 
@@ -2229,13 +2230,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                         
         #                 # Pour le spot 'spot1' : 
         #                 'lat__ISHARPN_VSmock_vis_SPspot1'     : 30,
-        #                 'Tcenter__ISHARPN_VSmock_vis_SPspot1' : 2458877.6306 - 12/24,     # 2458877.213933
+        #                 'Tc_sp__ISHARPN_VSmock_vis_SPspot1' : 2458877.6306 - 12/24,     # 2458877.213933
         #                 'ang__ISHARPN_VSmock_vis_SPspot1'     : 20,
         #                 'flux__ISHARPN_VSmock_vis_SPspot1'    : 0.4,
                         
         #                 # Pour le spot 'spot2' : 
         #                 'lat__ISHARPN_VSmock_vis_SPspot2'     : 40,
-        #                 'Tcenter__ISHARPN_VSmock_vis_SPspot2' : 2458877.6306 + 5/24,
+        #                 'Tc_sp__ISHARPN_VSmock_vis_SPspot2' : 2458877.6306 + 5/24,
         #                 'ang__ISHARPN_VSmock_vis_SPspot2'     : 25,
         #                 'flux__ISHARPN_VSmock_vis_SPspot2'    : 0.4
                         
@@ -2327,6 +2328,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + to calculate model or simulated light curves (or define the bands of input light curves) used to scale chromatically disk-integrated spectra
     # + to calculate chromatic RVs of planet-occulted regions used to align intrinsic spectral profiles (as those RVs are flux-weighted, and thus depend on the chromatic RpRs and LD)    
     #      if CCFs are used, if 'chrom' is not provided, or is provided with a single band, 'achrom' will be used automatically
+    #      the chromatic bands are common to all planets
     #    - the achromatic set of values ('achrom') must always be defined and is used:
     # + to scale input data, unless 'chrom' is used
     # + to define the transit contacts
@@ -2810,6 +2812,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     ##################################################################################################
     #%%% Module: extracting intrinsic profiles
     #    - derived from the local profiles (in-transit), reset to the same broadband flux level, with planetary contamination excluded 
+    #    - if the scaling light curve correctly accounts for spots, then their contribution is propagated in the broadband flux scaling and intrinsic profiles 
+    # from spotted regions occulted by a planet will still be scaled to the common continuum of the series
     ##################################################################################################    
     
     #%%%% Calculating
@@ -3538,7 +3542,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - fitting joined differential profiles from combined (unbinned) instruments and visits 
     #    - structure is similar to the joined intrinsic profiles fit
     #    - fits are performed on all in-transit and out-transit exposures
-    #    - allows including spot properties (latitude, size, Tcenter, flux level) in the fitted properties
+    #    - allows including spot properties (latitude, size, Tc_sp, flux level) in the fitted properties
     ##################################################################################################     
             
     #%%%% Activating 
@@ -3763,18 +3767,24 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     ##################################################################################################       
     #%%% Module: fitting joined intrinsic profiles  
-    # - fitting joined intrinsic stellar profiles from combined (unbinned) instruments and visits 
-    # - use 'idx_in_fit' to choose which visits to fit (can be a single one)
-    # - the contrast and FWHM of the intrinsic stellar lines (before instrumental convolution) are fitted as polynomials of the chosen coordinate
-    #   surface RVs are fitted using the reloaded RM model  
-    #   beware that the disk-integrated and intrinsic stellar profile have the same continuum, but it is not necessarily unity as set in the analytical and theoretical models, whose continuum must thus let free to vary 
-    # - several options need to be controlled from within the function
-    # - use plot_dic['prop_Intr']='' to plot the properties of the derived profiles
-    #   use plot_dic['Intrbin']='' to plot the derived profiles
-    #   use gen_dic['loc_data_corr'] to visualize the derived profiles
-    # - to derive the stellar inclination from Rstar and Peq, use them as model parameters alongside cosistar, instead of veq  
-    #   set priors on Rstar and Peq from the literature and a uniform prior on cosistar (=isotropic distribution), or more complex priors if relevant
-    #   then istar can be directly derived from cosistar in post-processing (alongside veq and vsini), and will have been constrained by the independent priors on Peq, Rstar, and the data through the corresponding vsini
+    #    - fitting joined intrinsic stellar profiles from combined (unbinned) instruments and visits
+    #    - use this module to fit the average stellar line profiles from planet-occulted regions
+    #    - the module can also be used when spot are present, as long as they remain fixed during a given visit (this requires theo_dic['precision'] = 'high'), otherwise use the 'fitting joined differential profiles' module.
+    #      however beware that in this case constraints on the spot come from the planet-occulted, spotted cells with a line profile different from the quiet star. 
+    #      since we assume the same line shape for quiet and spotted cells, the spot is constrained by the brightness-weighted rv of spotted cells within the occulted region itself
+    #      if the planet is small or the star a slow rotator, it is thus not possible to constrain the spot
+    #      if the planet is large and the star is a fast rotator, the spot stills needs to have sufficient contrast or overlaps over a sufficient fraction of the planet-occulted region for the overall line position to differ from the unspotted case 
+    #    - use 'idx_in_fit' to choose which visits to fit (can be a single one)
+    #    - the contrast and FWHM of the intrinsic stellar lines (before instrumental convolution) are fitted as polynomials of the chosen coordinate
+    #      surface RVs are fitted using the reloaded RM model  
+    #      beware that the disk-integrated and intrinsic stellar profile have the same continuum, but it is not necessarily unity as set in the analytical and theoretical models, whose continuum must thus let free to vary 
+    #    - several options need to be controlled from within the function
+    #    - use plot_dic['prop_Intr']='' to plot the properties of the derived profiles
+    #      use plot_dic['Intrbin']='' to plot the derived profiles
+    #      use gen_dic['loc_data_corr'] to visualize the derived profiles
+    #    - to derive the stellar inclination from Rstar and Peq, use them as model parameters alongside cosistar, instead of veq  
+    #      set priors on Rstar and Peq from the literature and a uniform prior on cosistar (=isotropic distribution), or more complex priors if relevant
+    #      then istar can be directly derived from cosistar in post-processing (alongside veq and vsini), and will have been constrained by the independent priors on Peq, Rstar, and the data through the corresponding vsini   
     ##################################################################################################     
             
     #%%%% Activating 

@@ -107,8 +107,9 @@ def custom_DI_prof(param,x,args=None):
     #--------------------------------------------------------------------------------
     #Radial velocities of the stellar surface (km/s)
     #    - an offset is allowed to account for the star/input frame velocity when the model is used on raw data 
+    #    - velocity properties are stored in grid_dic to allow disinguishing between quiet and spotted cells
     #--------------------------------------------------------------------------------
-    rv_surf_star_grid = calc_RVrot(args['grid_dic']['x_st_sky'],args['grid_dic']['y_st'],args['star_params']['istar_rad'],param)[0] + param['rv']
+    rv_surf_star_grid = calc_RVrot(args['grid_dic']['x_st_sky'],args['grid_dic']['y_st'],args['star_params']['istar_rad'],args['grid_dic']['veq'],args['grid_dic']['alpha_rot'],args['grid_dic']['beta_rot'])[0] + param['rv']
     cb_band = calc_CB_RV(get_LD_coeff(args['system_prop']['achrom'],0),args['system_prop']['achrom']['LD'][0],param['c1_CB'], param['c2_CB'], param['c3_CB'],param)
     if np.max(np.abs(cb_band))!=0.:rv_surf_star_grid += np_poly(cb_band)(args['grid_dic']['mu']).flatten()
 
@@ -205,7 +206,7 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop,theo_dic
     #    - this option is not required if only veq is varying 
     #------------------------------------------------------------------------
     stargrid_prop = ['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T']
-    
+
     #Fit mode
     #    - grid will be updated in custom_DI_prof() if one of the properties vary
     if fixed_args['fit']:
@@ -215,14 +216,22 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop,theo_dic
         for par in params:
             if ((par in stargrid_prop) and (params[par] != star_params[par])) or ((par in ['LD_u1','LD_u2','LD_u3','LD_u4']) and (params[par] != system_prop['achrom'][par][0])):fixed_args['var_star_grid']=True    
     
+            #Link spot and quiet properties
+            #    - if one of the quiet properties is modelled but the equivalent spot one is not modelled, the spot value is made to follow the quiet value
+            if par in ['veq','alpha_rot','beta_rot']:
+                if (param_in[par].vary) and (not param_in[par+'_spots'].vary):param_in[par+'_spots'].expr = par
+                elif (params[par] != params[par+'_spots']):print('WARNING: quiet and spot values for '+par+' are different.')
+    
     #Forward mode
     #    - only if properties differ from default ones
     else:
         up_grid = False
         for par in params:
             if ((par in stargrid_prop) and (params[par] != star_params[par])) or ((par in ['LD_u1','LD_u2','LD_u3','LD_u4']) and (params[par] != system_prop['achrom'][par][0])):up_grid = True
+            if par in ['veq','alpha_rot','beta_rot']:
+                if (params[par] != params[par+'_spots']):print('WARNING: quiet and spot values for '+par+' are different.')
         if up_grid:up_model_star(fixed_args,params)
-
+ 
     #------------------------------------------------------------------------
     #Intrinsic line profile grid
     #    - in foward mode: profiles are updated here under condition, and are always used to tile the stellar grid
@@ -695,7 +704,7 @@ def coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
         TBD
     
     """ 
-    #Define necessay grids    
+    #Define necessary grids    
     true_rv_surf_star_grid = np.tile(rv_surf_star_grid, (args['ncen_bins'], 1)).T
     model_table = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']), dtype=float) * args['cen_bins']
     cont_grid = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']))

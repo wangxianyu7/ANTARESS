@@ -10,7 +10,7 @@ from ..ANTARESS_general.utils import np_where1D,npint,stop,closest
 #%% Coordinates
 ################################################################################################## 
 
-def coord_expos(pl_loc,coord_dic,inst,vis,star_params,pl_params,bjd_inst,exp_time,data_dic,RpRs):
+def coord_expos(pl_loc,coord_dic,inst,vis,star_params,pl_params,t_bjd,exp_time,data_dic,RpRs):
     r"""**Exposure coordinates**
 
     Calculates temporal and spatial coordinates of planets at the start, mid, and end of an exposure.
@@ -24,7 +24,7 @@ def coord_expos(pl_loc,coord_dic,inst,vis,star_params,pl_params,bjd_inst,exp_tim
     """ 
     
     #Orbital phase and corresponding times (days) of current exposure relative to transit center  
-    st_phases,phases,end_phases=get_timeorbit(pl_loc,coord_dic[inst][vis],bjd_inst, pl_params, exp_time)[0:3]   
+    st_phases,phases,end_phases=get_timeorbit(pl_loc,coord_dic[inst][vis],t_bjd, pl_params, exp_time)[0:3]   
 
     #Exposure duration in phase
     ph_dur=end_phases-st_phases
@@ -61,6 +61,48 @@ def coord_expos(pl_loc,coord_dic,inst,vis,star_params,pl_params,bjd_inst,exp_tim
         v_pl_all=None
         
     return positions,st_positions,end_positions,eclipse,rv_pl_all,v_pl_all,st_phases,phases,end_phases,ph_dur
+
+
+def coord_expos_spots(spot,t_bjd,spots_prop,star_params,exp_dur,spot_coord_par):
+    r"""**Exposure spot coordinates**
+
+    Calculates temporal and spatial coordinates of spots at the start, mid, and end of an exposure.
+    
+    Args:
+        star_params (dict) : star properties.
+        t_BJD (float) : timestamp of the exposure considered. Needed to calculate the spot longitude.
+        exp_dur (float) : optional, duration of the exposure considered. If left as None, only the spot properties at the center of the exposure will be computed.
+                            Otherwise, the spot properties at the start, center and end of exposure will be computed. 
+    
+    Returns:
+        None
+    
+    """ 
+    spots_prop_exp = {} 
+
+    # Spot longitude - varies over time
+    P_spot = 2*np.pi/((1.-star_params['alpha_rot_spots']*np.sin(spots_prop[spot]['lat_rad'])**2.-star_params['beta_rot_spots']*np.sin(spots_prop[spot]['lat_rad'])**4.)*star_params['om_eq_spots']*3600.*24.)  
+    Tcen_sp = spots_prop[spot]['Tc_sp'] - 2400000.
+    long_rad_center=(t_bjd-Tcen_sp)/P_spot * 2*np.pi
+
+    #Coordinates start, mid, end exposure 
+    istar = np.arccos(spots_prop['cos_istar'])
+    for key in spot_coord_par:spots_prop_exp[key] = np.zeros(3,dtype=float)*np.nan
+    spots_prop_exp['is_visible'] = np.zeros(3,dtype=bool)
+    calc_spot_coord(spots_prop_exp,spots_prop[spot]['ang_rad'],spots_prop[spot]['lat_rad'],long_rad_center,1,istar,star_params)
+    if exp_dur is not None:
+        t_dur_days = exp_dur/(24.*3600.)
+        t_bjd_start = t_bjd - t_dur_days/2
+        t_bjd_end = t_bjd + t_dur_days/2
+        long_rad_start = (t_bjd_start-Tcen_sp)/P_spot * 2*np.pi
+        long_rad_end = (t_bjd_end-Tcen_sp)/P_spot * 2*np.pi
+        calc_spot_coord(spots_prop_exp,spots_prop[spot]['ang_rad'],spots_prop[spot]['lat_rad'],long_rad_start,0,istar,star_params)
+        calc_spot_coord(spots_prop_exp,spots_prop[spot]['ang_rad'],spots_prop[spot]['lat_rad'],long_rad_end,2,istar,star_params)
+  
+    return spots_prop_exp
+
+
+
 
 ##################################################################################################    
 #%%% Spatial and velocity coordinates
@@ -736,7 +778,45 @@ def excl_plrange(cond_def,range_star_in,iexp,edge_bins,data_type):
     return cond_kept,idx_excl_bd_ranges
 
 
+def calc_spot_coord(spots_prop_exp,ang_rad,lat_rad,long_rad,i_pos,istar,star_params):
+    r"""**Spot track**
 
+    Calculates position of spots across the stellar surface, in the aligned star rest frame.
+     
+    Args:
+        TBD
+    
+    Returns:
+        None
+    
+    """     
+
+    # Spot latitude - constant in time
+    clat_rad = np.cos(lat_rad)
+    slat_rad = np.sin(lat_rad)
+
+    # Spot center coordinates in star rest frame
+    #Exposure center
+    x_st = np.sin(long_rad)*clat_rad
+    y_st = slat_rad
+    z_st = np.cos(long_rad)*clat_rad
+
+    #Conversion to sky rest frame
+    x_sky,y_sky,z_sky = frameconv_star_to_skystar(x_st,y_st,z_st,istar)
+
+    # Store properties
+    spots_prop_exp['lat_rad_exp'][i_pos] = lat_rad
+    spots_prop_exp['sin_lat_exp'][i_pos] = slat_rad
+    spots_prop_exp['cos_lat_exp'][i_pos] = clat_rad
+    spots_prop_exp['long_rad_exp'][i_pos] = long_rad    
+    spots_prop_exp['sin_long_exp'][i_pos] = np.sin(long_rad)
+    spots_prop_exp['cos_long_exp'][i_pos] = np.cos(long_rad)
+    spots_prop_exp['x_sky_exp'][i_pos] = x_sky
+    spots_prop_exp['y_sky_exp'][i_pos] = y_sky
+    spots_prop_exp['z_sky_exp'][i_pos] = z_sky
+    spots_prop_exp['is_visible'][i_pos] = is_spot_visible(istar,long_rad, lat_rad,ang_rad, star_params['f_GD'], star_params['RpoleReq'])
+    
+    return None
 
 
 
@@ -744,10 +824,10 @@ def excl_plrange(cond_def,range_star_in,iexp,edge_bins,data_type):
 #%%% Time coordinates
 ################################################################################################## 
   
-def get_timeorbit(pl_loc,coord_vis,bjd_tab, PlParam, exp_time_tab):
+def get_timeorbit(pl_loc,coord_vis,bjd_tab, param, exp_time_tab,conv_ang=False):
     r"""**Exposure time and phase**
 
-    Calculates time and phase coordinates of planets at the start, mid, and end of an exposure.
+    Calculates time and phase coordinates of planets or spots at the start, mid, and end of an exposure.
 
     Args:
         TBD
@@ -759,23 +839,31 @@ def get_timeorbit(pl_loc,coord_vis,bjd_tab, PlParam, exp_time_tab):
     
     #Transit center (days)
     Tcen= coord_vis[pl_loc]['Tcenter'] - 2400000.  
-
+    
     #Orbital phase (between +-0.5) and corresponding times (d)
-    phase_temp=(bjd_tab-Tcen)/PlParam["period"]
+    phase_temp=(bjd_tab-Tcen)/param["period"]
     mid_phase_tab = (phase_temp - npint(phase_temp+np.sign(phase_temp)*0.5))
-    mid_time_tab  = mid_phase_tab*PlParam["period"]
+
+    #Conversion to angle of time
+    if conv_ang:mid_time_tab=mid_phase_tab*2.*np.pi
+    else:mid_time_tab=mid_phase_tab*param["period"]
+
+    #Start/end properties
     if exp_time_tab is not None:
         
         #Half exposure time (days)
         texp_d_tab=exp_time_tab/(2.*24.*3600.)
 
         #Times
-        phase_temp=(bjd_tab-texp_d_tab-Tcen)/PlParam["period"]
+        phase_temp=(bjd_tab-texp_d_tab-Tcen)/param["period"]
         st_phase_tab = (phase_temp - npint(phase_temp+np.sign(phase_temp)*0.5))
-        st_time_tab  = st_phase_tab*PlParam["period"]
-        phase_temp=(bjd_tab+texp_d_tab-Tcen)/PlParam["period"]
+        st_time_tab  = st_phase_tab*param["period"]
+        phase_temp=(bjd_tab+texp_d_tab-Tcen)/param["period"]
         end_phase_tab = (phase_temp - npint(phase_temp+np.sign(phase_temp)*0.5))
-        end_time_tab  = end_phase_tab*PlParam["period"]
+        end_time_tab  = end_phase_tab*param["period"]
+        if conv_ang:
+            st_time_tab*=2.*np.pi
+            end_time_tab*=2.*np.pi
         
     else:st_phase_tab,end_phase_tab,st_time_tab,end_time_tab=None,None,None,None
 
@@ -1031,7 +1119,82 @@ def pl_limb_in_oblate_star(nlimb,RpRs,xp_st_sk,yp_st_sk,star_params):
         nlimb_in_ph[iloc] = np.sum( cond_in_stphot )    
     return nlimb_in_ph
 
+def is_spot_visible(istar, long_rad, lat_rad, ang_rad, f_GD, RpoleReq) :
+    r"""**Spot visibility**
 
+    Performs a rough estimation of the visibility of a spot, based on star inclination (istar), spot coordinates in star rest frame (long, lat) and spot angular size (ang).
+    To do so, we discretize the spot edge and check if at least one point is visible. The visibility criterion is derived as follows. 
+
+    Let :math:`\mathrm{P} = (x_{\mathrm{st}}, y_{\mathrm{st}}, z_{\mathrm{st}})` be a point on the stellar surface, in the star rest frame (i.e. X axis parallel to the star 
+    equator and  Y axis along the stellar spin), that is on the edge of a spot.
+    
+    Expressing P in spherical coordinates gives
+
+    .. math::
+        & x_{\mathrm{st}} = \mathrm{sin}(long) \mathrm{cos}(lat)
+        & y_{\mathrm{st}} = \mathrm{sin}(lat)
+        & z_{\mathrm{st}} = \mathrm{cos}(long) \mathrm{cos}(lat)
+    
+    Moving P to the 'inclined' star rest frame gives 
+
+    .. math::
+        & x_{\mathrm{sky}} = x_{\mathrm{st}}
+        & y_{\mathrm{sky}} = \mathrm{sin}(i_*) y_{\mathrm{st}} - \mathrm{cos}(i_*) z_{\mathrm{st}}
+        & z_{\mathrm{sky}} = \mathrm{cos}(i_*) y_{\mathrm{st}} + \mathrm{sin}(i_*) z_{\mathrm{st}}
+    
+    The condition for P to be visible is then :math:`z_{\mathrm{sky}} > 0` or 
+    
+    .. math::
+        & \mathrm{cos}(i_*) \mathrm{sin}(lat) + \mathrm{sin}(i_*) \mathrm{cos}(long) \mathrm{cos}(lat) > 0
+
+    WIP : Doing this with gravity darkening
+
+    Args:
+        istar (float) : stellar inclination (in radians)
+        long_rad (float) : spot longitude (in radians)
+        lat_rad (float) : spot latitude (in radians)
+        ang_rad (float) : spot half-angular size (in radians)
+        f_GD (float) : oblateness coefficient.
+        RpoleReq (float) : pole to equatoral radius ratio.
+     
+    Returns:
+        spot_visible (bool) : spot visibility criterion.
+        
+    """ 
+    spot_visible = False
+    
+    for arg in np.linspace(0,2*np.pi, 20) :
+        
+        #Define the edges of the spots
+        long_edge = long_rad + ang_rad * np.sin(arg)
+        lat_edge  = lat_rad  + ang_rad * np.cos(arg)
+
+        #Define the corresponding x, y, and z coordinates of the edges of the spots in the un-inclined star rest frame
+        x_st_edge = np.sin(long_edge)*np.cos(lat_edge)
+        y_st_edge = np.sin(lat_edge)
+        z_st_edge = np.cos(long_edge)*np.cos(lat_edge)
+
+        #Move the x, y, and z coordinates of the spot edges into the inclined star rest frame 
+        x_sky_edge, y_sky_edge, z_sky_edge = frameconv_star_to_skystar(x_st_edge, y_st_edge, z_st_edge, istar)
+
+        ##### WIP #####
+        #Checking the value of the z coordinate for each edge point to see if the point is visible
+        if f_GD>0:
+            #We take the modulo in case the spot is plotted over a very long time.
+            long_edge_deg = (long_edge * 180/np.pi)%360
+            #Checking if the spot is in the front - rough estimate that doesn't account for the star inclination or spot latitude
+            additive = 90 - (istar * 180/np.pi)
+            first_criterion = (-90-additive <= long_edge_deg and long_edge_deg <= 90+additive) or (270-additive <= long_edge_deg and long_edge_deg <=360) or (-360 <= long_edge_deg and long_edge_deg <= -270+additive)
+            #Now that we known the spot is in front, combine with the condition "is in stellar photosphere"
+            criteria = calc_zLOS_oblate(np.array([x_sky_edge]),np.array([y_sky_edge/(1-f_GD)]),istar, RpoleReq)[2]
+            criterion = first_criterion and criteria
+        #####    #####
+        else:
+            criterion = (z_sky_edge > 0)
+        
+        spot_visible |= criterion
+
+    return spot_visible
 
 
 

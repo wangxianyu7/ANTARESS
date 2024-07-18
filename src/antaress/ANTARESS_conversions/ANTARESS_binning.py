@@ -6,7 +6,7 @@ from copy import deepcopy
 import glob
 from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,default_func,check_data
 from ..ANTARESS_general.constant_data import c_light
-from ..ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase
+from ..ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase,coord_expos_spots
 from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_spot_prop,retrieve_spots_prop_from_param
 
 def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,spot_dic={},masterDIweigh=False):
@@ -161,7 +161,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         #Store flags
         #    - 'FromAligned' set to True if binned profiles were aligned before
         #    - 'in_inbin' set to True if binned profiles include at least one in-transit profile
-        data_glob_new={'FromAligned':gen_dic['align_'+data_type_gen],'in_inbin' : False}
+        data_glob_new={'FromAligned':gen_dic['align_'+data_type_gen],'in_inbin' : False,'transit_pl':data_dic[inst][vis_save]['transit_pl'],'mode':mode}
 
         #Retrieving data that will be used in the binning
         #    - original data is associated with its original index, so that it can be retrieved easily by the binning routine
@@ -435,33 +435,25 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             if (inst in spot_dic):
                 if mode=='multivis':
                     print('WARNING: spots properties are not propagated for multiple visits.')
+                    data_glob_new['transit_sp'] = []
                 elif vis_in in spot_dic[inst]:
+                    data_glob_new['transit_sp'] = data_dic[inst][vis_in]['transit_sp']
 
                     #Trigger spot use
                     params['use_spots']=True
 
-                    #Initialize entries for spot coordinates 
+                    #Retrieve spot coordinates/properties for new exposures
+                    spots_prop = retrieve_spots_prop_from_param(spot_dic[inst][vis_in],inst,vis_in)
+                    spots_prop['cos_istar']=system_param['star']['cos_istar']
                     for spot in data_dic[inst][vis_in]['transit_sp']:
                         data_glob_new['coord'][spot]={}
-                        for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:data_glob_new['coord'][spot][key] = np.zeros(n_bin,dtype=float)*np.nan
-                        for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:data_glob_new['coord'][spot][key] = np.zeros([3,n_bin],dtype=float)*np.nan
+                        for key in gen_dic['spot_coord_par']:data_glob_new['coord'][spot][key] = np.zeros([3,n_bin],dtype=float)*np.nan
                         data_glob_new['coord'][spot]['is_visible'] = np.zeros([3,n_bin],dtype=float)
-
-                    #Retrieve spot coordinates/properties for new exposures
-                    spot_dic[inst][vis_in]['cos_istar']=system_param['star']['cos_istar']
-
+                        for key in ['Tc_sp',  'ang_rad', 'lat_rad', 'fctrst']:data_glob_new['coord'][spot][key] = spots_prop[spot][key]
                     for i_new in range(n_bin):
-                        spots_prop = retrieve_spots_prop_from_param(system_param['star'],spot_dic[inst][vis_in],inst,vis_in,data_glob_new['coord']['bjd'][i_new],exp_dur=data_glob_new['coord']['t_dur'][i_new])
                         for spot in data_dic[inst][vis_in]['transit_sp']:
-                            for key in ['Tcenter', 'ang', 'ang_rad', 'lat', 'ctrst']:
-                                data_glob_new['coord'][spot][key][i_new] = spots_prop[spot][key]
-
-                            for key in ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']:
-                                data_glob_new['coord'][spot][key][:, i_new] = [spots_prop[spot][key+'_start'],spots_prop[spot][key+'_center'],spots_prop[spot][key+'_end']]
-
-                            data_glob_new['coord'][spot]['is_visible'][:, i_new]=[spots_prop[spot]['is_start_visible'],spots_prop[spot]['is_center_visible'],spots_prop[spot]['is_end_visible']]
-
-                    spot_dic[inst][vis_in].pop('cos_istar')
+                            spots_prop_exp = coord_expos_spots(spot,data_glob_new['coord']['bjd'][i_new],spots_prop,system_param['star'],data_glob_new['coord']['t_dur'][i_new],gen_dic['spot_coord_par'])                           
+                            for key in spots_prop_exp:data_glob_new['coord'][spot][key][:, i_new] = [spots_prop_exp[key][0],spots_prop_exp[key][1],spots_prop_exp[key][2]]                              
                                         
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
