@@ -1536,7 +1536,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
-        plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'mock_vis':[-0.02843,0.02788]}} 
+        # plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'mock_vis':[-0.02488,0.02322]}} 
 
     ################################################################################################################  
     #%%%% Best-fit profiles 
@@ -2342,9 +2342,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
 
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 20, 'fctrst' : 0.8}
-            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+0.7, 'ang' : 25}
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 20, 'fctrst' : 0.8}
+            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -20, 'Tc_sp' : 2458330.39051+0.7, 'ang' : 25}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
             plot_settings[key_plot]['n_image_spots'] = 50
             # plot_settings[key_plot]['n_image_spots'] = 50
             
@@ -2368,9 +2368,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             plot_settings[key_plot]['fit_results_file'] = ''
 
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 10, 'Tcenter' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
-            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 10, 'Tc_sp' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
+            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -20, 'Tc_sp' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
             plot_settings[key_plot]['n_image_spots'] = 50
             # plot_settings[key_plot]['n_image_spots'] = 50
             
@@ -2387,7 +2387,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             plot_settings[key_plot]['mock_spot_prop'] = True #& False
             
-            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'ctrst' : 0.6}   
+            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' : -40, 'Tc_sp' : 2458877.6306  + 5/24, 'ang' : 7, 'ctrst' : 0.6}   
             plot_settings[key_plot]['n_image_spots'] = 40
             
             plot_settings[key_plot]['time_range_spot'] = 2457067.0488+np.array([-0.2, 0.2])

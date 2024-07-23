@@ -864,21 +864,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                 fit_dic['nsteps'] = 0
                 fit_dic['nburn'] = 0
                 for mcmc_path,nburn in zip(fit_prop_dic['mcmc_reuse']['paths'],fit_prop_dic['mcmc_reuse']['nburn']):
-                     walker_chains_loc=np.load(mcmc_path)['walker_chains'][:,nburn::,:] 
-                     fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
-                     walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
-
-            #Update crossing times one last time
-            if fixed_args['update_crosstime']:
-                for inst in list(fixed_args['spot_crosstime_supp'].keys()):
-                    for vis in list(fixed_args['spot_crosstime_supp'][inst].keys()):
-                        for ipar, par in enumerate(fixed_args['var_par_list']):
-                            if ('Tcenter' in par) and (inst in par) and (vis in par):
-                                walker_chains[:,:,ipar] += fixed_args['spot_crosstime_supp'][inst][vis]
-                        for par in fixed_args['fixed_par_val']:
-                            if ('Tcenter' in par) and (inst in par) and (vis in par):
-                                fixed_args['fixed_par_val'][par] += fixed_args['spot_crosstime_supp'][inst][vis]
-                fixed_args['update_crosstime'] = False
+                    walker_chains_loc=np.load(mcmc_path)['walker_chains'][:,nburn::,:] 
+                    fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
+                    walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
 
         #Excluding parts of the chains
         if fit_dic['exclu_walk']:
@@ -1003,17 +991,15 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
     #Update of fit properties     
 
     #Redefining spot's Tcenter bounds, guess and priors with the cross-time supplement
-    if fixed_args['cond_transit_sp'] and fixed_args['fit_spot'] and (fit_prop_dic['mcmc_run_mode']!='reuse'):
+    if fixed_args['cond_transit_sp'] and fixed_args['fit_spot']:
         for inst in fixed_args['transit_sp']:
-            for vis in fixed_args['transit_sp'][inst]:
+            for vis in fixed_args['transit_sp'][inst]: 
                 for spot in fixed_args['transit_sp'][inst][vis]:
                     par = 'Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot
-                    if fit_dic['fit_mode'] in ['fixed','chi2']:
-                        p_final[par] += fixed_args['spot_crosstime_supp'][inst][vis]
-                    else:
-                        merged_chain[:,np_where1D(fixed_args['var_par_list']==par)[0]]+= fixed_args['spot_crosstime_supp'][inst][vis]    
+                    p_final[par] += fixed_args['spot_crosstime_supp'][inst][vis]
+                    if fit_dic['fit_mode']=='mcmc':merged_chain[:,np_where1D(fixed_args['var_par_list']==par)]+= fixed_args['spot_crosstime_supp'][inst][vis]    
                     fixed_args['spot_crosstime_supp'][inst][vis] = 0.
-    
+
     ########################################################################################################      
 
     #Merit values     

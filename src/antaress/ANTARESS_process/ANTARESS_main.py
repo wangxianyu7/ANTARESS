@@ -1708,8 +1708,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 'inst':inst,
                                 'vis':vis, 
                                 'fit':False,
-                                # 'unquiet_star':unquiet_star_grid,
-                                'unquiet_star':None,
+                                'unquiet_star':unquiet_star_grid,
+                                # 'unquiet_star':None,
                                 'spot_coord_par':gen_dic['spot_coord_par'],
                                 'rout_mode':'Intr_prop',
                                 })

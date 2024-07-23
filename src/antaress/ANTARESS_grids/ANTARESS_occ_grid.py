@@ -1629,7 +1629,7 @@ def calc_spotted_region_prop(line_occ_HP_band,cond_occ,spot_prop,iband,system_pr
         iband (int) : index of the band used to retrieve the corresponding planet and spot limb-darkening properties.
         system_prop (dict) : quiet star limb-darkening properties.
         system_spot_prop (dict) : spot limb-darkening properties.
-        star_params (dict) : star properties.
+        par_star (dict) : star properties.
         sp_proc_band (list) : spots previously processed. Used to account for the overlap of spots.
         spot_consid (str) : name of the spot being processed.
         Ssub_Sstar_sp (float): surface of grid cells in the spot-occulted region grid.
