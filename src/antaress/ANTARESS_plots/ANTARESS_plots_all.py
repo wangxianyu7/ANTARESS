@@ -25,7 +25,7 @@ from ..ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_
 from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof_gen
 from ..ANTARESS_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
 from ..ANTARESS_grids.ANTARESS_coord import calc_pl_coord_plots,calc_pl_coord,calc_rv_star_HR,frameconv_skyorb_to_skystar,frameconv_skystar_to_skyorb,get_timeorbit,\
-    calc_zLOS_oblate,frameconv_star_to_skystar,calc_tr_contacts,coord_expos_spots
+    calc_zLOS_oblate,frameconv_star_to_skystar,calc_tr_contacts,coord_expos_spots,frameconv_skystar_to_star
 from ..ANTARESS_corrections.ANTARESS_calib import cal_piecewise_func
 from ..ANTARESS_grids.ANTARESS_star_grid import get_LD_coeff,calc_CB_RV,calc_RVrot,calc_Isurf_grid,calc_st_sky
 from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,retrieve_spots_prop_from_param, calc_spotted_tiles
@@ -5755,6 +5755,15 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #-------------------------------------------------------
             if plot_spots:
 
+                #Initialize spot grid
+                for key in ['x', 'y']:coord_grid[key+'_st_sky_sp']={}
+                coord_grid['d_spcell']={}
+                coord_grid['spots_prop_exp']={}
+
+                #Initialize boolean grid to identify which cells within the stellar grid are spotted
+                # - Used in the updating of the stellar surface RV for spotted cells
+                general_spotted_tiles = np.zeros(len(coord_grid['x_st_sky']), dtype=bool)
+
                 #Custom spot properties
                 if len(plot_set_key['custom_spot_prop'])>0:
                     if idx_pl==0: print('   + With custom spot properties')
@@ -5795,67 +5804,82 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 if 'veq_spots' in star_params:star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
                 else:star_params['om_eq_spots']=star_params['om_eq']
 
-                #Calculate the flux of star grid, at all the exposures considered
-                star_flux_before_spot = deepcopy(Fsurf_grid_star[:,iband])
+                #Retrieving spot properties
+                if len(plot_set_key['custom_spot_prop'])>0:spots_prop = retrieve_spots_prop_from_param(params, '_', '_') 
+                else:spots_prop = retrieve_spots_prop_from_param(params, inst_to_use, vis_to_use) 
+                spots_prop['cos_istar'] = params['cos_istar']
+                
+                #Define a reference spot for later
+                ref_spot = spots_prop['spots'][0]
+
+                #Build spot grids
+                for spot in spots_prop['spots']:
+                    coord_grid['d_spcell'][spot],_,coord_grid['x_st_sky_sp'][spot], coord_grid['y_st_sky_sp'][spot],_ = occ_region_grid(np.sin(spots_prop[spot]['ang_rad']), plot_set_key['n_spcell'],spot=True)
 
                 #Check if we have provided times for the plotting
-                if plot_set_key['t_BJD'] is not None:
-                    t_all_spot = [plot_t]
+                if plot_set_key['t_BJD'] is not None:t_exp = plot_t
 
-                #If no times provided for the plotting, then generate some
+                #If no times provided for the plotting, then put spot at a given location
                 else:
-                    
-                    # Compute BJD of images 
-                    if plot_set_key['plot_spot_all_Peq'] :
-                        
-                        #Getting reference spot and latitude
-                        for par in params:
-                            if 'lat' in par:
-                                ref_lat = params[par]
-                                break
-                        sin_lat = np.sin(ref_lat) 
-                        t_all_spot = np.linspace(0,2*np.pi/((1.-star_params['alpha_rot_spots']*sin_lat**2.-star_params['beta_rot_spots']*sin_lat**4.)*star_params['om_eq_spots']*3600.*24.),plot_set_key['n_image_spots'])
-                    else:
-                        dbjd =  (plot_set_key['time_range_spot'][1]-plot_set_key['time_range_spot'][0])/plot_set_key['n_image_spots']
-                        n_in_visit = int((plot_set_key['time_range_spot'][1]-plot_set_key['time_range_spot'][0])/dbjd)
-                        bjd_exp_low = plot_set_key['time_range_spot'][0] + dbjd*np.arange(n_in_visit)
-                        bjd_exp_high = bjd_exp_low+dbjd      
-                        t_all_spot = 0.5*(bjd_exp_low+bjd_exp_high) - 2400000.
+                    t_ref = spots_prop[ref_spot]['Tc_sp']
+                    P_sp = 2*np.pi/((1.-star_params['alpha_rot_spots']*np.sin(spots_prop[ref_spot]['lat_rad'])**2.-star_params['beta_rot_spots']*np.sin(spots_prop[ref_spot]['lat_rad'])**4.)*star_params['om_eq_spots']*3600.*24.)
+                    t_exp = t_ref + P_sp/10 - 2400000.
+                                    
+                #Defining a reference spot contrast - since all spots share the same contrast
+                ref_fctrst = spots_prop[ref_spot]['fctrst']
 
-                #Processing spotted exposures
-                for t_exp in t_all_spot :
-                    
-                    #Accounting for spot overlap
-                    shared_spotted_tiles = np.zeros(len(coord_grid['x_st_sky']), dtype=bool)
-                    
-                    #Defining a new flux array, such that we don't see the previous spot when plotting the next spot
-                    Flux_for_nonredundant_spot_plotting = deepcopy(Fsurf_grid_star[:,iband])     
-                    if len(plot_set_key['custom_spot_prop'])>0:spots_prop = retrieve_spots_prop_from_param(params, '_', '_') 
-                    else:spots_prop = retrieve_spots_prop_from_param(params, inst_to_use, vis_to_use) 
-                    spots_prop['cos_istar'] = params['cos_istar']  
+                #Defining a list that will store which spots have already been processed
+                sp_proc = []
 
-                    #Defining a reference spot contrast - since all spots share the same contrast
-                    ref_fctrst = spots_prop[list(spots_prop.keys())[0]]['fctrst']  
-                    for spot in spots_prop['spots'] :
-                        spots_prop_exp = coord_expos_spots(spot,t_exp,spots_prop,star_params,None,gen_dic['spot_coord_par'])
-                        if spots_prop_exp['is_visible'][1]:
-                            _, spotted_tiles = calc_spotted_tiles(spots_prop_exp,spots_prop[spot]['ang_rad'], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'],{}, params, use_grid_dic = False, disc_exp = False)
+                for spot in spots_prop['spots'] :
+                    spots_prop_exp = coord_expos_spots(spot,t_exp,spots_prop,star_params,None,gen_dic['spot_coord_par'])
+                    coord_grid['spots_prop_exp'][spot] = spots_prop_exp
 
-                            #Accounting for spot overlap - figure out which cells of the stellar grid are spotted
-                            shared_spotted_tiles |= spotted_tiles
-                    
-                    #Accounting for spot overlap - all spots share the same contrast. As such we figure out which cells are spotted by either spot1, or spot2, or...
-                    #Once we have all the spotted cells we scale their flux with the shared contrast. This prevents us of counting shared cells multiple times and 
-                    #lowering their flux more than necessary.
-                    star_flux_before_spot[shared_spotted_tiles] *=  (1-ref_fctrst)
-                    if plot_set_key['spot_overlap']:      
-                        Fsurf_grid_star[:,iband] = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
-                    else:
-                        Flux_for_nonredundant_spot_plotting = np.minimum(Fsurf_grid_star[:,iband], star_flux_before_spot)
+                    #Localize grid
+                    loc_x_st_sky_sp = coord_grid['x_st_sky_sp'][spot]+spots_prop_exp['x_sky_exp'][1]
+                    loc_y_st_sky_sp = coord_grid['y_st_sky_sp'][spot]+spots_prop_exp['y_sky_exp'][1]
+
+                    #Remove cells in the grid that are outside the stellar surfacce
+                    cond_in_star = loc_x_st_sky_sp**2 + loc_y_st_sky_sp**2 < 1.
+                    bound_x_st_sky_sp = loc_x_st_sky_sp[cond_in_star]
+                    bound_y_st_sky_sp = loc_y_st_sky_sp[cond_in_star]
+                    bound_z_st_sky_sp = np.sqrt(1 - bound_x_st_sky_sp**2 - bound_y_st_sky_sp**2)
+
+                    if spots_prop_exp['is_visible'][1]:
+
+                        #Determining which cells are spotted
+                        _, spotted_tiles = calc_spotted_tiles(spots_prop_exp,spots_prop[spot]['ang_rad'], bound_x_st_sky_sp, bound_y_st_sky_sp, bound_z_st_sky_sp,{}, params, use_grid_dic = False, disc_exp = False)
+                        x_spot_grid = loc_x_st_sky_sp[cond_in_star][spotted_tiles]
+                        y_spot_grid = loc_y_st_sky_sp[cond_in_star][spotted_tiles]
+                        z_spot_grid = bound_z_st_sky_sp[spotted_tiles]
+
+                        #Accounting for spot-spot overlap
+                        if len(sp_proc)>0:
+                            for prev_spot in sp_proc:
+                                prev_x_st_grid, prev_y_st_grid, prev_z_st_grid = frameconv_skystar_to_star(x_spot_grid, y_spot_grid, z_spot_grid, istar_rad)
+                                x_prev_spot_grid = prev_x_st_grid*coord_grid['spots_prop_exp'][prev_spot]['cos_long_exp'][1] - prev_z_st_grid*coord_grid['spots_prop_exp'][prev_spot]['sin_long_exp'][1]
+                                y_prev_spot_grid = prev_y_st_grid*coord_grid['spots_prop_exp'][prev_spot]['cos_lat_exp'][1] - (prev_z_st_grid*coord_grid['spots_prop_exp'][prev_spot]['cos_long_exp'][1] + prev_x_st_grid*coord_grid['spots_prop_exp'][prev_spot]['sin_long_exp'][1]) * coord_grid['spots_prop_exp'][prev_spot]['sin_lat_exp'][1]
+                                cond_in_prev_spot = x_prev_spot_grid**2. + y_prev_spot_grid**2 <= spots_prop[prev_spot]['ang_rad']**2
+                                x_spot_grid = x_spot_grid[~cond_in_prev_spot]
+                                y_spot_grid = y_spot_grid[~cond_in_prev_spot]
+                                z_spot_grid = z_spot_grid[~cond_in_prev_spot]
+                        sp_proc += [spot]
+
+                        #Plotting each spot grid cell
+                        for x, y in zip(x_spot_grid, y_spot_grid):
+                            rect_sp = plt.Rectangle(( x-0.5*coord_grid['d_spcell'][spot],y-0.5*coord_grid['d_spcell'][spot]), coord_grid['d_spcell'][spot],coord_grid['d_spcell'][spot], facecolor='black',edgecolor='black',lw=0.1,zorder=-1, alpha=(1-ref_fctrst))
+                            ax1.add_artist(rect_sp)
+                            
+                            #Overlaying spot grid cell boundaries
+                            if plot_set_key['sp_grid_overlay']:
+                                rect_sp = plt.Rectangle(( x-0.5*coord_grid['d_spcell'][spot],y-0.5*coord_grid['d_spcell'][spot]), coord_grid['d_spcell'][spot],coord_grid['d_spcell'][spot], facecolor='None',edgecolor=plot_settings[key_plot]['col_orb_sp'],lw=0.5,zorder=-1)
+                                ax1.add_artist(rect_sp)
 
                     #Updating stellar surface radial velocity  for spotted cells
-                    RVstel[shared_spotted_tiles] = calc_RVrot(coord_grid['x_st_sky'][shared_spotted_tiles],coord_grid['y_st'][shared_spotted_tiles],istar_rad,star_params['veq_spots'],star_params['alpha_rot_spots'],star_params['beta_rot_spots'])[0]
-                    for icb in range(4):RVstel[shared_spotted_tiles]+=cb_band[icb]*np.power(mu_grid_star[shared_spotted_tiles,iband],icb)
+                    _, gen_spotted_tiles = calc_spotted_tiles(spots_prop_exp,spots_prop[spot]['ang_rad'], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], {}, params, use_grid_dic = False, disc_exp = False)
+                general_spotted_tiles |= gen_spotted_tiles
+                RVstel[general_spotted_tiles] = calc_RVrot(coord_grid['x_st_sky'][general_spotted_tiles],coord_grid['y_st'][general_spotted_tiles],istar_rad,star_params['veq_spots'],star_params['alpha_rot_spots'],star_params['beta_rot_spots'])[0]
+                for icb in range(4):RVstel[general_spotted_tiles]+=cb_band[icb]*np.power(mu_grid_star[general_spotted_tiles,iband],icb)
 
                 #Spot orbit
                 # - Generating array of times at which we want to retrieve the spot center coordinates
@@ -5865,16 +5889,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 # - Dictionary in which we will store the spot center coordinates
                 orb_coords = {'x':np.zeros([num_spots, plot_set_key['npts_orbits_sp']], dtype=float),'y':np.zeros([num_spots, plot_set_key['npts_orbits_sp']], dtype=float),'z':np.zeros([num_spots, plot_set_key['npts_orbits_sp']], dtype=float)}
                 
+                # - Calculate spot center coordinates
                 for i_t, t in enumerate(orbit_t) :
-                    if len(plot_set_key['custom_spot_prop'])>0:orb_spots_prop = retrieve_spots_prop_from_param(params, '_', '_') 
-                    else:orb_spots_prop = retrieve_spots_prop_from_param(params, inst_to_use, vis_to_use)
-                    orb_spots_prop['cos_istar'] = params['cos_istar']
                     for ispot, spot in enumerate(spots_prop['spots']):
-                        orb_spots_prop_exp = coord_expos_spots(spot,t,orb_spots_prop,star_params,None,gen_dic['spot_coord_par'])
+                        orb_spots_prop_exp = coord_expos_spots(spot,t,spots_prop,star_params,None,gen_dic['spot_coord_par'])
                         for key in ['x', 'y', 'z']:
                             orb_coords[key][ispot, i_t] = orb_spots_prop_exp[key+'_sky_exp'][1]
 
-                # - Only plotting the spot orbit lines that are in the front hemisphere of the star
+                # - Only plotting the spot orbit coordinates that are in the front hemisphere of the star
                 for ispot in range(num_spots):
                     pos_x = orb_coords['x'][ispot, :][orb_coords['z'][ispot, :]>0]
                     pos_y = orb_coords['y'][ispot, :][orb_coords['z'][ispot, :]>0]
@@ -5899,8 +5921,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             elif plot_set_key['disk_color']=='F':
                 val_disk=Fsurf_grid_star[:,iband]  
                 
-                if plot_spots and (not plot_set_key['spot_overlap']):val_disk = Flux_for_nonredundant_spot_plotting
-
 
                 # cmap = plt.get_cmap('GnBu_r')
                 # cmap = plt.get_cmap('jet')
@@ -5927,11 +5947,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 min_f=np.nanmin(Fsurf_grid_star[:,iband])
                 max_f=np.nanmax(Fsurf_grid_star[:,iband])
                 color_f=cmap_f( (min_col+ (Fsurf_grid_star[:,iband]-min_f)*(max_col-min_col)/ (max_f-min_f)) )
-
-                if plot_spots and (not plot_set_key['spot_overlap']): 
-                    min_f=np.nanmin(Flux_for_nonredundant_spot_plotting)
-                    max_f=np.nanmax(Flux_for_nonredundant_spot_plotting)
-                    color_f=cmap_f( (min_col+ (Flux_for_nonredundant_spot_plotting-min_f)*(max_col-min_col)/ (max_f-min_f)) )
 
             #Disk colored with RV or specific intensity
             cond_in_plot = (coord_grid['x_st_sky']+0.5*d_stcell>=plot_set_key['x_range'][0]) & (coord_grid['x_st_sky']-0.5*d_stcell<=plot_set_key['x_range'][1])\

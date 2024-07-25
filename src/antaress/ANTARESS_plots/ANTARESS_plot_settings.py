@@ -2212,11 +2212,13 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Overlaying grid cell boundaries
         plot_settings[key_plot]['st_grid_overlay']=False
         plot_settings[key_plot]['pl_grid_overlay']=False
+        plot_settings[key_plot]['sp_grid_overlay']=False
         
-        #%%%% Number of cells on a diameter of the star and planets (must be odd)
+        #%%%% Number of cells on a diameter of the star, planets, and spots (must be odd)
         plot_settings[key_plot]['n_stcell']=theo_dic['nsub_Dstar']
         plot_settings[key_plot]['n_plcell']={}
         for pl_loc in plot_settings[key_plot]['pl_to_plot']:plot_settings[key_plot]['n_plcell'][pl_loc] = theo_dic['nsub_Dpl'][pl_loc]
+        plot_settings[key_plot]['n_spcell']=21
 
         #%%%% Color stellar disk with RV, with limb-darkened specific intensity, with gravity-darkened specific intensity, or total flux
         plot_settings[key_plot]['disk_color']='RV'
@@ -2255,16 +2257,6 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%% Path to the file storing the best-fit spot results to plot
         plot_settings[key_plot]['fit_results_file'] = ''
-        
-        #%%%% Number of positions of the spots to be plotted, equally distributed within the given time range.
-        plot_settings[key_plot]['n_image_spots'] = 15
-
-        #%%%% Use stellar rotation period to distribute the positions, instead of time
-        plot_settings[key_plot]['plot_spot_all_Peq'] = True  
-
-        #%%%%  Whether we want to show the track of the spots (spot_overlap=True) or the location of the spots (spot_overlap=False).
-        # Only activated if we plot multiple exposures.
-        plot_settings[key_plot]['spot_overlap'] = False
     
         #%%%% Overlay to the RV-colored disk a shade controlled by flux
         plot_settings[key_plot]['shade_overlay']=True       
@@ -2300,16 +2292,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 10, 'Tcenter' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
             # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
             # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
-            plot_settings[key_plot]['n_image_spots'] = 50
-            # plot_settings[key_plot]['n_image_spots'] = 50
             
-            plot_settings[key_plot]['time_range_spot'] = 2458330.39051+np.array([-0.7,0.7])
-            # plot_settings[key_plot]['time_range_spot'] = 2458330.39051   + np.array([-2.8, 1.9])
-            # plot_settings[key_plot]['time_range_spot'] = 2458330.39051+np.array([-2,2])/24.
-            
-            plot_settings[key_plot]['plot_spot_all_Peq'] = False  
 
-            plot_settings[key_plot]['spot_overlap'] = False  
 
         elif gen_dic['star_name']=='V1298tau':
             plot_settings[key_plot]['plot_spots'] = True #& False
@@ -2317,13 +2301,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings[key_plot]['mock_spot_prop'] = True #& False
             
             # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'ctrst' : 0.6}   
-            plot_settings[key_plot]['n_image_spots'] = 40
-            
-            plot_settings[key_plot]['time_range_spot'] = 2457067.0488+np.array([-0.2, 0.2])
-            
-            plot_settings[key_plot]['plot_spot_all_Peq'] = False  
+                        
 
-            plot_settings[key_plot]['spot_overlap'] = False
     
 
 
