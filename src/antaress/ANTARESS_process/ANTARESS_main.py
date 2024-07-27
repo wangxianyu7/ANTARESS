@@ -1626,29 +1626,39 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                             system_param[pl_loc],coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic,data_dic['DI']['system_prop']['achrom'][pl_loc][0])
                         
                         #Unquiet star grid - Figure out which cells are planet-occulted
-                        if np.abs(coord_dic[inst][vis][pl_loc]['ecl'][isub_exp])!=1:
-                            mini_pl_dic = {}
-                            mini_pl_dic['x_orb_exp']=[coord_dic[inst][vis][pl_loc]['st_pos'][0, isub_exp], coord_dic[inst][vis][pl_loc]['cen_pos'][0, isub_exp], coord_dic[inst][vis][pl_loc]['end_pos'][0, isub_exp]]
-                            mini_pl_dic['y_orb_exp']=[coord_dic[inst][vis][pl_loc]['st_pos'][1, isub_exp], coord_dic[inst][vis][pl_loc]['cen_pos'][1, isub_exp], coord_dic[inst][vis][pl_loc]['end_pos'][1, isub_exp]]
-                            mini_pl_dic['RpRs']=data_dic['DI']['system_prop']['achrom'][pl_loc][0]
-                            mini_pl_dic['lambda']=system_param[pl_loc]['lambda_proj']
-                            pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, theo_dic['x_st_sky'], theo_dic['y_st_sky'])
-                            plocced_star_grid |= pl_plocced_star_grid                    
+                        if gen_dic['mock_data']:
+                            if np.abs(coord_dic[inst][vis][pl_loc]['ecl'][isub_exp])!=1:
+                                mini_pl_dic = {}
+                                mini_pl_dic['x_orb_exp']=[coord_dic[inst][vis][pl_loc]['st_pos'][0, isub_exp], coord_dic[inst][vis][pl_loc]['cen_pos'][0, isub_exp], coord_dic[inst][vis][pl_loc]['end_pos'][0, isub_exp]]
+                                mini_pl_dic['y_orb_exp']=[coord_dic[inst][vis][pl_loc]['st_pos'][1, isub_exp], coord_dic[inst][vis][pl_loc]['cen_pos'][1, isub_exp], coord_dic[inst][vis][pl_loc]['end_pos'][1, isub_exp]]
+                                mini_pl_dic['RpRs']=data_dic['DI']['system_prop']['achrom'][pl_loc][0]
+                                mini_pl_dic['lambda']=system_param[pl_loc]['lambda_proj']
+                                pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, theo_dic['x_st_sky'], theo_dic['y_st_sky'])
+                                plocced_star_grid |= pl_plocced_star_grid                    
 
-                    #Surface coordinates for each studied spot  
+                    #Surface coordinates for each studied spot
                     for spot in data_inst[vis]['transit_sp']:
                         spots_prop_exp = coord_expos_spots(spot,coord_dic[inst][vis]['bjd'][iexp],spots_prop_nom,system_param['star'],coord_dic[inst][vis]['t_dur'][iexp],gen_dic['spot_coord_par'])                           
                         for key in spots_prop_exp:coord_dic[inst][vis][spot][key][:, iexp] = [spots_prop_exp[key][0],spots_prop_exp[key][1],spots_prop_exp[key][2]]
 
                         #Unquiet star grid - Figure out which cells are spotted
-                        if np.sum(spots_prop_exp['is_visible'])>0:
-                            _, spot_spotted_star_grid = calc_spotted_tiles(spots_prop_exp, spots_prop_nom[spot]['ang_rad'], theo_dic['x_st_sky'], theo_dic['y_st_sky'], theo_dic['z_st_sky'], theo_dic, system_param['star'], use_grid_dic=True)
-                            spotted_star_grid |= spot_spotted_star_grid
+                        if gen_dic['mock_data']:  
+                            if np.sum(spots_prop_exp['is_visible'])>0:
+                                _, spot_spotted_star_grid = calc_spotted_tiles(spots_prop_exp, spots_prop_nom[spot]['ang_rad'], theo_dic['x_st_sky'], theo_dic['y_st_sky'], theo_dic['z_st_sky'], theo_dic, system_param['star'], use_grid_dic=True)
+                                spotted_star_grid |= spot_spotted_star_grid
 
                     #Update the global 2D quiet star grid
-                    unquiet_star_grid |= (spotted_star_grid | plocced_star_grid)
+                    if gen_dic['mock_data']: 
+                        unquiet_star_grid |= (spotted_star_grid | plocced_star_grid)
                 #--------------------------------------------------------------------------------------------------
                 for isub_exp,iexp in enumerate(range(n_in_visit)):
+
+                    #Data of the fits file 
+                    hdulist =fits.open(vis_path_exp[iexp])
+                    if vis_path_skysub_exp is not None:hdulist_skysub =fits.open(vis_path_skysub_exp[iexp])
+            
+                    #Header 
+                    hdr =hdulist[0].header 
 
                     #Initialize data at first exposure
                     if isub_exp==0:
@@ -2394,7 +2404,11 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         if remove_exp:coord_dic[inst][vis][pl_loc][key] = coord_dic[inst][vis][pl_loc][key][gen_dic['used_exp'][inst][vis]]
                     for key in ['cen_pos','st_pos','end_pos']:
                         coord_dic[inst][vis][pl_loc][key]=coord_dic[inst][vis][pl_loc][key][:,w_sorted] 
-                        if remove_exp:coord_dic[inst][vis][pl_loc][key] = coord_dic[inst][vis][pl_loc][key][:,gen_dic['used_exp'][inst][vis]] 
+                        if remove_exp:coord_dic[inst][vis][pl_loc][key] = coord_dic[inst][vis][pl_loc][key][:,gen_dic['used_exp'][inst][vis]]
+                for spot in data_inst[vis]['transit_sp']:
+                    for key in list(gen_dic['spot_coord_par'])+['is_visible']:
+                        coord_dic[inst][vis][spot][key]=coord_dic[inst][vis][spot][key][:,w_sorted] 
+                        if remove_exp:coord_dic[inst][vis][spot][key] = coord_dic[inst][vis][spot][key][:,gen_dic['used_exp'][inst][vis]]
                 for key in ['bjd','t_dur','RV_star_solCDM','RV_star_stelCDM']:
                     coord_dic[inst][vis][key]=coord_dic[inst][vis][key][w_sorted]
                     if remove_exp:coord_dic[inst][vis][key] = coord_dic[inst][vis][key][gen_dic['used_exp'][inst][vis]]

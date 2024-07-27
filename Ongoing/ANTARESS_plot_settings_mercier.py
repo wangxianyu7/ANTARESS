@@ -2193,7 +2193,11 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mockvisit1', 't':  2458702.77+ np.linspace(-0.5,0.5, 30)}
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
             plot_settings[key_plot]['t_BJD'] = None
-                
+
+        if gen_dic['star_name']=='AU_Mic':
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'visit1', 't':  np.linspace(2458702.64361574,2458702.89017524, 30)}
+            plot_settings[key_plot]['t_BJD'] = None
+
         if gen_dic['star_name']=='V1298tau':
             plot_settings[key_plot]['t_BJD'] = None
 
@@ -2205,6 +2209,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings[key_plot]['GIF_generation']=True&False
 
         if gen_dic['star_name']=='fakeAU_Mic':
+            plot_settings[key_plot]['GIF_generation']=True &False
+
+        if gen_dic['star_name']=='AU_Mic':
             plot_settings[key_plot]['GIF_generation']=True &False
 
         if gen_dic['star_name']=='V1298tau':
@@ -2343,8 +2350,28 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             plot_settings[key_plot]['sp_grid_overlay']=False
 
-            plot_settings[key_plot]['n_spcell']=71
+            plot_settings[key_plot]['n_spcell']=31
 
+        if gen_dic['star_name']=='AU_Mic':    
+
+            plot_settings[key_plot]['n_stcell']=81.
+
+            plot_settings[key_plot]['plot_spots'] = True #& False
+
+            plot_settings[key_plot]['mock_spot_prop'] = True & False
+
+            plot_settings[key_plot]['fit_spot_prop'] = True & False
+
+            # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
+
+            plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 0, 'Tc_sp' : 2458702.76484-0.8, 'ang' : 10, 'fctrst' : 0.35}
+            plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -10, 'Tc_sp' : 2458702.76484, 'ang' : 14}
+            
+            plot_settings[key_plot]['st_grid_overlay']=False
+
+            plot_settings[key_plot]['sp_grid_overlay']=False
+
+            plot_settings[key_plot]['n_spcell']=31
 
         if gen_dic['star_name']=='fakeAU_Mic':    
 

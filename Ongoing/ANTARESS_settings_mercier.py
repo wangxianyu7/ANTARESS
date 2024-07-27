@@ -204,8 +204,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Star name
 
-    gen_dic['star_name']='AUMic'
-    # gen_dic['star_name']='AU_Mic'
+    # gen_dic['star_name']='AUMic'
+    gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
     # gen_dic['star_name']='Capricorn'
@@ -216,7 +216,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
             'AU_Mic_b':{'ESPRESSO' : ['visit1']},
             }
         gen_dic['kepl_pl'] = ['AU_Mic_b']
-        gen_dic['Tcenter_visits']={'AU_Mic_b':{'ESPRESSO':{'visit1':2458330.39080}}}
+        # gen_dic['Tcenter_visits']={'AU_Mic_b':{'ESPRESSO':{'visit1':2458330.39080}}}
 
     if gen_dic['star_name']=='fakeAU_Mic':
         gen_dic['transit_pl'] = {
@@ -521,7 +521,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
          
     #Activating module
-    gen_dic['mock_data'] =  True #& False
+    gen_dic['mock_data'] =  True & False
 
     #Setting number of threads 
     mock_dic['nthreads'] = 2 
@@ -1253,21 +1253,26 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # theo_dic['rv_osamp_line_mod']=0.5 #None  #1.
     # print('ATTENTION rv_osamp_line_mod')
 
-    # if gen_dic['star_name']=='AUMic':
-    #     theo_dic['spots_prop']={
-    #     'ESPRESSO':{
-    #              'visit1':{
+    if gen_dic['star_name']=='AU_Mic':
+        theo_dic['spots_prop']={
+        'ESPRESSO':{
+                 'visit1':{
 
-    #                 # For the spot 'spot1' : -- base grid run
-    #                  'lat__ISESPRESSO_VSvisit1_SPspot1'     : 0,
-    #                  'Tc_sp__ISESPRESSO_VSvisit1_SPspot1' : 2458330.39080-0.8,
-    #                  'ang__ISESPRESSO_VSvisit1_SPspot1'     : 10,
+                    # For the spot 'spot1' : -- base grid run
+                    'lat__ISESPRESSO_VSvisit1_SPspot1'     : 0,
+                    'Tc_sp__ISESPRESSO_VSvisit1_SPspot1' : 2458702.76484-0.8,
+                    'ang__ISESPRESSO_VSvisit1_SPspot1'     : 10,
 
-    #                 #All spots in the a given visit must have the same contrast
-    #                 'fctrst__ISESPRESSO_VSvisit1_SP'    : 0.35,
-    #                 },
-    #             }
-    #     }
+                    # For the spot 'spot2' : -- base grid run
+                    'lat__ISESPRESSO_VSvisit1_SPspot2'     : -10,
+                    'Tc_sp__ISESPRESSO_VSvisit1_SPspot2' : 2458702.76484,
+                    'ang__ISESPRESSO_VSvisit1_SPspot2'     : 14,
+
+                    #All spots in the a given visit must have the same contrast
+                    'fctrst__ISESPRESSO_VSvisit1_SP'    : 0.35,
+                    },
+                }
+        }
     if gen_dic['star_name']=='AUMic':
         theo_dic['spots_prop'] = mock_dic['spots_prop']
 
@@ -3382,8 +3387,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         data_dic['DI']['spots_prop'] = {}
         data_dic['DI']['spots_prop']={
                 'achrom':{
-                    'spot1' : [15 * np.pi/180],#--base
-                    'spot2' : [15 * np.pi/180],#--base
+                    'spot1' : [theo_dic['spots_prop']['ESPRESSO']['visit1']['ang__ISESPRESSO_VSvisit1_SPspot1'] * np.pi/180],#--base
+                    'spot2' : [theo_dic['spots_prop']['ESPRESSO']['visit1']['ang__ISESPRESSO_VSvisit1_SPspot2'] * np.pi/180],#--base
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.63],
                     'LD_u2' : [0.15],
@@ -3445,13 +3450,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                 })  
 
     if gen_dic['star_name']=='AU_Mic':
-        # data_dic['DI']['transit_prop'].update({
-        #         'ESPRESSO':{'mock_vis':{'mode':'model', 'dt':0.05}}
-        #         })  
         data_dic['DI']['transit_prop'].update({
-                'nsub_Dstar':101,
-                'ESPRESSO':{'visit1':{'mode':'simu', 'n_oversamp':5}}
-                })
+                'ESPRESSO':{'mock_vis':{'mode':'model', 'dt':0.05}}
+                })  
+        # data_dic['DI']['transit_prop'].update({
+        #         'nsub_Dstar':101,
+        #         'ESPRESSO':{'visit1':{'mode':'simu', 'n_oversamp':5}}
+        #         })
     #Forcing in/out transit flag
 
 
