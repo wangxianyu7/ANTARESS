@@ -5038,7 +5038,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  &  False
+    gen_dic['fit_ResProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
@@ -5130,24 +5130,24 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name']=='AU_Mic':
         glob_fit_dic['ResProf']['mod_prop']={
         'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.7, 'bd':[0.1, 1]},
-        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':8.595, 'bd':[8.4, 8.75]},
-        'alpha_rot':{'vary':True, 'guess':0.034, 'bd':[0.033,0.035]},
+        'FWHM_ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        'veq':{'vary':False,'guess':8.595, 'bd':[8.4, 8.75]},
+        'alpha_rot':{'vary':False, 'guess':0.034, 'bd':[0.033,0.035]},
         # 'Peq':{'vary':True,'guess':4.856, 'bd':[4.853, 4.859]},
-        'cos_istar':{'vary':True,'guess':0.1736, 'bd':[-1., 1.]},
+        'cos_istar':{'vary':False,'guess':0.1736, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSvisit1_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-80, 80]},
-        'Tc_sp__ISESPRESSO_VSvisit1_SPspot1' : {'vary':True, 'guess':2458702.77-0.2, 'bd':[2458702.77 - 0.9, 2458702.77 + 0.9]},
-        'ang__ISESPRESSO_VSvisit1_SPspot1'     : {'vary':True, 'guess':25, 'bd':[1, 80]},
+        'lat__ISESPRESSO_VSvisit1_SPspot1'     : {'vary':False, 'guess':0, 'bd':[-80, 80]},
+        'Tc_sp__ISESPRESSO_VSvisit1_SPspot1' : {'vary':False, 'guess':2458702.77-0.2, 'bd':[2458702.77 - 0.9, 2458702.77 + 0.9]},
+        'ang__ISESPRESSO_VSvisit1_SPspot1'     : {'vary':False, 'guess':25, 'bd':[1, 80]},
         
-        'lat__ISESPRESSO_VSvisit1_SPspot2'     : {'vary':True, 'guess':-30, 'bd':[-80, 80]},
-        'Tc_sp__ISESPRESSO_VSvisit1_SPspot2' : {'vary':True, 'guess':2458702.77+0.2, 'bd':[2458702.77 - 0.9, 2458702.77 + 0.9]},
-        'ang__ISESPRESSO_VSvisit1_SPspot2'     : {'vary':True, 'guess':25, 'bd':[1, 80]},
+        'lat__ISESPRESSO_VSvisit1_SPspot2'     : {'vary':False, 'guess':-30, 'bd':[-80, 80]},
+        'Tc_sp__ISESPRESSO_VSvisit1_SPspot2' : {'vary':False, 'guess':2458702.77+0.2, 'bd':[2458702.77 - 0.9, 2458702.77 + 0.9]},
+        'ang__ISESPRESSO_VSvisit1_SPspot2'     : {'vary':False, 'guess':25, 'bd':[1, 80]},
 
-        'fctrst__ISESPRESSO_VSvisit1_SP'   : {'vary':True, 'guess':0.9, 'bd':[0.01, 0.99]},
-        'rv_shift'                        : {'vary':True, 'guess': 1, 'bd':[-5, 5]},  
+        'fctrst__ISESPRESSO_VSvisit1_SP'   : {'vary':False, 'guess':0.9, 'bd':[0.01, 0.99]},
+        'rv_shift'                        : {'vary':False, 'guess': 1, 'bd':[-5, 5]},  
 
-        'lambda_rad__plAU_Mic_b'                   : {'vary':True, 'guess':0, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__plAU_Mic_b'                   : {'vary':False, 'guess':0, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
 
     #Fitting mode
@@ -5209,16 +5209,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         glob_fit_dic['ResProf']['deriv_prop'] = ['lambda_deg']
     
     #Calculating/retrieving
-    # glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
-    glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
+    glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
+    # glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
-        # glob_fit_dic['ResProf']['mcmc_reuse']={}
-        glob_fit_dic['ResProf']['mcmc_reuse']={
-                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk4_steps10.npz'],
-                    'nburn':[2]
-                    }  
+        glob_fit_dic['ResProf']['mcmc_reuse']={}
+        # glob_fit_dic['ResProf']['mcmc_reuse']={
+        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk4_steps10.npz'],
+        #             'nburn':[2]
+        #             }  
     #Re-starting
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
         glob_fit_dic['ResProf']['mcmc_reboot']=''

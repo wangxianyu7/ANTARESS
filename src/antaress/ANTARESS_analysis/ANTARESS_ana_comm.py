@@ -366,6 +366,7 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'fit_mode':fit_prop_dic['fit_mode'],
         'uf_bd':{},
         'nx_fit':0,
+        'nx_fit_untrimmed':0,
         'run_name':'_'+gen_dic['main_pl_text'],
         'save_dir' : gen_dic['save_data_dir']+'/Joined_fits/'+data_mode+'/'+fit_prop_dic['fit_mode']+'/'}
     
