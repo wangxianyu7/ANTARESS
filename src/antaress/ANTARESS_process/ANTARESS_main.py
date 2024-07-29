@@ -12,8 +12,8 @@ from dace_query.spectroscopy import Spectroscopy
 from scipy.interpolate import CubicSpline
 from ..ANTARESS_analysis.ANTARESS_model_prof import calc_macro_ker_anigauss,calc_macro_ker_rt 
 from ..ANTARESS_grids.ANTARESS_star_grid import model_star
-from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop,retrieve_spots_prop_from_param
-from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm
+from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop,retrieve_spots_prop_from_param,calc_plocced_tiles,calc_spotted_tiles
+from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm,init_stellar_prop
 from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos,coord_expos_spots
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab
 from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
@@ -30,7 +30,7 @@ from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
 from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
 from ..ANTARESS_analysis.ANTARESS_ana_comm import MAIN_single_anaprof
 from ..ANTARESS_conversions.ANTARESS_sp_cont import process_spectral_cont
-from ..ANTARESS_general.utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data
+from ..ANTARESS_general.utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data,npint
 from ..ANTARESS_general.constant_data import Rsun,Rjup,c_light,G_usi,Msun,AU_1
 
 
@@ -93,194 +93,195 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     #Processing datasets for each visit of each instrument
     #    - binned visits are processed at the end
     ####################################################################################################################
-    for inst in data_dic['instrum_list']:
-        print('')
-        print('-----------------------')
-        print('Processing instrument :',inst)        
-        print('-----------------------')
-
-        #Initialize instrument tables and dictionaries
-        init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system_param,plot_dic)
-
-        #Estimating instrumental calibration
-        if gen_dic['gcal']:
-            calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic)
-
-        #Global corrections of spectral data
-        #    - performed before the loop on individual visits because some corrections exploit information from all visits and require the full range of the data
-        if ('spec' in data_dic[inst]['type']):
-            red_sp_data_instru(inst,data_dic,plot_dic,gen_dic,data_prop,coord_dic,system_param)
-
-        #-------------------------------------------------        
-        #Processing all visits for current instrument
-        for vis in data_dic[inst]['visit_list']:
-            print('  -----------------')
-            print('  Processing visit: '+vis) 
-            print('  -----------------')
+    if gen_dic['sequence'] not in ['system_view']:
+        for inst in data_dic['instrum_list']:
+            print('')
+            print('-----------------------')
+            print('Processing instrument :',inst)        
+            print('-----------------------')
     
-            #Initialization of visit properties
-            init_vis(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic)             
-            
-            #-------------------------------------------------  
-            #Processing disk-integrated stellar profiles
-            data_type_gen = 'DI'
-            #------------------------------------------------- 
-
-            #Spectral detrending   
-            if gen_dic['detrend_prof'] and (detrend_prof_dic['full_spec']):
-                detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
-
-            #Converting DI stellar spectra into CCFs
-            if gen_dic[data_type_gen+'_CCF']:
-                CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,data_dic[data_type_gen])
-        
-            #Single line detrending    
-            if gen_dic['detrend_prof'] and (not detrend_prof_dic['full_spec']):
-                detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
-
-            #Calculating theoretical properties of the planet-occulted and/or spotted regions 
-            if gen_dic['theoPlOcc'] or (len(gen_dic['transit_sp'])>0):
-                calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'],spot_dic=theo_dic)
+            #Initialize instrument tables and dictionaries
+            init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system_param,plot_dic)
+    
+            #Estimating instrumental calibration
+            if gen_dic['gcal']:
+                calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic)
+    
+            #Global corrections of spectral data
+            #    - performed before the loop on individual visits because some corrections exploit information from all visits and require the full range of the data
+            if ('spec' in data_dic[inst]['type']):
+                red_sp_data_instru(inst,data_dic,plot_dic,gen_dic,data_prop,coord_dic,system_param)
+    
+            #-------------------------------------------------        
+            #Processing all visits for current instrument
+            for vis in data_dic[inst]['visit_list']:
+                print('  -----------------')
+                print('  Processing visit: '+vis) 
+                print('  -----------------')
+    
+                #Initialization of visit properties
+                init_vis(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic)             
                 
-            #Analyzing original disk-integrated profiles
-            if gen_dic['fit_'+data_type_gen]:
-                MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
-
-            #Aligning disk-integrated profiles to star rest frame
-            if (gen_dic['align_'+data_type_gen]):
-                align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)
-
-            # #Correcting for spot contamination 
-            # if gen_dic['correct_spots'] : 
-            #     corr_spot(corr_spot_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo_dic, system_param)
-              
-            #Rescaling profiles to their correct flux level                  
-            if gen_dic['flux_sc']:                   
-                rescale_profiles(data_dic[inst],inst,vis,data_dic,coord_dic,coord_dic[inst][vis]['t_dur_d'],gen_dic,plot_dic,system_param,theo_dic)   
-         
-            #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
-            if gen_dic['DImast_weight']:              
-                process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDIweigh=True,spot_dic=theo_dic)
-
-            #Processing converted 2D disk-integrated profiles
-            if gen_dic['spec_1D']:                
-                conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
- 
-            #Processing binned disk-integrated profiles
-            if gen_dic['bin']:
-                bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
-
-            #--------------------------------------------------------------------------------------------------
-            #Processing differential and intrinsic stellar profiles
-            data_type_gen = 'Intr'
-            #--------------------------------------------------------------------------------------------------
-
-            #Extracting differential profiles
-            if (gen_dic['res_data']):
-                extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
-
-            #Extracting intrinsic stellar profiles
-            if gen_dic['intr_data']:
-                extract_intr_profiles(data_dic,gen_dic,inst,vis,system_param['star'],coord_dic,theo_dic,plot_dic)
-        
-            #Converting out-of-transit differential and intrinsic spectra into CCFs
-            if gen_dic[data_type_gen+'_CCF']:
-                ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
-                  
-            #Applying PCA to out-of transit differential profiles
-            if (gen_dic['pca_ana']):
-                pc_analysis(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
-
-            #Fitting intrinsic stellar profiles in the star rest frame
-            if gen_dic['fit_'+data_type_gen]:
-                MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
-            
-            #Aligning intrinsic stellar profiles to their local rest frame
-            if gen_dic['align_'+data_type_gen]: 
-                align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)
-
-            #Processing converted 2D intrinsic and differential profiles
-            if gen_dic['spec_1D']:                
-                conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
-
-            #Processing binned intrinsic profiles
-            if gen_dic['bin']:
-                bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
-
-            #Building estimates for planet-occulted stellar profiles in in-transit exposures
-            if gen_dic['loc_data_corr']:
-                def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
-
-            #Building estimates for differential profiles in all exposures
-            #    - in-transit profiles include planet-occulted and spotted stellar profiles
-            if gen_dic['diff_data_corr']:
-                def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
-        
-            #--------------------------------------------------------------------------------------------------
-            #Processing atmospheric profiles
-            data_type_gen = 'Atm'
-            #--------------------------------------------------------------------------------------------------
-
-            #Extracting atmospheric profiles
-            if gen_dic['pl_atm']:
-                extract_pl_profiles(data_dic,inst,vis,gen_dic)
-
-            #Converting atmospheric spectra into CCFs
-            if gen_dic[data_type_gen+'_CCF'] and ('spec' in data_dic[inst][vis]['type']):
-                CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,data_dic[data_type_gen])
-
-            #Fitting atmospheric profiles in the star rest frame
-            if gen_dic['fit_'+data_type_gen]:
-                MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
-      
-            #Aligning atmospheric profiles to the planet rest frame
-            if gen_dic['align_'+data_type_gen]:   
-                align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)      
-
-            #Processing converted 2D intrinsic profiles
-            if gen_dic['spec_1D']:                
-                conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
-
-            #Processing binned atmospheric profiles
-            if gen_dic['bin']:
-                bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
-
-        ### end of visits 
-
-        #Update instrument properties   
-        update_inst(data_dic,inst,gen_dic)        
-
-        #Processing binned profiles over multiple visits
-        #    - beware that data from different visits should be comparable to be binned 
-        #      this is not the case, e.g, with blazed 2D spectra or if the stellar line shape changed 
-        if (data_dic[inst]['n_visits_inst']>1) and (gen_dic['binmultivis']):
-            print('  --------------------------')
-            print('  Processing combined visits')  
-            print('  --------------------------')
-            for data_type_gen in ['DI','Intr','Atm']:
-                bin_gen_functions(data_type_gen,'multivis',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic)
-
-    ### end of instruments  
-
-    #Update generic properties   
-    if gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:
-        update_gen(data_dic,gen_dic) 
-
-    ####################################################################################################################
-    #Call to analysis function over combined visits and instruments
-    ####################################################################################################################
-    if gen_dic['multi_inst']:
-        print('-------------------------------')
-        print('Processing combined instruments')        
-        print('-------------------------------')
-        
-        #Wrap-up function to fit stellar profiles and their properties
-        if gen_dic['fit_DIProp'] or gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_ResProf'] :
-            joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic)
+                #-------------------------------------------------  
+                #Processing disk-integrated stellar profiles
+                data_type_gen = 'DI'
+                #------------------------------------------------- 
     
-        #Wrap-up function to fit atmospheric profiles and their properties
-        if gen_dic['fit_AtmProf'] or gen_dic['fit_AtmProp']:
-            joined_Atm_ana(gen_dic)
+                #Spectral detrending   
+                if gen_dic['detrend_prof'] and (detrend_prof_dic['full_spec']):
+                    detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
+    
+                #Converting DI stellar spectra into CCFs
+                if gen_dic[data_type_gen+'_CCF']:
+                    CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,data_dic[data_type_gen])
+            
+                #Single line detrending    
+                if gen_dic['detrend_prof'] and (not detrend_prof_dic['full_spec']):
+                    detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
+    
+                #Calculating theoretical properties of the planet-occulted and/or spotted regions 
+                if gen_dic['theoPlOcc'] or (len(gen_dic['transit_sp'])>0):
+                    calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'],spot_dic=theo_dic)
+                    
+                #Analyzing original disk-integrated profiles
+                if gen_dic['fit_'+data_type_gen]:
+                    MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
+    
+                #Aligning disk-integrated profiles to star rest frame
+                if (gen_dic['align_'+data_type_gen]):
+                    align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)
+    
+                # #Correcting for spot contamination 
+                # if gen_dic['correct_spots'] : 
+                #     corr_spot(corr_spot_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo_dic, system_param)
+                  
+                #Rescaling profiles to their correct flux level                  
+                if gen_dic['flux_sc']:                   
+                    rescale_profiles(data_dic[inst],inst,vis,data_dic,coord_dic,coord_dic[inst][vis]['t_dur_d'],gen_dic,plot_dic,system_param,theo_dic,spot_dic=theo_dic)   
+             
+                #Calculating master spectrum of the disk-integrated star used in weighted averages and continuum-normalization
+                if gen_dic['DImast_weight']:              
+                    process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDIweigh=True,spot_dic=theo_dic)
+    
+                #Processing converted 2D disk-integrated profiles
+                if gen_dic['spec_1D']:                
+                    conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
+     
+                #Processing binned disk-integrated profiles
+                if gen_dic['bin']:
+                    bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
+    
+                #--------------------------------------------------------------------------------------------------
+                #Processing differential and intrinsic stellar profiles
+                data_type_gen = 'Intr'
+                #--------------------------------------------------------------------------------------------------
+    
+                #Extracting differential profiles
+                if (gen_dic['res_data']):
+                    extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
+    
+                #Extracting intrinsic stellar profiles
+                if gen_dic['intr_data']:
+                    extract_intr_profiles(data_dic,gen_dic,inst,vis,system_param['star'],coord_dic,theo_dic,plot_dic)
+            
+                #Converting out-of-transit differential and intrinsic spectra into CCFs
+                if gen_dic[data_type_gen+'_CCF']:
+                    ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
+                      
+                #Applying PCA to out-of transit differential profiles
+                if (gen_dic['pca_ana']):
+                    pc_analysis(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
+    
+                #Fitting intrinsic stellar profiles in the star rest frame
+                if gen_dic['fit_'+data_type_gen]:
+                    MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
+                
+                #Aligning intrinsic stellar profiles to their local rest frame
+                if gen_dic['align_'+data_type_gen]: 
+                    align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)
+    
+                #Processing converted 2D intrinsic and differential profiles
+                if gen_dic['spec_1D']:                
+                    conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
+       
+                #Processing binned intrinsic profiles
+                if gen_dic['bin']:
+                    bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
+    
+                #Building estimates for planet-occulted stellar profiles in in-transit exposures
+                if gen_dic['loc_data_corr']:
+                    def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
+    
+                #Building estimates for differential profiles in all exposures
+                #    - in-transit profiles include planet-occulted and spotted stellar profiles
+                if gen_dic['diff_data_corr']:
+                    def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
+            
+                #--------------------------------------------------------------------------------------------------
+                #Processing atmospheric profiles
+                data_type_gen = 'Atm'
+                #--------------------------------------------------------------------------------------------------
+    
+                #Extracting atmospheric profiles
+                if gen_dic['pl_atm']:
+                    extract_pl_profiles(data_dic,inst,vis,gen_dic)
+    
+                #Converting atmospheric spectra into CCFs
+                if gen_dic[data_type_gen+'_CCF'] and ('spec' in data_dic[inst][vis]['type']):
+                    CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,data_dic[data_type_gen])
+    
+                #Fitting atmospheric profiles in the star rest frame
+                if gen_dic['fit_'+data_type_gen]:
+                    MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
+          
+                #Aligning atmospheric profiles to the planet rest frame
+                if gen_dic['align_'+data_type_gen]:   
+                    align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)      
+    
+                #Processing converted 2D intrinsic profiles
+                if gen_dic['spec_1D']:                
+                    conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
+    
+                #Processing binned atmospheric profiles
+                if gen_dic['bin']:
+                    bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
+    
+            ### end of visits 
+    
+            #Update instrument properties   
+            update_inst(data_dic,inst,gen_dic)        
+    
+            #Processing binned profiles over multiple visits
+            #    - beware that data from different visits should be comparable to be binned 
+            #      this is not the case, e.g, with blazed 2D spectra or if the stellar line shape changed 
+            if (data_dic[inst]['n_visits_inst']>1) and (gen_dic['binmultivis']):
+                print('  --------------------------')
+                print('  Processing combined visits')  
+                print('  --------------------------')
+                for data_type_gen in ['DI','Intr','Atm']:
+                    bin_gen_functions(data_type_gen,'multivis',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic)
+    
+        ### end of instruments  
+    
+        #Update generic properties   
+        if gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:
+            update_gen(data_dic,gen_dic) 
+    
+        ####################################################################################################################
+        #Call to analysis function over combined visits and instruments
+        ####################################################################################################################
+        if gen_dic['multi_inst']:
+            print('-------------------------------')
+            print('Processing combined instruments')        
+            print('-------------------------------')
+            
+            #Wrap-up function to fit stellar profiles and their properties
+            if gen_dic['fit_DIProp'] or gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_ResProf'] :
+                joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic)
+        
+            #Wrap-up function to fit atmospheric profiles and their properties
+            if gen_dic['fit_AtmProf'] or gen_dic['fit_AtmProp']:
+                joined_Atm_ana(gen_dic)
 
     ##############################################################################
     #Call to plot functions
@@ -360,348 +361,423 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         None
     
     """ 
-    
-    #Multi-threading
-    print('Multi-threading: '+str(cpu_count())+' threads available')
-  
+      
     #Positional dictionary
     coord_dic={}
     
-    #Instrument root names
-    gen_dic['inst_root']={
-        'SOPHIE_HE':'SOPHIE',
-        'SOPHIE_HR':'SOPHIE',
-        'CORALIE':'CORALIE',        
-        'HARPN':'HARPN',
-        'HARPS':'HARPS',
-        'ESPRESSO':'ESPRESSO',
-        'ESPRESSO_MR':'ESPRESSO',
-        'CARMENES_VIS':'CARMENES',
-        'EXPRES':'EXPRES',
-        'NIRPS_HA':'NIRPS',
-        'NIRPS_HE':'NIRPS',
-    }     
-
-    #Number of physical orders per instrument
-    gen_dic['norders_instru']={
-        'SOPHIE_HE':39,
-        'SOPHIE_HR':39,
-        'CORALIE':69,           
-        'HARPN':69,
-        'HARPS':71,
-        'ESPRESSO':170,
-        'ESPRESSO_MR':85,
-        'CARMENES_VIS':61,
-        'EXPRES':86,
-        'NIRPS_HA':71,
-        'NIRPS_HE':71,
-    } 
-
-    #Return flag that errors on input spectra are defined or not for each instrument   
-    gen_dic['flag_err_inst']={          
-        'SOPHIE_HE':False,
-        'SOPHIE_HR':False,
-        'CORALIE':False,         
-        'HARPN':True   ,
-        'HARPS':True,
-        'ESPRESSO':True,
-        'ESPRESSO_MR':True,
-        'CARMENES_VIS':True,
-        'EXPRES':True,
-        'NIRPS_HA':True,'NIRPS_HE':True} 
+    #Additional properties
+    data_prop={}
     
-    #Central wavelengths of orders for known instruments
-    gen_dic['wav_ord_inst']={     
-        'ESPRESSO':10.*np.repeat(np.flip([784.45 ,774.52, 764.84, 755.40, 746.19, 737.19, 728.42 ,719.85, 711.48, 703.30, 695.31, 687.50, 679.86, 672.39, 665.08,
-                                      657.93 ,650.93 ,644.08, 637.37, 630.80, 624.36, 618.05, 611.87, 605.81, 599.87, 594.05, 588.34, 582.74, 577.24, 571.84,
-                                      566.55, 561.35, 556.25, 551.24, 546.31, 541.48, 536.73, 532.06, 527.48, 522.97, 522.97, 518.54, 514.18, 509.89, 505.68,
-                                      501.53, 497.46, 493.44, 489.50 ,485.61, 481.79 ,478.02, 474.32, 470.67, 467.08, 463.54 ,460.05, 456.62, 453.24, 449.91,
-                                      446.62, 443.39, 440.20, 437.05, 433.95 ,430.90, 427.88 ,424.91, 421.98, 419.09, 416.24, 413.43, 410.65, 407.91, 405.21,
-                                      402.55, 399.92, 397.32, 394.76, 392.23, 389.73, 387.26, 384.83, 382.42, 380.04]),2),
-        'HARPN':np.array([3896.9385, 3921.912 , 3947.2075, 3972.8315, 3998.7905, 4025.0913,4051.7397, 4078.7437, 4106.11  , 4133.8457, 4161.9595, 4190.458 ,
-                          4219.349 , 4248.641 , 4278.3433, 4308.464 , 4339.011 , 4369.9946,4401.424 , 4433.3086, 4465.6587, 4498.484 , 4531.796 , 4565.6045,
-                          4599.922 , 4634.759 , 4670.127 , 4706.0396, 4742.509 , 4779.548 ,4817.169 , 4855.388 , 4894.2188, 4933.675 , 4973.773 , 5014.5273,
-                          5055.955 , 5098.074 , 5140.9004, 5184.452 , 5228.747 , 5273.8066,5319.6494, 5366.297 , 5413.7686, 5462.088 , 5511.2773, 5561.3613,
-                          5612.3633, 5664.311 , 5717.2285, 5771.1436, 5826.086 , 5882.084 ,5939.1685, 5997.3726, 6056.7285, 6117.271 , 6179.0366, 6242.062 ,
-                          6306.3867, 6372.0503, 6439.0957, 6507.568 , 6577.511 , 6648.9746,6722.0083, 6796.6646, 6872.9976]),
-        'HARPS': np.array([3824.484, 3848.533, 3872.886, 3897.549, 3922.529, 3947.831, 3973.461,
-                            3999.426, 4025.733, 4052.388, 4079.398, 4106.771, 4134.515, 4162.635, 4191.141,
-                            4220.039, 4249.338, 4279.048, 4309.175, 4339.73 , 4370.722, 4402.16 , 4434.053,
-                            4466.411, 4499.245, 4532.564, 4566.384, 4600.709, 4635.555, 4670.933, 4706.854,
-                            4743.333, 4780.382, 4818.015, 4856.243, 4895.084, 4934.552, 4974.66 , 5015.426,
-                            5056.866, 5098.997, 5141.835, 5185.398, 5229.708, 5274.78 , 5367.266, 5414.749,
-                            5463.079, 5512.279, 5562.374, 5613.388, 5665.346, 5718.276, 5772.203, 5827.157,
-                            5883.167, 5940.266, 5998.481, 6057.852, 6118.408, 6180.188, 6243.229, 6307.567,
-                            6373.246, 6440.308, 6508.795, 6578.756, 6650.235, 6723.287, 6797.961, 6874.313]),                
-        'CARMENES_VIS': np.array([5185.683800259293,5230.002514675239,5275.085301397565,5320.952091123464,5367.623513832012,
-                                  5415.120929724138,5463.466461819996,5512.683030318242,5562.794388829332,5613.825162603174,5665.800888880403,5718.748059506192,5772.694165955971,
-                                  5827.667746933892,5883.6984387171215,5940.817028432618,5999.055510467573,6058.447146230714,6119.026527498995,6180.829643603155,6243.893952726336,
-                                  6308.2584576125455,6373.9637860064695,6441.052276173239,6509.5680678764,6579.557199224864,6651.067709835355,6724.149750796099,6798.855701960672,
-                                  6875.24029714847,6953.36075788067,7033.276936338339,7115.051468293246,7198.749936832545,7284.4410477767,7372.196817776685,7462.09277617269,
-                                  7554.208181803426,7648.626256074004,7745.4344337228085,7844.724632875495,7946.5935461392,8051.142954674568,8158.480067389824,8268.717887632938,
-                                  8381.975610018162,8498.379050316224,8618.061111667314,8741.162290748554,8867.83122794844,8998.225306077602,9132.51130268578,9270.866101669406,
-                                  9413.477470553611,9560.54491063029,9712.280588045605,9868.910354974394,10030.674871216968,10197.83083793165,10370.652356804127,10549.432429789025]),    
-        'NIRPS_HA': np.array([   9793.31830725 , 9859.95301593 , 9927.49931744 , 9995.97622395,10065.40380975, 10135.80171767, 10207.19048503, 10279.59121586,
-                                10353.02577856, 10427.51660496, 10503.0864558 , 10579.75913144,10657.5589196 , 10736.51096413, 10816.64116324, 10897.97569896,
-                                10980.54199941, 11064.36827222, 11149.48372245, 11235.91830631,11323.70300177, 11412.86989695, 11503.45207046, 11595.48314928,
-                                11688.99793186, 11784.03276228, 11880.62559736, 11978.81474198,12078.63947148, 12180.1413448 , 12283.36401067, 12388.35148928,
-                                12495.14844764, 12603.80175443, 12714.36064267, 12826.87609104,12941.40020952, 13057.98722241, 13176.69424781, 13297.58039703,
-                                13420.70477935, 13546.12854527, 13673.91830748, 14072.1783805,14210.13779528, 14350.82710154, 14494.33106043, 14640.73394106,
-                                14790.12380228, 14942.59417032, 15098.24089619, 15257.16474828,15419.46907017, 15585.26310369, 15754.66203085, 15927.78376522,
-                                16104.75265749, 16285.69620041, 16470.75172016, 16660.06255469,16853.77645383, 17052.04937274, 17255.0418695 , 17462.92163421,
-                                17675.87345983, 17894.08476988, 18117.75049316, 18347.07795686,18582.28588236, 18823.6030827 , 19071.27048963]),
-        'EXPRES': np.array([3827.18212341, 3851.28596202, 3875.69435186, 3900.41312958 ,3925.44828033,3950.80594266 ,3976.49241363 ,4002.51415404 ,4028.87779393 ,4055.59013823,
-                              4082.65817269 ,4110.08906999 ,4137.89019612 ,4166.069117   ,4194.63360538,4223.591648   ,4252.95145307 ,4282.72145806 ,4312.91033776 ,4343.52701277,
-                              4374.58065826 ,4406.08071317 ,4438.03688981 ,4470.45918379 ,4503.3578845,4536.74358599 ,4570.62719834 ,4605.01995956 ,4639.93344803 ,4675.37959548,
-                              4711.3707006  ,4747.91944324 ,4785.03889938 ,4822.74255663 ,4861.04433066,4899.95858228 ,4939.50013539 ,4979.68429586 ,5020.52687121 ,5062.04419143,
-                              5104.2531307  ,5147.17113026 ,5190.81622248 ,5235.20705609 ,5280.3629228,5326.3037852  ,5373.05030624 ,5420.62388022 ,5469.04666543 ,5518.34161856,
-                              5568.53253104 ,5619.6440673  ,5671.70180522 ,5724.73227878 ,5778.76302323,5833.82262268 ,5889.94076065 ,5947.14827335 ,6005.47720621 ,6064.96087378,
-                              6125.63392315 ,6187.53240127 ,6250.69382638 ,6315.15726382 ,6380.96340664,6448.15466126 ,6516.77523859 ,6586.87125105 ,6658.49081593 ,6731.68416551,
-                              6806.50376456 ,6883.00443578 ,6961.24349375 ,7041.2808881  ,7123.17935679,7207.00459002 ,7292.82540601 ,7380.71393943 ,7470.74584357 ,7563.00050759,
-                              7657.56128994 ,7754.51576965 ,7853.9560168  ,7955.97888421 ,8060.68632206,8168.18571772])
-
-
-}
-    gen_dic['wav_ord_inst']['NIRPS_HE'] = gen_dic['wav_ord_inst']['NIRPS_HA'] 
-
-    #Data type
-    if gen_dic['mock_data']: 
-        print('Running with artificial data')  
-        data_dic['instrum_list']=list(mock_dic['visit_def'].keys())
-        gen_dic['tell_weight']=False    
-
-    else: 
-        print('Running with observational data')  
-        
-        #Instruments to which are associated the different datasets
-        data_dic['instrum_list'] = list(gen_dic['data_dir_list'].keys())
-        
-    #Used visits
-    for inst in data_dic['instrum_list']:
-        if inst not in gen_dic['unused_visits']:gen_dic['unused_visits'][inst]=[]
-        
-    #Total number of processed instruments
-    gen_dic['n_instru'] = len(data_dic['instrum_list'])
-
-    #All processed types
-    #    - if not set, assumed to be CCF by default
-    #    - gen_dic['type'] traces the original types of datasets throughout the pipeline 
-    gen_dic['all_types'] = []
-    for inst in data_dic['instrum_list']:    
-        if (inst not in gen_dic['type']):gen_dic['type'][inst]='CCF'
-        gen_dic['all_types']+=[gen_dic['type'][inst]]
-    gen_dic['all_types'] = list(np.unique(gen_dic['all_types']))
-    gen_dic['specINtype'] = any('spec' in s for s in gen_dic['all_types'])
-    gen_dic['ccfINtype'] = ('CCF' in gen_dic['all_types'])   
-
-    #Use of covariance
-    if gen_dic['mock_data']:gen_dic['use_cov'] = False    
-    else:
-        #Used by default with spectral datasets, unless CCF datasets are processed or user requests otherwise
-        if gen_dic['ccfINtype']:gen_dic['use_cov'] = False  
-    if not gen_dic['use_cov']:print('Covariances discounted')        
-
-    #Automatic activation/deactivation
-    if gen_dic['pca_ana']:gen_dic['intr_data'] = True
-    if gen_dic['intr_data']:
-        if not gen_dic['res_data']:
-            print('Automatic activation of differential profile extraction')
-            gen_dic['res_data'] = True
-        if not gen_dic['flux_sc']:
-            print('Automatic activation of flux scaling calculation')
-            gen_dic['flux_sc'] = True
-
-    else:
-        for key in ['map_Intr_prof','all_intr_data','Intr_prof']:plot_dic[key]=''
-
-    #Deactivate conditions
-    if (not gen_dic['specINtype']):
-        gen_dic['DI_CCF']=False
-        detrend_prof_dic['full_spec'] = False
-    if (not gen_dic['specINtype']) or (gen_dic['DI_CCF']) or (not gen_dic['intr_data']):        
-        gen_dic['Intr_CCF']=False     
-        
-    #Deactivate all calculation options
-    if not gen_dic['calc_all']:
-        for key in gen_dic:
-            if ('calc_' in key) and (gen_dic[key]):gen_dic[key] = False 
-
-    #Deactivate spectral corrections in CCF mode
-    sp_corr_list = ['corr_tell','corr_FbalOrd','corr_Fbal','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig','corr_fring','trim_spec','glob_mast','cal_weight','gcal']
-    if (not gen_dic['specINtype']):
-        for key in sp_corr_list:gen_dic[key]=False
-    else:
-        #Activate spectral calibration calculation
-        gen_dic['gcal'] = True
-        
-        #Deactivate spectral balance correction over orders if not 2D spectra
-        if ('spec2D' not in gen_dic['all_types']): 
-            gen_dic['corr_FbalOrd']=False
-            plot_dic['wig_order_fit']=''
-
-        #Activate global master calculation if required for flux balance corrections
-        if (gen_dic['corr_Fbal']) or (gen_dic['corr_FbalOrd']):gen_dic['glob_mast']=True
-        
-        #Deactivate arbitrary scaling if global scaling not required
-        if (not gen_dic['corr_Fbal']):gen_dic['Fbal_vis']=None
-        
-        #Check for arbitrary scaling        
-        elif (gen_dic['Fbal_vis']!='theo') and (gen_dic['n_instru']>1):stop('Flux balance must be set to a theoretical reference for multiple instruments')
-
-        #Deactivate transit scaling if temporal flux correction is applied
-        if gen_dic['corr_Ftemp']: gen_dic['flux_sc']=False
-            
-        #Activate correction flag
-        gen_dic['corr_data'] = False
-        for key in sp_corr_list: gen_dic['corr_data'] |=gen_dic[key]
-
-    #Deactivate modules irrelevant to mock datasets
-    if gen_dic['mock_data']:
-        for key in ['gcal','corr_tell','glob_mast','corr_Fbal','corr_FbalOrd','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig']:gen_dic[key] = False
-
-    #Deactivate plot if module is not called
-    if (plot_dic['glob_mast']!='') and gen_dic['glob_mast']:
-        plot_dic['glob_mast']==''
-        print('Disabling "glob_mast" plot')
-    if (plot_dic['Fbal_corr_vis']!='') and ((not gen_dic['corr_Fbal']) or (gen_dic['Fbal_vis'] is None)):        
-        plot_dic['Fbal_corr_vis']==''
-        print('Disabling "Fbal_corr_vis" plot')        
-
-    #Set general condition for CCF conversions
-    gen_dic['CCF_from_sp'] = gen_dic['DI_CCF'] | gen_dic['Intr_CCF'] | gen_dic['Atm_CCF']
-    if gen_dic['CCF_from_sp']:gen_dic['ccfINtype'] = True
-        
-    #Set general condition for 2D/1D conversion
-    gen_dic['spec_1D'] = gen_dic['spec_1D_DI'] | gen_dic['spec_1D_Intr'] | gen_dic['spec_1D_Atm']
-    gen_dic['calc_spec_1D'] = gen_dic['calc_spec_1D_DI'] | gen_dic['calc_spec_1D_Intr'] | gen_dic['calc_spec_1D_Atm']
-
-    #Set final data mode for each type of profiles
-    #    - the general instrument and visit dictionaries contain a field type that represents the mode of the data at the current stage of the pipeline
-    #    - here we set the final mode for each type of profile, so that they can be retrieved in their original mode for plotting
-    #      eg, if profiles are converted into CCF at the differential stage, we keep the information that disk-integrated profiles were in spectral mode
-    for key in ['DI','Res','Intr','Atm']:data_dic[key]['type'] = {inst:deepcopy(gen_dic['type'][inst]) for inst in gen_dic['type']}
-    for inst in gen_dic['type']:
-        if 'spec' in gen_dic['type'][inst]: 
-        
-            #Set general condition that spectral data is converted into CCFs
-            if gen_dic['DI_CCF']:
-                data_dic['DI']['type'][inst]='CCF'
-            if gen_dic['DI_CCF'] or gen_dic['Intr_CCF']:
-                data_dic['Res']['type'][inst]='CCF'          
-                data_dic['Intr']['type'][inst]='CCF'
-            if gen_dic['DI_CCF'] or gen_dic['Atm_CCF']:
-                data_dic['Atm']['type'][inst]='CCF'
-
-            #Set general condition that 2D spectral data is converted into 1D spectral data
-            if gen_dic['spec_1D_DI']:
-                data_dic['DI']['type'][inst]='spec1D'
-            if gen_dic['spec_1D_DI'] or gen_dic['spec_1D_Intr']:
-                data_dic['Res']['type'][inst]='spec1D'
-                data_dic['Intr']['type'][inst]='spec1D'
-            if gen_dic['spec_1D_DI'] or gen_dic['spec_1D_Atm']:
-                data_dic['Atm']['type'][inst]='spec1D'
-
-    #Set general condition to activate binning modules
-    for mode in ['','multivis']:
-        gen_dic['bin'+mode]=False
-        gen_dic['calc_bin'+mode]=False
-        for data_type_gen in ['DI','Intr','Atm']:
-            gen_dic['bin'+mode] |= ( gen_dic[data_type_gen+'bin'+mode] | gen_dic['fit_'+data_type_gen+'bin'+mode])
-            gen_dic['calc_bin'+mode] |= ( gen_dic['calc_'+data_type_gen+'bin'+mode] | gen_dic['calc_fit_'+data_type_gen+'bin'+mode])
-
-    #Set general condition for profiles fits
-    for key in ['DI','Intr','Atm']:
-        gen_dic['fit_'+key+'_gen'] = gen_dic['fit_'+key] | gen_dic['fit_'+key+'bin'] | gen_dic['fit_'+key+'binmultivis'] 
-
-    #Automatic continuum and fit range
-    for key in ['DI','Intr','Atm']:
-        if gen_dic['fit_'+key+'_gen']:
-            if ('cont_range' not in data_dic[key]):data_dic[key]['cont_range']={}
-            if ('fit_range' not in data_dic[key]):data_dic[key]['fit_range']={}
-    if (gen_dic['res_data']) and ('cont_range' not in data_dic['Res']):data_dic['Res']['cont_range']={}
-
-    #Deactivate conditions
-    if gen_dic['DIbin']==False:
-        data_dic['DI']['fit_MCCFout']=False
-    if (not gen_dic['specINtype']) or (gen_dic['DI_CCF']):plot_dic['spectral_LC']=''
-    if (not gen_dic['res_data']):
-        for key in ['map_Res_prof','Res_prof']:plot_dic[key]=''    
-    if not gen_dic['pl_atm']:
-        for key in ['map_Atm_prof','sp_atm','CCFatm']:plot_dic[key]=''  
-    else:
-        if gen_dic['Intr_CCF']:stop('Atmospheric extraction cannot be performed after Res./Intr. CCF conversion')
-    if gen_dic['Intr_CCF'] and (gen_dic['pl_atm']) and (any('spec' in s for s in data_dic['Atm']['type'].values())) and (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['Intrbin','rec_prof']):stop('Intrinsic profiles cannot be converted into CCFs if also requested for planetary spectra extraction)')
+    #Planets with known orbits and transit properties
+    gen_dic['def_pl']=[]
+    for obj in system_param:
+        if (obj!='star') and ('inclination' in system_param[obj]) and (obj in data_dic['DI']['system_prop']['achrom']):gen_dic['def_pl']+=[obj]
     
-    #Check for active plots
+    #Plot sequence
+    if gen_dic['sequence'] is not None:
+        
+        #Deactivate all plots
+        gen_dic['plots_on'] = False
+
+    #Deactivate all plot modules if requested
+    if not gen_dic['plots_on']:
+        for key in plot_dic:
+            if plot_dic[key] in ['png','pdf','jpg']:plot_dic[key]=''
+
+    #Plot sequence
+    if gen_dic['sequence']=='system_view':
+        gen_dic['plots_on'] = True
+        plot_dic['system_view'] = 'pdf'
+        gen_dic['specINtype'] = False
+        data_dic['instrum_list'] = []
+
+    #Check for active plots to activate call to global plot function
     if gen_dic['plots_on']:
         gen_dic['plots_on'] = False
         for key in plot_dic:
             if plot_dic[key] in ['png','pdf','jpg']:
                 gen_dic['plots_on'] = True
                 break
+
+    #------------------------------------------------------------------------------    
+    #Data is processed by the workflow
+    if gen_dic['sequence'] not in ['system_view']:
+        
+        #Multi-threading
+        print('Multi-threading: '+str(cpu_count())+' threads available')
+
+        #Instrument root names
+        gen_dic['inst_root']={
+            'SOPHIE_HE':'SOPHIE',
+            'SOPHIE_HR':'SOPHIE',
+            'CORALIE':'CORALIE',        
+            'HARPN':'HARPN',
+            'HARPS':'HARPS',
+            'ESPRESSO':'ESPRESSO',
+            'ESPRESSO_MR':'ESPRESSO',
+            'CARMENES_VIS':'CARMENES',
+            'EXPRES':'EXPRES',
+            'NIRPS_HA':'NIRPS',
+            'NIRPS_HE':'NIRPS',
+        }     
     
-    #Telluric condition
-    if (not gen_dic['specINtype']):
-        gen_dic['tell_weight']=False
-        gen_dic['corr_tell']=False
-    else:
-        gen_dic['tell_weight'] &= gen_dic['corr_tell']
+        #Number of physical orders per instrument
+        gen_dic['norders_instru']={
+            'SOPHIE_HE':39,
+            'SOPHIE_HR':39,
+            'CORALIE':69,           
+            'HARPN':69,
+            'HARPS':71,
+            'ESPRESSO':170,
+            'ESPRESSO_MR':85,
+            'CARMENES_VIS':61,
+            'EXPRES':86,
+            'NIRPS_HA':71,
+            'NIRPS_HE':71,
+        } 
     
-    #Set general condition to calculate master spectrum of the disk-integrated star and use it in weighted averages
-    #    - the master needs to be calculated if weighing is needed for one of the modules below
-    if gen_dic['DImast_weight']:gen_dic['DImast_weight'] |= (gen_dic['res_data'] | (gen_dic['loc_data_corr'] &  (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['spec_1D'] | gen_dic['bin'] | gen_dic['binmultivis'])
-    if gen_dic['DImast_weight'] and gen_dic['calc_DImast']:gen_dic['calc_DImast'] =  gen_dic['calc_res_data'] | (gen_dic['calc_loc_data_corr'] &  (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['calc_spec_1D'] | gen_dic['calc_bin'] | gen_dic['calc_binmultivis']
-  
-    #Set general conditions to activate multi-instrument modules     # Stage Théo 
-    if gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_AtmProf'] or gen_dic['fit_AtmProp'] or gen_dic['fit_ResProf'] : gen_dic['multi_inst']=True
-    else:gen_dic['multi_inst']=False
-
-    #Import bin size dictionary
-    gen_dic['pix_size_v']=return_pix_size()    
-
-    #Additional properties
-    data_prop={}
-
-    #Standard-deviation curves with bin size for the out-of-transit differential CCFs
-    #    - defining the maximum size of the binning window, and the binning size for the sliding window (we will average the bins in windows of width bin_size from 1 to 40 (arbitrary))
-    if gen_dic['scr_search']:
-        gen_dic['scr_srch_max_binwin']=40.     
-        gen_dic['scr_srch_nperbins'] = 1.+np.arange(gen_dic['scr_srch_max_binwin'])
-
-    #Default options for instrumental calibration
-    if gen_dic['gcal']: 
-        for inst in data_dic['instrum_list'] :
+        #Return flag that errors on input spectra are defined or not for each instrument   
+        gen_dic['flag_err_inst']={          
+            'SOPHIE_HE':False,
+            'SOPHIE_HR':False,
+            'CORALIE':False,         
+            'HARPN':True   ,
+            'HARPS':True,
+            'ESPRESSO':True,
+            'ESPRESSO_MR':True,
+            'CARMENES_VIS':True,
+            'EXPRES':True,
+            'NIRPS_HA':True,'NIRPS_HE':True} 
+        
+        #Central wavelengths of orders for known instruments
+        gen_dic['wav_ord_inst']={     
+            'ESPRESSO':10.*np.repeat(np.flip([784.45 ,774.52, 764.84, 755.40, 746.19, 737.19, 728.42 ,719.85, 711.48, 703.30, 695.31, 687.50, 679.86, 672.39, 665.08,
+                                          657.93 ,650.93 ,644.08, 637.37, 630.80, 624.36, 618.05, 611.87, 605.81, 599.87, 594.05, 588.34, 582.74, 577.24, 571.84,
+                                          566.55, 561.35, 556.25, 551.24, 546.31, 541.48, 536.73, 532.06, 527.48, 522.97, 522.97, 518.54, 514.18, 509.89, 505.68,
+                                          501.53, 497.46, 493.44, 489.50 ,485.61, 481.79 ,478.02, 474.32, 470.67, 467.08, 463.54 ,460.05, 456.62, 453.24, 449.91,
+                                          446.62, 443.39, 440.20, 437.05, 433.95 ,430.90, 427.88 ,424.91, 421.98, 419.09, 416.24, 413.43, 410.65, 407.91, 405.21,
+                                          402.55, 399.92, 397.32, 394.76, 392.23, 389.73, 387.26, 384.83, 382.42, 380.04]),2),
+            'HARPN':np.array([3896.9385, 3921.912 , 3947.2075, 3972.8315, 3998.7905, 4025.0913,4051.7397, 4078.7437, 4106.11  , 4133.8457, 4161.9595, 4190.458 ,
+                              4219.349 , 4248.641 , 4278.3433, 4308.464 , 4339.011 , 4369.9946,4401.424 , 4433.3086, 4465.6587, 4498.484 , 4531.796 , 4565.6045,
+                              4599.922 , 4634.759 , 4670.127 , 4706.0396, 4742.509 , 4779.548 ,4817.169 , 4855.388 , 4894.2188, 4933.675 , 4973.773 , 5014.5273,
+                              5055.955 , 5098.074 , 5140.9004, 5184.452 , 5228.747 , 5273.8066,5319.6494, 5366.297 , 5413.7686, 5462.088 , 5511.2773, 5561.3613,
+                              5612.3633, 5664.311 , 5717.2285, 5771.1436, 5826.086 , 5882.084 ,5939.1685, 5997.3726, 6056.7285, 6117.271 , 6179.0366, 6242.062 ,
+                              6306.3867, 6372.0503, 6439.0957, 6507.568 , 6577.511 , 6648.9746,6722.0083, 6796.6646, 6872.9976]),
+            'HARPS': np.array([3824.484, 3848.533, 3872.886, 3897.549, 3922.529, 3947.831, 3973.461,
+                                3999.426, 4025.733, 4052.388, 4079.398, 4106.771, 4134.515, 4162.635, 4191.141,
+                                4220.039, 4249.338, 4279.048, 4309.175, 4339.73 , 4370.722, 4402.16 , 4434.053,
+                                4466.411, 4499.245, 4532.564, 4566.384, 4600.709, 4635.555, 4670.933, 4706.854,
+                                4743.333, 4780.382, 4818.015, 4856.243, 4895.084, 4934.552, 4974.66 , 5015.426,
+                                5056.866, 5098.997, 5141.835, 5185.398, 5229.708, 5274.78 , 5367.266, 5414.749,
+                                5463.079, 5512.279, 5562.374, 5613.388, 5665.346, 5718.276, 5772.203, 5827.157,
+                                5883.167, 5940.266, 5998.481, 6057.852, 6118.408, 6180.188, 6243.229, 6307.567,
+                                6373.246, 6440.308, 6508.795, 6578.756, 6650.235, 6723.287, 6797.961, 6874.313]),                
+            'CARMENES_VIS': np.array([5185.683800259293,5230.002514675239,5275.085301397565,5320.952091123464,5367.623513832012,
+                                      5415.120929724138,5463.466461819996,5512.683030318242,5562.794388829332,5613.825162603174,5665.800888880403,5718.748059506192,5772.694165955971,
+                                      5827.667746933892,5883.6984387171215,5940.817028432618,5999.055510467573,6058.447146230714,6119.026527498995,6180.829643603155,6243.893952726336,
+                                      6308.2584576125455,6373.9637860064695,6441.052276173239,6509.5680678764,6579.557199224864,6651.067709835355,6724.149750796099,6798.855701960672,
+                                      6875.24029714847,6953.36075788067,7033.276936338339,7115.051468293246,7198.749936832545,7284.4410477767,7372.196817776685,7462.09277617269,
+                                      7554.208181803426,7648.626256074004,7745.4344337228085,7844.724632875495,7946.5935461392,8051.142954674568,8158.480067389824,8268.717887632938,
+                                      8381.975610018162,8498.379050316224,8618.061111667314,8741.162290748554,8867.83122794844,8998.225306077602,9132.51130268578,9270.866101669406,
+                                      9413.477470553611,9560.54491063029,9712.280588045605,9868.910354974394,10030.674871216968,10197.83083793165,10370.652356804127,10549.432429789025]),    
+            'NIRPS_HA': np.array([   9793.31830725 , 9859.95301593 , 9927.49931744 , 9995.97622395,10065.40380975, 10135.80171767, 10207.19048503, 10279.59121586,
+                                    10353.02577856, 10427.51660496, 10503.0864558 , 10579.75913144,10657.5589196 , 10736.51096413, 10816.64116324, 10897.97569896,
+                                    10980.54199941, 11064.36827222, 11149.48372245, 11235.91830631,11323.70300177, 11412.86989695, 11503.45207046, 11595.48314928,
+                                    11688.99793186, 11784.03276228, 11880.62559736, 11978.81474198,12078.63947148, 12180.1413448 , 12283.36401067, 12388.35148928,
+                                    12495.14844764, 12603.80175443, 12714.36064267, 12826.87609104,12941.40020952, 13057.98722241, 13176.69424781, 13297.58039703,
+                                    13420.70477935, 13546.12854527, 13673.91830748, 14072.1783805,14210.13779528, 14350.82710154, 14494.33106043, 14640.73394106,
+                                    14790.12380228, 14942.59417032, 15098.24089619, 15257.16474828,15419.46907017, 15585.26310369, 15754.66203085, 15927.78376522,
+                                    16104.75265749, 16285.69620041, 16470.75172016, 16660.06255469,16853.77645383, 17052.04937274, 17255.0418695 , 17462.92163421,
+                                    17675.87345983, 17894.08476988, 18117.75049316, 18347.07795686,18582.28588236, 18823.6030827 , 19071.27048963]),
+            'EXPRES': np.array([3827.18212341, 3851.28596202, 3875.69435186, 3900.41312958 ,3925.44828033,3950.80594266 ,3976.49241363 ,4002.51415404 ,4028.87779393 ,4055.59013823,
+                                  4082.65817269 ,4110.08906999 ,4137.89019612 ,4166.069117   ,4194.63360538,4223.591648   ,4252.95145307 ,4282.72145806 ,4312.91033776 ,4343.52701277,
+                                  4374.58065826 ,4406.08071317 ,4438.03688981 ,4470.45918379 ,4503.3578845,4536.74358599 ,4570.62719834 ,4605.01995956 ,4639.93344803 ,4675.37959548,
+                                  4711.3707006  ,4747.91944324 ,4785.03889938 ,4822.74255663 ,4861.04433066,4899.95858228 ,4939.50013539 ,4979.68429586 ,5020.52687121 ,5062.04419143,
+                                  5104.2531307  ,5147.17113026 ,5190.81622248 ,5235.20705609 ,5280.3629228,5326.3037852  ,5373.05030624 ,5420.62388022 ,5469.04666543 ,5518.34161856,
+                                  5568.53253104 ,5619.6440673  ,5671.70180522 ,5724.73227878 ,5778.76302323,5833.82262268 ,5889.94076065 ,5947.14827335 ,6005.47720621 ,6064.96087378,
+                                  6125.63392315 ,6187.53240127 ,6250.69382638 ,6315.15726382 ,6380.96340664,6448.15466126 ,6516.77523859 ,6586.87125105 ,6658.49081593 ,6731.68416551,
+                                  6806.50376456 ,6883.00443578 ,6961.24349375 ,7041.2808881  ,7123.17935679,7207.00459002 ,7292.82540601 ,7380.71393943 ,7470.74584357 ,7563.00050759,
+                                  7657.56128994 ,7754.51576965 ,7853.9560168  ,7955.97888421 ,8060.68632206,8168.18571772])
+    
+    
+    }
+        gen_dic['wav_ord_inst']['NIRPS_HE'] = gen_dic['wav_ord_inst']['NIRPS_HA'] 
+    
+        #Data type
+        if gen_dic['mock_data']: 
+            print('Running with artificial data')  
+            data_dic['instrum_list']=list(mock_dic['visit_def'].keys())
+            gen_dic['tell_weight']=False    
+    
+        else: 
+            print('Running with observational data')  
             
-            #Threshold
-            gen_dic['gcal_thresh'][inst] = {'outliers':5.,'global':1e10}            
+            #Instruments to which are associated the different datasets
+            data_dic['instrum_list'] = list(gen_dic['data_dir_list'].keys())
             
-    #Stellar continuum
-    for key in ['DI','Intr']:
-        if (gen_dic[key+'_stcont'] and (not (gen_dic[key+'bin'] or gen_dic[key+'binmultivis']))):
-            print("WARNING: binned "+key+" spectrum must be calculated to use gen_dic['"+key+"_stcont']")
+        #Used visits
+        for inst in data_dic['instrum_list']:
+            if inst not in gen_dic['unused_visits']:gen_dic['unused_visits'][inst]=[]
+            
+        #Total number of processed instruments
+        gen_dic['n_instru'] = len(data_dic['instrum_list'])
+    
+        #All processed types
+        #    - if not set, assumed to be CCF by default
+        #    - gen_dic['type'] traces the original types of datasets throughout the pipeline 
+        gen_dic['all_types'] = []
+        for inst in data_dic['instrum_list']:    
+            if (inst not in gen_dic['type']):gen_dic['type'][inst]='CCF'
+            gen_dic['all_types']+=[gen_dic['type'][inst]]
+        gen_dic['all_types'] = list(np.unique(gen_dic['all_types']))
+        gen_dic['specINtype'] = any('spec' in s for s in gen_dic['all_types'])
+        gen_dic['ccfINtype'] = ('CCF' in gen_dic['all_types'])   
+    
+        #Use of covariance
+        if gen_dic['mock_data']:gen_dic['use_cov'] = False    
+        else:
+            #Used by default with spectral datasets, unless CCF datasets are processed or user requests otherwise
+            if gen_dic['ccfINtype']:gen_dic['use_cov'] = False  
+        if not gen_dic['use_cov']:print('Covariances discounted')        
+    
+        #Automatic activation/deactivation
+        if gen_dic['pca_ana']:gen_dic['intr_data'] = True
+        if gen_dic['intr_data']:
+            if not gen_dic['res_data']:
+                print('Automatic activation of differential profile extraction')
+                gen_dic['res_data'] = True
+            if not gen_dic['flux_sc']:
+                print('Automatic activation of flux scaling calculation')
+                gen_dic['flux_sc'] = True
+    
+        else:
+            for key in ['map_Intr_prof','all_intr_data','Intr_prof']:plot_dic[key]=''
+    
+        #Deactivate conditions
+        if (not gen_dic['specINtype']):
+            gen_dic['DI_CCF']=False
+            detrend_prof_dic['full_spec'] = False
+        if (not gen_dic['specINtype']) or (gen_dic['DI_CCF']) or (not gen_dic['intr_data']):        
+            gen_dic['Intr_CCF']=False     
+            
+        #Deactivate all calculation options
+        if not gen_dic['calc_all']:
+            for key in gen_dic:
+                if ('calc_' in key) and (gen_dic[key]):gen_dic[key] = False 
+    
+        #Deactivate spectral corrections in CCF mode
+        sp_corr_list = ['corr_tell','corr_FbalOrd','corr_Fbal','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig','corr_fring','trim_spec','glob_mast','cal_weight','gcal']
+        if (not gen_dic['specINtype']):
+            for key in sp_corr_list:gen_dic[key]=False
+        else:
+            #Activate spectral calibration calculation
+            gen_dic['gcal'] = True
+            
+            #Deactivate spectral balance correction over orders if not 2D spectra
+            if ('spec2D' not in gen_dic['all_types']): 
+                gen_dic['corr_FbalOrd']=False
+                plot_dic['wig_order_fit']=''
+    
+            #Activate global master calculation if required for flux balance corrections
+            if (gen_dic['corr_Fbal']) or (gen_dic['corr_FbalOrd']):gen_dic['glob_mast']=True
+            
+            #Deactivate arbitrary scaling if global scaling not required
+            if (not gen_dic['corr_Fbal']):gen_dic['Fbal_vis']=None
+            
+            #Check for arbitrary scaling        
+            elif (gen_dic['Fbal_vis']!='theo') and (gen_dic['n_instru']>1):stop('Flux balance must be set to a theoretical reference for multiple instruments')
+    
+            #Deactivate transit scaling if temporal flux correction is applied
+            if gen_dic['corr_Ftemp']: gen_dic['flux_sc']=False
+                
+            #Activate correction flag
+            gen_dic['corr_data'] = False
+            for key in sp_corr_list: gen_dic['corr_data'] |=gen_dic[key]
+    
+        #Deactivate modules irrelevant to mock datasets
+        if gen_dic['mock_data']:
+            for key in ['gcal','corr_tell','glob_mast','corr_Fbal','corr_FbalOrd','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig']:gen_dic[key] = False
+    
+        #Deactivate plot if module is not called
+        if (plot_dic['glob_mast']!='') and gen_dic['glob_mast']:
+            plot_dic['glob_mast']==''
+            print('Disabling "glob_mast" plot')
+        if (plot_dic['Fbal_corr_vis']!='') and ((not gen_dic['corr_Fbal']) or (gen_dic['Fbal_vis'] is None)):        
+            plot_dic['Fbal_corr_vis']==''
+            print('Disabling "Fbal_corr_vis" plot')        
+    
+        #Set general condition for CCF conversions
+        gen_dic['CCF_from_sp'] = gen_dic['DI_CCF'] | gen_dic['Intr_CCF'] | gen_dic['Atm_CCF']
+        if gen_dic['CCF_from_sp']:gen_dic['ccfINtype'] = True
+            
+        #Set general condition for 2D/1D conversion
+        gen_dic['spec_1D'] = gen_dic['spec_1D_DI'] | gen_dic['spec_1D_Intr'] | gen_dic['spec_1D_Atm']
+        gen_dic['calc_spec_1D'] = gen_dic['calc_spec_1D_DI'] | gen_dic['calc_spec_1D_Intr'] | gen_dic['calc_spec_1D_Atm']
+    
+        #Set final data mode for each type of profiles
+        #    - the general instrument and visit dictionaries contain a field type that represents the mode of the data at the current stage of the pipeline
+        #    - here we set the final mode for each type of profile, so that they can be retrieved in their original mode for plotting
+        #      eg, if profiles are converted into CCF at the differential stage, we keep the information that disk-integrated profiles were in spectral mode
+        for key in ['DI','Res','Intr','Atm']:data_dic[key]['type'] = {inst:deepcopy(gen_dic['type'][inst]) for inst in gen_dic['type']}
+        for inst in gen_dic['type']:
+            if 'spec' in gen_dic['type'][inst]: 
+            
+                #Set general condition that spectral data is converted into CCFs
+                if gen_dic['DI_CCF']:
+                    data_dic['DI']['type'][inst]='CCF'
+                if gen_dic['DI_CCF'] or gen_dic['Intr_CCF']:
+                    data_dic['Res']['type'][inst]='CCF'          
+                    data_dic['Intr']['type'][inst]='CCF'
+                if gen_dic['DI_CCF'] or gen_dic['Atm_CCF']:
+                    data_dic['Atm']['type'][inst]='CCF'
+    
+                #Set general condition that 2D spectral data is converted into 1D spectral data
+                if gen_dic['spec_1D_DI']:
+                    data_dic['DI']['type'][inst]='spec1D'
+                if gen_dic['spec_1D_DI'] or gen_dic['spec_1D_Intr']:
+                    data_dic['Res']['type'][inst]='spec1D'
+                    data_dic['Intr']['type'][inst]='spec1D'
+                if gen_dic['spec_1D_DI'] or gen_dic['spec_1D_Atm']:
+                    data_dic['Atm']['type'][inst]='spec1D'
+    
+        #Set general condition to activate binning modules
+        for mode in ['','multivis']:
+            gen_dic['bin'+mode]=False
+            gen_dic['calc_bin'+mode]=False
+            for data_type_gen in ['DI','Intr','Atm']:
+                gen_dic['bin'+mode] |= ( gen_dic[data_type_gen+'bin'+mode] | gen_dic['fit_'+data_type_gen+'bin'+mode])
+                gen_dic['calc_bin'+mode] |= ( gen_dic['calc_'+data_type_gen+'bin'+mode] | gen_dic['calc_fit_'+data_type_gen+'bin'+mode])
+    
+        #Set general condition for profiles fits
+        for key in ['DI','Intr','Atm']:
+            gen_dic['fit_'+key+'_gen'] = gen_dic['fit_'+key] | gen_dic['fit_'+key+'bin'] | gen_dic['fit_'+key+'binmultivis'] 
+    
+        #Automatic continuum and fit range
+        for key in ['DI','Intr','Atm']:
+            if gen_dic['fit_'+key+'_gen']:
+                if ('cont_range' not in data_dic[key]):data_dic[key]['cont_range']={}
+                if ('fit_range' not in data_dic[key]):data_dic[key]['fit_range']={}
+        if (gen_dic['res_data']) and ('cont_range' not in data_dic['Res']):data_dic['Res']['cont_range']={}
+    
+        #Deactivate conditions
+        if gen_dic['DIbin']==False:
+            data_dic['DI']['fit_MCCFout']=False
+        if (not gen_dic['specINtype']) or (gen_dic['DI_CCF']):plot_dic['spectral_LC']=''
+        if (not gen_dic['res_data']):
+            for key in ['map_Res_prof','Res_prof']:plot_dic[key]=''    
+        if not gen_dic['pl_atm']:
+            for key in ['map_Atm_prof','sp_atm','CCFatm']:plot_dic[key]=''  
+        else:
+            if gen_dic['Intr_CCF']:stop('Atmospheric extraction cannot be performed after Res./Intr. CCF conversion')
+        if gen_dic['Intr_CCF'] and (gen_dic['pl_atm']) and (any('spec' in s for s in data_dic['Atm']['type'].values())) and (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['Intrbin','rec_prof']):stop('Intrinsic profiles cannot be converted into CCFs if also requested for planetary spectra extraction)')
 
-    #Default options for stellar continuum calculation
-    if gen_dic['mask_permpeak'] or gen_dic['DI_stcont'] or gen_dic['Intr_stcont']:
-        for inst in data_dic['instrum_list'] :
+        #Telluric condition
+        if (not gen_dic['specINtype']):
+            gen_dic['tell_weight']=False
+            gen_dic['corr_tell']=False
+        else:
+            gen_dic['tell_weight'] &= gen_dic['corr_tell']
+        
+        #Set general condition to calculate master spectrum of the disk-integrated star and use it in weighted averages
+        #    - the master needs to be calculated if weighing is needed for one of the modules below
+        if gen_dic['DImast_weight']:gen_dic['DImast_weight'] |= (gen_dic['res_data'] | (gen_dic['loc_data_corr'] &  (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['spec_1D'] | gen_dic['bin'] | gen_dic['binmultivis'])
+        if gen_dic['DImast_weight'] and gen_dic['calc_DImast']:gen_dic['calc_DImast'] =  gen_dic['calc_res_data'] | (gen_dic['calc_loc_data_corr'] &  (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['calc_spec_1D'] | gen_dic['calc_bin'] | gen_dic['calc_binmultivis']
+      
+        #Set general conditions to activate multi-instrument modules     
+        if gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_AtmProf'] or gen_dic['fit_AtmProp'] or gen_dic['fit_ResProf'] : gen_dic['multi_inst']=True
+        else:gen_dic['multi_inst']=False
+    
+        #Import bin size dictionary
+        gen_dic['pix_size_v']=return_pix_size()    
+
+        #Standard-deviation curves with bin size for the out-of-transit differential CCFs
+        #    - defining the maximum size of the binning window, and the binning size for the sliding window (we will average the bins in windows of width bin_size from 1 to 40 (arbitrary))
+        if gen_dic['scr_search']:
+            gen_dic['scr_srch_max_binwin']=40.     
+            gen_dic['scr_srch_nperbins'] = 1.+np.arange(gen_dic['scr_srch_max_binwin'])
+    
+        #Default options for instrumental calibration
+        if gen_dic['gcal']: 
+            for inst in data_dic['instrum_list'] :
+                
+                #Threshold
+                gen_dic['gcal_thresh'][inst] = {'outliers':5.,'global':1e10}            
+                
+        #Stellar continuum
+        for key in ['DI','Intr']:
+            if (gen_dic[key+'_stcont'] and (not (gen_dic[key+'bin'] or gen_dic[key+'binmultivis']))):
+                print("WARNING: binned "+key+" spectrum must be calculated to use gen_dic['"+key+"_stcont']")
+    
+        #Default options for stellar continuum calculation
+        if gen_dic['mask_permpeak'] or gen_dic['DI_stcont'] or gen_dic['Intr_stcont']:
+            for inst in data_dic['instrum_list'] :
+                
+                #Size of rolling window for peak exclusion
+                #    - in A
+                if (inst not in gen_dic['contin_roll_win']):gen_dic['contin_roll_win'][inst] = 2.
+        
+                #Size of smoothing window
+                #    - in A
+                if (inst not in gen_dic['contin_smooth_win']):gen_dic['contin_smooth_win'][inst] = 0.5
+        
+                #Size of local maxima window
+                #    - in A
+                if (inst not in gen_dic['contin_locmax_win']):gen_dic['contin_locmax_win'][inst] = 0.5
+        
+                #Flux/wavelength stretching
+                if (inst not in gen_dic['contin_stretch']):gen_dic['contin_stretch'][inst] = 10. 
+        
+                #Rolling pin radius
+                #    - value corresponds to the bluest wavelength of the processed spectra
+                if (inst not in gen_dic['contin_pinR']):gen_dic['contin_pinR'][inst] = 5.
+
+    
+        #------------------------------------------------------------------------------------------------------------------------
+    
+        #Stellar mask generation is requested
+        gen_dic['def_st_masks'] = gen_dic['def_DImasks'] | gen_dic['def_Intrmasks'] 
+    
+        #Mask used to compute CCF on stellar lines
+        if len(gen_dic['CCF_mask'])>0:
+            gen_dic['CCF_mask_wav']={}
+            gen_dic['CCF_mask_wgt']={}
+    
+        #Condition to exclude ranges contaminated by planetary absorption
+        #    - independent of atmospheric signal extraction
+        if len(data_dic['Atm']['no_plrange'])>0:
+            data_dic['Atm']['exc_plrange']=True
+            data_dic['Atm']['plrange']=np.array(data_dic['Atm']['plrange'])
+        else:data_dic['Atm']['exc_plrange']=False
+    
+        #Properties associated with planetary signal extraction
+        if gen_dic['calc_pl_atm']:
+      
+            #Deactivate signal reduction for input CCFs
+            if (not gen_dic['specINtype']):gen_dic['atm_CCF']=False
+    
+        #Mask used to compute atmospheric CCFs and/or exclude atmospheric planetary ranges
+        #    - weights set to 1 unless requested
+        if data_dic['Atm']['CCF_mask'] is not None:
             
-            #Size of rolling window for peak exclusion
-            #    - in A
-            if (inst not in gen_dic['contin_roll_win']):gen_dic['contin_roll_win'][inst] = 2.
+            #Upload CCF mask
+            ext = data_dic['Atm']['CCF_mask'].split('.')[-1]
+            if (ext=='fits'):
+                hdulist = fits.open(data_dic['Atm']['CCF_mask'])
+                data_loc = hdulist[1].data
+                data_dic['Atm']['CCF_mask_wav'] = data_loc['lambda']
+                data_dic['Atm']['CCF_mask_wgt'] = data_loc['contrast'] if data_dic['Atm']['use_maskW'] == True else np.repeat(1.,len(data_dic['Atm']['CCF_mask_wav']))        
+                hdulist.close()
+            elif (ext=='csv'):
+                data_loc = np.genfromtxt(data_dic['Atm']['CCF_mask'], delimiter=',', names=True)
+                data_dic['Atm']['CCF_mask_wav'] = data_loc['wave']
+                data_dic['Atm']['CCF_mask_wgt'] = data_loc['contrast'] if data_dic['Atm']['use_maskW'] == True else np.repeat(1.,len(data_dic['Atm']['CCF_mask_wav'])) 
+            elif (ext in ['txt','dat']):
+                data_loc = np.loadtxt(data_dic['Atm']['CCF_mask']).T            
+                data_dic['Atm']['CCF_mask_wav'] = data_loc[0]
+                data_dic['Atm']['CCF_mask_wgt'] = data_loc[1]        
+            else:
+                stop('CCF mask extension TBD') 
     
-            #Size of smoothing window
-            #    - in A
-            if (inst not in gen_dic['contin_smooth_win']):gen_dic['contin_smooth_win'][inst] = 0.5
-    
-            #Size of local maxima window
-            #    - in A
-            if (inst not in gen_dic['contin_locmax_win']):gen_dic['contin_locmax_win'][inst] = 0.5
-    
-            #Flux/wavelength stretching
-            if (inst not in gen_dic['contin_stretch']):gen_dic['contin_stretch'][inst] = 10. 
-    
-            #Rolling pin radius
-            #    - value corresponds to the bluest wavelength of the processed spectra
-            if (inst not in gen_dic['contin_pinR']):gen_dic['contin_pinR'][inst] = 5.
 
 
     #------------------------------------------------------------------------------
@@ -763,19 +839,23 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             theo_dic['mac_mode_func'] = calc_macro_ker_anigauss
             if theo_dic['mac_mode']=='anigauss_iso':
                 star_params['eta_T']=star_params['eta_R']
+    
+            
 
     #------------------------------------------------------------------------------
     #Planets
     #------------------------------------------------------------------------------
     
-    #Planets in the system
+    #Planets defined in the system
     gen_dic['all_pl'] = [pl_loc for pl_loc in system_param.keys() if pl_loc!='star']
 
     #Planets considered for transit
     gen_dic['studied_pl'] = list(gen_dic['transit_pl'].keys()) 
-    txt_print = 'Study of: '+gen_dic['studied_pl'][0]
-    if len(gen_dic['studied_pl'])>1:
-        for pl_loc in gen_dic['studied_pl'][1::]:txt_print+=', '+pl_loc
+    if len(gen_dic['studied_pl'])>0:
+        txt_print = 'Study of: '+gen_dic['studied_pl'][0]
+        if len(gen_dic['studied_pl'])>1:
+            for pl_loc in gen_dic['studied_pl'][1::]:txt_print+=', '+pl_loc
+        print(txt_print)
 
     #Keplerian motion
     if ('kepl_pl' not in gen_dic):gen_dic['kepl_pl']=['all']
@@ -784,34 +864,41 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         gen_dic['kepl_pl']=deepcopy(gen_dic['all_pl'])
     
     #Planet properties    
-    for pl_loc in list(set(gen_dic['studied_pl']+gen_dic['kepl_pl'])):
+    for pl_loc in gen_dic['all_pl']:
         
         #Checking if there is a "-" in a target name
         if '-' in pl_loc:stop('Invalid target name: {}. Target names should not contain a hyphen.'.format(pl_loc))        
-        
-        #Automatic definitions and conversions
         PlParam_loc=system_param[pl_loc]
+        
+        #Converting argument of periastrong from degree to radians
         PlParam_loc['omega_rad']=PlParam_loc['omega_deg']*np.pi/180.
-        if ('a' not in PlParam_loc) and ('aRs' in PlParam_loc) and ('Rstar' in star_params):
-            PlParam_loc['a']=PlParam_loc['aRs']*star_params['Rstar_km']/AU_1  # in au
+        
+        #Converting orbital period from days to seconds
         PlParam_loc['period_s'] = PlParam_loc['period']*24.*3600.
-        if 'inclination' in PlParam_loc:
+
+        #Planet with known orbit and transit properties
+        if pl_loc in gen_dic['def_pl']:
+
+            #Adding absolute semi-major axis
+            if ('a' not in PlParam_loc):PlParam_loc['a']=PlParam_loc['aRs']*star_params['Rstar_km']/AU_1  # in au            
+
+            #Converting orbital inclination from degree to radians
             PlParam_loc['inclin_rad']=PlParam_loc['inclination']*np.pi/180.
 
             #Semi-amplitude of planet orbital motion around the star (approximated with Mp << Mstar) in km/s
-            if ('a' in PlParam_loc):
-                PlParam_loc['Kp_orb'] = (2.*np.pi/PlParam_loc['period_s'])*np.sin(PlParam_loc['inclin_rad'])*PlParam_loc['a']*AU_1/np.sqrt(1.-PlParam_loc['ecc']**2.)
+            PlParam_loc['Kp_orb'] = (2.*np.pi/PlParam_loc['period_s'])*np.sin(PlParam_loc['inclin_rad'])*PlParam_loc['a']*AU_1/np.sqrt(1.-PlParam_loc['ecc']**2.)
 
-                #Stellar mass derived from semi-orbital motion around the star
-                #    - assuming Mp << Ms : 
-                # P^2/a^3 = 4*pi^2/G*Ms 
-                # Ms = 4*pi^2*a^3/(G*P^2)
-                PlParam_loc['Mstar_orb'] = 4.*np.pi**2.*(PlParam_loc['a']*AU_1*1e3)**3./(Msun*G_usi*PlParam_loc['period_s']**2.)
+            #Stellar mass derived from semi-orbital motion around the star
+            #    - assuming Mp << Ms : 
+            # P^2/a^3 = 4*pi^2/G*Ms 
+            # Ms = 4*pi^2*a^3/(G*P^2)
+            PlParam_loc['Mstar_orb'] = 4.*np.pi**2.*(PlParam_loc['a']*AU_1*1e3)**3./(Msun*G_usi*PlParam_loc['period_s']**2.)
 
-        if pl_loc in gen_dic['studied_pl']:
+            #Converting sky-projected angle from degree to radians
             PlParam_loc['lambda_rad']=PlParam_loc['lambda_proj']*np.pi/180.
 
-            PlParam_loc['b']=PlParam_loc['aRs']*np.cos(PlParam_loc['inclin_rad'])   
+            #Impact parameter
+            if 'b' not in PlParam_loc:PlParam_loc['b']=PlParam_loc['aRs']*np.cos(PlParam_loc['inclin_rad'])   
             if (PlParam_loc['ecc']==0.) & (PlParam_loc['b']>1.):print('WARNING: impact parameter for ',pl_loc,' > 1')
 
         #Calculation of transit center (or time of cunjunction for a non-transiting planet)
@@ -827,7 +914,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 PlParam_loc['Mean_anom_TR'] = calc_mean_anom_TR(PlParam_loc['ecc'],PlParam_loc['omega_rad']) 
                 PlParam_loc['TCenter']+=(PlParam_loc['Mean_anom_TR']*PlParam_loc["period"]/(2.*np.pi))
   
-        #Keplerian semi-amplitude from the studied planet (km/s) 
+        #Keplerian semi-amplitude of the star from the planet (km/s) 
         PlParam_loc['Kstar_kms']=PlParam_loc['Kstar']/1000. if 'Kstar' in PlParam_loc else calc_Kstar(PlParam_loc,star_params)/1000.
 
         #Orbital frequency, in year-1
@@ -895,7 +982,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     theo_dic['Ssub_Sstar_pl']={}
     data_dic['DI']['system_prop']['RpRs_max']={}
     if ('nsub_Dpl' not in theo_dic):theo_dic['nsub_Dpl']={}
-    for pl_loc in gen_dic['studied_pl']:
+    for pl_loc in gen_dic['def_pl']:
 
         #Largest possible planet size
         if ('chrom' in data_dic['DI']['system_prop']):data_dic['DI']['system_prop']['RpRs_max'][pl_loc] = np.max(data_dic['DI']['system_prop']['achrom'][pl_loc]+data_dic['DI']['system_prop']['chrom'][pl_loc])
@@ -931,9 +1018,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     theo_dic['d_oversamp_spot']={}
 
     #Spot activation triggered
+    gen_dic['spot_coord_par'] = ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']
     if len(gen_dic['studied_sp'])>0:
         print('Spots are simulated')
-        gen_dic['spot_coord_par'] = ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']
 
         #Oversampling factor for spot-occulted regions
         #    - input corresponds to the half-angular opening of the spot
@@ -979,160 +1066,137 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             #Corresponding spot grid
             _,theo_dic['Ssub_Sstar_sp'][spot],theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot],_ = occ_region_grid(RspRs_max, theo_dic['nsub_Dspot'][spot],spot=True)
 
-    #------------------------------------------------------------------------------------------------------------------------
-    #Model star
-    #------------------------------------------------------------------------------------------------------------------------
-    grid_type=[]
-    if any('spec' in s for s in data_dic['DI']['type'].values()):grid_type+=['spec']
-    if ('CCF' in data_dic['DI']['type'].values()):grid_type+=['ccf']    
-
-    #Calculation of total stellar flux for use in simulated light curves
-    if gen_dic['calc_flux_sc'] and (data_dic['DI']['transit_prop']['nsub_Dstar'] is not None): 
-        model_star('Ftot',theo_dic,grid_type,data_dic['DI']['system_prop'],data_dic['DI']['transit_prop']['nsub_Dstar'],star_params) 
-                    
-    #Definition of model stellar grid to calculate local or disk-integrated properties
-    #    - used througout the pipeline, unless stellar properties are fitted
-    if gen_dic['theoPlOcc'] or (data_dic['DI']['spots_prop'] != {}) or (gen_dic['fit_DI_gen'] and (('custom' in data_dic['DI']['model'].values()) or ('RT_ani_macro' in data_dic['DI']['model'].values()))) or gen_dic['mock_data'] \
-        or gen_dic['fit_ResProf'] or gen_dic['correct_spots'] or gen_dic['fit_IntrProf'] or gen_dic['loc_data_corr']:
-
-        #Stellar grid
-        model_star('grid',theo_dic,grid_type,data_dic['DI']['system_prop'],theo_dic['nsub_Dstar'],star_params) 
-       
-        #Theoretical atmosphere
-        cond_st_atm = False
-        if gen_dic['mock_data']:
-            for inst in mock_dic['intr_prof']:
-                if (mock_dic['intr_prof'][inst]['mode']=='theo' ):cond_st_atm = True
-        if (gen_dic['fit_DI_gen'] and ('custom' in data_dic['DI']['model'].values())):
-            for inst in data_dic['DI']['mod_def']:
-                if (data_dic['DI']['mod_def'][inst]['mode'] == 'theo'):cond_st_atm = True
-        if gen_dic['fit_IntrProf'] and (glob_fit_dic['IntrProf']['mode'] == 'theo'):cond_st_atm = True 
-        if gen_dic['loc_data_corr'] and (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['glob_mod','indiv_mod']) and (data_dic['Intr']['opt_loc_data_corr']['mode']=='theo'):cond_st_atm = True  
-        if cond_st_atm:
-            if theo_dic['st_atm']['calc']:
-                theo_dic['sme_grid'] = gen_theo_atm(theo_dic['st_atm'],star_params)
-                datasave_npz(gen_dic['save_data_dir']+'Introrig_prop/IntrProf_grid',{'sme_grid':theo_dic['sme_grid']})
-            else:theo_dic['sme_grid'] = dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/IntrProf_grid')['sme_grid']
 
     #------------------------------------------------------------------------------
     #Generic path names
     gen_dic['main_pl_text'] = ''
     gen_dic['main_pl_sp_text'] = ''
     for pl_loc in gen_dic['studied_pl']:gen_dic['main_pl_text']+=pl_loc
-    gen_dic['save_data_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Saved_data/'
-    gen_dic['save_plot_dir'] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/'
+    save_system = gen_dic['save_dir']+gen_dic['star_name']+'/'
+    if gen_dic['main_pl_text'] != '':save_system+=gen_dic['main_pl_text']+'_'        
+    gen_dic['save_data_dir'] = save_system+'Saved_data/'
+    gen_dic['save_plot_dir'] = save_system+'Plots/'
     gen_dic['add_txt_path']={'DI':'','Intr':'','Res':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
     gen_dic['data_type_gen']={'DI':'DI','Res':'Res','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
     gen_dic['type_name']={'DI':'disk-integrated','Res':'differential','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
 
-    #------------------------------------------------------------------------------------------------------------------------
 
-    #Stellar mask generation is requested
-    gen_dic['def_st_masks'] = gen_dic['def_DImasks'] | gen_dic['def_Intrmasks'] 
+    #Data is processed
+    if gen_dic['sequence'] not in ['system_view']:    
 
-    #Mask used to compute CCF on stellar lines
-    if len(gen_dic['CCF_mask'])>0:
-        gen_dic['CCF_mask_wav']={}
-        gen_dic['CCF_mask_wgt']={}
+        #------------------------------------------------------------------------------------------------------------------------
+        #Model star
+        #------------------------------------------------------------------------------------------------------------------------
+        grid_type=[]
+        if any('spec' in s for s in data_dic['DI']['type'].values()):grid_type+=['spec']
+        if ('CCF' in data_dic['DI']['type'].values()):grid_type+=['ccf']  
 
-    #Condition to exclude ranges contaminated by planetary absorption
-    #    - independent of atmospheric signal extraction
-    if len(data_dic['Atm']['no_plrange'])>0:
-        data_dic['Atm']['exc_plrange']=True
-        data_dic['Atm']['plrange']=np.array(data_dic['Atm']['plrange'])
-    else:data_dic['Atm']['exc_plrange']=False
-
-    #Properties associated with planetary signal extraction
-    if gen_dic['calc_pl_atm']:
-  
-        #Deactivate signal reduction for input CCFs
-        if (not gen_dic['specINtype']):gen_dic['atm_CCF']=False
-
-    #Mask used to compute atmospheric CCFs and/or exclude atmospheric planetary ranges
-    #    - weights set to 1 unless requested
-    if data_dic['Atm']['CCF_mask'] is not None:
-        
-        #Upload CCF mask
-        ext = data_dic['Atm']['CCF_mask'].split('.')[-1]
-        if (ext=='fits'):
-            hdulist = fits.open(data_dic['Atm']['CCF_mask'])
-            data_loc = hdulist[1].data
-            data_dic['Atm']['CCF_mask_wav'] = data_loc['lambda']
-            data_dic['Atm']['CCF_mask_wgt'] = data_loc['contrast'] if data_dic['Atm']['use_maskW'] == True else np.repeat(1.,len(data_dic['Atm']['CCF_mask_wav']))        
-            hdulist.close()
-        elif (ext=='csv'):
-            data_loc = np.genfromtxt(data_dic['Atm']['CCF_mask'], delimiter=',', names=True)
-            data_dic['Atm']['CCF_mask_wav'] = data_loc['wave']
-            data_dic['Atm']['CCF_mask_wgt'] = data_loc['contrast'] if data_dic['Atm']['use_maskW'] == True else np.repeat(1.,len(data_dic['Atm']['CCF_mask_wav'])) 
-        elif (ext in ['txt','dat']):
-            data_loc = np.loadtxt(data_dic['Atm']['CCF_mask']).T            
-            data_dic['Atm']['CCF_mask_wav'] = data_loc[0]
-            data_dic['Atm']['CCF_mask_wgt'] = data_loc[1]        
-        else:
-            stop('CCF mask extension TBD') 
-
-    #------------------------------------------------------------------------------------------------------------------------
-
-    #Create directories where data is saved/restored
-    if (not path_exist(gen_dic['save_data_dir']+'Processed_data/Global/')):makedirs(gen_dic['save_data_dir']+'Processed_data/Global/')  
-    if gen_dic['specINtype']:
-        if gen_dic['gcal'] and (not path_exist(gen_dic['save_data_dir']+'Processed_data/Calibration/')):makedirs(gen_dic['save_data_dir']+'Processed_data/Calibration/')  
-        if gen_dic['CCF_from_sp'] and (not path_exist(gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/')):makedirs(gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/')  
-        if (gen_dic['corr_data']):
-            corr_path = gen_dic['save_data_dir']+'Corr_data/'
-            if (not path_exist(corr_path)):makedirs(corr_path)
-            if (gen_dic['corr_tell']) and (not path_exist(corr_path+'Tell/')):makedirs(corr_path+'Tell/')         
-            if (gen_dic['glob_mast']) and (not path_exist(corr_path+'Global_Master/')):makedirs(corr_path+'Global_Master/')    
-            if (gen_dic['corr_Fbal']) and (not path_exist(corr_path+'Fbal/')):makedirs(corr_path+'Fbal/')
-            if (gen_dic['corr_FbalOrd']) and (not path_exist(corr_path+'Fbal/Orders/')):makedirs(corr_path+'Fbal/Orders/')            
-            if (gen_dic['corr_Ftemp']) and (not path_exist(corr_path+'Ftemp/')):makedirs(corr_path+'Ftemp/')
-            if (gen_dic['corr_cosm']) and (not path_exist(corr_path+'Cosm/')):makedirs(corr_path+'Cosm/')
-            if (gen_dic['mask_permpeak']) and (not path_exist(corr_path+'Permpeak/')):makedirs(corr_path+'Permpeak/')
-            if (gen_dic['corr_wig']): 
-                if not path_exist(corr_path+'Wiggles/'):makedirs(corr_path+'Wiggles/')
-                
-                #Condition for exposure analysis
-                gen_dic['wig_exp_ana'] = gen_dic['wig_exp_init']['mode'] | gen_dic['wig_exp_filt']['mode'] | gen_dic['wig_exp_samp']['mode'] | gen_dic['wig_exp_nu_ana']['mode'] | gen_dic['wig_exp_fit']['mode'] | gen_dic['wig_exp_point_ana']['mode'] 
-
-                if gen_dic['wig_exp_ana']  and (not path_exist(corr_path+'Wiggles/Exp_fit/')):makedirs(corr_path+'Wiggles/Exp_fit/') 
-                if gen_dic['wig_vis_fit']['mode'] and (not path_exist(corr_path+'Wiggles/Vis_fit/')):makedirs(corr_path+'Wiggles/Vis_fit/')
-                if gen_dic['wig_corr']['mode'] and (not path_exist(corr_path+'Wiggles/Data/')):makedirs(corr_path+'Wiggles/Data/')
-            if (gen_dic['corr_fring']) and (not path_exist(corr_path+'Fring/')):makedirs(corr_path+'Fring/')        
-            if (gen_dic['trim_spec']) and (not path_exist(corr_path+'Trim/')):makedirs(corr_path+'Trim/')         
-    if (gen_dic['detrend_prof']) and (not path_exist(gen_dic['save_data_dir']+'Detrend_prof/')):makedirs(gen_dic['save_data_dir']+'Detrend_prof/') 
-    if (gen_dic['flux_sc']) and (not path_exist(gen_dic['save_data_dir']+'Scaled_data/')):makedirs(gen_dic['save_data_dir']+'Scaled_data/')
-    if gen_dic['DImast_weight'] and (not path_exist(gen_dic['save_data_dir']+'DI_data/Master/')):makedirs(gen_dic['save_data_dir']+'DI_data/Master/')
-    if (gen_dic['res_data']) and (not path_exist(gen_dic['save_data_dir']+'Res_data/')):makedirs(gen_dic['save_data_dir']+'Res_data/')
-    if gen_dic['pca_ana'] and (not path_exist(gen_dic['save_data_dir']+'PCA_results/')):makedirs(gen_dic['save_data_dir']+'PCA_results/')   
-    if (gen_dic['intr_data']) and (not path_exist(gen_dic['save_data_dir']+'Intr_data/')):makedirs(gen_dic['save_data_dir']+'Intr_data/')
-    if gen_dic['loc_data_corr']:
-        if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/')        
-        if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')  
-    if gen_dic['diff_data_corr']:
-        if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/')        
-        if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')          
-    if (gen_dic['pl_atm']):
-        if (not path_exist(gen_dic['save_data_dir']+'Atm_data/')):makedirs(gen_dic['save_data_dir']+'Atm_data/')        
-        if (not path_exist(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')):makedirs(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')
+        #Calculation of total stellar flux for use in simulated light curves
+        if gen_dic['calc_flux_sc'] and (data_dic['DI']['transit_prop']['nsub_Dstar'] is not None): 
+            model_star('Ftot',theo_dic,grid_type,data_dic['DI']['system_prop'],data_dic['DI']['transit_prop']['nsub_Dstar'],star_params,True,True) 
+                        
+        #Definition of model stellar grid to calculate local or disk-integrated properties
+        #    - used throughout the pipeline, unless stellar properties are fitted
+        if gen_dic['theoPlOcc'] or (data_dic['DI']['spots_prop'] != {}) or (gen_dic['fit_DI_gen'] and (('custom' in data_dic['DI']['model'].values()) or ('RT_ani_macro' in data_dic['DI']['model'].values()))) or gen_dic['mock_data'] \
+            or gen_dic['fit_ResProf'] or gen_dic['correct_spots'] or gen_dic['fit_IntrProf'] or gen_dic['loc_data_corr']:
     
-    for data_type in ['DI','Intr','Atm']:
-        if gen_dic['align_'+data_type] and (not path_exist(gen_dic['save_data_dir']+'Aligned_'+data_type+'_data/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Aligned_'+data_type+'_data/'+gen_dic['add_txt_path'][data_type])    
-        if gen_dic['spec_1D_'+data_type]:
-            if (not path_exist(gen_dic['save_data_dir']+data_type+'_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])   
-            if (data_type=='Intr') and (not path_exist(gen_dic['save_data_dir']+'Res_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Res_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])  
-        if (gen_dic[data_type+'bin'] or gen_dic[data_type+'binmultivis']) and (not path_exist(gen_dic['save_data_dir']+data_type+'bin_data/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'bin_data/'+gen_dic['add_txt_path'][data_type])
-        if (gen_dic['fit_'+data_type+'bin'] or gen_dic['fit_'+data_type+'binmultivis']) and (not path_exist(gen_dic['save_data_dir']+data_type+'bin_prop/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'bin_prop/'+gen_dic['add_txt_path'][data_type])    
-        if gen_dic['def_'+data_type+'masks'] and (not path_exist(gen_dic['save_data_dir']+'CCF_masks_'+data_type+'/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'CCF_masks_'+data_type+'/'+gen_dic['add_txt_path'][data_type])    
-        if gen_dic[data_type+'_CCF']:
-            if (not path_exist(gen_dic['save_data_dir']+data_type+'_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])    
-            if (data_type=='Intr') and (not path_exist(gen_dic['save_data_dir']+'Res_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Res_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type]) 
+            #Stellar grid
+            model_star('grid',theo_dic,grid_type,data_dic['DI']['system_prop'],theo_dic['nsub_Dstar'],star_params,True,True) 
+           
+            #Theoretical atmosphere
+            cond_st_atm = False
+            if gen_dic['mock_data']:
+                for inst in mock_dic['intr_prof']:
+                    if (mock_dic['intr_prof'][inst]['mode']=='theo' ):cond_st_atm = True
+            if (gen_dic['fit_DI_gen'] and ('custom' in data_dic['DI']['model'].values())):
+                for inst in data_dic['DI']['mod_def']:
+                    if (data_dic['DI']['mod_def'][inst]['mode'] == 'theo'):cond_st_atm = True
+            if gen_dic['fit_IntrProf'] and (glob_fit_dic['IntrProf']['mode'] == 'theo'):cond_st_atm = True 
+            if gen_dic['loc_data_corr'] and (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['glob_mod','indiv_mod']) and (data_dic['Intr']['opt_loc_data_corr']['mode']=='theo'):cond_st_atm = True  
+            if cond_st_atm:
+                if theo_dic['st_atm']['calc']:
+                    theo_dic['sme_grid'] = gen_theo_atm(theo_dic['st_atm'],star_params)
+                    datasave_npz(gen_dic['save_data_dir']+'Introrig_prop/IntrProf_grid',{'sme_grid':theo_dic['sme_grid']})
+                else:theo_dic['sme_grid'] = dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/IntrProf_grid')['sme_grid']
+    
+        #------------------------------------------------------------------------------------------------------------------------
+    
+        #Define conservative maximum shift of spectral table (km/s)
+        #    - this is used to extend the common spectral table so that it covers all possible wavelength shifts of the profiles in :
+        # + the star rest frame, where profiles are shifted by up to the Keplerian semi-amplitude
+        # + the stellar surface, where profiles are shifted by up to the sky-projected rotational velocity
+        # + the planetary rest frame, where profiles are shifted by up to the orbital semi-amplitude
+        gen_dic['max_rv_shift'] = 0.
+        for pl_loc in gen_dic['kepl_pl']:gen_dic['max_rv_shift']+=system_param[pl_loc]['Kstar_kms']
+        if gen_dic['intr_data']:
+            gen_dic['max_rv_shift'] = np.max([gen_dic['max_rv_shift'],system_param['star']['vsini']])
+        if gen_dic['pl_atm']:
+            max_rv_shift_orb = 0.
+            for pl_loc in gen_dic['studied_pl']:max_rv_shift_orb+=system_param[pl_loc]['Kp_orb']
+            gen_dic['max_rv_shift'] = np.max([gen_dic['max_rv_shift'],max_rv_shift_orb])
 
-    if (gen_dic['fit_DI'] or gen_dic['sav_keywords']) and (not path_exist(gen_dic['save_data_dir']+'DIorig_prop/')):makedirs(gen_dic['save_data_dir']+'DIorig_prop/')        
-    if ((gen_dic['fit_Intr']) or (gen_dic['theoPlOcc'])) and (not path_exist(gen_dic['save_data_dir']+'Introrig_prop/')):makedirs(gen_dic['save_data_dir']+'Introrig_prop/')
-    if (gen_dic['fit_Atm']) and (not path_exist(gen_dic['save_data_dir']+'Atmorig_prop/'+data_dic['Atm']['pl_atm_sign']+'/')):makedirs(gen_dic['save_data_dir']+'Atmorig_prop/'+data_dic['Atm']['pl_atm_sign']+'/')
-
-    for key in ['IntrProp','IntrProf','AtmProf','AtmProp']:
-        if (gen_dic['fit_'+key]) and (not path_exist(gen_dic['save_data_dir']+'Joined_fits/'+key+'/')):makedirs(gen_dic['save_data_dir']+'Joined_fits/'+key+'/') 
+        #------------------------------------------------------------------------------------------------------------------------
+    
+        #Create directories where data is saved/restored
+        if (not path_exist(gen_dic['save_data_dir']+'Processed_data/Global/')):makedirs(gen_dic['save_data_dir']+'Processed_data/Global/')  
+        if gen_dic['specINtype']:
+            if gen_dic['gcal'] and (not path_exist(gen_dic['save_data_dir']+'Processed_data/Calibration/')):makedirs(gen_dic['save_data_dir']+'Processed_data/Calibration/')  
+            if gen_dic['CCF_from_sp'] and (not path_exist(gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/')):makedirs(gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/')  
+            if (gen_dic['corr_data']):
+                corr_path = gen_dic['save_data_dir']+'Corr_data/'
+                if (not path_exist(corr_path)):makedirs(corr_path)
+                if (gen_dic['corr_tell']) and (not path_exist(corr_path+'Tell/')):makedirs(corr_path+'Tell/')         
+                if (gen_dic['glob_mast']) and (not path_exist(corr_path+'Global_Master/')):makedirs(corr_path+'Global_Master/')    
+                if (gen_dic['corr_Fbal']) and (not path_exist(corr_path+'Fbal/')):makedirs(corr_path+'Fbal/')
+                if (gen_dic['corr_FbalOrd']) and (not path_exist(corr_path+'Fbal/Orders/')):makedirs(corr_path+'Fbal/Orders/')            
+                if (gen_dic['corr_Ftemp']) and (not path_exist(corr_path+'Ftemp/')):makedirs(corr_path+'Ftemp/')
+                if (gen_dic['corr_cosm']) and (not path_exist(corr_path+'Cosm/')):makedirs(corr_path+'Cosm/')
+                if (gen_dic['mask_permpeak']) and (not path_exist(corr_path+'Permpeak/')):makedirs(corr_path+'Permpeak/')
+                if (gen_dic['corr_wig']): 
+                    if not path_exist(corr_path+'Wiggles/'):makedirs(corr_path+'Wiggles/')
+                    
+                    #Condition for exposure analysis
+                    gen_dic['wig_exp_ana'] = gen_dic['wig_exp_init']['mode'] | gen_dic['wig_exp_filt']['mode'] | gen_dic['wig_exp_samp']['mode'] | gen_dic['wig_exp_nu_ana']['mode'] | gen_dic['wig_exp_fit']['mode'] | gen_dic['wig_exp_point_ana']['mode'] 
+    
+                    if gen_dic['wig_exp_ana']  and (not path_exist(corr_path+'Wiggles/Exp_fit/')):makedirs(corr_path+'Wiggles/Exp_fit/') 
+                    if gen_dic['wig_vis_fit']['mode'] and (not path_exist(corr_path+'Wiggles/Vis_fit/')):makedirs(corr_path+'Wiggles/Vis_fit/')
+                    if gen_dic['wig_corr']['mode'] and (not path_exist(corr_path+'Wiggles/Data/')):makedirs(corr_path+'Wiggles/Data/')
+                if (gen_dic['corr_fring']) and (not path_exist(corr_path+'Fring/')):makedirs(corr_path+'Fring/')        
+                if (gen_dic['trim_spec']) and (not path_exist(corr_path+'Trim/')):makedirs(corr_path+'Trim/')         
+        if (gen_dic['detrend_prof']) and (not path_exist(gen_dic['save_data_dir']+'Detrend_prof/')):makedirs(gen_dic['save_data_dir']+'Detrend_prof/') 
+        if (gen_dic['flux_sc']) and (not path_exist(gen_dic['save_data_dir']+'Scaled_data/')):makedirs(gen_dic['save_data_dir']+'Scaled_data/')
+        if gen_dic['DImast_weight'] and (not path_exist(gen_dic['save_data_dir']+'DI_data/Master/')):makedirs(gen_dic['save_data_dir']+'DI_data/Master/')
+        if (gen_dic['res_data']) and (not path_exist(gen_dic['save_data_dir']+'Res_data/')):makedirs(gen_dic['save_data_dir']+'Res_data/')
+        if gen_dic['pca_ana'] and (not path_exist(gen_dic['save_data_dir']+'PCA_results/')):makedirs(gen_dic['save_data_dir']+'PCA_results/')   
+        if (gen_dic['intr_data']) and (not path_exist(gen_dic['save_data_dir']+'Intr_data/')):makedirs(gen_dic['save_data_dir']+'Intr_data/')
+        if gen_dic['loc_data_corr']:
+            if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/')        
+            if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')
+        if gen_dic['diff_data_corr']:
+            if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/')        
+            if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')          
+        if (gen_dic['pl_atm']):
+            if (not path_exist(gen_dic['save_data_dir']+'Atm_data/')):makedirs(gen_dic['save_data_dir']+'Atm_data/')        
+            if (not path_exist(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')):makedirs(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')
+        
+        for data_type in ['DI','Intr','Atm']:
+            if gen_dic['align_'+data_type] and (not path_exist(gen_dic['save_data_dir']+'Aligned_'+data_type+'_data/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Aligned_'+data_type+'_data/'+gen_dic['add_txt_path'][data_type])    
+            if gen_dic['spec_1D_'+data_type]:
+                if (not path_exist(gen_dic['save_data_dir']+data_type+'_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])   
+                if (data_type=='Intr') and (not path_exist(gen_dic['save_data_dir']+'Res_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Res_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])  
+            if (gen_dic[data_type+'bin'] or gen_dic[data_type+'binmultivis']) and (not path_exist(gen_dic['save_data_dir']+data_type+'bin_data/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'bin_data/'+gen_dic['add_txt_path'][data_type])
+            if (gen_dic['fit_'+data_type+'bin'] or gen_dic['fit_'+data_type+'binmultivis']) and (not path_exist(gen_dic['save_data_dir']+data_type+'bin_prop/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'bin_prop/'+gen_dic['add_txt_path'][data_type])    
+            if gen_dic['def_'+data_type+'masks'] and (not path_exist(gen_dic['save_data_dir']+'CCF_masks_'+data_type+'/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'CCF_masks_'+data_type+'/'+gen_dic['add_txt_path'][data_type])    
+            if gen_dic[data_type+'_CCF']:
+                if (not path_exist(gen_dic['save_data_dir']+data_type+'_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])    
+                if (data_type=='Intr') and (not path_exist(gen_dic['save_data_dir']+'Res_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Res_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type]) 
+    
+        if (gen_dic['fit_DI'] or gen_dic['sav_keywords']) and (not path_exist(gen_dic['save_data_dir']+'DIorig_prop/')):makedirs(gen_dic['save_data_dir']+'DIorig_prop/')        
+        if ((gen_dic['fit_Intr']) or (gen_dic['theoPlOcc'])) and (not path_exist(gen_dic['save_data_dir']+'Introrig_prop/')):makedirs(gen_dic['save_data_dir']+'Introrig_prop/')
+        if (gen_dic['fit_Atm']) and (not path_exist(gen_dic['save_data_dir']+'Atmorig_prop/'+data_dic['Atm']['pl_atm_sign']+'/')):makedirs(gen_dic['save_data_dir']+'Atmorig_prop/'+data_dic['Atm']['pl_atm_sign']+'/')
+    
+        for key in ['IntrProp','IntrProf','AtmProf','AtmProp']:
+            if (gen_dic['fit_'+key]) and (not path_exist(gen_dic['save_data_dir']+'Joined_fits/'+key+'/')):makedirs(gen_dic['save_data_dir']+'Joined_fits/'+key+'/') 
 
     return coord_dic,data_prop
 
@@ -1463,7 +1527,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if pl_loc in data_inst[vis]['transit_pl']:
                         for key in ['ecl','cen_ph','st_ph','end_ph','ph_dur','rv_pl','v_pl']:coord_dic[inst][vis][pl_loc][key] = np.zeros(n_in_visit,dtype=float)*np.nan
                         for key in ['cen_pos','st_pos','end_pos']:coord_dic[inst][vis][pl_loc][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
-    
+
                     #Definition of mid-transit times for each planet associated with the visit 
                     if (pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst]):
                         coord_dic[inst][vis][pl_loc]['Tcenter'] = gen_dic['Tcenter_visits'][pl_loc][inst][vis]
@@ -1515,7 +1579,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         else:dace_red_inst+='15'  
                     cond_dace_vis = (np.asarray(DACE_sp['ins_name']) == dace_red_inst) & (np.asarray(DACE_sp['date_night']) == vis_yr+'-'+vis_mt+'-'+vis_day_txt)
                     if True not in cond_dace_vis:
-                        print('         Visit not found in DACE')                    
+                        print('         Visit not found in DACE') 
+                        DACE_sp = False
                     else:
 
                         #Retrieve activity indexes and bjd
@@ -1551,7 +1616,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis][spot]['is_visible'] = np.zeros([3,n_in_visit],dtype=bool) 
                         for key in ['Tc_sp', 'ang_rad','lat_rad', 'fctrst']:coord_dic[inst][vis][spot][key] = spots_prop_nom[spot][key]  
 
-                #Process all exposures in visit
+                #Initialization of unquiet star grid
+                if gen_dic['mock_data']:unquiet_star_grid = np.zeros(theo_dic['nsub_star'], dtype=bool)
+
+                #Pre-processing all exposures in visit
+                #    - this is necessary to define the 'unquiet_star_grid' for mock dataset
+                #      since it requires planet and spot coordinates, we perform the coordinate calculations for both observational and mock data in this first loop
                 for isub_exp,iexp in enumerate(range(n_in_visit)):
 
                     #Artificial data            
@@ -1559,13 +1629,16 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis]['bjd'][iexp] = bjd_exp_all[iexp]  - 2400000.  
                         coord_dic[inst][vis]['t_dur'][iexp] = (bjd_exp_high[iexp]-bjd_exp_low[iexp])*24.*3600.
 
+                        # Initialization of individual unquiet star grids
+                        spotted_star_grid=np.zeros(theo_dic['nsub_star'], dtype=bool)
+                        plocced_star_grid=np.zeros(theo_dic['nsub_star'], dtype=bool)
+
                     #Observational data
                     else:
-                    
+                        
                         #Data of the fits file 
                         hdulist =fits.open(vis_path_exp[iexp])
-                        if vis_path_skysub_exp is not None:hdulist_skysub =fits.open(vis_path_skysub_exp[iexp])
-                
+               
                         #Header 
                         hdr =hdulist[0].header 
 
@@ -1617,14 +1690,42 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis][pl_loc]['cen_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['st_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['end_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['ecl'][iexp],coord_dic[inst][vis][pl_loc]['rv_pl'][iexp],coord_dic[inst][vis][pl_loc]['v_pl'][iexp],\
                         coord_dic[inst][vis][pl_loc]['st_ph'][iexp],coord_dic[inst][vis][pl_loc]['cen_ph'][iexp],coord_dic[inst][vis][pl_loc]['end_ph'][iexp],coord_dic[inst][vis][pl_loc]['ph_dur'][iexp]=coord_expos(pl_loc,coord_dic,inst,vis,system_param['star'],
                                             system_param[pl_loc],coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic,data_dic['DI']['system_prop']['achrom'][pl_loc][0])                    
-                    
+
+                        #Unquiet star grid
+                        #    - figure out which cells are planet-occulted
+                        if gen_dic['mock_data'] and (np.abs(coord_dic[inst][vis][pl_loc]['ecl'][isub_exp])!=1):
+                            mini_pl_dic = {}
+                            mini_pl_dic['x_orb_exp']=[coord_dic[inst][vis][pl_loc]['st_pos'][0, isub_exp], coord_dic[inst][vis][pl_loc]['cen_pos'][0, isub_exp], coord_dic[inst][vis][pl_loc]['end_pos'][0, isub_exp]]
+                            mini_pl_dic['y_orb_exp']=[coord_dic[inst][vis][pl_loc]['st_pos'][1, isub_exp], coord_dic[inst][vis][pl_loc]['cen_pos'][1, isub_exp], coord_dic[inst][vis][pl_loc]['end_pos'][1, isub_exp]]
+                            mini_pl_dic['RpRs']=data_dic['DI']['system_prop']['achrom'][pl_loc][0]
+                            mini_pl_dic['lambda']=system_param[pl_loc]['lambda_proj']
+                            pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, theo_dic['x_st_sky_grid_pl'][pl_loc], theo_dic['y_st_sky_grid_pl'][pl_loc])
+                            plocced_star_grid |= pl_plocced_star_grid 
+
                     #Surface coordinates for each studied spot  
-                    for spot in data_inst[vis]['transit_sp']: 
+                    for spot in data_inst[vis]['transit_sp']:
                         spots_prop_exp = coord_expos_spots(spot,coord_dic[inst][vis]['bjd'][iexp],spots_prop_nom,system_param['star'],coord_dic[inst][vis]['t_dur'][iexp],gen_dic['spot_coord_par'])                           
                         for key in spots_prop_exp:coord_dic[inst][vis][spot][key][:, iexp] = [spots_prop_exp[key][0],spots_prop_exp[key][1],spots_prop_exp[key][2]]  
 
-                    #--------------------------------------------------------------------------------------------------
-        
+                        #Unquiet star grid
+                        #    - figure out which cells are spotted
+                        if gen_dic['mock_data'] and (np.sum(spots_prop_exp['is_visible'])>0):
+                            _, spot_spotted_star_grid = calc_spotted_tiles(spots_prop_exp, spots_prop_nom[spot]['ang_rad'], theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot], theo_dic['z_st_sky_grid_sp'][spot], theo_dic, system_param['star'], use_grid_dic=True)
+                            spotted_star_grid |= spot_spotted_star_grid
+
+                    #Update the global 2D quiet star grid
+                    if gen_dic['mock_data']:unquiet_star_grid |= (spotted_star_grid | plocced_star_grid)
+
+                #--------------------------------------------------------------------------------------------------
+                #Processing all exposures in visit
+                for isub_exp,iexp in enumerate(range(n_in_visit)):
+
+                    #Observational data for current exposure
+                    if not gen_dic['mock_data']:
+                        hdulist =fits.open(vis_path_exp[iexp])
+                        if vis_path_skysub_exp is not None:hdulist_skysub =fits.open(vis_path_skysub_exp[iexp])
+                        hdr =hdulist[0].header                     
+
                     #Initialize data at first exposure
                     if isub_exp==0:
                         
@@ -1683,13 +1784,18 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 'inst':inst,
                                 'vis':vis, 
                                 'fit':False,
-                                'unquiet_star':None,
+                                'unquiet_star':unquiet_star_grid,                                
+                                'spot_coord_par':gen_dic['spot_coord_par'],
                                 })
 
                             #Spots properties
-                            if (inst in mock_dic['spots_prop']) and (data_dic['DI']['spots_prop'] != {}):params_mock['use_spots']=True
-                            else:params_mock['use_spots']=False 
-                                
+                            if (inst in mock_dic['spots_prop']) and (data_dic['DI']['spots_prop'] != {}):
+                                params_mock['use_spots']=True
+                                spots_prop = data_dic['DI']['spots_prop']
+                            else:
+                                params_mock['use_spots']=False 
+                                spots_prop = {}
+
                         #Observational data            
                         else:   
                             data_inst[vis]['mock'] = False                      
@@ -1725,7 +1831,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                     n_vel_vis = hdr['NAXIS1']
                                     
                                 #Velocity table and resolution
-                                velccf = start_rv+delta_rv*np.arange(n_vel_vis)  
+                                velccf = start_rv+delta_rv*np.arange(n_vel_vis)
 
                                 #Screening
                                 #    - check for oversampling, screening the profiles so that they are defined over uncorrelated points with a resolution similar to the instrumental pixel width.
@@ -1751,7 +1857,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                     velccf = velccf[idx_scr_bins]
             
                                 #Table dimensions                             
-                                data_inst[vis]['nspec'] = len(velccf) 
+                                data_inst[vis]['nspec'] = len(velccf)
     
                             #----------------------------------------
                             
@@ -1799,9 +1905,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         #Table for model calculation
                         args_exp = def_st_prof_tab(None,None,None,fixed_args)
 
+                        #Initializing stellar properties
+                        args_exp = init_stellar_prop(args_exp,theo_dic,data_dic['DI']['system_prop'],spots_prop,system_param['star'],param_exp)
+   
                         #Initializing stellar profiles
-                        args_exp = init_custom_DI_prof(args_exp,gen_dic,data_dic['DI']['system_prop'],data_dic['DI']['spots_prop'],theo_dic,system_param['star'],param_exp)
-                        
+                        args_exp = init_custom_DI_prof(args_exp,gen_dic,param_exp)
+
                         #Initializing broadband scaling of intrinsic profiles into local profiles
                         #    - defined in forward mode at initialization, or defined in fit mode only if the stellar grid is not updated through the fit
                         #    - there are no default pipeline tables for this scaling because they depend on the local spectral tables of the line profiles
@@ -1832,7 +1941,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                         #Convolution, conversion and resampling 
                         DI_prof_exp = conv_st_prof_tab(None,None,None,fixed_args,args_exp,DI_prof_exp,fixed_args['FWHM_inst'])
-                        
+
                         #Set negative flux values to null
                         DI_prof_exp[DI_prof_exp<0.] = 0.
 
@@ -1908,7 +2017,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             #Bin centers
                             #    - we associate the velocity table to all exposures to keep the same structure as spectra
                             data_dic_temp['cen_bins'][iexp,0] = velccf
-         
+      
                             #CCF tables per order 
                             if (vis_path_skysub_exp is not None) and (gen_dic['fibB_corr'][inst][vis]=='all'):hdulist_dat= hdulist_skysub
                             else:hdulist_dat = hdulist
@@ -1922,7 +2031,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 all_ccf =hdulist_dat[0].data
                                 if (vis_path_skysub_exp is not None) and (gen_dic['fibB_corr'][inst][vis]!='all'):
                                     all_ccf[idx_ord_skysub] = (hdulist_skysub[0].data)[idx_ord_skysub]           
-                          
+                                
                             #Construction of the total CCF
                             #    - we re-calculate the CCF rather than taking the total CCF stored in the last column of the matrix to be able to account for sky-correction in specific orders
                             #    - we use the input "gen_dic['orders4ccf'][inst]" rather than "gen_dic[inst]['orders4ccf']", which is used for CCF computed from spectral data 
@@ -2333,7 +2442,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         
                         #Activity indexes
                         if DACE_sp:
-                            dace_idexp = closest( DACE_idx['bjd'] ,bjd_exp )
+                            dace_idexp = closest( DACE_idx['bjd'] ,coord_dic[inst][vis]['bjd'][iexp] )
                             for key in data_inst[vis]['act_idx']:
                                 data_prop[inst][vis][key][iexp,:] = [DACE_idx[key][dace_idexp],DACE_idx[key+'_err'][dace_idexp]]
                         elif inst=='EXPRES':
@@ -2436,17 +2545,91 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #    - spectral bins must be continuous for the resampling routine of the pipeline to work
                 #    - bin width are included in ESPRESSO files, but to have exactly the same lower/upper boundary between successive bins we redefine them manually  
                 data_dic_temp['edge_bins'] = def_edge_tab(data_dic_temp['cen_bins'])
-    
+
+                #Lower/upper spectral edges 
+                #    - over all exposures in each order
+                low_bin_ord_def = np.min(data_dic_temp['edge_bins'][:,:,0],axis=0)   
+                high_bin_ord_def = np.max(data_dic_temp['edge_bins'][:,:,-1],axis=0)
+
+                #Nominal common spectral grid
+                nom_nspec = data_inst[vis]['nspec']
+                cen_bins_com = data_dic_temp['cen_bins'][0]
+                edge_bins_com = data_dic_temp['edge_bins'][0]
+                low_edge_bins_com = edge_bins_com[:,0:-1]
+                high_edge_bins_com = edge_bins_com[:,1::]
+
+                #Bin size of spectral edges in each order of the common grid
+                dbin_low_ord = edge_bins_com[:,1]-edge_bins_com[:,0]
+                dbin_high_ord = edge_bins_com[:,-1]-edge_bins_com[:,-2]    
+
                 #Common spectral tables
                 #    - the common table is set to the table of the first exposure, defined in the input rest frame
-                #    - for spectra it will be used indifferently to resample spectra defined in the input or the stellar rest frame
-                #    - for CCF it will be shifted to the star rest frame in the alignmen tmodule, if called 
-                #      we give the table the same structure as for spectra, with dimensions nord x nspec
+                #      it is then extended on both side of each order, from the min/max over all exposures, to the maximum rv shift in all frames of the workflow 
+                #    - we give the table the same structure as for spectra, with dimensions nord x nspec
+                #      to keep a constant number of bins per order we use the maximum number of extended bins over all orders
+                if ('spec' in data_inst['type']):
+
+                    #Upper and lower extension
+                    #    - from the lower / upper spectral edges in each order
+                    #    - we use the approximation w_shifted = w*(1 + (rv_shift/c) ) to define the boundaries 
+                    low_bin_ord_exten = low_bin_ord_def*(1. - (gen_dic['max_rv_shift']/c_light) ) 
+                    high_bin_ord_exten = high_bin_ord_def*(1. + (gen_dic['max_rv_shift']/c_light) ) 
+                    
+                    #Number of extended bins
+                    #    - we extend with a regular bin size in ln(w) space
+                    #      see details in "Defining 1D table for conversion from 2D spectra"
+                    dlnbin_low_ord = dbin_low_ord/low_edge_bins_com[:,0]
+                    dlnbin_high_ord = dbin_high_ord/high_edge_bins_com[:,-1]
+                    nlow_bin_exten = np.max(npint( np.floor( np.log(low_edge_bins_com[:,0]/low_bin_ord_exten)/np.log( dlnbin_low_ord + 1. ) ) ) )
+                    nhigh_bin_exten = np.max(npint( np.floor( np.log(high_bin_ord_exten/high_edge_bins_com[:,-1])/np.log( dlnbin_high_ord + 1. ) ) ) )
+                    
+                    #Extended edges
+                    low_edge_bins_exten = ((low_edge_bins_com[:,0]*( dlnbin_low_ord + 1. )**(-np.arange(nlow_bin_exten+1))[:,None]).T)[:,::-1]
+                    high_edge_bins_exten = (high_edge_bins_com[:,-1]*( dlnbin_high_ord + 1. )**np.arange(nhigh_bin_exten+1)[:,None]).T
+
+                else:
+                    
+                    #Upper and lower extension
+                    low_bin_ord_exten = low_bin_ord_def   - gen_dic['max_rv_shift']
+                    high_bin_ord_exten = high_bin_ord_def + gen_dic['max_rv_shift']
+                    
+                    #Maximum number of extended bins
+                    #    - taking the maximum over all order, between the edges of the common table and the min/max extensions
+                    nlow_bin_exten  = np.max(npint((low_edge_bins_com[:,0]-low_bin_ord_exten)/dbin_low_ord)+1)
+                    nhigh_bin_exten = np.max(npint((high_bin_ord_exten-high_edge_bins_com[:,-1])/dbin_high_ord)+1)
+                    
+                    #Extended edges
+                    low_edge_bins_exten = ((low_edge_bins_com[:,0] - dbin_low_ord*np.arange(nlow_bin_exten+1)[:,None]).T)[:,::-1]
+                    high_edge_bins_exten = (high_edge_bins_com[:,-1] + dbin_high_ord*np.arange(nhigh_bin_exten+1)[:,None]).T
+                    
+                #Extended centers
+                low_cen_bins_exten = 0.5*(low_edge_bins_exten[:,0:-1]+low_edge_bins_exten[:,1::])
+                high_cen_bins_exten = 0.5*(high_edge_bins_exten[:,0:-1]+high_edge_bins_exten[:,1::])
+
+                #Number of bins in extended grid
+                exten_nspec = nlow_bin_exten + nom_nspec + nhigh_bin_exten   
+                
+                #Final grid
+                cen_bins_com_exten = np.zeros([data_inst['nord'],exten_nspec],float)*np.nan
+                edge_bins_com_exten = np.zeros([data_inst['nord'],exten_nspec+1],float)*np.nan
+                for iord in range(data_inst['nord']):
+                    cen_bins_com_exten[iord] = np.concatenate((low_cen_bins_exten[iord], cen_bins_com[iord], high_cen_bins_exten[iord]))
+                    edge_bins_com_exten[iord] = np.concatenate((low_edge_bins_exten[iord,0:-1], edge_bins_com[iord], high_edge_bins_exten[iord,1::]))
+                    
+                #Storing
                 data_inst[vis]['proc_com_data_paths'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com'
-                data_com = {'cen_bins':data_dic_temp['cen_bins'][0],'edge_bins':data_dic_temp['edge_bins'][0],'dim_exp':data_inst[vis]['dim_exp'],'nspec':data_inst[vis]['nspec']}
+                data_com = {'cen_bins':cen_bins_com_exten,'edge_bins':edge_bins_com_exten}
+                data_com['nspec'] = exten_nspec
+                data_com['dim_all'] = [n_in_visit,data_inst['nord'],exten_nspec]
+                data_com['dim_exp'] = [data_inst['nord'],exten_nspec]
+                data_com['dim_sp'] = [n_in_visit,data_inst['nord']]
+
+                #Initializes the common table in the star rest frame
+                #    - it will be updated if disk-integrated profiles are aligned
+                data_inst[vis]['proc_com_star_data_paths'] = deepcopy(data_inst[vis]['proc_com_data_paths'])
 
                 #Exposures in current visit are defined on different tables
-                if ('spec' in data_inst['type']) and (np.nanmax(np.abs(data_dic_temp['edge_bins']-data_com['edge_bins'][None,:,:]))>1e-6):
+                if ('spec' in data_inst['type']) and (np.nanmax(np.abs(data_dic_temp['edge_bins']-data_dic_temp['edge_bins'][0]))>1e-6):
                     data_inst[vis]['comm_sp_tab'] = False
 
                     #Resampling data on wavelength table common to the visit if requested
@@ -2468,19 +2651,21 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         #Set flag that all exposures in the visit are now defined on a common table
                         data_inst[vis]['comm_sp_tab'] = True
 
-                #Save table common to all visits
+                #Save instrument table common to all visits
                 #    - set to the common table of the first instrument visit
                 if ivis==0:
                     data_dic[inst]['proc_com_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com'
+                    data_dic[inst]['proc_com_star_data_path'] = deepcopy(data_dic[inst]['proc_com_data_path'])
                     data_dic[inst]['dim_exp'] = deepcopy(data_inst[vis]['dim_exp'])
                     data_dic[inst]['nspec'] = deepcopy(data_inst[vis]['nspec'])
                     data_dic[inst]['com_vis'] = vis   
                     data_com_inst = deepcopy(data_com)
-                    np.savez_compressed(data_dic[inst]['proc_com_data_path'],data = data_com_inst,allow_pickle=True)
+                    datasave_npz(data_dic[inst]['proc_com_data_path'],data_com_inst)
 
-                #Check wether the common table of current visit is the same as the common table for the instrument
-                #    - flag set to False if :
-                # + exposures of current visit are still defined on individual table 
+                #Check wether all visits of current instrument share a common table
+                #    - flag remains True if the common table of current visit is the same as the common table for the instrument
+                #    - flag is set to False if :
+                # + exposures of current visit are still defined on individual table (= no common table even for the visit) 
                 # + exposures of current visit are defined on a common table, but it is different from the instrument table (only possible if current visit is not the first, used as reference)   
                 if (not data_inst[vis]['comm_sp_tab']) or ((ivis>0) and ((data_com_inst['nspec']!=data_com['nspec']) or (np.nanmax(np.abs(data_com_inst['edge_bins']-data_com['edge_bins']))>1e-6))):
                       data_dic[inst]['comm_sp_tab'] = False
@@ -2509,13 +2694,13 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     #    - path is made specific to the exposure to be able to point from in-transit to global profiles without copying them to disk
                     if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):
                         data_inst[vis]['tell_DI_data_paths'][iexp] = data_inst[vis]['proc_DI_data_paths']+'tell_'+str(iexp)
-                        np.savez_compressed(data_inst[vis]['tell_DI_data_paths'][iexp], data = {'tell':data_dic_temp['tell'][iexp]},allow_pickle=True) 
+                        datasave_npz(data_inst[vis]['tell_DI_data_paths'][iexp],{'tell':data_dic_temp['tell'][iexp]})
                         data_dic_temp.pop('tell')    
                         
                     #Saving path to initialized raw data
                     #    - saving data per exposure to prevent size issue with npz files 
-                    data_exp = {key:data_dic_temp[key][iexp] for key in ['cen_bins','edge_bins','flux','cov','cond_def']}                    
-                    np.savez_compressed(data_inst[vis]['proc_DI_data_paths']+str(iexp),data=data_exp,allow_pickle=True)   
+                    data_exp = {key:data_dic_temp[key][iexp] for key in ['cen_bins','edge_bins','flux','cov','cond_def']}
+                    datasave_npz(data_inst[vis]['proc_DI_data_paths']+str(iexp),data_exp)
                                
                 #Check for empty orders
                 idx_ord_empty = np_where1D(np.sum(data_dic_temp['cond_def'],axis=(0,2)) == 0.)
@@ -2525,14 +2710,14 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     txt_str+=str(idx_ord_empty[-1])+']'
                     print('           Empty orders : '+txt_str)
 
-                #Saving defined edges of common spectral table
+                #Defined edges of common spectral table
                 low_bins_def = deepcopy(data_dic_temp['edge_bins'][:,:,0:-1])
                 high_bins_def = deepcopy(data_dic_temp['edge_bins'][:,:,1::])
                 low_bins_def[~data_dic_temp['cond_def']] = np.nan
                 high_bins_def[~data_dic_temp['cond_def']] = np.nan
                 data_com['min_edge_ord'] = np.nanmin(low_bins_def,axis=(0,2))             
                 data_com['max_edge_ord'] = np.nanmax(high_bins_def,axis=(0,2))
-                np.savez_compressed(data_inst[vis]['proc_com_data_paths'],data = data_com,allow_pickle=True)
+                datasave_npz(data_inst[vis]['proc_com_data_paths'],data_com)
 
                 #Saving useful keyword file        
                 if gen_dic['sav_keywords']:
@@ -2570,8 +2755,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         for vis in data_dic[inst]['visit_list']:     
             data_load = np.load(gen_dic['save_data_dir']+'Processed_data/Global/'+inst+'_'+vis+'.npz',allow_pickle=True)
             data_dic[inst][vis]=data_load['data_add'].item()
-            data_dic[inst][vis]['proc_DI_data_paths']  = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'
-            data_dic[inst][vis]['proc_com_data_paths'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com'
+            # data_dic[inst][vis]['proc_DI_data_paths']  = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'           #retrieved in  data_load['data_add'].item() no ?
+            # data_dic[inst][vis]['proc_com_data_paths'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com'     #retrieved in  data_load['data_add'].item() no ?
             coord_dic[inst][vis]=data_load['coord_add'].item()
             data_prop[inst][vis]=data_load['data_prop_add'].item() 
             gen_dic[inst][vis]=data_load['gen_add'].item()
@@ -2609,24 +2794,31 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         #Default systemic velocity
         if (inst not in data_dic['DI']['sysvel']):data_dic['DI']['sysvel'][inst] = {}
         if (vis not in data_dic['DI']['sysvel'][inst]):
-            data_dic['DI']['sysvel'][inst][vis] = 0.
-            print('         WARNING : sysvel set to 0 km/s')
+            data_dic['DI']['sysvel'][inst][vis] = system_param['star']['sysvel']
+            print('           WARNING : sysvel set to default '+str(system_param['star']['sysvel'])+' km/s')
 
         #Define CCF resolution, range, and sysvel here so that spectral data needs not be uploaded again after processing
         if gen_dic['CCF_from_sp'] or gen_dic['Intr_CCF']:
           
-            #Velocity table in original frame
+            #Velocity table in input frame
             if gen_dic['dRV'] is None:dvelccf= gen_dic['pix_size_v'][inst]
             else:dvelccf= gen_dic['dRV']  
             n_vel = int((gen_dic['end_RV']-gen_dic['start_RV'])/dvelccf)+1
             data_vis['nvel'] = n_vel
             data_vis['velccf'] = gen_dic['start_RV']+dvelccf*np.arange(n_vel)
-
-            #Bin edges in velocity space
             data_vis['edge_velccf'] = np.append(data_vis['velccf']-0.5*dvelccf,data_vis['velccf'][-1]+0.5*dvelccf)
+            
+            #Common velocity table in original frame
+            n_bin_exten  = int(gen_dic['max_rv_shift']/dvelccf)+1
+            low_edge_bins_exten = (data_vis['edge_velccf'][0] - dvelccf*np.arange(n_bin_exten+1))[::-1]
+            high_edge_bins_exten = (data_vis['edge_velccf'][-1] + dvelccf*np.arange(n_bin_exten+1))           
+            low_cen_bins_exten = 0.5*(low_edge_bins_exten[0:-1]+low_edge_bins_exten[1::])
+            high_cen_bins_exten = 0.5*(high_edge_bins_exten[0:-1]+high_edge_bins_exten[1::])            
+            data_vis['velccf_com'] = np.concatenate((low_cen_bins_exten, data_vis['velccf'], high_cen_bins_exten))
+            data_vis['edge_velccf_com'] = np.concatenate((low_edge_bins_exten[0:-1], data_vis['edge_velccf'], high_edge_bins_exten[1::]))
 
             #Shifting the CCFs velocity table by RV(CDM_star/CDM_sun)
-            for key in ['velccf','edge_velccf']:data_vis[key+'_star']=data_vis[key]-data_dic['DI']['sysvel'][inst][vis]  
+            for key in ['velccf','edge_velccf','velccf_com','edge_velccf_com']:data_vis[key+'_star']=data_vis[key]-data_dic['DI']['sysvel'][inst][vis]  
     
         #Automatic continuum and fit range
         #    - done here rather than in the 'calc_proc_data' condition so that ranges can be defined for already-processed observed or mock datasets, even if the analysis modules were not activated 
@@ -2744,7 +2936,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             cond_pre&=(coord_vis[pl_loc]['ecl']==-1.)
             cond_post&=(coord_vis[pl_loc]['ecl']==1.)
         gen_vis['idx_in']=np_where1D(cond_in)
-        gen_vis['idx_out']=np_where1D(~cond_in)  
+        gen_vis['idx_out']=np_where1D(~cond_in)
         gen_vis['idx_pretr']=np_where1D(cond_pre)  
         gen_vis['idx_posttr']=np_where1D(cond_post) 
         data_vis['n_in_tr'] = len(gen_vis['idx_in'])
@@ -2898,27 +3090,37 @@ def update_inst(data_dic,inst,gen_dic):
     
     """ 
     data_inst = data_dic[inst] 
-    data_com_ref = dataload_npz(data_inst[data_inst['com_vis']]['proc_com_data_paths']) 
+    
+    #Common table for the reference visit
+    #    - at this stage all modules call the common table in the star rest frame, so we update this one 
+    #      if profiles were not aligned the common visit table below points toward the input one
+    data_com_ref = dataload_npz(data_inst[data_inst['com_vis']]['proc_com_star_data_paths']) 
+    
+    #Check alignment status
+    if gen_dic['align_DI']:com_star='_star'
+    else:com_star=''
+    
+    #Define instrument table
     if data_inst['comm_sp_tab'] and (gen_dic['align_DI']) and (data_dic['DI']['type'][inst]=='CCF'):
-        data_inst['proc_com_data_path']=gen_dic['save_data_dir']+'Processed_data/'+inst+'_com_star'    
+        data_inst['proc_com_star_data_path']=gen_dic['save_data_dir']+'Processed_data/'+inst+'_com'+com_star    
     elif gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:
         if gen_dic['spec_1D']:
             data_inst['type']='spec1D' 
             data_inst['mean_gdet'] = False     
-            data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com' 
+            data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com'+com_star 
         elif gen_dic['CCF_from_sp']:
             data_inst['type']='CCF'                 
             data_inst['tell_sp'] = False 
             data_inst['mean_gdet'] = False     
-            data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_com' 
+            data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_com'+com_star 
             if ('chrom' in data_inst['system_prop']):
                 data_inst['system_prop']['chrom_mode'] = 'achrom'
                 data_inst['system_prop'].pop('chrom')
         else:
-            data_inst['proc_com_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com' 
+            data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com'+com_star 
         
     #Common instrument table is set to the table of the visit taken as reference
-    np.savez_compressed(data_inst['proc_com_data_path'],data = data_com_ref,allow_pickle=True)  
+    datasave_npz(data_inst['proc_com_star_data_path'],data_com_ref)  
     
     if gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:    
         data_inst['dim_exp'] = deepcopy(data_com_ref['dim_exp'])

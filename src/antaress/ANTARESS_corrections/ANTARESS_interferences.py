@@ -295,7 +295,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             for step,dir_name in zip(['wig_exp_init','wig_exp_filt','wig_exp_samp','wig_exp_nu_ana','wig_exp_fit','wig_exp_point_ana'],['Init','Filter','Sampling','Chrom','Global','Coord']):
                 path_dic['datapath_'+dir_name] = gen_dic['save_data_dir']+'Corr_data/Wiggles/Exp_fit/'+inst+'_'+vis+'/'+dir_name+'/' 
                 if gen_dic['wig_exp_ana']:                    
-                    path_dic['plotpath_'+dir_name] = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/Wiggles/Exp_fit/'+inst+'_'+vis+'/'+dir_name+'/'
+                    path_dic['plotpath_'+dir_name] = gen_dic['save_plot_dir']+'Spec_raw/Wiggles/Exp_fit/'+inst+'_'+vis+'/'+dir_name+'/'
                     if gen_dic[step]['mode']:             
                         if not os_system.path.exists(path_dic['datapath_'+dir_name]):os_system.makedirs(path_dic['datapath_'+dir_name])  
                         if step=='wig_exp_samp':
@@ -439,9 +439,9 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
            
                 #Retrieve common visit table 
                 if not gen_dic['wig_indiv_mast'] :
-                    data_com = np.load(data_inst[vis]['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item() 
-                    dim_exp_com = data_inst[vis]['dim_exp']
-                    nspec_com = data_inst['nspec']   
+                    data_com = dataload_npz(data_inst[vis]['proc_com_data_paths']) 
+                    dim_exp_com = data_com['dim_exp']
+                    nspec_com = data_com['nspec']   
             
                 #Calculate pre/post-meridian masters
                 if gen_dic['wig_merid_diff']:
@@ -2351,7 +2351,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         for comp_id in comm_freq_comp:comm_power_comp[comp_id]=np.zeros(len(comm_freq_comp[comp_id]),dtype=float)
                     
                     #Save path
-                    path_fit = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/Wiggles/Vis_fit/'+inst+'_'+vis+'/Exposures/'
+                    path_fit = gen_dic['save_plot_dir']+'Spec_raw/Wiggles/Vis_fit/'+inst+'_'+vis+'/Exposures/'
                     if not os_system.path.exists(path_fit):os_system.makedirs(path_fit) 
 
                     #Periodograms in log mode
@@ -2434,7 +2434,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                     #------------------------------                           
                     #Create directory if required
-                    path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/Wiggles/Vis_fit/'+inst+'_'+vis+'/Chrompar_coord/'
+                    path_loc = gen_dic['save_plot_dir']+'Spec_raw/Wiggles/Vis_fit/'+inst+'_'+vis+'/Chrompar_coord/'
                     if not os_system.path.exists(path_loc):os_system.makedirs(path_loc) 
 
                     #Colors
@@ -2498,7 +2498,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                     #------------------------------                           
                     #Create directory if required
-                    path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/Wiggles/Vis_fit/'+inst+'_'+vis+'/Par_chrom/'
+                    path_loc = gen_dic['save_plot_dir']+'Spec_raw/Wiggles/Vis_fit/'+inst+'_'+vis+'/Par_chrom/'
                     if not os_system.path.exists(path_loc):os_system.makedirs(path_loc) 
                     
                     #Colors
@@ -2568,7 +2568,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                     #------------------------------                           
                     #Create directory if required
-                    path_loc = gen_dic['save_dir']+gen_dic['main_pl_text']+'_Plots/Spec_raw/Wiggles/Vis_fit/'+inst+'_'+vis+'/Par_convergence/'
+                    path_loc = gen_dic['save_plot_dir']+'Spec_raw/Wiggles/Vis_fit/'+inst+'_'+vis+'/Par_convergence/'
                     if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
                     #Loop or iteration values

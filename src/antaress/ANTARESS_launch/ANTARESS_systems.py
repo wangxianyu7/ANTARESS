@@ -9,16 +9,20 @@ def get_system_params():
     >>> all_system_params={
         'star_name':{
             'star':{
-                'Rstar': val,
-                'istar': val,
-                'veq':   val 
+                'sysvel': val,
+                'Rstar':  val,
+                'istar':  val,
+                'veq':    val 
                 },      
             'planet_b':{
-                'period':    val,
-                'TCenter':   val,
-                'ecc':       val,     
-                'omega_deg': val,          
-                'Kstar':     val
+                'period':      val,
+                'TCenter':     val,
+                'ecc':         val,     
+                'omega_deg':   val,
+                'inclination': val,     
+                'lambda_proj': val,     
+                'aRs':         val,     
+                'Kstar':       val  
             },           
         },
     }
@@ -26,6 +30,11 @@ def get_system_params():
     Additional planets can be associated with a given system. Required and optional properties are defined as follows.
     
     **Star properties**
+    
+     - `sysvel` [km/s] : systemic radial velocity
+     
+         + relative velocity between the stellar and solar system barycenters 
+         + this value is used for first-order definitions and does not need to be extremely accurate
     
      - `veq` [km/s] : equatorial rotational velocity 
      
@@ -209,7 +218,13 @@ def get_system_params():
             :math:`(i_\mathrm{p},\lambda,i_{\star}) = (\pi+i_\mathrm{p,in}   , \pi-\lambda_\mathrm{in}   , \pi+i_{\star \mathrm{in}})` 
             
                   same as 4. rotated around the LOS: yields :math:`-x_{\star \mathrm{sky}},y_{\star \mathrm{sky}},-y_{\star,2},\pi-\psi_2` 
-             
+
+        These degenerate configurations thus yields two possible values for :math:`\psi`, equivalent to maintaining the same sky-projected angle and orbital inclination, and considering a 
+        `Northern` configuration (:math:`i_{\star}=i_{\star \mathrm{in}}` ; :math:`\Psi=\arccos(\sin(i_{\star \mathrm{in}}) \cos(\lambda_\mathrm{in}) \sin(i_\mathrm{p,in}) + \cos(i_{\star \mathrm{in}}) \cos(i_\mathrm{p,in}))`) 
+        and a
+        `Southern` configuration (:math:`i_{\star}=\pi-i_{\star \mathrm{in}}` ; :math:`\Psi=\arccos(\sin(i_{\star \mathrm{in}}) \cos(\lambda_\mathrm{in}) \sin(i_\mathrm{p,in}) - \cos(i_{\star \mathrm{in}}) \cos(i_\mathrm{p,in}))`)
+        which are equiprobable.                
+
       - if the absolute stellar latitude is constrained (eg with differential rotation), then there is a degeneracy between two configurations, which yield the same :math:`\psi`. 
         The coordinate probed by the velocity field is :math:`x_{\star \mathrm{sky}} \sin(i_{\star})`.
         The other coordinate probed is :math:`y_{\star}^2`
@@ -281,7 +296,10 @@ def get_system_params():
                 'period':3.8,
                 'TCenter':2457176.1,
                 'ecc':0.,     
-                'omega_deg':90.,          
+                'omega_deg':90.,
+                'inclination':90.,
+                'lambda_proj':0.,
+                'aRs':0.05,
                 'Kstar':38.1,
             },
     

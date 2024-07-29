@@ -13,7 +13,7 @@ from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz
 from ..ANTARESS_analysis.ANTARESS_ana_comm import init_joined_routines,init_joined_routines_inst,init_joined_routines_vis,init_joined_routines_vis_fit,com_joint_fits,com_joint_postproc
 from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_spot_prop,up_plocc_prop,calc_spotted_tiles, calc_plocced_tiles
-from ..ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,theo_intr2loc,init_custom_DI_prof,custom_DI_prof
+from ..ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,theo_intr2loc,custom_DI_prof
 from ..ANTARESS_analysis.ANTARESS_inst_resp import get_FWHM_inst,resamp_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab,convol_prof
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star
 from ..ANTARESS_conversions.ANTARESS_binning import weights_bin_prof
@@ -59,7 +59,9 @@ def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
     
     
  on fait ici pour pouvoir inclure des modeles physiques, eg les sinusoides des pulsations, et fitter ainsi en combinant
- les systematiques doivent par contre etre specifiques a chaque visite
+ les systematiques 
+ peuvent etre specifiques a chaque visite mais prevoir que modele commun (ca joue en utilisant format habituel pour les params, dpeendent de ordre et visite)
+ prevoir aussi de pouvoir combiner les props entre elle, typiquement pour ajuster un meme cycle
 
   faire generique pour analyser aussi prop des profils spectraux   
   
@@ -74,7 +76,7 @@ def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
         TBD
     
     """ 
-    print('   > Fitting single disk-integrated stellar property')
+    print('   > Fitting single disk-integrated stellar properties')
     
     #Initializations
     for prop_loc in fit_prop_dic['mod_prop']:  
@@ -116,6 +118,7 @@ def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
         fixed_args['nexp_fit'] = fit_dic['nx_fit']
         fixed_args['x_val']=range(fixed_args['nexp_fit'])
         fixed_args['fit_func'] = FIT_joined_DIProp
+        fixed_args['mod_func'] = joined_DIProp
         fixed_args['inside_fit'] = False    
 
         #Uncertainties on the property are given a covariance matrix structure for consistency with the fit routine 
@@ -129,7 +132,7 @@ def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
         #Best-fit model and properties
         fit_save={}
         fixed_args['fit'] = False
-        mod_tab,coeff_line_dic,fit_save['prop_mod']= joined_DIProp(p_final,fixed_args)
+        mod_tab,coeff_line_dic,fit_save['prop_mod'] = fixed_args['mod_func'](p_final,fixed_args)
       
         #Save best-fit properties
         fit_save.update({'p_final':p_final,'name_prop2input':fixed_args['name_prop2input'],'merit':fit_dic['merit']})
@@ -309,6 +312,11 @@ def joined_IntrProp(param,args):
     mod_prop_dic = {}
     coeff_line_dic = {}
     mod_coord_dic={}
+    
+    #Update stellar grid
+    if args['var_star_grid']:up_model_star(args, param)
+    
+    #Process each visit
     for inst in args['inst_list']:
         args['inst']=inst
         mod_prop_dic[inst]={}
@@ -459,37 +467,11 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
             if fixed_args['bin_mode'][inst][vis] is not None:   
                 data_vis=data_dic[inst][vis]
                 init_joined_routines_vis_fit('IntrProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic)
-                data_com = dataload_npz(data_dic[inst][vis]['proc_com_data_paths'])             
-                
-                #Instrumental convolution
-                if (inst not in fixed_args['FWHM_inst']):                
-                    fixed_args['FWHM_inst'][inst] = get_FWHM_inst(inst,fixed_args,data_com['cen_bins'][iord_sel])
-                
-                #Trimming data
-                #    - the trimming is applied to the common table, so that all processed profiles keep the same dimension after trimming
-                #    - data is trimmed to the minimum range encompassing the continuum to limit useless computations
-                if (trim_range is not None):
-                    min_trim_range = trim_range[0]
-                    max_trim_range = trim_range[1]
-                else:
-                    if len(cont_range)==0:
-                        min_trim_range=-1e100
-                        max_trim_range=1e100
-                    else:
-                        min_trim_range = cont_range[0][0] + 3.*fixed_args['FWHM_inst'][inst]
-                        max_trim_range = cont_range[-1][1] - 3.*fixed_args['FWHM_inst'][inst]
-                idx_range_kept = np_where1D((data_com['edge_bins'][iord_sel,0:-1]>=min_trim_range) & (data_com['edge_bins'][iord_sel,1::]<=max_trim_range))
-                ncen_bins = len(idx_range_kept)
-                if ncen_bins==0:stop('Empty trimmed range')                  
-                
-                fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
-                fixed_args['ncen_bins'][inst][vis] = ncen_bins  
-                fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
 
                 #Enable PC noise model
                 if (inst in fit_prop_dic['PC_model']) and (vis in fit_prop_dic['PC_model'][inst]):
                     if fixed_args['bin_mode'][inst][vis]=='_bin':stop('PC correction not available for binned data')
-                    data_pca = np.load(fit_prop_dic['PC_model'][inst][vis]['PC_path'],allow_pickle=True)['data'].item()  
+                    data_pca = dataload_npz(fit_prop_dic['PC_model'][inst][vis]['PC_path'])
 
                     #Accounting for PCA fit in merit values
                     #    - PC have been fitted in the PCA module to the out-of-transit data
@@ -519,24 +501,53 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                         fixed_args['eig_res_matr'][inst][vis] = {} 
 
                 else:fixed_args['n_pc'][inst][vis] = None
-                
+
                 #Fit tables
                 #    - models must be calculated over the full, continuous spectral tables to allow for convolution
                 #      the fit is then performed on defined pixels only
                 for key in ['dcen_bins','cen_bins','edge_bins','cond_fit','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
-                fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
-                fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
               
                     #Upload latest processed intrinsic data
                     if fixed_args['bin_mode'][inst][vis]=='_bin':data_exp = dataload_npz(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis+'_phase'+str(i_in))               
                     else:data_exp = dataload_npz(data_dic[inst][vis]['proc_Intr_data_paths']+str(i_in))
                     
+                    #Initialization
+                    if isub==0:
+
+                        #Instrumental convolution
+                        if (inst not in fixed_args['FWHM_inst']):                
+                            fixed_args['FWHM_inst'][inst] = get_FWHM_inst(inst,fixed_args,data_exp['cen_bins'][iord_sel])
+                                                
+                        #Trimming data
+                        #    - the trimming is defined using the first table and not each individual table, so that all processed profiles keep the same dimension after trimming
+                        #    - data is trimmed to the minimum range encompassing the continuum to limit useless computations
+                        if (trim_range is not None):
+                            min_trim_range = trim_range[0]
+                            max_trim_range = trim_range[1]
+                        else:
+                            if len(cont_range)==0:
+                                min_trim_range=-1e100
+                                max_trim_range=1e100
+                            else:
+                                min_trim_range = cont_range[0][0] + 3.*fixed_args['FWHM_inst'][inst]
+                                max_trim_range = cont_range[-1][1] - 3.*fixed_args['FWHM_inst'][inst]
+                        idx_range_kept = np_where1D((data_exp['edge_bins'][iord_sel,0:-1]>=min_trim_range) & (data_exp['edge_bins'][iord_sel,1::]<=max_trim_range))
+                        ncen_bins = len(idx_range_kept)
+                        if ncen_bins==0:stop('Empty trimmed range')                  
+                        
+                        fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
+                        fixed_args['ncen_bins'][inst][vis] = ncen_bins  
+                        fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
+                            
+                        fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
+                        fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)                      
+                    
                     #Trimming profile         
                     for key in ['cen_bins','flux','cond_def']:fixed_args[key][inst][vis][isub] = data_exp[key][iord_sel,idx_range_kept]
                     fixed_args['edge_bins'][inst][vis][isub] = data_exp['edge_bins'][iord_sel,idx_range_kept[0]:idx_range_kept[-1]+2]   
                     fixed_args['dcen_bins'][inst][vis][isub] = fixed_args['edge_bins'][inst][vis][isub][1::]-fixed_args['edge_bins'][inst][vis][isub][0:-1]  
-                    fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]  # *0.6703558343325438
+                    fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]  
                     
                     #Oversampled line profile model table
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
@@ -729,16 +740,16 @@ def joined_IntrProf(param,fixed_args):
     mod_dic = {}
     mod_prop_dic = {}
     coeff_line_dic = {}
+
+    #Update stellar grid
+    if args['var_star_grid']:up_model_star(args, param)
     
     #Updating theoretical line profile series
     #    - we assume abundance is common to all instruments and visits
     if (args['mode']=='theo') and (args['var_line']):  
         for sp in args['abund_sp']:args['grid_dic']['sme_grid']['abund'][sp]=param['abund_'+sp]
         gen_theo_intr_prof(args['grid_dic']['sme_grid'])
-       
-    #Updating equatorial period
-    if ('Peq' in args['var_par_list']) or ('Peq' in args['fix_par_list']):param['veq'] = (2*np.pi*args['system_param']['star']['Rstar_km'])/(param['Peq']*24*3600)
-       
+
     #Processing instruments
     for inst in args['inst_list']:
         args['inst']=inst
@@ -992,9 +1003,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
             #Visit is fitted
             if fixed_args['bin_mode'][inst][vis] is not None: 
                 data_vis=data_dic[inst][vis]
-
                 init_joined_routines_vis_fit('ResProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic)
-                data_com = dataload_npz(data_dic[inst][vis]['proc_com_data_paths'])  
 
                 #Master-out properties
                 fixed_args['raw_DI_profs'][inst][vis]={} 
@@ -1004,7 +1013,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 #Indexes
                 if (inst in data_dic['Res']['idx_in_bin']) and (vis in data_dic['Res']['idx_in_bin'][inst]):
                     if data_dic['Res']['idx_in_bin'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=list(data_dic['Res']['idx_in_bin'][inst][vis])
-        
                 if len(fixed_args['master_out']['idx_in_master_out'][inst][vis])==0:stop('No exposures defined in visit '+vis+' for the master-out calculation.')
 
                 #Needed for weight calculation
@@ -1020,31 +1028,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 if fixed_args['ref_pl']=={}:fixed_args['ref_pl']={inst:{vis:data_dic[inst][vis]['transit_pl'][0]}}
                 elif (vis_index==0) and (vis not in fixed_args['ref_pl'][inst]):fixed_args['ref_pl'][inst][vis]=data_dic[inst][vis]['transit_pl'][0]
                 elif vis not in fixed_args['ref_pl'][inst]:fixed_args['ref_pl'][inst][vis]=fixed_args['ref_pl'][inst][data_dic[inst]['visit_list'][vis_index-1]]
-
-                #Instrumental convolution
-                if (inst not in fixed_args['FWHM_inst']):                
-                    fixed_args['FWHM_inst'][inst] = get_FWHM_inst(inst,fixed_args,data_com['cen_bins'][iord_sel])
-
-                #Trimming data
-                #    - the trimming is applied to the common table, so that all processed profiles keep the same dimension after trimming
-                #    - data is trimmed to the minimum range encompassing the continuum to limit useless computations
-                if (trim_range is not None):
-                    min_trim_range = trim_range[0]
-                    max_trim_range = trim_range[1]
-                else:
-                    if len(cont_range)==0:
-                        min_trim_range=-1e100
-                        max_trim_range=1e100
-                    else:
-                        min_trim_range = cont_range[0][0] + 3.*fixed_args['FWHM_inst'][inst]
-                        max_trim_range = cont_range[-1][1] - 3.*fixed_args['FWHM_inst'][inst]
-                idx_range_kept = np_where1D((data_com['edge_bins'][iord_sel,0:-1]>=min_trim_range) & (data_com['edge_bins'][iord_sel,1::]<=max_trim_range))
-                ncen_bins = len(idx_range_kept)
-                if ncen_bins==0:stop('Empty trimmed range') 
-
-                fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
-                fixed_args['ncen_bins'][inst][vis] = ncen_bins  
-                fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
 
                 #Enable PC noise model
                 if (inst in fit_prop_dic['PC_model']) and (vis in fit_prop_dic['PC_model'][inst]):
@@ -1084,14 +1067,43 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 #    - models must be calculated over the full, continuous spectral tables to allow for convolution
                 #      the fit is then performed on defined pixels only
                 for key in ['dcen_bins','cen_bins','edge_bins','cond_fit','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
-                fit_prop_dic[inst][vis]['cond_def_plot_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],len(data_com['cen_bins'][0])],dtype=bool)
-                fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
-                fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
 
                     #Upload latest processed differential data
                     if fixed_args['bin_mode'][inst][vis]=='_bin':data_exp = dataload_npz(gen_dic['save_data_dir']+'Resbin_data/'+inst+'_'+vis+'_phase'+str(i_in))               
                     else:data_exp = dataload_npz(data_dic[inst][vis]['proc_Res_data_paths']+str(i_in))
+
+                    #Initialization
+                    if isub==0:
+     
+                        #Instrumental convolution
+                        if (inst not in fixed_args['FWHM_inst']):                
+                            fixed_args['FWHM_inst'][inst] = get_FWHM_inst(inst,fixed_args,data_exp['cen_bins'][iord_sel])
+
+                        #Trimming data
+                        #    - the trimming is applied to the common table, so that all processed profiles keep the same dimension after trimming
+                        #    - data is trimmed to the minimum range encompassing the continuum to limit useless computations
+                        if (trim_range is not None):
+                            min_trim_range = trim_range[0]
+                            max_trim_range = trim_range[1]
+                        else:
+                            if len(cont_range)==0:
+                                min_trim_range=-1e100
+                                max_trim_range=1e100
+                            else:
+                                min_trim_range = cont_range[0][0] + 3.*fixed_args['FWHM_inst'][inst]
+                                max_trim_range = cont_range[-1][1] - 3.*fixed_args['FWHM_inst'][inst]
+                        idx_range_kept = np_where1D((data_exp['edge_bins'][iord_sel,0:-1]>=min_trim_range) & (data_exp['edge_bins'][iord_sel,1::]<=max_trim_range))
+                        ncen_bins = len(idx_range_kept)
+                        if ncen_bins==0:stop('Empty trimmed range') 
+        
+                        fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
+                        fixed_args['ncen_bins'][inst][vis] = ncen_bins  
+                        fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
+
+                        fit_prop_dic[inst][vis]['cond_def_plot_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],data_vis['nspec']],dtype=bool)
+                        fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
+                        fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
 
                     #Trimming profile         
                     for key in ['cen_bins','flux','cond_def']:fixed_args[key][inst][vis][isub] = data_exp[key][iord_sel,idx_range_kept]
@@ -1115,7 +1127,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]          
                     fit_dic['nx_fit']+=np.sum(fit_prop_dic[inst][vis]['cond_def_fit_all'][isub])
                     fixed_args['cond_fit'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]                    
-                    fit_prop_dic[inst][vis]['cond_def_plot_all'][isub] = np.isin(np.linspace(0,len(data_com['cen_bins'][0]),len(data_com['cen_bins'][0]), endpoint=False, dtype=int), idx_range_kept)
+                    fit_prop_dic[inst][vis]['cond_def_plot_all'][isub] = np.isin(np.linspace(0,data_vis['nspec'],data_vis['nspec'], endpoint=False, dtype=int), idx_range_kept)
 
                     #Initialize PCs 
                     if fixed_args['n_pc'][inst][vis] is not None:
@@ -1232,9 +1244,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Best-fit model and derived properties
     fixed_args['fit'] = False
-
-    #Initializing best-fit stellar profile generation
-    fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_dic['DI']['system_prop'],data_dic['DI']['spots_prop'],theo_dic,fixed_args['system_param']['star'],p_final)
 
     #Do 2 model calls, to have the model with and without planets
     #   - With planets
@@ -1386,8 +1395,9 @@ def joined_ResProf(param,fixed_args):
             else:
                 args['master_out']['master_out_tab'][key] = args['master_out']['master_out_tab'][key] - param['rv_shift']
 
-    #Updating equatorial period
-    if ('Peq' in args['var_par_list']) or ('Peq' in args['fix_par_list']):param['veq'] = (2*np.pi*args['system_param']['star']['Rstar_km'])/(param['Peq']*24*3600)
+    #Updating stellar grid
+    #    - necessary to determine the global 2D quiet star grid on the most up to date version of the stellar grid
+    if args['var_star_grid']:up_model_star(args, param)
 
     #Processing instruments
     for inst in args['inst_list']:
@@ -1408,14 +1418,8 @@ def joined_ResProf(param,fixed_args):
             if not args['fit']:outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param) 
 
             #-----------------------------------------------------------
-            #Updating the stellar grid -- necessary to determine the global 2D quiet star grid
-            #on the most up to date version of the stellar grid
-            if args['fit'] and args['var_star_grid']:
-                param_up={}
-                if isinstance(param,lmfit.parameter.Parameters):
-                    for par in param:param_up[par]=param[par].value
-                else:param_up=param
-                up_model_star(args, param_up)
+            #Updating flux grid if stellar grid was updated
+            if args['var_star_grid']:
                 args['Fsurf_grid_spec'] = theo_intr2loc(args['grid_dic'],args['system_prop'],args,args['ncen_bins'][inst][vis],args['grid_dic']['nsub_star'])     
 
             #Retrieve updated coordinates of occulted and spotted regions or use imported values
@@ -1438,16 +1442,7 @@ def joined_ResProf(param,fixed_args):
                         else:
                             args[key][inst][vis][isub] = args[key][inst][vis][isub] - param['rv_shift']
 
-                #Figure out which cells are spotted
-                spotted_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-                for spot in args['transit_sp'][inst][vis]:
-                    if np.sum(coord_pl_sp[spot]['is_visible'][:, isub]):
-                        mini_spot_dic = {}
-                        for par_spot in args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp[spot][par_spot][:, isub]
-                        _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic,coord_pl_sp[spot]['ang_rad'], args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
-                        spotted_star_grid |= spot_spotted_star_grid
-        
-                #Figure out which cells are planet-occulted
+                #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
                 plocced_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
                 for pl_loc in args['transit_pl'][inst][vis]:
                     if np.abs(coord_pl_sp[pl_loc]['ecl'][isub])!=1:
@@ -1460,6 +1455,15 @@ def joined_ResProf(param,fixed_args):
                         mini_pl_dic['lambda']=param_val[lamb_name]
                         pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'])
                         plocced_star_grid |= pl_plocced_star_grid
+
+                #Figure out which cells of the full stellar grid are spotted in at least one exposure
+                spotted_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
+                for spot in args['transit_sp'][inst][vis]:
+                    if np.sum(coord_pl_sp[spot]['is_visible'][:, isub])>0:
+                        mini_spot_dic = {}
+                        for par_spot in args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp[spot][par_spot][:, isub]
+                        _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic,coord_pl_sp[spot]['ang_rad'], args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
+                        spotted_star_grid |= spot_spotted_star_grid
 
                 #Update the global 2D quiet star grid
                 #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots and planets in one of the processed exposure

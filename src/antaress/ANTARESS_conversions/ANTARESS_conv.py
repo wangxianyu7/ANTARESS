@@ -68,7 +68,9 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
         dir_mast={}
         for gen in dir_save:dir_mast[gen] = {iexp_eff:dir_save[gen]+'ref_'+str(iexp_eff) for iexp_eff in data_vis['mast_'+gen+'_data_paths']}
         if gen_dic['flux_sc']:flux_sc = True
-    proc_com_data_paths_new = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_'+vis+'_com'
+    if (data_type_gen=='DI') and (data_dic['DI'][inst][vis]['rest_frame']!='star'):com_frame = ''
+    else:com_frame = '_star'
+    proc_com_data_paths_new = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_'+vis+'_com'+com_frame
 
     #Calculating data
     if gen_dic['calc_'+data_type_gen+'_CCF']:
@@ -80,8 +82,10 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
         nord_coadd = len(ord_coadd)
 
         #Calibration profile
+        #    - to be calculated on the common table, which is defined in the input rest frame if non-aligned, disk-integrated spectra are cross-correlated or in the star rest frame otherwise
+        #    - if alignment in the star rest frame was not applied, the common star table points toward the common input table
         if data_vis['mean_gdet']:
-            data_com = dataload_npz(data_vis['proc_com_data_paths'])
+            data_com = dataload_npz(data_vis['proc_com_star_data_paths'])
             mean_gdet_com = np.zeros([nord_coadd,data_com['dim_exp'][1]],dtype=float)
         else:gdet_ord=None
     
@@ -130,9 +134,13 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
                 mean_gdet_exp = dataload_npz(data_vis['mean_gdet_'+gen+'_data_paths'][iexp_eff])['mean_gdet'] 
                 for isub_ord,iord in enumerate(ord_coadd):
                     mean_gdet_com_ord=bind.resampling(data_com['edge_bins'][iord], data_proc['edge_bins'][iexp_sub,isub_ord],mean_gdet_exp[iord], kind=gen_dic['resamp_mode'])/n_exp 
+                    
+                    #Filling-in undefined edges
                     idx_def_loc = np_where1D(~np.isnan(mean_gdet_com_ord))
                     mean_gdet_com_ord[0:idx_def_loc[0]+1]=mean_gdet_com_ord[idx_def_loc[0]]
                     mean_gdet_com_ord[idx_def_loc[-1]:]=mean_gdet_com_ord[idx_def_loc[-1]]
+                    
+                    #Co-adding exposure contribution
                     mean_gdet_com[isub_ord]+=mean_gdet_com_ord
                     
             #Upload weighing disk-integrated master 
@@ -284,15 +292,17 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
                 data_scaling_all[iexp]['chrom'] = False
                 datasave_npz(dir_save[gen]+'_scaling_'+str(iexp),data_scaling_all[iexp])
 
-        #Update common tables
-        #    - set to the table in the star rest frame, as it is the one that will be used in later operations                
-        datasave_npz(proc_com_data_paths_new,{'dim_exp':[1,data_vis['nvel']],'nspec':data_vis['nvel'],'cen_bins':np.tile(data_vis['velccf_star'],[1,1]),'edge_bins':np.tile(data_vis['edge_velccf_star'],[1,1])})
+        #Update common table
+        #    - set to the input table for disk-integrated profiles not aligned in the star rest frame, set to the star frame table otherwise
+        cen_bins_com = data_vis['velccf_com'+com_frame]
+        edge_bins_com = data_vis['edge_velccf_com'+com_frame]                                     
+        datasave_npz(proc_com_data_paths_new,{'dim_exp':[1,len(cen_bins_com)],'nspec':len(cen_bins_com),'cen_bins':np.tile(cen_bins_com,[1,1]),'edge_bins':np.tile(edge_bins_com,[1,1])})
 
     else:
         check_data({'path':proc_com_data_paths_new})
 
     #Updating path to processed data and checking it has been calculated
-    data_vis['proc_com_data_paths'] = proc_com_data_paths_new
+    data_vis['proc_com'+com_frame+'_data_paths'] = proc_com_data_paths_new
     for gen in dir_save:
         data_vis['proc_'+gen+'_data_paths'] = dir_save[gen]  
         if flux_sc:data_vis['scaled_'+gen+'_data_paths'] = dir_save[gen]+'_scaling_'
@@ -673,8 +683,10 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
     iexp_conv,data_type_key,data_type = init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,'1Dfrom2D',dir_save,data_dic)
 
     #Paths
-    proc_com_data_paths_new = gen_dic['save_data_dir']+'Processed_data/spec1D_'+inst+'_'+vis+'_com'
-    
+    if (data_type_gen=='DI') and (data_dic[data_type_gen][inst][vis]['rest_frame']!='star'):com_frame = ''
+    else:com_frame = '_star'
+    proc_com_data_paths_new = gen_dic['save_data_dir']+'Processed_data/spec1D_'+inst+'_'+vis+'_com'+com_frame
+
     #Calculating data
     if gen_dic['calc_spec_1D_'+data_type_gen]:
         print('         Calculating data')
@@ -722,10 +734,10 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
 
     else: 
         check_data({'path':proc_com_data_paths_new})
-        
+   
     #Updating paths
     #    - scaling is defined as a function and does not need updating
-    data_vis['proc_com_data_paths'] = proc_com_data_paths_new
+    data_vis['proc_com'+com_frame+'_data_paths'] = proc_com_data_paths_new
     for gen in dir_save:
         data_vis['proc_'+gen+'_data_paths'] = dir_save[gen]  
         if data_vis['tell_sp']:data_vis['tell_'+gen+'_data_paths'] = {}        
@@ -766,7 +778,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
             if data_add['type']!=loc_type:stop('WARNING: continuum type incompatible with data, run extraction again.')
             data_dic['Intr'][inst][vis]['mean_cont'] = data_add['mean_cont']
             if data_add['cont_norm_flag']:print('         Correcting intrinsic continuum')
-
+     
     return None
 
 def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,edge_bins_1D,nspec_1D,nord,ifirst,proc_com_data_paths,proc_weight,\
@@ -801,7 +813,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
                     iexp_eff = idx_exp2in[iexp] 
                 else:data_type = 'Res'
             elif data_type=='Absorption':iexp_glob = idx_in[iexp]
-            
+       
         #Upload spectra and associated tables in star or local frame
         flux_est_loc_exp = None
         cov_est_loc_exp = None
@@ -826,7 +838,14 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
         data_exp['weights'] = weights_bin_prof(range(nord),scaling_data_paths[data_type],inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,None,data_exp['mean_gdet'], data_exp['cen_bins'],1.,np.ones(dim_exp),np.zeros([dim_exp[0],1,dim_exp[1]]),corr_Fbal=False,bdband_flux_sc=bdband_flux_sc)
 
         #Resample spectra and weights on 1D table in each order, and clean weights
-        flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_exp,edge_bins_1D)
+        flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned,weight_exp_all = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_exp,edge_bins_1D)
+
+        #Resample reference spectra and weights on 1D table in each order, and clean weights
+        #    - the master may not be defined at the same pixels as the spectra, so that weights must be processed specifically for the master
+        #      the same weights must however be used, so instead of calling weights_bin_prof() on the master grid we provide as input the weight table pre-cleaned for the spectra
+        #    - this is not required for telluric and SpSst since they are defined at all pixels 
+        if DImast_weight_data_paths is not None:
+            flux_ref_all,cov_ref_all,cond_def_ref_all,glob_weight_ref_all,cond_def_ref_binned,_ = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_ref,edge_bins_1D,weight_in_all = weight_exp_all)
 
         #Processing each order
         flux_ord_contr=[]
@@ -859,11 +878,9 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
                 cond_def_tell_ord_contr[cond_def] = True                   
                 tell_ord_contr+=tell_temp*glob_weight_all[iord]                     
             if DImast_weight_data_paths is not None:
-                flux_ref_temp,cov_ref_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], data_ref['flux'][iord] , cov = data_ref['cov'][iord] , kind=resamp_mode)  
-                flux_ref_temp,cov_ref_temp = bind.mul_array(flux_ref_temp,cov_ref_temp ,glob_weight_all[iord]      )
-                flux_ref_temp[~cond_def] = 0.   
-                flux_ref_ord_contr+=[flux_ref_temp]
-                cov_ref_ord_contr+=[cov_ref_temp]
+                flux_ref_ord,cov_ref_ord = bind.mul_array(flux_ref_all[iord] , cov_ref_all[iord] , glob_weight_ref_all[iord])          
+                flux_ref_ord_contr+=[flux_ref_ord]
+                cov_ref_ord_contr+=[cov_ref_ord]
             if SpSstar_spec is not None:
                 SpSstar_spec_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],SpSstar_spec[iord](data_exp['cen_bins'][iord]) ,kind=resamp_mode)
                 SpSstar_spec_temp[~cond_def] = 0.
@@ -899,7 +916,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
             datasave_npz(dir_save[data_type]+'_tell'+str(iexp_eff), {'tell':tell_1D})                 
         if DImast_weight_data_paths is not None:
             flux_ref_1D,cov_ref_1D = bind.sum(flux_ref_ord_contr,cov_ref_ord_contr)
-            flux_ref_1D[~cond_def_binned]=np.nan   
+            flux_ref_1D[~cond_def_ref_binned]=np.nan   
             datasave_npz(dir_save[data_type]+'ref_'+str(iexp_eff),{'cen_bins':data_exp1D['cen_bins'],'edge_bins':data_exp1D['edge_bins'],'flux':flux_ref_1D[None,:],'cov':[cov_1D]})           
         if flux_est_loc_exp is not None:
             if cov_est_loc_exp is None:
@@ -913,9 +930,8 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
             datasave_npz(dir_save[data_type]+'estloc_'+str(iexp_eff),dic_sav_estloc)
 
         #Update common table for the visit
-        #    - set to the table of first processed exposure
         if iexp==ifirst:datasave_npz(proc_com_data_paths, {'dim_exp':[1,nspec_1D],'nspec':nspec_1D,'cen_bins':np.tile(cen_bins_1D,[1,1]),'edge_bins':np.tile(edge_bins_1D,[1,1])})      
-    
+        
     return None
 
 

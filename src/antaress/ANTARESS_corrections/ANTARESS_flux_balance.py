@@ -35,11 +35,11 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
         print('         Calculating data')    
 
         #Common instrument table, defined in input rest frame
-        #    - used to define masters (if a single visit is processed this table will match the visit-specific common table)
+        #    - used to define masters 
         data_com_inst = dataload_npz(data_inst['proc_com_data_path']) 
         wav_Mstar = data_com_inst['cen_bins']
         edge_wav_Mstar = data_com_inst['edge_bins']  
-        dim_exp_mast = data_inst['dim_exp']
+        dim_exp_mast = data_com_inst['dim_exp']
         Mstar_vis_all = np.zeros([gen_dic[inst]['n_visits']]+dim_exp_mast,dtype=float)*np.nan 
         
         #Calculating visit-specific masters 
@@ -130,7 +130,7 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
             for iexp in range(data_vis['n_in_visit']):
 
                 #Upload latest processed data
-                data_exp = np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item()     
+                data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))     
 
                 #Shifting master from the star rest frame to the exposure rest frame (applying the opposite shift as for the master calculation)
                 data_mast_exp['flux'] = np.zeros(data_vis['dim_exp'])*np.nan
@@ -895,7 +895,7 @@ def corr_Ftemp(inst,gen_dic,data_inst,plot_dic,data_prop,coord_dic,data_dic):
             #Upload common spectral table
             #    - if profiles are defined on different tables they are resampled on this one
             #      if they are already defined on a common table, it is this one, which has been kept the same since the beginning of the routine
-            edge_bins_com = (np.load(data_vis['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item())['edge_bins']
+            edge_bins_com = (dataload_npz(data_vis['proc_com_data_paths']))['edge_bins']
             
             #Global fitting range and tables
             #    - we neglect covariance between bins

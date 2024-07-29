@@ -57,7 +57,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%% Plot settings    
         
-    #%%%%% Deactivating plot routines
+    #%%%%% Deactivating all plot routines
     #    - set to False to deactivate
     gen_dic['plots_on'] = True
 
@@ -200,7 +200,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Disable calculation for all activated modules
     #    - if set to False: data will be retrieved, if present
     #    - if set to True: selection is based upon each module option
-    gen_dic['calc_all'] = True  
+    gen_dic['calc_all'] = True 
+    
+    
+    #%%%%% Workflow sequence
+    #    - set to None to activate/deactivate manually each module of the workflow
+    #      otherwise set to one of the following to enable a specific sequence:
+    # + 'system_view' : only plot a view of the system, based on input properties and plot settings
+    gen_dic['sequence'] = None 
     
 
     ##################################################################################################       
@@ -399,9 +406,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - permanently set masked pixels to nan in the rest of the processing
     #    - masking is done prior to any other operation
     #    - set ranges of masked pixels in the spectral format of the input data, in the following format
-    # inst > vis > exp and ord > position 
+    # inst > vis > { exp_list : [ iexp0, iexp1, ... ] ; ord_list : {iord0 : [ [x1,x2] , [x3,x4] .. ], ... }}
     #      exposures index relate to time-ordered tables after 'used_exp' has been applied, leave empty to mask all exposures 
-    #      define position as [ [x1,x2] , [x3,x4] .. ] in the input rest frame
+    #      define position xk in A in the input rest frame
     #    - only relevant if part of the order is masked, otherwise remove the full order 
     #    - order indexes are relative to the effective order list, after orders are possibly excluded
     #    - if several visits of a given instrument are processed together, it is advised to exclude the minimum ranges common to all of them so that CCF are comparable
@@ -2895,7 +2902,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     ##################################################################################################
     #%%% Module: PCA of out-of-transit differential profiles
-    #    - for now only coded for CCF data type
+    #    - can be applied to data in CCF format or to spectral data in a given order
     #    - use this module to derive PC and match their combination to differential and intrinsic profiles in the fit module
     #      correction is then applied through the CCF correction module
     #    - pca is applied to the pre-transit, post-transit, and out-of-transit data independently
@@ -2921,6 +2928,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - global indexes
     #    - all out-of-transit exposures are used if undefined
     data_dic['PCA']['idx_pca']={}
+
+
+    #%%%% Order to be processed
+    #    - for data in spectral mode only
+    #    - format: {inst:{vis: iord }   
+    data_dic['PCA']['ord_proc'] = 0
+    
     
     #%%%% Spectral range to determine PCs
     data_dic['PCA']['ana_range']={}
@@ -3156,6 +3170,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + 'fit_Intr': profiles in the star rest frame, original exposures, for all formats
     # + 'fit_Intr_1D': profiles in the star or surface (if aligned) rest frame, original exposures, converted from 2D->1D 
     # + 'fit_Intrbin' : profiles in the star or surface (if aligned) rest frame, binned exposures, all formats
+    #                   bin dimension of the fitted profile is set by data_dic['Intr']['dim_bin']
     # + 'fit_Intrbinmultivis' : profiles in the surface rest frame, binned exposures, all formats
     ##################################################################################################
     
@@ -3440,13 +3455,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #                          'Peq' must be a fit parameter; 'Rstar' can be a fit parameter or a user-provided measurement
     # + 'vsini' : converts 'veq' into veq*sin(istar) using fitted or fixed 'istar'
     # + 'istar_deg_conv' : replaces cos(istar) by istar[deg]
+    # + 'fold_istar' : folds istar[deg] around 90
+    #                  to be used when the stellar inclination remains degenerate between istar and 180-istar
     # + 'istar_Peq' : derive the stellar inclination from the fitted 'vsini' and user-provided measurements of 'Rstar' and 'Peq'
     #                 warning: it is better to fit directly for 'Peq', 'cosistar', and 'Rstar'
     # + 'istar_Peq_vsini' : derive the stellar inclination from user-provided measurements of 'Rstar','Peq', and 'vsini'
     # + 'Peq_veq' : adds 'Peq' using the fitted 'veq' and a user-provided measurement of 'Rstar'
     # + 'Peq_vsini' : adds 'Peq' using the fitted 'vsini' and user-provided measurements for 'Rstar' and 'istar' 
     # + 'psi' : adds 3D spin-orbit angle for all planets using the fitted 'lambda', and fitted or user-provided measurements for 'istar' and 'ip_plNAME'
+    #           set 'config = True' (default) to add the Northern and Southern Psi values, otherwise only the combined distribution is output
     # + 'psi_lambda' : adds 3D spin-orbit angle using user-provided measurements of 'lambda', and fitted or user-provided measurements for 'istar' and 'ip'
+    #                  same settings as for 'psi' 
     # + 'lambda_deg' : converts lambda[rad] to lambda[deg]
     #                  lambda[deg] is folded over x+[-180;180], with x set by the subfield 'pl_name' if defined, or to the median of the chains by default
     #                  define x so that the peak of the PDF is well centered in the folded range
