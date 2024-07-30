@@ -1653,12 +1653,13 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #--------------------------------------------------------------------------------------------------
                 for isub_exp,iexp in enumerate(range(n_in_visit)):
 
-                    #Data of the fits file 
-                    hdulist =fits.open(vis_path_exp[iexp])
-                    if vis_path_skysub_exp is not None:hdulist_skysub =fits.open(vis_path_skysub_exp[iexp])
-            
-                    #Header 
-                    hdr =hdulist[0].header 
+                    if not gen_dic['mock_data']:
+                        #Data of the fits file 
+                        hdulist =fits.open(vis_path_exp[iexp])
+                        if vis_path_skysub_exp is not None:hdulist_skysub =fits.open(vis_path_skysub_exp[iexp])
+                
+                        #Header 
+                        hdr =hdulist[0].header 
 
                     #Initialize data at first exposure
                     if isub_exp==0:

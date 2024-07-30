@@ -82,22 +82,16 @@ def coord_expos_spots(spot,t_bjd,spots_prop,star_params,exp_dur,spot_coord_par):
 
     # Spot longitude - varies over time
     P_spot = 2*np.pi/((1.-star_params['alpha_rot_spots']*np.sin(spots_prop[spot]['lat_rad'])**2.-star_params['beta_rot_spots']*np.sin(spots_prop[spot]['lat_rad'])**4.)*star_params['om_eq_spots']*3600.*24.)  
-    Tcen_sp = spots_prop[spot]['Tc_sp'] - 2400000.
-    long_rad_center=(t_bjd-Tcen_sp)/P_spot * 2*np.pi
+    long_t_start,long_t_center,long_t_end = get_timeorbit(spot,{spot:{'Tcenter':spots_prop[spot]['Tc_sp']}},t_bjd, {'period':P_spot}, exp_dur,conv_ang = True)[0:3]
 
     #Coordinates start, mid, end exposure 
     istar = np.arccos(spots_prop['cos_istar'])
     for key in spot_coord_par:spots_prop_exp[key] = np.zeros(3,dtype=float)*np.nan
     spots_prop_exp['is_visible'] = np.zeros(3,dtype=bool)
-    calc_spot_coord(spots_prop_exp,spots_prop[spot]['ang_rad'],spots_prop[spot]['lat_rad'],long_rad_center,1,istar,star_params)
+    calc_spot_coord(spots_prop_exp,spots_prop[spot]['ang_rad'],spots_prop[spot]['lat_rad'],long_t_center*2*np.pi,1,istar,star_params)
     if exp_dur is not None:
-        t_dur_days = exp_dur/(24.*3600.)
-        t_bjd_start = t_bjd - t_dur_days/2
-        t_bjd_end = t_bjd + t_dur_days/2
-        long_rad_start = (t_bjd_start-Tcen_sp)/P_spot * 2*np.pi
-        long_rad_end = (t_bjd_end-Tcen_sp)/P_spot * 2*np.pi
-        calc_spot_coord(spots_prop_exp,spots_prop[spot]['ang_rad'],spots_prop[spot]['lat_rad'],long_rad_start,0,istar,star_params)
-        calc_spot_coord(spots_prop_exp,spots_prop[spot]['ang_rad'],spots_prop[spot]['lat_rad'],long_rad_end,2,istar,star_params)
+        calc_spot_coord(spots_prop_exp,spots_prop[spot]['ang_rad'],spots_prop[spot]['lat_rad'],long_t_start*2*np.pi,0,istar,star_params)
+        calc_spot_coord(spots_prop_exp,spots_prop[spot]['ang_rad'],spots_prop[spot]['lat_rad'],long_t_end*2*np.pi,2,istar,star_params)
   
     return spots_prop_exp
 

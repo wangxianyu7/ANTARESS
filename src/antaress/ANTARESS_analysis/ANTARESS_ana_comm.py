@@ -772,15 +772,14 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                 for vis in fixed_args['transit_sp'][inst]:
                     for spot in fixed_args['transit_sp'][inst][vis]:
                         par = 'Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot
-                        if par in p_start:
-                            p_start[par].value -= fixed_args['spot_crosstime_supp'][inst][vis]
-                            p_start[par].min-= fixed_args['spot_crosstime_supp'][inst][vis]
-                            p_start[par].max-= fixed_args['spot_crosstime_supp'][inst][vis]
-                            if (fit_dic['fit_mode']!='fixed') and (p_start[par].vary):
-                                if fixed_args['varpar_priors'][par]['mod']!='uf':stop('WARNING: use uniform prior for Tc_sp') 
-                                fit_dic['uf_bd'][par] -= fixed_args['spot_crosstime_supp'][inst][vis]                       
-                                fixed_args['varpar_priors'][par]['low'] -= fixed_args['spot_crosstime_supp'][inst][vis]
-                                fixed_args['varpar_priors'][par]['high'] -= fixed_args['spot_crosstime_supp'][inst][vis]
+                        p_start[par].value -= fixed_args['spot_crosstime_supp'][inst][vis]
+                        p_start[par].min-= fixed_args['spot_crosstime_supp'][inst][vis]
+                        p_start[par].max-= fixed_args['spot_crosstime_supp'][inst][vis]
+                        if (fit_dic['fit_mode']!='fixed') and (p_start[par].vary):
+                            if fixed_args['varpar_priors'][par]['mod']!='uf':stop('WARNING: use uniform prior for Tc_sp') 
+                            fit_dic['uf_bd'][par] -= fixed_args['spot_crosstime_supp'][inst][vis]                       
+                            fixed_args['varpar_priors'][par]['low'] -= fixed_args['spot_crosstime_supp'][inst][vis]
+                            fixed_args['varpar_priors'][par]['high'] -= fixed_args['spot_crosstime_supp'][inst][vis]
 
     #Store the number of threads - needed when fitting joined differential profiles
     fixed_args['nthreads']=fit_prop_dic['nthreads']
