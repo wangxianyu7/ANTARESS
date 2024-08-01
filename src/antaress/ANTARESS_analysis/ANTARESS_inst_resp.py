@@ -161,8 +161,9 @@ def def_st_prof_tab(inst,vis,isub,args):
     Returns:
         TBD
     
-    """  
-    args_exp=dict(args)   #avoid using deepcopy which does not work with ctypes objects containing pointers
+    """
+    #Revert to deepcopy -> dict did not work as intended  
+    args_exp = deepcopy(args)
     if args['resamp']:suff='_HR'
     else:suff=''
     if (inst is None):

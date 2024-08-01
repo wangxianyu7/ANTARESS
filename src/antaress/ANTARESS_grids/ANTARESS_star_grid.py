@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from itertools import product as it_product
+import lmfit
+from copy import deepcopy
 from ..ANTARESS_general.utils import stop,planck
 from ..ANTARESS_general.constant_data import G_usi,Msun
 from ..ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate,frameconv_skystar_to_star
@@ -429,7 +431,7 @@ def calc_st_sky(coord_grid,star_params):
 
 
 
-def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params):
+def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params,var_stargrid_bulk,var_stargrid_I):
     r"""**Model stellar grid**
 
     Defines coordinates and intensity values over the stellar grid.
@@ -441,69 +443,78 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params):
         TBD
     
     """ 
-    coord_grid = {}
-    
-    #Subcell width (in units of Rstar) and surface (in units of Rstar^2 and pi*Rstar^2) 
-    d_sub=2./nsub_Dstar      
-    Ssub_Sstar=d_sub*d_sub/np.pi    
-
-    #Coordinates of cells discretizing the square enclosing the star
-    #    - coordinates are in the sky-projected star frame ('inclined' star frame)
-    #    - X axis = projection of stellar equator in the plane of sky
-    #      Y axis = projection of the normal to the stellar spin axis
-    #      Z axis = line of sight 
-    #    - in units of stellar radius
-    #    - we first define a regular grid in the sky-projected star frame, rather than in the star frame, because it is the one that is seen during transit and the conversion from star->star inclined would make it irregular in y
-    cen_sub=-1.+(np.arange(nsub_Dstar)+0.5)*d_sub            
-    xy_st_sky_grid=np.array(list(it_product(cen_sub,cen_sub))) 
-    coord_grid['x_st_sky'] = xy_st_sky_grid[:,0] 
-    coord_grid['y_st_sky'] = xy_st_sky_grid[:,1]
-
-    #Coordinates in the sky-projected star rest frame
-    nsub_star = calc_st_sky(coord_grid,star_params)
-
-    #Storing for model fits
-    if mode=='grid':
-        grid_dic.update({'Ssub_Sstar' : Ssub_Sstar,'nsub_star' : nsub_star})
-        for key in ['x','y','z','r2']: grid_dic[key+'_st_sky'] = coord_grid[key+'_st_sky'] 
-        for key in ['x','y','z']: grid_dic[key+'_st'] = coord_grid[key+'_st'] 
-        grid_dic['r_proj'] = np.sqrt(coord_grid['r2_st_sky'])  
  
-    #Velocity grid
-    #    - surface rv properties are stored as grid to allow distingguishing between quiet and spotted cells
+    #Initializing velocity grid
+    #    - if spots are accounted for, the surface rv properties will be stored as cell-dependent grids to allow distinguishing between quiet and spotted cells
     for key in ['veq','alpha_rot','beta_rot']:grid_dic[key] = star_params[key]    
- 
-    #Spectral grid
-    #    - the grid is used to model disk-integrated profile and thus only need to be chromatic if they are not in CCF format
-    #    - all tables nonetheless have the same structure in ncell x nband
-    grid_type_eff = ['achrom']
-    if ('spec' in grid_type) and ('chrom' in system_prop_in):grid_type_eff+=['chrom']
-    for key_type in grid_type_eff:
-
-        #Intensity grid
-        ld_grid_star,gd_grid_star,mu_grid_star,Fsurf_grid_star,Ftot_star,Istar_norm = calc_Isurf_grid(range(system_prop_in[key_type]['nw']),nsub_star,system_prop_in[key_type],coord_grid,star_params,Ssub_Sstar)
+     
+    #Updating bulk stellar grid
+    #    - this is only required if :
+    # + the stellar cell size is changed from its nominal value, otherwise the same grid defined in ANTARESS_main() > init_gen() can be used
+    # + the oblateness of the star is changed from its nominal value
+    # + the stellar inclination is changed from its nominal value
+    if var_stargrid_bulk:
+        coord_grid = {}
+        
+        #Subcell width (in units of Rstar) and surface (in units of Rstar^2 and pi*Rstar^2) 
+        d_sub=2./nsub_Dstar      
+        Ssub_Sstar=d_sub*d_sub/np.pi    
+    
+        #Coordinates of cells discretizing the square enclosing the star
+        #    - coordinates are in the sky-projected star frame ('inclined' star frame)
+        #    - X axis = projection of stellar equator in the plane of sky
+        #      Y axis = projection of the normal to the stellar spin axis
+        #      Z axis = line of sight 
+        #    - in units of stellar radius
+        #    - we first define a regular grid in the sky-projected star frame, rather than in the star frame, because it is the one that is seen during transit and the conversion from star->star inclined would make it irregular in y
+        cen_sub=-1.+(np.arange(nsub_Dstar)+0.5)*d_sub            
+        xy_st_sky_grid=np.array(list(it_product(cen_sub,cen_sub))) 
+        coord_grid['x_st_sky'] = xy_st_sky_grid[:,0] 
+        coord_grid['y_st_sky'] = xy_st_sky_grid[:,1]
+    
+        #Coordinates in the sky-projected star rest frame
+        nsub_star = calc_st_sky(coord_grid,star_params)
     
         #Storing for model fits
         if mode=='grid':
-            grid_dic.update({'Istar_norm_'+key_type:Istar_norm,
-                             'ld_grid_star_'+key_type : ld_grid_star,
-                             'gd_grid_star_'+key_type : gd_grid_star,
-                             'Fsurf_grid_star_'+key_type : Fsurf_grid_star,
-                             'mu_grid_star_'+key_type :  mu_grid_star})
+            grid_dic.update({'Ssub_Sstar' : Ssub_Sstar,'nsub_star' : nsub_star})
+            for key in ['x','y','z','r2']: grid_dic[key+'_st_sky'] = coord_grid[key+'_st_sky'] 
+            for key in ['x','y','z']: grid_dic[key+'_st'] = coord_grid[key+'_st'] 
+            grid_dic['r_proj'] = np.sqrt(coord_grid['r2_st_sky'])  
 
-        #Total flux
-        #    - correspond to sum(F) = n*dl^2/(pi*Rstar)^2
-        elif mode=='Ftot':grid_dic['Ftot_star_'+key_type] = Ftot_star   
+    #Spectral grid
+    #    - the grid is used to model disk-integrated profile and thus only need to be chromatic if they are not in CCF format
+    #    - all tables nonetheless have the same structure in ncell x nband
+    if var_stargrid_bulk or var_stargrid_I:
+        grid_type_eff = ['achrom']
+        if ('spec' in grid_type) and ('chrom' in system_prop_in):grid_type_eff+=['chrom']
+        for key_type in grid_type_eff:
+    
+            #Intensity grid
+            ld_grid_star,gd_grid_star,mu_grid_star,Fsurf_grid_star,Ftot_star,Istar_norm = calc_Isurf_grid(range(system_prop_in[key_type]['nw']),nsub_star,system_prop_in[key_type],coord_grid,star_params,Ssub_Sstar)
         
-    if mode=='grid':grid_dic['mu'] = grid_dic['mu_grid_star_achrom'][:,0]
+            #Storing for model fits
+            if mode=='grid':
+                grid_dic.update({'Istar_norm_'+key_type:Istar_norm,
+                                 'ld_grid_star_'+key_type : ld_grid_star,
+                                 'gd_grid_star_'+key_type : gd_grid_star,
+                                 'Fsurf_grid_star_'+key_type : Fsurf_grid_star,
+                                 'mu_grid_star_'+key_type :  mu_grid_star})
+    
+            #Total flux
+            #    - correspond to sum(F) = n*dl^2/(pi*Rstar)^2
+            elif mode=='Ftot':grid_dic['Ftot_star_'+key_type] = Ftot_star   
+        
+        if mode=='grid':grid_dic['mu'] = grid_dic['mu_grid_star_achrom'][:,0]
     
     return None
 
 
-def up_model_star(args,param):
+def up_model_star(args,param_in):
     r"""**Update stellar grid**
 
     Update coordinates and intensity values over the stellar grid.
+    This function is called when stellar properties differ from the nominal ones.
 
     Args:
         TBD
@@ -512,18 +523,41 @@ def up_model_star(args,param):
         TBD
     
     """ 
-    #Update potentially variable stellar properties
-    for ideg in range(1,5):
-        if ('LD_u'+str(ideg)) in param:args['system_prop']['achrom'].update({'LD_u'+str(ideg):[param['LD_u'+str(ideg)]]}) 
-    for par in ['veq','alpha_rot','beta_rot','veq_spots','alpha_rot_spots','beta_rot_spots','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T']:
-        if par in param:args['star_params'][par] = param[par]
-    args['star_params'].update({'RpoleReq':1.-args['star_params']['f_GD'],'istar_rad':np.arccos(args['star_params']['cos_istar']), 'istar':np.arccos(args['star_params']['cos_istar'])*180./np.pi,
-                                'vsini':args['star_params']['veq']*np.sin(np.arccos(args['star_params']['cos_istar'])),'om_eq' : args['star_params']['veq']/args['star_params']['Rstar_km'],
-                                'om_eq_spots' : args['star_params']['veq_spots']/args['star_params']['Rstar_km']})
 
-    #Update stellar grid
-    #    - physical sky-projected grid and broadband intensity variations            
-    model_star('grid',args['grid_dic'],[args['type']],args['system_prop'],args['grid_dic']['nsub_Dstar'],args['star_params'])
+    if isinstance(param_in,lmfit.parameter.Parameters):param={par:param_in[par].value for par in param_in}
+    else:param=deepcopy(param_in)
+    
+    #Updating main stellar properties with variable model parameters 
+    #    - properties stored in 'var_stargrid_prop' are defined as model parameters, either with values that differ from the nominal ones, or because they are fitted
+    star_params = args['system_param']['star']
+    for par in args['var_stargrid_prop']:
+        if ('LD_u' in par):
+            ideg = par.split('LD_u')
+            args['system_prop']['achrom'].update({'LD_u'+str(ideg):[param['LD_u'+str(ideg)]]}) 
+        else:
+            star_params[par] = param[par]
+
+            #Updating rotational period or velocity
+            if par=='veq':star_params['Peq'] = (2*np.pi*star_params['Rstar_km'])/(param['veq']*24*3600)
+            elif par=='Peq':star_params['veq'] = (2*np.pi*star_params['Rstar_km'])/(param['Peq']*24*3600)    
+            
+    #Updating spot properties
+    for par in args['var_stargrid_prop_spots']:
+        par_spot = par+'_spots'
+        star_params[par_spot] = param[par_spot]
+        if par=='veq':star_params['Peq_spots'] = (2*np.pi*star_params['Rstar_km'])/(param['veq_spots']*24*3600) 
+        elif par=='Peq':star_params['veq_spots'] = (2*np.pi*star_params['Rstar_km'])/(param['Peq_spots']*24*3600)
+
+    #Updating stellar properties derived from main properties
+    if 'f_GD' in args['var_stargrid_prop']:star_params['RpoleReq']=1.-star_params['f_GD']
+    if 'cos_istar' in args['var_stargrid_prop']:star_params['istar_rad']=np.arccos(star_params['cos_istar'])
+    if ('veq' in args['var_stargrid_prop']) or ('Peq' in args['var_stargrid_prop']):star_params['om_eq']=star_params['veq']/star_params['Rstar_km']
+    if ('veq' in args['var_stargrid_prop_spots']) or ('Peq' in args['var_stargrid_prop_spots']):star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
+
+    #Updating stellar grid
+    #    - physical sky-projected grid and broadband intensity variations     
+    #    - only if grid settings or specific stellar properties changed value       
+    model_star('grid',args['grid_dic'],[args['type']],args['system_prop'],args['grid_dic']['nsub_Dstar'],star_params,args['var_stargrid_bulk'],args['var_stargrid_I'])
 
     return None
 

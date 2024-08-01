@@ -523,3 +523,190 @@ def permpeak_mask(iexp_group,cond_mask_all,proc_DI_data_paths,proc_DI_data_paths
 
 
 
+
+
+
+
+
+
+def corr_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop):
+    r'''**Main persistent peak routine.**
+    
+    Identifies and masks spectra for positive features that persists over time.
+    
+     - this routine identifies and masks hot pixels and telluric lines in emission 
+     - bad pixels on the detector and telluric lines are aligned in the Earth rest frame, so that exposures are compared in this referential
+     - we use an estimate of the continuum to identify spurious features, using RASSINE approach (Cretignier+2020, A&A, 640, A42)
+    
+    Args:
+        TBD:
+    
+    Returns:
+        TBD:
+            
+    '''
+    print('   > Correcting persistent peaks in spectra')
+    
+    #Calculating data
+    if (gen_dic['calc_permpeak']):
+        print('         Calculating data')    
+
+        # #Excluded ranges
+        # if (inst in gen_dic['permpeak_range_corr']) and (len(gen_dic['permpeak_range_corr'][inst])>0):range_proc_ord = list(gen_dic['permpeak_range_corr'][inst].keys())
+        # else:range_proc_ord=list(range(data_inst['nord']) )
+        # if (inst in gen_dic['permpeak_edges']):permpeak_edges = gen_dic['permpeak_edges'][inst]
+        # else:permpeak_edges = [0.,0.]
+
+        #Process each visit independently
+        for ivisit,vis in enumerate(data_inst['visit_list']):
+            data_vis=data_inst[vis]
+            
+            #Ranges to be corrected
+            # if (inst in gen_dic['permpeak_exp_corr']) and (vis in gen_dic['permpeak_exp_corr'][inst]) and (len(gen_dic['permpeak_exp_corr'][inst][vis])>0):exp_corr_list = gen_dic['permpeak_exp_corr'][inst][vis]   
+            # else:exp_corr_list = list(range(data_vis['n_in_visit']))
+            # nexp_corr_list=len(exp_corr_list)
+            # if (inst in gen_dic['permpeak_ord_corr']) and (vis in gen_dic['permpeak_ord_corr'][inst]) and (len(gen_dic['permpeak_ord_corr'][inst][vis])>0):ord_corr_list = gen_dic['permpeak_ord_corr'][inst][vis]   
+            # else:ord_corr_list = list(range(data_inst['nord']) )
+            # nord_corr_list = len(ord_corr_list)
+            
+            #Common visit table
+            #    - shifted from the solar barycentric (receiver) to the average Earth (source) rest frame for the visit
+            data_com = dataload_npz(data_vis['proc_com_data_paths'])
+            sp_shift = 1./(gen_specdopshift(np.mean(data_prop[inst][vis]['BERV']))*(1.+1.55e-8))      
+            edge_bins_com_Earth = data_com['edge_bins']*sp_shift  
+            cen_bins_com_Earth = data_com['cen_bins']*sp_shift
+
+            #Retrieve all exposures for master calculation
+            dim_all = [data_vis['n_in_visit'],data_inst['nord'],data_com['nspec']]
+            flux_Earth_all = np.zeros(dim_all, dtype=float)*np.nan 
+            cond_def_all = np.zeros(dim_all, dtype=bool)
+            for iexp in range(data_vis['n_in_visit']): 
+
+                #Upload latest processed data
+                data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))
+
+                #Align exposure in Earth referential for orders to be corrected
+                edge_bins_Earth = data_exp['edge_bins']/(gen_specdopshift(data_prop[inst][vis]['BERV'][iexp])*(1.+1.55e-8))   
+                for isub_ord,iord in enumerate(range(data_inst['nord'])): 
+                    flux_Earth_all[iexp,isub_ord] = bind.resampling(edge_bins_com_Earth[iord], edge_bins_Earth[iord], data_exp['flux'][iord], kind=gen_dic['resamp_mode'])
+                cond_def_all[iexp] = ~np.isnan(flux_Earth_all[iexp])                    
+
+            #Order x pixels where at least one exposure has a defined bin                      
+            cond_def_mast = (np.sum(cond_def_all,axis=0)>0) 
+                
+            #Process each peak
+            for range_peak_loc in gen_dic['corrpeak_ranges']:
+                
+                #Process slices containing peak center
+                cen_bin_peak = np.mean(range_peak_loc)
+                min_bin_ord = edge_bins_com_Earth[:,0]
+                max_bin_ord = edge_bins_com_Earth[:,-1]
+                iord_list_peak = np_where1D((cen_bin_peak>min_bin_ord) & (count_bad_ord<max_bin_ord))
+                for iord in iord_list_peak:
+                    
+                    #Limit order spectrum to peak range
+                    cond_ord_peak = ((edge_bins_com_Earth[iord,0:-1]>range_peak_loc[0]) & (edge_bins_com_Earth[iord,1::]<range_peak_loc[1])) & cond_def_mast[iord]
+                    if np.sum(cond_ord_peak)>0:
+                
+                        #master hors peak ou fibre B
+                        stop()
+                
+                
+                        #Adjust poly   
+                
+                
+                
+                
+                
+ #### combiner slices si espresso
+#### je ne vois que deux possibilites:
+#   - soit on arrive a definir une ref pour le spectre stellaire non contamine (avec des expos de la visite ou alors en esperant que change pas des expos des autres)
+#     ensuite je corrige de ce master, et je fitte les residus 
+#     par exemple pas possible dans V1, peak tjours present; mais semble possible dans V2; par ailleurs les pics ne s'overlappent pas entre les deux vis, donc devrait fonctionner en utilisant les deux vis
+#   - soit j'ai des fiber B, je fitte un modele dessus, et j'applique un scaling  entre B et A (comme Avidaan je pense ?)
+                
+                
+                
+                
+                
+            #Order x pixels where at least one exposure has a defined bin                      
+            cond_def_mast = (np.sum(cond_def_all,axis=0)>0)                 
+
+            #Calculate stellar continuum of master spectrum
+            mean_flux_mast,cont_func_dic,dic_sav = calc_spectral_cont(data_inst['nord'],ord_corr_list,None,cen_bins_com_Earth[ord_corr_list],edge_bins_com_Earth[ord_corr_list],cond_def_mast,flux_Earth_all,cond_def_all,inst,gen_dic['contin_roll_win'][inst]  ,\
+                                                             gen_dic['contin_smooth_win'][inst],gen_dic['contin_locmax_win'][inst],gen_dic['contin_stretch'][inst],gen_dic['contin_pinR'][inst],data_com['min_edge_ord'][0],dic_sav,gen_dic['permpeak_nthreads'])
+
+            #Flag pixels with spurious positive flux
+            common_args = (nord_corr_list,data_vis['nspec'],data_vis['proc_DI_data_paths'],ord_corr_list,permpeak_edges,inst,gen_dic['permpeak_range_corr'],gen_dic['permpeak_outthresh'],gen_dic['permpeak_peakwin'][inst],range_proc_ord,mean_flux_mast,data_inst['nord'],cont_func_dic)
+            if gen_dic['permpeak_nthreads']>1:cond_bad_all,cond_undef_all,tot_Fr_all=multithread_permpeak_flag(permpeak_flag,gen_dic['permpeak_nthreads'],len(exp_corr_list),[exp_corr_list,data_prop[inst][vis]['BERV'][exp_corr_list]],common_args)                           
+            else:cond_bad_all,cond_undef_all,tot_Fr_all=permpeak_flag(exp_corr_list,data_prop[inst][vis]['BERV'][exp_corr_list],*common_args) 
+            if (plot_dic['permpeak_corr']!='') or (plot_dic['sp_raw']!=''):
+                dic_sav['tot_Fr_all'][exp_corr_list] = tot_Fr_all
+                dic_sav['cont_func_dic'] = cont_func_dic
+
+            #Mask persistent pixels with spurious positive flux
+            nexp_bad = max(gen_dic['permpeak_nbad'],3)
+            cond_mask_all = np.zeros(dim_all,dtype=bool)
+            for isub_ord in range(nord_corr_list):    
+
+                #Mask permanently bad pixels that are not undefined in all exposures
+                cond_undef_ord = (np.sum(cond_undef_all[:,isub_ord],axis=0)<nexp_corr_list)
+                count_bad_ord = np.sum(cond_bad_all[:,isub_ord],axis=0)
+                cond_bad_pix = (count_bad_ord==nexp_corr_list) & cond_undef_ord
+                if (True in cond_bad_pix):cond_mask_all[:,isub_ord,cond_bad_pix] = True 
+
+                #Process remaining pixels
+                #    - bad in at least one exposure and not undefined in all exposures 
+                for ipix in np_where1D((count_bad_ord>0) & (count_bad_ord<nexp_corr_list) & cond_undef_ord):
+                    isub_exp = 0
+                    while (isub_exp<nexp_corr_list-nexp_bad):
+                        
+                        #Pixel is bad 
+                        if cond_bad_all[isub_exp,isub_ord,ipix]:
+                            nsub = 0
+                            cond_loc = True
+                            while cond_loc and (isub_exp+nsub+1<nexp_corr_list):
+                                nsub+=1
+                                
+                                #Undefined pixels are counted as potentially bad
+                                cond_loc = cond_bad_all[isub_exp+nsub,isub_ord,ipix]| cond_undef_all[isub_exp+nsub,isub_ord,ipix]
+                     
+                            #Pixel is bad in more than nexp_bad consecutive exposures
+                            if nsub+1>=nexp_bad:cond_mask_all[isub_exp:isub_exp+nsub+1,isub_ord,ipix] = True
+ 
+                            #Move to next exposures
+                            isub_exp+=nsub+1
+                            
+                        #Moving to next exposure
+                        else:isub_exp+=1
+
+            #Apply masking
+            proc_DI_data_paths_new = gen_dic['save_data_dir']+'Corr_data/Permpeak/'+inst+'_'+vis+'_'
+            common_args = (data_vis['proc_DI_data_paths'],proc_DI_data_paths_new,ord_corr_list)
+            if gen_dic['permpeak_nthreads']>1:MAIN_multithread(permpeak_mask,gen_dic['permpeak_nthreads'],len(exp_corr_list),[exp_corr_list,cond_mask_all],common_args)                           
+            else:permpeak_mask(exp_corr_list,cond_mask_all,*common_args)  
+            data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new            
+            
+            #Number of masked pixels in each order
+            if (plot_dic['permpeak_corr']!='') or (plot_dic['sp_raw']!=''):
+                for isub_exp,iexp in enumerate(exp_corr_list):
+                    dic_sav['count_bad_all'][iexp,ord_corr_list] = np.sum(cond_mask_all[isub_exp],axis=1)
+                    
+            #update paths
+            data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
+
+            #Save for plotting
+            if (plot_dic['permpeak_corr']!='') or (plot_dic['sp_raw']!=''):
+                np.savez_compressed(gen_dic['save_data_dir']+'Corr_data/Permpeak/'+inst+'_'+vis+'_add',data=dic_sav,allow_pickle=True)
+
+    #Updating path to processed data and checking it has been calculated
+    else:
+        for vis in data_inst['visit_list']:  
+            data_vis=data_inst[vis]
+            data_vis['proc_DI_data_paths']=gen_dic['save_data_dir']+'Corr_data/Permpeak/'+inst+'_'+vis+'_'  
+            check_data({'path':data_vis['proc_DI_data_paths']+str(0)},vis=vis)                
+
+    return None    
+
+
+

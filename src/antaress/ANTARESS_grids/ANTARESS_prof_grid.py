@@ -14,7 +14,7 @@ from ctypes import CDLL,c_double,c_int,c_void_p,cast,POINTER
 import os as os_system
 from ..ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
-from ..ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab,get_pw10
+from ..ANTARESS_general.utils import closest,np_poly,np_interp,gen_specdopshift,closest_arr,MAIN_multithread,stop,def_edge_tab,get_pw10,np_where1D
 
 class CFunctionWrapper:
     r"""**C profile calculation**
@@ -63,6 +63,120 @@ class CFunctionWrapper:
 
 
 
+def init_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_params,param_in):   
+    r"""**Stellar properties: initialization**
+
+    Initializes stellar properties.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    if isinstance(param_in,lmfit.parameter.Parameters):params={par:param_in[par].value for par in param_in}
+    else:params=deepcopy(param_in) 
+
+    #Store nominal properties potentially overwritten in the fitting procedure
+    fixed_args['grid_dic'] = deepcopy(theo_dic) 
+    fixed_args['system_prop'] = deepcopy(system_prop) 
+    fixed_args['system_spot_prop'] = deepcopy(system_spot_prop)
+    
+    #List of stellar properties potentially modified as model parameter
+    stargrid_prop_nom = np.array(['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'])
+    if len(system_spot_prop)>0:stargrid_prop_spots_nom = np.array(['veq','alpha_rot','beta_rot'])
+    else:stargrid_prop_spots_nom=[]    
+ 
+    #Define stellar rotational property
+    #    - at this stage 'params' contains 'veq' by default and only contains 'Peq' if it was requested as a model parameter
+    #      in this case 'veq' is removed from the model parameters and its value is updated in the stellar property dictionary (here in forward mode, or at each time step of the fit)
+    if 'Peq' in params:
+        print('        Switching veq for Peq as model parameter')
+        stargrid_prop_nom[np_where1D(stargrid_prop_nom=='veq')]='Peq'
+        if (len(stargrid_prop_spots_nom)>0):stargrid_prop_spots_nom[np_where1D(stargrid_prop_spots_nom=='veq')]='Peq'
+
+    #--------------------------------------------------------------------------------------------
+
+    #Check for model parameters with different values than nominal stellar ones  
+    #    - 'diff_star_grid' is set True if at least one property controlling the stellar grid has a different input model value than the nominal stellar one  
+    #      in that case the stellar grid is updated here, so that it accounts for model parameters being different from nominal ones even if they are not modified during a fit
+    #      if no model is fitted then the stellar grid only needs to be updated once here since the stellar properties are not updated as part of a fit later on
+    #    - limb-darkening is not variable but can be set to a different value than the nominal one, and is thus checked for here  
+    fixed_args['var_star_grid'] = False
+    fixed_args['var_stargrid_prop'] = []  
+    fixed_args['var_stargrid_prop_spots']=[]
+    fixed_args['var_stargrid_bulk']=False 
+    fixed_args['var_stargrid_I']=False        
+    for par in params:
+        if ((par in stargrid_prop_nom) and (params[par] != star_params[par])):
+            fixed_args['var_star_grid'] = True
+            fixed_args['var_stargrid_prop']+=[par]
+            if par=='f_GD':
+                fixed_args['var_stargrid_I']=True
+                fixed_args['var_stargrid_bulk']=True
+            if par=='cos_istar':fixed_args['var_stargrid_bulk'] = True
+        if ((par in ['LD_u1','LD_u2','LD_u3','LD_u4']) and (params[par] != system_prop['achrom'][par][0])):
+            fixed_args['var_star_grid'] = True
+            fixed_args['var_stargrid_prop']+=[par]
+            fixed_args['var_stargrid_I']=True    
+        if par in stargrid_prop_spots_nom:
+            par_spot = par+'_spots'
+            if (params[par_spot] != star_params[par_spot]):
+                fixed_args['var_star_grid'] = True
+                fixed_args['var_stargrid_prop_spots']+=[par]
+            if (params[par_spot] != params[par]):print('WARNING: quiet and spot values for '+par+' are different.')
+
+    #Update stellar grid
+    if fixed_args['var_star_grid']:up_model_star(fixed_args,params)
+
+    #--------------------------------------------------------------------------------------------
+
+    #Initializing update condition
+    #    - 'var_star_grid' is set True if the model is fitted and at least one property controlling the stellar grid is variable 
+    #      in that case the sky-projected stellar grid and corresponding broadband emission are re-calculated at each step of the minimization for the step parameters
+    #      this option cannot be used with chromatic intensity variations
+    fixed_args['var_star_grid']=False
+
+    #Fit mode
+    #    - if one of the properties vary the stellar grid will be updated in the call to custom_DI_prof() at every step of the fit
+    if fixed_args['fit']:
+        
+        #Properties to update are stored in these lists
+        fixed_args['var_stargrid_prop'] = []   
+        fixed_args['var_stargrid_prop_spots']=[]   
+        fixed_args['var_stargrid_I']=False   
+        fixed_args['var_stargrid_bulk']=False    
+        
+        #Processing parameters
+        for par in params:
+
+            #Check stellar properties
+            if (par in stargrid_prop_nom) and (param_in[par].vary):
+                fixed_args['var_star_grid']=True 
+                fixed_args['var_stargrid_prop']+=[par]
+                if par=='f_GD':
+                    fixed_args['var_stargrid_I']=True
+                    fixed_args['var_stargrid_bulk']= True
+                if par=='cos_istar':fixed_args['var_stargrid_bulk'] = True
+                
+            #Check spot properties
+            # - We distinguish three cases for properties common to the spots and quiet star:
+            #   1 - Both quiet and spot properties are fit. In this case, both properties will behave independently.
+            #   2 - Both quiet and spot properties are fixed. In this case, we issue a warning to inform the user if these properties have different values.
+            #       It is important to stress that, in this case, the user is responsible for controlling the fixed values used.
+            #   3 - Fixed/fit quiet properties and fit/fixed spot properties. In this case, the user is responsible for controlling the value of the fixed quantity,
+            #       while the fit quantity behaves by itself.
+            if (par in stargrid_prop_spots_nom):
+                par_spot = par+'_spots'
+                if (param_in[par_spot].vary):
+                    fixed_args['var_star_grid']=True 
+                    fixed_args['var_stargrid_prop_spots']+=[par]
+                elif (params[par_spot] != params[par]) and (not param_in[par].vary) and (not param_in[par_spot].vary):print('WARNING: quiet and spot values for '+par+' are different.')
+
+    return fixed_args
+
+
 
 
 
@@ -81,6 +195,7 @@ def custom_DI_prof(param,x,args=None):
         TBD
     
     """ 
+
     #--------------------------------------------------------------------------------
     #Updating stellar grid and line profile grid
     #    - only if routine is called in fit mode, otherwise the default pipeline stellar grid and the scaling from init_custom_DI_prof() are used
@@ -109,7 +224,7 @@ def custom_DI_prof(param,x,args=None):
     #    - an offset is allowed to account for the star/input frame velocity when the model is used on raw data 
     #    - velocity properties are stored in grid_dic to allow disinguishing between quiet and spotted cells
     #--------------------------------------------------------------------------------
-    rv_surf_star_grid = calc_RVrot(args['grid_dic']['x_st_sky'],args['grid_dic']['y_st'],args['star_params']['istar_rad'],args['grid_dic']['veq'],args['grid_dic']['alpha_rot'],args['grid_dic']['beta_rot'])[0] + param['rv']
+    rv_surf_star_grid = calc_RVrot(args['grid_dic']['x_st_sky'],args['grid_dic']['y_st'],args['system_param']['star']['istar_rad'],args['grid_dic']['veq'],args['grid_dic']['alpha_rot'],args['grid_dic']['beta_rot'])[0] + param['rv']
     cb_band = calc_CB_RV(get_LD_coeff(args['system_prop']['achrom'],0),args['system_prop']['achrom']['LD'][0],param['c1_CB'], param['c2_CB'], param['c3_CB'],param)
     if np.max(np.abs(cb_band))!=0.:rv_surf_star_grid += np_poly(cb_band)(args['grid_dic']['mu']).flatten()
 
@@ -174,9 +289,7 @@ def custom_DI_prof(param,x,args=None):
 
 
 
-
-
-def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop,theo_dic,star_params,param_in):   
+def init_custom_DI_prof(fixed_args,gen_dic,param_in):   
     r"""**Disk-integrated profile: grid initialization**
 
     Initializes stellar and intrinsic profile grids.
@@ -193,45 +306,7 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop,theo_dic
 
     #Store various properties potentially overwritten in the fitting procedure
     fixed_args['resamp_mode'] = gen_dic['resamp_mode'] 
-    fixed_args['system_prop'] = deepcopy(system_prop) 
-    fixed_args['star_params'] = deepcopy(star_params)  
-    fixed_args['grid_dic'] = deepcopy(theo_dic)
-    fixed_args['system_spot_prop'] = deepcopy(system_spot_prop)
 
-    #------------------------------------------------------------------------
-    #Identify variable stellar grid
-    #    - condition is that one property controlling the stellar grid is variable OR has a value different from the one in theo_dic use to define the default stellar grid 
-    #    - if condition is true, the sky-projected stellar grid and corresponding broadband emission are re-calculated at each step of the minimization for the step parameters
-    #    - this option cannot be used with chromatic intensity variations
-    #    - this option is not required if only veq is varying 
-    #------------------------------------------------------------------------
-    stargrid_prop = ['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T']
-
-    #Fit mode
-    #    - grid will be updated in custom_DI_prof() if one of the properties vary
-    if fixed_args['fit']:
-        
-        #Update condition
-        fixed_args['var_star_grid']=False
-        for par in params:
-            if ((par in stargrid_prop) and (params[par] != star_params[par])) or ((par in ['LD_u1','LD_u2','LD_u3','LD_u4']) and (params[par] != system_prop['achrom'][par][0])):fixed_args['var_star_grid']=True    
-    
-            #Link spot and quiet properties
-            #    - if one of the quiet properties is modelled but the equivalent spot one is not modelled, the spot value is made to follow the quiet value
-            if par in ['veq','alpha_rot','beta_rot']:
-                if (param_in[par].vary) and (not param_in[par+'_spots'].vary):param_in[par+'_spots'].expr = par
-                elif (params[par] != params[par+'_spots']):print('WARNING: quiet and spot values for '+par+' are different.')
-    
-    #Forward mode
-    #    - only if properties differ from default ones
-    else:
-        up_grid = False
-        for par in params:
-            if ((par in stargrid_prop) and (params[par] != star_params[par])) or ((par in ['LD_u1','LD_u2','LD_u3','LD_u4']) and (params[par] != system_prop['achrom'][par][0])):up_grid = True
-            if par in ['veq','alpha_rot','beta_rot']:
-                if (params[par] != params[par+'_spots']):print('WARNING: quiet and spot values for '+par+' are different.')
-        if up_grid:up_model_star(fixed_args,params)
- 
     #------------------------------------------------------------------------
     #Intrinsic line profile grid
     #    - in foward mode: profiles are updated here under condition, and are always used to tile the stellar grid
@@ -245,14 +320,15 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop,theo_dic
     #Theoretical profiles 
     if fixed_args['mode']=='theo':
         fixed_args['abund_sp']=[] 
+        sme_grid = fixed_args['grid_dic']['sme_grid']
 
         #No covariance associated with intrinsic profile
         fixed_args['cov_loc_star']=False
     
         #Spectral table    
         #    - theoretical profiles are defined on a common table in the star rest frame                                                      
-        fixed_args['cen_bins_intr'] = np.array(theo_dic['sme_grid']['wave'])  
-        fixed_args['edge_bins_intr'] = theo_dic['sme_grid']['edge_bins']                                                                    
+        fixed_args['cen_bins_intr'] = np.array(sme_grid['wave'])  
+        fixed_args['edge_bins_intr'] = sme_grid['edge_bins']                                                                    
 
         #Update profiles in forward mode
         #    - profiles are only updated if abundances differ from default ones, but are in any case attributed to the stellar grid
@@ -260,7 +336,7 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop,theo_dic
             for par in params:
                 if 'abund' in par:
                     sp_abund = par.split('_')[1]
-                    if np.abs(params[par] - theo_dic['sme_grid']['abund'][sp_abund])>1e-6:fixed_args['abund_sp']+=[sp_abund] 
+                    if np.abs(params[par] - sme_grid['abund'][sp_abund])>1e-6:fixed_args['abund_sp']+=[sp_abund] 
             init_st_intr_prof(fixed_args,fixed_args['grid_dic'],params)        
 
         #Fit mode
@@ -276,7 +352,7 @@ def init_custom_DI_prof(fixed_args,gen_dic,system_prop,system_spot_prop,theo_dic
                     if param_in[par].vary:fixed_args['var_line'] = True
                     
                     #Abundance is fixed and differs from initialization
-                    elif np.abs(params[par] - theo_dic['sme_grid']['abund'][sp_abund])>1e-6:cond_update = True
+                    elif np.abs(params[par] - sme_grid['abund'][sp_abund])>1e-6:cond_update = True
 
             #Update profiles and attribute them to stellar grid if they remain fixed, and the profile and grid are the same as initialization
             if cond_update and (not fixed_args['var_star_grid']):init_st_intr_prof(fixed_args,fixed_args['grid_dic'],params)
@@ -360,7 +436,8 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
     #Stellar grid properties
     #    - all stellar properties are initialized to default stellar values
     #      those defined as variable properties through the settings will be overwritten in 'par_formatting'
-    for key,vary,bd_min,bd_max in zip(['veq','veq_spots','alpha_rot','alpha_rot_spots','beta_rot','beta_rot_spots','c1_CB','c2_CB','c3_CB','c1_CB_spots','c2_CB_spots','c3_CB_spots','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
+    #    - see init_stellar_prop() for details about the processing of 'veq' and 'Peq'
+    for key,vary,bd_min,bd_max in zip(['veq',   'veq_spots','alpha_rot','alpha_rot_spots','beta_rot','beta_rot_spots','c1_CB','c2_CB','c3_CB','c1_CB_spots','c2_CB_spots','c3_CB_spots','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
                                       [False,   False,      False,         False,        False,        False,        False, False,  False,   False,         False,          False,   False,    False,  False,   False, False, False, False, False,  False,   False],
                                       [0.,      0.,         None,          None,         None,         None,         None,  None,   None,    None,          None,           None,     -1.,       0.,     0.,      0.,     0. ,   0.,    0. ,   0.,     0. ,      0.],
                                       [1e4,     1e4,        None,          None,         None,         None,         None,  None,   None,    None,          None,           None,      1.,       1.,     1.,      1e5,    1.,   1e5,    1e5,  1e5,    100.,    100.]):

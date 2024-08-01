@@ -450,11 +450,11 @@ def calc_pl_coord(ecc,omega_bar,aRs,inclin,ph_loc,RpRs,lambda_rad,star_params,rv
                         & K[pl/CMD_{\star}] = - (2 \pi G/P)^{1/3} (M_{\star}-M_\mathrm{pl}) \sin(i_p)/(\sqrt{1-e^2} (M_{\star}+M_\mathrm{pl})^{1/3} )
 
     If we assume that the atmospheric signal tracks the planet orbital velocity (ie, there is no atmospheric dynamics), then we can 
-    link the planet and star masses with this measurement. Doing as few assumption as possible, the quantity we measure is 
+    link the planet and star masses with this measurement. Doing as few assumptions as possible, the quantity we measure is 
      
     .. math::     
        rv(pl/CDM_\mathrm{sun}) &= rv(pl/CMD_{\star}) + rv(CMD_{\star}/CDM_\mathrm{sun})  \\
-       rv(pl/CDM_\mathrm{sun}) &= - (2 \pi G/P)^{1/3} (M_{\star}-M_\mathrm{pl}) \sin(i_p)/(\sqrt{1-e^2} (M_{\star}+M_\mathrm{pl})^{1/3} ) + rv_\mathrm{sys}   
+                               &= - (2 \pi G/P)^{1/3} (M_{\star}-M_\mathrm{pl}) \sin(i_p)/(\sqrt{1-e^2} (M_{\star}+M_\mathrm{pl})^{1/3} ) + rv_\mathrm{sys}   
      
     Args:
         TBD

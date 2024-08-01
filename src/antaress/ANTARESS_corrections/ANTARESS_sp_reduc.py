@@ -5,7 +5,7 @@ from copy import deepcopy
 from ..ANTARESS_general.utils import np_where1D,dataload_npz,check_data
 from ..ANTARESS_corrections.ANTARESS_tellurics import corr_tell
 from ..ANTARESS_corrections.ANTARESS_flux_balance import def_Mstar,corr_Fbal,corr_Ftemp
-from ..ANTARESS_corrections.ANTARESS_peaks import corr_cosm,MAIN_permpeak
+from ..ANTARESS_corrections.ANTARESS_peaks import corr_cosm,MAIN_permpeak,         corr_permpeak
 from ..ANTARESS_corrections.ANTARESS_interferences import MAIN_corr_wig,corr_fring
 
 def red_sp_data_instru(inst,data_dic,plot_dic,gen_dic,data_prop,coord_dic,system_param):
@@ -45,6 +45,11 @@ def red_sp_data_instru(inst,data_dic,plot_dic,gen_dic,data_prop,coord_dic,system
     #Correcting for cosmics
     if (gen_dic['corr_cosm']):corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic)
 
+
+    # print('TEST DEV')
+    # gen_dic['corrpeak_ranges'] = [[6298.7,6299.2]]
+    # corr_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop)
+
     #Masking of persistent features
     if (gen_dic['mask_permpeak']):MAIN_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop)
 
@@ -81,14 +86,17 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
     
     """
     print('   > Trimming spectra')    
- 
+    
     #Calculating data
     data_inst = data_dic[inst]
+    print('     Common table will loose their extension')
     if (gen_dic['calc_trim_spec']):
         print('         Calculating data')    
     
         #Upload latest processed data
         #    - data must be put in global tables to perform a global reduction of ranges and orders
+        #    - at this stage spectra are still defined in the input rest frame, as is the common table
+        #    - the common table is trimmed to the same range as all spectra, so that the extension defined in the initialization routine to account for various shifts are lost
         data_dic_exp={}
         data_dic_com={}
         data_com_inst = dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_com') 

@@ -6,7 +6,7 @@ from copy import deepcopy
 import bindensity as bind
 import glob
 from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,weights_bin_prof,init_bin_prof
-from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc
+from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc,init_stellar_prop
 from ..ANTARESS_grids.ANTARESS_occ_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_spot_prop,up_plocc_prop
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange
 from ..ANTARESS_process.ANTARESS_data_align import align_data
@@ -276,9 +276,12 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
             print('         Using existing '+fit_used+' fit as default')
             opt_dic[fit_txt+'Prof_prop_path']={inst:{vis:gen_dic['save_data_dir']+'/Joined_fits/'+fit_txt+'Prof/'+fit_used+'/Fit_results'}}  
     if spot_on:prof_type = 'Res'
-    else:prof_type='Intr'        
+    else:prof_type='Intr'   
+
+    #Retrieve best-fit system properties    
     data_prop = dataload_npz(opt_dic[prof_type+'Prof_prop_path'][inst][vis])
     params=data_prop['p_final'] 
+    
     fixed_args={  
         'mode':opt_dic['mode'],
         'type':data_vis['type'],
@@ -309,7 +312,8 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         fixed_args.update({          
         'fit_spot_ang':data_prop['fit_spot_ang'],
         'fit_spot':data_prop['fit_spot'],
-        'system_spot_prop':data_prop['system_spot_prop'],    
+        'system_spot_prop':data_prop['system_spot_prop'],   
+        'spot_coord_par':gen_dic['spot_coord_par'], 
         'conv2intr' :False,           
             })
         transit_spots=data_vis['transit_sp']
@@ -324,9 +328,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         
     else:
         fixed_args.update({          
-        'system_spot_prop':{},
-        'spot_coord_par':gen_dic['spot_coord_par'],          
-            })
+        'system_spot_prop':{}})
         plocc_prof_type = data_dic['Intr']['plocc_prof_type']
         if plocc_prof_type=='Intr':fixed_args['conv2intr'] = True
         else:fixed_args['conv2intr'] = False 
@@ -378,7 +380,8 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         #Initializing stellar profiles
         #    - can be defined using the first exposure table
         if isub==0:
-            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,data_vis['system_prop'],spots_prop,theo_dic,system_param['star'],params)                  
+            fixed_args = init_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],spots_prop,system_param['star'],params)
+            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,params)                  
     
             #Effective instrumental convolution
             fixed_args['FWHM_inst'] = get_FWHM_inst(inst,fixed_args,fixed_args['cen_bins'])
@@ -522,7 +525,7 @@ def plocc_prof_rec(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,coord_dic):
     if not gen_dic['align_Intr']:stop('Intrinsic stellar profiles must have been aligned')
 
     #Upload common spectral table for processed visit
-    data_com = np.load(data_inst[vis]['proc_com_data_paths']+'.npz',allow_pickle=True)['data'].item()  
+    data_com = dataload_npz(data_inst[vis]['proc_com_data_paths'])  
 
     #Using current visit exposures only, or exposures from multiple visits
     if (inst in opt_dic['vis_in_rec']) and (len(opt_dic['vis_in_rec'][inst])>0):vis_in_rec = opt_dic['vis_in_rec'][inst]     

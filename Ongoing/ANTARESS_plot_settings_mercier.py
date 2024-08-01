@@ -2231,11 +2231,12 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         # - Planets
         plot_settings[key_plot]['col_orb'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
         plot_settings[key_plot]['col_orb_samp'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
-        # - Spots
+        
+        #%%%% Spot trajectory color
         plot_settings[key_plot]['col_orb_sp'] = 'greenyellow'
 
         #%%%% Number of orbits drawn randomly
-        plot_settings[key_plot]['norb']=2500
+        plot_settings[key_plot]['norb']=np.repeat(100,len(plot_settings[key_plot]['pl_to_plot'])) 
 
         #%%%% Ranges of orbital parameters
         plot_settings[key_plot]['lambdeg_err']={}
