@@ -57,7 +57,7 @@ def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_d
         if ('spec' in data_dic[inst][vis]['type']) and ('chrom' in data_dic[inst][vis]['system_prop']):key_chrom+=['chrom']
         
         #Calculate properties
-        plocc_prop,spot_prop,common_prop = sub_calc_plocc_spot_prop(key_chrom,args,par_list,data_dic[inst][vis]['transit_pl'],system_param,theo_dic,data_dic[inst][vis]['system_prop'],param,coord_dic[inst][vis],gen_dic[inst][vis]['idx_in'], system_spot_prop_in = data_dic['DI']['spots_prop'], out_ranges=True)
+        plocc_prop,spot_prop,common_prop = sub_calc_plocc_spot_prop(key_chrom,args,par_list,data_dic[inst][vis]['transit_pl'],data_dic[inst][vis]['transit_sp'],system_param,theo_dic,data_dic[inst][vis]['system_prop'],param,coord_dic[inst][vis],gen_dic[inst][vis]['idx_in'], system_spot_prop_in = data_dic['DI']['spots_prop'], out_ranges=True)
         
         #Save spot-occulted region properties
         if cond_spot:
@@ -199,7 +199,7 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_grid,coord_grid, transit_
 
 
 
-def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param,theo_dic,system_prop_in,param,coord_in,iexp_list,system_spot_prop_in={},out_ranges=False,Ftot_star=False):
+def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,system_param,theo_dic,system_prop_in,param,coord_in,iexp_list,system_spot_prop_in={},out_ranges=False,Ftot_star=False):
     r"""**Planet-occulted and spot properties: exposure**
 
     Calculates average theoretical properties of the stellar surface occulted by all transiting planets and/or spotted during an exposure
@@ -218,6 +218,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
         param (dict) : fitted or fixed star/planet/spot properties.
         coord_in (dict) : dictionary containing the various coordinates of each planet and spot (e.g., exposure time, exposure phase, exposure x/y/z coordinate)
         iexp_list (list) : exposures to process.
+        transit_pl (list) : optional, list of transiting spots in the exposures considered.
         system_spot_prop_in (dict) : optional, spot limb-darkening properties.
         out_ranges (bool) : optional, whether or not to calculate the range of values the parameters of interest (par_list_gen) will take. Turned off by default.
         Ftot_star (bool) : optional, whether or not to calculate the normalized stellar flux after accounting for the spot/planet occultations. Turned off by default.
@@ -336,7 +337,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
     #Initializing spot variables
     #    - must be initialized in anyy case since they will be called later, even if spots are not activated.
     cond_spots_all = np.zeros([n_exp,1], dtype=bool)
-    list_spot_names = []
+    n_spots = len(transit_sp)
 
     #Initializing list that will contain the oversampled steps for planets and spots, if they are oversampled.
     dcoord_exp_in = {'x':{},'y':{},'z':{}}
@@ -348,21 +349,14 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
     if cond_spot:
 
         #High precision is required for spots
-        if (theo_dic['precision']!='high'):stop('High precision required for spots')
-        
-        #Figure out the number of spots
-        n_spots = 0
-        for key in coord_in.keys():
-            if 'spot' in key:
-                n_spots+=1
-                list_spot_names.append(key)
+        if (theo_dic['precision']!='high'):stop('High precision required for spots')        
 
         #Initialize the dictionary that will contain spot presence
         cond_spots_all = np.zeros([n_exp,n_spots], dtype=bool)
 
         #Oriented distance covered along each dimension (in Rstar)
         if len(theo_dic['n_oversamp_spot'])>0:
-            for spot in list_spot_names:
+            for spot in transit_sp:
                 for key in ['x','y','z']:dcoord_exp_in[key][spot] = coord_in[spot][key+'_sky_exp'][2,iexp_list] - coord_in[spot][key+'_sky_exp'][0,iexp_list]
                 
         #Looping over all exposures
@@ -373,7 +367,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
             spot_within_grid_all=np.zeros(n_spots, dtype=bool)
 
             #Go through the spots and see if they are *roughly* visible.
-            for spot_index, spot in enumerate(list_spot_names):
+            for spot_index, spot in enumerate(transit_sp):
 
                 #See if spot is visible at any point during the exposure.
                 if (np.sum(coord_in[spot]['is_visible'][:, iexp])>=1):
@@ -456,7 +450,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
         transit_pl_exp = np.array(transit_pl)[cond_transit_all[isub_exp]]
 
         #Spots in exposure 
-        if cond_spot:spots_in_exp = np.array(list_spot_names)[cond_spots_all[isub_exp]]
+        if cond_spot:spots_in_exp = np.array(transit_sp)[cond_spots_all[isub_exp]]
         else:spots_in_exp = {}
    
         #Initialize averaged and range values

@@ -18,7 +18,8 @@ def init(nbook_type):
         'settings' : {'gen_dic':{'data_dir_list':{}},
                       'mock_dic':{'visit_def':{},'sysvel':{},'intr_prof':{},'flux_cont':{},'set_err':{}},
                       'data_dic':{'DI':{'sysvel':{}},
-                                  'Intr':{}},
+                                  'Intr':{},
+                                  'Res':{}},
                       'glob_fit_dic':{'IntrProp':{},'IntrProf':{}},
                       'plot_dic':{}
                      },
@@ -50,6 +51,23 @@ def init_star(input_nbook):
     input_nbook['settings']['data_dic']['DI']['system_prop']={'achrom':{'LD':['quadratic'],'LD_u1' : [input_nbook['par']['ld_u1']],'LD_u2' : [input_nbook['par']['ld_u2']]}}
     return None   
 
+def init_spot(input_nbook,sp_type):
+    inst = input_nbook['par']['instrument']
+    vis = input_nbook['par']['night']
+    if sp_type == 'main':
+        input_nbook['settings']['mock_dic']['spots_prop']={inst:{
+                                                                vis:{}
+                                                                }
+                                                           }
+        input_nbook['settings']['gen_dic']['transit_sp'] = {}
+        input_nbook['settings']['data_dic']['DI']['spots_prop'] = {'achrom':{'LD':['quadratic'],'LD_u1' : [input_nbook['par']['ld_spot_u1']],'LD_u2' : [input_nbook['par']['ld_spot_u2']]}}
+    for key in ['lat', 'Tc_sp', 'ang', 'fctrst']:
+        input_nbook['settings']['mock_dic']['spots_prop'][inst][vis][key+'__IS'+inst+'_VS'+vis+'_SP'+input_nbook['par']['spot_name']]=input_nbook['par'][key]
+    input_nbook['settings']['gen_dic']['transit_sp'][input_nbook['par']['spot_name']]={inst:[vis]}
+    input_nbook['settings']['data_dic']['DI']['spots_prop']['achrom'][input_nbook['par']['spot_name']]=[input_nbook['par']['ang']*np.pi/180.]
+    input_nbook['settings']['theo_dic']=input_nbook['settings']['mock_dic']
+    return None
+
 def init_pl(input_nbook,pl_type):
     input_nbook['system'][input_nbook['par']['star_name']][input_nbook['par']['planet_name']]={  
                 'period':input_nbook['par']['period'],
@@ -69,7 +87,7 @@ def init_pl(input_nbook,pl_type):
         input_nbook['settings']['data_dic']['DI']['system_prop']['achrom'][input_nbook['par']['planet_name']]=[input_nbook['par']['RpRs']]
     
         #Paths
-        input_nbook['plot_path'] = input_nbook['working_path']+input_nbook['par']['main_pl']+'_Plots/'
+        input_nbook['plot_path'] = input_nbook['working_path']+input_nbook['par']['star_name']+'/'+input_nbook['par']['main_pl']+'_Plots/'
 
     return None     
     
@@ -168,6 +186,7 @@ def DImast_weight(input_nbook):
 
 def extract_res(input_nbook):
     input_nbook['settings']['gen_dic']['res_data']=True
+    input_nbook['settings']['data_dic']['Res']['extract_in'] = False
     return None
 
 def extract_intr(input_nbook):
@@ -348,6 +367,12 @@ def plot_prof(input_nbook,data_type):
         input_nbook['par'].pop('fit_type')  
     return None
 
+def plot_spot(input_nbook):
+    input_nbook['plots']['system_view']['plot_spots'] = True
+    input_nbook['plots']['system_view']['mock_spot_prop'] = True
+    input_nbook['plots']['system_view']['n_spcell'] = 101
+    return None
+    
 def plot_map(input_nbook,data_type):
 
     #Activate plot related to intrinsic CCF model only if model was calculated

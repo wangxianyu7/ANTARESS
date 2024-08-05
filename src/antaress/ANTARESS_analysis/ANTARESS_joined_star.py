@@ -326,7 +326,7 @@ def joined_IntrProp(param,args):
             
             #Calculate coordinates and properties of occulted regions 
             system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
-            surf_prop_dic,spotocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
+            surf_prop_dic,spotocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],[],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
 
             #Properties associated with the transiting planet in the visit 
             pl_vis = args['transit_pl'][inst][vis][0]
@@ -782,7 +782,7 @@ def joined_IntrProf(param,fixed_args):
                 #    - occulted stellar cells (from planet and spots) are automatically identified within sub_calc_plocc_spot_prop() 
                 #    - see joined_ResProf() for details about spot contribution
                 #    - the planet-occulted profile is calculated over both quiet and spotted cells
-                surf_prop_dic,spotocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
+                surf_prop_dic,spotocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],args['transit_sp'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
                 sp_line_model = surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] 
 
                 #Conversion and resampling 
@@ -1544,7 +1544,7 @@ def joined_ResProf(param,fixed_args):
                 # + the total deviation profile from spotted regions, which is the difference between the quiet stellar emission and the spotted emission 
                 #   cells occulted by planets do not contribute to this profile 
                 #    - occulted stellar cells (from planet and spots) are automatically identified within sub_calc_plocc_spot_prop() 
-                surf_prop_dic,surf_prop_dic_sp,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
+                surf_prop_dic,surf_prop_dic_sp,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],args['transit_sp'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
                 sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[args['chrom_mode']]['line_prof'][:,0]
 
                 #Properties of all planet-occulted and spotted regions used to calculate spectral line profiles

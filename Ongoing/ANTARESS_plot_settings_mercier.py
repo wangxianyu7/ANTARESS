@@ -1536,7 +1536,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
-        # plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'mock_vis':[-0.02488,0.02322]}} 
+        # plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'mock_vis':[-0.01851,0.01803]}} 
 
     ################################################################################################################  
     #%%%% Best-fit profiles 
