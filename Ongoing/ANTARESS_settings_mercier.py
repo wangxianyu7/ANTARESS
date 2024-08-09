@@ -1161,7 +1161,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Star discretization      
     if gen_dic['star_name']=='AUMic':
         # theo_dic['nsub_Dstar']=81.
-        theo_dic['nsub_Dstar']=111. #-- for fitting purposes
+        theo_dic['nsub_Dstar']=211. #-- for fitting purposes
         # theo_dic['nsub_Dstar']=301. #-- for plotting purposes
     
     if gen_dic['star_name']=='V1298tau':
@@ -5061,7 +5061,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  &  False
+    gen_dic['fit_ResProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
@@ -5854,13 +5854,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #   or via a 2D interpolation ('linear' or 'cubic') over complementary exposures and a narrow spectral band (defined in band_pix_hw pixels on each side of undefined pixels)
     # + chose a dimension over which the fit/interpolation is performed         
     # + option to select exposures contributing to the fit/interpolation
-    # > 'theo': use imported theoretical local intrinsic stellar profiles    
+    # > 'theo': use imported theoretical local intrinsic stellar profiles
+    gen_dic['diff_data_corr']=True  &  False
+    gen_dic['calc_diff_data_corr']=True  &  False 
+
     data_dic['Res']['opt_loc_data_corr']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
     
     if gen_dic['star_name']=='AUMic':
         data_dic['Res']['opt_loc_data_corr'].update({'ResProf_prop_path':{
                                                                 'ESPRESSO':{
-                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/UNIGE/2023-2024/antaress/Ongoing/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
+                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
                                                                             }
                                                                         }
                                                     })

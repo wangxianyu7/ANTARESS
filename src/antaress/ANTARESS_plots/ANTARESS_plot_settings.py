@@ -1563,7 +1563,57 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
+
+    ################################################################################################################  
+    #%%%% Best-fit profiles 
+    ################################################################################################################  
+    if gen_dic['fit_ResProf'] and (plot_dic['map_BF_Res_prof']!=''):
+        key_plot = 'map_BF_Res_prof'
+
+        
+        #%%%%% Generic settings
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+
+    ################################################################################################################  
+    #%%%% Residual profiles 
+    ################################################################################################################  
+    if gen_dic['diff_data_corr'] and (plot_dic['map_BF_Res_prof_re']!=''):                                        
+        key_plot = 'map_BF_Res_prof_re'
+
+        
+        #%%%%% Generic settings
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+
+    
+    ##################################################################################################
+    #%%%% Estimates and residuals
+    ##################################################################################################
+    for key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
+                     'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+        if plot_dic[key_plot]!='':
+
+            #%%%%% Generic settings
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+
+            #%%%%% Mode to retrieve
+            plot_settings[key_plot]['mode_loc_data_corr'] = 'glob_mod'
+
+            ##############################################################################
+            #%%%%% Estimates
+            if key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
+
+                #%%%%%% Model always required
+                plot_settings[key_plot]['plot_line_model'] = True
+                plot_settings[key_plot]['line_model'] = 'rec'
+        
+            ##############################################################################
+            #%%%%% Residuals
+            if key_plot in ['map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+
+                #%%%%%% Correct only for continuum level
+                plot_settings[key_plot]['plot_line_model'] = True
+                plot_settings[key_plot]['line_model'] = 'rec' 
 
 
 

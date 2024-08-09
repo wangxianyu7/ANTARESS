@@ -885,23 +885,14 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         'func_prof_name':fit_prop_dic['func_prof_name'],
         'mode':fit_prop_dic['mode'],
         'cen_bins' :{},
-        'cen_bins_untrimmed':{},
         'edge_bins':{},
-        'edge_bins_untrimmed':{},
         'dcen_bins' :{},
-        'dcen_bins_untrimmed':{},
         'dim_exp':{},
-        'dim_exp_untrimmed':{},
         'ncen_bins':{},
-        'ncen_bins_untrimmed':{},
         'cond_fit' :{},
-        'cond_fit_untrimmed' :{},
         'cond_def' :{},
-        'cond_def_untrimmed':{},
         'flux':{},
-        'flux_untrimmed':{},
         'cov' :{},
-        'cov_untrimmed':{},
         'nexp_fit':0,
         'FWHM_inst':{},
         'n_pc':{},
@@ -927,7 +918,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['master_out']['multivisit_weights_total']={}
     fixed_args['master_out']['weights']={}
     fixed_args['master_out']['flux']={}
-    fixed_args['master_out']['flux_untrimmed']={}
     fixed_args['master_out']['multivisit_flux']={}
     fixed_args['raw_DI_profs']={}
 
@@ -955,11 +945,8 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Initialize variables to store the max and min limits of the fit tables
     low_bound=1e100
-    low_bound_untrimmed=1e100
     high_bound=-1e100
-    high_bound_untrimmed=1e100
     num_pts=0
-    num_pts_untrimmed=0
 
     # Master-out general properties
     # - Common table
@@ -978,16 +965,13 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         fixed_args['raw_DI_profs'][inst]={}
         fixed_args['master_out']['weights'][inst]={}
         fixed_args['master_out']['flux'][inst]={}
-        fixed_args['master_out']['flux_untrimmed'][inst]={}
         fixed_args['master_out']['scaled_data_paths'][inst]={}
         fixed_args['idx_out'][inst]={}
         fixed_args['idx_in'][inst]={}
         
         if (inst not in fixed_args['ref_pl']) and (fixed_args['ref_pl']!={}):fixed_args['ref_pl'][inst]={}
 
-        for key in ['cen_bins','cen_bins_untrimmed','edge_bins','edge_bins_untrimmed','dcen_bins','dcen_bins_untrimmed','cond_fit_untrimmed',
-                    'cond_fit','flux','flux_untrimmed','cov','cov_untrimmed','cond_def','cond_def_untrimmed','n_pc','dim_exp',
-                    'dim_exp_untrimmed','ncen_bins','ncen_bins_untrimmed']:fixed_args[key][inst]={}
+        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
         if (fixed_args['mode']=='ana') and (inst not in fixed_args['func_prof_name']):fixed_args['func_prof_name'][inst] = 'gauss'
@@ -1082,7 +1066,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 #    - models must be calculated over the full, continuous spectral tables to allow for convolution
                 #      the fit is then performed on defined pixels only
                 for key in ['dcen_bins','cen_bins','edge_bins','cond_fit','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
-                for key in ['dcen_bins','cen_bins','edge_bins','cond_fit','flux','cov','cond_def']:fixed_args[key+'_untrimmed'][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
 
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
 
@@ -1116,12 +1099,9 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         
                         fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
                         fixed_args['ncen_bins'][inst][vis] = ncen_bins
-                        fixed_args['ncen_bins_untrimmed'][inst][vis] = len(data_exp['cen_bins'][iord_sel])    
                         fixed_args['dim_exp'][inst][vis] = [1,ncen_bins]
-                        fixed_args['dim_exp_untrimmed'][inst][vis] = [1, fixed_args['ncen_bins_untrimmed'][inst][vis]]
 
                         fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
-                        fit_prop_dic[inst][vis]['cond_def_fit_all_untrimmed']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],fixed_args['ncen_bins_untrimmed'][inst][vis]],dtype=bool)
                         fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
 
                     #Trimming profile         
@@ -1131,8 +1111,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]
                     
                     #Storing un-trimmed profiles for final model evaluation  
-                    for key in ['cen_bins','flux','cond_def','edge_bins','cov']:fixed_args[key+'_untrimmed'][inst][vis][isub]=data_exp[key][iord_sel]
-                    fixed_args['dcen_bins_untrimmed'][inst][vis][isub] = fixed_args['edge_bins_untrimmed'][inst][vis][isub][1::]-fixed_args['edge_bins_untrimmed'][inst][vis][isub][0:-1]  
 
                     #Oversampled line profile model table
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
@@ -1143,19 +1121,15 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                         for bd_int in cont_range:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
                     if len(fit_prop_dic['fit_range'][inst][vis])==0:
                         fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] = True
-                        fit_prop_dic[inst][vis]['cond_def_fit_all_untrimmed'][isub] = True    
                     else:
                         for bd_int in fit_prop_dic['fit_range'][inst][vis]:
                             fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])
-                            fit_prop_dic[inst][vis]['cond_def_fit_all_untrimmed'][isub] |= (fixed_args['edge_bins_untrimmed'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins_untrimmed'][inst][vis][isub][1:]<=bd_int[1])        
 
                     #Accounting for undefined pixels
                     fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]           
                     fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]          
                     fit_dic['nx_fit']+=np.sum(fit_prop_dic[inst][vis]['cond_def_fit_all'][isub])
-                    fit_dic['nx_fit_untrimmed']+=np.sum(fit_prop_dic[inst][vis]['cond_def_fit_all_untrimmed'][isub])
                     fixed_args['cond_fit'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]
-                    fixed_args['cond_fit_untrimmed'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all_untrimmed'][isub]                    
 
                     #Initialize PCs 
                     if fixed_args['n_pc'][inst][vis] is not None:
@@ -1182,11 +1156,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     high_bound=max(high_bound,np.max(fixed_args['edge_bins'][inst][vis][isub]))
                     num_pts=max(num_pts,len(fixed_args['edge_bins'][inst][vis][isub]))
 
-                    #Updating the limits of the fit tables - un-trimmed
-                    low_bound_untrimmed=min(low_bound,np.min(fixed_args['edge_bins_untrimmed'][inst][vis][isub]))
-                    high_bound_untrimmed=max(high_bound,np.max(fixed_args['edge_bins_untrimmed'][inst][vis][isub]))
-                    num_pts_untrimmed=max(num_pts,len(fixed_args['edge_bins_untrimmed'][inst][vis][isub]))
-
                 #Number of fitted exposures
                 fixed_args['nexp_fit']+=fixed_args['nexp_fit_all'][inst][vis]
 
@@ -1195,11 +1164,8 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         else:fixed_args['master_out']['master_out_tab']['edge_bins']=np.linspace(fit_prop_dic['master_out_tab'][0],fit_prop_dic['master_out_tab'][1],num=fit_prop_dic['master_out_tab'][2])
     else:
         fixed_args['master_out']['master_out_tab']['edge_bins']=np.linspace(low_bound,high_bound,num=num_pts+1)
-        fixed_args['master_out']['master_out_tab']['edge_bins_untrimmed']=np.linspace(low_bound_untrimmed,high_bound_untrimmed,num=num_pts_untrimmed+1)
     fixed_args['master_out']['master_out_tab']['dcen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][1::]-fixed_args['master_out']['master_out_tab']['edge_bins'][0:-1]
-    fixed_args['master_out']['master_out_tab']['dcen_bins_untrimmed']=fixed_args['master_out']['master_out_tab']['edge_bins_untrimmed'][1::]-fixed_args['master_out']['master_out_tab']['edge_bins_untrimmed'][0:-1]
     fixed_args['master_out']['master_out_tab']['cen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][:-1]+(fixed_args['master_out']['master_out_tab']['dcen_bins']/2)
-    fixed_args['master_out']['master_out_tab']['cen_bins_untrimmed']=fixed_args['master_out']['master_out_tab']['edge_bins_untrimmed'][:-1]+(fixed_args['master_out']['master_out_tab']['dcen_bins_untrimmed']/2)
 
     #Spot-crossing time supplement
     if fixed_args['cond_transit_sp']:
@@ -1230,7 +1196,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
             #Defining flux table
             fixed_args['master_out']['flux'][inst][vis]=np.zeros([len(fixed_args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-            fixed_args['master_out']['flux_untrimmed'][inst][vis]=np.zeros([len(fixed_args['master_out']['master_out_tab']['cen_bins_untrimmed'])], dtype=float)
          
     #Artificial observation table
     #    - covariance condition is set to False so that chi2 values calculated here are not further modified within the residual() function
@@ -1283,17 +1248,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #Best-fit model and derived properties
     fixed_args['fit'] = False
 
-    #Retrieving the un-trimmed solutions
-    for key in ['cen_bins','flux','cond_def','edge_bins','dcen_bins','cov','ncen_bins','dim_exp','cond_fit']:fixed_args[key][inst][vis] = fixed_args[key+'_untrimmed'][inst][vis]
-    for key in ['edge_bins','dcen_bins','cen_bins']:fixed_args['master_out']['master_out_tab'][key] = fixed_args['master_out']['master_out_tab'][key+'_untrimmed']
-    fixed_args['master_out']['flux'] = fixed_args['master_out']['flux_untrimmed'] 
-    fit_dic['nx_fit'] = fit_dic['nx_fit_untrimmed']
-    fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)  
-    fixed_args['x_val']=range(fit_dic['nx_fit'])
-    fixed_args['y_val'] = np.zeros(fit_dic['nx_fit'],dtype=float)  
-    fixed_args['s_val'] = np.ones(fit_dic['nx_fit'],dtype=float)
-    fixed_args['cov_val'] = np.array([fixed_args['s_val']**2.])
-
     #Do 2 model calls, to have the model with and without planets
     #   - With planets
     mod_dic,coeff_line_dic,mod_prop_dic = fixed_args['mod_func'](p_final,fixed_args)
@@ -1309,10 +1263,12 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
                      'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'], 'system_spot_prop':fixed_args['system_spot_prop'], 'grid_dic':fixed_args['grid_dic'],'var_par_list':fixed_args['var_par_list'],
-                     'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'], 'fit_spot':fixed_args['fit_spot'], 'fit_spot_ang':fixed_args['fit_spot_ang']})
+                     'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'], 'fit_spot':fixed_args['fit_spot'], 'fit_spot_ang':fixed_args['fit_spot_ang'], 'fit_star_sp':fixed_args['fit_star_sp'], 
+                     'fit_star_pl':fixed_args['fit_star_pl'], 'master_out':fixed_args['master_out'], 'unthreaded_op':fixed_args['unthreaded_op'], 'ref_pl':fixed_args['ref_pl'], 'order':fit_prop_dic['order'], 
+                     'fit_mode':fit_prop_dic['fit_mode']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
-    if (plot_dic['map_BF_Res_prof']!='' or plot_dic['map_BF_Res_prof_re']!=''):
+    if plot_dic['map_BF_Res_prof']!='':
         for inst in fixed_args['inst_list']:
             for vis in fixed_args['inst_vis_list'][inst]:
 
@@ -1328,7 +1284,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                         'edge_bins':np.array([fixed_args['edge_bins'][inst][vis][isub]]),
                         'flux':np.array([mod_dic[inst][vis][isub]]),
                         'flux_nopl':np.array([mod_dic_nopl[inst][vis][isub]]),
-                        'cond_def_fit':[fit_prop_dic[inst][vis]['cond_def_fit_all_untrimmed'][isub]],
+                        'cond_def_fit':[fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]],
                         'cond_def_cont':fit_prop_dic[inst][vis]['cond_def_cont_all'][isub]
                         }
                     for pl_loc in fixed_args['transit_pl'][inst][vis]:
@@ -1662,21 +1618,6 @@ def joined_ResProf(param,fixed_args):
                 #    - added to the convolved profiles since PC are derived from observed data
                 if args['n_pc'][inst][vis] is not None:
                     for i_pc in range(args['n_pc'][inst][vis]):mod_dic[inst][vis][isub]+=param_val[args['name_prop2input']['aPC_idxin'+str(i_in)+'_ord'+str(i_pc)+'__IS'+inst+'_VS'+vis]]*args['eig_res_matr'][inst][vis][i_in][i_pc]
-
-            # x_data=np.zeros([len(args['idx_in_fit'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-            # y_data=np.zeros([len(args['idx_in_fit'][inst][vis]),len(args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-            # t_data=np.zeros([len(args['idx_in_fit'][inst][vis]),1], dtype=float)
-            # for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]):
-            #     x_data[isub] = args['master_out']['master_out_tab']['cen_bins']
-            #     resamp_flux = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],mod_dic[inst][vis][isub],kind=args['master_out']['master_out_tab']['resamp_mode'])
-            #     y_data[isub] = resamp_flux
-            #     t_data[isub] = args['coord_fit'][inst][vis]['bjd'][isub]
-            # fig, ax = plt.subplots(1, 1)
-            # cmap = plt.get_cmap('jet')
-            # psm = ax.pcolormesh(x_data, t_data, y_data, cmap=cmap)
-            # fig.colorbar(psm, ax=ax)
-            # plt.show()
-            # plt.savefig('/Users/samsonmercier/Downloads/NEW_TESTING_ERRORFIXED?_BestFit_Res_map.pdf')
             
     return mod_dic,coeff_line_dic,mod_prop_dic
 

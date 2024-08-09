@@ -1520,7 +1520,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         
     ################################################################################################################  
-    #%% Residual profiles
+    #%% Differential profiles
     ################################################################################################################        
         
     ################################################################################################################  
@@ -1536,7 +1536,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
-        # plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'mock_vis':[-0.01851,0.01803]}} 
+        # plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'mock_vis':[ -0.02898,0.02791]}} 
 
     ################################################################################################################  
     #%%%% Best-fit profiles 
@@ -1551,7 +1551,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Residual profiles 
     ################################################################################################################  
-    if gen_dic['fit_ResProf'] and (plot_dic['map_BF_Res_prof_re']!=''):
+    if gen_dic['diff_data_corr'] and (plot_dic['map_BF_Res_prof_re']!=''):                                        
         key_plot = 'map_BF_Res_prof_re'
 
         

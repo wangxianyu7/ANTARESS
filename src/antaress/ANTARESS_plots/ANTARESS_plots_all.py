@@ -4962,7 +4962,7 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
         #Planet-occulted models from reconstruction
         if plot_options['line_model']=='rec':
             if 'Intr' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
-            elif 'Res' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
+            elif 'Res' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Diff_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
     
         #Line profile from best-fit
         else:
@@ -5068,7 +5068,7 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
     #Reconstructed line profiles
     elif '_est' in plot_mod:
         if 'Intr' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
-        elif 'Res' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
+        elif 'Res' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Diff_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
         rest_frame = 'star'
      
     #Residual maps from Intrinsic and out-of-transit Residual profiles
@@ -6955,7 +6955,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                             var_map[isub] = data_exp[corr_plot_mod+'_'+supp_name+'_flux'] 
                         #Building residuals
                         elif '_res' in plot_mod:
-                            data_exp_est = dataload_npz(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp)) 
+                            data_exp_est = dataload_npz(gen_dic['save_data_dir']+'Diff_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp)) 
                             var_map[isub] = data_exp['flux'] - data_exp_est[corr_plot_mod+'_'+supp_name+'_flux']
                     
                     elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:

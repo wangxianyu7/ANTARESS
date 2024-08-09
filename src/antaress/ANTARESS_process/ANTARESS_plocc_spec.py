@@ -6,11 +6,11 @@ from copy import deepcopy
 import bindensity as bind
 import glob
 from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,weights_bin_prof,init_bin_prof
-from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc,init_stellar_prop
-from ..ANTARESS_grids.ANTARESS_occ_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_spot_prop,up_plocc_prop
+from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc,init_stellar_prop,custom_DI_prof
+from ..ANTARESS_grids.ANTARESS_occ_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_spot_prop,up_plocc_prop,calc_plocced_tiles,calc_spotted_tiles
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange
 from ..ANTARESS_process.ANTARESS_data_align import align_data
-from ..ANTARESS_analysis.ANTARESS_inst_resp import def_st_prof_tab,cond_conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab,conv_st_prof_tab
+from ..ANTARESS_analysis.ANTARESS_inst_resp import def_st_prof_tab,cond_conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab,conv_st_prof_tab,convol_prof
 from ..ANTARESS_general.utils import stop,dataload_npz,datasave_npz,closest_arr,np_where1D,gen_specdopshift,check_data
 
 #%% Planet-occulted exposure profiles.
@@ -52,7 +52,7 @@ def def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_p
             
         #Using global profile model
         elif corr_mode=='glob_mod': 
-            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,False)
+            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,False,'')
             
         #Using individual profile models
         elif corr_mode=='indiv_mod': 
@@ -239,7 +239,7 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
 
 
 
-def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,spot_on):
+def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,spot_on,map_diff_res):
     r"""**Planet-occulted / spotted exposure profiles: global model**
     
     Sub-function to define planet-occulted and spotted profiles using line profile models fitted to all
@@ -286,20 +286,25 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         'mode':opt_dic['mode'],
         'type':data_vis['type'],
         'nord':data_dic[inst]['nord'],
+        'order':data_prop['order'],
         'nthreads': opt_dic['nthreads'],
         'resamp_mode' : gen_dic['resamp_mode'], 
         'inst':inst,
         'vis':vis,  
         'fit':False,
-        'ph_fit':data_prop['ph_fit'],
+        'ph_fit':data_prop['ph_fit'][inst][vis],
         'system_param':system_param,
         'genpar_instvis':data_prop['genpar_instvis'],
         'name_prop2input':data_prop['name_prop2input'],
         'fit_orbit':data_prop['fit_orbit'],
         'fit_RpRs':data_prop['fit_RpRs'],
+        'fit_star_pl':data_prop['fit_star_pl'],
         'var_par_list':data_prop['var_par_list'],
         'system_prop':data_prop['system_prop'],
         'grid_dic':data_prop['grid_dic'],
+        'unthreaded_op':data_prop['unthreaded_op'],
+        'ref_pl':data_prop['ref_pl'][inst][vis],
+        'fit_mode':data_prop['fit_mode'],
     } 
     if fixed_args['mode']=='ana':
         fixed_args.update({  
@@ -312,6 +317,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         fixed_args.update({          
         'fit_spot_ang':data_prop['fit_spot_ang'],
         'fit_spot':data_prop['fit_spot'],
+        'fit_star_sp':data_prop['fit_star_sp'],
         'system_spot_prop':data_prop['system_spot_prop'],   
         'spot_coord_par':gen_dic['spot_coord_par'], 
         'conv2intr' :False,           
@@ -337,15 +343,73 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         iexp_list = data_dic[prof_type][inst][vis]['idx_def']
     chrom_mode = data_vis['system_prop']['chrom_mode']
   
+    #Figuring out if we need to build residuals from best-fit differential profiles
+    build_residuals=False
+    if map_diff_res!='':
+        print('         Building best-fit differential profiles')
+        build_residuals=True
+        if (inst in fixed_args['order']):iord_sel =  fixed_args['order'][inst]
+        else:iord_sel = 0
+        fixed_args['rout_mode']='ResProf',
+        fixed_args['raw_DI_profs']={}
+        fixed_args['cond_def_fit']={}
+        fixed_args['plot_edge_bins']={}
+        cond_def_all=np.zeros([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=bool)
+        cond_undef_weights=np.zeros(len(data_prop['master_out']['master_out_tab']['cen_bins']), dtype=bool)
+        fixed_args['weights']=np.zeros([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=float)
+        fixed_args['master_flux']=np.zeros([len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=float)
+        contrib_profs=np.zeros([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=float)
+
     #Activation of spectral conversion and resampling 
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_vis['type']) 
+
+    #Initializing stellar profiles
+    fixed_args = init_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],spots_prop,system_param['star'],params)
+    fixed_args = init_custom_DI_prof(fixed_args,gen_dic,params)                  
 
     #Updating coordinates with the best-fit properties
     ph_rec = {}
     coord_vis = coord_dic[inst][vis]
     for pl_loc in data_vis['transit_pl']:
         ph_rec[pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'],coord_vis[pl_loc]['cen_ph'],coord_vis[pl_loc]['end_ph']) ) 
-    _,coord_pl_sp,_ = up_plocc_prop(inst,vis,fixed_args,params,data_vis['transit_pl'],ph_rec,coord_vis,transit_spots=transit_spots)
+    system_param_loc,coord_pl_sp,_ = up_plocc_prop(inst,vis,fixed_args,params,data_vis['transit_pl'],ph_rec,coord_vis,transit_spots=transit_spots)
+
+    #-----------------------------------------------------------
+    #Figuring out which cells of the stellar grid are never spotted or planet-occulted
+    #-----------------------------------------------------------
+    if build_residuals:
+        #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
+        #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
+        fixed_args['unquiet_star'] = np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
+        for isub,i_in in enumerate(iexp_list): 
+
+            #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
+            plocced_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
+            for pl_loc in data_vis['transit_pl']:
+                if np.abs(coord_pl_sp[pl_loc]['ecl'][isub])!=1:
+                    mini_pl_dic = {}
+                    mini_pl_dic['x_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][0, isub], coord_pl_sp[pl_loc]['cen_pos'][0, isub], coord_pl_sp[pl_loc]['end_pos'][0, isub]]
+                    mini_pl_dic['y_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][1, isub], coord_pl_sp[pl_loc]['cen_pos'][1, isub], coord_pl_sp[pl_loc]['end_pos'][1, isub]]
+                    mini_pl_dic['RpRs']=fixed_args['system_prop']['achrom'][pl_loc][0]
+                    if ('lambda_rad__pl'+pl_loc in fixed_args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
+                    else:lamb_name = 'lambda_rad__pl'+pl_loc 
+                    mini_pl_dic['lambda']=params[lamb_name]
+                    pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'])
+                    plocced_star_grid |= pl_plocced_star_grid
+
+            #Figure out which cells of the full stellar grid are spotted in at least one exposure
+            spotted_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
+            for spot in transit_spots:
+                if np.sum(coord_pl_sp[spot]['is_visible'][:, isub])>0:
+                    mini_spot_dic = {}
+                    for par_spot in fixed_args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp[spot][par_spot][:, isub]
+                    _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic,coord_pl_sp[spot]['ang_rad'], fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'], fixed_args['grid_dic']['z_st_sky'], fixed_args['grid_dic'], system_param_loc['star'])
+                    spotted_star_grid |= spot_spotted_star_grid
+
+            #Update the global 2D quiet star grid
+            #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots and planets in one of the processed exposure
+            #      contributions from the other cells do not need to be calculated because they are removed when computing differential profiles
+            fixed_args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid)
 
     #Processing relevant exposures
     for isub,iexp in enumerate(iexp_list):
@@ -377,12 +441,8 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         fixed_args['edge_bins']=data_loc_exp['edge_bins'][def_iord,idx_calc_pix[0]:idx_calc_pix[-1]+2]
         fixed_args['dcen_bins']=fixed_args['edge_bins'][1::] - fixed_args['edge_bins'][0:-1] 
     
-        #Initializing stellar profiles
-        #    - can be defined using the first exposure table
-        if isub==0:
-            fixed_args = init_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],spots_prop,system_param['star'],params)
-            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,params)                  
-    
+        #Initializing instrumental convolution
+        if isub==0:    
             #Effective instrumental convolution
             fixed_args['FWHM_inst'] = get_FWHM_inst(inst,fixed_args,fixed_args['cen_bins'])
     
@@ -390,12 +450,16 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         if fixed_args['resamp']:resamp_st_prof_tab(None,None,None,fixed_args,gen_dic,1,theo_dic['rv_osamp_line_mod'])
         
         #Table for model calculation
-        args_exp = def_st_prof_tab(None,None,None,fixed_args) 
+        args_exp = def_st_prof_tab(None,None,isub,fixed_args) 
     
         #Define broadband scaling of intrinsic profiles into local profiles
         if plocc_prof_type=='Res':
             args_exp['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],args_exp,args_exp['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
-    
+            
+            if build_residuals:
+                #Construction of stellar flux grid 
+                base_DI_prof = custom_DI_prof(params,None,args=args_exp)[0]
+
         #Planet-occulted properties
         surf_prop_dic,spot_prop_dic,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_vis['transit_pl'],data_vis['transit_sp'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_sp,[iexp_glob],system_spot_prop_in=fixed_args['system_spot_prop'])
 
@@ -449,9 +513,100 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         
         #Saving estimate of local profile for current exposure                 
         np.savez_compressed(save_path,data=data_store,allow_pickle=True)
+ 
+        if build_residuals:
+            #Building exposure's differential profile
+            sp_line_model = base_DI_prof - surf_prop_dic[chrom_mode]['line_prof'][:,0] - spot_prop_dic[chrom_mode]['line_prof'][:,0]
+
+            #Convolve model profiles to instrument resolution
+            conv_line_model = convol_prof(sp_line_model,args_exp['cen_bins'],fixed_args['FWHM_inst'])
+
+            #Set negative flux values to null
+            conv_line_model[conv_line_model<base_DI_prof[0]-1] = 0.
+
+            #Store the model DI profiles for calculation of the differential profiles later
+            fixed_args['raw_DI_profs'][isub] = conv_line_model
+
+            #Store cond_def for later
+            fixed_args['cond_def_fit'][isub] = data_loc_exp['cond_def']
+            fixed_args['plot_edge_bins'][isub] = fixed_args['edge_bins']
+
+            #Loop over exposures contributing to the master-out
+            if iexp_glob in data_prop['master_out']['idx_in_master_out'][inst][vis]:
+
+                #Storing the index of the exposure considered in the array of master-out indices
+                master_isub = data_prop['master_out']['idx_in_master_out'][inst][vis].index(iexp_glob)
+
+                #Re-sample model DI profile on a common grid
+                resamp_line_model = bind.resampling(data_prop['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],conv_line_model,kind=gen_dic['resamp_mode'])
+
+                #Making weights for the master-out
+                raw_weights=weights_bin_prof(range(fixed_args['nord']), data_prop['master_out']['scaled_data_paths'][inst][vis],inst,vis,data_prop['master_out']['corr_Fbal'],data_prop['master_out']['corr_FbalOrd'],\
+                                                    data_prop['master_out']['save_data_dir'],fixed_args['type'],fixed_args['nord'],isub,'DI',fixed_args['type'],fixed_args['dim_exp'],None,\
+                                                    None,np.array([args_exp['cen_bins']]),coord_vis['t_dur'][isub],np.array([conv_line_model]),\
+                                                    np.array([data_loc_exp['cov'][iord_sel]]),ref_val=base_DI_prof[0]-1, bdband_flux_sc=data_prop['master_out']['flux_sc'])[0]
+
+                # - Re-sample the weights
+                resamp_weights = bind.resampling(data_prop['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],raw_weights,kind=gen_dic['resamp_mode'])
+
+                # - Set nan values and corresponding weights to 0 
+                cond_def_all[master_isub] = ~np.isnan(resamp_line_model)
+                resamp_weights[~cond_def_all[master_isub]] = 0.
+                resamp_line_model[~cond_def_all[master_isub]] = 0.
+
+                # - Find pixels where there is undefined or negative weights 
+                cond_undef_weights |= ( (np.isnan(resamp_weights) | (resamp_weights<0) ) & cond_def_all[master_isub] ) 
+
+                # - Store the weights 
+                fixed_args['weights'][master_isub] = resamp_weights
+
+                #Store the contributing profiles to the master-out
+                contrib_profs[master_isub] = resamp_line_model
 
     #Complementary data
     data_add={'idx_est_loc':iexp_list,'cont':params['cont']}
+
+    if build_residuals:
+        #Defined bins in binned spectrum
+        cond_def_binned = np.sum(cond_def_all,axis=0)>0
+
+        #Disable weighing in all binned profiles for pixels validating at least one of these conditions:
+        cond_null_weights = (np.sum(fixed_args['weights'],axis=0)==0.) & cond_def_binned
+        fixed_args['weights'][:, cond_undef_weights | cond_null_weights] = 1.
+
+        #Global weight table
+        x_low = fixed_args['ph_fit'][fixed_args['ref_pl']][0,data_prop['master_out']['idx_in_master_out'][inst][vis]]
+        x_high = fixed_args['ph_fit'][fixed_args['ref_pl']][2,data_prop['master_out']['idx_in_master_out'][inst][vis]]
+        dx_ov_in = x_high - x_low
+        dx_ov_all = np.ones([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])],dtype=float) if (np.sum(dx_ov_in)==0) else dx_ov_in[:,None] 
+        fixed_args['weights'] *= dx_ov_all
+
+        #Storing normalization information
+        glob_weights_tot = np.sum(fixed_args['weights'][:, cond_def_binned],axis=0)
+
+        #Perform the weighted average to retrieve the master-out
+        # - We can disregard the division by the sum of the weights since the weights are normalized
+        fixed_args['master_flux'][cond_def_binned] = np.sum(contrib_profs[:, cond_def_binned]*fixed_args['weights'][:, cond_def_binned], axis=0)/glob_weights_tot
+
+        #Building best-fit differential profiles            
+        diff_prof_mod={}
+        for isub,iexp in enumerate(iexp_list):
+            
+            #Retrieving the master-out flux
+            master_out_flux=fixed_args['master_flux']
+
+            #Re-sample master on table of the exposure considered
+            resamp_master = bind.resampling(fixed_args['plot_edge_bins'][isub],data_prop['master_out']['master_out_tab']['edge_bins'],master_out_flux, kind=gen_dic['resamp_mode'])
+
+            #Calculate the differential profile on the wavelength table of the exposure considered
+            res_prof = resamp_master - fixed_args['raw_DI_profs'][isub]
+            diff_prof_mod['flux'] = np.array([res_prof])
+            diff_prof_mod['cond_def_fit'] = fixed_args['cond_def_fit'][isub]
+            diff_prof_mod['edge_bins'] = np.array([fixed_args['plot_edge_bins'][isub]])
+
+            #Storing best-fit differential profiles
+            datasave_npz(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis+'/BestFit'+'_'+str(isub),diff_prof_mod)
+
 
     return data_add
 
@@ -735,7 +890,7 @@ def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param
     
     """ 
     print('   > Building estimates for planet-occulted and spotted stellar profiles')
-    if data_dic[inst][vis]['spots_prop']=={}:stop('Spot properties are not provided. We recommended using the separate routine dedicated to the extraction of planet-occulted profiles instead.')
+    if data_dic['DI']['spots_prop']=={}:stop('Spot properties are not provided. We recommended using the separate routine dedicated to the extraction of planet-occulted profiles instead.')
     opt_dic = data_dic['Res']['opt_loc_data_corr'] 
     corr_mode = opt_dic['corr_mode']
     print('         Using global model')  
@@ -751,7 +906,7 @@ def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param
 
         #Using global profile model
         if corr_mode=='glob_mod': 
-            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,True)
+            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,True,plot_dic['map_BF_Res_prof_re'])
         
         else:stop('WARNING: Only joined-fit results can be used at the moment. Set corr_mode to \'glob_mod\'')
 
