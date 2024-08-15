@@ -1013,6 +1013,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 if (inst in data_dic['Res']['idx_in_bin']) and (vis in data_dic['Res']['idx_in_bin'][inst]):
                     if data_dic['Res']['idx_in_bin'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=list(data_dic['Res']['idx_in_bin'][inst][vis])
                 if len(fixed_args['master_out']['idx_in_master_out'][inst][vis])==0:stop('No exposures defined in visit '+vis+' for the master-out calculation.')
+                fixed_args['master_out']['idx_in_master_out'][inst][vis] = list(np.intersect1d(fixed_args['master_out']['idx_in_master_out'][inst][vis], fixed_args['idx_in_fit'][inst][vis]))
 
                 #Needed for weight calculation
                 fixed_args['master_out']['scaled_data_paths'][inst][vis]={}
@@ -1110,8 +1111,6 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     fixed_args['dcen_bins'][inst][vis][isub] = fixed_args['edge_bins'][inst][vis][isub][1::]-fixed_args['edge_bins'][inst][vis][isub][0:-1]  
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]
                     
-                    #Storing un-trimmed profiles for final model evaluation  
-
                     #Oversampled line profile model table
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
 
@@ -1248,15 +1247,8 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #Best-fit model and derived properties
     fixed_args['fit'] = False
 
-    #Do 2 model calls, to have the model with and without planets
-    #   - With planets
-    mod_dic,coeff_line_dic,mod_prop_dic = fixed_args['mod_func'](p_final,fixed_args)
-    #   - Without planets
-    new_fixed_args = deepcopy(fixed_args)
-    for inst in fixed_args['inst_list']:
-        for vis in fixed_args['inst_vis_list'][inst]:
-            new_fixed_args['transit_pl'][inst][vis]=[]
-    mod_dic_nopl = new_fixed_args['mod_func'](p_final,new_fixed_args)[0]
+    #Evaluate best-fit model
+    _,coeff_line_dic,_ = fixed_args['mod_func'](p_final,fixed_args)
 
     #Save best-fit properties
     #    - with same structure as fit to individual profiles 
@@ -1268,36 +1260,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                      'fit_mode':fit_prop_dic['fit_mode']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
-    if plot_dic['map_BF_Res_prof']!='':
-        for inst in fixed_args['inst_list']:
-            for vis in fixed_args['inst_vis_list'][inst]:
-
-                #Make directory to store best-fit results
-                save_exp_dir = gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fit_prop_dic['fit_mode']+'/'+inst+'/'+vis+'/'
-                if (not os.path.exists(save_exp_dir)):os.makedirs(save_exp_dir) 
-
-                for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
-                    prof_fit_dic={'fit_range':fit_prop_dic['fit_range'][inst][vis]}
-                    if fixed_args['bin_mode'][inst][vis]=='_bin':prof_fit_dic['loc_data_corr_path'] = gen_dic['save_data_dir']+'Resbin_data/'+inst+'_'+vis+'_phase'          
-                    else:prof_fit_dic['loc_data_corr_path'] = data_dic[inst][vis]['proc_Res_data_paths']
-                    prof_fit_dic={
-                        'edge_bins':np.array([fixed_args['edge_bins'][inst][vis][isub]]),
-                        'flux':np.array([mod_dic[inst][vis][isub]]),
-                        'flux_nopl':np.array([mod_dic_nopl[inst][vis][isub]]),
-                        'cond_def_fit':[fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]],
-                        'cond_def_cont':fit_prop_dic[inst][vis]['cond_def_cont_all'][isub]
-                        }
-                    for pl_loc in fixed_args['transit_pl'][inst][vis]:
-                        prof_fit_dic[pl_loc] = {}
-                        if np.abs(fixed_args['coord_fit'][inst][vis][pl_loc]['ecl'][isub])!=1:  
-                            for prop_loc in mod_prop_dic[inst][vis][pl_loc]:prof_fit_dic[pl_loc][prop_loc] = mod_prop_dic[inst][vis][pl_loc][prop_loc][isub]
-                    for spot in fixed_args['transit_sp'][inst][vis]:
-                        prof_fit_dic[spot] = {}
-                        if fixed_args['coord_fit'][inst][vis][spot]['is_visible'][1,i_in]:
-                            for prop_loc in mod_prop_dic[inst][vis][spot]:prof_fit_dic[spot][prop_loc] = mod_prop_dic[inst][vis][spot][prop_loc][isub]
-
-                    np.savez_compressed(save_exp_dir+'BestFit'+fixed_args['bin_mode'][inst][vis]+'_'+str(isub),data=prof_fit_dic,allow_pickle=True)
-
+    
     #Post-processing    
     fit_dic['p_null'] = deepcopy(p_final)
     for par in [ploc for ploc in fit_dic['p_null'] if 'ctrst' in ploc]:fit_dic['p_null'][par] = 0.

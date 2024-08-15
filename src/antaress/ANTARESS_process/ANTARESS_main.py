@@ -53,7 +53,7 @@ def ANTARESS_settings_overwrite(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic
         for key in ['DI','Intr']:
             if key in input_dic['settings']['data_dic']:data_dic[key].update(input_dic['settings']['data_dic'][key])
     if 'glob_fit_dic' in input_dic['settings']:
-        for key in ['IntrProf','IntrProp']:
+        for key in ['ResProf','IntrProf','IntrProp']:
             if key in input_dic['settings']['glob_fit_dic']:glob_fit_dic[key].update(input_dic['settings']['glob_fit_dic'][key])
     if 'plot_dic' in input_dic['settings']:plot_dic.update(input_dic['settings']['plot_dic'])
     

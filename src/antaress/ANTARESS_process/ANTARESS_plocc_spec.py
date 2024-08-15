@@ -4,6 +4,8 @@ import numpy as np
 from scipy.interpolate import griddata
 from copy import deepcopy
 import bindensity as bind
+from os import makedirs
+from os.path import exists as path_exist
 import glob
 from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,weights_bin_prof,init_bin_prof
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc,init_stellar_prop,custom_DI_prof
@@ -320,6 +322,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         'fit_star_sp':data_prop['fit_star_sp'],
         'system_spot_prop':data_prop['system_spot_prop'],   
         'spot_coord_par':gen_dic['spot_coord_par'], 
+        'spot_crosstime_supp':{inst:{vis:0.}},
         'conv2intr' :False,           
             })
         transit_spots=data_vis['transit_sp']
@@ -348,9 +351,13 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     if map_diff_res!='':
         print('         Building best-fit differential profiles')
         build_residuals=True
+
+        #Retrieving the order
         if (inst in fixed_args['order']):iord_sel =  fixed_args['order'][inst]
         else:iord_sel = 0
-        fixed_args['rout_mode']='ResProf',
+
+        #Initializing necesary dictionaries for the evaluation of best-fit differential profiles
+        fixed_args['rout_mode']='ResProf'
         fixed_args['raw_DI_profs']={}
         fixed_args['cond_def_fit']={}
         fixed_args['plot_edge_bins']={}
@@ -359,6 +366,8 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         fixed_args['weights']=np.zeros([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=float)
         fixed_args['master_flux']=np.zeros([len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=float)
         contrib_profs=np.zeros([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=float)
+        if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst)):makedirs(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst) 
+        if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)):makedirs(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)
 
     #Activation of spectral conversion and resampling 
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_vis['type']) 

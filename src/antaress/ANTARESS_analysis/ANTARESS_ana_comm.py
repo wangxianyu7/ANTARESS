@@ -396,7 +396,6 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'fit_mode':fit_prop_dic['fit_mode'],
         'uf_bd':{},
         'nx_fit':0,
-        'nx_fit_untrimmed':0,
         'run_name':'_'+gen_dic['main_pl_text'],
         'save_dir' : gen_dic['save_data_dir']+'/Joined_fits/'+data_mode+'/'+fit_prop_dic['fit_mode']+'/'}
     
@@ -1023,7 +1022,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,th
                     par = 'Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot
                     p_final[par] += fixed_args['spot_crosstime_supp'][inst][vis]
                     if fit_dic['fit_mode']=='mcmc':merged_chain[:,np_where1D(fixed_args['var_par_list']==par)]+= fixed_args['spot_crosstime_supp'][inst][vis]    
-                    fixed_args['spot_crosstime_supp'][inst][vis] = 0.
+                fixed_args['spot_crosstime_supp'][inst][vis] = 0.
 
     ########################################################################################################      
 

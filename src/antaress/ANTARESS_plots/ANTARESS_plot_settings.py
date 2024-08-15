@@ -422,6 +422,7 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
         #Color map
         if 'map_DI' in key_plot:plot_options[key_plot]['cmap']="jet" 
         if 'map_Res' in key_plot:plot_options[key_plot]['cmap']="jet"             
+        if 'map_BF' in key_plot:plot_options[key_plot]['cmap']="jet"         
         elif 'map_Intr' in key_plot:plot_options[key_plot]['cmap']="afmhot_r" 
         elif 'map_Intr_prof_res' in key_plot:plot_options[key_plot]['cmap']="afmhot_r" 
         elif 'map_Atm' in key_plot:plot_options[key_plot]['cmap']="winter"             
@@ -1563,17 +1564,17 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic)
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
 
     ################################################################################################################  
     #%%%% Best-fit profiles 
     ################################################################################################################  
-    if gen_dic['fit_ResProf'] and (plot_dic['map_BF_Res_prof']!=''):
+    if gen_dic['diff_data_corr'] and (plot_dic['map_BF_Res_prof']!=''):
         key_plot = 'map_BF_Res_prof'
 
         
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
     ################################################################################################################  
     #%%%% Residual profiles 
@@ -1583,7 +1584,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
     
     ##################################################################################################
@@ -1594,7 +1595,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         if plot_dic[key_plot]!='':
 
             #%%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic) 
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
             #%%%%% Mode to retrieve
             plot_settings[key_plot]['mode_loc_data_corr'] = 'glob_mod'

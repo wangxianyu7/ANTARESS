@@ -20,7 +20,7 @@ def init(nbook_type):
                       'data_dic':{'DI':{'sysvel':{}},
                                   'Intr':{},
                                   'Res':{}},
-                      'glob_fit_dic':{'IntrProp':{},'IntrProf':{}},
+                      'glob_fit_dic':{'IntrProp':{},'IntrProf':{},'ResProf':{}},
                       'plot_dic':{}
                      },
         #notebook inputs related to system properties
@@ -61,8 +61,15 @@ def init_spot(input_nbook,sp_type):
                                                            }
         input_nbook['settings']['gen_dic']['transit_sp'] = {}
         input_nbook['settings']['data_dic']['DI']['spots_prop'] = {'achrom':{'LD':['quadratic'],'LD_u1' : [input_nbook['par']['ld_spot_u1']],'LD_u2' : [input_nbook['par']['ld_spot_u2']]}}
-    for key in ['lat', 'Tc_sp', 'ang', 'fctrst']:
-        input_nbook['settings']['mock_dic']['spots_prop'][inst][vis][key+'__IS'+inst+'_VS'+vis+'_SP'+input_nbook['par']['spot_name']]=input_nbook['par'][key]
+        input_nbook['settings']['data_dic']['DI']['transit_prop'] = {'nsub_Dstar':201., 
+                                                                     inst:{
+                                                                          vis:{'mode':'simu', 'n_oversamp':5.}
+                                                                          }
+                                                                     }
+    for key in ['lat', 'Tc', 'ang', 'fctrst']:
+        if key=='Tc': temp=key+'_sp'
+        else:temp=key
+        input_nbook['settings']['mock_dic']['spots_prop'][inst][vis][temp+'__IS'+inst+'_VS'+vis+'_SP'+input_nbook['par']['spot_name']]=input_nbook['par'][key]
     input_nbook['settings']['gen_dic']['transit_sp'][input_nbook['par']['spot_name']]={inst:[vis]}
     input_nbook['settings']['data_dic']['DI']['spots_prop']['achrom'][input_nbook['par']['spot_name']]=[input_nbook['par']['ang']*np.pi/180.]
     input_nbook['settings']['theo_dic']=input_nbook['settings']['mock_dic']
@@ -156,7 +163,6 @@ def ana_prof(input_nbook,data_type):
         input_nbook['settings']['data_dic'][data_type]['progress']=False
     else:input_nbook['settings']['data_dic'][data_type]['fit_mode'] = 'chi2'
     if 'run_mode' in input_nbook['par']:
-        input_nbook['settings']['data_dic'][data_type]['mcmc_run_mode']=deepcopy(input_nbook['par']['run_mode'])   
         if input_nbook['par']['run_mode']=='reuse':
             input_nbook['settings']['data_dic'][data_type]['save_MCMC_chains']=''
             input_nbook['settings']['data_dic'][data_type]['save_MCMC_corner']=''
@@ -268,6 +274,14 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
             ideg = int(prop.split('FWHM_')[1]) 
             prop_main='FWHM'
             prop_name='FWHM_ord'+str(ideg)+'__IS__VS_'
+            
+        #Spot properties
+        elif (('lat' in prop) or ('Tc' in prop) or ('ang' in prop)):
+            temp_prop_name,spot_name = prop.split('_')
+            if 'Tc' in prop:temp_prop_name+='_sp'
+            prop_name = temp_prop_name+'__IS'+input_nbook['par']['instrument']+'_VS'+input_nbook['par']['night']+'_SP'+spot_name
+        elif  'fctrst' in prop:
+            prop_name = 'fctrst__IS'+input_nbook['par']['instrument']+'_VS'+input_nbook['par']['night']+'_SP'
 
         mean_prop = np.mean(bd_prop)
         fit_prop_dic = {'vary':True,'guess':mean_prop,'bd':bd_prop}
@@ -275,7 +289,22 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
         elif (ana_type=='Prof'):input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'][prop_name]=fit_prop_dic
         if prop in input_nbook['par']['priors']:
             input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['priors'][prop_name] = {'mod':'uf','low':bd_prior[0],'high':bd_prior[1]}
+                                               
+        if data_type == 'Res':
+            #Defining continuum range
+            low_low = input_nbook['settings']['mock_dic']['DI_table']['x_start']
+            low_high = input_nbook['settings']['mock_dic']['DI_table']['x_start'] + 5*input_nbook['settings']['mock_dic']['DI_table']['dx']
+            high_low = input_nbook['settings']['mock_dic']['DI_table']['x_end'] - 5*input_nbook['settings']['mock_dic']['DI_table']['dx']
+            high_high = input_nbook['settings']['mock_dic']['DI_table']['x_end']
+            input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['cont_range'] = {input_nbook['par']['instrument']:{0:[[low_low,low_high],[high_low,high_high]]}}
             
+            #Defining fitting range
+            input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_range'] = {input_nbook['par']['instrument']:{input_nbook['par']['night']:[[low_high,high_low]]}}
+            
+            #Defining optimization level
+            input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['Opt_Lvl'] = 3
+
+
     if ('priors' in input_nbook['par']):input_nbook['par'].pop('priors')
     
     #Walkers
@@ -293,7 +322,11 @@ def loc_prof_corr(input_nbook):
     input_nbook['par']['loc_prof_corr'] = True
     return None
 
-
+def diff_prof_corr(input_nbook):
+    input_nbook['settings']['gen_dic']['diff_data_corr']=True
+    input_nbook['settings']['gen_dic']['calc_diff_data_corr']=True
+    input_nbook['par']['diff_prof_corr'] = True
+    return None
 
 '''
 Plot functions
@@ -378,6 +411,7 @@ def plot_map(input_nbook,data_type):
     #Activate plot related to intrinsic CCF model only if model was calculated
     def_map = True
     if data_type in ['Intr_prof_est','Intr_prof_res'] and (not input_nbook['par']['loc_prof_corr']):def_map=False
+    if data_type in ['Res_prof_est','Res_prof_res'] and (not input_nbook['par']['diff_prof_corr']):def_map=False
 
     if def_map:
         input_nbook['settings']['plot_dic']['map_'+data_type] = 'png'

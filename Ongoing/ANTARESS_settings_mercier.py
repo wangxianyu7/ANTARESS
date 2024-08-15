@@ -5061,7 +5061,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  #&  False
+    gen_dic['fit_ResProf'] = True  &  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
@@ -5855,8 +5855,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + chose a dimension over which the fit/interpolation is performed         
     # + option to select exposures contributing to the fit/interpolation
     # > 'theo': use imported theoretical local intrinsic stellar profiles
-    gen_dic['diff_data_corr']=True  &  False
-    gen_dic['calc_diff_data_corr']=True  &  False 
+    gen_dic['diff_data_corr']=True  #&  False
+    gen_dic['calc_diff_data_corr']=True  #&  False 
 
     data_dic['Res']['opt_loc_data_corr']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
     

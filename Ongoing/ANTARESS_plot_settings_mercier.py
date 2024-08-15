@@ -412,6 +412,7 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic):
         if 'map_Res' in key_plot:plot_options[key_plot]['cmap']="jet" 
         if 'map_BF' in key_plot:plot_options[key_plot]['cmap']="jet"         
         elif 'map_Intr' in key_plot:plot_options[key_plot]['cmap']="afmhot_r" 
+        elif 'map_Intr_prof_res' in key_plot:plot_options[key_plot]['cmap']="afmhot_r" 
         elif 'map_Atm' in key_plot:plot_options[key_plot]['cmap']="winter"             
         
         #Map color range
@@ -1541,7 +1542,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Best-fit profiles 
     ################################################################################################################  
-    if gen_dic['fit_ResProf'] and (plot_dic['map_BF_Res_prof']!=''):
+    if gen_dic['diff_data_corr'] and (plot_dic['map_BF_Res_prof']!=''):
         key_plot = 'map_BF_Res_prof'
 
         
