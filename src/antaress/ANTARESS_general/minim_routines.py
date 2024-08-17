@@ -799,7 +799,8 @@ def fit_merit(p_final_in,fixed_args,fit_dic,verbose):
         print('     + Best chi2 = '+str(fit_dic['merit']['chi2']))
         print('     + Reduced Chi2 ='+str(fit_dic['merit']['red_chi2']))
         print('     + RMS of residuals = '+str(fit_dic['merit']['rms'])) 
-        print('     + BIC ='+str(fit_dic['merit']['BIC']))       
+        print('     + BIC ='+str(fit_dic['merit']['BIC']))
+        if fit_dic['fit_mode']=='mcmc':print('     + GR statistic ='+str(fit_dic['GR_stat']))           
         print('     + Parameters :')
         for par in fixed_args['fixed_par_val']:print('        ',par,'=',"{0:.10e}".format(p_final[par]))                   
         if fit_dic['fit_mode'] =='fixed':
@@ -1068,7 +1069,97 @@ def MCMC_thin_chains(corr_length,merged_chain):
 
     return nsteps_final_merged,merged_chain  
 
-  
+
+
+
+def MCMC_GR_stat(chains):
+    r"""**MCMC post-proc: Gelman-Rubin statistic**
+
+    Calculates the Gelman-Rubin statistic for an ensemble of chains, following the 
+    implementation of Vats & Knudson 2020. In particular, we follow their approach of using
+    batch means estimators and dstinguishing two cases: univariate and multivariate MCMC runs.
+    In practice, GR < 1.1 is used to declare convergence of chains.
+      
+    Args:
+        chains (array): three-dimensional array of the chains from an MCMC run.
+    
+    Returns:
+        GR (float): Gelman-Rubin statistic.
+    
+    """
+    num_chains, num_steps, num_params = chains.shape
+    batch_size = int(np.floor(num_steps**(1/3)))
+
+    #Use the multivariate approach
+    if num_params > 1:
+
+        #Define arrays to store the average parameter values across all chains (C_star)
+        #and the variances of parameters over each chain (S)
+        S = np.zeros((num_chains, num_params, num_params), dtype=float)
+        C_star = np.zeros(num_params, dtype=float)
+        for j in range(num_chains):
+            chain_j = chains[j,:,:]
+            C_j = np.sum(chain_j, axis=0)/num_steps
+            S[j,:,:] = (chain_j[0,:] - C_j).reshape(num_params,1)@(chain_j[0,:] - C_j).reshape(num_params,1).T
+            for i in range(1, num_steps):
+                S[j,:,:] += (chain_j[i,:] - C_j).reshape(num_params,1)@(chain_j[i,:] - C_j).reshape(num_params,1).T
+            S[j,:,:] /= (num_steps-1)
+            C_star += C_j
+        
+        #Calculate the average parameter values and variances across all chains (C_star, S_tot)
+        C_star /= num_chains
+        S_tot = np.sum(S, axis=0)/num_chains
+        
+        #Define a function to calculate the batch means estimator for varying batch sizes.
+        def calc_Tb(b):
+            a = int(num_steps/b)
+            T = np.zeros((num_chains, num_params, num_params), dtype=float)
+            for j in range(num_chains):
+                for k in range(a):
+                    chain_j_k = chains[j,k*b : (k+1)*b,:]
+                    Y = np.sum(chain_j_k, axis=0)/b
+                    T[j, :, :] += (Y - C_star).reshape(num_params,1)@(Y - C_star).reshape(num_params,1).T
+            T_tot = np.sum(T, axis=0) * (b/(a*num_chains - 1))
+            return T_tot
+
+        #Final step to calculate the GR statistic
+        T_L = 2*calc_Tb(batch_size) - calc_Tb(int(np.floor(batch_size/3)))
+        GR = np.sqrt( ((num_steps-1)/num_steps) + ((1/num_steps) * (np.linalg.det(T_L)/np.linalg.det(S_tot))**(1/num_params)))
+
+    #Use the univariate approach
+    else: 
+
+        #Define arrays to store the average parameter value of each chain (x)
+        #and the corresponding variance for each chain (s)
+        s = np.zeros((num_chains,), dtype=float)
+        x = np.zeros((num_chains,), dtype=float)
+        for j in range(num_chains):
+            x[j] = np.sum(chains[j,:,:], axis=0)/num_steps
+            s[j] = np.sum((chains[j,:,:] - x[j])**2, axis=0)/(num_steps-1)
+        
+        #Calculate the average parameter value and variance across all chains (mu, s_tot)
+        mu = np.sum(x)/num_chains
+        s_tot = np.sum(s)/num_chains
+
+        #Define a function to calculate the batch means estimator for varying batch sizes.
+        def calc_tb(b):
+            a = int(num_steps/b)
+            t = np.zeros((num_chains,), dtype=float)
+            for j in range(num_chains):
+                for k in range(a):
+                    y = np.sum(chains[j, k*b:(k+1)*b, :], axis=0)/b
+                    t[j] += (y - mu)**2
+            t_tot = np.sum(t) * (b/(a*num_chains - 1))
+            return t_tot
+
+        #Final step to calculate the GR statistic
+        t_L = 2*calc_tb(batch_size) - calc_tb(int(np.floor(batch_size/3)))
+        sigma_L = ((num_steps - 1)/num_steps) * s_tot + (t_L / num_steps)
+        GR = np.sqrt(sigma_L / s_tot)
+    return GR
+
+
+
   
 
 def MCMC_retrieve_sample(fixed_args,fix_par_list,exp_par_list,iexp_par_list,ifix_par_list,par_names,fixed_par_val,calc_envMCMC,merged_chain,n_free,nsteps_final_merged,p_best_in,var_par_list,
@@ -1592,7 +1683,10 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbos
         unburnt_chains = unburnt_chains[keep_chain]
         burnt_chains = burnt_chains[keep_chain]
         fit_dic['nwalkers']=np.sum(keep_chain)  
-        
+    
+    #Calculate Gelman-Rubin statistic
+    fit_dic['GR_stat'] = MCMC_GR_stat(burnt_chains)
+
     #Merge chains
     #    - we reshape into (nwalkers*(nsteps-nburn) , n_free)        
     merged_chain = burnt_chains.reshape((-1, n_free))   

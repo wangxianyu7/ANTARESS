@@ -5061,7 +5061,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  &  False
+    gen_dic['fit_ResProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
@@ -5119,14 +5119,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Fixed/variable properties   
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['ResProf']['mod_prop']={
-        # 'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.15, 1]},
-        'ctrst_ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.15, 1]},
-        # 'FWHM_ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
-        'FWHM_ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[5, 15]},
-        # 'veq':{'vary':True,'guess':5, 'bd':[1, 10]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[1, 10]},
-        # 'veq_spots':{'vary':True,'guess':9, 'bd':[1, 10]},
-        'veq_spots':{'vary':False,'guess':9.2, 'bd':[1, 10]},
+        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.15, 1]},
+        # 'ctrst_ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.15, 1]},
+        'FWHM_ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
+        # 'FWHM_ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[5, 15]},
+        'veq':{'vary':True,'guess':5, 'bd':[1, 10]},
+        # 'veq':{'vary':False,'guess':7.8, 'bd':[1, 10]},
+        'veq_spots':{'vary':True,'guess':9, 'bd':[1, 10]},
+        # 'veq_spots':{'vary':False,'guess':9.2, 'bd':[1, 10]},
         # 'alpha_rot':{'vary':True,'guess':0., 'bd':[0, 1]},
         # 'alpha_rot':{'vary':False,'guess':0., 'bd':[0, 1]},
         # 'alpha_rot_spots':{'vary':True,'guess':0.2, 'bd':[0, 1]},
@@ -5137,16 +5137,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         # 'beta_rot_spots':{'vary':False,'guess':0., 'bd':[0, 1]},
         'cos_istar':{'vary':True,'guess':0.1, 'bd':[-1., 1.]},
         # 'cos_istar':{'vary':False,'guess':0.3, 'bd':[-1., 1.]},
-        # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
-        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
-        # 'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
-        'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
-        # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':15, 'bd':[10, 50]},
-        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':25, 'bd':[10, 50]},
-        # 'fctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
-        'fctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':False, 'guess':0.9, 'bd':[0.3, 0.9]},
-        # 'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
-        'lambda_rad__plAUMicb'                   : {'vary':False, 'guess':-0.082, 'bd':[-2*np.pi, 2*np.pi]}
+        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
+        # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
+        'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
+        # 'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
+        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':15, 'bd':[10, 50]},
+        # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':25, 'bd':[10, 50]},
+        'fctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
+        # 'fctrst__ISESPRESSO_VSmock_vis_SPspot1'   : {'vary':False, 'guess':0.9, 'bd':[0.3, 0.9]},
+        'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
+        # 'lambda_rad__plAUMicb'                   : {'vary':False, 'guess':-0.082, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
 
 
@@ -5232,23 +5232,23 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         glob_fit_dic['ResProf']['deriv_prop'] = {'lambda_deg':[]}
     
     #Calculating/retrieving
-    glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
-    # glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
+    # glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
+    glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
-        glob_fit_dic['ResProf']['mcmc_reuse']={}
-        # glob_fit_dic['ResProf']['mcmc_reuse']={
-        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk4_steps10.npz'],
-        #             'nburn':[2]
-        #             }  
+        # glob_fit_dic['ResProf']['mcmc_reuse']={}
+        glob_fit_dic['ResProf']['mcmc_reuse']={
+                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk20_steps50.npz'],
+                    'nburn':[20]
+                    }  
     #Re-starting
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
         glob_fit_dic['ResProf']['mcmc_reboot']=''
 
     #Walkers
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
-        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':20,'nsteps':10,'nburn':2}
+        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':20,'nsteps':50,'nburn':20}
 
     #Complex priors        
          
@@ -5855,8 +5855,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + chose a dimension over which the fit/interpolation is performed         
     # + option to select exposures contributing to the fit/interpolation
     # > 'theo': use imported theoretical local intrinsic stellar profiles
-    gen_dic['diff_data_corr']=True  #&  False
-    gen_dic['calc_diff_data_corr']=True  #&  False 
+    gen_dic['diff_data_corr']=True  &  False
+    gen_dic['calc_diff_data_corr']=True  &  False 
 
     data_dic['Res']['opt_loc_data_corr']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
     
