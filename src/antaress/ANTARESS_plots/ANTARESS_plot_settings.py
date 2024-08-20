@@ -359,20 +359,6 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
  
         #Save a text file of residual RVs vs phase
         plot_options[key_plot]['save_RVres'] = False
- 
-
-        #Polynomial fit of ordina property vs abscissa property 
-        plot_options[key_plot]['deg_prop_fit']={}
-
-        #Multiplication/addition of sinusoidal component to the fit 
-        plot_options[key_plot]['fit_sin']={}
-
-        #Scaling value for errors on fitted data
-        plot_options[key_plot]['set_err']=1. 
-    
-        #Points to be fitted
-        #    - set instrument and visit to an empty list for its out-of-transit exposures to be fitted automatically, otherwise indicate specific exposures
-        plot_options[key_plot]['idx_fit']={}
 
     #--------------------------------------
     if 'atm' in key_plot:
@@ -1336,33 +1322,33 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         # + 'amp_l2c': contrast(lobe)/contrast(core) of double gaussian components
         # + 'rv_res' residuals from Keplerian curve (m/s)  
         # + 'RVdrift' : RV drift of the spectrograph, derived from the Fabry-Perot (m/s)
-        #    + 'phase' : orbital phase
-        #    + 'mu' : mu
-        #    + 'lat' : stellar latitude 
-        #    + 'lon' : stellar longitude 
-        #    + projected position in the stellar frame
-        # x (along the equator) : 'x_st'
-        # y (along the spin axis) : 'y_st' 
-        #    + 'AM' : airmass : 
-        #    + 'seeing' : seeing : 
-        #    + 'snr' : SNR : 
+        # + 'phase' : orbital phase
+        # + 'mu' : mu
+        # + 'lat' : stellar latitude 
+        # + 'lon' : stellar longitude 
+        # + projected position in the stellar frame
+        #   x (along the equator) : 'x_st'
+        #   y (along the spin axis) : 'y_st' 
+        # + 'AM' : airmass : 
+        # + 'seeing' : seeing : 
+        # + 'snr' : SNR : 
         # in that case select the indices of orders over which average the SNR
-        #    + 'snr_R' : SNR ratio 
+        # + 'snr_R' : SNR ratio 
         # in that case select the indices of orders over which average the SNR for both numerator and denominator
-        #    + 'colcorrmin', 'colcorrmax', 'colcorrR' : min/max color correction coefficients and ratio max/min 
-        #      'colcorr450', 'colcorr550', 'colcorr650' : correction coefficients at the corresponding wavelengths (nm)
-        #    + 'glob_flux_sc': ratio of total flux in each exposure profile, to their mean value, used to scale all profiles to the same global flux level
-        #    + 'satur_check': check of saturation on detector
-        #    + 'PSFx', 'PSFy' : sizes of PSF on detector (?)
-        #      'PSFr' : average (quadratic) size
-        #      'PSFang' : angle y/x in degrees  
-        #    + coefficients of wiggles laws: wig_p_0, wig_p1, wig_wref, wig_ai[i=0,4]
-        #    + 'alt': telescope altitude angle (deg)
-        #    + 'ha','na','ca','s','rhk': activity indexes 
-        #    + 'ADC1 POS','ADC1 RA','ADC1 DEC','ADC2 POS','ADC2 RA','ADC2 DEC': ESPRESSO ADC intel
-        #    + 'TILT1 VAL1','TILT1 VAL2','TILT2 VAL1','TILT2 VAL2': ESPRESSO piezo intel
-        #    + 'EW': equivalent width
-        #    + 'biss_span': bissector span
+        # + 'colcorrmin', 'colcorrmax', 'colcorrR' : min/max color correction coefficients and ratio max/min 
+        #   'colcorr450', 'colcorr550', 'colcorr650' : correction coefficients at the corresponding wavelengths (nm)
+        # + 'glob_flux_sc': ratio of total flux in each exposure profile, to their mean value, used to scale all profiles to the same global flux level
+        # + 'satur_check': check of saturation on detector
+        # + 'PSFx', 'PSFy' : sizes of PSF on detector (?)
+        #   'PSFr' : average (quadratic) size
+        #   'PSFang' : angle y/x in degrees  
+        # + coefficients of wiggles laws: wig_p_0, wig_p1, wig_wref, wig_ai[i=0,4]
+        # + 'alt': telescope altitude angle (deg)
+        # + 'ha','na','ca','s','rhk': activity indexes 
+        # + 'ADC1 POS','ADC1 RA','ADC1 DEC','ADC2 POS','ADC2 RA','ADC2 DEC': ESPRESSO ADC intel
+        # + 'TILT1 VAL1','TILT1 VAL2','TILT2 VAL1','TILT2 VAL2': ESPRESSO piezo intel
+        # + 'EW': equivalent width
+        # + 'biss_span': bissector span
         plot_settings['prop_DI_ordin']=['rv','rv_pip','rv_res','rv_pip_res','RVdrift','rv_l2c','RV_lobe',\
                                         'FWHM','FWHM_pip','FWHM_voigt','FWHM_l2c','FWHM_lobe','FWHM_ord0__IS__VS_','EW','vsini',\
                                         'ctrst','ctrst_pip','true_ctrst','ctrst_ord0__IS__VS_','amp','amp_l2c','amp_lobe','area',\
@@ -1382,6 +1368,12 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)               
 
+            #%%%% Plot data-equivalent model from property fit 
+            plot_settings[key_plot]['theo_obs_prop'] = False
+
+            #%%%% Plot high-resolution model from property fit
+            plot_settings[key_plot]['theo_HR_prop'] = False
+
             #%%%% Print and plot mean value and dispersion 
             plot_settings[key_plot]['disp_mod']='out' 
             
@@ -1396,6 +1388,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
   
             #%%%% Normalisation of values by their out-of-transit mean
             plot_settings[key_plot]['norm_ref']=False
+            
+            #Normalisation of values by their model modulation
+            plot_settings[key_plot]['norm_mod']=False     
     
             #%%%% RV plot
             if (plot_prop=='rv'):
@@ -2000,6 +1995,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings[key_plot]['nsteps'] = 1000
 
             #%%%% Plot data-equivalent model from property fit 
+            #    - this can also be used to check which exposures were fitted, as the best-fit model was only calculated over them in the fitting routine
             plot_settings[key_plot]['theo_obs_prop'] = False
 
             #%%%% Plot data-equivalent model from profile fit 

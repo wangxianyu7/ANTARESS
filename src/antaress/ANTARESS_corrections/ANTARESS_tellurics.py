@@ -785,7 +785,7 @@ def FIT_CCF_telluric_model(param,velccf,args=None):
     else:
         chi = res[args['idx_sub_fit']]/np.sqrt( cov_uncorr[0][args['idx_sub_fit']]) 
 
-    return chi    
+    return chi,None    
 
 
 

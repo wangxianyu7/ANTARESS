@@ -8,7 +8,28 @@ from ..ANTARESS_general.utils import npint,stop,gen_specdopshift
 from ..ANTARESS_general.constant_data import c_light
 
 
-   
+def return_SNR_orders(inst): 
+    r"""**Orders for S/N ratio**
+
+    Returns typical spectrograph order used for S/N measurements.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """             
+    return {'HARPS':[49],
+            'HARPN':[46],
+            'ESPRESSO_MR':[39],
+            'ESPRESSO':[102,103],
+            'CARMENES_VIS':[40],
+            'NIRPS_HA':[57],
+            'NIRPS_HE':[57],        #H band, 1.63 mic, order not affected by tellurics thus stable for SNR measurement
+            'EXPRES':[14]           #562 nm  
+            }[inst]            
+
 def return_pix_size(): 
     r"""**Spectrograph sampling**
 

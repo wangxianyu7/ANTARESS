@@ -6,6 +6,7 @@ from copy import deepcopy
 import lmfit
 import bindensity as bind
 from pathos.multiprocessing import Pool
+from numpy.polynomial import Polynomial
 from ..ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,conv_st_prof_tab
 from ..ANTARESS_general.utils import closest,init_parallel_func,np_where1D,stop
 
@@ -29,6 +30,7 @@ def gen_fit_prof(param_in,x_tab,args=None):
     
     """      
     args_exp = deepcopy(args['args_exp'])
+    outputs = {}
 
     #In case param_in is defined as a Parameters structure, retrieve values and define dictionary
     if isinstance(param_in,lmfit.parameter.Parameters):
@@ -42,7 +44,7 @@ def gen_fit_prof(param_in,x_tab,args=None):
    	#Convolution and resampling 
     mod_prof = conv_st_prof_tab(None,None,None,args,args_exp,sp_line_model,args['FWHM_inst'])  
 
-    return mod_prof
+    return mod_prof,outputs
 
 
 
@@ -363,7 +365,7 @@ def calc_polymodu(pol_mode,coeff_pol,x_val):
     
     Calculates absolute or modulated polynomial
     
-    The list of polynomial coefficient 'coeff_pol' has been defined in decreasing powers, as expected by `poly1d`, using input coefficient defined through their power value (see `polycoeff_def()`)
+    The list of polynomial coefficient 'coeff_pol' has been defined in increasing powers, as expected by `Polynomial`, using input coefficient defined through their power value (see `polycoeff_def()`)
 
     Args:
         TBD
@@ -374,15 +376,16 @@ def calc_polymodu(pol_mode,coeff_pol,x_val):
     """     
     
     #Absolute polynomial
-    #    - coeff_pol[0]*x^n + coeff_pol[1]*x^(n-1) .. + coeff_pol[n]*x^0
+    #    - coeff_pol[n]*x^n + coeff_pol[n-1]*x^(n-1) .. + coeff_pol[0]*x^0
     if pol_mode=='abs':
-        mod= np.poly1d(coeff_pol)(x_val)         
+        mod= Polynomial(coeff_pol)(x_val)         
 
     #Modulated polynomial
-    #    - (coeff_pol[0]*x^n + coeff_pol[1]*x^(n-1) .. + 1)*coeff_pol[n] 
+    #    - (coeff_pol[n]*x^n + coeff_pol[n-1]*x^(n-1) .. + 1)*coeff_pol[0] 
     elif pol_mode=='modul':
-        coeff_pol_modu = coeff_pol[:-1] + [1]
-        mod= coeff_pol[-1]*np.poly1d(coeff_pol_modu)(x_val)  
+        coeff_pol_modu = [1] + coeff_pol
+        mod= coeff_pol[0]*Polynomial(coeff_pol_modu)(x_val)  
+        
     else:stop('Undefined polynomial mode')
     return mod
 
@@ -405,11 +408,11 @@ def polycoeff_def(param,coeff_ord2name_polpar):
 
     #Polynomial coefficients 
     #    - keys in 'coeff_ord2name_polpar' are the coefficients degrees, values are their names, as defined in 'param' 
-    #      they can be defined in disorder (in terms of degrees), as coefficients are forced to order from deg_max to 0 in 'coeff_grid_polpar' 
+    #      they can be defined in disorder (in terms of degrees), as coefficients are forced to order from 0 to deg_max in 'coeff_grid_polpar' 
     #    - degrees can be missing
     #    - input coefficients must be given in decreasing order of degree to poly1d
     deg_max=max(coeff_ord2name_polpar.keys())
-    coeff_grid_polpar=[param[coeff_ord2name_polpar[ideg]] if ideg in coeff_ord2name_polpar else 0. for ideg in range(deg_max,-1,-1)]
+    coeff_grid_polpar=[param[coeff_ord2name_polpar[ideg]] if ideg in coeff_ord2name_polpar else 0. for ideg in range(deg_max+1)]
 
     return coeff_grid_polpar
 

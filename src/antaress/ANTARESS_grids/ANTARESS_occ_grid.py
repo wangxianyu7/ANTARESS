@@ -143,10 +143,10 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_grid,coord_grid, transit_
             
             #Calculate coordinates
             #    - start/end phase have been set to None if no oversampling is requested, in which case start/end positions are not calculated
-            if args['grid_dic']['d_oversamp'] is not None:phases = ph_grid[pl_loc]
+            if args['grid_dic']['d_oversamp_pl'] is not None:phases = ph_grid[pl_loc]
             else:phases = ph_grid[pl_loc][1]
             x_pos_pl,y_pos_pl,_,_,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],phases,args['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param_loc['star'])
-            if args['grid_dic']['d_oversamp'] is not None:
+            if args['grid_dic']['d_oversamp_pl'] is not None:
                 coords[pl_loc]['st_pos'] = np.vstack((x_pos_pl[0],y_pos_pl[0]))
                 coords[pl_loc]['cen_pos'] = np.vstack((x_pos_pl[1],y_pos_pl[1]))
                 coords[pl_loc]['end_pos'] = np.vstack((x_pos_pl[2],y_pos_pl[2]))
@@ -162,7 +162,7 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_grid,coord_grid, transit_
             #Recalculate spot grid if relevant
             if spot in args['fit_spot_ang']:
                 args['system_spot_prop']['achrom'][spot][0]=param['ang__IS'+inst+'_VS'+vis+'_SP'+spot] * np.pi/180
-                _,args['grid_dic']['Ssub_Sstar_sp'][spot],args['grid_dic']['x_st_sky_grid_sp'][spot],args['grid_dic']['y_st_sky_grid_sp'][spot],_ = occ_region_grid(np.sin(args['system_spot_prop']['achrom'][spot][0]),args['grid_dic']['nsub_Dspot'][spot],spot=True)  
+                _,args['grid_dic']['Ssub_Sstar_sp'][spot],args['grid_dic']['x_st_sky_grid_sp'][spot],args['grid_dic']['y_st_sky_grid_sp'][spot],_ = occ_region_grid(np.sin(args['system_spot_prop']['achrom'][spot][0]),args['grid_dic']['nsub_Dsp'][spot],spot=True)  
 
             #Update spot crossing time before doing spot parameters' retrieval
             if args['fit_spot']:param['Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot] += args['spot_crosstime_supp'][inst][vis]
@@ -326,7 +326,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
 
     #List of parameters whose range we're interested in
     range_par_list=[]
-    if (len(theo_dic['d_oversamp'])>0) and out_ranges:range_par_list = list(np.intersect1d(['mu','lat','lon','x_st','y_st','xp_abs','r_proj'],par_list))
+    if (len(theo_dic['d_oversamp_pl'])>0) and out_ranges:range_par_list = list(np.intersect1d(['mu','lat','lon','x_st','y_st','xp_abs','r_proj'],par_list))
  
     #Initializing spot variables
     #    - must be initialized in anyy case since they will be called later, even if spots are not activated.
@@ -416,16 +416,16 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,system_param
             lambda_rad_pl[pl_loc]=system_param[pl_loc]['lambda_rad']
             
             #Exposure oversampling
-            if len(theo_dic['d_oversamp'])>0:
+            if len(theo_dic['d_oversamp_pl'])>0:
                 
                 #Oriented distance covered along each dimension (in Rstar)
                 for ikey,key in enumerate(['x','y']):dcoord_exp_in[key][pl_loc] = coord_in[pl_loc]['end_pos'][ikey,iexp_list]-coord_in[pl_loc]['st_pos'][ikey,iexp_list]
 
                 #Number of oversampling points for current exposure  
                 #    - for each exposure we take the maximum oversampling all planets considered 
-                if (pl_loc in theo_dic['d_oversamp']):
+                if (pl_loc in theo_dic['d_oversamp_pl']):
                     d_exp_in = np.sqrt(dcoord_exp_in['x'][pl_loc]**2 + dcoord_exp_in['y'][pl_loc]**2)
-                    n_osamp_exp_all=np.maximum(n_osamp_exp_all,npint(np.round(d_exp_in/theo_dic['d_oversamp'][pl_loc]))+1)
+                    n_osamp_exp_all=np.maximum(n_osamp_exp_all,npint(np.round(d_exp_in/theo_dic['d_oversamp_pl'][pl_loc]))+1)
                     
             #Planet-dependent properties
             for subkey_chrom in key_chrom:
