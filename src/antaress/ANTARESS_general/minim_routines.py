@@ -1685,7 +1685,12 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,nthreads,par_names,verbos
         fit_dic['nwalkers']=np.sum(keep_chain)  
     
     #Calculate Gelman-Rubin statistic
-    fit_dic['GR_stat'] = MCMC_GR_stat(burnt_chains)
+    # We define the batch size as x^(1/3) with x the number of production steps. We then shorten the batch size to x^(1/3)/3.
+    # Therefore, in order to have a batch size >0 we need x^(1/3)/3 > 1 i.e. x>27.
+    if burnt_chains.shape[1] < 27.: 
+        print(verb_shift+'WARNING: Not enough MCMC steps to compute Gelman-Rubin statistic. Need at least 27 production steps.')
+        fit_dic['GR_stat'] = ' N/A'
+    else:fit_dic['GR_stat'] = MCMC_GR_stat(burnt_chains)
 
     #Merge chains
     #    - we reshape into (nwalkers*(nsteps-nburn) , n_free)        

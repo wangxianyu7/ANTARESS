@@ -437,7 +437,7 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
     #    - all stellar properties are initialized to default stellar values
     #      those defined as variable properties through the settings will be overwritten in 'par_formatting'
     #    - see init_stellar_prop() for details about the processing of 'veq' and 'Peq'
-    for key,vary,bd_min,bd_max in zip(['veq',   'veq_spots','alpha_rot','alpha_rot_spots','beta_rot','beta_rot_spots','c1_CB','c2_CB','c3_CB','c1_CB_spots','c2_CB_spots','c3_CB_spots','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
+    for key,vary,bd_min,bd_max in zip(['veq','veq_spots','alpha_rot','alpha_rot_spots','beta_rot','beta_rot_spots','c1_CB','c2_CB','c3_CB','c1_CB_spots','c2_CB_spots','c3_CB_spots','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'],
                                       [False,   False,      False,         False,        False,        False,        False, False,  False,   False,         False,          False,   False,    False,  False,   False, False, False, False, False,  False,   False],
                                       [0.,      0.,         None,          None,         None,         None,         None,  None,   None,    None,          None,           None,     -1.,       0.,     0.,      0.,     0. ,   0.,    0. ,   0.,     0. ,      0.],
                                       [1e4,     1e4,        None,          None,         None,         None,         None,  None,   None,    None,          None,           None,      1.,       1.,     1.,      1e5,    1.,   1e5,    1e5,  1e5,    100.,    100.]):

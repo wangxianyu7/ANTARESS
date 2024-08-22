@@ -119,7 +119,6 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                 if 'ang' in par and fit_dic['uf_bd'][par][1]>90:fit_dic['uf_bd'][par][1]=90
                 elif 'veq' in par and fit_dic['uf_bd'][par][0]<0:fit_dic['uf_bd'][par][0]=0.
                 elif 'Peq' in par and fit_dic['uf_bd'][par][0]<0:fit_dic['uf_bd'][par][0]=0.
-                elif ('Tc_sp' in par) and ((fit_dic['uf_bd'][par][0] <= p_start[par].value - fixed_args['system_param']['star']['Peq']) or (fit_dic['uf_bd'][par][1] >= p_start[par].value + fixed_args['system_param']['star']['Peq'])):fit_dic['uf_bd'][par] = [p_start[par].value - fixed_args['system_param']['star']['Peq'] + 0.001, p_start[par].value + fixed_args['system_param']['star']['Peq'] - 0.001]
                 
                 #Priors
                 if (par in priors_prop):
@@ -133,7 +132,6 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis,li
                     if par == 'jitter':varpar_priors=[0.,1e6]
                     elif par == 'veq':varpar_priors=[0.,100.]
                     elif 'ang' in par:varpar_priors=[0.,90.]
-                    elif 'Tc_sp' in par:varpar_priors=[p_start[par].value - fixed_args['system_param']['star']['Peq'] + 0.001, p_start[par].value + fixed_args['system_param']['star']['Peq'] - 0.001]
                     else:varpar_priors=[-1e6,1e6]
                     if (not np.isinf(p_start[par].min)):varpar_priors[0]=p_start[par].min
                     if (not np.isinf(p_start[par].max)):varpar_priors[1]=p_start[par].max                
@@ -261,7 +259,6 @@ def prior_check(par,priors_prop,params,args):
     if ('ang' in par) and (priors_prop[par]['high']>90):stop('Prior error: Spot angular size cannot exceed 90 deg. Re-define your priors.')
     elif ('veq' in par) and (priors_prop[par]['low']<0):stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
     elif ('Peq' in par) and (priors_prop[par]['low']<0):stop('Prior error: Cannot have negative stellar rotation period. Re-define your priors.')
-    elif ('Tc_sp' in par) and ((priors_prop[par]['low'] <= params[par].value - args['system_param']['star']['Peq']) or (priors_prop[par]['high'] >= params[par].value + args['system_param']['star']['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
     return None
 
 
@@ -283,6 +280,7 @@ def model_par_names(par):
     """
     name_dic = {
         'veq':'v$_\mathrm{eq}$ (km s$^{-1}$)','vsini':'v$_\mathrm{eq}$sin i$_{*}$ (km/s)',
+        'veq_spots':'v$_\mathrm{eq, sp}$ (km s$^{-1}$)',
         'Peq':'P$_\mathrm{eq}$ (d)',
         'alpha_rot':r'$\alpha_\mathrm{rot}$','beta_rot':r'$\beta_\mathrm{rot}$',       
         'cos_istar':r'cos(i$_{*}$)','istar_deg':'i$_{*}(^{\circ}$)',
@@ -339,6 +337,7 @@ def model_par_units(par):
     """
     unit_dic = {
         'veq':'km/s','vsini':'km/s',
+        'veq_spots':'km/s',
         'Peq':'d',
         'alpha_rot':'','beta_rot':'',       
         'cos_istar':'','istar_deg':'deg',
@@ -406,6 +405,7 @@ def init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
             
         #Global model properties        
         'system_param':deepcopy(system_param),
+        'base_system_param':deepcopy(system_param),
         'system_prop':deepcopy(data_dic['DI']['system_prop']),
         'system_spot_prop':deepcopy(data_dic['DI']['spots_prop']), 
         'DI_grid':False,
@@ -2930,7 +2930,33 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                 chain_loc=(2.*np.pi*Rstar_chain)/(np.squeeze(merged_chain[:,iveq])*3600.*24.)
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
             up_var_par(fixed_args,'Peq')
-    
+
+        #-------------------------------------------------
+        #Add Peq using the value derived from veq and independent measurement of Rstar
+        #    - Peq = (2*pi*Rstar/veq)
+        if 'Peq_veq_spots' in deriv_prop:
+            if ('cos_istar' in fixed_args['var_par_list']):stop('    istar has been fitted')
+            print('        + Deriving Peq_spots from veq_spots')
+            Rstar_dic = deepcopy(deriv_prop['Peq_veq_spots']['Rstar'])
+            for subpar in Rstar_dic:Rstar_dic[subpar]*=Rsun 
+            
+            if fit_dic['fit_mode']=='chi2': 
+                p_final['Peq_spots_d']=(2.*np.pi*Rstar_dic['val'])/(p_final['veq_spots']*3600.*24.)
+                sig_loc=np.nan
+                fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))
+            elif fit_dic['fit_mode']=='mcmc': 
+                n_chain = len(merged_chain[:,0])
+            
+                #Generate gaussian distribution for Rstar
+                if 's_val' in Rstar_dic:Rstar_chain = np.random.normal(Rstar_dic['val'], Rstar_dic['s_val'], n_chain)
+                else:Rstar_chain = gen_hrand_chain(Rstar_dic['val'],Rstar_dic['s_val_low'],Rstar_dic['s_val_high'],n_chain)
+                
+                #Calculate Peq chain
+                iveq = np_where1D(fixed_args['var_par_list']=='veq_spots')
+                chain_loc=(2.*np.pi*Rstar_chain)/(np.squeeze(merged_chain[:,iveq])*3600.*24.)
+                merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
+            up_var_par(fixed_args,'Peq_spots')
+
         #-------------------------------------------------
         #Add Peq using the value derived from vsini and independent measurement of Rstar and istar
         #    - Peq = (2*pi*Rstar*sin(istar)/vsini)
@@ -2958,6 +2984,115 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
             up_var_par(fixed_args,'Peq')
     
+        #-------------------------------------------------
+        #Folding spot crossing time (Tc_sp) around average value
+        if ('fold_Tc' in deriv_prop) and (fixed_args['rout_mode'] in ['IntrProf','ResProf']):
+            print('        + Folding spot crossing time (Tc_sp)')
+
+            #Retrieve the value of Peq to fold
+            # If spot values for veq/Peq are fitted/specified, they take priority
+            # If veq/Peq/veq_spots/Peq_spots is fit with an MCMC, we use the corresponding chain
+            # If veq/Peq/veq_spots/Peq_spots is fit with chi2 or fixed, we use the corresponding value
+            # If none of veq, Peq, veq_spots, or Peq_spots are fixed or fit, default to the value of Peq calculated from the systems configuration file.
+            if ('veq_spots' in fixed_args['var_par_list']):
+                if 'Peq_veq_spots' not in deriv_prop: stop('WARNING: Peq_veq_spots needs to be activated in deriv_prop if the spot crossing time folding is done with the fitted veq_spots.')
+                print('           + Folding with fitted veq_spots')
+                if fit_dic['fit_mode']=='mcmc':
+                    Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq_spots')])
+                    use_chain = True
+                else:
+                    Peq = p_final['Peq_spots_d']
+                    use_chain = False
+            elif ('veq_spots' in fixed_args['fix_par_list']) and (p_final['veq_spots'] != fixed_args['base_system_param']['star']['veq_spots']):
+                print('           + Folding with fixed veq_spots')
+                Peq = 2*np.pi*fixed_args['system_param']['star']['Rstar']*Rsun/(p_final['veq_spots']*3600.*24.)
+                use_chain = False
+            
+            elif ('veq' in fixed_args['var_par_list']):
+                print('           + Folding with fitted veq')
+                if 'Peq_veq' not in deriv_prop: stop('WARNING: Peq_veq needs to be activated in deriv_prop if the spot crossing time folding is done with the fitted veq.')
+                if fit_dic['fit_mode']=='mcmc':
+                    Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq')])
+                    use_chain = True
+                else:
+                    Peq = p_final['Peq_d']
+                    use_chain = False
+            elif ('veq' in fixed_args['fix_par_list']) and (p_final['veq'] != fixed_args['base_system_param']['star']['veq']):
+                print('           + Folding with fixed veq')
+                Peq = 2*np.pi*fixed_args['system_param']['star']['Rstar']*Rsun/(p_final['veq']*3600.*24.)
+                use_chain = False
+            
+            else:
+                print('           + Using default Peq value')
+                use_chain=False
+                Peq = fixed_args['base_system_param']['star']['Peq']
+
+            for spot in fixed_args['transit_sp']:
+
+                def sub_func(Tc_name,new_Tc_name,new_Tc_name_txt):
+                    if fit_dic['fit_mode']=='mcmc' and use_chain:print('           + Folding with full chain')
+                    else:print('           + Folding with single value')
+                    #Peq is either a single value if use_chains is False
+                    #or a chain if use_chains is True
+
+                    #Get location of Tc chain
+                    iTc=np_where1D(fixed_args['var_par_list']==Tc_name)     
+
+                    if fit_dic['fit_mode']=='mcmc':
+                        #Fold Tc_sp over x+[-Peq/2;Peq/2]
+                        #    - we want Tc_sp in x+[-Peq/2;Peq/2] i.e. Tc_sp-x+Peq/2 in 0;Peq
+                        #      we fold over 0;Peq and then get back to the final range
+                        if spot in deriv_prop['fold_Tc']:x_mid = deriv_prop['fold_Tc'][spot]
+                        else:x_mid=np.median(merged_chain[:,iTc])
+                        print('           + Folding around ',x_mid)
+                        mid_shift = x_mid-Peq/2
+                        Tc_temp=np.squeeze(merged_chain[:,iTc])-mid_shift
+                        w_gt_top=(Tc_temp > Peq)
+                        if True in w_gt_top:
+                            if use_chain:
+                                Peq_temp = Peq[w_gt_top]
+                                mid_shift_temp = mid_shift[w_gt_top]
+                            else:
+                                Peq_temp = Peq
+                                mid_shift_temp = mid_shift
+                            merged_chain[w_gt_top,iTc]=np.mod(Tc_temp[w_gt_top],Peq_temp)+mid_shift_temp
+                        w_lt_bot=(Tc_temp < 0.)
+                        if True in w_lt_bot:
+                            if use_chain:
+                                Peq_temp = Peq[w_lt_bot]
+                                mid_shift_temp = mid_shift[w_lt_bot]
+                            else:
+                                Peq_temp = Peq
+                                mid_shift_temp = mid_shift
+                            i_mod=npint(np.abs(Tc_temp[w_lt_bot])/Peq_temp)+1.
+                            merged_chain[w_lt_bot,iTc] = Tc_temp[w_lt_bot]+i_mod*Peq_temp+mid_shift_temp                                
+
+
+                    elif fit_dic['fit_mode']=='chi2':
+                        mid_shift = -Peq/2
+                        Tc_temp = p_final[Tc_name] - mid_shift
+                        if Tc_temp>Peq:Tc_temp = np.mod(Tc_temp,Peq) + mid_shift
+                        elif Tc_temp<0.:
+                            i_mod=npint(np.abs(Tc_temp)/Peq)+1.
+                            Tc_temp += i_mod*Peq+mid_shift  
+                        else:Tc_temp += mid_shift
+                        p_final[new_Tc_name] = Tc_temp
+                        sig_temp = fit_dic['sig_parfinal_err']['1s'][0,iTc]
+                        fit_dic['sig_parfinal_err']['1s'][:,iTc] = sig_temp 
+
+                    fixed_args['var_par_list'][iTc]=new_Tc_name
+                    fixed_args['var_par_names'][iTc]=new_Tc_name_txt  
+                    fixed_args['var_par_units'][iTc]='BJD' 
+
+                    return None 
+                
+                if 'Tc_sp' in fixed_args['genpar_instvis']:
+                    for inst in fixed_args['genpar_instvis']['Tc_sp']:
+                        for vis in fixed_args['genpar_instvis']['Tc_sp'][inst]:
+                            Tc_name = 'Tc_sp__IS'+inst+'_VS'+vis
+                            new_Tc_name = 'fold_Tc_sp__IS'+inst+'_VS'+vis
+                            sub_func(Tc_name, new_Tc_name,'T$_{sp}$['+spot+'](BJD)')
+
         #-------------------------------------------------
                 
         #Add 3D spin-orbit angle
