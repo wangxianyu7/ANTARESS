@@ -332,14 +332,12 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
     """
     
     #Fit dictionary
-    fit_dic={
+    fit_dic = deepcopy(fit_prop_dic)
+    fit_dic.update({
         'verb_shift':'   ',
         'nx_fit':0,
         'run_name':'_'+gen_dic['main_pl_text'],
-        'save_dir' : gen_dic['save_data_dir']+'/Joined_fits/'+rout_mode+'/'+fit_prop_dic['fit_mode']+'/'}
-    for key in ['mcmc_reuse','verbose','print_par','fit_mode','mcmc_run_mode','idx_in_fit','mod_prop','nthreads','priors','mcmc_set','unthreaded_op','deriv_prop']:fit_dic[key] = fit_prop_dic[key]
-    for key in ['SNRorders','Opt_Lvl']:
-        if key in fit_prop_dic:fit_dic[key] = fit_prop_dic[key]
+        'save_dir' : gen_dic['save_data_dir']+'/Joined_fits/'+rout_mode+'/'+fit_prop_dic['fit_mode']+'/'})
     
     #--------------------------------------------------------------------------------
 
@@ -513,7 +511,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
     #Keep defined profiles
     fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],data_dic[data_type_gen][inst][vis+fixed_args['bin_mode'][inst][vis]]['idx_def'])
     fixed_args['nexp_fit_all'][inst][vis]=len(fixed_args['idx_in_fit'][inst][vis])     
-
+   
     #Store coordinates of fitted exposures in global table
     #    - planet-occulted and spotted regions coordinates were calculated with the nominal properties from ANTARESS_systems and theo_dic
     #    - if relevant, they will be updated during the fitting process
@@ -550,6 +548,10 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
             #Time
             if coord=='time':coord_obs=coord_vis['bjd']
 
+            #Stellar phase
+            elif coord=='starphase':
+                coord_obs = coord_vis['cen_ph_st']
+            
             #Orbital phase
             elif 'phase' in coord:
                 pl_loc = coord.split('phase')[1]
@@ -742,27 +744,41 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                 for subkey in ['Ssub_Sstar_','x_st_sky_grid_','y_st_sky_grid_','nsub_D','d_oversamp_']:fixed_args['grid_dic'][subkey+key] = theo_dic[subkey+key]            
         if fixed_args['cond_transit_pl']:fixed_args['grid_dic']['Istar_norm_achrom']=theo_dic['Istar_norm_achrom']
 
-        #------------------------------------------------------------
-        
+        #------------------------------------------------------------        
         #Determine if orbital and light curve properties are fitted or whether nominal values are used
         #    - this depends on whether parameters required to calculate coordinates of planet-occulted regions are fitted  
         #    - in case the model is calculated in forward mode, we activate the condition as well so that the nominal system properties are updated with those defined in 'mod_prop'  
+        #------------------------------------------------------------
+        
+        #Planet
         if fixed_args['cond_transit_pl']:
             par_orb=['inclin_rad','aRs','lambda_rad']
             par_LC=['RpRs']    
             for par in par_orb+par_LC:fixed_args[par+'_pl']=[]
             fixed_args['fit_orbit']=False
             fixed_args['fit_RpRs']=False
+            
+        #Spot
         if fixed_args['cond_transit_sp']:
             par_spot=['lat', 'Tc_sp', 'ang', 'fctrst']    
             for par in par_spot:fixed_args[par+'_sp']=[]
             fixed_args['fit_spot']=False
             fixed_args['fit_spot_ang']=[]
+
+        #Star
+        par_star_sp = ['cos_istar', 'f_GD', 'veq', 'Peq', 'alpha_rot', 'beta_rot' ]
+        par_star_pl = ['cos_istar', 'f_GD']
+        fixed_args['fit_star_sp']=False
+        fixed_args['fit_star_pl']=False
+            
+        #Processing parameters
         for par in p_start:
     
             #Check if rootname of orbital/LC or spot properties is one of the parameters left free to vary for a given planet or spot    
             #    - if so, store name of planet or spot for this property
             #    - 'fit_X' conditions are activated if model is 'fixed' so that coordinates are re-calculated in case system properties are amongst the properties of the fixed model
+            
+            #Planet
             if fixed_args['cond_transit_pl']:
                 for par_check in par_orb:
                     if (par_check in par):
@@ -778,6 +794,8 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                         if (p_start[par].vary) or fit_dic['fit_mode']=='fixed':
                             fixed_args[par_check+'_pl'] += [pl_name]
                             fixed_args['fit_RpRs']=True 
+            
+            #Spot
             if fixed_args['cond_transit_sp']:        
                 for par_check in par_spot:
                     if (par_check in par) and ('_SP' in par):
@@ -787,6 +805,10 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                             fixed_args['fit_spot']=True
                         if ('ang' in par_check) and p_start[par].vary:
                             fixed_args['fit_spot_ang']+=[spot_name]
+
+            #Star
+            if (par in par_star_pl) and (par in fixed_args['var_stargrid_prop']):fixed_args['fit_star_pl']=True
+            if (par in par_star_sp) and ((par in fixed_args['var_stargrid_prop']) or (par in fixed_args['var_stargrid_prop_spots'])):fixed_args['fit_star_sp']=True
                             
         #Unique list of planets with variable properties  
         if fixed_args['cond_transit_pl']:                
@@ -882,6 +904,11 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         #Excluding parts of the chains
         if fit_dic['exclu_walk']:
             print('       Excluding walkers manually')
+
+            #DI fit
+            if gen_dic['fit_DIProp']:
+                if gen_dic['star_name'] == 'TOI2669':            
+                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='starphase__puls__phiHF__ISESPRESSO_VS_')],axis=1)<2.2))
             
             #Joined fit
             if gen_dic['fit_IntrProf']:
@@ -1005,15 +1032,13 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
             for vis in fixed_args['transit_sp'][inst]:
                 for spot in fixed_args['transit_sp'][inst][vis]:
                     par = 'Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot
-                    if fit_dic['fit_mode'] in ['fixed','chi2']:
-                        p_final[par] += fixed_args['bjd_time_shift'][inst][vis]
-                    else:
-                        merged_chain[:,np_where1D(fixed_args['var_par_list']==par)[0]]+= fixed_args['bjd_time_shift'][inst][vis]    
+                    p_final[par] += fixed_args['bjd_time_shift'][inst][vis]
+                    if fit_dic['fit_mode']=='mcmc':merged_chain[:,np_where1D(fixed_args['var_par_list']==par)[0]]+= fixed_args['bjd_time_shift'][inst][vis]    
                     fixed_args['bjd_time_shift'][inst][vis] = 0.
     
     #------------------------------------------------------------
 
-    #Merit values     
+    #Merit values
     p_final=fit_merit(p_final,fixed_args,fit_dic,fit_dic['verbose'])                
 
     return merged_chain,p_final

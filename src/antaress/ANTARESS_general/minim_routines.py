@@ -948,7 +948,7 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
         
         #Retrieve mcmc run from standard mcmc directory
         if len(fit_dic['mcmc_reuse'])==0:
-            mcmc_load = np.load(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name']+'.npz')
+            mcmc_load = np.load(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name']+'.npz',allow_pickle = True)
             walker_chains=mcmc_load['walker_chains']  #(nwalkers, nsteps, n_free)
             step_outputs=mcmc_load['step_outputs']  #(nsteps, nwalkers)
 
@@ -1795,7 +1795,8 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,nthreads,par
 
     #Automatic exclusion of chains
     if fit_dic['exclu_walk_autom'] is not None:
-
+        print(verb_shift+'> Automatic chain clipping')
+        
         #Merged chain
         merged_chain = burnt_chains.reshape((-1, n_free))  #(nsteps-nburn x nfree)	  
         
@@ -1815,7 +1816,8 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,nthreads,par
         #    - a chain is removed if its median is beyond the threshold for at least one parameter
         #    - condition table has dimension (nwalkers, n_free), and is kept only if fullfill conditions for all parameters             
         keep_chain = np.all((med_par_chain>=low_thresh_par_val[None,:]) & (med_par_chain<=high_thresh_par_val[None,:]),axis=1)  
- 
+        
+        
     else:    
         keep_chain = np.repeat(True,fit_dic['nwalkers'])
         low_thresh_par_val,high_thresh_par_val=None,None
@@ -1828,6 +1830,7 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,nthreads,par
      
     #Remove chains if required
     if (False in keep_chain):
+        print(verb_shift+'  '+str(np.sum(~keep_chain))+' chains removed')
         burnt_chains = burnt_chains[keep_chain]
         if fixed_args['step_output']:burnt_outputs = burnt_outputs[:,keep_chain]
         fit_dic['nwalkers']=np.sum(keep_chain)  
@@ -2046,7 +2049,7 @@ def MCMC_plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,bu
                 plt.plot(x_tab,chain[iwalk,x_tab,ipar],color='dodgerblue',linestyle='-',lw=lw_plot,zorder=0)                           
             else:
                 plt.plot(np.arange(nsteps,dtype=int),chain[iwalk,:,ipar],color='red',linestyle='-',lw=lw_plot,zorder=0) 
-
+       
         #Automatic exclusion limits
         if exclu_walk_autom is not None:
             plt.plot([0,nsteps],[low_thresh_par_val[ipar],low_thresh_par_val[ipar]],color='black',linestyle=':',zorder=10)             

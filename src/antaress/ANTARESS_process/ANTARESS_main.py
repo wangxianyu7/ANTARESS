@@ -14,7 +14,7 @@ from ..ANTARESS_analysis.ANTARESS_model_prof import calc_macro_ker_anigauss,calc
 from ..ANTARESS_grids.ANTARESS_star_grid import model_star
 from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop,retrieve_spots_prop_from_param,calc_plocced_tiles,calc_spotted_tiles
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm,var_stellar_prop
-from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos,coord_expos_spots
+from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos,coord_expos_spots,get_timeorbit
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab
 from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting_inst_vis
 from ..ANTARESS_general.minim_routines import par_formatting
@@ -801,6 +801,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         print('Star is oblate')
         star_params['RpoleReq']=1.-star_params['f_GD']
 
+    #Reference time for stellar phase (bjd)
+    if 'Tcenter' not in star_params:star_params['Tcenter'] = 2400000.
+
     #Stellar equatorial rotation period (d)
     #    - P = 2*pi*R/v
     star_params['Peq'] = (2.*np.pi*star_params['Rstar_km'])/(star_params['veq']*24*3600)
@@ -1523,7 +1526,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #      ingress/egress exposures may contribute to the binned exposures average positions            
                 #    - phase of in/out exposures, per instrument and per visit   
                 #    - radial velocity of planet in star rest frame  
-                for key in ['bjd','t_dur','RV_star_solCDM','RV_star_stelCDM']:coord_dic[inst][vis][key] = np.zeros(n_in_visit,dtype=float)*np.nan
+                for key in ['bjd','t_dur','RV_star_solCDM','RV_star_stelCDM','cen_ph_st','st_ph_st','end_ph_st']:coord_dic[inst][vis][key] = np.zeros(n_in_visit,dtype=float)*np.nan
                 for pl_loc in list(set(gen_dic['studied_pl']+gen_dic['kepl_pl'])):
                     coord_dic[inst][vis][pl_loc]={} 
                     if pl_loc in data_inst[vis]['transit_pl']:
@@ -1686,6 +1689,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         elif inst in ['HARPS','HARPN','ESPRESSO','ESPRESSO_MR','NIRPS_HA','NIRPS_HE']:
                             if 'HIERARCH '+facil_inst+' QC DRIFT DET0 MEAN' in hdr:
                                 DI_data_inst[vis]['RVdrift'][iexp]=hdr['HIERARCH '+facil_inst+' QC DRIFT DET0 MEAN']*gen_dic['pix_size_v'][inst]*1e3    #in pix -> km/s
+                    
+                    #Stellar phase
+                    coord_dic[inst][vis]['st_ph_st'][iexp],coord_dic[inst][vis]['cen_ph_st'][iexp],coord_dic[inst][vis]['end_ph_st'][iexp] = get_timeorbit('star',{'star':{'Tcenter':system_param['star']['Tcenter']}},coord_dic[inst][vis]['bjd'][iexp], {'period':system_param['star']['Peq']}, coord_dic[inst][vis]['t_dur'][iexp])[0:3] 
                     
                     #Orbital coordinates for each studied planet
                     for pl_loc in data_inst[vis]['transit_pl']:
@@ -2477,7 +2483,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     for key in ['cen_pos','st_pos','end_pos']:
                         coord_dic[inst][vis][pl_loc][key]=coord_dic[inst][vis][pl_loc][key][:,w_sorted] 
                         if remove_exp:coord_dic[inst][vis][pl_loc][key] = coord_dic[inst][vis][pl_loc][key][:,gen_dic['used_exp'][inst][vis]] 
-                for key in ['bjd','t_dur','RV_star_solCDM','RV_star_stelCDM']:
+                for key in ['bjd','t_dur','RV_star_solCDM','RV_star_stelCDM','cen_ph_st','st_ph_st','end_ph_st']:
                     coord_dic[inst][vis][key]=coord_dic[inst][vis][key][w_sorted]
                     if remove_exp:coord_dic[inst][vis][key] = coord_dic[inst][vis][key][gen_dic['used_exp'][inst][vis]]
                             
@@ -2623,6 +2629,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 data_inst[vis]['proc_com_data_paths'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com'
                 data_com = {'cen_bins':cen_bins_com_exten,'edge_bins':edge_bins_com_exten}
                 data_com['nspec'] = exten_nspec
+                data_com['dim_ord'] = [n_in_visit,exten_nspec]
                 data_com['dim_all'] = [n_in_visit,data_inst['nord'],exten_nspec]
                 data_com['dim_exp'] = [data_inst['nord'],exten_nspec]
                 data_com['dim_sp'] = [n_in_visit,data_inst['nord']]

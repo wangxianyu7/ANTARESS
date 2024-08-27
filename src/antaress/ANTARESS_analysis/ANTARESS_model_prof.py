@@ -383,7 +383,7 @@ def calc_polymodu(pol_mode,coeff_pol,x_val):
     #Modulated polynomial
     #    - (coeff_pol[n]*x^n + coeff_pol[n-1]*x^(n-1) .. + 1)*coeff_pol[0] 
     elif pol_mode=='modul':
-        coeff_pol_modu = [1] + coeff_pol
+        coeff_pol_modu = [1] + list(coeff_pol)
         mod= coeff_pol[0]*Polynomial(coeff_pol_modu)(x_val)  
         
     else:stop('Undefined polynomial mode')

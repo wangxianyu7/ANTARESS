@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import os as os_system
-from lmfit import Parameters
 from copy import deepcopy
 from math import pi,cos,sin,sqrt
 from pathos.multiprocessing import Pool
@@ -16,14 +15,12 @@ from astropy.io import fits
 import glob
 import imageio
 from ..ANTARESS_general.constant_data import c_light
-from ..ANTARESS_general.minim_routines import call_lmfit
 from ..ANTARESS_general.utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz,air_index,gen_specdopshift,import_module
 from ..ANTARESS_plots.utils_plots import custom_axis,autom_tick_prop,stackrel,scaled_title,autom_range_ext,plot_shade_range
 from ..ANTARESS_conversions.ANTARESS_binning import resample_func,calc_bin_prof,weights_bin_prof
 from ..ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,return_pix_size
 from ..ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_mod_true_prop,voigt
 from ..ANTARESS_analysis.ANTARESS_joined_star import mod_DIProp
-from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof_gen_mul,detrend_prof_gen_add
 from ..ANTARESS_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
 from ..ANTARESS_grids.ANTARESS_coord import calc_pl_coord_plots,calc_pl_coord,calc_rv_star_HR,frameconv_skyorb_to_skystar,frameconv_skystar_to_skyorb,get_timeorbit,\
     calc_zLOS_oblate,frameconv_star_to_skystar,calc_tr_contacts,coord_expos_spots
@@ -2235,7 +2232,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                     #Reference planet for the visit
                     pl_ref=plot_set_key['pl_ref'][inst][vis]    
-                    coord_vis = coord_dic[inst][vis][pl_ref]    
+                    coord_vis_pl = coord_dic[inst][vis][pl_ref]    
                     Tdepth = (system_prop[pl_ref][iband])**2.
                     if plot_set_key['lc_gap'] is None:vis_shift = ivis*0.3*Tdepth
                     else:vis_shift = ivis*plot_set_key['lc_gap']
@@ -2267,13 +2264,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #    - squares are used for out-of-transit exposures
                     #    - plot with empty symbols indicate exposures with bad fit of local stellar profiles
                     if plot_set_key['plot_LC_exp']: 
-                        x_min=min(np.min(coord_vis['st_ph']),x_min)
-                        x_max=max(np.max(coord_vis['end_ph']),x_max)
+                        x_min=min(np.min(coord_vis_pl['st_ph']),x_min)
+                        x_max=max(np.max(coord_vis_pl['end_ph']),x_max)
                         LC_flux_band_all = data_upload['flux_band_all']
                         y_min=min(np.min(LC_flux_band_all[:,iband]-vis_shift),y_min)
                         y_max=max(np.max(LC_flux_band_all[:,iband]-vis_shift),y_max)
                         i_in=0
-                        for iexp,(ph_loc,ph_dur_loc,flux_loc) in enumerate(zip(coord_vis['cen_ph'],coord_vis['ph_dur'],LC_flux_band_all[:,iband])):
+                        for iexp,(ph_loc,ph_dur_loc,flux_loc) in enumerate(zip(coord_vis_pl['cen_ph'],coord_vis_pl['ph_dur'],LC_flux_band_all[:,iband])):
     
                             #Exposures indexes (general above)
                             if plot_set_key['plot_expid']:                   
@@ -3068,6 +3065,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             if (key_plot=='Intr_prof_res'):
                 print('-----------------------------------')
                 print('+ Individual residuals from intrinsic profiles')
+                if (not plot_settings[key_plot]['cont_only']) and (not ((gen_dic['fit_Intr']) or (gen_dic['fit_IntrProf']))): 
+                    if (not gen_dic['fit_Intr']):stop('Activate "gen_dic["fit_Intr"]" to plot "plot_dic["Intr_prof_res"]"')     
+                    if (not gen_dic['fit_IntrProf']):stop('Activate "gen_dic["fit_IntrProf"]" to plot "plot_dic["Intr_prof_res"]"')   
 
             #%%%%% Plot        
             sub_plot_prof(plot_settings[key_plot],key_plot,plot_dic[key_plot],data_dic,gen_dic,glob_fit_dic,data_prop,coord_dic)    
@@ -8653,7 +8653,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                         data_bin = dataload_npz(gen_dic['save_data_dir']+'DIbin_data/'+inst+'_'+vis+'_phase')
                         if gen_dic['fit_DIbin'] or gen_dic['fit_DIbinmultivis']:prof_fit_vis=dataload_npz(gen_dic['save_data_dir']+'DIbin_prop/'+inst+'_'+vis)
                     else:
-                        coord_vis = coord_dic[inst][vis][pl_ref]
+                        coord_vis_pl = coord_dic[inst][vis][pl_ref]
                         data_prop_vis = data_prop[inst][vis]
                         # if gen_dic['fit_DI'] or gen_dic['fit_DI_1D']:prof_fit_vis=np.load(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item()
                         prof_fit_vis=dataload_npz(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis)
@@ -8682,15 +8682,14 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                         #    - this is only possible if there is a single coordinate, since the different observed coordinates are correlated and would need to create a HR multi-dimensional grid by interpolating the observed one 
                         if plot_options['theo_HR_prop']:
                             fixed_args = deepcopy(data_fit_prop)
-                            if prop_mode=='rv_res':fixed_args['prop_fit'] = 'RV'
-                            else:fixed_args['prop_fit'] = prop_mode      
+                            fixed_args['prop_fit'] = prop_mode      
                             
                             #Single coordinate
                             if len(coord_list)==1:
                             
                                 #High-resolution grid of coordinate
                                 #    - the grid is defined between the min/max of the coordinate time-series over the full visit
-                                n_HR = 100                             
+                                n_HR = 1000                             
                                 if coord_plot_eff != coord_list[0]:stop('ERROR: plot and fit coordinates must match') 
                                 coord_obs = data_fit_prop['coord_obs'][inst][vis][coord_plot_eff]
                                 min_coord_obs = min(coord_obs)
@@ -8706,12 +8705,12 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                                 
                                 #Observed grid of coordinates
                                 for coord in coord_list:fixed_args['coord_fit'][inst][vis][coord]  = data_fit_prop['coord_obs'][inst][vis][coord]
-                                n_HR = data_dic[inst][vis]['n_in_visit']
                                 coord_HR = fixed_args['coord_fit'][inst][vis][coord_plot_eff]
-                                
+                                n_HR = len(coord_HR)
+                    
                             #Model
                             mod_prop_HR = sc_unit*mod_DIProp(data_fit_prop['p_final'],fixed_args,inst,vis,n_HR)
-
+                          
                             #Plotting
                             wsort = np.argsort(coord_HR)
                             plt.plot(coord_HR[wsort],mod_prop_HR[wsort],color='darkgrey',linestyle='-',lw=1,zorder=50) 
@@ -8720,7 +8719,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                 #Intrinsic properties
                 elif data_mode=='Intr':
                     if data_type=='Introrig':
-                        coord_vis = coord_dic[inst][vis][pl_ref]
+                        coord_vis_pl = coord_dic[inst][vis][pl_ref]
                         if plot_options['plot_data']:prof_fit_vis=dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/'+inst+'_'+vis)
                         transit_prop_nom = dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/PlOcc_Prop_'+inst+'_'+vis)['achrom'][pl_ref]                                                     
                     elif data_type=='Intrbin': 
@@ -8924,15 +8923,19 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                     x_obs=coord_dic[inst][vis]['bjd'][iexp_plot] 
                     st_x_obs=coord_dic[inst][vis]['bjd'][iexp_plot] - 0.5*coord_dic[inst][vis]['t_dur'][iexp_plot]/(24.*3600.)
                     end_x_obs=coord_dic[inst][vis]['bjd'][iexp_plot] + 0.5*coord_dic[inst][vis]['t_dur'][iexp_plot]/(24.*3600.)
+                elif plot_options['prop_'+data_mode+'_absc']=='starphase':  
+                    x_obs=coord_dic[inst][vis]['cen_ph_st'][iexp_plot] 
+                    st_x_obs=coord_dic[inst][vis]['st_ph_st'][iexp_plot] 
+                    end_x_obs=coord_dic[inst][vis]['end_ph_st'][iexp_plot]                     
                 elif plot_options['prop_'+data_mode+'_absc']=='phase':
                     if ((data_mode=='DI') and (vis=='binned')) or ((data_mode=='Intr') and (data_type=='Intrbin')):
                         x_obs=data_bin['cen_bindim']
                         st_x_obs=data_bin['st_bindim']
                         end_x_obs=data_bin['end_bindim']                        
                     else:
-                        x_obs=coord_vis['cen_ph'][iexp_plot] 
-                        st_x_obs=coord_vis['st_ph'][iexp_plot] 
-                        end_x_obs=coord_vis['end_ph'][iexp_plot] 
+                        x_obs=coord_vis_pl['cen_ph'][iexp_plot] 
+                        st_x_obs=coord_vis_pl['st_ph'][iexp_plot] 
+                        end_x_obs=coord_vis_pl['end_ph'][iexp_plot] 
                 elif plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj','y_st2','abs_y_st']:  
                     if data_mode=='DI':iexp_in = gen_dic[inst][vis]['idx_in'] 
                     elif data_mode=='Intr':
@@ -9186,10 +9189,10 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                 # #ANTARESS I - delete afterward
                 # if (gen_dic['star_name']=='WASP76'):
                 #     prof_fit_add=dataload_npz('/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP76b_Saved_data/DIorig_prop/chi2_noplexc/ESPRESSO_'+vis)
-                #     for i_loc in range(len(coord_vis['cen_ph'])):
+                #     for i_loc in range(len(coord_vis_pl['cen_ph'])):
                 #         val_loc = prof_fit_add[i_loc][prop_mode]
                 #         if (prop_mode=='rv_res'):  val_loc*=1e3
-                #         plt.plot(coord_vis['cen_ph'][i_loc],val_loc,markeredgecolor='black',markerfacecolor='none',marker=mark_tr,markersize=3,linestyle='',zorder=10)                                                
+                #         plt.plot(coord_vis_pl['cen_ph'][i_loc],val_loc,markeredgecolor='black',markerfacecolor='none',marker=mark_tr,markersize=3,linestyle='',zorder=10)                                                
                         
 
 
@@ -9524,6 +9527,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
     x_title_dic={ 
         'time':'Time (bjd)',
         'phase':'Orbital phase',
+        'starphase':'Stellar phase',
         'mu':'$\mu$',
         'lat':'Stellar latitude ($^{\circ}$)'   ,
         'lon':'Stellar longitude ($^{\circ}$)'  ,  

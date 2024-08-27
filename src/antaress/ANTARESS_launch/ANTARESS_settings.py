@@ -1683,18 +1683,29 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%% Property, coordinate, model     
-    #    - structure is : inst > vis > prop_coord > mod > [ coefficients ] or 'path'    
+    #    - structure is : inst > vis > prop_coord > mod > [ coefficients ] or 'path' 
+    #                                  prop_c0 > val  
     #    - 'prop_coord' defines which property 'prop' should be corrected as a function of coordinate 'coord', as defined in `glob_fit_dic['DIProp']['mod_prop']`
-    #    - set 'model' to:
+    #      in that case set 'model' to:
     # + 'pol': polynomial, with coefficients set as [c1,c2,..] 
     # + 'sin': sinusoidal, with coefficients set as [amp,per,off]
-    # + 'ramp': ramp, with coefficients set at [lnk,alpha,tau]
-    #      see the model and coefficient definition in `glob_fit_dic['DIProp']['mod_prop']`
-    #      note that the constant level c0 is left undefined : contrast and FWHM models are normalized to their mean, and for RVs the level is controlled by the alignment module and sysvel
-    #    - instead of coefficients you can provide the path to a 'Fit_results' file from the `glob_fit_dic['DIProp']['mod_prop']`, which must then contain the relevant 'mod' for the requested 'prop' and 'coord'  
+    # + 'puls': stellar pulsation model, with coefficients set as [ampHF,phiHF,freqHF,ampLF,phiLF,freqLF,f]
+    # + 'ramp': ramp, with coefficients set at [lnk,alpha,tau,xr]
+    #      see the models and coefficients definition in `glob_fit_dic['DIProp']['mod_prop']`
+    #      instead of coefficients you can provide the path to a 'Fit_results' file from the `glob_fit_dic['DIProp']['mod_prop']`, which must then contain the relevant 'mod' for the requested 'prop' and 'coord'  
+    #    - if 'prop_c0' is left undefined the contrast and FWHM correction are normalized around their mean so that the mean level of the time-series is conserved
+    #      otherwise set 'prop_c0' to c0_new / c0_old, where 'c0_old' is the level derived with `glob_fit_dic['DIProp']['mod_prop']` and 'c0_new' is the desired level of the corrected time-series
+    #      note that setting 'prop_c0' to 1 will naturally set the time-series to the level associated with the correction from `glob_fit_dic['DIProp']['mod_prop']`
+    #      this correction can be useful for the contrast and FWHM when a visit is used to define the out-of-transit master profile of another visit, and their line profile need to be made comparable
+    #      this field is not relevant for RVs: the mean level of the RV time-series is conserved, and can be corrected for in the  alignment module with the 'sysvel' field
     #    - RV correction must be done in the input rest frame, as CCFs are corrected before being aligned
     #      if a FWHM correction is requested you must perform first the RV correction alone (if relevant), then determine and fix the systemic velocity, then perform the FWHM correction  
     detrend_prof_dic['prop']={}    
+
+
+    #%%%%% Reference variables for pulsation model
+    #    - see 'glob_fit_dic['DIProp']['coord_ref']'
+    detrend_prof_dic['coord_ref']={}   
     
             
     #%%%%% SNR orders             
@@ -2066,29 +2077,39 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # mod_prop = { 
     #  prop : { c__ord0__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...}, 
     #           coord__pol__ordN__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...},    
-    #           coord__sin__Y__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...} 
+    #           coord__sin__Y__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...}  
+    #           coord__ramp__Y__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...} 
+    #           coord__puls__Y__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...}
     #           }
     #    - 'prop' defines the measured property to be fitted:
-    # + RV : residuals between disk-integrated RVs and the Keplerian model
+    # + RV : residuals between disk-integrated RVs and the Keplerian model (km/s)
     # + ctrst : disk-integrated line contrast
-    # + FWHM : disk-integrated line FWHM    
+    # + FWHM : disk-integrated line FWHM (km/s)   
     #    - 'coord' defines the coordinate as a function of which the property is modelled:
     # + 'time': absolute time in bjd
+    # + 'starphase': stellar phase
     # + 'phasePlName' : orbital phase for planet 'PlName' 
     #                   this option allows for stellar line variations phased (and possibly induced) by a planet        
     # + 'AM', 'snr', 'snrQ' (for the SNR of orders provided as input to be summed quadratically - useful to combine ESPRESSO slices - rather than being averaged)
     # + 'ha', 'na', 'ca', 's', 'rhk' 
     #    - property can be modelled as a:
     # + 'c__ord0__ISinst_VSvis': constant level c0
-    # + polynomial, defined by coefficients cN = 'coord__pol__ordN__ISinst_VSvis', with N>0
-    # + sinusoidal, defined by its amplitude (Y='amp'), period (Y='per'), and offset (Y='off') in 'coord__sin__X__ISinst_VSvis'
-    #      the same model of different coordinates, or different models of the same coordinates, can be defined and combined:
-    # + contrast and FWHM models are defined as the multiplication of polynomials and sinusoidals
-    #      F(x) = c0*(1 + c1*x + c2*x^2 + ... )*(1+amp*sin((x-off)/per))
+    # + polynomial : pol(x) = c1*x + c2*x^2 + ...
+    #                defined by coefficients cN = 'coord__pol__ordN__ISinst_VSvis', with N>0
+    # + sinusoidal : sine(x) = amp*sin((x-off)/per)
+    #                defined by its amplitude (Y='amp'), period (Y='per'), and offset (Y='off') in 'coord__sin__X__ISinst_VSvis'     
+    # + ramp : ramp(x) = 1 - k*exp( - ((x - xr)/tau)^alpha )  
+    #          defined by its log(amplitude) (Y='lnk'), exponent (Y='alpha'), decay constant (Y='tau'), and offset (Y='xr') in 'coord__ramp__X__ISinst_VSvis'     
+    #          for contrast and FWHM only
+    # + pulsation : puls(x) =  ampHF (1 + ampLF sin( 2pi x freqLF - phiLF) ) sin( 2pi x freqHF(x) - phiHF ), where freqHF(x) = freqHF*(1 + f*sin( 2pi x freqLF - phiLF))  
+    #               defined by its HF amplitude (Y='ampHF'), HF offset (Y='phiHF'), nominal HF frequency (Y='freqHF'), LF amplitude (Y='ampLF'), LF offset (Y='phiLF'), LF frequency (Y='freqLF'), and frequency modulation (Y='f') in 'coord__puls__X__ISinst_VSvis'     
+    #    - the same model of different coordinates, or different models of the same coordinates, can be defined and combined:  
+    # + through multiplication, for contrast and FWHM models :
+    #      F(x) = c0*(1 + pol(x) )*(1+sine(x))*ramp(x)*puls(x)
     #   with c0 in km/s for the FWHM  
-    # + rv is defined as the addition of polynomials and sinusoidals
-    #      F(x) = c0 + c1*x + c2*x^2 + ... + amp*sin((x-off)/per)) 
-    #      with ci and Amp in m/s    
+    # + through addition, for rv models:
+    #      F(x) = c0 + pol(x) + sine(x) + puls(x)
+    #   with ci and Amp in km/s    
     glob_fit_dic['DIProp']['mod_prop']={
         'RV':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
               'time__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},
@@ -2097,6 +2118,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'FWHM':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
                 'time__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},
         }
+    
+    #%%%%% Reference variables for pulsation model
+    #    - because the model is defined as a sine, fit convergence is poor when the coordinates have large values
+    #      for each coordinate used in 'coord__puls__X__ISinst_VSvis', define a reference value so that coord - coord_ref is small
+    #    - we request the user to provide these values so that they remain fixed for various visits (as the phase offset is correlated with this reference)
+    #    - format is : coord_ref : { coord : val }
+    glob_fit_dic['DIProp']['coord_ref']={}    
 
 
     #%%%%% SNR orders             
@@ -2140,6 +2168,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%%% Runs to re-use
     glob_fit_dic['DIProp']['mcmc_reuse']={}
+    
+    
+    #%%%%%% Runs to re-start
+    glob_fit_dic['DIProp']['mcmc_reboot']=''
     
     
     #%%%%%% Walkers 

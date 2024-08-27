@@ -3,12 +3,9 @@
 from copy import deepcopy
 import numpy as np
 import scipy.linalg
-import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import bindensity as bind
-import lmfit
 import os
-from lmfit import Parameters
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz
 from ..ANTARESS_analysis.ANTARESS_ana_comm import init_joined_routines,init_joined_routines_inst,init_joined_routines_vis,init_joined_routines_vis_fit,com_joint_fits,com_joint_postproc
@@ -82,6 +79,7 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
             'coord_obs':{},
             'coord_fit':{},
             'SNRorders':{},
+            'coord_ref':fit_prop_dic['coord_ref']
             })    
         if prop_loc=='RV':fixed_args['prop_fit'] = 'rv_res'
         else:fixed_args['prop_fit'] = prop_loc
@@ -102,6 +100,7 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
                 model_type = []
                 if 'pol' in par:model_type+=['pol']
                 if 'sin' in par:model_type+=['sin']
+                if 'puls' in par:model_type+=['puls']
                 if 'ramp' in par:model_type+=['ramp']
                 inst_vis_coord = par.split('__IS')[1]
                 inst_coord  = inst_vis_coord.split('_VS')[0]
@@ -158,7 +157,7 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
         mod_tab,fit_save['prop_mod'] = fixed_args['mod_func'](p_final,fixed_args)
 
         #Save best-fit properties
-        fit_save.update({'p_final':p_final,'name_prop2input':fixed_args['name_prop2input'],'coeff_ord2name':fixed_args['coeff_ord2name'],'merit':fit_dic['merit'],'SNRorders':fixed_args['SNRorders']})
+        fit_save.update({'p_final':p_final,'name_prop2input':fixed_args['name_prop2input'],'coeff_ord2name':fixed_args['coeff_ord2name'],'merit':fit_dic['merit'],'SNRorders':fixed_args['SNRorders'],'coord_ref':fixed_args['coord_ref']})
         if (plot_dic['prop_DI']!='') or (plot_dic['chi2_fit_DIProp']!=''):
             for key in ['coord_obs','coord_list','coord_fit']:fit_save[key] = fixed_args[key]
             fit_save['coord_mod'] = fixed_args['coord_fit']
@@ -211,11 +210,7 @@ def mod_DIProp(param,args,inst,vis,n_coord):
     """   
 
     #Model property for the visit 
-    #    - the same model of different coordinates, or different models of the same coordinates, can be defined and combined:
-    # + contrast and FWHM models are defined as the multiplication of polynomials and sinusoidals, and possibly a ramp
-    #      F(x) = c0*(1 + c1*x + c2*x^2 + ... )*(1+Amp*sin((x-Phi)/Per))*(1 - k*exp( - ((x - xr)/tau)^alpha) ))
-    # + rv is defined as the addition of polynomials and sinusoidals
-    #      F(x) = c0 + c1*x + c2*x^2 + ... + Amp*sin((x-Phi)/Per))           
+    #    - see description in ANTARESS_settings.py (field 'glob_fit_dic['DIProp']['mod_prop']')      
     mod_prop=param[args['name_prop2input']['c__ord0__IS'+inst+'_VS'+vis]]*np.ones(n_coord)     
     
     #Processing coordinates for current visit
@@ -225,9 +220,12 @@ def mod_DIProp(param,args,inst,vis,n_coord):
         #Processing model associated with coordinate
         for mod in args['coord_list'][inst][vis][coord]:                
             corr_prop = {}
-            
+         
             #Sinusoidal variation 
             if mod=='sin':corr_prop['sin'] = [param[args['name_prop2input'][coord+'__sin__'+corr_val+'__IS'+inst+'_VS'+vis]] for corr_val in ['amp', 'off', 'per'] ]
+            
+            #Pulsation pattern
+            elif mod=='puls':corr_prop['puls'] = [param[args['name_prop2input'][coord+'__puls__'+corr_val+'__IS'+inst+'_VS'+vis]] for corr_val in ['ampHF', 'phiHF', 'freqHF','ampLF', 'phiLF', 'freqLF','f'] ]
             
             #Polynomial variation
             elif mod=='pol':corr_prop['pol']= polycoeff_def(param,args['coeff_ord2name'][inst][vis][coord+'__pol'])[1::]   
@@ -236,8 +234,8 @@ def mod_DIProp(param,args,inst,vis,n_coord):
             elif mod=='ramp':corr_prop['ramp'] = [param[args['name_prop2input'][coord+'__ramp__'+corr_val+'__IS'+inst+'_VS'+vis]] for corr_val in ['lnk',  'alpha' , 'tau' , 'xr' ] ]
             
             #Contribution to model
-            if args['prop_fit']=='RV':mod_prop = detrend_prof_gen_add(  corr_prop, coord_grid, mod_prop)  
-            else:mod_prop = detrend_prof_gen_mul(  corr_prop, coord_grid, mod_prop )             
+            if args['prop_fit']=='rv_res':mod_prop = detrend_prof_gen_add( coord, corr_prop, coord_grid, mod_prop, args)  
+            else:mod_prop = detrend_prof_gen_mul( coord, corr_prop, coord_grid, mod_prop , args )             
 
     return mod_prop
 

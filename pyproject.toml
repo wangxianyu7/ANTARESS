@@ -39,8 +39,8 @@ dependencies = [
   ]
 
 [project.urls]
-Homepage = "https://gitlab.unige.ch/bourrier/ANTARESS"
-Issues = "https://gitlab.unige.ch/bourrier/ANTARESS/-/issues"
+Homepage = "https://gitlab.unige.ch/spice_dune/ANTARESS"
+Issues = "https://gitlab.unige.ch/spice_dune/ANTARESS/-/issues"
 
 [project.scripts]
 antaress = "antaress.ANTARESS_launch.ANTARESS_launcher:ANTARESS_launcher" 

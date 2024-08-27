@@ -1788,10 +1788,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             ##############################################################################
             #%%%%% Residuals profiles
-            if (key_plot=='Intr_prof_res'):
-                if not ((gen_dic['fit_Intr']) or (gen_dic['fit_IntrProf'])): 
-                    if (not gen_dic['fit_Intr']):stop('Activate "gen_dic["fit_Intr"]" to plot "plot_dic["Intr_prof_res"]"')     
-                    if (not gen_dic['fit_IntrProf']):stop('Activate "gen_dic["fit_IntrProf"]" to plot "plot_dic["Intr_prof_res"]"')     
+            if (key_plot=='Intr_prof_res'):pass
+  
                    
    
 
