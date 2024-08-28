@@ -23,7 +23,7 @@ from ..ANTARESS_corrections.ANTARESS_detrend import return_SNR_orders
 ################################################################################################## 
 
 def par_formatting_inst_vis(p_start,fixed_args,inst,vis,line_type):
-    r"""**Parameter formatting: instrument / visit / degree **
+    r"""**Parameter formatting: instrument, visit, degree**
 
     Defines complementary information for parameters with instrument, visit, and/or degree dependence
 

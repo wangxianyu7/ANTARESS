@@ -358,7 +358,7 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
     for isub,iexp in enumerate(iexp_conv):         
         i_in = gen_vis['idx_exp2in'][iexp]
         if i_in ==-1:
-            gen = 'Res'
+            gen ='Res'
             iexp_eff = iexp
         else:
             gen='Intr'

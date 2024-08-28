@@ -2884,7 +2884,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
      
     
     #%%%%% Continuum range
-    data_dic['Intr']['cont_range'] = {}
+    data_dic['Intr']['cont_range'] = deepcopy(data_dic['Res']['cont_range'])
     
     
     #%%%% Calculating/retrieving continuum in each order
