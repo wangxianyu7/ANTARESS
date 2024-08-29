@@ -1,6 +1,8 @@
-import numpy as np
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 from copy import deepcopy
 from pathos.multiprocessing import cpu_count
+import numpy as np
 
 def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic):
     r"""**ANTARESS default settings.**
@@ -26,16 +28,19 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%% Transiting planets
-    #    - indicate names of the transiting planets to be processed
+    #    - indicate names (as defined in ANTARESS_systems) of the transiting planets to be processed
     #    - required to retrieve parameters for the stellar system and light curve
-    #    - name as given in all_systems_params
     #    - for each planet, indicate the instrument and visits in which its transit should be taken into account (visit names are those given through 'data_dir_list')
     #      if the pipeline is runned with no data, indicate the names of the mock dataset created artifially with the pipeline
-    #    - format is 'planet':{'inst':['vis']}
+    #    - if you process multiple visits, consider associating a transiting planet to all of them even if it does not transit so that all datasets can be studied as a function of this planet orbital phase
+    #    - format: 'planet':{'inst':['vis']}
     gen_dic['transit_pl']={}
 
     
-    #%%%%% Transiting spots
+    #%%%%% Visible spots
+    #    - indicate names (defined here) of the visible spots to be processed
+    #    - for each spot, indicate the instrument and visits in which its transit should be taken into account (visit names are those given through 'data_dir_list')
+    #    - format: 'spot':{'inst':['vis']}
     gen_dic['transit_sp']={}     
     
     
@@ -57,13 +62,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - set to False to deactivate
     gen_dic['plots_on'] = True
     
-    
-    #%%%%% Using non-interactive backend 
-    gen_dic['non_int_back'] = False
-    
-    
+          
     #%%%% Grid run
-    #    - running ANTARESS with nominal settings properties or looping over a grid for some of these properties
+    #    - if set to True, ANTARESS is ran over a grid of values for the settings defined in ANTARESS_gridrun (using the nominal settings properties for other fields)
     gen_dic['grid_run'] = {}
      
 
@@ -92,8 +93,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Data uncertainties
     
     #%%%%% Using covariance matrix
-    #    - set to True to propagate full covariance matrix and use it in fits (otherwise variance alone is used)
-    #    - do not activate when using CCF from input
+    #    - set to True to propagate full covariance matrix and use it in fits (default for spectra)
+    #      otherwise variance alone is used (imposed for CCFs)
     gen_dic['use_cov']=True
     
     
@@ -113,6 +114,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - leave empty to prevent scaling
     gen_dic['g_err']={}
     
+
+
+
 
     #%%%% CCF calculation
     
@@ -172,12 +176,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%% Resampling    
     
-
     #%%%%% Resampling mode
     #    - linear interpolation ('linear') is faster than cubic interpolation ('cubic') but can introduce spurious features at the location of lines, blurred differently when resampled over different spectral tables
     # gen_dic['resamp_mode']='linear'
     gen_dic['resamp_mode']='cubic'      
     
+
     #%%%%% Common spectral table
     #    - if set to True, data will always be resampled on the same table, specific to a given visit
     #      otherwise resampling operations will be avoided whenever possible, to prevent blurring and loss of resolution
@@ -198,6 +202,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - if set to False: data will be retrieved, if present
     #    - if set to True: selection is based upon each module option
     gen_dic['calc_all'] = True  
+
 
     #%%%%% Workflow sequence
     #    - set to None to activate/deactivate manually each module of the workflow
@@ -417,12 +422,14 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Multi-threading
     mock_dic['nthreads'] = int(0.8*cpu_count())       
     
+
     #%%%%% Unthreaded operations
     #    - all operations are multi-threaded by default, but overheads of sharing data between threads may counterbalance the benefits of threading the model
     #    - select here which operations not to thread:
     # + 'prof_grid'
     mock_dic['unthreaded_op'] = []    
     
+
     #%%%% Defining artificial visits
     #    - exposures are defined for each instrument/visit
     #    - exposures can be defined
@@ -988,9 +995,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     ##################################################################################################
     
     #%%%% Activating module
-    #    - calculated by default for the analysis and alignement of the intrinsic local stellar profiles, or the extraction and analysis of the atmospheric profiles
+    #    - calculated by default if transiting planets are attributed to a visit, and user has requested analysis and alignement of intrinsic local stellar profiles, or extraction and analysis of the atmospheric profiles
+    #                            if spots are attributed to a visit
     #      can be set to True to calculate nonetheless
-    gen_dic['theoPlOcc'] = True 
+    gen_dic['theoPlOcc'] = False 
         
     
     #%%%% Calculating/retrieving
@@ -1035,7 +1043,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + mu grid: define array 'mu_grid' of mu coordinates
     #            the resolution in mu has little impact on computing time
     # + linelist: indicate the path 'linelist' of the linelist generated from the VALD database
-    #             connect into VALD with email address: http://vald.astro.uu.se/ and define:
+    #             connect into VALD at http://vald.astro.uu.se/ with your registered email address (you will need to ask for an account using their Contact form)
+    #             choose 'Extract Stellar', and define:
     #    > start and end wavelength (A, vacuum): should be wide enough to contain all transitions in the simulated band (it can be larger and is automatically cropped to the simulated spectral range)
     #    > line detection threshold: typically set to 0.1 
     #    > microturbulence (km/s): must be consistent with stellar value
@@ -1059,7 +1068,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         }  
     
     
-    #%%%% Planet
+    #%%%% Planets
     
     #%%%%% Discretization        
     #    - number of subcells along a planet diameter to define the grid of subcells discretizing the stellar regions it occults 
@@ -1067,7 +1076,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - beware to use a fine enough grid, depending on the system and dataset
     #    - must be an odd number
     #    - set to default value if undefined
-    #    - format is {'planet':value}
+    #    - format: {'planet':value}
     theo_dic['nsub_Dpl']={} 
     
     
@@ -1076,7 +1085,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - distance from start to end of exposure will be sampled by RpRs/n_oversamp
     #    - set to 0 or leave undefined to prevent oversampling, but beware that it must be defined to bin profiles over other dimensions than phase
     #    - oversampling of the flux in the flux scaling module is controlled independently
-    #    - format is {'planet':value}
+    #    - format: {'planet':value}
     theo_dic['n_oversamp']={}
     
     
@@ -1099,19 +1108,23 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - set to None for no oversampling
     theo_dic['rv_osamp_line_mod']=None
     
-    #%%%% Spot
+    #%%%% Spots
 
-    #%%%%% Nominal spot properties
-    #    - spot properties used to calculate the broadband flux scaling and determine properties of the local regions
-    #    - structure should follow the same as mock_dic['spots_prop']
+    #%%%%% Nominal properties
+    #    - same as mock_dic['spots_prop']
+    #    - required for the calculation of nominal spot coordinates used throughout the pipeline
     theo_dic['spots_prop']={}
 
     
-    #%%%%% Discretization         
-    theo_dic['nsub_Dspot']={} 
+    #%%%%% Discretization     
+    #    - format is {spot : val}} 
+    # where each simulated spot must be associated with a unique name
+    theo_dic['nsub_Dsp']={} 
 
 
     #%%%%% Exposure oversampling
+    #    - format is {spot : val}} 
+    # where each simulated spot must be associated with a unique name
     theo_dic['n_oversamp_spot']={}  
 
 
@@ -1216,21 +1229,21 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Spot discretization
     if gen_dic['star_name']=='AUMic':
-        # theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
-        theo_dic['nsub_Dspot']={'spot1':33.} #-- for fitting purposes
-        # theo_dic['nsub_Dspot']={'spot1':51.}
+        # theo_dic['nsub_Dsp']={'spot1':50., 'spot2':50.}
+        theo_dic['nsub_Dsp']={'spot1':33.} #-- for fitting purposes
+        # theo_dic['nsub_Dsp']={'spot1':51.}
 
     if gen_dic['star_name']=='AU_Mic':
-        theo_dic['nsub_Dspot']={'spot1':33., 'spot2':33.}
+        theo_dic['nsub_Dsp']={'spot1':33., 'spot2':33.}
 
     if gen_dic['star_name']=='fakeAU_Mic':
-        theo_dic['nsub_Dspot']={'spot1':33., 'spot2':33.}
+        theo_dic['nsub_Dsp']={'spot1':33., 'spot2':33.}
 
     if gen_dic['star_name']=='V1298tau':
-        theo_dic['nsub_Dspot']={'spot1':50., 'spot2':50.}
+        theo_dic['nsub_Dsp']={'spot1':50., 'spot2':50.}
     
     if gen_dic['star_name']=='Capricorn':
-        theo_dic['nsub_Dspot']={'spot1':33.} #-- for fitting purposes
+        theo_dic['nsub_Dsp']={'spot1':33.} #-- for fitting purposes
 
 
     #Exposure discretization
@@ -1402,13 +1415,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - applied over each order independently
     #    - if set to a larger value than an order width, calibration will not be fitted but set to the measured value over each order
     #      binw should be large enough to smoot out sharp variations in the model calibration profile
-    #    - format is : value
+    #    - format: : value
     gen_dic['gcal_binw'] = 0.5
     
     
     #%%%%% Temporal bin size
     #    - with low-SNR data it might be necessary to group exposures to perform the calibration estimates
-    #    - format is : value
+    #    - format : value
     gen_dic['gcal_binN'] = 1    
     
     
@@ -1418,7 +1431,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - set the order of the polynomials (between 2 and 4)
     #    - beware that this calibration model will propagate into the weighing and the photoelectron rescaling, and thus sharp variations should be avoided 
     #    - if input data are CCFs or 'gcal_binw' is larger than the spectral order width, calibration is set to a constant value  
-    #    - format is : {prop : value}    
+    #    - format : {prop : value}    
     gen_dic['gcal_edges']={'blue':0.3,'red':0.3}    
     gen_dic['gcal_deg']={'blue':4,'mid':2,'red':4}
     
@@ -1427,7 +1440,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     #%%%%% Threshold
     #    - calibration values above the global threshold, or outliers in the residuals from a preliminary fit, are sigma-clipped and not fitted
-    #    - format is : {inst : {prop : value} }   
+    #    - format : {inst : {prop : value} }   
     gen_dic['gcal_thresh']={}
     
     
@@ -1435,7 +1448,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - in A
     #    - outliers are automatically excluded before fitting the final model
     #      we prevent this exclusion over the edges of the orders, where sharp variations are not well captured and can be attributed to outliers
-    #    - format is : {inst : [x1,x2] }  
+    #    - format : {inst : [x1,x2] }  
     gen_dic['gcal_nooutedge']={}
     
     
@@ -1517,7 +1530,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% Threshold 
     #    - flux values where telluric are below this threshold (between 0 and 1) are set to nan
-    gen_dic['tell_thresh_corr'] = 0.1      
+    gen_dic['tell_thresh_corr'] = 0.9      
     
     
     #%%%%% Exposures to be corrected
@@ -1683,6 +1696,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%%% Spline smoothing factor
+    #    - 'Fbal_smooth' applies to the ratio between indivisual exposure and the visit-specific references
+    #      'Fbal_smooth_vis' applies to the ratio between visit-specific references and the global reference
     #    - default = 1e-4 (increase to smooth)
     gen_dic['Fbal_smooth']={}
     gen_dic['Fbal_smooth_vis']={}   
@@ -1932,6 +1947,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%% Guide shift reset
     #    - disable automatic reset of wiggle properties following guide star shift, for the chosen list of visits
+    #    - relevant with analytical model only
     gen_dic['wig_no_guidchange'] = []   
     
     
@@ -1967,7 +1983,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     gen_dic['wig_exp_mast'] = {}
         
         
-    #%%%% Fit settings        
+    #%%%% Analysis settings        
         
     #%%%%% Exposures to be fitted
     #    - instrument > visit
@@ -2006,6 +2022,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Analysis
     
     #%%%%% Screening 
+    #    - use to identify which ranges to include in the analysis, and which wiggle components are present
     #    - use 'plot_spec' to identify which ranges / orders are of poor quality and need to be excluded from the fit and/or the correction
     #      use as much of the ESPRESSO range as possible, but exclude the bluest orders where the noise is much larger than the wiggles
     #    - use 'plot_hist' to plot the periodogram from all exposures together, to identify the number and approximate frequency of wiggle components 
@@ -2076,7 +2093,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         }    
     
     
-    #%%%%% Step 2: Chromatic analysis
+    #%%%%%% Step 2: Chromatic analysis
+    #    - to fit the sampled frequency and amplitude with polynomials of nu, to evaluate their degree and chromatic coefficients
     #    - fitting the sampled frequency and amplitude with polynomials of nu
     #    - use this step to determine 'wig_deg_Freq' and 'wig_deg_Amp' for each component
     #    - 'comp_ids': component properties to analyze, among those sampled in 'wig_exp_samp'
@@ -2308,7 +2326,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     ##################################################################################################
-    #%%% Module: detrending disk-integrated profiles
+    #%%% Module: disk-integrated profiles detrending
+    #    - use the 'disk-integrated stellar properties fit' module to derive coefficients for the detrending models. 
     ##################################################################################################
     
     #%%%% Activating
@@ -2343,22 +2362,18 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     detrend_prof_dic['corr_trend'] = False
     
     
-    #%%%%% Settings     
-    #    - structure is : inst > vis > correction > coefficients
-    #    - define correction as 'prop_var': 
-    # with 'prop' among: 'RV', 'ctrst', 'FWHM' 
-    #      'var' among: 'phase', 'snr', 'AM', 'ha', 'na', 'ca', 's', 'rhk'
-    #      use '_snrQ' for the SNR of orders provided as input to be summed quadratically (useful to combine ESPRESSO slices) rather than being averaged
-    #    - contrast and FWHM corrections are defined as
-    # F(x) = a0*(1 + c1*x + c2*x^2 + ... )*(1+A*sin((x-xref)/P))
-    #    - RV correction is defined as
-    # F(x) = a0 + a1*x + a2*x^2 + ... + A*sin((x-xref)/P)) 
-    #      with ai and A in m/s
-    #    - the polynomial coefficients are used if defined via 'pol'
-    #      the sinusoidal coefficients are used if defined via 'sin'
-    #    - the constant level a0 is left undefined :  for contrast and FWHM models are normalized to their mean, and for RVs the level is controlled by the alignment module and sysvel
+    #%%%%% Property, coordinate, model     
+    #    - structure is : inst > vis > prop_coord > mod > [ coefficients ] or 'path'    
+    #    - 'prop_coord' defines which property 'prop' should be corrected as a function of coordinate 'coord', as defined in `glob_fit_dic['DIProp']['mod_prop']`
+    #    - set 'model' to:
+    # + 'pol': polynomial, with coefficients set as [c1,c2,..] 
+    # + 'sin': sinusoidal, with coefficients set as [amp,per,off]
+    # + 'ramp': ramp, with coefficients set at [lnk,alpha,tau]
+    #      see the model and coefficient definition in `glob_fit_dic['DIProp']['mod_prop']`
+    #      note that the constant level c0 is left undefined : contrast and FWHM models are normalized to their mean, and for RVs the level is controlled by the alignment module and sysvel
+    #    - instead of coefficients you can provide the path to a 'Fit_results' file from the `glob_fit_dic['DIProp']['mod_prop']`, which must then contain the relevant 'mod' for the requested 'prop' and 'coord'  
     #    - RV correction must be done in the input rest frame, as CCFs are corrected before being aligned
-    #      if a FWHM correction is requested you must perform first the RV correction to determine and fix the systemic velocity  
+    #      if a FWHM correction is requested you must perform first the RV correction alone (if relevant), then determine and fix the systemic velocity, then perform the FWHM correction  
     detrend_prof_dic['prop']={}    
     
             
@@ -2399,7 +2414,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     ##################################################################################################
-    #%%% Module: analyzing disk-integrated profiles
+    #%%% Module: disk-integrated profiles analysis
     #    - can be applied to:
     # + 'fit_DI': profiles in their input rest frame, original exposures, for all formats
     # + 'fit_DI_1D': profiles in their input or star (if aligned) rest frame, original exposures, converted from 2D->1D 
@@ -2463,7 +2478,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + this method only works if a sufficient portion of the stellar line remains defined after exclusion, ie if the DI line is much larger than the intrinsic one
     #    - the exclusion of occulted stellar lines is only relevant for disk-integrated profiles, and is not proposed for their binning because in-transit profiles will never be equivalent to out-of-transit ones
     #    - the selected 'occ_range' range is centered on the brightness-averaged RV of each occulted stellar region, calculated analytically with the properties set for the star and planet
-    #      excluded pixels must then fall within the shifted occ_range and line_range, wich defines the maximum extension of the disk-integrated stellar line
+    #      excluded pixels must then fall within the shifted occ_range and line_range, which defines the maximum extension of the disk-integrated stellar line
+    #      format for both ranges is range = {inst : [min_rv,max_rv]}
     #    - only applied to original, unbinned visits
     #    - define [rv1,rv2]] in the star rest frame
     data_dic['DI']['occ_range']={} 
@@ -2493,13 +2509,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%% Spectral range(s) to be fitted
-    #    - format is {inst : { vis : { [ [x1,x2] , [x3,x4] , [x5,x6] , ... ] } } } in the input data frame
+    #    - format: {inst : { vis : { [ [x1,x2] , [x3,x4] , [x5,x6] , ... ] } } } in the input data frame
     #      ranges will be automatically shifted to the star rest frame when relevant
     data_dic['DI']['fit_range']={}
     
     
     #%%%% Direct measurements
-    #    - format is {prop_name:{options}}
+    #    - format: {prop_name:{options}}
     #    - possibilities:
     # + equivalent width: 'EW' : {'rv_range':[rv1,rv2] single range over which the integral is performed}                         
     # + bissector: 'biss' : {'source':'obs' or 'mod',
@@ -2580,11 +2596,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - 'chi2', 'mcmc', 'fixed'
     data_dic['DI']['fit_mode']='chi2'  
     
-    #put fitting range and continuum range
+
     #%%%%% Printing fits results
     data_dic['DI']['verbose']= False
     data_dic['DI']['print_par'] = True
     
+
     #%%%%% Monitor MCMC
     data_dic['DI']['progress']= True
 
@@ -2623,11 +2640,20 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     #%%%%% MCMC settings
     
-    #%%%%%% Calculating/retrieving
-    #    - set to 'reuse' if gen_dic['calc_fit_intr']=True, allow changing nburn and error definitions without running the mcmc again
+    #%%%%%% Run mode
+    #    - set to
+    # + 'use': runs MCMC  
+    # + 'reuse' (with gen_dic['calc_fit_intr']=True): load MCMC results, allow changing nburn and error definitions without running the mcmc again
     data_dic['DI']['mcmc_run_mode']='use'
     
     
+    #%%%%%% Runs to re-use
+    #    - list of mcmc runs to reuse
+    #    - if 'reuse' is requested, leave empty to automatically retrieve the mcmc run available in the default directory
+    #  or set the list of mcmc runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
+    data_dic['DI']['mcmc_reuse']={}
+    
+
     #%%%%%% Walkers
     #    - settings per instrument & visit
     data_dic['DI']['mcmc_set']={}
@@ -2646,7 +2672,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #%%%%%% Derived errors
-    #    - 'quant' or 'HDI'
+    #    - 'quant' (quantiles) or 'HDI' (highest density intervals)
     #    - if 'HDI' is selected:
     # + by default a smoothed density profile is used to define HDI intervals
     # + multiple HDI intervals can be avoided by defined the density profile as a histogram (by setting its resolution 'HDI_dbins') or by defining the bandwith factor of the smoothed profile ('HDI_bw')
@@ -2880,7 +2906,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     ##################################################################################################       
-    #%%% Module: fitting disk-integrated stellar properties
+    #%%% Module: disk-integrated stellar properties fit
     #    - fitting single stellar disk-integrated property with a common model for all instruments/visits, or independently for each visit 
     #    - with properties derived from individual disk-integrated profiles
     #    - this module is used to derive the detrending models to be applied to disk-integrated profiles
@@ -2894,6 +2920,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     glob_fit_dic['DIProp']['nthreads'] = int(0.8*cpu_count())
     
     
+    #%%%%% Unthreaded operations
+    #    - all operations are multi-threaded by default, but overheads of sharing data between threads may counterbalance the benefits of threading the model
+    #    - select here which operations not to thread:
+    # + 'emcee'
+    glob_fit_dic['DIProp']['unthreaded_op'] = []  
+    
+
     #%%%% Fitted data
     
     #%%%%% Exposures to be fitted
@@ -2905,38 +2938,50 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #%%%% Fitted properties
-    #    - format is 
-    # mod_prop = { prop_main :{ prop_name : {'vary': bool ,'guess': x,'bd':[x_low,x_high]} } }
-    #      where 'prop_main' defines which variables are fitted
-    #    - typical variables:
-    # + 'rv_res': residuals between disk-integrated RVs and the Keplerian model
-    # + 'ctrst', 'FWHM': disk-integrated line properties
-    #    - properties can be fitted with polynomials, sinusoidals, or their combination
-    #    - structure is different from data_dic['DI']['mod_prop'], where properties are fitted independently for each instrument and visit
-    #      the names of properties varying as a function of 'dim_fit' and/or between visits must be defined as 'prop_name = prop_ordi__ISinst_VSvis'  
-    # + 'i' is the polynomial degree
-    # + 'inst' is the name of the instrument, which should be set to '_' for the property to be common to all instruments and their visits
-    # + 'vis' is the name of the visit, which should be set to '_' for the property to be common to all visits of this instrument 
-    #    - the names of properties specific to a given planet 'PL' must be defined as 'prop_name = prop_ordi__plPL'  
-    glob_fit_dic['DIProp']['mod_prop']={'rv':{}}
     
+    #%%%%% Property, coordinate, model
+    #    - format is:
+    # mod_prop = { 
+    #  prop : { c__ord0__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...}, 
+    #           coord__pol__ordN__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...},    
+    #           coord__sin__Y__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...} 
+    #           }
+    #    - 'prop' defines the measured property to be fitted:
+    # + RV : residuals between disk-integrated RVs and the Keplerian model
+    # + ctrst : disk-integrated line contrast
+    # + FWHM : disk-integrated line FWHM    
+    #    - 'coord' defines the coordinate as a function of which the property is modelled:
+    # + 'time': absolute time in bjd
+    # + 'phasePlName' : orbital phase for planet 'PlName' 
+    #                   this option allows for stellar line variations phased (and possibly induced) by a planet        
+    # + 'AM', 'snr', 'snrQ' (for the SNR of orders provided as input to be summed quadratically - useful to combine ESPRESSO slices - rather than being averaged)
+    # + 'ha', 'na', 'ca', 's', 'rhk' 
+    #    - property can be modelled as a:
+    # + 'c__ord0__ISinst_VSvis': constant level c0
+    # + polynomial, defined by coefficients cN = 'coord__pol__ordN__ISinst_VSvis', with N>0
+    # + sinusoidal, defined by its amplitude (Y='amp'), period (Y='per'), and offset (Y='off') in 'coord__sin__X__ISinst_VSvis'
+    #      the same model of different coordinates, or different models of the same coordinates, can be defined and combined:
+    # + contrast and FWHM models are defined as the multiplication of polynomials and sinusoidals
+    #      F(x) = c0*(1 + c1*x + c2*x^2 + ... )*(1+amp*sin((x-off)/per))
+    #   with c0 in km/s for the FWHM  
+    # + rv is defined as the addition of polynomials and sinusoidals
+    #      F(x) = c0 + c1*x + c2*x^2 + ... + amp*sin((x-off)/per)) 
+    #      with ci and Amp in m/s  
+    glob_fit_dic['DIProp']['mod_prop']={
+        'RV':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
+              'time__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},
+        'ctrst':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
+                 'snr__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},
+        'FWHM':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
+                'time__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},
+        }    
     
-    #%%%% Line property fit
-    
-    #%%%%% Coordinate
-    #    - the line properties will be fitted as a function of this coordinate
-    # +'mu' angle       
-    # +'xp_abs': absolute distance from projected orbital normal in the sky plane
-    # +'r_proj': distance from star center projected in the sky plane      
-    # +'abs_y_st' : sky-projected distance parallel to spin axis, absolute value   
-    # +'y_st2' : sky-projected distance parallel to spin axis, squared
-    glob_fit_dic['DIProp']['dim_fit']='r_proj'
-      
-    
-    #%%%%% Variation
-    #    - fit line property as absolute ('abs') or modulated ('modul') polynomial
-    glob_fit_dic['DIProp']['pol_mode']='abs'     
 
+    #%%%%% SNR orders             
+    #    - indexes of orders to be used to define the SNR, for corrections of correlations with snr
+    #    - order indexes are relative to original instrumental orders
+    glob_fit_dic['DIProp']['SNRorders']={}   
+        
     
     #%%%% Fit settings
     
@@ -2966,7 +3011,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% MCMC settings
     
-    #%%%%%% Calculating/retrieving
+    #%%%%%% Run mode
     #    - see data_dic['DI']['mcmc_run_mode']
     glob_fit_dic['DIProp']['mcmc_run_mode']='use'
     
@@ -3031,7 +3076,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                                 
 
     ##################################################################################################
-    #%%% Module: aligning disk-integrated profiles         
+    #%%% Module: disk-integrated profiles alignment         
     ##################################################################################################
     
     #%%%% Activating
@@ -3158,8 +3203,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #         'mode':'ana',        
     #         'coord_line':'mu',
     #         'func_prof_name': {'HARPN' : 'gauss'},             
-    #         'mod_prop':{'ctrst_ord0__ISHARPN_VSmock_vis' : 0.7,
-    #                     'FWHM_ord0__ISHARPN_VSmock_vis'  : 4,
+    #         'mod_prop':{'ctrst__ord0__ISHARPN_VSmock_vis' : 0.7,
+    #                     'FWHM__ord0__ISHARPN_VSmock_vis'  : 4,
     #                     }   ,   
     #         'pol_mode' : 'abs'
     #     }
@@ -3245,10 +3290,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #      otherwise GD will be estimated based on a blackbody flux integrated between GD_min and GD_max, at the resolution GD_dw
     data_dic['DI']['system_prop']={}
     
+
     #%%%% Spot intensity settings
     #    - same format as 'system_prop'
     data_dic['DI']['spots_prop']={}
     
+
     #%%%% Transit light curve model
     #    - there are several possibilities to define the light curves, specific to each instrument and visit, via 'transit_prop':inst:vis
     # > Imported : {'mode':'imp','path':path}     
@@ -3536,7 +3583,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     ##################################################################################################
-    #%%% Module: binning disk-integrated profiles
+    #%%% Module: disk-integrated profiles binning
     #    - for analysis purpose (original profiles are not replaced)
     #    - profiles should be aligned in the star rest frame before binning, via gen_dic['align_DI']
     #    - profiles should also be comparable when binned, which means that broadband scaling needs to be applied
@@ -3568,6 +3615,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%% Binning dimension
     #    - possibilities
     # + 'phase': profiles are binned over phase    
+    #            this is not possible when binning multiple visits, if different planets are transiting (use the 'masterDI' option). In that case the 
+    #            phase constraints are ignored and all out-of-transit exposures (default) or the selected ones are used
     #    - beware to use the alignement module to calculate binned profiles in the star rest frame
     data_dic['DI']['dim_bin']='phase' 
     
@@ -3815,13 +3864,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     
     ##################################################################################################
-    #%% Residual and intrinsic profiles
+    #%% Differential and intrinsic profiles
     ##################################################################################################  
     
     
     
     ##################################################################################################
-    #%%% Module: extracting differential profiles
+    #%%% Module: differential profiles extraction
     #    - potentially affected by the planetary atmosphere
     #    - the master for the unocculted star is computed over phase without using specific windows, using all selected exposures in full
     #      out-of-transit exposures are used by default, potentially over several visits
@@ -3961,8 +4010,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     
     ##################################################################################################
-    #%%% Module: extracting intrinsic profiles
+    #%%% Module: intrinsic profiles extraction
     #    - derived from the local profiles (in-transit), reset to the same broadband flux level, with planetary contamination excluded 
+    #    - if the scaling light curve correctly accounts for spots, then their contribution is propagated in the broadband flux scaling and intrinsic profiles 
+    # from spotted regions occulted by a planet will still be scaled to the common continuum of the series
     ##################################################################################################    
     
     #%%%% Calculating
@@ -3977,8 +4028,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     data_dic['Intr']['cont_range'] = {}
     
     
-    #%%%% Calculating/retrieving continuum 
-    #    - concerns continuum measurement and correction
+    #%%%% Calculating/retrieving continuum in each order
+    #    - used for continuum correction and for plots
     data_dic['Intr']['calc_cont'] = True
     
     
@@ -4093,7 +4144,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     ##################################################################################################
-    #%%% Module: PCA of out-of-transit differential profiles
+    #%%% Module: out-of-transit differential profiles PCA
     #    - can be applied to data in CCF format or to spectral data in a given order
     #    - use this module to derive PC and match their combination to differential and intrinsic profiles in the fit module
     #      correction is then applied through the CCF correction module
@@ -4172,7 +4223,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     ##################################################################################################
-    #%%% Module: aligning intrinsic profiles
+    #%%% Module: intrinsic profiles alignment
     #    - aligned in common frame
     #    - every analysis afterwards will be performed on those profiles
     ##################################################################################################  
@@ -4277,7 +4328,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     ##################################################################################################
-    #%%% Module: binning intrinsic profiles
+    #%%% Module: intrinsic profiles binning
     #    - for analysis purpose (original profiles are not replaced)
     ##################################################################################################
     
@@ -4392,7 +4443,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     
     ##################################################################################################
-    #%%% Module: analyzing intrinsic profiles
+    #%%% Module: intrinsic profiles analysis
     #    - can be applied to:
     # + 'fit_Intr': profiles in the star rest frame, original exposures, for all formats
     # + 'fit_Intr_1D': profiles in the star or surface (if aligned) rest frame, original exposures, converted from 2D->1D 
@@ -4538,7 +4589,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% MCMC settings
     
-    #%%%%%% Calculating/retrieving
+    #%%%%%% Run mode
     #    - see data_dic['DI']['mcmc_run_mode']
     data_dic['Intr']['mcmc_run_mode']='use'
     
@@ -4671,7 +4722,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
         
     ##################################################################################################       
-    #%%% Module: fitting planet-occulted stellar properties
+    #%%% Module: planet-occulted stellar properties fit
     #    - fitting single stellar surface property from planet-occulted regions with a common model for all instruments/visits 
     #    - with properties derived from individual local profiles
     #    - this module can be used to estimate the surface RV model and analytical laws describing the intrinsic line properties
@@ -4691,6 +4742,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + 'emcee'
     glob_fit_dic['IntrProp']['unthreaded_op'] = []
 
+
     #%%%% Fitted data
     
     #%%%%% Exposures to be fitted
@@ -4702,14 +4754,17 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%% Fitted properties
-    #    - format: 
-    # mod_prop = { prop_main :{ prop_name : {'vary': bool ,'guess': x,'bd':[x_low,x_high]} } }
-    #      where 'prop_main' defines which variables are fitted
+    
+    #%%%%% Properties and model
+    #    - format is:
+    # mod_prop = { prop_main : { prop_name : {'vary': bool ,'guess': x,'bd':[x_low,x_high]} } }
+    #      where 'prop_main' defines the measured variable to be fitted
+    #            'prop_name' defines the properties of the model describing 'prop_main'
     #    - typical variables:
     # + 'rv': fitted using surface RV model
     # + 'ctrst', 'FWHM': fitted using polynomial models
     #    - structure is different from data_dic['DI']['mod_prop'], where properties are fitted independently for each instrument and visit
-    #      the names of properties varying as polynomials of 'dim_fit' and/or between visits must be defined as 'prop_name = prop_ordi__ISinst_VSvis'  
+    #      the names of properties varying as a function of 'coord_fit' and/or between visits must be defined as 'prop_name = prop__ordi__ISinst_VSvis'  
     # + 'i' is the polynomial degree
     # + 'inst' is the name of the instrument, which should be set to '_' for the property to be common to all instruments and their visits
     # + 'vis' is the name of the visit, which should be set to '_' for the property to be common to all visits of this instrument 
@@ -4720,17 +4775,15 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + Therefore, the user must specify values for these properties if they wish to fix them to values which differ from the base ones provided in the systems file.
     glob_fit_dic['IntrProp']['mod_prop']={'rv':{}}
     
-    
-    #%%%% Line property fit
-    
+        
     #%%%%% Coordinate
-    #    - the line properties will be fitted as a function of this coordinate
+    #    - the model property is defined as a function of this coordinate
     # +'mu' angle       
     # +'xp_abs': absolute distance from projected orbital normal in the sky plane
     # +'r_proj': distance from star center projected in the sky plane      
     # +'abs_y_st' : sky-projected distance parallel to spin axis, absolute value   
     # +'y_st2' : sky-projected distance parallel to spin axis, squared
-    glob_fit_dic['IntrProp']['dim_fit']='r_proj'
+    glob_fit_dic['IntrProp']['coord_fit']={'rv':'r_proj'}
       
     
     #%%%%% Variation
@@ -4771,7 +4824,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #                 warning: it is better to fit directly for 'Peq', 'cosistar', and 'Rstar'
     # + 'istar_Peq_vsini' : derive the stellar inclination from user-provided measurements of 'Rstar','Peq', and 'vsini'
     # + 'Peq_veq' : adds 'Peq' using the fitted 'veq' and a user-provided measurement of 'Rstar'
-    # + 'Peq_vsini' : adds 'Peq' using the fitted 'vsini' and user-provided measurements for 'Rstar' and 'istar' 
+    # + 'Peq_veq_spots' : adds 'Peq_spots' using the fitted 'veq_spots' and a user-provided measurement of 'Rstar'
+    # + 'Peq_vsini' : adds 'Peq' using the fitted 'vsini' and user-provided measurements for 'Rstar' and 'istar'
+    # + 'fold_Tc' : folds the spot crossing time Tc[BJD] with respect to the fitted/fixed 'veq'/'veq_spots' or a user-provided value
     # + 'psi' : adds 3D spin-orbit angle for all planets using the fitted 'lambda', and fitted or user-provided measurements for 'istar' and 'ip_plNAME'
     #           set 'config = True' (default) to add the Northern and Southern Psi values, otherwise only the combined distribution is output
     # + 'psi_lambda' : adds 3D spin-orbit angle using user-provided measurements of 'lambda', and fitted or user-provided measurements for 'istar' and 'ip'
@@ -4796,7 +4851,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% MCMC settings
     
-    #%%%%%% Calculating/retrieving
+    #%%%%%% Run mode
     #    - see data_dic['DI']['mcmc_run_mode']
     glob_fit_dic['IntrProp']['mcmc_run_mode']='use'
     
@@ -4817,6 +4872,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - define conditions within routine
     glob_fit_dic['IntrProp']['exclu_walk']= False       
     
+
     #%%%%%% Automatic exclusion of outlying chains
     #    - set to None, or exclusion threshold
     glob_fit_dic['IntrProp']['exclu_walk_autom']= None  
@@ -4860,11 +4916,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
         
     ##################################################################################################       
-    #%%% Module: fitting joined differential profiles    
+    #%%% Module: joined differential profiles fit    
     #    - fitting joined differential profiles from combined (unbinned) instruments and visits 
     #    - structure is similar to the joined intrinsic profiles fit
     #    - fits are performed on all in-transit and out-transit exposures
-    #    - allows including spot properties (latitude, size, Tcenter, flux level) in the fitted properties
+    #    - allows including spot properties (latitude, size, Tc_sp, flux level) in the fitted properties
     ##################################################################################################     
 
     #%%%% Activating 
@@ -4884,6 +4940,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + 'prof_grid'
     glob_fit_dic['ResProf']['unthreaded_op'] = []
     
+
     #%%%% Fitted data
     
     #%%%%% Exposures to be fitted
@@ -4893,18 +4950,22 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #      all other mentions of the visit (eg in parameter names) can still refer to the original visit name
     glob_fit_dic['ResProf']['idx_in_fit']={}
     
+
     #%%%% Master out data
 
     #%%%%% Exposures to be used in the calculation of the master-out
     glob_fit_dic['ResProf']['idx_in_master_out']={}
 
+
     #%%%%% Common table on which we want to define the master-out
     #     - Define the borders and the number of points of the table (e.g. [low_end, high_end, num_pts].
     glob_fit_dic['ResProf']['master_out_tab']=[]
 
+
     #%%%%% Reference planet
     #     - Choosing which planet to use as the reference
     glob_fit_dic['ResProf']['ref_pl']={}
+
 
     #%%%%% Trimming
     glob_fit_dic['ResProf']['trim_range'] = {}
@@ -4940,7 +5001,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Analytical profile coordinate
     #    - fit coordinate for the line properties of analytical profiles
     #    - see possibilities in gen_dic['fit_IntrProp']
-    glob_fit_dic['ResProf']['dim_fit']='mu'
+    glob_fit_dic['ResProf']['coord_fit']='r_proj'
     
     
     #%%%%% Analytical profile variation
@@ -4952,10 +5013,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - structure is the same as glob_fit_dic['IntrProp']['mod_prop']
     #    - intrinsic properties define the lines before instrumental convolution, which can then be applied specifically to each instrument  
     glob_fit_dic['ResProf']['mod_prop']={}
-                  
+      
+
     #%%%%% PC noise model
     #    - TBD 
     glob_fit_dic['ResProf']['PC_model']={} 
+
 
     #%%%%% Optimization levels 
     #    - relevant when local line profiles are calculated in each cell of the stellar grid (theo_dic['precision'] = 'high')
@@ -4968,6 +5031,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # Additionally, we optimize performance by representing the grid of profiles as an array rather than a list.
     glob_fit_dic['ResProf']['Opt_Lvl']=0
     
+
     #%%%% Fit settings 
         
     #%%%%% Fitting mode
@@ -4979,9 +5043,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     glob_fit_dic['ResProf']['verbose']= False
     glob_fit_dic['ResProf']['print_par'] = True
     
+
     #%%%%% Priors on variable properties
     #    - see gen_dic['fit_DI'] for details
     glob_fit_dic['ResProf']['priors']={}
+
 
     #%%%%% Derived properties
     #    - each field calls a specific function (see routine for more details)
@@ -4990,14 +5056,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% MCMC settings
     
-    #%%%%%% Calculating/retrieving
+    #%%%%%% Run mode
     glob_fit_dic['ResProf']['mcmc_run_mode']='use'
     
     
     #%%%%%% Runs to re-use
-    #    - list of mcmc runs to reuse
-    #    - if 'reuse' is requested, leave empty to automatically retrieve the mcmc run available in the default directory
-    #  or set the list of mcmc runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
     glob_fit_dic['ResProf']['mcmc_reuse']={} 
     
     
@@ -5331,19 +5394,25 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
         
     ##################################################################################################       
-    #%%% Module: fitting joined intrinsic profiles  
-    # - fitting joined intrinsic stellar profiles from combined (unbinned) instruments and visits 
-    # - use 'idx_in_fit' to choose which visits to fit (can be a single one)
-    # - the contrast and FWHM of the intrinsic stellar lines (before instrumental convolution) are fitted as polynomials of the chosen coordinate
-    #   surface RVs are fitted using the reloaded RM model  
-    #   beware that the disk-integrated and intrinsic stellar profile have the same continuum, but it is not necessarily unity as set in the analytical and theoretical models, whose continuum must thus let free to vary 
-    # - several options need to be controlled from within the function
-    # - use plot_dic['prop_Intr']='' to plot the properties of the derived profiles
-    #   use plot_dic['Intrbin']='' to plot the derived profiles
-    #   use gen_dic['loc_data_corr'] to visualize the derived profiles
-    # - to derive the stellar inclination from Rstar and Peq, use them as model parameters alongside cosistar, instead of veq  
-    #   set priors on Rstar and Peq from the literature and a uniform prior on cosistar (=isotropic distribution), or more complex priors if relevant
-    #   then istar can be directly derived from cosistar in post-processing (alongside veq and vsini), and will have been constrained by the independent priors on Peq, Rstar, and the data through the corresponding vsini
+    #%%% Module: joined intrinsic profiles fit  
+    #    - fitting joined intrinsic stellar profiles from combined (unbinned) instruments and visits
+    #    - use this module to fit the average stellar line profiles from planet-occulted regions
+    #    - the module can also be used when spot are present, as long as they remain fixed during a given visit (this requires theo_dic['precision'] = 'high'), otherwise use the 'fitting joined differential profiles' module.
+    #      however beware that in this case constraints on the spot come from the planet-occulted, spotted cells with a line profile different from the quiet star. 
+    #      since we assume the same line shape for quiet and spotted cells, the spot is constrained by the brightness-weighted rv of spotted cells within the occulted region itself
+    #      if the planet is small or the star a slow rotator, it is thus not possible to constrain the spot
+    #      if the planet is large and the star is a fast rotator, the spot stills needs to have sufficient contrast or overlaps over a sufficient fraction of the planet-occulted region for the overall line position to differ from the unspotted case 
+    #    - use 'idx_in_fit' to choose which visits to fit (can be a single one)
+    #    - the contrast and FWHM of the intrinsic stellar lines (before instrumental convolution) are fitted as polynomials of the chosen coordinate
+    #      surface RVs are fitted using the reloaded RM model  
+    #      beware that the disk-integrated and intrinsic stellar profile have the same continuum, but it is not necessarily unity as set in the analytical and theoretical models, whose continuum must thus let free to vary 
+    #    - several options need to be controlled from within the function
+    #    - use plot_dic['prop_Intr']='' to plot the properties of the derived profiles
+    #      use plot_dic['Intrbin']='' to plot the derived profiles
+    #      use gen_dic['loc_data_corr'] to visualize the derived profiles
+    #    - to derive the stellar inclination from Rstar and Peq, use them as model parameters alongside cosistar, instead of veq  
+    #      set priors on Rstar and Peq from the literature and a uniform prior on cosistar (=isotropic distribution), or more complex priors if relevant
+    #      then istar can be directly derived from cosistar in post-processing (alongside veq and vsini), and will have been constrained by the independent priors on Peq, Rstar, and the data through the corresponding vsini   
     ##################################################################################################     
             
     #%%%% Activating 
@@ -5410,7 +5479,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Analytical profile coordinate
     #    - fit coordinate for the line properties of analytical profiles
     #    - see possibilities in gen_dic['fit_IntrProp']
-    glob_fit_dic['IntrProf']['dim_fit']='mu'
+    glob_fit_dic['IntrProf']['coord_fit']='r_proj'
     
     
     #%%%%% Analytical profile variation
@@ -5433,6 +5502,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + set noPC = True to account for the chi2 of the null hypothesis (no noise) on the out-of-transit data, without including PC to the RMR fit
     glob_fit_dic['IntrProf']['PC_model']={}  
     
+
     #%%%%% Optimization levels
     #     - see 'glob_fit_dic['ResProf']' for details
     glob_fit_dic['IntrProf']['Opt_Lvl']=0 
@@ -5448,6 +5518,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     glob_fit_dic['IntrProf']['verbose']= False
     glob_fit_dic['IntrProf']['print_par'] = True
     
+
     #%%%%% Monitor MCMC
     glob_fit_dic['IntrProf']['progress']= True
 
@@ -5464,7 +5535,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% MCMC settings
     
-    #%%%%%% Calculating/retrieving
+    #%%%%%% Run mode
+    #    - see data_dic['DI']['mcmc_run_mode']
     glob_fit_dic['IntrProf']['mcmc_run_mode']='use'
     
     
@@ -5728,7 +5800,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
         
     ##################################################################################################       
-    #%%% Module: estimates for planet-occulted profiles 
+    #%%% Module: planet-occulted profiles estimates 
     #    - use the module to generate:
     # + local profiles that are then used to correct residual profiles from stellar contamination
     # + intrinsic profiles that are corrected from measured ones to assess the quality of the estimates 
@@ -5775,6 +5847,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + can be specific to the visit or common to all, depending on the fit
     # + line coordinate choice is retrieved automatically 
     # + indicate path to saved properties determining the line property variations in the processed dataset
+    #   bulk system properties will be retrieved and used if fitted
     # + default options are used if left undefined
     # > 'indiv_mod': models fitted to each individual intrinsic profile in each visit
     # + 'mode' : 'ana' or 'theo'
@@ -5803,8 +5876,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
    
         
+        
+        
+        
     ##################################################################################################       
-    #%%% Module: estimates for planet-occulted profiles and spotted profiles
+    #%%% Module: planet-occulted profiles and spotted profiles estimates
     #    - use the module to generate:
     # + local profiles that are then used to correct residual profiles from stellar contamination
     # + intrinsic profiles that are corrected from measured ones to assess the quality of the estimates 
@@ -5954,7 +6030,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     ##################################################################################################
-    #%%% Module: extraction of atmospheric signals
+    #%%% Module: atmospheric signals extraction
     ##################################################################################################  
 
     #%%%% Activating
@@ -5975,6 +6051,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Continuum range
     #    - common to all profiles, ie that they it be large enough to cover the full range of orbital RVs 
     data_dic['Atm']['cont_range']={}
+
 
     #%%%% Presence of spots
     data_dic['Atm']['spot_model']=''
@@ -6033,7 +6110,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     ##################################################################################################
-    #%%% Module: aligning atmospheric profiles         
+    #%%% Module: atmospheric profiles alignment     
     ##################################################################################################
 
     #%%%% Activating
@@ -6096,7 +6173,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     ##################################################################################################
-    #%%% Module: binning atmospheric profiles
+    #%%% Module: atmospheric profiles binning
     #    - for analysis purpose (original profiles are not replaced)
     #    - this module can be used to boost the SNR by combining exposures, or to calculate a global master, in a given visit or in several visits
     ##################################################################################################
@@ -6174,7 +6251,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     ##################################################################################################
-    #%%% Module: analyzing atmospheric profiles
+    #%%% Module: atmospheric profiles analysis
     #    - can be applied to:
     # + 'fit_Atm': profiles in the star rest frame, original exposures, for all formats
     # + 'fit_Atm_1D': profiles in the star or surface (if aligned) rest frame, original exposures, converted from 2D->1D 
@@ -6300,7 +6377,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% MCMC settings
     
-    #%%%%%% Calculating/retrieving
+    #%%%%%% Run mode
     #    - see data_dic['DI']['mcmc_run_mode']
     data_dic['Atm']['mcmc_run_mode']='use'
     
@@ -6339,7 +6416,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     ##################################################################################################       
-    #%%% Module: fitting atmospheric signal properties
+    #%%% Module: atmospheric signal properties fit
     #    - fitting single atmospheric property with a common model for all instruments/visits 
     #    - with properties derived from individual atmospheric profiles
     #    - this module can be used to estimate the analytical laws describing the atmospheric line properties
@@ -6374,7 +6451,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Coordinate
     #    - the line properties will be fitted as a function of this coordinate
     # +'phase' : orbital phase       
-    glob_fit_dic['AtmProp']['dim_fit']='phase'
+    glob_fit_dic['AtmProp']['coord_fit']='phase'
       
     
     #%%%%% Variation
@@ -6415,7 +6492,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% MCMC settings
     
-    #%%%%%% Calculating/retrieving
+    #%%%%%% Run mode
     #    - see data_dic['DI']['mcmc_run_mode']
     glob_fit_dic['AtmProp']['mcmc_run_mode']='use'
     
@@ -6468,7 +6545,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     ##################################################################################################       
-    #%%% Module: fitting joined atmospheric profiles  
+    #%%% Module: joined atmospheric profiles fit
     # - fitting atmospheric intrinsic stellar profiles from combined (unbinned) instruments and visits 
     # - use 'idx_in_fit' to choose which visits to fit (can be a single one)
     # - the contrast, FWHM, and RVs of the atmospheric lines are fitted as polynomials of the chosen coordinate 
@@ -6526,7 +6603,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #%%%%% Analytical profile coordinate
     #    - fit coordinate for the line properties of analytical profiles
     #    - see possibilities in gen_dic['fit_AtmProp']
-    glob_fit_dic['AtmProf']['dim_fit']='phase'
+    glob_fit_dic['AtmProf']['coord_fit']='phase'
     
     
     #%%%%% Analytical profile variation
@@ -6567,7 +6644,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%%% MCMC settings
     
-    #%%%%%% Calculating/retrieving
+    #%%%%%% Run mode
     #    - see data_dic['DI']['mcmc_run_mode']
     glob_fit_dic['AtmProf']['mcmc_run_mode']='use'
     
@@ -6579,7 +6656,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     glob_fit_dic['AtmProf']['mcmc_reuse']={} 
     
     
-    #%%%%%% Runs to re-start
+    #%%%%%% Run to re-start
     #    - indicate path to a 'raw_chains' file
     #      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'mcmc_set'
     glob_fit_dic['AtmProf']['mcmc_reboot']=''

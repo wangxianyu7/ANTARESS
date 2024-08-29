@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import numpy as np
 import os as os_system
@@ -22,7 +22,8 @@ from ..ANTARESS_plots.utils_plots import custom_axis,autom_tick_prop,stackrel,sc
 from ..ANTARESS_conversions.ANTARESS_binning import resample_func,calc_bin_prof,weights_bin_prof
 from ..ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,return_pix_size
 from ..ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_mod_true_prop,voigt
-from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof_gen
+from ..ANTARESS_analysis.ANTARESS_joined_star import mod_DIProp
+from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof_gen_mul,detrend_prof_gen_add
 from ..ANTARESS_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
 from ..ANTARESS_grids.ANTARESS_coord import calc_pl_coord_plots,calc_pl_coord,calc_rv_star_HR,frameconv_skyorb_to_skystar,frameconv_skystar_to_skyorb,get_timeorbit,\
     calc_zLOS_oblate,frameconv_star_to_skystar,calc_tr_contacts,coord_expos_spots,frameconv_skystar_to_star
@@ -1684,7 +1685,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                          'ctrst':'Contrast','ctrst_pip':'Contrast pipeline','true_ctrst':'True contrast','ctrst_ord0__IS__VS_':'Local contrast (deg. 0)','amp':'Amplitude','amp_l2c':'Amplitude lobe-to-core ratio','amp_lobe':'Lobe amplitude','area':'Area',
                          'cont':'Continuum level','biss_span':'Bissector span','ha':'Ha index','na':'Na index','ca':'Ca index','s':'S index','rhk':'Rhk index',
                          'phase':'Phase','mu':'Center-to-Limb angle','lat':'Stellar latitude','lon':'Stellar longitude','x_st':'Stellar X coordinate','y_st':'Stellar Y coordinate',
-                         'AM':'Airmass','flux_airmass':'Airmass absorption','seeing':'Seeing','snr':'SNR','snr_quad':'Quadratic SNR (ESPRESSO)','snr_R':'SNR ratio','colcorrmin':r'C$_\mathrm(corr}^\mathrm{min}$', 'colcorrmax':r'C$_\mathrm(corr}^\mathrm{max}$', 'colcorrR':r'C$_\mathrm(corr}^\mathrm{ratio}$','colcorr450':r'C$_\mathrm(corr}^\mathrm{450nm}$', 'colcorr550':r'C$_\mathrm(corr}^\mathrm{550nm}$', 'colcorr650':r'C$_\mathrm(corr}^\mathrm{650nm}$',\
+                         'AM':'Airmass','flux_airmass':'Airmass absorption','seeing':'Seeing','snr':'SNR','snrQ':'Quadratic SNR (ESPRESSO)','snr_R':'SNR ratio','colcorrmin':r'C$_\mathrm(corr}^\mathrm{min}$', 'colcorrmax':r'C$_\mathrm(corr}^\mathrm{max}$', 'colcorrR':r'C$_\mathrm(corr}^\mathrm{ratio}$','colcorr450':r'C$_\mathrm(corr}^\mathrm{450nm}$', 'colcorr550':r'C$_\mathrm(corr}^\mathrm{550nm}$', 'colcorr650':r'C$_\mathrm(corr}^\mathrm{650nm}$',\
                          'PSFx':'', 'PSFy':'','PSFr':'','PSFang':'',
                          'glob_flux_sc':'Global flux scaling','satur_check':'Saturation check','ADC1 POS':'ESPRESSO ADC1 Position','ADC1 RA':'ESPRESSO ADC1 Right Ascension','ADC1 DEC':'ESPRESSO ADC1 Declination','ADC2 POS':'ESPRESSO ADC2 Position','ADC2 RA':'ESPRESSO ADC2 Right Ascension','ADC2 DEC':'ESPRESSO ADC2 Declination',
                          'alt':'Telescope altitude','az':'Azimuth angle','TILT1 VAL1':'ESPRESSO TILT1 VAL1','TILT1 VAL2':'ESPRESSO TILT1 VAL2','TILT2 VAL1':'ESPRESSO TILT2 VAL1','TILT2 VAL2':'ESPRESSO TILT2 VAL2'}
@@ -6192,7 +6193,7 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
     #-------------------------------------
 
     coord_pl_in={}
-    theo_dic_loc['d_oversamp']={}
+    theo_dic_loc['d_oversamp_pl']={}
     system_prop_loc = deepcopy(data_dic['DI']['system_prop'])
     cond_occ_HR = np.zeros(plot_dic['nph_HR'],dtype=bool)
     system_param_loc = deepcopy(system_param)
@@ -8436,36 +8437,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
 
     plt.ioff()        
     plt.figure(figsize=plot_options['fig_size'])            
-    
-    #Fit sub-function     
-    def fit_pol_sin(param,x_unused,args=None):
-        corr_prop = {}
-        
-        #Constant correction level
-        fit_tab=np.repeat(param['a0'].value,len(x_unused))
-
-        #Variable contributions
-        for iprop,prop_fit in enumerate(args['prop_fit']): 
-            x_prop = args['var_fit'][prop_fit]
-            apply_corr =False
-
-            #Sinusoidal variation 
-            if prop_fit in fixed_args['sin_prop']:
-                corr_prop['sin'] = [ param[prop_fit+corr_val].value for corr_val in ['_amp', '_off', '_per'] ]
-                apply_corr = True
-            
-            #Polynomial variation
-            if (prop_fit in fixed_args['pol_prop']) and (args['deg_pol'][prop_fit]>0):
-                corr_prop['pol']= [param[prop_fit+'_c'+str(ideg)].value for ideg in  range(1,args['deg_pol'][prop_fit]+1)   ]   
-                apply_corr = True
-
-            #Variations are defined
-            if apply_corr:
-                if prop_mode in ['rv','rv_res']:fit_tab = detrend_prof_gen(  corr_prop, x_prop, fit_tab , 'add')  
-                else:fit_tab = detrend_prof_gen(  corr_prop, x_prop, fit_tab , 'modul')  
-        
-        return fit_tab     
- 
+     
     #Horizontal range
     x_min=1e100
     x_max=-1e100
@@ -8486,7 +8458,14 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
     dic_all['HDI_all'] = np.empty([2,0],dtype=float)
 
     #Uploading best-fit data
-    if data_mode=='Intr':    
+    if data_mode=='DI':    
+        data_fit_prop=None  
+        if prop_mode in ['rv_res','FWHM','ctrst']:
+            if plot_options['DIProp_path'] is not None:
+                if prop_mode=='rv_res':prop_mode_get = 'rv'
+                else:prop_mode_get = prop_mode
+                data_fit_prop = dataload_npz(plot_options['DIProp_path']+prop_mode_get+'/Fit_results')      
+    elif data_mode=='Intr':    
         data_fit_prop=None  
         data_fit_prof=None
         if prop_mode in ['rv','rv_res','FWHM','ctrst','true_FWHM','true_FWHM','a_damp']:
@@ -8495,8 +8474,12 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                 else:prop_mode_get = prop_mode
                 data_fit_prop = dataload_npz(plot_options['IntrProp_path']+prop_mode_get+'/Fit_results')    
             if plot_options['IntrProf_path'] is not None:
-                data_fit_prof = dataload_npz(plot_options['IntrProf_path']+'Fit_results')    
-        
+                data_fit_prof = dataload_npz(plot_options['IntrProf_path']+'Fit_results') 
+                
+    #Scaling unit
+    if prop_mode=='rv_res':sc_unit = 1e3
+    else:sc_unit = 1.            
+                
     #Plot for each instrument
     i_visit=-1
     for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
@@ -8512,7 +8495,10 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
         if data_mode=='DI':vis_list = np.intersect1d(list(data_dic['DI'][inst].keys())+['binned'],plot_options['visits_to_plot'][inst])
         elif data_mode=='Intr':vis_list = deepcopy(plot_options['visits_to_plot'][inst])
         for vis in vis_list: 
-    
+            dic_vis = {}
+            for key in ['x_all','st_x_all','end_x_all','val_all']:dic_vis[key] = np.empty(0,dtype=float)
+            dic_vis['eval_all'] = np.empty([2,0],dtype=float)
+            dic_vis['HDI_all'] = np.empty([2,0],dtype=float)    
         
             # if (gen_dic['star_name']=='WASP76'):   #ANTARESS I
             #     print('DELETE')
@@ -8612,7 +8598,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             #For each sample, calculate and overwrite surface rv alone
                             coord_pl_in_samp = deepcopy(theo_HR_prop_plocc)
                             theo_dic_samp = deepcopy(theo_dic)
-                            theo_dic_samp['d_oversamp'] = []
+                            theo_dic_samp['d_oversamp_pl'] = []
                             for isamp in range(nsamp):
                                 surf_prop_dic,_,_ = sub_calc_plocc_spot_prop(['achrom'],{},['rv'],[pl_loc],[],system_param,theo_dic_samp,data_dic['DI']['system_prop'],par_subsample[0][isamp],coord_pl_in_samp,range(theo_HR_prop_plocc['nph_HR']))        
                                 RV_stsurf_HR_thread[isamp,:] =surf_prop_dic['achrom'][pl_loc]['rv'][0,:]                                
@@ -8680,11 +8666,11 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                     #    - when DR is activated, 'Rot_RV' accounts for it                    
                     if len(plot_options['contrib_theo_HR'])>0:
                         if 'CB' in plot_options['contrib_theo_HR']:
-                            plt.plot(xvar_HR[wsort],1e3*theo_HR_prop_plocc[pl_ref]['CB_RV'][wsort],color='dodgerblue',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
+                            plt.plot(xvar_HR[wsort],sc_unit*theo_HR_prop_plocc[pl_ref]['CB_RV'][wsort],color='dodgerblue',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
                         if 'DR' in plot_options['contrib_theo_HR']:
-                            plt.plot(xvar_HR[wsort],1e3*(theo_HR_prop_plocc[pl_ref]['rv'][wsort] - rv_sb_theo_HR_nom - theo_HR_prop_plocc[pl_ref]['CB_RV'][wsort]) ,color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
+                            plt.plot(xvar_HR[wsort],sc_unit*(theo_HR_prop_plocc[pl_ref]['rv'][wsort] - rv_sb_theo_HR_nom - theo_HR_prop_plocc[pl_ref]['CB_RV'][wsort]) ,color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
                         if 'CB_DR' in plot_options['contrib_theo_HR']:
-                            plt.plot(xvar_HR[wsort],1e3*(theo_HR_prop_plocc[pl_ref]['rv'][wsort] - rv_sb_theo_HR_nom),color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
+                            plt.plot(xvar_HR[wsort],sc_unit*(theo_HR_prop_plocc[pl_ref]['rv'][wsort] - rv_sb_theo_HR_nom),color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
 
     
             ################################################################################################                
@@ -8697,6 +8683,9 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                 if vis not in plot_options['color_dic'][inst]:plot_options['color_dic'][inst][vis]='dodgerblue'                 
                 if plot_options['color_dic'][inst][vis]=='jet':col_loc='dodgerblue'  
                 else:col_loc = plot_options['color_dic'][inst][vis]
+                
+                #-------------------------------------------------------          
+                #Disk-integrated properties
                 if data_mode=='DI':
                     if vis=='binned':
                         if plot_options['prop_'+data_mode+'_absc']!='phase':stop('Use correct binning dimension')
@@ -8707,135 +8696,193 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                         data_prop_vis = data_prop[inst][vis]
                         # if gen_dic['fit_DI'] or gen_dic['fit_DI_1D']:prof_fit_vis=np.load(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item()
                         prof_fit_vis=dataload_npz(gen_dic['save_data_dir']+'DIorig_prop/'+inst+'_'+vis)
-                    transit_prop_nom = dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/PlOcc_Prop_'+inst+'_'+vis)['achrom'][pl_ref]
 
+                    #------------------------                            
+                    #Model from property fit
+                    if (data_fit_prop is not None):
+                        
+                        #Retrieve modulation
+                        if plot_options['norm_mod'] and (prop_mode in ['ctrst','FWHM']):c0_mod = data_fit_prop['p_final'][data_fit_prop['name_prop2input']['c__ord0__IS'+inst+'_VS'+vis]] 
+                        
+                        #Coordinates of the property model
+                        coord_list = list(data_fit_prop['coord_mod'][inst][vis].keys())
+                        coord_plot = plot_options['prop_'+data_mode+'_absc']
+                        if (coord_plot=='phase'):coord_plot_eff = 'phase'+pl_ref 
+                        else:coord_plot_eff = coord_plot
+                            
+                        #Data-equivalent model
+                        #    - abscissa property must be among those used to calculate the fitted model
+                        if plot_options['theo_obs_prop']:
+                            if coord_plot_eff not in coord_list:stop('ERROR: plot and fit coordinates must match') 
+                            prop_mod = sc_unit*data_fit_prop['prop_mod'][inst][vis]
+                            plt.plot(data_fit_prop['coord_mod'][inst][vis][coord_plot_eff],prop_mod,color='green',linestyle='',lw=1,marker='s',markersize=plot_options['markersize'],zorder=-1)
+
+                        #High-resolution model
+                        #    - this is only possible if there is a single coordinate, since the different observed coordinates are correlated and would need to create a HR multi-dimensional grid by interpolating the observed one 
+                        if plot_options['theo_HR_prop']:
+                            fixed_args = deepcopy(data_fit_prop)
+                            if prop_mode=='rv_res':fixed_args['prop_fit'] = 'RV'
+                            else:fixed_args['prop_fit'] = prop_mode      
+                            
+                            #Single coordinate
+                            if len(coord_list)==1:
+                            
+                                #High-resolution grid of coordinate
+                                #    - the grid is defined between the min/max of the coordinate time-series over the full visit
+                                n_HR = 100                             
+                                if coord_plot_eff != coord_list[0]:stop('ERROR: plot and fit coordinates must match') 
+                                coord_obs = data_fit_prop['coord_obs'][inst][vis][coord_plot_eff]
+                                min_coord_obs = min(coord_obs)
+                                max_coord_obs = max(coord_obs)
+                                d_HR=(max_coord_obs-min_coord_obs)/n_HR
+                                coord_HR = min_coord_obs + d_HR*np.arange(n_HR)
+                                fixed_args['coord_fit'][inst][vis][coord_plot_eff] = coord_HR
+
+                            #Multiple coordinates
+                            #    - the model can still be calculated over the full observed coordinate time-series
+                            else:    
+                                print('WARNING: HR model cannot be calculated with multiple coordinates')
+                                
+                                #Observed grid of coordinates
+                                for coord in coord_list:fixed_args['coord_fit'][inst][vis][coord]  = data_fit_prop['coord_obs'][inst][vis][coord]
+                                n_HR = data_dic[inst][vis]['n_in_visit']
+                                coord_HR = fixed_args['coord_fit'][inst][vis][coord_plot_eff]
+                                
+                            #Model
+                            mod_prop_HR = sc_unit*mod_DIProp(data_fit_prop['p_final'],fixed_args,inst,vis,n_HR)
+
+                            #Plotting
+                            wsort = np.argsort(coord_HR)
+                            plt.plot(coord_HR[wsort],mod_prop_HR[wsort],color='darkgrey',linestyle='-',lw=1,zorder=50) 
+
+                #-------------------------------------------------------          
+                #Intrinsic properties
                 elif data_mode=='Intr':
                     if data_type=='Introrig':
                         coord_vis = coord_dic[inst][vis][pl_ref]
                         if plot_options['plot_data']:prof_fit_vis=dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/'+inst+'_'+vis)
-                        transit_prop_nom = (np.load(gen_dic['save_data_dir']+'Introrig_prop/PlOcc_Prop_'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item())['achrom'][pl_ref]                                                      
+                        transit_prop_nom = dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/PlOcc_Prop_'+inst+'_'+vis)['achrom'][pl_ref]                                                     
                     elif data_type=='Intrbin': 
                         if plot_options['plot_data']:
                             prof_fit_vis=np.load(gen_dic['save_data_dir']+'Intrbin_prop/'+inst+'_'+orig_vis+'.npz',allow_pickle=True)['data'].item()
                             data_bin = np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+orig_vis+'_'+plot_options['dim_plot']+'_add.npz',allow_pickle=True)['data'].item()
                         transit_prop_nom = data_bin['plocc_prop']['achrom'][pl_ref]      
 
-                    #Models from fits 
-                    if (data_fit_prop is not None) or (data_fit_prof is not None): 
-                        
-                        #High-resolution models
-                        if plot_options['theo_HR_prop'] or plot_options['theo_HR_prof']:  
-                            def sub_plot_HR(mode_loc,input_dic,col_loc):
-                                if mode_loc =='from_prop':data_fit_loc=data_fit_prop
-                                if mode_loc =='from_prof':data_fit_loc=data_fit_prof
-                                
-                                #Coordinates and properties associated with planet-occulted regions
-                                #    - for the purpose of the plot properties are calculated in low-precision mode, as they cannot be easily extracted from the model line profiles
-                                par_list_HR = ['mu','xp_abs','r_proj','y_st','lat']
-                                theo_dic_in = deepcopy(theo_dic)
-                                theo_dic_in['precision'] = 'low'
-                                if (inst in data_fit_loc['coeff_line_dic']) and (vis in data_fit_loc['coeff_line_dic'][inst]):data_fit_loc['coeff_line'] =  data_fit_loc['coeff_line_dic'][inst][vis]
-                                if prop_mode in ['rv','rv_res']:
-                                    par_list_HR+=['rv','CB_RV']
-                                    if (inst in data_fit_loc['linevar_par']) and (vis in data_fit_loc['linevar_par'][inst]) and ('rv_line' in data_fit_loc['linevar_par'][inst][vis]):par_list_HR+=['rv_line']
-                                elif prop_mode in ['ctrst','FWHM','a_damp']: 
-                                    if plot_options['theo_HR_prop']:par_list_HR+=[prop_mode]
-                                    elif plot_options['theo_HR_prof']:par_list_HR+=['ctrst','FWHM']
-                                
-                                theo_HR_prop_loc = calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_dic,data_bin,theo_dic_in,inst,vis,data_fit_loc['genpar_instvis'],data_fit_loc['p_final'],data_fit_loc,par_list = par_list_HR)[pl_ref]
-                                if plot_options['prop_'+data_mode+'_absc']=='phase':xvar_HR_loc=deepcopy(theo_HR_prop_loc['phase'])  
-                                elif plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']:xvar_HR_loc=deepcopy(theo_HR_prop_loc[plot_options['prop_'+data_mode+'_absc']])  
-                                elif plot_options['prop_'+data_mode+'_absc']=='y_st2':xvar_HR_loc=theo_HR_prop_loc['y_st']**2.  
-                                elif plot_options['prop_'+data_mode+'_absc']=='abs_y_st':xvar_HR_loc=np.abs(theo_HR_prop_loc['y_st'])
-                                wdefHR = np_where1D(~np.isnan(xvar_HR_loc))
-                                wsort_sub=xvar_HR_loc[wdefHR].argsort() 
-                                wsort = wdefHR[wsort_sub]   
-                                xvar_HR_loc = xvar_HR_loc[wsort]
+                    #High-resolution models
+                    if ((data_fit_prop is not None) or (data_fit_prof is not None)) and (plot_options['theo_HR_prop'] or plot_options['theo_HR_prof']):  
+                        def sub_plot_HR(mode_loc,input_dic,col_loc):
+                            if mode_loc =='from_prop':data_fit_loc=data_fit_prop
+                            if mode_loc =='from_prof':data_fit_loc=data_fit_prof
+                            
+                            #Coordinates and properties associated with planet-occulted regions
+                            #    - for the purpose of the plot properties are calculated in low-precision mode, as they cannot be easily extracted from the model line profiles
+                            par_list_HR = ['mu','xp_abs','r_proj','y_st','lat']
+                            theo_dic_in = deepcopy(theo_dic)
+                            theo_dic_in['precision'] = 'low'
+                            if (inst in data_fit_loc['coeff_line_dic']) and (vis in data_fit_loc['coeff_line_dic'][inst]):data_fit_loc['coeff_line'] =  data_fit_loc['coeff_line_dic'][inst][vis]
+                            if prop_mode in ['rv','rv_res']:
+                                par_list_HR+=['rv','CB_RV']
+                                if (inst in data_fit_loc['linevar_par']) and (vis in data_fit_loc['linevar_par'][inst]) and ('rv_line' in data_fit_loc['linevar_par'][inst][vis]):par_list_HR+=['rv_line']
+                            elif prop_mode in ['ctrst','FWHM','a_damp']: 
+                                if plot_options['theo_HR_prop']:par_list_HR+=[prop_mode]
+                                elif plot_options['theo_HR_prof']:par_list_HR+=['ctrst','FWHM']
+                            
+                            theo_HR_prop_loc = calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_dic,data_bin,theo_dic_in,inst,vis,data_fit_loc['genpar_instvis'],data_fit_loc['p_final'],data_fit_loc,par_list = par_list_HR)[pl_ref]
+                            if plot_options['prop_'+data_mode+'_absc']=='phase':xvar_HR_loc=deepcopy(theo_HR_prop_loc['phase'])  
+                            elif plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']:xvar_HR_loc=deepcopy(theo_HR_prop_loc[plot_options['prop_'+data_mode+'_absc']])  
+                            elif plot_options['prop_'+data_mode+'_absc']=='y_st2':xvar_HR_loc=theo_HR_prop_loc['y_st']**2.  
+                            elif plot_options['prop_'+data_mode+'_absc']=='abs_y_st':xvar_HR_loc=np.abs(theo_HR_prop_loc['y_st'])
+                            wdefHR = np_where1D(~np.isnan(xvar_HR_loc))
+                            wsort_sub=xvar_HR_loc[wdefHR].argsort() 
+                            wsort = wdefHR[wsort_sub]   
+                            xvar_HR_loc = xvar_HR_loc[wsort]
 
-                                #Property
-                                if prop_mode in ['rv','rv_res']:
-                                    yvar_HR_loc = theo_HR_prop_loc['rv'][wsort]
+                            #Property
+                            if prop_mode in ['rv','rv_res']:
+                                yvar_HR_loc = theo_HR_prop_loc['rv'][wsort]
+                                
+                                #Solid-body model
+                                if (len(plot_options['contrib_theo_HR'])>0) or ((prop_mode=='rv_res') and (plot_options['mod_compos'] == 'SB')):
+                                    params = deepcopy(data_fit_loc['p_final'])
+                                    params['alpha_rot'] = 0.
+                                    params['beta_rot'] = 0.
+                                    rv_sb_theo_HR = calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_dic,data_bin,theo_dic_in,inst,vis,data_fit_loc['genpar_instvis'],params,data_fit_loc,par_list = par_list_HR)[pl_ref]['Rot_RV'][wsort]
+
+                                #Model components
+                                if len(plot_options['contrib_theo_HR'])>0:
+                                    if (prop_mode=='rv'):
+                                        if 'SB' in plot_options['contrib_theo_HR']:
+                                            plt.plot(xvar_HR_loc,rv_sb_theo_HR,color='orange',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)  
+                                        if 'CB' in plot_options['contrib_theo_HR']:
+                                            plt.plot(xvar_HR_loc,theo_HR_prop_loc['CB_RV'][wsort],color='dodgerblue',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)                               
+                                        if 'DR' in plot_options['contrib_theo_HR']:                                           
+                                            plt.plot(xvar_HR_loc,(theo_HR_prop_loc['Rot_RV'][wsort] - rv_sb_theo_HR),color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
                                     
-                                    #Solid-body model
-                                    if (len(plot_options['contrib_theo_HR'])>0) or ((prop_mode=='rv_res') and (plot_options['mod_compos'] == 'SB')):
-                                        params = deepcopy(data_fit_loc['p_final'])
-                                        params['alpha_rot'] = 0.
-                                        params['beta_rot'] = 0.
-                                        rv_sb_theo_HR = calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_dic,data_bin,theo_dic_in,inst,vis,data_fit_loc['genpar_instvis'],params,data_fit_loc,par_list = par_list_HR)[pl_ref]['Rot_RV'][wsort]
+                                    elif (prop_mode=='rv_res'):
+                                        if 'CB' in plot_options['contrib_theo_HR']:
+                                            plt.plot(xvar_HR_loc,sc_unit*theo_HR_prop_loc['CB_RV'][wsort],color='dodgerblue',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
+                                        if 'DR' in plot_options['contrib_theo_HR']: 
+                                            plt.plot(xvar_HR_loc,sc_unit*(theo_HR_prop_loc['Rot_RV'][wsort] - rv_sb_theo_HR),color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
+                                        if 'CB_DR' in plot_options['contrib_theo_HR']:
+                                            plt.plot(xvar_HR_loc,sc_unit*(theo_HR_prop_loc['CB_RV'][wsort] + theo_HR_prop_loc['Rot_RV'][wsort] - rv_sb_theo_HR),color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
+                
+                                #Replace rv model with chosen component to calculate residuals
+                                if (prop_mode=='rv_res'):        
+                                    if plot_options['mod_compos'] == 'SB':yvar_HR_loc = rv_sb_theo_HR  
 
-                                    #Model components
-                                    if len(plot_options['contrib_theo_HR'])>0:
-                                        if (prop_mode=='rv'):
-                                            if 'SB' in plot_options['contrib_theo_HR']:
-                                                plt.plot(xvar_HR_loc,rv_sb_theo_HR,color='orange',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)  
-                                            if 'CB' in plot_options['contrib_theo_HR']:
-                                                plt.plot(xvar_HR_loc,theo_HR_prop_loc['CB_RV'][wsort],color='dodgerblue',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)                               
-                                            if 'DR' in plot_options['contrib_theo_HR']:                                           
-                                                plt.plot(xvar_HR_loc,(theo_HR_prop_loc['Rot_RV'][wsort] - rv_sb_theo_HR),color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
-                                        
-                                        elif (prop_mode=='rv_res'):
-                                            if 'CB' in plot_options['contrib_theo_HR']:
-                                                plt.plot(xvar_HR_loc,1e3*theo_HR_prop_loc['CB_RV'][wsort],color='dodgerblue',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
-                                            if 'DR' in plot_options['contrib_theo_HR']: 
-                                                plt.plot(xvar_HR_loc,1e3*(theo_HR_prop_loc['Rot_RV'][wsort] - rv_sb_theo_HR),color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
-                                            if 'CB_DR' in plot_options['contrib_theo_HR']:
-                                                plt.plot(xvar_HR_loc,1e3*(theo_HR_prop_loc['CB_RV'][wsort] + theo_HR_prop_loc['Rot_RV'][wsort] - rv_sb_theo_HR),color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
-                    
-                                    #Replace rv model with chosen component to calculate residuals
-                                    if (prop_mode=='rv_res'):        
-                                        if plot_options['mod_compos'] == 'SB':yvar_HR_loc = rv_sb_theo_HR  
+                            else:
+                            
+                                #FWHM and contrast of single property measurements 
+                                if (mode_loc =='from_prop'):
+                                    yvar_HR_loc = theo_HR_prop_loc[prop_mode][wsort] 
+                              
+                                if mode_loc =='from_prof':
+                                    
+                                    #FWHM and contrast of unconvolved intrinsic stellar profiles / of single property measurements 
+                                    raw_FWHM_mod_HR = theo_HR_prop_loc['FWHM'][wsort] 
+                                    raw_ctrst_mod_HR = theo_HR_prop_loc['ctrst'][wsort]
 
-                                else:
-                                
-                                    #FWHM and contrast of single property measurements 
-                                    if (mode_loc =='from_prop'):
-                                        yvar_HR_loc = theo_HR_prop_loc[prop_mode][wsort] 
-                                  
-                                    if mode_loc =='from_prof':
-                                        
-                                        #FWHM and contrast of unconvolved intrinsic stellar profiles / of single property measurements 
-                                        raw_FWHM_mod_HR = theo_HR_prop_loc['FWHM'][wsort] 
-                                        raw_ctrst_mod_HR = theo_HR_prop_loc['ctrst'][wsort]
-
-                                        #FWHM and contrast equivalent to observed profiles
-                                        #    - the derivation of FWHM and contrast from a HR profile is only relevant when observed individual profiles have been fitted with a gaussian model estimating their contrast and FWHM, 
-                                        #      if those measured properties are not the ones controlling the joint profile model, we must estimate them on the HR profile
-                                        #      if the same model profile was however used for the fit to individual and joint profiles, the properties can be directlyy compared
-                                        if (data_fit_loc['func_prof_name'][inst]=='gauss') or ((prop_mode in ['ctrst','FWHM']) and ~plot_options['inst_conv']):
-                                            if plot_options['inst_conv']:ctrst_mod_HR,FWHM_mod_HR = gauss_intr_prop(raw_ctrst_mod_HR,raw_FWHM_mod_HR,calc_FWHM_inst(inst,c_light)) 
-                                            else:ctrst_mod_HR,FWHM_mod_HR = raw_ctrst_mod_HR,raw_FWHM_mod_HR
-                                        else:
-                                            if plot_options['inst_conv']:input_dic['FWHM_inst'] = calc_FWHM_inst(inst,c_light)
-                                            else:input_dic['FWHM_inst'] = None
-                                            if data_fit_loc['func_prof_name'][inst]=='dgauss':
-                                                ctrst_mod_HR = np.zeros(len(wsort),dtype=float)  
-                                                FWHM_mod_HR = np.zeros(len(wsort),dtype=float)
-                                                for isub_HR,(raw_ctrst_loc,raw_FWHM_loc) in enumerate(zip(raw_ctrst_mod_HR,raw_FWHM_mod_HR)):
-                                                    input_dic.update({'ctrst':raw_ctrst_loc,  'FWHM':raw_FWHM_loc ,'fit_func_gen':dgauss})
-                                                    ctrst_mod_HR[isub_HR],FWHM_mod_HR[isub_HR] = cust_mod_true_prop(input_dic,input_dic['vel'],input_dic)[0:2]                            
-                                            elif data_fit_loc['func_prof_name'][inst]=='voigt':
-                                                ctrst_mod_HR = np.zeros(len(wsort),dtype=float)  
-                                                FWHM_mod_HR = np.zeros(len(wsort),dtype=float)
-                                                for isub_HR,(raw_ctrst_loc,raw_FWHM_loc) in enumerate(zip(raw_ctrst_mod_HR,raw_FWHM_mod_HR)):
-                                                    input_dic.update({'ctrst':raw_ctrst_loc,  'FWHM':raw_FWHM_loc,'fit_func_gen':voigt,'slope':0.})
-                                                    ctrst_mod_HR[isub_HR],FWHM_mod_HR[isub_HR] = cust_mod_true_prop(input_dic,input_dic['vel'],input_dic)[0:2]                            
-                                        if (prop_mode in ['true_FWHM','FWHM','FWHM_voigt']):yvar_HR_loc = FWHM_mod_HR   
-                                        if (prop_mode in ['true_ctrst','ctrst']):yvar_HR_loc = ctrst_mod_HR
-              
-                                #Plot
-                                ls_mod = '--'
-                                ls_mod = '-'
-                                if prop_mode != 'rv_res':plt.plot(xvar_HR_loc,yvar_HR_loc,color=col_loc,linestyle=ls_mod,lw=1,zorder=-1) 
-                                
-                                return xvar_HR_loc,yvar_HR_loc
+                                    #FWHM and contrast equivalent to observed profiles
+                                    #    - the derivation of FWHM and contrast from a HR profile is only relevant when observed individual profiles have been fitted with a gaussian model estimating their contrast and FWHM, 
+                                    #      if those measured properties are not the ones controlling the joint profile model, we must estimate them on the HR profile
+                                    #      if the same model profile was however used for the fit to individual and joint profiles, the properties can be directlyy compared
+                                    if (data_fit_loc['func_prof_name'][inst]=='gauss') or ((prop_mode in ['ctrst','FWHM']) and ~plot_options['inst_conv']):
+                                        if plot_options['inst_conv']:ctrst_mod_HR,FWHM_mod_HR = gauss_intr_prop(raw_ctrst_mod_HR,raw_FWHM_mod_HR,calc_FWHM_inst(inst,c_light)) 
+                                        else:ctrst_mod_HR,FWHM_mod_HR = raw_ctrst_mod_HR,raw_FWHM_mod_HR
+                                    else:
+                                        if plot_options['inst_conv']:input_dic['FWHM_inst'] = calc_FWHM_inst(inst,c_light)
+                                        else:input_dic['FWHM_inst'] = None
+                                        if data_fit_loc['func_prof_name'][inst]=='dgauss':
+                                            ctrst_mod_HR = np.zeros(len(wsort),dtype=float)  
+                                            FWHM_mod_HR = np.zeros(len(wsort),dtype=float)
+                                            for isub_HR,(raw_ctrst_loc,raw_FWHM_loc) in enumerate(zip(raw_ctrst_mod_HR,raw_FWHM_mod_HR)):
+                                                input_dic.update({'ctrst':raw_ctrst_loc,  'FWHM':raw_FWHM_loc ,'fit_func_gen':dgauss})
+                                                ctrst_mod_HR[isub_HR],FWHM_mod_HR[isub_HR] = cust_mod_true_prop(input_dic,input_dic['vel'],input_dic)[0:2]                            
+                                        elif data_fit_loc['func_prof_name'][inst]=='voigt':
+                                            ctrst_mod_HR = np.zeros(len(wsort),dtype=float)  
+                                            FWHM_mod_HR = np.zeros(len(wsort),dtype=float)
+                                            for isub_HR,(raw_ctrst_loc,raw_FWHM_loc) in enumerate(zip(raw_ctrst_mod_HR,raw_FWHM_mod_HR)):
+                                                input_dic.update({'ctrst':raw_ctrst_loc,  'FWHM':raw_FWHM_loc,'fit_func_gen':voigt,'slope':0.})
+                                                ctrst_mod_HR[isub_HR],FWHM_mod_HR[isub_HR] = cust_mod_true_prop(input_dic,input_dic['vel'],input_dic)[0:2]                            
+                                    if (prop_mode in ['true_FWHM','FWHM','FWHM_voigt']):yvar_HR_loc = FWHM_mod_HR   
+                                    if (prop_mode in ['true_ctrst','ctrst']):yvar_HR_loc = ctrst_mod_HR
+          
+                            #Plot
+                            ls_mod = '--'
+                            ls_mod = '-'
+                            if prop_mode != 'rv_res':plt.plot(xvar_HR_loc,yvar_HR_loc,color=col_loc,linestyle=ls_mod,lw=1,zorder=-1) 
+                            
+                            return xvar_HR_loc,yvar_HR_loc
                             
                     #-------------------------------------------------------                             
                     #Model from property fit
                     if (data_fit_prop is not None):
                     
                         #Data-equivalent model
+                        #    - abscissa property must be among those used to calculate the fitted model
                         if plot_options['theo_obs_prop']:
-                            if (prop_mode in ['rv','rv_res'] and plot_options['prop_'+data_mode+'_absc']!='phase') or (data_fit_prop['coord_line']!=plot_options['prop_'+data_mode+'_absc']):stop('Plot and fit coordinates must match')
+                            coord_plot = plot_options['prop_'+data_mode+'_absc']
+                            if ((prop_mode in ['rv','rv_res'] and coord_plot!='phase') or (data_fit_prop['coord_line']!=coord_plot)):stop('ERROR: plot and fit coordinates must match')
                             plt.plot(data_fit_prop['coord_mod'][inst][vis],data_fit_prop['prop_mod'][inst][vis],color='green',linestyle='',lw=1,marker='s',markersize=plot_options['markersize'],zorder=-1)
 
                         #High-resolution model
@@ -8906,13 +8953,17 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                     SNRS_loc = data_prop[inst][vis]['SNRs'][iexp]
                     if isub==0:SNR_obs = np.zeros([len(iexp_plot)]+list(SNRS_loc.shape))*np.nan
                     SNR_obs[isub] = SNRS_loc
-                
+
                 #Horizontal property
                 #    - values are put in tables covering all exposures if necessary  
                 x_obs = np.zeros(n_exp_vis)*np.nan
                 st_x_obs = np.zeros(n_exp_vis)*np.nan
                 end_x_obs = np.zeros(n_exp_vis)*np.nan
-                if plot_options['prop_'+data_mode+'_absc']=='phase':
+                if plot_options['prop_'+data_mode+'_absc']=='time':
+                    x_obs=coord_dic[inst][vis]['bjd'][iexp_plot] 
+                    st_x_obs=coord_dic[inst][vis]['bjd'][iexp_plot] - 0.5*coord_dic[inst][vis]['t_dur'][iexp_plot]/(24.*3600.)
+                    end_x_obs=coord_dic[inst][vis]['bjd'][iexp_plot] + 0.5*coord_dic[inst][vis]['t_dur'][iexp_plot]/(24.*3600.)
+                elif plot_options['prop_'+data_mode+'_absc']=='phase':
                     if ((data_mode=='DI') and (vis=='binned')) or ((data_mode=='Intr') and (data_type=='Intrbin')):
                         x_obs=data_bin['cen_bindim']
                         st_x_obs=data_bin['st_bindim']
@@ -8923,29 +8974,30 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                         end_x_obs=coord_vis['end_ph'][iexp_plot] 
                 elif plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj','y_st2','abs_y_st']:  
                     if data_mode=='DI':iexp_in = gen_dic[inst][vis]['idx_in'] 
-                    elif data_mode=='Intr':iexp_in = range(n_exp_vis)                    
-                    if plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']: 
-                        x_obs[iexp_in] = transit_prop_nom[plot_options['prop_'+data_mode+'_absc']][0,:]
-                        st_x_obs[iexp_in],end_x_obs[iexp_in]  = transit_prop_nom[plot_options['prop_'+data_mode+'_absc']+'_range'][0,:,0],transit_prop_nom[plot_options['prop_'+data_mode+'_absc']+'_range'][0,:,1]
-                    elif plot_options['prop_'+data_mode+'_absc'] in ['y_st2','abs_y_st']:
-                        if plot_options['prop_'+data_mode+'_absc']=='y_st2':x_obs[iexp_in] = transit_prop_nom['y_st'][0,:]**2.
-                        elif plot_options['prop_'+data_mode+'_absc']=='abs_y_st':x_obs[iexp_in] = np.abs(transit_prop_nom['y_st'][0,:])
-                        if 'y_st_range' in transit_prop_nom:
-                            st_x_obs[iexp_in],end_x_obs[iexp_in] = transit_prop_nom['y_st_range'][0,:,0],transit_prop_nom['y_st_range'][0,:,1]                            
-                            cond_cross = ( (st_x_obs<=0.) & (end_x_obs>=0.))
-                            bd_x_obs = np.vstack((st_x_obs**2.,end_x_obs**2.))
-                            st_x_obs=np.min(bd_x_obs,axis=0)
-                            end_x_obs=np.max(bd_x_obs,axis=0)
-                            if True in cond_cross:
-                                end_x_obs[cond_cross] = np.max(np.vstack((st_x_obs[cond_cross],end_x_obs[cond_cross])),axis=0)
-                                st_x_obs[cond_cross] = 0.
-                        else:st_x_obs,end_x_obs = x_obs,x_obs                  
+                    elif data_mode=='Intr':
+                        iexp_in = range(n_exp_vis)                         
+                        if plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']: 
+                            x_obs[iexp_in] = transit_prop_nom[plot_options['prop_'+data_mode+'_absc']][0,:]
+                            st_x_obs[iexp_in],end_x_obs[iexp_in]  = transit_prop_nom[plot_options['prop_'+data_mode+'_absc']+'_range'][0,:,0],transit_prop_nom[plot_options['prop_'+data_mode+'_absc']+'_range'][0,:,1]
+                        elif plot_options['prop_'+data_mode+'_absc'] in ['y_st2','abs_y_st']:
+                            if plot_options['prop_'+data_mode+'_absc']=='y_st2':x_obs[iexp_in] = transit_prop_nom['y_st'][0,:]**2.
+                            elif plot_options['prop_'+data_mode+'_absc']=='abs_y_st':x_obs[iexp_in] = np.abs(transit_prop_nom['y_st'][0,:])
+                            if 'y_st_range' in transit_prop_nom:
+                                st_x_obs[iexp_in],end_x_obs[iexp_in] = transit_prop_nom['y_st_range'][0,:,0],transit_prop_nom['y_st_range'][0,:,1]                            
+                                cond_cross = ( (st_x_obs<=0.) & (end_x_obs>=0.))
+                                bd_x_obs = np.vstack((st_x_obs**2.,end_x_obs**2.))
+                                st_x_obs=np.min(bd_x_obs,axis=0)
+                                end_x_obs=np.max(bd_x_obs,axis=0)
+                                if True in cond_cross:
+                                    end_x_obs[cond_cross] = np.max(np.vstack((st_x_obs[cond_cross],end_x_obs[cond_cross])),axis=0)
+                                    st_x_obs[cond_cross] = 0.
+                            else:st_x_obs,end_x_obs = x_obs,x_obs                  
                 elif plot_options['prop_'+data_mode+'_absc'] in ['ctrst','FWHM']:
                     x_obs=np.array([prof_fit_vis[idx_loc][plot_options['prop_'+data_mode+'_absc']] for idx_loc in range(n_exp_vis)])
                     st_x_obs,end_x_obs = x_obs,x_obs 
-                elif plot_options['prop_'+data_mode+'_absc'] in ['snr','snr_quad']: 
+                elif plot_options['prop_'+data_mode+'_absc'] in ['snr','snrQ']: 
                     if plot_options['prop_'+data_mode+'_absc']=='snr':x_obs =np.mean(SNR_obs[:,plot_options['idx_SNR'][inst]],axis=1)
-                    elif plot_options['prop_'+data_mode+'_absc']=='snr_quad':x_obs =np.sqrt(np.sum(SNR_obs[:,plot_options['idx_SNR'][inst]]**2.,axis=1))
+                    elif plot_options['prop_'+data_mode+'_absc']=='snrQ':x_obs =np.sqrt(np.sum(SNR_obs[:,plot_options['idx_SNR'][inst]]**2.,axis=1))
                     st_x_obs,end_x_obs = x_obs,x_obs                                          
                 elif plot_options['prop_'+data_mode+'_absc']=='snr_R':                        
                     x_obs=np.mean(data_prop_vis['SNRs'][:,plot_options['idx_num_SNR'][inst]],axis=1)/np.mean(data_prop_vis['SNRs'][:,plot_options['idx_den_SNR'][inst]],axis=1)
@@ -9002,13 +9054,11 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             else:err_prop_loc = 'err_'+prop_mode
                         for idx_loc in range(n_exp_vis):
                             if idx_loc in prof_fit_vis:
-                                val_obs[idx_loc]=prof_fit_vis[idx_loc][prop_loc]
-                                if err_prop_loc is not None:eval_obs[:,idx_loc]=[prof_fit_vis[idx_loc][err_prop_loc][0],prof_fit_vis[idx_loc][err_prop_loc][1]]
+                                val_obs[idx_loc]=sc_unit*prof_fit_vis[idx_loc][prop_loc]
+                                if err_prop_loc is not None:eval_obs[:,idx_loc]=[sc_unit*prof_fit_vis[idx_loc][err_prop_loc][0],sc_unit*prof_fit_vis[idx_loc][err_prop_loc][1]]
                         if (prop_mode in ['rv_res','rv_pip_res']):                               
-                            eval_obs*=1e3
-                            val_obs*=1e3
                             if (data_mode=='DI'):
-                                for idx_loc in range(n_exp_vis):rv_mod_obs[idx_loc] = prof_fit_vis[idx_loc]['RVmod']*1e3
+                                for idx_loc in range(n_exp_vis):rv_mod_obs[idx_loc] = sc_unit*prof_fit_vis[idx_loc]['RVmod']
                                 
                             #Redefine residual from surface RVs using model
                             elif (data_mode=='Intr') and (plot_options['theo_HR_prop'] or plot_options['theo_HR_prof'] or plot_options['theo_HR_nom']):
@@ -9020,16 +9070,16 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                                     x_theo_HR = xvar_HR_loc
                                     y_theo_HR = yvar_HR_loc                                       
                                 for idx_loc in range(n_exp_vis):
-                                    rv_mod_obs[idx_loc] = np.nanmean(y_theo_HR[ (x_theo_HR>=st_x_obs[idx_loc]) & (x_theo_HR<=end_x_obs[idx_loc])])*1e3
+                                    rv_mod_obs[idx_loc] = sc_unit*np.nanmean(y_theo_HR[ (x_theo_HR>=st_x_obs[idx_loc]) & (x_theo_HR<=end_x_obs[idx_loc])])
                                 val_obs -= rv_mod_obs 
 
                     elif prop_mode in ['rv_pip','FWHM_pip','ctrst_pip']:
                         val_obs = data_dic['DI'][inst][vis][prop_mode] 
                         eval_obs = np.tile(data_dic['DI'][inst][vis]['e'+prop_mode],[2,n_exp_vis]) 
-                    elif prop_mode in ['snr','snr_quad']: 
+                    elif prop_mode in ['snr','snrQ']: 
                         if prop_mode=='snr':
                             val_obs =np.mean(SNR_obs[:,plot_options['idx_SNR'][inst]],axis=1)
-                        elif prop_mode=='snr_quad':val_obs =np.sqrt(np.sum(SNR_obs[:,plot_options['idx_SNR'][inst]]**2.,axis=1))
+                        elif prop_mode=='snrQ':val_obs =np.sqrt(np.sum(SNR_obs[:,plot_options['idx_SNR'][inst]]**2.,axis=1))
                     elif prop_mode=='snr_R':                      
                         val_obs=np.mean(data_prop_vis['SNRs'][:,plot_options['idx_ord_SNR'][inst]],axis=1)/np.mean(data_prop_vis['SNRs'][:,plot_options['idx_ord_SNR'][inst]],axis=1)                        
                     elif prop_mode in ['AM','seeing','RVdrift','colcorrmin','colcorrmax','satur_check','alt','az']:  
@@ -9112,9 +9162,12 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                     else:val_out=np.nan
                     
                     #Normalise values
-                    if ('rv' not in prop_mode) and (plot_options['norm_ref']) and (not np.isnan(val_out)):
-                        val_obs/=val_out
-                        eval_obs/=np.abs(val_out)   #in case of negative mean            
+                    if plot_options['norm_ref'] and plot_options['norm_mod']:stop('ERROR: "norm_ref" and "norm_mod" cannot be used together.')
+                    if (plot_options['norm_ref'] or plot_options['norm_mod']) and ('rv' not in prop_mode):
+                        if (plot_options['norm_ref']) and (not np.isnan(val_out)):val_norm = val_out
+                        if (plot_options['norm_mod']) and (not np.isnan(c0_mod)):val_norm = c0_mod
+                        val_obs/=val_norm
+                        eval_obs/=np.abs(val_norm)   #in case of negative mean            
                        
                 #Plot in-transit value with different color or with empty symbols
                 if plot_options['color_dic'][inst][vis]!='jet':
@@ -9152,7 +9205,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             yerr_sub_minmax = [1e100,-1e100]
                             for HDI_sub in data_exp['HDI_interv'][ipar]:
                                 yerr_sub = [HDI_sub[0],HDI_sub[1]]
-                                if prop_mode=='rv_res':yerr_sub = np.array(yerr_sub)*1e3-rv_mod_obs[i_loc]
+                                if prop_mode=='rv_res':yerr_sub = sc_unit*np.array(yerr_sub)-rv_mod_obs[i_loc]
                                 plt.plot([x_obs[i_loc],x_obs[i_loc]],yerr_sub,color=col_obs[i_loc],marker='',linestyle='-',zorder=0,alpha=plot_options['alpha_err'])
                                 yerr_sub_minmax = [np.min([yerr_sub_minmax[0],yerr_sub[0]]),np.max([yerr_sub_minmax[1],yerr_sub[1]])]                                  
                             HDIval_obs=np.append(HDIval_obs,[[val_obs[i_loc]-yerr_sub_minmax[0]],[yerr_sub_minmax[1]-val_obs[i_loc]]],axis=1)
@@ -9168,7 +9221,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                     else:
                         y_min=min(y_min,np.min(val_obs[None,:]))
                         y_max=max(y_max,np.max(val_obs[None,:]))                    
-
+                  
                 # #ANTARESS I - delete afterward
                 # if (gen_dic['star_name']=='WASP76'):
                 #     prof_fit_add=dataload_npz('/Users/bourrier/Travaux/ANTARESS/Ongoing/WASP76b_Saved_data/DIorig_prop/chi2_noplexc/ESPRESSO_'+vis)
@@ -9192,6 +9245,12 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                 dic_inst['val_all']=np.append(dic_inst['val_all'],val_obs)
                 dic_inst['eval_all']=np.append(dic_inst['eval_all'],eval_obs,axis=1)
                 dic_inst['HDI_all']=np.append(dic_inst['HDI_all'],HDIval_obs,axis=1)
+                dic_vis['x_all']=np.append(dic_vis['x_all'],x_obs)
+                dic_vis['st_x_all']=np.append(dic_vis['st_x_all'],st_x_obs)
+                dic_vis['end_x_all']=np.append(dic_vis['end_x_all'],end_x_obs)
+                dic_vis['val_all']=np.append(dic_vis['val_all'],val_obs)
+                dic_vis['eval_all']=np.append(dic_vis['eval_all'],eval_obs,axis=1)
+                dic_vis['HDI_all']=np.append(dic_vis['HDI_all'],HDIval_obs,axis=1)
 
                 #-------------------------------------------------------
                 #Print dispersion of residuals to a reference 
@@ -9275,121 +9334,6 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                     phase_RV_star,RV_star_solCDM = calc_rv_star_HR(pl_ref,system_param,gen_dic['kepl_pl'],coord_dic,inst,vis,data_dic)
                     shift_RV=np.nanmean([prof_fit_vis[idx_loc]['rv_l2c'] for idx_loc in idx_out]) if prop_mode=='RV_lobe'  else 0. 
                     plt.plot(phase_RV_star,RV_star_solCDM+shift_RV,color=col_loc,linestyle='-',lw=plot_options['lw_plot'],zorder=0)
-
-                #-------------------------------------------------------
-                #Fit the selected ordina property as a function of abscissa property
-                cond_plot_fit = True if ((inst in plot_options['idx_fit']) and (vis in plot_options['idx_fit'][inst])) else False
-                if cond_plot_fit and (((inst in plot_options['deg_prop_fit']) and (vis in plot_options['deg_prop_fit'][inst])) or (((inst in plot_options['fit_sin']) and (vis in plot_options['fit_sin'][inst])))):                      
-                    print('       Fit versus')
-
-                    #Absolute index for fit, in the plot-reduced table
-                    #    - by default, out-of-transit points for disk-integrated properties, all points for intrinsic properties
-                    if len(plot_options['idx_fit'][inst][vis])==0:
-                        if (data_mode=='DI'):plot_options['idx_fit'][inst][vis] = isub_out_plot
-                        if (data_mode=='Intr'):plot_options['idx_fit'][inst][vis] = range(len(val_obs))
-                    idx_fit_loc=plot_options['idx_fit'][inst][vis]
-                    npts_fit=len(idx_fit_loc)
-
-                    #Use dispersion on residuals to set the error on properties
-                    #    - we perform a preliminary fit to set the dispersion from the residuals   
-                    if plot_options['set_err'] is None:
-                        err_disp=np.repeat((val_obs[idx_fit_loc]-np.mean(val_obs[idx_fit_loc])).std(),npts_fit)
-                    else:
-                        eval_1D = np.mean(eval_obs,axis=0)
-                        err_disp=plot_options['set_err']*eval_1D[idx_fit_loc]    
-                        if np.max(err_disp)==0.:
-                            print('No errors defined on ',prop_mode,': set to constant value')
-                            err_disp = np.repeat((val_obs[idx_fit_loc]-np.mean(val_obs[idx_fit_loc])).std(),npts_fit)
-                    
-                    #Define fit properties
-                    fixed_args={'use_cov':False,'deg_pol':{},'var_prop':{},'var_fit':{}}
-                    if ((inst in plot_options['fit_sin']) and (vis in plot_options['fit_sin'][inst])):fixed_args['sin_prop'] = [plot_options['fit_sin'][inst][vis]] 
-                    else:fixed_args['sin_prop'] = []   
-                    if ((inst in plot_options['deg_prop_fit']) and (vis in plot_options['deg_prop_fit'][inst])):fixed_args['pol_prop'] = list(plot_options['deg_prop_fit'][inst][vis].keys()) 
-                    else:fixed_args['pol_prop'] = []                    
-                    fixed_args['prop_fit'] = list(set(fixed_args['sin_prop']+fixed_args['pol_prop']))
-                    
-                    #Global correction functions
-                    #    - defined as F(var) = a0*F(var1)*F(var2)*..
-                    #              or F(var) = a0+F(var1)+F(var2)*..
-                    p_guess = Parameters()
-                    if prop_mode in ['rv','rv_res']:p_guess.add_many(('a0', 0., True,None,None,  None)) 
-                    else:p_guess.add_many(('a0', np.mean(val_obs[idx_fit_loc]), True,None,None,  None))                        
-                    for iprop,prop_fit in enumerate(fixed_args['prop_fit']):
-                        if prop_fit=='phase':var_prop = coord_vis['cen_ph'][iexp_plot]
-                        elif prop_fit=='snr':var_prop = np.mean(SNR_obs[:,plot_options['idx_SNR'][inst]],axis=1)
-                        elif prop_fit=='snr_quad':var_prop = np.sqrt(np.sum(SNR_obs[:,plot_options['idx_SNR'][inst]]**2.,axis=1))
-                        else:var_prop = x_obs
-                        fixed_args['var_prop'][prop_fit] = var_prop[idx_in_plot]
-                        fixed_args['var_fit'][prop_fit] = var_prop[idx_in_plot][idx_fit_loc]
-                        
-                        #Sine function
-                        #    - F(var) = (1 + A*sin(2*pi*((var-var0)/P)))
-                        if prop_fit in fixed_args['sin_prop']:
-                            p_guess.add_many((prop_fit+'_amp',(np.max(val_obs) - np.min(val_obs)) / 2,True,  0.,None,None),
-                                             (prop_fit+'_off',0.,True,  None,None,None),
-                                             (prop_fit+'_per',(np.max(x_obs) - np.min(x_obs)) / 4,True, 0.,None,None))  
-                        #Polynomial variation
-                        #    - F(var) = (1 + c1*x + c2*x^2 + ...)
-                        #   or F(var) =  a1*x + a2*x^2 + ...
-                        #    - if several trends are combined, a single a0 is required
-                        if prop_fit in fixed_args['pol_prop']:
-                            fixed_args['deg_pol'][prop_fit]=plot_options['deg_prop_fit'][inst][vis][prop_fit]
-                            if fixed_args['deg_pol'][prop_fit]>0:
-                                for ideg in range(1,plot_options['deg_prop_fit'][inst][vis][prop_fit]+1):  
-                                    p_guess.add_many((prop_fit+'_c'+str(ideg), 0., True,None,None,  None))                                 
-
-                    #Fitting
-                    nfree = 0.
-                    for par in p_guess:
-                        if p_guess[par].vary:nfree+=1.
-                    fixed_args['idx_fit'] = np.ones(npts_fit,dtype=bool)
-                    result_loc,merit,p_best = call_lmfit(p_guess,np.zeros(npts_fit),val_obs[idx_fit_loc],np.array([err_disp**2.]),fit_pol_sin,fixed_args=fixed_args)
-                   
-                    #Best fit    
-                    p_obs = fit_pol_sin(p_best,np.zeros(npts_fit),args=fixed_args) 
-                    print('          a0'+'='+"{0:.6e}".format(p_best['a0'].value)) 
-                    for prop_fit in fixed_args['prop_fit']:
-                        print('         ',prop_fit)
-                        if prop_fit in fixed_args['sin_prop']:
-                            print('       Asin ='+"{0:.6e}".format(p_best[prop_fit+'_amp'].value)) 
-                            print('       X0sin ='+"{0:.6e}".format(p_best[prop_fit+'_off'].value)) 
-                            print('       Psin ='+"{0:.6e}".format(p_best[prop_fit+'_per'].value))  
-                        if (prop_fit in fixed_args['pol_prop']) and (fixed_args['deg_pol'][prop_fit]>0):
-                            for ideg in range(1,plot_options['deg_prop_fit'][inst][vis][prop_fit]+1): 
-                                print('           c'+str(ideg)+'='+"{0:.6e}".format(p_best[prop_fit+'_c'+str(ideg)].value)) 
-                                    
-      
-                    #Fit quality
-                    bestchi2=np.sum( ( (val_obs[idx_fit_loc] - p_obs)/err_disp )**2.)
-                    print('       Chi2 = '+str(bestchi2))
-                    print('       Reduced Chi2 ='+str(bestchi2/(npts_fit-nfree)))
-                    print('       BIC ='+str(bestchi2+nfree*np.log(npts_fit)))  
-                    print('       Dispersion :')
-                    print('         pre-fit :'+str((val_obs[idx_fit_loc]-np.mean(val_obs[idx_fit_loc])).std()))  
-                    res_obs = val_obs[idx_fit_loc] - p_obs 
-                    print('         post-fit :'+str((res_obs-np.mean(res_obs)).std()))                              
-                 
-                    #Best-fit at high-resolution  
-                    #    - this is only possible if there is a single variable, otherwise we would need to create a HR multi-dimensional table by interpolating the observed one, as a given observed variable matches a set of other ones
-                    if len(fixed_args['prop_fit'])==1:
-                        nx_HR = 100
-                        prop_fit=fixed_args['prop_fit'][0]                        
-                        x_mod = deepcopy(fixed_args['var_prop'][prop_fit])  
-                        dx_HR=(max(x_mod)-min(x_mod))/nx_HR
-                        fixed_args['var_fit'][prop_fit] = min(x_mod) + dx_HR*np.arange(nx_HR)
-                        p_mod=fit_pol_sin(p_best,np.zeros(nx_HR),args=fixed_args)
-                        plt.plot(fixed_args['var_fit'][plot_options['prop_'+data_mode+'_absc']],p_mod,color='darkgrey',linestyle='-',lw=1,zorder=50)                            
-                    else:
-                        for prop_fit in fixed_args['prop_fit']:
-                            fixed_args['var_fit'][prop_fit]  = fixed_args['var_prop'][prop_fit]                          
-                        p_mod=fit_pol_sin(p_best,np.zeros(len(fixed_args['var_fit'][prop_fit])),args=fixed_args)
-                        wsort = np.argsort(fixed_args['var_fit'][plot_options['prop_'+data_mode+'_absc']])
-                        plt.plot(fixed_args['var_fit'][plot_options['prop_'+data_mode+'_absc']][wsort],p_mod[wsort],color='darkgrey',linestyle='-',lw=1,zorder=50)
-
-                    #Plot fit as a function of current variable   
-                    if plot_options['plot_err']:plt.errorbar(x_obs[idx_fit_loc],val_obs[idx_fit_loc],yerr=err_disp,color=col_loc,markeredgecolor=col_loc,marker='',markersize=plot_options['markersize'],linestyle='',zorder=50,alpha=0.5)                       
-
                   
                 #-------------------------------------------------------           
                 #Master property 
@@ -9408,9 +9352,10 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
 
 
                 #Contacts
-                if plot_options['prop_'+data_mode+'_absc']=='phase':
+                if plot_options['prop_'+data_mode+'_absc']=='phase': 
                     for ipl,pl_loc in enumerate(data_dic[inst][vis]['transit_pl']):
-                        if (i_visit==0) or ((pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst])): 
+                        if (i_visit==0) or (plot_options['prop_'+data_mode+'_absc']=='time') or ((pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst])): 
+                            ls_pl = {0:':',1:'--'}[ipl]
                             if pl_loc==pl_ref:
                                 cen_ph = 0.
                                 contact_phases_vis = contact_phases[pl_ref]
@@ -9418,9 +9363,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                                 contact_times = coord_dic[inst][vis][pl_loc]['Tcenter']+contact_phases[pl_loc]*system_param[pl_loc]["period"]
                                 contact_phases_vis = (contact_times-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"]  
                                 cen_ph = (coord_dic[inst][vis][pl_loc]['Tcenter']-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"] 
-                            ls_pl = {0:':',1:'--'}[ipl]
-                            for cont_ph in contact_phases_vis:
-                                plt.plot([cont_ph,cont_ph],[-1e6,1e6],color=plot_options['col_contacts'],linestyle=ls_pl,lw=plot_options['lw_plot'],zorder=0)
+                            for cont_ph in contact_phases_vis:plt.plot([cont_ph,cont_ph],[-1e6,1e6],color=plot_options['col_contacts'],linestyle=ls_pl,lw=plot_options['lw_plot'],zorder=0)
             
                             #Overplot transit duration from system properties
                             if (data_mode=='DI') and plot_options['plot_T14']:
@@ -9549,12 +9492,34 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                     SNR_RMR = 1./np.sqrt( np.sum( 1./SNRpred_tab**2.  ) )
                     print('     SNR(RMR) =',SNR_RMR)
 
+            #-------------------------------------------------------
+            #Plot data binned over current visit dataset for current instrument
+            if (inst in plot_options['bin_val']) and (vis in plot_options['bin_val'][inst]) and (plot_options['plot_data']): 
+                x_min,x_max,y_min,y_max=sub_func_bin(plot_options['bin_val'][inst][vis],dic_vis,x_min,x_max,y_min,y_max,plot_options) 
+
         ### end of visit                           
- 
+
+        #Contacts
+        #    - over full temporal extension, which can be useful if several visits are plotted
+        #    - possible only for fixed transit centers
+        if (plot_options['prop_'+data_mode+'_absc']=='time') and (len(gen_dic['Tcenter_visits'])==0): 
+            transit_pl = []
+            for vis in vis_list: transit_pl+=data_dic[inst][vis]['transit_pl']
+            for ipl,pl_loc in enumerate(np.unique(transit_pl)):
+                ls_pl = {0:':',1:'--'}[ipl]
+                n_per_min = int( (system_param[pl_loc]['TCenter'] - 2400000. - (x_min-system_param[pl_loc]['T14_num']) )/system_param[pl_loc]["period"] ) 
+                Tcenter_min = system_param[pl_loc]['TCenter'] - 2400000. + n_per_min*system_param[pl_loc]["period"]
+                contact_times_rel = contact_phases[pl_loc]*system_param[pl_loc]["period"]
+                Tcenter_loc = Tcenter_min
+                while (Tcenter_loc - 0.5*system_param[pl_loc]['T14_num']) <x_max:
+                    contact_times_loc = Tcenter_loc + contact_times_rel
+                    for cont_t in contact_times_loc:plt.plot([cont_t,cont_t],[-1e6,1e6],color=plot_options['col_contacts'],linestyle=ls_pl,lw=plot_options['lw_plot'],zorder=0)                                                 
+                    Tcenter_loc +=system_param[pl_loc]["period"]    
+
         #-------------------------------------------------------
         #Plot data binned over all visit datasets for current instrument
-        if (inst in plot_options['bin_val']) and (plot_options['plot_data']): 
-            x_min,x_max,y_min,y_max=sub_func_bin(plot_options['bin_val'][inst],dic_inst,x_min,x_max,y_min,y_max,plot_options)   
+        if (inst in plot_options['bin_val']) and ('all' in plot_options['bin_val'][inst]) and (plot_options['plot_data']): 
+            x_min,x_max,y_min,y_max=sub_func_bin(plot_options['bin_val'][inst]['all'],dic_inst,x_min,x_max,y_min,y_max,plot_options)   
 
     ### end of instrument
 
@@ -9585,7 +9550,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
     #Reference level
     if plot_options['plot_reflev']:
        if ((data_mode=='DI') and (prop_mode in ['rv_res','rv_pip_res'])) or ((data_mode=='Intr') and (prop_mode in ['rv','rv_res'])):val_ref = 0.
-       elif (data_mode=='DI') and plot_options['norm_ref']:val_ref = 1.
+       elif (data_mode=='DI') and (plot_options['norm_ref'] or plot_options['norm_mod']):val_ref = 1.
        else:val_ref = None
        plt.plot(x_range_loc,[val_ref,val_ref],color='black',linestyle=':',lw=plot_options['lw_plot'],zorder=0)    
 
@@ -9596,6 +9561,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
     xmajor_int=None
     xminor_int=None    
     x_title_dic={ 
+        'time':'Time (bjd)',
         'phase':'Orbital phase',
         'mu':'$\mu$',
         'lat':'Stellar latitude ($^{\circ}$)'   ,
@@ -9607,7 +9573,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
         'flux_airmass':'Abs[Airmass]' ,
         'seeing':'Seeing'  ,
         'snr':'snr'     ,
-        'snr_quad':'snr',
+        'snrQ':'snr',
         'snr_R':'snr ratio',
         'RVdrift':'RV drift (m s$^{-1}$)',
         'abs_y_st':'Stellar |Y| position (R$_{*}$)', 
@@ -9660,7 +9626,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
             'AM':'Airmass',
             'seeing':'Seeing',
             'snr':'SNR' ,
-            'snr_quad':'SNR' ,
+            'snrQ':'SNR' ,
             'rv_l2c':'RV$_\mathrm{lobe}$-RV$_\mathrm{core}$ (km s$^{-1}$)',
             'amp_l2c':'A$_\mathrm{lobe}$/A$_\mathrm{core}$' ,
             'FWHM_l2c':'FWHM$_\mathrm{lobe}$/FWHM$_\mathrm{core}$' ,

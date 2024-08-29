@@ -18,10 +18,10 @@ from matplotlib.ticker import MultipleLocator
 from ..ANTARESS_plots.utils_plots import autom_tick_prop,custom_axis
 from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof
 from ..ANTARESS_grids.ANTARESS_coord import get_timeorbit,calc_tr_contacts
-from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting,model_par_names,model_par_units
+from ..ANTARESS_analysis.ANTARESS_ana_comm import model_par_names,model_par_units
 from ..ANTARESS_general.utils import stop,np_where1D,is_odd,closest,dataload_npz,gen_specdopshift,check_data,datasave_npz
 from ..ANTARESS_general.constant_data import c_light
-from ..ANTARESS_general.minim_routines import init_fit,fit_merit,call_lmfit
+from ..ANTARESS_general.minim_routines import init_fit,fit_merit,call_lmfit,par_formatting
 
 
 def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
@@ -126,8 +126,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             suf_hyper = ['_off','_dx_east','_dy_east','_dz_east','_dz_west','_doff']    
     
             #Generic fit dictionary
-            fit_prop_dic = {'calc_quant' : False}
-            fit_dic={'uf_bd':{}}    
+            fit_dic={'calc_quant' : False}    
     
         #Resolution of plot model (1e-10 s-1)
         fixed_args['dnu_HR'] = gen_dic['wig_bin']/4.
@@ -978,12 +977,12 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             fixed_args_loc['fap_thresh'] = gen_dic['wig_exp_samp']['fap_thresh']     
      
                             #Possibility to modify guesses and priors before local exposure fit
-                            fit_prop_dic['mod_prop'] = deepcopy(mod_prop_exp)
-                            fit_prop_dic['varpar_priors'] = deepcopy(varpar_priors_exp)
+                            fit_dic['mod_prop'] = deepcopy(mod_prop_exp)
+                            fit_dic['varpar_priors'] = deepcopy(varpar_priors_exp)
                             fixed_args_loc['stable_pointpar'] = stable_pointpar_exp
     
                             #Fix all properties by default
-                            for par in fit_prop_dic['mod_prop']:fit_prop_dic['mod_prop'][par]['vary'] = False 
+                            for par in fit_dic['mod_prop']:fit_dic['mod_prop'][par]['vary'] = False 
 
                             #Fix component frequency using the fit results from 'wig_exp_point_ana' or 'wig_vis_fit'
                             comp_freqfixed = []
@@ -1009,12 +1008,12 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                             params_par = {par+sub:coord_fit[par+sub][0] for sub in suf_hyper_vis}
                                         if (vis in gen_dic['wig_exp_samp']['fix_freq2vismod']): 
                                             params_par = {par+sub:coord_fit[par+sub].value for sub in suf_hyper_vis}
-                                        fit_prop_dic['mod_prop'][par+'_off']['guess'] = wig_submod_coord_discont(1,params_par,args_loc)[0]
+                                        fit_dic['mod_prop'][par+'_off']['guess'] = wig_submod_coord_discont(1,params_par,args_loc)[0]
 
                             #Model parameters
                             p_start = Parameters()  
-                            par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['varpar_priors'],fit_dic,fixed_args_loc,'','',None)
-                            init_fit(fit_dic,fixed_args_loc,p_start,fit_prop_dic,model_par_names,model_par_units)                    
+                            par_formatting(p_start,fit_dic['mod_prop'],fit_dic['varpar_priors'],fit_dic,fixed_args_loc,'','')
+                            init_fit(fit_dic,fixed_args_loc,p_start,model_par_names,model_par_units)                    
 
                             #Initialize band fit results
                             #    - we only store constant coefficients of the amplitude and frequency hyper-parameters, for the highest fitted component
@@ -1086,8 +1085,8 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             fixed_args_loc['comp_mod']=deepcopy(gen_dic['wig_exp_fit']['comp_ids'])
                             
                             #Possibility to modify guesses and priors before local exposure fit
-                            fit_prop_dic['mod_prop'] = deepcopy(mod_prop_exp)
-                            fit_prop_dic['varpar_priors'] = deepcopy(varpar_priors_exp)
+                            fit_dic['mod_prop'] = deepcopy(mod_prop_exp)
+                            fit_dic['varpar_priors'] = deepcopy(varpar_priors_exp)
                             fixed_args_loc['stable_pointpar'] = deepcopy(stable_pointpar_exp)
 
                             #Initialize coefficients of hyper-parameters by their chromatic fits to initialize the global fit
@@ -1116,7 +1115,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                     if hyperpar_chrom_args['deg_Freq'][comp_id]!=fixed_args_loc['deg_Freq'][comp_id]:stop('Run chromatic analysis with same Freq degree')
                                     if hyperpar_chrom_args['deg_Amp'][comp_id]!=fixed_args_loc['deg_Amp'][comp_id]:stop('Run chromatic analysis with same Amp degree')
                                 for par in hyperpar_chrom_results:
-                                    if par in fit_prop_dic['mod_prop']:fit_prop_dic['mod_prop'][par]['guess'] = hyperpar_chrom_results[par][0]
+                                    if par in fit_dic['mod_prop']:fit_dic['mod_prop'][par]['guess'] = hyperpar_chrom_results[par][0]
 
                             #Fix or bound properties using results from temporal hyperparameter fit
                             if (vis in gen_dic['wig_exp_fit']['model_par']):model_par = list(gen_dic['wig_exp_fit']['model_par'][vis].keys())
@@ -1133,7 +1132,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 
                                 #Process requested properties
                                 for par in np.unique(model_par+fixed_pointpar):
-                                    if par+'_off' not in fit_prop_dic['mod_prop']:stop('Undefined parameter'+par)
+                                    if par+'_off' not in fit_dic['mod_prop']:stop('Undefined parameter'+par)
                                     
                                     #Calculate parameter value in current exposure
                                     cond_hyperfit = True
@@ -1143,22 +1142,22 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                         params_par = {par+sub:hyperpar_coord_fit[par+sub][0] for sub in suf_hyper_vis}   
                                         args_loc['par_name'] = par+'_'                              
                                         par_val = wig_submod_coord_discont(1,params_par,args_loc)[0]
-                                        fit_prop_dic['mod_prop'][par+'_off']['guess'] = par_val
+                                        fit_dic['mod_prop'][par+'_off']['guess'] = par_val
                                     
                                         #Set prior
                                         if par in model_par:
                                             prior_range = gen_dic['wig_exp_fit']['model_par'][vis][par]   
-                                            fit_prop_dic['varpar_priors'][par+'_off']['low'] = par_val  - prior_range[0] 
-                                            fit_prop_dic['varpar_priors'][par+'_off']['high'] = par_val + prior_range[1]   
+                                            fit_dic['varpar_priors'][par+'_off']['low'] = par_val  - prior_range[0] 
+                                            fit_dic['varpar_priors'][par+'_off']['high'] = par_val + prior_range[1]   
                                 
                                         #Fix property
                                         if par in fixed_pointpar:
-                                            fit_prop_dic['mod_prop'][par+'_off']['vary'] = False
+                                            fit_dic['mod_prop'][par+'_off']['vary'] = False
     
                             #Change variable status
                             #    - provides additional flexibility in addition to 'comp_mod'
-                            # fit_prop_dic['mod_prop']['Freq3_c1_off']['vary'] = False
-                            # fit_prop_dic['mod_prop']['Freq3_c2_off']['vary'] = False   
+                            # fit_dic['mod_prop']['Freq3_c1_off']['vary'] = False
+                            # fit_dic['mod_prop']['Freq3_c2_off']['vary'] = False   
 
                             #Define each model component
                             for comp_id in range(1,6):     
@@ -1167,33 +1166,33 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 #Nullify and fix component
                                 if comp_id not in gen_dic['wig_exp_fit']['comp_ids']:
                                     for pref,suf in zip(pref_names[comp_id],suf_names[comp_id]):
-                                        fit_prop_dic['mod_prop'].pop(pref+comp_str+suf+'_off')
+                                        fit_dic['mod_prop'].pop(pref+comp_str+suf+'_off')
 
                                 else:    
                                     
                                     #Amplitude model fixed
                                     if fixed_args_loc['fixed_amp'][comp_id]:
-                                        for pref,suf in zip(pref_names_amp[comp_id],suf_names_amp[comp_id]):fit_prop_dic['mod_prop'][pref+comp_str+suf+'_off']['vary']  = False                 
+                                        for pref,suf in zip(pref_names_amp[comp_id],suf_names_amp[comp_id]):fit_dic['mod_prop'][pref+comp_str+suf+'_off']['vary']  = False                 
 
                                     #Frequency model fixed
                                     if fixed_args_loc['fixed_freq'][comp_id]:
-                                        for pref,suf in zip(pref_names_freq[comp_id],suf_names_freq[comp_id]):fit_prop_dic['mod_prop'][pref+comp_str+suf+'_off']['vary']  = False                                          
+                                        for pref,suf in zip(pref_names_freq[comp_id],suf_names_freq[comp_id]):fit_dic['mod_prop'][pref+comp_str+suf+'_off']['vary']  = False                                          
 
                                     #Decreasing frequencies
                                     #    - we assume the frequencies do not vary with nu so much that their curve overlap, and we thus use the zero-th order coefficient of each component frequency as constraint
                                     elif (comp_id>1) and fixed_args_loc['cond_dec_f'][comp_id]:
                                         delta_freq ='delta_f'+str(comp_id-1)+comp_str 
-                                        fit_prop_dic['mod_prop'][delta_freq]={'guess':p_start['Freq'+str(comp_id-1)+'_c0_off'].value - p_start['Freq'+comp_str+'_c0_off'].value,'vary':True}
-                                        fit_prop_dic['varpar_priors'][delta_freq]={'low':0.,'high':5.}         
-                                        fit_prop_dic['mod_prop'].pop('Freq'+comp_str+'_c0_off')
-                                        fit_prop_dic['mod_prop']['Freq'+comp_str+'_c0_off']={'guess':np.nan,'vary':False,'expr':'Freq'+str(comp_id-1)+'_c0_off - '+delta_freq}
-                                        fit_prop_dic['varpar_priors']['Freq'+comp_str+'_c0_off']={'low':0.,'high':5.} 
+                                        fit_dic['mod_prop'][delta_freq]={'guess':p_start['Freq'+str(comp_id-1)+'_c0_off'].value - p_start['Freq'+comp_str+'_c0_off'].value,'vary':True}
+                                        fit_dic['varpar_priors'][delta_freq]={'low':0.,'high':5.}         
+                                        fit_dic['mod_prop'].pop('Freq'+comp_str+'_c0_off')
+                                        fit_dic['mod_prop']['Freq'+comp_str+'_c0_off']={'guess':np.nan,'vary':False,'expr':'Freq'+str(comp_id-1)+'_c0_off - '+delta_freq}
+                                        fit_dic['varpar_priors']['Freq'+comp_str+'_c0_off']={'low':0.,'high':5.} 
                        
                             #Model parameters
                             #    - initialized with generic parameter values
                             p_start = Parameters()  
-                            par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['varpar_priors'],fit_dic,fixed_args_loc,'','',None)
-                            init_fit(fit_dic,fixed_args_loc,p_start,fit_prop_dic,model_par_names,model_par_units)     
+                            par_formatting(p_start,fit_dic['mod_prop'],fit_dic['varpar_priors'],fit_dic,fixed_args_loc,'','')
+                            init_fit(fit_dic,fixed_args_loc,p_start,model_par_names,model_par_units)     
 
                             #------------------------------
     
@@ -2099,7 +2098,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     fixed_args_loc['comp_mod']=deepcopy(gen_dic['wig_vis_fit']['comp_ids'])
   
                     #Initializations
-                    fit_prop_dic={'save_outputs':False}   #To prevent creation of generic output file
+                    fit_dic['save_outputs'] = False   #To prevent creation of generic output file
     
                     #Join tables for global model
                     nu_all = np.zeros(0,dtype=float)*np.nan
@@ -2127,34 +2126,34 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     #-----------------------------------
     
                     #Possibility to modify guesses and priors before local exposure fit
-                    fit_prop_dic['mod_prop'] = deepcopy(mod_prop_vis)
-                    fit_prop_dic['varpar_priors'] = deepcopy(varpar_priors_vis)
+                    fit_dic['mod_prop'] = deepcopy(mod_prop_vis)
+                    fit_dic['varpar_priors'] = deepcopy(varpar_priors_vis)
                     fixed_args_loc['stable_pointpar'] = deepcopy(stable_pointpar_vis)
 
                     #Replace chromatic coefficients of hyper-parameters by their temporal fits to initialize the global fit
                     #    - default initialization
                     hyperpar_coord_fit = np.load(path_dic['datapath_Coord']+'/Fit_results.npz',allow_pickle=True)['data'].item() 
                     for par in hyperpar_coord_fit:
-                        if par in fit_prop_dic['mod_prop']:fit_prop_dic['mod_prop'][par]['guess'] = hyperpar_coord_fit[par][0]
+                        if par in fit_dic['mod_prop']:fit_dic['mod_prop'][par]['guess'] = hyperpar_coord_fit[par][0]
     
                     #Disable west-meridian component if all west-meridian exposures are switched to the shifted guide star model
                     if np.sum(tel_coord_vis['cond_westmer'][iexp_fit_list])==0:
-                        for par in fit_prop_dic['mod_prop']:
+                        for par in fit_dic['mod_prop']:
                             if 'dz_west' in par:
-                                fit_prop_dic['mod_prop'][par]['guess'] = 0.
-                                fit_prop_dic['mod_prop'][par]['vary'] = False                            
+                                fit_dic['mod_prop'][par]['guess'] = 0.
+                                fit_dic['mod_prop'][par]['vary'] = False                            
     
                     #Fix specific hyperparameters
                     fixed_par = gen_dic['wig_vis_fit']['fixed_par']
                     for hyperpar in fixed_par:
                         for suf_coord in suf_hyper_vis:
-                            fit_prop_dic['mod_prop'][hyperpar+suf_coord]['vary'] = False
+                            fit_dic['mod_prop'][hyperpar+suf_coord]['vary'] = False
     
                     #Fix specific properties
                     fixed_pointpar = gen_dic['wig_vis_fit']['fixed_pointpar']
                     for par in fixed_pointpar:
-                        if par not in fit_prop_dic['mod_prop']:stop('Undefined parameter',par)
-                        fit_prop_dic['mod_prop'][par]['vary'] = False
+                        if par not in fit_dic['mod_prop']:stop('Undefined parameter',par)
+                        fit_dic['mod_prop'][par]['vary'] = False
     
                     #Properties kept stable during a night
                     #    - all associated coordinate properties are set to 0 and kept fixed, except for the constant component 
@@ -2165,13 +2164,13 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         for par_root in gen_dic['wig_vis_fit']['stable_pointpar']:
                             fixed_args_loc['stable_pointpar'][par_root+'_'] = True
                             for suf_coord in var_suf_hyper_vis:
-                                fit_prop_dic['mod_prop'][par_root+suf_coord]['guess'] = 0.
-                                fit_prop_dic['mod_prop'][par_root+suf_coord]['vary'] = False
+                                fit_dic['mod_prop'][par_root+suf_coord]['guess'] = 0.
+                                fit_dic['mod_prop'][par_root+suf_coord]['vary'] = False
 
                     #Manually change variable status
                     #    - provides additional flexibility
-                    # fit_prop_dic['mod_prop']['Freq3_c1_off']['vary'] = False
-                    # fit_prop_dic['mod_prop']['Freq3_c2_off']['vary'] = False   
+                    # fit_dic['mod_prop']['Freq3_c1_off']['vary'] = False
+                    # fit_dic['mod_prop']['Freq3_c2_off']['vary'] = False   
     
                     #Define each component
                     #    - by default 'p_start' only contains the coefficients of requested components, up to the degree requested for amplitude and frequency
@@ -2181,18 +2180,18 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #Amplitude model fixed
                         if comp_id in gen_dic['wig_vis_fit']['fixed_amp']:
                             for pref,suf in zip(pref_names_amp[comp_id],suf_names_amp[comp_id]):
-                                for suf_coord in suf_hyper_vis:fit_prop_dic['mod_prop'][pref+comp_str+suf+suf_coord]['vary']  = False                 
+                                for suf_coord in suf_hyper_vis:fit_dic['mod_prop'][pref+comp_str+suf+suf_coord]['vary']  = False                 
 
                         #Frequency model fixed
                         if comp_id in gen_dic['wig_vis_fit']['fixed_freq']:
                             for pref,suf in zip(pref_names_freq[comp_id],suf_names_freq[comp_id]):
-                                for suf_coord in suf_hyper_vis:fit_prop_dic['mod_prop'][pref+comp_str+suf+suf_coord]['vary']  = False                                          
+                                for suf_coord in suf_hyper_vis:fit_dic['mod_prop'][pref+comp_str+suf+suf_coord]['vary']  = False                                          
     
     
                     #Parameter initialization
                     p_start = Parameters()  
-                    par_formatting(p_start,fit_prop_dic['mod_prop'],fit_prop_dic['varpar_priors'],fit_dic,fixed_args_loc,'','',None)
-                    init_fit(fit_dic,fixed_args_loc,p_start,fit_prop_dic,model_par_names,model_par_units)     
+                    par_formatting(p_start,fit_dic['mod_prop'],fit_dic['varpar_priors'],fit_dic,fixed_args_loc,'','')
+                    init_fit(fit_dic,fixed_args_loc,p_start,model_par_names,model_par_units)     
                 
                 #Retrieve previous fit
                 if vis in gen_dic['wig_vis_fit']['reuse']:
@@ -3946,7 +3945,7 @@ def FIT_calc_wig_mod_nu_t(param_in,nu_all,args=None):
         #Join to global table
         mod_all = np.append( mod_all , mod_exp   )
     
-    return mod_all
+    return mod_all,None
 
 def calc_wig_mod_nu_t(nu_in,params,args):
     r"""**Wiggle model function: global chromato-temporal model**

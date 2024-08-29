@@ -140,31 +140,50 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
 
         #Automatic definition of reference planet for each visit  
         #    - defined for the computing of master disk-integrated spectrum as well because phase coordinates are required to define temporal weighing
+        #    - remains undefined if no planet is transiting
         ref_pl = {}
+        vis_no_tr = [] 
         for vis_loc in vis_to_bin:
             if ('ref_pl' in prop_dic['prop_bin']) and (inst in prop_dic['prop_bin']['ref_pl']) and (vis_loc in prop_dic['prop_bin']['ref_pl'][inst]):
                 ref_pl[vis_loc] = prop_dic['prop_bin']['ref_pl'][inst][vis_loc]
-            else:
+            elif len(data_inst[vis_loc]['transit_pl'])>0:             
                 ref_pl[vis_loc] = data_inst[vis_loc]['transit_pl'][0]  
                 print('         Reference planet for '+vis_loc+' binning set to '+ref_pl[vis_loc])
-
-        #Check for multiple reference planets
+            else:vis_no_tr += [vis_loc]
+        
+        #Switch to absolute time as bin dimension if no planets are transiting in any of the binned visits
+        if (data_type_gen=='DI') and (len(vis_no_tr)==len(vis_to_bin)):
+            prop_dic['dim_bin'] = 'time' 
+            bin_prop['bin_low']=[0.]
+            bin_prop['bin_high']=[1e9]             
+            print('WARNING: No planets are transiting in binned visits: switching to time as bin coordinate')
+            
+        #Check for multiple or absent reference planets
         bin_prop['multi_flag'] = False
         if (mode=='multivis'):
             
-            #Binning dimensions specific to a given planet are not compatible with multi-visit binning if different planets are transiting
-            #    - in that case we ignore those constraints and use all out-/in-transit exposures
-            #    - for intrinsic spectra, it is advised to switch to the 'r_proj' dimension that will allow excluding exposures flagged as in-transit but not overlapping with the stellar disk
-            if (prop_dic['dim_bin'] in ['xp_abs','phase']) and (len(np.unique(list(ref_pl.values())))>1):
-                bin_prop['multi_flag'] = True
-                print('WARNING: Different planets are transiting in the multiple binned visits. Ignoring '+prop_dic['dim_bin']+' constraints to bin into single master.')
-                transit_pl = []
-                for vis_loc in vis_to_bin:transit_pl+=[ref_pl[vis_loc]]
-                transit_pl = list(np.unique(transit_pl))
-            
-            #Set transiting planet to reference planet in multiple binned visits, if common to all visits
-            else:
-                transit_pl=[ref_pl[vis_to_bin[0]]]
+            #At least one binned visit has no transiting planet 
+            #    - 'phase' coordinate has not been calculated for this visit, so that it cannot be used for all binned visits
+            #    - in that case we ignore those constraints and use all out-transit exposures (ie, all exposures for visits with non-transiting planets)
+            if (data_type_gen=='DI') and (prop_dic['dim_bin']=='phase') and (len(vis_no_tr)<len(vis_to_bin)) and (len(vis_no_tr)>0):
+                print('WARNING: One of the binned visits has no transiting planet. Ignoring '+prop_dic['dim_bin']+' constraints to bin into single master.')
+                
+            else:    
+                
+                #Binning dimensions specific to a given planet are not compatible with multi-visit binning if different planets are transiting
+                #    - in that case we ignore those constraints and use all out-/in-transit exposures
+                #    - for intrinsic spectra, it is advised to switch to the 'r_proj' dimension that will allow excluding exposures flagged as in-transit but not overlapping with the stellar disk
+                if (prop_dic['dim_bin'] in ['xp_abs','phase']) and (len(np.unique(list(ref_pl.values())))>1):
+                    bin_prop['multi_flag'] = True
+                    print('WARNING: Different planets are transiting in the multiple binned visits. Ignoring '+prop_dic['dim_bin']+' constraints to bin into single master.')
+                    transit_pl = []
+                    for vis_loc in vis_to_bin:transit_pl+=[ref_pl[vis_loc]]
+                    transit_pl = list(np.unique(transit_pl))
+                
+                #Set transiting planet for binned visit to reference planet in multiple binned visits, if common to all visits
+                else:
+                    transit_pl=[ref_pl[vis_to_bin[0]]]
+                
         else:transit_pl = data_dic[inst][vis_save]['transit_pl']
             
         #Initialize binning
@@ -546,11 +565,17 @@ def init_bin_prof(data_type,ref_pl,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bin,
 
         #Coordinate tables of input exposures along chosen bin dimension
         #    - tables are restricted to the range of input exposures
-        if dim_bin=='phase':   
-            coord_vis = coord_dic[inst][vis][ref_pl[vis]]
-            x_low = coord_vis['st_ph'][idx_orig]
-            x_high = coord_vis['end_ph'][idx_orig]
-            x_cen_all += [coord_vis['cen_ph'][idx_orig]]         #central coordinates of all exposures, required for def_plocc_profiles()
+        if dim_bin=='time':
+            coord_vis = coord_dic[inst][vis]
+            ht_dur_d = 0.5*coord_vis['t_dur_d']
+            x_low = coord_vis['bjd'][idx_orig]-ht_dur_d
+            x_high = coord_vis['bjd'][idx_orig]+ht_dur_d
+            x_cen_all += [coord_vis['bjd'][idx_orig]]         #central coordinates of all exposures, required for def_plocc_profiles()
+        elif dim_bin=='phase':  
+            coord_vis_pl = coord_dic[inst][vis][ref_pl[vis]]
+            x_low = coord_vis_pl['st_ph'][idx_orig]
+            x_high = coord_vis_pl['end_ph'][idx_orig]
+            x_cen_all += [coord_vis_pl['cen_ph'][idx_orig]]         #central coordinates of all exposures, required for def_plocc_profiles()
             
         elif dim_bin in ['xp_abs','r_proj']: 
             transit_prop_nom = (np.load(gen_dic['save_data_dir']+'Introrig_prop/PlOcc_Prop_'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item())['achrom'][ref_pl[vis]]                           
@@ -611,7 +636,7 @@ def init_bin_prof(data_type,ref_pl,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bin,
             new_nx = int((max_x-min_x)/new_dx)
             new_x_low_in = min_x + new_dx*np.arange(new_nx)
             new_x_high_in = new_x_low_in+new_dx 
-    
+
         #Limiting contributing profiles to requested range along bin dimension            
         cond_keep = (x_high_vis>=new_x_low_in[0]) &  (x_low_vis <=new_x_high_in[-1])
         x_low_vis = x_low_vis[cond_keep]

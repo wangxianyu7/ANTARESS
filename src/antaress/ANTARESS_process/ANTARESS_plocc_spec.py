@@ -8,7 +8,7 @@ from os import makedirs
 from os.path import exists as path_exist
 import glob
 from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,weights_bin_prof,init_bin_prof
-from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc,init_stellar_prop,custom_DI_prof
+from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc,var_stellar_prop,custom_DI_prof
 from ..ANTARESS_grids.ANTARESS_occ_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_spot_prop,up_plocc_prop,calc_plocced_tiles,calc_spotted_tiles
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange
 from ..ANTARESS_process.ANTARESS_data_align import align_data
@@ -450,8 +450,12 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         fixed_args['edge_bins']=data_loc_exp['edge_bins'][def_iord,idx_calc_pix[0]:idx_calc_pix[-1]+2]
         fixed_args['dcen_bins']=fixed_args['edge_bins'][1::] - fixed_args['edge_bins'][0:-1] 
     
-        #Initializing instrumental convolution
-        if isub==0:    
+        #Initializing stellar profiles
+        #    - can be defined using the first exposure table
+        if isub==0:
+            fixed_args = var_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],spots_prop,system_param['star'],params)
+            fixed_args = init_custom_DI_prof(fixed_args,gen_dic,params)                  
+    
             #Effective instrumental convolution
             fixed_args['FWHM_inst'] = get_FWHM_inst(inst,fixed_args,fixed_args['cen_bins'])
     

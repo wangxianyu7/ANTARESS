@@ -18,9 +18,10 @@ from ..ANTARESS_analysis.ANTARESS_inst_resp import get_FWHM_inst,resamp_st_prof_
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star
 from ..ANTARESS_conversions.ANTARESS_binning import weights_bin_prof
 from ..ANTARESS_analysis.ANTARESS_model_prof import polycoeff_def
+from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof_gen_mul,detrend_prof_gen_add
 
 
-def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic):
+def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic,data_prop):
     r"""**Joined stellar fits**
 
     Wrap-up function to call joint fits of stellar properties and profiles
@@ -34,7 +35,7 @@ def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic
     """        
     #Fitting disk-integrated stellar properties with a linked model
     if gen_dic['fit_DIProp']:
-        main_joined_DIProp('DIProp',glob_fit_dic['DIProp'],gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic)   
+        main_joined_DIProp('DIProp',glob_fit_dic['DIProp'],gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic,data_prop)   
 
     #Fitting stellar surface properties with a linked model
     if gen_dic['fit_IntrProp']:
@@ -51,20 +52,12 @@ def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic
     return None
 
 
-def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic):
+def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic,data_prop):
     r"""**Joined disk-integrated stellar property fits**
 
-    Main routine to fit a given disk-integrated stellar property with a joined model over instruments and visits.
+    Main routine to fit time-series of properties derived from disk-integrated profiles as a function of various parameters, to search for systematic trends
     
-    
- on fait ici pour pouvoir inclure des modeles physiques, eg les sinusoides des pulsations, et fitter ainsi en combinant
- les systematiques 
- peuvent etre specifiques a chaque visite mais prevoir que modele commun (ca joue en utilisant format habituel pour les params, dpeendent de ordre et visite)
- prevoir aussi de pouvoir combiner les props entre elle, typiquement pour ajuster un meme cycle
-
-  faire generique pour analyser aussi prop des profils spectraux   
-  
-    Analyzes time-series of properties derived from disk-integrated profiles with various parameters to search for systematic trends and characterize stellar variations.
+    Individual visits can still be fitted, but the use of a joint model over instruments and visits allows better characterizing stellar variations.
     
     Results of the analysis are saved, to be used in the detrending module. 
 
@@ -79,39 +72,71 @@ def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
     
     #Initializations
     for prop_loc in fit_prop_dic['mod_prop']:  
-        fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
-        print('     - '+{'rv_res':'RV residuals','FWHM':'Line FWHM','ctrst':'Line contrast'}[prop_loc])        
+        fixed_args,fit_dic = init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
+        print('     - '+{'RV':'RV residuals','FWHM':'Line FWHM','ctrst':'Line contrast'}[prop_loc])        
         fit_dic['save_dir']+=prop_loc+'/'       
     
         #Arguments to be passed to the fit function
         fixed_args.update({
-            'rout_mode':'DIProp',
-            'prop_fit':prop_loc})    
-    
+            'coord_list':{},
+            'coord_obs':{},
+            'coord_fit':{},
+            'SNRorders':{},
+            })    
+        if prop_loc=='RV':fixed_args['prop_fit'] = 'rv_res'
+        else:fixed_args['prop_fit'] = prop_loc
+
+        #Initialization
+        for inst in np.intersect1d(data_dic['instrum_list'],list(fit_dic['idx_in_fit'].keys())):    
+            init_joined_routines_inst(inst,fit_dic,fixed_args)
+            fixed_args['coord_list'][inst]={}
+            for vis in data_dic[inst]['visit_list']:
+                init_joined_routines_vis(inst,vis,fit_dic,fixed_args)
+                fixed_args['coord_list'][inst][vis]={}
+      
+        #Identify models and coordinates
+        #    - must be done here to retrieve coordinate grids within init_joined_routines_vis_fit()
+        for par in fit_dic['mod_prop'][prop_loc]:
+            coord = par.split('__')[0]
+            if coord!='c':
+                model_type = []
+                if 'pol' in par:model_type+=['pol']
+                if 'sin' in par:model_type+=['sin']
+                if 'ramp' in par:model_type+=['ramp']
+                inst_vis_coord = par.split('__IS')[1]
+                inst_coord  = inst_vis_coord.split('_VS')[0]
+                vis_coord  = inst_vis_coord.split('_VS')[1] 
+                if inst_coord=='_':inst_list = fixed_args['inst_list']             
+                elif inst_coord in fixed_args['inst_list']:inst_list = [inst_coord]
+                else: stop('ERROR: Instrument '+inst_coord+' in '+par+' is not included in processed instruments')
+                for inst_loc in inst_list:
+                    if vis_coord=='_':vis_list = fixed_args['inst_vis_list'][inst_loc]
+                    elif vis_coord in fixed_args['inst_vis_list'][inst_loc]:vis_list = [vis_coord]              
+                    else:stop('ERROR: Visit '+vis_coord+' in '+par+' is not included in processed visits')  
+                    for vis_loc in vis_list:
+                        fixed_args['coord_list'][inst_loc][vis_loc][coord]=model_type
+     
         #Construction of the fit tables
         for par in ['s_val','y_val']:fixed_args[par]=np.zeros(0,dtype=float)
         idx_fit2vis={}
-        for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
-            init_joined_routines_inst('DIProp',inst,fit_prop_dic,fixed_args)
+        for inst in fixed_args['inst_list']:    
             idx_fit2vis[inst] = {}
-            for vis in data_dic[inst]['visit_list']:
-                init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
-    
-                #Visit is fitted
-                if fixed_args['bin_mode'][inst][vis] is not None: 
-                    data_vis=data_dic[inst][vis]
-                    init_joined_routines_vis_fit('DIProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic)
-    
-                    #Binned/original data
-                    if fixed_args['bin_mode'][inst][vis]=='_bin':data_load = dataload_npz(gen_dic['save_data_dir']+'/DIbin_prop/'+inst+'_'+vis)
-                    else:data_load = dataload_npz(gen_dic['save_data_dir']+'/DIorig_prop/'+inst+'_'+vis)
-                  
-                    #Fit tables
-                    idx_fit2vis[inst][vis] = range(fit_dic['nx_fit'],fit_dic['nx_fit']+fixed_args['nexp_fit_all'][inst][vis])
-                    fit_dic['nx_fit']+=fixed_args['nexp_fit_all'][inst][vis]
-                    for i_in in fixed_args['idx_in_fit'][inst][vis]:    
-                        fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
-                        fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))    
+            for vis in fixed_args['inst_vis_list'][inst]:
+                data_vis=data_dic[inst][vis]
+                init_joined_routines_vis_fit('DIProp',inst,vis,fit_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic,data_prop,plot_dic)
+       
+                #Binned/original data
+                if fixed_args['bin_mode'][inst][vis]=='_bin':
+                    data_load = dataload_npz(gen_dic['save_data_dir']+'/DIbin_prop/'+inst+'_'+vis)
+                else:
+                    data_load = dataload_npz(gen_dic['save_data_dir']+'/DIorig_prop/'+inst+'_'+vis)
+         
+                #Fit tables
+                idx_fit2vis[inst][vis] = range(fit_dic['nx_fit'],fit_dic['nx_fit']+fixed_args['nexp_fit_all'][inst][vis])
+                fit_dic['nx_fit']+=fixed_args['nexp_fit_all'][inst][vis]
+                for i_in in fixed_args['idx_in_fit'][inst][vis]:    
+                    fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
+                    fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))  
 
         fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)
         fixed_args['nexp_fit'] = fit_dic['nx_fit']
@@ -125,17 +150,18 @@ def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
         fixed_args['use_cov'] = False       
 
         #Model fit and calculation
-        if prop_loc not in fit_prop_dic['mod_prop']:fit_prop_dic['mod_prop'][prop_loc] = {}
-        merged_chain,p_final = com_joint_fits('DIProp',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'][prop_loc])   
-        
+        merged_chain,p_final = com_joint_fits('DIProp',fit_dic,fixed_args,gen_dic,data_dic,theo_dic,fit_dic['mod_prop'][prop_loc])   
+
         #Best-fit model and properties
         fit_save={}
         fixed_args['fit'] = False
-        mod_tab,coeff_line_dic,fit_save['prop_mod'] = fixed_args['mod_func'](p_final,fixed_args)
-      
+        mod_tab,fit_save['prop_mod'] = fixed_args['mod_func'](p_final,fixed_args)
+
         #Save best-fit properties
-        fit_save.update({'p_final':p_final,'name_prop2input':fixed_args['name_prop2input'],'merit':fit_dic['merit']})
+        fit_save.update({'p_final':p_final,'name_prop2input':fixed_args['name_prop2input'],'coeff_ord2name':fixed_args['coeff_ord2name'],'merit':fit_dic['merit'],'SNRorders':fixed_args['SNRorders']})
         if (plot_dic['prop_DI']!='') or (plot_dic['chi2_fit_DIProp']!=''):
+            for key in ['coord_obs','coord_list','coord_fit']:fit_save[key] = fixed_args[key]
+            fit_save['coord_mod'] = fixed_args['coord_fit']
             key_list = ['prop_fit','err_prop_fit']
             for key in key_list:fit_save[key] = {}
             for inst in fixed_args['inst_list']:
@@ -147,17 +173,107 @@ def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
     
         #Post-processing
         fit_dic['p_null'] = deepcopy(p_final)
-        if fixed_args['prop_fit']=='rv':fit_dic['p_null']['veq'] = 0.
-        else:
-            for par in fit_dic['p_null']:fit_dic['p_null'][par]=0.
-            fit_dic['p_null']['cont']=1.
-        com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
+        for par in fit_dic['p_null']:
+            fit_dic['p_null'][par]=1e-10   #to avoid division by 0
+        fit_dic['p_null']['cont']=1.
+        com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic)
 
     print('     ----------------------------------')    
     
     return None
 
 
+def FIT_joined_DIProp(param,x_tab,args=None):
+    r"""**Fit function: joined global stellar property**
+
+    Calls corresponding model function for optimization
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    """
+    return joined_DIProp(param,args)[0],None
+
+
+def mod_DIProp(param,args,inst,vis,n_coord):
+    r"""**Model function: global stellar property**
+
+    Defines the model for global stellar property over a visit.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """   
+
+    #Model property for the visit 
+    #    - the same model of different coordinates, or different models of the same coordinates, can be defined and combined:
+    # + contrast and FWHM models are defined as the multiplication of polynomials and sinusoidals, and possibly a ramp
+    #      F(x) = c0*(1 + c1*x + c2*x^2 + ... )*(1+Amp*sin((x-Phi)/Per))*(1 - k*exp( - ((x - xr)/tau)^alpha) ))
+    # + rv is defined as the addition of polynomials and sinusoidals
+    #      F(x) = c0 + c1*x + c2*x^2 + ... + Amp*sin((x-Phi)/Per))           
+    mod_prop=param[args['name_prop2input']['c__ord0__IS'+inst+'_VS'+vis]]*np.ones(n_coord)     
+    
+    #Processing coordinates for current visit
+    for coord in args['coord_list'][inst][vis]:  
+        coord_grid = args['coord_fit'][inst][vis][coord]
+        
+        #Processing model associated with coordinate
+        for mod in args['coord_list'][inst][vis][coord]:                
+            corr_prop = {}
+            
+            #Sinusoidal variation 
+            if mod=='sin':corr_prop['sin'] = [param[args['name_prop2input'][coord+'__sin__'+corr_val+'__IS'+inst+'_VS'+vis]] for corr_val in ['amp', 'off', 'per'] ]
+            
+            #Polynomial variation
+            elif mod=='pol':corr_prop['pol']= polycoeff_def(param,args['coeff_ord2name'][inst][vis][coord+'__pol'])[1::]   
+
+            #Ramp
+            elif mod=='ramp':corr_prop['ramp'] = [param[args['name_prop2input'][coord+'__ramp__'+corr_val+'__IS'+inst+'_VS'+vis]] for corr_val in ['lnk',  'alpha' , 'tau' , 'xr' ] ]
+            
+            #Contribution to model
+            if args['prop_fit']=='RV':mod_prop = detrend_prof_gen_add(  corr_prop, coord_grid, mod_prop)  
+            else:mod_prop = detrend_prof_gen_mul(  corr_prop, coord_grid, mod_prop )             
+
+    return mod_prop
+
+
+def joined_DIProp(param,args):
+    r"""**Model function: joined global stellar property**
+
+    Defines the joined model for global stellar properties
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """   
+    mod_tab=np.zeros(0,dtype=float)
+    mod_prop_dic = {}
+
+    #Process each visit
+    for inst in args['inst_list']:
+        mod_prop_dic[inst]={}
+        for vis in args['inst_vis_list'][inst]: 
+            
+            #Model property for the visit 
+            mod_prop_vis = mod_DIProp(param,args,inst,vis,args['nexp_fit_all'][inst][vis])
+            
+            #Appending over all visits
+            mod_prop_dic[inst][vis] = mod_prop_vis
+            mod_tab=np.append(mod_tab,mod_prop_vis)
+
+    return mod_tab,mod_prop_dic
+    
+
+
+    
 
 
 
@@ -166,9 +282,7 @@ def main_joined_DIProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
 
 
 
-
-
-def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic):
+def main_joined_IntrProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot_dic,coord_dic,data_dic):
     r"""**Joined intrinsic stellar property fits**
 
     Main routine to fit a given stellar surface property from planet-occulted regions with a joined model over instruments and visits.
@@ -184,7 +298,7 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
     
     #Initializations
     for prop_loc in fit_prop_dic['mod_prop']:  
-        fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
+        fixed_args,fit_dic = init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
         print('     - '+{'rv':'Surface RVs','FWHM':'Intrinsic line FWHM','ctrst':'Intrinsic line contrast','a_damp':'Intrinsic line damping coefficient'}[prop_loc])        
         fit_dic['save_dir']+=prop_loc+'/'        
     
@@ -192,31 +306,33 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
         #    - fit is performed on achromatic average properties
         #    - the full stellar line profile are not calculated, since we only fit the average properties of the occulted regions
         fixed_args.update({
-            'rout_mode':'IntrProp',
             'chrom_mode':'achrom',
             'mode':'ana',  #to activate the calculation of line profile properties
             'prop_fit':prop_loc})
+
+        #Coordinate as a function of which the model describing the property is defined
+        if fit_prop_dic['coord_fit'][prop_loc] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
+        elif fit_prop_dic['coord_fit'][prop_loc]!='phase':fixed_args['coord_line']=fit_prop_dic['coord_fit'][prop_loc]
+        else:fixed_args['coord_line'] = None
         
-        #Coordinate and property to calculate for the fit
+        #Property required to calculate the model
         fixed_args['par_list']+=[fixed_args['prop_fit']]
-        if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
-        else:fixed_args['coord_line']=fit_prop_dic['dim_fit']
-        fixed_args['par_list']+=[fixed_args['coord_line']]
+        if fixed_args['coord_line'] is not None:fixed_args['par_list']+=[fixed_args['coord_line']]
     
         #Construction of the fit tables
         for par in ['s_val','y_val']:fixed_args[par]=np.zeros(0,dtype=float)
-        for par in ['coord_fit','ph_fit']:fixed_args[par]={}
+        for par in ['coord_obs','coord_fit','ph_fit']:fixed_args[par]={}
         idx_fit2vis={}
-        for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
-            init_joined_routines_inst('IntrProp',inst,fit_prop_dic,fixed_args)
+        for inst in np.intersect1d(data_dic['instrum_list'],list(fit_dic['idx_in_fit'].keys())):    
+            init_joined_routines_inst(inst,fit_dic,fixed_args)
             idx_fit2vis[inst] = {}
             for vis in data_dic[inst]['visit_list']:
-                init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
+                init_joined_routines_vis(inst,vis,fit_dic,fixed_args)
     
                 #Visit is fitted
-                if fixed_args['bin_mode'][inst][vis] is not None: 
+                if vis in fixed_args['inst_vis_list'][inst]:
                     data_vis=data_dic[inst][vis]
-                    init_joined_routines_vis_fit('IntrProp',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic)
+                    init_joined_routines_vis_fit('IntrProp',inst,vis,fit_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic,None,None)
     
                     #Binned/original data
                     if fixed_args['bin_mode'][inst][vis]=='_bin':data_load = dataload_npz(gen_dic['save_data_dir']+'/Intrbin_prop/'+inst+'_'+vis)
@@ -228,6 +344,13 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
                     for i_in in fixed_args['idx_in_fit'][inst][vis]:    
                         fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
                         fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))
+
+        #Final processing
+        for idx_inst,inst in enumerate(fixed_args['inst_list']):
+            
+            #Common data type        
+            if idx_inst==0:fixed_args['type'] = data_dic[inst]['type']
+            elif fixed_args['type'] != data_dic[inst]['type']:stop('Incompatible data types')
 
         fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)
         fixed_args['nexp_fit'] = fit_dic['nx_fit']
@@ -241,13 +364,13 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
         fixed_args['use_cov'] = False   
 
         #Model fit and calculation
-        if prop_loc not in fit_prop_dic['mod_prop']:fit_prop_dic['mod_prop'][prop_loc] = {}
-        merged_chain,p_final = com_joint_fits('IntrProp',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'][prop_loc])   
+        if prop_loc not in fit_dic['mod_prop']:fit_dic['mod_prop'][prop_loc] = {}
+        merged_chain,p_final = com_joint_fits('IntrProp',fit_dic,fixed_args,gen_dic,data_dic,theo_dic,fit_dic['mod_prop'][prop_loc])   
         
         #Best-fit model and properties
         fit_save={}
         fixed_args['fit'] = False
-        mod_tab,coeff_line_dic,fit_save['prop_mod']= fixed_args['mod_func'](p_final,fixed_args)
+        mod_tab,coeff_line_dic,fit_save['prop_mod'],fit_save['coord_mod']= fixed_args['mod_func'](p_final,fixed_args)
       
         #Save best-fit properties
         fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'pol_mode':fit_prop_dic['pol_mode'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
@@ -264,11 +387,11 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
     
         #Post-processing
         fit_dic['p_null'] = deepcopy(p_final)
-        if fixed_args['prop_fit']=='rv':fit_dic['p_null']['veq'] = 0.
+        if fixed_args['prop_fit']=='rv':fit_dic['p_null']['veq'] = 1e-9 #not zero to prevent division by 0
         else:
             for par in fit_dic['p_null']:fit_dic['p_null'][par]=0.
             fit_dic['p_null']['cont']=1.
-        com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
+        com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic)
 
     print('     ----------------------------------')    
   
@@ -280,7 +403,7 @@ def main_joined_IntrProp(data_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
 
 
 def FIT_joined_IntrProp(param,x_tab,args=None):
-    r"""**Fit function: joined stellar property**
+    r"""**Fit function: joined local stellar property**
 
     Calls corresponding model function for optimization
 
@@ -290,7 +413,7 @@ def FIT_joined_IntrProp(param,x_tab,args=None):
     Returns:
         TBD
     """
-    return joined_IntrProp(param,args)[0]
+    return joined_IntrProp(param,args)[0],None
 
 
 
@@ -309,8 +432,8 @@ def joined_IntrProp(param,args):
     """   
     mod_tab=np.zeros(0,dtype=float)
     mod_prop_dic = {}
+    mod_coord_dic = {}
     coeff_line_dic = {}
-    mod_coord_dic={}
     
     #Update stellar grid
     if args['var_star_grid']:up_model_star(args, param)
@@ -319,8 +442,8 @@ def joined_IntrProp(param,args):
     for inst in args['inst_list']:
         args['inst']=inst
         mod_prop_dic[inst]={}
-        coeff_line_dic[inst]={}
         mod_coord_dic[inst]={}
+        coeff_line_dic[inst]={}
         for vis in args['inst_vis_list'][inst]: 
             args['vis']=vis 
             
@@ -334,8 +457,16 @@ def joined_IntrProp(param,args):
             
             #Fit coordinate
             #    - only used for plots
-            if (not args['fit']) and ('coeff_line' in args):coeff_line_dic[inst][vis] = args['coeff_line']
-            else:coeff_line_dic[inst][vis] = None
+            if (not args['fit']):
+                if args['prop_fit']=='rv':
+                    mod_coord_dic[inst][vis] = args['ph_fit'][inst][vis]
+                    coeff_line_dic[inst][vis] = None
+                elif ('coeff_line' in args):
+                    mod_coord_dic[inst][vis] = theo_vis[args['coord_line']]
+                    coeff_line_dic[inst][vis] = args['coeff_line']
+            else:
+                mod_coord_dic[inst][vis] = None
+                coeff_line_dic[inst][vis] = None
 
             #Model property for the visit 
             mod_prop_dic[inst][vis] = theo_vis[args['prop_fit']][0] 
@@ -343,7 +474,7 @@ def joined_IntrProp(param,args):
             #Appending over all visits
             mod_tab=np.append(mod_tab,mod_prop_dic[inst][vis])
 
-    return mod_tab,coeff_line_dic,mod_prop_dic
+    return mod_tab,coeff_line_dic,mod_prop_dic,mod_coord_dic
     
 
 
@@ -363,7 +494,7 @@ def joined_IntrProp(param,args):
 
 
 
-def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):
+def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):
     r"""**Joined stellar profile fits**
 
     Main routine to fit intrinsic stellar profiles from planet-occulted regions with a joined model over instruments and visits.
@@ -389,13 +520,12 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     print('   > Fitting joined intrinsic profiles')
 
     #Initializations
-    fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
+    fixed_args,fit_dic = init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
 
     ######################################################################################################## 
 
     #Arguments to be passed to the fit function
     fixed_args.update({ 
-        'rout_mode':'IntrProf',
         'func_prof_name':fit_prop_dic['func_prof_name'],
         'mode':fit_prop_dic['mode'],
         'cen_bins':{},
@@ -427,8 +557,8 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     #    - other required properties are automatically added in the sub_calc_plocc_spot_prop() function
     fixed_args['par_list']+=['line_prof']
     if fixed_args['mode']=='ana':
-        if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
-        else:fixed_args['coord_line']=fit_prop_dic['dim_fit']
+        if fit_prop_dic['coord_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
+        else:fixed_args['coord_line']=fit_prop_dic['coord_fit']
         fixed_args['par_list']+=[fixed_args['coord_line']]
     else:
         fixed_args['par_list']+=['mu']
@@ -437,9 +567,9 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_dic[data_dic['instrum_list'][0]]['type'])                           
 
     #Construction of the fit tables
-    for par in ['coord_fit','ph_fit']:fixed_args[par]={}
-    for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):  
-        init_joined_routines_inst('IntrProf',inst,fit_prop_dic,fixed_args)
+    for par in ['coord_obs','coord_fit','ph_fit']:fixed_args[par]={}
+    for inst in np.intersect1d(data_dic['instrum_list'],list(fit_dic['idx_in_fit'].keys())):  
+        init_joined_routines_inst(inst,fit_dic,fixed_args)
         for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
@@ -460,12 +590,12 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         
         #Processing visit
         for vis in data_dic[inst]['visit_list']:
-            init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
+            init_joined_routines_vis(inst,vis,fit_dic,fixed_args)
             
             #Visit is fitted
-            if fixed_args['bin_mode'][inst][vis] is not None:   
+            if vis in fixed_args['inst_vis_list'][inst]:   
                 data_vis=data_dic[inst][vis]
-                init_joined_routines_vis_fit('IntrProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic)
+                init_joined_routines_vis_fit('IntrProf',inst,vis,fit_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic,None,None)
 
                 #Enable PC noise model
                 if (inst in fit_prop_dic['PC_model']) and (vis in fit_prop_dic['PC_model'][inst]):
@@ -579,11 +709,11 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                             
                             #PC free amplitude
                             pc_name = 'aPC_idxin'+str(i_in)+'_ord'+str(i_pc)+'__IS'+inst+'_VS'+vis
-                            fit_prop_dic['mod_prop'][pc_name]={'vary':True,'guess':0.} 
-                            if i_pc==0:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-4.,4.]
-                            elif i_pc==1:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-3.,2.]
-                            else:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-1.,1.]
-                            fit_prop_dic['priors'][pc_name]={'low':-100. ,'high':100.,'mod':'uf'}
+                            fit_dic['mod_prop'][pc_name]={'vary':True,'guess':0.} 
+                            if i_pc==0:fit_dic['mod_prop'][pc_name]['bd'] = [-4.,4.]
+                            elif i_pc==1:fit_dic['mod_prop'][pc_name]['bd'] = [-3.,2.]
+                            else:fit_dic['mod_prop'][pc_name]['bd'] = [-1.,1.]
+                            fit_dic['priors'][pc_name]={'low':-100. ,'high':100.,'mod':'uf'}
 
                 #Number of fitted exposures
                 fixed_args['nexp_fit']+=fixed_args['nexp_fit_all'][inst][vis]
@@ -591,7 +721,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     #Spot-crossing time supplement
     #    - to avoid fitting timing values on the order of 2400000 we use as fitted property Tspot - <Tvisit> and add back <Tvisit> within the model 
     if fixed_args['cond_transit_sp']:
-        fixed_args['spot_crosstime_supp']={}
+        fixed_args['bjd_time_shift']={}
 
     #Final processing
     for idx_inst,inst in enumerate(fixed_args['inst_list']):
@@ -602,14 +732,14 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         
         #Spots
         if fixed_args['cond_transit_sp']:
-            fixed_args['spot_crosstime_supp'][inst]={}
+            fixed_args['bjd_time_shift'][inst]={}
 
         #Visits
         for vis in fixed_args['inst_vis_list'][inst]:
             
             #Defining spot crossing time supplement
             if fixed_args['cond_transit_sp']:
-                fixed_args['spot_crosstime_supp'][inst][vis]=np.floor(fixed_args['coord_fit'][inst][vis]['bjd'][0])+2400000.
+                fixed_args['bjd_time_shift'][inst][vis]=np.floor(fixed_args['coord_fit'][inst][vis]['bjd'][0])+2400000.
 
     #Artificial observation table
     #    - covariance condition is set to False so that chi2 values calculated here are not further modified within the residual() function
@@ -627,7 +757,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fixed_args['inside_fit'] = True    
     
     #Model fit and calculation
-    merged_chain,p_final = com_joint_fits('IntrProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'])            
+    merged_chain,p_final = com_joint_fits('IntrProf',fit_dic,fixed_args,gen_dic,data_dic,theo_dic,fit_dic['mod_prop'])            
 
     #PC correction
     if len(fit_prop_dic['PC_model'])>0:
@@ -693,7 +823,7 @@ def main_joined_IntrProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     #Post-processing    
     fit_dic['p_null'] = deepcopy(p_final)
     for par in [ploc for ploc in fit_dic['p_null'] if 'ctrst' in ploc]:fit_dic['p_null'][par] = 0.    
-    com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
+    com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic)
     print('     ----------------------------------')  
     return None
 
@@ -718,7 +848,7 @@ def FIT_joined_IntrProf(param,x_tab,args=None):
     #Merit table
     chi = calc_chi_Prof(mod_dic,args)
     
-    return chi
+    return chi,None
 
 
 
@@ -861,7 +991,7 @@ def joined_IntrProf(param,fixed_args):
 
 
 
-def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):    
+def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):    
     r"""**Joined differential profiles fits**
 
     Main routine to fit a given stellar surface property from planet-occulted regions with a joined model over instruments and visits.
@@ -876,12 +1006,11 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     print('   > Fitting joined differential stellar CCFs, including spots')
 
     #Initializations
-    fixed_args,fit_dic = init_joined_routines(data_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
+    fixed_args,fit_dic = init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
 
     #Arguments to be passed to the fit function
     fixed_args.update({
         'ref_pl':fit_prop_dic['ref_pl'],
-        'rout_mode':'ResProf',
         'func_prof_name':fit_prop_dic['func_prof_name'],
         'mode':fit_prop_dic['mode'],
         'cen_bins' :{},
@@ -930,8 +1059,8 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #    - other required properties are automatically added in the sub_calc_plocc_spot_prop() function
     fixed_args['par_list']+=['line_prof']
     if fixed_args['mode']=='ana':
-        if fit_prop_dic['dim_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
-        else:fixed_args['coord_line']=fit_prop_dic['dim_fit']
+        if fit_prop_dic['coord_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
+        else:fixed_args['coord_line']=fit_prop_dic['coord_fit']
         fixed_args['par_list']+=[fixed_args['coord_line']]
     else:
         fixed_args['par_list']+=['mu']
@@ -941,8 +1070,8 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Construction of the fit tables
     #Initializing entries that will store the coordinates of the planets, of the spots, and the respective phase of the fitted exposures.
-    for par in ['coord_fit','ph_fit']:fixed_args[par]={}
-
+    for par in ['coord_obs','coord_fit','ph_fit']:fixed_args[par]={}
+    
     #Initialize variables to store the max and min limits of the fit tables
     low_bound=1e100
     high_bound=-1e100
@@ -958,8 +1087,8 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['master_out']['corr_FbalOrd']=gen_dic['corr_FbalOrd']
     fixed_args['master_out']['flux_sc']=gen_dic['flux_sc']
     fixed_args['master_out']['save_data_dir']=gen_dic['save_data_dir']
-    for inst in np.intersect1d(data_dic['instrum_list'],list(fit_prop_dic['idx_in_fit'].keys())):    
-        init_joined_routines_inst('ResProf',inst,fit_prop_dic,fixed_args)
+    for inst in np.intersect1d(data_dic['instrum_list'],list(fit_dic['idx_in_fit'].keys())):    
+        init_joined_routines_inst(inst,fit_dic,fixed_args)
 
         fixed_args['master_out']['idx_in_master_out'][inst]={}
         fixed_args['raw_DI_profs'][inst]={}
@@ -997,12 +1126,12 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
         #Processing visit
         for vis_index, vis in enumerate(data_dic[inst]['visit_list']):
-            init_joined_routines_vis(inst,vis,fit_prop_dic,fixed_args)
+            init_joined_routines_vis(inst,vis,fit_dic,fixed_args)
 
             #Visit is fitted
-            if fixed_args['bin_mode'][inst][vis] is not None: 
+            if vis in fixed_args['inst_vis_list'][inst]:
                 data_vis=data_dic[inst][vis]
-                init_joined_routines_vis_fit('ResProf',inst,vis,fit_prop_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic)
+                init_joined_routines_vis_fit('ResProf',inst,vis,fit_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic,None,None)
 
                 #Master-out properties
                 fixed_args['raw_DI_profs'][inst][vis]={} 
@@ -1144,11 +1273,11 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                             
                             #PC free amplitude
                             pc_name = 'aPC_idxin'+str(i_in)+'_ord'+str(i_pc)+'__IS'+inst+'_VS'+vis
-                            fit_prop_dic['mod_prop'][pc_name]={'vary':True,'guess':0.} 
-                            if i_pc==0:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-4.,4.]
-                            elif i_pc==1:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-3.,2.]
-                            else:fit_prop_dic['mod_prop'][pc_name]['bd'] = [-1.,1.]
-                            fit_prop_dic['priors'][pc_name]={'low':-100. ,'high':100.,'mod':'uf'}
+                            fit_dic['mod_prop'][pc_name]={'vary':True,'guess':0.} 
+                            if i_pc==0:fit_dic['mod_prop'][pc_name]['bd'] = [-4.,4.]
+                            elif i_pc==1:fit_dic['mod_prop'][pc_name]['bd'] = [-3.,2.]
+                            else:fit_dic['mod_prop'][pc_name]['bd'] = [-1.,1.]
+                            fit_dic['priors'][pc_name]={'low':-100. ,'high':100.,'mod':'uf'}
 
                     #Updating the limits of the fit tables
                     low_bound=min(low_bound,np.min(fixed_args['edge_bins'][inst][vis][isub]))
@@ -1168,7 +1297,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
     #Spot-crossing time supplement
     if fixed_args['cond_transit_sp']:
-        fixed_args['spot_crosstime_supp']={}
+        fixed_args['bjd_time_shift']={}
 
     #Final processing
     for idx_inst,inst in enumerate(fixed_args['inst_list']):
@@ -1179,7 +1308,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
         #Spots
         if fixed_args['cond_transit_sp']:
-            fixed_args['spot_crosstime_supp'][inst]={}
+            fixed_args['bjd_time_shift'][inst]={}
         
         #Defining multi-visit master-out and weights
         if len(fixed_args['master_out']['multivisit_list'][inst])>0:
@@ -1191,7 +1320,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
             
             #Defining spot crossing time supplement
             if fixed_args['cond_transit_sp']:
-                fixed_args['spot_crosstime_supp'][inst][vis]=np.floor(fixed_args['coord_fit'][inst][vis]['bjd'][0])+2400000.
+                fixed_args['bjd_time_shift'][inst][vis]=np.floor(fixed_args['coord_fit'][inst][vis]['bjd'][0])+2400000.
 
             #Defining flux table
             fixed_args['master_out']['flux'][inst][vis]=np.zeros([len(fixed_args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
@@ -1212,7 +1341,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['inside_fit'] = True 
 
     #Model fit and calculation
-    merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,fit_prop_dic,gen_dic,data_dic,theo_dic,fit_prop_dic['mod_prop'])
+    merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,gen_dic,data_dic,theo_dic,fit_dic['mod_prop'])
 
     #PC correction
     if len(fit_prop_dic['PC_model'])>0:
@@ -1264,7 +1393,7 @@ def main_joined_ResProf(data_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #Post-processing    
     fit_dic['p_null'] = deepcopy(p_final)
     for par in [ploc for ploc in fit_dic['p_null'] if 'ctrst' in ploc]:fit_dic['p_null'][par] = 0.
-    com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,fit_prop_dic,gen_dic)
+    com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic)
     
     print('     ----------------------------------')
     
@@ -1292,7 +1421,7 @@ def FIT_joined_ResProf(param,x_tab,args=None):
     #Merit table
     chi = calc_chi_Prof(mod_dic,args)
     
-    return chi
+    return chi,None
 
 
 

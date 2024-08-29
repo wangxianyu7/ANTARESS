@@ -13,10 +13,11 @@ from scipy.interpolate import CubicSpline
 from ..ANTARESS_analysis.ANTARESS_model_prof import calc_macro_ker_anigauss,calc_macro_ker_rt 
 from ..ANTARESS_grids.ANTARESS_star_grid import model_star
 from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop,retrieve_spots_prop_from_param,calc_plocced_tiles,calc_spotted_tiles
-from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm,init_stellar_prop
+from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm,var_stellar_prop
 from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos,coord_expos_spots
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab
-from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting
+from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting_inst_vis
+from ..ANTARESS_general.minim_routines import par_formatting
 from ..ANTARESS_corrections.ANTARESS_sp_reduc import red_sp_data_instru
 from ..ANTARESS_analysis.ANTARESS_joined_star import joined_Star_ana
 from ..ANTARESS_analysis.ANTARESS_joined_atm import joined_Atm_ana
@@ -139,7 +140,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                     detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
     
                 #Calculating theoretical properties of the planet-occulted and/or spotted regions 
-                if gen_dic['theoPlOcc'] or (len(gen_dic['transit_sp'])>0):
+                if gen_dic['theoPlOcc'] and ( (len(data_dic[inst][vis]['transit_pl'])>0) or (len(data_dic[inst][vis]['transit_sp'])>0) ):
                     calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'],spot_dic=theo_dic)
                     
                 #Analyzing original disk-integrated profiles
@@ -267,16 +268,16 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             update_gen(data_dic,gen_dic) 
     
         ####################################################################################################################
-        #Call to analysis function over combined visits and instruments
+        #Call to analysis function over combined instruments and/or visits
         ####################################################################################################################
-        if gen_dic['multi_inst']:
+        if gen_dic['joined_ana']:
             print('-------------------------------')
-            print('Processing combined instruments')        
+            print('Analyzing combined datasets')        
             print('-------------------------------')
             
             #Wrap-up function to fit stellar profiles and their properties
             if gen_dic['fit_DIProp'] or gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_ResProf'] :
-                joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic)
+                joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic,data_prop)
         
             #Wrap-up function to fit atmospheric profiles and their properties
             if gen_dic['fit_AtmProf'] or gen_dic['fit_AtmProp']:
@@ -683,9 +684,11 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if gen_dic['DImast_weight']:gen_dic['DImast_weight'] |= (gen_dic['res_data'] | (gen_dic['loc_data_corr'] &  (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['spec_1D'] | gen_dic['bin'] | gen_dic['binmultivis'])
         if gen_dic['DImast_weight'] and gen_dic['calc_DImast']:gen_dic['calc_DImast'] =  gen_dic['calc_res_data'] | (gen_dic['calc_loc_data_corr'] &  (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['calc_spec_1D'] | gen_dic['calc_bin'] | gen_dic['calc_binmultivis']
       
-        #Set general conditions to activate multi-instrument modules     
-        if gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_AtmProf'] or gen_dic['fit_AtmProp'] or gen_dic['fit_ResProf'] : gen_dic['multi_inst']=True
-        else:gen_dic['multi_inst']=False
+        #Set general conditions to activate joined datasets modules 
+        gen_dic['joined_ana']=False
+        gen_dic['fit_DIProf'] = False     #module undefined for now
+        gen_dic['fit_ResProp'] = False    #module undefined for now
+        for key in ['DI','Intr','Res','Atm']:gen_dic['joined_ana'] |= (gen_dic['fit_'+key+'Prof'] or gen_dic['fit_'+key+'Prop'])
     
         #Import bin size dictionary
         gen_dic['pix_size_v']=return_pix_size()    
@@ -935,10 +938,10 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
 
     #Oversampling factor for values from planet-occulted regions
     #    - uses the nominal planet-to-star radius ratios, which must correspond to the band from which local properties are derived
-    theo_dic['d_oversamp']={}
+    theo_dic['d_oversamp_pl']={}
     for pl_loc in theo_dic['n_oversamp']:
         if (theo_dic['n_oversamp'][pl_loc]>0.):
-            theo_dic['d_oversamp'][pl_loc] = data_dic['DI']['system_prop']['achrom'][pl_loc][0]/theo_dic['n_oversamp'][pl_loc]
+            theo_dic['d_oversamp_pl'][pl_loc] = data_dic['DI']['system_prop']['achrom'][pl_loc][0]/theo_dic['n_oversamp'][pl_loc]
          
     #Set flag for errors on estimates for local stellar profiles (depending on whether they are derived from data or models)
     if data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['DIbin','Intrbin']:data_dic['Intr']['cov_loc_star']=True
@@ -1018,7 +1021,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     theo_dic['x_st_sky_grid_sp']={}
     theo_dic['y_st_sky_grid_sp']={}
     theo_dic['Ssub_Sstar_sp'] = {}
-    theo_dic['d_oversamp_spot']={}
+    theo_dic['d_oversamp_sp']={}
 
     #Spot activation triggered
     gen_dic['spot_coord_par'] = ['lat_rad_exp','sin_lat_exp','cos_lat_exp','long_rad_exp','sin_long_exp','cos_long_exp','x_sky_exp','y_sky_exp','z_sky_exp']
@@ -1031,7 +1034,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         # sin(ang) = Rproj/Rstar
         for spot in theo_dic['n_oversamp_spot']:
             if (theo_dic['n_oversamp_spot'][spot]>0.):
-                theo_dic['d_oversamp_spot'][spot] = np.sin(data_dic['DI']['spots_prop']['achrom'][spot][0])/theo_dic['n_oversamp_spot'][spot]
+                theo_dic['d_oversamp_sp'][spot] = np.sin(data_dic['DI']['spots_prop']['achrom'][spot][0])/theo_dic['n_oversamp_spot'][spot]
     
         #Spot surface chromatic properties
         for ideg in range(2,5):
@@ -1061,13 +1064,13 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
 
             #Default grid scaled from a 51x51 grid for a spot with projected radius equal to a hot Jupiter transiting a solar-size star
             #    - dsub_ref = (2*Rjup/Rsun)*(1/51)
-            #      nsub_Dspot = int(2*RpRs/dsub_ref) = int( 51*RpRs*Rsun/Rjup ) = int( 51*sin(ang)*Rsun/Rjup )  
-            if (spot not in theo_dic['nsub_Dspot']):
-                theo_dic['nsub_Dspot'][spot] =int( 51.*RspRs_max*Rsun/Rjup ) 
-                print('Default nsub_Dspot['+str(spot)+']='+str(theo_dic['nsub_Dspot'][spot]))
+            #      nsub_Dsp = int(2*RpRs/dsub_ref) = int( 51*RpRs*Rsun/Rjup ) = int( 51*sin(ang)*Rsun/Rjup )  
+            if (spot not in theo_dic['nsub_Dsp']):
+                theo_dic['nsub_Dsp'][pl_loc] =int( 51.*RspRs_max*Rsun/Rjup ) 
+                print('Default nsub_Dsp['+str(spot)+']='+str(theo_dic['nsub_Dsp'][spot]))
     
             #Corresponding spot grid
-            _,theo_dic['Ssub_Sstar_sp'][spot],theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot],_ = occ_region_grid(RspRs_max, theo_dic['nsub_Dspot'][spot],spot=True)
+            _,theo_dic['Ssub_Sstar_sp'][spot],theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot],_ = occ_region_grid(RspRs_max, theo_dic['nsub_Dsp'][spot],spot=True)
 
 
     #------------------------------------------------------------------------------
@@ -1082,7 +1085,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     gen_dic['add_txt_path']={'DI':'','Intr':'','Res':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
     gen_dic['data_type_gen']={'DI':'DI','Res':'Res','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
     gen_dic['type_name']={'DI':'disk-integrated','Res':'differential','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
-
 
     #Data is processed
     if gen_dic['sequence'] not in ['system_view']:    
@@ -1771,7 +1773,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             if inst not in mock_dic['flux_cont']:mock_dic['flux_cont'][inst]={}
                             if vis not in mock_dic['flux_cont'][inst]:mock_dic['flux_cont'][inst][vis] = 1.
                             params_mock.update({'rv':0.,'cont':mock_dic['flux_cont'][inst][vis]})  
-                            params_mock = par_formatting(params_mock,fixed_args['mod_prop'],None,None,fixed_args,inst,vis,mock_dic['intr_prof'][inst]['mode']) 
+                            params_mock = par_formatting(params_mock,fixed_args['mod_prop'],None,None,fixed_args,inst,vis)
+                            params_mock = par_formatting_inst_vis(params_mock,fixed_args,inst,vis,mock_dic['intr_prof'][inst]['mode']) 
              
                             #Generic properties required for model calculation
                             if inst not in mock_dic['sysvel']:mock_dic['sysvel'][inst]={}
@@ -1804,7 +1807,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 spots_prop = {}
 
                             #Initializing stellar properties
-                            fixed_args = init_stellar_prop(fixed_args,theo_dic,data_dic['DI']['system_prop'],spots_prop,system_param['star'],params_mock)
+                            fixed_args = var_stellar_prop(fixed_args,theo_dic,data_dic['DI']['system_prop'],spots_prop,system_param['star'],params_mock)
 
                         #Observational data            
                         else:   
@@ -2766,8 +2769,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         for vis in data_dic[inst]['visit_list']:     
             data_load = np.load(gen_dic['save_data_dir']+'Processed_data/Global/'+inst+'_'+vis+'.npz',allow_pickle=True)
             data_dic[inst][vis]=data_load['data_add'].item()
-            # data_dic[inst][vis]['proc_DI_data_paths']  = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'           #retrieved in  data_load['data_add'].item() no ?
-            # data_dic[inst][vis]['proc_com_data_paths'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com'     #retrieved in  data_load['data_add'].item() no ?
+            data_dic[inst][vis]['proc_DI_data_paths']  = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'           #temporary redef; retrieved in  data_load['data_add'].item() no ?
+            data_dic[inst][vis]['proc_com_data_paths'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com'     #temporary redef; retrieved in  data_load['data_add'].item() no ?
             coord_dic[inst][vis]=data_load['coord_add'].item()
             data_prop[inst][vis]=data_load['data_prop_add'].item() 
             gen_dic[inst][vis]=data_load['gen_add'].item()
@@ -3030,7 +3033,9 @@ def init_vis(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic):
     #Indices of in/out exposures in global tables
     print('   > '+str(data_vis['n_in_visit'])+' exposures')  
     print('        ',data_vis['n_in_tr'],'in-transit')
-    print('        ',data_vis['n_out_tr'],'out-of-transit ('+str(len(gen_vis['idx_pretr']))+' pre / '+str(len(gen_vis['idx_posttr']))+' post)')
+    txt_loc = '         '+str(data_vis['n_out_tr'])+' out-of-transit'
+    if data_vis['n_in_tr']>0:txt_loc+=' ('+str(len(gen_vis['idx_pretr']))+' pre / '+str(len(gen_vis['idx_posttr']))+' post)'
+    print(txt_loc)
     data_vis['dim_in'] = [data_vis['n_in_tr']]+data_vis['dim_exp']
 
     #Definition of CCF continuum, and ranges contributing to master out
