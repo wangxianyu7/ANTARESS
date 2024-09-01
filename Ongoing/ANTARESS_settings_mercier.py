@@ -5178,7 +5178,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Analytical profile variation
     if gen_dic['star_name'] in ['AU_Mic','AUMic','V1298tau']:glob_fit_dic['ResProf']['pol_mode']='modul'  
 
-    
+     
     #Fixed/variable properties   
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['ResProf']['mod_prop']={
