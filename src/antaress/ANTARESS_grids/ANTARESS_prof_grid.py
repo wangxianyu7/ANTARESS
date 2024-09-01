@@ -379,7 +379,7 @@ def init_custom_DI_prof(fixed_args,gen_dic,param_in):
         #      profiles are calculated directly in each cell, but their properties can be pre-calculated either here (if not fitted) or during the fit (if fitted)
         else:           
             for par in params:
-                if (('ctrst_ord' in par) or ('FWHM_ord' in par)) and (param_in[par].vary):fixed_args['var_line'] = True
+                if (('ctrst__ord' in par) or ('FWHM__ord' in par)) and (param_in[par].vary):fixed_args['var_line'] = True
                 
             #Define properties and attribute them to stellar grid if the properties and grid remain fixed
             if (not fixed_args['var_line']) and (not fixed_args['var_star_grid']):init_st_intr_prof(fixed_args,fixed_args['grid_dic'],params)

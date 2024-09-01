@@ -716,8 +716,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
             'coord_line':'mu',
             'func_prof_name': 'gauss',
             'line_trans':None, 
-            'mod_prop':{'ctrst_ord0__IS__VS_' : 0.7,
-                        'FWHM_ord0__IS__VS_'  : 8 },
+            'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
+                        'FWHM__ord0__IS__VS_'  : 8 },
             'pol_mode' : 'modul'}
             }
 
@@ -5124,7 +5124,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  #&  False
+    gen_dic['fit_ResProf'] = True  &  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
@@ -5182,10 +5182,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Fixed/variable properties   
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['ResProf']['mod_prop']={
-        # 'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.15, 1]},
-        'ctrst_ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.15, 1]},
-        # 'FWHM_ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
-        'FWHM_ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[5, 15]},
+        # 'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.15, 1]},
+        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.15, 1]},
+        # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
+        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[5, 15]},
         # 'veq':{'vary':True,'guess':5, 'bd':[1, 10]},
         # 'veq':{'vary':False,'guess':7.9, 'bd':[1, 10]},
         # 'veq_spots':{'vary':True,'guess':9, 'bd':[1, 10]},
@@ -5215,8 +5215,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     if gen_dic['star_name']=='AU_Mic':
         glob_fit_dic['ResProf']['mod_prop']={
-        'ctrst_ord0__IS__VS_':{'vary':True, 'guess':0.7, 'bd':[0.1, 1]},
-        'FWHM_ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.7, 'bd':[0.1, 1]},
+        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
         'veq':{'vary':False,'guess':8.595, 'bd':[8.4, 8.75]},
         'alpha_rot':{'vary':False, 'guess':0.034, 'bd':[0.033,0.035]},
         # 'Peq':{'vary':True,'guess':4.856, 'bd':[4.853, 4.859]},
@@ -5249,8 +5249,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #Priors on variable properties
     if gen_dic['star_name'] == 'AUMic':
         glob_fit_dic['ResProf']['priors']={
-                    'ctrst_ord0__IS__VS_'                    :{'mod':'uf','low':0,'high':1},  
-                    'FWHM_ord0__IS__VS_'                     :{'mod':'uf','low':0,'high':30},
+                    'ctrst__ord0__IS__VS_'                    :{'mod':'uf','low':0,'high':1},  
+                    'FWHM__ord0__IS__VS_'                     :{'mod':'uf','low':0,'high':30},
                     'veq'                                    :{'mod':'uf', 'low':1., 'high':100.},
                     'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
                     # 'alpha_rot'                              :{'mod':'uf', 'low':0., 'high':1.},
@@ -5267,8 +5267,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     if gen_dic['star_name'] == 'AU_Mic':
         glob_fit_dic['ResProf']['priors']={
-                    'ctrst_ord0__IS__VS_'                    :{'mod':'uf','low':0.1,'high':1},  
-                    'FWHM_ord0__IS__VS_'                     :{'mod':'uf','low':0,'high':25},
+                    'ctrst__ord0__IS__VS_'                    :{'mod':'uf','low':0.1,'high':1},  
+                    'FWHM__ord0__IS__VS_'                     :{'mod':'uf','low':0,'high':25},
                     'veq'                                    :{'mod':'gauss', 'val':8.595, 's_val':0.20966},
                     'alpha_rot'                              :{'mod':'dgauss', 'val':0.034214996, 'low':0.00107471, 'high':0.001066154},
                     # 'Peq'                                    :{'mod':'gauss', 'val':4.856, 's_val':0.003},
@@ -5292,19 +5292,19 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Derived properties
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
-        glob_fit_dic['ResProf']['deriv_prop'] = {'lambda_deg':[], 'fold_Tc':[], 'Peq_veq_spots':{'Rstar':{'val':0.75, 's_val':0.1}}}
+        glob_fit_dic['ResProf']['deriv_prop'] = {'lambda_deg':[], 'fold_Tc':[]}#, 'Peq_veq_spots':{'Rstar':{'val':0.75, 's_val':0.1}}}
     
     #Calculating/retrieving
-    # glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
-    glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
+    glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
+    # glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
-        # glob_fit_dic['ResProf']['mcmc_reuse']={}
-        glob_fit_dic['ResProf']['mcmc_reuse']={
-                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk50_steps60.npz'],
-                    'nburn':[20]
-                    }  
+        glob_fit_dic['ResProf']['mcmc_reuse']={}
+        # glob_fit_dic['ResProf']['mcmc_reuse']={
+        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk50_steps60_AUMicb.npz'],
+        #             'nburn':[20]
+        #             }  
     #Re-starting
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
         glob_fit_dic['ResProf']['mcmc_reboot']=''

@@ -1231,8 +1231,8 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                         fixed_args['ncen_bins'][inst][vis] = ncen_bins
                         fixed_args['dim_exp'][inst][vis] = [1,ncen_bins]
 
-                        fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
-                        fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
+                        fit_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
+                        fit_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
 
                     #Trimming profile         
                     for key in ['cen_bins','flux','cond_def']:fixed_args[key][inst][vis][isub] = data_exp[key][iord_sel,idx_range_kept]
@@ -1244,20 +1244,20 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
 
                     #Initializing ranges in the relevant rest frame
-                    if len(cont_range)==0:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] = True    
+                    if len(cont_range)==0:fit_dic[inst][vis]['cond_def_cont_all'][isub] = True    
                     else:
-                        for bd_int in cont_range:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
+                        for bd_int in cont_range:fit_dic[inst][vis]['cond_def_cont_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
                     if len(fit_prop_dic['fit_range'][inst][vis])==0:
-                        fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] = True
+                        fit_dic[inst][vis]['cond_def_fit_all'][isub] = True
                     else:
                         for bd_int in fit_prop_dic['fit_range'][inst][vis]:
-                            fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])
+                            fit_dic[inst][vis]['cond_def_fit_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])
 
                     #Accounting for undefined pixels
-                    fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]           
-                    fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]          
-                    fit_dic['nx_fit']+=np.sum(fit_prop_dic[inst][vis]['cond_def_fit_all'][isub])
-                    fixed_args['cond_fit'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]
+                    fit_dic[inst][vis]['cond_def_cont_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]           
+                    fit_dic[inst][vis]['cond_def_fit_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]          
+                    fit_dic['nx_fit']+=np.sum(fit_dic[inst][vis]['cond_def_fit_all'][isub])
+                    fixed_args['cond_fit'][inst][vis][isub] = fit_dic[inst][vis]['cond_def_fit_all'][isub]
 
                     #Initialize PCs 
                     if fixed_args['n_pc'][inst][vis] is not None:

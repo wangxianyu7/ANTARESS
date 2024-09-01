@@ -53,7 +53,7 @@ def par_formatting_inst_vis(p_start,fixed_args,inst,vis,line_type):
     if 'inst_list' not in fixed_args:fixed_args['inst_list']=[inst]
     if 'inst_vis_list' not in fixed_args:fixed_args['inst_vis_list']={inst:[vis]}
     for par in p_start:
- 
+
         #Parameter has dependence
         if (('__IS') and ('_VS') in par) or ('__ord' in par):
             
@@ -78,7 +78,7 @@ def par_formatting_inst_vis(p_start,fixed_args,inst,vis,line_type):
             #Parameter has order dependence
             if ('__ord' in par):
                 gen_root_par = par.split('__ord')[0] 
-                
+
                 #Define parameter for current instrument and visit (if specified) or all instruments and visits (if undefined) 
                 if inst_vis_par is not None:
                     if inst_par in fixed_args['inst_list']:inst_list = [inst_par]
@@ -703,9 +703,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         #Initialize line properties
         #    - using Gaussian line as default for intrinsic profiles
         if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='ctrst')) or (rout_mode in ['IntrProf','ResProf']):
-            if not any(['ctrst_' in prop for prop in mod_prop]):p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None))
+            if not any(['ctrst_' in prop for prop in mod_prop]):p_start.add_many(('ctrst__ord0__IS__VS_', 0.5,   True, 0.,1.  ,None))
         if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode in ['IntrProf','ResProf']):
-            if not any(['FWHM_' in prop for prop in mod_prop]):p_start.add_many(('FWHM_ord0__IS__VS_', 5.,   True, 0.,100.  ,None))
+            if not any(['FWHM_' in prop for prop in mod_prop]):p_start.add_many(('FWHM__ord0__IS__VS_', 5.,   True, 0.,100.  ,None))
         if rout_mode=='IntrProp':line_type='ana'                                  #to avoid raising warning, even though properties are not used to calculate a line profile
         elif ('Prof' in rout_mode):line_type = fixed_args['mode']
 
@@ -823,9 +823,6 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                                 if fixed_args['varpar_priors'][par]['mod']!='uf':stop('WARNING: use uniform prior for Tc_sp')                        
                                 fixed_args['varpar_priors'][par]['low'] -= fixed_args['bjd_time_shift'][inst][vis]
                                 fixed_args['varpar_priors'][par]['high'] -= fixed_args['bjd_time_shift'][inst][vis]
-
-        #Store the number of threads - needed when fitting joined differential profiles
-        fixed_args['nthreads']=fit_prop_dic['nthreads']
 
 
     ########################################################################################################  
