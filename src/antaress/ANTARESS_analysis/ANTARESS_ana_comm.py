@@ -506,7 +506,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
     if fit_dic['idx_in_fit'][inst][vis]=='all':
         if ('DI' in rout_mode):fixed_args['idx_in_fit'][inst][vis]=gen_dic[inst][vis]['idx_out']
         else:fixed_args['idx_in_fit'][inst][vis]=range(n_default_fit)
-    else:fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fit_dic['idx_in_fit'][inst][vis],range(n_default_fit))
+    else:fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(list(fit_dic['idx_in_fit'][inst][vis]),range(n_default_fit))
     
     #Keep defined profiles
     fixed_args['idx_in_fit'][inst][vis]=np.intersect1d(fixed_args['idx_in_fit'][inst][vis],data_dic[data_type_gen][inst][vis+fixed_args['bin_mode'][inst][vis]]['idx_def'])
@@ -703,9 +703,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         #Initialize line properties
         #    - using Gaussian line as default for intrinsic profiles
         if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='ctrst')) or (rout_mode in ['IntrProf','ResProf']):
-            if not any(['ctrst_' in prop for prop in mod_prop]):p_start.add_many(('ctrst_ord0__IS__VS_', 0.5,   True, 0.,1.  ,None))
+            if not any(['ctrst_' in prop for prop in mod_prop]):p_start.add_many(('ctrst__ord0__IS__VS_', 0.5,   True, 0.,1.  ,None))
         if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode in ['IntrProf','ResProf']):
-            if not any(['FWHM_' in prop for prop in mod_prop]):p_start.add_many(('FWHM_ord0__IS__VS_', 5.,   True, 0.,100.  ,None))
+            if not any(['FWHM_' in prop for prop in mod_prop]):p_start.add_many(('FWHM__ord0__IS__VS_', 5.,   True, 0.,100.  ,None))
         if rout_mode=='IntrProp':line_type='ana'                                  #to avoid raising warning, even though properties are not used to calculate a line profile
         elif ('Prof' in rout_mode):line_type = fixed_args['mode']
 
@@ -1508,7 +1508,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             #    - analytical models can be calculated on an oversampled table and resampled before the fit
             fit_properties.update({'iexp':iexp,'flux_cont':flux_cont})
             fit_dic[iexp]=single_anaprof(isub,iexp,inst,data_dic,vis_det,prop_dic,gen_dic,prop_dic['verbose'],fit_dic['cond_def_fit_all'][isub],fit_dic['cond_def_cont_all'][isub] ,data_type_gen,data_fit[isub]['edge_bins'],data_fit[isub]['cen_bins'],data_fit[isub]['flux'],cov_exp,
-                                        idx_force_det,theo_dic,fit_properties,prop_dic['line_fit_priors'],prop_dic['model'][inst],prop_dic['mod_prop'],data_mode)
+                                        idx_force_det,theo_dic,fit_properties,prop_dic['priors'],prop_dic['model'][inst],prop_dic['mod_prop'],data_mode)
             
             #-------------------------------------------------
 
@@ -1606,7 +1606,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
 
 
 def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,cond_def_fit,cond_def_cont,prof_type,  
-                  edge_bins,cen_bins,flux_loc,cov_loc,idx_force_det,theo_dic,fit_properties,line_fit_priors,model_choice,model_prop,data_type): 
+                  edge_bins,cen_bins,flux_loc,cov_loc,idx_force_det,theo_dic,fit_properties,priors,model_choice,model_prop,data_type): 
     r"""**Single profile analysis routine**
 
     Performs fits and measurements of line profiles.
@@ -1896,7 +1896,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     fixed_args['fit'] = {'chi2':True,'fixed':False,'mcmc':True}[fit_prop_dic['fit_mode']]
 
     #Parameter initialization
-    p_start = par_formatting(p_start,model_prop,line_fit_priors,fit_dic,fixed_args,inst,vis)
+    p_start = par_formatting(p_start,model_prop,priors,fit_dic,fixed_args,inst,vis)
     p_start = par_formatting_inst_vis(p_start,fixed_args,inst,vis,fixed_args['mode'])
 
     #Model initialization

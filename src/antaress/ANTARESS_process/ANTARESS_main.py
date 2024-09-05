@@ -1357,7 +1357,26 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         
         #Calibration settings
         if (inst not in gen_dic['gcal_nooutedge']):gen_dic['gcal_nooutedge'][inst] = [0.,0.]
-        
+
+        #Instrument read noise
+        #    - when available we retrieve a static read noise table per instrument using a S2D obtained with fiber B on the sky
+        if (not gen_dic['mock_data']) and (data_inst['type']=='spec2D') and (inst in ['ESPRESSO','ESPRESSO_MR','HARPN','HARPS','NIRPS_HA','NIRPS_HE']):
+            data_inst['readnoise'] = True
+            readnoise_files = {
+                'ESPRESSO':'TBD',
+                'ESPRESSO_MR':'TBD',
+                'HARPN':'TBD',
+                'HARPS':'TBD',
+                'NIRPS_HA':'TBD',
+                'NIRPS_HE':'TBD',
+                }
+            hdulist =fits.open('ANTARESS_corrections/Telluric_processing/Static_model/'+readnoise_files[inst]+'.fits')
+            if gen_dic['sp_frame']=='air':ikey_wav = 5
+            elif gen_dic['sp_frame']=='vacuum':ikey_wav = 4
+            var_rn_inst = (hdulist[1].data)[idx_ord_kept]/dll_rn
+
+        else:data_inst['readnoise'] = False
+
         #Processing each visit
         if gen_dic['mock_data']:vis_list=list(mock_dic['visit_def'][inst].keys())
         else:vis_list=list(gen_dic['data_dir_list'][inst].keys())
@@ -1893,7 +1912,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         data_inst[vis]['dim_sp'] = [n_in_visit,data_inst['nord']]
                         data_inst[vis]['dim_ord'] = [n_in_visit,data_inst[vis]['nspec']]
 
-                        #Initialize spectral table, flux table, banded covariance matrix                   
+                        #Initialize spectral table, flux table, banded covariance matrix     
                         data_dic_temp['cen_bins'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)
                         data_dic_temp['flux'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)*np.nan
                         data_dic_temp['cov'] = np.zeros(data_inst[vis]['dim_sp'], dtype=object)
@@ -1978,19 +1997,20 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         # F_meas(t,w) = gcal(band) Nmeas(t,w)
                         #      where Nmeas(t,w), drawn from a Poisson distribution with number of events Ntrue(t,w), is the number of photo-electrons measured durint texp
                         #      the estimate of the error is
-                        # EF_meas(t,w) = sqrt(gcal(band) F_meas(t,w))
+                        # EF_meas(t,w)^2 = gcal(band) F_meas(t,w) + Ern^2 ~ gcal(band) F_meas(t,w) 
                         #      which is a biased estimate of the true error but corresponds to what is returned by DRS
+                        #      we neglect read noise, also because only S2D tables are available in ANTARESS
                         #    - the S/N of the mock profiles is F_meas(t,w)/EF_meas(t,w) = sqrt(F_meas(t,w)/gcal(band)) = sqrt(Nmeas(t,w)) proportional to sqrt(texp*cont)
                         #      errors in the continuum of the normalized profiles are proportional to 1/sqrt(texp*cont) 
                         #      beware that this error does not necessarily match the flux dispersion
                         if (inst in mock_dic['set_err']) and mock_dic['set_err'][inst]:
                             DI_prof_exp_Fmeas = np.array(list(map(np.random.poisson, DI_prof_exp_Ftrue,  data_inst[vis]['nspec']*[1]))).flatten()
-                            DI_err_exp_Emeas = np.sqrt(mock_gcal*DI_prof_exp_Fmeas)
+                            DI_err_exp_Emeas2 = mock_gcal*DI_prof_exp_Fmeas
                         else:
                             DI_prof_exp_Fmeas = DI_prof_exp_Ftrue
-                            DI_err_exp_Emeas = np.zeros(data_inst[vis]['nspec'],dtype=float)
+                            DI_err_exp_Emeas2 = np.zeros(data_inst[vis]['nspec'],dtype=float)
                         data_dic_temp['flux'][iexp,0] = DI_prof_exp_Fmeas                      
-                        data_dic_temp['cov'][iexp,0] = (DI_err_exp_Emeas**2.)[None,:]                        
+                        data_dic_temp['cov'][iexp,0] = DI_err_exp_Emeas2[None,:]                        
 
 
 
@@ -2645,14 +2665,29 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     #Resampling data on wavelength table common to the visit if requested
                     if gen_dic['comm_sp_tab'][inst]:
                         print('           Resampling on common table')
+
+                        #Initializes path to read noise table  
+                        if data_inst['readnoise']:data_inst[vis]['rn_data_paths'] = {iexp:gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_rn_' for iexp in range(n_in_visit)}                        
+
+                        #Processing each exposure                        
                         for iexp in range(n_in_visit):
+                            if data_inst['readnoise']:var_rn_exp = np.zeros(data_inst[vis]['dim_exp'], dtype=float)
                             for iord in range(data_inst['nord']): 
                                 data_dic_temp['flux'][iexp,iord],data_dic_temp['cov'][iexp][iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['flux'][iexp,iord] , cov = data_dic_temp['cov'][iexp][iord], kind=gen_dic['resamp_mode']) 
                                 
                                 #Resampling input telluric spectrum
                                 if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):
-                                    data_dic_temp['tell'][iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['tell'][iexp,iord], kind=gen_dic['resamp_mode'])         
-
+                                    data_dic_temp['tell'][iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['tell'][iexp,iord], kind=gen_dic['resamp_mode']) 
+                                    
+                                #Resampling read-noise table
+                                #    - read noise values are associated with the detector pixels, and we thus consider them defined on the same grid as each exposure
+                                if data_inst['readnoise']:
+                                    var_rn_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], var_rn_inst[iord], kind=gen_dic['resamp_mode'])
+                                    var_rn_exp[iord][np.isnan(var_rn_exp[iord])] = 0.
+                                
+                            #Saving read noise table
+                            if data_inst['readnoise']:datasave_npz(data_inst[vis]['rn_data_paths']+str(iexp),{'var_rn':var_rn_exp})
+                                
                         #Overwrite exposure tables
                         data_dic_temp['cen_bins'][:] = deepcopy(data_com['cen_bins'])
                         data_dic_temp['edge_bins'][:] = deepcopy(data_com['edge_bins'])                                    
@@ -2671,6 +2706,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     data_dic[inst]['com_vis'] = vis   
                     data_com_inst = deepcopy(data_com)
                     datasave_npz(data_dic[inst]['proc_com_data_path'],data_com_inst)
+                    
+                    #Saving common read noise table  
+                    if data_inst['readnoise']:
+                        datasave_npz(gen_dic['save_data_dir']+'Processed_data/Global/Readnoise_'+inst,{'var_rn':var_rn_inst})
+                        data_inst[vis]['rn_data_paths'] = {iexp:gen_dic['save_data_dir']+'Processed_data/Global/Readnoise_'+inst for iexp in range(n_in_visit)}                        
+
 
                 #Check wether all visits of current instrument share a common table
                 #    - flag remains True if the common table of current visit is the same as the common table for the instrument
@@ -2748,7 +2789,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
         #Saving general information
         np.savez_compressed(gen_dic['save_data_dir']+'Processed_data/Global/'+inst,gen_inst_add=gen_dic[inst],data_inst_add=data_dic[inst],allow_pickle=True) 
-        
+
     #Retrieving data
     else:
         check_data({'path':gen_dic['save_data_dir']+'Processed_data/Global/'+inst})    

@@ -21,6 +21,7 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
      - `ls_plot = str` : linestyle.
      - `col_contacts = str` : color for transit contacts.
      - `axis_thick = float` : thickness for plot axis.
+     - `marker` : general marker type.
 
     Args:
         plot_options (dic) : dictionary for all generic plot settings
@@ -107,6 +108,9 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
     
     #Print information
     plot_options[key_plot]['verbose']=True 
+
+    #Plot legend figure
+    plot_options[key_plot]['legend']=False 
 
     #--------------------------------------
 
@@ -294,7 +298,7 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
         plot_options[key_plot]['plot_input']=True
         
     #--------------------------------------              
-    if (key_plot in ['Fbal_corr','input_LC','plocc_ranges','prop_DI_mcmc_PDFs','prop_Intr_mcmc_PDFs']):
+    if (key_plot in ['Fbal_corr','Fbal_corr_vis','input_LC','plocc_ranges','prop_DI_mcmc_PDFs','prop_Intr_mcmc_PDFs']):
 
         #Plot exposure indexes
         plot_options[key_plot]['plot_expid'] = True

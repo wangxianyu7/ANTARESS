@@ -165,7 +165,7 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_grid,coord_grid, transit_
                 _,args['grid_dic']['Ssub_Sstar_sp'][spot],args['grid_dic']['x_st_sky_grid_sp'][spot],args['grid_dic']['y_st_sky_grid_sp'][spot],_ = occ_region_grid(np.sin(args['system_spot_prop']['achrom'][spot][0]),args['grid_dic']['nsub_Dsp'][spot],spot=True)  
 
             #Update spot crossing time before doing spot parameters' retrieval
-            if args['fit_spot']:param['Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot] += args['spot_crosstime_supp'][inst][vis]
+            if args['fit_spot']:param['Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot] += args['bjd_time_shift'][inst][vis]
 
         #Recalculate spot coordinates if relevant        
         if args['fit_spot']:

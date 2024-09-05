@@ -275,7 +275,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             wav_trans_all[:,isub_ord,isub_iexp] = data_load['wav_trans_all'][:,iord]
                         if len(cond_def_exp[iord]):
                             cen_bins_all[isub_ord,isub_iexp] = data_exp['cen_bins'][iord][cond_def_exp[iord]]
-                            gdet_bins_all[isub_ord,isub_iexp] = cal_piecewise_func(data_load['gdet_inputs'][iord]['par'],cen_bins_all[isub_ord,isub_iexp],args=data_load['gdet_inputs'][iord]['args'])    
+                            gdet_bins_all[isub_ord,isub_iexp] = cal_piecewise_func(data_load['gdet_inputs'][iord]['par'],cen_bins_all[isub_ord,isub_iexp],args=data_load['gdet_inputs'][iord]['args'])[0]    
 
                         #Mean calibration per order (from measurements)
                         if (plot_dic[key_plot]!=''):
@@ -285,7 +285,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 cen_bins_mean[isub_ord,isub_iexp] = gdet_cen_binned_mean[isub_ord,isub_iexp]
                             else:
                                 cen_bins_mean[isub_ord,isub_iexp] = gen_dic['wav_ord_inst'][inst][iord]
-                            gdet_bins_mean[isub_ord,isub_iexp] = np.mean(cal_piecewise_func(data_load['gdet_inputs'][iord]['par'],data_load['wav_bin_all'][iord],args=data_load['gdet_inputs'][iord]['args']))   
+                            gdet_bins_mean[isub_ord,isub_iexp] = np.mean(cal_piecewise_func(data_load['gdet_inputs'][iord]['par'],data_load['wav_bin_all'][iord],args=data_load['gdet_inputs'][iord]['args']))[0]   
                                 
                 #Mean calibration per order (from model, for normalization)
                 if plot_set_key['norm_exp']:norm_gdet = gdet_bins_mean
@@ -926,7 +926,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Horizontal range
             if plot_set_key['x_range'] is not None:x_range_loc = deepcopy(plot_set_key['x_range'])
             else:
-                data_com = dataload_npz(data_vis['proc_com_data_path'])  
+                data_com = dataload_npz(data_vis['proc_com_data_paths'])  
                 if plot_set_key['sp_var'] == 'nu' :x_range_loc = [c_light/data_com['edge_bins'][-1,-1],c_light/data_com['edge_bins'][0,0]]
                 elif plot_set_key['sp_var'] == 'wav' :x_range_loc = [data_com['edge_bins'][0,0],data_com['edge_bins'][-1,-1]]
             if plot_set_key['plot_model']:
@@ -4840,7 +4840,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
 ################################################################################################################    
-#%% Generic plot routines
+#%% Generic plot subroutines
 ################################################################################################################ 
 
 
@@ -5288,12 +5288,13 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                 nspec_eff = data_inst[vis]['nspec']
                 dim_exp_proc = [nord_proc,nspec_eff]
             cen_bins_com = data_com['cen_bins'][idx_sel_ord]
-            edge_bins_com = data_com['edge_bins'][idx_sel_ord]                
+            edge_bins_com = data_com['edge_bins'][idx_sel_ord]       
+            nspec_com = data_com['nspec']
 
             #Pre-processing exposures 
             #    - for original profiles over correction steps
             if (plot_mod=='DI_prof_corr') and ('spec' in data_type) and (not gen_dic['mock_data']):  
-                data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_inst[vis],data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,None,data_prop)
+                data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_inst[vis],data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,None,data_prop)
             else:
                 data_proc={}
                 data_mod={}
@@ -5965,7 +5966,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
            
     return None
 
-def pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop):
+def pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop):
     print('           Pre-processing exposures')
     data_proc = {} 
     data4mast = {} 
@@ -5975,6 +5976,7 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_
     data_mod = {}
     iexp_proc_list = np.unique(list(iexp_mast_list)+list(iexp_plot)) 
     flux_ref = np.ones(data_vis['dim_exp']) 
+    nord_eff = len(idx_sel_ord)
     for isub_exp,iexp in enumerate(iexp_proc_list):
 
         #Aligning profiles in star rest frame (source), shifting them from the solar system barycentric (receiver) rest frame
@@ -6001,10 +6003,16 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_
 
             #Exposure is resampled on common table otherwise
             else:
+                flux_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan   
+                if data_vis['tell_sp']:tell_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan
+                if data_inst['cal_weight']:mean_gdet_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan
                 for isub,iord in enumerate(idx_sel_ord): 
-                    data_proc[maink][iexp]['flux'][isub],data_proc[maink][iexp]['cov'][isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['flux'][isub], cov = data_proc[maink][iexp]['cov'][isub], kind=gen_dic['resamp_mode'])
-                if data_vis['tell_sp']:data_proc[maink][iexp]['tell'] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['tell'][iord] , kind=gen_dic['resamp_mode']) 
-                if data_inst['cal_weight']:data_proc[maink][iexp]['mean_gdet'] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['mean_gdet'][iord] , kind=gen_dic['resamp_mode']) 
+                    flux_temp[isub],data_proc[maink][iexp]['cov'][isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['flux'][isub], cov = data_proc[maink][iexp]['cov'][isub], kind=gen_dic['resamp_mode'])
+                    if data_vis['tell_sp']:tell_temp[isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['tell'][iord] , kind=gen_dic['resamp_mode']) 
+                    if data_inst['cal_weight']: mean_gdet_temp[isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['mean_gdet'][iord] , kind=gen_dic['resamp_mode'])                 
+                data_proc[maink][iexp]['flux'] = deepcopy(flux_temp)
+                if data_vis['tell_sp']:data_proc[maink][iexp]['tell'] = deepcopy(tell_temp)
+                if data_inst['cal_weight']:data_proc[maink][iexp]['mean_gdet'] = deepcopy(mean_gdet_temp)
                 data_proc[maink][iexp]['cond_def'] = ~np.isnan(data_proc[maink][iexp]['flux'])
                 data_proc[maink][iexp]['edge_bins']=   edge_bins_com
                 data_proc[maink][iexp]['cen_bins'] =   cen_bins_com                    
@@ -6029,10 +6037,14 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_
                 data4mast[maink][iexp]['weight'] = weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',data_inst['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['mean_gdet'],data_proc[maink][iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc = 1./flux_glob)                       
    
                 #Resampling if exposures do not share a common table
-                if (not data_vis['comm_sp_tab']):   
+                if (not data_vis['comm_sp_tab']): 
+                    flux_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan
+                    weight_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan
                     for isub in range(nord_proc):
-                        data4mast[maink][iexp]['flux'][isub],data4mast[maink][iexp]['cov'][isub] = bind.resampling(edge_bins_com[isub], data4mast[maink][iexp]['edge_bins'][isub], data_proc[maink][iexp]['flux'][isub] , cov = data_proc[maink][iexp]['cov'][isub], kind=gen_dic['resamp_mode'])                                                        
-                        data4mast[maink][iexp]['weight'][isub] = bind.resampling(edge_bins_com[isub], data4mast[maink][iexp]['edge_bins'][isub], data4mast[maink][iexp]['weight'][isub] ,kind=gen_dic['resamp_mode'])   
+                        flux_temp[isub],data4mast[maink][iexp]['cov'][isub] = bind.resampling(edge_bins_com[isub], data4mast[maink][iexp]['edge_bins'][isub], data_proc[maink][iexp]['flux'][isub] , cov = data_proc[maink][iexp]['cov'][isub], kind=gen_dic['resamp_mode'])                                                        
+                        weight_temp[isub] = bind.resampling(edge_bins_com[isub], data4mast[maink][iexp]['edge_bins'][isub], data4mast[maink][iexp]['weight'][isub] ,kind=gen_dic['resamp_mode'])   
+                    data4mast[maink][iexp]['flux'] = deepcopy(flux_temp)
+                    data4mast[maink][iexp]['weight'] = deepcopy(weight_temp)
                     data4mast[maink][iexp]['cond_def'] = ~np.isnan(data4mast[maink][iexp]['flux']) 
                     data4mast[maink][iexp]['cen_bins'] = cen_bins_com
                     data4mast[maink][iexp]['edge_bins'] = edge_bins_com
@@ -7806,7 +7818,7 @@ def sub_plot_chi2_prop(plot_options,plot_ext,gen_dic):
 
 
 ##################################################################################################
-#%% Specific plot routines
+#%% Specific plot subroutines
 ##################################################################################################
 
 
@@ -7893,6 +7905,7 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             edge_bins_var = edge_bins_var[idx_sel_ord]
             cen_bins_com = data_com['cen_bins'][idx_sel_ord]
             edge_bins_com = data_com['edge_bins'][idx_sel_ord]
+            nspec_com = data_com['nspec']
             if plot_options['x_range'] is None:x_range_loc = [np.max([x_range_loc[0],np.min(edge_bins_var)]),np.min([x_range_loc[1],np.max(edge_bins_var)])]
             dx_range = x_range_loc[1]-x_range_loc[0]
 
@@ -7936,7 +7949,7 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             else:iexp_mast_list = gen_dic[inst][vis]['idx_out']
             
             #Pre-process all exposures
-            data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop)  
+            data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop)  
  
             #Calculate master for requested data steps
             data_mast={}
@@ -8395,6 +8408,9 @@ def sub_func_bin(bin_val_loc,dic_val,x_min,x_max,y_min,y_max,plot_options):
 def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_param,coord_dic,contact_phases,plot_dic,theo_dic,data_prop,glob_fit_dic): 
     path_loc = gen_dic['save_plot_dir']+data_mode+'_prop/'  
     if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)
+    
+    #Legend
+    if plot_options['legend']:eff_color = {}
 
     plt.ioff()        
     plt.figure(figsize=plot_options['fig_size'])            
@@ -8441,7 +8457,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
     if prop_mode=='rv_res':sc_unit = 1e3
     else:sc_unit = 1.            
                 
-    #Plot for each instrument
+    #Plotting instrument on the figure
     i_visit=-1
     for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
         if inst not in plot_options['color_dic']:plot_options['color_dic'][inst]={}
@@ -8451,8 +8467,9 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
         for key in ['x_all','st_x_all','end_x_all','val_all']:dic_inst[key] = np.empty(0,dtype=float)
         dic_inst['eval_all'] = np.empty([2,0],dtype=float)
         dic_inst['HDI_all'] = np.empty([2,0],dtype=float)
+        if plot_options['legend']:eff_color[inst] = {}
                
-        #Plot for each visit
+        #Plotting visit on the figure
         if data_mode=='DI':vis_list = np.intersect1d(list(data_dic['DI'][inst].keys())+['binned'],plot_options['visits_to_plot'][inst])
         elif data_mode=='Intr':vis_list = deepcopy(plot_options['visits_to_plot'][inst])
         for vis in vis_list: 
@@ -8644,6 +8661,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                 if vis not in plot_options['color_dic'][inst]:plot_options['color_dic'][inst][vis]='dodgerblue'                 
                 if plot_options['color_dic'][inst][vis]=='jet':col_loc='dodgerblue'  
                 else:col_loc = plot_options['color_dic'][inst][vis]
+                if plot_options['legend']:eff_color[inst][vis] = col_loc
                 
                 #-------------------------------------------------------          
                 #Disk-integrated properties
@@ -9670,7 +9688,61 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
     elif data_mode=='Intr':sub_key = 'Intr'
     plt.savefig(path_loc+prop_mode+'_'+plot_options['prop_'+data_mode+'_absc']+'.'+plot_dic['prop_'+sub_key]) 
     plt.close()
-		
+    
+    #-------------------------------------------------------------------------------------------
+    
+    #Separate legend figure
+    if plot_options['legend']:
+        plt.ioff() 
+        n_inst = len(eff_color)
+        nsub_col = 3
+        nsub_rows = int(np.ceil(n_inst/nsub_col))
+        fig, axes = plt.subplots(nsub_rows,nsub_col, figsize=plot_options['fig_size'])
+        fig.subplots_adjust(left=plot_options['margins'][0], bottom=0.03, right=plot_options['margins'][2], top=0.3,wspace=0.03 , hspace=0.03  )
+        nall = nsub_rows*nsub_col   #number of possible subplots
+        x_range_loc = [0,4]
+        ygap = 0.1
+        ymin =0.
+        for inst in eff_color:ymin = np.min([ymin,0 - ygap*(len(eff_color[inst])+1)])
+        y_range_loc = [ymin,0+ygap]
+        for isub,inst in enumerate(eff_color):        
+
+            #Set row & column index of current exposure
+            irow = int(isub/nsub_col)
+            icol = isub%nsub_col             
+
+            #Single/multiple subplots
+            if n_inst == 1:ax = axes
+            else:
+                if nsub_rows==1:ax = axes[icol]
+                else:ax = axes[irow, icol]
+            
+            #Print instrument
+            ax.text(0.2,0,inst,fontsize=plot_options['font_size_txt']-1,color = 'black',verticalalignment='center', horizontalalignment='left')
+ 	
+            #Print visits
+            for ivis,vis in enumerate(eff_color[inst]):
+                ax.plot(0.5,0 - ygap*(ivis+1),marker='o',markersize = 8,markeredgecolor = 'grey',color = eff_color[inst][vis])
+                ax.text(0.8,0 - ygap*(ivis+1),vis,fontsize=plot_options['font_size_txt']-2,color = eff_color[inst][vis],verticalalignment='center', horizontalalignment='left')
+    
+            #Set up the axes
+            ax.set_xlim(x_range_loc)
+            ax.set_ylim(y_range_loc)
+            ax.set_xticklabels([])
+            ax.xaxis.set_ticks_position('none') 
+            ax.set_yticklabels([])
+            ax.yaxis.set_ticks_position('none') 
+        
+        #Fill remaining space with empty axes
+        for isub_comp in range(isub+1,nall):
+            irow = int(isub_comp/nsub_col)
+            icol = isub_comp%nsub_col
+            if nsub_rows==1:axes[icol].axis('off')
+            else:axes[irow, icol].axis('off')
+            
+        plt.savefig(path_loc+prop_mode+'_'+plot_options['prop_'+data_mode+'_absc']+'_legend.'+plot_dic['prop_'+sub_key]) 
+        plt.close()
+    
     return None   
 
 

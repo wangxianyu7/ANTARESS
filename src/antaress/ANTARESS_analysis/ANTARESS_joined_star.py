@@ -308,10 +308,11 @@ def main_joined_IntrProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
             'mode':'ana',  #to activate the calculation of line profile properties
             'prop_fit':prop_loc})
 
-        #Coordinate as a function of which the model describing the property is defined
-        if fit_prop_dic['coord_fit'][prop_loc] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
-        elif fit_prop_dic['coord_fit'][prop_loc]!='phase':fixed_args['coord_line']=fit_prop_dic['coord_fit'][prop_loc]
-        else:fixed_args['coord_line'] = None
+        #Coordinate as a function of which the model describing the line shape property is defined
+        if prop_loc != 'rv':
+            if fit_prop_dic['coord_fit'][prop_loc] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
+            else:fixed_args['coord_line']=fit_prop_dic['coord_fit'][prop_loc]
+        else:fixed_args['coord_line']=None
         
         #Property required to calculate the model
         fixed_args['par_list']+=[fixed_args['prop_fit']]
@@ -532,6 +533,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         'dim_exp':{},
         'ncen_bins':{},
         'cond_fit':{},
+        'cond_def_cont_all':{},
         'cond_def':{},
         'flux':{},
         'cov':{},
@@ -556,7 +558,8 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fixed_args['par_list']+=['line_prof']
     if fixed_args['mode']=='ana':
         if fit_prop_dic['coord_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
-        else:fixed_args['coord_line']=fit_prop_dic['coord_fit']
+        elif fit_prop_dic['coord_fit']!='phase':fixed_args['coord_line']=fit_prop_dic['coord_fit']
+        else:stop('ERROR : coordinate '+fit_prop_dic['coord_fit']+' not usable for line profiles')
         fixed_args['par_list']+=[fixed_args['coord_line']]
     else:
         fixed_args['par_list']+=['mu']
@@ -568,7 +571,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     for par in ['coord_obs','coord_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_dic['idx_in_fit'].keys())):  
         init_joined_routines_inst(inst,fit_dic,fixed_args)
-        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
+        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','cond_def_cont_all','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
         if (fixed_args['mode']=='ana') and (inst not in fixed_args['func_prof_name']):fixed_args['func_prof_name'][inst] = 'gauss'
@@ -632,7 +635,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 #Fit tables
                 #    - models must be calculated over the full, continuous spectral tables to allow for convolution
                 #      the fit is then performed on defined pixels only
-                for key in ['dcen_bins','cen_bins','edge_bins','cond_fit','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
+                for key in ['dcen_bins','cen_bins','edge_bins','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
               
                     #Upload latest processed intrinsic data
@@ -667,8 +670,8 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                         fixed_args['ncen_bins'][inst][vis] = ncen_bins  
                         fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
                             
-                        fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
-                        fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)                      
+                        fixed_args['cond_fit'][inst][vis]=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
+                        fixed_args['cond_def_cont_all'][inst][vis] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)                      
                     
                     #Trimming profile         
                     for key in ['cen_bins','flux','cond_def']:fixed_args[key][inst][vis][isub] = data_exp[key][iord_sel,idx_range_kept]
@@ -680,18 +683,17 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
                
                     #Initializing ranges in the relevant rest frame
-                    if len(cont_range)==0:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] = True    
+                    if len(cont_range)==0:fixed_args['cond_def_cont_all'][inst][vis][isub] = True    
                     else:
-                        for bd_int in cont_range:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
-                    if len(fit_prop_dic['fit_range'][inst][vis])==0:fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] = True    
+                        for bd_int in cont_range:fixed_args['cond_def_cont_all'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
+                    if len(fit_prop_dic['fit_range'][inst][vis])==0:fixed_args['cond_fit'][inst][vis][isub] = True    
                     else:
-                        for bd_int in fit_prop_dic['fit_range'][inst][vis]:fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])        
+                        for bd_int in fit_prop_dic['fit_range'][inst][vis]:fixed_args['cond_fit'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])        
 
                     #Accounting for undefined pixels
-                    fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]           
-                    fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]          
-                    fit_dic['nx_fit']+=np.sum(fit_prop_dic[inst][vis]['cond_def_fit_all'][isub])
-                    fixed_args['cond_fit'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]
+                    fixed_args['cond_def_cont_all'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]           
+                    fixed_args['cond_fit'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]          
+                    fit_dic['nx_fit']+=np.sum(fixed_args['cond_fit'][inst][vis][isub])
 
                     #Initialize PCs 
                     if fixed_args['n_pc'][inst][vis] is not None:
@@ -810,8 +812,8 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     prof_fit_dic[i_in]={
                         'cen_bins':fixed_args['cen_bins'][inst][vis][isub],
                         'flux':mod_dic[inst][vis][isub],
-                        'cond_def_fit':fit_prop_dic[inst][vis]['cond_def_fit_all'][isub],
-                        'cond_def_cont':fit_prop_dic[inst][vis]['cond_def_cont_all'][isub]
+                        'cond_def_fit':fixed_args['cond_fit'][inst][vis][isub],
+                        'cond_def_cont':fixed_args['cond_def_cont_all'][inst][vis][isub]
                         }
                     for pl_loc in fixed_args['transit_pl'][inst][vis]:
                         prof_fit_dic[i_in][pl_loc] = {}
@@ -1017,6 +1019,8 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         'dim_exp':{},
         'ncen_bins':{},
         'cond_fit' :{},
+        'cond_def_cont_all':{},
+        'cond_def_plot_all':{},
         'cond_def' :{},
         'flux':{},
         'cov' :{},
@@ -1098,7 +1102,7 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         
         if (inst not in fixed_args['ref_pl']) and (fixed_args['ref_pl']!={}):fixed_args['ref_pl'][inst]={}
           
-        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
+        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','cond_def_cont_all','cond_def_plot_all','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
         if (fixed_args['mode']=='ana') and (inst not in fixed_args['func_prof_name']):fixed_args['func_prof_name'][inst] = 'gauss'
@@ -1192,7 +1196,7 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 #Fit tables
                 #    - models must be calculated over the full, continuous spectral tables to allow for convolution
                 #      the fit is then performed on defined pixels only
-                for key in ['dcen_bins','cen_bins','edge_bins','cond_fit','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
+                for key in ['dcen_bins','cen_bins','edge_bins','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
 
                     #Upload latest processed differential data
@@ -1227,9 +1231,9 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                         fixed_args['ncen_bins'][inst][vis] = ncen_bins  
                         fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
 
-                        fit_prop_dic[inst][vis]['cond_def_plot_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],data_vis['nspec']],dtype=bool)
-                        fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
-                        fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
+                        fixed_args['cond_def_plot_all'][inst][vis]=np.zeros([fixed_args['nexp_fit_all'][inst][vis],data_vis['nspec']],dtype=bool)
+                        fixed_args['cond_fit'][inst][vis]=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
+                        fixed_args['cond_def_cont_all'][inst][vis] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
 
                     #Trimming profile         
                     for key in ['cen_bins','flux','cond_def']:fixed_args[key][inst][vis][isub] = data_exp[key][iord_sel,idx_range_kept]
@@ -1241,19 +1245,18 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
 
                     #Initializing ranges in the relevant rest frame
-                    if len(cont_range)==0:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] = True    
+                    if len(cont_range)==0:fixed_args['cond_def_cont_all'][inst][vis][isub] = True    
                     else:
-                        for bd_int in cont_range:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
-                    if len(fit_prop_dic['fit_range'][inst][vis])==0:fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] = True    
+                        for bd_int in cont_range:fixed_args['cond_def_cont_all'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
+                    if len(fit_prop_dic['fit_range'][inst][vis])==0:fixed_args['cond_fit'][inst][vis][isub] = True    
                     else:
-                        for bd_int in fit_prop_dic['fit_range'][inst][vis]:fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])        
+                        for bd_int in fit_prop_dic['fit_range'][inst][vis]:fixed_args['cond_fit'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])        
 
                     #Accounting for undefined pixels
-                    fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]           
-                    fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]          
-                    fit_dic['nx_fit']+=np.sum(fit_prop_dic[inst][vis]['cond_def_fit_all'][isub])
-                    fixed_args['cond_fit'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]                    
-                    fit_prop_dic[inst][vis]['cond_def_plot_all'][isub] = np.isin(np.linspace(0,data_vis['nspec'],data_vis['nspec'], endpoint=False, dtype=int), idx_range_kept)
+                    fixed_args['cond_def_cont_all'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]           
+                    fixed_args['cond_fit'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]          
+                    fit_dic['nx_fit']+=np.sum(fixed_args['cond_fit'][inst][vis][isub])                   
+                    fixed_args['cond_def_plot_all'][inst][vis][isub] = np.isin(np.linspace(0,data_vis['nspec'],data_vis['nspec'], endpoint=False, dtype=int), idx_range_kept)
 
                     #Initialize PCs 
                     if fixed_args['n_pc'][inst][vis] is not None:
@@ -1407,8 +1410,8 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                         'edge_bins':np.array([fixed_args['edge_bins'][inst][vis][isub]]),
                         'flux':np.array([mod_dic[inst][vis][isub]]),
                         'flux_nopl':np.array([mod_dic_nopl[inst][vis][isub]]),
-                        'cond_def_fit':np.array([fit_prop_dic[inst][vis]['cond_def_plot_all'][isub]]),
-                        'cond_def_cont':fit_prop_dic[inst][vis]['cond_def_cont_all'][isub]
+                        'cond_def_fit':np.array([fixed_args['cond_def_plot_all'][inst][vis][isub]]),
+                        'cond_def_cont':fixed_args['cond_def_cont_all'][inst][vis][isub]
                         }
                     for pl_loc in fixed_args['transit_pl'][inst][vis]:
                         prof_fit_dic[pl_loc] = {}

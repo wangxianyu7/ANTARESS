@@ -10,7 +10,7 @@ from pysme.linelist.vald import ValdFile
 from pysme.abund         import Abund
 from pysme.synthesize import synthesize_spectrum
 import lmfit
-from ctypes import CDLL,c_double,c_int,c_void_p,cast,POINTER
+from ctypes import CDLL,c_double,c_int,POINTER
 import os as os_system
 from ..ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
@@ -375,7 +375,7 @@ def init_custom_DI_prof(fixed_args,gen_dic,param_in):
         #      profiles are calculated directly in each cell, but their properties can be pre-calculated either here (if not fitted) or during the fit (if fitted)
         else:           
             for par in params:
-                if (('ctrst_ord' in par) or ('FWHM_ord' in par)) and (param_in[par].vary):fixed_args['var_line'] = True
+                if (('ctrst__ord' in par) or ('FWHM__ord' in par)) and (param_in[par].vary):fixed_args['var_line'] = True
                 
             #Define properties and attribute them to stellar grid if the properties and grid remain fixed
             if (not fixed_args['var_line']) and (not fixed_args['var_star_grid']):init_st_intr_prof(fixed_args,fixed_args['grid_dic'],params)

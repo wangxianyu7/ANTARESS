@@ -1515,8 +1515,6 @@ def resample_func(x_bd_low_in,x_bd_high_in,x_low_in_all,x_high_in_all,flux_in_al
 
 
 
-
-
 def sub_calc_bins(low_bin,high_bin,raw_loc_dic,nfilled_bins,calc_Fr=False,calc_gdet=False,adjust_bins=True):
     r"""**Simplified binning routine**
 

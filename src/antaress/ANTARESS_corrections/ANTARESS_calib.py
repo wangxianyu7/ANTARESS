@@ -16,6 +16,9 @@ from ..ANTARESS_general.minim_routines import call_lmfit
 
 
 
+
+
+
 def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic):
     r"""**Main instrumental calibration routine.**
     
@@ -33,11 +36,18 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic):
     We first fit a model to the calibration for each exposure, so that it can be extrapolated over a larger, common range for all visits 
     then we calculate the median of these extrapolated model, interpolate it as a function, and use it to define the common calibration profile over the specific table of each exposure.
     
-    Overall the estimated calibrations are stable between exposures but low count levels ten to yield larger calibrations - hence the independent calculation of calibration per exposure, before taking the median over the visit.
-    This may come from additional noise sources.
-    If :math:`E = E_\mathrm{white} + E_\mathrm{red} = \sqrt{g_\mathrm{true}} \sqrt{F} + E_\mathrm{red}` then :math:`g_\mathrm{true} = (E-E_\mathrm{red})^2/F < E^2/F = g_\mathrm{meas}` (since :math:`E_\mathrm{red} < 2 E`), so that we underestimate the actual calibration. 
-    In this case our assumptions to estimate gdet do not hold anymore, but for the purpose of weighing the exposures and scaling to raw count levels we still use the measured calibration.
-    Since :math:`g_\mathrm{meas} = (E_\mathrm{white} + E_\mathrm{red})^2/F` this factor accounts for the true calibration but also for additional noise sources.        
+    Overall the estimated calibrations are stable between exposures but low count levels tend to yield larger calibrations - hence the independent calculation of calibration per exposure, before taking the median over the visit.
+    This may come from additional noise sources, in particular read noise:
+
+    .. math::      
+       E^2 &= E_\mathrm{photon noise}^2 + E_\mathrm{read noise}^2   \\
+           &= g_\mathrm{true} F + E_\mathrm{red}^2     \\
+       g_\mathrm{true} &= (E^2-E_\mathrm{red}^2)/F^2    \\
+                       &< E^2/F = g_\mathrm{meas} \\
+                       
+    So that we underestimate the actual calibration. In this case our assumptions to estimate gdet do not hold anymore, but for the purpose of weighing the exposures and scaling to raw count levels we still use the measured calibration.
+    Since :math:`g_\mathrm{meas} = (E_\mathrm{photon noise}^2 + E_\mathrm{read noise}^2)/F` it accounts for the true calibration but also for additional noise sources.        
+    When available for a given instrument, ANTARESS now uses read-noise profiles so that :math:`g_\mathrm{true}`is more properly estimated. 
     
     Spectra are typically provided in the solar barycentric rest frame, and are thus not defined here in the detector rest frame, so that the calibration profiles in different epochs may be shifted by the Earth barycentric RV difference.   
     We nonetheless use a single calibration profile, constant in time and common to all processed exposures of an instrument, so that the relative color balance between spectra is not modified when converting them back to counts. 
@@ -61,6 +71,8 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic):
         min_edge_ord_all = np.repeat(1e100,data_dic[inst]['nord'])
         max_edge_ord_all = np.repeat(-1e100,data_dic[inst]['nord'])   
         iexp_glob_groups_vis = {}
+
+        #Processing each visit
         for vis in data_dic[inst]['visit_list']:
             print('           Processing '+vis) 
             data_vis=data_dic[inst][vis]
@@ -79,6 +91,11 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic):
                 for iexp in range(data_vis['n_in_visit']):data_gain_all[iexp] = data_gain                
     
             else:
+                
+                #Retrieving read noise tables
+                if data_inst['readnoise']:
+                    var_rn_all = np.zeros(data_vis['dim_all'],dtype=float)
+                    for iexp in range(data_vis['n_in_visit']):var_rn_all[iexp] = dataload_npz(data_vis['rn_data_paths']+str(iexp))['var_rn']
                 
                 #Exposure groups
                 iexp_gain_groups = list(range(i,min(i+gen_dic['gcal_binN'],data_vis['n_in_visit'])) for i in range(0,data_vis['n_in_visit'],gen_dic['gcal_binN']))
@@ -111,12 +128,15 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic):
                             idx_def_exp_ord = np_where1D(cond_def_ord)
                     
                             #Concatenate tables so that they are binned together
+                            #    - read-out noise is subtracted from measured variance if known
                             if len(idx_def_exp_ord)>0.:
                                 idx_def_group = np.append(idx_def_group,idx_def_exp_ord)
                                 low_wav_group = np.append(low_wav_group,data_all_temp[iexp]['edge_bins'][iord,0:-1])
                                 high_wav_group = np.append(high_wav_group,data_all_temp[iexp]['edge_bins'][iord,1::] )
                                 wav_group = np.append(wav_group,data_all_temp[iexp]['cen_bins'][iord])
                                 flux_group = np.append(flux_group,data_all_temp[iexp]['flux'][iord])
+                                var_phn = data_all_temp[iexp]['cov'][iord][0]
+                                if data_inst['readnoise']:var_phn -= var_rn_all[iexp,iord]
                                 var_group = np.append(var_group,data_all_temp[iexp]['cov'][iord][0])
                
                                 #Save range over which profiles are defined
@@ -213,7 +233,7 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic):
                 mean_gdet_ord = np.zeros([nspec_ord,0],dtype=float)*np.nan 
                 for iexp_glob in iexp_glob_groups_vis[vis]:
                     mean_gdet_ord_loc = np.zeros(nspec_ord,dtype=float)*np.nan
-                    mean_gdet_ord_loc=cal_piecewise_func(cal_inputs_dic[vis][iord,iexp_glob]['par'],cen_bins_ord,args=cal_inputs_dic[vis][iord,iexp_glob]['args'])      
+                    mean_gdet_ord_loc=cal_piecewise_func(cal_inputs_dic[vis][iord,iexp_glob]['par'],cen_bins_ord,args=cal_inputs_dic[vis][iord,iexp_glob]['args'])[0]      
                     mean_gdet_ord = np.append(mean_gdet_ord,mean_gdet_ord_loc[:,None],axis=1)
                 med_gdet_allvis+=np.nanmedian(mean_gdet_ord,axis=1)     
 
@@ -458,5 +478,5 @@ def cal_piecewise_func(param_in,wav_in,args=None):
         cond_highe=wav>w2
         model[cond_highe] = Phigh(wav[cond_highe])
         
-    return model
+    return model,None
 
