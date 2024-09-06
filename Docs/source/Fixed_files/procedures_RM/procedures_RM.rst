@@ -29,7 +29,7 @@ Analysis of individual intrinsic lines
 --------------------------------------
 
 The goal of this step is to fit a model line profile to each intrinsic CCF, deriving series of line properties that will then be used to identify which exposures should be included in the RM Revolutions fit, and what are the best models to be used.
-Activate the ``Intrinsic profiles analysis`` module by setting :green:`gen_dic['fit_Intr'] = True`.
+Activate the ``Intrinsic profiles analysis`` module by setting :green:`gen_dic['fit_Intr'] = True`, and set it to calculation model by setting :green:`gen_dic['calc_fit_Intr'] = True`.
  
 First, define the velocity range that you assume to represent the line continuum::
 
@@ -61,7 +61,7 @@ Next, define the best model for the line profile. Intrinsic stellar lines are ty
  data_dic['Intr']['model']['ESPRESSO']='gauss' 
 
 .. Tip::
-   If the stellar line is not well visible in individual intrinsic profiles, you can determine its shape by analyzing a higher S/N master  of all intrinsic profiles along the transit chord.
+   If the stellar line is not well visible in individual intrinsic profiles, you can determine its shape by analyzing a higher S/N master of all intrinsic profiles along the transit chord.
 
 We advise applying instrumental convolution to the line model by activating :green:`data_dic['Intr']['conv_model']=True`. 
  
@@ -179,7 +179,7 @@ Morphological line properties (e.g., FWHM and contrast if a Gaussian model was u
 
  glob_fit_dic['IntrProp']['coord_fit']={'ctrst':'r_proj','FWHM':'r_proj'}
 
-Other possibilities are available in the configuration file. The polynomial models can further be defined in an absolute (:math:`m(x) = \sum_{i\geq0}c_i x^i)`) or modulated (:math:`m(x) = m_0 (1 + \sum_{i\geq1}c_i x^i)`) way, set through::
+Other possibilities are available in the `configuration file <LINK TBD>`_. The polynomial models can further be defined in an absolute (:math:`m(x) = \sum_{i\geq0}c_i x^i)`) or modulated (:math:`m(x) = m_0 (1 + \sum_{i\geq1}c_i x^i)`) way, set through::
 
  glob_fit_dic['IntrProp']['pol_mode']='abs' or 'modul' 
 
@@ -218,21 +218,29 @@ Uniform priors on the fitted properties are set with::
      'ctrst__ord0__IS__VS20231106':{'mod':'uf','low':0.,'high':5.}})  
 
 .. Tip::
-   We set the prior range on lambda to avoid the walkers bumping into the prior boundaries, in case the best-fit is close to +-180 deg. Lambda values can be folded during post-processing.  
+   We set the prior range on lambda to avoid the walkers bumping into the prior boundaries, in case the best-fit is close to +-180 deg. Lambda values can be folded during post-processing, using the field :green:`'deriv_prop'` as described in the `fit tutorial <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_fits/procedures_fits.html>`_, 
 
+You can now run the fit. It will be fast in :math:`\chi^2` mode but may take some time with a MCMC. To gain time, once the MCMC fit is done do not forget that you can set :green:`data_dic['Intr']['mcmc_run_mode']='reuse'`to retrieve and manipulate the fit results. 
 
-
-Once you have run the fit, you can set `calc_fit` to `False` to manipulate the plots. 
-
-If the star is too faint or the planet too small, the properties may all be derived with a precision that is too low to analyze them here. In that case, you can apply directly the Revolutions fit with the simplest models to describe these properties. 
-
-Finally, in this notebook we are using a simple Gaussian profile to fit the intrinsic lines. Although this model includes instrumental convolution, it is an approximation compared to using ANTARESS numerical stellar grid to simulate realistic line profiles, as is done when applying the RM Revolutions fit. Here we do not account in particular for the blurring induced by the planet motion, which is significant for long exposure times and fast-rotators. Use the configuration file if you want to fit more finely individual intrinsic profiles. 
+.. Tip::
+   If the star is too faint or the planet too small, intrinsic properties may all be derived with a precision that is too low to analyze them in this step. 
+   In that case, you can apply directly the joint RM Revolutions fit (see next step) with the simplest models to describe these properties. 
 
 
 
 
 
+IMAGES
 
+
+
+
+
+
+
+
+METTRE EN NOTE POUR DIRE POURQUOI IMPORTANT D'UTILISER ANTARESS ET PAS UN SIMPLE FIT AU CENTRE DE l'expo
+Finally, in this notebook we are using a simple Gaussian profile to fit the intrinsic lines. Although this model includes instrumental convolution, it is an approximation compared to using ANTARESS numerical stellar grid to simulate realistic line profiles, as is done when applying the RM Revolutions fit. Here we do not account in particular for the blurring induced by the planet motion, which is significant for long exposure times and fast-rotators. Use the `configuration file <LINK TBD>`_ if you want to fit more finely individual intrinsic profiles. 
 
 Guess values for the global fit can be informed by the results of this step, printed in the log below.
 

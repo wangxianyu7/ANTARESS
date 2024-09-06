@@ -545,15 +545,15 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #    - exposures sharing a common table have already been resampled
                         if (not gen_dic['wig_indiv_mast']):
                             if (not data_vis['comm_sp_tab']): 
-                                flux_temp = np.zeros([data_vis['dim_exp'][0], nspec_com], dtype=float) * np.nan     
-                                weight_temp = np.zeros([data_vis['dim_exp'][0], nspec_com], dtype=float) * np.nan                               
+                                flux_temp = np.zeros([data_inst['nord'], nspec_com], dtype=float) * np.nan     
+                                weight_temp = np.zeros([data_inst['nord'], nspec_com], dtype=float) * np.nan                               
                                 data_to_bin[idmer][iexp]={
                                     'flux':np.zeros(data_vis['dim_exp'],dtype=float)*np.nan,
                                     'cov':np.zeros(data_inst['nord'],dtype=object)}
                                 data_to_bin[idmer][iexp]['weight']=np.zeros(data_vis['dim_exp'],dtype=float)*np.nan
                                 for iord in iord_fit_list: 
-                                    flux_temp,data_to_bin[idmer][iexp]['cov'][iord] = bind.resampling(data_com['edge_bins'][iord], data_glob[iexp]['edge_bins'][iord], data_glob[iexp]['flux'][iord] , cov = data_glob[iexp]['cov'][iord], kind=gen_dic['resamp_mode'])                                                             #new
-                                    weight_temp = bind.resampling(data_com['edge_bins'][iord], data_glob[iexp]['edge_bins'][iord], data_glob[iexp]['weight'][iord] ,kind=gen_dic['resamp_mode'])                                    
+                                    flux_temp[iord],data_to_bin[idmer][iexp]['cov'][iord] = bind.resampling(data_com['edge_bins'][iord], data_glob[iexp]['edge_bins'][iord], data_glob[iexp]['flux'][iord] , cov = data_glob[iexp]['cov'][iord], kind=gen_dic['resamp_mode'])                                                             #new
+                                    weight_temp[iord] = bind.resampling(data_com['edge_bins'][iord], data_glob[iexp]['edge_bins'][iord], data_glob[iexp]['weight'][iord] ,kind=gen_dic['resamp_mode'])                                    
                                 data_to_bin[idmer][iexp]['flux'] = deepcopy(flux_temp)     
                                 data_to_bin[idmer][iexp]['weight'] = deepcopy(weight_temp)     
                                 data_to_bin[idmer][iexp]['cond_def'] = ~np.isnan(data_to_bin[idmer][iexp]['flux'])   

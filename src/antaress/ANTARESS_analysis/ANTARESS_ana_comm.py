@@ -3027,36 +3027,35 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     for inst in lamb_chain:
                         for vis in lamb_chain[inst]:  
                             PsiN_chain=np.arccos(np.sin(istarN_chain)*np.cos(lamb_chain[inst][vis])*np.sin(inclin_rad_chain) + np.cos(istarN_chain)*np.cos(inclin_rad_chain))*180./np.pi
-                            PsiS_chain=np.arccos(np.sin(istarS_chain)*np.cos(lamb_chain[inst][vis])*np.sin(inclin_rad_chain) + np.cos(istarS_chain)*np.cos(inclin_rad_chain))*180./np.pi
-                              
+                            PsiS_chain=np.arccos(np.sin(istarS_chain)*np.cos(lamb_chain[inst][vis])*np.sin(inclin_rad_chain) + np.cos(istarS_chain)*np.cos(inclin_rad_chain))*180./np.pi                   
+                            merged_chain=np.concatenate((merged_chain,PsiN_chain[:,None]),axis=1)   
+                            merged_chain=np.concatenate((merged_chain,PsiS_chain[:,None]),axis=1)   
+                            
                             #Combined Psi for istar and pi-istar, assumed equiprobable
-                            Psi_chain = 0.5*( PsiN_chain + PsiS_chain   ) 
-                        
-                            if deriv_prop[key_loc]['config']:
-                                merged_chain=np.concatenate((merged_chain,PsiN_chain[:,None]),axis=1)   
-                                merged_chain=np.concatenate((merged_chain,PsiS_chain[:,None]),axis=1)   
-                            merged_chain=np.concatenate((merged_chain,Psi_chain[:,None]),axis=1)   
+                            if deriv_prop[key_loc]['combined']:
+                                Psi_chain = 0.5*( PsiN_chain + PsiS_chain   )     
+                                merged_chain=np.concatenate((merged_chain,Psi_chain[:,None]),axis=1)   
                 
                 if lambda_rad_pl in fixed_args['genpar_instvis']:  
                     for inst in fixed_args['genpar_instvis'][lambda_rad_pl]:
                         for vis in fixed_args['genpar_instvis'][lambda_rad_pl][inst]:
-                            if deriv_prop[key_loc]['config']:
-                                fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiN__pl'+pl_loc+'__IS'+inst+'_VS'+vis,'PsiS__pl'+pl_loc+'__IS'+inst+'_VS'+vis]))
-                                fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi_{N}$['+inst+']('+vis+')',pl_loc+'_$\psi_{S}$']))   
-                                fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg','deg']))        
-                            fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiS__pl'+pl_loc]))
-                            fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi$['+inst+']('+vis+')']))   
-                            fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg']))  
+                            fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiN__pl'+pl_loc+'__IS'+inst+'_VS'+vis,'PsiS__pl'+pl_loc+'__IS'+inst+'_VS'+vis]))
+                            fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi_{N}$['+inst+']('+vis+')',pl_loc+'_$\psi_{S}$']))   
+                            fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg','deg']))        
+                            if deriv_prop[key_loc]['combined']:
+                                fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiS__pl'+pl_loc]))
+                                fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi$['+inst+']('+vis+')']))   
+                                fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg']))  
 
                 else:
-                    if deriv_prop[key_loc]['config']:
-                        fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiN__pl'+pl_loc,'PsiS__pl'+pl_loc]))
-                        fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi_{N}$',pl_loc+'_$\psi_{S}$']))   
-                        fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg','deg']))   
-                    fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['Psi__pl'+pl_loc]))
-                    fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi$']))   
-                    fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg'])) 
-             
+                    fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiN__pl'+pl_loc,'PsiS__pl'+pl_loc]))
+                    fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi_{N}$',pl_loc+'_$\psi_{S}$']))   
+                    fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg','deg']))  
+                    if deriv_prop[key_loc]['combined']:    
+                        fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['Psi__pl'+pl_loc]))
+                        fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi$']))   
+                        fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg'])) 
+                 
         #-------------------------------------------------                
         #Calculation of mutual inclination
         #    - cos(i_m)=cos(i_b)*cos(i_c)+cos(Omega)*sin(i_b)*sin(i_c)

@@ -1926,15 +1926,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%% Fit settings     
-    ANTARESS_analysis_settings('DI',data_dic)
+    ANTARESS_analysis_settings('DI',data_dic,plot_dic)
     
     
     #%%%% Plot settings
-    
-    #%%%%% 1D PDF from mcmc
-    plot_dic['prop_DI_mcmc_PDFs']=''                 
-        
-    
+
     #%%%%% Individual disk-integrated profiles
     plot_dic['DI_prof']=''     
     
@@ -2046,24 +2042,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%% Fit settings
-    ANTARESS_analysis_settings('DIProp',glob_fit_dic)
+    ANTARESS_analysis_settings('DIProp',glob_fit_dic,plot_dic)
     
-    
-    #%%%% Plot settings
-    
-    #%%%%% MCMC chains
-    glob_fit_dic['DIProp']['save_MCMC_chains']=''        
-    
-    
-    #%%%%% MCMC corner plot
-    #    - see function for options
-    glob_fit_dic['DIProp']['corner_options']={}
-    
-    
-    #%%%%% Chi2 values
-    #    - plot chi2 values for each datapoint
-    plot_dic['chi2_fit_DIProp']=''     
-
 
 
 
@@ -2312,41 +2292,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     ##################################################################################################
     #%%% Module: 2D->1D conversion for disk-integrated spectra 
-    #    - converting 2D disk-integrated spectra into 1D spectra
-    #    - every operation afterwards will be performed on those profiles 
-    #    - prior to conversion, spectra are normalized in all orders to a flat, common continuum
     ##################################################################################################
     
-    #%%%% Activating
-    gen_dic['spec_1D_DI'] = False
-    
-    
-    #%%%% Calculating/retrieving
-    gen_dic['calc_spec_1D_DI']=True  
-    
-    
-    #%%%% Multi-threading
-    gen_dic['nthreads_spec_1D_DI']= int(0.8*cpu_count())      
-    
-    
-    #%%%% 1D spectral table
-    #    - specific to each instrument
-    #    - tables are uniformely spaced in ln(w) (with d[ln(w)] = dw/w)
-    #      start and end values given in A    
-    data_dic['DI']['spec_1D_prop']={}
-    
-    
-    #%%%% Plot settings
-    
-    #%%%%% 2D maps
-    plot_dic['map_DI_1D']='' 
-    
-    
-    #%%%%% Individual spectra
-    plot_dic['sp_DI_1D']=''        
-    
-    
-    
+    ANTARESS_2D_1D_settings('DI',data_dic,gen_dic,plot_dic)
+
+        
     ##################################################################################################
     #%%% Module: disk-integrated profiles binning
     #    - for analysis purpose (original profiles are not replaced)
@@ -2914,40 +2864,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     ##################################################################################################
     #%%% Module: 2D->1D conversion for differential & intrinsic spectra
-    #    - every analysis afterwards will be performed on those profiles
     ##################################################################################################
     
-    #%%%% Activating
-    gen_dic['spec_1D_Intr'] = False
-    
-    
-    #%%%% Calculating/retrieving 
-    gen_dic['calc_spec_1D_Intr']=True  
-    
-    
-    #%%%% Multi-threading
-    gen_dic['nthreads_spec_1D_Intr']= int(0.8*cpu_count())
-    
-    
-    #%%%% 1D spectral table
-    #    - see DI module for details
-    data_dic['Intr']['spec_1D_prop']={}   
-    
-    
-    #%%%% Plot settings
-    
-    #%%%%% 2D maps
-    plot_dic['map_Intr_1D']=''   
-    
-    
-    #%%%%% Individual spectra
-    plot_dic['sp_Intr_1D']=''
-    
-    
-    #%%%%% Residuals from model     
-    plot_dic['sp_Intr_1D_res']='' 
-    
-     
+    ANTARESS_2D_1D_settings('Intr',data_dic,gen_dic,plot_dic)
+
     
     
     ##################################################################################################
@@ -3171,15 +3091,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #%%%% Fit settings 
     #    - the width of the master disk-integrated profile can be used as upper limit for the prior on the intrinsic line FWHM
-    ANTARESS_analysis_settings('Intr',data_dic)
+    ANTARESS_analysis_settings('Intr',data_dic,plot_dic)
     
     
     #%%%% Plot settings
-    
-    #%%%%% 1D PDF from mcmc
-    plot_dic['prop_Intr_mcmc_PDFs']=''     
-    
-    
+
     #%%%%% Derived properties
     #    - from original or binned data
     plot_dic['prop_Intr']=''  
@@ -3256,25 +3172,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     
     #%%%% Fit settings
-    ANTARESS_analysis_settings('IntrProp',glob_fit_dic)
-    
-    
-    #%%%% Plot settings
-    
-    #%%%%% MCMC chains
-    glob_fit_dic['IntrProp']['save_MCMC_chains']=''        
-    
-    
-    #%%%%% MCMC corner plot
-    #    - see function for options
-    glob_fit_dic['IntrProp']['corner_options']={}
-    
-    
-    #%%%%% Chi2 values
-    #    - plot chi2 values for each datapoint
-    plot_dic['chi2_fit_IntrProp']=''        
-      
-    
+    ANTARESS_analysis_settings('IntrProp',glob_fit_dic,plot_dic)
+
         
         
         
@@ -3400,20 +3299,9 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%% Fit settings  
-    ANTARESS_analysis_settings('ResProf',glob_fit_dic)
-        
-    
-    #%%%% Plot settings
-    
-    #%%%%% MCMC chains
-    glob_fit_dic['ResProf']['save_MCMC_chains']=''  
-    
-    
-    #%%%%% MCMC corner plot
-    #    - see function for options
-    glob_fit_dic['ResProf']['corner_options']={}      
+    ANTARESS_analysis_settings('ResProf',glob_fit_dic,plot_dic)
 
-    
+
     #%%%% Plot settings
             
     #%%%%% Plot best-fit 2D differential map
@@ -3561,19 +3449,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                         
     
     #%%%% Fit settings 
-    ANTARESS_analysis_settings('IntrProf',glob_fit_dic)
-    
-        
-    #%%%% Plot settings
-    
-    #%%%%% MCMC chains
-    glob_fit_dic['IntrProf']['save_MCMC_chains']=''  
-    
-    
-    #%%%%% MCMC corner plot
-    #    - see function for options
-    glob_fit_dic['IntrProf']['corner_options']={}
-    
+    ANTARESS_analysis_settings('IntrProf',glob_fit_dic,plot_dic)
+
   
 
     
@@ -3901,43 +3778,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     ##################################################################################################
     #%%% Module: 2D->1D conversion for atmospheric spectra
-    #    - every analysis afterwards will be performed on those profiles
     ##################################################################################################
-    
-    #%%%% Activating
-    gen_dic['spec_1D_Atm'] = False
-    
-    
-    #%%%% Calculating/retrieving 
-    gen_dic['calc_spec_1D_Atm']=True  
-    
-    
-    #%%%% Multi-threading
-    gen_dic['nthreads_spec_1D_Atm']= int(0.8*cpu_count())
-    
-    
-    #%%%% 1D spectral table
-    #    - see DI module for details
-    data_dic['Atm']['spec_1D_prop']={}   
-    
-    
-    #%%%% Plot settings
-    
-    #%%%%% 2D maps
-    plot_dic['map_Atm_1D']=''   
-    
-    
-    #%%%%% Individual spectra
-    plot_dic['sp_Atm_1D']=''
-    
-    
-    #%%%%% Residuals from model     
-    plot_dic['sp_Atm_1D_res']='' 
 
-
-
-
-
+    ANTARESS_2D_1D_settings('Atm',data_dic,gen_dic,plot_dic)
+    
 
     ##################################################################################################
     #%%% Module: atmospheric profiles binning
@@ -4105,15 +3949,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%% Fit settings 
-    ANTARESS_analysis_settings('Atm',data_dic)
+    ANTARESS_analysis_settings('Atm',data_dic,plot_dic)
     
     
     #%%%% Plot settings
-    
-    #%%%%% 1D PDF from mcmc
-    plot_dic['prop_Atm_mcmc_PDFs']=''     
-    
-    
+
     #%%%%% Derived properties
     #    - from original or binned data
     plot_dic['prop_Atm']=''  
@@ -4171,25 +4011,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%% Fit settings
-    ANTARESS_analysis_settings('AtmProp',glob_fit_dic)
+    ANTARESS_analysis_settings('AtmProp',glob_fit_dic,plot_dic)
     
-    
-    #%%%% Plot settings
-    
-    #%%%%% MCMC chains
-    glob_fit_dic['AtmProp']['save_MCMC_chains']=''        
-    
-    
-    #%%%%% MCMC corner plot
-    #    - see function for options
-    glob_fit_dic['AtmProp']['corner_options']={}
-    
-    
-    #%%%%% Chi2 values
-    #    - plot chi2 values for each datapoint
-    plot_dic['chi2_fit_AtmProp']=''  
-
-
 
 
 
@@ -4269,28 +4092,70 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
                     
     #%%%% Fit settings 
-    ANTARESS_analysis_settings('AtmProf',glob_fit_dic)
+    ANTARESS_analysis_settings('AtmProf',glob_fit_dic,plot_dic)
         
-    
-    #%%%% Plot settings
-    
-    #%%%%% MCMC chains
-    glob_fit_dic['AtmProf']['save_MCMC_chains']=''  
-    
-    
-    #%%%%% MCMC corner plot
-    #    - see function for options
-    glob_fit_dic['AtmProf']['corner_options']={}
-
     return None
 
 
 
 ##################################################################################################    
+#%% Conversion settings
+##################################################################################################  
+
+def ANTARESS_2D_1D_settings(data_type,local_dic,gen_dic,plot_dic):
+    r"""**ANTARESS default settings: 2D -> 1D conversion modules**
+    
+    Initializes ANTARESS configuration settings with default values for conversion of 2D spectra into 1D spectra. 
+    Converted 1D spectra replace 2D spectra in the workflow process, ie that every operation afterwards will be performed on those profiles.
+    Prior to conversion, spectra are normalized in all orders to a flat, common continuum.
+    
+    Args:
+        TBD
+    
+    Returns:
+        None
+    
+    """  
+    
+    #%%%% Activating
+    gen_dic['spec_1D_'+data_type] = False
+    
+    
+    #%%%% Calculating/retrieving 
+    gen_dic['calc_spec_1D_'+data_type]=True  
+    
+    
+    #%%%% Multi-threading
+    gen_dic['nthreads_spec_1D_'+data_type]= int(0.8*cpu_count())
+    
+    
+    #%%%% 1D spectral table
+    #    - specific to each instrument
+    #    - tables are uniformely spaced in ln(w) (with d[ln(w)] = dw/w)
+    #      start and end values given in A  
+    local_dic[data_type]['spec_1D_prop']={}   
+    
+    
+    #%%%% Plot settings
+    
+    #%%%%% 2D maps
+    plot_dic['map_'+data_type+'_1D']=''   
+    
+    
+    #%%%%% Individual spectra
+    plot_dic['sp_'+data_type+'_1D']=''
+    
+    
+    #%%%%% Residuals from model     
+    plot_dic['sp_'+data_type+'_1D_res']=''     
+    
+    return None
+
+##################################################################################################    
 #%% Analysis settings
 ##################################################################################################  
 
-def ANTARESS_analysis_settings(data_type,local_dic):
+def ANTARESS_analysis_settings(data_type,local_dic,plot_dic):
     r"""**ANTARESS default settings: analysis modules**
     
     Initializes ANTARESS configuration settings with default values for analysis modules. 
@@ -4344,7 +4209,7 @@ def ANTARESS_analysis_settings(data_type,local_dic):
     # + 'Peq_veq' : adds 'Peq' using the fitted 'veq' and a user-provided measurement of 'Rstar'
     # + 'Peq_vsini' : adds 'Peq' using the fitted 'vsini' and user-provided measurements for 'Rstar' and 'istar' 
     # + 'psi' : adds 3D spin-orbit angle for all planets using the fitted 'lambda', and fitted or user-provided measurements for 'istar' and 'ip_plNAME'
-    #           set 'config = True' (default) to add the Northern and Southern Psi values, otherwise only the combined distribution is output
+    #           set 'combined = True' to add the combined distribution from the Northern and Southern Psi values, assumed to be equiprobable (make sure that the two distributions are similar before combining them)
     # + 'psi_lambda' : adds 3D spin-orbit angle using user-provided measurements of 'lambda', and fitted or user-provided measurements for 'istar' and 'ip'
     #                  same settings as for 'psi' 
     # + 'lambda_deg' : converts lambda[rad] to lambda[deg]
@@ -4458,6 +4323,31 @@ def ANTARESS_analysis_settings(data_type,local_dic):
     # where 'bound' sets the limit, 'type' is 'upper' or 'lower', 'level' is a list of thresholds ('1s', '2s', '3s')
     local_dic[data_type]['conf_limits']={}   
 
+
+    ##################################################################################################         
+    #%%% Plot settings
+    ################################################################################################## 
+
+    #%%%%% MCMC chains
+    local_dic[data_type]['save_MCMC_chains']='png'        
+    
+    
+    #%%%%% MCMC corner plot
+    #    - see function for options
+    local_dic[data_type]['corner_options']={}
+
+
+    #%%%%% MCMC 1D PDF
+    #    - on properties derived from the fits to individual profiles
+    if data_type in ['DI','Intr','Atm']:
+        plot_dic['prop_'+data_type+'_mcmc_PDFs']=''      
+    
+    
+    #%%%%% Chi2 values
+    #    - plot chi2 values for each datapoint
+    if 'Prop' in data_type:
+        plot_dic['chi2_fit_'+data_type]='' 
+        
     return None
 
 

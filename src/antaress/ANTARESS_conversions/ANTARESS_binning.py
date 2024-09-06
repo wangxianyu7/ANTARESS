@@ -1086,7 +1086,7 @@ def calc_bin_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,cen
     #Clean weights
     #    - in all calls to the routine, exposures contributing to the master are already defined / have been resampled on a common spectral table
     flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned,_ = pre_calc_bin_prof(n_in_bin,dim_exp,idx_to_bin,None,dx_ov_in,data_to_bin_in,None,tab_delete=cen_bins_exp)
-
+    
     #Tables for new exposure
     data_bin={'cen_bins':cen_bins_exp,'edge_bins':edge_bins_exp} 
     data_bin['flux'] = np.zeros(dim_exp,dtype=float)*np.nan
@@ -1192,7 +1192,7 @@ def pre_calc_bin_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_b
 
         #Pixels where at least one profile has an undefined or negative weight (due to interpolation) for a defined flux value
         cond_undef_weights |= ( (np.isnan(weight_exp_all[isub]) | (weight_exp_all[isub]<0) ) & cond_def_all[isub] )
-    
+
     #Defined bins in binned spectrum
     #    - a bin is defined if at least one bin is defined in any of the contributing profiles
     cond_def_binned = np.sum(cond_def_all,axis=0)>0  
