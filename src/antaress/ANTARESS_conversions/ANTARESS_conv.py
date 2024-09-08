@@ -319,9 +319,9 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
     data_vis['type']='CCF'
     data_vis['nspec'] = data_vis['nvel']
     data_dic[inst]['nord'] = 1
-    data_vis['dim_all'] = [data_vis['n_in_visit'],data_dic[inst]['nord'],data_vis['nvel']]
-    data_vis['dim_exp'] = [data_dic[inst]['nord'],data_vis['nvel']]
-    data_vis['dim_ord'] = [data_vis['n_in_visit'],data_vis['nvel']]
+    data_vis['dim_all'] = [data_vis['n_in_visit'],data_dic[inst]['nord'],data_vis['nspec']]
+    data_vis['dim_exp'] = [data_dic[inst]['nord'],data_vis['nspec']]
+    data_vis['dim_ord'] = [data_vis['n_in_visit'],data_vis['nspec']]
     if ('chrom' in data_vis['system_prop']):
         data_vis['system_prop']['chrom_mode'] = 'achrom'
         data_vis['system_prop'].pop('chrom')
@@ -358,7 +358,7 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
     for isub,iexp in enumerate(iexp_conv):         
         i_in = gen_vis['idx_exp2in'][iexp]
         if i_in ==-1:
-            gen = 'Res'
+            gen ='Res'
             iexp_eff = iexp
         else:
             gen='Intr'

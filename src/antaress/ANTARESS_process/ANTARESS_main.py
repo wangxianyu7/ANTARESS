@@ -14,7 +14,7 @@ from ..ANTARESS_analysis.ANTARESS_model_prof import calc_macro_ker_anigauss,calc
 from ..ANTARESS_grids.ANTARESS_star_grid import model_star
 from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop,retrieve_spots_prop_from_param,calc_plocced_tiles,calc_spotted_tiles
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm,var_stellar_prop
-from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos,coord_expos_spots
+from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos,coord_expos_spots,get_timeorbit
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab
 from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting_inst_vis
 from ..ANTARESS_general.minim_routines import par_formatting
@@ -649,7 +649,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 gen_dic['bin'+mode] |= ( gen_dic[data_type_gen+'bin'+mode] | gen_dic['fit_'+data_type_gen+'bin'+mode])
                 gen_dic['calc_bin'+mode] |= ( gen_dic['calc_'+data_type_gen+'bin'+mode] | gen_dic['calc_fit_'+data_type_gen+'bin'+mode])
     
-        #Set general condition for profiles fits
+        #Set general condition for single profiles fits
         for key in ['DI','Intr','Atm']:
             gen_dic['fit_'+key+'_gen'] = gen_dic['fit_'+key] | gen_dic['fit_'+key+'bin'] | gen_dic['fit_'+key+'binmultivis'] 
     
@@ -800,6 +800,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     elif star_params['f_GD']>0.:
         print('Star is oblate')
         star_params['RpoleReq']=1.-star_params['f_GD']
+
+    #Reference time for stellar phase (bjd)
+    if 'Tcenter' not in star_params:star_params['Tcenter'] = 2400000.
 
     #Stellar equatorial rotation period (d)
     #    - P = 2*pi*R/v
@@ -1357,7 +1360,26 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         
         #Calibration settings
         if (inst not in gen_dic['gcal_nooutedge']):gen_dic['gcal_nooutedge'][inst] = [0.,0.]
-        
+
+        #Instrument read noise
+        #    - when available we retrieve a static read noise table per instrument using a S2D obtained with fiber B on the sky
+        if (not gen_dic['mock_data']) and (data_inst['type']=='spec2D') and (inst in ['ESPRESSO','ESPRESSO_MR','HARPN','HARPS','NIRPS_HA','NIRPS_HE']):
+            data_inst['readnoise'] = True
+            readnoise_files = {
+                'ESPRESSO':'TBD',
+                'ESPRESSO_MR':'TBD',
+                'HARPN':'TBD',
+                'HARPS':'TBD',
+                'NIRPS_HA':'TBD',
+                'NIRPS_HE':'TBD',
+                }
+            hdulist =fits.open('ANTARESS_corrections/Telluric_processing/Static_model/'+readnoise_files[inst]+'.fits')
+            if gen_dic['sp_frame']=='air':ikey_wav = 5
+            elif gen_dic['sp_frame']=='vacuum':ikey_wav = 4
+            var_rn_inst = (hdulist[1].data)[idx_ord_kept]/dll_rn
+
+        else:data_inst['readnoise'] = False
+
         #Processing each visit
         if gen_dic['mock_data']:vis_list=list(mock_dic['visit_def'][inst].keys())
         else:vis_list=list(gen_dic['data_dir_list'][inst].keys())
@@ -1526,7 +1548,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #      ingress/egress exposures may contribute to the binned exposures average positions            
                 #    - phase of in/out exposures, per instrument and per visit   
                 #    - radial velocity of planet in star rest frame  
-                for key in ['bjd','t_dur','RV_star_solCDM','RV_star_stelCDM']:coord_dic[inst][vis][key] = np.zeros(n_in_visit,dtype=float)*np.nan
+                for key in ['bjd','t_dur','RV_star_solCDM','RV_star_stelCDM','cen_ph_st','st_ph_st','end_ph_st']:coord_dic[inst][vis][key] = np.zeros(n_in_visit,dtype=float)*np.nan
                 for pl_loc in list(set(gen_dic['studied_pl']+gen_dic['kepl_pl'])):
                     coord_dic[inst][vis][pl_loc]={} 
                     if pl_loc in data_inst[vis]['transit_pl']:
@@ -1689,6 +1711,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         elif inst in ['HARPS','HARPN','ESPRESSO','ESPRESSO_MR','NIRPS_HA','NIRPS_HE']:
                             if 'HIERARCH '+facil_inst+' QC DRIFT DET0 MEAN' in hdr:
                                 DI_data_inst[vis]['RVdrift'][iexp]=hdr['HIERARCH '+facil_inst+' QC DRIFT DET0 MEAN']*gen_dic['pix_size_v'][inst]*1e3    #in pix -> km/s
+                    
+                    #Stellar phase
+                    coord_dic[inst][vis]['st_ph_st'][iexp],coord_dic[inst][vis]['cen_ph_st'][iexp],coord_dic[inst][vis]['end_ph_st'][iexp] = get_timeorbit('star',{'star':{'Tcenter':system_param['star']['Tcenter']}},coord_dic[inst][vis]['bjd'][iexp], {'period':system_param['star']['Peq']}, coord_dic[inst][vis]['t_dur'][iexp])[0:3] 
                     
                     #Orbital coordinates for each studied planet
                     for pl_loc in data_inst[vis]['transit_pl']:
@@ -1894,7 +1919,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         data_inst[vis]['dim_sp'] = [n_in_visit,data_inst['nord']]
                         data_inst[vis]['dim_ord'] = [n_in_visit,data_inst[vis]['nspec']]
 
-                        #Initialize spectral table, flux table, banded covariance matrix                   
+                        #Initialize spectral table, flux table, banded covariance matrix     
                         data_dic_temp['cen_bins'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)
                         data_dic_temp['flux'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)*np.nan
                         data_dic_temp['cov'] = np.zeros(data_inst[vis]['dim_sp'], dtype=object)
@@ -1979,19 +2004,20 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         # F_meas(t,w) = gcal(band) Nmeas(t,w)
                         #      where Nmeas(t,w), drawn from a Poisson distribution with number of events Ntrue(t,w), is the number of photo-electrons measured durint texp
                         #      the estimate of the error is
-                        # EF_meas(t,w) = sqrt(gcal(band) F_meas(t,w))
+                        # EF_meas(t,w)^2 = gcal(band) F_meas(t,w) + Ern^2 ~ gcal(band) F_meas(t,w) 
                         #      which is a biased estimate of the true error but corresponds to what is returned by DRS
+                        #      we neglect read noise, also because only S2D tables are available in ANTARESS
                         #    - the S/N of the mock profiles is F_meas(t,w)/EF_meas(t,w) = sqrt(F_meas(t,w)/gcal(band)) = sqrt(Nmeas(t,w)) proportional to sqrt(texp*cont)
                         #      errors in the continuum of the normalized profiles are proportional to 1/sqrt(texp*cont) 
                         #      beware that this error does not necessarily match the flux dispersion
                         if (inst in mock_dic['set_err']) and mock_dic['set_err'][inst]:
                             DI_prof_exp_Fmeas = np.array(list(map(np.random.poisson, DI_prof_exp_Ftrue,  data_inst[vis]['nspec']*[1]))).flatten()
-                            DI_err_exp_Emeas = np.sqrt(mock_gcal*DI_prof_exp_Fmeas)
+                            DI_err_exp_Emeas2 = mock_gcal*DI_prof_exp_Fmeas
                         else:
                             DI_prof_exp_Fmeas = DI_prof_exp_Ftrue
-                            DI_err_exp_Emeas = np.zeros(data_inst[vis]['nspec'],dtype=float)
+                            DI_err_exp_Emeas2 = np.zeros(data_inst[vis]['nspec'],dtype=float)
                         data_dic_temp['flux'][iexp,0] = DI_prof_exp_Fmeas                      
-                        data_dic_temp['cov'][iexp,0] = (DI_err_exp_Emeas**2.)[None,:]                        
+                        data_dic_temp['cov'][iexp,0] = DI_err_exp_Emeas2[None,:]                        
 
 
 
@@ -2488,7 +2514,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     for key in list(gen_dic['spot_coord_par'])+['is_visible']:
                         coord_dic[inst][vis][spot][key]=coord_dic[inst][vis][spot][key][:,w_sorted] 
                         if remove_exp:coord_dic[inst][vis][spot][key] = coord_dic[inst][vis][spot][key][:,gen_dic['used_exp'][inst][vis]]
-                for key in ['bjd','t_dur','RV_star_solCDM','RV_star_stelCDM']:
+                for key in ['bjd','t_dur','RV_star_solCDM','RV_star_stelCDM','cen_ph_st','st_ph_st','end_ph_st']:
                     coord_dic[inst][vis][key]=coord_dic[inst][vis][key][w_sorted]
                     if remove_exp:coord_dic[inst][vis][key] = coord_dic[inst][vis][key][gen_dic['used_exp'][inst][vis]]
                             
@@ -2634,6 +2660,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 data_inst[vis]['proc_com_data_paths'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com'
                 data_com = {'cen_bins':cen_bins_com_exten,'edge_bins':edge_bins_com_exten}
                 data_com['nspec'] = exten_nspec
+                data_com['dim_ord'] = [n_in_visit,exten_nspec]
                 data_com['dim_all'] = [n_in_visit,data_inst['nord'],exten_nspec]
                 data_com['dim_exp'] = [data_inst['nord'],exten_nspec]
                 data_com['dim_sp'] = [n_in_visit,data_inst['nord']]
@@ -2649,14 +2676,29 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     #Resampling data on wavelength table common to the visit if requested
                     if gen_dic['comm_sp_tab'][inst]:
                         print('           Resampling on common table')
+
+                        #Initializes path to read noise table  
+                        if data_inst['readnoise']:data_inst[vis]['rn_data_paths'] = {iexp:gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_rn_' for iexp in range(n_in_visit)}                        
+
+                        #Processing each exposure                        
                         for iexp in range(n_in_visit):
+                            if data_inst['readnoise']:var_rn_exp = np.zeros(data_inst[vis]['dim_exp'], dtype=float)
                             for iord in range(data_inst['nord']): 
                                 data_dic_temp['flux'][iexp,iord],data_dic_temp['cov'][iexp][iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['flux'][iexp,iord] , cov = data_dic_temp['cov'][iexp][iord], kind=gen_dic['resamp_mode']) 
                                 
                                 #Resampling input telluric spectrum
                                 if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):
-                                    data_dic_temp['tell'][iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['tell'][iexp,iord], kind=gen_dic['resamp_mode'])         
-
+                                    data_dic_temp['tell'][iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['tell'][iexp,iord], kind=gen_dic['resamp_mode']) 
+                                    
+                                #Resampling read-noise table
+                                #    - read noise values are associated with the detector pixels, and we thus consider them defined on the same grid as each exposure
+                                if data_inst['readnoise']:
+                                    var_rn_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], var_rn_inst[iord], kind=gen_dic['resamp_mode'])
+                                    var_rn_exp[iord][np.isnan(var_rn_exp[iord])] = 0.
+                                
+                            #Saving read noise table
+                            if data_inst['readnoise']:datasave_npz(data_inst[vis]['rn_data_paths']+str(iexp),{'var_rn':var_rn_exp})
+                                
                         #Overwrite exposure tables
                         data_dic_temp['cen_bins'][:] = deepcopy(data_com['cen_bins'])
                         data_dic_temp['edge_bins'][:] = deepcopy(data_com['edge_bins'])                                    
@@ -2675,6 +2717,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     data_dic[inst]['com_vis'] = vis   
                     data_com_inst = deepcopy(data_com)
                     datasave_npz(data_dic[inst]['proc_com_data_path'],data_com_inst)
+                    
+                    #Saving common read noise table  
+                    if data_inst['readnoise']:
+                        datasave_npz(gen_dic['save_data_dir']+'Processed_data/Global/Readnoise_'+inst,{'var_rn':var_rn_inst})
+                        data_inst[vis]['rn_data_paths'] = {iexp:gen_dic['save_data_dir']+'Processed_data/Global/Readnoise_'+inst for iexp in range(n_in_visit)}                        
+
 
                 #Check wether all visits of current instrument share a common table
                 #    - flag remains True if the common table of current visit is the same as the common table for the instrument
@@ -2752,7 +2800,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
         #Saving general information
         np.savez_compressed(gen_dic['save_data_dir']+'Processed_data/Global/'+inst,gen_inst_add=gen_dic[inst],data_inst_add=data_dic[inst],allow_pickle=True) 
-        
+
     #Retrieving data
     else:
         check_data({'path':gen_dic['save_data_dir']+'Processed_data/Global/'+inst})    

@@ -58,6 +58,7 @@ napoleon_custom_sections = [('Returns', 'params_style')]
 #Various settings
 add_module_names = False  # Remove namespaces from class/method signatures
 autodoc_member_order = "bysource"
+numfig = True #Figure referencing
 
 #myst_nb options
 myst_enable_extensions = ["dollarmath", "colon_fence"]

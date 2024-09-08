@@ -4,8 +4,12 @@ from copy import deepcopy
 from pathos.multiprocessing import cpu_count
 import numpy as np
 
+##################################################################################################    
+#%% Global settings
+##################################################################################################  
+
 def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic):
-    r"""**ANTARESS default settings.**
+    r"""**ANTARESS default settings: global**
     
     Initializes ANTARESS configuration settings with default values.  
     
@@ -1683,18 +1687,29 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%%% Property, coordinate, model     
-    #    - structure is : inst > vis > prop_coord > mod > [ coefficients ] or 'path'    
+    #    - structure is : inst > vis > prop_coord > mod > [ coefficients ] or 'path' 
+    #                                  prop_c0 > val  
     #    - 'prop_coord' defines which property 'prop' should be corrected as a function of coordinate 'coord', as defined in `glob_fit_dic['DIProp']['mod_prop']`
-    #    - set 'model' to:
+    #      in that case set 'model' to:
     # + 'pol': polynomial, with coefficients set as [c1,c2,..] 
     # + 'sin': sinusoidal, with coefficients set as [amp,per,off]
-    # + 'ramp': ramp, with coefficients set at [lnk,alpha,tau]
-    #      see the model and coefficient definition in `glob_fit_dic['DIProp']['mod_prop']`
-    #      note that the constant level c0 is left undefined : contrast and FWHM models are normalized to their mean, and for RVs the level is controlled by the alignment module and sysvel
-    #    - instead of coefficients you can provide the path to a 'Fit_results' file from the `glob_fit_dic['DIProp']['mod_prop']`, which must then contain the relevant 'mod' for the requested 'prop' and 'coord'  
+    # + 'puls': stellar pulsation model, with coefficients set as [ampHF,phiHF,freqHF,ampLF,phiLF,freqLF,f]
+    # + 'ramp': ramp, with coefficients set at [lnk,alpha,tau,xr]
+    #      see the models and coefficients definition in `glob_fit_dic['DIProp']['mod_prop']`
+    #      instead of coefficients you can provide the path to a 'Fit_results' file from the `glob_fit_dic['DIProp']['mod_prop']`, which must then contain the relevant 'mod' for the requested 'prop' and 'coord'  
+    #    - if 'prop_c0' is left undefined the contrast and FWHM correction are normalized around their mean so that the mean level of the time-series is conserved
+    #      otherwise set 'prop_c0' to c0_new / c0_old, where 'c0_old' is the level derived with `glob_fit_dic['DIProp']['mod_prop']` and 'c0_new' is the desired level of the corrected time-series
+    #      note that setting 'prop_c0' to 1 will naturally set the time-series to the level associated with the correction from `glob_fit_dic['DIProp']['mod_prop']`
+    #      this correction can be useful for the contrast and FWHM when a visit is used to define the out-of-transit master profile of another visit, and their line profile need to be made comparable
+    #      this field is not relevant for RVs: the mean level of the RV time-series is conserved, and can be corrected for in the  alignment module with the 'sysvel' field
     #    - RV correction must be done in the input rest frame, as CCFs are corrected before being aligned
     #      if a FWHM correction is requested you must perform first the RV correction alone (if relevant), then determine and fix the systemic velocity, then perform the FWHM correction  
     detrend_prof_dic['prop']={}    
+
+
+    #%%%%% Reference variables for pulsation model
+    #    - see 'glob_fit_dic['DIProp']['coord_ref']'
+    detrend_prof_dic['coord_ref']={}   
     
             
     #%%%%% SNR orders             
@@ -1911,107 +1926,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%% Fit settings     
-    
-    #%%%%% Fitting mode 
-    #    - 'chi2', 'mcmc', 'fixed'
-    data_dic['DI']['fit_mode']='chi2'  
-    
-    
-    #%%%%% Printing fits results
-    data_dic['DI']['verbose']= False
-    data_dic['DI']['print_par'] = True
-
-    
-    #%%%%% Monitor MCMC
-    data_dic['DI']['progress']= True
-    
-    
-    #%%%%% Priors on variable properties
-    #    - structure is priors_CCF = { 'par_name' : {prior_mode: X, prior_val: Y} }
-    #      where par_name is specific to the model selected, and prior_mode is one of the possibilities defined below
-    #    - otherwise priors can be set to :
-    # > uniform ('uf') : 'low', 'high'
-    # > gaussian ('gauss') : 'val', 's_val'
-    # > asymetrical gaussian ('dgauss') : 'val', 's_val_low', 's_val_high'
-    #    - chi2 fit can only use uniform priors
-    #    - if left undefined, default uniform priors are used
-    data_dic['DI']['line_fit_priors']={}
-    
-    
-    #%%%%% Derived properties
-    data_dic['DI']['deriv_prop']={}
-    
-    
-    #%%%%% Detection thresholds
-    #    - define area and amplitude thresholds for detection of stellar line (in sigma)
-    #    - require 'true_amp' or 'amp' in 'deriv_prop'
-    data_dic['DI']['thresh_area']=5.
-    data_dic['DI']['thresh_amp']=4.   
-    
-    
-    #%%%%% Force detection flag 
-    #    - set flag to True at relevant index for the CCFs to be considered detected, or false to force a non-detection
-    #    - indices for each dataset are relative to in-transit indices / binning properties
-    #    - leave empty for automatic detection
-    data_dic['DI']['idx_force_det']={}
-    data_dic['DI']['idx_force_detbin']={} 
-    data_dic['DI']['idx_force_detbinmultivis']={} 
-    
-        
-    #%%%%% MCMC settings
-    
-    #%%%%%% Run mode
-    #    - set to
-    # + 'use': runs MCMC  
-    # + 'reuse' (with gen_dic['calc_fit_intr']=True): load MCMC results, allow changing nburn and error definitions without running the mcmc again
-    data_dic['DI']['mcmc_run_mode']='use'
-    
-    
-    #%%%%%% Runs to re-use
-    #    - list of mcmc runs to reuse
-    #    - if 'reuse' is requested, leave empty to automatically retrieve the mcmc run available in the default directory
-    #  or set the list of mcmc runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
-    data_dic['DI']['mcmc_reuse']={}
-    
-    
-    #%%%%%% Walkers
-    #    - settings per instrument & visit
-    data_dic['DI']['mcmc_set']={}
-    
-    
-    #%%%%%% Walkers exclusion        
-    #    - excluding manually some of the walkers
-    #    - define conditions within routine
-    data_dic['DI']['exclu_walk']=  False           
-
-
-    #%%%%%% Sample exclusion 
-    #    - keep samples within the requested ranges of the chosen parameter (on original fit parameters)
-    #    - format: 'par' : [[x1,x2],[x3,x4],...] 
-    data_dic['DI']['exclu_samp']={}
-        
-    
-    #%%%%%% Derived errors
-    #    - 'quant' (quantiles) or 'HDI' (highest density intervals)
-    #    - if 'HDI' is selected:
-    # + by default a smoothed density profile is used to define HDI intervals
-    # + multiple HDI intervals can be avoided by defined the density profile as a histogram (by setting its resolution 'HDI_dbins') or by defining the bandwith factor of the smoothed profile ('HDI_bw')
-    data_dic['DI']['out_err_mode']='HDI'
-    data_dic['DI']['HDI']='1s'   
-    
-    
-    #%%%%%% Derived lower/upper limits
-    #    - format: {par:{'bound':val,'type':str,'level':[...]}}
-    # where 'bound' sets the limit, 'type' is 'upper' or 'lower', 'level' is a list of thresholds ('1s', '2s', '3s')
-    data_dic['DI']['conf_limits']={}   
+    ANTARESS_analysis_settings('DI',data_dic,plot_dic)
     
     
     #%%%% Plot settings
-    
-    #%%%%% 1D PDF from mcmc
-    plot_dic['prop_DI_mcmc_PDFs']=''                 
-        
-    
+
     #%%%%% Individual disk-integrated profiles
     plot_dic['DI_prof']=''     
     
@@ -2066,29 +1985,39 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # mod_prop = { 
     #  prop : { c__ord0__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...}, 
     #           coord__pol__ordN__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...},    
-    #           coord__sin__Y__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...} 
+    #           coord__sin__Y__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...}  
+    #           coord__ramp__Y__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...} 
+    #           coord__puls__Y__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...}
     #           }
     #    - 'prop' defines the measured property to be fitted:
-    # + RV : residuals between disk-integrated RVs and the Keplerian model
+    # + RV : residuals between disk-integrated RVs and the Keplerian model (km/s)
     # + ctrst : disk-integrated line contrast
-    # + FWHM : disk-integrated line FWHM    
+    # + FWHM : disk-integrated line FWHM (km/s)   
     #    - 'coord' defines the coordinate as a function of which the property is modelled:
     # + 'time': absolute time in bjd
+    # + 'starphase': stellar phase
     # + 'phasePlName' : orbital phase for planet 'PlName' 
     #                   this option allows for stellar line variations phased (and possibly induced) by a planet        
     # + 'AM', 'snr', 'snrQ' (for the SNR of orders provided as input to be summed quadratically - useful to combine ESPRESSO slices - rather than being averaged)
     # + 'ha', 'na', 'ca', 's', 'rhk' 
     #    - property can be modelled as a:
     # + 'c__ord0__ISinst_VSvis': constant level c0
-    # + polynomial, defined by coefficients cN = 'coord__pol__ordN__ISinst_VSvis', with N>0
-    # + sinusoidal, defined by its amplitude (Y='amp'), period (Y='per'), and offset (Y='off') in 'coord__sin__X__ISinst_VSvis'
-    #      the same model of different coordinates, or different models of the same coordinates, can be defined and combined:
-    # + contrast and FWHM models are defined as the multiplication of polynomials and sinusoidals
-    #      F(x) = c0*(1 + c1*x + c2*x^2 + ... )*(1+amp*sin((x-off)/per))
+    # + polynomial : pol(x) = c1*x + c2*x^2 + ...
+    #                defined by coefficients cN = 'coord__pol__ordN__ISinst_VSvis', with N>0
+    # + sinusoidal : sine(x) = amp*sin((x-off)/per)
+    #                defined by its amplitude (Y='amp'), period (Y='per'), and offset (Y='off') in 'coord__sin__X__ISinst_VSvis'     
+    # + ramp : ramp(x) = 1 - k*exp( - ((x - xr)/tau)^alpha )  
+    #          defined by its log(amplitude) (Y='lnk'), exponent (Y='alpha'), decay constant (Y='tau'), and offset (Y='xr') in 'coord__ramp__X__ISinst_VSvis'     
+    #          for contrast and FWHM only
+    # + pulsation : puls(x) =  ampHF (1 + ampLF sin( 2pi x freqLF - phiLF) ) sin( 2pi x freqHF(x) - phiHF ), where freqHF(x) = freqHF*(1 + f*sin( 2pi x freqLF - phiLF))  
+    #               defined by its HF amplitude (Y='ampHF'), HF offset (Y='phiHF'), nominal HF frequency (Y='freqHF'), LF amplitude (Y='ampLF'), LF offset (Y='phiLF'), LF frequency (Y='freqLF'), and frequency modulation (Y='f') in 'coord__puls__X__ISinst_VSvis'     
+    #    - the same model of different coordinates, or different models of the same coordinates, can be defined and combined:  
+    # + through multiplication, for contrast and FWHM models :
+    #      F(x) = c0*(1 + pol(x) )*(1+sine(x))*ramp(x)*puls(x)
     #   with c0 in km/s for the FWHM  
-    # + rv is defined as the addition of polynomials and sinusoidals
-    #      F(x) = c0 + c1*x + c2*x^2 + ... + amp*sin((x-off)/per)) 
-    #      with ci and Amp in m/s    
+    # + through addition, for rv models:
+    #      F(x) = c0 + pol(x) + sine(x) + puls(x)
+    #   with ci and Amp in km/s    
     glob_fit_dic['DIProp']['mod_prop']={
         'RV':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
               'time__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},
@@ -2097,6 +2026,13 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         'FWHM':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
                 'time__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},
         }
+    
+    #%%%%% Reference variables for pulsation model
+    #    - because the model is defined as a sine, fit convergence is poor when the coordinates have large values
+    #      for each coordinate used in 'coord__puls__X__ISinst_VSvis', define a reference value so that coord - coord_ref is small
+    #    - we request the user to provide these values so that they remain fixed for various visits (as the phase offset is correlated with this reference)
+    #    - format is : coord_ref : { coord : val }
+    glob_fit_dic['DIProp']['coord_ref']={}    
 
 
     #%%%%% SNR orders             
@@ -2106,89 +2042,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%% Fit settings
+    ANTARESS_analysis_settings('DIProp',glob_fit_dic,plot_dic)
     
-    #%%%%% Fitting mode 
-    #    - 'chi2', 'mcmc', 'fixed'
-    glob_fit_dic['DIProp']['fit_mode']='chi2'  
-    
-    
-    #%%%%% Printing fits results
-    glob_fit_dic['DIProp']['verbose'] = False
-    glob_fit_dic['DIProp']['print_par'] = True
-
-
-    #%%%%% Monitor MCMC
-    glob_fit_dic['DIProp']['progress']= True
-    
-    
-    #%%%%% Priors on variable properties
-    #    - see gen_dic['fit_DI'] for details
-    glob_fit_dic['DIProp']['priors']={} 
-        
-    
-    #%%%%% Derived properties
-    #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['DIProp']['deriv_prop'] = {}  
-    
-    
-    #%%%%% MCMC settings
-    
-    #%%%%%% Run mode
-    #    - see data_dic['DI']['mcmc_run_mode']
-    glob_fit_dic['DIProp']['mcmc_run_mode']='use'
-    
-    
-    #%%%%%% Runs to re-use
-    glob_fit_dic['DIProp']['mcmc_reuse']={}
-    
-    
-    #%%%%%% Walkers 
-    glob_fit_dic['DIProp']['mcmc_set']={}
-    
-    
-    #%%%%%% Complex priors
-    glob_fit_dic['DIProp']['prior_func']={}  
-     
-    
-    #%%%%%% Walkers exclusion  
-    #    - define conditions within routine
-    glob_fit_dic['DIProp']['exclu_walk']= False       
-    
-    
-    #%%%%%% Automatic exclusion of outlying chains
-    #    - set to None, or exclusion threshold
-    glob_fit_dic['DIProp']['exclu_walk_autom']= None  
-
-
-    #%%%%%% Sample exclusion 
-    #    - see data_dic['DI']['exclu_samp']
-    glob_fit_dic['DIProp']['exclu_samp']={}   
-    
-    
-    #%%%%%% Derived errors
-    #    - 'quant' or 'HDI'
-    glob_fit_dic['DIProp']['out_err_mode']='HDI'  
-    
-    
-    #%%%%%% Derived lower/upper limits
-    glob_fit_dic['DIProp']['conf_limits']={}  
-    
-    
-    #%%%% Plot settings
-    
-    #%%%%% MCMC chains
-    glob_fit_dic['DIProp']['save_MCMC_chains']=''        
-    
-    
-    #%%%%% MCMC corner plot
-    #    - see function for options
-    glob_fit_dic['DIProp']['corner_options']={}
-    
-    
-    #%%%%% Chi2 values
-    #    - plot chi2 values for each datapoint
-    plot_dic['chi2_fit_DIProp']=''     
-
 
 
 
@@ -2437,41 +2292,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     ##################################################################################################
     #%%% Module: 2D->1D conversion for disk-integrated spectra 
-    #    - converting 2D disk-integrated spectra into 1D spectra
-    #    - every operation afterwards will be performed on those profiles 
-    #    - prior to conversion, spectra are normalized in all orders to a flat, common continuum
     ##################################################################################################
     
-    #%%%% Activating
-    gen_dic['spec_1D_DI'] = False
-    
-    
-    #%%%% Calculating/retrieving
-    gen_dic['calc_spec_1D_DI']=True  
-    
-    
-    #%%%% Multi-threading
-    gen_dic['nthreads_spec_1D_DI']= int(0.8*cpu_count())      
-    
-    
-    #%%%% 1D spectral table
-    #    - specific to each instrument
-    #    - tables are uniformely spaced in ln(w) (with d[ln(w)] = dw/w)
-    #      start and end values given in A    
-    data_dic['DI']['spec_1D_prop']={}
-    
-    
-    #%%%% Plot settings
-    
-    #%%%%% 2D maps
-    plot_dic['map_DI_1D']='' 
-    
-    
-    #%%%%% Individual spectra
-    plot_dic['sp_DI_1D']=''        
-    
-    
-    
+    ANTARESS_2D_1D_settings('DI',data_dic,gen_dic,plot_dic)
+
+        
     ##################################################################################################
     #%%% Module: disk-integrated profiles binning
     #    - for analysis purpose (original profiles are not replaced)
@@ -2852,7 +2677,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
      
     
     #%%%%% Continuum range
-    data_dic['Intr']['cont_range'] = {}
+    data_dic['Intr']['cont_range'] = deepcopy(data_dic['Res']['cont_range'])
     
     
     #%%%% Calculating/retrieving continuum in each order
@@ -3039,40 +2864,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
     ##################################################################################################
     #%%% Module: 2D->1D conversion for differential & intrinsic spectra
-    #    - every analysis afterwards will be performed on those profiles
     ##################################################################################################
     
-    #%%%% Activating
-    gen_dic['spec_1D_Intr'] = False
-    
-    
-    #%%%% Calculating/retrieving 
-    gen_dic['calc_spec_1D_Intr']=True  
-    
-    
-    #%%%% Multi-threading
-    gen_dic['nthreads_spec_1D_Intr']= int(0.8*cpu_count())
-    
-    
-    #%%%% 1D spectral table
-    #    - see DI module for details
-    data_dic['Intr']['spec_1D_prop']={}   
-    
-    
-    #%%%% Plot settings
-    
-    #%%%%% 2D maps
-    plot_dic['map_Intr_1D']=''   
-    
-    
-    #%%%%% Individual spectra
-    plot_dic['sp_Intr_1D']=''
-    
-    
-    #%%%%% Residuals from model     
-    plot_dic['sp_Intr_1D_res']='' 
-    
-     
+    ANTARESS_2D_1D_settings('Intr',data_dic,gen_dic,plot_dic)
+
     
     
     ##################################################################################################
@@ -3295,91 +3090,12 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%% Fit settings 
-    
-    #%%%%% Fitting mode 
-    #    - chi2 or MCMC
-    data_dic['Intr']['fit_mode']='chi2'
-    
-    
-    #%%%%% Printing fits results
-    data_dic['Intr']['verbose'] = False  
-    data_dic['Intr']['print_par'] = False  
-    
-    
-    #%%%%% Monitor MCMC
-    data_dic['Intr']['progress']= True
-    
-        
-    #%%%%% Priors on variable properties
-    #    - the width of the master disk-integrated profile can be used as upper limit
-    data_dic['Intr']['line_fit_priors']={}
-                 
-        
-    #%%%%% Derived properties
-    data_dic['Intr']['deriv_prop'] = {}
-    
-      
-    #%%%%% Detection thresholds    
-    #    - define area and amplitude thresholds for detection of the line (in sigma)
-    #    - for the amplitude, it might be more relevant to consider the actual SNR of the derived value (shown in plots)
-    #    - if set to None, lines are considered as detected in all exposures
-    data_dic['Intr']['thresh_area']=5.
-    data_dic['Intr']['thresh_amp']=4.   
-    
-    
-    #%%%%% Force detection flag
-    #    - set flag to True at relevant index for the line to be considered detected, or false to force a non-detection
-    #    - indices for each dataset are relative to in-transit indices (binned if relevant)
-    #    - leave empty for automatic detection
-    data_dic['Intr']['idx_force_det']={}
-    data_dic['Intr']['idx_force_detbin']={} 
-    data_dic['Intr']['idx_force_detbinmultivis']={} 
-    
-    
-    #%%%%% MCMC settings
-    
-    #%%%%%% Run mode
-    #    - see data_dic['DI']['mcmc_run_mode']
-    data_dic['Intr']['mcmc_run_mode']='use'
-    
-    
-    #%%%%%% Walkers
-    #    - settings per instrument & visit
-    data_dic['Intr']['mcmc_set']={}
-    
-    
-    #%%%%%% Complex priors
-    #    - to be defined manually within the code
-    #    - leave empty, or put in field for each priors and corresponding options
-    data_dic['Intr']['prior_func']={}
-    
-    
-    #%%%%%% Walkers exclusion
-    #    - automatic exclusion of outlying chains
-    #    - set to None, or exclusion threshold
-    data_dic['Intr']['exclu_walk_autom']=None  
-
-
-    #%%%%%% Sample exclusion 
-    #    - see data_dic['DI']['exclu_samp']
-    data_dic['Intr']['exclu_samp']={}    
-
-
-    #%%%%%% Derived errors
-    #    - 'quant' or 'HDI'
-    #    - if 'HDI' is selected:
-    # + by default a smoothed density profile is used to define HDI intervals
-    # + multiple HDI intervals can be avoided by defining the density profile as a histogram (by setting its resolution 'HDI_dbins') or by 
-    # defining the bandwith factor of the smoothed profile ('HDI_bw')
-    data_dic['Intr']['out_err_mode']='HDI'
+    #    - the width of the master disk-integrated profile can be used as upper limit for the prior on the intrinsic line FWHM
+    ANTARESS_analysis_settings('Intr',data_dic,plot_dic)
     
     
     #%%%% Plot settings
-    
-    #%%%%% 1D PDF from mcmc
-    plot_dic['prop_Intr_mcmc_PDFs']=''     
-    
-    
+
     #%%%%% Derived properties
     #    - from original or binned data
     plot_dic['prop_Intr']=''  
@@ -3388,7 +3104,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         
         
     ##################################################################################################       
-    #%%% Module: planet-occulted stellar properties fit
+    #%%% Module: intrinsic stellar properties fit
     #    - fitting single stellar surface property from planet-occulted regions with a common model for all instruments/visits 
     #    - with properties derived from individual local profiles
     #    - this module can be used to estimate the surface RV model and analytical laws describing the intrinsic line properties
@@ -3421,6 +3137,22 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #%%%% Fitted properties
+
+    #%%%%% Coordinate
+    #    - define the coordinate as a function of which line shape properties are defined:
+    # +'mu' angle       
+    # +'xp_abs': absolute distance from projected orbital normal in the sky plane
+    # +'r_proj': distance from star center projected in the sky plane      
+    # +'abs_y_st' : sky-projected distance parallel to spin axis, absolute value   
+    # +'y_st2' : sky-projected distance parallel to spin axis, squared
+    #    - format is { prop1 : coord1, prop2 : coord2 }
+    glob_fit_dic['IntrProp']['coord_fit']={'ctrst':'r_proj','FWHM':'r_proj'}
+      
+    
+    #%%%%% Variation
+    #    - fit line shape property as absolute ('abs') or modulated ('modul') polynomial
+    glob_fit_dic['IntrProp']['pol_mode']='abs'     
+
     
     #%%%%% Properties and model
     #    - format is:
@@ -3442,140 +3174,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + Therefore, the user must specify values for these properties if they wish to fix them to values which differ from the base ones provided in the systems file.
     glob_fit_dic['IntrProp']['mod_prop']={'rv':{}}
 
-
-    #%%%%% Coordinate
-    #    - the model property is defined as a function of this coordinate
-    # +'mu' angle       
-    # +'xp_abs': absolute distance from projected orbital normal in the sky plane
-    # +'r_proj': distance from star center projected in the sky plane      
-    # +'abs_y_st' : sky-projected distance parallel to spin axis, absolute value   
-    # +'y_st2' : sky-projected distance parallel to spin axis, squared
-    glob_fit_dic['IntrProp']['coord_fit']={'rv':'r_proj'}
-      
-    
-    #%%%%% Variation
-    #    - fit line property as absolute ('abs') or modulated ('modul') polynomial
-    glob_fit_dic['IntrProp']['pol_mode']='abs'     
-
     
     #%%%% Fit settings
-    
-    #%%%%% Fitting mode 
-    #    - 'chi2', 'mcmc', 'fixed'
-    glob_fit_dic['IntrProp']['fit_mode']='chi2'  
-    
-    
-    #%%%%% Printing fits results
-    glob_fit_dic['IntrProp']['verbose'] = False
-    glob_fit_dic['IntrProp']['print_par'] = True
-    
+    ANTARESS_analysis_settings('IntrProp',glob_fit_dic,plot_dic)
 
-    #%%%%% Monitor MCMC
-    glob_fit_dic['IntrProp']['progress']= True
-    
-    
-    #%%%%% Priors on variable properties
-    #    - see gen_dic['fit_DI'] for details
-    glob_fit_dic['IntrProp']['priors']={} 
-        
-    
-    #%%%%% Derived properties
-    #    - options:
-    # + 'cosistar_fold' : folds cos(istar) within -1 : 1 (not required if constrained with prior)
-    # + 'veq_from_Peq_Rstar' : converts 'Rstar' and 'Peq' into 'veq'
-    #                          'Peq' must be a fit parameter; 'Rstar' can be a fit parameter or a user-provided measurement
-    # + 'vsini' : converts 'veq' into veq*sin(istar) using fitted or fixed 'istar'
-    # + 'istar_deg_conv' : replaces cos(istar) by istar[deg]
-    # + 'fold_istar' : folds istar[deg] around 90
-    #                  to be used when the stellar inclination remains degenerate between istar and 180-istar
-    # + 'istar_Peq' : derive the stellar inclination from the fitted 'vsini' and user-provided measurements of 'Rstar' and 'Peq'
-    #                 warning: it is better to fit directly for 'Peq', 'cosistar', and 'Rstar'
-    # + 'istar_Peq_vsini' : derive the stellar inclination from user-provided measurements of 'Rstar','Peq', and 'vsini'
-    # + 'Peq_veq' : adds 'Peq' using the fitted 'veq' and a user-provided measurement of 'Rstar'
-    # + 'Peq_veq_spots' : adds 'Peq_spots' using the fitted 'veq_spots' and a user-provided measurement of 'Rstar'
-    # + 'Peq_vsini' : adds 'Peq' using the fitted 'vsini' and user-provided measurements for 'Rstar' and 'istar'
-    # + 'fold_Tc' : folds the spot crossing time Tc[BJD] with respect to the fitted/fixed 'veq'/'veq_spots' or a user-provided value
-    # + 'psi' : adds 3D spin-orbit angle for all planets using the fitted 'lambda', and fitted or user-provided measurements for 'istar' and 'ip_plNAME'
-    #           set 'config = True' (default) to add the Northern and Southern Psi values, otherwise only the combined distribution is output
-    # + 'psi_lambda' : adds 3D spin-orbit angle using user-provided measurements of 'lambda', and fitted or user-provided measurements for 'istar' and 'ip'
-    #                  same settings as for 'psi' 
-    # + 'lambda_deg' : converts lambda[rad] to lambda[deg]
-    #                  lambda[deg] is folded over x+[-180;180], with x set by the subfield 'pl_name' if defined, or to the median of the chains by default
-    #                  define x so that the peak of the PDF is well centered in the folded range
-    # + 'i_mut' : adds mutual inclination between the orbital planes of two transiting planets, if relevant, using their fitted 'lambda'     
-    # + 'b' : adds impact parameter, using fixed or fitted 'aRs' and 'ip'
-    # + 'ip' : converts fitted orbital inclination from radian to degrees.    
-    #    - user-provided measurements of a parameter 'par' are defined as subfields with format
-    # par : {'val' : val, 's_val' : val} or par : {'val' : val, 's_val_low' : val, 's_val_high' : val} 
-    #      units for par :
-    # + stellar radius 'Rstar' : Rsun
-    # + stellar inclination 'istar' : deg
-    # + equatorial rotation period 'Peq' : days
-    # + sky-projected rotational velocity 'vsini' : km/s
-    # + sky-projected spin-orbit angle 'lambda_plNAME' : deg
-    # + orbital inclination 'ip_plNAME' : deg
-    glob_fit_dic['IntrProp']['deriv_prop'] = {}  
-    
-    
-    #%%%%% MCMC settings
-    
-    #%%%%%% Run mode
-    #    - see data_dic['DI']['mcmc_run_mode']
-    glob_fit_dic['IntrProp']['mcmc_run_mode']='use'
-    
-    
-    #%%%%%% Runs to re-use
-    glob_fit_dic['IntrProp']['mcmc_reuse']={}
-    
-    
-    #%%%%%% Walkers 
-    glob_fit_dic['IntrProp']['mcmc_set']={}
-    
-    
-    #%%%%%% Complex priors
-    glob_fit_dic['IntrProp']['prior_func']={}  
-     
-    
-    #%%%%%% Walkers exclusion  
-    #    - define conditions within routine
-    glob_fit_dic['IntrProp']['exclu_walk']= False       
-    
-    
-    #%%%%%% Automatic exclusion of outlying chains
-    #    - set to None, or exclusion threshold
-    glob_fit_dic['IntrProp']['exclu_walk_autom']= None  
-
-
-    #%%%%%% Sample exclusion 
-    #    - see data_dic['DI']['exclu_samp']
-    glob_fit_dic['IntrProp']['exclu_samp']={}   
-    
-    
-    #%%%%%% Derived errors
-    #    - 'quant' or 'HDI'
-    glob_fit_dic['IntrProp']['out_err_mode']='HDI'  
-    
-    
-    #%%%%%% Derived lower/upper limits
-    glob_fit_dic['IntrProp']['conf_limits']={}  
-    
-    
-    #%%%% Plot settings
-    
-    #%%%%% MCMC chains
-    glob_fit_dic['IntrProp']['save_MCMC_chains']=''        
-    
-    
-    #%%%%% MCMC corner plot
-    #    - see function for options
-    glob_fit_dic['IntrProp']['corner_options']={}
-    
-    
-    #%%%%% Chi2 values
-    #    - plot chi2 values for each datapoint
-    plot_dic['chi2_fit_IntrProp']=''        
-      
-    
         
         
         
@@ -3700,83 +3302,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     glob_fit_dic['ResProf']['Opt_Lvl']=0
     
     
-    #%%%% Fit settings 
-        
-    #%%%%% Fitting mode
-    #    - 'chi2', 'mcmc', or 'fixed'
-    glob_fit_dic['ResProf']['fit_mode']='' 
-    
-    
-    #%%%%% Printing fits results
-    glob_fit_dic['ResProf']['verbose']= False
-    glob_fit_dic['ResProf']['print_par'] = True
-    
-    
-    #%%%%% Priors on variable properties
-    #    - see gen_dic['fit_DI'] for details
-    glob_fit_dic['ResProf']['priors']={}
+    #%%%% Fit settings  
+    ANTARESS_analysis_settings('ResProf',glob_fit_dic,plot_dic)
 
 
-    #%%%%% Derived properties
-    #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['ResProf']['deriv_prop'] = {}
-    
-    
-    #%%%%% MCMC settings
-    
-    #%%%%%% Run mode
-    glob_fit_dic['ResProf']['mcmc_run_mode']='use'
-    
-    
-    #%%%%%% Runs to re-use
-    glob_fit_dic['ResProf']['mcmc_reuse']={} 
-    
-    
-    #%%%%%% Runs to re-start
-    #    - indicate path to a 'raw_chains' file
-    #      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'mcmc_set'
-    glob_fit_dic['ResProf']['mcmc_reboot']=''
-    
-    
-    #%%%%%% Walkers
-    glob_fit_dic['ResProf']['mcmc_set']={}
-    
-    
-    #%%%%%% Complex priors
-    glob_fit_dic['ResProf']['prior_func']={}     
-    
-        
-    #%%%%%% Walkers exclusion  
-    #    - define conditions within routine
-    glob_fit_dic['ResProf']['exclu_walk']=False       
-    
-    
-    #%%%%%% Automatic exclusion of outlying chains
-    #    - set to None, or exclusion threshold
-    glob_fit_dic['ResProf']['exclu_walk_autom']=None  
-    
-    
-    #%%%%%% Derived errors
-    #    - 'quant' or 'HDI'
-    glob_fit_dic['ResProf']['out_err_mode']='HDI'
-    glob_fit_dic['ResProf']['HDI']='1s'
-    
-    
-    #%%%%%% Derived lower/upper limits
-    glob_fit_dic['ResProf']['conf_limits']={}
-    
-    
-    #%%%% Plot settings
-    
-    #%%%%% MCMC chains
-    glob_fit_dic['ResProf']['save_MCMC_chains']=''  
-    
-    
-    #%%%%% MCMC corner plot
-    #    - see function for options
-    glob_fit_dic['ResProf']['corner_options']={}      
-
-    
     #%%%% Plot settings
             
     #%%%%% Plot best-fit 2D differential map
@@ -3924,94 +3453,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
                         
     
     #%%%% Fit settings 
-        
-    #%%%%% Fitting mode
-    #    - 'chi2', 'mcmc', or 'fixed'
-    glob_fit_dic['IntrProf']['fit_mode']='chi2' 
-    
-    
-    #%%%%% Printing fits results
-    glob_fit_dic['IntrProf']['verbose']= False
-    glob_fit_dic['IntrProf']['print_par'] = True
+    ANTARESS_analysis_settings('IntrProf',glob_fit_dic,plot_dic)
 
-    
-    #%%%%% Monitor MCMC
-    glob_fit_dic['IntrProf']['progress']= True
-    
-    
-    #%%%%% Priors on variable properties
-    #    - see gen_dic['fit_DI'] for details
-    glob_fit_dic['IntrProf']['priors']={}
-    
-    
-    #%%%%% Derived properties
-    #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['IntrProf']['deriv_prop'] = {}
-    
-    
-    #%%%%% MCMC settings
-    
-    #%%%%%% Run mode
-    #    - see data_dic['DI']['mcmc_run_mode']
-    glob_fit_dic['IntrProf']['mcmc_run_mode']='use'
-    
-    
-    #%%%%%% Runs to re-use
-    #    - list of mcmc runs to reuse
-    #    - if 'reuse' is requested, leave empty to automatically retrieve the mcmc run available in the default directory
-    #  or set the list of mcmc runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
-    glob_fit_dic['IntrProf']['mcmc_reuse']={} 
-    
-    
-    #%%%%%% Runs to re-start
-    #    - indicate path to a 'raw_chains' file
-    #      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'mcmc_set'
-    glob_fit_dic['IntrProf']['mcmc_reboot']=''
-    
-    
-    #%%%%%% Walkers
-    glob_fit_dic['IntrProf']['mcmc_set']={}
-    
-    
-    #%%%%%% Complex priors
-    glob_fit_dic['IntrProf']['prior_func']={}     
-    
-        
-    #%%%%%% Walkers exclusion  
-    #    - define conditions within routine
-    glob_fit_dic['IntrProf']['exclu_walk']=False       
-    
-    
-    #%%%%%% Automatic exclusion of outlying chains
-    #    - set to None, or exclusion threshold
-    glob_fit_dic['IntrProf']['exclu_walk_autom']=None  
-
-
-    #%%%%%% Sample exclusion 
-    #    - see data_dic['DI']['exclu_samp']
-    glob_fit_dic['IntrProf']['exclu_samp']={}   
-    
-    
-    #%%%%%% Derived errors
-    #    - 'quant' or 'HDI'
-    glob_fit_dic['IntrProf']['out_err_mode']='HDI'
-    glob_fit_dic['IntrProf']['HDI']='1s'
-    
-    
-    #%%%%%% Derived lower/upper limits
-    glob_fit_dic['IntrProf']['conf_limits']={}
-    
-    
-    #%%%% Plot settings
-    
-    #%%%%% MCMC chains
-    glob_fit_dic['IntrProf']['save_MCMC_chains']=''  
-    
-    
-    #%%%%% MCMC corner plot
-    #    - see function for options
-    glob_fit_dic['IntrProf']['corner_options']={}
-    
   
 
     
@@ -4340,43 +3783,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     ##################################################################################################
     #%%% Module: 2D->1D conversion for atmospheric spectra
-    #    - every analysis afterwards will be performed on those profiles
     ##################################################################################################
-    
-    #%%%% Activating
-    gen_dic['spec_1D_Atm'] = False
-    
-    
-    #%%%% Calculating/retrieving 
-    gen_dic['calc_spec_1D_Atm']=True  
-    
-    
-    #%%%% Multi-threading
-    gen_dic['nthreads_spec_1D_Atm']= int(0.8*cpu_count())
-    
-    
-    #%%%% 1D spectral table
-    #    - see DI module for details
-    data_dic['Atm']['spec_1D_prop']={}   
-    
-    
-    #%%%% Plot settings
-    
-    #%%%%% 2D maps
-    plot_dic['map_Atm_1D']=''   
-    
-    
-    #%%%%% Individual spectra
-    plot_dic['sp_Atm_1D']=''
-    
-    
-    #%%%%% Residuals from model     
-    plot_dic['sp_Atm_1D_res']='' 
 
-
-
-
-
+    ANTARESS_2D_1D_settings('Atm',data_dic,gen_dic,plot_dic)
+    
 
     ##################################################################################################
     #%%% Module: atmospheric profiles binning
@@ -4544,76 +3954,11 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%% Fit settings 
-    
-    #%%%%% Fitting mode 
-    #    - chi2 or MCMC
-    data_dic['Atm']['fit_mode']='chi2'
-    
-    
-    #%%%%% Printing fits results
-    data_dic['Atm']['verbose'] = False  
-    data_dic['Atm']['print_par'] = True
-    
-    
-    #%%%%% Monitor MCMC
-    data_dic['Atm']['progress']= True
-    
-        
-    #%%%%% Priors on variable properties
-    data_dic['Atm']['line_fit_priors']={}
-
-        
-    #%%%%% Derived properties
-    data_dic['Atm']['deriv_prop'] = {}
-    
-      
-    #%%%%% Detection thresholds    
-    #    - same as data_dic['DI'] fields
-    data_dic['Atm']['thresh_area']=5.
-    data_dic['Atm']['thresh_amp']=4.  
-    
-    
-    #%%%%% Force detection flag
-    #    - same as data_dic['DI'] fields
-    #    - indices for each dataset are relative to in-transit indices (binned if relevant) for absorption signal, or global indices for emission signals
-    data_dic['Atm']['idx_force_det']={}
-    data_dic['Atm']['idx_force_detbin']={} 
-    data_dic['Atm']['idx_force_detbinmultivis']={} 
-
-    
-    #%%%%% MCMC settings
-    
-    #%%%%%% Run mode
-    #    - see data_dic['DI']['mcmc_run_mode']
-    data_dic['Atm']['mcmc_run_mode']='use'
-    
-    
-    #%%%%%% Walkers
-    #    - same as data_dic['DI'] fields
-    data_dic['Atm']['mcmc_set']={}
-    
-    
-    #%%%%%% Complex priors
-    #    - same as data_dic['DI'] fields
-    data_dic['Atm']['prior_func']={}
-    
-    
-    #%%%%%% Walkers exclusion
-    #    - same as data_dic['DI'] fields
-    data_dic['Atm']['exclu_walk_autom']=None  
-    
-    
-    #%%%%%% Derived errors
-    #    - same as data_dic['DI'] fields
-    data_dic['Atm']['out_err_mode']='HDI'
+    ANTARESS_analysis_settings('Atm',data_dic,plot_dic)
     
     
     #%%%% Plot settings
-    
-    #%%%%% 1D PDF from mcmc
-    plot_dic['prop_Atm_mcmc_PDFs']=''     
-    
-    
+
     #%%%%% Derived properties
     #    - from original or binned data
     plot_dic['prop_Atm']=''  
@@ -4671,79 +4016,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     
     #%%%% Fit settings
+    ANTARESS_analysis_settings('AtmProp',glob_fit_dic,plot_dic)
     
-    #%%%%% Fitting mode 
-    #    - 'chi2', 'mcmc', 'fixed'
-    glob_fit_dic['AtmProp']['fit_mode']='chi2'  
-    
-    
-    #%%%%% Printing fits results
-    glob_fit_dic['AtmProp']['verbose'] = False
-    glob_fit_dic['AtmProp']['print_par'] = True
-    
-    
-    #%%%%% Monitor MCMC
-    glob_fit_dic['AtmProp']['progress']= True
-    
-        
-    #%%%%% Priors on variable properties
-    #    - see gen_dic['fit_DI'] for details
-    glob_fit_dic['AtmProp']['priors']={} 
-        
-    
-    #%%%%% Derived properties
-    #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['AtmProp']['deriv_prop'] = {}        
-    
-    
-    #%%%%% MCMC settings
-    
-    #%%%%%% Run mode
-    #    - see data_dic['DI']['mcmc_run_mode']
-    glob_fit_dic['AtmProp']['mcmc_run_mode']='use'
-    
-    
-    #%%%%%% Walkers 
-    glob_fit_dic['AtmProp']['mcmc_set']={}
-    
-    
-    #%%%%%% Complex priors
-    glob_fit_dic['AtmProp']['prior_func']={}  
-     
-    
-    #%%%%%% Walkers exclusion  
-    #    - define conditions within routine
-    glob_fit_dic['AtmProp']['exclu_walk']= False       
-    
-    #%%%%%% Automatic exclusion of outlying chains
-    #    - set to None, or exclusion threshold
-    glob_fit_dic['AtmProp']['exclu_walk_autom']= None  
-    
-    #%%%%%% Derived errors
-    #    - 'quant' or 'HDI'
-    glob_fit_dic['AtmProp']['out_err_mode']='HDI'  
-    
-    
-    #%%%%%% Derived lower/upper limits
-    glob_fit_dic['AtmProp']['conf_limits']={}  
-    
-    
-    #%%%% Plot settings
-    
-    #%%%%% MCMC chains
-    glob_fit_dic['AtmProp']['save_MCMC_chains']=''        
-    
-    
-    #%%%%% MCMC corner plot
-    #    - see function for options
-    glob_fit_dic['AtmProp']['corner_options']={}
-    
-    
-    #%%%%% Chi2 values
-    #    - plot chi2 values for each datapoint
-    plot_dic['chi2_fit_AtmProp']=''  
-
-
 
 
 
@@ -4823,93 +4097,277 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
                     
     #%%%% Fit settings 
+    ANTARESS_analysis_settings('AtmProf',glob_fit_dic,plot_dic)
         
-    #%%%%% Fitting mode
-    #    - 'chi2', 'mcmc', or 'fixed'
-    glob_fit_dic['AtmProf']['fit_mode']='chi2' 
-    
-    
-    #%%%%% Printing fits results
-    glob_fit_dic['AtmProf']['verbose']= False
-    glob_fit_dic['AtmProf']['print_par'] = True
+    return None
 
+
+
+##################################################################################################    
+#%% Conversion settings
+##################################################################################################  
+
+def ANTARESS_2D_1D_settings(data_type,local_dic,gen_dic,plot_dic):
+    r"""**ANTARESS default settings: 2D -> 1D conversion modules**
     
-    #%%%%% Monitor MCMC
-    glob_fit_dic['AtmProf']['progress']= True
+    Initializes ANTARESS configuration settings with default values for conversion of 2D spectra into 1D spectra. 
+    Converted 1D spectra replace 2D spectra in the workflow process, ie that every operation afterwards will be performed on those profiles.
+    Prior to conversion, spectra are normalized in all orders to a flat, common continuum.
     
+    Args:
+        TBD
     
-    #%%%%% Priors on variable properties
-    #    - see gen_dic['fit_DI'] for details
-    glob_fit_dic['AtmProf']['priors']={}
+    Returns:
+        None
     
+    """  
     
-    #%%%%% Derived properties
-    #    - each field calls a specific function (see routine for more details)
-    glob_fit_dic['AtmProf']['deriv_prop'] = {}
-    
-    
-    #%%%%% MCMC settings
-    
-    #%%%%%% Run mode
-    #    - see data_dic['DI']['mcmc_run_mode']
-    glob_fit_dic['AtmProf']['mcmc_run_mode']='use'
-    
-    
-    #%%%%%% Runs to re-use
-    #    - list of mcmc runs to reuse
-    #    - if 'reuse' is requested, leave empty to automatically retrieve the mcmc run available in the default directory
-    #  or set the list of mcmc runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
-    glob_fit_dic['AtmProf']['mcmc_reuse']={} 
+    #%%%% Activating
+    gen_dic['spec_1D_'+data_type] = False
     
     
-    #%%%%%% Run to re-start
-    #    - indicate path to a 'raw_chains' file
-    #      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'mcmc_set'
-    glob_fit_dic['AtmProf']['mcmc_reboot']=''
+    #%%%% Calculating/retrieving 
+    gen_dic['calc_spec_1D_'+data_type]=True  
     
     
-    #%%%%%% Walkers
-    glob_fit_dic['AtmProf']['mcmc_set']={}
+    #%%%% Multi-threading
+    gen_dic['nthreads_spec_1D_'+data_type]= int(0.8*cpu_count())
     
     
-    #%%%%%% Complex priors
-    glob_fit_dic['AtmProf']['prior_func']={}     
-    
-        
-    #%%%%%% Walkers exclusion  
-    #    - define conditions within routine
-    glob_fit_dic['AtmProf']['exclu_walk']=False       
-    
-    
-    #%%%%%% Automatic exclusion of outlying chains
-    #    - set to None, or exclusion threshold
-    glob_fit_dic['AtmProf']['exclu_walk_autom']=None  
-    
-    
-    #%%%%%% Derived errors
-    #    - 'quant' or 'HDI'
-    glob_fit_dic['AtmProf']['out_err_mode']='HDI'
-    glob_fit_dic['AtmProf']['HDI']='1s'
-    
-    
-    #%%%%%% Derived lower/upper limits
-    glob_fit_dic['AtmProf']['conf_limits']={}
+    #%%%% 1D spectral table
+    #    - specific to each instrument
+    #    - tables are uniformely spaced in ln(w) (with d[ln(w)] = dw/w)
+    #      start and end values given in A  
+    local_dic[data_type]['spec_1D_prop']={}   
     
     
     #%%%% Plot settings
     
+    #%%%%% 2D maps
+    plot_dic['map_'+data_type+'_1D']=''   
+    
+    
+    #%%%%% Individual spectra
+    plot_dic['sp_'+data_type+'_1D']=''
+    
+    
+    #%%%%% Residuals from model     
+    plot_dic['sp_'+data_type+'_1D_res']=''     
+    
+    return None
+
+##################################################################################################    
+#%% Analysis settings
+##################################################################################################  
+
+def ANTARESS_analysis_settings(data_type,local_dic,plot_dic):
+    r"""**ANTARESS default settings: analysis modules**
+    
+    Initializes ANTARESS configuration settings with default values for analysis modules. 
+    
+    Args:
+        TBD
+    
+    Returns:
+        None
+    
+    """  
+
+    ################################################################################################## 
+    #%% Fit settings     
+    ################################################################################################## 
+    
+    #%%% Fitting mode 
+    #    - 'chi2', 'mcmc', 'fixed'
+    local_dic[data_type]['fit_mode']='chi2'  
+    
+    
+    #%%% Printing fits results
+    local_dic[data_type]['verbose']= False
+    local_dic[data_type]['print_par'] = True
+
+    
+    #%%% Priors on variable properties
+    #    - structure is priors = { 'par_name' : {prior_mode: X, prior_val: Y} }
+    #      where par_name is specific to the model selected, and prior_mode is one of the possibilities defined below
+    #    - otherwise priors can be set to :
+    # > uniform ('uf') : 'low', 'high'
+    # > gaussian ('gauss') : 'val', 's_val'
+    # > asymetrical gaussian ('dgauss') : 'val', 's_val_low', 's_val_high'
+    #    - chi2 fit can only use uniform priors
+    #    - if left undefined, default uniform priors are used
+    local_dic[data_type]['priors']={}
+    
+    
+    #%%% Derived properties
+    #    - options for data_type =='IntrProp' :
+    # + 'cosistar_fold' : folds cos(istar) within -1 : 1 (not required if constrained with prior)
+    # + 'veq_from_Peq_Rstar' : converts 'Rstar' and 'Peq' into 'veq'
+    #                          'Peq' must be a fit parameter; 'Rstar' can be a fit parameter or a user-provided measurement
+    # + 'vsini' : converts 'veq' into veq*sin(istar) using fitted or fixed 'istar'
+    # + 'istar_deg_conv' : replaces cos(istar) by istar[deg]
+    # + 'fold_istar' : folds istar[deg] around 90
+    #                  to be used when the stellar inclination remains degenerate between istar and 180-istar
+    # + 'istar_Peq' : derive the stellar inclination from the fitted 'vsini' and user-provided measurements of 'Rstar' and 'Peq'
+    #                 warning: it is better to fit directly for 'Peq', 'cosistar', and 'Rstar'
+    # + 'istar_Peq_vsini' : derive the stellar inclination from user-provided measurements of 'Rstar','Peq', and 'vsini'
+    # + 'Peq_veq' : adds 'Peq' using the fitted 'veq' and a user-provided measurement of 'Rstar'
+    # + 'Peq_vsini' : adds 'Peq' using the fitted 'vsini' and user-provided measurements for 'Rstar' and 'istar' 
+    # + 'psi' : adds 3D spin-orbit angle for all planets using the fitted 'lambda', and fitted or user-provided measurements for 'istar' and 'ip_plNAME'
+    #           set 'combined = True' to add the combined distribution from the Northern and Southern Psi values, assumed to be equiprobable (make sure that the two distributions are similar before combining them)
+    # + 'psi_lambda' : adds 3D spin-orbit angle using user-provided measurements of 'lambda', and fitted or user-provided measurements for 'istar' and 'ip'
+    #                  same settings as for 'psi' 
+    # + 'lambda_deg' : converts lambda[rad] to lambda[deg]
+    #                  lambda[deg] is folded over x+[-180;180], with x set by the subfield 'pl_name' if defined, or to the median of the chains by default
+    #                  define x so that the peak of the PDF is well centered in the folded range
+    # + 'i_mut' : adds mutual inclination between the orbital planes of two transiting planets, if relevant, using their fitted 'lambda'     
+    # + 'b' : adds impact parameter, using fixed or fitted 'aRs' and 'ip'
+    # + 'ip' : converts fitted orbital inclination from radian to degrees.    
+    #    - user-provided measurements of a parameter 'par' are defined as subfields with format
+    # par : {'val' : val, 's_val' : val} or par : {'val' : val, 's_val_low' : val, 's_val_high' : val} 
+    #      units for par :
+    # + stellar radius 'Rstar' : Rsun
+    # + stellar inclination 'istar' : deg
+    # + equatorial rotation period 'Peq' : days
+    # + sky-projected rotational velocity 'vsini' : km/s
+    # + sky-projected spin-orbit angle 'lambda_plNAME' : deg
+    # + orbital inclination 'ip_plNAME' : deg
+    local_dic[data_type]['deriv_prop']={}
+    
+    
+    #%%% Profile analysis settings
+    if 'prop' not in data_type:
+            
+        #%%%% Detection thresholds
+        #    - define area and amplitude thresholds for detection of stellar line (in sigma)
+        #    - for the amplitude, it might be more relevant to consider the actual SNR of the derived value (shown in plots)
+        #    - require 'true_amp' or 'amp' in 'deriv_prop'
+        #    - if set to None, lines are considered as detected in all exposures
+        local_dic[data_type]['thresh_area']=5.
+        local_dic[data_type]['thresh_amp']=4.   
+        
+        
+        #%%%% Force detection flag 
+        #    - set flag to True at relevant index for the CCFs to be considered detected, or false to force a non-detection
+        #    - indices for each dataset are relative to:
+        # + global indexes (from binned exposures if relevant) for disk-integrated stellar profiles, differential profiles, and atmospheric emission profiles
+        # + in-transit indexes (from binned exposures if relevant) for intrinsic stellar profiles, and atmospheric absorption profiles
+        #    - leave empty for automatic detection
+        local_dic[data_type]['idx_force_det']={}
+        local_dic[data_type]['idx_force_detbin']={} 
+        local_dic[data_type]['idx_force_detbinmultivis']={} 
+    
+
+    ##################################################################################################         
+    #%%% MCMC settings
+    ################################################################################################## 
+    
+    #%%%% Run mode
+    #    - set to
+    # + 'use': runs MCMC  
+    # + 'reuse' (with gen_dic['calc_fit_X']=True): load MCMC results, allow changing nburn and error definitions without running the mcmc again
+    local_dic[data_type]['mcmc_run_mode']='use'
+    
+    
+    #%%% Monitor MCMC
+    local_dic[data_type]['progress']= True
+    
+    
+    #%%%% Runs to re-use
+    #    - list of mcmc runs to reuse
+    #    - if 'reuse' is requested, leave empty to automatically retrieve the mcmc run available in the default directory
+    #  or set the list of mcmc runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
+    local_dic[data_type]['mcmc_reuse']={}
+
+
+    #%%%%%% Runs to re-start
+    #    - indicate path to a 'raw_chains' file
+    #      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'mcmc_set'
+    local_dic[data_type]['mcmc_reboot']=''
+        
+    
+    #%%%% Walkers
+    #    - settings per instrument & visit
+    local_dic[data_type]['mcmc_set']={}
+    
+    
+    #%%%%%% Complex priors
+    #    - to be defined manually within the code
+    #    - leave empty, or put in field for each priors and corresponding options
+    local_dic[data_type]['prior_func']={}      
+    
+    
+    #%%%% Manual walkers exclusion        
+    #    - excluding manually some of the walkers
+    #    - define conditions within routine
+    local_dic[data_type]['exclu_walk']=  False           
+
+
+    #%%%%%% Automatic walkers exclusion        
+    #    - set to None, or exclusion threshold
+    local_dic[data_type]['exclu_walk_autom']= None  
+
+
+    #%%%% Sample exclusion 
+    #    - keep samples within the requested ranges of the chosen parameter (on original fit parameters)
+    #    - format: 'par' : [[x1,x2],[x3,x4],...] 
+    local_dic[data_type]['exclu_samp']={}
+        
+    
+    #%%%% Derived errors
+    #    - 'quant' (quantiles) or 'HDI' (highest density intervals)
+    #    - if 'HDI' is selected:
+    # + by default a smoothed density profile is used to define HDI intervals
+    # + multiple HDI intervals can be avoided by defined the density profile as a histogram (by setting its resolution 'HDI_dbins') or by defining the bandwith factor of the smoothed profile ('HDI_bw')
+    local_dic[data_type]['out_err_mode']='HDI'
+    local_dic[data_type]['HDI']='1s'   
+    
+    
+    #%%%% Derived lower/upper limits
+    #    - format: {par:{'bound':val,'type':str,'level':[...]}}
+    # where 'bound' sets the limit, 'type' is 'upper' or 'lower', 'level' is a list of thresholds ('1s', '2s', '3s')
+    local_dic[data_type]['conf_limits']={}   
+
+
+    ##################################################################################################         
+    #%%% Plot settings
+    ################################################################################################## 
+
     #%%%%% MCMC chains
-    glob_fit_dic['AtmProf']['save_MCMC_chains']=''  
+    local_dic[data_type]['save_MCMC_chains']='png'        
     
     
     #%%%%% MCMC corner plot
     #    - see function for options
-    glob_fit_dic['AtmProf']['corner_options']={}
+    local_dic[data_type]['corner_options']={}
+
+
+    #%%%%% MCMC 1D PDF
+    #    - on properties derived from the fits to individual profiles
+    if data_type in ['DI','Intr','Atm']:
+        plot_dic['prop_'+data_type+'_mcmc_PDFs']=''      
     
-  
-
     
-
-
-
+    #%%%%% Chi2 values
+    #    - plot chi2 values for each datapoint
+    if 'Prop' in data_type:
+        plot_dic['chi2_fit_'+data_type]='' 
+        
     return None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

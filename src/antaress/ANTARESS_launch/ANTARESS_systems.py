@@ -94,7 +94,10 @@ def get_system_params():
       - `vmic` and `vmac` [km/s] : micro and macroturbulence 
      
           + only used for the stellar atmosphere grid 
-     
+
+      - `Tcenter` [bjd] : reference time for null stellar phase
+      
+          + set to 2400000 if undefined
         
     **Planet properties**
 

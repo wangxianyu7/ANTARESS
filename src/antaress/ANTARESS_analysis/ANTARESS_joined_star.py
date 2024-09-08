@@ -3,12 +3,9 @@
 from copy import deepcopy
 import numpy as np
 import scipy.linalg
-import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 import bindensity as bind
-import lmfit
 import os
-from lmfit import Parameters
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz
 from ..ANTARESS_analysis.ANTARESS_ana_comm import init_joined_routines,init_joined_routines_inst,init_joined_routines_vis,init_joined_routines_vis_fit,com_joint_fits,com_joint_postproc
@@ -82,6 +79,7 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
             'coord_obs':{},
             'coord_fit':{},
             'SNRorders':{},
+            'coord_ref':fit_prop_dic['coord_ref']
             })    
         if prop_loc=='RV':fixed_args['prop_fit'] = 'rv_res'
         else:fixed_args['prop_fit'] = prop_loc
@@ -102,6 +100,7 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
                 model_type = []
                 if 'pol' in par:model_type+=['pol']
                 if 'sin' in par:model_type+=['sin']
+                if 'puls' in par:model_type+=['puls']
                 if 'ramp' in par:model_type+=['ramp']
                 inst_vis_coord = par.split('__IS')[1]
                 inst_coord  = inst_vis_coord.split('_VS')[0]
@@ -158,7 +157,7 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
         mod_tab,fit_save['prop_mod'] = fixed_args['mod_func'](p_final,fixed_args)
 
         #Save best-fit properties
-        fit_save.update({'p_final':p_final,'name_prop2input':fixed_args['name_prop2input'],'coeff_ord2name':fixed_args['coeff_ord2name'],'merit':fit_dic['merit'],'SNRorders':fixed_args['SNRorders']})
+        fit_save.update({'p_final':p_final,'name_prop2input':fixed_args['name_prop2input'],'coeff_ord2name':fixed_args['coeff_ord2name'],'merit':fit_dic['merit'],'SNRorders':fixed_args['SNRorders'],'coord_ref':fixed_args['coord_ref']})
         if (plot_dic['prop_DI']!='') or (plot_dic['chi2_fit_DIProp']!=''):
             for key in ['coord_obs','coord_list','coord_fit']:fit_save[key] = fixed_args[key]
             fit_save['coord_mod'] = fixed_args['coord_fit']
@@ -211,11 +210,7 @@ def mod_DIProp(param,args,inst,vis,n_coord):
     """   
 
     #Model property for the visit 
-    #    - the same model of different coordinates, or different models of the same coordinates, can be defined and combined:
-    # + contrast and FWHM models are defined as the multiplication of polynomials and sinusoidals, and possibly a ramp
-    #      F(x) = c0*(1 + c1*x + c2*x^2 + ... )*(1+Amp*sin((x-Phi)/Per))*(1 - k*exp( - ((x - xr)/tau)^alpha) ))
-    # + rv is defined as the addition of polynomials and sinusoidals
-    #      F(x) = c0 + c1*x + c2*x^2 + ... + Amp*sin((x-Phi)/Per))           
+    #    - see description in ANTARESS_settings.py (field 'glob_fit_dic['DIProp']['mod_prop']')      
     mod_prop=param[args['name_prop2input']['c__ord0__IS'+inst+'_VS'+vis]]*np.ones(n_coord)     
     
     #Processing coordinates for current visit
@@ -225,9 +220,12 @@ def mod_DIProp(param,args,inst,vis,n_coord):
         #Processing model associated with coordinate
         for mod in args['coord_list'][inst][vis][coord]:                
             corr_prop = {}
-            
+         
             #Sinusoidal variation 
             if mod=='sin':corr_prop['sin'] = [param[args['name_prop2input'][coord+'__sin__'+corr_val+'__IS'+inst+'_VS'+vis]] for corr_val in ['amp', 'off', 'per'] ]
+            
+            #Pulsation pattern
+            elif mod=='puls':corr_prop['puls'] = [param[args['name_prop2input'][coord+'__puls__'+corr_val+'__IS'+inst+'_VS'+vis]] for corr_val in ['ampHF', 'phiHF', 'freqHF','ampLF', 'phiLF', 'freqLF','f'] ]
             
             #Polynomial variation
             elif mod=='pol':corr_prop['pol']= polycoeff_def(param,args['coeff_ord2name'][inst][vis][coord+'__pol'])[1::]   
@@ -236,8 +234,8 @@ def mod_DIProp(param,args,inst,vis,n_coord):
             elif mod=='ramp':corr_prop['ramp'] = [param[args['name_prop2input'][coord+'__ramp__'+corr_val+'__IS'+inst+'_VS'+vis]] for corr_val in ['lnk',  'alpha' , 'tau' , 'xr' ] ]
             
             #Contribution to model
-            if args['prop_fit']=='RV':mod_prop = detrend_prof_gen_add(  corr_prop, coord_grid, mod_prop)  
-            else:mod_prop = detrend_prof_gen_mul(  corr_prop, coord_grid, mod_prop )             
+            if args['prop_fit']=='rv_res':mod_prop = detrend_prof_gen_add( coord, corr_prop, coord_grid, mod_prop, args)  
+            else:mod_prop = detrend_prof_gen_mul( coord, corr_prop, coord_grid, mod_prop , args )             
 
     return mod_prop
 
@@ -310,10 +308,11 @@ def main_joined_IntrProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
             'mode':'ana',  #to activate the calculation of line profile properties
             'prop_fit':prop_loc})
 
-        #Coordinate as a function of which the model describing the property is defined
-        if fit_prop_dic['coord_fit'][prop_loc] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
-        elif fit_prop_dic['coord_fit'][prop_loc]!='phase':fixed_args['coord_line']=fit_prop_dic['coord_fit'][prop_loc]
-        else:fixed_args['coord_line'] = None
+        #Coordinate as a function of which the model describing the line shape property is defined
+        if prop_loc != 'rv':
+            if fit_prop_dic['coord_fit'][prop_loc] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
+            else:fixed_args['coord_line']=fit_prop_dic['coord_fit'][prop_loc]
+        else:fixed_args['coord_line']=None
         
         #Property required to calculate the model
         fixed_args['par_list']+=[fixed_args['prop_fit']]
@@ -534,6 +533,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         'dim_exp':{},
         'ncen_bins':{},
         'cond_fit':{},
+        'cond_def_cont_all':{},
         'cond_def':{},
         'flux':{},
         'cov':{},
@@ -558,7 +558,8 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fixed_args['par_list']+=['line_prof']
     if fixed_args['mode']=='ana':
         if fit_prop_dic['coord_fit'] in ['abs_y_st','y_st2']:fixed_args['coord_line']='y_st'    
-        else:fixed_args['coord_line']=fit_prop_dic['coord_fit']
+        elif fit_prop_dic['coord_fit']!='phase':fixed_args['coord_line']=fit_prop_dic['coord_fit']
+        else:stop('ERROR : coordinate '+fit_prop_dic['coord_fit']+' not usable for line profiles')
         fixed_args['par_list']+=[fixed_args['coord_line']]
     else:
         fixed_args['par_list']+=['mu']
@@ -570,7 +571,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     for par in ['coord_obs','coord_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_dic['idx_in_fit'].keys())):  
         init_joined_routines_inst(inst,fit_dic,fixed_args)
-        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
+        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','cond_def_cont_all','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
         if (fixed_args['mode']=='ana') and (inst not in fixed_args['func_prof_name']):fixed_args['func_prof_name'][inst] = 'gauss'
@@ -634,7 +635,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 #Fit tables
                 #    - models must be calculated over the full, continuous spectral tables to allow for convolution
                 #      the fit is then performed on defined pixels only
-                for key in ['dcen_bins','cen_bins','edge_bins','cond_fit','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
+                for key in ['dcen_bins','cen_bins','edge_bins','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
               
                     #Upload latest processed intrinsic data
@@ -669,8 +670,8 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                         fixed_args['ncen_bins'][inst][vis] = ncen_bins  
                         fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
                             
-                        fit_prop_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
-                        fit_prop_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)                      
+                        fixed_args['cond_fit'][inst][vis]=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
+                        fixed_args['cond_def_cont_all'][inst][vis] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)                      
                     
                     #Trimming profile         
                     for key in ['cen_bins','flux','cond_def']:fixed_args[key][inst][vis][isub] = data_exp[key][iord_sel,idx_range_kept]
@@ -682,18 +683,17 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
                
                     #Initializing ranges in the relevant rest frame
-                    if len(cont_range)==0:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] = True    
+                    if len(cont_range)==0:fixed_args['cond_def_cont_all'][inst][vis][isub] = True    
                     else:
-                        for bd_int in cont_range:fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
-                    if len(fit_prop_dic['fit_range'][inst][vis])==0:fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] = True    
+                        for bd_int in cont_range:fixed_args['cond_def_cont_all'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
+                    if len(fit_prop_dic['fit_range'][inst][vis])==0:fixed_args['cond_fit'][inst][vis][isub] = True    
                     else:
-                        for bd_int in fit_prop_dic['fit_range'][inst][vis]:fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])        
+                        for bd_int in fit_prop_dic['fit_range'][inst][vis]:fixed_args['cond_fit'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])        
 
                     #Accounting for undefined pixels
-                    fit_prop_dic[inst][vis]['cond_def_cont_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]           
-                    fit_prop_dic[inst][vis]['cond_def_fit_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]          
-                    fit_dic['nx_fit']+=np.sum(fit_prop_dic[inst][vis]['cond_def_fit_all'][isub])
-                    fixed_args['cond_fit'][inst][vis][isub] = fit_prop_dic[inst][vis]['cond_def_fit_all'][isub]
+                    fixed_args['cond_def_cont_all'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]           
+                    fixed_args['cond_fit'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]          
+                    fit_dic['nx_fit']+=np.sum(fixed_args['cond_fit'][inst][vis][isub])
 
                     #Initialize PCs 
                     if fixed_args['n_pc'][inst][vis] is not None:
@@ -812,8 +812,8 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     prof_fit_dic[i_in]={
                         'cen_bins':fixed_args['cen_bins'][inst][vis][isub],
                         'flux':mod_dic[inst][vis][isub],
-                        'cond_def_fit':fit_prop_dic[inst][vis]['cond_def_fit_all'][isub],
-                        'cond_def_cont':fit_prop_dic[inst][vis]['cond_def_cont_all'][isub]
+                        'cond_def_fit':fixed_args['cond_fit'][inst][vis][isub],
+                        'cond_def_cont':fixed_args['cond_def_cont_all'][inst][vis][isub]
                         }
                     for pl_loc in fixed_args['transit_pl'][inst][vis]:
                         prof_fit_dic[i_in][pl_loc] = {}
@@ -1019,6 +1019,8 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         'dim_exp':{},
         'ncen_bins':{},
         'cond_fit' :{},
+        'cond_def_cont_all':{},
+        'cond_def_plot_all':{},
         'cond_def' :{},
         'flux':{},
         'cov' :{},
@@ -1389,7 +1391,7 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                      'fit_mode':fit_prop_dic['fit_mode']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
-    
+
     #Post-processing    
     fit_dic['p_null'] = deepcopy(p_final)
     for par in [ploc for ploc in fit_dic['p_null'] if 'ctrst' in ploc]:fit_dic['p_null'][par] = 0.
