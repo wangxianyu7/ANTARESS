@@ -590,14 +590,14 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
     
     
-        ################################################################################################################    
-        #%%%% Global DRS flux balance (exposures)
-        ################################################################################################################
-        if (plot_dic['Fbal_corr_DRS']!=''):
-            key_plot = 'Fbal_corr_DRS'
-    
-            #%%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
+            ################################################################################################################    
+            #%%%% Global DRS flux balance (exposures)
+            ################################################################################################################
+            if (plot_dic['Fbal_corr_DRS']!=''):
+                key_plot = 'Fbal_corr_DRS'
+        
+                #%%%%% Generic settings
+                plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
             
       
         
@@ -1583,10 +1583,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
     
     ##################################################################################################
-    #%%%% Estimates and residuals
+    #%%%% Estimates
     ##################################################################################################
-    for key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
-                     'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+    for key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
         if plot_dic[key_plot]!='':
 
             #%%%%% Generic settings
@@ -1601,16 +1600,18 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
                 #%%%%%% Model always required
                 plot_settings[key_plot]['plot_line_model'] = True
-                plot_settings[key_plot]['line_model'] = 'rec'
-        
-            ##############################################################################
-            #%%%%% Residuals
-            if key_plot in ['map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
-
-                #%%%%%% Correct only for continuum level
-                plot_settings[key_plot]['plot_line_model'] = True
                 plot_settings[key_plot]['line_model'] = 'rec' 
 
+
+    ################################################################################################################  
+    #%%%% Corrected profiles 
+    ################################################################################################################  
+    if gen_dic['diff_data_corr'] and (plot_dic['map_Res_corr_sp']!=''):                                        
+        key_plot = 'map_Res_corr_sp'
+
+        
+        #%%%%% Generic settings
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
 
 
 
@@ -2047,7 +2048,6 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings[key_plot]['nsteps'] = 1000
 
             #%%%% Plot data-equivalent model from property fit 
-            #    - this can also be used to check which exposures were fitted, as the best-fit model was only calculated over them in the fitting routine
             plot_settings[key_plot]['theo_obs_prop'] = False
 
             #%%%% Plot data-equivalent model from profile fit 
@@ -2295,6 +2295,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['plot_poles']=True  
         plot_settings[key_plot]['plot_hidden_pole']= False 
 
+        #Activating spots in the system view
+        plot_settings[key_plot]['plot_spots'] = False
+        
         #%%%% Source for spots
         #    - spot properties can come from three sources for this plot:
         # + the mock dataset (mock_spot_prop) - from mock_dic

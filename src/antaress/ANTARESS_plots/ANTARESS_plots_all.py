@@ -2459,10 +2459,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         
     ################################################################################################################ 
-    #%%%%% Estimates and residual profiles
+    #%%%%% Estimates profiles
     ################################################################################################################ 
-    for key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
-                     'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+    for key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
+
         if (key_plot in plot_settings):
             ##############################################################################
             #%%%%%% Un-cleaned estimates
@@ -2482,26 +2482,22 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             if key_plot == 'map_Res_prof_clean_pl_est':
                 print('-----------------------------------')
                 print('+ 2D map: cleaned theoretical planet-occulted profiles') 
-            ##############################################################################
-            #%%%%%% Residuals    
-            if key_plot == 'map_Res_prof_clean_sp_res':
-                print('-----------------------------------')
-                print('+ 2D map: residuals from cleaned spotted profiles') 
-            if key_plot == 'map_Res_prof_clean_pl_res':
-                print('-----------------------------------')
-                print('+ 2D map: residuals from cleaned planet-occulted profiles') 
-            if key_plot == 'map_Res_prof_unclean_sp_res':
-                print('-----------------------------------')
-                print('+ 2D map: residuals from un-cleaned spotted profiles') 
-            if key_plot == 'map_Res_prof_unclean_pl_res':
-                print('-----------------------------------')
-                print('+ 2D map: residuals from un-cleaned planet-occulted profiles') 
             
             #Plot map
             sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot],data_dic,gen_dic,glob_fit_dic,system_param,theo_dic,coord_dic,contact_phases,plot_dic)  
         
         
+    ################################################################################################################  
+    #%%%%% Corrected profiles 
+    ################################################################################################################  
+    if ('map_Res_corr_sp' in plot_settings):
+        key_plot = 'map_Res_corr_sp'
         
+        print('-----------------------------------')
+        print('+ 2D map : spot-corrected differential profiles') 
+        
+        #Plot map
+        sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot],data_dic,gen_dic,glob_fit_dic,system_param,theo_dic,coord_dic,contact_phases,plot_dic)        
         
         
         
@@ -5071,6 +5067,11 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
         if 'Intr' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
         elif 'Res' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Diff_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
         rest_frame = 'star'
+
+    #Data correct for spot contamination
+    elif plot_mod=='map_Res_corr_sp':
+        data_path_all = [gen_dic['save_data_dir']+'Corr_data/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
+        rest_frame='star'
      
     #Residual maps from Intrinsic and out-of-transit Residual profiles
     #    - data_path_all contains the path to Intrinsic profiles, from which will later be subtracted the model profiles
@@ -5096,11 +5097,7 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
             else:
                 data_path_all+=[prof_fit_vis['loc_data_corr_outpath']+str(iexp) for iexp in iexp_out]
 
-    #Residual maps from Residual profiles
-    #    - data_path_all contains the path to Residual profiles, from which will later be subtracted the model profiles
-    elif plot_mod in ['map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
-        data_path_all = [prof_fit_vis['loc_data_corr_path']+str(iexp) for iexp in iexp_plot]
-        rest_frame = prof_fit_vis['rest_frame']              
+    #Best-fit differential profiles and associated residuals          
     elif (plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']):
         #Retrieving the bin mode
         if vis+'_bin' in data_dic['Res']['idx_in_bin'][inst]:bin_mode='_bin'
@@ -6809,8 +6806,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
     #Options
     sc_fact=10**plot_options['sc_fact10']            
 
-    if plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
-                'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+    if plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
 
         #Defining whether we are plotting the planet-occulted or spotted profiles and if they are clean or uncleaned
         supp_name = plot_mod.split('_')[4]
@@ -6947,18 +6943,10 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                 #Data
                 else:     
                     
-                    if plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
-                                    'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
-                        
+                    if plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
                         cond_def_map[isub] = data_exp['cond_def']
-                        #Retrieving flux for these regions
-                        if '_est' in plot_mod:
-                            var_map[isub] = data_exp[corr_plot_mod+'_'+supp_name+'_flux'] 
-                        #Building residuals
-                        elif '_res' in plot_mod:
-                            data_exp_est = dataload_npz(gen_dic['save_data_dir']+'Diff_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp)) 
-                            var_map[isub] = data_exp['flux'] - data_exp_est[corr_plot_mod+'_'+supp_name+'_flux']
-                    
+                        var_map[isub] = data_exp[corr_plot_mod+'_'+supp_name+'_flux'] 
+
                     elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
                         cond_def_map[isub] = data_exp['cond_def_fit']
                         
@@ -7486,8 +7474,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                     cb.set_array(v_range) 	
                     cbar_txt = ''
                     if plot_mod in ['map_DIbin','map_DI_prof','map_Res_prof','map_Intr_prof','map_BF_Res_prof','map_BF_Res_prof_re','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin',
-                                    'map_Intr_1D','map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est','map_Res_prof_clean_sp_res',
-                                    'map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:cbar_txt='flux'
+                                    'map_Intr_1D','map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est','map_Res_corr_sp']:cbar_txt='flux'
                     elif plot_mod in ['map_Atm_prof','map_Atmbin','map_Atm_1D']:cbar_txt=plot_options['pl_atm_sign']
                     cbar_txt = scaled_title(plot_options['sc_fact10'],cbar_txt)  
                     if plot_options['reverse_2D']:
@@ -7513,12 +7500,13 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                         add_str+='_'+plot_options['mode_loc_data_corr']+'_'+plot_options['line_model'] 
                         if plot_mod=='map_Intr_prof_res':add_str+='_res'
                     elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
-                        add_str += 'BestFit'
-                        if plot_mod=='map_BF_Res_prof_re': add_str += 'Differential'
-                    elif plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
-                                    'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
+                        add_str += '_BestFit'
+                        if plot_mod=='map_BF_Res_prof_re': add_str += '_Residual'
+                    elif plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
                         prof_typ = plot_mod.split('_')[-1]
-                        add_str += '_'+corr_plot_mod+'_'+supp_name+'_'+prof_typ                            
+                        add_str += '_'+corr_plot_mod+'_'+supp_name+'_'+prof_typ
+                    elif plot_mod=='map_Res_corr_sp':
+                        add_str += '_SpotCorrected'                            
                     if ('bin' in plot_mod):add_str+='_'+plot_options['dim_plot'] 
                     plt.savefig(path_loc+'/'+add_str+'.'+save_res_map)                        
                     plt.close() 

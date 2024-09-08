@@ -338,7 +338,7 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'nx_fit':0,
         'run_name':'_'+gen_dic['main_pl_text'],
         'save_dir' : gen_dic['save_data_dir']+'/Joined_fits/'+rout_mode+'/'+fit_prop_dic['fit_mode']+'/'}
-    for key in ['mcmc_reuse','verbose','print_par','fit_mode','mcmc_run_mode','idx_in_fit','mod_prop','nthreads','priors','mcmc_set','unthreaded_op','deriv_prop']:fit_dic[key] = fit_prop_dic[key]
+    for key in ['mcmc_reuse','verbose','print_par','fit_mode','mcmc_run_mode','idx_in_fit','mod_prop','nthreads','priors','mcmc_set','unthreaded_op','deriv_prop','exclu_walk']:fit_dic[key] = fit_prop_dic[key]
     for key in ['SNRorders','Opt_Lvl']:
         if key in fit_prop_dic:fit_dic[key] = fit_prop_dic[key]
     
@@ -987,7 +987,11 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                     wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='cos_istar')],axis=1)<0.) )
 
 
+            # if gen_dic['fit_ResProf']:
 
+            #     if gen_dic['star_name'] == 'AUMic':
+            #         wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='ang__ISESPRESSO_VSmock_vis_SPspot1')],axis=1)<80.) )
+   
 
 
             print('   ',len(wgood),' walkers kept / ',fit_dic['nwalkers'])
@@ -1018,7 +1022,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                 for spot in fixed_args['transit_sp'][inst][vis]:
                     par = 'Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot
                     p_final[par] += fixed_args['bjd_time_shift'][inst][vis]
-                    if fit_dic['fit_mode']=='mcmc':merged_chain[:,np_where1D(fixed_args['var_par_list']==par)[0]]+= fixed_args['bjd_time_shift'][inst][vis]    
+                    if fit_dic['fit_mode']=='mcmc':merged_chain[:,np_where1D(fixed_args['var_par_list']==par)]+= fixed_args['bjd_time_shift'][inst][vis]    
                     fixed_args['bjd_time_shift'][inst][vis] = 0.
     
     #------------------------------------------------------------

@@ -1415,7 +1415,7 @@ def FIT_joined_ResProf(param,x_tab,args=None):
     """
     
     #Models over fitted spectral ranges
-    # print('-1:', param)
+    # print('1:', param)
     mod_dic=joined_ResProf(param,args)[0]
 
     #Merit table
@@ -1486,11 +1486,12 @@ def joined_ResProf(param,fixed_args):
 
     #Updating spectral grid for master out
     if 'rv_shift' in param:
+        if 'spec' in args['type']:spec_dopshift = 1./gen_specdopshift(param['rv_shift'])
         for key in ['cen_bins', 'edge_bins']:
             if 'spec' in args['type']:
-                args['master_out']['master_out_tab'][key] = args['master_out']['master_out_tab'][key] * (1 - param['rv_shift']/c_light)
+                args['master_out']['master_out_tab'][key]*=spec_dopshift
             else:
-                args['master_out']['master_out_tab'][key] = args['master_out']['master_out_tab'][key] - param['rv_shift']
+                args['master_out']['master_out_tab'][key]-=param['rv_shift']
 
     #Updating stellar grid
     #    - necessary to determine the global 2D quiet star grid on the most up to date version of the stellar grid
@@ -1525,43 +1526,43 @@ def joined_ResProf(param,fixed_args):
             #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
             #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
             args['unquiet_star'] = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-            for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
+            # for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
 
-                #Update the spectral grid of the exposures considered
-                if 'rv_shift' in param:
-                    for key in ['cen_bins', 'edge_bins']:
-                        if 'spec' in args['type']:
-                            args[key][inst][vis][isub] = args[key][inst][vis][isub] * (1 - param['rv_shift']/c_light)
-                        else:
-                            args[key][inst][vis][isub] = args[key][inst][vis][isub] - param['rv_shift']
+            #     #Update the spectral grid of the exposures considered
+            #     if 'rv_shift' in param:
+            #         for key in ['cen_bins', 'edge_bins']:
+            #             if 'spec' in args['type']:
+            #                 args[key][inst][vis][isub] = args[key][inst][vis][isub] * (1 - param['rv_shift']/c_light)
+            #             else:
+            #                 args[key][inst][vis][isub] = args[key][inst][vis][isub] - param['rv_shift']
 
-                #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
-                plocced_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-                for pl_loc in args['transit_pl'][inst][vis]:
-                    if np.abs(coord_pl_sp[pl_loc]['ecl'][isub])!=1:
-                        mini_pl_dic = {}
-                        mini_pl_dic['x_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][0, isub], coord_pl_sp[pl_loc]['cen_pos'][0, isub], coord_pl_sp[pl_loc]['end_pos'][0, isub]]
-                        mini_pl_dic['y_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][1, isub], coord_pl_sp[pl_loc]['cen_pos'][1, isub], coord_pl_sp[pl_loc]['end_pos'][1, isub]]
-                        mini_pl_dic['RpRs']=args['system_prop']['achrom'][pl_loc][0]
-                        if ('lambda_rad__pl'+pl_loc in args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
-                        else:lamb_name = 'lambda_rad__pl'+pl_loc 
-                        mini_pl_dic['lambda']=param_val[lamb_name]
-                        pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'])
-                        plocced_star_grid |= pl_plocced_star_grid
+            #     #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
+            #     plocced_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
+            #     for pl_loc in args['transit_pl'][inst][vis]:
+            #         if np.abs(coord_pl_sp[pl_loc]['ecl'][isub])!=1:
+            #             mini_pl_dic = {}
+            #             mini_pl_dic['x_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][0, isub], coord_pl_sp[pl_loc]['cen_pos'][0, isub], coord_pl_sp[pl_loc]['end_pos'][0, isub]]
+            #             mini_pl_dic['y_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][1, isub], coord_pl_sp[pl_loc]['cen_pos'][1, isub], coord_pl_sp[pl_loc]['end_pos'][1, isub]]
+            #             mini_pl_dic['RpRs']=args['system_prop']['achrom'][pl_loc][0]
+            #             if ('lambda_rad__pl'+pl_loc in args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
+            #             else:lamb_name = 'lambda_rad__pl'+pl_loc 
+            #             mini_pl_dic['lambda']=param_val[lamb_name]
+            #             pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'])
+            #             plocced_star_grid |= pl_plocced_star_grid
 
-                #Figure out which cells of the full stellar grid are spotted in at least one exposure
-                spotted_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-                for spot in args['transit_sp'][inst][vis]:
-                    if np.sum(coord_pl_sp[spot]['is_visible'][:, isub])>0:
-                        mini_spot_dic = {}
-                        for par_spot in args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp[spot][par_spot][:, isub]
-                        _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic,coord_pl_sp[spot]['ang_rad'], args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
-                        spotted_star_grid |= spot_spotted_star_grid
+            #     #Figure out which cells of the full stellar grid are spotted in at least one exposure
+            #     spotted_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
+            #     for spot in args['transit_sp'][inst][vis]:
+            #         if np.sum(coord_pl_sp[spot]['is_visible'][:, isub])>0:
+            #             mini_spot_dic = {}
+            #             for par_spot in args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp[spot][par_spot][:, isub]
+            #             _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic,coord_pl_sp[spot]['ang_rad'], args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
+            #             spotted_star_grid |= spot_spotted_star_grid
 
-                #Update the global 2D quiet star grid
-                #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots and planets in one of the processed exposure
-                #      contributions from the other cells do not need to be calculated because they are removed when computing differential profiles
-                args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid)
+            #     #Update the global 2D quiet star grid
+            #     #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots and planets in one of the processed exposure
+            #     #      contributions from the other cells do not need to be calculated because they are removed when computing differential profiles
+            #     args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid)
 
             #-----------------------------------------------------------
             #Defining the base stellar profile

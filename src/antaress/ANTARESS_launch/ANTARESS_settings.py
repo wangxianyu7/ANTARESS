@@ -4099,8 +4099,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     ##################################################################################################       
     #%%% Module: planet-occulted profiles and spotted profiles estimates
     #    - use the module to generate:
-    # + local profiles that are then used to correct residual profiles from stellar contamination
-    # + intrinsic profiles that are corrected from measured ones to assess the quality of the estimates 
+    # + Data-drive approach : local profiles that are then used to correct differential profiles from stellar contamination
+    # + Model-driven approach : local profiles for the planet-occulted/spotted region of the star with and without planet-spot overlap being accounted for
     #    - the choice to use measured ('meas') or theoretical ('theo') stellar surface RVs to shift local profiles is set by data_dic['Intr']['align_mode']
     ##################################################################################################     
     
@@ -4171,16 +4171,10 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     #    - planet-occulted profiles retrieved in the case where spots were not included in the model
     #    - computing both "clean" and "spotted" versions of these maps can help identify if planets occulted spots during the transit or not
     plot_dic['map_Res_prof_unclean_sp_est']=''
-    plot_dic['map_Res_prof_unclean_pl_est']=''   
-    
-    #%%%%% 2D maps : residuals theoretical planet-occulted and spotted profiles (for "clean" and/or "unclean" profiles)
-    #    - same format as 'map_Res_prof_pl_est'
-    plot_dic['map_Res_prof_clean_sp_res']=''
-    plot_dic['map_Res_prof_clean_pl_res']=''
-    plot_dic['map_Res_prof_unclean_sp_res']=''
-    plot_dic['map_Res_prof_unclean_pl_res']=''   
+    plot_dic['map_Res_prof_unclean_pl_est']=''      
         
-        
+    #%%%%% 2D maps : differential profiles corrected for the impact of spots
+    plot_dic['map_Res_corr_sp']=''       
         
         
         

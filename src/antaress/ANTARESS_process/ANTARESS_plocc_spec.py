@@ -34,6 +34,7 @@ def def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_p
     """ 
     print('   > Building estimates for planet-occulted stellar profiles')
     opt_dic = data_dic['Intr']['opt_loc_data_corr'] 
+    for key in ['clean_calc','corr_spot','map_diff_res']:opt_dic[key]=False
     corr_mode = opt_dic['corr_mode']
     text_print={
         'DIbin':    '         Using DI master',
@@ -54,7 +55,7 @@ def def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_p
             
         #Using global profile model
         elif corr_mode=='glob_mod': 
-            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,False,'')
+            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,False)
             
         #Using individual profile models
         elif corr_mode=='indiv_mod': 
@@ -241,7 +242,7 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
 
 
 
-def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,spot_on,map_diff_res):
+def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,spot_on):
     r"""**Planet-occulted / spotted exposure profiles: global model**
     
     Sub-function to define planet-occulted and spotted profiles using line profile models fitted to all
@@ -347,27 +348,35 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     chrom_mode = data_vis['system_prop']['chrom_mode']
   
     #Figuring out if we need to build residuals from best-fit differential profiles
-    build_residuals=False
-    if map_diff_res!='':
-        print('         Building best-fit differential profiles')
-        build_residuals=True
+    for key in ['map_diff_res', 'corr_spot']:
+        if opt_dic[key]:
+            if key=='map_diff_res':
+                print('         Building best-fit differential profiles')
+                
+                #Retrieving the order
+                if (inst in fixed_args['order']):iord_sel =  fixed_args['order'][inst]
+                else:iord_sel = 0
 
-        #Retrieving the order
-        if (inst in fixed_args['order']):iord_sel =  fixed_args['order'][inst]
-        else:iord_sel = 0
+                if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst)):makedirs(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst) 
+                if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)):makedirs(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)
 
-        #Initializing necesary dictionaries for the evaluation of best-fit differential profiles
-        fixed_args['rout_mode']='ResProf'
-        fixed_args['raw_DI_profs']={}
-        fixed_args['cond_def_fit']={}
-        fixed_args['plot_edge_bins']={}
-        cond_def_all=np.zeros([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=bool)
-        cond_undef_weights=np.zeros(len(data_prop['master_out']['master_out_tab']['cen_bins']), dtype=bool)
-        fixed_args['weights']=np.zeros([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-        fixed_args['master_flux']=np.zeros([len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-        contrib_profs=np.zeros([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-        if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst)):makedirs(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst) 
-        if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)):makedirs(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)
+            else:
+                print('         Correcting for spot contamination in data')
+
+                fixed_args['corr_spot']=True
+                if (not path_exist(gen_dic['save_data_dir']+'Corr_data/')):makedirs(gen_dic['save_data_dir']+'Corr_data/') 
+
+            #Initializing necesary dictionaries
+            fixed_args[key+'_dic']={}
+            fixed_args['rout_mode']='ResProf'
+            fixed_args[key+'_dic']['raw_DI_profs']={}
+            fixed_args[key+'_dic']['cond_def_fit']={}
+            fixed_args[key+'_dic']['plot_edge_bins']={}
+            fixed_args[key+'_dic']['cond_def_all']=np.zeros([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=bool)
+            fixed_args[key+'_dic']['cond_undef_weights']=np.zeros(len(data_prop['master_out']['master_out_tab']['cen_bins']), dtype=bool)
+            fixed_args[key+'_dic']['weights']=np.zeros([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=float)
+            fixed_args[key+'_dic']['master_flux']=np.zeros([len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=float)
+            fixed_args[key+'_dic']['contrib_profs']=np.zeros([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])], dtype=float)
 
     #Activation of spectral conversion and resampling 
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_vis['type']) 
@@ -386,39 +395,39 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     #-----------------------------------------------------------
     #Figuring out which cells of the stellar grid are never spotted or planet-occulted
     #-----------------------------------------------------------
-    if build_residuals:
+    if (opt_dic['map_diff_res']) or (opt_dic['corr_spot']):
         #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
         #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
         fixed_args['unquiet_star'] = np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
-        for isub,i_in in enumerate(iexp_list): 
+        # for isub,i_in in enumerate(iexp_list): 
 
-            #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
-            plocced_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
-            for pl_loc in data_vis['transit_pl']:
-                if np.abs(coord_pl_sp[pl_loc]['ecl'][isub])!=1:
-                    mini_pl_dic = {}
-                    mini_pl_dic['x_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][0, isub], coord_pl_sp[pl_loc]['cen_pos'][0, isub], coord_pl_sp[pl_loc]['end_pos'][0, isub]]
-                    mini_pl_dic['y_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][1, isub], coord_pl_sp[pl_loc]['cen_pos'][1, isub], coord_pl_sp[pl_loc]['end_pos'][1, isub]]
-                    mini_pl_dic['RpRs']=fixed_args['system_prop']['achrom'][pl_loc][0]
-                    if ('lambda_rad__pl'+pl_loc in fixed_args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
-                    else:lamb_name = 'lambda_rad__pl'+pl_loc 
-                    mini_pl_dic['lambda']=params[lamb_name]
-                    pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'])
-                    plocced_star_grid |= pl_plocced_star_grid
+        #     #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
+        #     plocced_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
+        #     for pl_loc in data_vis['transit_pl']:
+        #         if np.abs(coord_pl_sp[pl_loc]['ecl'][isub])!=1:
+        #             mini_pl_dic = {}
+        #             mini_pl_dic['x_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][0, isub], coord_pl_sp[pl_loc]['cen_pos'][0, isub], coord_pl_sp[pl_loc]['end_pos'][0, isub]]
+        #             mini_pl_dic['y_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][1, isub], coord_pl_sp[pl_loc]['cen_pos'][1, isub], coord_pl_sp[pl_loc]['end_pos'][1, isub]]
+        #             mini_pl_dic['RpRs']=fixed_args['system_prop']['achrom'][pl_loc][0]
+        #             if ('lambda_rad__pl'+pl_loc in fixed_args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
+        #             else:lamb_name = 'lambda_rad__pl'+pl_loc 
+        #             mini_pl_dic['lambda']=params[lamb_name]
+        #             pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'])
+        #             plocced_star_grid |= pl_plocced_star_grid
 
-            #Figure out which cells of the full stellar grid are spotted in at least one exposure
-            spotted_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
-            for spot in transit_spots:
-                if np.sum(coord_pl_sp[spot]['is_visible'][:, isub])>0:
-                    mini_spot_dic = {}
-                    for par_spot in fixed_args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp[spot][par_spot][:, isub]
-                    _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic,coord_pl_sp[spot]['ang_rad'], fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'], fixed_args['grid_dic']['z_st_sky'], fixed_args['grid_dic'], system_param_loc['star'])
-                    spotted_star_grid |= spot_spotted_star_grid
+        #     #Figure out which cells of the full stellar grid are spotted in at least one exposure
+        #     spotted_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
+        #     for spot in transit_spots:
+        #         if np.sum(coord_pl_sp[spot]['is_visible'][:, isub])>0:
+        #             mini_spot_dic = {}
+        #             for par_spot in fixed_args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp[spot][par_spot][:, isub]
+        #             _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic,coord_pl_sp[spot]['ang_rad'], fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'], fixed_args['grid_dic']['z_st_sky'], fixed_args['grid_dic'], system_param_loc['star'])
+        #             spotted_star_grid |= spot_spotted_star_grid
 
-            #Update the global 2D quiet star grid
-            #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots and planets in one of the processed exposure
-            #      contributions from the other cells do not need to be calculated because they are removed when computing differential profiles
-            fixed_args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid)
+        #     #Update the global 2D quiet star grid
+        #     #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots and planets in one of the processed exposure
+        #     #      contributions from the other cells do not need to be calculated because they are removed when computing differential profiles
+        #     fixed_args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid)
 
     #Processing relevant exposures
     for isub,iexp in enumerate(iexp_list):
@@ -469,7 +478,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         if plocc_prof_type=='Res':
             args_exp['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],args_exp,args_exp['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
             
-            if build_residuals:
+            if opt_dic['map_diff_res']:
                 #Construction of stellar flux grid 
                 base_DI_prof = custom_DI_prof(params,None,args=args_exp)[0]
 
@@ -526,99 +535,146 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         
         #Saving estimate of local profile for current exposure                 
         np.savez_compressed(save_path,data=data_store,allow_pickle=True)
- 
-        if build_residuals:
-            #Building exposure's differential profile
-            sp_line_model = base_DI_prof - surf_prop_dic[chrom_mode]['line_prof'][:,0] - spot_prop_dic[chrom_mode]['line_prof'][:,0]
 
-            #Convolve model profiles to instrument resolution
-            conv_line_model = convol_prof(sp_line_model,args_exp['cen_bins'],fixed_args['FWHM_inst'])
+        for key in ['map_diff_res', 'corr_spot']:
+            if opt_dic[key]:
+                
+                # Correcting exposure profile for the spot contamination - planet-spot overlap is accounted for
+                # Let us define F_exp as the profile of a given exposure. Then F_exp can be expressed as:
+                #
+                # F_exp = F_DI  -  F_pl  -  F_sp
+                #
+                # where F_DI is the unocculted star profile and F_pl, F_sp are planet and spot deviation profiles
+                # The planet-deviation profile can be re-written as: 
+                #
+                # F_pl = sum( pl, sum(region A, f)  +  sum(region B, s - f)  )
+                #
+                # where region A is the portion of the planet-occulted region that covers the quiet star and region B is the portion of the planet-occulted
+                #region that covers one or more spots.
+                # f is the profile assigned to a quiet star cell which s is the profile assigned to a spotted cell.
+                # To remove the impact of spots in the exposure profile F_exp, we use the best-fit results from our fitting routine to 
+                # find an estimate for F_sp and for the sum(region B, s - f) portion of F_pl, which we will name F_sp' and s'. 
+                #In this parametrization, we have:
+                #
+                #F_exp ~= F_DI - F_sp' - sum( pl, sum(region A, f)  +  sum(region B, s' - f)  )
+                # <==>
+                # F_exp + F_sp' + sum( pl, sum(region B, s' - f) ) = F_DI - sum( pl, sum(region A, f))
+                #
+                # At this point, we simply need to re-inject the quiet star in region B to obtain an exposure profile uncontaminated by spots:
+                #
+                # F_exp + F_sp' + sum( pl, sum(region B, s' - f) ) - sum( pl, sum(region B, f)) = F_DI - sum( pl, sum(region A, f)) - sum( pl, sum(region B, f))
+                # <==>
+                #F_exp + F_sp' + sum(  pl, sum(region B, s' - 2f)) = F_DI - F_pl,clean
+                #
+                #With F_pl,clean being the the planet deviation profile if spots were not present in the planet-occulted region.
+                #In the code below, spot_prop_dic[chrom_mode]['line_prof'][:,0] corresponds to F_sp' 
+                #while surf_prop_dic[chrom_mode]['corr_supp'][:,0] corresponds to sum(  pl, sum(region B, s' - 2f)).
+                if key=='corr_spot':
+                    #Retrieving exposure profile
+                    data_exp_raw = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp_eff))
 
-            #Set negative flux values to null
-            conv_line_model[conv_line_model<base_DI_prof[0]-1] = 0.
+                    #Correcting exposure 
+                    line_model = data_exp_raw['flux'][iord_sel] + spot_prop_dic[chrom_mode]['line_prof'][:,0] + surf_prop_dic[chrom_mode]['corr_supp'][:,0]
 
-            #Store the model DI profiles for calculation of the differential profiles later
-            fixed_args['raw_DI_profs'][isub] = conv_line_model
+                    #Covariance matrix to use
+                    cov = data_exp_raw['cov'][iord_sel]
 
-            #Store cond_def for later
-            fixed_args['cond_def_fit'][isub] = data_loc_exp['cond_def']
-            fixed_args['plot_edge_bins'][isub] = fixed_args['edge_bins']
+                else:
+                    #Building exposure profile
+                    line_model = base_DI_prof - surf_prop_dic[chrom_mode]['line_prof'][:,0] - spot_prop_dic[chrom_mode]['line_prof'][:,0]
 
-            #Loop over exposures contributing to the master-out
-            if iexp_glob in data_prop['master_out']['idx_in_master_out'][inst][vis]:
+                    #Covariance matrix to use
+                    cov = data_loc_exp['cov'][iord_sel]
 
-                #Storing the index of the exposure considered in the array of master-out indices
-                master_isub = data_prop['master_out']['idx_in_master_out'][inst][vis].index(iexp_glob)
+                #Convolve profile to instrument resolution
+                conv_line_model = convol_prof(line_model,args_exp['cen_bins'],fixed_args['FWHM_inst'])
 
-                #Re-sample model DI profile on a common grid
-                resamp_line_model = bind.resampling(data_prop['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],conv_line_model,kind=gen_dic['resamp_mode'])
+                #Set negative flux values to null - only used for newly created profiles
+                if key=='map_diff_res':conv_line_model[conv_line_model<base_DI_prof[0]-1] = 0.
 
-                #Making weights for the master-out
-                raw_weights=weights_bin_prof(range(fixed_args['nord']), data_prop['master_out']['scaled_data_paths'][inst][vis],inst,vis,data_prop['master_out']['corr_Fbal'],data_prop['master_out']['corr_FbalOrd'],\
-                                                    data_prop['master_out']['save_data_dir'],fixed_args['type'],fixed_args['nord'],isub,'DI',fixed_args['type'],fixed_args['dim_exp'],None,\
-                                                    None,np.array([args_exp['cen_bins']]),coord_vis['t_dur'][isub],np.array([conv_line_model]),\
-                                                    np.array([data_loc_exp['cov'][iord_sel]]),ref_val=base_DI_prof[0]-1, bdband_flux_sc=data_prop['master_out']['flux_sc'])[0]
+                #Store the exposure profiles for calculation of the differential profiles later
+                fixed_args[key+'_dic']['raw_DI_profs'][isub] = conv_line_model
 
-                # - Re-sample the weights
-                resamp_weights = bind.resampling(data_prop['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],raw_weights,kind=gen_dic['resamp_mode'])
+                #Store cond_def for later
+                fixed_args[key+'_dic']['cond_def_fit'][isub] = data_loc_exp['cond_def']
+                fixed_args[key+'_dic']['plot_edge_bins'][isub] = fixed_args['edge_bins']
 
-                # - Set nan values and corresponding weights to 0 
-                cond_def_all[master_isub] = ~np.isnan(resamp_line_model)
-                resamp_weights[~cond_def_all[master_isub]] = 0.
-                resamp_line_model[~cond_def_all[master_isub]] = 0.
+                #Loop over exposures contributing to the master-out
+                if iexp_glob in data_prop['master_out']['idx_in_master_out'][inst][vis]:
 
-                # - Find pixels where there is undefined or negative weights 
-                cond_undef_weights |= ( (np.isnan(resamp_weights) | (resamp_weights<0) ) & cond_def_all[master_isub] ) 
+                    #Storing the index of the exposure considered in the array of master-out indices
+                    master_isub = data_prop['master_out']['idx_in_master_out'][inst][vis].index(iexp_glob)
 
-                # - Store the weights 
-                fixed_args['weights'][master_isub] = resamp_weights
+                    #Re-sample model DI profile on a common grid
+                    resamp_line_model = bind.resampling(data_prop['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],conv_line_model,kind=gen_dic['resamp_mode'])
 
-                #Store the contributing profiles to the master-out
-                contrib_profs[master_isub] = resamp_line_model
+                    #Making weights for the master-out
+                    raw_weights=weights_bin_prof(range(fixed_args['nord']), data_prop['master_out']['scaled_data_paths'][inst][vis],inst,vis,data_prop['master_out']['corr_Fbal'],data_prop['master_out']['corr_FbalOrd'],\
+                                                        data_prop['master_out']['save_data_dir'],fixed_args['type'],fixed_args['nord'],isub,'DI',fixed_args['type'],fixed_args['dim_exp'],None,\
+                                                        None,np.array([args_exp['cen_bins']]),coord_vis['t_dur'][isub],np.array([conv_line_model]),\
+                                                        np.array([cov]),ref_val=base_DI_prof[0]-1, bdband_flux_sc=data_prop['master_out']['flux_sc'])[0]
+
+                    # - Re-sample the weights
+                    resamp_weights = bind.resampling(data_prop['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],raw_weights,kind=gen_dic['resamp_mode'])
+
+                    # - Set nan values and corresponding weights to 0 
+                    fixed_args[key+'_dic']['cond_def_all'][master_isub] = ~np.isnan(resamp_line_model)
+                    resamp_weights[~fixed_args[key+'_dic']['cond_def_all'][master_isub]] = 0.
+                    resamp_line_model[~fixed_args[key+'_dic']['cond_def_all'][master_isub]] = 0.
+
+                    # - Find pixels where there is undefined or negative weights 
+                    fixed_args[key+'_dic']['cond_undef_weights'] |= ( (np.isnan(resamp_weights) | (resamp_weights<0) ) & fixed_args[key+'_dic']['cond_def_all'][master_isub] ) 
+
+                    # - Store the weights 
+                    fixed_args[key+'_dic']['weights'][master_isub] = resamp_weights
+
+                    #Store the contributing profiles to the master-out
+                    fixed_args[key+'_dic']['contrib_profs'][master_isub] = resamp_line_model
 
     #Complementary data
     data_add={'idx_est_loc':iexp_list,'cont':params['cont']}
 
-    if build_residuals:
-        #Defined bins in binned spectrum
-        cond_def_binned = np.sum(cond_def_all,axis=0)>0
+    for key in ['map_diff_res', 'corr_spot']:
+        if opt_dic[key]:        
 
-        #Disable weighing in all binned profiles for pixels validating at least one of these conditions:
-        cond_null_weights = (np.sum(fixed_args['weights'],axis=0)==0.) & cond_def_binned
-        fixed_args['weights'][:, cond_undef_weights | cond_null_weights] = 1.
+            #Defined bins in binned spectrum
+            cond_def_binned = np.sum(fixed_args[key+'_dic']['cond_def_all'],axis=0)>0
 
-        #Global weight table
-        x_low = fixed_args['ph_fit'][fixed_args['ref_pl']][0,data_prop['master_out']['idx_in_master_out'][inst][vis]]
-        x_high = fixed_args['ph_fit'][fixed_args['ref_pl']][2,data_prop['master_out']['idx_in_master_out'][inst][vis]]
-        dx_ov_in = x_high - x_low
-        dx_ov_all = np.ones([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])],dtype=float) if (np.sum(dx_ov_in)==0) else dx_ov_in[:,None] 
-        fixed_args['weights'] *= dx_ov_all
+            #Disable weighing in all binned profiles for pixels validating at least one of these conditions:
+            cond_null_weights = (np.sum(fixed_args[key+'_dic']['weights'],axis=0)==0.) & cond_def_binned
+            fixed_args[key+'_dic']['weights'][:, fixed_args[key+'_dic']['cond_undef_weights'] | cond_null_weights] = 1.
 
-        #Storing normalization information
-        glob_weights_tot = np.sum(fixed_args['weights'][:, cond_def_binned],axis=0)
+            #Global weight table
+            x_low = fixed_args['ph_fit'][fixed_args['ref_pl']][0,data_prop['master_out']['idx_in_master_out'][inst][vis]]
+            x_high = fixed_args['ph_fit'][fixed_args['ref_pl']][2,data_prop['master_out']['idx_in_master_out'][inst][vis]]
+            dx_ov_in = x_high - x_low
+            dx_ov_all = np.ones([len(data_prop['master_out']['idx_in_master_out'][inst][vis]),len(data_prop['master_out']['master_out_tab']['cen_bins'])],dtype=float) if (np.sum(dx_ov_in)==0) else dx_ov_in[:,None] 
+            fixed_args[key+'_dic']['weights'] *= dx_ov_all
 
-        #Perform the weighted average to retrieve the master-out
-        # - We can disregard the division by the sum of the weights since the weights are normalized
-        fixed_args['master_flux'][cond_def_binned] = np.sum(contrib_profs[:, cond_def_binned]*fixed_args['weights'][:, cond_def_binned], axis=0)/glob_weights_tot
+            #Storing normalization information
+            glob_weights_tot = np.sum(fixed_args[key+'_dic']['weights'][:, cond_def_binned],axis=0)
 
-        #Building best-fit differential profiles            
-        diff_prof_mod={}
-        for isub,iexp in enumerate(iexp_list):
-            
-            #Retrieving the master-out flux
-            master_out_flux=fixed_args['master_flux']
+            #Perform the weighted average to retrieve the master-out
+            # - We can disregard the division by the sum of the weights since the weights are normalized
+            fixed_args[key+'_dic']['master_flux'][cond_def_binned] = np.sum(fixed_args[key+'_dic']['contrib_profs'][:, cond_def_binned]*fixed_args[key+'_dic']['weights'][:, cond_def_binned], axis=0)/glob_weights_tot
 
-            #Re-sample master on table of the exposure considered
-            resamp_master = bind.resampling(fixed_args['plot_edge_bins'][isub],data_prop['master_out']['master_out_tab']['edge_bins'],master_out_flux, kind=gen_dic['resamp_mode'])
+            #Building best-fit differential profiles            
+            diff_prof_mod={}
+            for isub,iexp in enumerate(iexp_list):
+                
+                #Re-sample master on table of the exposure considered
+                resamp_master = bind.resampling(fixed_args[key+'_dic']['plot_edge_bins'][isub],data_prop['master_out']['master_out_tab']['edge_bins'],fixed_args[key+'_dic']['master_flux'], kind=gen_dic['resamp_mode'])
 
-            #Calculate the differential profile on the wavelength table of the exposure considered
-            res_prof = resamp_master - fixed_args['raw_DI_profs'][isub]
-            diff_prof_mod['flux'] = np.array([res_prof])
-            diff_prof_mod['cond_def_fit'] = fixed_args['cond_def_fit'][isub]
-            diff_prof_mod['edge_bins'] = np.array([fixed_args['plot_edge_bins'][isub]])
+                #Calculate the differential profile on the wavelength table of the exposure considered
+                res_prof = resamp_master - fixed_args[key+'_dic']['raw_DI_profs'][isub]
+                diff_prof_mod['flux'] = np.array([res_prof])
+                if key=='map_diff_res':diff_prof_mod['cond_def_fit'] = fixed_args[key+'_dic']['cond_def_fit'][isub]
+                else:diff_prof_mod['cond_def'] = fixed_args[key+'_dic']['cond_def_fit'][isub]
+                diff_prof_mod['edge_bins'] = np.array([fixed_args[key+'_dic']['plot_edge_bins'][isub]])
 
-            #Storing best-fit differential profiles
-            datasave_npz(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis+'/BestFit'+'_'+str(isub),diff_prof_mod)
+                #Storing best-fit differential profiles
+                if key=='map_diff_res':datasave_npz(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis+'/BestFit'+'_'+str(isub),diff_prof_mod)
+                else:datasave_npz(gen_dic['save_data_dir']+'Corr_data/'+inst+'_'+vis+'_'+str(isub),diff_prof_mod)
 
 
     return data_add
@@ -913,20 +969,19 @@ def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param
         print('         Calculating data')     
              
         #Calculating the clean version of the data
-        opt_dic['clean_calc']=False
-        if (plot_dic['map_Res_prof_clean_pl_est']!='') or (plot_dic['map_Res_prof_clean_sp_est']!=''):
-            opt_dic['clean_calc']=True
+        for key in ['clean_calc','corr_spot','map_diff_res']:opt_dic[key]=False
+
+        if (plot_dic['map_Res_prof_clean_pl_est']!='') or (plot_dic['map_Res_prof_clean_sp_est']!=''):opt_dic['clean_calc']=True
+        if plot_dic['map_Res_corr_sp']!='':opt_dic['corr_spot']=True
+        if plot_dic['map_BF_Res_prof_re']!='':opt_dic['map_diff_res']=True
 
         #Using global profile model
         if corr_mode=='glob_mod': 
-            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,True,plot_dic['map_BF_Res_prof_re'])
+            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,True)
         
         else:stop('WARNING: Only joined-fit results can be used at the moment. Set corr_mode to \'glob_mod\'')
 
         #Saving complementary data for plots
-        if (plot_dic['map_Res_prof_clean_sp_res']!='') or (plot_dic['map_Res_prof_clean_pl_res']!='') or (plot_dic['map_Res_prof_unclean_sp_res']!='') or (plot_dic['map_Res_prof_unclean_pl_res']!=''):
-            data_add['loc_data_corr_path'] = data_dic[inst][vis]['proc_Res_data_paths']
-            data_add['rest_frame'] = data_dic['Res'][inst][vis]['rest_frame']
         datasave_npz(gen_dic['save_data_dir']+'Diff_estimates/'+corr_mode+'/'+inst+'_'+vis+'_add',data_add)
 
     #Checking that local data has been calculated for all exposures
