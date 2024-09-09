@@ -111,6 +111,7 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
 
     #Plot legend figure
     plot_options[key_plot]['legend']=False 
+    plot_options[key_plot]['legend_to_plot']={} 
 
     #--------------------------------------
 
