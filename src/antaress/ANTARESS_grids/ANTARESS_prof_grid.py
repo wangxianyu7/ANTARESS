@@ -42,7 +42,7 @@ class CFunctionWrapper:
         ]
         self.fun_to_use.restype = None
 
-    def coadd_loc_gauss_prof(self, rv_surf_star_grid, ctrst_grid, FWHM_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, gauss_grid):
+    def coadd_loc_gauss_prof_with_C(self, rv_surf_star_grid, ctrst_grid, FWHM_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, gauss_grid):
         self.fun_to_use(rv_surf_star_grid, ctrst_grid, FWHM_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, gauss_grid)
 
     def __getstate__(self):
@@ -823,7 +823,7 @@ def use_C_coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
     ncen_bins = args['ncen_bins']
     gauss_grid = np.zeros((Fsurf_grid_spec_shape0, ncen_bins), dtype=np.float64).flatten()
     c_function_wrapper = args['c_function_wrapper']
-    c_function_wrapper.coadd_loc_gauss_prof(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec / sc_10,ncen_bins,Fsurf_grid_spec_shape0,gauss_grid)
+    c_function_wrapper.coadd_loc_gauss_prof_with_C(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec / sc_10,ncen_bins,Fsurf_grid_spec_shape0,gauss_grid)
     truegauss_grid = gauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins)) * sc_10
     return truegauss_grid
 

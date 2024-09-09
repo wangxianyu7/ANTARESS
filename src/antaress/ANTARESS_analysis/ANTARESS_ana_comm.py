@@ -1008,7 +1008,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
             # if gen_dic['fit_ResProf']:
 
             #     if gen_dic['star_name'] == 'AUMic':
-            #         wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='ang__ISESPRESSO_VSmock_vis_SPspot1')],axis=1)<80.) )
+            #         wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='cos_istar')],axis=1)<0.) )
    
 
 

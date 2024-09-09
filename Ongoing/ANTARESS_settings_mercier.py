@@ -218,8 +218,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Star name
 
-    gen_dic['star_name']='AUMic'
-    # gen_dic['star_name']='AU_Mic'
+    # gen_dic['star_name']='AUMic'
+    gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
     # gen_dic['star_name']='Capricorn'
@@ -537,7 +537,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
          
     #Activating module
-    gen_dic['mock_data'] =  True #& False
+    gen_dic['mock_data'] =  True & False
 
     #Setting number of threads 
     mock_dic['nthreads'] = 2 
@@ -2609,11 +2609,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     ANTARESS_analysis_settings('DI',data_dic,plot_dic)
 
 
-    #%%%% Plot settings
-    
-    #%%%%% 1D PDF from mcmc
-    plot_dic['prop_DI_mcmc_PDFs']=''                 
-        
+    #%%%% Plot settings                         
     
     #%%%%% Individual disk-integrated profiles
     plot_dic['DI_prof']=''     
@@ -4352,11 +4348,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     ANTARESS_analysis_settings('Intr',data_dic,plot_dic)
     
     
-    #%%%% Plot settings
-    
-    #%%%%% 1D PDF from mcmc
-    plot_dic['prop_Intr_mcmc_PDFs']=''     
-    
+    #%%%% Plot settings     
     
     #%%%%% Derived properties
     #    - from original or binned data
@@ -4649,18 +4641,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
 
     #%%%% Fit settings 
-    ANTARESS_analysis_settings('ResProf',glob_fit_dic,plot_dic)
-
-
-    #%%%% Plot settings
-    
-    #%%%%% MCMC chains
-    glob_fit_dic['ResProf']['save_MCMC_chains']=''  
-    
-    
-    #%%%%% MCMC corner plot
-    #    - see function for options
-    glob_fit_dic['ResProf']['corner_options']={}      
+    ANTARESS_analysis_settings('ResProf',glob_fit_dic,plot_dic)    
 
     
     #%%%% Plot settings
@@ -4854,8 +4835,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
         glob_fit_dic['ResProf']['mcmc_reuse']={}
         # glob_fit_dic['ResProf']['mcmc_reuse']={
-        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk200_steps100_AUMicb.npz'],
-        #             'nburn':[30]
+        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk2_steps10_AUMicb.npz'],
+        #             'nburn':[3]
         #             }  
     #Re-starting
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
@@ -4863,7 +4844,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
     #Walkers
     if gen_dic['star_name'] in ['AU_Mic','AUMic']:
-        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':200,'nsteps':100,'nburn':30}
+        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':20,'nsteps':100,'nburn':30}
 
     #Complex priors        
          
@@ -5398,8 +5379,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     # + chose a dimension over which the fit/interpolation is performed         
     # + option to select exposures contributing to the fit/interpolation
     # > 'theo': use imported theoretical local intrinsic stellar profiles
-    gen_dic['diff_data_corr']=True  #&  False
-    gen_dic['calc_diff_data_corr']=True  #&  False 
+    gen_dic['diff_data_corr']=True  &  False
+    gen_dic['calc_diff_data_corr']=True  &  False 
 
     data_dic['Res']['opt_loc_data_corr']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
     
@@ -5775,11 +5756,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     ANTARESS_analysis_settings('Atm',data_dic,plot_dic)
     
     
-    #%%%% Plot settings
-    
-    #%%%%% 1D PDF from mcmc
-    plot_dic['prop_Atm_mcmc_PDFs']=''     
-    
+    #%%%% Plot settings         
     
     #%%%%% Derived properties
     #    - from original or binned data
