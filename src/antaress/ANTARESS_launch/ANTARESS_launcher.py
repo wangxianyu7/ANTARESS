@@ -68,17 +68,18 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
         'AtmProp':{},
         'AtmProf':{},
         }  
+    input_dics = (data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,corr_spot_dic)
     
     #Retrieve default settings
     from ..ANTARESS_launch.ANTARESS_settings import ANTARESS_settings
-    ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic)
+    ANTARESS_settings(*input_dics)
     
     #Overwrite with user settings
-    if custom_settings!='':import_module(working_path+custom_settings).ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic)
+    if custom_settings!='':import_module(working_path+custom_settings).ANTARESS_settings(*input_dics)
 
     #Overwrite with notebook settings
     if ('settings' in nbook_dic) and (len(nbook_dic['settings'])>0):
-        ANTARESS_settings_overwrite(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic,nbook_dic)
+        ANTARESS_settings_overwrite(*input_dics,nbook_dic)
 
     #----------------------------------------------------------------------------------------------------    
 
@@ -112,16 +113,15 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
     #Run over nominal settings properties
     #    - notebook settings have already been used to overwrite congiguration settings, and are only passed on to overwrite the plot settings if relevant
     if not gen_dic['grid_run']:
-        ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_params,nbook_dic,custom_plot_settings)
+        ANTARESS_main(*input_dics,system_params,nbook_dic,custom_plot_settings)
     
     #Run over a grid of properties
     #    - will overwrite default and notebook configuration settings
     else:
-        ANTARESS_gridrun(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_params,nbook_dic,custom_plot_settings)
+        ANTARESS_gridrun(*input_dics,system_params,nbook_dic,custom_plot_settings)
 
     print('End of workflow')
     return None
-
 
 
 

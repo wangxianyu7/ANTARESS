@@ -6,7 +6,7 @@ import lmfit
 import numpy as np
 import bindensity as bind
 from ..ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,gen_specdopshift,closest,def_edge_tab,check_data
-from ..ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,save_fit_results,fit_merit,call_lmfit,gen_hrand_chain,par_formatting,up_var_par
+from ..ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,fit_merit,call_lmfit,gen_hrand_chain,par_formatting,up_var_par
 from ..ANTARESS_general.constant_data import Rsun,c_light
 from ..ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,up_model_star
 from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_spot_prop,up_plocc_prop
@@ -302,13 +302,14 @@ def model_par_units(par):
         'cont':'',
         'c1_pol':'','c2_pol':'','c3_pol':'','c4_pol':'',
         'LD_u1':'','LD_u2':'','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
-        'f_GD':'f$_{\rm GD}$','beta_GD':'$\beta_{\rm GD}$','Tpole':'T$_{\rm pole}$',
-        'eta_R':r'$\eta_{\rm R}$','eta_T':r'$\eta_{\rm T}$','ksi_R':r'\Ksi$_\mathrm{R}$','ksi_T':r'\Ksi$_\mathrm{T}$',
+        'f_GD':'','beta_GD':'','Tpole':'K',
+        'eta_R':'','eta_T':'','ksi_R':'','ksi_T':'',
         'Tc_sp' : 'BJD',
         } 
     if par in unit_dic:unit_par = unit_dic[par]
     elif ('Omega__' in par):unit_par='deg'
     elif ('b__' in par):unit_par=''
+    elif ('FWHM' in par):unit_par = 'km/s'
     else:unit_par = ''
     return unit_par
 
@@ -1039,7 +1040,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     #------------------------------------------------------------
 
     #Merit values
-    p_final=fit_merit(p_final,fixed_args,fit_dic,fit_dic['verbose'],verb_shift = fit_dic['verb_shift'])                
+    p_final=fit_merit('nominal',p_final,fixed_args,fit_dic,fit_dic['verbose'],verb_shift = fit_dic['verb_shift'])                
 
     return merged_chain,p_final
 
@@ -1889,7 +1890,6 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     #Fit dictionary
     fit_dic={
         'fit_mode':fit_prop_dic['fit_mode'],
-        'print_par':fit_prop_dic['print_par'],
         'verb_shift':'',
         'nx_fit':len(fixed_args['y_val'])
         }
@@ -1962,7 +1962,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
         p_final = p_start
   
     #Merit values     
-    p_final=fit_merit(p_final,fixed_args,fit_dic,verbose,verb_shift = fit_dic['verb_shift'])    
+    p_final=fit_merit('nominal',p_final,fixed_args,fit_dic,verbose,verb_shift = fit_dic['verb_shift'])    
 
     ########################################################################################################    
     #Post-processing
@@ -2333,9 +2333,9 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                 
             else:output_prop_dic['err_'+key]=[0.,0.]        
             
-    #Save derived parameters
-    save_fit_results(['derived'],fixed_args,fit_dic,fit_dic['fit_mode'],p_final)
-  
+    #Derived parameters
+    fit_merit('derived',p_final,fixed_args,fit_dic,verbose,verb_shift = fit_dic['verb_shift']) 
+    
     #Close save file
     fit_dic['file_save'].close()
 
@@ -3419,9 +3419,9 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
         p_final=postMCMCwrapper_2(fit_dic,fixed_args,merged_chain)
 
     #----------------------------------------------------------
-    #Save derived parameters
+    #Derived parameters
     #----------------------------------------------------------
-    save_fit_results(['derived'],fixed_args,fit_dic,fit_dic['fit_mode'],p_final)
+    fit_merit('derived',p_final,fixed_args,fit_dic,fit_dic['verbose'],verb_shift = fit_dic['verb_shift']) 
 
     #Close save file
     fit_dic['file_save'].close() 

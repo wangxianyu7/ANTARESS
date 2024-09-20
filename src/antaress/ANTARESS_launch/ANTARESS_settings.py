@@ -8,7 +8,7 @@ import numpy as np
 #%% Global settings
 ##################################################################################################  
 
-def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic):
+def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,corr_spot_dic):
     r"""**ANTARESS default settings: global**
     
     Initializes ANTARESS configuration settings with default values.  
@@ -4179,7 +4179,6 @@ def ANTARESS_analysis_settings(data_type,local_dic,plot_dic):
     
     #%%% Printing fits results
     local_dic[data_type]['verbose']= False
-    local_dic[data_type]['print_par'] = True
 
     
     #%%% Priors on variable properties

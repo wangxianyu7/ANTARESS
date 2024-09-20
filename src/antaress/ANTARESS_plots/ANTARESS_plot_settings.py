@@ -4,7 +4,7 @@ import numpy as np
 from copy import deepcopy
 from antaress.ANTARESS_general.utils import stop
 
-def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
+def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     r"""**Default plot settings.**
     
     Set default values for the following fields. 
@@ -24,214 +24,215 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
      - `marker` : general marker type.
 
     Args:
-        plot_options (dic) : dictionary for all generic plot settings
+        plot_settings (dic) : dictionary for all generic plot settings
         key_plot (str) : identifier of current plot 
     
     Returns:
-        plot_options (dic) : input, initialized with default settings according to the plot identifier
+        plot_settings (dic) : input, initialized with default settings according to the plot identifier
     
     """
-    plot_options[key_plot]={}
+    plot_settings[key_plot]={}
+    plot_options = plot_settings[key_plot]
     
     #Figure size
-    plot_options[key_plot]['fig_size'] = (10,6)
+    plot_options['fig_size'] = (10,6)
     
     #Margins
-    plot_options[key_plot]['margins']=[0.15,0.15,0.95,0.7] 
+    plot_options['margins']=[0.15,0.15,0.95,0.7] 
     
     #Separation spaces in subplots 
-    plot_options[key_plot]['wspace'] = 0.06
-    plot_options[key_plot]['hspace'] = 0.06
+    plot_options['wspace'] = 0.06
+    plot_options['hspace'] = 0.06
     
     #Plot title
-    plot_options[key_plot]['title']= False        
+    plot_options['title']= False        
     
     #Font size
-    plot_options[key_plot]['font_size']=14
-    plot_options[key_plot]['font_size_txt'] = deepcopy(plot_options[key_plot]['font_size'])
+    plot_options['font_size']=14
+    plot_options['font_size_txt'] = deepcopy(plot_options['font_size'])
 
     #Linewidth
-    plot_options[key_plot]['lw_plot']=0.5
+    plot_options['lw_plot']=0.5
     
     #Linestyle
-    plot_options[key_plot]['ls_plot']='-'
+    plot_options['ls_plot']='-'
     
     #Color for transit contacts
-    plot_options[key_plot]['col_contacts']='black'
+    plot_options['col_contacts']='black'
 
     #Axis thickness
-    plot_options[key_plot]['axis_thick']=1  
+    plot_options['axis_thick']=1  
     
     #Marker
-    plot_options[key_plot]['marker'] = 'o'
+    plot_options['marker'] = 'o'
     
     #Symbol size
-    plot_options[key_plot]['markersize']=2.5
+    plot_options['markersize']=2.5
 
     #Hide axis
-    plot_options[key_plot]['hide_axis'] = False
+    plot_options['hide_axis'] = False
     
     #Rasterize datapoints
-    plot_options[key_plot]['rasterized'] = True
+    plot_options['rasterized'] = True
 
     #Transparent background
-    plot_options[key_plot]['transparent'] = False
+    plot_options['transparent'] = False
     
     #Curve style
-    plot_options[key_plot]['drawstyle']=None
+    plot_options['drawstyle']=None
  
     #Plot abscissa range or errors
-    plot_options[key_plot]['plot_xerr']=False  
+    plot_options['plot_xerr']=False  
 
     #Transparency of symbols (0 = void)
-    plot_options[key_plot]['alpha_symb']=1. 
+    plot_options['alpha_symb']=1. 
   
     #Transparency of error bars (0 = void)
-    plot_options[key_plot]['alpha_err']=0.5
+    plot_options['alpha_err']=0.5
 
     #Spectral resampling
-    plot_options[key_plot]['resample'] = None
+    plot_options['resample'] = None
     
     #List of stellar lines to plot in spectral mode
     #    - default to stellar CCF mask
-    plot_options[key_plot]['st_lines_wav'] = []
+    plot_options['st_lines_wav'] = []
 
     #List of planet lines to plot in spectral mode
     #    - default to planet CCF mask
-    plot_options[key_plot]['pl_lines_wav'] = []
+    plot_options['pl_lines_wav'] = []
 
     #Make GIF from plot series.
-    plot_options[key_plot]['GIF_generation'] = False
+    plot_options['GIF_generation'] = False
     
     #FPS for gif
-    plot_options[key_plot]['fps'] = 5
+    plot_options['fps'] = 5
     
     #Print information
-    plot_options[key_plot]['verbose']=True 
+    plot_options['verbose']=True 
 
     #Plot legend figure
-    plot_options[key_plot]['legend']=False 
-    plot_options[key_plot]['legend_to_plot']={} 
+    plot_options['legend']=False 
+    plot_options['legend_to_plot']={} 
 
     #--------------------------------------
 
     #Instruments to plot
-    plot_options[key_plot]['inst_to_plot']=list(plot_dic['visits_to_plot'].keys())
+    plot_options['inst_to_plot']=list(plot_dic['visits_to_plot'].keys())
     
     #Visits to plot
     #    - add '_bin' to the name of a visit to plot properties derived from intrinsic profiles binned within a visit
     #      use 'binned' as visit name to plot properties derived from intrinsic profiles binned over several visits
-    plot_options[key_plot]['visits_to_plot']=deepcopy(plot_dic['visits_to_plot'])
+    plot_options['visits_to_plot']=deepcopy(plot_dic['visits_to_plot'])
     
     #Indexes of exposures to be plotted 
-    plot_options[key_plot]['iexp_plot']={}
+    plot_options['iexp_plot']={}
 
     #Indexes of exposures to be removed from the plot
-    plot_options[key_plot]['idx_noplot'] = {}
+    plot_options['idx_noplot'] = {}
 
     #Do not plot original data
-    plot_options[key_plot]['no_orig']= False
+    plot_options['no_orig']= False
 
     #Plot data
-    plot_options[key_plot]['plot_data'] = True
+    plot_options['plot_data'] = True
 
     #Plot data errors
-    plot_options[key_plot]['plot_err']=True 
+    plot_options['plot_err']=True 
 
     #Plot models 
-    plot_options[key_plot]['plot_model'] = True
+    plot_options['plot_model'] = True
 
     #Indexes of orders to be plotted         
     #    - leave empty to plot all orders
-    plot_options[key_plot]['orders_to_plot']=[]    
+    plot_options['orders_to_plot']=[]    
     
     #Colors
-    plot_options[key_plot]['color_dic']={}  
-    plot_options[key_plot]['color_dic_sec']={}
-    plot_options[key_plot]['color_dic_bin']={}  
-    plot_options[key_plot]['color_dic_bin_sec']={}
+    plot_options['color_dic']={}  
+    plot_options['color_dic_sec']={}
+    plot_options['color_dic_bin']={}  
+    plot_options['color_dic_bin_sec']={}
     
     #Scaling factor 
     #    - in power of ten, ie flux are multiplied by 10**sc_fact10)
-    plot_options[key_plot]['sc_fact10'] = 0.
+    plot_options['sc_fact10'] = 0.
     
     #Spectral variable
     #    - wavelength in A
-    plot_options[key_plot]['sp_var'] = 'wav'
+    plot_options['sp_var'] = 'wav'
     
     #Bornes du plot  
-    plot_options[key_plot]['x_range']=None
-    plot_options[key_plot]['y_range']=None 
+    plot_options['x_range']=None
+    plot_options['y_range']=None 
 
     #Overplot excluded planetary ranges
-    plot_options[key_plot]['plot_plexc']=False
+    plot_options['plot_plexc']=False
 
     #Overplot intrinsic stellar line ranges
-    plot_options[key_plot]['plot_stexc']=False
+    plot_options['plot_stexc']=False
     
     #Reference planet for each visit
     #    - set to first transit planet if it exists, or to first planet overall otherwise
-    plot_options[key_plot]['pl_ref']={}
-    for inst in plot_options[key_plot]['visits_to_plot']:
-        plot_options[key_plot]['pl_ref'][inst]={'binned':gen_dic['studied_pl'][0]}
-        for vis in plot_options[key_plot]['visits_to_plot'][inst]:
-            if len(data_dic[inst][vis]['transit_pl'])>0:plot_options[key_plot]['pl_ref'][inst][vis]=data_dic[inst][vis]['transit_pl'][0]
-            else:plot_options[key_plot]['pl_ref'][inst][vis]=gen_dic['studied_pl'][0]
+    plot_options['pl_ref']={}
+    for inst in plot_options['visits_to_plot']:
+        plot_options['pl_ref'][inst]={'binned':gen_dic['studied_pl'][0]}
+        for vis in plot_options['visits_to_plot'][inst]:
+            if len(data_dic[inst][vis]['transit_pl'])>0:plot_options['pl_ref'][inst][vis]=data_dic[inst][vis]['transit_pl'][0]
+            else:plot_options['pl_ref'][inst][vis]=gen_dic['studied_pl'][0]
 
     #Shade range not used for fitting
-    plot_options[key_plot]['shade_unfit']=False
+    plot_options['shade_unfit']=False
     
     #Shade selected ranges
-    plot_options[key_plot]['shade_ranges']={}
+    plot_options['shade_ranges']={}
     
     #Plot continuum pixels common to all exposures
-    plot_options[key_plot]['plot_cont']=False
+    plot_options['plot_cont']=False
 
     #Shade continuum range requested as input
-    plot_options[key_plot]['shade_cont']=False     
+    plot_options['shade_cont']=False     
 
     #Plot continuum level
-    plot_options[key_plot]['plot_cont_lev']=False
+    plot_options['plot_cont_lev']=False
     
     #Plot continuum pixels specific to each exposure
-    plot_options[key_plot]['plot_cont_exp']=False   
+    plot_options['plot_cont_exp']=False   
     
     #Plot residuals from continuum alone
-    plot_options[key_plot]['cont_only'] = False
+    plot_options['cont_only'] = False
 
     #Plot fitted pixels
-    plot_options[key_plot]['plot_fitpix']=False
+    plot_options['plot_fitpix']=False
 
     #Plot fitted line profile
-    plot_options[key_plot]['plot_line_model']=False
+    plot_options['plot_line_model']=False
 
     #Plot model line profile
-    plot_options[key_plot]['plot_line_model_HR']=False
+    plot_options['plot_line_model_HR']=False
 
     #Plot individual model components for line profile
-    plot_options[key_plot]['plot_line_model_compo']=False
+    plot_options['plot_line_model_compo']=False
     
     #Print fit properties on plot
-    plot_options[key_plot]['plot_prop']=True  
+    plot_options['plot_prop']=True  
 
     #Plot fitted line centroid
-    plot_options[key_plot]['plot_line_fit_rv']=False
+    plot_options['plot_line_fit_rv']=False
 
     #Plot bissector
-    plot_options[key_plot]['plot_biss']=False
+    plot_options['plot_biss']=False
             
     #Print dispersions
-    plot_options[key_plot]['print_disp'] = []  
+    plot_options['print_disp'] = []  
     
     #Plot HITRAN telluric lines for requested molecules
-    plot_options[key_plot]['plot_tell_HITRANS']=[]
-    plot_options[key_plot]['telldepth_min'] = 0.
+    plot_options['plot_tell_HITRANS']=[]
+    plot_options['telldepth_min'] = 0.
     
     #Plot master used as reference for flux balance correction
-    plot_options[key_plot]['plot_mast'] = False    
+    plot_options['plot_mast'] = False    
 
     #Plot stellar continuum
-    plot_options[key_plot]['st_cont']=None    
+    plot_options['st_cont']=None    
     
     #Plot spectra at two chosen steps of the correction process
     #    - set to None, or chose amongst:
@@ -244,65 +245,65 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
     # + 'cosm' : after cosmics correction  
     # + 'permpeak' : after persistent peak correction 
     # + 'wig' : after wiggle correction 
-    plot_options[key_plot]['plot_pre']='all'
-    plot_options[key_plot]['plot_post']=None        
+    plot_options['plot_pre']='all'
+    plot_options['plot_post']=None        
  
     #Plot all exposures on the same plot
-    plot_options[key_plot]['multi_exp']= False
+    plot_options['multi_exp']= False
 
     #Plot all order on the same plot
-    plot_options[key_plot]['multi_ord']= False    
+    plot_options['multi_ord']= False    
 
     #Normalize spectra to integrated flux unity
     #    - to allow for comparison
-    plot_options[key_plot]['norm_prof'] = False  
+    plot_options['norm_prof'] = False  
 
     #Absorption signal type
-    plot_options[key_plot]['pl_atm_sign']='Absorption'  
+    plot_options['pl_atm_sign']='Absorption'  
 
     #Histograms bin number
-    plot_options[key_plot]['bins_par'] = 40
+    plot_options['bins_par'] = 40
     
     #Exposures used in master out
-    plot_options[key_plot]['iexp_mast_list']={}
+    plot_options['iexp_mast_list']={}
 
     #--------------------------------------   
 
     #Aligned profiles
-    plot_options[key_plot]['aligned']=False
+    plot_options['aligned']=False
 
     #Measured values
-    plot_options[key_plot]['print_mes']=False
+    plot_options['print_mes']=False
     
     #Plot reference level
-    plot_options[key_plot]['plot_reflev']=False
+    plot_options['plot_reflev']=False
 
     #Plot reference velocity
-    plot_options[key_plot]['plot_refvel']=True  
+    plot_options['plot_refvel']=True  
 
     #Fit type
-    plot_options[key_plot]['fit_type']='indiv'
+    plot_options['fit_type']='indiv'
 
     #Plot fitted exposures only
-    plot_options[key_plot]['fitted_exp'] = False
+    plot_options['fitted_exp'] = False
 
     #Planet-occulted line model from best-fit ('fit') or reconstruction ('rec')
-    plot_options[key_plot]['line_model']='fit'
+    plot_options['line_model']='fit'
     
     #Ranges for continuum definition in plots
-    plot_options[key_plot]['cont_range']={}
+    plot_options['cont_range']={}
 
     #--------------------------------------  
     if (key_plot in ['glob_mast','all_DI_data','all_intr_data','all_atm_data']):
         
         #Plot spectra used for measured master calculation
-        plot_options[key_plot]['plot_input']=True
+        plot_options['plot_input']=True
         
     #--------------------------------------              
     if (key_plot in ['Fbal_corr','Fbal_corr_vis','input_LC','plocc_ranges','prop_DI_mcmc_PDFs','prop_Intr_mcmc_PDFs']):
 
         #Plot exposure indexes
-        plot_options[key_plot]['plot_expid'] = True
+        plot_options['plot_expid'] = True
         
     #--------------------------------------   
     #Binned profiles settings     
@@ -317,120 +318,120 @@ def gen_plot_default(plot_options,key_plot,plot_dic,gen_dic,data_dic):
         # + 'xp_abs'
         # + 'r_proj' 
         #    - if not phase, exposures are plotted successively without respecting their actual positions, because of overlaps 
-        plot_options[key_plot]['dim_plot']='phase' 
+        plot_options['dim_plot']='phase' 
 
     #--------------------------------------   
     if ('prop_' in key_plot):
 
         #Abscissa
-        plot_options[key_plot]['prop_DI_absc']='phase'                
-        plot_options[key_plot]['prop_Intr_absc']='phase'
+        plot_options['prop_DI_absc']='phase'                
+        plot_options['prop_Intr_absc']='phase'
         
         #Invert horizontal axis
         #    - useful for retrograde orbit to follow the orbit from left to right (and decreasing phase)
-        plot_options[key_plot]['retro_orbit']=False  
+        plot_options['retro_orbit']=False  
 
         #Plot values for detected CCFs only
-        plot_options[key_plot]['plot_det']=False 
+        plot_options['plot_det']=False 
 
         #Print min/max values (to adjust plot ranges)
-        plot_options[key_plot]['plot_bounds']=False
+        plot_options['plot_bounds']=False
 
         #Print and plot mean value and dispersion 
-        plot_options[key_plot]['plot_disp']=True    
+        plot_options['plot_disp']=True    
 
         #Plot master property
-        plot_options[key_plot]['plot_Mout']=False
-        plot_options[key_plot]['plot_Mloc']=False
+        plot_options['plot_Mout']=False
+        plot_options['plot_Mloc']=False
 
         #Plot HDI subintervals, if available
-        plot_options[key_plot]['plot_HDI']= False    
+        plot_options['plot_HDI']= False    
 
         #Use different symbols for transits (disks vs squares)
-        plot_options[key_plot]['use_diff_symb']= False    
+        plot_options['use_diff_symb']= False    
         
         #Empty symbols
-        plot_options[key_plot]['empty_in'] = True
-        plot_options[key_plot]['empty_all']= False
-        plot_options[key_plot]['empty_det']= False   
+        plot_options['empty_in'] = True
+        plot_options['empty_all']= False
+        plot_options['empty_det']= False   
  
         #Bin properties 
-        plot_options[key_plot]['bin_val'] = {}
+        plot_options['bin_val'] = {}
 
         #Orders for SNR
-        plot_options[key_plot]['idx_SNR']={'HARPS':[49],'HARPN':[46],'CORALIE':[46],'ESPRESSO':[102,103],'ESPRESSO_MR':[39],'CARMENES_VIS':[40],'NIRPS_HE':[57]}
-        plot_options[key_plot]['idx_num_SNR']={'HARPN':[46]}
-        plot_options[key_plot]['idx_den_SNR']={'HARPN':[46]}              
+        plot_options['idx_SNR']={'HARPS':[49],'HARPN':[46],'CORALIE':[46],'ESPRESSO':[102,103],'ESPRESSO_MR':[39],'CARMENES_VIS':[40],'NIRPS_HE':[57]}
+        plot_options['idx_num_SNR']={'HARPN':[46]}
+        plot_options['idx_den_SNR']={'HARPN':[46]}              
  
         #Save a text file of residual RVs vs phase
-        plot_options[key_plot]['save_RVres'] = False
+        plot_options['save_RVres'] = False
 
     #--------------------------------------
     if 'atm' in key_plot:
       
         #Scaling factor
-        plot_options[key_plot]['sc_fact10'] = 6.
+        plot_options['sc_fact10'] = 6.
 
     #--------------------------------------
     if (key_plot in ['occulted_regions','system_view']):
         
         #Choice of spectral band for intensity
         #    - from the main planet transit properties
-        plot_options[key_plot]['iband']=0 
+        plot_options['iband']=0 
 
     #--------------------------------------
     if 'map_' in key_plot:
 
         #Atmospheric signal type 
-        if 'map_Atm' in key_plot:plot_options[key_plot]['pl_atm_sign']='Absorption'            
+        if 'map_Atm' in key_plot:plot_options['pl_atm_sign']='Absorption'            
 
         #Margins   
-        plot_options[key_plot]['margins']=[0.15,0.3,0.84,0.95]  
+        plot_options['margins']=[0.15,0.3,0.84,0.95]  
 
         #Font size
-        plot_options[key_plot]['font_size']=18  
+        plot_options['font_size']=18  
 
         #Reverse image
         #    - if set to True, map is orientated so that velocity is the vertical axis, and phase the horizontal axis
-        plot_options[key_plot]['reverse_2D']=False
+        plot_options['reverse_2D']=False
 
         #Overplot surface RV model along the full transit chord
-        plot_options[key_plot]['theoRV_HR']=False
+        plot_options['theoRV_HR']=False
 
         #Overplot surface RV model along the full transit chord for an aligned orbit
-        plot_options[key_plot]['theoRV_HR_align'] = False 
+        plot_options['theoRV_HR_align'] = False 
 
         #Overplot surface RV model at the phases of the observations 
-        plot_options[key_plot]['plot_theoRV']=False
+        plot_options['plot_theoRV']=False
 
         #Overplot RV(pl/star) model 
-        plot_options[key_plot]['theoRVpl_HR']=False
-        plot_options[key_plot]['theoRVpl_HR_align']=False
+        plot_options['theoRVpl_HR']=False
+        plot_options['theoRVpl_HR_align']=False
 
         #Plot zero line markers
-        plot_options[key_plot]['plot_zermark']= True 
+        plot_options['plot_zermark']= True 
         
         #Color map
-        if 'map_DI' in key_plot:plot_options[key_plot]['cmap']="jet" 
-        if 'map_Res' in key_plot:plot_options[key_plot]['cmap']="jet"             
-        elif 'map_Intr' in key_plot:plot_options[key_plot]['cmap']="afmhot_r" 
-        elif 'map_Intr_prof_res' in key_plot:plot_options[key_plot]['cmap']="afmhot_r" 
-        elif 'map_Atm' in key_plot:plot_options[key_plot]['cmap']="winter"             
+        if 'map_DI' in key_plot:plot_options['cmap']="jet" 
+        if 'map_Res' in key_plot:plot_options['cmap']="jet"             
+        elif 'map_Intr' in key_plot:plot_options['cmap']="afmhot_r" 
+        elif 'map_Intr_prof_res' in key_plot:plot_options['cmap']="afmhot_r" 
+        elif 'map_Atm' in key_plot:plot_options['cmap']="winter"             
         
         #Map color range
-        plot_options[key_plot]['v_range_all']={}
+        plot_options['v_range_all']={}
         
         #Ranges
-        plot_options[key_plot]['x_range_all']={}
-        plot_options[key_plot]['y_range_all']={}
+        plot_options['x_range_all']={}
+        plot_options['y_range_all']={}
         
         #Overplot measured RVs
-        plot_options[key_plot]['plot_measRV'] = 'none'       
+        plot_options['plot_measRV'] = 'none'       
 
         #Plot global and in-transit indexes
-        plot_options[key_plot]['plot_idx']=False              
+        plot_options['plot_idx']=False              
 
-    return plot_options
+    return plot_settings
 
 
 
