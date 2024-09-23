@@ -1067,10 +1067,10 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                 ['Degree of freedom           = %i'%fit_dic['merit']['dof']],
                 ['Best Chi-square             = %f'%fit_dic['merit']['chi2']],
                 ['Reduced Chi-square          = %f'%fit_dic['merit']['red_chi2']],
-                ['RMS of residuals            = %f'%fit_dic['merit']['rms']],
+                ['RMS of residuals            = %s'%fit_dic['merit']['rms']],
                 ['Bayesian Info. crit. (BIC)  = %f'%fit_dic['merit']['BIC']], 
                 ['Akaike Info. crit. (AIC)    = %f'%fit_dic['merit']['AIC']],
-                ['Gelman-Rubin statistic      = %f'%fit_dic['merit']['GR_stat']], 
+                ['Gelman-Rubin statistic      = %s'%fit_dic['merit']['GR_stat']], 
                 ]
             if fit_dic['fit_mode']=='chi2':txt_print+=[["Cumul. dist. funct. (cdf)  = %e"%fit_dic['merit']['cdf']]]
             txt_print+=[[" "]]

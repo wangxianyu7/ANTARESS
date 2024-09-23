@@ -412,12 +412,12 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
         plot_options['plot_zermark']= True 
         
         #Color map
-        if 'map_DI' in key_plot:plot_options[key_plot]['cmap']="jet" 
-        if 'map_Res' in key_plot:plot_options[key_plot]['cmap']="jet"             
-        if 'map_BF' in key_plot:plot_options[key_plot]['cmap']="jet"         
-        elif 'map_Intr' in key_plot:plot_options[key_plot]['cmap']="afmhot_r" 
-        elif 'map_Intr_prof_res' in key_plot:plot_options[key_plot]['cmap']="afmhot_r" 
-        elif 'map_Atm' in key_plot:plot_options[key_plot]['cmap']="winter"             
+        if 'map_DI' in key_plot:plot_options['cmap']="jet" 
+        if 'map_Res' in key_plot:plot_options['cmap']="jet"             
+        if 'map_BF' in key_plot:plot_options['cmap']="jet"         
+        elif 'map_Intr' in key_plot:plot_options['cmap']="afmhot_r" 
+        elif 'map_Intr_prof_res' in key_plot:plot_options['cmap']="afmhot_r" 
+        elif 'map_Atm' in key_plot:plot_options['cmap']="winter"             
         
         #Map color range
         plot_options['v_range_all']={}

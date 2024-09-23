@@ -8,7 +8,7 @@ import numpy as np
 #%% Global settings
 ##################################################################################################  
 
-def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic):
+def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,corr_spot_dic):
     r"""**ANTARESS default settings: global**
     
     Initializes ANTARESS configuration settings with default values.  
@@ -218,8 +218,8 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
     #Star name
 
-    # gen_dic['star_name']='AUMic'
-    gen_dic['star_name']='AU_Mic'
+    gen_dic['star_name']='AUMic'
+    # gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
 
@@ -555,7 +555,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
     
          
     #Activating module
-    gen_dic['mock_data'] =  True & False
+    gen_dic['mock_data'] =  True #& False
 
     #Setting number of threads 
     mock_dic['nthreads'] = 2 
@@ -3970,7 +3970,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} 
     
     if gen_dic['star_name']=='AU_Mic':    
-        data_dic['Res']['idx_in_bin']={'ESPRESSO':{'visit1':list(np.arange(0, 17,dtype=int))+list(np.arange(69, 84,dtype=int))}}
+        data_dic['Res']['idx_in_bin']={'ESPRESSO':{'visit1':list(np.arange(0, 15,dtype=int))+list(np.arange(67, 82,dtype=int))}}
 
     if gen_dic['star_name']=='fakeAU_Mic':    
         data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mockvisit1':list(np.arange(0, 16,dtype=int))+list(np.arange(68, 84,dtype=int))}} 
@@ -4843,7 +4843,7 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  &  False
+    gen_dic['fit_ResProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5306,16 +5306,16 @@ def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,
         glob_fit_dic['ResProf']['deriv_prop'] = {} #{'lambda_deg':[], 'fold_Tc':[]}#, 'Peq_veq_spots':{'Rstar':{'val':0.75, 's_val':0.1}}}
     
     #Calculating/retrieving
-    glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
-    # glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
+    # glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
+    glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['ResProf']['mcmc_reuse']={}
-        # glob_fit_dic['ResProf']['mcmc_reuse']={
-        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk20_steps3000_AUMicb.npz'],
-        #             'nburn':[1000]
-        #             }  
+        # glob_fit_dic['ResProf']['mcmc_reuse']={}
+        glob_fit_dic['ResProf']['mcmc_reuse']={
+                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk20_steps30_AUMicb.npz'],
+                    'nburn':[10]
+                    }  
     #Re-starting
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['ResProf']['mcmc_reboot']=''
