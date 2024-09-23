@@ -92,7 +92,7 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
     #    - at this stage 'params' contains 'veq' by default and only contains 'Peq' if it was requested as a model parameter
     #      in this case 'veq' is removed from the model parameters and its value is updated in the stellar property dictionary (here in forward mode, or at each time step of the fit)
     if 'Peq' in params:
-        print('        Switching veq for Peq as model parameter')
+        print('       Switching veq for Peq as model parameter')
         stargrid_prop_nom[np_where1D(stargrid_prop_nom=='veq')]='Peq'
         if (len(stargrid_prop_spots_nom)>0):stargrid_prop_spots_nom[np_where1D(stargrid_prop_spots_nom=='veq')]='Peq'
 

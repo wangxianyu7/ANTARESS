@@ -2289,7 +2289,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 globvisfit_results['p_best'] = p_best_curr
                                 np.savez_compressed(fit_dic['save_dir']+'Outputs_loop'+str(iloop)+'_it'+str(it),data=globvisfit_results,allow_pickle=True)
                                 fit_dic['file_save']=open(fit_dic['save_dir']+'Outputs_loop'+str(iloop)+'_it'+str(it),'w+')
-                                fit_merit(p_best_curr,fixed_args_loc,fit_dic,False)                
+                                fit_merit('nominal',p_best_curr,fixed_args_loc,fit_dic,False)                
                                 fit_dic['file_save'].close() 
                             
                         #Determine uncertainties by running LM fit using iterative solution as starting point
@@ -2309,7 +2309,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 globvisfit_results['p_best'] = p_best_curr
                                 np.savez_compressed(fit_dic['save_dir']+'Outputs_loop'+str(iloop),data=globvisfit_results,allow_pickle=True)
                                 fit_dic['file_save']=open(fit_dic['save_dir']+'Outputs_loop'+str(iloop),'w+')
-                                fit_merit(p_best_curr,fixed_args_loc,fit_dic,False)                
+                                fit_merit('nominal',p_best_curr,fixed_args_loc,fit_dic,False)                
                                 fit_dic['file_save'].close() 
                                                          
                             #Assess convergence on all variable parameters
@@ -2339,7 +2339,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     globvisfit_results['p_best'] = p_best
                     np.savez_compressed(fit_dic['save_dir']+'Outputs_final',data=globvisfit_results,allow_pickle=True) 
                     fit_dic['file_save']=open(fit_dic['save_dir']+'Outputs_final','w+')
-                    fit_merit(p_best,fixed_args_loc,fit_dic,False)                
+                    fit_merit('nominal',p_best,fixed_args_loc,fit_dic,False)                
                     fit_dic['file_save'].close() 
 
                 #Analyse and plot results

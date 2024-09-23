@@ -8,7 +8,7 @@ import numpy as np
 #%% Global settings
 ##################################################################################################  
 
-def ANTARESS_settings(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic):
+def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,corr_spot_dic):
     r"""**ANTARESS default settings: global**
     
     Initializes ANTARESS configuration settings with default values.  
@@ -4184,7 +4184,6 @@ def ANTARESS_analysis_settings(data_type,local_dic,plot_dic):
     
     #%%% Printing fits results
     local_dic[data_type]['verbose']= False
-    local_dic[data_type]['print_par'] = True
 
     
     #%%% Priors on variable properties
@@ -4206,15 +4205,16 @@ def ANTARESS_analysis_settings(data_type,local_dic,plot_dic):
     #                          'Peq' must be a fit parameter; 'Rstar' can be a fit parameter or a user-provided measurement
     # + 'vsini' : converts 'veq' into veq*sin(istar) using fitted or fixed 'istar'
     # + 'istar_deg_conv' : replaces cos(istar) by istar[deg]
-    # + 'fold_istar' : folds istar[deg] around 90
-    #                  to be used when the stellar inclination remains degenerate between istar and 180-istar
+    # + 'fold_istar' : folds istar[deg] around 90 and returns the Northern (istar < 90, 'config' = 'North') or Southern (istar > 90, 'config' = 'South')) configurations.
+    #                  to be used when only sin(istar) is constrained and the stellar inclination remains degenerate between istar and 180-istar 
     # + 'istar_Peq' : derive the stellar inclination from the fitted 'vsini' and user-provided measurements of 'Rstar' and 'Peq'
     #                 warning: it is better to fit directly for 'Peq', 'cosistar', and 'Rstar'
     # + 'istar_Peq_vsini' : derive the stellar inclination from user-provided measurements of 'Rstar','Peq', and 'vsini'
     # + 'Peq_veq' : adds 'Peq' using the fitted 'veq' and a user-provided measurement of 'Rstar'
     # + 'Peq_vsini' : adds 'Peq' using the fitted 'vsini' and user-provided measurements for 'Rstar' and 'istar' 
     # + 'psi' : adds 3D spin-orbit angle for all planets using the fitted 'lambda', and fitted or user-provided measurements for 'istar' and 'ip_plNAME'
-    #           set 'combined = True' to add the combined distribution from the Northern and Southern Psi values, assumed to be equiprobable (make sure that the two distributions are similar before combining them)
+    #           put 'North' and/or 'South' in  'config' to return the corresponding Psi configurations associated with istar (Northern configuration) and 180-istar (Southern configuration) 
+    #           put 'combined' in  'config' to add the combined distribution from the Northern and Southern Psi PDFs, assumed to be equiprobable (make sure that the two distributions are similar before combining them)
     # + 'psi_lambda' : adds 3D spin-orbit angle using user-provided measurements of 'lambda', and fitted or user-provided measurements for 'istar' and 'ip'
     #                  same settings as for 'psi' 
     # + 'lambda_deg' : converts lambda[rad] to lambda[deg]

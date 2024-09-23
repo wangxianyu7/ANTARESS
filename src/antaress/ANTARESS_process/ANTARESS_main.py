@@ -34,7 +34,8 @@ from ..ANTARESS_conversions.ANTARESS_sp_cont import process_spectral_cont
 from ..ANTARESS_general.utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data,npint
 from ..ANTARESS_general.constant_data import Rsun,Rjup,c_light,G_usi,Msun,AU_1
 
-def ANTARESS_settings_overwrite(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic,input_dic):
+
+def ANTARESS_settings_overwrite(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,corr_spot_dic,input_dic):
     r"""**ANTARESS settings overwrite.**
     
     Overwrites ANTARESS settings with inputs.  

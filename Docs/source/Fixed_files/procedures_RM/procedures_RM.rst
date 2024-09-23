@@ -220,17 +220,27 @@ Uniform priors on the fitted properties are set with::
 .. Tip::
    We set the prior range on lambda to avoid the walkers bumping into the prior boundaries, in case the best-fit is close to +-180 deg. Lambda values can be folded during post-processing, using the field :green:`'deriv_prop'` as described in the `fit tutorial <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_fits/procedures_fits.html>`_, 
 
-You can now run the fit. It will be fast in :math:`\chi^2` mode but may take some time with a MCMC. To gain time, once the MCMC fit is done do not forget that you can set :green:`data_dic['Intr']['mcmc_run_mode']='reuse'`to retrieve and manipulate the fit results. 
+You can now run the fits. It will be fast in :math:`\chi^2` mode but may take some time with a MCMC. To gain time, once the MCMC fit is done do not forget that you can set :green:`data_dic['Intr']['mcmc_run_mode']='reuse'`to retrieve and manipulate the fit results. 
 
 .. Tip::
    If the star is too faint or the planet too small, intrinsic properties may all be derived with a precision that is too low to analyze them in this step. 
    In that case, you can apply directly the joint RM Revolutions fit (see next step) with the simplest models to describe these properties. 
 
+Best-fit values for the model properties, along with various information about the fit, are saved in in the :orange:`/Working_dir/Star/Planet_Saved_data/Joined_fits/IntrProp/fit_mode/prop/Outputs` files, where :orange:`fit_mode` indicates the fitting approach you chose and :orange:`prop` indicates the fitted property.
+In particular this file stores the Bayesan Information Criterion (BIC) of the fit, which you can compare to decide which models best fit the data.
+If you ran a MCMC fit the above directory will also contain the MCMC chains and associated plots, as described in the `fit tutorial <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_fits/procedures_fits.html>`_,
+
+You can see in the figure below (duplicated from :numref:`Intrinsic_props`) the best models from the MCMC fit on TOI-421c intrinsic properties.
+
+.. figure:: Intrinsic_props_mod.png
+  :width: 800
+  :name: Intrinsic_props_mod
+  
+  Time-series of properties for the intrinsic stellar lines occulted by TOI-421c.
 
 
-
-
-IMAGES
+Joint analysis of intrinsic line profiles
+-----------------------------------------
 
 
 

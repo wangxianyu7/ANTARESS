@@ -6,7 +6,7 @@ import lmfit
 import numpy as np
 import bindensity as bind
 from ..ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,gen_specdopshift,closest,def_edge_tab,check_data
-from ..ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,save_fit_results,fit_merit,call_lmfit,gen_hrand_chain,par_formatting,up_var_par
+from ..ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,fit_merit,call_lmfit,gen_hrand_chain,par_formatting,up_var_par
 from ..ANTARESS_general.constant_data import Rsun,c_light
 from ..ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,up_model_star
 from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_spot_prop,up_plocc_prop
@@ -303,13 +303,14 @@ def model_par_units(par):
         'cont':'',
         'c1_pol':'','c2_pol':'','c3_pol':'','c4_pol':'',
         'LD_u1':'','LD_u2':'','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
-        'f_GD':'f$_{\rm GD}$','beta_GD':'$\beta_{\rm GD}$','Tpole':'T$_{\rm pole}$',
-        'eta_R':r'$\eta_{\rm R}$','eta_T':r'$\eta_{\rm T}$','ksi_R':r'\Ksi$_\mathrm{R}$','ksi_T':r'\Ksi$_\mathrm{T}$',
+        'f_GD':'','beta_GD':'','Tpole':'K',
+        'eta_R':'','eta_T':'','ksi_R':'','ksi_T':'',
         'Tc_sp' : 'BJD',
         } 
     if par in unit_dic:unit_par = unit_dic[par]
     elif ('Omega__' in par):unit_par='deg'
     elif ('b__' in par):unit_par=''
+    elif ('FWHM' in par):unit_par = 'km/s'
     else:unit_par = ''
     return unit_par
 
@@ -339,7 +340,7 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'nx_fit':0,
         'run_name':'_'+gen_dic['main_pl_text'],
         'save_dir' : gen_dic['save_data_dir']+'/Joined_fits/'+rout_mode+'/'+fit_prop_dic['fit_mode']+'/'})
-    
+    if 'Prop' in rout_mode:fit_dic['verb_shift']+='    '
     #--------------------------------------------------------------------------------
 
     #Arguments to be passed to the fit function
@@ -846,7 +847,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
 
     #Calculating a first model to check all in-transit model exposures are defined
     if fit_dic['fit_mode'] in ['chi2','mcmc'] and ('Intr' in rout_mode):
-        mod_dic,coeff_line_dic,mod_prop_dic = fixed_args['mod_func'](p_start,fixed_args)
+        mod_dic,coeff_line_dic,mod_prop_dic,_ = fixed_args['mod_func'](p_start,fixed_args)
         if rout_mode=='IntrProp':
             if True in np.isnan(mod_dic):
                 print('WARNING: the model planet does not occult the star over in-transit exposures at indexes:')
@@ -877,7 +878,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         fixed_args['fit'] = True
         merged_chain = None
         print('       Chi2 fit')   
-        p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=fit_dic['verbose'],fixed_args=fixed_args)[2]
+        p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=fit_dic['verbose'],fixed_args=fixed_args,fit_dic=fit_dic)[2]
 
     #------------------------------------------------------------ 
     #Fit par emcmc 
@@ -1046,7 +1047,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     #------------------------------------------------------------
 
     #Merit values
-    p_final=fit_merit(p_final,fixed_args,fit_dic,fit_dic['verbose'])                
+    p_final=fit_merit('nominal',p_final,fixed_args,fit_dic,fit_dic['verbose'],verb_shift = fit_dic['verb_shift'])                
 
     return merged_chain,p_final
 
@@ -1896,7 +1897,6 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     #Fit dictionary
     fit_dic={
         'fit_mode':fit_prop_dic['fit_mode'],
-        'print_par':fit_prop_dic['print_par'],
         'verb_shift':'',
         'nx_fit':len(fixed_args['y_val'])
         }
@@ -1929,7 +1929,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     #--------------------------------------------------------------
     #Fit by chi2 minimization
     if fit_prop_dic['fit_mode']=='chi2':
-        p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=verbose,fixed_args=fixed_args)[2]
+        p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=verbose,fixed_args=fixed_args,fit_dic=fit_dic)[2]
      
     #--------------------------------------------------------------   
     #Fit by emcmc 
@@ -1969,7 +1969,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
         p_final = p_start
   
     #Merit values     
-    p_final=fit_merit(p_final,fixed_args,fit_dic,verbose)    
+    p_final=fit_merit('nominal',p_final,fixed_args,fit_dic,verbose,verb_shift = fit_dic['verb_shift'])    
 
     ########################################################################################################    
     #Post-processing
@@ -2340,9 +2340,9 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                 
             else:output_prop_dic['err_'+key]=[0.,0.]        
             
-    #Save derived parameters
-    save_fit_results('derived',fixed_args,fit_dic,fit_dic['fit_mode'],p_final)
-  
+    #Derived parameters
+    fit_merit('derived',p_final,fixed_args,fit_dic,verbose,verb_shift = fit_dic['verb_shift']) 
+    
     #Close save file
     fit_dic['file_save'].close()
 
@@ -2788,18 +2788,6 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             print('        + Converting cos(istar) to istar')
             conv_cosistar(deriv_prop,fixed_args,fit_dic,p_final,merged_chain)
 
-        #-------------------------------------------------            
-
-        #Folding istar[deg] around 90
-        #    - only use if all other parameters are degenerate with istar
-        #    - by default we fold over 0-90
-        if ('fold_istar' in deriv_prop):        
-            print('        + Folding istar')
-            iistar = np_where1D(fixed_args['var_par_list']=='istar_deg')
-            istar_temp=np.squeeze(merged_chain[:,iistar])
-            w_gt_90=(istar_temp > 90.)
-            if True in w_gt_90:merged_chain[w_gt_90,iistar]=180.-istar_temp[w_gt_90]
-
         #-------------------------------------------------
         #Add istar using the fitted value for vsini / an  external value for vsini, and independent measurements of Peq and Rstar
         #    - vsini = veq*sin(istar) = (2*pi*Rstar/Peq)*sin(istar)
@@ -2869,7 +2857,27 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
             up_var_par(fixed_args,'istar_deg')   
-    
+
+        #-------------------------------------------------            
+
+        #Folding istar[deg] around 90
+        #    - only use if all other parameters are degenerate with istar
+        if ('fold_istar' in deriv_prop):        
+            print('        + Folding istar')
+            iistar = np_where1D(fixed_args['var_par_list']=='istar_deg')
+            if fit_dic['fit_mode'] in ['chi2','fixed']:
+                stop('Not relevant')
+            elif fit_dic['fit_mode']=='mcmc':   
+                istar_temp=np.squeeze(merged_chain[:,iistar])  
+                if deriv_prop['fold_istar']['config']=='North':
+                    cond_fold=(istar_temp > 90.)         
+                    fixed_args['var_par_names'][iistar]='$i_{\star,N}$'
+                elif deriv_prop['fold_istar']['config']=='South':
+                    cond_fold=(istar_temp < 90.)         
+                    fixed_args['var_par_names'][iistar]='$i_{\star,S}$'              
+                else:stop('ERROR : wrong configuration')
+                if True in cond_fold:merged_chain[cond_fold,iistar]=180.-istar_temp[cond_fold] 
+
         #-------------------------------------------------
         #Add Peq using the value derived from veq and independent measurement of Rstar
         #    - Peq = (2*pi*Rstar/veq)
@@ -3063,7 +3071,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 
         #Add 3D spin-orbit angle
         #    - psi = acos(sin(istar)*cos(lamba)*sin(ip) + cos(istar)*cos(ip))
-        #    - must be done before modification of istar and lambda chains
+        #    - must be done before modification of lambda chains
         if ('psi' in deriv_prop) or ('psi_lambda' in deriv_prop):
             print('        + Adding 3D spin-orbit angle')
             for pl_loc in fixed_args['lambda_rad_pl']:              
@@ -3106,31 +3114,26 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     if ('istar_deg' in fixed_args['var_par_list']):
                         print('           Using derived istar')
                         istar_chain=np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']=='istar_deg')]    )*np.pi/180. 
-                        if np.median(istar_chain)<=np.pi/2:
-                            istarN_chain = istar_chain
-                            istarS_chain=np.pi-istarN_chain
+                        
+                        #Inclination was folded
+                        #    - if not folded we assume the degeneracy around 90 could be broken and we use the full PDF
+                        if ('fold_istar' in deriv_prop): 
+                            degen_psi = True
+                            if deriv_prop['fold_istar']['config']=='North':
+                                istarN_chain = istar_chain
+                                istarS_chain=np.pi-istarN_chain
+                            elif deriv_prop['fold_istar']['config']=='South':
+                                istarS_chain = istar_chain
+                                istarN_chain=np.pi-istarS_chain 
                         else:
-                            istarS_chain = istar_chain
-                            istarN_chain=np.pi-istarS_chain                            
+                            degen_psi = False
+                           
                     else:
                         print('           Using external istar')
 
-                        #Gaussian or half-gaussian PDFs on istar                   
-                        istar_dic = deepcopy(deriv_prop[key_loc]['istar'])
-                        for subpar in istar_dic:istar_dic[subpar]*=np.pi/180.      
-                        if 's_val' in istar_dic:istar_chain = np.random.normal(istar_dic['val'], istar_dic['s_val'], n_chain)
-                        else:istar_chain = gen_hrand_chain(istar_dic['val'],istar_dic['s_val_low'],istar_dic['s_val_high'],n_chain)
-                        
-                        #Symmetrical PDF around 90°                        
-                        if istar_dic['val']<=np.pi/2:
-                            istarN_chain = istar_chain
-                            istarS_chain=np.pi-istarN_chain
-                        else:                            
-                            istarS_chain = istar_chain
-                            istarN_chain=np.pi-istarS_chain                            
-
                         #Complex PDF on istar
-                        if pl_loc=='HD89345b':                        
+                        if pl_loc=='HD89345b': 
+                            degen_psi = True                       
                             istar_mean = 37.*np.pi/180. 
                             frac_chain = 0.75
                             rand_draw_right = np.random.uniform(low=istar_mean, high=90.*np.pi/180., size=4*n_chain)
@@ -3154,7 +3157,23 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                             # plt.plot(grid_itest*180./np.pi,hist_itest,drawstyle='steps-mid',color='orange')
                             # plt.show()
                             # stop()                            
+                        
+                        else: 
+                            degen_psi = True  
 
+                            #Gaussian or half-gaussian PDFs on istar                   
+                            istar_dic = deepcopy(deriv_prop[key_loc]['istar'])
+                            for subpar in istar_dic:istar_dic[subpar]*=np.pi/180.      
+                            if 's_val' in istar_dic:istar_chain = np.random.normal(istar_dic['val'], istar_dic['s_val'], n_chain)
+                            else:istar_chain = gen_hrand_chain(istar_dic['val'],istar_dic['s_val_low'],istar_dic['s_val_high'],n_chain)
+                            
+                            #Symmetrical PDF around 90°                        
+                            if istar_dic['val']<=np.pi/2:
+                                istarN_chain = istar_chain
+                                istarS_chain=np.pi-istarN_chain
+                            else:                            
+                                istarS_chain = istar_chain
+                                istarN_chain=np.pi-istarS_chain                            
 
                     #Orbital inclination
                     if ('inclin_rad__pl'+pl_loc in fixed_args['var_par_list']):
@@ -3166,37 +3185,71 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                         if 's_val' in ip_dic:inclin_rad_chain = np.random.normal(ip_dic['val'], ip_dic['s_val'], n_chain)
                         else:inclin_rad_chain = gen_hrand_chain(ip_dic['val'],ip_dic['s_val_low'],ip_dic['s_val_high'],n_chain)                          
                     
+                    #Psi
+                    if degen_psi:print('           Degeneracy on istar : Psi degenerate between North and South configuration')
+                    else:print('           No degeneracy on istar : Psi calculated over full angular space ')
+                    
                     for inst in lamb_chain:
-                        for vis in lamb_chain[inst]:  
-                            PsiN_chain=np.arccos(np.sin(istarN_chain)*np.cos(lamb_chain[inst][vis])*np.sin(inclin_rad_chain) + np.cos(istarN_chain)*np.cos(inclin_rad_chain))*180./np.pi
-                            PsiS_chain=np.arccos(np.sin(istarS_chain)*np.cos(lamb_chain[inst][vis])*np.sin(inclin_rad_chain) + np.cos(istarS_chain)*np.cos(inclin_rad_chain))*180./np.pi                   
-                            merged_chain=np.concatenate((merged_chain,PsiN_chain[:,None]),axis=1)   
-                            merged_chain=np.concatenate((merged_chain,PsiS_chain[:,None]),axis=1)   
-                            
-                            #Combined Psi for istar and pi-istar, assumed equiprobable
-                            if deriv_prop[key_loc]['combined']:
-                                Psi_chain = 0.5*( PsiN_chain + PsiS_chain   )     
-                                merged_chain=np.concatenate((merged_chain,Psi_chain[:,None]),axis=1)   
+                        for vis in lamb_chain[inst]: 
+                            if degen_psi:
+                                if ('North' in deriv_prop[key_loc]['config']) or ('combined' in deriv_prop[key_loc]['config']):
+                                    PsiN_chain=np.arccos(np.sin(istarN_chain)*np.cos(lamb_chain[inst][vis])*np.sin(inclin_rad_chain) + np.cos(istarN_chain)*np.cos(inclin_rad_chain))*180./np.pi
+                                    if ('North' in deriv_prop[key_loc]['config']):merged_chain=np.concatenate((merged_chain,PsiN_chain[:,None]),axis=1)    
+                                if ('South' in deriv_prop[key_loc]['config']) or ('combined' in deriv_prop[key_loc]['config']):
+                                    PsiS_chain=np.arccos(np.sin(istarS_chain)*np.cos(lamb_chain[inst][vis])*np.sin(inclin_rad_chain) + np.cos(istarS_chain)*np.cos(inclin_rad_chain))*180./np.pi                   
+                                    if ('South' in deriv_prop[key_loc]['config']):merged_chain=np.concatenate((merged_chain,PsiS_chain[:,None]),axis=1)   
+                                
+                                #Combined Psi for istar and pi-istar, assumed equiprobable
+                                if ('combined' in deriv_prop[key_loc]['config']):
+                                    Psi_chain = 0.5*( PsiN_chain + PsiS_chain   )     
+                                    merged_chain=np.concatenate((merged_chain,Psi_chain[:,None]),axis=1) 
+                                    
+                            else:
+                                Psi_chain=np.arccos(np.sin(istar_chain)*np.cos(lamb_chain[inst][vis])*np.sin(inclin_rad_chain) + np.cos(istar_chain)*np.cos(inclin_rad_chain))*180./np.pi
+                                merged_chain=np.concatenate((merged_chain,Psi_chain[:,None]),axis=1) 
                 
                 if lambda_rad_pl in fixed_args['genpar_instvis']:  
                     for inst in fixed_args['genpar_instvis'][lambda_rad_pl]:
                         for vis in fixed_args['genpar_instvis'][lambda_rad_pl][inst]:
-                            fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiN__pl'+pl_loc+'__IS'+inst+'_VS'+vis,'PsiS__pl'+pl_loc+'__IS'+inst+'_VS'+vis]))
-                            fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi_{N}$['+inst+']('+vis+')',pl_loc+'_$\psi_{S}$']))   
-                            fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg','deg']))        
-                            if deriv_prop[key_loc]['combined']:
-                                fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiS__pl'+pl_loc]))
-                                fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi$['+inst+']('+vis+')']))   
-                                fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg']))  
-
+                            var_par_list_add=[]
+                            var_par_names_add=[]
+                            var_par_units_add=[]
+                            if degen_psi:
+                                if ('North' in deriv_prop[key_loc]['config']):
+                                    var_par_list_add+= ['PsiN__pl'+pl_loc+'__IS'+inst+'_VS'+vis]
+                                    var_par_names_add += [pl_loc+'_$\psi_{N}$['+inst+']('+vis+')']
+                                    var_par_units_add += ['deg']  
+                                if ('South' in deriv_prop[key_loc]['config']):
+                                    var_par_list_add+= ['PsiS__pl'+pl_loc+'__IS'+inst+'_VS'+vis]      
+                                    var_par_names_add += [pl_loc+'_$\psi_{S}$['+inst+']('+vis+')']
+                                    var_par_units_add += ['deg'] 
+                            if ('combined' in deriv_prop[key_loc]['config']) or (not degen_psi):
+                                var_par_list_add += ['Psi__pl'+pl_loc]
+                                var_par_names_add += [pl_loc+'_$\psi$['+inst+']('+vis+')']
+                                var_par_units_add += ['deg']                                  
+                            fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],var_par_list_add))
+                            fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],var_par_names_add))   
+                            fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],var_par_units_add))  
                 else:
-                    fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['PsiN__pl'+pl_loc,'PsiS__pl'+pl_loc]))
-                    fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi_{N}$',pl_loc+'_$\psi_{S}$']))   
-                    fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg','deg']))  
-                    if deriv_prop[key_loc]['combined']:    
-                        fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],['Psi__pl'+pl_loc]))
-                        fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],[pl_loc+'_$\psi$']))   
-                        fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg'])) 
+                    var_par_list_add=[]
+                    var_par_names_add=[]
+                    var_par_units_add=[]
+                    if degen_psi:
+                        if ('North' in deriv_prop[key_loc]['config']):
+                            var_par_list_add+= ['PsiN__pl'+pl_loc]
+                            var_par_names_add += [pl_loc+'_$\psi_{N}$']
+                            var_par_units_add += ['deg']  
+                        if ('South' in deriv_prop[key_loc]['config']):
+                            var_par_list_add+= ['PsiS__pl'+pl_loc]      
+                            var_par_names_add += [pl_loc+'_$\psi_{S}$']
+                            var_par_units_add += ['deg'] 
+                    if ('combined' in deriv_prop[key_loc]['config']) or (not degen_psi):
+                        var_par_list_add += ['Psi__pl'+pl_loc]
+                        var_par_names_add += [pl_loc+'_$\psi$']
+                        var_par_units_add += ['deg']                                  
+                    fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],var_par_list_add))
+                    fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],var_par_names_add))   
+                    fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],var_par_units_add))                      
                  
         #-------------------------------------------------                
         #Calculation of mutual inclination
@@ -3376,7 +3429,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             
         #Convert lambda[rad] to lambda[deg]
         if ('lambda_deg' in deriv_prop) and ((fixed_args['rout_mode'] in ['IntrProf','ResProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):  
-            print('        + Converting lambda in degrees')       
+            print('        + Converting lambda into degrees')       
             for pl_loc in fixed_args['lambda_rad_pl']:
                 lambda_rad_pl = 'lambda_rad__pl'+pl_loc
                 lambda_deg_pl = 'lambda_deg__pl'+pl_loc
@@ -3417,7 +3470,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                         if pl_loc in deriv_prop['lambda_deg']:x_mid = deriv_prop['lambda_deg'][pl_loc]
                         else:x_mid=np.median(merged_chain[:,ilamb])
         
-                        print('        + Folding '+lamb_name+' around ',x_mid)
+                        print('        + Folding '+new_lamb_name+' around ',x_mid)
                         mid_shift = x_mid-180.
                         lambda_temp=np.squeeze(merged_chain[:,ilamb])-mid_shift
                         w_gt_360=(lambda_temp > 360.)
@@ -3508,9 +3561,9 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
         p_final=postMCMCwrapper_2(fit_dic,fixed_args,merged_chain)
 
     #----------------------------------------------------------
-    #Save derived parameters
+    #Derived parameters
     #----------------------------------------------------------
-    save_fit_results('derived',fixed_args,fit_dic,fit_dic['fit_mode'],p_final)
+    fit_merit('derived',p_final,fixed_args,fit_dic,fit_dic['verbose'],verb_shift = fit_dic['verb_shift']) 
 
     #Close save file
     fit_dic['file_save'].close() 

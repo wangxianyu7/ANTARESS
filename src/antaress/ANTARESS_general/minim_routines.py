@@ -534,19 +534,11 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
     #Start counter
     fit_dic['st0']=get_time()     
 
-    #Fixed parameters values
-    #    - retrieve parameters in the 'p_start' structure that will remain fixed to their value 
-    #    - p_start cannot be given as input to the MCMC with both fixed and variable parameters (ie, they must be given separately)
-    fixed_args['fixed_par_val']={par:p_start[par].value for par in p_start if not p_start[par].vary}
-    
-    #Parameters linked to variable parameters through an expression
-    fixed_args['linked_par_expr']={par:p_start[par].expr for par in p_start if p_start[par].expr!=None}
-
     #Parameters names
     #    - order will be used as such afterward
     fixed_args['par_names']=[par for par in p_start]
 
-    #List of variable parameters name and their indices in the table of all parameters
+    #List of parameters name and their indices in the table of all parameters
     var_par_list=[]
     ivar_par_list=[]
     ifix_par_list=[]
@@ -555,60 +547,80 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
     exp_par_list=[]
     var_par_names=[]
     var_par_units=[]
+    fix_par_names=[]
+    fix_par_units=[]
+    fixed_args['fixed_par_val'] = {}
+    fixed_args['linked_par_expr'] = {}
     for ipar,par in enumerate(fixed_args['par_names']):
+        
+        #Variable parameter
         if p_start[par].vary:
             var_par_list+=[par]
             ivar_par_list+=[ipar]
-            inst_par = '_'
-            vis_par = '_'
-            pl_name = None                
-            sp_name = None
-            
-            #Parameter depends on epoch
-            if ('__IS') and ('_VS') in par:
-                inst_vis_par = par.split('__IS')[1]
-                inst_par  = inst_vis_par.split('_VS')[0]
-                vis_par  = inst_vis_par.split('_VS')[1]   
-                if ('__sp' in par) or ('__pl' in par):
-                    if ('__sp' in par):
-                        sp_name = (par.split('__IS')[0]).split('__sp')[1]  
-                        par_name_fit = par.split('__sp')[0]
-                    if ('__pl' in par):
-                        pl_name = (par.split('__IS')[0]).split('__pl')[1]
-                        par_name_fit = par.split('__pl')[0]
-                else:
-                    par_name_fit = par.split('__IS')[0]
-            
-            #Parameter does not depend on epoch
-            else:
-                if ('__sp' in par) or ('__pl' in par):
-                    if ('__sp' in par):
-                        sp_name = par.split('__sp')[1]  
-                        par_name_fit = par.split('__sp')[0]
-                    if ('__pl' in par):
-                        pl_name = par.split('__pl')[1]    
-                        par_name_fit = par.split('__pl')[0]
-                else: 
-                    par_name_fit = par                                                     
-            par_name_loc = model_par_names(par_name_fit)
-            
-            if sp_name is not None:par_name_loc+='['+sp_name+']'
-            if pl_name is not None:par_name_loc+='['+pl_name+']'                             
-            if inst_par != '_':
-                par_name_loc+='['+inst_par+']'
-                if vis_par != '_':par_name_loc+='('+vis_par+')'
 
-            var_par_names+=[par_name_loc]
-            var_par_units+=[model_par_units(par_name_fit)]
-
+        #Fixed parameter
+        #    - retrieve parameters in the 'p_start' structure that will remain fixed to their value 
+        #    - p_start cannot be given as input to the MCMC with both fixed and variable parameters (ie, they must be given separately)
         else:
+            fixed_args['fixed_par_val'][par] = p_start[par].value
             ifix_par_list+=[ipar]
             fix_par_list+=[par]
+
+        #Parameter name and unit    
+        inst_par = '_'
+        vis_par = '_'
+        pl_name = None                
+        sp_name = None
+        
+        #Parameter depends on epoch
+        if ('__IS') and ('_VS') in par:
+            inst_vis_par = par.split('__IS')[1]
+            inst_par  = inst_vis_par.split('_VS')[0]
+            vis_par  = inst_vis_par.split('_VS')[1]   
+            if ('__sp' in par) or ('__pl' in par):
+                if ('__sp' in par):
+                    sp_name = (par.split('__IS')[0]).split('__sp')[1]  
+                    par_name_root = par.split('__sp')[0]
+                if ('__pl' in par):
+                    pl_name = (par.split('__IS')[0]).split('__pl')[1]
+                    par_name_root = par.split('__pl')[0]
+            else:
+                par_name_root = par.split('__IS')[0]
+        
+        #Parameter does not depend on epoch
+        else:
+            if ('__sp' in par) or ('__pl' in par):
+                if ('__sp' in par):
+                    sp_name = par.split('__sp')[1]  
+                    par_name_root = par.split('__sp')[0]
+                if ('__pl' in par):
+                    pl_name = par.split('__pl')[1]    
+                    par_name_root = par.split('__pl')[0]
+            else: 
+                par_name_root = par                                                     
+        par_name_loc = model_par_names(par_name_root)
+        
+        if sp_name is not None:par_name_loc+='['+sp_name+']'
+        if pl_name is not None:par_name_loc+='['+pl_name+']'                             
+        if inst_par != '_':
+            par_name_loc+='['+inst_par+']'
+            if vis_par != '_':par_name_loc+='('+vis_par+')'
+            
+        if p_start[par].vary:            
+            var_par_names+=[par_name_loc]
+            var_par_units+=[model_par_units(par_name_root)]
+        else:            
+            fix_par_names+=[par_name_loc]
+            fix_par_units+=[model_par_units(par_name_root)]
+            
+        #Parameters linked to variable parameters through an expression
         if p_start[par].expr!=None:
+            fixed_args['linked_par_expr'][par] = p_start[par].expr
             p_start[par].vary=False
             iexp_par_list+=[ipar]
             exp_par_list+=[par]
     fixed_args['var_par_list']=np.array(var_par_list,dtype='U50')  
+    fixed_args['var_par_list_nom'] = deepcopy(fixed_args['var_par_list'])
     fixed_args['ivar_par_list']=ivar_par_list
     fixed_args['ifix_par_list']=ifix_par_list
     fixed_args['fix_par_list']=fix_par_list
@@ -616,6 +628,8 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
     fixed_args['exp_par_list']=exp_par_list
     fixed_args['var_par_names']=np.array(var_par_names,dtype='U50')
     fixed_args['var_par_units']=np.array(var_par_units,dtype='U50')
+    fixed_args['fix_par_names']=np.array(fix_par_names,dtype='U50')
+    fixed_args['fix_par_units']=np.array(fix_par_units,dtype='U50')
 
     #Retrieve the number of spots that are present (whether their parameters are fixed or fitted)
     spot_names=[]
@@ -745,7 +759,7 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
     return None
 
 
-def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=None, xtol=1e-7, ftol=1e-7,verbose=False,fixed_args=None,show_correl=False):
+def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=None, xtol=1e-7, ftol=1e-7,verbose=False,fixed_args=None,show_correl=False,fit_dic=None):
     r"""**Wrapper to lmfit**
 
     Runs `lmfit` minimizer and outputs results and merit values.
@@ -773,14 +787,12 @@ def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=N
     argstofit['cov_val'] = deepcopy(covtofit)
     if maxfev is not None:max_nfev = maxfev
     else:max_nfev = 2000*(len(xtofit)+1)
-    st0=get_time()
     if method=='leastsq':
         result = minimize(ln_prob_func_lmfit, p_use, args=(xtofit, argstofit), method=method, max_nfev=max_nfev, xtol=xtol, ftol=ftol,scale_covar = False )
     else:
         if method=='lbfgsb':meth_args = {'tol':ftol}
         else:meth_args = {}
         result = minimize(ln_prob_func_lmfit, p_use, args=(xtofit, argstofit), method=method, max_nfev=max_nfev,scale_covar = False , **meth_args)
-    if verbose:print('   duration : '+str((get_time()-st0)/60.)+' mn')
     
     #Best-fit parameters
     #    - attributes of the Minimizer object (here result):
@@ -830,26 +842,13 @@ def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=N
     #Cumulative distribution function
     #    - cdf = (0.05<cdf<0.95, if not: too bad/good fit or big/small error)
     merit['cdf'] = special.chdtrc(result.nfree,merit['chi2'])
-
-    #Print information on screen
-    if verbose:
-        print("fit report:")
-        print("[[Fit Statistics]]")
-        print("    # fit success           = %r"%result.success,)
-        if not result.success:print(": " + result.message[:-1])
-        else:
-            if len(result.message)>32:print(": " , result.message)
-            else:print(": " , result.message[:-1])
-        print("    # function evals        = %i"%result.nfev)
-        print("    # data points           = %i"%result.ndata)
-        print("    # degree of freedom     = %i"%result.nfree)
-        print("    # free variables        = %i"%result.nvarys)
-        print("    chi-square              = %f"%merit['chi2'])
-        print("    Bayesian ind crit (BIC) = %f"%merit['BIC'])
-        print("    reduced chi-square      = %f"%(merit['chi2']/result.nfree))
-        print("    RMS                     = %f"%merit['rms'])
-        print("    cumul dist funct (cdf)  = %f"%merit['cdf'])
-        report_fit(p_best,show_correl=show_correl, min_correl=0.1)
+    
+    #Varia
+    merit['success'] = result.success
+    merit['message'] = result.message
+    merit['eval'] = result.nfev
+    
+    if fit_dic is not None:fit_dic['merit'].update(merit)
 
     return result, merit ,p_best
     
@@ -987,11 +986,11 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
 #%%% Post-processing
 ##################################################################################################   
        
-def fit_merit(p_final_in,fixed_args,fit_dic,verbose):
-    r"""**Post-proc: fit merit values**
+def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
+    r"""**Post-proc: model merit and parameters**
 
-    Calculates various indicators of the best-fit merit.
-      
+    Calculates, prints, and saves merit indicators of the best-fit model, as well as best-fit values and confidence intervals for the original and derived parameters. 
+     
     Args:
         TBD
     
@@ -999,142 +998,185 @@ def fit_merit(p_final_in,fixed_args,fit_dic,verbose):
         TBD
     
     """
-    if verbose:print('     Calculating merit values') 
+    if verbose or fit_dic['save_outputs']:
+        if (mode=='derived') and (len([parname for parname in fixed_args['var_par_list'] if (parname not in fixed_args['var_par_list_nom'])])>0):print_der = True
+        else:print_der = False        
+        txt_print = []
+    else:txt_print = None
+        
+    if mode=='nominal': 
 
-    #Convert parameters() structure into dictionary 
-    if fit_dic['fit_mode'] !='mcmc': 
-        p_final={}
-        for par in p_final_in:p_final[par]=p_final_in[par].value   
-        if fit_dic['fit_mode']=='chi2':
-            fit_dic['sig_parfinal_err']={'1s':np.zeros([2,fit_dic['merit']['n_free']])}            
-            for ipar,par in enumerate(fixed_args['var_par_list']): 
-                fit_dic['sig_parfinal_err']['1s'][:,ipar]=p_final_in[par].stderr  
-    else:p_final = deepcopy(p_final_in)
- 
-    #Calculation of best-fit model equivalent to the observations, corresponding residuals, and RMS
-    #    - only in the case where the function does return the model
-    if not fixed_args['inside_fit']:
-        res_tab = fixed_args['y_val'] - fixed_args['fit_func'](p_final,fixed_args['x_val'],args=fixed_args)[0] 
-        fit_dic['merit']['rms']=res_tab.std()       
-    else:fit_dic['merit']['rms']='Undefined'
-
-    #Merit values 
-    if fit_dic['fit_mode'] =='fixed':fit_dic['merit']['mode']='forward'    
-    else:fit_dic['merit']['mode']='fit'    
-    fit_dic['merit']['dof']=fit_dic['nx_fit']-fit_dic['merit']['n_free']
+        #End counter
+        fit_dic['fit_dur'] = get_time()-fit_dic['st0']
     
-    if fit_dic['fit_mode'] in ['fixed','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
-    elif fit_dic['fit_mode'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1] 
-    fit_dic['merit']['red_chi2']=fit_dic['merit']['chi2']/fit_dic['merit']['dof']
-    fit_dic['merit']['BIC']=fit_dic['merit']['chi2']+fit_dic['merit']['n_free']*np.log(fit_dic['nx_fit'])      
-    fit_dic['merit']['AIC']=fit_dic['merit']['chi2']+2.*fit_dic['merit']['n_free']
+        #Convert parameters() structure into dictionary 
+        if fit_dic['fit_mode'] !='mcmc': 
+            p_final={}
+            for par in p_final_in:p_final[par]=p_final_in[par].value   
+            if fit_dic['fit_mode']=='chi2':
+                fit_dic['sig_parfinal_err']={'1s':np.zeros([2,fit_dic['merit']['n_free']])}            
+                for ipar,par in enumerate(fixed_args['var_par_list']): 
+                    fit_dic['sig_parfinal_err']['1s'][:,ipar]=p_final_in[par].stderr  
+        else:p_final = deepcopy(p_final_in)
+     
+        #Calculation of best-fit model equivalent to the observations, corresponding residuals, and RMS
+        #    - only in the case where the function does return the model
+        if not fixed_args['inside_fit']:
+            res_tab = fixed_args['y_val'] - fixed_args['fit_func'](p_final,fixed_args['x_val'],args=fixed_args)[0] 
+            fit_dic['merit']['rms']=res_tab.std()       
+        else:fit_dic['merit']['rms']='Undefined'
     
-    if verbose:
-        print('     + Npts = ',fit_dic['nx_fit'])
-        print('     + Nfree = ',fit_dic['merit']['n_free'])
-        print('     + d.o.f =',fit_dic['merit']['dof'])
-        print('     + Best chi2 = '+str(fit_dic['merit']['chi2']))
-        print('     + Reduced Chi2 ='+str(fit_dic['merit']['red_chi2']))
-        print('     + RMS of residuals = '+str(fit_dic['merit']['rms'])) 
-        print('     + BIC ='+str(fit_dic['merit']['BIC']))
-        if fit_dic['fit_mode']=='mcmc':print('     + GR statistic ='+str(fit_dic['GR_stat']))           
-        print('     + Parameters :')
-        for par in fixed_args['fixed_par_val']:print('        ',par,'=',"{0:.10e}".format(p_final[par]))                   
-        if fit_dic['fit_mode'] =='fixed':
-            for par in fixed_args['var_par_list']:print('        ',par,'=',"{0:.10e}".format(p_final[par]))                
-        else:
-            for ipar,par in enumerate(fixed_args['var_par_list']):print('        ',par,'=',"{0:.10e}".format(p_final[par]),'+-',"{0:.10e}".format(fit_dic['sig_parfinal_err']['1s'][0,ipar]))   
+        #Merit values 
+        if fit_dic['fit_mode'] =='fixed':fit_dic['merit']['mode']='forward'    
+        else:fit_dic['merit']['mode']='fit'    
+        fit_dic['merit']['dof']=fit_dic['nx_fit']-fit_dic['merit']['n_free']
+        if fit_dic['fit_mode'] in ['fixed','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
+        elif fit_dic['fit_mode'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1] 
+        fit_dic['merit']['red_chi2']=fit_dic['merit']['chi2']/fit_dic['merit']['dof']
+        fit_dic['merit']['BIC']=fit_dic['merit']['chi2']+fit_dic['merit']['n_free']*np.log(fit_dic['nx_fit'])      
+        fit_dic['merit']['AIC']=fit_dic['merit']['chi2']+2.*fit_dic['merit']['n_free']
+        if fit_dic['fit_mode']=='mcmc':fit_dic['merit']['GR_stat']=fit_dic['GR_stat']
+        else:fit_dic['merit']['GR_stat']='N/A, MCMC run needed.'
 
-    #End counter
-    fit_dic['fit_dur'] = get_time()-fit_dic['st0']
-    if verbose:print('     Fit duration =',fit_dic['fit_dur'],' s')
-            
-    #Fit information
+        
+        #Print fit statistics and results on screen
+        if txt_print is not None:
+            txt_print+=[["==============================================================================="],
+                        ["Fit statistics"],
+                        ["==============================================================================="],
+                        [" "],
+                        ['Mode : '+{'chi2':'Chi square','mcmc':'MCMC','fixed':'Forward'}[fit_dic['fit_mode']]]]  
+            if fit_dic['fit_mode']=='chi2':
+                txt_print+=[["Fit success                = %r"%fit_dic['merit']['success']]]
+                if not fit_dic['merit']['success']:txt_print+=[["  " + fit_dic['merit']['message'][:-1]]]  
+                else:
+                    if len(fit_dic['merit']['message'])>32:txt_print+=[["  " + fit_dic['merit']['message']]]  
+                    elif (fit_dic['merit']['message'][:-1]!='Fit succeeded'):txt_print+=[["  " + fit_dic['merit']['message'][:-1]]]  
+                txt_print+=[["Function evals             = %i"%fit_dic['merit']['eval']]]    
+            elif fit_dic['fit_mode']=='mcmc':        
+                txt_print+=[
+                    ["Walkers                     = "+str(fit_dic['nwalkers'])],
+                    ["Burn-in steps               = "+str(fit_dic['nburn'])],
+                    ["Steps (initial, per walker) = "+str(fit_dic['nsteps'])],
+                    ["Steps (final, all walkers)  = "+str(fit_dic['nsteps_final_merged'])],
+                ]        
+            txt_print+=[
+                ["Duration                    = "+"{0:.4f}".format(fit_dic['fit_dur'])+' s'],
+                ['Data points                 = %i'%fit_dic['nx_fit']],
+                ['Free variables              = %i'%fit_dic['merit']['n_free']],
+                ['Degree of freedom           = %i'%fit_dic['merit']['dof']],
+                ['Best Chi-square             = %f'%fit_dic['merit']['chi2']],
+                ['Reduced Chi-square          = %f'%fit_dic['merit']['red_chi2']],
+                ['RMS of residuals            = %f'%fit_dic['merit']['rms']],
+                ['Bayesian Info. crit. (BIC)  = %f'%fit_dic['merit']['BIC']], 
+                ['Akaike Info. crit. (AIC)    = %f'%fit_dic['merit']['AIC']],
+                ['Gelman-Rubin statistic      = %f'%fit_dic['merit']['GR_stat']], 
+                ]
+            if fit_dic['fit_mode']=='chi2':txt_print+=[["Cumul. dist. funct. (cdf)  = %e"%fit_dic['merit']['cdf']]]
+            txt_print+=[[" "]]
+
+    elif mode=='derived':
+        p_final = deepcopy(p_final_in)
+
+    if txt_print is not None:
+        if (mode=='nominal') or (print_der):
+            if (mode=='nominal'): 
+                max_len_fix = 0
+                for parname in fixed_args['fixed_par_val']:max_len_fix = max([max_len_fix,len(parname)]) 
+                txt_print+=[                
+                    [''],    
+                    ['==============================================================================='],    
+                    ['Nominal parameters'],     
+                    ['==============================================================================='],       
+                    [''],
+                    ['==========================================================='],    
+                    ['Fixed'],
+                    ['==========================================================='],    
+                    [''],     
+                    ['Name'+" "*(max_len_fix-len('Name'))+'\t'+'Value'+" "*16+'\t'+'Unit'],
+                    ['-----------------------------------------------------------'],      
+                    ['']]                 
+                for ipar,(parname,parunit) in enumerate(zip(fixed_args['fix_par_list'],fixed_args['fix_par_units'])):           
+                    txt_print+=[[parname+" "*(max_len_fix-len(parname))+'\t'+"{0:.10e}".format(p_final[parname])+'\t'+'['+parunit+']']]                  
+            elif print_der: 
+                txt_print+=[          
+                    [''],
+                    ['==============================================================================='],
+                    ['Derived parameters'],
+                    ['===============================================================================']]    
+            max_len_med = 0
+            for parname in fixed_args['var_par_list']:max_len_med = max([max_len_med,len(parname)]) 
+            txt_print+=[
+                [''],
+                ['==========================================================='],    
+                ['Variable'],
+                ['==========================================================='],    
+                [''],                   
+                ['Name'+" "*(max_len_med-len('Name'))+'\t'+'Median'+" "*16+'\t'+'Unit']]
+            if 'sig_parfinal_err' in fit_dic:
+                txt_print+=[['     1-sigma uncertainties from quantiles']]
+                txt_print+=[['     Interval around median from 1-sigma quantiles']]
+            if (fit_dic['fit_mode']=='mcmc') and (fit_dic['HDI'] is not None):  
+                sig_txt = {'1s':'1-sigma','2s':'2-sigma','3s':'3-sigma'}[fit_dic['HDI']]
+                txt_print+=[['     '+sig_txt+' uncertainties from HDI']]
+                txt_print+=[['     Interval around median from '+sig_txt+' HDI']]     
+                txt_print+=[['-----------------------------------------------------------']]    
+    
+            #Print variable parameters
+            for ipar,(parname,parunit) in enumerate(zip(fixed_args['var_par_list'],fixed_args['var_par_units'])):
+        
+                #Only derived parameters not already printed as nominal ones are printed
+                if (mode=='nominal') or print_der:
+                    
+                    #Median
+                    nom_val = p_final[parname]
+        
+                    #Print median value
+                    txt_print+=[['']]
+                    txt_print+=[[parname+" "*(max_len_med-len(parname))+'\t'+"{0:.10e}".format(nom_val)+'\t'+'['+parunit+']']]
+        
+                    #Quantile uncertainties
+                    if 'sig_parfinal_err' in fit_dic:
+                        lower_sig= fit_dic['sig_parfinal_err']['1s'][0,ipar]
+                        upper_sig= fit_dic['sig_parfinal_err']['1s'][1,ipar]  
+                        txt_print+=[['     Quant. 1s err. = -'+"{0:.10e}".format(lower_sig)+'\t'+"+"+"{0:.10e}".format(upper_sig)]] 
+                        txt_print+=[['     Quant. 1s int. = ['+"{0:.10e}".format(nom_val-lower_sig)+'\t'+"{0:.10e}".format(nom_val+upper_sig)+"]"]]
+                    
+                    #HDI (MCMC only)
+                    if (fit_dic['fit_mode']=='mcmc'): 
+                        if (fit_dic['HDI'] is not None):
+                            txt_print+=[['     HDI '+fit_dic['HDI']+' err.    = '+fit_dic['HDI_sig_txt'][ipar]]]
+                            txt_print+=[['     HDI '+fit_dic['HDI']+' int.    = '+fit_dic['HDI_interv_txt'][ipar]]]
+                        if parname in fit_dic['conf_limits']:
+                            for lev in fit_dic['conf_limits'][parname]['level']:
+                                txt_print+=[['     '+fit_dic['conf_limits'][parname]['limits'][lev]]]         
+    
+        #Calculation of null model hypothesis
+        #    - to calculate chi2 (=BIC) with respect to a null level for comparison of best-fit model with null hypothesis
+        if (mode=='derived') and ('p_null' in fit_dic):
+            if fit_dic['fit_mode'] in ['fixed','chi2']: chi2_null=np.sum(ln_prob_func_lmfit(fit_dic['p_null'], fixed_args['x_val'], fixed_args=fixed_args)**2.)
+            elif fit_dic['fit_mode'] =='mcmc':chi2_null=ln_lkhood_func_mcmc(fit_dic['p_null'],fixed_args)[1]   
+            txt_print+=[            
+                [''],
+                ['==============================================================================='],    
+                ['Null hypothesis'],
+                ['==============================================================================='],    
+                [''],
+                ['Chi-square               = '+"{0:.4f}".format(chi2_null)],
+                ['(Null - Best) Chi-square = '+"{0:.4f}".format(chi2_null-fit_dic['merit']['chi2'])],
+                ['']]
+
+    #Print fit information on screen
+    if verbose: 
+        print('')
+        for txt_line in txt_print:print(verb_shift+txt_line[0])         
+
+    #Save fit information on disk
     if fit_dic['save_outputs']:
-        save_fit_results('merit',fixed_args,fit_dic,fit_dic['fit_mode'],p_final)
-        save_fit_results('nominal',fixed_args,fit_dic,fit_dic['fit_mode'],p_final)    
+        file_path=fit_dic['file_save']
+        for txt_line in txt_print:np.savetxt(file_path,[txt_line],delimiter='\t',fmt=['%s'])        
 
     return p_final
-    
-
-      
-def save_fit_results(part,fixed_args,fit_dic,fit_mode,p_final):
-    r"""**Post-proc: fit outputs**
-
-    Saves merit indicators of the best-fit model, as well as best-fit values and confidence intervals for the original and derived parameters.
-      
-    Args:
-        TBD
-    
-    Returns:
-        TBD
-    
-    """
-    file_path=fit_dic['file_save']
-
-    if part=='merit':
-        np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
-        np.savetxt(file_path,[['Merit values']],fmt=['%s']) 
-        np.savetxt(file_path,[['----------------------------------']],fmt=['%s']) 
-        np.savetxt(file_path,[['Duration : '+str(fit_dic['fit_dur'])+' s']],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['Npts : '+str(fit_dic['nx_fit'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['Nfree : '+str(fit_dic['merit']['n_free'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['d.o.f : '+str(fit_dic['merit']['dof'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['Best chi2 : '+str(fit_dic['merit']['chi2'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['Reduced chi2 : '+str(fit_dic['merit']['red_chi2'])]],delimiter='\t',fmt=['%s'])
-        np.savetxt(file_path,[['RMS of residuals : '+str(fit_dic['merit']['rms'])]],delimiter='\t',fmt=['%s']) 
-        np.savetxt(file_path,[['BIC : '+str(fit_dic['merit']['BIC'])]],delimiter='\t',fmt=['%s'])
-        np.savetxt(file_path,[['AIC : '+str(fit_dic['merit']['AIC'])]],delimiter='\t',fmt=['%s'])
-        np.savetxt(file_path,[['----------------------------------']],fmt=['%s']) 
-        np.savetxt(file_path,[['']],fmt=['%s']) 
-    
-    if part in ['nominal','derived']:
-        if part=='nominal':        
-            np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
-            np.savetxt(file_path,[['Nominal best-fit parameters']],fmt=['%s']) 
-            np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])   
-            np.savetxt(file_path,[['Fixed']],delimiter='\t',fmt=['%s'])
-            for parname in fixed_args['fixed_par_val']:  
-                np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
-                np.savetxt(file_path,[[parname+'\t'+"{0:.10e}".format(p_final[parname])]],delimiter='\t',fmt=['%s'])
-            np.savetxt(file_path,[['-----------------']],fmt=['%s'])
-        elif part=='derived': 
-            np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
-            np.savetxt(file_path,[['Derived parameters']],fmt=['%s']) 
-            np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])     
-
-            #Calculation of null model hypothesis
-            #    - to calculate chi2 (=BIC) with respect to a null level for comparison of best-fit model with null hypothesis
-            if 'p_null' in fit_dic:
-                if fit_dic['fit_mode'] in ['fixed','chi2']: chi2_null=np.sum(ln_prob_func_lmfit(fit_dic['p_null'], fixed_args['x_val'], fixed_args=fixed_args)**2.)
-                elif fit_dic['fit_mode'] =='mcmc':chi2_null=ln_lkhood_func_mcmc(fit_dic['p_null'],fixed_args)[1]        
-                np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
-                np.savetxt(file_path,[['Null chi2 : '+str(chi2_null)]],delimiter='\t',fmt=['%s']) 
-                np.savetxt(file_path,[['----------------------------------']],fmt=['%s'])
-                np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
-                
-        np.savetxt(file_path,[['Parameters','med','-1s','+1s','med-1s','med+1s']],delimiter='\t',fmt=['%s']*6)
-        for ipar,parname in enumerate(fixed_args['var_par_list']):    
-            nom_val = p_final[parname]
-            if 'sig_parfinal_err' in fit_dic:
-                lower_sig= fit_dic['sig_parfinal_err']['1s'][0,ipar]
-                upper_sig= fit_dic['sig_parfinal_err']['1s'][1,ipar] 
-            else:
-                lower_sig = np.nan
-                upper_sig = np.nan
-            np.savetxt(file_path,[['']],delimiter='\t',fmt=['%s'])
-            data_save =parname+'\t'+"{0:.10e}".format(nom_val)+'\t'+"{0:.10e}".format(lower_sig)+'\t'+"{0:.10e}".format(upper_sig)+'\t'+"{0:.10e}".format(nom_val-lower_sig)+'\t'+"{0:.10e}".format(nom_val+upper_sig)
-            np.savetxt(file_path,[data_save],delimiter='\t',fmt=['%s']) 
-            if (fit_mode=='mcmc') and (part=='derived'):
-                if (fit_dic['HDI'] is not None):
-                    np.savetxt(file_path,['     HDI '+fit_dic['HDI']+' int : '+fit_dic['HDI_interv_txt'][ipar]],delimiter='\t',fmt=['%s'])
-                    np.savetxt(file_path,['     HDI '+fit_dic['HDI']+' err: '+fit_dic['HDI_sig_txt'][ipar]],delimiter='\t',fmt=['%s'])
-                if parname in fit_dic['conf_limits']:
-                    for lev in fit_dic['conf_limits'][parname]['level']: 
-                        np.savetxt(file_path,['     '+fit_dic['conf_limits'][parname]['limits'][lev]],delimiter='\t',fmt=['%s'])            
-        np.savetxt(file_path,[['']],fmt=['%s'])    
-
-    return None
     
     
 
@@ -1709,7 +1751,7 @@ def quantile(x, q, weights=None):
 
 
  
-def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,calc_quant=True,verb_shift=''):
+def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,calc_quant=True,verb_shift=''):
     r"""**MCMC post-proc: best fit**
 
     Calculates best estimates and confidence intervals for fitted MCMC parameters.
@@ -1837,28 +1879,12 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,print_par=True,c
             
     #----------------------------------------------------        
 
-    #Print results
-    if verbose or print_par:
+    #Print chain information
+    if verbose:
         print(verb_shift+'-------------------------------') 
-        print(verb_shift+'> Results')       
-    if verbose:    
-        print(verb_shift+"  Chain covariance: "+str(np.cov(np.transpose(merged_chain))))
-        print(verb_shift+"  Chain coefficient correlations: "+str(np.corrcoef(np.transpose(merged_chain))))
-    if print_par:             
-        for ipar,(parname,parunit) in enumerate(zip(fixed_args['var_par_list'],fixed_args['var_par_units'])):
-            if ipar>0:print(verb_shift+'-------------------------------') 
-            print(verb_shift+'  Parameter '+parname+' ['+parunit+']')
-            print(verb_shift+'    med : '+"{0:.3e}".format(med_par[ipar]))            
-            if fit_dic['HDI'] is not None:
-                print(verb_shift+'    HDI    '+fit_dic['HDI']+' err : '+str(HDI_sig_txt_par[ipar]))
-                print(verb_shift+'              int : '+str(HDI_interv_txt[ipar]))
-            else:
-                for sig in fit_dic['sig_list']:
-                    print(verb_shift+'    quant. '+sig+' err : -'+"{0:.3e}".format(sig_par_err[sig][0,ipar])+' +'+"{0:.3e}".format(sig_par_err[sig][1,ipar]))  
-                    print(verb_shift+'              int : ['+"{0:.3e}".format(sig_par_val[sig][0,ipar])+' ; '+"{0:.3e}".format(sig_par_val[sig][1,ipar])+']')  
-            if parname in fit_dic['conf_limits']:
-                for lev in fit_dic['conf_limits'][parname]['level']: 
-                    print(verb_shift+'    '+fit_dic['conf_limits'][parname]['limits'][lev] )
+        print(verb_shift+'> Chain properties')         
+        print(verb_shift+"   Covariance: "+str(np.cov(np.transpose(merged_chain))))
+        print(verb_shift+"   Coefficient correlations: "+str(np.corrcoef(np.transpose(merged_chain))))
 
     return p_best,med_par,sig_par_val,sig_par_err,HDI_interv,HDI_interv_txt,HDI_sig_txt_par  
     
@@ -1965,18 +1991,7 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,nthreads,par
  
     #Number of points remaining in the merged chain     
     fit_dic['nsteps_final_merged']=len(merged_chain[:,0])
-   
-    #Saving MCMC information
-    if fit_dic['save_outputs']:
-        np.savetxt(fit_dic['file_save'],[['-----------------']],fmt=['%s'])
-        np.savetxt(fit_dic['file_save'],[['MCMC run']],fmt=['%s'])      
-        np.savetxt(fit_dic['file_save'],[['-----------------']],fmt=['%s']) 
-        np.savetxt(fit_dic['file_save'],[['nwalkers : ',str(fit_dic['nwalkers'])]],delimiter='\t',fmt=['%s','%s']) 
-        np.savetxt(fit_dic['file_save'],[['nburn : ',str(fit_dic['nburn'])]],delimiter='\t',fmt=['%s','%s']) 
-        np.savetxt(fit_dic['file_save'],[['nsteps (initial, per walker) : ',str(fit_dic['nsteps'])]],delimiter='\t',fmt=['%s','%s']) 
-        np.savetxt(fit_dic['file_save'],[['nsteps (final, all walkers) : ',str(fit_dic['nsteps_final_merged'])]],delimiter='\t',fmt=['%s','%s']) 
-        np.savetxt(fit_dic['file_save'],[['']],fmt=['%s']) 
- 
+
     #Calculate correlation lengths for each parameter
     #    - we use the post burn-in chain and start the calculation from first pixel
     #    - this is a time-consuming operation
@@ -1991,7 +2006,7 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,nthreads,par
         fit_dic['nsteps_final_merged'],merged_chain=MCMC_thin_chains(corr_length,merged_chain)
 
     #Best-fit parameters for model calculations
-    p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=verbose,print_par=fit_dic['print_par'],calc_quant=fit_dic['calc_quant'],verb_shift=verb_shift)
+    p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=verbose,calc_quant=fit_dic['calc_quant'],verb_shift=verb_shift)
 
     #Plot merged chains for MCMC parameters
     if (fit_dic['save_MCMC_chains']!=''):
@@ -2027,7 +2042,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
     #    - define confidence levels to be printed
     #    - use the modified chains that can contain different parameters than those used in the model
     #      the best-fit model will not be modified, but the PDFs, best-fit parameters and associated uncertainties will be derived from the modified chains
-    p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=False,print_par=False,calc_quant=fit_dic['calc_quant'],verb_shift=fit_dic['verb_shift'])
+    p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=False,calc_quant=fit_dic['calc_quant'],verb_shift=fit_dic['verb_shift'])
 
     #Save merged chains for derived parameters and various estimates
     data_save = {'merged_chain':merged_chain,'HDI_interv':fit_dic['HDI_interv'],'sig_parfinal_val':fit_dic['sig_parfinal_val']['1s'],'var_par_list':fixed_args['var_par_list'],'var_par_names':fixed_args['var_par_names'],'med_parfinal':fit_dic['med_parfinal']}
@@ -2035,14 +2050,14 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
 
     #Plot correlation diagram for all param    
     if fit_dic['save_MCMC_corner']!='':
-        corner_options=fit_dic['corner_options'] if 'corner_options' in fit_dic else {}      
+        corner_options=fit_dic['corner_options']     
 
         #Reduce to required parameters
         var_par_list = np.array(fixed_args['var_par_list'])
         var_par_names = np.array(fixed_args['var_par_names'])
-        if 'plot_par' in fit_dic['corner_options']:
+        if 'plot_par' in corner_options:
             ikept = []
-            for par_loc in fit_dic['corner_options']['plot_par']:
+            for par_loc in corner_options['plot_par']:
                 ipar = np_where1D(var_par_list==par_loc)
                 if len(ipar)>0:ikept+=[ipar[0]]
                 else:stop('Parameter '+par_loc+' was not fitted.')

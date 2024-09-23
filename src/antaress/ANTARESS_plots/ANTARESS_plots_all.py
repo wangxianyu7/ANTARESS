@@ -9750,7 +9750,9 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
             #Print visits
             for ivis,vis in enumerate(eff_color[inst]):
                 ax.plot(0.5,0 - ygap*(ivis+1),marker='o',markersize = 8,markeredgecolor = 'grey',color = eff_color[inst][vis])
-                ax.text(0.8,0 - ygap*(ivis+1),vis,fontsize=plot_options['font_size_txt']-2,color = eff_color[inst][vis],verticalalignment='center', horizontalalignment='left')
+                if (inst in plot_options['legend_to_plot']) and (vis in plot_options['legend_to_plot'][inst]):vis_txt = plot_options['legend_to_plot'][inst][vis]
+                else:vis_txt = vis
+                ax.text(0.8,0 - ygap*(ivis+1),vis_txt,fontsize=plot_options['font_size_txt']-2,color = eff_color[inst][vis],verticalalignment='center', horizontalalignment='left')
     
             #Set up the axes
             ax.set_xlim(x_range_loc)

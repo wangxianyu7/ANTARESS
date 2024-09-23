@@ -61,8 +61,8 @@ def ANTARESS_gridrun(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,de
     
             #----------------------------------------------------------------------------------------------------------------------------------   
             
-            #Overwrite current settings        
-            ANTARESS_settings_overwrite(gen_dic,plot_dic,corr_spot_dic,data_dic,mock_dic,theo_dic,glob_fit_dic,detrend_prof_dic,gridstep_dic)
+            #Overwrite current settings
+            ANTARESS_settings_overwrite(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,corr_spot_dic,gridstep_dic)        
             
             #Run code for current parameter set        
             ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_params,nbook_dic,custom_plot_settings)
