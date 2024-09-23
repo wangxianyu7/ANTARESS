@@ -300,7 +300,7 @@ def get_system_params():
                 'Mstar':0.50,                
                 'logg':4.39,                 
                 'veq':20,                  
-                'istar':90,                  
+                'istar':88,                  
                 'mag':8.81,                  
                 },
 
@@ -325,7 +325,7 @@ def get_system_params():
                 'Mstar':0.50,                
                 'logg':4.39,                 
                 'veq':0.2,                   
-                'istar':90,                  
+                'istar':88,                  
                 'mag':8.81,                  
                 },
 
@@ -352,7 +352,7 @@ def get_system_params():
                 'Mstar':0.50,                
                 'logg':4.39,                 
                 'veq':7.8,                   
-                'istar':90,                  
+                'istar':88,                  
                 'mag':8.81,                  
                 },
 
@@ -379,7 +379,7 @@ def get_system_params():
                 'Mstar':0.50,                
                 'logg':4.39,                 
                 'veq':7.8,                   
-                'istar':90,                  
+                'istar':88,                  
                 'mag':8.81,                  
                 },
 
@@ -403,7 +403,7 @@ def get_system_params():
                 'Mstar':0.50,                
                 'logg':4.39,                 
                 'veq':7.8,                   
-                'istar':90,                  
+                'istar':88,                  
                 'mag':8.81,                  
                 },
 
@@ -427,7 +427,7 @@ def get_system_params():
                 'Mstar':0.50,                
                 'logg':4.39,                 
                 'veq':7.8,                   
-                'istar':90,                  
+                'istar':88,                  
                 'mag':8.81,                  
                 },
 
@@ -451,7 +451,7 @@ def get_system_params():
                 'Mstar':0.50,                
                 'logg':4.39,                 
                 'veq':7.8,                   
-                'istar':90,                  
+                'istar':88,                  
                 'mag':8.81,                  
                 },
 
@@ -475,7 +475,7 @@ def get_system_params():
                 'Mstar':0.50,                
                 'logg':4.39,                 
                 'veq':7.8,                   
-                'istar':90,                  
+                'istar':88,                  
                 'mag':8.81,                  
                 },
 
@@ -550,7 +550,7 @@ def get_system_params():
                 'Mstar':0.50,                
                 'logg':4.39,                 
                 'veq':7.8,                   
-                'istar':90,                  
+                'istar':88,                  
                 'mag':8.81,                  
                 },
 
@@ -575,7 +575,7 @@ def get_system_params():
                 'Mstar':0.50,                
                 'logg':4.39,                 
                 'veq':7.8,                   
-                'istar':90,                  
+                'istar':88,                  
                 'mag':8.81,                  
                 },
 
