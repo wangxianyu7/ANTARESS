@@ -1530,14 +1530,6 @@ def joined_ResProf(param,fixed_args):
             args['unquiet_star'] = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
             # for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
 
-            #     #Update the spectral grid of the exposures considered
-            #     if 'rv_shift' in param:
-            #         for key in ['cen_bins', 'edge_bins']:
-            #             if 'spec' in args['type']:
-            #                 args[key][inst][vis][isub] = args[key][inst][vis][isub] * (1 - param['rv_shift']/c_light)
-            #             else:
-            #                 args[key][inst][vis][isub] = args[key][inst][vis][isub] - param['rv_shift']
-
             #     #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
             #     plocced_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
             #     for pl_loc in args['transit_pl'][inst][vis]:

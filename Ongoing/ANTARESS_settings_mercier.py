@@ -218,7 +218,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Star name
 
-    gen_dic['star_name']='AUMic'
+    # gen_dic['star_name']='AUMic'
     # gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
@@ -227,7 +227,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # gen_dic['star_name']='Capricorn'
     # gen_dic['star_name']='Cancer'
     # gen_dic['star_name']='Gemini'
-    # gen_dic['star_name']='Sagittarius'
+    gen_dic['star_name']='Sagittarius'
     # gen_dic['star_name']='Leo'
     # gen_dic['star_name']='Aquarius'
     # gen_dic['star_name']='Aries'
@@ -536,7 +536,15 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - noise value is drawn for each pixel based on number of measured counts
     #    - leave undefined to prevent noise being defined
     #    - format is {inst:bool}
-    mock_dic['set_err'] = {}    
+    mock_dic['set_err'] = {}
+
+    #%%%%% Signal-to-Noise Ratio (SNR)
+    #    - To create realistic 'mock' datasets, whose noise level is not purely shot noise we
+    #      include a SNR metric. 
+    #    - This metric will define the noise level based on the continuum flux level defined 
+    #      in mock_dic['flux_cont]
+    #    - format is {inst:float}
+    mock_dic['set_err_SNR']={}
      
      
     #%%%%% Jitter on intrinsic profile properties
@@ -563,7 +571,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Defining artificial visits
     if gen_dic['star_name'] == 'AUMic':
         mock_dic['visit_def']={
-            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30}} #--base
+            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30.}} #--base
+            # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':180.}}
             
             # 'ESPRESSO':{'mock_vis1' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30},
             #             'mock_vis2' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30},
@@ -591,7 +600,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         mock_dic['visit_def']={
-            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30}}}
+            # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30.}}}
+            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':180.}}}
 
     #Spectral profile settings
     
@@ -869,7 +879,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e8}} 
+        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':80.}} 
 
     if gen_dic['star_name'] == 'fakeAU_Mic' :
         mock_dic['flux_cont']={'ESPRESSO':{'mockvisit1':1e8}}
@@ -896,6 +906,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] == 'V1298tau': mock_dic['set_err']={'ESPRESSO':True}
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:mock_dic['set_err']={'ESPRESSO':True}
+
+
+    #SNR
+    if gen_dic['star_name'] == 'AUMic':mock_dic['set_err_SNR']={'ESPRESSO':1.}
+    if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:mock_dic['set_err_SNR']={'ESPRESSO':1.}
+
 
     #Jitter on intrinsic profile properties
        
@@ -988,7 +1004,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     if gen_dic['star_name']=='AU_Mic':
         gen_dic['data_dir_list']={'ESPRESSO':{'visit1':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/AUMic_data/2019-08-06'}}
-        gen_dic['fibB_corr']={'ESPRESSO':{'visit1':'all'}}
+        # gen_dic['fibB_corr']={'ESPRESSO':{'visit1':'all'}}
 
     #---------------------------------------------------------------------------------------------
     #%%%% Weighing settings 
@@ -1265,15 +1281,20 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Star discretization      
     if gen_dic['star_name']=='AUMic':
         # theo_dic['nsub_Dstar']=81.
-        theo_dic['nsub_Dstar']=211. #-- for fitting purposes
+        theo_dic['nsub_Dstar']=101. #211. #-- for fitting purposes
         # theo_dic['nsub_Dstar']=301. #-- for plotting purposes
     
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dstar']=201.
             
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+        # theo_dic['nsub_Dstar']=5.
+        # theo_dic['nsub_Dstar']=11.
+        # theo_dic['nsub_Dstar']=21.
+        theo_dic['nsub_Dstar']=37. #<- Sagittarius optimal
+        # theo_dic['nsub_Dstar']=41.
         # theo_dic['nsub_Dstar']=61.
-        theo_dic['nsub_Dstar']=81.
+        # theo_dic['nsub_Dstar']=81.
         # theo_dic['nsub_Dstar']=101.
         # theo_dic['nsub_Dstar']=121.
         # theo_dic['nsub_Dstar']=141.
@@ -1311,7 +1332,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Planet discretization
     if gen_dic['star_name']=='AUMic':
-        theo_dic['nsub_Dpl']= {'AUMicb':33.}#, 'AUMicc':101.} #-- for fitting purposes 
+        theo_dic['nsub_Dpl']= {'AUMicb':31.} #33.}#, 'AUMicc':101.} #-- for fitting purposes 
         # theo_dic['nsub_Dpl']= {'AUMicb':23.}           
 
     if gen_dic['star_name']=='AU_Mic':
@@ -1326,19 +1347,24 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Zodiacs
     for zodiac in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         if gen_dic['star_name']==zodiac:
+            # theo_dic['nsub_Dpl']= {zodiac_pl:5.}
             # theo_dic['nsub_Dpl']= {zodiac_pl:11.} #-- for fitting purposes
-            theo_dic['nsub_Dpl']= {zodiac_pl:21.}
+            # theo_dic['nsub_Dpl']= {zodiac_pl:21.}
             # theo_dic['nsub_Dpl']= {zodiac_pl:35.}
+            theo_dic['nsub_Dpl']= {zodiac_pl:33.} #<- Sagittarius optimal
             # theo_dic['nsub_Dpl']= {zodiac_pl:51.}
             # theo_dic['nsub_Dpl']= {zodiac_pl:61.}
             # theo_dic['nsub_Dpl']= {zodiac_pl:81.}
             # theo_dic['nsub_Dpl']= {zodiac_pl:101.}
             # theo_dic['nsub_Dpl']= {zodiac_pl:125.}
+            # theo_dic['nsub_Dpl']= {zodiac_pl:151.}
+            # theo_dic['nsub_Dpl']= {zodiac_pl:201.}
+
 
     #Spot discretization
     if gen_dic['star_name']=='AUMic':
         # theo_dic['nsub_Dsp']={'spot1':50., 'spot2':50.}
-        theo_dic['nsub_Dsp']={'spot1':33.} #-- for fitting purposes
+        theo_dic['nsub_Dsp']={'spot1':31.} #33.} #-- for fitting purposes
         # theo_dic['nsub_Dsp']={'spot1':51.}
 
     if gen_dic['star_name']=='AU_Mic':
@@ -1352,15 +1378,18 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+        # theo_dic['nsub_Dsp']={'spot1':5.}
         # theo_dic['nsub_Dsp']={'spot1':11.} #-- for fitting purposes
-        theo_dic['nsub_Dsp']={'spot1':21.}
+        # theo_dic['nsub_Dsp']={'spot1':21.}
         # theo_dic['nsub_Dsp']={'spot1':35.}
+        theo_dic['nsub_Dsp']= {'spot1':33.} #<- Sagittarius optimal
         # theo_dic['nsub_Dsp']={'spot1':51.}
         # theo_dic['nsub_Dsp']={'spot1':61.}
         # theo_dic['nsub_Dsp']={'spot1':81.}
         # theo_dic['nsub_Dsp']={'spot1':101.}
         # theo_dic['nsub_Dsp']={'spot1':125.}
-
+        # theo_dic['nsub_Dsp']={'spot1':151.}
+        # theo_dic['nsub_Dsp']={'spot1':201.}
 
     #Exposure discretization
     if gen_dic['star_name']=='AUMic':
@@ -3967,6 +3996,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
    #  %%%% Master exposures
     if gen_dic['star_name']=='AUMic':    
+        # data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 45,dtype=int))+list(np.arange(135, 180,dtype=int))}}
         data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} 
     
     if gen_dic['star_name']=='AU_Mic':    
@@ -3978,8 +4008,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         if gen_dic['star_name']=='Gemini':data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 6,dtype=int))+list(np.arange(24, 30,dtype=int))}} 
-        elif gen_dic['star_name']=='Sagittarius':data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} 
-        else:data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} 
+        elif gen_dic['star_name']=='Sagittarius':data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 47,dtype=int))+list(np.arange(133, 180,dtype=int))}} 
+        else:data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 47,dtype=int))+list(np.arange(133, 180,dtype=int))}} 
 
 
     #Continuum range
@@ -4843,11 +4873,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  #&  False
+    gen_dic['fit_ResProf'] = True  &  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['ResProf']['Opt_Lvl']=3
+        glob_fit_dic['ResProf']['Opt_Lvl']=2
+        glob_fit_dic['ResProf']['nthreads']=1
 
 
 
@@ -4935,8 +4966,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Fixed/variable properties   
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['ResProf']['mod_prop']={
-        # 'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.15, 0.8]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.15, 1]},
+        'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 0.9]},
+        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.15, 1]},
         # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
         'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[5, 15]},
         # 'veq':{'vary':True,'guess':5, 'bd':[1, 10]},
@@ -4951,8 +4982,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'beta_rot':{'vary':False,'guess':0., 'bd':[0, 1]},
         # 'beta_rot_spots':{'vary':True,'guess':0., 'bd':[0, 1]},
         # 'beta_rot_spots':{'vary':False,'guess':0., 'bd':[0, 1]},
-        'cos_istar':{'vary':True,'guess':0.1, 'bd':[-1., 1.]},
-        # 'cos_istar':{'vary':False,'guess':0.01745240644, 'bd':[-1., 1.]},
+        # 'cos_istar':{'vary':True,'guess':0.1, 'bd':[-1., 1.]},
+        'cos_istar':{'vary':False,'guess':0.01745240644, 'bd':[-1., 1.]},
         # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
         'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
         # 'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 10., 2458330.39051 + 10.]},
@@ -5049,12 +5080,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                                             
     if gen_dic['star_name']=='Sagittarius':
         glob_fit_dic['ResProf']['mod_prop']={
-        'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
+        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
         'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        # 'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
+        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
+        # 'veq_spots':{'vary':True,'guess':10, 'bd':[2, 30]},
+        # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         # 'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
         'cos_istar':{'vary':False,'guess':0.0348994967, 'bd':[-1., 1.]},
 
@@ -5289,6 +5321,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'ctrst__ord0__IS__VS_'                   :{'mod':'uf','low':0,'high':1},  
                     'FWHM__ord0__IS__VS_'                    :{'mod':'uf','low':0,'high':50},
                     'veq'                                    :{'mod':'uf', 'low':1., 'high':100.},
+                    'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
                     'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
                     'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1'   :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
@@ -5306,23 +5339,23 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         glob_fit_dic['ResProf']['deriv_prop'] = {} #{'lambda_deg':[], 'fold_Tc':[]}#, 'Peq_veq_spots':{'Rstar':{'val':0.75, 's_val':0.1}}}
     
     #Calculating/retrieving
-    # glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
-    glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
+    glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
+    # glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        # glob_fit_dic['ResProf']['mcmc_reuse']={}
-        glob_fit_dic['ResProf']['mcmc_reuse']={
-                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk20_steps30_AUMicb.npz'],
-                    'nburn':[10]
-                    }  
+        glob_fit_dic['ResProf']['mcmc_reuse']={}
+        # glob_fit_dic['ResProf']['mcmc_reuse']={
+        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk20_steps30_AUMicb.npz'],
+        #             'nburn':[10]
+        #             }  
     #Re-starting
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['ResProf']['mcmc_reboot']=''
 
     #Walkers
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':20,'nsteps':30,'nburn':10}
+        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':10,'nsteps':100,'nburn':20}
 
     #Complex priors        
          
@@ -5865,7 +5898,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         data_dic['Res']['opt_loc_data_corr'].update({'ResProf_prop_path':{
                                                                 'ESPRESSO':{
-                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
+                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Sagittarius_best/Sagittarius_b_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
                                                                             }
                                                                         }
                                                     })

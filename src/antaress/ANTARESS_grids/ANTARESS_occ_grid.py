@@ -703,8 +703,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,s
                 if cond_spot and (args['rout_mode']!='IntrProf') and (n_osamp_exp_eff_sp > 0):
                     calc_mean_occ_region_line(theo_dic['precision'],system_prop,isub_exp,key_chrom,n_osamp_exp_eff_sp,Focc_star_sp,surf_prop_dic_spot,spots_in_exp,args,par_star,theo_dic)
 
-    ### end of exposure            
- 
+    ### end of exposures
     #Output properties in chromatic mode if calculated in closest-achromatic mode
     if ('line_prof' in par_list_in) and switch_chrom:
         surf_prop_dic_pl = {'chrom':surf_prop_dic_pl['achrom']}
@@ -916,7 +915,8 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
         coord_grid['mu'] = mu_grid_star[:,0]
 
         if 'corr_spot' in args:
-            args['corr_nsub_ov'] = np.sum(gen_spot_flag_map)
+            if spot_occ:args['corr_nsub_ov'] = np.sum(gen_spot_flag_map)
+            else:args['corr_nsub_ov'] = 0.
 
         #Accounting for the spots' emission
         if cond_eff_sp:
@@ -1483,11 +1483,11 @@ def calc_plocced_tiles(pl_prop, x_sky_grid, y_sky_grid):
     
     Args:
         pl_prop (dict) : planet properties.
-        x_sky_grid (1D array) : x coordinates of the stellar / planetary grid in the inclined star frame. (at st, cen, and end)
-        y_sky_grid (1D array) : y coordinates of the stellar / planetary grid in the inclined star frame. (at st, cen, and end)
+        x_sky_grid (1D array) : x coordinates of the stellar grid in the inclined star frame. (at st, cen, and end)
+        y_sky_grid (1D array) : y coordinates of the stellar grid in the inclined star frame. (at st, cen, and end)
      
     Returns:
-        cond_in_pl (1D array) : array of booleans telling us which cells in the original grid are occulted by the planet.
+        cond_in_pl (1D array) : array of booleans telling us which cells in the stellar grid are occulted by the planet.
 
     """          
     
@@ -1612,7 +1612,7 @@ def calc_spotted_tiles(spot_prop, ang_rad, x_sky_grid, y_sky_grid, z_sky_grid, g
     
     """                                      
 
-    if disc_exp:positions = [0,1,2]
+    if disc_exp:positions = range(len(spot_prop['x_sky_exp']))
     else:positions = [1]
     cond_in_sp = np.zeros(len(x_sky_grid), dtype=bool)
     for pos in positions:

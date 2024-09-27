@@ -1070,7 +1070,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             #    - dsub_ref = (2*Rjup/Rsun)*(1/51)
             #      nsub_Dsp = int(2*RpRs/dsub_ref) = int( 51*RpRs*Rsun/Rjup ) = int( 51*sin(ang)*Rsun/Rjup )  
             if (spot not in theo_dic['nsub_Dsp']):
-                theo_dic['nsub_Dsp'][pl_loc] =int( 51.*RspRs_max*Rsun/Rjup ) 
+                theo_dic['nsub_Dsp'][spot] =int( 51.*RspRs_max*Rsun/Rjup ) 
                 print('Default nsub_Dsp['+str(spot)+']='+str(theo_dic['nsub_Dsp'][spot]))
     
             #Corresponding spot grid
@@ -1713,39 +1713,106 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             if 'HIERARCH '+facil_inst+' QC DRIFT DET0 MEAN' in hdr:
                                 DI_data_inst[vis]['RVdrift'][iexp]=hdr['HIERARCH '+facil_inst+' QC DRIFT DET0 MEAN']*gen_dic['pix_size_v'][inst]*1e3    #in pix -> km/s
                     
-                    #Stellar phase
+                   #Stellar phase
                     coord_dic[inst][vis]['st_ph_st'][iexp],coord_dic[inst][vis]['cen_ph_st'][iexp],coord_dic[inst][vis]['end_ph_st'][iexp] = get_timeorbit('star',{'star':{'Tcenter':system_param['star']['Tcenter']}},coord_dic[inst][vis]['bjd'][iexp], {'period':system_param['star']['Peq']}, coord_dic[inst][vis]['t_dur'][iexp])[0:3] 
-                    
+
+                    if gen_dic['mock_data']:
+                        n_osamp_exp_all_sp=1
+                        n_osamp_exp_all_pl=1
+                        dcoord_exp_in = {'x':{}, 'y':{}}
+
                     #Orbital coordinates for each studied planet
                     for pl_loc in data_inst[vis]['transit_pl']:
                         coord_dic[inst][vis][pl_loc]['cen_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['st_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['end_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['ecl'][iexp],coord_dic[inst][vis][pl_loc]['rv_pl'][iexp],coord_dic[inst][vis][pl_loc]['v_pl'][iexp],\
                         coord_dic[inst][vis][pl_loc]['st_ph'][iexp],coord_dic[inst][vis][pl_loc]['cen_ph'][iexp],coord_dic[inst][vis][pl_loc]['end_ph'][iexp],coord_dic[inst][vis][pl_loc]['ph_dur'][iexp]=coord_expos(pl_loc,coord_dic,inst,vis,system_param['star'],
                                             system_param[pl_loc],coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic,data_dic['DI']['system_prop']['achrom'][pl_loc][0])                    
+                        
+                        #Exposure oversampling
+                        if len(theo_dic['d_oversamp_pl'])>0:
+                            
+                            #Oriented distance covered along each dimension (in Rstar)
+                            for ikey,key in enumerate(['x','y']):dcoord_exp_in[key][pl_loc] = coord_dic[inst][vis][pl_loc]['end_pos'][ikey,iexp]-coord_dic[inst][vis][pl_loc]['st_pos'][ikey,iexp]
 
-                        #Unquiet star grid
-                        #    - figure out which cells are planet-occulted
-                        if gen_dic['mock_data'] and (np.abs(coord_dic[inst][vis][pl_loc]['ecl'][isub_exp])!=1):
-                            mini_pl_dic = {}
-                            mini_pl_dic['x_orb_exp']=[coord_dic[inst][vis][pl_loc]['st_pos'][0, isub_exp], coord_dic[inst][vis][pl_loc]['cen_pos'][0, isub_exp], coord_dic[inst][vis][pl_loc]['end_pos'][0, isub_exp]]
-                            mini_pl_dic['y_orb_exp']=[coord_dic[inst][vis][pl_loc]['st_pos'][1, isub_exp], coord_dic[inst][vis][pl_loc]['cen_pos'][1, isub_exp], coord_dic[inst][vis][pl_loc]['end_pos'][1, isub_exp]]
-                            mini_pl_dic['RpRs']=data_dic['DI']['system_prop']['achrom'][pl_loc][0]
-                            mini_pl_dic['lambda']=system_param[pl_loc]['lambda_proj']
-                            pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, theo_dic['x_st_sky'], theo_dic['y_st_sky'])
-                            plocced_star_grid |= pl_plocced_star_grid 
+                            #Number of oversampling points for current exposure  
+                            #    - for each exposure we take the maximum oversampling all planets considered 
+                            if (pl_loc in theo_dic['d_oversamp_pl']):
+                                d_exp_in = np.sqrt(dcoord_exp_in['x'][pl_loc]**2 + dcoord_exp_in['y'][pl_loc]**2)
+                                n_osamp_exp_all_pl=np.maximum(n_osamp_exp_all_pl,npint(np.round(d_exp_in/theo_dic['d_oversamp_pl'][pl_loc]))+1)
+
 
                     #Surface coordinates for each studied spot  
                     for spot in data_inst[vis]['transit_sp']:
                         spots_prop_exp = coord_expos_spots(spot,coord_dic[inst][vis]['bjd'][iexp],spots_prop_nom,system_param['star'],coord_dic[inst][vis]['t_dur'][iexp],gen_dic['spot_coord_par'])                           
                         for key in spots_prop_exp:coord_dic[inst][vis][spot][key][:, iexp] = [spots_prop_exp[key][0],spots_prop_exp[key][1],spots_prop_exp[key][2]]  
 
+                        #Exposure oversampling
+                        if len(theo_dic['n_oversamp_spot'])>0:
+
+                            #Oriented distance covered along each dimension (in Rstar)
+                            for key in ['x','y']:dcoord_exp_in[key][spot] = coord_dic[inst][vis][spot][key+'_sky_exp'][2,iexp] - coord_dic[inst][vis][spot][key+'_sky_exp'][0,iexp]
+
+                            #Check if oversampling is turned on for this spot and force all spots to have same oversampling rate
+                            if (spot in theo_dic['n_oversamp_spot']):
+                                n_osamp_exp_all_sp = np.maximum(n_osamp_exp_all_sp, theo_dic['n_oversamp_spot'][spot])
+
+                    if gen_dic['mock_data']:
+                        
+                        #Enforcing a common oversampling factor to the spots and planets
+                        n_osamp_exp_all_total = np.maximum(n_osamp_exp_all_pl, n_osamp_exp_all_sp)
+                        
+                        #Unquiet star grid
+                        #    - figure out which cells are planet-occulted
+                        for pl_loc in data_inst[vis]['transit_pl']:
+                            if np.abs(coord_dic[inst][vis][pl_loc]['ecl'][iexp])!=1:
+                                mini_pl_dic = {}
+                                #No oversampling
+                                if n_osamp_exp_all_total==1:
+                                    for ikey,key in enumerate(['x','y']):mini_pl_dic[key+'_orb_exp'] = [coord_dic[inst][vis][pl_loc]['cen_pos'][ikey,iexp]]
+                    
+                                #Theoretical properties from regions occulted by each planet, averaged over full exposure duration  
+                                #    - only if oversampling is effective for this exposure
+                                else:
+                                    for ikey,key in enumerate(['x','y']):mini_pl_dic[key+'_orb_exp'] = coord_dic[inst][vis][pl_loc]['st_pos'][ikey][iexp]+np.arange(n_osamp_exp_all_total)*dcoord_exp_in[key][pl_loc]/(n_osamp_exp_all_total-1.)  
+                                mini_pl_dic['RpRs']=data_dic['DI']['system_prop']['achrom'][pl_loc][0]
+                                mini_pl_dic['lambda']=system_param[pl_loc]['lambda_rad']
+                                pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, theo_dic['x_st_sky'], theo_dic['y_st_sky'])
+                                plocced_star_grid |= pl_plocced_star_grid 
+
+
                         #Unquiet star grid
                         #    - figure out which cells are spotted
-                        if gen_dic['mock_data'] and (np.sum(spots_prop_exp['is_visible'])>0):
-                            _, spot_spotted_star_grid = calc_spotted_tiles(spots_prop_exp, spots_prop_nom[spot]['ang_rad'], theo_dic['x_st_sky'], theo_dic['y_st_sky'], theo_dic['z_st_sky'], theo_dic, system_param['star'], use_grid_dic=True)
-                            spotted_star_grid |= spot_spotted_star_grid
+                        for spot in data_inst[vis]['transit_sp']:
+                            if np.sum(coord_dic[inst][vis][spot]['is_visible'][:, iexp])>0:
+                                mini_sp_dic={}
+                                #No oversampling
+                                if n_osamp_exp_all_total==1:
+                                    for key in ['x_sky_exp','y_sky_exp','cos_lat_exp','sin_lat_exp','cos_long_exp','sin_long_exp']:mini_sp_dic[key] = [coord_dic[inst][vis][spot][key][1,iexp]]
+                    
+                                #If we want to oversample
+                                else:
+                                    for key in ['x','y']:mini_sp_dic[key+'_sky_exp'] = coord_dic[inst][vis][spot][key+'_sky_exp'][0,iexp] + np.arange(n_osamp_exp_all_total)*dcoord_exp_in[key][spot]/(n_osamp_exp_all_total-1.)            
+                                    for key in ['cos_lat_exp','sin_lat_exp']:mini_sp_dic[key] = np.repeat(coord_dic[inst][vis][spot][key][1,iexp], n_osamp_exp_all_total)
+                                    mini_sp_dic['cos_long_exp'] = np.cos(np.arcsin(mini_sp_dic['x_sky_exp']/ mini_sp_dic['cos_lat_exp'][0]))
+                                    mini_sp_dic['sin_long_exp'] = mini_sp_dic['x_sky_exp']/ mini_sp_dic['cos_lat_exp'][0]
 
-                    #Update the global 2D quiet star grid
-                    if gen_dic['mock_data']:unquiet_star_grid |= (spotted_star_grid | plocced_star_grid)
+                                _, spot_spotted_star_grid = calc_spotted_tiles(mini_sp_dic, spots_prop_nom[spot]['ang_rad'], theo_dic['x_st_sky'], theo_dic['y_st_sky'], theo_dic['z_st_sky'], theo_dic, system_param['star'], use_grid_dic=True)
+                                spotted_star_grid |= spot_spotted_star_grid
+
+                        #Update the global 2D quiet star grid
+                        unquiet_star_grid |= (spotted_star_grid | plocced_star_grid)
+
+                    # if iexp==0:print('0:', theo_dic['nsub_star'], theo_dic['nsub_Dsp'], theo_dic['x_st_sky_grid_sp']['spot1'].shape, theo_dic['x_st_sky_grid_pl']['AUMicb'].shape)
+                    # print(iexp, np.sum(spotted_star_grid), np.sum(plocced_star_grid), np.abs(coord_dic[inst][vis]['AUMicb']['ecl'][iexp]), np.sum(coord_dic[inst][vis][spot]['is_visible'][:, iexp]))
+                    # print(spotted_star_grid)
+                    # print(plocced_star_grid)
+                    # import matplotlib.pyplot as plt
+                    # plt.scatter(theo_dic['x_st_sky'], theo_dic['y_st_sky'], c='blue', marker='s', s=10)
+                    # pl_x, pl_y, _ = frameconv_skyorb_to_skystar(system_param['AUMicb']['lambda_rad'],coord_dic[inst][vis]['AUMicb']['cen_pos'][0,iexp],coord_dic[inst][vis]['AUMicb']['cen_pos'][1,iexp],0)
+                    # plt.scatter(theo_dic['x_st_sky_grid_pl']['AUMicb'] + pl_x, theo_dic['y_st_sky_grid_pl']['AUMicb'] + pl_y, c='black', marker='s', s=10)
+                    # plt.scatter(theo_dic['x_st_sky_grid_sp']['spot1'] + coord_dic[inst][vis]['spot1']['x_sky_exp'][0,iexp], theo_dic['y_st_sky_grid_sp']['spot1'] + coord_dic[inst][vis]['spot1']['y_sky_exp'][1,iexp], alpha=0.5, c='darkgreen', marker='s', s=10)
+                    # plt.xlim([-1.5, 1.5])
+                    # plt.ylim([-1.5, 1.5])
+                    # plt.show()
 
                 #--------------------------------------------------------------------------------------------------
                 #Processing all exposures in visit
@@ -2013,7 +2080,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         #      beware that this error does not necessarily match the flux dispersion
                         if (inst in mock_dic['set_err']) and mock_dic['set_err'][inst]:
                             DI_prof_exp_Fmeas = np.array(list(map(np.random.poisson, DI_prof_exp_Ftrue,  data_inst[vis]['nspec']*[1]))).flatten()
-                            DI_err_exp_Emeas2 = mock_gcal*DI_prof_exp_Fmeas
+                            if inst in mock_dic['set_err_SNR']:DI_err_exp_Emeas2 = mock_gcal*DI_prof_exp_Fmeas*mock_dic['set_err_SNR'][inst]
+                            else:DI_err_exp_Emeas2 = mock_gcal*DI_prof_exp_Fmeas
                         else:
                             DI_prof_exp_Fmeas = DI_prof_exp_Ftrue
                             DI_err_exp_Emeas2 = np.zeros(data_inst[vis]['nspec'],dtype=float)
