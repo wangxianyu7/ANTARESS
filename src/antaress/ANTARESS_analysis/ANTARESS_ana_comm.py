@@ -314,7 +314,45 @@ def model_par_units(par):
     else:unit_par = ''
     return unit_par
 
+def chi2_fitting_method_check(method):
+    r"""**Method function**
 
+    Returns string for the chi2 minimization method used.
+
+    Args:
+        method (str): method string input by user.
+
+    Returns:
+        method_str (str): method string which can be output.        
+    """
+    method_dic = {
+    'leastsq': 'Levenberg-Marquardt (default)',
+    'least_squares': 'Least-Squares minimization, using Trust Region Reflective method',
+    'differential_evolution': 'differential evolution',
+    'brute': 'brute force method',
+    'basinhopping': 'basinhopping',
+    'ampgo': 'Adaptive Memory Programming for Global Optimization',
+    'nelder': 'Nelder-Mead',
+    'lbfgsb': 'L-BFGS-B',
+    'powell': 'Powell',
+    'cg': 'Conjugate-Gradient',
+    'newton': 'Newton-CG',
+    'cobyla': 'Cobyla',
+    'bfgs': 'BFGS',
+    'tnc': 'Truncated Newton',
+    'trust-ncg': 'Newton-CG trust-region',
+    'trust-exact': 'nearly exact trust-region',
+    'trust-krylov': 'Newton GLTR trust-region',
+    'trust-constr': 'trust-region for constrained optimization',
+    'dogleg': 'Dog-leg trust-region',
+    'slsqp': 'Sequential Linear Squares Programming',
+    'emcee': 'Maximum likelihood via Monte-Carlo Markov Chain',
+    'shgo': 'Simplicial Homology Global Optimization',
+    'dual_annealing': 'Dual Annealing optimization'
+        } 
+    if method in method_dic:method_str = method_dic[method]
+    else:stop('Invalid chi2 minimization method. Check lmfit documentation for valid methods.')
+    return method_str
 
 ##################################################################################################    
 #%%% Initialization functions
@@ -877,7 +915,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     if fit_dic['fit_mode']=='chi2':
         fixed_args['fit'] = True
         merged_chain = None
+        method_str = chi2_fitting_method_check(fit_dic['chi2_fitting_method'])
         print('       Chi2 fit')   
+        print('       + Method: '+method_str)
         p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],method=fit_dic['chi2_fitting_method'],verbose=fit_dic['verbose'],fixed_args=fixed_args,fit_dic=fit_dic)[2]
 
     #------------------------------------------------------------ 

@@ -797,7 +797,7 @@ def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=N
         if method=='lbfgsb':meth_args = {'tol':ftol}
         else:meth_args = {}
         result = minimize(ln_prob_func_lmfit, p_use, args=(xtofit, argstofit), method=method, max_nfev=max_nfev,scale_covar = False , **meth_args)
-    
+ 
     #Best-fit parameters
     #    - attributes of the Minimizer object (here result):
     # nfev    number of function evaluations
@@ -813,17 +813,6 @@ def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=N
     # chisqr    chi-square: \chi^2 = \sum_i^N [{\rm Resid}_i]^2
     # redchi    reduced chi-square: \chi^2_{\nu}= {\chi^2} / {(N - N_{\rm varys})}
     p_best=result.params
-
-    #Update crossing times one last time
-    if ('update_crosstime' in fixed_args) and fixed_args['update_crosstime']:
-        for inst in list(fixed_args['spot_crosstime_supp'].keys()):
-            for vis in list(fixed_args['spot_crosstime_supp'][inst].keys()):
-                for par in p_best:
-                    if ('Tcenter' in par) and (inst in par) and (vis in par):
-                        p_best[par].min += fixed_args['spot_crosstime_supp'][inst][vis]
-                        p_best[par].max += fixed_args['spot_crosstime_supp'][inst][vis]
-                        p_best[par].value += fixed_args['spot_crosstime_supp'][inst][vis]
-        fixed_args['update_crosstime'] = False
 
     merit={}
     
@@ -848,6 +837,7 @@ def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=N
     merit['cdf'] = special.chdtrc(result.nfree,merit['chi2'])
     
     #Varia
+    merit['method'] = result.method
     merit['success'] = result.success
     merit['message'] = result.message
     merit['eval'] = result.nfev
@@ -1051,6 +1041,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                         [" "],
                         ['Mode : '+{'chi2':'Chi square','mcmc':'MCMC','fixed':'Forward'}[fit_dic['fit_mode']]]]  
             if fit_dic['fit_mode']=='chi2':
+                txt_print+=[["Fitting method                = %r"%fit_dic['merit']['method']]]
                 txt_print+=[["Fit success                = %r"%fit_dic['merit']['success']]]
                 if not fit_dic['merit']['success']:txt_print+=[["  " + fit_dic['merit']['message'][:-1]]]  
                 else:
