@@ -660,6 +660,10 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
     fixed_args['jitter']=False if ('jitter' not in fixed_args) else fixed_args['jitter']        
     
     #Default settings
+    if fit_dic['fit_mode']=='chi2':
+        #Fitting method
+        if ('chi2_fitting_method' not in fit_dic):fit_dic['chi2_fitting_method']='leastsq'
+        
     if fit_dic['fit_mode']=='mcmc':
 
         #Monitor progress

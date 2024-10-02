@@ -218,7 +218,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Star name
 
-    # gen_dic['star_name']='AUMic'
+    gen_dic['star_name']='AUMic'
     # gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
@@ -227,7 +227,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # gen_dic['star_name']='Capricorn'
     # gen_dic['star_name']='Cancer'
     # gen_dic['star_name']='Gemini'
-    gen_dic['star_name']='Sagittarius'
+    # gen_dic['star_name']='Sagittarius'
     # gen_dic['star_name']='Leo'
     # gen_dic['star_name']='Aquarius'
     # gen_dic['star_name']='Aries'
@@ -4007,7 +4007,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        if gen_dic['star_name']=='Gemini':data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 6,dtype=int))+list(np.arange(24, 30,dtype=int))}} 
+        if gen_dic['star_name']=='Gemini':data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 41,dtype=int))+list(np.arange(139, 180,dtype=int))}} 
         elif gen_dic['star_name']=='Sagittarius':data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 47,dtype=int))+list(np.arange(133, 180,dtype=int))}} 
         else:data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 47,dtype=int))+list(np.arange(133, 180,dtype=int))}} 
 
@@ -4873,12 +4873,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  &  False
+    gen_dic['fit_ResProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['ResProf']['Opt_Lvl']=2
-        glob_fit_dic['ResProf']['nthreads']=1
+        glob_fit_dic['ResProf']['Opt_Lvl']=3
+        # glob_fit_dic['ResProf']['nthreads']=1
 
 
 
@@ -4966,7 +4966,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Fixed/variable properties   
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['ResProf']['mod_prop']={
-        'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 0.9]},
+        'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.8, 'bd':[0.1, 0.9]},
         # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.15, 1]},
         # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
         'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[5, 15]},
@@ -5061,32 +5061,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='Gemini':
         glob_fit_dic['ResProf']['mod_prop']={
-        'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
-        'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
-        'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
-
-        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':15, 'bd':[1, 60]},
-
-        'fctrst__ISESPRESSO_VSmock_vis_SP'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
-
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
-                                            }
-                                            
-    if gen_dic['star_name']=='Sagittarius':
-        glob_fit_dic['ResProf']['mod_prop']={
         # 'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
         'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
         'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
+        # 'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
+        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         # 'veq_spots':{'vary':True,'guess':10, 'bd':[2, 30]},
-        # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         # 'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
         'cos_istar':{'vary':False,'guess':0.0348994967, 'bd':[-1., 1.]},
 
@@ -5097,8 +5078,34 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
         'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':15, 'bd':[1, 60]},
 
-        # 'fctrst__ISESPRESSO_VSmock_vis_SP'   : {'vary':True, 'guess':0.4, 'bd':[0.001, 0.999]},
+        # 'fctrst__ISESPRESSO_VSmock_vis_SP'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
         'fctrst__ISESPRESSO_VSmock_vis_SP'   : {'vary':False, 'guess':0.6, 'bd':[0.001, 0.999]},
+
+        # 'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
+                                            }
+                                            
+    if gen_dic['star_name']=='Sagittarius':
+        glob_fit_dic['ResProf']['mod_prop']={
+        # 'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
+        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
+        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        # 'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
+        # 'veq_spots':{'vary':True,'guess':10, 'bd':[2, 30]},
+        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
+        # 'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
+        'cos_istar':{'vary':False,'guess':0.0348994967, 'bd':[-1., 1.]},
+
+        # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':-30, 'bd':[-90, 90]},
+        # 'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':False, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':15, 'bd':[1, 60]},
+
+        'fctrst__ISESPRESSO_VSmock_vis_SP'   : {'vary':True, 'guess':0.4, 'bd':[0.001, 0.999]},
+        # 'fctrst__ISESPRESSO_VSmock_vis_SP'   : {'vary':False, 'guess':0.6, 'bd':[0.001, 0.999]},
 
         # 'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]},
         'lambda_rad__pl'+zodiac_pl                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
@@ -5264,9 +5271,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Fitting mode
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        # glob_fit_dic['ResProf']['fit_mode']='chi2' 
-        glob_fit_dic['ResProf']['fit_mode']='mcmc' 
+        glob_fit_dic['ResProf']['fit_mode']='chi2' 
+        # glob_fit_dic['ResProf']['fit_mode']='mcmc' 
 
+    #Fitting method - only if chi2 is used
+    if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+        glob_fit_dic['ResProf']['chi2_fitting_method']='bfgs' 
 
     #Printing fits results
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5326,7 +5336,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'lat__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
                     'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1'   :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
                     'ang__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':0., 'high':90.},
-                    'fctrst__ISESPRESSO_VSmock_vis_SPspot1'  :{'mod':'uf', 'low':0., 'high':1},
+                    'fctrst__ISESPRESSO_VSmock_vis_SP'  :{'mod':'uf', 'low':0., 'high':1.},
                     'lambda_rad__pl'+zodiac_pl               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }       
 
@@ -5898,7 +5908,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         data_dic['Res']['opt_loc_data_corr'].update({'ResProf_prop_path':{
                                                                 'ESPRESSO':{
-                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Sagittarius_best/Sagittarius_b_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
+                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
                                                                             }
                                                                         }
                                                     })
@@ -6567,7 +6577,15 @@ def ANTARESS_analysis_settings(data_type,local_dic,plot_dic):
         local_dic[data_type]['idx_force_det']={}
         local_dic[data_type]['idx_force_detbin']={} 
         local_dic[data_type]['idx_force_detbinmultivis']={} 
-    
+
+    ##################################################################################################         
+    #%%% Chi2 settings
+    ################################################################################################## 
+    #%%%% Fitting method
+    # + Fitting method used to perform the chi2 miniminzation with lmfit
+    # + Examples include leastsq, bfgs, newton, ...
+    # + String must be in the format supported by lmfit
+    local_dic[data_type]['chi2_fitting_method']='leastsq' 
 
     ##################################################################################################         
     #%%% MCMC settings

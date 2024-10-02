@@ -878,7 +878,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         fixed_args['fit'] = True
         merged_chain = None
         print('       Chi2 fit')   
-        p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=fit_dic['verbose'],fixed_args=fixed_args,fit_dic=fit_dic)[2]
+        p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],method=fit_dic['chi2_fitting_method'],verbose=fit_dic['verbose'],fixed_args=fixed_args,fit_dic=fit_dic)[2]
 
     #------------------------------------------------------------ 
     #Fit par emcmc 

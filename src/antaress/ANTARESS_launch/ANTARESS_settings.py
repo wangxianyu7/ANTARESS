@@ -4259,6 +4259,15 @@ def ANTARESS_analysis_settings(data_type,local_dic,plot_dic):
     
 
     ##################################################################################################         
+    #%%% Chi2 settings
+    ################################################################################################## 
+    #%%%% Fitting method
+    # + Fitting method used to perform the chi2 miniminzation with lmfit
+    # + Examples include leastsq, bfgs, newton, ...
+    # + String must be in the format supported by lmfit
+    local_dic[data_type]['chi2_fitting_method']='leastsq' 
+    
+    ##################################################################################################         
     #%%% MCMC settings
     ################################################################################################## 
     

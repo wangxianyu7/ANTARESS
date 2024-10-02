@@ -2216,9 +2216,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         #Zodiacs
         if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-            plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,30)}
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,30)}
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,180)}
-            # plot_settings[key_plot]['t_BJD'] = None
+            plot_settings[key_plot]['t_BJD'] = None
             
         if gen_dic['star_name']=='fakeAU_Mic':
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mockvisit1', 't':  2458702.77+ np.linspace(-0.5,0.5, 30)}
