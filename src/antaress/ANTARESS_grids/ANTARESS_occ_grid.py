@@ -304,7 +304,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,s
         #Disk-integrated stellar flux
         if Ftot_star:
             surf_prop_dic_pl[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
-            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
+            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.ones([system_prop[subkey_chrom]['nw'],n_exp])
             if cond_spot:
                 surf_prop_dic_spot[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
 
@@ -645,8 +645,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,s
                                 Focc_star_sp[subkey_chrom][iband], cond_occ_sp = calc_spotted_region_prop(line_occ_HP[subkey_chrom][iband], cond_occ_sp, spot_prop_oversamp, iband, system_prop[subkey_chrom], 
                                                                  system_spot_prop[subkey_chrom], par_star, sp_proc[subkey_chrom][iband],spot,theo_dic['Ssub_Sstar_sp'][spot], 
                                                                 theo_dic['Ssub_Sstar'], theo_dic['Istar_norm_'+subkey_chrom], sum_prop_dic[subkey_chrom][spot], coord_reg_dic[subkey_chrom][spot],
-                                                                range_dic[subkey_chrom][spot], Focc_star_sp[subkey_chrom][iband], par_list, range_par_list, args, cb_band_spot_dic[subkey_chrom][iband],transit_pl = transit_pl,
-                                                                pl_loc_x = coord_oversamp['x'], pl_loc_y = coord_oversamp['y'], oversamp_idx = iosamp, RpRs = system_prop[subkey_chrom], plocc = (n_osamp_exp_eff_pl>=1))
+                                                                range_dic[subkey_chrom][spot], Focc_star_sp[subkey_chrom][iband], par_list, range_par_list, args, cb_band_spot_dic[subkey_chrom][iband])
 
                                 #Cumulate line profile from spot-occulted cells
                                 #    - this is a deviation profile, corresponding to Freg(quiet) - Freg(spot) over 
@@ -674,7 +673,6 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,s
             if Ftot_star:
                 for subkey_chrom in key_chrom:
                     surf_prop_dic_pl[subkey_chrom]['Ftot_star'][:,isub_exp] = 1.
-                    surf_prop_dic_common[subkey_chrom]['Ftot_star'][:,isub_exp] = 1.
                     if cond_spot and (args['rout_mode']!='IntrProf'):surf_prop_dic_spot[subkey_chrom]['Ftot_star'][:,isub_exp] = 1.
 
                     #Planets
@@ -893,13 +891,10 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
                 #Updating contrast map
                 fctrst_map[cond_in_sp] = reduced_spot_prop[spot]['fctrst']
                 
-            #Defining an average contrast in overlapping spots
+            #Defining independent properties for quiet and spotted cells
             gen_spot_flag_map = count_spot_olap.astype(bool)
             cond_eff_sp = np.sum(gen_spot_flag_map)
-            if cond_eff_sp:
-                fctrst_map[gen_spot_flag_map]/=count_spot_olap[gen_spot_flag_map]
-                
-                #Defining independent properties for quiet and spotted cells
+            if cond_eff_sp:                
                 for key in ['veq','alpha_rot','beta_rot']:
                     coord_grid[key] = np.repeat(par_star[key],n_pl_occ)
                     coord_grid[key][gen_spot_flag_map] = par_star[key+'_spots']
@@ -928,10 +923,10 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
                 args['corr_Fstar_grid'] = Fsurf_grid_star[gen_spot_flag_map, iband]
                 for key in ['corr_Fsp_grid','corr_Fstar_grid']:args[key]=args[key].reshape(len(args[key]),1)
                 args['spot_flag_map'] = gen_spot_flag_map
-                temp = np.sum(args['corr_Fsp_grid'] - 2*args['corr_Fstar_grid'], axis=0)*par_star['cont']
+                temp = np.sum(args['corr_Fsp_grid'] - args['corr_Fstar_grid'], axis=0)*par_star['cont']
                 args['Focc_corr_spot']['achrom'][iband] += temp[0]
                 for key in ['corr_Fsp_grid','corr_Fstar_grid']:args[key]*=par_star['cont']
-            Fsurf_grid_star[gen_spot_flag_map, iband] -= Fsurf_spot_emit_grid[gen_spot_flag_map, iband] * (1. - fctrst_map[gen_spot_flag_map]) 
+            Fsurf_grid_star[gen_spot_flag_map, iband] = Fsurf_spot_emit_grid[gen_spot_flag_map, iband] * (1. - fctrst_map[gen_spot_flag_map]) 
 
             #Update total flux from occulted region
             Ftot_star = np.sum(Fsurf_grid_star, axis=0)
@@ -1186,7 +1181,7 @@ def sum_region_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,Fsurf_g
                     spot_line_prof_grid=coadd_loc_line_prof(coord_grid['rv'][args['spot_flag_map']],range(args['corr_nsub_ov']),args['corr_Fsp_grid'][:,0],args['flux_intr_grid'][args['spot_flag_map']],coord_grid['mu'][args['spot_flag_map']],par_star,args)
 
                 #Putting everything together
-                sum_prop_dic['corr_supp'] = np.sum(spot_line_prof_grid, axis=0)- 2*np.sum(star_line_prof_grid, axis=0) 
+                sum_prop_dic['corr_supp'] = np.sum(spot_line_prof_grid, axis=0)- np.sum(star_line_prof_grid, axis=0) 
 
         #Remove spot line profiles from all elementary cells over current occulted region
         #    - condition is only fulfilled when calling sum_region_prop() for spotted, not planet-occulted regions
@@ -1655,7 +1650,7 @@ def calc_spotted_tiles(spot_prop, ang_rad, x_sky_grid, y_sky_grid, z_sky_grid, g
 
 
 def calc_spotted_region_prop(line_occ_HP_band,cond_occ,spot_prop,iband,system_prop,system_spot_prop, par_star, sp_proc_band, spot_consid, Ssub_Sstar_sp, Ssub_Sstar_ref, Istar_norm_band, sum_prop_dic_spot,\
-                                    coord_reg_dic_spot, range_reg, Focc_star_band, par_list, range_par_list, args, cb_band, transit_pl = [], pl_loc_x = {}, pl_loc_y = {}, oversamp_idx = None, RpRs = None, plocc = False) :
+                                    coord_reg_dic_spot, range_reg, Focc_star_band, par_list, range_par_list, args, cb_band) :
     
     r"""**Spot-occulted properties: define and update**
     
@@ -1684,12 +1679,6 @@ def calc_spotted_region_prop(line_occ_HP_band,cond_occ,spot_prop,iband,system_pr
         range_par_list (list) : list of parameters of interest, whose range of values, stored in range_reg, will be updated.
         args (dict) : parameters used to generate the intrinsic profiles.
         cb_band (list) : coefficients used to calculate the convective blueshift RV contribution.  
-        transit_pl (list) : optional, list of transiting planets in the exposure considered.
-        pl_loc_x (dict) : optional, x coordinates of the planets' oversampled positions in the exposure considered. Used to account for the cells in the spot-occulted region that are occulted by the planet.
-        pl_loc_y (dict) : optional, y coordinates of the planets' oversampled positions in the exposure considered. Used to account for the cells in the spot-occulted region that are occulted by the planet.
-        oversamp_idx (int) : optional, index of the oversampled exposure being processed.
-        RpRs (dict) : optional, planets' limb-darkening properties.
-        plocc (bool) : optional, whether the exposure considered is being occulted by planets or not. Turned off by default.
 
     Returns:
         Focc_star_band (float) : the input Focc_star_band updated with the flux occulted by the spot considered.
@@ -1725,15 +1714,6 @@ def calc_spotted_region_prop(line_occ_HP_band,cond_occ,spot_prop,iband,system_pr
     n_occ_sp = np.sum(cond_in_sp)
 
     #--------------------------------
-    #Removing spotted cells that are planet-occulted
-    if plocc:
-        for planet in transit_pl:
-            cond_in_planet_disk = (spot_x_sky_grid - pl_loc_x[planet][oversamp_idx])**2 + (spot_y_sky_grid -  pl_loc_y[planet][oversamp_idx])**2 < RpRs[planet][iband]**2
-            spot_x_sky_grid = spot_x_sky_grid[~cond_in_planet_disk]
-            spot_y_sky_grid = spot_y_sky_grid[~cond_in_planet_disk]
-            spot_z_sky_grid = spot_z_sky_grid[~cond_in_planet_disk]
-            n_occ_sp -= np.sum(cond_in_planet_disk)
-
     #Accounting for overlap with other spots - spots have the same contrast so we can just remove the overlapping cells
     if len(sp_proc_band)>0:
         for sp_prev in sp_proc_band:

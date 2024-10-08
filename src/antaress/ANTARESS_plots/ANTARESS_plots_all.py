@@ -2219,8 +2219,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 fig = plt.figure(figsize=plot_set_key['fig_size'])
           
                 #Plot all visits
-                x_min=1.
-                x_max=-1.
+                x_min=1e100
+                x_max=-1e100
                 y_min=1e100
                 y_max=-1e100
                 if (inst not in plot_set_key['color_dic'] ):plot_set_key['color_dic'][inst]={}
@@ -2242,18 +2242,20 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         
                     #Imported light curve
                     if plot_set_key['plot_LC_imp'] and (data_dic['DI']['transit_prop'][inst][vis]['mode']=='imp'):
-                        ph_imp=get_timeorbit(pl_ref ,coord_dic[inst][vis], data_upload['imp_LC'][0], system_param[pl_ref], 0.)[1]
-                        plt.plot(ph_imp,data_upload['imp_LC'][iband]-vis_shift,color=col_vis,linestyle='--',lw=plot_set_key['lw_plot'])  
+                        if plot_set_key['plot_phase']:x_imp=get_timeorbit(pl_ref ,coord_dic[inst][vis], data_upload['imp_LC'][0], system_param[pl_ref], 0.)[1]
+                        else:x_imp=get_timeorbit(pl_ref ,coord_dic[inst][vis], data_upload['imp_LC'][0], system_param[pl_ref], 0.)[4]
+                        plt.plot(x_imp,data_upload['imp_LC'][iband]-vis_shift,color=col_vis,linestyle='--',lw=plot_set_key['lw_plot'])  
                         
                     #HR light curve
                     if plot_set_key['plot_LC_HR']:
-                        ph_plot = data_upload['coord_HR'][pl_ref]['cen_ph']
-                        x_min=min(np.min(ph_plot),x_min)
-                        x_max=max(np.max(ph_plot),x_max)
+                        if plot_set_key['plot_phase']:x_plot = data_upload['coord_HR'][pl_ref]['cen_ph']
+                        else:x_plot = data_upload['coord_HR']['bjd']
+                        x_min=min(np.min(x_plot),x_min)
+                        x_max=max(np.max(x_plot),x_max)
                         var_plot = data_upload['LC_HR'][:,iband]-vis_shift
                         y_min=min(np.min(var_plot),y_min)
                         y_max=max(np.max(var_plot),y_max)
-                        plt.plot(ph_plot,var_plot,color='darkgoldenrod',linestyle='-',lw=plot_set_key['lw_plot'])  
+                        plt.plot(x_plot,var_plot,color='darkgoldenrod',linestyle='-',lw=plot_set_key['lw_plot'])  
                
                         #Print visit names
                         if plot_set_key['plot_vis']:
@@ -2263,19 +2265,28 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #    - circles are used for in-transit exposures
                     #    - squares are used for out-of-transit exposures
                     #    - plot with empty symbols indicate exposures with bad fit of local stellar profiles
-                    if plot_set_key['plot_LC_exp']: 
-                        x_min=min(np.min(coord_vis_pl['st_ph']),x_min)
-                        x_max=max(np.max(coord_vis_pl['end_ph']),x_max)
+                    if plot_set_key['plot_LC_exp']:
+                        if plot_set_key['plot_phase']:
+                            x_st_plot = coord_vis_pl['st_ph']
+                            x_cen_plot = coord_vis_pl['cen_ph']
+                            x_end_plot = coord_vis_pl['end_ph']
+                            x_dur_plot = coord_vis_pl['ph_dur']
+                        else:
+                            x_dur_plot =  coord_dic[inst][vis]['t_dur']/(3600*24)
+                            x_st_plot = coord_dic[inst][vis]['bjd']-x_dur_plot
+                            x_cen_plot = coord_dic[inst][vis]['bjd']
+                            x_end_plot = coord_dic[inst][vis]['bjd']+x_dur_plot
+                        x_min=min(np.min(x_st_plot),x_min)
+                        x_max=max(np.max(x_end_plot),x_max)
                         LC_flux_band_all = data_upload['flux_band_all']
                         y_min=min(np.min(LC_flux_band_all[:,iband]-vis_shift),y_min)
                         y_max=max(np.max(LC_flux_band_all[:,iband]-vis_shift),y_max)
                         i_in=0
-                        for iexp,(ph_loc,ph_dur_loc,flux_loc) in enumerate(zip(coord_vis_pl['cen_ph'],coord_vis_pl['ph_dur'],LC_flux_band_all[:,iband])):
+                        for iexp,(x_loc,x_dur_loc,flux_loc) in enumerate(zip(x_cen_plot,x_dur_plot,LC_flux_band_all[:,iband])):
     
                             #Exposures indexes (general above)
                             if plot_set_key['plot_expid']:                   
-                                plt.text(ph_loc,flux_loc-vis_shift+0.1*Tdepth,str(iexp),verticalalignment='bottom', horizontalalignment='center',fontsize=4.,zorder=4,color=col_vis) 
-    
+                                plt.text(x_loc,flux_loc-vis_shift+0.1*Tdepth,str(iexp),verticalalignment='bottom', horizontalalignment='center',fontsize=4.,zorder=4,color=col_vis) 
                             #Observed exposure
                             markerfacecolor='white'
                             marker='s'
@@ -2284,9 +2295,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 if ('prof_fit_dic' in data_dic['Res'][inst][vis]) and (data_dic['Res'][inst][vis]['prof_fit_dic'][i_in]['detected']):markerfacecolor=col_vis
                                 
                                 #Exposures indexes (in-transit below)
-                                if plot_set_key['plot_expid']:plt.text(ph_loc,flux_loc-vis_shift-0.1*Tdepth,str(i_in),verticalalignment='bottom', horizontalalignment='center',fontsize=4.,zorder=4,color=col_vis) 
+                                if plot_set_key['plot_expid']:plt.text(x_loc,flux_loc-vis_shift-0.1*Tdepth,str(i_in),verticalalignment='bottom', horizontalalignment='center',fontsize=4.,zorder=4,color=col_vis) 
                                 i_in+=1                               
-                            plt.errorbar(ph_loc,flux_loc-vis_shift,xerr=0.5*ph_dur_loc,color=col_vis,marker=marker,markersize=plot_set_key['markersize'],linestyle='',markerfacecolor=markerfacecolor)                
+                            plt.errorbar(x_loc,flux_loc-vis_shift,xerr=0.5*x_dur_loc,color=col_vis,marker=marker,markersize=plot_set_key['markersize'],linestyle='',markerfacecolor=markerfacecolor)                
 
                 #Axis ranges
                 x_range_loc=plot_set_key['x_range'] if plot_set_key['x_range'] is not None else np.array([x_min-0.005,x_max+0.005])
@@ -2296,24 +2307,30 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #Contacts for planets transiting in the visit
                 for ivis,vis in enumerate(np.intersect1d(list(data_dic[inst].keys()),plot_set_key['visits_to_plot'][inst])):
                     for ipl,pl_loc in enumerate(data_dic[inst][vis]['transit_pl']):
-                        if pl_loc==pl_ref:contact_phases_vis = contact_phases[pl_ref]
-                        else:
-                            contact_times = coord_dic[inst][vis][pl_loc]['Tcenter']+contact_phases[pl_loc]*system_param[pl_loc]["period"]
-                            contact_phases_vis = (contact_times-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"]
-                        ls_pl = {0:':',1:'--'}[ipl]
-                        for cont_ph in contact_phases_vis:
-                            plt.plot([cont_ph,cont_ph],y_range_loc,color=plot_set_key['col_contacts'],linestyle=ls_pl,lw=plot_set_key['lw_plot'])
+                        if plot_set_key['plot_phase']:
+                            if pl_loc==pl_ref:contact_vis = contact_phases[pl_ref]
+                            else:
+                                contact_times = coord_dic[inst][vis][pl_loc]['Tcenter']+contact_phases[pl_loc]*system_param[pl_loc]["period"]
+                                contact_vis = (contact_times-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"]
+                        
+                        else:contact_vis = (contact_phases[pl_loc]*system_param[pl_loc]["period"])+coord_dic[inst][vis][pl_loc]["Tcenter"] - 2400000.
+
+                        ls_pl = {0:':',1:'--',2:'-.',3:':',4:'--',5:'-.',6:':'}[ipl]
+                        for contact in contact_vis:
+                            plt.plot([contact,contact],y_range_loc,color=plot_set_key['col_contacts'],linestyle=ls_pl,lw=plot_set_key['lw_plot'])
 
                 #Plot frame                 
                 if plot_set_key['title']:plt.title('Input light curves')
                 dx_range=x_range_loc[1]-x_range_loc[0]
                 dy_range=y_range_loc[1]-y_range_loc[0]
                 xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
-                ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)               
+                ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
+                if plot_set_key['plot_phase']:x_title_LC = 'Orbital phase'
+                else:x_title_LC = 'Time (BJD)'             
                 custom_axis(plt,position=plot_set_key['margins'] ,x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
                 		     xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
                 		     ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
-                         x_title='Orbital phase',y_title='Flux',
+                         x_title=x_title_LC,y_title='Flux',
                          font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
                 
                 save_path = path_loc+inst
@@ -4203,54 +4220,55 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #    - coordinates in the Sky-projected stellar frame:
                 # same as for the main planet, with the second planet properties
                 #--------------------------------------------   
-               
-                orb_spin_norm=1.1  #1.3    #plot units
-                shaft_width_norm=0.005    #inches
-                headwidth_norm=12         #units of shaft_width
-                headlength_norm=7         #units of shaft_width
-                headaxislength_norm=4     #units of shaft_width       
-                
-                #Coordinates of axis point in sky-projected star frame
-                if plot_set_key['conf_system']=='sky_ste':ang_normal =  system_param[pl_loc]['lambda_rad']   
-                if plot_set_key['conf_system']=='sky_orb':ang_normal =  system_param[pl_loc]['lambda_rad']-lref   
-                orb_spin_xyzview=orb_spin_norm*np.array([-sin(ang_normal)*sin(system_param[pl_loc]['inclin_rad']),cos(ang_normal)*sin(system_param[pl_loc]['inclin_rad']),cos(system_param[pl_loc]['inclin_rad'])]) 
-        
-                #Plotting visible shaft
-                #    - here we show the orbital plane normal if it is at z>0, or at z<0 outside / in front of the projected photosphere
-                n_shaft = 500
-                x_shaft = np.linspace(0,0.98*orb_spin_xyzview[0],n_shaft)
-                y_shaft = np.linspace(0,0.98*orb_spin_xyzview[1],n_shaft)
-                z_shaft = np.linspace(0,0.98*orb_spin_xyzview[2],n_shaft)
-                if star_params['f_GD']>0.:
-                    idx_behind = np_where1D(z_shaft < 0.)
-                    z_photo_behind,_,cond_in_stphot=calc_zLOS_oblate(x_shaft[idx_behind],y_shaft[idx_behind],star_params['istar_rad'],star_params['RpoleReq'])    
-                    w_novis = idx_behind[cond_in_stphot][z_shaft[idx_behind[cond_in_stphot]] <  z_photo_behind[cond_in_stphot] ]                
-                else:
-                    w_novis=np_where1D( ( x_shaft**2.+ y_shaft**2.  < 1. ) & (z_shaft < 0.) )    
-                x_shaft[w_novis]=np.nan
-                y_shaft[w_novis]=np.nan                       
-                plt.plot(x_shaft,y_shaft,lw=3,color=plot_set_key['col_orb'][ipl],zorder=30+2*n_pl)    #shaft             
-                
-                #Plotting visible axis head
-                r_head2 = orb_spin_xyzview[0]**2.+ orb_spin_xyzview[1]**2.
-                if star_params['f_GD']>0.:
-                    if (orb_spin_xyzview[2]>=0):cond_vis=True
+                if plot_set_key['plot_norm_orb_planes']:
+
+                    orb_spin_norm=1.1  #1.3    #plot units
+                    shaft_width_norm=0.005    #inches
+                    headwidth_norm=12         #units of shaft_width
+                    headlength_norm=7         #units of shaft_width
+                    headaxislength_norm=4     #units of shaft_width       
+                    
+                    #Coordinates of axis point in sky-projected star frame
+                    if plot_set_key['conf_system']=='sky_ste':ang_normal =  system_param[pl_loc]['lambda_rad']   
+                    if plot_set_key['conf_system']=='sky_orb':ang_normal =  system_param[pl_loc]['lambda_rad']-lref   
+                    orb_spin_xyzview=orb_spin_norm*np.array([-sin(ang_normal)*sin(system_param[pl_loc]['inclin_rad']),cos(ang_normal)*sin(system_param[pl_loc]['inclin_rad']),cos(system_param[pl_loc]['inclin_rad'])]) 
+            
+                    #Plotting visible shaft
+                    #    - here we show the orbital plane normal if it is at z>0, or at z<0 outside / in front of the projected photosphere
+                    n_shaft = 500
+                    x_shaft = np.linspace(0,0.98*orb_spin_xyzview[0],n_shaft)
+                    y_shaft = np.linspace(0,0.98*orb_spin_xyzview[1],n_shaft)
+                    z_shaft = np.linspace(0,0.98*orb_spin_xyzview[2],n_shaft)
+                    if star_params['f_GD']>0.:
+                        idx_behind = np_where1D(z_shaft < 0.)
+                        z_photo_behind,_,cond_in_stphot=calc_zLOS_oblate(x_shaft[idx_behind],y_shaft[idx_behind],star_params['istar_rad'],star_params['RpoleReq'])    
+                        w_novis = idx_behind[cond_in_stphot][z_shaft[idx_behind[cond_in_stphot]] <  z_photo_behind[cond_in_stphot] ]                
                     else:
-                        Bquad = 2.*orb_spin_xyzview[1]*ci*si*mRp2        
-                        Cquad = orb_spin_xyzview[1]**2.*si**2.*mRp2 + Rpole**2.*(r_head2  - 1.)                   
-                        det = Bquad**2.-4.*Aquad*Cquad
-                        if det<0:cond_vis=True
-                        else:cond_vis = orb_spin_xyzview[2] >=  (-Bquad+np.sqrt(det))/(2.*Aquad)         
-                else:cond_vis= ( r_head2 >= 1. ) | (orb_spin_xyzview[2] >= 0.)          
-                if cond_vis:
-                    if abs(orb_spin_xyzview[0])<2e-2:
-                        xdir_quiv = 0.
-                        ydir_quiv = 0.05*np.sign(orb_spin_xyzview[1])
-                    else:
-                        xdir_quiv = 0.05*np.sign(orb_spin_xyzview[0])
-                        ydir_quiv = 0.05*np.abs(orb_spin_xyzview[1]/orb_spin_xyzview[0])*np.sign(orb_spin_xyzview[1])   
-                    ax1.quiver(orb_spin_xyzview[0],orb_spin_xyzview[1],xdir_quiv,ydir_quiv,color=plot_set_key['col_orb'][ipl],
-                                angles='xy',scale_units='inches',scale=1,minlength=0,minshaft=0,zorder=30+2*n_pl,width=shaft_width_norm,headwidth=headwidth_norm, headlength=headlength_norm,headaxislength=headaxislength_norm,pivot='tip')  #head
+                        w_novis=np_where1D( ( x_shaft**2.+ y_shaft**2.  < 1. ) & (z_shaft < 0.) )    
+                    x_shaft[w_novis]=np.nan
+                    y_shaft[w_novis]=np.nan                       
+                    plt.plot(x_shaft,y_shaft,lw=3,color=plot_set_key['col_orb'][ipl],zorder=30+2*n_pl)    #shaft             
+                    
+                    #Plotting visible axis head
+                    r_head2 = orb_spin_xyzview[0]**2.+ orb_spin_xyzview[1]**2.
+                    if star_params['f_GD']>0.:
+                        if (orb_spin_xyzview[2]>=0):cond_vis=True
+                        else:
+                            Bquad = 2.*orb_spin_xyzview[1]*ci*si*mRp2        
+                            Cquad = orb_spin_xyzview[1]**2.*si**2.*mRp2 + Rpole**2.*(r_head2  - 1.)                   
+                            det = Bquad**2.-4.*Aquad*Cquad
+                            if det<0:cond_vis=True
+                            else:cond_vis = orb_spin_xyzview[2] >=  (-Bquad+np.sqrt(det))/(2.*Aquad)         
+                    else:cond_vis= ( r_head2 >= 1. ) | (orb_spin_xyzview[2] >= 0.)          
+                    if cond_vis:
+                        if abs(orb_spin_xyzview[0])<2e-2:
+                            xdir_quiv = 0.
+                            ydir_quiv = 0.05*np.sign(orb_spin_xyzview[1])
+                        else:
+                            xdir_quiv = 0.05*np.sign(orb_spin_xyzview[0])
+                            ydir_quiv = 0.05*np.abs(orb_spin_xyzview[1]/orb_spin_xyzview[0])*np.sign(orb_spin_xyzview[1])   
+                        ax1.quiver(orb_spin_xyzview[0],orb_spin_xyzview[1],xdir_quiv,ydir_quiv,color=plot_set_key['col_orb'][ipl],
+                                    angles='xy',scale_units='inches',scale=1,minlength=0,minshaft=0,zorder=30+2*n_pl,width=shaft_width_norm,headwidth=headwidth_norm, headlength=headlength_norm,headaxislength=headaxislength_norm,pivot='tip')  #head
 
 
             #----------------------           
@@ -4489,34 +4507,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             orb_coords[key][ispot, i_t] = orb_spots_prop_exp[key+'_sky_exp'][1]
 
                 # - Only plotting the spot orbit coordinates that are in the front hemisphere of the star
-                for ispot in range(num_spots):
-                    pos_x = orb_coords['x'][ispot, :][orb_coords['z'][ispot, :]>0]
-                    pos_y = orb_coords['y'][ispot, :][orb_coords['z'][ispot, :]>0]
+                if plot_set_key['plot_sp_orb']:
+                    for ispot in range(num_spots):
+                        pos_x = orb_coords['x'][ispot, :][orb_coords['z'][ispot, :]>0]
+                        pos_y = orb_coords['y'][ispot, :][orb_coords['z'][ispot, :]>0]
 
-                    ax1.plot(pos_x, pos_y, color=plot_set_key['col_orb_sp'],lw=plot_set_key['lw_plot'],alpha=1.)
-
-    
-                #Spot orbit
-                # - Generating array of times at which we want to retrieve the spot center coordinates
-                orbit_t = np.linspace(0,2*np.pi/((1.-star_params['alpha_rot_spots']*spots_prop_exp['sin_lat_exp'][1]**2.-star_params['beta_rot_spots']*spots_prop_exp['sin_lat_exp'][1]**4.)*star_params['om_eq_spots']*3600.*24.),plot_set_key['npts_orbits_sp'])
-                num_spots = len(spots_prop['spots'])
-                
-                # - Dictionary in which we will store the spot center coordinates
-                orb_coords = {'x':np.zeros([num_spots, plot_set_key['npts_orbits_sp']], dtype=float),'y':np.zeros([num_spots, plot_set_key['npts_orbits_sp']], dtype=float),'z':np.zeros([num_spots, plot_set_key['npts_orbits_sp']], dtype=float)}
-                
-                for i_t, t in enumerate(orbit_t) :
-                    if len(plot_set_key['custom_spot_prop'])>0:orb_spots_prop = retrieve_spots_prop_from_param(params, '_', '_') 
-                    else:orb_spots_prop = retrieve_spots_prop_from_param(params, inst_to_use, vis_to_use)
-                    orb_spots_prop['cos_istar'] = params['cos_istar']
-                    for ispot, spot in enumerate(spots_prop['spots']):
-                        orb_spots_prop_exp = coord_expos_spots(spot,t,orb_spots_prop,star_params,None,gen_dic['spot_coord_par'])
-                        for key in ['x', 'y', 'z']:
-                            orb_coords[key][ispot, i_t] = orb_spots_prop_exp[key+'_sky_exp'][1]
-                # - Only plotting the spot orbit lines that are in the front hemisphere of the star
-                for ispot in range(num_spots):
-                    pos_x = orb_coords['x'][ispot, :][orb_coords['z'][ispot, :]>0]
-                    pos_y = orb_coords['y'][ispot, :][orb_coords['z'][ispot, :]>0]
-                    ax1.plot(pos_x, pos_y, color=plot_set_key['col_orb_sp'],lw=plot_set_key['lw_plot'],alpha=1.)
+                        ax1.plot(pos_x, pos_y, color=plot_set_key['col_orb_sp'],lw=plot_set_key['lw_plot'],alpha=1.)
     
             #------------------------------------------------------------          
             #Color table (from 0 to 1)
@@ -7279,7 +7275,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                             else:
                                 contact_times = coord_dic[inst][vis][pl_loc]['Tcenter']+contact_phases[pl_loc]*system_param[pl_loc]["period"]
                                 contact_phases_vis = (contact_times-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"]
-                            ls_pl = {0:':',1:'--'}[ipl]
+                            ls_pl = {0:':',1:'--',2:'-.',3:':',4:'--',5:'-.',6:':'}[ipl]
                             for cont_ph in contact_phases_vis:
                                 if plot_options['reverse_2D']:plt.plot([cont_ph,cont_ph],y_range_loc,color=col_loc,linestyle='--',lw=lw_cont,zorder=10)
                                 else:plt.plot(x_range_loc,[cont_ph,cont_ph],color=col_loc,linestyle=ls_pl,lw=lw_cont,zorder=10)
@@ -9364,7 +9360,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                 if plot_options['prop_'+data_mode+'_absc']=='phase': 
                     for ipl,pl_loc in enumerate(data_dic[inst][vis]['transit_pl']):
                         if (i_visit==0) or (plot_options['prop_'+data_mode+'_absc']=='time') or ((pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst])): 
-                            ls_pl = {0:':',1:'--'}[ipl]
+                            ls_pl = {0:':',1:'--',2:'-.',3:':',4:'--',5:'-.',6:':'}[ipl]
                             if pl_loc==pl_ref:
                                 cen_ph = 0.
                                 contact_phases_vis = contact_phases[pl_ref]
@@ -9515,7 +9511,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
             transit_pl = []
             for vis in vis_list: transit_pl+=data_dic[inst][vis]['transit_pl']
             for ipl,pl_loc in enumerate(np.unique(transit_pl)):
-                ls_pl = {0:':',1:'--'}[ipl]
+                ls_pl = {0:':',1:'--',2:'-.',3:':',4:'--',5:'-.',6:':'}[ipl]
                 n_per_min = int( (system_param[pl_loc]['TCenter'] - 2400000. - (x_min-system_param[pl_loc]['T14_num']) )/system_param[pl_loc]["period"] ) 
                 Tcenter_min = system_param[pl_loc]['TCenter'] - 2400000. + n_per_min*system_param[pl_loc]["period"]
                 contact_times_rel = contact_phases[pl_loc]*system_param[pl_loc]["period"]

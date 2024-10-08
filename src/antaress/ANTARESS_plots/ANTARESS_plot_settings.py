@@ -1522,6 +1522,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Gap between visits light curves  
         plot_settings[key_plot]['lc_gap']=None    
 
+        #%%%% Plot in orbital phase (True) or BJD (False)
+        plot_settings[key_plot]['plot_phase']=True
 
 
 
@@ -2242,6 +2244,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['col_orb_samp'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
             
         #%%%% Spot trajectory color
+        plot_settings[key_plot]['plot_sp_orb'] = True
         plot_settings[key_plot]['col_orb_sp'] = 'greenyellow'
                 
         #%%%% Number of orbits drawn randomly
@@ -2286,6 +2289,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['xst_dir'] = [-0.1,0.1]  
         plot_settings[key_plot]['yst_dir'] = 0.
     
+        #%%%% Plot the normal vector to the orbital planes of all planets
+        plot_settings[key_plot]['plot_norm_orb_planes'] = True
+
         #%%%% Plot hidden equator
         plot_settings[key_plot]['plot_equ_hid']=  False
 

@@ -222,6 +222,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
+    # gen_dic['star_name']='TRAPPIST1'
 
     # Zodiacs
     # gen_dic['star_name']='Capricorn'
@@ -239,6 +240,19 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Transiting planets
+    if gen_dic['star_name']=='TRAPPIST1':
+        gen_dic['transit_pl'] = {
+            'TRAPPIST1_b':{'NIRPS_HE' : ['mockvis']},
+            'TRAPPIST1_c':{'NIRPS_HE' : ['mockvis']},
+            'TRAPPIST1_d':{'NIRPS_HE' : ['mockvis']},
+            'TRAPPIST1_e':{'NIRPS_HE' : ['mockvis']},
+            'TRAPPIST1_f':{'NIRPS_HE' : ['mockvis']},
+            'TRAPPIST1_g':{'NIRPS_HE' : ['mockvis']},
+            # 'TRAPPIST1_h':{'NIRPS_HE' : ['mockvis']}
+            }
+        gen_dic['kepl_pl'] = ['TRAPPIST1_b','TRAPPIST1_c','TRAPPIST1_d','TRAPPIST1_e','TRAPPIST1_f','TRAPPIST1_g','TRAPPIST1_h']
+        # gen_dic['Tcenter_visits']={'TRAPPIST1_b':{'ESPRESSO':{'mockvis':2457322.514193}}}
+
     if gen_dic['star_name']=='AU_Mic':
         gen_dic['transit_pl'] = {
             'AU_Mic_b':{'ESPRESSO' : ['visit1']},
@@ -287,7 +301,38 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             gen_dic['kepl_pl'] = [zodiac_pl]
 
 
+
+
    #Transiting spots
+    if gen_dic['star_name']=='TRAPPIST1':
+        # gen_dic['transit_sp'] = {}
+        gen_dic['transit_sp'] = {
+            'spot1':{'NIRPS_HE' : ['mockvis']}, 
+            'spot2':{'NIRPS_HE' : ['mockvis']}, 
+            'spot3':{'NIRPS_HE' : ['mockvis']}, 
+            'spot4':{'NIRPS_HE' : ['mockvis']}, 
+            'spot5':{'NIRPS_HE' : ['mockvis']}, 
+            'spot6':{'NIRPS_HE' : ['mockvis']}, 
+            'spot7':{'NIRPS_HE' : ['mockvis']}, 
+            'spot8':{'NIRPS_HE' : ['mockvis']}, 
+            'spot9':{'NIRPS_HE' : ['mockvis']}, 
+            'spot10':{'NIRPS_HE' : ['mockvis']}, 
+            'spot11':{'NIRPS_HE' : ['mockvis']}, 
+            'spot12':{'NIRPS_HE' : ['mockvis']}, 
+            'spot13':{'NIRPS_HE' : ['mockvis']}, 
+            'spot14':{'NIRPS_HE' : ['mockvis']}, 
+            'spot15':{'NIRPS_HE' : ['mockvis']}, 
+            'spot16':{'NIRPS_HE' : ['mockvis']}, 
+            'spot17':{'NIRPS_HE' : ['mockvis']}, 
+            'spot18':{'NIRPS_HE' : ['mockvis']}, 
+            'spot19':{'NIRPS_HE' : ['mockvis']}, 
+            'spot20':{'NIRPS_HE' : ['mockvis']}, 
+            'spot21':{'NIRPS_HE' : ['mockvis']}, 
+            'spot22':{'NIRPS_HE' : ['mockvis']}, 
+            'spot23':{'NIRPS_HE' : ['mockvis']}, 
+            'spot24':{'NIRPS_HE' : ['mockvis']}, 
+            }
+
     if gen_dic['star_name']=='AUMic':
         # gen_dic['transit_sp'] = {}
         gen_dic['transit_sp'] = {
@@ -315,6 +360,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Plot settings    
     
     #Input data type
+    if gen_dic['star_name']=='TRAPPIST1':
+        gen_dic['type']={'NIRPS_HE':'CCF'}  
+
     if gen_dic['star_name']=='AUMic':
         gen_dic['type']={'ESPRESSO':'CCF'}      
     
@@ -407,6 +455,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Data processing
 
     #Calculating/retrieving
+    if gen_dic['star_name']=='TRAPPIST1':gen_dic['calc_proc_data']=True  #& False
     if gen_dic['star_name']=='AUMic':gen_dic['calc_proc_data']=True  #& False
     if gen_dic['star_name']=='AU_Mic':gen_dic['calc_proc_data']=True  #& False
     if gen_dic['star_name']=='V1298tau':gen_dic['calc_proc_data']=True  #& False
@@ -569,6 +618,23 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     mock_dic['nthreads'] = 2 
 
     #Defining artificial visits
+    if gen_dic['star_name'] == 'TRAPPIST1':
+        mock_dic['visit_def']={
+            # 'NIRPS_HE':{'mockvis' :{'exp_range':2457322.514193+np.array([-0.2,0.2]),'nexp':200.}}} #--base
+            # 'NIRPS_HE':{'mockvis' :{'exp_range':2460472.2+np.array([-0.2,0.2]),'nexp':2.}}} #--base
+            # 'NIRPS_HE':{'mockvis' :{'exp_range':[2460469.7, 2460472.4],'nexp':200.}}} #--base
+            'NIRPS_HE':{'mockvis' :{'exp_range':[2460470, 2460473],'nexp':10.}}} #--contains all below-mentioned transits
+            # 'NIRPS_HE':{'mockvis' :{'exp_range':2460472.586+np.array([-0.08, 0.16]),'nexp':70.}}} #-- TRAPPIST1_b transit
+            # 'NIRPS_HE':{'mockvis' :{'exp_range':2460472.502+np.array([-0.16, 0.08]),'nexp':70.}}} #-- TRAPPIST1_c transit
+            # 'NIRPS_HE':{'mockvis' :{'exp_range':2460472.206+np.array([-0.12, 0.12]),'nexp':70.}}} #-- TRAPPIST1_d transit
+            # 'NIRPS_HE':{'mockvis' :{'exp_range':2460472.934+np.array([-0.12, 0.12]),'nexp':70.}}} #-- TRAPPIST1_e transit
+            # 'NIRPS_HE':{'mockvis' :{'exp_range':2460470.466+np.array([-0.12, 0.12]),'nexp':70.}}} #-- TRAPPIST1_f transit
+
+
+
+
+
+
     if gen_dic['star_name'] == 'AUMic':
         mock_dic['visit_def']={
             'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30.}} #--base
@@ -606,6 +672,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Spectral profile settings
     
     #Spectral table for disk-integrated profiles 
+    if gen_dic['star_name'] == 'TRAPPIST1' :
+        mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
     if gen_dic['star_name'] == 'AUMic' :
         mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
     if gen_dic['star_name'] == 'fakeAU_Mic' :
@@ -616,6 +684,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
 
     #Heliocentric stellar RV
+    if gen_dic['star_name']=='TRAPPIST1':
+        mock_dic['sysvel']= {
+            'NIRPS_HE' : {'mockvis' : 0., #--base 
+            }
+        }
+
     if gen_dic['star_name']=='AUMic':
         mock_dic['sysvel']= {
             'ESPRESSO' : {'mock_vis' : 0., #--base
@@ -638,7 +712,140 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name'] == 'fakeAU_Mic' : 
         mock_dic['sysvel']= {'ESPRESSO' : {'mockvisit1' : 0.}} 
+    
+
+
     #Defining spot properties 
+    if gen_dic['star_name']=='TRAPPIST1':
+        mock_dic['spots_prop']={
+             'NIRPS_HE':{
+                 'mockvis':{
+                    # For the spot 'spot1' : 
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot1'     : 10,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot1' : 2460471.0+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot1'     : 8, # 10, #15
+
+                    # For the spot 'spot2' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot2'     : 4,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot2' : 2460471.03+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot2'     : 8, # 10, #15
+
+                    # For the spot 'spot3' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot3'     : 4,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot3' : 2460471.1+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot3'     : 8, # 10, #15
+
+                    # For the spot 'spot4' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot4'     : 6,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot4' : 2460471.16+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot4'     : 8, # 10, #15
+
+                    # For the spot 'spot5' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot5'     : 12,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot5' : 2460471.14+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot5'     : 8, # 10, #15
+
+                    # For the spot 'spot6' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot6'     : -20,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot6' : 2460471.1+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot6'     : 8, # 10, #15
+
+                    # For the spot 'spot7' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot7'     : -20,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot7' : 2460471.0+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot7'     : 8, # 10, #15
+
+                    # For the spot 'spot8' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot8'     : -35,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot8' : 2460471.05+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot8'     : 8, # 10, #15
+
+                    # For the spot 'spot9' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot9'     : -46,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot9' : 2460471.05+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot9'     : 8, # 10, #15
+
+                    # For the spot 'spot10' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot10'     : -38,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot10' : 2460470.88+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot10'     : 8, # 10, #15
+
+                    # For the spot 'spot11' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot11'     : -26,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot11' : 2460470.65+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot11'     : 8, # 10, #15
+
+                    # For the spot 'spot12' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot12'     : -46,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot12' : 2460470.70+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot12'     : 8, # 10, #15
+
+                    # For the spot 'spot13' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot13'     : -15,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot13' : 2460470.5+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot13'     : 8, # 10, #15
+
+                    # For the spot 'spot14' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot14'     : -60,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot14' : 2460471.5+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot14'     : 8, # 10, #15
+
+                    # For the spot 'spot15' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot15'     : 8,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot15' : 2460471.6+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot15'     : 8, # 10, #15
+
+                    # For the spot 'spot16' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot16'     : 22,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot16' : 2460471.65+.51,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot16'     : 8, # 10, #15
+
+                    # For the spot 'spot17' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot17'     : 25,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot17' : 2460471.6+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot17'     : 8, # 10, #15
+
+                    # For the spot 'spot18' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot18'     : 20,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot18' : 2460471.45+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot18'     : 8, # 10, #15
+
+                    # For the spot 'spot19' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot19'     : 40,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot19' : 2460471.18+.51,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot19'     : 8, # 10, #15
+
+                    # For the spot 'spot20' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot20'     : 44,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot20' : 2460471.24+.51,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot20'     : 8, # 10, #15
+
+                    # For the spot 'spot21' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot21'     : 48,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot21' : 2460470.9+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot21'     : 8, # 10, #15
+
+                    # For the spot 'spot22' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot22'     : 60,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot22' : 2460470.4+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot22'     : 8, # 10, #15
+
+                    # For the spot 'spot23' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot23'     : 70,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot23' : 2460471.3+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot23'     : 8, # 10, #15
+
+                    # For the spot 'spot24' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot24'     : 85,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot24' : 2460470.3+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot24' : 8,
+
+                    'fctrst__ISNIRPS_HE_VSmockvis_SP'    : 0.1,
+                        },
+                    }
+                }
+
+
     if gen_dic['star_name'] == 'AUMic': 
         mock_dic['spots_prop']={
              'ESPRESSO':{
@@ -807,6 +1014,17 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Intrinsic stellar spectra             
+    if gen_dic['star_name'] == 'TRAPPIST1' :
+        mock_dic['intr_prof']={'NIRPS_HE':{
+            'mode':'ana',        
+            'coord_line':'mu',
+            'func_prof_name': 'gauss',
+            'line_trans':None, 
+            'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
+                        'FWHM__ord0__IS__VS_'  : 8 },
+            'pol_mode' : 'modul'}
+            }
+
     if gen_dic['star_name'] == 'AUMic' :
         mock_dic['intr_prof']={'ESPRESSO':{
             'mode':'ana',        
@@ -859,6 +1077,18 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             }
 
     #Count continuum level
+    if gen_dic['star_name'] == 'TRAPPIST1' :
+        mock_dic['flux_cont']={'NIRPS_HE':{
+        'mockvis':35, #--base
+            }
+        } 
+
+    if gen_dic['star_name'] == 'AUMic' :
+        mock_dic['flux_cont']={'ESPRESSO':{
+        'mockvis':1e8, #--base
+            }
+        }   
+
     if gen_dic['star_name'] == 'AUMic' :
         mock_dic['flux_cont']={'ESPRESSO':{
         'mock_vis':1e8, #--base
@@ -887,6 +1117,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Noise settings
     
     #Instrumental calibration           
+    if gen_dic['star_name'] == 'TRAPPIST1' : 
+        mock_dic['gcal'] = {'NIRPS_HE' : 1.}
+
     if gen_dic['star_name'] == 'AUMic' : 
         mock_dic['gcal'] = {'ESPRESSO' : 1.}   
 
@@ -901,6 +1134,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         mock_dic['gcal'] = {'ESPRESSO' : 1.}   
 
     #Flux errors
+    if gen_dic['star_name'] == 'TRAPPIST1': mock_dic['set_err']={'NIRPS_HE':True}
     if gen_dic['star_name'] == 'AUMic': mock_dic['set_err']={'ESPRESSO':True}
     if gen_dic['star_name'] == 'fakeAU_Mic': mock_dic['set_err']={'ESPRESSO':True}
     if gen_dic['star_name'] == 'V1298tau': mock_dic['set_err']={'ESPRESSO':True}
@@ -1279,6 +1513,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Star discretization      
+    if gen_dic['star_name']=='TRAPPIST1':
+        # theo_dic['nsub_Dstar']=81.
+        theo_dic['nsub_Dstar']=101. #211. #-- for fitting purposes
+        # theo_dic['nsub_Dstar']=301. #-- for plotting purposes
+
     if gen_dic['star_name']=='AUMic':
         # theo_dic['nsub_Dstar']=81.
         theo_dic['nsub_Dstar']=101. #211. #-- for fitting purposes
@@ -1314,6 +1553,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Theoretical stellar atmosphere
+    if gen_dic['star_name']=='TRAPPIST1':
+        theo_dic['st_atm']['calc']=False
+
     if gen_dic['star_name']=='AUMic':
         theo_dic['st_atm']['calc']=False
     
@@ -1331,6 +1573,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         theo_dic['st_atm']['calc']=False    
 
     #Planet discretization
+    if gen_dic['star_name']=='TRAPPIST1':
+        theo_dic['nsub_Dpl']= {'TRAPPIST1_b':31.,
+                                'TRAPPIST1_c':31.,
+                                'TRAPPIST1_d':31.,
+                                'TRAPPIST1_e':31.,
+                                'TRAPPIST1_f':31.,
+                                'TRAPPIST1_g':31.,
+                                'TRAPPIST1_h':31.}
+
+
     if gen_dic['star_name']=='AUMic':
         theo_dic['nsub_Dpl']= {'AUMicb':31.} #33.}#, 'AUMicc':101.} #-- for fitting purposes 
         # theo_dic['nsub_Dpl']= {'AUMicb':23.}           
@@ -1362,6 +1614,32 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Spot discretization
+    if gen_dic['star_name']=='TRAPPIST1':
+        theo_dic['nsub_Dsp']={'spot1':31.,
+                              'spot2':31.,
+                              'spot3':31.,
+                              'spot4':31.,
+                              'spot5':31.,
+                              'spot6':31.,
+                              'spot7':31.,
+                              'spot8':31.,
+                              'spot9':31.,
+                              'spot10':31.,
+                              'spot11':31.,
+                              'spot12':31.,
+                              'spot13':31.,
+                              'spot14':31.,
+                              'spot15':31.,
+                              'spot16':31.,
+                              'spot17':31.,
+                              'spot18':31.,
+                              'spot19':31.,
+                              'spot20':31.,
+                              'spot21':31.,
+                              'spot22':31.,
+                              'spot23':31.,
+                              'spot24':31.}
+
     if gen_dic['star_name']=='AUMic':
         # theo_dic['nsub_Dsp']={'spot1':50., 'spot2':50.}
         theo_dic['nsub_Dsp']={'spot1':31.} #33.} #-- for fitting purposes
@@ -1392,6 +1670,41 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # theo_dic['nsub_Dsp']={'spot1':201.}
 
     #Exposure discretization
+    if gen_dic['star_name']=='TRAPPIST1':
+        theo_dic['n_oversamp']={'TRAPPIST1_b':5.,
+                                'TRAPPIST1_c':5.,
+                                'TRAPPIST1_d':5.,
+                                'TRAPPIST1_e':5.,
+                                'TRAPPIST1_f':5.,
+                                'TRAPPIST1_g':5.,
+                                'TRAPPIST1_h':5.
+                                }
+        theo_dic['n_oversamp_spot']={'spot1':5.,
+                                    'spot2':5.,
+                                    'spot3':5.,
+                                    'spot4':5.,
+                                    'spot5':5.,
+                                    'spot6':5.,
+                                    'spot7':5.,
+                                    'spot8':5.,
+                                    'spot9':5.,
+                                    'spot10':5.,
+                                    'spot11':5.,
+                                    'spot12':5.,
+                                    'spot13':5.,
+                                    'spot14':5.,
+                                    'spot15':5.,
+                                    'spot16':5.,
+                                    'spot17':5.,
+                                    'spot18':5.,
+                                    'spot19':5.,
+                                    'spot20':5.,
+                                    'spot21':5.,
+                                    'spot22':5.,
+                                    'spot23':5.,
+                                    'spot24':5.,
+                                    }
+
     if gen_dic['star_name']=='AUMic':
         theo_dic['n_oversamp']={'AUMicb':5.}#, 'AUMicc': 5.}
         # theo_dic['n_oversamp_spot']={'spot1':5., 'spot2':5.}
@@ -1440,7 +1753,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     },
                 }
         }
-    if gen_dic['star_name'] in ['AUMic','fakeAU_Mic']:
+    if gen_dic['star_name'] in ['TRAPPIST1','AUMic','fakeAU_Mic']:
         theo_dic['spots_prop'] = mock_dic['spots_prop']
 
     #Zodiacs
@@ -1468,7 +1781,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Planetary system architecture
     plot_dic['system_view']=''   #png
 
-    if gen_dic['star_name'] in ['fakeAU_Mic','AUMic']:
+    if gen_dic['star_name'] in ['fakeAU_Mic','AUMic','TRAPPIST1']:
         #Range of planet-occulted properties
         plot_dic['plocc_ranges']=''    
         
@@ -3116,6 +3429,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     gen_dic['calc_align_DI']=True  #  &  False  
         
     #Systemic velocity        
+    if gen_dic['star_name']=='TRAPPIST1':
+        data_dic['DI']['sysvel']={'NIRPS_HE' : 
+                                    {'mockvis' : 0, #--base
+                        }}
+
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['sysvel']={'ESPRESSO' : 
                                     {'mock_vis' : 0, #--base
@@ -3375,6 +3693,22 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     data_dic['DI']['scaling_val']=1. 
 
     #Stellar and planet intensity settings 
+    if gen_dic['star_name']=='TRAPPIST1':
+        data_dic['DI']['system_prop']={
+                'achrom':{
+                    'TRAPPIST1_b' : [0.08590], #Gilbert et al. 2022
+                    'TRAPPIST1_c' : [0.08440], #Gilbert et al. 2022
+                    'TRAPPIST1_d' : [0.06063], #Gilbert et al. 2022
+                    'TRAPPIST1_e' : [0.07079], #Gilbert et al. 2022
+                    'TRAPPIST1_f' : [0.08040], #Gilbert et al. 2022
+                    'TRAPPIST1_g' : [0.08692], #Gilbert et al. 2022
+                    'TRAPPIST1_h' : [0.05809], #Gilbert et al. 2022
+                    'LD' : ['quadratic'],
+                    'LD_u1' : [0.168],
+                    'LD_u2' : [0.245],
+                }
+                }   
+
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['system_prop']={
                 'achrom':{
@@ -3449,6 +3783,40 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                 }  
 
     #Intensity settings for the spots
+    if gen_dic['star_name']=='TRAPPIST1':
+        # data_dic['DI']['spots_prop'] = {}
+        data_dic['DI']['spots_prop']={
+                'achrom':{
+                    'spot1' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot1'] * np.pi/180],#--base
+                    'spot2' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot2'] * np.pi/180],#--base
+                    'spot3' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot3'] * np.pi/180],#--base
+                    'spot4' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot4'] * np.pi/180],#--base
+                    'spot5' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot5'] * np.pi/180],#--base
+                    'spot6' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot6'] * np.pi/180],#--base
+                    'spot7' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot7'] * np.pi/180],#--base
+                    'spot8' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot8'] * np.pi/180],#--base
+                    'spot9' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot9'] * np.pi/180],#--base
+                    'spot10' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot10'] * np.pi/180],#--base
+                    'spot11' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot11'] * np.pi/180],#--base
+                    'spot12' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot12'] * np.pi/180],#--base
+                    'spot13' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot13'] * np.pi/180],#--base
+                    'spot14' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot14'] * np.pi/180],#--base
+                    'spot15' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot15'] * np.pi/180],#--base
+                    'spot16' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot16'] * np.pi/180],#--base
+                    'spot17' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot17'] * np.pi/180],#--base
+                    'spot18' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot18'] * np.pi/180],#--base
+                    'spot19' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot19'] * np.pi/180],#--base
+                    'spot20' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot20'] * np.pi/180],#--base
+                    'spot21' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot21'] * np.pi/180],#--base
+                    'spot22' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot22'] * np.pi/180],#--base
+                    'spot23' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot23'] * np.pi/180],#--base                    
+                    'spot24' : [theo_dic['spots_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_SPspot23'] * np.pi/180],#--base                    
+                    'LD' : ['quadratic'],
+                    'LD_u1' : [0.168],
+                    'LD_u2' : [0.245],
+                },
+                }
+
     if gen_dic['star_name']=='AUMic':
         # data_dic['DI']['spots_prop'] = {}
         data_dic['DI']['spots_prop']={
@@ -3513,6 +3881,15 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Transit light curve model    
+    if gen_dic['star_name']=='TRAPPIST1':
+        data_dic['DI']['transit_prop'].update({    
+                'nsub_Dstar':101,
+                #'ESPRESSO':{'mock_vis':{'mode':'model', 'dt':0.05}}
+                'NIRPS_HE':{
+                'mockvis':{'mode':'simu','n_oversamp':5}, #--base
+                }
+                })
+
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['transit_prop'].update({    
                 'nsub_Dstar':101,
@@ -3576,7 +3953,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['spectral_LC']='pdf'   #pdf
 
     #2D maps of disk-integrated profiles
-    plot_dic['map_DI_prof']='pdf'   #png   
+    plot_dic['map_DI_prof']=''   #png   
     
     
     
@@ -3967,7 +4344,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #Activating
-    gen_dic['res_data'] = True #  &  False
+    gen_dic['res_data'] = True   #&  False
 
     #Calculating/retrieving 
     gen_dic['calc_res_data'] = True   #&  False
@@ -3995,6 +4372,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
    #  %%%% Master exposures
+    # if gen_dic['star_name']=='TRAPPIST1':    
+        # data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 45,dtype=int))+list(np.arange(135, 180,dtype=int))}}
+        # data_dic['Res']['idx_in_bin']={'NIRPS_HE':{'mockvis':list(np.arange(0, 19,dtype=int))+list(np.arange(28, 70,dtype=int))}} #b-transit
+        # data_dic['Res']['idx_in_bin']={'NIRPS_HE':{'mockvis':list(np.arange(0, 42,dtype=int))+list(np.arange(52, 70,dtype=int))}} #c-transit
+        # data_dic['Res']['idx_in_bin']={'NIRPS_HE':{'mockvis':list(np.arange(0, 29,dtype=int))+list(np.arange(40, 70,dtype=int))}} #d-transit
+        # data_dic['Res']['idx_in_bin']={'NIRPS_HE':{'mockvis':list(np.arange(0, 29,dtype=int))+list(np.arange(41, 70,dtype=int))}} #e-transit
+        # data_dic['Res']['idx_in_bin']={'NIRPS_HE':{'mockvis':list(np.arange(0, 97,dtype=int))+list(np.arange(99, 100,dtype=int))}} #f-transit
+
     if gen_dic['star_name']=='AUMic':    
         # data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 45,dtype=int))+list(np.arange(135, 180,dtype=int))}}
         data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} 
@@ -4873,7 +5258,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_ResProf'] = True  #&  False
+    gen_dic['fit_ResProf'] = True  &  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5266,7 +5651,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                                             
 
 
-
+    #Walker initial distribution function
+    # if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+    #     glob_fit_dic['ResProf']['custom_init_walkers']=multivar_Gauss_walk
 
 
     #Fitting mode
@@ -6683,3 +7070,20 @@ def ANTARESS_analysis_settings(data_type,local_dic,plot_dic):
         plot_dic['chi2_fit_'+data_type]='' 
         
     return None
+
+##################################################################################################         
+#%%% Personal walker initial distribution
+################################################################################################## 
+def multivar_Gauss_walk(fit_dic, fixed_args):
+
+    #Retrieve Hessian matrix
+    hess_matrix = np.load('/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/chi2/Fit_results.npz',allow_pickle=True)['data'].item()['hess_matrix']
+
+    #Build covariance matrix
+    cov_matrix = np.linalg.inv(hess_matrix)
+
+    #Build walker starting distribution
+    fit_dic['initial_distribution'] = np.random.multivariate_normal(fit_dic['par_val'], cov_matrix, size=fit_dic['nwalkers'])
+
+    return None                  
+

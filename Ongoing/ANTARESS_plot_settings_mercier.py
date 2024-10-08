@@ -1518,6 +1518,11 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Gap between visits light curves  
         plot_settings[key_plot]['lc_gap']=None    
 
+        #%%%% Plot in orbital phase (True) or BJD (False)
+        plot_settings[key_plot]['plot_phase']=False
+
+        #%%%% Exposure ids
+        plot_settings[key_plot]['plot_expid']=False
 
 
 
@@ -1562,7 +1567,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
-        # plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'mock_vis':[-0.02492,0.02365]}} 
+        # plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'mock_vis':[-0.02484,0.02346]}}
+
 
     ################################################################################################################  
     #%%%% Best-fit profiles 
@@ -1614,7 +1620,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         
         #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
+        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
+        # plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'mock_vis':[-0.00001,0.00309]}}  
 
 
 
@@ -2196,6 +2203,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #    - set to transiting ones if undefined
         plot_settings[key_plot]['pl_to_plot'] = gen_dic['studied_pl']
 
+        # if gen_dic['star_name']=='TRAPPIST1':
+        #     plot_settings[key_plot]['pl_to_plot']=gen_dic['kepl_pl']
+
         #%%%% Number of points in the planet orbits
         plot_settings[key_plot]['npts_orbits'] = np.repeat(10000,len(plot_settings[key_plot]['pl_to_plot'])) 
 
@@ -2213,6 +2223,14 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,30)}
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
             plot_settings[key_plot]['t_BJD'] = None
+
+        if gen_dic['star_name']=='TRAPPIST1':
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': 2460472.586+np.linspace(-0.02, 0.02,10)} #b-transit
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': 2460472.206+np.linspace(-0.06, 0.06,10)} #d-transit
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': 2460472.502+np.linspace(-0.06, 0.06,10)} #c-transit
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': 2460472.934+np.linspace(-0.06, 0.06,10)} #e-transit
+            plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': np.linspace(2460472.5, 2460473, 30)}
+            # plot_settings[key_plot]['t_BJD'] = None
 
         #Zodiacs
         if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -2235,7 +2253,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #Defining a boolean to decide whether we make a GIF
         #    - this is only used if we plot multiple exposures.
         plot_settings[key_plot]['GIF_generation']=True & False
-        
+
+        if gen_dic['star_name']=='TRAPPIST1':
+            plot_settings[key_plot]['GIF_generation']=True#&False
+
         if gen_dic['star_name']=='AUMic':
             plot_settings[key_plot]['GIF_generation']=True&False
 
@@ -2267,7 +2288,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['col_orb'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
         plot_settings[key_plot]['col_orb_samp'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
         
-        #%%%% Spot trajectory color
+        #%%%% Spot trajectory and color
+        plot_settings[key_plot]['plot_sp_orb'] = True
         plot_settings[key_plot]['col_orb_sp'] = 'greenyellow'
 
         #%%%% Number of orbits drawn randomly
@@ -2311,7 +2333,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Position of oriented arrow along stellar equator
         plot_settings[key_plot]['xst_dir'] = [-0.1,0.1]  
         plot_settings[key_plot]['yst_dir'] = 0.
-    
+        
+        #%%%% Plot the normal vector to the orbital planes of all planets
+        plot_settings[key_plot]['plot_norm_orb_planes'] = True
+
         #%%%% Plot hidden equator
         plot_settings[key_plot]['plot_equ_hid']=  False
 
@@ -2361,6 +2386,32 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% RV range
         plot_settings[key_plot]['rv_range'] = None
 
+        if gen_dic['star_name']=='TRAPPIST1':    
+
+            # plot_settings[key_plot]['n_stcell']=201.
+
+            plot_settings[key_plot]['plot_spots'] = True #& False
+
+            plot_settings[key_plot]['mock_spot_prop'] = True #& False
+
+            plot_settings[key_plot]['fit_spot_prop'] = True & False
+
+            # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
+
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 20, 'fctrst' : 0.2}
+            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  10, 'Tc_sp' : 2458330.39051+0.1, 'ang' : 25}
+            # plot_settings[key_plot]['custom_spot_prop']['spot3'] = {'lat' :  -30, 'Tc_sp' : 2458330.39051+0.3, 'ang' : 20}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
+            
+            plot_settings[key_plot]['st_grid_overlay']=True &False
+
+            plot_settings[key_plot]['sp_grid_overlay']=True &False
+
+            plot_settings[key_plot]['pl_grid_overlay']=True &False
+
+            # plot_settings[key_plot]['n_spcell']=101.
+
+            # plot_settings[key_plot]['n_plcell']={'AUMicb':5.}
 
         if gen_dic['star_name']=='AUMic':    
 

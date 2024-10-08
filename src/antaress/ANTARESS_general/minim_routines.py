@@ -828,6 +828,10 @@ def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=N
     #Chi2 value
     merit['chi2'] = np.sum(ln_prob_func_lmfit(p_best, xtofit, fixed_args=argstofit)**2.)
     merit['chi2r'] = merit['chi2']/result.nfree
+
+    #Hessian matrix
+    if (fixed_args is not None):
+        fixed_args['hess_matrix']=compute_Hessian(p_best, ln_prob_func_lmfit, args=xtofit, kwargs=argstofit)
  
     #Bayesian Indicator Criterion   
     merit['BIC'] = merit['chi2'] + result.nvarys*np.log(result.ndata)
@@ -1175,7 +1179,42 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
     
     
 
-  
+##################################################################################################
+#%%%% Chi2 analysis
+##################################################################################################   
+
+def compute_Hessian(func, x0, epsilon=1e-5):
+    r"""**Compute the Hessian matrix of a function using finite differences**
+    
+    Args:
+        func: The function whose Hessian is to be computed. It should accept a Parameters object.
+        params: The lmfit.Parameters object.
+        epsilon: The small perturbation for finite differences (default: 1e-5).
+    
+    Returns:
+        hessian_matrix: The Hessian matrix.
+    """
+    x0 = params_to_array(params)  # Convert Parameters object to array
+    n = len(x0)
+    hessian_matrix = np.zeros((n, n))
+    identity = np.eye(n)
+    
+    # Loop over each element to compute the second derivatives
+    for i in range(n):
+        for j in range(n):
+            p_ij_plus = array_to_params(x0 + epsilon * (identity[i] + identity[j]), params)
+            p_ij_minus = array_to_params(x0 - epsilon * (identity[i] + identity[j]), params)
+            p_i_plus_j_minus = array_to_params(x0 + epsilon * identity[i] - epsilon * identity[j], params)
+            p_i_minus_j_plus = array_to_params(x0 - epsilon * identity[i] + epsilon * identity[j], params)
+            
+            f_ij_plus = func(p_ij_plus)
+            f_ij_minus = func(p_ij_minus)
+            f_i_plus_j_minus = func(p_i_plus_j_minus)
+            f_i_minus_j_plus = func(p_i_minus_j_plus)
+            
+            hessian_matrix[i, j] = (f_ij_plus - f_i_plus_j_minus - f_i_minus_j_plus + f_ij_minus) / (4 * epsilon ** 2)
+    
+    return hessian_matrix
 
 ##################################################################################################
 #%%%% MCMC analysis

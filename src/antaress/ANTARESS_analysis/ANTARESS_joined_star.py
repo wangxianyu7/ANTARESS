@@ -1390,6 +1390,7 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                      'fit_star_pl':fixed_args['fit_star_pl'], 'master_out':fixed_args['master_out'], 'unthreaded_op':fixed_args['unthreaded_op'], 'ref_pl':fixed_args['ref_pl'], 'order':fit_prop_dic['order'], 
                      'fit_mode':fit_prop_dic['fit_mode']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
+    if fixed_args['fit_mode']=='chi2':fit_save['hess_matrix'] = fixed_args['hess_matrix']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
 
     #Post-processing    

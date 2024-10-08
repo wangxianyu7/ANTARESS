@@ -547,28 +547,33 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
                 # where F_DI is the unocculted star profile and F_pl, F_sp are planet and spot deviation profiles
                 # The planet-deviation profile can be re-written as: 
                 #
-                # F_pl = sum( pl, sum(region A, f)  +  sum(region B, s - f)  )
+                # F_pl = sum( pl, sum(region A, f)  +  sum(region B, s)  )
                 #
-                # where region A is the portion of the planet-occulted region that covers the quiet star and region B is the portion of the planet-occulted
-                #region that covers one or more spots.
+                # While the spot-deviation profile is:
+                #
+                # F_sp = sum( sp, sum(region B, f - s) + sum(region C, f - s))
+                #
+                # where region A is the portion of the planet-occulted regions that covers the quiet star, region B is the portion of the planet-occulted
+                #regions that covers one or more spots, and region C is the portion of spotted regions that is not covered by the planet(s).
                 # f is the profile assigned to a quiet star cell which s is the profile assigned to a spotted cell.
                 # To remove the impact of spots in the exposure profile F_exp, we use the best-fit results from our fitting routine to 
-                # find an estimate for F_sp and for the sum(region B, s - f) portion of F_pl, which we will name F_sp' and s'. 
+                # find an estimate for F_sp and for sum(region B, s - f). The latter will act to remove the spot contamination from the planet-occulted region
+                #and adding back the quiet star. We rename the model-derived portion as F_sp' and s'. 
                 #In this parametrization, we have:
                 #
-                #F_exp ~= F_DI - F_sp' - sum( pl, sum(region A, f)  +  sum(region B, s' - f)  )
+                #F_exp ~= F_DI - F_sp' - sum( pl, sum(region A, f)  +  sum(region B, s')  )
                 # <==>
-                # F_exp + F_sp' + sum( pl, sum(region B, s' - f) ) = F_DI - sum( pl, sum(region A, f))
+                # F_exp + F_sp' + sum( pl, sum(region B, s') ) = F_DI - sum( pl, sum(region A, f))
                 #
                 # At this point, we simply need to re-inject the quiet star in region B to obtain an exposure profile uncontaminated by spots:
                 #
-                # F_exp + F_sp' + sum( pl, sum(region B, s' - f) ) - sum( pl, sum(region B, f)) = F_DI - sum( pl, sum(region A, f)) - sum( pl, sum(region B, f))
+                # F_exp + F_sp' + sum( pl, sum(region B, s') ) - sum( pl, sum(region B, f)) = F_DI - sum( pl, sum(region A, f)) - sum( pl, sum(region B, f))
                 # <==>
-                #F_exp + F_sp' + sum(  pl, sum(region B, s' - 2f)) = F_DI - F_pl,clean
+                #F_exp + F_sp' + sum(  pl, sum(region B, s' - f)) = F_DI - F_pl,clean
                 #
                 #With F_pl,clean being the the planet deviation profile if spots were not present in the planet-occulted region.
                 #In the code below, spot_prop_dic[chrom_mode]['line_prof'][:,0] corresponds to F_sp' 
-                #while surf_prop_dic[chrom_mode]['corr_supp'][:,0] corresponds to sum(  pl, sum(region B, s' - 2f)).
+                #while surf_prop_dic[chrom_mode]['corr_supp'][:,0] corresponds to sum(  pl, sum(region B, s' - f)).
                 if key=='corr_spot':
                     #Retrieving exposure profile
                     data_exp_raw = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp_eff))

@@ -195,6 +195,104 @@ def get_system_params():
 
     #------------------------------    
 
+        'TRAPPIST1':{
+
+            'star':{
+                'Rstar':0.1192,               #solar radii #Agol+2021
+                'Mstar':0.0898,               #solar mass #Agol+2021
+                'logg':5.2396,                #Agol+2021
+                'veq':2.04,                   #km/s #Agol+2021
+                'alpha_rot':0.0,
+                'istar':89,                   
+                },
+
+            'TRAPPIST1_b':{
+                'period':1.510826,           #days #Agol+2021
+                'TCenter':2457322.514193,    #days #Ducrot+2020
+                'ecc':0.00622,               #Grimm+2018
+                'omega_deg':336.86,          #degrees #Grimm+2018
+                'inclination':89.828,        #degrees #Agol+2021
+                'Kstar':0.150722,            #m/s #Calculated
+                'TLength':0.6010/24,         #days #Agol+2021
+                'aRs':20.843,                #Rstar #Agol+2021
+                'lambda_proj':0.,            #degrees #Hirano+2020
+                },
+
+            'TRAPPIST1_c':{
+                'period':2.421937,           #days #Agol+2021
+                'TCenter':2457282.8113871,   #days #Ducrot+2020
+                'ecc':0.00654,               #Grimm+2018
+                'omega_deg':282.45,          #degrees #Grimm+2018
+                'inclination':90.148,        #degrees #Agol+2021
+                'Kstar':0.121249,            #m/s #Calculated
+                'TLength':0.7005/24,         #days #Agol+2021
+                'aRs':28.549,                #Rstar #Agol+2021
+                'lambda_proj':0.,            #Undefined
+                },
+
+            'TRAPPIST1_d':{
+                'period':4.049219,           #days #Agol+2021
+                'TCenter':2457670.1463014,   #days #Ducrot+2020
+                'ecc':0.00837,               #Grimm+2018
+                'omega_deg':-8.73,           #degrees #Grimm+2018
+                'inclination':89.996,        #degrees #Agol+2021
+                'Kstar':0.0292108,           #m/s #Calculated
+                'TLength':0.8145/24,         #days #Agol+2021
+                'aRs':40.216,                #Rstar #Agol+2021 
+                'lambda_proj':0.,            #Undefined
+                },
+
+            'TRAPPIST1_e':{
+                'period':6.101013,           #days #Agol+2021
+                'TCenter':2457660.3676621,   #days #Ducrot+2020
+                'ecc':0.00510,               #Grimm+2018
+                'omega_deg':108.37,          #degrees #Grimm+2018
+                'inclination':90.293,        #degrees #Agol+2021
+                'Kstar':0.0469638,           #m/s #Calculated
+                'TLength':0.9293/24,         #days #Agol+2021
+                'aRs':52.855,                #Rstar #Agol+2021
+                'lambda_proj':0.,           #degrees #Hirano+2020
+                },
+
+            'TRAPPIST1_f':{
+                'period':9.207540,           #days #Agol+2021
+                'TCenter':2457671.3737299,   #days #Ducrot+2020
+                'ecc':0.01007,               #Grimm+2018
+                'omega_deg':368.81,          #degrees #Grimm+2018
+                'inclination':89.740,        #degrees #Agol+2021
+                'Kstar':0.0622481,           #m/s #Calculated
+                'TLength':1.0480/24,         #days #Agol+2021
+                'aRs':69.543,                #Rstar #Agol+2021
+                'lambda_proj':21,            #degrees #Hirano+2020
+                },
+
+            'TRAPPIST1_g':{
+                'period':12.352446,          #days #Agol+2021
+                'TCenter':2457665.3628439,   #days #Ducrot+2020
+                'ecc':0.00208,               #Grimm+2018
+                'omega_deg':191.34,          #degrees #Grimm+2018
+                'inclination':89.742,        #degrees #Agol+20201
+                'Kstar':0.0717257,           #m/s #Calculated
+                'TLength':1.1370/24,         #days #Agol+2021
+                'aRs':84.591,                #Rstar #Agol+2021
+                'lambda_proj':0.,            #Undefined
+                },
+
+            'TRAPPIST1_h':{
+                'period':18.772866,          #days #Agol+2021
+                'TCenter':2457662.5741486,   #days #Ducrot+2020
+                'ecc':0.00567,               #Grimm+2018
+                'omega_deg':338.92,          #degrees #Grimm+2018
+                'inclination':89.805,        #degrees #Agol+2021
+                'Kstar':0.0151621,           #m/s #Calculated
+                'TLength':1.2690/24,         #days #Agol+2021
+                'aRs':111.817,               #Rstar #Agol+2021
+                'lambda_proj':0.,            #Undefined
+                }
+        },
+
+    #------------------------------    
+
         'AUMic':{
 
             'star':{
