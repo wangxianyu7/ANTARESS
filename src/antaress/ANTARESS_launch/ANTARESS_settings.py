@@ -48,6 +48,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     gen_dic['transit_sp']={}  
     
     
+    #%%%%% Visible faculae
+    #    - indicate names (defined here) of the visible spots to be processed
+    #    - for each facula, indicate the instrument and visits in which its transit should be taken into account (visit names are those given through 'data_dir_list')
+    #    - format: 'facula':{'inst':['vis']}
+    gen_dic['transit_fa']={} 
+
+
     #%%%%% TTVs
     #    - if a visit is defined in this dictionary, the mid-transit time for this visit will be set to the specific value defined here
     #    - format: {'planet':{'inst':{'vis': value}}}
@@ -319,7 +326,20 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - format: {inst : {vis : {prop : val}}}
     #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_res_prof']    
     mock_dic['spots_prop'] = {}
-
+    
+    #%%%% Faculae
+       
+    #%%%%% Properties
+    #    - facula inclusion is conditioned by this dictionary being filled in
+    #    - faculae are defined by 4 parameters : 
+    # + 'lat' : constant latitude of the facula, in star rest frame (in deg)
+    # + 'Tc_fa' : Time (bjd) at which the facula is at longitude 0
+    # + 'ang' : half-angular size (in deg) of the facula
+    # + 'fctrst' : the flux level of the facula surface, relative to the quiet surface of the star
+    #              10 = maximum emission, 1 = quiet-star level emission (no contrast with the stellar surface) 
+    #    - format: {inst : {vis : {prop : val}}}
+    #      where prop is defined as par_ISinst_VSvis_FAfacula_name, to match with the structure used in gen_dic['fit_res_prof']    
+    mock_dic['faculae_prop'] = {}
     
     #%%%% Noise settings
     
@@ -656,7 +676,27 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # where each simulated spot must be associated with a unique name
     theo_dic['n_oversamp_spot']={}  
     
-    
+
+    #%%%% Faculae
+
+    #%%%%% Nominal properties
+    #    - same as mock_dic['faculae_prop']
+    #    - required for the calculation of nominal facula coordinates used throughout the pipeline
+    theo_dic['faculae_prop']={}
+
+
+    #%%%%% Discretization     
+    #    - format is {facula : val}} 
+    # where each simulated facula must be associated with a unique name
+    theo_dic['nsub_Dfa']={} 
+
+
+    #%%%%% Exposure oversampling     
+    #    - format is {facula : val}} 
+    # where each simulated facula must be associated with a unique name
+    theo_dic['n_oversamp_facula']={}
+
+
     #%%%% Plot settings
     
     #%%%%% Planetary orbit discretization
@@ -2230,6 +2270,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - same format as 'system_prop'
     data_dic['DI']['spots_prop']={}
     
+    
+    #%%%% Facula intensity settings
+    #    - same format as 'system_prop'
+    data_dic['DI']['faculae_prop']={}
+
     
     #%%%% Transit light curve model
     #    - there are several possibilities to define the light curves, specific to each instrument and visit, via 'transit_prop':inst:vis

@@ -211,7 +211,7 @@ def get_system_params():
                 'TCenter':2457322.514193,    #days #Ducrot+2020
                 'ecc':0.00622,               #Grimm+2018
                 'omega_deg':336.86,          #degrees #Grimm+2018
-                'inclination':89.828,        #degrees #Agol+2021
+                'inclination':89.728,        #degrees #Agol+2021
                 'Kstar':0.150722,            #m/s #Calculated
                 'TLength':0.6010/24,         #days #Agol+2021
                 'aRs':20.843,                #Rstar #Agol+2021
@@ -223,7 +223,7 @@ def get_system_params():
                 'TCenter':2457282.8113871,   #days #Ducrot+2020
                 'ecc':0.00654,               #Grimm+2018
                 'omega_deg':282.45,          #degrees #Grimm+2018
-                'inclination':90.148,        #degrees #Agol+2021
+                'inclination':89.778,        #degrees #Agol+2021
                 'Kstar':0.121249,            #m/s #Calculated
                 'TLength':0.7005/24,         #days #Agol+2021
                 'aRs':28.549,                #Rstar #Agol+2021
@@ -235,7 +235,7 @@ def get_system_params():
                 'TCenter':2457670.1463014,   #days #Ducrot+2020
                 'ecc':0.00837,               #Grimm+2018
                 'omega_deg':-8.73,           #degrees #Grimm+2018
-                'inclination':89.996,        #degrees #Agol+2021
+                'inclination':89.896,        #degrees #Agol+2021
                 'Kstar':0.0292108,           #m/s #Calculated
                 'TLength':0.8145/24,         #days #Agol+2021
                 'aRs':40.216,                #Rstar #Agol+2021 
@@ -247,7 +247,7 @@ def get_system_params():
                 'TCenter':2457660.3676621,   #days #Ducrot+2020
                 'ecc':0.00510,               #Grimm+2018
                 'omega_deg':108.37,          #degrees #Grimm+2018
-                'inclination':90.293,        #degrees #Agol+2021
+                'inclination':89.793,        #degrees #Agol+2021
                 'Kstar':0.0469638,           #m/s #Calculated
                 'TLength':0.9293/24,         #days #Agol+2021
                 'aRs':52.855,                #Rstar #Agol+2021
@@ -263,7 +263,7 @@ def get_system_params():
                 'Kstar':0.0622481,           #m/s #Calculated
                 'TLength':1.0480/24,         #days #Agol+2021
                 'aRs':69.543,                #Rstar #Agol+2021
-                'lambda_proj':21,            #degrees #Hirano+2020
+                'lambda_proj':0.,            #degrees #Hirano+2020
                 },
 
             'TRAPPIST1_g':{

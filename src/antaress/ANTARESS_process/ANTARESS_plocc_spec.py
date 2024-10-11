@@ -382,7 +382,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_vis['type']) 
 
     #Initializing stellar profiles
-    fixed_args = var_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],spots_prop,system_param['star'],params)
+    fixed_args = var_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],spots_prop,{},system_param['star'],params)
     fixed_args = init_custom_DI_prof(fixed_args,gen_dic,params)                  
 
     #Updating coordinates with the best-fit properties

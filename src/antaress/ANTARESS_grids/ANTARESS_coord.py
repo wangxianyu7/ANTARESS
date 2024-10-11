@@ -63,37 +63,42 @@ def coord_expos(pl_loc,coord_dic,inst,vis,star_params,pl_params,t_bjd,exp_time,d
     return positions,st_positions,end_positions,eclipse,rv_pl_all,v_pl_all,st_phases,phases,end_phases,ph_dur
 
 
-def coord_expos_spots(spot,t_bjd,spots_prop,star_params,exp_dur,spot_coord_par):
-    r"""**Exposure spot coordinates**
+def coord_expos_contamin(contamin_name,t_bjd,contamin_prop,star_params,exp_dur,coord_par,contamin_type):
+    r"""**Exposure spot/facula coordinates**
 
     Calculates temporal and spatial coordinates of spots at the start, mid, and end of an exposure.
     
     Args:
+        contamin_name (str) : name of the spot/facula considered.
+        t_bjd (float) : timestamp of the exposure considered. Needed to calculate the spot/facula longitude.
+        contamin_prop (dict) : nominal properties of the spot/faculae considered.
         star_params (dict) : star properties.
-        t_BJD (float) : timestamp of the exposure considered. Needed to calculate the spot longitude.
-        exp_dur (float) : optional, duration of the exposure considered. If left as None, only the spot properties at the center of the exposure will be computed.
-                            Otherwise, the spot properties at the start, center and end of exposure will be computed. 
+        exp_dur (float) : optional, duration of the exposure considered. If left as None, only the spot/facula properties at the center of the exposure will be computed.
+                            Otherwise, the spot/facula properties at the start, center and end of exposure will be computed.
+        coord_par (dict): coordinates to store for the spot/facula.
+        contamin_type (str) : type of contamination considered. Can only be set to 'spots' or 'faculae'.
     
     Returns:
         None
     
     """ 
-    spots_prop_exp = {} 
 
-    # Spot longitude - varies over time
-    P_spot = 2*np.pi/((1.-star_params['alpha_rot_spots']*np.sin(spots_prop[spot]['lat_rad'])**2.-star_params['beta_rot_spots']*np.sin(spots_prop[spot]['lat_rad'])**4.)*star_params['om_eq_spots']*3600.*24.)  
-    long_t_start,long_t_center,long_t_end = get_timeorbit(spot,{spot:{'Tcenter':spots_prop[spot]['Tc_sp']}},t_bjd, {'period':P_spot}, exp_dur,conv_ang = True)[0:3]
+    contamin_prop_exp = {} 
+
+    # Spot/facula longitude - varies over time
+    P = 2*np.pi/((1.-star_params['alpha_rot_'+contamin_type]*np.sin(contamin_prop[contamin_name]['lat_rad'])**2.-star_params['beta_rot_'+contamin_type]*np.sin(contamin_prop[contamin_name]['lat_rad'])**4.)*star_params['om_eq_'+contamin_type]*3600.*24.)  
+    long_t_start,long_t_center,long_t_end = get_timeorbit(contamin_name,{contamin_name:{'Tcenter':contamin_prop[contamin_name]['Tc_'+contamin_type[:2]]}},t_bjd, {'period':P}, exp_dur,conv_ang = True)[0:3]
 
     #Coordinates start, mid, end exposure 
-    istar = np.arccos(spots_prop['cos_istar'])
-    for key in spot_coord_par:spots_prop_exp[key] = np.zeros(3,dtype=float)*np.nan
-    spots_prop_exp['is_visible'] = np.zeros(3,dtype=bool)
-    calc_spot_coord(spots_prop_exp,spots_prop[spot]['ang_rad'],spots_prop[spot]['lat_rad'],long_t_center*2*np.pi,1,istar,star_params)
+    istar = np.arccos(contamin_prop['cos_istar'])
+    for key in coord_par:contamin_prop_exp[key] = np.zeros(3,dtype=float)*np.nan
+    contamin_prop_exp['is_visible'] = np.zeros(3,dtype=bool)
+    calc_contamin_coord(contamin_prop_exp,contamin_prop[contamin_name]['ang_rad'],contamin_prop[contamin_name]['lat_rad'],long_t_center*2*np.pi,1,istar,star_params)
     if exp_dur is not None:
-        calc_spot_coord(spots_prop_exp,spots_prop[spot]['ang_rad'],spots_prop[spot]['lat_rad'],long_t_start*2*np.pi,0,istar,star_params)
-        calc_spot_coord(spots_prop_exp,spots_prop[spot]['ang_rad'],spots_prop[spot]['lat_rad'],long_t_end*2*np.pi,2,istar,star_params)
+        calc_contamin_coord(contamin_prop_exp,contamin_prop[contamin_name]['ang_rad'],contamin_prop[contamin_name]['lat_rad'],long_t_start*2*np.pi,0,istar,star_params)
+        calc_contamin_coord(contamin_prop_exp,contamin_prop[contamin_name]['ang_rad'],contamin_prop[contamin_name]['lat_rad'],long_t_end*2*np.pi,2,istar,star_params)
   
-    return spots_prop_exp
+    return contamin_prop_exp
 
 
 
@@ -772,10 +777,10 @@ def excl_plrange(cond_def,range_star_in,iexp,edge_bins,data_type):
     return cond_kept,idx_excl_bd_ranges
 
 
-def calc_spot_coord(spots_prop_exp,ang_rad,lat_rad,long_rad,i_pos,istar,star_params):
-    r"""**Spot track**
+def calc_contamin_coord(contamin_prop_exp,ang_rad,lat_rad,long_rad,i_pos,istar,star_params):
+    r"""**Spot/Facula track**
 
-    Calculates position of spots across the stellar surface, in the aligned star rest frame.
+    Calculates position of spots/faculae across the stellar surface, in the aligned star rest frame.
      
     Args:
         TBD
@@ -785,11 +790,11 @@ def calc_spot_coord(spots_prop_exp,ang_rad,lat_rad,long_rad,i_pos,istar,star_par
     
     """     
 
-    # Spot latitude - constant in time
+    # Spot/facula latitude - constant in time
     clat_rad = np.cos(lat_rad)
     slat_rad = np.sin(lat_rad)
 
-    # Spot center coordinates in star rest frame
+    # Spot/facula center coordinates in star rest frame
     #Exposure center
     x_st = np.sin(long_rad)*clat_rad
     y_st = slat_rad
@@ -799,16 +804,16 @@ def calc_spot_coord(spots_prop_exp,ang_rad,lat_rad,long_rad,i_pos,istar,star_par
     x_sky,y_sky,z_sky = frameconv_star_to_skystar(x_st,y_st,z_st,istar)
 
     # Store properties
-    spots_prop_exp['lat_rad_exp'][i_pos] = lat_rad
-    spots_prop_exp['sin_lat_exp'][i_pos] = slat_rad
-    spots_prop_exp['cos_lat_exp'][i_pos] = clat_rad
-    spots_prop_exp['long_rad_exp'][i_pos] = long_rad    
-    spots_prop_exp['sin_long_exp'][i_pos] = np.sin(long_rad)
-    spots_prop_exp['cos_long_exp'][i_pos] = np.cos(long_rad)
-    spots_prop_exp['x_sky_exp'][i_pos] = x_sky
-    spots_prop_exp['y_sky_exp'][i_pos] = y_sky
-    spots_prop_exp['z_sky_exp'][i_pos] = z_sky
-    spots_prop_exp['is_visible'][i_pos] = is_spot_visible(istar,long_rad, lat_rad,ang_rad, star_params['f_GD'], star_params['RpoleReq'])
+    contamin_prop_exp['lat_rad_exp'][i_pos] = lat_rad
+    contamin_prop_exp['sin_lat_exp'][i_pos] = slat_rad
+    contamin_prop_exp['cos_lat_exp'][i_pos] = clat_rad
+    contamin_prop_exp['long_rad_exp'][i_pos] = long_rad    
+    contamin_prop_exp['sin_long_exp'][i_pos] = np.sin(long_rad)
+    contamin_prop_exp['cos_long_exp'][i_pos] = np.cos(long_rad)
+    contamin_prop_exp['x_sky_exp'][i_pos] = x_sky
+    contamin_prop_exp['y_sky_exp'][i_pos] = y_sky
+    contamin_prop_exp['z_sky_exp'][i_pos] = z_sky
+    contamin_prop_exp['is_visible'][i_pos] = is_spot_visible(istar,long_rad, lat_rad,ang_rad, star_params['f_GD'], star_params['RpoleReq'])
     
     return None
 

@@ -2204,29 +2204,15 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Number of points in the spot orbits
         plot_settings[key_plot]['npts_orbits_sp'] = 10000
 
+        #%%%% Number of points in the facula orbits
+        plot_settings[key_plot]['npts_orbits_fa'] = 10000
+
         #%%%% Position of planets along their orbit
         plot_settings[key_plot]['t_BJD'] = None
-
-        # if gen_dic['star_name']=='HD209458':   #ANTARESS I, mock, multi-pl
-            # plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':2454560.806755574+np.array([-0.5,-0.2,0.,0.2,0.5])/24. }
-            # plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':2454560.806755574+np.array([0.5])/24. }
-
-        if gen_dic['star_name']=='AUMic':
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,30)}
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
-            plot_settings[key_plot]['t_BJD'] = None
-            
-        if gen_dic['star_name']=='V1298tau':
-            plot_settings[key_plot]['t_BJD'] = None
 
         #Defining a boolean to decide whether we make a GIF
         #    - this is only used if we plot multiple exposures.
         plot_settings[key_plot]['GIF_generation']=True & False
-        if gen_dic['star_name']=='AUMic':
-            plot_settings[key_plot]['GIF_generation']=True&False
-
-        if gen_dic['star_name']=='V1298tau':
-            plot_settings[key_plot]['GIF_generation']=True
 
         plot_settings[key_plot]['xorp_pl'] = np.tile([[-0.5],[0.5]],len(plot_settings[key_plot]['pl_to_plot'])).T
         plot_settings[key_plot]['yorb_pl'] = np.repeat(0.5,len(plot_settings[key_plot]['pl_to_plot']))  
@@ -2247,6 +2233,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['plot_sp_orb'] = True
         plot_settings[key_plot]['col_orb_sp'] = 'greenyellow'
                 
+        #%%%% Facula trajectory color
+        plot_settings[key_plot]['plot_fa_orb'] = True
+        plot_settings[key_plot]['col_orb_fa'] = 'turquoise'
+
         #%%%% Number of orbits drawn randomly
         plot_settings[key_plot]['norb']=np.repeat(100,len(plot_settings[key_plot]['pl_to_plot'])) 
 
@@ -2269,12 +2259,14 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['st_grid_overlay']=False
         plot_settings[key_plot]['pl_grid_overlay']=False
         plot_settings[key_plot]['sp_grid_overlay']=False
+        plot_settings[key_plot]['fa_grid_overlay']=False
         
-        #%%%% Number of cells on a diameter of the star, planets, and spots (must be odd)
+        #%%%% Number of cells on a diameter of the star, planets, faculae, and spots (must be odd)
         plot_settings[key_plot]['n_stcell']=theo_dic['nsub_Dstar']
         plot_settings[key_plot]['n_plcell']={}
         for pl_loc in plot_settings[key_plot]['pl_to_plot']:plot_settings[key_plot]['n_plcell'][pl_loc] = theo_dic['nsub_Dpl'][pl_loc]
         plot_settings[key_plot]['n_spcell']=21
+        plot_settings[key_plot]['n_facell']=21
 
         #%%%% Color stellar disk with RV, with limb-darkened specific intensity, with gravity-darkened specific intensity, or total flux
         plot_settings[key_plot]['disk_color']='RV'
@@ -2304,19 +2296,29 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Plot stellar poles
         plot_settings[key_plot]['plot_poles']=True  
         plot_settings[key_plot]['plot_hidden_pole']= False 
-
-        #Activating spots in the system view
-        plot_settings[key_plot]['plot_spots'] = False
         
         #%%%% Source for spots
         #    - spot properties can come from three sources for this plot:
         # + the mock dataset (mock_spot_prop) - from mock_dic
         # + fitted spot properties (fit_spot_prop) - from glob_fit_dic
         # + custom user-specified properties (custom_spot_prop) - parameterized below
+        # + If none of these are activated, spots will not be plotted.
         plot_settings[key_plot]['mock_spot_prop'] = False
         plot_settings[key_plot]['fit_spot_prop'] = False
         plot_settings[key_plot]['custom_spot_prop'] = {}
         
+        #Activating faculae in the system view
+        plot_settings[key_plot]['plot_faculae'] = False
+        
+        #%%%% Source for faculae
+        #    - facula properties can come from three sources for this plot:
+        # + the mock dataset (mock_facula_prop) - from mock_dic
+        # + fitted facula properties (fit_facula_prop) - from glob_fit_dic
+        # + custom user-specified properties (custom_facula_prop) - parameterized below
+        plot_settings[key_plot]['mock_facula_prop'] = False
+        plot_settings[key_plot]['fit_facula_prop'] = False
+        plot_settings[key_plot]['custom_facula_prop'] = {}
+
         #%%%% Path to the file storing the best-fit spot results to plot
         plot_settings[key_plot]['fit_results_file'] = ''
     
@@ -2341,28 +2343,6 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%% RV range
         plot_settings[key_plot]['rv_range'] = None
-
-
-        if gen_dic['star_name']=='AUMic':    
-
-            plot_settings[key_plot]['n_stcell']=81.
-
-            plot_settings[key_plot]['plot_spots'] = True #& False
-
-            plot_settings[key_plot]['mock_spot_prop'] = True #& False
-
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 10, 'Tcenter' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
-            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -20, 'Tcenter' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tcenter' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
-            
-
-
-        elif gen_dic['star_name']=='V1298tau':
-            plot_settings[key_plot]['plot_spots'] = True #& False
-
-            plot_settings[key_plot]['mock_spot_prop'] = True #& False
-            
-            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' : -40, 'Tcenter' : 2458877.6306  + 5/24, 'ang' : 7, 'ctrst' : 0.6}   
                         
 
     

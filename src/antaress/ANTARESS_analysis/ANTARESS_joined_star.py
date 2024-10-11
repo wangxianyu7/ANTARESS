@@ -448,7 +448,7 @@ def joined_IntrProp(param,args):
             
             #Calculate coordinates and properties of occulted regions 
             system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
-            surf_prop_dic,spotocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],[],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
+            surf_prop_dic,spotocc_prop,facocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],[],[],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
 
             #Properties associated with the transiting planet in the visit 
             pl_vis = args['transit_pl'][inst][vis][0]
@@ -718,9 +718,9 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 #Number of fitted exposures
                 fixed_args['nexp_fit']+=fixed_args['nexp_fit_all'][inst][vis]
 
-    #Spot-crossing time supplement
-    #    - to avoid fitting timing values on the order of 2400000 we use as fitted property Tspot - <Tvisit> and add back <Tvisit> within the model 
-    if fixed_args['cond_transit_sp']:
+    #Spot/facula-crossing time supplement
+    #    - to avoid fitting timing values on the order of 2400000 we use as fitted property T - <Tvisit> and add back <Tvisit> within the model 
+    if fixed_args['cond_transit_sp'] or fixed_args['cond_transit_fa']:
         fixed_args['bjd_time_shift']={}
 
     #Final processing
@@ -730,15 +730,15 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         if idx_inst==0:fixed_args['type'] = data_dic[inst]['type']
         elif fixed_args['type'] != data_dic[inst]['type']:stop('Incompatible data types')
         
-        #Spots
-        if fixed_args['cond_transit_sp']:
+        #Spots/Faculae
+        if fixed_args['cond_transit_sp'] or fixed_args['cond_transit_fa']:
             fixed_args['bjd_time_shift'][inst]={}
 
         #Visits
         for vis in fixed_args['inst_vis_list'][inst]:
             
-            #Defining spot crossing time supplement
-            if fixed_args['cond_transit_sp']:
+            #Defining spot/facula crossing time supplement
+            if fixed_args['cond_transit_sp'] or fixed_args['cond_transit_fa']:
                 fixed_args['bjd_time_shift'][inst][vis]=np.floor(fixed_args['coord_fit'][inst][vis]['bjd'][0])+2400000.
 
     #Artificial observation table
@@ -799,7 +799,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
                      'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'],'grid_dic':fixed_args['grid_dic'],'var_par_list':fixed_args['var_par_list'], 'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'],
-                     'system_spot_prop':fixed_args['system_spot_prop']})
+                     'system_spot_prop':fixed_args['system_spot_prop'],'system_facula_prop':fixed_args['system_facula_prop']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
     if (plot_dic['Intr_prof']!='') or (plot_dic['Intr_prof_res']!='') or (plot_dic['prop_Intr']!='') or (plot_dic['sp_Intr_1D']!=''):
@@ -895,7 +895,7 @@ def joined_IntrProf(param,fixed_args):
 
             #-----------------------------------------------------------
             #Retrieve updated coordinates of occulted regions or use imported values
-            system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
+            system_param_loc,coord_pl_sp_fa,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis],transit_faculae=args['transit_fa'][inst][vis])
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -912,7 +912,7 @@ def joined_IntrProf(param,fixed_args):
                 #    - occulted stellar cells (from planet and spots) are automatically identified within sub_calc_plocc_spot_prop() 
                 #    - see joined_ResProf() for details about spot contribution
                 #    - the planet-occulted profile is calculated over both quiet and spotted cells
-                surf_prop_dic,spotocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],args['transit_sp'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
+                surf_prop_dic,spotocc_prop,facocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],args['transit_sp'][inst][vis],args['transit_fa'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp_fa,[isub],system_spot_prop_in=args['system_spot_prop'],system_facula_prop_in=args['system_facula_prop'])
                 sp_line_model = surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] 
 
                 #Conversion and resampling 
@@ -1297,8 +1297,8 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['master_out']['master_out_tab']['dcen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][1::]-fixed_args['master_out']['master_out_tab']['edge_bins'][0:-1]
     fixed_args['master_out']['master_out_tab']['cen_bins']=fixed_args['master_out']['master_out_tab']['edge_bins'][:-1]+(fixed_args['master_out']['master_out_tab']['dcen_bins']/2)
 
-    #Spot-crossing time supplement
-    if fixed_args['cond_transit_sp']:
+    #Spot/facula-crossing time supplement
+    if fixed_args['cond_transit_sp'] or fixed_args['cond_transit_fa']:
         fixed_args['bjd_time_shift']={}
 
     #Final processing
@@ -1308,8 +1308,8 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         if idx_inst==0:fixed_args['type'] = data_dic[inst]['type']
         elif fixed_args['type'] != data_dic[inst]['type']:stop('Incompatible data types')
 
-        #Spots
-        if fixed_args['cond_transit_sp']:
+        #Spots/Faculae
+        if fixed_args['cond_transit_sp'] or fixed_args['cond_transit_fa']:
             fixed_args['bjd_time_shift'][inst]={}
         
         #Defining multi-visit master-out and weights
@@ -1320,8 +1320,8 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         #Visits
         for vis in fixed_args['inst_vis_list'][inst]:
             
-            #Defining spot crossing time supplement
-            if fixed_args['cond_transit_sp']:
+            #Defining spot/facula crossing time supplement
+            if fixed_args['cond_transit_sp'] or fixed_args['cond_transit_fa']:
                 fixed_args['bjd_time_shift'][inst][vis]=np.floor(fixed_args['coord_fit'][inst][vis]['bjd'][0])+2400000.
 
             #Defining flux table
@@ -1385,10 +1385,10 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #    - with same structure as fit to individual profiles 
     fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
-                     'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'], 'system_spot_prop':fixed_args['system_spot_prop'], 'grid_dic':fixed_args['grid_dic'],'var_par_list':fixed_args['var_par_list'],
-                     'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'], 'fit_spot':fixed_args['fit_spot'], 'fit_spot_ang':fixed_args['fit_spot_ang'], 'fit_star_sp':fixed_args['fit_star_sp'], 
-                     'fit_star_pl':fixed_args['fit_star_pl'], 'master_out':fixed_args['master_out'], 'unthreaded_op':fixed_args['unthreaded_op'], 'ref_pl':fixed_args['ref_pl'], 'order':fit_prop_dic['order'], 
-                     'fit_mode':fit_prop_dic['fit_mode']})
+                     'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'], 'system_spot_prop':fixed_args['system_spot_prop'], 'system_facula_prop':fixed_args['system_facula_prop'], 'grid_dic':fixed_args['grid_dic'],'var_par_list':fixed_args['var_par_list'],
+                     'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'], 'fit_spot':fixed_args['fit_spot'], 'fit_spot_ang':fixed_args['fit_spot_ang'], 'fit_star_sp':fixed_args['fit_star_sp'], 'fit_facula':fixed_args['fit_facula'],
+                     'fit_facula_ang':fixed_args['fit_facula_ang'], 'fit_star_fa':fixed_args['fit_star_fa'], 'fit_star_pl':fixed_args['fit_star_pl'], 'master_out':fixed_args['master_out'], 'unthreaded_op':fixed_args['unthreaded_op'], 
+                     'ref_pl':fixed_args['ref_pl'], 'order':fit_prop_dic['order'], 'fit_mode':fit_prop_dic['fit_mode']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     if fixed_args['fit_mode']=='chi2':fit_save['hess_matrix'] = fixed_args['hess_matrix']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
@@ -1519,25 +1519,25 @@ def joined_ResProf(param,fixed_args):
             if not args['fit']:outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param) 
 
             #-----------------------------------------------------------
-            #Retrieve updated coordinates of occulted and spotted regions or use imported values
-            system_param_loc,coord_pl_sp,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis])
+            #Retrieve updated coordinates of occulted, faculaed, and spotted regions or use imported values
+            system_param_loc,coord_pl_sp_fa,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis],transit_faculae=args['transit_fa'][inst][vis])
             
             #-----------------------------------------------------------
-            #Figuring out which cells of the stellar grid are never spotted or planet-occulted
+            #Figuring out which cells of the stellar grid are never faculaed or spotted or planet-occulted
             #-----------------------------------------------------------
             
             #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
-            #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
+            #are never planet-occulted or faculaed or spotted over all the exposures (True = occulted or spotted or faculaed, False = quiet)
             args['unquiet_star'] = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
             # for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
 
             #     #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
             #     plocced_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
             #     for pl_loc in args['transit_pl'][inst][vis]:
-            #         if np.abs(coord_pl_sp[pl_loc]['ecl'][isub])!=1:
+            #         if np.abs(coord_pl_sp_fa[pl_loc]['ecl'][isub])!=1:
             #             mini_pl_dic = {}
-            #             mini_pl_dic['x_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][0, isub], coord_pl_sp[pl_loc]['cen_pos'][0, isub], coord_pl_sp[pl_loc]['end_pos'][0, isub]]
-            #             mini_pl_dic['y_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][1, isub], coord_pl_sp[pl_loc]['cen_pos'][1, isub], coord_pl_sp[pl_loc]['end_pos'][1, isub]]
+            #             mini_pl_dic['x_orb_exp']=[coord_pl_sp_fa[pl_loc]['st_pos'][0, isub], coord_pl_sp_fa[pl_loc]['cen_pos'][0, isub], coord_pl_sp_fa[pl_loc]['end_pos'][0, isub]]
+            #             mini_pl_dic['y_orb_exp']=[coord_pl_sp_fa[pl_loc]['st_pos'][1, isub], coord_pl_sp_fa[pl_loc]['cen_pos'][1, isub], coord_pl_sp_fa[pl_loc]['end_pos'][1, isub]]
             #             mini_pl_dic['RpRs']=args['system_prop']['achrom'][pl_loc][0]
             #             if ('lambda_rad__pl'+pl_loc in args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
             #             else:lamb_name = 'lambda_rad__pl'+pl_loc 
@@ -1548,16 +1548,25 @@ def joined_ResProf(param,fixed_args):
             #     #Figure out which cells of the full stellar grid are spotted in at least one exposure
             #     spotted_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
             #     for spot in args['transit_sp'][inst][vis]:
-            #         if np.sum(coord_pl_sp[spot]['is_visible'][:, isub])>0:
+            #         if np.sum(coord_pl_sp_fa[spot]['is_visible'][:, isub])>0:
             #             mini_spot_dic = {}
-            #             for par_spot in args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp[spot][par_spot][:, isub]
-            #             _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic,coord_pl_sp[spot]['ang_rad'], args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
+            #             for par_spot in args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp_fa[spot][par_spot][:, isub]
+            #             _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic,coord_pl_sp_fa[spot]['ang_rad'], args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
             #             spotted_star_grid |= spot_spotted_star_grid
+
+            #     #Figure out which cells of the full stellar grid are spotted in at least one exposure
+            #     faculaed_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
+            #     for facula in args['transit_fa'][inst][vis]:
+            #         if np.sum(coord_pl_sp_fa[facula]['is_visible'][:, isub])>0:
+            #             mini_facula_dic = {}
+            #             for par_facula in args['facula_coord_par']:mini_facula_dic[par_facula] = coord_pl_sp_fa[facula][par_facula][:, isub]
+                        # _, facula_faculaed_star_grid = calc_spotted_tiles(mini_facula_dic,coord_pl_sp_fa[facula]['ang_rad'], args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
+            #             faculaed_star_grid |= facula_faculaed_star_grid
 
             #     #Update the global 2D quiet star grid
             #     #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots and planets in one of the processed exposure
             #     #      contributions from the other cells do not need to be calculated because they are removed when computing differential profiles
-            #     args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid)
+            #     args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid | faculaed_star_grid)
 
             #-----------------------------------------------------------
             #Defining the base stellar profile
@@ -1588,22 +1597,27 @@ def joined_ResProf(param,fixed_args):
                 # + the total deviation profile from spotted regions, which is the difference between the quiet stellar emission and the spotted emission 
                 #   cells occulted by planets do not contribute to this profile 
                 #    - occulted stellar cells (from planet and spots) are automatically identified within sub_calc_plocc_spot_prop() 
-                surf_prop_dic,surf_prop_dic_sp,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],args['transit_sp'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
-                sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[args['chrom_mode']]['line_prof'][:,0]
+                surf_prop_dic,surf_prop_dic_sp,surf_prop_dic_fa,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],args['transit_sp'][inst][vis],args['transit_fa'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp_fa,[isub],system_spot_prop_in=args['system_spot_prop'],system_facula_prop_in=args['system_facula_prop'])
+                sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_fa[args['chrom_mode']]['line_prof'][:,0]
 
                 #Properties of all planet-occulted and spotted regions used to calculate spectral line profiles
                 # - Since we are analyzing differential profiles, we have to check if the planets/spots are in the exposure considered.
                 # - If this is not the case, an entry for them in the surf_prop_dic/surf_prop_dic_sp won't be initialized
                 if not args['fit']:
                     for pl_loc in args['transit_pl'][inst][vis]:  
-                        if np.abs(coord_pl_sp[pl_loc]['ecl'][isub])!=1:                
+                        if np.abs(coord_pl_sp_fa[pl_loc]['ecl'][isub])!=1:                
                             for prop_loc in mod_prop_dic[inst][vis][pl_loc]:
                                 mod_prop_dic[inst][vis][pl_loc][prop_loc][isub] = surf_prop_dic[args['chrom_mode']][pl_loc][prop_loc][0]
 
                     for spot in args['transit_sp'][inst][vis]:
-                        if np.sum(coord_pl_sp[spot]['is_visible'][:, isub]):
+                        if np.sum(coord_pl_sp_fa[spot]['is_visible'][:, isub]):
                             for prop_loc in mod_prop_dic[inst][vis][spot]:
                                 mod_prop_dic[inst][vis][spot][prop_loc][isub] = surf_prop_dic_sp[args['chrom_mode']][spot][prop_loc][0]
+
+                    for facula in args['transit_fa'][inst][vis]:
+                        if np.sum(coord_pl_sp_fa[facula]['is_visible'][:, isub]):
+                            for prop_loc in mod_prop_dic[inst][vis][facula]:
+                                mod_prop_dic[inst][vis][facula][prop_loc][isub] = surf_prop_dic_fa[args['chrom_mode']][facula][prop_loc][0]
 
                 #Convolve model profiles to instrument resolution
                 conv_line_model = convol_prof(sp_line_model,args_exp['cen_bins'],args['FWHM_inst'][inst])
@@ -1782,5 +1796,8 @@ def outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param):
     for spot in args['transit_sp'][inst][vis]:
         mod_prop_dic[inst][vis][spot]={}   
         for prop_loc in linevar_par_list:mod_prop_dic[inst][vis][spot][prop_loc] = np.zeros(len(args['idx_in_fit'][inst][vis]))*np.nan      
+    for facula in args['transit_fa'][inst][vis]:
+        mod_prop_dic[inst][vis][facula]={}   
+        for prop_loc in linevar_par_list:mod_prop_dic[inst][vis][facula][prop_loc] = np.zeros(len(args['idx_in_fit'][inst][vis]))*np.nan      
          
     return None

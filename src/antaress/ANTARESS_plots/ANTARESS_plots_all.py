@@ -23,10 +23,10 @@ from ..ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_
 from ..ANTARESS_analysis.ANTARESS_joined_star import mod_DIProp
 from ..ANTARESS_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
 from ..ANTARESS_grids.ANTARESS_coord import calc_pl_coord_plots,calc_pl_coord,calc_rv_star_HR,frameconv_skyorb_to_skystar,frameconv_skystar_to_skyorb,get_timeorbit,\
-    calc_zLOS_oblate,frameconv_star_to_skystar,calc_tr_contacts,coord_expos_spots,frameconv_skystar_to_star
+    calc_zLOS_oblate,frameconv_star_to_skystar,calc_tr_contacts,coord_expos_contamin,frameconv_skystar_to_star
 from ..ANTARESS_corrections.ANTARESS_calib import cal_piecewise_func
 from ..ANTARESS_grids.ANTARESS_star_grid import get_LD_coeff,calc_CB_RV,calc_RVrot,calc_Isurf_grid,calc_st_sky
-from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,retrieve_spots_prop_from_param, calc_spotted_tiles
+from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,retrieve_contamin_prop_from_param, calc_spotted_tiles
 
 
 def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,mock_dic,nbook_dic,custom_plot_settings):
@@ -3607,6 +3607,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
         #Spot condition
         plot_spots = plot_set_key['mock_spot_prop'] | plot_set_key['fit_spot_prop'] | (len(plot_set_key['custom_spot_prop'])>0)
+
+        #Facula condition
+        plot_faculae = plot_set_key['mock_facula_prop'] | plot_set_key['fit_facula_prop'] | (len(plot_set_key['custom_facula_prop'])>0)
          
         #--------------------------------------------
         #Coordinates
@@ -4359,6 +4362,159 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     else:alph_loc = 0.3
                     plt.plot(coord_Spole[0],coord_Spole[1],zorder=4., color='black',marker='o',markersize=6,alpha = alph_loc,markerfacecolor='black') 
                 
+            #-------------------------------------------------------
+            #Faculaed cells 
+            #-------------------------------------------------------
+            if plot_faculae:
+
+                #Initialize facula grid
+                for key in ['x', 'y']:coord_grid[key+'_st_sky_fa']={}
+                coord_grid['d_facell']={}
+                coord_grid['faculae_prop_exp']={}
+
+                #Initialize boolean grid to identify which cells within the stellar grid are faculaed
+                # - Used in the updating of the stellar surface RV for faculaed cells
+                general_faculaed_tiles = np.zeros(len(coord_grid['x_st_sky']), dtype=bool)
+
+                #Custom facula properties
+                if len(plot_set_key['custom_facula_prop'])>0:
+                    if idx_pl==0: print('   + With custom facula properties')
+
+                    # Initialize params to use the retrieve_contamin_prop_from_param function.
+                    params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
+                    for facula in plot_set_key['custom_facula_prop'] : 
+                        params['lat__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['lat']
+                        params['ang__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['ang']
+                        params['Tc_fa__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['Tc_fa']
+                        if 'fctrst' in plot_set_key['custom_spot_prop'][facula]:params['fctrst__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['fctrst']
+                    
+                #Mock dataset facula properties
+                elif plot_set_key['mock_spot_prop']:
+                    if idx_pl==0: print('   + With mock dataset facula properties')
+                    if (mock_dic['spots_prop'] != {}):
+                            inst_to_use = plot_set_key['inst_to_plot'][0]
+                            vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
+
+                            #Retrieve the facula parameters from the mock dictionary
+                            params = deepcopy(mock_dic['faculae_prop'][inst_to_use][vis_to_use])
+                            params['cos_istar'] = star_params['cos_istar'] 
+                            params['alpha_rot'] = star_params['alpha_rot']
+                            params['beta_rot'] = star_params['beta_rot']   
+                    else:stop('Mock facula properties undefined for this system.')   
+                    
+                #Fitted facula properties
+                elif plot_set_key['fit_facula_prop']:
+                    if idx_pl==0: print('   + With fitted facula properties')
+                    inst_to_use = plot_set_key['inst_to_plot'][0]
+                    vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
+                    if plot_set_key['fit_results_file'] !='':fit_res = dataload_npz(plot_set_key['fit_results_file'])
+                    else:stop('No best-fit output file provided.')
+                    params = fit_res['p_final']
+                else:stop('System view unavailable : Facula generation initialized with no facula properties provided')
+  
+                #Facula Equatorial rotation rate (rad/s)
+                if 'veq_faculae' in star_params:star_params['om_eq_faculae']=star_params['veq_faculae']/star_params['Rstar_km']
+                else:star_params['om_eq_faculae']=star_params['om_eq']
+
+                #Retrieving facula properties
+                if len(plot_set_key['custom_facula_prop'])>0:faculae_prop = retrieve_contamin_prop_from_param(params, '_', '_','faculae') 
+                else:faculae_prop = retrieve_contamin_prop_from_param(params, inst_to_use, vis_to_use,'faculae') 
+                faculae_prop['cos_istar'] = params['cos_istar']
+                
+                #Define a reference facula for later
+                ref_facula = faculae_prop['faculae'][0]
+
+                #Build facula grids
+                for facula in faculae_prop['faculae']:
+                    coord_grid['d_facell'][facula],_,coord_grid['x_st_sky_fa'][facula], coord_grid['y_st_sky_fa'][facula],_ = occ_region_grid(np.sin(faculae_prop[facula]['ang_rad']), plot_set_key['n_facell'],spot=True)
+
+                #Check if we have provided times for the plotting
+                if plot_set_key['t_BJD'] is not None:t_exp = plot_t
+
+                #If no times provided for the plotting, then put facula at a given location
+                else:
+                    t_ref = faculae_prop[ref_facula]['Tc_fa']
+                    P_fa = 2*np.pi/((1.-star_params['alpha_rot_faculae']*np.sin(faculae_prop[ref_facula]['lat_rad'])**2.-star_params['beta_rot_faculae']*np.sin(faculae_prop[ref_facula]['lat_rad'])**4.)*star_params['om_eq_faculae']*3600.*24.)
+                    t_exp = t_ref + P_fa/10 - 2400000.
+                                    
+                #Defining a reference facula contrast - since all faculae share the same contrast
+                ref_fctrst = faculae_prop[ref_facula]['fctrst']
+
+                #Defining a list that will store which faculae have already been processed
+                fa_proc = []
+
+                for facula in faculae_prop['faculae'] :
+                    faculae_prop_exp = coord_expos_contamin(facula,t_exp,faculae_prop,star_params,None,gen_dic['facula_coord_par'],'faculae')
+                    coord_grid['faculae_prop_exp'][facula] = faculae_prop_exp
+
+                    #Localize grid
+                    loc_x_st_sky_fa = coord_grid['x_st_sky_fa'][facula]+faculae_prop_exp['x_sky_exp'][1]
+                    loc_y_st_sky_fa = coord_grid['y_st_sky_fa'][facula]+faculae_prop_exp['y_sky_exp'][1]
+
+                    #Remove cells in the grid that are outside the stellar surfacce
+                    cond_in_star = loc_x_st_sky_fa**2 + loc_y_st_sky_fa**2 < 1.
+                    bound_x_st_sky_fa = loc_x_st_sky_fa[cond_in_star]
+                    bound_y_st_sky_fa = loc_y_st_sky_fa[cond_in_star]
+                    bound_z_st_sky_fa = np.sqrt(1 - bound_x_st_sky_fa**2 - bound_y_st_sky_fa**2)
+
+                    if faculae_prop_exp['is_visible'][1]:
+
+                        #Determining which cells are faculaed
+                        _, faculaed_tiles = calc_spotted_tiles(faculae_prop_exp,faculae_prop[facula]['ang_rad'], bound_x_st_sky_fa, bound_y_st_sky_fa, bound_z_st_sky_fa,{}, params, use_grid_dic = False, disc_exp = False)
+                        x_facula_grid = loc_x_st_sky_fa[cond_in_star][faculaed_tiles]
+                        y_facula_grid = loc_y_st_sky_fa[cond_in_star][faculaed_tiles]
+                        z_facula_grid = bound_z_st_sky_fa[faculaed_tiles]
+
+                        #Accounting for facula-facula overlap
+                        if len(fa_proc)>0:
+                            for prev_facula in fa_proc:
+                                prev_x_st_grid, prev_y_st_grid, prev_z_st_grid = frameconv_skystar_to_star(x_facula_grid, y_facula_grid, z_facula_grid, istar_rad)
+                                x_prev_facula_grid = prev_x_st_grid*coord_grid['faculae_prop_exp'][prev_facula]['cos_long_exp'][1] - prev_z_st_grid*coord_grid['faculae_prop_exp'][prev_facula]['sin_long_exp'][1]
+                                y_prev_facula_grid = prev_y_st_grid*coord_grid['faculae_prop_exp'][prev_facula]['cos_lat_exp'][1] - (prev_z_st_grid*coord_grid['faculae_prop_exp'][prev_facula]['cos_long_exp'][1] + prev_x_st_grid*coord_grid['faculae_prop_exp'][prev_facula]['sin_long_exp'][1]) * coord_grid['faculae_prop_exp'][prev_facula]['sin_lat_exp'][1]
+                                cond_in_prev_facula = x_prev_facula_grid**2. + y_prev_facula_grid**2 <= faculae_prop[prev_facula]['ang_rad']**2
+                                x_facula_grid = x_facula_grid[~cond_in_prev_facula]
+                                y_facula_grid = y_facula_grid[~cond_in_prev_facula]
+                                z_facula_grid = z_facula_grid=[~cond_in_prev_facula]
+                        fa_proc += [facula]
+
+                        #Plotting each facula grid cell
+                        for x, y in zip(x_facula_grid, y_facula_grid):
+                            rect_fa = plt.Rectangle(( x-0.5*coord_grid['d_facell'][facula],y-0.5*coord_grid['d_facell'][facula]), coord_grid['d_facell'][facula],coord_grid['d_facell'][facula], facecolor='white',edgecolor='white',lw=0.1,zorder=-1, alpha=(ref_fctrst/5.))
+                            ax1.add_artist(rect_fa)
+                            
+                            #Overlaying facula grid cell boundaries
+                            if plot_set_key['fa_grid_overlay']:
+                                rect_fa = plt.Rectangle(( x-0.5*coord_grid['d_facell'][facula],y-0.5*coord_grid['d_facell'][facula]), coord_grid['d_facell'][facula],coord_grid['d_facell'][facula], facecolor='None',edgecolor=plot_settings[key_plot]['col_orb_fa'],lw=0.5,zorder=-1)
+                                ax1.add_artist(rect_fa)
+
+                    #Updating stellar surface radial velocity for faculaed cells
+                    _, gen_faculaed_tiles = calc_spotted_tiles(faculae_prop_exp,faculae_prop[facula]['ang_rad'], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], {}, params, use_grid_dic = False, disc_exp = False)
+                general_faculaed_tiles |= gen_faculaed_tiles
+                RVstel[general_faculaed_tiles] = calc_RVrot(coord_grid['x_st_sky'][general_faculaed_tiles],coord_grid['y_st'][general_faculaed_tiles],istar_rad,star_params['veq_faculae'],star_params['alpha_rot_faculae'],star_params['beta_rot_faculae'])[0]
+                for icb in range(4):RVstel[general_faculaed_tiles]+=cb_band[icb]*np.power(mu_grid_star[general_faculaed_tiles,iband],icb)
+
+                #Facula orbit
+                # - Generating array of times at which we want to retrieve the facula center coordinates
+                orbit_t = np.linspace(0,2*np.pi/((1.-star_params['alpha_rot_faculae']*faculae_prop_exp['sin_lat_exp'][1]**2.-star_params['beta_rot_faculae']*faculae_prop_exp['sin_lat_exp'][1]**4.)*star_params['om_eq_faculae']*3600.*24.),plot_set_key['npts_orbits_fa'])
+                num_faculae = len(faculae_prop['faculae'])
+                
+                # - Dictionary in which we will store the facula center coordinates
+                orb_coords = {'x':np.zeros([num_faculae, plot_set_key['npts_orbits_fa']], dtype=float),'y':np.zeros([num_faculae, plot_set_key['npts_orbits_fa']], dtype=float),'z':np.zeros([num_faculae, plot_set_key['npts_orbits_fa']], dtype=float)}
+                
+                # - Calculate facula center coordinates
+                for i_t, t in enumerate(orbit_t) :
+                    for ifacula, facula in enumerate(faculae_prop['faculae']):
+                        orb_faculae_prop_exp = coord_expos_contamin(facula,t,faculae_prop,star_params,None,gen_dic['facula_coord_par'],'faculae')
+                        for key in ['x', 'y', 'z']:
+                            orb_coords[key][ifacula, i_t] = orb_faculae_prop_exp[key+'_sky_exp'][1]
+
+                # - Only plotting the facula orbit coordinates that are in the front hemisphere of the star
+                if plot_set_key['plot_fa_orb']:
+                    for ifacula in range(num_faculae):
+                        pos_x = orb_coords['x'][ifacula, :][orb_coords['z'][ifacula, :]>0]
+                        pos_y = orb_coords['y'][ifacula, :][orb_coords['z'][ifacula, :]>0]
+
+                        ax1.plot(pos_x, pos_y, color=plot_set_key['col_orb_fa'],lw=plot_set_key['lw_plot'],alpha=1.)
 
             #-------------------------------------------------------
             #Spotted cells 
@@ -4378,7 +4534,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 if len(plot_set_key['custom_spot_prop'])>0:
                     if idx_pl==0: print('   + With custom spot properties')
 
-                    # Initialize params to use the retrieve_spots_prop_from_param function.
+                    # Initialize params to use the retrieve_contamin_prop_from_param function.
                     params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
                     for spot in plot_set_key['custom_spot_prop'] : 
                         params['lat__IS__VS__SP'+spot] = plot_set_key['custom_spot_prop'][spot]['lat']
@@ -4415,8 +4571,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 else:star_params['om_eq_spots']=star_params['om_eq']
 
                 #Retrieving spot properties
-                if len(plot_set_key['custom_spot_prop'])>0:spots_prop = retrieve_spots_prop_from_param(params, '_', '_') 
-                else:spots_prop = retrieve_spots_prop_from_param(params, inst_to_use, vis_to_use) 
+                if len(plot_set_key['custom_spot_prop'])>0:spots_prop = retrieve_contamin_prop_from_param(params, '_', '_','spots') 
+                else:spots_prop = retrieve_contamin_prop_from_param(params, inst_to_use, vis_to_use,'spots') 
                 spots_prop['cos_istar'] = params['cos_istar']
                 
                 #Define a reference spot for later
@@ -4442,7 +4598,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 sp_proc = []
 
                 for spot in spots_prop['spots'] :
-                    spots_prop_exp = coord_expos_spots(spot,t_exp,spots_prop,star_params,None,gen_dic['spot_coord_par'])
+                    spots_prop_exp = coord_expos_contamin(spot,t_exp,spots_prop,star_params,None,gen_dic['spot_coord_par'],'spots')
                     coord_grid['spots_prop_exp'][spot] = spots_prop_exp
 
                     #Localize grid
@@ -4475,6 +4631,23 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 z_spot_grid = z_spot_grid[~cond_in_prev_spot]
                         sp_proc += [spot]
 
+                        #Accounting for spot-facula overlap
+                        if plot_faculae:
+                            for facula in faculae_prop['faculae']:
+
+                                #Move spot coordinates to star reference frame
+                                sp_x_st_grid, sp_y_st_grid, sp_z_st_grid = frameconv_skystar_to_star(x_spot_grid, y_spot_grid, z_spot_grid, istar_rad)
+
+                                #Move spot coordinates to the facula reference frame
+                                x_fa_sp_grid = sp_x_st_grid*coord_grid['faculae_prop_exp'][facula]['cos_long_exp'][1] - sp_z_st_grid*coord_grid['faculae_prop_exp'][facula]['sin_long_exp'][1]
+                                y_fa_sp_grid = sp_y_st_grid*coord_grid['faculae_prop_exp'][facula]['cos_lat_exp'][1] - (sp_z_st_grid*coord_grid['faculae_prop_exp'][facula]['cos_long_exp'][1] + sp_x_st_grid*coord_grid['faculae_prop_exp'][facula]['sin_long_exp'][1]) * coord_grid['faculae_prop_exp'][facula]['sin_lat_exp'][1]
+                                cond_in_facula = x_fa_sp_grid**2. + y_fa_sp_grid**2 <= faculae_prop[facula]['ang_rad']**2
+
+                                #Remove spot cells which are under the faculae
+                                x_spot_grid = x_spot_grid[~cond_in_facula]
+                                y_spot_grid = y_spot_grid[~cond_in_facula]
+                                z_spot_grid = z_spot_grid[~cond_in_facula]                                
+
                         #Plotting each spot grid cell
                         for x, y in zip(x_spot_grid, y_spot_grid):
                             rect_sp = plt.Rectangle(( x-0.5*coord_grid['d_spcell'][spot],y-0.5*coord_grid['d_spcell'][spot]), coord_grid['d_spcell'][spot],coord_grid['d_spcell'][spot], facecolor='black',edgecolor='black',lw=0.1,zorder=-1, alpha=(1-ref_fctrst))
@@ -4502,7 +4675,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 # - Calculate spot center coordinates
                 for i_t, t in enumerate(orbit_t) :
                     for ispot, spot in enumerate(spots_prop['spots']):
-                        orb_spots_prop_exp = coord_expos_spots(spot,t,spots_prop,star_params,None,gen_dic['spot_coord_par'])
+                        orb_spots_prop_exp = coord_expos_contamin(spot,t,spots_prop,star_params,None,gen_dic['spot_coord_par'],'spots')
                         for key in ['x', 'y', 'z']:
                             orb_coords[key][ispot, i_t] = orb_spots_prop_exp[key+'_sky_exp'][1]
 
@@ -6238,7 +6411,7 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
         coord_pl_in[pl_loc]['cen_pos'] = coord_pl_in[pl_loc]['cen_pos'][:,cond_occ_HR]
         coord_pl_in[pl_loc]['phase'] = coord_pl_in[pl_loc]['phase'][cond_occ_HR]     
         coord_pl_in[pl_loc]['ecl'] = coord_pl_in[pl_loc]['ecl'][cond_occ_HR] 
-    surf_prop_dic, surf_prop_dic_spot, surf_prop_dic_common = sub_calc_plocc_spot_prop(['achrom'],args,par_list,gen_dic['studied_pl'],[],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))
+    surf_prop_dic, surf_prop_dic_spot, surf_prop_dic_facula, surf_prop_dic_common = sub_calc_plocc_spot_prop(['achrom'],args,par_list,gen_dic['studied_pl'],[],[],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))
     theo_HR_prop_plocc = surf_prop_dic['achrom']
     theo_HR_prop_plocc['nph_HR'] = coord_pl_in['nph_HR']
     for pl_loc in gen_dic['studied_pl']:
@@ -8601,7 +8774,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             theo_dic_samp = deepcopy(theo_dic)
                             theo_dic_samp['d_oversamp_pl'] = []
                             for isamp in range(nsamp):
-                                surf_prop_dic,_,_ = sub_calc_plocc_spot_prop(['achrom'],{},['rv'],[pl_loc],[],system_param,theo_dic_samp,data_dic['DI']['system_prop'],par_subsample[0][isamp],coord_pl_in_samp,range(theo_HR_prop_plocc['nph_HR']))        
+                                surf_prop_dic,_,_,_ = sub_calc_plocc_spot_prop(['achrom'],{},['rv'],[pl_loc],[],[],system_param,theo_dic_samp,data_dic['DI']['system_prop'],par_subsample[0][isamp],coord_pl_in_samp,range(theo_HR_prop_plocc['nph_HR']))        
                                 RV_stsurf_HR_thread[isamp,:] =surf_prop_dic['achrom'][pl_loc]['rv'][0,:]                                
                             return RV_stsurf_HR_thread
                         

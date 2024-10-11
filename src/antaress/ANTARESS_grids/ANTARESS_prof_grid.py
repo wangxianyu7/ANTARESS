@@ -63,7 +63,7 @@ class CFunctionWrapper:
 
 
 
-def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_params,param_in):   
+def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,system_faculae_prop,star_params,param_in):   
     r"""**Stellar properties: variables**
 
     Defines variable stellar properties.
@@ -82,12 +82,15 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
     fixed_args['grid_dic'] = deepcopy(theo_dic) 
     fixed_args['system_prop'] = deepcopy(system_prop) 
     fixed_args['system_spot_prop'] = deepcopy(system_spot_prop)
+    fixed_args['system_facula_prop'] = deepcopy(system_faculae_prop)
     
     #List of stellar properties potentially modified as model parameter
     stargrid_prop_nom = np.array(['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'])
     if len(system_spot_prop)>0:stargrid_prop_spots_nom = np.array(['veq','alpha_rot','beta_rot'])
     else:stargrid_prop_spots_nom=[]    
- 
+    if len(system_faculae_prop)>0:stargrid_prop_faculae_nom = np.array(['veq','alpha_rot','beta_rot'])
+    else:stargrid_prop_faculae_nom=[]
+
     #Define stellar rotational property
     #    - at this stage 'params' contains 'veq' by default and only contains 'Peq' if it was requested as a model parameter
     #      in this case 'veq' is removed from the model parameters and its value is updated in the stellar property dictionary (here in forward mode, or at each time step of the fit)
@@ -95,6 +98,7 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
         print('       Switching veq for Peq as model parameter')
         stargrid_prop_nom[np_where1D(stargrid_prop_nom=='veq')]='Peq'
         if (len(stargrid_prop_spots_nom)>0):stargrid_prop_spots_nom[np_where1D(stargrid_prop_spots_nom=='veq')]='Peq'
+        if (len(stargrid_prop_faculae_nom)>0):stargrid_prop_faculae_nom[np_where1D(stargrid_prop_faculae_nom=='veq')]='Peq'
 
     #--------------------------------------------------------------------------------------------
 
@@ -106,6 +110,7 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
     fixed_args['var_star_grid'] = False
     fixed_args['var_stargrid_prop'] = []  
     fixed_args['var_stargrid_prop_spots']=[]
+    fixed_args['var_stargrid_prop_faculae']=[]
     fixed_args['var_stargrid_bulk']=False 
     fixed_args['var_stargrid_I']=False        
     for par in params:
@@ -126,6 +131,12 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
                 fixed_args['var_star_grid'] = True
                 fixed_args['var_stargrid_prop_spots']+=[par]
             if (params[par_spot] != params[par]):print('WARNING: quiet and spot values for '+par+' are different.')
+        if par in stargrid_prop_faculae_nom:
+            par_facula = par+'_faculae'
+            if (params[par_facula] != star_params[par_facula]):
+                fixed_args['var_star_grid'] = True
+                fixed_args['var_stargrid_prop_faculae']+=[par]
+            if (params[par_facula] != params[par]):print('WARNING: quiet and facula values for '+par+' are different.')
 
     #Update stellar grid
     if fixed_args['var_star_grid']:up_model_star(fixed_args,params)
@@ -144,7 +155,8 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
         
         #Properties to update are stored in these lists
         fixed_args['var_stargrid_prop'] = []   
-        fixed_args['var_stargrid_prop_spots']=[]   
+        fixed_args['var_stargrid_prop_spots']=[]
+        fixed_args['var_stargrid_prop_faculae']=[]   
         fixed_args['var_stargrid_I']=False   
         fixed_args['var_stargrid_bulk']=False    
         
@@ -173,6 +185,14 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
                     fixed_args['var_star_grid']=True 
                     fixed_args['var_stargrid_prop_spots']+=[par]
                 elif (params[par_spot] != params[par]) and (not param_in[par].vary) and (not param_in[par_spot].vary):print('WARNING: quiet and spot values for '+par+' are different.')
+
+            #Check faculae properties
+            if (par in stargrid_prop_faculae_nom):
+                par_facula = par+'_faculae'
+                if (param_in[par_facula].vary):
+                    fixed_args['var_star_grid']=True 
+                    fixed_args['var_stargrid_prop_faculae']+=[par]
+                elif (params[par_facula] != params[par]) and (not param_in[par].vary) and (not param_in[par_facula].vary):print('WARNING: quiet and facula values for '+par+' are different.')
 
     return fixed_args
 
@@ -445,10 +465,18 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
 
     #Spot properties
     if fixed_args['cond_transit_sp']:
-        for key,vary,bd_min,bd_max in zip(['veq_spots','alpha_rot_spots','beta_rot_spots','c1_CB_spots','c2_CB_spots','c3_CB_spots','ang', 'Tc_sp'],
-                                          [False,      False,            False,            False,         False,          False,    False,  False],
-                                          [1.,         None,             None,             None,          None,           None,      0.,     0.],
-                                          [1e4,        None,             None,             None,          None,           None,      90.,    3000000.]):
+        for key,vary,bd_min,bd_max in zip(['veq_spots','alpha_rot_spots','beta_rot_spots','c1_CB_spots','c2_CB_spots','c3_CB_spots'],
+                                          [False,      False,            False,            False,         False,          False],
+                                          [1.,         None,             None,             None,          None,           None],
+                                          [1e4,        None,             None,             None,          None,           None]):
+            if key in star_params:params.add_many((key, star_params[key],   vary,    bd_min,bd_max,None))
+
+    #Facula properties
+    if fixed_args['cond_transit_fa']:
+        for key,vary,bd_min,bd_max in zip(['veq_faculae','alpha_rot_faculae','beta_rot_faculae','c1_CB_faculae','c2_CB_faculae','c3_CB_faculae'],
+                                          [False,      False,            False,            False,         False,          False],
+                                          [1.,         None,             None,             None,          None,           None],
+                                          [1e4,        None,             None,             None,          None,           None]):
             if key in star_params:params.add_many((key, star_params[key],   vary,    bd_min,bd_max,None))
 
     #Properties specific to disk-integrated profiles
