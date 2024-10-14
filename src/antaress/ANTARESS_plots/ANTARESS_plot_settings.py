@@ -174,10 +174,10 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     #    - set to first transit planet if it exists, or to first planet overall otherwise
     plot_options['pl_ref']={}
     for inst in plot_options['visits_to_plot']:
-        plot_options['pl_ref'][inst]={'binned':gen_dic['studied_pl'][0]}
+        plot_options['pl_ref'][inst]={'binned':gen_dic['studied_pl_list'][0]}
         for vis in plot_options['visits_to_plot'][inst]:
-            if len(data_dic[inst][vis]['transit_pl'])>0:plot_options['pl_ref'][inst][vis]=data_dic[inst][vis]['transit_pl'][0]
-            else:plot_options['pl_ref'][inst][vis]=gen_dic['studied_pl'][0]
+            if len(data_dic[inst][vis]['studied_pl'])>0:plot_options['pl_ref'][inst][vis]=data_dic[inst][vis]['studied_pl'][0]
+            else:plot_options['pl_ref'][inst][vis]=gen_dic['studied_pl_list'][0]
 
     #Shade range not used for fitting
     plot_options['shade_unfit']=False
@@ -469,23 +469,30 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         ################################################################################################################    
         #%%% Instrumental calibration estimates
         ################################################################################################################ 
-        if (plot_dic['gcal']!='') or (plot_dic['gcal_ord']!=''):
+        if (plot_dic['gcal_all']!='') or (plot_dic['gcal_ord']!='') or (plot_dic['sdet_ord']!=''):
             key_plot = 'gcal'
             
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
     
-            #%%%% Plot measured values in each order plot
+            #%%%% Plot measured binned profiles in each order
             plot_settings[key_plot]['plot_meas_exp'] = True 
+
+            #%%%% Plot blaze-derived profiles in each order
+            plot_settings[key_plot]['plot_gcal_blaze'] = True 
     
-            #%%%% Plot best-fit exposure models in each order plot
+            #%%%% Plot best-fit profile model in each order
             plot_settings[key_plot]['plot_best_exp'] = True
     
             #%%%% Normalize calibration profiles over all exposures
             plot_settings[key_plot]['norm_exp'] = False
             
-            #%%%% Plot mean calibration if calculated
-            plot_settings[key_plot]['mean_gdet']  = True
+            #%%%% Plot mean calibration profile if calculated
+            plot_settings[key_plot]['mean_gcal']  = True
+            
+            #%%%% Scaling for calibration and variance
+            plot_settings[key_plot]['sc_fact10'] = -3
+            plot_settings[key_plot]['sc_fact10_var'] = -9
     
             #%%%% Range per order
             #    - unfitted points are not shown in automatic ranges
@@ -1588,7 +1595,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['estim_loc']= False 
 
         #%%%%% Default mode for estimates of local stellar profiles
-        plot_settings[key_plot]['mode_loc_data_corr'] = 'glob_mod'
+        plot_settings[key_plot]['mode_loc_prof_est'] = 'glob_mod'
 
         #%%%%% Model from the global fit to all CCFs ('global')
         plot_settings[key_plot]['fit_type']='global'      
@@ -1706,7 +1713,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
             #%%%%% Model to retrieve
-            plot_settings[key_plot]['mode_loc_data_corr'] = 'glob_mod'
+            plot_settings[key_plot]['mode_loc_prof_est'] = 'glob_mod'
 
             ##############################################################################
             #%%%%% Estimates

@@ -369,8 +369,8 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'inst_list':[],
         'prior_func':fit_prop_dic['prior_func'], 
         'inst_vis_list':{},
-        'transit_pl':{},
-        'cond_transit_pl':False,
+        'studied_pl':{},
+        'cond_studied_pl':False,
         'transit_sp':{},
         'cond_transit_sp':False,
         'bin_mode':{},
@@ -410,7 +410,7 @@ def init_joined_routines_inst(inst,fit_dic,fixed_args):
     fit_dic[inst]={}
     fixed_args['inst_list']+=[inst]
     fixed_args['inst_vis_list'][inst]=[]  
-    for key in ['ph_fit','nexp_fit_all','transit_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
+    for key in ['ph_fit','nexp_fit_all','studied_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
     fixed_args['coord_fit'][inst]={}
     fixed_args['coord_obs'][inst]={}
     
@@ -470,7 +470,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
         data_vis_bin = dataload_npz(gen_dic['save_data_dir']+'/'+data_type_gen+'bin_data/'+inst+'_'+vis+'_'+data_dic[data_type_gen]['dim_bin']+'_add')     
         n_in_tr = data_vis_bin['n_in_tr']
         n_in_visit = data_vis_bin['n_in_visit']
-        transit_pl = data_vis_bin['transit_pl']
+        studied_pl = data_vis_bin['studied_pl']
         transit_sp = data_vis_bin['transit_sp']
         bin_mode = data_vis_bin['mode']
 
@@ -479,19 +479,19 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
         bin_mode = None
         n_in_tr = data_vis['n_in_tr']    
         n_in_visit = data_vis['n_in_visit']
-        transit_pl = data_vis['transit_pl']
+        studied_pl = data_vis['studied_pl']
         transit_sp = data_vis['transit_sp']
 
     #Planets are transiting
-    if len(transit_pl)>0:
-        fixed_args['cond_transit_pl'] = True
+    if len(studied_pl)>0:
+        fixed_args['cond_studied_pl'] = True
         
         #Check for multi-transits
         #    - if two planets are transiting the properties derived from the fits to intrinsic profiles cannot be fitted, as the model only contains a single line profile
         if rout_mode=='IntrProp':
-            if len(data_vis['transit_pl'])>1:stop('Multi-planet transit must be modelled with full intrinsic profiles')
-            fixed_args['transit_pl'][inst][vis]=[transit_pl[0]] 
-        else:fixed_args['transit_pl'][inst][vis]=transit_pl
+            if len(data_vis['studied_pl'])>1:stop('Multi-planet transit must be modelled with full intrinsic profiles')
+            fixed_args['studied_pl'][inst][vis]=[studied_pl[0]] 
+        else:fixed_args['studied_pl'][inst][vis]=studied_pl
 
     #Spots are visible
     #    - spots cannot be processed from multi-visit bins
@@ -526,9 +526,9 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
     fixed_args['coord_fit'][inst][vis]={}
     fixed_args['coord_obs'][inst][vis]={}
     if ('Res' in rout_mode) or ('Intr' in rout_mode):
-        if fixed_args['cond_transit_pl']:
+        if fixed_args['cond_studied_pl']:
             fixed_args['ph_fit'][inst][vis]={}
-            for pl_loc in fixed_args['transit_pl'][inst][vis]:
+            for pl_loc in fixed_args['studied_pl'][inst][vis]:
                 fixed_args['ph_fit'][inst][vis][pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'][sub_idx_in_fit],coord_vis[pl_loc]['cen_ph'][sub_idx_in_fit],coord_vis[pl_loc]['end_ph'][sub_idx_in_fit]) ) 
                 fixed_args['coord_fit'][inst][vis][pl_loc] = {}
                 for key in ['cen_pos','st_pos','end_pos']:fixed_args['coord_fit'][inst][vis][pl_loc][key] = coord_vis[pl_loc][key][:,sub_idx_in_fit]    
@@ -696,9 +696,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         #Fit spin-orbit angle by default when relevant
         #    - assuming common values to all datasets
         if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='rv')) or (rout_mode in ['IntrProf','ResProf']):
-            for inst in fixed_args['transit_pl']:
-                for vis in fixed_args['transit_pl'][inst]:
-                    for pl_loc in fixed_args['transit_pl'][inst][vis]:
+            for inst in fixed_args['studied_pl']:
+                for vis in fixed_args['studied_pl'][inst]:
+                    for pl_loc in fixed_args['studied_pl'][inst][vis]:
                         if 'lambda_rad__pl'+pl_loc not in mod_prop:p_start.add_many(('lambda_rad__pl'+pl_loc, 0.,   True, -2.*np.pi,2.*np.pi,None))
             
         #Initialize line properties
@@ -743,7 +743,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         for key in ['pl','sp']:
             if fixed_args['cond_transit_'+key]:
                 for subkey in ['Ssub_Sstar_','x_st_sky_grid_','y_st_sky_grid_','nsub_D','d_oversamp_']:fixed_args['grid_dic'][subkey+key] = theo_dic[subkey+key]            
-        if fixed_args['cond_transit_pl']:fixed_args['grid_dic']['Istar_norm_achrom']=theo_dic['Istar_norm_achrom']
+        if fixed_args['cond_studied_pl']:fixed_args['grid_dic']['Istar_norm_achrom']=theo_dic['Istar_norm_achrom']
 
         #------------------------------------------------------------        
         #Determine if orbital and light curve properties are fitted or whether nominal values are used
@@ -752,7 +752,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         #------------------------------------------------------------
         
         #Planet
-        if fixed_args['cond_transit_pl']:
+        if fixed_args['cond_studied_pl']:
             par_orb=['inclin_rad','aRs','lambda_rad']
             par_LC=['RpRs']    
             for par in par_orb+par_LC:fixed_args[par+'_pl']=[]
@@ -780,7 +780,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
             #    - 'fit_X' conditions are activated if model is 'fixed' so that coordinates are re-calculated in case system properties are amongst the properties of the fixed model
             
             #Planet
-            if fixed_args['cond_transit_pl']:
+            if fixed_args['cond_studied_pl']:
                 for par_check in par_orb:
                     if (par_check in par):
                         if ('__IS' in par):pl_name = (par.split('__pl')[1]).split('__IS')[0]                  
@@ -812,7 +812,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
             if (par in par_star_sp) and ((par in fixed_args['var_stargrid_prop']) or (par in fixed_args['var_stargrid_prop_spots'])):fixed_args['fit_star_sp']=True
                             
         #Unique list of planets with variable properties  
-        if fixed_args['cond_transit_pl']:                
+        if fixed_args['cond_studied_pl']:                
             for par in par_orb:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
             for par in par_LC:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
             fixed_args['b_pl'] = list(np.unique(fixed_args['inclin_rad_pl']+fixed_args['aRs_pl']))
@@ -1184,9 +1184,9 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
         #Upload analytical surface RVs
         #    - for binned data, properties are averaged from the original data rather than computed directly
         if (('DI' in data_type) and (inst in prop_dic['occ_range'])) or ('Intr' in data_type):
-            if len(data_inst[vis]['transit_pl'])>1:stop('Adapt model to multiple planets')
+            if len(data_inst[vis]['studied_pl'])>1:stop('Adapt model to multiple planets')
             else:
-                ref_pl = data_inst[vis]['transit_pl'][0]
+                ref_pl = data_inst[vis]['studied_pl'][0]
                 if bin_mode=='':surf_rv_mod = dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/PlOcc_Prop_'+inst+'_'+vis)['achrom'][ref_pl]['rv'][0]
                 else:
                     
@@ -1303,7 +1303,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
 
             #Original profiles / converted 2D->1D 
             if 'orig' in data_type:
-                if len(data_inst[vis]['transit_pl'])>1:stop('Adapt model to multiple planets')
+                if len(data_inst[vis]['studied_pl'])>1:stop('Adapt model to multiple planets')
                 
                 #Defined exposures
                 if prop_dic['pl_atm_sign']=='Absorption':fit_dic['n_exp'] = data_inst[vis]['n_in_tr']
@@ -2624,7 +2624,7 @@ def prior_contrast(p_step_loc,args_in,prior_func_prop):
         args['inst']=inst
         for vis in args['inst_vis_list'][inst]:   
             args['vis']=vis
-            pl_vis = args['transit_pl'][inst][vis][0]
+            pl_vis = args['studied_pl'][inst][vis][0]
             system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,p_step_loc,[pl_vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
             surf_prop_dic,spot_prop_dic,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
             ctrst_vis = surf_prop_dic[pl_vis]['ctrst'][0]       
@@ -3485,21 +3485,21 @@ def conv_CF_intr_meas(deriv_prop,inst_list,inst_vis_list,fixed_args,merged_chain
         
     """ 
     #HR RV table to calculate FWHM and contrast at high enough precision                       
-    if fixed_args['func_prof_name']=='dgauss':
+    if fixed_args['model']=='dgauss':
         fixed_args['velccf_HR'] = gen_dic['RVstart_HR_mod'] + gen_dic['dRV_HR_mod']*np.arange(  int((gen_dic['RVend_HR_mod']-gen_dic['RVstart_HR_mod'])/gen_dic['dRV_HR_mod'])  )
     for inst in inst_list:               
         fixed_args_loc = deepcopy(fixed_args)
         if ('CF0_DG_add' in deriv_prop) or ('CF0_DG_conv' in deriv_prop):fixed_args_loc['FWHM_inst']=None
         else:fixed_args_loc['FWHM_inst'] = calc_FWHM_inst(inst,c_light)   
         for vis in inst_vis_list[inst]:
-            if fixed_args['func_prof_name']=='gauss':
+            if fixed_args['model']=='gauss':
                 if any('ctrst_ord1' in par_loc for par_loc in fixed_args['var_par_list']):stop('    Contrast must be constant')
                 if any('FWHM_ord1' in par_loc for par_loc in fixed_args['var_par_list']):stop('    FWHM must be constant')                            
             ctrst0_name = fixed_args['name_prop2input']['ctrst_ord0__IS'+inst+'_VS'+vis]
             varC=any('ctrst_ord0' in par_loc for par_loc in fixed_args['var_par_list'])
             FWHM0_name = fixed_args['name_prop2input']['FWHM_ord0__IS'+inst+'_VS'+vis]   
             varF=any('FWHM_ord0' in par_loc for par_loc in fixed_args['var_par_list'])                      
-            if fixed_args['func_prof_name']=='dgauss': 
+            if fixed_args['model']=='dgauss': 
                 p_final_loc=deepcopy(p_final)
                 p_final_loc['rv'] = 0.    #the profile position does not matter
                 p_final_loc['ctrst'] = p_final_loc[ctrst0_name]  
@@ -3507,9 +3507,9 @@ def conv_CF_intr_meas(deriv_prop,inst_list,inst_vis_list,fixed_args,merged_chain
                 for par_sub in ['amp_l2c','FWHM_l2c','rv_l2c']:p_final_loc[par_sub]=p_final_loc[fixed_args['name_prop2input'][par_sub+'__IS'+inst+'_VS'+vis]]   
                 p_final_loc['cont'] = 1.  #the profile continuum does not matter                  
             if fit_dic['fit_mode']=='chi2': 
-                if fixed_args['func_prof_name']=='gauss':
+                if fixed_args['model']=='gauss':
                     p_final['ctrst0__IS'+inst+'_VS'+vis],p_final['FWHM0__IS'+inst+'_VS'+vis] = gauss_intr_prop(p_final[ctrst0_name],p_final[FWHM0_name],fixed_args_loc['FWHM_inst']) 
-                elif fixed_args['func_prof_name']=='dgauss':
+                elif fixed_args['model']=='dgauss':
                     p_final['ctrst0__IS'+inst+'_VS'+vis],p_final['FWHM0__IS'+inst+'_VS'+vis]=cust_mod_true_prop(p_final_loc,fixed_args['velccf_HR'],fixed_args_loc)[0:3]   
                 sig_loc=np.nan 
                 if varC:fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]])) 
@@ -3517,13 +3517,13 @@ def conv_CF_intr_meas(deriv_prop,inst_list,inst_vis_list,fixed_args,merged_chain
             elif fit_dic['fit_mode']=='mcmc':  
                 if varC:ictrst_loc = np_where1D(fixed_args['var_par_list']==ctrst0_name)[0]
                 if varF:iFWHM_loc = np_where1D(fixed_args['var_par_list']==FWHM0_name)[0] 
-                if fixed_args['func_prof_name']=='gauss':
+                if fixed_args['model']=='gauss':
                     if varC:chain_ctrst0 = np.squeeze(merged_chain[:,ictrst_loc])
                     else:chain_ctrst0=np.repeat(p_final[ctrst0_name],fit_dic['nsteps_final_merged'])
                     if varF:chain_FWHM0 = np.squeeze(merged_chain[:,iFWHM_loc])
                     else:chain_FWHM0=np.repeat(p_final[FWHM0_name],fit_dic['nsteps_final_merged'])                             
                     chain_ctrst_temp,chain_FWHM_temp = gauss_intr_prop(chain_ctrst0,chain_FWHM0,fixed_args_loc['FWHM_inst'])                        
-                if fixed_args['func_prof_name']=='dgauss': 
+                if fixed_args['model']=='dgauss': 
                     if varC:fixed_args_loc['var_par_list'][ictrst_loc]='ctrst'
                     if varF:fixed_args_loc['var_par_list'][iFWHM_loc]='FWHM'
                     for par_sub in ['amp_l2c','FWHM_l2c','rv_l2c']:

@@ -24,8 +24,27 @@ follow the tutorials to define ``ANTARESS`` configuration files and run its exec
 .. toctree::
    :maxdepth: 2
 
+   procedures_mock/procedures_mock   
+   
+.. toctree::
+   :maxdepth: 2
+
    procedures_reduc/procedures_reduc
 
+.. toctree::
+   :maxdepth: 2
+
+   procedures_proc/procedures_proc
+
+.. toctree::
+   :maxdepth: 2
+
+   procedures_masters/procedures_masters
+
+.. toctree::
+   :maxdepth: 2
+
+   procedures_extraction/procedures_extraction
 
 .. toctree::
    :maxdepth: 2

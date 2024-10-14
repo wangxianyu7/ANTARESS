@@ -186,8 +186,8 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             rv_al_all = coord_dic[inst][vis]['RV_star_stelCDM'] 
 
             #Reference planet for orbital phase
-            if len(data_dic[inst][vis]['transit_pl'])>0:pl_ref=data_dic[inst][vis]['transit_pl'][0]
-            else:pl_ref=gen_dic['studied_pl'][0]            
+            if len(data_dic[inst][vis]['studied_pl'])>0:pl_ref=data_dic[inst][vis]['studied_pl'][0]
+            else:pl_ref=gen_dic['studied_pl_list'][0]            
 
             #Target cartesian coordinates
             #    - coordinates in the plane of horizon, with the y axis pointing toward the north:
@@ -483,7 +483,15 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     for key in ['cen_bins','edge_bins','flux','cond_def','cov']:data_glob[iexp][key] = data_exp[key]
                     if data_vis['tell_sp']:data_glob[iexp]['tell'] = dataload_npz(data_dic[inst][vis]['tell_DI_data_paths'][iexp])['tell']             
                     else:data_glob[iexp]['tell'] = None
-                    data_glob[iexp]['mean_gdet'] = dataload_npz(data_dic[inst][vis]['mean_gdet_DI_data_paths'][iexp])['mean_gdet']             
+                    data_glob[iexp]['mean_gcal'] = dataload_npz(data_dic[inst][vis]['mean_gcal_DI_data_paths'][iexp])['mean_gcal']  
+                    if data_dic[inst][vis]['cal_weight']:
+                        data_gcal = dataload_npz(data_dic[inst][vis]['sing_gcal_DI_data_paths'][iexp])
+                        data_glob[iexp]['sing_gcal'] = data_gcal['gcal'] 
+                        if 'sdet2' in data_gcal:data_glob[iexp]['sdet2'] = data_gcal['sdet2'] 
+                        else:data_glob[iexp]['sdet2'] = None                
+                    else:
+                        data_glob[iexp]['sing_gcal']=None   
+                        data_glob[iexp]['sdet2'] = None                          
            
                     #Aligning exposures, shifting them from the solar system barycentric rest frame (source) into a common frame (receiver)
                     #      see gen_specdopshift() :            
@@ -504,8 +512,12 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         for iord in iord_fit_list: 
                             edge_bins_rest = data_glob[iexp]['edge_bins'][iord]*dopp_fact
                             data_glob[iexp]['flux'][iord],data_glob[iexp]['cov'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['flux'][iord], cov = data_glob[iexp]['cov'][iord], kind=gen_dic['resamp_mode'])
-                            data_glob[iexp]['mean_gdet'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['mean_gdet'][iord] , kind=gen_dic['resamp_mode']) 
                             if data_vis['tell_sp']:data_glob[iexp]['tell'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['tell'][iord] , kind=gen_dic['resamp_mode']) 
+                            data_glob[iexp]['mean_gcal'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['mean_gcal'][iord] , kind=gen_dic['resamp_mode']) 
+                            if data_glob[iexp]['sing_gcal'] is not  None:data_glob[iexp]['sing_gcal'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['sing_gcal'][iord] , kind=gen_dic['resamp_mode'])    
+                            if data_glob[iexp]['sdet2'] is not  None:
+                                data_glob[iexp]['sdet2'][iord] = bind.resampling(data_com['edge_bins'][iord],edge_bins_rest, data_glob[iexp]['sdet2'][iord] , kind=gen_dic['resamp_mode'])                           
+                                data_glob[iexp]['sdet2'][iord][np.isnan(data_glob[iexp]['sdet2'][iord])]=0.   
                         data_glob[iexp]['cond_def'] = ~np.isnan(data_glob[iexp]['flux'])
                         data_glob[iexp]['edge_bins']=   data_com['edge_bins']
                         data_glob[iexp]['cen_bins'] =   data_com['cen_bins']                   
@@ -537,8 +549,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #Weight definition 
                         #    - at this stage of the pipeline no broadband flux scaling was applied
                         #    - weights with at least one undefined pixels are set to 1 for all binned exposures (ie, no weighing is applied) within calc_bin_prof()    
-                        weight_mean_gdet_exp = data_glob[iexp]['mean_gdet'] if gen_dic['cal_weight'] else None 
-                        data_glob[iexp]['weight'] = weights_bin_prof(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp,'DI',data_inst['type'],data_vis['dim_exp'],data_glob[iexp]['tell'],weight_mean_gdet_exp,data_glob[iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc=1./flux_glob)            
+                        data_glob[iexp]['weight'] = weights_bin_prof(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp,'DI',data_inst['type'],data_vis['dim_exp'],data_glob[iexp]['tell'],data_glob[iexp]['sing_gcal'],data_glob[iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc=1./flux_glob,sdet_exp2=data_glob[iexp]['sdet2'])            
     
                         #Resampling if a common master is used
                         #    - if exposures do not share a common table they were kept on individual exposures; here we only resample those involved in the master calculation
@@ -552,7 +563,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                     'cov':np.zeros(data_inst['nord'],dtype=object)}
                                 data_to_bin[idmer][iexp]['weight']=np.zeros(data_vis['dim_exp'],dtype=float)*np.nan
                                 for iord in iord_fit_list: 
-                                    flux_temp[iord],data_to_bin[idmer][iexp]['cov'][iord] = bind.resampling(data_com['edge_bins'][iord], data_glob[iexp]['edge_bins'][iord], data_glob[iexp]['flux'][iord] , cov = data_glob[iexp]['cov'][iord], kind=gen_dic['resamp_mode'])                                                             #new
+                                    flux_temp[iord],data_to_bin[idmer][iexp]['cov'][iord] = bind.resampling(data_com['edge_bins'][iord], data_glob[iexp]['edge_bins'][iord], data_glob[iexp]['flux'][iord] , cov = data_glob[iexp]['cov'][iord], kind=gen_dic['resamp_mode'])                         
                                     weight_temp[iord] = bind.resampling(data_com['edge_bins'][iord], data_glob[iexp]['edge_bins'][iord], data_glob[iexp]['weight'][iord] ,kind=gen_dic['resamp_mode'])                                    
                                 data_to_bin[idmer][iexp]['flux'] = deepcopy(flux_temp)     
                                 data_to_bin[idmer][iexp]['weight'] = deepcopy(weight_temp)     
@@ -738,11 +749,11 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     else:
                         adjust_bins = True
                         cond_kept_exp = cond_kept_all[iord_def,::-1]                        
-                        mean_gdet_exp = data_glob[iexp]['mean_gdet'][iord_def,::-1]
-                        count_exp = data_glob[iexp]['flux'][iord_def,::-1]/mean_gdet_exp
+                        mean_gcal_exp = data_glob[iexp]['mean_gcal'][iord_def,::-1]
+                        count_exp = data_glob[iexp]['flux'][iord_def,::-1]/mean_gcal_exp
                         var_exp = np.zeros(np.shape(count_exp),dtype=float)
-                        for isub_ord,iord in enumerate(iord_def):var_exp[isub_ord] = data_glob[iexp]['cov'][iord][0][::-1]/mean_gdet_exp[isub_ord]**2. 
-                        count_mast_exp = data_mast_exp['flux'][iord_def,::-1]/mean_gdet_exp    
+                        for isub_ord,iord in enumerate(iord_def):var_exp[isub_ord] = data_glob[iexp]['cov'][iord][0][::-1]/mean_gcal_exp[isub_ord]**2. 
+                        count_mast_exp = data_mast_exp['flux'][iord_def,::-1]/mean_gcal_exp    
                         cen_nu_exp=data_glob[iexp]['cen_nu'][iord_def,::-1]
                         edge_nu_exp=data_glob[iexp]['edge_nu'][iord_def,::-1]
                         low_bins_nu_exp=edge_nu_exp[:,0:-1]

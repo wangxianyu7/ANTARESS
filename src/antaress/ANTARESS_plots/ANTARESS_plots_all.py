@@ -73,7 +73,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     #Define numerical contact phases
     if (plot_dic['occulted_regions']!='') or any('map_' in key for key in list(plot_dic.keys())) or (plot_dic['prop_Intr']!='') or (plot_dic['prop_DI']!='') or (plot_dic['input_LC']!='') or (plot_dic['pca_ana']!=''): 
         contact_phases={}
-        for pl_loc in gen_dic['studied_pl']:
+        for pl_loc in gen_dic['studied_pl_list']:
             contact_phases[pl_loc]=calc_tr_contacts(data_dic['DI']['system_prop']['achrom'][pl_loc][0],system_param[pl_loc],plot_dic['stend_ph'],system_param['star'])
             system_param[pl_loc]['T14_num'] = (contact_phases[pl_loc][3]-contact_phases[pl_loc][0])*system_param[pl_loc]['period']
             print('Numerical T14['+str(pl_loc)+']='+"{0:.6f}".format(system_param[pl_loc]['T14_num']*24.)+' h')                  
@@ -220,18 +220,20 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         key_plot = 'gcal'
         plot_set_key = plot_settings[key_plot]
         sc_fact=10**plot_set_key['sc_fact10']
+        sc_fact_var=10**plot_set_key['sc_fact10_var']
 
         print('-----------------------------------')
         print('+ Instrumental calibration estimates')     
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_set_key['visits_to_plot'].keys())): 
 
             #Mean calibration profile
-            #    - as calculated from input data, before any shifts
-            if plot_set_key['mean_gdet'] and (not plot_set_key['norm_exp']):
-                mean_gdet_func = (np.load(gen_dic['save_data_dir']+'Processed_data/Calibration/'+inst+'_mean_gdet.npz', allow_pickle=True)['data'].item())['func']  
+            #    - as calculated in the calc_gcal() routine before any shifts
+            if plot_set_key['mean_gcal'] and (not plot_set_key['norm_exp']):
+                mean_gcal_func = (np.load(gen_dic['save_data_dir']+'Processed_data/Calibration/'+inst+'_mean_gcal.npz', allow_pickle=True)['data'].item())['func']  
 
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_set_key['visits_to_plot'][inst]): 
                 data_vis = data_dic[inst][vis]
+                if (vis not in data_dic[inst]['gcal_blaze_vis']):plot_set_key['plot_gcal_blaze'] = False
 
                 #Create directory if required
                 path_loc = gen_dic['save_plot_dir']+'General/gcal/'+inst+'/'+vis+'/'
@@ -253,48 +255,70 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 #Upload data
                 if ('spec' in data_dic['DI']['type'][inst]):
-                    gdet_cen_binned_all = np.empty([nord_list,nexp_plot],dtype=object)
-                    gdet_meas_binned_all =  np.empty([nord_list,nexp_plot],dtype=object)
-                    cond_fit_all =  np.empty([nord_list,nexp_plot],dtype=object)
-                    wav_trans_all =  np.empty([2,nord_list,nexp_plot],dtype=object)
-                gdet_cen_binned_mean =  np.empty([nord_list,nexp_plot],dtype=float)
-                gdet_meas_binned_mean =  np.empty([nord_list,nexp_plot],dtype=float)                
-                cen_bins_all =  np.empty([nord_list,nexp_plot],dtype=object)
-                gdet_bins_all =   np.empty([nord_list,nexp_plot],dtype=object)      
-                cen_bins_mean =  np.empty([nord_list,nexp_plot],dtype=float)
-                gdet_bins_mean =  np.empty([nord_list,nexp_plot],dtype=float)                         
+                    if (plot_dic['gcal_all']!='') or ((plot_dic['gcal_ord']!='') and plot_set_key['plot_meas_exp']):
+                        gcal_cen_binned_all = np.empty([nord_list,nexp_plot],dtype=object)
+                        gcal_meas_binned_all =  np.empty([nord_list,nexp_plot],dtype=object)
+                        cond_fit_all =  np.empty([nord_list,nexp_plot],dtype=object)
+                    if (plot_dic['gcal_ord']!=''):
+                        wav_trans_all =  np.empty([2,nord_list,nexp_plot],dtype=object)
+                        gcal_bins_all =   np.empty([nord_list,nexp_plot],dtype=object) 
+                    if (plot_dic['gcal_ord']!='') or (plot_dic['noises_ord']!=''):
+                        cen_bins_all =  np.empty([nord_list,nexp_plot],dtype=object)
+                    if (plot_dic['noises_ord']!=''):
+                        var_all =  np.empty([nord_list,nexp_plot],dtype=object)
+                        var_ph_all = np.empty([nord_list,nexp_plot],dtype=object)
+                        if (vis in data_dic[inst]['gcal_blaze_vis']) and data_dic[inst]['cal_weight']:var_det_all = np.empty([nord_list,nexp_plot],dtype=object)
+                        else:var_det_all=None
+                    if (plot_dic['noises_ord']!='') or ((plot_dic['gcal_ord']!='') and plot_set_key['plot_gcal_blaze']):
+                        gcal_blaze_all =  np.empty([nord_list,nexp_plot],dtype=object) 
+                if (plot_dic['gcal_all']!=''):
+                    gcal_cen_binned_mean =  np.empty([nord_list,nexp_plot],dtype=float)
+                    gcal_meas_binned_mean =  np.empty([nord_list,nexp_plot],dtype=float)       
+                    cen_bins_mean =  np.empty([nord_list,nexp_plot],dtype=float)       
+                if (plot_dic['gcal_all']!='') or plot_set_key['norm_exp']:gcal_bins_mean =  np.empty([nord_list,nexp_plot],dtype=float)       
                 for isub_iexp,iexp in enumerate(iexp_plot):
-                    data_load = np.load(data_vis['cal_data_paths']+str(iexp)+'.npz', allow_pickle=True)['data'].item()  
-                    data_exp = np.load(gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'+str(iexp)+'.npz', allow_pickle=True)['data'].item() 
-                    cond_def_exp =  data_exp['cond_def']
+                    data_load = dataload_npz(data_vis['cal_data_paths']+str(iexp))  
+                    if (plot_dic['gcal_ord']!='') or (plot_dic['noises_ord']!=''):data_exp = dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'+str(iexp)) 
+                    if (plot_dic['noises_ord']!=''):data_sing_gcal= dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_sing_gcal_'+str(iexp)) 
                     for isub_ord,iord in enumerate(order_list):
                         if ('spec' in data_dic['DI']['type'][inst]):
-                            gdet_cen_binned_all[isub_ord,isub_iexp] = data_load['wav_bin_all'][iord]
-                            gdet_meas_binned_all[isub_ord,isub_iexp] = data_load['gdet_bin_all'][iord]
-                            cond_fit_all[isub_ord,isub_iexp] = data_load['cond_fit_all'][iord]
-                            wav_trans_all[:,isub_ord,isub_iexp] = data_load['wav_trans_all'][:,iord]
-                        if len(cond_def_exp[iord]):
-                            cen_bins_all[isub_ord,isub_iexp] = data_exp['cen_bins'][iord][cond_def_exp[iord]]
-                            gdet_bins_all[isub_ord,isub_iexp] = cal_piecewise_func(data_load['gdet_inputs'][iord]['par'],cen_bins_all[isub_ord,isub_iexp],args=data_load['gdet_inputs'][iord]['args'])[0]    
-
+                            if (plot_dic['gcal_all']!='') or ((plot_dic['gcal_ord']!='') and plot_set_key['plot_meas_exp']):
+                                gcal_cen_binned_all[isub_ord,isub_iexp] = data_load['wav_bin_all'][iord]
+                                gcal_meas_binned_all[isub_ord,isub_iexp] = data_load['gcal_bin_all'][iord]
+                                cond_fit_all[isub_ord,isub_iexp] = data_load['cond_fit_all'][iord]
+                            if len(data_exp['cond_def'][iord]):
+                                if (plot_dic['gcal_ord']!='') or (plot_dic['noises_ord']!=''):
+                                    cen_bins_all[isub_ord,isub_iexp] = data_exp['cen_bins'][iord][data_exp['cond_def'][iord]]
+                                if (plot_dic['gcal_ord']!=''):
+                                    wav_trans_all[:,isub_ord,isub_iexp] = data_load['wav_trans_all'][:,iord]
+                                    gcal_bins_all[isub_ord,isub_iexp] = cal_piecewise_func(data_load['gcal_inputs'][iord]['par'],cen_bins_all[isub_ord,isub_iexp],args=data_load['gcal_inputs'][iord]['args'])[0]  
+                                if (plot_dic['noises_ord']!='') or ((plot_dic['gcal_ord']!='') and plot_set_key['plot_gcal_blaze']):
+                                    gcal_blaze_all[isub_ord,isub_iexp] = data_sing_gcal['gcal'][iord,data_exp['cond_def'][iord]]                                  
+                                if (plot_dic['noises_ord']!=''):
+                                    var_all[isub_ord,isub_iexp] = data_exp['cov'][iord][0,data_exp['cond_def'][iord]]
+                                    var_ph_all[isub_ord,isub_iexp] = data_exp['flux'][iord][data_exp['cond_def'][iord]]*gcal_blaze_all[isub_ord,isub_iexp]
+                                    var_ph_all[isub_ord,isub_iexp][var_ph_all[isub_ord,isub_iexp]<=0.] = 0.
+                                    if var_det_all is not None:var_det_all[isub_ord,isub_iexp] = data_sing_gcal['sdet2'][iord,data_exp['cond_def'][iord]]*gcal_blaze_all[isub_ord,isub_iexp]**2.
+                        
                         #Mean calibration per order (from measurements)
-                        if (plot_dic[key_plot]!=''):
+                        if (plot_dic['gcal_all']!=''):
                             if ('spec' in data_dic['DI']['type'][inst]):
-                                gdet_cen_binned_mean[isub_ord,isub_iexp] = np.mean(gdet_cen_binned_all[isub_ord,isub_iexp][cond_fit_all[isub_ord,isub_iexp]])
-                                gdet_meas_binned_mean[isub_ord,isub_iexp] = np.mean(gdet_meas_binned_all[isub_ord,isub_iexp][cond_fit_all[isub_ord,isub_iexp]])
-                                cen_bins_mean[isub_ord,isub_iexp] = gdet_cen_binned_mean[isub_ord,isub_iexp]
+                                gcal_cen_binned_mean[isub_ord,isub_iexp] = np.mean(gcal_cen_binned_all[isub_ord,isub_iexp][cond_fit_all[isub_ord,isub_iexp]])
+                                gcal_meas_binned_mean[isub_ord,isub_iexp] = np.mean(gcal_meas_binned_all[isub_ord,isub_iexp][cond_fit_all[isub_ord,isub_iexp]])
+                                cen_bins_mean[isub_ord,isub_iexp] = gcal_cen_binned_mean[isub_ord,isub_iexp]
                             else:
                                 cen_bins_mean[isub_ord,isub_iexp] = gen_dic['wav_ord_inst'][inst][iord]
-                            gdet_bins_mean[isub_ord,isub_iexp] = np.mean(cal_piecewise_func(data_load['gdet_inputs'][iord]['par'],data_load['wav_bin_all'][iord],args=data_load['gdet_inputs'][iord]['args']))[0]   
                                 
-                #Mean calibration per order (from model, for normalization)
-                if plot_set_key['norm_exp']:norm_gdet = gdet_bins_mean
-                else:norm_gdet=np.ones([nord_list,nexp_plot])
+                        #Mean calibration per order (from model, for normalization)
+                        if (plot_dic['gcal_all']!='') or plot_set_key['norm_exp']:
+                            gcal_bins_mean[isub_ord,isub_iexp] = np.mean(cal_piecewise_func(data_load['gcal_inputs'][iord]['par'],data_load['wav_bin_all'][iord],args=data_load['gcal_inputs'][iord]['args'])[0] )  
+                if plot_set_key['norm_exp']:norm_gcal = gcal_bins_mean
+                else:norm_gcal=np.ones([nord_list,nexp_plot])
  
                 #---------------------------------------------------------------------------------------------------------------
                     
-                #Plot all orders for all exposures
-                if (plot_dic[key_plot]!=''):
+                #Plot mean calibration over all orders and all exposures
+                if (plot_dic['gcal_all']!=''):
                     plt.ioff()        
                     fig = plt.figure(figsize=plot_set_key['fig_size'])
    
@@ -304,10 +328,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                     #Mean calibration over each order, for all orders and all exposures 
                     for isub_iexp in range(len(iexp_plot)):
-                        if ('spec' in data_dic['DI']['type'][inst]):plt.plot(gdet_cen_binned_mean[:,isub_iexp],gdet_meas_binned_mean[:,isub_iexp],linestyle='',marker='o',markerfacecolor=col_visit[isub_iexp],markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],rasterized=plot_set_key['rasterized'],color = col_visit[isub_iexp])
-                        plt.plot(cen_bins_mean[:,isub_iexp],gdet_bins_mean[:,isub_iexp]*sc_fact,linestyle='-',marker='.',markerfacecolor=col_visit[isub_iexp],markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],rasterized=plot_set_key['rasterized'],color = col_visit[isub_iexp])            
+                        if ('spec' in data_dic['DI']['type'][inst]):plt.plot(gcal_cen_binned_mean[:,isub_iexp],gcal_meas_binned_mean[:,isub_iexp],linestyle='',marker='o',markerfacecolor=col_visit[isub_iexp],markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],rasterized=plot_set_key['rasterized'],color = col_visit[isub_iexp])
+                        plt.plot(cen_bins_mean[:,isub_iexp],gcal_bins_mean[:,isub_iexp]*sc_fact,linestyle='-',marker='.',markerfacecolor=col_visit[isub_iexp],markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],rasterized=plot_set_key['rasterized'],color = col_visit[isub_iexp])            
                     x_range_loc = plot_set_key['x_range'] if plot_set_key['x_range'] is not None else [np.nanmin(cen_bins_mean),np.nanmax(cen_bins_mean)] 
-                    y_range_loc = plot_set_key['y_range'] if plot_set_key['y_range'] is not None else [np.nanmin(gdet_bins_mean*sc_fact),np.nanmax(gdet_bins_mean*sc_fact)] 
+                    y_range_loc = plot_set_key['y_range'] if plot_set_key['y_range'] is not None else [np.nanmin(gcal_bins_mean*sc_fact),np.nanmax(gcal_bins_mean*sc_fact)] 
                    
                     #Plot frame  
                     if plot_set_key['title']:plt.title('Calibration for visit '+vis+' in '+inst)
@@ -322,70 +346,134 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 xmajor_form=xmajor_form,ymajor_form=ymajor_form,hide_axis=plot_set_key['hide_axis'],
                                 x_title='Wavelength (A)',y_title=y_title,
                                 font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
-                    plt.savefig(path_loc+'Global'+'.'+plot_dic[key_plot],transparent=plot_set_key['transparent']) 
+                    plt.savefig(path_loc+'gcal_global'+'.'+plot_dic['gcal_all'],transparent=plot_set_key['transparent']) 
                     plt.close()                     
 
                 #---------------------------------------------------------------------------------------------------------------
+                #Spectral profiles
+                if('spec' in data_dic['DI']['type'][inst]):
+                    
+                    #Plot spectral calibration profile in each order for all selected exposures
+                    if (plot_dic['gcal_ord']!=''): 
+                        for isub_ord,iord in enumerate(order_list):
+                            plt.ioff()        
+                            fig = plt.figure(figsize=plot_set_key['fig_size']) #,dpi=10)
+        
+                            #Calibration estimate (measured and modelled)
+                            y_min=1e100
+                            y_max=-1e100
+                            for isub_iexp in range(len(iexp_plot)):
+                                x_range_loc = plot_set_key['x_range_ord'] if plot_set_key['x_range_ord'] is not None else [np.nanmin(cen_bins_all[isub_ord,isub_iexp]),np.nanmax(cen_bins_all[isub_ord,isub_iexp])] 
+                                    
+                                #Mesured calibration estimate
+                                #    - all calculated bins are shown (ie, with positive integrated flux) are shown
+                                #    - bins used for the fit are filled
+                                if plot_set_key['plot_meas_exp'] and (len(gcal_meas_binned_all[isub_ord,isub_iexp])>0):
+                                    cond_fit_ord = cond_fit_all[isub_ord,isub_iexp]
+                                    var_loc = sc_fact*gcal_meas_binned_all[isub_ord,isub_iexp][cond_fit_ord]/norm_gcal[isub_ord,isub_iexp]
+                                    plt.plot(gcal_cen_binned_all[isub_ord,isub_iexp][cond_fit_ord],var_loc,linestyle='',marker='o',markerfacecolor=col_visit[isub_iexp],markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],zorder=0,rasterized=plot_set_key['rasterized'])
+                                    plt.plot(gcal_cen_binned_all[isub_ord,isub_iexp][~cond_fit_ord],sc_fact*gcal_meas_binned_all[isub_ord,isub_iexp][~cond_fit_ord]/norm_gcal[isub_ord,isub_iexp],linestyle='',marker='o',markerfacecolor='None',markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],zorder=0,rasterized=plot_set_key['rasterized'])
+                                    if np.sum(cond_fit_ord):
+                                        y_min=np.min([np.nanmin(var_loc),y_min])
+                                        y_max=np.max([np.nanmax(var_loc),y_max]) 
 
-                #Plot current order for all exposures
-                if (plot_dic['gcal_ord']!='') and ('spec' in data_dic['DI']['type'][inst]):
-                    for isub_ord,iord in enumerate(order_list):
-                        plt.ioff()        
-                        fig = plt.figure(figsize=plot_set_key['fig_size']) #,dpi=10)
-    
-                        #Calibration estimate (measured and modelled)
-                        y_min=1e100
-                        y_max=-1e100
-                        for isub_iexp in range(len(iexp_plot)):
-                            x_range_loc = plot_set_key['x_range_ord'] if plot_set_key['x_range_ord'] is not None else [np.nanmin(cen_bins_all[isub_ord,isub_iexp]),np.nanmax(cen_bins_all[isub_ord,isub_iexp])] 
-                                
-                            #Mesured calibration estimate
-                            #    - all calculated bins are shown (ie, with positive integrated flux) are shown
-                            #    - bins used for the fit are filled
-                            if plot_set_key['plot_meas_exp'] and (len(gdet_meas_binned_all[isub_ord,isub_iexp])>0):
-                                cond_fit_ord = cond_fit_all[isub_ord,isub_iexp]
-                                var_loc = sc_fact*gdet_meas_binned_all[isub_ord,isub_iexp][cond_fit_ord]/norm_gdet[isub_ord,isub_iexp]
-                                plt.plot(gdet_cen_binned_all[isub_ord,isub_iexp][cond_fit_ord],var_loc,linestyle='',marker='o',markerfacecolor=col_visit[isub_iexp],markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],zorder=0,rasterized=plot_set_key['rasterized'])
-                                plt.plot(gdet_cen_binned_all[isub_ord,isub_iexp][~cond_fit_ord],sc_fact*gdet_meas_binned_all[isub_ord,isub_iexp][~cond_fit_ord]/norm_gdet[isub_ord,isub_iexp],linestyle='',marker='o',markerfacecolor='None',markeredgecolor=col_visit[isub_iexp],markersize=plot_set_key['markersize'],zorder=0,rasterized=plot_set_key['rasterized'])
-                                if np.sum(cond_fit_ord):
+                                #Blaze-derived calibration estimate
+                                if plot_set_key['plot_gcal_blaze']:
+                                    var_loc = sc_fact*gcal_blaze_all[isub_ord,isub_iexp]/norm_gcal[isub_ord,isub_iexp]
+                                    plt.plot(cen_bins_all[isub_ord,isub_iexp],var_loc,linestyle='--',markerfacecolor=col_visit[isub_iexp],zorder=0,rasterized=plot_set_key['rasterized'])
                                     y_min=np.min([np.nanmin(var_loc),y_min])
-                                    y_max=np.max([np.nanmax(var_loc),y_max]) 
-                               
-                            #Best-fit calculated over the defined spectral table
-                            if plot_set_key['plot_best_exp'] and (gdet_bins_all[isub_ord,isub_iexp] is not None):
-                                var_loc = sc_fact*gdet_bins_all[isub_ord,isub_iexp]/norm_gdet[isub_ord,isub_iexp]
-                                plt.plot(cen_bins_all[isub_ord,isub_iexp],var_loc,linestyle='-',color=col_visit[isub_iexp],lw=0.5,rasterized=plot_set_key['rasterized'],zorder=0,alpha=0.5) 
-                                y_min=np.min([np.min(var_loc),y_min])
-                                y_max=np.max([np.max(var_loc),y_max]) 
-                            
-                        #Mean calibration profile over all exposures
-                        #    - shown on table of first exposure, as calculated from input data
-                        #    - this is the profile used to rescale homogeneously all exposures from flux to count values
-                        if plot_set_key['mean_gdet'] and (not plot_set_key['norm_exp']):
-                            plt.plot(cen_bins_all[isub_ord,0],sc_fact*mean_gdet_func[iord](cen_bins_all[isub_ord,0])*1e-3,linestyle='--',color='black',lw=1,rasterized=plot_set_key['rasterized'],zorder=10) 
+                                    y_max=np.max([np.nanmax(var_loc),y_max])                                     
 
-                        #Transitions of polynomials
-                        y_range_loc=plot_set_key['y_range_ord'] if plot_set_key['y_range_ord'] is not None else np.array([y_min,y_max])
-                        for isub_iexp in range(len(iexp_plot)):
-                            plt.plot([wav_trans_all[0,isub_ord,isub_iexp],wav_trans_all[0,isub_ord,isub_iexp]],y_range_loc,linestyle='--',color=col_visit[isub_iexp],lw=0.5,rasterized=plot_set_key['rasterized'])
-                            plt.plot([wav_trans_all[1,isub_ord,isub_iexp],wav_trans_all[1,isub_ord,isub_iexp]],y_range_loc,linestyle='--',color=col_visit[isub_iexp],lw=0.5,rasterized=plot_set_key['rasterized'])
-                                                        
-                        #Plot frame                          
-                        if plot_set_key['title']:plt.title('Calibration for visit '+vis+' in '+inst+' (order '+str(iord)+')')
-                        dx_range=x_range_loc[1]-x_range_loc[0]
-                        dy_range=y_range_loc[1]-y_range_loc[0]
-                        xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
-                        ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
-                        y_title = 'Calibration'
-                        y_title = scaled_title(plot_set_key['sc_fact10'],y_title)                         
-                        custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
-                                    xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
-                                    xmajor_form=xmajor_form,ymajor_form=ymajor_form,
-                                    x_title='Wavelength (A)',y_title=y_title,hide_axis=plot_set_key['hide_axis'],
-                                    font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
-                        plt.savefig(path_loc+'ord'+str(iord)+'.'+plot_dic['gcal_ord'],transparent=plot_set_key['transparent']) 
-                        plt.close() 
+                                #Best-fit calculated over the defined spectral table
+                                if plot_set_key['plot_best_exp'] and (gcal_bins_all[isub_ord,isub_iexp] is not None):
+                                    var_loc = sc_fact*gcal_bins_all[isub_ord,isub_iexp]/norm_gcal[isub_ord,isub_iexp]
+                                    plt.plot(cen_bins_all[isub_ord,isub_iexp],var_loc,linestyle='-',color=col_visit[isub_iexp],lw=0.5,rasterized=plot_set_key['rasterized'],zorder=0,alpha=0.5) 
+                                    y_min=np.min([np.min(var_loc),y_min])
+                                    y_max=np.max([np.max(var_loc),y_max]) 
+                                
+                            #Mean calibration profile over all exposures
+                            #    - shown on table of first exposure, as calculated from input data
+                            #    - this is the profile used to rescale homogeneously all exposures from flux to count values
+                            if plot_set_key['mean_gcal'] and (not plot_set_key['norm_exp']):
+                                plt.plot(cen_bins_all[isub_ord,0],sc_fact*mean_gcal_func[iord](cen_bins_all[isub_ord,0]),linestyle='--',color='black',lw=1,rasterized=plot_set_key['rasterized'],zorder=10) 
+    
+                            #Transitions of polynomials
+                            y_range_loc=plot_set_key['y_range_ord'] if plot_set_key['y_range_ord'] is not None else np.array([y_min,y_max])
+                            for isub_iexp in range(len(iexp_plot)):
+                                plt.plot([wav_trans_all[0,isub_ord,isub_iexp],wav_trans_all[0,isub_ord,isub_iexp]],y_range_loc,linestyle='--',color=col_visit[isub_iexp],lw=0.5,rasterized=plot_set_key['rasterized'])
+                                plt.plot([wav_trans_all[1,isub_ord,isub_iexp],wav_trans_all[1,isub_ord,isub_iexp]],y_range_loc,linestyle='--',color=col_visit[isub_iexp],lw=0.5,rasterized=plot_set_key['rasterized'])
+                                                            
+                            #Plot frame                          
+                            if plot_set_key['title']:plt.title('Calibration for visit '+vis+' in '+inst+' (order '+str(iord)+')')
+                            dx_range=x_range_loc[1]-x_range_loc[0]
+                            dy_range=y_range_loc[1]-y_range_loc[0]
+                            xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                            ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
+                            y_title = 'Calibration'
+                            y_title = scaled_title(plot_set_key['sc_fact10'],y_title)                         
+                            custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
+                                        xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
+                                        xmajor_form=xmajor_form,ymajor_form=ymajor_form,
+                                        x_title='Wavelength (A)',y_title=y_title,hide_axis=plot_set_key['hide_axis'],
+                                        font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
+                            plt.savefig(path_loc+'gcal_ord'+str(iord)+'.'+plot_dic['gcal_ord'],transparent=plot_set_key['transparent']) 
+                            plt.close() 
 
+                    
+                    #Plot spectral noise profile in each order for all selected exposures
+                    #    - see weights_bin_prof(), the noise associated with the spectral flux density at the start of the workflow is:
+                    # EF_meas(w,t,v)^2 = F_meas(w,t,v)*gcal(w,t,v) + Edet_meas(w,t,v)^2*gcal(w,t,v)^2 
+                    #      at pixels where counts are <=0 the DRS attributes the error as 
+                    # EF_meas(w,t,v)^2 = Edet_meas(w,t,v)^2*gcal(w,t,v)^2 
+                    #    - we thus define the noise contributions (in variance) as:
+                    # + from photons:  Eph(w,t,v)^2 = F_meas(w,t,v)*gcal(w,t,v) if F_meas(w,t,v)>0 or 0 otherwise 
+                    # + from detector: Edet(w,t,v)^2 = Edet_meas(w,t,v)^2*gcal(w,t,v)^2 
+                    if (plot_dic['noises_ord']!=''): 
+                        for isub_ord,iord in enumerate(order_list):
+                            plt.ioff()        
+                            fig = plt.figure(figsize=plot_set_key['fig_size']) #,dpi=10)
+                            ax_loc = plt.gca()
+                            y_min=1e100
+                            y_max=-1e100
+                            for isub_iexp in range(len(iexp_plot)):
+                                x_range_loc = plot_set_key['x_range_ord'] if plot_set_key['x_range_ord'] is not None else [np.nanmin(cen_bins_all[isub_ord,isub_iexp]),np.nanmax(cen_bins_all[isub_ord,isub_iexp])] 
+                                    
+                                #Total variance table
+                                curve_loc,=ax_loc.plot(cen_bins_all[isub_ord,isub_iexp],sc_fact_var*var_all[isub_ord,isub_iexp],color='red',lw=1,rasterized=plot_set_key['rasterized'],zorder=0,label='Total') 
+                                handles=[curve_loc]
+                                y_min=np.min([np.min(sc_fact_var*var_all[isub_ord,isub_iexp]),y_min])
+                                y_max=np.max([np.max(sc_fact_var*var_all[isub_ord,isub_iexp]),y_max]) 
+                                           
+                                #Photo-electrons variance table
+                                curve_loc,=ax_loc.plot(cen_bins_all[isub_ord,isub_iexp],sc_fact_var*var_ph_all[isub_ord,isub_iexp],color='limegreen',lw=1,rasterized=plot_set_key['rasterized'],zorder=1,label='Ph-e. counts') 
+                                handles+=[curve_loc]
+                                y_min=np.min([np.min(sc_fact_var*var_ph_all[isub_ord,isub_iexp]),y_min])
+                                y_max=np.max([np.max(sc_fact_var*var_ph_all[isub_ord,isub_iexp]),y_max])                                 
+
+                                #Detector variance
+                                if var_det_all is not None:
+                                    curve_loc,=ax_loc.plot(cen_bins_all[isub_ord,isub_iexp],sc_fact_var*var_det_all[isub_ord,isub_iexp],color='dodgerblue',lw=1,rasterized=plot_set_key['rasterized'],zorder=2,label='Detector') 
+                                    handles+=[curve_loc]
+                                    y_min=np.min([np.min(sc_fact_var*var_det_all[isub_ord,isub_iexp]),y_min])
+                                    y_max=np.max([np.max(sc_fact_var*var_det_all[isub_ord,isub_iexp]),y_max]) 
+                                
+                            #Plot frame    
+                            if plot_set_key['legend']:ax_loc.legend(handles=handles,fontsize = int(0.6*plot_set_key['font_size']) )
+                            if plot_set_key['title']:plt.title('Noise for visit '+vis+' in '+inst+' (order '+str(iord)+')')                            
+                            y_range_loc=plot_set_key['y_range_ord'] if plot_set_key['y_range_ord'] is not None else np.array([y_min,y_max])
+                            dx_range=x_range_loc[1]-x_range_loc[0]
+                            dy_range=y_range_loc[1]-y_range_loc[0]
+                            xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                            ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
+                            y_title = 'Variance'
+                            y_title = scaled_title(plot_set_key['sc_fact10_var'],y_title)                         
+                            custom_axis(plt,ax=ax_loc,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
+                                        xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
+                                        xmajor_form=xmajor_form,ymajor_form=ymajor_form,
+                                        x_title='Wavelength (A)',y_title=y_title,hide_axis=plot_set_key['hide_axis'],
+                                        font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
+                            plt.savefig(path_loc+'noises_ord'+str(iord)+'.'+plot_dic['noises_ord'],transparent=plot_set_key['transparent']) 
+                            plt.close() 
 
 
 
@@ -2295,7 +2383,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     
                 #Contacts for planets transiting in the visit
                 for ivis,vis in enumerate(np.intersect1d(list(data_dic[inst].keys()),plot_set_key['visits_to_plot'][inst])):
-                    for ipl,pl_loc in enumerate(data_dic[inst][vis]['transit_pl']):
+                    for ipl,pl_loc in enumerate(data_dic[inst][vis]['studied_pl']):
                         if pl_loc==pl_ref:contact_phases_vis = contact_phases[pl_ref]
                         else:
                             contact_times = coord_dic[inst][vis][pl_loc]['Tcenter']+contact_phases[pl_loc]*system_param[pl_loc]["period"]
@@ -2433,8 +2521,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     ################################################################################################################  
     #%%%%% Best-fit profiles 
     ################################################################################################################  
-    if ('map_BF_Res_prof' in plot_settings):
-        key_plot = 'map_BF_Res_prof'
+    if ('map_BF_Diff_prof' in plot_settings):
+        key_plot = 'map_BF_Diff_prof'
         print('-----------------------------------')
         print('+ 2D map : best-fit differential profiles')    
         
@@ -2447,8 +2535,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     ################################################################################################################  
     #%%%%% Residual from best-fit profiles 
     ################################################################################################################  
-    if ('map_BF_Res_prof_re' in plot_settings):
-        key_plot = 'map_BF_Res_prof_re'
+    if ('map_BF_Diff_prof_re' in plot_settings):
+        key_plot = 'map_BF_Diff_prof_re'
         
         print('-----------------------------------')
         print('+ 2D map : residuals from best-fit differential profiles') 
@@ -2602,7 +2690,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     fig = plt.figure(figsize=plot_set_key['fig_size'])
                     y_min=1e100
                     y_max=-1e100
-                    pl_ref=data_dic[inst][vis]['transit_pl'][0]
+                    pl_ref=data_dic[inst][vis]['studied_pl'][0]
                     cen_ph=coord_dic[inst][vis][pl_ref]['cen_ph'] 
 
                     #Print RMS
@@ -2646,7 +2734,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     fig = plt.figure(figsize=plot_set_key['fig_size'])
                     y_min=1e100
                     y_max=-1e100
-                    pl_ref=data_dic[inst][vis]['transit_pl'][0]
+                    pl_ref=data_dic[inst][vis]['studied_pl'][0]
                     cen_ph=coord_dic[inst][vis][pl_ref]['cen_ph'] 
                     dBIC = data_upload['BIC_tab'] - data_upload['chi2null_tab'] 
 
@@ -4924,8 +5012,8 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
     
         #Planet-occulted models from reconstruction
         if plot_options['line_model']=='rec':
-            if 'Intr' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
-            elif 'Res' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
+            if 'Intr' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_prof_est']+'/'+inst+'_'+vis+'_add')
+            elif 'Res' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_prof_est']+'/'+inst+'_'+vis+'_add')
     
         #Line profile from best-fit
         else:
@@ -5030,8 +5118,8 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
           
     #Reconstructed line profiles
     elif '_est' in plot_mod:
-        if 'Intr' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
-        elif 'Res' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
+        if 'Intr' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_prof_est']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
+        elif 'Res' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_prof_est']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
         rest_frame = 'star'
      
     #Residual maps from Intrinsic and out-of-transit Residual profiles
@@ -5043,7 +5131,7 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
             data_path_all = [data_dic[inst][vis]['proc_Intr_data_paths']+str(iexp) for iexp in iexp_plot]
             rest_frame = data_dic['Intr'][inst][vis]['rest_frame']                  
         else:
-            data_path_all = [prof_fit_vis['loc_data_corr_inpath']+str(iexp) for iexp in iexp_plot]
+            data_path_all = [prof_fit_vis['loc_prof_est_inpath']+str(iexp) for iexp in iexp_plot]
             rest_frame = prof_fit_vis['rest_frame']                   
  
         #Calculate out-of-transit residuals
@@ -5056,14 +5144,14 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
             if plot_options['cont_only']:
                 data_path_all+=[data_dic[inst][vis]['proc_Res_data_paths']+str(iexp) for iexp in iexp_out]
             else:
-                data_path_all+=[prof_fit_vis['loc_data_corr_outpath']+str(iexp) for iexp in iexp_out]
+                data_path_all+=[prof_fit_vis['loc_prof_est_outpath']+str(iexp) for iexp in iexp_out]
 
     #Residual maps from Residual profiles
     #    - data_path_all contains the path to Residual profiles, from which will later be subtracted the model profiles
     elif plot_mod in ['map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
-        data_path_all = [prof_fit_vis['loc_data_corr_path']+str(iexp) for iexp in iexp_plot]
+        data_path_all = [prof_fit_vis['loc_prof_est_path']+str(iexp) for iexp in iexp_plot]
         rest_frame = prof_fit_vis['rest_frame']              
-    elif (plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']):
+    elif (plot_mod in ['map_BF_Diff_prof', 'map_BF_Diff_prof_re']):
         #Retrieving the bin mode
         if vis+'_bin' in data_dic['Res']['idx_in_bin'][inst]:bin_mode='_bin'
         else:bin_mode = ''
@@ -5419,7 +5507,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                             
                     #Reconstruction stored with data structure
                     elif plot_options['line_model']=='rec':
-                        data_exp_est = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(i_in))
+                        data_exp_est = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_prof_est']+'/'+inst+'_'+vis+'_'+str(i_in))
                         cond_def_mod = data_exp_est['cond_def'][0]     
                         cond_fit_exp_raw = cond_def_mod
                         cen_bins_mod_exp =  data_exp_est['cen_bins'][0,cond_def_mod]
@@ -5897,7 +5985,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                                                     plt.axvspan(low_bd,high_bd, facecolor='red', alpha=0.1,zorder=10) 
                                                     
                                         # elif (plot_mod=='Res_prof'):
-                                        #     for pl_loc in data_dic[inst][vis]['transit_pl']:
+                                        #     for pl_loc in data_dic[inst][vis]['studied_pl']:
                                         #         bd_int=data_dic['Atm']['plrange'] + coord_dic[inst][vis][pl_loc]['rv_pl'][iexp_or]
                                         #         if (bd_int[0]<1e10):plt.axvspan(bd_int[0],bd_int[1], facecolor='red', alpha=0.1,zorder=10) 
                                         # elif (plot_mod in ['Atm_prof','Atm_prof_res','Atmbin','Atmbin_res']):
@@ -5992,8 +6080,14 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_
             for key in ['flux','cov','cond_def','cen_bins','edge_bins']:data_proc[maink][iexp][key] = data_proc[maink][iexp][key][idx_sel_ord]
             if data_vis['tell_sp']:data_proc[maink][iexp]['tell'] = dataload_npz(data_vis['tell_DI_data_paths'][iexp])['tell'][idx_sel_ord]
             else:data_proc[maink][iexp]['tell'] = None
-            if gen_dic['cal_weight']:data_proc[maink][iexp]['mean_gdet'] = dataload_npz(data_vis['mean_gdet_DI_data_paths'][iexp])['mean_gdet'] 
-            else:data_proc[maink][iexp]['mean_gdet']=None   
+            if data_inst['cal_weight']:
+                data_gcal = dataload_npz(data_vis['sing_gcal_DI_data_paths'][iexp])
+                data_proc[maink][iexp]['sing_gcal'] = data_gcal['gcal'] 
+                if 'sdet2' in data_gcal:data_proc[maink][iexp]['sdet2'] = data_gcal['sdet2'] 
+                else:data_proc[maink][iexp]['sdet2'] = None                
+            else:
+                data_proc[maink][iexp]['sing_gcal']=None   
+                data_proc[maink][iexp]['sdet2'] = None               
          
             #Only the exposure table is modified if data do not share a common table
             #    - data will be resampled along with the master in a later stage
@@ -6005,14 +6099,19 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_
             else:
                 flux_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan   
                 if data_vis['tell_sp']:tell_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan
-                if data_inst['cal_weight']:mean_gdet_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan
+                if data_proc[maink][iexp]['sing_gcal'] is not None:sing_gcal_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan
+                if data_proc[maink][iexp]['sdet2'] is not None:sdet2_temp = np.zeros([nord_eff,nspec_com],dtype=float)
                 for isub,iord in enumerate(idx_sel_ord): 
                     flux_temp[isub],data_proc[maink][iexp]['cov'][isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['flux'][isub], cov = data_proc[maink][iexp]['cov'][isub], kind=gen_dic['resamp_mode'])
                     if data_vis['tell_sp']:tell_temp[isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['tell'][iord] , kind=gen_dic['resamp_mode']) 
-                    if data_inst['cal_weight']: mean_gdet_temp[isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['mean_gdet'][iord] , kind=gen_dic['resamp_mode'])                 
+                    if data_proc[maink][iexp]['sing_gcal'] is not None:sing_gcal_temp[isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['sing_gcal'][iord] , kind=gen_dic['resamp_mode'])   
+                    if data_proc[maink][iexp]['sdet2'] is not None:sdet2_temp[isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['sdet2'][iord] , kind=gen_dic['resamp_mode'])   
                 data_proc[maink][iexp]['flux'] = deepcopy(flux_temp)
                 if data_vis['tell_sp']:data_proc[maink][iexp]['tell'] = deepcopy(tell_temp)
-                if data_inst['cal_weight']:data_proc[maink][iexp]['mean_gdet'] = deepcopy(mean_gdet_temp)
+                if data_proc[maink][iexp]['sing_gcal'] is not None:data_proc[maink][iexp]['sing_gcal'] = deepcopy(sing_gcal_temp)
+                if data_proc[maink][iexp]['sdet2'] is not None:
+                    sdet2_temp[np.isnan(sdet2_temp)]=0.
+                    data_proc[maink][iexp]['sdet2'] = deepcopy(sdet2_temp)
                 data_proc[maink][iexp]['cond_def'] = ~np.isnan(data_proc[maink][iexp]['flux'])
                 data_proc[maink][iexp]['edge_bins']=   edge_bins_com
                 data_proc[maink][iexp]['cen_bins'] =   cen_bins_com                    
@@ -6034,8 +6133,8 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp_plot,iexp_mast_list,data_
                 
                 #Weight definition   
                 #    - at this stage, no broadband flux scaling has been applied to the data
-                data4mast[maink][iexp]['weight'] = weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',data_inst['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['mean_gdet'],data_proc[maink][iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc = 1./flux_glob)                       
-   
+                data4mast[maink][iexp]['weight'] = weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',data_inst['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['sing_gcal'],data_proc[maink][iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc = 1./flux_glob,sdet_exp2=data_proc[maink][iexp]['sdet2'])                       
+  
                 #Resampling if exposures do not share a common table
                 if (not data_vis['comm_sp_tab']): 
                     flux_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan
@@ -6157,7 +6256,7 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
     stend_ph = 1.3
     if vis=='binned':coord_vis = data_bin['coord'] 
     else:coord_vis = coord_dic[inst][vis]
-    for pl_loc in gen_dic['studied_pl']:      
+    for pl_loc in gen_dic['studied_pl_list']:      
         min_bjd = np.min([min_bjd,coord_vis[pl_loc]['Tcenter']+stend_ph*contact_phases[pl_loc][0]*system_param[pl_loc]['period']])        
         max_bjd = np.max([max_bjd,coord_vis[pl_loc]['Tcenter'] +stend_ph*contact_phases[pl_loc][3]*system_param[pl_loc]['period']])   
     bjd_HR=min_bjd+ ((max_bjd-min_bjd)/(plot_dic['nph_HR']-1.))*np.arange(plot_dic['nph_HR']) - 2400000.
@@ -6171,7 +6270,7 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
     system_prop_loc = deepcopy(data_dic['DI']['system_prop'])
     cond_occ_HR = np.zeros(plot_dic['nph_HR'],dtype=bool)
     system_param_loc = deepcopy(system_param)
-    for pl_loc in gen_dic['studied_pl']:
+    for pl_loc in gen_dic['studied_pl_list']:
 
         #High-resolution phase table
         phase_pl = get_timeorbit(pl_loc,coord_vis,bjd_HR,system_param_loc[pl_loc],None)[1]   
@@ -6203,14 +6302,14 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
     bjd_HR = bjd_HR[cond_occ_HR]
     args['inst'] = inst
     args['vis'] = vis
-    for pl_loc in gen_dic['studied_pl']:
+    for pl_loc in gen_dic['studied_pl_list']:
         coord_pl_in[pl_loc]['cen_pos'] = coord_pl_in[pl_loc]['cen_pos'][:,cond_occ_HR]
         coord_pl_in[pl_loc]['phase'] = coord_pl_in[pl_loc]['phase'][cond_occ_HR]     
         coord_pl_in[pl_loc]['ecl'] = coord_pl_in[pl_loc]['ecl'][cond_occ_HR] 
-    surf_prop_dic, surf_prop_dic_spot, surf_prop_dic_common = sub_calc_plocc_spot_prop(['achrom'],args,par_list,gen_dic['studied_pl'],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))
+    surf_prop_dic, surf_prop_dic_spot, surf_prop_dic_common = sub_calc_plocc_spot_prop(['achrom'],args,par_list,gen_dic['studied_pl_list'],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))
     theo_HR_prop_plocc = surf_prop_dic['achrom']
     theo_HR_prop_plocc['nph_HR'] = coord_pl_in['nph_HR']
-    for pl_loc in gen_dic['studied_pl']:
+    for pl_loc in gen_dic['studied_pl_list']:
         theo_HR_prop_plocc[pl_loc].update(coord_pl_in[pl_loc])
         
         #Reduce to chosen band
@@ -6900,7 +6999,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                 dph_HRpl=(max_ph_HRpl-min_ph_HRpl)/(nph_HRpl-1.)
                 ph_tab_HRpl=min_ph_HRpl+dph_HRpl*np.arange(nph_HRpl) 
                 theo_HR_pl['nph_HR'] = nph_HRpl
-                for pl_loc in gen_dic['studied_pl']:
+                for pl_loc in gen_dic['studied_pl_list']:
                     theo_HR_pl[pl_loc]={}
                     theo_HR_pl[pl_loc]['phase'] = ph_tab_HRpl
                     rv_HR,v_HR=calc_pl_coord(system_param[pl_loc]['ecc'],system_param[pl_loc]['omega_rad'],system_param[pl_loc]['aRs'],system_param[pl_loc]['inclin_rad'],ph_tab_HRpl,None,None,None,rv_LOS=True,omega_p=system_param[pl_loc]['omega_p'])[6:8]     
@@ -6930,14 +7029,14 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                             var_map[isub] = data_exp[corr_plot_mod+'_'+supp_name+'_flux'] 
                         #Building residuals
                         elif '_res' in plot_mod:
-                            data_exp_est = dataload_npz(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp)) 
+                            data_exp_est = dataload_npz(gen_dic['save_data_dir']+'Spot_Loc_estimates/'+plot_options['mode_loc_prof_est']+'/'+inst+'_'+vis+'_'+str(iexp)) 
                             var_map[isub] = data_exp['flux'] - data_exp_est[corr_plot_mod+'_'+supp_name+'_flux']
                     
-                    elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
+                    elif plot_mod in ['map_BF_Diff_prof', 'map_BF_Diff_prof_re']:
                         cond_def_map[isub] = data_exp['cond_def_fit']
                         
                         flux_2_use = data_exp['flux']
-                        if plot_mod == 'map_BF_Res_prof_re':
+                        if plot_mod == 'map_BF_Diff_prof_re':
                             raw_prof_loc = gen_dic['save_data_dir']+'Res_data/'+inst+'_'+vis+'_'+str(iexp)
                             raw_prof = dataload_npz(raw_prof_loc)
                             flux_2_use -= raw_prof['flux']
@@ -6981,7 +7080,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                                     
                                     #Exosure is effectively in-transit
                                     if not data_scaling['null_loc_flux_scaling']:
-                                        if not plot_options['cont_only']:data_exp_est = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp)) 
+                                        if not plot_options['cont_only']:data_exp_est = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_prof_est']+'/'+inst+'_'+vis+'_'+str(iexp)) 
                                         intr_flux_est = np.zeros(dim_exp_proc)*np.nan 
                                         intr2res_sc = np.zeros(dim_exp_proc)*np.nan 
                                         for iord in range(nord_proc):
@@ -7247,7 +7346,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                         elif plot_options['cmap'] in ['Spectral']:
                             col_loc='magenta'
                         else:col_loc='white'
-                        for ipl,pl_loc in enumerate(data_dic[inst][vis]['transit_pl']):
+                        for ipl,pl_loc in enumerate(data_dic[inst][vis]['studied_pl']):
                             if pl_loc==pl_ref:contact_phases_vis = contact_phases[pl_ref]
                             else:
                                 contact_times = coord_dic[inst][vis][pl_loc]['Tcenter']+contact_phases[pl_loc]*system_param[pl_loc]["period"]
@@ -7293,7 +7392,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                             else:
                                 line_range=None
                                 iexp_range=None
-                            doppler_track_plots('pl',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['transit_pl'],pl_ref,theo_HR_pl,line_range,iexp_plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc,coord_dic[inst][vis])
+                            doppler_track_plots('pl',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],pl_ref,theo_HR_pl,line_range,iexp_plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc,coord_dic[inst][vis])
 
                         #Stellar track
                         if (rest_frame in ['star','surf']) and ((plot_mod in ['map_Res_prof','map_Intr_prof_est','map_Intr_prof_res','map_Intrbin']) or ((plot_mod in ['map_Intr_prof']) and (not plot_options['aligned']))) and (plot_options['theoRV_HR'] or plot_options['theoRV_HR_align']): 
@@ -7324,12 +7423,12 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                             #Nominal orbit
                             if plot_options['theoRV_HR']:
                                 cond_track = plot_options['theoRVpl_HR']
-                                doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['transit_pl'],pl_ref,theo_HR_prop_plocc,line_range,iexp_plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc,coord_dic[inst][vis])
+                                doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],pl_ref,theo_HR_prop_plocc,line_range,iexp_plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc,coord_dic[inst][vis])
 
                             #Aligned orbit
                             if plot_options['theoRV_HR_align']:
                                 cond_track = plot_options['theoRVpl_HR_align']
-                                doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['transit_pl'],pl_ref,theo_HR_prop_plocc_align,line_range,iexp_plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc,coord_dic[inst][vis])
+                                doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],pl_ref,theo_HR_prop_plocc_align,line_range,iexp_plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc,coord_dic[inst][vis])
 
                     #------------------------------------  
                               
@@ -7356,7 +7455,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                             #High-resolution model 
                             if plot_options['theoRV_HR'] or plot_options['theoRV_HR_align']:
                        
-                                for pl_loc in data_dic[inst][vis]['transit_pl']:
+                                for pl_loc in data_dic[inst][vis]['studied_pl']:
                                     if plot_options['theoRV_HR']:
                                         ph_HR_loc = theo_HR_prop_plocc[pl_ref]['phase']
                                         rv_HR_loc = theo_HR_prop_plocc[pl_loc]['rv']
@@ -7458,7 +7557,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                     cb = mpl.cm.ScalarMappable(cmap=cmap_2D,norm=plt.Normalize(vmin=v_range[0], vmax=v_range[1]))										
                     cb.set_array(v_range) 	
                     cbar_txt = ''
-                    if plot_mod in ['map_DIbin','map_DI_prof','map_Res_prof','map_Intr_prof','map_BF_Res_prof','map_BF_Res_prof_re','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin',
+                    if plot_mod in ['map_DIbin','map_DI_prof','map_Res_prof','map_Intr_prof','map_BF_Diff_prof','map_BF_Diff_prof_re','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin',
                                     'map_Intr_1D','map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est','map_Res_prof_clean_sp_res',
                                     'map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:cbar_txt='flux'
                     elif plot_mod in ['map_Atm_prof','map_Atmbin','map_Atm_1D']:cbar_txt=plot_options['pl_atm_sign']
@@ -7483,11 +7582,11 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                     plt.gcf().set_rasterized(plot_options['rasterized'])
                     add_str = 'iord'+str(iord)   
                     if plot_mod in ['map_Intr_prof_est','map_Intr_prof_res']:
-                        add_str+='_'+plot_options['mode_loc_data_corr']+'_'+plot_options['line_model'] 
+                        add_str+='_'+plot_options['mode_loc_prof_est']+'_'+plot_options['line_model'] 
                         if plot_mod=='map_Intr_prof_res':add_str+='_res'
-                    elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
+                    elif plot_mod in ['map_BF_Diff_prof', 'map_BF_Diff_prof_re']:
                         add_str += 'BestFit'
-                        if plot_mod=='map_BF_Res_prof_re': add_str += 'Differential'
+                        if plot_mod=='map_BF_Diff_prof_re': add_str += 'Differential'
                     elif plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est',
                                     'map_Res_prof_clean_sp_res','map_Res_prof_clean_pl_res','map_Res_prof_unclean_sp_res','map_Res_prof_unclean_pl_res']:
                         prof_typ = plot_mod.split('_')[-1]
@@ -8824,19 +8923,19 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                                     #    - the derivation of FWHM and contrast from a HR profile is only relevant when observed individual profiles have been fitted with a gaussian model estimating their contrast and FWHM, 
                                     #      if those measured properties are not the ones controlling the joint profile model, we must estimate them on the HR profile
                                     #      if the same model profile was however used for the fit to individual and joint profiles, the properties can be directlyy compared
-                                    if (data_fit_loc['func_prof_name'][inst]=='gauss') or ((prop_mode in ['ctrst','FWHM']) and ~plot_options['inst_conv']):
+                                    if (data_fit_loc['model'][inst]=='gauss') or ((prop_mode in ['ctrst','FWHM']) and ~plot_options['inst_conv']):
                                         if plot_options['inst_conv']:ctrst_mod_HR,FWHM_mod_HR = gauss_intr_prop(raw_ctrst_mod_HR,raw_FWHM_mod_HR,calc_FWHM_inst(inst,c_light)) 
                                         else:ctrst_mod_HR,FWHM_mod_HR = raw_ctrst_mod_HR,raw_FWHM_mod_HR
                                     else:
                                         if plot_options['inst_conv']:input_dic['FWHM_inst'] = calc_FWHM_inst(inst,c_light)
                                         else:input_dic['FWHM_inst'] = None
-                                        if data_fit_loc['func_prof_name'][inst]=='dgauss':
+                                        if data_fit_loc['model'][inst]=='dgauss':
                                             ctrst_mod_HR = np.zeros(len(wsort),dtype=float)  
                                             FWHM_mod_HR = np.zeros(len(wsort),dtype=float)
                                             for isub_HR,(raw_ctrst_loc,raw_FWHM_loc) in enumerate(zip(raw_ctrst_mod_HR,raw_FWHM_mod_HR)):
                                                 input_dic.update({'ctrst':raw_ctrst_loc,  'FWHM':raw_FWHM_loc ,'fit_func_gen':dgauss})
                                                 ctrst_mod_HR[isub_HR],FWHM_mod_HR[isub_HR] = cust_mod_true_prop(input_dic,input_dic['vel'],input_dic)[0:2]                            
-                                        elif data_fit_loc['func_prof_name'][inst]=='voigt':
+                                        elif data_fit_loc['model'][inst]=='voigt':
                                             ctrst_mod_HR = np.zeros(len(wsort),dtype=float)  
                                             FWHM_mod_HR = np.zeros(len(wsort),dtype=float)
                                             for isub_HR,(raw_ctrst_loc,raw_FWHM_loc) in enumerate(zip(raw_ctrst_mod_HR,raw_FWHM_mod_HR)):
@@ -8871,7 +8970,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                     #Model from profile fit
                     if (data_fit_prof is not None):                                
                         input_dic = {}
-                        if ((data_fit_prof['func_prof_name'][inst]=='dgauss') & (prop_mode in ['true_FWHM','true_ctrst'])) | ((data_fit_prof['func_prof_name'][inst]=='voigt') & (prop_mode in ['FWHM_voigt','ctrst'])):                        
+                        if ((data_fit_prof['model'][inst]=='dgauss') & (prop_mode in ['true_FWHM','true_ctrst'])) | ((data_fit_prof['model'][inst]=='voigt') & (prop_mode in ['FWHM_voigt','ctrst'])):                        
                             if 'best_mod_tab' not in plot_options:
                                 dx =return_pix_size()[inst]/4.
                                 min_x = -100.
@@ -8885,21 +8984,21 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             edgeHR_mod = min_x+np.arange(nHR_mod+1)*dx_mod    
                             cenHR_mod = 0.5*(edgeHR_mod[0:-1]+edgeHR_mod[1::])       
                             input_dic.update({'cont':1.,'rv':0.,'vel':cenHR_mod})
-                            if data_fit_prof['func_prof_name'][inst]=='dgauss':
+                            if data_fit_prof['model'][inst]=='dgauss':
                                 for par_loc in ['amp_l2c','rv_l2c','FWHM_l2c']:input_dic[par_loc]=data_fit_prof['p_final'][data_fit_prof['name_prop2input'][par_loc+'__IS'+inst+'_VS'+vis]]
-                            elif data_fit_prof['func_prof_name'][inst]=='voigt':
+                            elif data_fit_prof['model'][inst]=='voigt':
                                 input_dic['a_damp']=data_fit_prof['p_final'][data_fit_prof['name_prop2input']['a_damp_ord0__IS'+inst+'_VS'+vis]]
                                 
                         #Data-equivalent model                 
                         if plot_options['theo_obs_prof']:                            
                             CCF_jointfit_vis=(np.load(gen_dic['save_data_dir']+'Joined_fits/Intr_prof/IntrProf_fit_'+inst+'_'+vis+'.npz',allow_pickle=True)['data'].item())['prof_fit_dic']                            
                             for isub,i_in in enumerate(glob_fit_dic['IntrProf']['idx_in_fit'][inst][vis]):
-                                if data_fit_prof['func_prof_name'][inst]=='gauss':
+                                if data_fit_prof['model'][inst]=='gauss':
                                     ctrst_mod_exp,FWHM_mod_exp = gauss_intr_prop(CCF_jointfit_vis[i_in]['ctrst'],CCF_jointfit_vis[i_in]['FWHM'],calc_FWHM_inst(inst,c_light)) 
-                                elif data_fit_prof['func_prof_name'][inst]=='dgauss':
+                                elif data_fit_prof['model'][inst]=='dgauss':
                                     input_dic.update({'ctrst':CCF_jointfit_vis[i_in]['ctrst'],  'FWHM':CCF_jointfit_vis[i_in]['FWHM']})
                                     ctrst_mod_exp,FWHM_mod_exp = cust_mod_true_prop(input_dic,input_dic['vel'],calc_FWHM_inst(inst,c_light))[0:3]                            
-                                elif data_fit_prof['func_prof_name'][inst]=='voigt':
+                                elif data_fit_prof['model'][inst]=='voigt':
                                     input_dic.update({'ctrst':CCF_jointfit_vis[i_in]['ctrst'],  'FWHM':CCF_jointfit_vis[i_in]['FWHM'],'a_damp':CCF_jointfit_vis[i_in]['a_damp']})
                                     ctrst_mod_exp,FWHM_mod_exp = cust_mod_true_prop(input_dic,input_dic['vel'],calc_FWHM_inst(inst,c_light))[0:3]                                        
                                 if (prop_mode=='FWHM'):val_mod  = FWHM_mod_exp
@@ -9335,7 +9434,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
 
                 #Contacts
                 if plot_options['prop_'+data_mode+'_absc']=='phase': 
-                    for ipl,pl_loc in enumerate(data_dic[inst][vis]['transit_pl']):
+                    for ipl,pl_loc in enumerate(data_dic[inst][vis]['studied_pl']):
                         if (i_visit==0) or (plot_options['prop_'+data_mode+'_absc']=='time') or ((pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst])): 
                             ls_pl = {0:':',1:'--'}[ipl]
                             if pl_loc==pl_ref:
@@ -9485,9 +9584,9 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
         #    - over full temporal extension, which can be useful if several visits are plotted
         #    - possible only for fixed transit centers
         if (plot_options['prop_'+data_mode+'_absc']=='time') and (len(gen_dic['Tcenter_visits'])==0): 
-            transit_pl = []
-            for vis in vis_list: transit_pl+=data_dic[inst][vis]['transit_pl']
-            for ipl,pl_loc in enumerate(np.unique(transit_pl)):
+            studied_pl = []
+            for vis in vis_list: studied_pl+=data_dic[inst][vis]['studied_pl']
+            for ipl,pl_loc in enumerate(np.unique(studied_pl)):
                 ls_pl = {0:':',1:'--'}[ipl]
                 n_per_min = int( (system_param[pl_loc]['TCenter'] - 2400000. - (x_min-system_param[pl_loc]['T14_num']) )/system_param[pl_loc]["period"] ) 
                 Tcenter_min = system_param[pl_loc]['TCenter'] - 2400000. + n_per_min*system_param[pl_loc]["period"]

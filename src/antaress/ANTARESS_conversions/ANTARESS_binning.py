@@ -146,8 +146,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         for vis_loc in vis_to_bin:
             if ('ref_pl' in prop_dic['prop_bin']) and (inst in prop_dic['prop_bin']['ref_pl']) and (vis_loc in prop_dic['prop_bin']['ref_pl'][inst]):
                 ref_pl[vis_loc] = prop_dic['prop_bin']['ref_pl'][inst][vis_loc]
-            elif len(data_inst[vis_loc]['transit_pl'])>0:             
-                ref_pl[vis_loc] = data_inst[vis_loc]['transit_pl'][0]  
+            elif len(data_inst[vis_loc]['studied_pl'])>0:             
+                ref_pl[vis_loc] = data_inst[vis_loc]['studied_pl'][0]  
                 print('         Reference planet for '+vis_loc+' binning set to '+ref_pl[vis_loc])
             else:vis_no_tr += [vis_loc]
         
@@ -176,15 +176,15 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 if (prop_dic['dim_bin'] in ['xp_abs','phase']) and (len(np.unique(list(ref_pl.values())))>1):
                     bin_prop['multi_flag'] = True
                     print('WARNING: Different planets are transiting in the multiple binned visits. Ignoring '+prop_dic['dim_bin']+' constraints to bin into single master.')
-                    transit_pl = []
-                    for vis_loc in vis_to_bin:transit_pl+=[ref_pl[vis_loc]]
-                    transit_pl = list(np.unique(transit_pl))
+                    studied_pl = []
+                    for vis_loc in vis_to_bin:studied_pl+=[ref_pl[vis_loc]]
+                    studied_pl = list(np.unique(studied_pl))
                 
                 #Set transiting planet for binned visit to reference planet in multiple binned visits, if common to all visits
                 else:
-                    transit_pl=[ref_pl[vis_to_bin[0]]]
+                    studied_pl=[ref_pl[vis_to_bin[0]]]
                 
-        else:transit_pl = data_dic[inst][vis_save]['transit_pl']
+        else:studied_pl = data_dic[inst][vis_save]['studied_pl']
             
         #Initialize binning
         new_x_cen,new_x_low,new_x_high,_,n_in_bin_all,idx_to_bin_all,dx_ov_all,n_bin,idx_bin2orig,idx_bin2vis,idx_to_bin_unik = init_bin_prof(data_type,ref_pl,prop_dic['idx_in_bin'],prop_dic['dim_bin'],coord_dic,inst,vis_to_bin,data_dic,gen_dic,bin_prop)
@@ -192,7 +192,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         #Store flags
         #    - 'FromAligned' set to True if binned profiles were aligned before
         #    - 'in_inbin' set to True if binned profiles include at least one in-transit profile
-        data_glob_new={'FromAligned':gen_dic['align_'+data_type_gen],'in_inbin' : False,'transit_pl':transit_pl,'mode':mode}
+        data_glob_new={'FromAligned':gen_dic['align_'+data_type_gen],'in_inbin' : False,'studied_pl':studied_pl,'mode':mode}
 
         #Retrieving data that will be used in the binning
         #    - original data is associated with its original index, so that it can be retrieved easily by the binning routine
@@ -226,8 +226,14 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 data_exp['tell'] = dataload_npz(data_inst[vis_bin]['tell_'+data_type_gen+'_data_paths'][iexp])['tell']  
                 data_glob_new['vis_iexp_in_bin'][vis_bin][iexp]['tell_path'] = data_inst[vis_bin]['tell_'+data_type_gen+'_data_paths'][iexp]
             else:data_exp['tell'] = None
-            if gen_dic['cal_weight'] and data_inst[vis_bin]['mean_gdet']:data_exp['mean_gdet'] = dataload_npz(data_inst[vis_bin]['mean_gdet_'+data_type_gen+'_data_paths'][iexp])['mean_gdet'] 
-            else:data_exp['mean_gdet'] = None
+            if data_inst[vis_bin]['cal_weight']:
+                data_gcal = dataload_npz(data_inst[vis_bin]['sing_gcal_'+data_type_gen+'_data_paths'][iexp])
+                data_exp['sing_gcal'] = data_gcal['gcal'] 
+                if 'sdet2' in data_gcal:data_exp['sdet2'] = data_gcal['sdet2'] 
+                else:data_exp['sdet2'] = None                
+            else:
+                data_exp['sing_gcal']=None   
+                data_exp['sdet2'] = None                 
             if data_type_gen=='DI': 
                 iexp_glob=iexp
                 
@@ -293,15 +299,17 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 if not masterDIweigh:
                     if ((data_type_gen=='DI') and (rest_frame!='star')) or (data_type_gen!='DI'):flux_ref_exp=np.zeros(dim_exp_new,dtype=float)*np.nan
                     if data_type_gen!='DI':cov_ref_exp=np.zeros(data_inst['nord'],dtype=object)
-                tell_exp=np.ones(dim_exp_new,dtype=float) if data_inst[vis_bin]['tell_sp'] else None
-                mean_gdet_exp=np.ones(dim_exp_new,dtype=float) if gen_dic['cal_weight'] and data_inst[vis_bin]['mean_gdet'] else None                
+                tell_exp=np.ones(dim_exp_new,dtype=float) if (data_exp['tell'] is not None) else None
+                sing_gcal_exp=np.ones(dim_exp_new,dtype=float) if (data_exp['sing_gcal'] is not None) else None 
+                sdet2_exp=np.zeros(dim_exp_new,dtype=float) if (data_exp['sdet2'] is not None) else None    
                 for iord in range(data_inst['nord']): 
                     data_to_bin[iexp_off]['flux'][iord],data_to_bin[iexp_off]['cov'][iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['flux'][iord] , cov = data_exp['cov'][iord], kind=gen_dic['resamp_mode'])                                                        
                     if not masterDIweigh:
                         if (data_type_gen=='DI') and (rest_frame!='star'):flux_ref_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_ref['edge_bins'][iord], data_ref['flux'][iord], kind=gen_dic['resamp_mode'])                                                                            
                         elif (data_type_gen!='DI'):flux_ref_exp[iord],cov_ref_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_ref['edge_bins'][iord], data_ref['flux'][iord] , cov = data_ref['cov'][iord], kind=gen_dic['resamp_mode'])                                                        
-                    if data_inst[vis_bin]['tell_sp']:tell_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['tell'][iord] , kind=gen_dic['resamp_mode']) 
-                    if gen_dic['cal_weight'] and data_inst[vis_bin]['mean_gdet'] :mean_gdet_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['mean_gdet'][iord] , kind=gen_dic['resamp_mode'])                    
+                    if tell_exp is not None:tell_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['tell'][iord] , kind=gen_dic['resamp_mode']) 
+                    if sing_gcal_exp is not None:sing_gcal_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['sing_gcal'][iord] , kind=gen_dic['resamp_mode']) 
+                    if sdet2_exp is not None:sdet2_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['sdet2'][iord] , kind=gen_dic['resamp_mode'])                   
                 data_to_bin[iexp_off]['cond_def'] = ~np.isnan(data_to_bin[iexp_off]['flux'])  
 
                 #Resample local stellar profile estimate
@@ -331,7 +339,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     if data_type_gen!='DI':cov_ref_exp = data_ref['cov']   
                 for key in ['flux','cond_def','cov']:data_to_bin[iexp_off][key] = data_exp[key] 
                 tell_exp=data_exp['tell']
-                mean_gdet_exp=data_exp['mean_gdet'] 
+                sing_gcal_exp=data_exp['sing_gcal'] 
+                sdet_exp2=data_exp['sdet2']
                 if (data_type_gen=='Atm'):
                     flux_est_loc_exp = data_est_loc['flux']
                     if data_dic['Intr']['cov_loc_star']:cov_est_loc_exp = data_est_loc['cov'] 
@@ -345,7 +354,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #Weight definition
             #    - the profiles must be specific to a given data type so that earlier types can still be called in the multi-visit binning, after the type of profile has evolved in a given visit
             #    - at this stage of the pipeline broadband flux scaling has been defined, if requested 
-            data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_mode,dim_exp_new,tell_exp,mean_gdet_exp,data_com['cen_bins'],dt_exp,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,bdband_flux_sc = gen_dic['flux_sc'])                          
+            data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_mode,dim_exp_new,tell_exp,sing_gcal_exp,data_com['cen_bins'],dt_exp,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,bdband_flux_sc = gen_dic['flux_sc'],sdet_exp2=sdet_exp2)                          
 
             #Timestamp and duration
             if not masterDIweigh:
@@ -413,7 +422,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #    - phase is associated with the reference planet of the first binned visit, and must be converted into phases of the other planets in each and all visits 
             ecl_all = np.zeros(data_glob_new['n_exp'],dtype=bool)
             data_glob_new['coord'] = {}
-            for pl_loc in data_dic[inst][vis_save]['transit_pl']:
+            for pl_loc in data_dic[inst][vis_save]['studied_pl']:
                 pl_params_loc=system_param[pl_loc]
             
                 #Phase conversion
@@ -490,7 +499,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
             if ('spec' in data_mode) and ('chrom' in system_prop):key_chrom+=['chrom']
-            data_glob_new['plocc_prop'],data_glob_new['spot_prop'],data_glob_new['common_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True)
+            data_glob_new['plocc_prop'],data_glob_new['spot_prop'],data_glob_new['common_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['studied_pl'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],out_ranges=True)
             
         #---------------------------------------------------------------------------
 
@@ -701,7 +710,7 @@ def init_bin_prof(data_type,ref_pl,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bin,
 
 
 
-def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,mean_gdet,cen_bins,dt,flux_ref_exp,cov_ref_exp,ref_val=0.,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True):
+def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True , sdet_exp2 = None):
     r"""**Binning routine: weights**
 
     Defines weights to be used when binning profiles.
@@ -716,87 +725,116 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     
     """  
     #Weight definition
+    #    - for all cases below, bands are defined as orders for e2ds, and as the full spectral range for CCFs and s1d  
+    ##################################################################################################################################################################################################################
+    #ERROR PROPAGATION
     #    - in case of photon noise the error on photons counts writes as E(n) = sqrt(N) where N is the number of photons received during a time interval dt over a spectral bin dw
     # + if the same measurement is manipulated, eg with N' = a*N1, then the rules of error propagation apply and E(N') = a*E(N1)
     # + if two independent measurements are made, eg related as N2 = a*N1, then E(N2) = sqrt(a*N1) = sqrt(a)*sqrt(N1) = sqrt(a)*E(N1) 
     #      if measurements are provided as a density, eg over time with n = N/dt
     # + if the same measurement is manipulated, eg with n = N/dt, then the rules of error propagation apply and E(n) = E(N)/dt
     # + if two independent measurements are made, eg with dt2 = a*dt1, then N2 = a*N1 and n2 = a*N1/(a*dt1) = n1 but E[n2] = E[N2/dt2] = E[N2]/dt2 = sqrt(N2)/dt2 = sqrt(a*N1)/(a*dt1) = E[N1]/sqrt(a) 
-    #    - standard pipelines return spectral flux density, ie the number of photoelectrons measured over an entire exposure per unit of wavelength (but not per unit of time):
-    # + F_meas(t,w) = gcal(band) N_meas(t,w)  
-    # + EF_meas(t,w) = E[ F_meas(t,w) ]
-    #                = gcal(band) sqrt( N_meas(t,w) )               assuming no other noise sources
-    #                = gcal(band) sqrt( F_meas(t,w)/gcal(band) )
-    #                = sqrt( gcal(band)*F_meas(t,w))       
-    #      where gcal represents corrections of raw measured photoelectrons for the instrumental response (typically the blaze function, ie the transmission of the grating, with gcal = 1/blaze), assumed constant for an instrument (see below) 
-    #      if fluxes were converted into temporal densities:
-    # + f_meas(t,w) = F_meas(t,w)/dt = gcal(band) N_meas(t,w) / dt
-    # + Ef_meas(t,w) = EF_meas(t,w)/dt = gcal(band) sqrt( N_meas(t,w) ) /dt =  sqrt( gcal(band) f_meas(t,w) / dt) 
-    #    - our estimate of the true measured flux is F_meas(t,w) = g(band) N_meas(t,w), where N_meas(t,w) follows a Poisson distribution with number of events N_true(t,w)
-    #      if enough photons are measured the Poisson distribution on N_meas(t,w) and thus F_meas(t,w) can be approximated by a normal distribution with mean F_true(t,w) and standard deviation EF_true(t,w) 
-    #      the issue with using the errors on individual bins to define their weights is that EF_meas(t,w) = sqrt(g(band) F_meas(t,w)) is a biased estimate of the true error
-    #      for a bin where F_meas(t,w) < F_true(w) because of statistical variations, we indeed get EF_meas(t,w) < EF_true(w) (and the reverse where F_meas(t,w) > F_true(w)) 
-    #      bins with lower flux values than the true flux will have larger weights, resulting in a weighted mean that is underestimated compared to the true flux (mathematically speaking, we do a harmonic mean rather than an arithmetic mean).    
-    #      the average flux measured over a large band (such as an order) is closer to the true flux over the band than in the case of a single bin, and thus its error is a better estimate of the true error, so we can assume:
-    # EF_meas(t,band) ~ EF_true(t,band)
-    #    - for all cases below, bands are defined as orders for e2ds, and as the full spectral range for CCFs and s1d   
-    #    - assuming that the flux spectra provided by pipelines are well corrected for this response, we do not want to introduce biases between exposures by using specific calibration files
-    #      a given calibration file (eg the blaze) may indeed not include all possible corrections for the instrumental response, and furthermore the flux calibration is not necessarily available for all instruments
-    #      we thus use the input flux and error tables to estimate gcal(band,t,v) and derive a profile common to all exposures processed for a given instrument (the goal being to approximate the instrumental response without introducing biases)
-    #      at the stage of the workflow where calibration is estimated, fluxes are still in number of photoelectrons, so that:
-    #      the flux in a given pixel verifies:
-    # F_true(w,t,v) = gcal(w,t,v)*N_true(w,t,v)
-    # EF_true(w,t,v) = gcal(w,t,v)*sqrt(N_true(w,t,v))
-    #      we estimate gcal over each order for S2D and the full spectral range for S1D
-    #      summing the flux densities over a large band yields 
-    # TF_meas(t,v) ~ TF_true(t,v) = sum(w, F_true(w,t,v) ) = gcal(band,t,v)*sum(w over band, N_true(w,t,v) )
-    #      thus
-    # ETF_meas(t,v) ~ E[ TF_true(t,v) ]
-    #               = E[ gcal(band,t,v)*sum(w over band, N_true(w,t,v) ) ]
-    #               = gcal(band,t,v)*E[ sum(w over band, N_true(w,t,v) ) ]
-    #               = gcal(band,t,v)*sqrt( sum(w over band, E[ N_true(w,t,v) )]^2 )
-    #               = gcal(band,t,v)*sqrt( sum(w over band, N_true(w,t,v) ) ) 
-    #      and thus 
-    # gcal(band,t,v) = TF_meas(t,v)*(dt*dw)/sum(w over band, N_true(w,t,v) )
-    # gcal(band,t,v) = TF_meas(t,v)*gcal(band,t,v)^2/ETF_meas(t,v)^2
-    # gcal(band,t,v) = ETF_meas(t,v)^2 / TF_meas(t,v)
-    #      we estimate gcal over each order and all exposures, and define gcal(band) as < t, v :  gcal(band,t,v) > 
-    #
-    #    - in the presence of red noise associated with the measured counts:
-    # ETF_meas(t,v) = gcal(band,t,v)*E[ sum(w over band, N_true(w,t,v) ) ]
-    #               = gcal(band,t,v)*sqrt( sum(w over band, E[ N_true(w,t,v) ]^2 + Ered(w)^2 )
-    #               = gcal(band,t,v)*sqrt( sum(w over band, N_true(w,t,v) + Ered(w)^2 )    
-    #               = gcal(band,t,v)*sqrt( sum(w over band, N_true(w,t,v) ) + TEred(band)^2 )
-    #      thus 
-    # sum(w over band, N_true(w,t,v) ) = ( ETF_meas(t,v)^2 / gcal(band,t,v)^2 ) - TEred(band)^2
-    #      and 
-    # gcal(band,t,v) = TF_meas(t,v)/sum(w over band, N_true(w,t,v) )               
-    # gcal(band,t,v) = TF_meas(t,v)/(( ETF_meas(t,v)^2 / gcal(band,t,v)^2 ) - TEred(band)^2 )
-    # ETF_meas(t,v)^2 / gcal(band,t,v) - gcal(band,t,v)*TEred(band)^2 = TF_meas(t,v)
-    # gcal(band,t,v)^2*TEred(band)^2 + TF_meas(t,v)*gcal(band,t,v) - ETF_meas(t,v)^2 = 0
-    #      with a = TEred(band)^2
-    #           b = TF_meas(t,v)
-    #           c = - ETF_meas(t,v)^2
-    #           gcal_white(band,t,v) = -c / b
-    #      taking the positive solution
-    # gcal(band,t,v) = ( -b + sqrt(  b^2 - 4*a*c ) ) / (2*a) 
-    #                = ( -TF_meas(t,v) + sqrt(  TF_meas(t,v)^2 + 4*TEred(band)^2*ETF_meas(t,v)^2 ) ) / (2*TEred(band)^2) 
-    #                = ( -TF_meas(t,v) + sqrt(  TF_meas(t,v)^2 + 4*TEred(band)^2*gcal_white(band,t,v)*TF_meas(t,v) ) ) / (2*TEred(band)^2) 
-    #      so that we could properly estimate the calibration profile in this way, knowing the red noise value
+    ##################################################################################################################################################################################################################
+    #COUNTS AND FLUXES
+    #    - counts measured over the detector arise from photoelectrons (blazed by the transmission grating 'bl') and dark current (subtracted by the DRS in the returned count level) accumulated over an exposure:
+    #      at a given time t, in a given pixel w of the detector, the extracted count level provided in BLAZE files is:
+    # N_meas[bl](w,t,v) = bl(w,t,v)*N_meas[star](w,t,v) 
+    #      the associated error is the quadratic sum of Poisson noise associated with blazed counts, Poisson noise associated with the measured and subtracted dark current, and read-out noise:  
+    # EN_meas[bl](w,t,v)^2 = E(N_meas[bl](w,t,v))^2
+    #                      = E( bl(w,t,v)*N_meas[star](w,t,v) )^2 + 2*E(Ndk_meas(w,t,v))^2 + Ern(w,t,v)^2 
+    #                      = bl(w,t,v)*N_meas[star](w,t,v) +  Edet_meas(w,t,v)^2
+    #                      = N_meas[bl](w,t,v) + Edet_meas(w,t,v)^2
+    #      where dark current and read-out noise are grouped in a global detector noise, and blazed counts error is sqrt( N_meas[bl](w,t,v) ) = sqrt(bl(w,t,v)*N_meas[star](w,t,v)) 
+    #            
+    #    - the ESPRESSO-like DRS return the number of counts per pixel over each exposure, corrected for the blaze:
+    # N_meas(w,t,v) = N_meas[bl](w,t,v)/bl(w,t,v)
+    #      we divide these profiles by the pixel width dw(w) to return spectral flux density as 
+    # F_meas(w,t,v) = N_meas(w,t,v)/dw(w)
+    #               = N_meas[bl](w,t,v)/(dw(w)*bl(w,t,v))
+    #      which we write as
+    # F_meas(w,t,v) = N_meas[bl](w,t,v)*gcal(w,t,v)    
+    #      we define the calibration profile gcal(w,t,v) = 1/(dw(w)*bl(w,t,v))) to represent the conversion from blazed pixel counts to deblazed spectral density 
+    #      the error on the spectral flux density is then
+    # EF_meas(w,t,v)^2 = E[ F_meas(w,t,v) ]^2    
+    #                  = E[ N_meas[bl](w,t,v)*gcal(w,t,v) ]^2       
+    #                  = E[ N_meas[bl](w,t,v)]^2 *gcal(w,t,v)^2   since gcal is a manipulation of the count number    
+    #                  = (N_meas[bl](w,t,v) + Edet_meas(w,t,v)^2)*gcal(w,t,v)^2   
+    #                  = (F_meas(w,t,v)/gcal(w,t,v) + Edet_meas(w,t,v)^2)*gcal(w,t,v)^2 
+    #                  = F_meas(w,t,v)*gcal(w,t,v) + Edet_meas(w,t,v)^2*gcal(w,t,v)^2 
+    #    - if we apply a further conversion into spectro-temporal flux density
+    # f_meas(w,t,v) = N_meas[bl](w,t,v)*(gcal(w,t,v)/dt) 
+    # Ef_meas(w,t,v) = F_meas(w,t,v)*gcal(w,t,v)/dt + Edet_meas(w,t,v)^2*(gcal(w,t,v)/dt)^2 
+    ##################################################################################################################################################################################################################
+    #ERROR ESTIMATES
+    #    - our estimate of the true measured flux is F_meas(w,t,v) = gcal(w,t,v) N_meas[bl](w,t,v), where N_meas[bl](w,t,v) follows a Poisson distribution with number of events N_true[bl](w,t,v)
+    #      if enough photons are measured the Poisson distribution on N_meas[bl](w,t,v) and thus F_meas(w,t,v) can be approximated by a normal distribution with mean F_true(w,t,v) and standard deviation EF_true(w,t,v) 
+    #      the issue with using the errors on individual bins to define their weights is that EF_meas(w,t,v) = sqrt(g(w,t,v) F_meas(w,t,v)) is a biased estimate of the true error
+    #      for a bin where F_meas(w,t,v) < F_true(w) because of statistical variations, we indeed get EF_meas(w,t,v) < EF_true(w) (and the reverse where F_meas(w,t,v) > F_true(w)) 
+    #      bins with lower flux values than the true flux will have larger weights, resulting in a weighted mean that is underestimated compared to the true flux (mathematically speaking, we do a harmonic mean rather than an arithmetic mean).   
+    #    - to get a better estimate of the error on the true measured flux, we either use:
+    # + the average flux measured over a large band (such as an order), which is closer to the true flux over the band than in the case of a single bin, and thus with an error that is a better estimate of the true error because the aforementioned bias is smaller:
+    #      EF_meas(band,t,v) ~ EF_true(band,t,v)
+    # + the average flux measured in a pixel over several exposures, for the same reason that the flux is more precise and closer to the true flux:
+    #      < t , EF_meas(w,t,v) > ~ < t , EF_true(w,t,v) > 
+    ##################################################################################################################################################################################################################    
+    #CALIBRATION AND DETECTOR NOISE PROFILES
+    #    - the calibration and detector noise profiles, as defined above, are required to estimate the true error and associated weight on the spectral flux density in a given pixel
+    #      to this purpose, we measured and formatted those profiles for each exposure in the ANTARESS_calib > calc_gcal() function, following the procedure described below
+    #    - furthermore, the calibration profile is also used to scale back temporarily flux values to an equivalent of extracted (blazed) counts, closer to the actual measurements on the detector
+    #      because the spectral flux density returned by the DRS are supposed to be comparable, and the calibration profiles we define may not match exactly those applied by the DRS, we do not use the exposure-specific calibration profiles for this scaling to avoid introducing biases in the scaled-back profiles
+    #      instead we use a mean profile over all processed visits of a given instrument, thus common to all exposures, defined as gcal(w,t,v) = < t, v :  gcal(w,t,v) > over each independent order
+    #    - when blazed spectra are not available, calibration profiles are estimated from input flux and error tables (over each order for S2D and the full spectral range for S1D), and detector noise cannot be estimated
+    #      calibration profiles are estimated from the spectral flux density (ie the unblazed profiles returned by the DRS and converted into density):    
+    # F_meas(w,t,v) = gcal(w,t,v)*N_meas[bl](w,t,v)
+    # EF_meas(w,t,v)^2 ~ gcal(w,t,v)^2*N_meas[bl](w,t,v) since we neglect detector noise      
+    #      we can approximate the true flux by the measured flux summed over a large band:
+    # TF_meas(band,t,v) ~ TF_true(band,t,v) 
+    #                   = sum(w over band, F_true(w,t,v) ) 
+    #                   = sum(w over band, gcal(w,t,v)*N_true[bl](w,t,v) ) 
+    #                   ~ gcal(band,t,v)*sum(w over band, N_true[bl](w,t,v) )
+    #      where we assume that the calibration profile varies with low frequency, ie gcal(w in band,t,v) ~ gcal(band,t,v)   
+    #      the associated error is 
+    # ETF_meas(t,v)^2 ~ E[ TF_true(t,v) ]^2   
+    #                 = E[ gcal(band,t,v)*sum(w over band, N_true[bl](w,t,v) ) ]^2   
+    #                 = gcal(band,t,v)^2*E[ sum(w over band, N_true[bl](w,t,v) ) ]^2   
+    #                 = gcal(band,t,v)^2*sum(w over band, E[ N_true[bl](w,t,v) )]^2
+    #                 = gcal(band,t,v)^2*sum(w over band, N_true[bl](w,t,v) )
+    #      calibration profiles can thus be estimated as
+    # ETF_meas(t,v)^2 / TF_meas(band,t,v) = gcal(band,t,v)^2*sum(w over band, N_true[bl](w,t,v) ) / ( gcal(band,t,v)*sum(w over band, N_true[bl](w,t,v) ) )
+    #                                     = gcal(band,t,v)
+    #      in the presence of red noise associated with the measured counts:
+    # ETF_meas(t,v)^2 ~ gcal(band,t,v)^2*E[ sum(w over band, N_true[bl](w,t,v) ) ]^2
+    #                 = gcal(band,t,v)^2*sum(w over band, E[ N_true[bl](w,t,v) ]^2 + Ered(w)^2 )
+    #                 = gcal(band,t,v)^2*sum(w over band, N_true[bl](w,t,v) + Ered(w)^2 )    
+    #                 = gcal(band,t,v)^2*( sum(w over band, N_true[bl](w,t,v) ) + TEred(band)^2 )
     #      in practive we are still measuring the calibration as :
     # gcal_meas(band,t,v) = ETF_meas(t,v)^2 / TF_meas(t,v)
-    #                     = gcal(band,t,v)^2 *( sum(w over band, N_true(w,t,v) ) + TEred(band)^2 ) / TF_meas(t,v)        
+    #                     = gcal(band,t,v)^2 *( sum(w over band, N_true[bl](w,t,v) ) + TEred(band)^2 ) / TF_meas(t,v)        
     #                     = gcal(band,t,v)^2 *( TF_meas(t,v)/gcal(band,t,v) + TEred(band)^2 ) / TF_meas(t,v)   
     #                     = gcal(band,t,v) + gcal(band,t,v)^2*TEred(band)^2/ TF_meas(t,v)
-    #      so that we are overestimating the true calibration profile (especially in region of low flux), and when scaling back to measured counts as N_meas(t,w) = F_meas(t,w)/gcal_meas(band) we are underestimating the true measured counts.
+    #      so that we are overestimating the true calibration profile (especially in region of low flux), and when scaling back to measured blazed counts as N_meas[bl](w,t,v) = F_meas(w,t,v)/gcal_meas(band) we are underestimating the true measured counts.
+    #    - when blazed spectra are available, we first derive the exact blaze profiles applied by the DRS in each exposure as
+    # bl(w,t,v) = N_meas[bl](w,t,v)/N_meas(w,t,v) 
+    #      where N_meas[bl] is the table returned by the BLAZE files, and N_meas the table returned by the standard files  
+    #      we then define the calibration profiles as
+    # gcal(w,t,v) = 1/(dw(w)*bl(w,t,v)))
+    #      we then derive the detector noise using the blazed counts and error tables from the BLAZE files:
+    # EN_meas[bl](w,t,v)^2 = N_meas[bl](w,t,v) + Edet_meas(w,t,v)^2        
+    # Edet_meas(w,t,v)^2 = EN_meas[bl](w,t,v)^2 - N_meas[bl](w,t,v)      
+    #      since we apply in reverse the operations performed by the DRS to define EN_meas[bl] we retrieve the exact measured detector noise
+    #      we however have to approximate Edet_true(w,t,v) ~ Edet_meas(w,t,v), ignoring the underlying bias induced by using 'Ndk_meas' instead of 'Ndk_true' (which we cannot estimate independently) 
+    ##################################################################################################################################################################################################################
+    #WEIGHING PROFILES    
     #    - what matters for the weighing is the change in the precision on the flux over time in a given pixel:
     # + low-frequency variations linked to the overall flux level of the data (eg due to atmospheric diffusion)
     # + high-frequency variations linked to variations in the spectral flux distribution at the specific wavelength of the pixel
     #   for example when averaging the same spectra in their own rest frame, spectral features do not change and there is no need to weigh
     #   however if there are additional features, such as telluric absorption or stellar lines in transmission spectra, then a given pixel can see large flux variations and weighing is required.  
+    #
     #    - extreme care must be taken about the rest frame in which the different elements involved in the weighing profiles are defined
     # + low-frequency components are assumed constant over an order and are not aligned / resampled (eg instrumental calibration, global flux scaling, flux balance and light curve scaling)
     # + high-frequency components must have followed the same shifts and resampling as the weighed profile (eg telluric or master stellar spectrum) 
+    #
     #    - weights are normalized within the binning function, so that any factor constant over time will not contribute to the weighing
     #    - planetary signatures are not accounted for when binning disk-integrated and intrinsic stellar spectra because they have been excluded from the data or are considered negligible
     #    - weights are necessarily spectral for intrinsic and atmospheric spectra because of the master 
@@ -806,177 +844,187 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     #--------------------------------------------------------    
     #Definition of errors on disk-integrated spectra
     #--------------------------------------------------------     
+    #
     #    - we calculate the mean of a time-series of disk-integrated spectra while accounting for variations in the noise of the pixels between different exposures
+    #
     #    - at the latest processing stage those spectra are defined from rescale_profiles() as:
     # Fsc(w,t,v) = LC_theo(band,t,v)*Fcorr(w,t,v)/(dt*globF(t,v))    
     #      with the corrected spectra linked to the measured spectra as (see spec_corr() function above for the corrections that are included):
     # Fcorr(w,t,v) = F_meas(w,t,v)*Ccorr(w,t,v)  
-    #      the measured spectrum is the one read from the input files of the instruments DRS as:
-    # F_meas(w,t,v) = gcal(band)*N_meas(w,t,v)
-    #      where gcal(band) represents corrections of measured spectral density of photoelectron N_meas for instrumental response (flat field, blaze, etc) assumed to have low-frequency variations
-    #            for the purpose of weighing and to avoid biases between the estimated N_meas we assume a constant conversion for all exposures
-    #      thus
-    # Fsc(w,t,v) = LC_theo(band,t,v)*gcal(band)*N_meas(w,t,v)*Ccorr(w,t,v)/(dt*globF(t,v)) 
-    #      or in terms of photoelectons cumulated over the exposure
-    # N_sc(w,t,v) = LC_theo(band,t,v)*N_meas(w,t,v)*Ccorr(w,t,v)/globF(t,v) 
-    #    - as explained above we want to use as weights the errors on the true measured flux, ie : 
-    # EFsc_true(w,t,v) = E( LC_theo(band,t,v)*gcal(band)*N_true(w,t,v)*Ccorr(w,t,v)/(dt*globF(t,v)) )
-    #                  = LC_theo(band,t,v)*gcal(band)*Ccorr(w,t,v)*E( N_true(w,t,v) )/(dt*globF(t,v))
-    #                  = LC_theo(band,t,v)*gcal(band)*Ccorr(w,t,v)*sqrt( N_true(w,t,v) )/(dt*globF(t,v))
-    #      the spectra Fsc_true(w,t,v)/LC_theo(band,t,v) have the same flux density profile as the master of the unocculted star MFstar_true(w,v), so that 
-    # gcal(band)*N_true(w,t,v)*Ccorr(w,t,v)/(dt*globF(t,v)) ~ MFstar_true(w,v)
-    # N_true(w,t,v) = MFstar_true(w,v)*(dt*globF(t,v))/(gcal(band)*Ccorr(w,t,v))
-    #      since the master spectrum of the unocculted star is measured with a high SNR we can assume: 
+    #      the measured spectrum is the one read from the input files of the instruments DRS as (see above):
+    # F_meas(w,t,v) = gcal(w,t,v)*N_meas[bl](w,t,v)
+    #      so that
+    # Fsc(w,t,v) = LC_theo(band,t,v)*F_meas(w,t,v)*Ccorr(w,t,v)/(dt*globF(t,v))   
+    #            = LC_theo(band,t,v)*gcal(w,t,v)*N_meas[bl](w,t,v)*Ccorr(w,t,v)/(dt*globF(t,v)) 
+    #      or in terms of counts per pixel cumulated over the exposure
+    # N_sc(w,t,v) = LC_theo(band,t,v)*N_meas[bl](w,t,v)*Ccorr(w,t,v)/globF(t,v) 
+    #    - as explained above we want to use as weights the errors on the true spectral flux density, ie : 
+    # EFsc_true(w,t,v)^2 = E( LC_theo(band,t,v)*gcal(w,t,v)*N_true[bl](w,t,v)*Ccorr(w,t,v)/(dt*globF(t,v)) )^2    
+    #                    = E( N_true[bl](w,t,v) )^2 * (LC_theo(band,t,v)*gcal(w,t,v)*Ccorr(w,t,v)*/(dt*globF(t,v)) )^2        
+    #      with the errors on blazed counts expressed as EN_true[bl](w,t,v)^2 = N_true[bl](w,t,v) + Edet_true(w,t,v)^2 so that 
+    # EFsc_true(w,t,v)^2 = ( N_true[bl](w,t,v) + Edet_true(w,t,v)^2 )* (LC_theo(band,t,v)*gcal(w,t,v)*Ccorr(w,t,v)*/(dt*globF(t,v)) )^2          
+    #      the spectra Fsc_true(w,t,v)/LC_theo(band,t,v) have the same flux density profile as the master of the unocculted star MFstar_true(w,v), so that     
+    # gcal(w,t,v)*N_true[bl](w,t,v)*Ccorr(w,t,v)/(dt*globF(t,v)) ~ MFstar_true(w,v)    
+    #      since the master spectrum of the unocculted star is measured with a high SNR we can assume:     
     # MFstar_true(w,v) ~ MFstar_meas(w,v)
     #      thus
-    # sqrt(N_true(w,t,v)) = sqrt( MFstar_meas(w,v)*dt*globF(t,v))/(gcal(band)*Ccorr(w,t,v)) )    
-    #      and
-    # EFsc_true(w,t,v) = LC_theo(band,t,v)*gcal(band)*Ccorr(w,t,v)*sqrt( MFstar_meas(w,v)*dt*globF(t,v)/(gcal(band)*Ccorr(w,t,v)) )/(dt*globF(t,v))    
-    #                  = LC_theo(band,t,v)*sqrt(gcal(band)*Ccorr(w,t,v)* MFstar_meas(w,v)/(dt*globF(t,v)) )    
+    # N_true[bl](w,t,v) = MFstar_meas(w,v)*(dt*globF(t,v))/(gcal(w,t,v)*Ccorr(w,t,v))
+    #      and   
+    # EFsc_true(w,t,v)^2 = ( MFstar_meas(w,v)*(dt*globF(t,v))/(gcal(w,t,v)*Ccorr(w,t,v)) + Edet_true(w,t,v)^2 )* (LC_theo(band,t,v)*gcal(w,t,v)*Ccorr(w,t,v)*/(dt*globF(t,v)) )^2   
+    #                    = ( MFstar_meas(w,v)/(gcal(w,t,v)*Ccorr_glob(w,t,v)) + Edet_true(w,t,v)^2 )* (LC_theo(band,t,v)*gcal(w,t,v)*Ccorr_glob(w,t,v) )^2 
+    #      with Ccorr_glob(w,t,v) = Ccorr(w,t,v)/(dt*globF(t,v))
+    #      at pixels where counts are negative the DRS consider them null to define error tables, so that errors on blazed counts are expressed as
+    # EFsc_true(w,t,v)^2 = Edet_true(w,t,v)^2 * (LC_theo(band,t,v)*gcal(w,t,v)*Ccorr_glob(w,t,v) )^2    
+    #      when N_true[bl](w,t,v) = MFstar_meas(w,v)/(gcal(w,t,v)*Ccorr_glob(w,t,v)) <0 
+    #
+    #    - if detector noise is neglected, the error reduces to     
+    # EFsc_true(w,t,v)^2 = MFstar_meas(w,v)*LC_theo(band,t,v)^2*gcal(w,t,v)*Ccorr_glob(w,t,v)  
+    #      in that case weights remain undefined at pixels where N_true[bl](w,t,v) = MFstar_meas(w,v)/(gcal(w,t,v)*Ccorr_glob(w,t,v)) <0  
+    #
     #    - final weights are defined as:    
-    # weight(w,t,v) = 1/EFsc_true(w,t,v)^2  
-    #               = dt*globF(t,v)/(LC_theo(band,t,v)^2*gcal(band)*Ccorr(w,t,v)*MFstar_meas(w,v))      
-    #      we note that the spectral normalization of counts by dw is ignored since all profiles are defined over the same spectra table
+    # weight(w,t,v) = 1/EFsc_true(w,t,v)^2       
     #    - in the star rest frame, spectral features from the disk-integrated spectrum remain fixed over time , ie that a given pixel sees no variations in flux from MFstar(w,v) in a given visit and the contribution of the master spectrum can be ignored    
     #      we note that we neglected the differences between the Fsc_true and MFstar profiles that are due to the occulted local stellar lines and planetary atmospheric lines
-    #    - even if the calibration remains constant in time and does not contribute to the weighing of disk-integrated spectra, it must always be set to a value consistent with error definitions in the pipeline,
-    # so that EFsc_true is comparable with other error tables in the weighing of intrinsic and planetary profiles
-    #      calibration profiles are thus always estimated by default by the pipeline, either from the input error tables when available or from the imposed error table for consistency   
-    #    - in region of low S/N the noise may not be poisson-dominated anymore. If we consider a constant red noise over time per pixel:
-    # EN_true(w,t,v)^2 = N_true(w,t,v) + Ered(w)^2
-    #      and thus 
-    # EFsc_true(w,t,v)^2 = LC_theo(band,t,v)^2*gcal(band)^2*Ccorr(w,t,v)^2*E( N_true(w,t,v) )^2/(dt*globF(t,v))^2
-    #                    = LC_theo(band,t,v)^2*gcal(band)^2*Ccorr(w,t,v)^2*( N_true(w,t,v) + Ered(w)^2 )/(dt*globF(t,v))^2    
-    #                    = EFsc_true_white(w,t,v)^2 + ( LC_theo(band,t,v)*gcal(band)*Ccorr(w,t,v)*Ered(w)/(dt*globF(t,v)))^2      
-    #       we can consider that the master spectrum has been defined as the weighted sum of n_out exposures, so that :
-    # MFstar_meas(t,w) ~ MFstar_true(t,w) = gcal(band,t,v)*sum(n_out, wstar(t_out,w)*Nstar_meas(t_out,w))
-    #      and its error is the quadratic sum of errors on each exposure, themselves the quadratic sum of photon-noise and red noise errors: 
-    # EMFstar_meas(t,w)^2 ~ EMFstar_true(t,w)^2 = gcal(band)^2*sum(n_out, wstar(t_out,w)^2*( Nstar_meas(t_out,w) + Ered(w)^2 ) )
-    #                                           = gcal(band)^2*( sum(n_out, wstar(t_out,w)^2*Nstar_meas(t_out,w)) + sum(n_out, wstar(t_out,w))*Ered(w)^2  )
-    #                                           = gcal(band)^2*( sum(n_out, wstar(t_out,w)^2*MFstar_meas(w,v)*(dt_out*globF(t_out,v))/(gcal(band)*Ccorr(w,t_out,v))) + Twstar(w)*Ered(w)^2  ) 
-    #                                           = gcal(band)*MFstar_meas(w,v)*sum(n_out, wstar(t_out,w)^2*(dt_out*globF(t_out,v))/Ccorr(w,t_out,v)) + gcal(band)^2*Twstar(w)*Ered(w)^2  
-    #                                           = gcal(band)*MFstar_meas(w,v)*Twstar2(w) + gcal(band)^2*Twstar(w)*Ered(w)^2 
-    #      so that 
-    # Ered(w)^2 = (EMFstar_meas(t,w)^2  -  gcal(band)*MFstar_meas(w,v)*Twstar2(w) )/(gcal(band)^2*Twstar(w))
-    #      and 
-    # EFsc_true(w,t,v)^2 = EFsc_true_white(w,t,v)^2 + Ered(w)^2*( LC_theo(band,t,v)*gcal(band)*Ccorr(w,t,v)/(dt*globF(t,v)))^2         
-    #                    = LC_theo(band,t,v)^2*(gcal(band)*Ccorr(w,t,v)* MFstar_meas(w,v)/(dt*globF(t,v))) + ( LC_theo(band,t,v)*gcal(band)*Ccorr(w,t,v)/(dt*globF(t,v)))^2 *(EMFstar_meas(t,w)^2  -  gcal(band)*MFstar_meas(w,v)*Twstar2(w) )/(gcal(band)^2*Twstar(w))        
-    #                    = LC_theo(band,t,v)^2*Ccorr(w,t,v)*[  gcal(band)*MFstar_meas(w,v) + (Ccorr(w,t,v)/(dt*globF(t,v)))*( EMFstar_meas(t,w)^2 - MFstar_meas(t,w)*gcal(band)*Twstar2(w) )/Twstar(w)  ]/(dt*globF(t,v))
-    #                    = LC_theo(band,t,v)^2*Ccorr(w,t,v)*[  gcal(band)*MFstar_meas(w,v)    - (Ccorr(w,t,v)/(dt*globF(t,v)))* MFstar_meas(t,w)*gcal(band)*Twstar2(w) /Twstar(w)         + (Ccorr(w,t,v)/(dt*globF(t,v)))*EMFstar_meas(t,w)^2/Twstar(w)  ]/(dt*globF(t,v))
-    #                    = LC_theo(band,t,v)^2*Ccorr(w,t,v)*[  MFstar_meas(w,v)*gcal(band)*( 1 - (Ccorr(w,t,v)*Twstar2(w)/(dt*globF(t,v)*Twstar(w)))) + (Ccorr(w,t,v)/(dt*globF(t,v)))*EMFstar_meas(t,w)^2/Twstar(w)  ]/(dt*globF(t,v))
-    #                    = LC_theo(band,t,v)^2*Ccorr(w,t,v)*[  MFstar_meas(w,v)*gcal(band)*( Twstar(w)*dt*globF(t,v) - Ccorr(w,t,v)*Twstar2(w)) + Ccorr(w,t,v)*EMFstar_meas(t,w)^2  ]/((dt*globF(t,v))^2*Twstar(w))
     #--------------------------------------------------------     
 
-    #Calculate weights at pixels where the master stellar spectrum is defined and positive
-    cond_def_weights = (~np.isnan(flux_ref_exp)) & (flux_ref_exp>ref_val)
+    #Calculate weights at pixels where the master stellar spectrum is defined
+    #    - condition on null and negative counts is accounted for in the error calculation function
+    cond_def_weights = (~np.isnan(flux_ref_exp))
     if np.sum(cond_def_weights)==0:stop('Issue with master definition')
-    
-    #Spectral corrections
-    #    - all corrections that are applied between the input spectra and the spectra processed per visit should be included in this function:
-    # > instrumental calibration: uploaded from 'gcal_inputs' for every type of data
-    #   for original 2D or 1D spectra, it returns the estimated spectral calibration profiles for each exposure 
-    #   for original CCFs or after conversion into CCFs or from 2D/1D it returns a global calibration
-    #   if original 2D or 1D spectra were converted back into count-equivalent values and are still in their original format, calibration profiles are rescaled by the mean calibration profile over the visit
-    # > tellurics: Ccorr(w,t,v) = 1/T(w,t,v)
-    #   with T=1 if not telluric absorption, 0 if maximum absorption
-    #   telluric profiles for each exposure are contained in the data upload specific to the exposure, and have been aligned and set to the same rest frame  
-    #   they are propagated through 2D/1D conversion but not CCF conversion
-    # > flux balance: Ccorr(w,t,v) = ( 1/Pbal(band,t,v) )*( 1/Pbal_ord(band,t,v))
-    #   where Pbal and Pbal_ord are the low-frequency polynomial corrections of flux balance variations over the full spectrum or per order
-    #   errors on Pbal are neglected and it can be considered a true estimate because it is fitted over a large number of pixels 
-    #   the corrections were defined over the spectral in their input rest frame. Given the size of the bands, we neglect spectral shifts and assume the correction can be directly used over any table   
-    #   note that SNR(t,order) = N(t,order)/sqrt(N(t,order)) = sqrt(N(t,order))    
-    #   since Pbal(band,t,v) is an estimate of F(band,t,v)/MFstar(band,v) times a normalization factor, it is proportional to N(band,t,v) (since the reference is time-independent)
-    #   thus Pbal(order,t,v) is proportional to SNR(order,t,v)^2
-    #   global normalisation coefficient is not spectral and can be directly applied to any data
-    #   global flux balance correction is defined as a function over the full instrument range and can be directly applied to any spectral data, but since it does not change the mean flux it is not propagated through CCF conversion
-    #   order flux balance correction is not propagated through 2D/1D conversion or CCF conversion 
-    # > cosmics and permanent peaks: ignored in the weighing, as flux values are not scaled but replaced
-    # > fringing and wiggles: ignored for now
-    if gen_corr_Fbal and ('spec' in data_mode) and corr_Fbal: 
+
+    #Flux balance functions
+    if gen_corr_Fbal and ('spec' in data_mode) and (corr_Fbal or (data_mode==gen_type[inst])): 
         data_Fbal = dataload_npz(save_data_dir+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp_glob)+'_add')
-        corr_func_glob = data_Fbal['corr_func']
-        corr_func_vis = data_Fbal['corr_func_vis']
+    if gen_corr_Fbal and ('spec' in data_mode) and corr_Fbal: 
+        Fbal_glob = data_Fbal['corr_func']
+        Fbal_glob_vis = data_Fbal['corr_func_vis']
     else:
-        data_Fbal = None
-        corr_func_glob=default_func 
-        corr_func_vis = None
-    if corr_func_vis is not None:corr_func_glob_vis = corr_func_vis
-    else:corr_func_glob_vis=default_func 
+        Fbal_glob=default_func 
+        Fbal_glob_vis=default_func 
     if gen_corr_Fbal_ord and ('spec' in data_mode) and (data_mode==gen_type[inst]):
-        if data_Fbal is None:data_Fbal = dataload_npz(save_data_dir+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp_glob)+'_add')
-        corr_func_ord = data_Fbal['Ord']['corr_func']
-    else:corr_func_ord={iord_orig:default_func for iord_orig in iord_orig_list}
-    if (mean_gdet is None):mean_gdet = np.ones(dim_exp,dtype=float)
-    if (tell_exp is None):tell_exp = np.ones(dim_exp,dtype=float)
-    spec_corr={}
-    for iord,iord_orig in enumerate(iord_orig_list):
-        if data_mode=='CCF':cen_bins_ord = np.array([1.])
-        else:cen_bins_ord = cen_bins[iord,cond_def_weights[iord]]
-        nu_bins_ord = c_light/cen_bins_ord[::-1]
-        corr_Fbal_glob_ord = (corr_func_glob(nu_bins_ord)*corr_func_glob_vis(nu_bins_ord))[::-1]
-        spec_corr[iord] = mean_gdet[iord,cond_def_weights[iord]]/(tell_exp[iord,cond_def_weights[iord]]*corr_func_ord[iord_orig](cen_bins_ord)*corr_Fbal_glob_ord)
+        Fbal_ord_all = data_Fbal['Ord']['corr_func']
+    else:Fbal_ord_all = None
 
     #Spectral broadband flux scaling 
     #    - includes broadband contribution, unless overwritten by input 
     #    - flux_sc = 1 with no occultation, 0 with full occultation
     if bdband_flux_sc:     
         data_scaling = dataload_npz(scaled_data_paths+str(iexp_glob))        
-        flux_sc = {iord:1. - data_scaling['loc_flux_scaling'](cen_bins[iord,cond_def_weights[iord]]) for iord in range(nord)}
         if (glob_flux_sc is None):glob_flux_sc = data_scaling['glob_flux_scaling']        
     
     #Global flux scaling can still be applied, if provided as input
-    else:
-        flux_sc = {iord:1. for iord in range(nord)}     
-        if (glob_flux_sc is None):glob_flux_sc = 1.
+    elif (glob_flux_sc is None):glob_flux_sc = 1.
+        
+    #Calculating general tables
+    flux_sc_all = np.ones(dim_exp,dtype=float)
+    EFsc2_all = np.zeros(dim_exp,dtype=float)*np.nan 
+    if data_type!='DI':var_ref2 = np.zeros(dim_exp,dtype=float)*np.nan  
+    for iord,iord_orig in enumerate(iord_orig_list):
+        cond_def_weights_ord = cond_def_weights[iord]
+        cen_bins_ord = cen_bins[iord,cond_def_weights_ord]
+    
+        #Instrumental calibration: gcal_exp(w,t,v)
+        #   for original 2D or 1D spectra, gcal_exp is the estimated spectral calibration profile for the exposure (rescaled by the mean calibration profile over the visit if spectra to be weighted were converted back into count-equivalent values and are still in their original format)
+        #   calibration profiles were estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow  
+        #   for original CCFs or after conversion into CCFs or from 2D/1D it returns a global calibration
+        gcal_ord = gcal_exp[iord,cond_def_weights_ord]
+    
+        #Spectral corrections
+        if ('spec' in data_mode):
+            nu_bins_ord = c_light/cen_bins_ord[::-1]
+            #    - the factor Ccorr includes :
+            # > flux balance: Ccorr(w,t,v) = ( 1/Pbal(band,t,v) )*( 1/Pbal_ord(band,t,v))
+            #   where Pbal and Pbal_ord are the low-frequency polynomial corrections of flux balance variations over the full spectrum or per order
+            #   errors on Pbal are neglected and it can be considered a true estimate because it is fitted over a large number of pixels 
+            #   the corrections were defined over the spectral in their input rest frame. Given the size of the bands, we neglect spectral shifts and assume the correction can be directly used over any table   
+            #   note that SNR(t,order) = N(t,order)/sqrt(N(t,order)) = sqrt(N(t,order))    
+            #   since Pbal(band,t,v) is an estimate of F(band,t,v)/MFstar(band,v) times a normalization factor, it is proportional to N(band,t,v) (since the reference is time-independent)
+            #   thus Pbal(order,t,v) is proportional to SNR(order,t,v)^2
+            #   global normalisation coefficient is not spectral and can be directly applied to any data
+            #   global flux balance correction is defined as a function over the full instrument range and can be directly applied to any spectral data, but since it does not change the mean flux it is not propagated through CCF conversion
+            #   order flux balance correction is not propagated through 2D/1D conversion or CCF conversion 
+            if Fbal_ord_all is None:Fbal_ord = 1.
+            else:Fbal_ord = Fbal_ord_all[iord_orig](cen_bins_ord)
+            corr_Fbal_glob_ord = Fbal_ord*(Fbal_glob(nu_bins_ord)*Fbal_glob_vis(nu_bins_ord))[::-1]
+            # > tellurics: Ccorr(w,t,v) = 1/T(w,t,v)
+            #   with T=1 if not telluric absorption, 0 if maximum absorption
+            #   telluric profiles (contained in the data upload specific to the exposure) were defined on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow
+            #   they are propagated through 2D/1D conversion but not CCF conversion    
+            if (tell_exp is None):tell_ord = 1.
+            else:tell_ord = tell_exp[iord,cond_def_weights_ord]
+            # > cosmics and permanent peaks: ignored in the weighing, as flux values are not scaled but replaced
+            # > fringing and wiggles: ignored for now
+            # > final spectral correction
+            spec_corr_ord = 1./(tell_ord*corr_Fbal_glob_ord)
+        else:spec_corr_ord = 1.
 
-    #Sub-function defining the squared error on scaled disk-integrated profiles
-    def calc_EFsc2(flux_sc_ord,flux_ref_ord,spec_corr_ord):
-        return (flux_sc_ord**2.)*flux_ref_ord*spec_corr_ord/(dt*glob_flux_sc)
+        #Spectral broadband flux scaling 
+        if bdband_flux_sc:flux_sc_all[iord,cond_def_weights_ord] = 1. - data_scaling['loc_flux_scaling'](cen_bins_ord)      
+        
+        #Global scaling factor     
+        Ccorr_glob_ord = spec_corr_ord/(dt*glob_flux_sc)
 
+        #Estimate of true blazed counts     
+        Nbl_ord = flux_ref_exp[iord,cond_def_weights_ord]/(gcal_ord*Ccorr_glob_ord)
+
+        #Estimate of variance on scaled disk-integrated profiles
+        #    - required for all weights calculations
+        #    - detector noise, if defined for S2D, has been estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow 
+        cond_def_pos_ord = (Nbl_ord>0.) 
+        if (sdet_exp2 is not None):
+            EFsc2_all[iord,cond_def_weights_ord] = sdet_exp2[iord,cond_def_weights_ord[cond_def_pos_ord]]       #detector variance
+            EFsc2_all[iord,cond_def_weights_ord[cond_def_pos_ord]]+= Nbl_ord[cond_def_pos_ord]                  #co-adding photoelectron variance where positive
+            EFsc2_all[iord,cond_def_weights_ord] *= ( flux_sc_all[iord,cond_def_weights_ord]*Ccorr_glob_ord*gcal_ord)**2.            #scaling
+             
+        else:
+            
+            #Weights are kept undefined (ie, no weighing) where variance is null or negative      
+            EFsc2_all[iord,cond_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,cond_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
+            
+        #Variance on master stellar spectrum
+        if data_type!='DI':var_ref2[iord,cond_def_weights_ord] = cov_ref_exp[iord][0,cond_def_weights_ord]
+            
+    #--------------------------------------------------------   
     #Weights on disk-integrated spectra
     if data_type=='DI': 
-        for iord in range(nord):
-            weight_spec[iord,cond_def_weights[iord]] = 1./calc_EFsc2(flux_sc[iord],flux_ref_exp[iord,cond_def_weights[iord]],spec_corr[iord])  
+        weight_spec = 1./EFsc2_all
 
     else:
 
-        #Function defining the squared error on local stellar profiles
-        def calc_EFres2(flux_ref_ord,err_ref_ord2,flux_sc_ord,spec_corr_ord):
-            return err_ref_ord2 + calc_EFsc2(flux_sc_ord,flux_ref_ord,spec_corr_ord)
+        #Variance on differential profiles
+        EFdiff2 = var_ref2 + EFsc2_all
 
         #--------------------------------------------------------    
         #Definition of errors on differential spectra
         #-------------------------------------------------------- 
         #    - see rescale_profiles(), extract_res_profiles(), the profiles are defined as:
-        # Fres(w,t,v) = ( MFstar(w,v) - Fsc(w,t,v) )
+        # Fdiff(w,t,v) = ( MFstar(w,v) - Fsc(w,t,v) )
         #      where profiles have been scaled to comparable levels and can be seen as (temporal) flux densities
         #    - we want to use as weights the errors on the true differential flux:
-        # EFres_true(w,t,v) = E[  MFstar_true(w,v) - Fsc_true(w,t,v) ]
+        # EFdiff_true(w,t,v) = E[  MFstar_true(w,v) - Fsc_true(w,t,v) ]
         #                   = sqrt( EMFstar_true(w,v)^2 + EFsc_true(w,t,v)^2 )  
         #      where we assume that the two profiles are independent, and that the error on the master flux averaged over several exposures approximates well the error on the true flux, even within a single bin, so that:          
-        # EFres_true(w,t,v) = sqrt( EMFstar_meas(w,v)^2 + EFsc_true(w,t,v)^2 )  
+        # EFdiff_true(w,t,v) = sqrt( EMFstar_meas(w,v)^2 + EFsc_true(w,t,v)^2 )  
         #    - final weights are defined as:
-        # weight(w,t,v) = 1/EFres_true(w,t,v)^2
+        # weight(w,t,v) = 1/EFdiff_true(w,t,v)^2
         #    - we neglect covariance in the uncertainties of the master spectrum
         #    - the binning should be performed in the star rest frame 
         if data_type=='Res': 
-            for iord in range(nord):
-                weight_spec[iord,cond_def_weights[iord]] = 1. / calc_EFres2(flux_ref_exp[iord,cond_def_weights[iord]],cov_ref_exp[iord][0,cond_def_weights[iord]],flux_sc[iord],spec_corr[iord])
+            weight_spec = 1./EFdiff2
 
         #--------------------------------------------------------    
         #Definition of errors on intrinsic spectra
         #-------------------------------------------------------- 
         #    - see rescale_profiles(), extract_res_profiles() and proc_intr_data(), the profiles are defined as:
-        # Fintr(w,t,v) = Fres(w,t,v)/(1 - LC_theo(band,t))
+        # Fintr(w,t,v) = Fdiff(w,t,v)/(1 - LC_theo(band,t))
         #              = ( MFstar(w,v) - Fsc(w,t,v) )/(1 - LC_theo(band,t))            
         #    - we want to use as weights the errors on the true intrinsic flux, ie : 
-        # EFintr_true(w,t,v) = EFres_true(w,t,v)/(1 - LC_theo(band,t)) 
+        # EFintr_true(w,t,v) = EFdiff_true(w,t,v)/(1 - LC_theo(band,t)) 
         #      we assume that the error on the master flux averaged over several exposures approximates well the error on the true flux, even within a single bin, so that:          
-        # EFres_true(w,t,v) = sqrt( EMFstar_meas(w,t,v)^2 + EFsc_true(w,t,v)^2 )  
+        # EFdiff_true(w,t,v) = sqrt( EMFstar_meas(w,t,v)^2 + EFsc_true(w,t,v)^2 )  
         #    - final weights are defined as:
         # weight(w,t,v) = 1/EFintr_true(w,t,v)^2             
-        #               = (1 - LC_theo(band,t))^2 / EFres_true(w,t,v)^2
+        #               = (1 - LC_theo(band,t))^2 / EFdiff_true(w,t,v)^2
         #    - we neglect covariance in the uncertainties of the master spectrum
         #    - intrinsic spectra are extracted in the star rest frame, in which case (Fstar_meas,EFstar_meas) and T must also be in the star rest frame (T must thus have been shifted in the same way as Fsc) 
         #      the binning can be performed in the star rest frame or in the rest frame of the intrinsic stellar lines (ie, in which they are aligned) 
@@ -985,7 +1033,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #      the spectral features of the local stellar lines then remain aligned in Fsc over time, but the global stellar line in which they are imprinted shifts, so that a given pixel sees important flux variations
         # weight(w_shifted,t,v) = (1 - LC_theo(band,t))^2 / ( EMFstar_meas(w_shifted,v)^2 + EFsc_true(w_shifted,t,v)^2 )     
         #                       ~ (1 - LC_theo(band,t))^2 / EFsc_true(w_shifted,t,v)^2           
-        #                       ~ (1 - LC_theo(band,t))^2 /(LC_theo(band,t)^2*gdet(band,v)*Ccorr(w_shifted,t,v)*MFstar(w_shifted,v)/globF(t,v))  
+        #                       ~ (1 - LC_theo(band,t))^2 /(LC_theo(band,t)^2*gcal(band,v)*Ccorr(w_shifted,t,v)*MFstar(w_shifted,v)/globF(t,v))  
         #      the weight is inversely proportional to MFstar(w_shifted,v), so that weights in intrinsic line are lower when it is located at high rv in the disk-integrated line, compared to being located at its center
         #      while it may appear counter-intuitive, this is because the disk-integrated stellar line acts only as a background flux (and thus noise) level, so that it brings less noise in its deep core than its wings
         #      another way to see it is as:
@@ -995,13 +1043,13 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #      if MFstar(w,v) is a good estimate of MFstar(w,t,v) we will retrieve the correct intrinsic profile, but its uncertainties will be affected by the errors on MFstar(w,t,v) - which will dominate the weighing when binning the retrieved 
         # intrinsic profiles in their local rest frame
         elif data_type=='Intr': 
-            for iord in range(nord):
-                weight_spec[iord,cond_def_weights[iord]] =(1. - flux_sc[iord])**2. / calc_EFres2(flux_ref_exp[iord,cond_def_weights[iord]],cov_ref_exp[iord][0,cond_def_weights[iord]],flux_sc[iord],spec_corr[iord])
+            if not bdband_flux_sc:stop('ERROR: no broadband flux scaling. Weights on intrinsic profiles cannot be defined' )          
+            weight_spec = (1. - flux_sc_all)**2. / EFdiff2
 
         #--------------------------------------------------------        
         #Atmospheric spectra
-        #    - in the definition of the weights below we implicitely assume that Fnorm_true(t,w) has the same spectral profile as Fstar_true(t,w)
-        #      this is not the case because of the presence of the planetary signature in Fnorm_true(t,w)
+        #    - in the definition of the weights below we implicitely assume that Fnorm_true(w,t,v) has the same spectral profile as Fstar_true(w,t,v)
+        #      this is not the case because of the presence of the planetary signature in Fnorm_true(w,t,v)
         #      however, in the binned atmospheric spectra the planetary signature keeps the same shape and position over time (this is the necessary assumption when binning)
         #      thus differences in errors and weights in a given bin will not come from the planetary signature, but from low-frequency flux variations and from the stellar and telluric lines varying in position
         #      we can thus neglect the presence of the planetary signature
@@ -1009,41 +1057,40 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
                 
         #For emission spectra:
         #    - see extract_pl_profiles(), the profiles are defined as:
-        # Fem(t,w in band) = Fstar_loc(w,t) - Fres(t,w in band)            
+        # Fem(w,t in band) = Fstar_loc(w,t,v) - Fdiff(w,t in band)            
         #      with Fstar_loc null in out-of-transit exposures
         #    - we want to weigh using the true error on the emission flux:    
-        # EFem_true(t,w in band)^2 = EFstar_loc_true(w,t)^2 + EFres_true(t,w in band)^2           
-        #      EFres_true is defined as above 
+        # EFem_true(w,t in band)^2 = EFstar_loc_true(w,t,v)^2 + EFdiff_true(w,t in band)^2           
+        #      EFdiff_true is defined as above 
         #      local stellar profiles Fstar_loc_true can be defined in different ways (see def_plocc_profiles()). 
         #      we neglect their errors when models are used (mode = 'glob_mod', 'indiv_mod', 'rec_prof') 
         #      otherwise they are defined using the disk-integrated or intrinsic profiles (binned in loc_prof_meas() )
         #      here we assume that enough exposures are used to create these masters that their measured error approximate well enough the true value
-        #      EFstar_loc_true(w,t) ~ EFstar_loc_meas(w,t)
+        #      EFstar_loc_true(w,t,v) ~ EFstar_loc_meas(w,t,v)
         #      final weights are defined as:
-        # weight(t,w in band) = 1/( EFstar_loc_meas(w,t)^2 + EFres_true(t,w in band)^2 ) 
-        #    - emission spectra are extracted in the star rest frame, in which case EFstar_loc_meas, (Fstar_meas,EFstar_meas) and T involved in Fres must also be in the star rest frame (T must thus have been shifted in the same way as Fnorm)
+        # weight(w,t in band) = 1/( EFstar_loc_meas(w,t,v)^2 + EFdiff_true(w,t in band)^2 ) 
+        #    - emission spectra are extracted in the star rest frame, in which case EFstar_loc_meas, (Fstar_meas,EFstar_meas) and T involved in Fdiff must also be in the star rest frame (T must thus have been shifted in the same way as Fnorm)
         #      if emission spectra given as input have been shifted (aligned to their local frame), then the above components  must have been shifted in the same way     
         elif data_type=='Emission': 
             for iord in range(nord):
-                weight_spec[iord,cond_def_weights[iord]] = 1./( cov_est_loc_exp[iord][0,cond_def_weights[iord]] + calc_EFres2(flux_ref_exp[iord,cond_def_weights[iord]],cov_ref_exp[iord][0,cond_def_weights[iord]],flux_sc[iord],spec_corr[iord]) ) 
-            
+                weight_spec[iord,cond_def_weights[iord]] = 1./( cov_est_loc_exp[iord][0,cond_def_weights[iord]] + EFdiff2[iord,cond_def_weights[iord]]   ) 
+
         #For absorption spectra: 
         #    - see extract_pl_profiles(), the profiles are defined as:                   
-        # Abs(t,w in band) = [ Fres(w,t,vis)/Fstar_loc(w,t,vis)  - 1 ]*( Sthick(band,t)/Sstar )
+        # Abs(w,t in band) = [ Fdiff(w,t,vis)/Fstar_loc(w,t,vis)  - 1 ]*( Sthick(band,t)/Sstar )
         #    - we want to weigh using the true error on the absorption signal: 
-        # EAbs_true(t,w in band)^2 = E[ Fres_true(t,w)/Fstar_loc_true(t,w) ]^2*( Sthick(band,t)/Sstar )^2
-        #                          = ( (Fstar_loc_true(t,w)*EFres_true(t,w))^2 + (Fres_true(t,w)*EFstar_loc_true(t,w))^2 )*( Sthick(band,t)/Sstar )^2
+        # EAbs_true(w,t in band)^2 = E[ Fdiff_true(w,t,v)/Fstar_loc_true(w,t,v) ]^2*( Sthick(band,t)/Sstar )^2
+        #                          = ( (Fstar_loc_true(w,t,v)*EFdiff_true(w,t,v))^2 + (Fdiff_true(w,t,v)*EFstar_loc_true(w,t,v))^2 )*( Sthick(band,t)/Sstar )^2
         #      we calculate errors as detailed above for the emission spectra
-        # Fres_true(t,w) = Fstar_true(w in band) - LC_theo(t,band)*Fnorm_true(t,w in band)
-        #                = Fstar_true(w in band)*(1 - LC_theo(t,band))
-        #                ~ Fstar_meas(w in band)*(1 - LC_theo(t,band))       
+        # Fdiff_true(w,t,v) = Fstar_true(w in band) - LC_theo(t,band)*Fnorm_true(w,t in band)
+        #                  = Fstar_true(w in band)*(1 - LC_theo(t,band))
+        #                  ~ Fstar_meas(w in band)*(1 - LC_theo(t,band))       
         #      final weights are defined as:
-        # weight(t,w in band) = 1/EAbs_true(t,w in band)^2 
+        # weight(w,t in band) = 1/EAbs_true(w,t in band)^2 
         elif data_type=='Absorption': 
-            for iord in range(nord): 
-                Floc2_ord = (flux_ref_exp[iord,cond_def_weights[iord]]*(1. - flux_sc[iord]))**2.
-                EFloc2_ord = calc_EFres2(flux_ref_exp[iord,cond_def_weights[iord]],cov_ref_exp[iord][0,cond_def_weights[iord]],flux_sc[iord],spec_corr[iord])                
-                weight_spec[iord,cond_def_weights[iord]] =  1./( ( flux_est_loc_exp[iord,cond_def_weights[iord]]**2.*EFloc2_ord + Floc2_ord*cov_est_loc_exp[iord][0,cond_def_weights[iord]] )*SpSstar_spec[iord,cond_def_weights[iord]]**2. )               
+            Floc2_all = (flux_ref_exp*(1. - flux_sc_all))**2.   
+            for iord in range(nord):                          
+                weight_spec[iord,cond_def_weights[iord]] =  1./( ( flux_est_loc_exp[iord,cond_def_weights[iord]]**2.*EFdiff2[iord,cond_def_weights[iord]] + Floc2_all[iord]*cov_est_loc_exp[iord][0,cond_def_weights[iord]] )*SpSstar_spec[iord,cond_def_weights[iord]]**2. )               
 
     return weight_spec
 
@@ -1515,7 +1562,7 @@ def resample_func(x_bd_low_in,x_bd_high_in,x_low_in_all,x_high_in_all,flux_in_al
 
 
 
-def sub_calc_bins(low_bin,high_bin,raw_loc_dic,nfilled_bins,calc_Fr=False,calc_gdet=False,adjust_bins=True):
+def sub_calc_bins(low_bin,high_bin,raw_loc_dic,nfilled_bins,calc_Fr=False,calc_gcal=False,adjust_bins=True):
     r"""**Simplified binning routine**
 
     Used instead of the resampling function when only the flux is binned and/or the bins are large enough that we can neglect the covariance between them.
@@ -1538,8 +1585,9 @@ def sub_calc_bins(low_bin,high_bin,raw_loc_dic,nfilled_bins,calc_Fr=False,calc_g
     if len(idx_overpix)>0:
       
         #Total exposure flux over the selected bins
-        Fexp_tot = np.sum(raw_loc_dic['flux'][idx_overpix]*raw_loc_dic['dbins'][idx_overpix] )
-        if calc_Fr or (calc_gdet and (Fexp_tot>0.)):                             
+        if 'flux' in raw_loc_dic:Fexp_tot = np.sum(raw_loc_dic['flux'][idx_overpix]*raw_loc_dic['dbins'][idx_overpix] )
+        else:Fexp_tot=0.
+        if calc_Fr or (calc_gcal and ((Fexp_tot>0.) or ('gcal_blaze' in raw_loc_dic))):                             
             nfilled_bins+=1.
             
             #Ratio binned exposure flux / binned master flux
@@ -1548,11 +1596,17 @@ def sub_calc_bins(low_bin,high_bin,raw_loc_dic,nfilled_bins,calc_Fr=False,calc_g
                 bin_loc_dic['Fr'] = Fexp_tot/bin_loc_dic['Fmast_tot']
                 if 'var' in raw_loc_dic:bin_loc_dic['varFr'] = np.sum(raw_loc_dic['var'][idx_overpix]*raw_loc_dic['dbins'][idx_overpix]**2.)/bin_loc_dic['Fmast_tot']**2.
 
-            #Ratio binned exposure error squared / binned exposure flux
-            #    - see weights_bin_prof(): 
-            # gdet(band,v) = sum( EF_meas(w,t,v)^2 )  ) / sum( F_meas(w,t,v) )
-            if calc_gdet and (Fexp_tot>0.):
-                bin_loc_dic['gdet'] = np.sum(raw_loc_dic['var'][idx_overpix]) /np.sum(raw_loc_dic['flux'][idx_overpix])
+            #Binned detector calibration
+            if calc_gcal:
+                
+                #Ratio binned exposure error squared / binned exposure flux
+                #    - see weights_bin_prof(): 
+                # gcal(band,v) = sum( EF_meas(w,t,v)^2 )  ) / sum( F_meas(w,t,v) )  
+                #    - neglecting variations in pixel width over the bin window
+                if (Fexp_tot>0.):bin_loc_dic['gcal'] = np.sum(raw_loc_dic['var'][idx_overpix]) /np.sum(raw_loc_dic['flux'][idx_overpix])
+                
+                #Measured blazed-derived calibration
+                else:bin_loc_dic['gcal'] = np.sum(raw_loc_dic['gcal_blaze'][idx_overpix]*raw_loc_dic['dbins'][idx_overpix])/np.sum(raw_loc_dic['dbins'][idx_overpix]) 
 
             #Adjust bin center and boundaries
             if adjust_bins:
@@ -1567,7 +1621,7 @@ def sub_calc_bins(low_bin,high_bin,raw_loc_dic,nfilled_bins,calc_Fr=False,calc_g
     return bin_loc_dic,nfilled_bins
 
 
-def sub_def_bins(bin_siz,idx_kept_ord,low_pix,high_pix,dpix_loc,pix_loc,sp1D_loc,Mstar_loc=None,var1D_loc=None):
+def sub_def_bins(bin_siz,idx_kept_ord,low_pix,high_pix,dpix_loc,pix_loc,sp1D_loc,Mstar_loc=None,var1D_loc=None,gcal_blaze=None):
     r"""**Bins definition**
 
     Defines new bins from input bins
@@ -1583,9 +1637,10 @@ def sub_def_bins(bin_siz,idx_kept_ord,low_pix,high_pix,dpix_loc,pix_loc,sp1D_loc
         'low_bins': low_pix[idx_kept_ord],
         'high_bins': high_pix[idx_kept_ord],
         'dbins': dpix_loc[idx_kept_ord],
-        'cen_bins': pix_loc[idx_kept_ord],
-        'flux': sp1D_loc[idx_kept_ord]}
+        'cen_bins': pix_loc[idx_kept_ord]}
     if Mstar_loc is not None:raw_loc_dic['mast_flux'] = Mstar_loc[idx_kept_ord]  
+    if gcal_blaze is not None:raw_loc_dic['gcal_blaze'] = gcal_blaze[idx_kept_ord]
+    if sp1D_loc is not None:raw_loc_dic['flux'] = sp1D_loc[idx_kept_ord]
     if var1D_loc is not None:raw_loc_dic['var'] = var1D_loc[idx_kept_ord]    
 
     #Defining bins at the requested resolution over the range of original defined bins

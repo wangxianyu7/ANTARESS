@@ -364,8 +364,8 @@ def init_custom_DI_prof(fixed_args,gen_dic,param_in):
         #    - calculated directly on disk-integrated spectral table
         #    - if requested, we convolve the final model disk-integrated line with the instrumental LSF before comparison with the measured disk-integrated profile
         #    - the mean flux level of intrinsic profiles is assumed to be unity (see function)   
-        if type(fixed_args['func_prof_name'])==str:fixed_args['func_prof'] = dispatch_func_prof(fixed_args['func_prof_name'])
-        else:fixed_args['func_prof'] = {inst:dispatch_func_prof(fixed_args['func_prof_name'][inst]) for inst in fixed_args['func_prof_name']}
+        if type(fixed_args['model'])==str:fixed_args['func_prof'] = dispatch_func_prof(fixed_args['model'])
+        else:fixed_args['func_prof'] = {inst:dispatch_func_prof(fixed_args['model'][inst]) for inst in fixed_args['model']}
 
         #Define profiles in forward mode
         if (not fixed_args['fit']):init_st_intr_prof(fixed_args,fixed_args['grid_dic'],params)

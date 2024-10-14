@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Oct 19 22:39:27 2023
-
-@author: V. Bourrier
-"""
 from copy import deepcopy
 import numpy as np
 import os as os_system
