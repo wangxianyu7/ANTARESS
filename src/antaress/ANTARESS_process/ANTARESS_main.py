@@ -661,18 +661,18 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             if gen_dic['fit_'+key+'_gen']:
                 if ('cont_range' not in data_dic[key]):data_dic[key]['cont_range']={}
                 if ('fit_range' not in data_dic[key]):data_dic[key]['fit_range']={}
-        if (gen_dic['res_data']) and ('cont_range' not in data_dic['Res']):data_dic['Res']['cont_range']={}
+        if (gen_dic['diff_data']) and ('cont_range' not in data_dic['Diff']):data_dic['Diff']['cont_range']={}
     
         #Deactivate conditions
         if gen_dic['DIbin']==False:
             data_dic['DI']['fit_MCCFout']=False
         if (not gen_dic['specINtype']) or (gen_dic['DI_CCF']):plot_dic['spectral_LC']=''
-        if (not gen_dic['res_data']):
-            for key in ['map_Res_prof','Res_prof']:plot_dic[key]=''    
+        if (not gen_dic['diff_data']):
+            for key in ['map_Diff_prof','Diff_prof']:plot_dic[key]=''    
         if not gen_dic['pl_atm']:
             for key in ['map_Atm_prof','sp_atm','CCFatm']:plot_dic[key]=''  
         else:
-            if gen_dic['Intr_CCF']:stop('Atmospheric extraction cannot be performed after Res./Intr. CCF conversion')
+            if gen_dic['Intr_CCF']:stop('Atmospheric extraction cannot be performed after Diff./Intr. CCF conversion')
         if gen_dic['Intr_CCF'] and (gen_dic['pl_atm']) and (any('spec' in s for s in data_dic['Atm']['type'].values())) and (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['Intrbin','rec_prof']):stop('Intrinsic profiles cannot be converted into CCFs if also requested for planetary spectra extraction)')
 
         #Telluric condition
@@ -684,14 +684,14 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         
         #Set general condition to calculate master spectrum of the disk-integrated star and use it in weighted averages
         #    - the master needs to be calculated if weighing is needed for one of the modules below
-        if gen_dic['DImast_weight']:gen_dic['DImast_weight'] |= (gen_dic['res_data'] | (gen_dic['loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['spec_1D'] | gen_dic['bin'] | gen_dic['binmultivis'])
-        if gen_dic['DImast_weight'] and gen_dic['calc_DImast']:gen_dic['calc_DImast'] =  gen_dic['calc_res_data'] | (gen_dic['calc_loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['calc_spec_1D'] | gen_dic['calc_bin'] | gen_dic['calc_binmultivis']
+        if gen_dic['DImast_weight']:gen_dic['DImast_weight'] |= (gen_dic['diff_data'] | (gen_dic['loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['spec_1D'] | gen_dic['bin'] | gen_dic['binmultivis'])
+        if gen_dic['DImast_weight'] and gen_dic['calc_DImast']:gen_dic['calc_DImast'] =  gen_dic['calc_diff_data'] | (gen_dic['calc_loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['calc_spec_1D'] | gen_dic['calc_bin'] | gen_dic['calc_binmultivis']
       
         #Set general conditions to activate joined datasets modules 
         gen_dic['joined_ana']=False
         gen_dic['fit_DIProf'] = False     #module undefined for now
-        gen_dic['fit_ResProp'] = False    #module undefined for now
-        for key in ['DI','Intr','Res','Atm']:gen_dic['joined_ana'] |= (gen_dic['fit_'+key+'Prof'] or gen_dic['fit_'+key+'Prop'])
+        gen_dic['fit_DiffProp'] = False    #module undefined for now
+        for key in ['DI','Intr','Diff','Atm']:gen_dic['joined_ana'] |= (gen_dic['fit_'+key+'Prof'] or gen_dic['fit_'+key+'Prop'])
     
         #Import bin size dictionary
         gen_dic['pix_size_v']=return_pix_size()    
@@ -936,7 +936,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             print('Automatic definition of T14['+str(pl_loc)+']='+"{0:.2f}".format(PlParam_loc['TLength']*24.)+' h')
 
     #Calculating theoretical properties of the planet-occulted regions
-    if (not gen_dic['theoPlOcc']) and ((('CCF' in data_dic['Res']['type'].values()) and (gen_dic['fit_Intr'])) or (gen_dic['align_Intr']) or (gen_dic['calc_pl_atm'])):
+    if (not gen_dic['theoPlOcc']) and ((('CCF' in data_dic['Diff']['type'].values()) and (gen_dic['fit_Intr'])) or (gen_dic['align_Intr']) or (gen_dic['calc_pl_atm'])):
         gen_dic['theoPlOcc']=True
 
     #Oversampling factor for values from planet-occulted regions
@@ -1085,9 +1085,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     if gen_dic['main_pl_text'] != '':save_system+=gen_dic['main_pl_text']+'_'        
     gen_dic['save_data_dir'] = save_system+'Saved_data/'
     gen_dic['save_plot_dir'] = save_system+'Plots/'
-    gen_dic['add_txt_path']={'DI':'','Intr':'','Res':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
-    gen_dic['data_type_gen']={'DI':'DI','Res':'Res','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
-    gen_dic['type_name']={'DI':'disk-integrated','Res':'differential','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
+    gen_dic['add_txt_path']={'DI':'','Intr':'','Diff':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
+    gen_dic['data_type_gen']={'DI':'DI','Diff':'Diff','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
+    gen_dic['type_name']={'DI':'disk-integrated','Diff':'differential','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
 
     #Data is processed
     if gen_dic['sequence'] not in ['system_view']:    
@@ -1106,7 +1106,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #Definition of model stellar grid to calculate local or disk-integrated properties
         #    - used throughout the pipeline, unless stellar properties are fitted
         if gen_dic['theoPlOcc'] or (data_dic['DI']['spots_prop'] != {}) or (gen_dic['fit_DI_gen'] and (('custom' in data_dic['DI']['model'].values()) or ('RT_ani_macro' in data_dic['DI']['model'].values()))) or gen_dic['mock_data'] \
-            or gen_dic['fit_ResProf'] or gen_dic['correct_spots'] or gen_dic['fit_IntrProf'] or gen_dic['loc_prof_est']:
+            or gen_dic['fit_DiffProf'] or gen_dic['correct_spots'] or gen_dic['fit_IntrProf'] or gen_dic['loc_prof_est']:
     
             #Stellar grid
             model_star('grid',theo_dic,grid_type,data_dic['DI']['system_prop'],theo_dic['nsub_Dstar'],star_params,True,True) 
@@ -1174,7 +1174,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if (gen_dic['detrend_prof']) and (not path_exist(gen_dic['save_data_dir']+'Detrend_prof/')):makedirs(gen_dic['save_data_dir']+'Detrend_prof/') 
         if (gen_dic['flux_sc']) and (not path_exist(gen_dic['save_data_dir']+'Scaled_data/')):makedirs(gen_dic['save_data_dir']+'Scaled_data/')
         if gen_dic['DImast_weight'] and (not path_exist(gen_dic['save_data_dir']+'DI_data/Master/')):makedirs(gen_dic['save_data_dir']+'DI_data/Master/')
-        if (gen_dic['res_data']) and (not path_exist(gen_dic['save_data_dir']+'Res_data/')):makedirs(gen_dic['save_data_dir']+'Res_data/')
+        if (gen_dic['diff_data']) and (not path_exist(gen_dic['save_data_dir']+'Diff_data/')):makedirs(gen_dic['save_data_dir']+'Diff_data/')
         if gen_dic['pca_ana'] and (not path_exist(gen_dic['save_data_dir']+'PCA_results/')):makedirs(gen_dic['save_data_dir']+'PCA_results/')   
         if (gen_dic['intr_data']) and (not path_exist(gen_dic['save_data_dir']+'Intr_data/')):makedirs(gen_dic['save_data_dir']+'Intr_data/')
         if gen_dic['loc_prof_est']:
@@ -1182,7 +1182,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_prof_est']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_prof_est']['corr_mode']+'/')
         if gen_dic['diff_data_corr']:
             if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/')        
-            if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Res']['opt_loc_prof_est']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Res']['opt_loc_prof_est']['corr_mode']+'/')          
+            if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Diff']['opt_loc_prof_est']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Diff']['opt_loc_prof_est']['corr_mode']+'/')          
         if (gen_dic['pl_atm']):
             if (not path_exist(gen_dic['save_data_dir']+'Atm_data/')):makedirs(gen_dic['save_data_dir']+'Atm_data/')        
             if (not path_exist(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')):makedirs(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')
@@ -1191,13 +1191,13 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             if gen_dic['align_'+data_type] and (not path_exist(gen_dic['save_data_dir']+'Aligned_'+data_type+'_data/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Aligned_'+data_type+'_data/'+gen_dic['add_txt_path'][data_type])    
             if gen_dic['spec_1D_'+data_type]:
                 if (not path_exist(gen_dic['save_data_dir']+data_type+'_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])   
-                if (data_type=='Intr') and (not path_exist(gen_dic['save_data_dir']+'Res_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Res_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])  
+                if (data_type=='Intr') and (not path_exist(gen_dic['save_data_dir']+'Diff_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Diff_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])  
             if (gen_dic[data_type+'bin'] or gen_dic[data_type+'binmultivis']) and (not path_exist(gen_dic['save_data_dir']+data_type+'bin_data/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'bin_data/'+gen_dic['add_txt_path'][data_type])
             if (gen_dic['fit_'+data_type+'bin'] or gen_dic['fit_'+data_type+'binmultivis']) and (not path_exist(gen_dic['save_data_dir']+data_type+'bin_prop/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'bin_prop/'+gen_dic['add_txt_path'][data_type])    
             if gen_dic['def_'+data_type+'masks'] and (not path_exist(gen_dic['save_data_dir']+'CCF_masks_'+data_type+'/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'CCF_masks_'+data_type+'/'+gen_dic['add_txt_path'][data_type])    
             if gen_dic[data_type+'_CCF']:
                 if (not path_exist(gen_dic['save_data_dir']+data_type+'_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])    
-                if (data_type=='Intr') and (not path_exist(gen_dic['save_data_dir']+'Res_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Res_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type]) 
+                if (data_type=='Intr') and (not path_exist(gen_dic['save_data_dir']+'Diff_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Diff_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type]) 
     
         if (gen_dic['fit_DI'] or gen_dic['sav_keywords']) and (not path_exist(gen_dic['save_data_dir']+'DIorig_prop/')):makedirs(gen_dic['save_data_dir']+'DIorig_prop/')        
         if ((gen_dic['fit_Intr']) or (gen_dic['theoPlOcc'])) and (not path_exist(gen_dic['save_data_dir']+'Introrig_prop/')):makedirs(gen_dic['save_data_dir']+'Introrig_prop/')
@@ -1234,7 +1234,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
     print('  Reading and initializing '+inst_data)    
 
     #Initialize dictionaries for current instrument
-    for key_dic in [gen_dic,coord_dic,data_dic['DI'],data_dic,data_dic['Res'],data_dic['Intr'],data_dic['Atm'],data_prop,theo_dic]:key_dic[inst]={} 
+    for key_dic in [gen_dic,coord_dic,data_dic['DI'],data_dic,data_dic['Diff'],data_dic['Intr'],data_dic['Atm'],data_prop,theo_dic]:key_dic[inst]={} 
     DI_data_inst = data_dic['DI'][inst]
     if (inst not in gen_dic['scr_lgth']):gen_dic['scr_lgth'][inst]={}
 
@@ -2186,7 +2186,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                             #Defining calibration profile
                                             #    - gcal(w,t,v) = 1/(dw(w)*bl(w,t,v)))
                                             # with bl(w,t,v) = N_meas[bl](w,t,v)/N_meas(w,t,v) 
-                                            data_dic_temp['gcal'][iexp,iord,cond_gcal[iord]] = 1./(dll[iord,cond_gcal[iord]]*count_blaze_exp[iord,cond_gcal[iord]]/count_exp[iord,cond_gcal[iord]])
+                                            #    - negative values are set to undefined, so that they are replaced by the calibration model in the calc_gcal() routine
+                                            gcal_temp = 1./(dll[iord,cond_gcal[iord]]*count_blaze_exp[iord,cond_gcal[iord]]/count_exp[iord,cond_gcal[iord]])
+                                            cond_gcal_pos = gcal_temp > 0.
+                                            data_dic_temp['gcal'][iexp,iord,cond_gcal[iord][cond_gcal_pos]] = gcal_temp[cond_gcal_pos] 
 
                                             #Defining detector noise
                                             #    - Edet_meas(w,t,v)^2 = EN_meas[bl](w,t,v)^2 - N_meas[bl](w,t,v)
@@ -2522,6 +2525,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #------------------------------------------------------------------------------------
 
                 #Scaling of errors
+                if not gen_dic[inst][vis]['flag_err']:print('           Uncertainties are set to sqrt(F)')
                 if (inst not in gen_dic['g_err']):gen_dic['g_err'][inst]=1.
                 elif gen_dic['g_err'][inst]!=1.:
                     print('           Uncertainties are scaled by sqrt('+str(gen_dic['g_err'][inst])+')')
@@ -2922,10 +2926,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         #Automatic continuum and fit range
         #    - done here rather than in the 'calc_proc_data' condition so that ranges can be defined for already-processed observed or mock datasets, even if the analysis modules were not activated 
         # at the time of processing
-        for key in ['DI','Intr','Atm']:
-            if gen_dic['fit_'+key+'_gen'] or ((key=='Intr') & gen_dic['fit_IntrProf']):
+        for key in ['DI','Diff','Intr','Atm']:
+            if ((key=='Diff') and gen_dic['diff_data']) or gen_dic['fit_'+key+'_gen'] or ((key=='Intr') & gen_dic['fit_IntrProf']):
                 autom_cont = True if (inst not in data_dic[key]['cont_range']) else False
-                autom_fit = True if ((inst not in data_dic[key]['fit_range']) or (vis not in data_dic[key]['fit_range'][inst])) else False
+                autom_fit = True if (key!='Diff') and ((inst not in data_dic[key]['fit_range']) or (vis not in data_dic[key]['fit_range'][inst])) else False
                 if autom_cont or autom_fit:
 
                     #Path to data used for automatic definition
@@ -2936,79 +2940,116 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     else:
                         data_path = data_vis['proc_DI_data_paths']
                         nspec = data_vis['nspec']
-                    
+
                     #Processing CCF order or selected spectral order 
-                    if (data_dic[key]['type'][inst]=='CCF'):iord_fit = 0
-                    else:iord_fit = data_dic[key]['fit_prof']['order'][inst]
+                    if (data_dic[key]['type'][inst]=='CCF'):iord_sel = 0
+                    else:iord_sel = data_dic[key]['fit_order'][inst]
                     cen_bins_all = np.zeros([0,nspec],dtype=float)
                     edge_bins_all = np.zeros([0,nspec+1],dtype=float)
                     flux_all = np.zeros([0,nspec],dtype=float)   
                     for iexp in range(data_vis['n_in_visit']):
                         data_exp = dataload_npz(data_path+str(iexp))
-                        cen_bins_all=np.append(cen_bins_all,[data_exp['cen_bins'][iord_fit]],axis=0)     #dimension nexp x nspec
-                        edge_bins_all=np.append(edge_bins_all,[data_exp['edge_bins'][iord_fit]],axis=0)  #dimension nexp x nspec+1
-                        flux_all=np.append(flux_all,[data_exp['flux'][iord_fit]],axis=0)                 #dimension nexp x nspec
-                    if (data_dic[key]['type'][inst]=='CCF'):
-                        RVcen_bins = cen_bins_all
-                        RVedge_bins = edge_bins_all
-                    else:
-                        RVcen_bins = c_light*((cen_bins_all/data_dic[key]['line_trans']) - 1.)
-                        RVedge_bins = c_light*((edge_bins_all/data_dic[key]['line_trans']) - 1.)
+                        cen_bins_all=np.append(cen_bins_all,[data_exp['cen_bins'][iord_sel]],axis=0)     #dimension nexp x nspec
+                        edge_bins_all=np.append(edge_bins_all,[data_exp['edge_bins'][iord_sel]],axis=0)  #dimension nexp x nspec+1
+                        flux_all=np.append(flux_all,[data_exp['flux'][iord_sel]],axis=0)                 #dimension nexp x nspec
+  
+                    #Range space
+                    #    - continuum is defined in RV space if data is in CCF mode, and in wavelength space if data is in spectral mode
+                    #    - fit range is defined in RV space if data is in CCF mode or in spectral mode and fitted with an analytical model on a single line, and in wavelength space otherwise
+                    if autom_fit:
+                        if ('spec' in data_dic[key]['type'][inst]) and (data_dic[key]['fit_prof']['mode']=='ana'):
+                            if data_dic[key]['fit_prof']['line_trans'] is None:stop('Define "line_trans" to fit spectral data with "mode = ana"')
+                            spec2rv = True
+                        else:spec2rv = False     
+                    else:spec2rv = False
+                    
+                    #Condition to define line-specific boundaries
+                    if autom_fit or (autom_cont and ((data_dic[key]['type'][inst]=='CCF') or spec2rv)):
+                        if (data_dic[key]['type'][inst]=='CCF'):
+                            RVcen_bins = cen_bins_all
+                            RVedge_bins = edge_bins_all
+                        else:
+                            RVcen_bins = c_light*((cen_bins_all/data_dic[key]['line_trans']) - 1.)
+                            RVedge_bins = c_light*((edge_bins_all/data_dic[key]['line_trans']) - 1.)
 
-                    #Estimate of systemic velocity for disk-integrated profiles
-                    #    - as median of the RV corresponding to the CCF minima over the visit
-                    #    - intrinsic and atmospheric profiles are fitted in the star rest frame
-                    cond_check = (RVcen_bins[0]>-500.) & (RVcen_bins[0]<500.)
-                    idx_min_all = np.argmin(flux_all[:,cond_check],axis=1)    #dimension nexp (index of minimum over nspec_check for each exposure)
-                    sys_RV = np.nanmedian(np.take_along_axis(RVcen_bins[:,cond_check],idx_min_all[:,None],axis=1))
-                    if key=='DI':cen_RV = sys_RV
-                    else:cen_RV = 0.
-
-                    #Minimum/maximum velocity of the CCF range in the input rest frame
-                    min_bin = np.max(np.nanmin(RVedge_bins))
-                    max_bin = np.min(np.nanmax(RVedge_bins)) 
-                    if key in ['Intr','Atm']:
-                        min_bin-=sys_RV
-                        max_bin-=sys_RV
-                       
-                    #Excluded range for disk-integrated and intrinsic profiles 
-                    #    - we assume +-3 vsini accounts for both rotational and thermal broadening of DI profiles, and for rotational shift + thermal broadening
-                    if key in ['DI','Intr']:
-                        min_exc = np.max([cen_RV - 3.*system_param['star']['vsini'] -5.,min_bin+5.])
-                        max_exc = np.min([cen_RV + 3.*system_param['star']['vsini'] +5.,max_bin-5.])
-
-                    #Excluded range for atmospheric profiles
-                    #    - we account for a width of 20km/s over the range of studied orbital velocities, for all planets considered for atmospheric signals
-                    elif key=='Atm':
-                        min_pl_RV = 1e100
-                        max_pl_RV = -1e100
-                        if data_dic['Atm']['pl_atm_sign']=='Absorption':idx_atm = gen_dic[inst][vis]['idx_in']                                 
-                        elif data_dic['Atm']['pl_atm_sign']=='Emission': idx_atm = data_dic[inst][vis]['n_in_tr']
-                        for pl_atm in data_dic[inst][vis]['pl_with_atm']:
-                            min_pl_RV = np.min([min_pl_RV,np.min(coord_dic[inst][vis][pl_atm]['rv_pl'][idx_atm])])
-                            max_pl_RV = np.max([max_pl_RV,np.max(coord_dic[inst][vis][pl_atm]['rv_pl'][idx_atm])])  
-                        min_exc = np.min(min_pl_RV -20.,min_bin+5.)
-                        max_exc = np.max(max_pl_RV +20.,max_bin-5.)    
-
-                    #Outer boundaries of continuum and fitted ranges
-                    min_contfit = np.max([min_bin, min_exc - 50.])
-                    max_contfit = np.min([max_bin, max_exc + 50.])
-
-                    #RV/wave conversion
-                    if (data_dic[key]['type'][inst]!='CCF'):
-                        min_contfit = data_dic[key]['line_trans']*(1.+(min_contfit/c_light))
-                        max_contfit = data_dic[key]['line_trans']*(1.+(max_contfit/c_light))
-                        min_exc = data_dic[key]['line_trans']*(1.+(min_exc/c_light))
-                        max_exc = data_dic[key]['line_trans']*(1.+(max_exc/c_light))
+                        #Estimate of systemic velocity for disk-integrated profiles
+                        #    - as median of the RV corresponding to the CCF minima over the visit
+                        #    - differential, intrinsic and atmospheric profiles are analyzed in the star rest frame
+                        cond_check = (RVcen_bins[0]>-500.) & (RVcen_bins[0]<500.)
+                        idx_min_all = np.argmin(flux_all[:,cond_check],axis=1)    #dimension nexp (index of minimum over nspec_check for each exposure)
+                        sys_RV = np.nanmedian(np.take_along_axis(RVcen_bins[:,cond_check],idx_min_all[:,None],axis=1))
+                        if key=='DI':cen_RV = sys_RV
+                        else:cen_RV = 0.
+    
+                        #Minimum/maximum velocity of the CCF range in the input rest frame
+                        min_bin = np.max(np.nanmin(RVedge_bins))
+                        max_bin = np.min(np.nanmax(RVedge_bins)) 
+                        if key in ['Diff','Intr','Atm']:
+                            min_bin-=sys_RV
+                            max_bin-=sys_RV
+                           
+                        #Excluded range for disk-integrated, differential, and intrinsic profiles 
+                        #    - we assume +-3 vsini accounts for both rotational and thermal broadening of DI profiles, and for rotational shift + thermal broadening
+                        if key in ['DI','Diff','Intr']:
+                            min_exc = np.max([cen_RV - 3.*system_param['star']['vsini'] -5.,min_bin+5.])
+                            max_exc = np.min([cen_RV + 3.*system_param['star']['vsini'] +5.,max_bin-5.])
+    
+                        #Excluded planet range
+                        #    - we account for a width of 20km/s over the range of studied orbital velocities, for all planets considered for atmospheric signals
+                        if (key=='Atm') or (len(data_dic['Atm']['no_plrange'])>0):
+                            min_pl_RV = 1e100
+                            max_pl_RV = -1e100
+                            if data_dic['Atm']['pl_atm_sign']=='Absorption':idx_atm = gen_dic[inst][vis]['idx_in']                                 
+                            elif data_dic['Atm']['pl_atm_sign']=='Emission': idx_atm = data_dic[inst][vis]['n_in_tr']
+                            for pl_atm in data_dic[inst][vis]['pl_with_atm']:
+                                min_pl_RV = np.min([min_pl_RV,np.min(coord_dic[inst][vis][pl_atm]['rv_pl'][idx_atm])])
+                                max_pl_RV = np.max([max_pl_RV,np.max(coord_dic[inst][vis][pl_atm]['rv_pl'][idx_atm])])                          
+                            
+                            #Exclusion in atmospheric profiles
+                            if key=='Atm':
+                                min_exc = np.min(min_pl_RV -20.,min_bin+5.)
+                                max_exc = np.max(max_pl_RV +20.,max_bin-5.)   
+                                
+                            else:
+                            
+                                #Exclusion in other profiles
+                                if (key=='DI') and ('DI' in key_loc for key_loc in data_dic['Atm']['no_plrange']):
+                                    min_exc = np.min((min_exc,min_pl_RV -20.+sys_RV,min_bin+5.))
+                                    max_exc = np.max((max_exc,max_pl_RV +20.+sys_RV,max_bin-5.))   
+                                    
+                                elif ((key=='Diff') and ('Diff' in key_loc for key_loc in data_dic['Atm']['no_plrange'])) or ((key=='Intr') and ('Intr' in key_loc for key_loc in data_dic['Atm']['no_plrange'])):
+                                    min_exc = np.min((min_exc,min_pl_RV -20.,min_bin+5.))
+                                    max_exc = np.max((max_exc,max_pl_RV +20.,max_bin-5.))                                   
+                            
+                        #Outer boundaries of continuum and fitted ranges in RV space
+                        min_contfit = np.max([min_bin, min_exc - 50.])
+                        max_contfit = np.min([max_bin, max_exc + 50.])                            
 
                     #Continuum range
+                    #    - in spectral mode, the continuum is set to the full line range if a fit is requested in spectral mode with an analytical model
                     if autom_cont:
-                        data_dic[key]['cont_range'][inst] = {0:[[min_contfit,min_exc],[max_exc,max_contfit]]}
+                        if (data_dic[key]['type'][inst]=='CCF'):
+                            data_dic[key]['cont_range'][inst] = {iord_sel:[[min_contfit,min_exc],[max_exc,max_contfit]]}
+                        else:
+                            if spec2rv:
+                                min_contrange = data_dic[key]['line_trans']*gen_specdopshift(min_contfit)  
+                                min_exrange = data_dic[key]['line_trans']*gen_specdopshift(min_exc)  
+                                max_contrange = data_dic[key]['line_trans']*gen_specdopshift(max_contfit)  
+                                max_exrange = data_dic[key]['line_trans']*gen_specdopshift(max_exc)  
+                                data_dic[key]['cont_range'][inst] = {iord_sel:[[min_contrange,min_exrange],[max_exrange,max_contrange]]}
+                            else:
+                                data_dic[key]['cont_range'][inst] = {iord_sel:[[edge_bins_all[0],edge_bins_all[-1]]]}
              
                     #Fitting range
                     if autom_fit:      
                         if inst not in data_dic[key]['fit_range']:data_dic[key]['fit_range'][inst]={}
-                        data_dic[key]['fit_range'][inst][vis] = [[min_contfit,max_contfit]]
+                        if spec2rv:                        
+                            min_fitrange = data_dic[key]['line_trans']*gen_specdopshift(min_contfit)  
+                            max_fitrange = data_dic[key]['line_trans']*gen_specdopshift(max_contfit)  
+                        else:
+                            min_fitrange = min_contfit
+                            max_fitrange = max_contfit
+                        data_dic[key]['fit_range'][inst][vis] = [[min_fitrange,max_fitrange]]
 
         #------------------------------------------------------------------------------------
 

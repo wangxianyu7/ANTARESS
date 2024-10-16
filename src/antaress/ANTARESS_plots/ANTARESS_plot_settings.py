@@ -413,7 +413,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
         
         #Color map
         if 'map_DI' in key_plot:plot_options['cmap']="jet" 
-        if 'map_Res' in key_plot:plot_options['cmap']="jet"             
+        if 'map_Diff' in key_plot:plot_options['cmap']="jet"             
         elif 'map_Intr' in key_plot:plot_options['cmap']="afmhot_r" 
         elif 'map_Intr_prof_res' in key_plot:plot_options['cmap']="afmhot_r" 
         elif 'map_Atm' in key_plot:plot_options['cmap']="winter"             
@@ -1566,8 +1566,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Original profiles 
     ################################################################################################################  
-    if (plot_dic['map_Res_prof']!=''):
-        key_plot = 'map_Res_prof'
+    if (plot_dic['map_Diff_prof']!=''):
+        key_plot = 'map_Diff_prof'
         
         #%%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
@@ -1585,8 +1585,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     #%%%% Original profiles 
     #    - in the star rest frame 
     ################################################################################################################ 
-    if (plot_dic['Res_prof']!=''):
-        key_plot = 'Res_prof'
+    if (plot_dic['Diff_prof']!=''):
+        key_plot = 'Diff_prof'
         
         #%%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
@@ -1623,8 +1623,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['pc_col'] = ['dodgerblue']
 
         #%%%%% FFT profiles to plot
-        #    - from original residual profiles ('res'), corrected residual profiles ('corr'), or bootstrapped corrected residual profiles ('boot') 
-        plot_settings[key_plot]['fft_list'] = ['res','corr','boot']
+        #    - from original differential profiles ('diff'), corrected differential profiles ('corr'), or bootstrapped corrected differential profiles ('boot') 
+        plot_settings[key_plot]['fft_list'] = ['diff','corr','boot']
 
         #%%%%% Bornes du plot  
         for key in ['x_range_var','y_range_var','x_range_rms','y_range_rms','x_range_bic','y_range_bic','x_range_hist','y_range_hist','x_range_pc','y_range_pc','x_range_pc','y_range_pc','x_range_fft','y_range_fft']:plot_settings[key_plot][key]=None
@@ -1638,7 +1638,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
     ##################################################################################################
     #%%% Residual dispersion
-    #    - standard deviation with bin size for out-of-transit residual CCFs
+    #    - standard deviation with bin size for out-of-transit differential CCFs
     #    - one plot per exposure
     ##################################################################################################
     if (plot_dic['scr_search']!=''):
@@ -1959,7 +1959,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%% Intrinsic profiles            
             if (key_plot=='prop_Intr_mcmc_PDFs'):
                 plot_settings[key_plot]['data_mode'] = 'Intr'
-                plot_settings[key_plot]['data_dic_idx'] = 'Res'
+                plot_settings[key_plot]['data_dic_idx'] = 'Diff'
                 
 
 

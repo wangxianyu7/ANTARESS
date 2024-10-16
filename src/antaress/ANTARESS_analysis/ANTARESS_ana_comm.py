@@ -345,6 +345,8 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
     #Arguments to be passed to the fit function
     fixed_args={
         'rout_mode':rout_mode,
+        'cst_err':fit_prop_dic['cst_err'],
+        'sc_err':fit_prop_dic['sc_err'],
             
         #Global model properties        
         'system_param':deepcopy(system_param),
@@ -444,7 +446,7 @@ def init_joined_routines_vis(inst,vis,fit_dic,fixed_args):
     elif (vis+'_bin' in fit_dic['idx_in_fit'][inst]) and (len(fit_dic['idx_in_fit'][inst][vis+'_bin'])>0):
         fixed_args['bin_mode'][inst][vis]='_bin'
         fixed_args['inst_vis_list'][inst]+=[vis]
-    else:fixed_args['bin_mode'][inst][vis]=None
+    else:fixed_args['bin_mode'][inst][vis]=''
 
     return None
 
@@ -463,7 +465,13 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
     fit_dic[inst][vis]={}
     if 'DI' in fixed_args['rout_mode']:data_type_gen = 'DI'
     elif 'Intr' in fixed_args['rout_mode']:data_type_gen = 'Intr'
-    elif 'Res' in fixed_args['rout_mode']:data_type_gen = 'Res'
+    elif 'Diff' in fixed_args['rout_mode']:data_type_gen = 'Diff'
+    
+    #Error scaling
+    if (inst in fixed_args['sc_err']) and (vis in fixed_args['sc_err'][inst]):
+        print('         Scaling data error')
+        fixed_args['sc_var'] = fixed_args['sc_err'][inst][vis]**2.  
+    else:fixed_args['sc_var']=1.
 
     #Binned data
     if fixed_args['bin_mode'][inst][vis]=='_bin':
@@ -502,7 +510,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
     else:fixed_args['transit_sp'][inst][vis] = []
 
     #Fitted exposures
-    if ('DI' in rout_mode) or ('Res' in rout_mode):n_default_fit = n_in_visit
+    if ('DI' in rout_mode) or ('Diff' in rout_mode):n_default_fit = n_in_visit
     else: n_default_fit = n_in_tr
     if fit_dic['idx_in_fit'][inst][vis]=='all':
         if ('DI' in rout_mode):fixed_args['idx_in_fit'][inst][vis]=gen_dic[inst][vis]['idx_out']
@@ -520,12 +528,12 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
         sub_idx_in_fit = fixed_args['idx_in_fit'][inst][vis]
         coord_vis = data_vis_bin['coord']
     else:
-        if ('DI' in rout_mode) or ('Res' in rout_mode):sub_idx_in_fit = fixed_args['idx_in_fit'][inst][vis]        
+        if ('DI' in rout_mode) or ('Diff' in rout_mode):sub_idx_in_fit = fixed_args['idx_in_fit'][inst][vis]        
         else:sub_idx_in_fit = gen_dic[inst][vis]['idx_in'][fixed_args['idx_in_fit'][inst][vis]]
         coord_vis = coord_dic[inst][vis]
     fixed_args['coord_fit'][inst][vis]={}
     fixed_args['coord_obs'][inst][vis]={}
-    if ('Res' in rout_mode) or ('Intr' in rout_mode):
+    if ('Diff' in rout_mode) or ('Intr' in rout_mode):
         if fixed_args['cond_studied_pl']:
             fixed_args['ph_fit'][inst][vis]={}
             for pl_loc in fixed_args['studied_pl'][inst][vis]:
@@ -685,7 +693,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     # + CB coefficients: 0
     # + cos_istar : 0.
     # + aRs, inclin_rad : values defined in ANTARESS_settings 
-    if ('Res' in rout_mode) or ('Intr' in rout_mode):
+    if ('Diff' in rout_mode) or ('Intr' in rout_mode):
         p_start = init_custom_DI_par(fixed_args,gen_dic,data_dic['DI']['system_prop'],fixed_args['system_param']['star'],p_start,[0.,None,None])
 
         #Condition to calculate CB
@@ -695,7 +703,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     
         #Fit spin-orbit angle by default when relevant
         #    - assuming common values to all datasets
-        if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='rv')) or (rout_mode in ['IntrProf','ResProf']):
+        if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='rv')) or (rout_mode in ['IntrProf','DiffProf']):
             for inst in fixed_args['studied_pl']:
                 for vis in fixed_args['studied_pl'][inst]:
                     for pl_loc in fixed_args['studied_pl'][inst][vis]:
@@ -703,9 +711,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
             
         #Initialize line properties
         #    - using Gaussian line as default for intrinsic profiles
-        if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='ctrst')) or (rout_mode in ['IntrProf','ResProf']):
+        if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='ctrst')) or (rout_mode in ['IntrProf','DiffProf']):
             if not any(['ctrst_' in prop for prop in mod_prop]):p_start.add_many(('ctrst__ord0__IS__VS_', 0.5,   True, 0.,1.  ,None))
-        if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode in ['IntrProf','ResProf']):
+        if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode in ['IntrProf','DiffProf']):
             if not any(['FWHM_' in prop for prop in mod_prop]):p_start.add_many(('FWHM__ord0__IS__VS_', 5.,   True, 0.,100.  ,None))
         if rout_mode=='IntrProp':line_type='ana'                                  #to avoid raising warning, even though properties are not used to calculate a line profile
         elif ('Prof' in rout_mode):line_type = fixed_args['mode']
@@ -726,7 +734,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
 
     #------------------------------------------------------------ 
     #Variable planetary system parameters
-    if ('Res' in rout_mode) or ('Intr' in rout_mode):
+    if ('Diff' in rout_mode) or ('Intr' in rout_mode):
         
         #Variable stellar properties
         #    - must be done after 'par_formatting' to identify variable line parameters 
@@ -1106,8 +1114,8 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
     save_path = gen_dic['save_data_dir']+data_type+'_prop/'+gen_dic['add_txt_path'][data_type_gen]+inst+'_'+vis_det    
     cond_calc = gen_dic['calc_fit_'+data_type_gen+bin_mode+vis_mode]
     prop_dic = deepcopy(data_dic[data_type_gen])   
-    if prop_dic['cst_err'+bin_mode]:print('         Using constant error')
-    if (inst in prop_dic['sc_err']) and (vis_det in prop_dic['sc_err'][inst]): print('         Scaling data error')
+    if prop_dic['cst_err']:print('         Using constant error')
+    if (inst in prop_dic['sc_err']) and (vis_det in prop_dic['sc_err'][inst]):print('         Scaling data error')
     
     #Analyzing
     if cond_calc:
@@ -1134,8 +1142,8 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
         #    - we remove the order structure from CCF and 1D spectra to have one-dimensional tables
         if data_mode in ['CCF','spec1D']:iord_sel = 0
         elif data_mode=='spec2D':
-            if inst not in prop_dic['fit_prof']['order']:stop('Define fitted order')
-            else:iord_sel = prop_dic['fit_prof']['order'][inst] 
+            if inst not in prop_dic['fit_order']:stop('Define fitted order')
+            else:iord_sel = prop_dic['fit_order'][inst] 
 
         #Continuum and fitted ranges
         #    - spectral tables are defined in:
@@ -1149,7 +1157,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
         # > star frame for planetary data 
         fit_range = prop_dic['fit_range'][inst][vis_det]
         cont_range = prop_dic['cont_range'][inst][iord_sel]
-        trim_range = prop_dic['fit_prof']['trim_range'][inst] if (inst in prop_dic['fit_prof']['trim_range']) else None 
+        trim_range = prop_dic['trim_range'][inst] if (inst in prop_dic['trim_range']) else None 
  
         #MCMC fit default options
         if prop_dic['fit_mode']=='mcmc': 
@@ -1454,7 +1462,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
         #Process exposures    
         key_det = 'idx_force_det'+bin_mode+vis_mode
         fit_dic['cond_detected'] = np.repeat(True,fit_dic['n_exp'])
-        for isub,iexp in enumerate(iexp_def):            
+        for isub,iexp in enumerate(iexp_def): 
 
             #Disk-integrated profile
             if data_type_gen=='DI':                    
@@ -1462,13 +1470,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
 
                 #Continuum flux
                 flux_cont = np.sum(data_fit[isub]['flux'][cond_cont_com]*data_fit[isub]['dcen_bins'][cond_cont_com])/np.sum(data_fit[isub]['dcen_bins'][cond_cont_com])
-              
-                #Set constant error to the sqrt() of the continuum flux, ie covariance to the mean continuum flux
-                #    - this is in case errors are not defined on disk-integrated profiles
-                #    - the important is to use a constant error over the fitted range, its value can then be scaled using sc_err
-                if prop_dic['cst_err'+bin_mode]:cov_exp = np.tile(flux_cont*gen_dic['g_err'][inst],[1,nspec])                         
-                else:cov_exp = data_fit[isub]['cov']   
-                
+                              
                 #Estimate of CCF centroid
                 if data_type=='DIorig':fit_properties['RV_cen'] = coord_dic[inst][vis]['RV_star_solCDM'][iexp_orig]
                 elif data_type=='DIbin':
@@ -1481,8 +1483,6 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             #    - errors are defined, so that if the fit is to be performed with a constant error we set it to the mean error over the continuum
             elif data_type_gen=='Intr':                                  
                 if data_type=='Introrig':iexp_orig = gen_dic[inst][vis]['idx_in'][iexp]
-                if prop_dic['cst_err'+bin_mode]:cov_exp = np.tile(np.mean(data_fit[isub]['cov'][0])*gen_dic['g_err'][inst],[1,nspec])
-                else:cov_exp = data_fit[isub]['cov']
 
             #Atmospheric profile
             elif data_type_gen=='Atm':   
@@ -1491,12 +1491,15 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
                     if prop_dic['pl_atm_sign']=='Absorption':iexp_orig = gen_dic[inst][vis]['idx_in'][iexp]
                     elif prop_dic['pl_atm_sign']=='Emission':iexp_orig = iexp
                     fit_properties['RV_cen']=coord_dic[inst][vis]['rv_pl'][iexp_orig]     #guess
-                if prop_dic['cst_err'+bin_mode]:cov_exp = np.tile(np.mean(data_fit[isub]['cov'][0]),[1,nspec])
-                else:cov_exp = data_fit[isub]['cov']
 
-            #Scaling data errors
+            #Setting constant error
+            #    - disk-integrated profiles always have defined errors (either from input or set to sqrt(g_err*F)), which are propagated afterward
+            #      here we force a constant error set to the mean error over each profile continuum                                
+            if prop_dic['cst_err']:cov_exp = np.tile(np.mean(data_fit[isub]['cov'][0,fit_dic['cond_def_cont_all'][isub]]),[1,nspec])
+            else:cov_exp = data_fit[isub]['cov']
+
+            #Scaling errors
             if (inst in prop_dic['sc_err']) and (vis_det in prop_dic['sc_err'][inst]):cov_exp*=prop_dic['sc_err'][inst][vis]**2. 
-
 
             #Forced detection
             if (inst in prop_dic[key_det]) and (vis_det in prop_dic[key_det][inst]) and (iexp in prop_dic[key_det][inst][vis_det]):idx_force_det=prop_dic[key_det][inst][vis_det][iexp]
@@ -2738,7 +2741,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
     
         #Convert veq into veq*sin(istar) to be comparable with solid-body values
         #    - must be done before modification of istar chain
-        if ('vsini' in deriv_prop) and ((fixed_args['rout_mode'] in ['IntrProf','ResProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):
+        if ('vsini' in deriv_prop) and ((fixed_args['rout_mode'] in ['IntrProf','DiffProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):
             print('        + Converting veq to vsini')
             if 'veq' in fixed_args['var_par_list']:iveq=np_where1D(fixed_args['var_par_list']=='veq')
             else:stop('Activate veq_from_Peq_Rstar')
@@ -3286,7 +3289,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
         #-------------------------------------------------            
             
         #Convert lambda[rad] to lambda[deg]
-        if ('lambda_deg' in deriv_prop) and ((fixed_args['rout_mode'] in ['IntrProf','ResProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):  
+        if ('lambda_deg' in deriv_prop) and ((fixed_args['rout_mode'] in ['IntrProf','DiffProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):  
             print('        + Converting lambda into degrees')       
             for pl_loc in fixed_args['lambda_rad_pl']:
                 lambda_rad_pl = 'lambda_rad__pl'+pl_loc

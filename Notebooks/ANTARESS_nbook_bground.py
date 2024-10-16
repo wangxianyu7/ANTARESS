@@ -13,8 +13,8 @@ def init(nbook_type):
         'settings' : {'gen_dic':{'data_dir_list':{}},
                       'mock_dic':{'visit_def':{},'sysvel':{},'intr_prof':{},'flux_cont':{},'set_err':{}},
                       'data_dic':{'DI':{'sysvel':{}},
-                                  'Intr':{},'Res':{}},
-                      'glob_fit_dic':{'IntrProp':{},'IntrProf':{},'ResProf':{}},
+                                  'Intr':{},'Diff':{}},
+                      'glob_fit_dic':{'IntrProp':{},'IntrProf':{},'DiffProf':{}},
                       'plot_dic':{}
                      },
         #notebook inputs related to system properties
@@ -185,9 +185,9 @@ def DImast_weight(input_nbook):
     input_nbook['settings']['gen_dic']['DImast_weight']=True
     return None
 
-def extract_res(input_nbook):
-    input_nbook['settings']['gen_dic']['res_data']=True
-    input_nbook['settings']['data_dic']['Res']['extract_in'] = False
+def extract_diff(input_nbook):
+    input_nbook['settings']['gen_dic']['diff_data']=True
+    input_nbook['settings']['data_dic']['Diff']['extract_in'] = False
     return None
 
 def extract_intr(input_nbook):
@@ -285,7 +285,7 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
         if prop in input_nbook['par']['priors']:
             input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['priors'][prop_name] = {'mod':'uf','low':bd_prior[0],'high':bd_prior[1]}
             
-        if data_type == 'Res':
+        if data_type == 'Diff':
             #Defining continuum range
             low_low = input_nbook['settings']['mock_dic']['DI_table']['x_start']
             low_high = input_nbook['settings']['mock_dic']['DI_table']['x_start'] + 5*input_nbook['settings']['mock_dic']['DI_table']['dx']
@@ -407,7 +407,7 @@ def plot_map(input_nbook,data_type):
     #Activate plot related to intrinsic CCF model only if model was calculated
     def_map = True
     if data_type in ['Intr_prof_est','Intr_prof_res'] and (not input_nbook['par']['loc_prof_corr']):def_map=False
-    if data_type in ['Res_prof_est','Res_prof_res'] and (not input_nbook['par']['diff_prof_corr']):def_map=False
+    if data_type in ['Diff_prof_est','Diff_prof_res'] and (not input_nbook['par']['diff_prof_corr']):def_map=False
     if def_map:
         input_nbook['settings']['plot_dic']['map_'+data_type] = 'png'
         input_nbook['plots']['map_'+data_type] = {}

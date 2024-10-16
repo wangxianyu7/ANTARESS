@@ -30,7 +30,7 @@ def init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,mode,dir_save,data_d
         data_type = data_type_gen
         if data_type_gen=='Intr':
             iexp_conv = list(gen_dic[inst][vis]['idx_out'])+list(gen_dic[inst][vis]['idx_in'][prop_dic[inst][vis]['idx_def']])    #Global indexes
-            data_type_key = ['Res','Intr']
+            data_type_key = ['Diff','Intr']
             print('   > Converting OT differential and intrinsic spectra into '+txt_print)
         else:iexp_conv = range(data_dic[inst][vis]['n_in_visit'])    #Global indexes
     if data_type_gen in ['DI','Atm']:  
@@ -102,7 +102,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
             iexp_eff = deepcopy(iexp)     
             if (gen=='Intr'):
                 if (iexp in gen_vis['idx_in']):iexp_eff = gen_vis['idx_exp2in'][iexp]    
-                else:gen = 'Res'
+                else:gen = 'Diff'
             data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
          
             #Check that planetary ranges were not yet excluded
@@ -250,7 +250,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
                         data_CCF_exp['plrange_exc'] = True
                     else:data_CCF_exp['plrange_exc'] = False
                         
-                else:gen = 'Res'
+                else:gen = 'Diff'
 
             #Maximum dimension of covariance matrix in current exposure from all contributing orders
             nd_cov_exp = np.amax(nd_cov_exp_ord[iexp_sub,:])
@@ -328,7 +328,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
 
     return None    
 
-def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
+def DiffIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
     r"""**CCF conversion** 
     
     Wrap-up for conversion of out-of-transit differential and intrinsic spectra into CCFs.
@@ -353,53 +353,52 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
     #Continuum pixels over all defined exposures
     #    - exclusion of planetary ranges is not required for intrinsic profiles if already applied to their definition, and if not already applied contamination is either negligible or neglected  
     #    - intrinsic profiles at the limbs may not be defined
+    #    - the continuum is common to differential and intrinsic profiles, and defined from both their input continuum ranges, if required for error definition
+    #      if only required for the calculation of the intrinsic profile continuum, it does not account for differential profile continuum
     iexp_conv = list(gen_dic[inst][vis]['idx_out'])+list(gen_dic[inst][vis]['idx_in'][data_dic['Intr'][inst][vis]['idx_def']])   
     cond_def_cont_all  = np.zeros([len(iexp_conv)]+data_dic[inst][vis]['dim_exp'],dtype=bool)        
     for isub,iexp in enumerate(iexp_conv):         
         i_in = gen_vis['idx_exp2in'][iexp]
-        if i_in ==-1:
-            gen ='Res'
+        if (i_in ==-1) and data_dic['Intr']['disp_err']:
+            gen ='Diff'
             iexp_eff = iexp
-        else:
+        elif i_in !=-1:
             gen='Intr'
             iexp_eff = i_in
-        data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
-
-        #Continuum ranges
-        #    - if planetary contamination is excluded from differential out-of-transit profiles, define a large enough initial continuum range if the planet has a wide velocimetric motion 
-        for iord in range(data_dic[inst]['nord']):
-            if iord in data_dic[gen]['cont_range'][inst]:
-                for bd_int in data_dic[gen]['cont_range'][inst][iord]:
-                    cond_def_cont_all[isub,iord] |= ((data_exp['edge_bins'][iord,0:-1]>=bd_int[0]) & (data_exp['edge_bins'][iord,1:]<=bd_int[1]))        
-            else:cond_def_cont_all[isub,iord] = True
-            cond_def_cont_all[isub,iord] &= data_exp['cond_def'][iord]
-            if (gen=='Res') and ('Res_prof' in data_dic['Atm']['no_plrange']) and (iexp in data_dic['Atm'][inst][vis]['iexp_no_plrange']):     
-                cond_def_cont_all[isub,iord] &= excl_plrange(cond_def_cont_all[isub,iord],data_dic['Atm'][inst][vis]['exclu_range_star'],iexp,data_exp['edge_bins'][iord],'CCF')[0]
-
-    #Definition of continuum pixels and errors
-    if data_dic['Intr']['disp_err']:print('         Setting errors on intrinsic CCFs to continuum dispersion')
-    for isub,iexp in enumerate(iexp_conv):         
-        i_in = gen_vis['idx_exp2in'][iexp]
-        if i_in ==-1:
-            gen = 'Res'
-            iexp_eff = iexp
         else:
-            gen='Intr'
-            iexp_eff = i_in
-        data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
+            gen = None
+        if gen is not None:
+            data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
     
-        #Definition of errors on based on the dispersion in the continuum
-        #    - attributing constant error to all points, if requested
-        #    - if atmospheric profiles are extracted this operation must be done on differential profiles, and not intrinsic ones, so that errors can then be propagated         
-        if data_dic['Intr']['disp_err']: 
+            #Continuum ranges
+            #    - if planetary contamination is excluded from differential out-of-transit profiles, define a large enough initial continuum range if the planet has a wide velocimetric motion 
+            for iord in range(data_dic[inst]['nord']):
+                if iord in data_dic[gen]['cont_range'][inst]:
+                    for bd_int in data_dic[gen]['cont_range'][inst][iord]:
+                        cond_def_cont_all[isub,iord] |= ((data_exp['edge_bins'][iord,0:-1]>=bd_int[0]) & (data_exp['edge_bins'][iord,1:]<=bd_int[1]))        
+                else:cond_def_cont_all[isub,iord] = True
+                cond_def_cont_all[isub,iord] &= data_exp['cond_def'][iord]
+                if (gen=='Diff') and ('Diff_prof' in data_dic['Atm']['no_plrange']) and (iexp in data_dic['Atm'][inst][vis]['iexp_no_plrange']):     
+                    cond_def_cont_all[isub,iord] &= excl_plrange(cond_def_cont_all[isub,iord],data_dic['Atm'][inst][vis]['exclu_range_star'],iexp,data_exp['edge_bins'][iord],'CCF')[0]
 
-            #Continuum dispersion
+    #Redefinition of continuum errors
+    #    - attributing constant error to all points, if requested, based on the dispersion in the continuum
+    if data_dic['Intr']['disp_err'] is not None:
+        print('         Setting errors on intrinsic CCFs to continuum dispersion')
+        for isub,iexp in enumerate(iexp_conv):         
+            i_in = gen_vis['idx_exp2in'][iexp]
+            if i_in ==-1:
+                gen = 'Diff'
+                iexp_eff = iexp
+            else:
+                gen='Intr'
+                iexp_eff = i_in
+            data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
+
+            #Error set to scaled continuum dispersion
             for iord in range(data_dic[inst]['nord']):
                 disp_cont=data_exp['flux'][iord,cond_def_cont_all[isub,iord]].std() 
-
-                #Error table
-                #    - scaled if requested
-                err_tab = np.sqrt(gen_dic['g_err'][inst])*np.repeat(disp_cont,data_vis['nspec'])
+                err_tab = np.sqrt(data_dic['Intr']['disp_err'])*np.repeat(disp_cont,data_vis['nspec'])
                 data_exp['cov'][iord] = (err_tab*err_tab)[None,:]
 
             #Overwrite exposure data
@@ -421,7 +420,7 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
 
     #Determine the correlation length for the visit
     if gen_dic['scr_search']:
-        corr_length_determination(data_dic['Res'][inst][vis],data_vis,gen_dic[inst][vis]['scr_search'],inst,vis,gen_dic)    
+        corr_length_determination(data_dic['Diff'][inst][vis],data_vis,gen_dic[inst][vis]['scr_search'],inst,vis,gen_dic)    
 
     return None
 
@@ -726,7 +725,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
             rest_frame = data_dic[gen][inst][vis]['rest_frame']         #Rest frame propagated from original data       
             data_add = {'rest_frame':rest_frame,'dim_exp':[1,prop_dic['spec_1D_prop'][inst]['nspec']]}
             if gen=='Intr':data_add['iexp_conv'] = prop_dic[inst][vis]['idx_def'] 
-            elif gen=='Res':data_add['iexp_conv'] = gen_dic[inst][vis]['idx_out']
+            elif gen=='Diff':data_add['iexp_conv'] = gen_dic[inst][vis]['idx_out']
             else:data_add['iexp_conv'] = iexp_conv
             datasave_npz(dir_save[gen]+'add',data_add)  
 
@@ -747,7 +746,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
         iexp_eff = deepcopy(iexp) 
         if data_type_gen=='Intr':         
             if (iexp in gen_vis['idx_in']):iexp_eff = gen_vis['idx_exp2in'][iexp] 
-            else:gen = 'Res'
+            else:gen = 'Diff'
         data_vis['mast_'+gen+'_data_paths'][iexp_eff] = dir_save[gen]+'ref_'+str(iexp_eff)
         if data_vis['tell_sp']:data_vis['tell_'+data_type_gen+'_data_paths'][iexp] = dir_save[gen]+'_tell'+str(iexp_eff)
         if data_type_gen=='Atm':data_vis['LocEst_Atm_data_paths'][iexp] = dir_save[gen]+'estloc_'+str(iexp_eff)
@@ -810,7 +809,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
             if (data_type_gen=='Intr'):
                 if (iexp in idx_in):
                     iexp_eff = idx_exp2in[iexp] 
-                else:data_type = 'Res'
+                else:data_type = 'Diff'
             elif data_type=='Absorption':iexp_glob = idx_in[iexp]
        
         #Upload spectra and associated tables in star or local frame

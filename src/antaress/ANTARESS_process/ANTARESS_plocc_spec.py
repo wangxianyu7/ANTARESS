@@ -65,7 +65,7 @@ def def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_p
         #Saving complementary data for plots
         if plot_dic['map_Intr_prof_res']!='':
             data_add['loc_prof_est_inpath'] = data_dic[inst][vis]['proc_Intr_data_paths']
-            data_add['loc_prof_est_outpath'] = data_dic[inst][vis]['proc_Res_data_paths']
+            data_add['loc_prof_est_outpath'] = data_dic[inst][vis]['proc_Diff_data_paths']
             data_add['rest_frame'] = data_dic['Intr'][inst][vis]['rest_frame']
         datasave_npz(gen_dic['save_data_dir']+'Loc_estimates/'+corr_mode+'/'+inst+'_'+vis+'_add',data_add)
             
@@ -130,7 +130,7 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
     
         #Upload spectral tables from differential or intrinsic profile of current exposure
         if data_dic['Intr']['plocc_prof_type']=='Intr':iexp_eff = i_in
-        elif data_dic['Intr']['plocc_prof_type']=='Res':iexp_eff = gen_dic[inst][vis]['idx_in2exp'][i_in]
+        elif data_dic['Intr']['plocc_prof_type']=='Diff':iexp_eff = gen_dic[inst][vis]['idx_in2exp'][i_in]
         data_loc_exp = dataload_npz(data_vis['proc_'+data_dic['Intr']['plocc_prof_type']+'_data_paths']+str(iexp_eff))
 
         #Index of binned profile associated with current processed exposure
@@ -220,18 +220,18 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
         #    - this operation assumes that all exposures used to compute the master-out have not been rescaled with respect to the reference, ie that they all have the same flux balance as current exposure before it was rescaled
         #    - see rescale_profiles() and proc_intr_data() for more details
         #      a given local profile write as 
-        #      F_res(w,t,vis) = MFstar(w,vis) - Fsc(w,vis,t)
+        #      F_diff(w,t,vis) = MFstar(w,vis) - Fsc(w,vis,t)
         #   at low resolution, in the continuum (see rescale_profiles())
         #      Fsc(w,vis,t) = LC(w,t)*Fstar(w,vis_norm)*Cref(w)
         #   assuming that the rescaling light curves are constant outside of the transit, all out-of-transit profiles are equivalent between themselves and thus to the master-out
         #      MFstar(w,vis) ~ Fstar(w,vis_norm)*Cref(w)
         #   thus
-        #      F_res(w,t,vis) = Fstar(w,vis_norm)*Cref(w) - LC(w,t)*Fstar(w,vis_norm)*Cref(w)
+        #      F_diff(w,t,vis) = Fstar(w,vis_norm)*Cref(w) - LC(w,t)*Fstar(w,vis_norm)*Cref(w)
         #                     = Fstar(w,vis_norm)*Cref(w)*(1 - LC(w,t))
         #                     = MFstar(w,vis)*(1 - LC(w,t))           
-        #    - if intrinsic profiles are requested no scaling is applied, since F_res(w,t,vis) = F_intr(w,t,vis)*(1 - LC(w,t))      
+        #    - if intrinsic profiles are requested no scaling is applied, since F_diff(w,t,vis) = F_intr(w,t,vis)*(1 - LC(w,t))      
         #    - the scaling spectrum is defined at all pixels, and thus does not affect undefined pixels in the master (the covariance matrix cannot be sliced)
-        if (data_dic['Intr']['plocc_prof_type']=='Res') and gen_dic['flux_sc']:
+        if (data_dic['Intr']['plocc_prof_type']=='Diff') and gen_dic['flux_sc']:
             data_scaling = dataload_npz(data_vis['scaled_Intr_data_paths']+str(gen_dic[inst][vis]['idx_in2exp'][i_in]))
             for iord in range(data_inst['nord']):
                 loc_flux_scaling_ord = data_scaling['loc_flux_scaling'](data_est_loc['cen_bins'][iord])              
@@ -256,7 +256,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     Sub-function to define planet-occulted and spotted profiles using line profile models fitted to all
         - intrinsic profiles together in `fit_IntrProf_all()`.
           This model can be based on analytical, measured, or theoretical profiles.        
-        - to all differential profiles together with `fit_ResProf_all()`.
+        - to all differential profiles together with `fit_DiffProf_all()`.
           This model is based on analytical profiles.  
     
     Flux scaling is not applied to a global intrinsic profile using the chromatic light curve, but re-calculated for each planet-occulted intrinsic line profile for more flexibility (the cumulated scaling should be equivalent).
@@ -276,17 +276,17 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     #Retrieving selected model properties
     fit_txt = None
     if (not spot_on) and ('IntrProf_prop_path' not in opt_dic):fit_txt = 'Intr'
-    if (spot_on) and ('ResProf_prop_path' not in opt_dic):fit_txt = 'Res'
+    if (spot_on) and ('DiffProf_prop_path' not in opt_dic):fit_txt = 'Diff'
     if fit_txt is not None:
         fit_subdirs = glob.glob(gen_dic['save_data_dir']+'/Joined_fits/'+fit_txt+'Prof/*/')
-        if len(fit_subdirs)==0:stop('         No existing fit directory. Run a fit to the '+{'Intr':'intrinsic','Res':'differential'}[fit_txt]+' line profiles.')
+        if len(fit_subdirs)==0:stop('         No existing fit directory. Run a fit to the '+{'Intr':'intrinsic','Diff':'differential'}[fit_txt]+' line profiles.')
         else:
             fit_types = [fit_subdir.split('/')[-2] for fit_subdir in fit_subdirs]
             if 'mcmc' in fit_types:fit_used  ='mcmc'
             else:fit_used  ='chi2'
             print('         Using existing '+fit_used+' fit as default')
             opt_dic[fit_txt+'Prof_prop_path']={inst:{vis:gen_dic['save_data_dir']+'/Joined_fits/'+fit_txt+'Prof/'+fit_used+'/Fit_results'}}  
-    if spot_on:prof_type = 'Res'
+    if spot_on:prof_type = 'Diff'
     else:prof_type='Intr'   
 
     #Retrieve best-fit system properties    
@@ -330,7 +330,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         transit_spots=data_vis['transit_sp']
         iexp_list = range(data_vis['n_in_visit'])
         spots_prop = data_vis['spots_prop']
-        plocc_prof_type = 'Res'
+        plocc_prof_type = 'Diff'
         
         #Defining parameters for the clean version of profiles
         if opt_dic['clean_calc']:
@@ -404,7 +404,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         args_exp = def_st_prof_tab(None,None,None,fixed_args) 
     
         #Define broadband scaling of intrinsic profiles into local profiles
-        if plocc_prof_type=='Res':
+        if plocc_prof_type=='Diff':
             args_exp['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],args_exp,args_exp['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
     
         #Planet-occulted properties
@@ -496,7 +496,7 @@ def plocc_prof_indivmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic):
         data_est_loc={'cen_bins':data_prop[i_in]['cen_bins'],'edge_bins':data_prop[i_in]['edge_bins'],'flux':data_prop[i_in]['flux'][:,None],'cond_def':np.ones(data_vis['dim_exp'],dtype=bool)}
 
         #Rescaling model intrinsic profile to the level of the local profile
-        if data_dic['Intr']['plocc_prof_type']=='Res':
+        if data_dic['Intr']['plocc_prof_type']=='Diff':
             loc_flux_scaling = dataload_npz(data_vis['scaled_Intr_data_paths']+str(gen_dic[inst][vis]['idx_in2exp'][i_in]))['loc_flux_scaling']
             data_est_loc['flux'][0] *= loc_flux_scaling(data_est_loc['cen_bins'][0]) 
 
@@ -714,7 +714,7 @@ def plocc_prof_rec(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,coord_dic):
         data_est_loc=align_data(data_rec[isub],data_vis['type'],data_dic[inst]['nord'],data_vis['dim_exp'],gen_dic['resamp_mode'],data_loc_exp['cen_bins'],data_loc_exp['edge_bins'],rv_shift_cen,spec_dopshift_cen,rv_shift_edge = rv_shift_edge,spec_dopshift_edge = spec_dopshift_edge, nocov = True)
 
         #Rescaling reconstructed intrinsic profile to the level of the local profile
-        if data_dic['Intr']['plocc_prof_type']=='Res':
+        if data_dic['Intr']['plocc_prof_type']=='Diff':
             loc_flux_scaling = dataload_npz(data_vis['scaled_Intr_data_paths']+str(gen_dic[inst][vis]['idx_in2exp'][i_in]))['loc_flux_scaling']
             for iord in range(data_dic[inst]['nord']):data_est_loc['flux'][iord] *=loc_flux_scaling(data_est_loc['cen_bins'][iord]) 
 
@@ -746,7 +746,7 @@ def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param
     """ 
     print('   > Building estimates for planet-occulted and spotted stellar profiles')
     if data_dic[inst][vis]['spots_prop']=={}:stop('Spot properties are not provided. We recommended using the separate routine dedicated to the extraction of planet-occulted profiles instead.')
-    opt_dic = data_dic['Res']['opt_loc_prof_est'] 
+    opt_dic = data_dic['Diff']['opt_loc_prof_est'] 
     corr_mode = opt_dic['corr_mode']
     print('         Using global model')  
 
@@ -756,7 +756,7 @@ def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param
              
         #Calculating the clean version of the data
         opt_dic['clean_calc']=False
-        if (plot_dic['map_Res_prof_clean_pl_est']!='') or (plot_dic['map_Res_prof_clean_sp_est']!=''):
+        if (plot_dic['map_Diff_prof_clean_pl_est']!='') or (plot_dic['map_Diff_prof_clean_sp_est']!=''):
             opt_dic['clean_calc']=True
 
         #Using global profile model
@@ -766,9 +766,9 @@ def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param
         else:stop('WARNING: Only joined-fit results can be used at the moment. Set corr_mode to \'glob_mod\'')
 
         #Saving complementary data for plots
-        if (plot_dic['map_Res_prof_clean_sp_res']!='') or (plot_dic['map_Res_prof_clean_pl_res']!='') or (plot_dic['map_Res_prof_unclean_sp_res']!='') or (plot_dic['map_Res_prof_unclean_pl_res']!=''):
+        if (plot_dic['map_Diff_prof_clean_sp_res']!='') or (plot_dic['map_Diff_prof_clean_pl_res']!='') or (plot_dic['map_Diff_prof_unclean_sp_res']!='') or (plot_dic['map_Diff_prof_unclean_pl_res']!=''):
             data_add['loc_prof_est_path'] = data_dic[inst][vis]['proc_Res_data_paths']
-            data_add['rest_frame'] = data_dic['Res'][inst][vis]['rest_frame']
+            data_add['rest_frame'] = data_dic['Diff'][inst][vis]['rest_frame']
         datasave_npz(gen_dic['save_data_dir']+'Diff_estimates/'+corr_mode+'/'+inst+'_'+vis+'_add',data_add)
 
     #Checking that local data has been calculated for all exposures

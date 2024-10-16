@@ -53,7 +53,7 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
     corr_spot_dic={}
     data_dic={
         'DI':{'fit_prof':{},'mask':{}},
-        'Res':{},
+        'Diff':{},
         'PCA':{},
         'Intr':{'fit_prof':{},'mask':{}},
         'Atm':{'fit_prof':{},'mask':{}}}
@@ -63,7 +63,7 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
     glob_fit_dic={
         'DIProp':{},
         'IntrProp':{},
-        'ResProf':{},
+        'DiffProf':{},
         'IntrProf':{},
         'AtmProp':{},
         'AtmProf':{},

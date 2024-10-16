@@ -212,7 +212,7 @@ Or modulated (:math:`m(x) = m_0 (1 + \sum_{i\geq1}c_i x^i)`)::
 
  glob_fit_dic['IntrProp']['pol_mode']='modul' 
 
-The latter possibility allows for a common dependence of the line property with stellar coordinate `x`, with a scaling :math:`m_0` specific to each epoch. A modulated linear contrast variation would be set up as:: 
+The latter possibility allows for a common dependence of the line property with stellar coordinate `x`, with a scaling :math:`m_0` specific to each visit. A modulated linear contrast variation would be set up as:: 
 
  glob_fit_dic['IntrProp']['mod_prop']['ctrst'] = {
      'ctrst__ord0__IS__VS20221117':{'vary':True,'guess':0.5,'bd':[0.3,1.]},   

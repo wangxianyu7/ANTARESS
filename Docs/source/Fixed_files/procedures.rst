@@ -10,8 +10,8 @@
 
 .. role:: green
 
-Standard procedures
-===================
+Tutorials
+=========
 
 The following pages contain step-by-step tutorials to use ``ANTARESS`` to its full capabilities. Read the `general set up <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/getting_started.html>`_ of the workflow, and 
 follow the tutorials to define ``ANTARESS`` configuration files and run its executable.

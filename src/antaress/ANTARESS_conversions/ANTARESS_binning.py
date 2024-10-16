@@ -17,7 +17,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
      - for a given visit or between several visits
      - binned profiles are calculated as weighted means with weights specific to the type of profiles
      - binned profiles are used for analysis purposes
-     - master profiles used to extract differential profiles from each exposure are calculated in `extract_res_profiles()` 
+     - master profiles used to extract differential profiles from each exposure are calculated in `extract_diff_profiles()` 
 
     Args:
         TBD
@@ -552,7 +552,7 @@ def init_bin_prof(data_type,ref_pl,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bin,
         #    - for aligned intrinsic profiles, corresponds to in-transit indexes of exposures with known surface rvs
         #    - for absorption profiles, indexes are relative to in-transit tables
         #      for emission profiles, indexes are relative to global tables       
-        if data_type in ['DI','Res']:
+        if data_type in ['DI','Diff']:
             idx_orig = np.arange(data_dic[inst][vis]['n_in_visit'])
             if idx_in_bin_vis is not None:idx_to_bin = idx_in_bin_vis
             else:idx_to_bin = gen_dic[inst][vis]['idx_out']
@@ -972,14 +972,14 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #    - detector noise, if defined for S2D, has been estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow 
         cond_def_pos_ord = (Nbl_ord>0.) 
         if (sdet_exp2 is not None):
-            EFsc2_all[iord,cond_def_weights_ord] = sdet_exp2[iord,cond_def_weights_ord[cond_def_pos_ord]]       #detector variance
-            EFsc2_all[iord,cond_def_weights_ord[cond_def_pos_ord]]+= Nbl_ord[cond_def_pos_ord]                  #co-adding photoelectron variance where positive
+            EFsc2_all[iord,cond_def_weights_ord] = sdet_exp2[iord,cond_def_weights_ord][cond_def_pos_ord]       #detector variance
+            EFsc2_all[iord,cond_def_weights_ord][cond_def_pos_ord]+= Nbl_ord[cond_def_pos_ord]                  #co-adding photoelectron variance where positive
             EFsc2_all[iord,cond_def_weights_ord] *= ( flux_sc_all[iord,cond_def_weights_ord]*Ccorr_glob_ord*gcal_ord)**2.            #scaling
              
         else:
             
             #Weights are kept undefined (ie, no weighing) where variance is null or negative      
-            EFsc2_all[iord,cond_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,cond_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
+            EFsc2_all[iord,cond_def_weights_ord][cond_def_pos_ord] = ( flux_sc_all[iord,cond_def_weights_ord][cond_def_pos_ord]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
             
         #Variance on master stellar spectrum
         if data_type!='DI':var_ref2[iord,cond_def_weights_ord] = cov_ref_exp[iord][0,cond_def_weights_ord]
@@ -1009,7 +1009,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         # weight(w,t,v) = 1/EFdiff_true(w,t,v)^2
         #    - we neglect covariance in the uncertainties of the master spectrum
         #    - the binning should be performed in the star rest frame 
-        if data_type=='Res': 
+        if data_type=='Diff': 
             weight_spec = 1./EFdiff2
 
         #--------------------------------------------------------    

@@ -43,8 +43,8 @@ def joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic
         main_joined_IntrProf('IntrProf',data_dic,gen_dic,system_param,glob_fit_dic['IntrProf'],theo_dic,plot_dic,coord_dic)    
 
     #Fitting local stellar lines with joined model, including spots in the fitted parameters
-    if gen_dic['fit_ResProf']:
-        main_joined_ResProf('ResProf',data_dic,gen_dic,system_param,glob_fit_dic['ResProf'],theo_dic,plot_dic,coord_dic)    
+    if gen_dic['fit_DiffProf']:
+        main_joined_DiffProf('DiffProf',data_dic,gen_dic,system_param,glob_fit_dic['DiffProf'],theo_dic,plot_dic,coord_dic)    
 
     return None
 
@@ -135,7 +135,10 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
                 fit_dic['nx_fit']+=fixed_args['nexp_fit_all'][inst][vis]
                 for i_in in fixed_args['idx_in_fit'][inst][vis]:    
                     fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
-                    fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))  
+                    fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))
+                
+                #Scaling variance
+                fixed_args['s_val']*=np.sqrt(fixed_args['sc_var'])
 
         fixed_args['idx_fit'] = np.ones(fit_dic['nx_fit'],dtype=bool)
         fixed_args['nexp_fit'] = fit_dic['nx_fit']
@@ -343,6 +346,9 @@ def main_joined_IntrProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,pl
                     for i_in in fixed_args['idx_in_fit'][inst][vis]:    
                         fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
                         fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))
+
+                    #Scaling variance
+                    fixed_args['s_val']*=np.sqrt(fixed_args['sc_var'])
 
         #Final processing
         for idx_inst,inst in enumerate(fixed_args['inst_list']):
@@ -575,7 +581,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
         if (fixed_args['mode']=='ana') and (inst not in fixed_args['model']):fixed_args['model'][inst] = 'gauss'
-        if (inst in fit_prop_dic['order']):iord_sel =  fit_prop_dic['order'][inst]
+        if (inst in fit_prop_dic['fit_order']):iord_sel =  fit_prop_dic['fit_order'][inst]
         else:iord_sel = 0
         
         #Setting continuum range to default if undefined
@@ -678,7 +684,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     fixed_args['edge_bins'][inst][vis][isub] = data_exp['edge_bins'][iord_sel,idx_range_kept[0]:idx_range_kept[-1]+2]   
                     fixed_args['dcen_bins'][inst][vis][isub] = fixed_args['edge_bins'][inst][vis][isub][1::]-fixed_args['edge_bins'][inst][vis][isub][0:-1]  
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]  
-                    
+
                     #Oversampled line profile model table
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
                
@@ -694,6 +700,14 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     fixed_args['cond_def_cont_all'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]           
                     fixed_args['cond_fit'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]          
                     fit_dic['nx_fit']+=np.sum(fixed_args['cond_fit'][inst][vis][isub])
+                    
+                    #Setting constant error
+                    if fixed_args['cst_err']:
+                        var_loc = fixed_args['cov'][inst][vis][isub][0,fixed_args['cond_def_cont_all'][inst][vis][isub]]
+                        fixed_args['cov'][inst][vis][isub] = np.tile(np.mean(var_loc),[1,ncen_bins])
+             
+                    #Scaling covariance matrix
+                    fixed_args['cov'][inst][vis][isub]*=fixed_args['sc_var']
 
                     #Initialize PCs 
                     if fixed_args['n_pc'][inst][vis] is not None:
@@ -910,7 +924,7 @@ def joined_IntrProf(param,fixed_args):
 
                 #Intrinsic profile for current exposure
                 #    - occulted stellar cells (from planet and spots) are automatically identified within sub_calc_plocc_spot_prop() 
-                #    - see joined_ResProf() for details about spot contribution
+                #    - see joined_DiffProf() for details about spot contribution
                 #    - the planet-occulted profile is calculated over both quiet and spotted cells
                 surf_prop_dic,spotocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['studied_pl'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp,[isub],system_spot_prop_in=args['system_spot_prop'])
                 sp_line_model = surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] 
@@ -991,7 +1005,7 @@ def joined_IntrProf(param,fixed_args):
 
 
 
-def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):    
+def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,theo_dic,plot_dic,coord_dic):    
     r"""**Joined differential profiles fits**
 
     Main routine to fit a given stellar surface property from planet-occulted regions with a joined model over instruments and visits.
@@ -1107,15 +1121,15 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
         if (fixed_args['mode']=='ana') and (inst not in fixed_args['model']):fixed_args['model'][inst] = 'gauss'
-        if (inst in fit_prop_dic['order']):iord_sel =  fit_prop_dic['order'][inst]
+        if (inst in fit_prop_dic['fit_order']):iord_sel =  fit_prop_dic['fit_order'][inst]
         else:iord_sel = 0
 
         #Setting continuum range to default if undefined
-        if inst not in fit_prop_dic['cont_range']:fit_prop_dic['cont_range'] = data_dic['Res']['cont_range']
+        if inst not in fit_prop_dic['cont_range']:fit_prop_dic['cont_range'] = data_dic['Diff']['cont_range']
         cont_range = fit_prop_dic['cont_range'][inst][iord_sel]
 
         #Setting fitted range to default if undefined
-        if inst not in fit_prop_dic['fit_range']:fit_prop_dic['fit_range'][inst] = data_dic['Res']['fit_range'][inst]
+        if inst not in fit_prop_dic['fit_range']:fit_prop_dic['fit_range'][inst] = data_dic['Diff']['fit_range'][inst]
         
         #Setting trimmed range to default if undefined
         if (inst in fit_prop_dic['trim_range']):trim_range = fit_prop_dic['trim_range'][inst]
@@ -1123,7 +1137,7 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
 
         #Defining visits used in the master-out calculation 
         fixed_args['master_out']['multivisit_list'][inst]=[]
-        if (inst in data_dic['Res']['vis_in_bin']) and (len(data_dic['Res']['vis_in_bin'][inst])>1):fixed_args['master_out']['multivisit_list'][inst]=data_dic['Res']['vis_in_bin'][inst]
+        if (inst in data_dic['Diff']['vis_in_bin']) and (len(data_dic['Diff']['vis_in_bin'][inst])>1):fixed_args['master_out']['multivisit_list'][inst]=data_dic['Diff']['vis_in_bin'][inst]
         for multivisit in fixed_args['master_out']['multivisit_list'][inst]:
             if multivisit not in data_dic[inst]['visit_list']:stop('Problem: '+multivisit+' was selected for master-out calculation but is not used in the fit.')
 
@@ -1134,7 +1148,7 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
             #Visit is fitted
             if vis in fixed_args['inst_vis_list'][inst]:
                 data_vis=data_dic[inst][vis]
-                init_joined_routines_vis_fit('ResProf',inst,vis,fit_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic,None,None)
+                init_joined_routines_vis_fit('DiffProf',inst,vis,fit_dic,fixed_args,data_vis,gen_dic,data_dic,coord_dic,theo_dic,None,None)
 
                 #Master-out properties
                 fixed_args['raw_DI_profs'][inst][vis]={} 
@@ -1142,8 +1156,8 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 fixed_args['master_out']['idx_in_master_out'][inst][vis]=[]
 
                 #Indexes
-                if (inst in data_dic['Res']['idx_in_bin']) and (vis in data_dic['Res']['idx_in_bin'][inst]):
-                    if data_dic['Res']['idx_in_bin'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=list(data_dic['Res']['idx_in_bin'][inst][vis])
+                if (inst in data_dic['Diff']['idx_in_bin']) and (vis in data_dic['Diff']['idx_in_bin'][inst]):
+                    if data_dic['Diff']['idx_in_bin'][inst][vis]!={}:fixed_args['master_out']['idx_in_master_out'][inst][vis]=list(data_dic['Diff']['idx_in_bin'][inst][vis])
                 if len(fixed_args['master_out']['idx_in_master_out'][inst][vis])==0:stop('No exposures defined in visit '+vis+' for the master-out calculation.')
 
                 #Needed for weight calculation
@@ -1202,8 +1216,8 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
 
                     #Upload latest processed differential data
-                    if fixed_args['bin_mode'][inst][vis]=='_bin':data_exp = dataload_npz(gen_dic['save_data_dir']+'Resbin_data/'+inst+'_'+vis+'_phase'+str(i_in))               
-                    else:data_exp = dataload_npz(data_dic[inst][vis]['proc_Res_data_paths']+str(i_in))
+                    if fixed_args['bin_mode'][inst][vis]=='_bin':data_exp = dataload_npz(gen_dic['save_data_dir']+'Diffbin_data/'+inst+'_'+vis+'_phase'+str(i_in))               
+                    else:data_exp = dataload_npz(data_dic[inst][vis]['proc_Diff_data_paths']+str(i_in))
 
                     #Initialization
                     if isub==0:
@@ -1244,7 +1258,7 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]
 
                     #Calibration profile for weighing    
-                    fixed_args['master_out']['gcal'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['sing_gcal_Res_data_paths'][i_in])['sing_gcal'][iord_sel,idx_range_kept] 
+                    fixed_args['master_out']['gcal'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['sing_gcal_Diff_data_paths'][i_in])['sing_gcal'][iord_sel,idx_range_kept] 
 
                     #Oversampled line profile model table
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
@@ -1263,6 +1277,14 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
                     fit_dic['nx_fit']+=np.sum(fixed_args['cond_fit'][inst][vis][isub])                   
                     fixed_args['cond_def_plot_all'][inst][vis][isub] = np.isin(np.linspace(0,data_vis['nspec'],data_vis['nspec'], endpoint=False, dtype=int), idx_range_kept)
 
+                    #Setting constant error
+                    if fixed_args['cst_err']:
+                        var_loc = fixed_args['cov'][inst][vis][isub][0,fixed_args['cond_def_cont_all'][inst][vis][isub]]
+                        fixed_args['cov'][inst][vis][isub] = np.tile(np.mean(var_loc),[1,ncen_bins])
+
+                    #Scaling variance
+                    fixed_args['cov'][inst][vis][isub] *= fixed_args['sc_var']
+                    
                     #Initialize PCs 
                     if fixed_args['n_pc'][inst][vis] is not None:
                     
@@ -1339,12 +1361,12 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     fixed_args['cov_val'] = np.array([fixed_args['s_val']**2.])  
     fixed_args['use_cov'] = False
     fixed_args['use_cov_eff'] = gen_dic['use_cov']
-    fixed_args['fit_func'] = FIT_joined_ResProf
-    fixed_args['mod_func'] = joined_ResProf
+    fixed_args['fit_func'] = FIT_joined_DiffProf
+    fixed_args['mod_func'] = joined_DiffProf
     fixed_args['inside_fit'] = True 
 
     #Model fit and calculation
-    merged_chain,p_final = com_joint_fits('ResProf',fit_dic,fixed_args,gen_dic,data_dic,theo_dic,fit_dic['mod_prop'])
+    merged_chain,p_final = com_joint_fits('DiffProf',fit_dic,fixed_args,gen_dic,data_dic,theo_dic,fit_dic['mod_prop'])
 
     #PC correction
     if len(fit_prop_dic['PC_model'])>0:
@@ -1404,13 +1426,13 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
             for vis in fixed_args['inst_vis_list'][inst]:
 
                 #Make directory to store best-fit results
-                save_exp_dir = gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fit_prop_dic['fit_mode']+'/'+inst+'/'+vis+'/'
+                save_exp_dir = gen_dic['save_data_dir']+'Joined_fits/DiffProf/'+fit_prop_dic['fit_mode']+'/'+inst+'/'+vis+'/'
                 if (not os.path.exists(save_exp_dir)):os.makedirs(save_exp_dir) 
 
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
                     prof_fit_dic={'fit_range':fit_prop_dic['fit_range'][inst][vis]}
-                    if fixed_args['bin_mode'][inst][vis]=='_bin':prof_fit_dic['loc_prof_est_path'] = gen_dic['save_data_dir']+'Resbin_data/'+inst+'_'+vis+'_phase'          
-                    else:prof_fit_dic['loc_prof_est_path'] = data_dic[inst][vis]['proc_Res_data_paths']
+                    if fixed_args['bin_mode'][inst][vis]=='_bin':prof_fit_dic['loc_prof_est_path'] = gen_dic['save_data_dir']+'Diffbin_data/'+inst+'_'+vis+'_phase'          
+                    else:prof_fit_dic['loc_prof_est_path'] = data_dic[inst][vis]['proc_Diff_data_paths']
                     prof_fit_dic={
                         'edge_bins':np.array([fixed_args['edge_bins'][inst][vis][isub]]),
                         'flux':np.array([mod_dic[inst][vis][isub]]),
@@ -1441,7 +1463,7 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     
 
 
-def FIT_joined_ResProf(param,x_tab,args=None):
+def FIT_joined_DiffProf(param,x_tab,args=None):
     r"""**Fit function: joined differential stellar profiles**
 
     Calls corresponding model function for optimization
@@ -1454,7 +1476,7 @@ def FIT_joined_ResProf(param,x_tab,args=None):
     """
     
     #Models over fitted spectral ranges
-    mod_dic=joined_ResProf(param,args)[0]
+    mod_dic=joined_DiffProf(param,args)[0]
 
     #Merit table
     chi = calc_chi_Prof(mod_dic,args)
@@ -1466,7 +1488,7 @@ def FIT_joined_ResProf(param,x_tab,args=None):
 
 
    
-def joined_ResProf(param,fixed_args):
+def joined_DiffProf(param,fixed_args):
     r"""**Model function: joined differential profiles**
 
     Defines the joined model for differential profiles. This is done in three steps
