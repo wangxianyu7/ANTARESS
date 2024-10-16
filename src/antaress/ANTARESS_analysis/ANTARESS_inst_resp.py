@@ -102,7 +102,13 @@ def return_pix_size():
         
         'IRD':2.08442,
         
-        'GIANO':3.1280284
+        'GIANO':3.1280284,
+
+        #MIKE
+        #    blue arm : pix_size ~= 0.02 A -> 1.43 km/s at 4190 A 
+        'MIKE_Blue':1.43,
+        #    red arm : pix_size ~= 0.05 A -> 2.10 km/s at 7130 A 
+        'MIKE_Red':2.10,
         
     }     
 
@@ -228,6 +234,8 @@ def return_resolv(inst):
         'NIRSPEC':25000.,
         'IRD':70000.,
         'GIANO':50000.,
+        'MIKE_Red':83000.,
+        'MIKE_Blue':65000.,
     }[inst]  
     return inst_res
 

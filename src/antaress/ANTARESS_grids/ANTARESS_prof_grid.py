@@ -846,7 +846,8 @@ def use_C_coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
         TBD
     
     """ 
-    sc_10 = get_pw10(np.mean(Fsurf_grid_spec))
+    if np.mean(Fsurf_grid_spec)==0.:sc_10 = 1
+    else: sc_10 = get_pw10(np.abs(np.mean(Fsurf_grid_spec)))
     Fsurf_grid_spec_shape0 = len(Fsurf_grid_spec)
     ncen_bins = args['ncen_bins']
     gauss_grid = np.zeros((Fsurf_grid_spec_shape0, ncen_bins), dtype=np.float64).flatten()

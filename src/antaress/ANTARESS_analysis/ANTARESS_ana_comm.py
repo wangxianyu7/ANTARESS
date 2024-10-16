@@ -829,18 +829,18 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
             fixed_args['fit_RpRs']=False
             
         #Spot
+        fixed_args['fit_spot']=False
+        fixed_args['fit_spot_ang']=[]
         if fixed_args['cond_transit_sp']:
             par_spot=['lat', 'Tc_sp', 'ang', 'fctrst']    
             for par in par_spot:fixed_args[par+'_sp']=[]
-            fixed_args['fit_spot']=False
-            fixed_args['fit_spot_ang']=[]
 
         #Facula
+        fixed_args['fit_facula']=False
+        fixed_args['fit_facula_ang']=[]
         if fixed_args['cond_transit_fa']:
             par_facula=['lat', 'Tc_fa', 'ang', 'fctrst']    
-            for par in par_facula:fixed_args[par+'_sp']=[]
-            fixed_args['fit_facula']=False
-            fixed_args['fit_facula_ang']=[]
+            for par in par_facula:fixed_args[par+'_fa']=[]
 
         #Star
         par_star_sp = ['cos_istar', 'f_GD', 'veq', 'Peq', 'alpha_rot', 'beta_rot' ]

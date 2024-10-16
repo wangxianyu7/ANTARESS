@@ -193,7 +193,32 @@ def get_system_params():
 
     },      
 
-    #------------------------------    
+        #------------------------------    
+
+        'TOI3884':{ 
+            'star':{  #Libby-Roberts+2023 
+                'Rstar':0.302,              
+                'istar':90.,                    #unknown
+                'Mstar':0.298,
+                'veq':3.59,                     #unknown                
+                # 'veq_spots':23.59,
+                },
+
+            'TOI3884_b':{  #Libby-Roberts+2023  
+                'period':4.5445828,           
+                'TCenter':2459556.51669,      
+                'ecc':0.060,
+                'omega_deg':-112., #very different from previous studies - re-fit?
+                'Kstar':28.03,     #very different from previous studies
+                'aRs':25.90,  
+                'inclination':89.81,   
+                'TLength':1.60/24.,      
+                'lambda_proj':75.  #what we want to constrain so will vary
+                }, 
+
+    },      
+
+        #------------------------------    
 
         'TRAPPIST1':{
 
@@ -291,7 +316,7 @@ def get_system_params():
                 }
         },
 
-    #------------------------------    
+        #------------------------------    
 
         'AUMic':{
 

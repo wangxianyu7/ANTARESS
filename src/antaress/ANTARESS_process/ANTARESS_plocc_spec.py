@@ -34,7 +34,7 @@ def def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_p
     """ 
     print('   > Building estimates for planet-occulted stellar profiles')
     opt_dic = data_dic['Intr']['opt_loc_data_corr'] 
-    for key in ['clean_calc','corr_spot','map_diff_res']:opt_dic[key]=False
+    for key in ['clean_calc','corr_spot_facula','map_diff_res']:opt_dic[key]=False
     corr_mode = opt_dic['corr_mode']
     text_print={
         'DIbin':    '         Using DI master',
@@ -242,7 +242,7 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
 
 
 
-def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,spot_on):
+def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,spot_facula_on):
     r"""**Planet-occulted / spotted exposure profiles: global model**
     
     Sub-function to define planet-occulted and spotted profiles using line profile models fitted to all
@@ -267,8 +267,8 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
 
     #Retrieving selected model properties
     fit_txt = None
-    if (not spot_on) and ('IntrProf_prop_path' not in opt_dic):fit_txt = 'Intr'
-    if (spot_on) and ('ResProf_prop_path' not in opt_dic):fit_txt = 'Res'
+    if (not spot_facula_on) and ('IntrProf_prop_path' not in opt_dic):fit_txt = 'Intr'
+    if (spot_facula_on) and ('ResProf_prop_path' not in opt_dic):fit_txt = 'Res'
     if fit_txt is not None:
         fit_subdirs = glob.glob(gen_dic['save_data_dir']+'/Joined_fits/'+fit_txt+'Prof/*/')
         if len(fit_subdirs)==0:stop('         No existing fit directory. Run a fit to the '+{'Intr':'intrinsic','Res':'differential'}[fit_txt]+' line profiles.')
@@ -278,7 +278,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
             else:fit_used  ='chi2'
             print('         Using existing '+fit_used+' fit as default')
             opt_dic[fit_txt+'Prof_prop_path']={inst:{vis:gen_dic['save_data_dir']+'/Joined_fits/'+fit_txt+'Prof/'+fit_used+'/Fit_results'}}  
-    if spot_on:prof_type = 'Res'
+    if spot_facula_on:prof_type = 'Res'
     else:prof_type='Intr'   
 
     #Retrieve best-fit system properties    
@@ -316,39 +316,49 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
             'func_prof_name':data_prop['func_prof_name'][inst]
         })        
         for key in ['coeff_ord2name','pol_mode','coord_line','linevar_par']:fixed_args[key] = data_prop[key]
-    if spot_on:  
+    if spot_facula_on:  
         fixed_args.update({          
         'fit_spot_ang':data_prop['fit_spot_ang'],
         'fit_spot':data_prop['fit_spot'],
         'fit_star_sp':data_prop['fit_star_sp'],
         'system_spot_prop':data_prop['system_spot_prop'],   
-        'spot_coord_par':gen_dic['spot_coord_par'], 
+        'spot_coord_par':gen_dic['spot_coord_par'],
+        'fit_facula_ang':data_prop['fit_facula_ang'],
+        'fit_facula':data_prop['fit_facula'],
+        'fit_star_fa':data_prop['fit_star_fa'],
+        'system_facula_prop':data_prop['system_facula_prop'],   
+        'facula_coord_par':gen_dic['facula_coord_par'], 
         'bjd_time_shift':{inst:{vis:0.}},
         'conv2intr' :False,           
             })
         transit_spots=data_vis['transit_sp']
+        transit_faculae=data_vis['transit_fa']
         iexp_list = range(data_vis['n_in_visit'])
         spots_prop = data_vis['spots_prop']
+        faculae_prop = data_vis['faculae_prop']
         plocc_prof_type = 'Res'
         
         #Defining parameters for the clean version of profiles
         if opt_dic['clean_calc']:
             clean_params = deepcopy(params)
-            clean_params['use_spots']=False        
+            clean_params['use_spots']=False
+            clean_params['use_faculae']=False        
         
     else:
         fixed_args.update({          
-        'system_spot_prop':{}})
+        'system_spot_prop':{},'system_facula_prop':{}})
         plocc_prof_type = data_dic['Intr']['plocc_prof_type']
         if plocc_prof_type=='Intr':fixed_args['conv2intr'] = True
         else:fixed_args['conv2intr'] = False 
         transit_spots=[]
+        transit_faculae=[]
         spots_prop ={}
+        faculae_prop ={}
         iexp_list = data_dic[prof_type][inst][vis]['idx_def']
     chrom_mode = data_vis['system_prop']['chrom_mode']
   
     #Figuring out if we need to build residuals from best-fit differential profiles
-    for key in ['map_diff_res', 'corr_spot']:
+    for key in ['map_diff_res', 'corr_spot_facula']:
         if opt_dic[key]:
             if key=='map_diff_res':
                 print('         Building best-fit differential profiles')
@@ -361,9 +371,9 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
                 if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)):makedirs(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)
 
             else:
-                print('         Correcting for spot contamination in data')
+                print('         Correcting for spot / facula contamination in data')
 
-                fixed_args['corr_spot']=True
+                fixed_args['corr_spot_facula']=True
                 if (not path_exist(gen_dic['save_data_dir']+'Corr_data/')):makedirs(gen_dic['save_data_dir']+'Corr_data/') 
 
             #Initializing necesary dictionaries
@@ -382,7 +392,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_vis['type']) 
 
     #Initializing stellar profiles
-    fixed_args = var_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],spots_prop,{},system_param['star'],params)
+    fixed_args = var_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],spots_prop,faculae_prop,system_param['star'],params)
     fixed_args = init_custom_DI_prof(fixed_args,gen_dic,params)                  
 
     #Updating coordinates with the best-fit properties
@@ -390,12 +400,12 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     coord_vis = coord_dic[inst][vis]
     for pl_loc in data_vis['transit_pl']:
         ph_rec[pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'],coord_vis[pl_loc]['cen_ph'],coord_vis[pl_loc]['end_ph']) ) 
-    system_param_loc,coord_pl_sp,_ = up_plocc_prop(inst,vis,fixed_args,params,data_vis['transit_pl'],ph_rec,coord_vis,transit_spots=transit_spots)
+    system_param_loc,coord_pl_sp_fa,_ = up_plocc_prop(inst,vis,fixed_args,params,data_vis['transit_pl'],ph_rec,coord_vis,transit_spots=transit_spots,transit_faculae=transit_faculae)
 
     #-----------------------------------------------------------
     #Figuring out which cells of the stellar grid are never spotted or planet-occulted
     #-----------------------------------------------------------
-    if (opt_dic['map_diff_res']) or (opt_dic['corr_spot']):
+    if (opt_dic['map_diff_res']) or (opt_dic['corr_spot_facula']):
         #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
         #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
         fixed_args['unquiet_star'] = np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
@@ -404,10 +414,10 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         #     #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
         #     plocced_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
         #     for pl_loc in data_vis['transit_pl']:
-        #         if np.abs(coord_pl_sp[pl_loc]['ecl'][isub])!=1:
+        #         if np.abs(coord_pl_sp_fa[pl_loc]['ecl'][isub])!=1:
         #             mini_pl_dic = {}
-        #             mini_pl_dic['x_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][0, isub], coord_pl_sp[pl_loc]['cen_pos'][0, isub], coord_pl_sp[pl_loc]['end_pos'][0, isub]]
-        #             mini_pl_dic['y_orb_exp']=[coord_pl_sp[pl_loc]['st_pos'][1, isub], coord_pl_sp[pl_loc]['cen_pos'][1, isub], coord_pl_sp[pl_loc]['end_pos'][1, isub]]
+        #             mini_pl_dic['x_orb_exp']=[coord_pl_sp_fa[pl_loc]['st_pos'][0, isub], coord_pl_sp_fa[pl_loc]['cen_pos'][0, isub], coord_pl_sp_fa[pl_loc]['end_pos'][0, isub]]
+        #             mini_pl_dic['y_orb_exp']=[coord_pl_sp_fa[pl_loc]['st_pos'][1, isub], coord_pl_sp_fa[pl_loc]['cen_pos'][1, isub], coord_pl_sp_fa[pl_loc]['end_pos'][1, isub]]
         #             mini_pl_dic['RpRs']=fixed_args['system_prop']['achrom'][pl_loc][0]
         #             if ('lambda_rad__pl'+pl_loc in fixed_args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
         #             else:lamb_name = 'lambda_rad__pl'+pl_loc 
@@ -418,20 +428,29 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         #     #Figure out which cells of the full stellar grid are spotted in at least one exposure
         #     spotted_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
         #     for spot in transit_spots:
-        #         if np.sum(coord_pl_sp[spot]['is_visible'][:, isub])>0:
+        #         if np.sum(coord_pl_sp_fa[spot]['is_visible'][:, isub])>0:
         #             mini_spot_dic = {}
-        #             for par_spot in fixed_args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp[spot][par_spot][:, isub]
-        #             _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic,coord_pl_sp[spot]['ang_rad'], fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'], fixed_args['grid_dic']['z_st_sky'], fixed_args['grid_dic'], system_param_loc['star'])
+        #             for par_spot in fixed_args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp_fa[spot][par_spot][:, isub]
+        #             _, spot_spotted_star_grid = calc_spotted_tiles(mini_spot_dic,coord_pl_sp_fa[spot]['ang_rad'], fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'], fixed_args['grid_dic']['z_st_sky'], fixed_args['grid_dic'], system_param_loc['star'])
         #             spotted_star_grid |= spot_spotted_star_grid
 
+        #     #Figure out which cells of the full stellar grid are faculaed in at least one exposure
+        #     faculaed_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
+        #     for facula in transit_faculae:
+        #         if np.sum(coord_pl_sp_fa[facula]['is_visible'][:, isub])>0:
+        #             mini_facula_dic = {}
+        #             for par_facula in fixed_args['facula_coord_par']:mini_facula_dic[par_facula] = coord_pl_sp_fa[facula][par_facula][:, isub]
+        #             _, facula_faculaed_star_grid = calc_spotted_tiles(mini_facula_dic,coord_pl_sp_fa[facula]['ang_rad'], fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'], fixed_args['grid_dic']['z_st_sky'], fixed_args['grid_dic'], system_param_loc['star'])
+        #             faculaed_star_grid |= facula_faculaed_star_grid
+
         #     #Update the global 2D quiet star grid
-        #     #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots and planets in one of the processed exposure
+        #     #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots, faculae and planets in one of the processed exposure
         #     #      contributions from the other cells do not need to be calculated because they are removed when computing differential profiles
-        #     fixed_args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid)
+        #     fixed_args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid | faculaed_star_grid)
 
     #Processing relevant exposures
     for isub,iexp in enumerate(iexp_list):
-        if not spot_on:
+        if not spot_facula_on:
             iexp_glob = gen_dic[inst][vis]['idx_in2exp'][iexp]
             if plocc_prof_type=='Intr':iexp_eff = iexp
             else:iexp_eff = iexp_glob
@@ -462,7 +481,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         #Initializing stellar profiles
         #    - can be defined using the first exposure table
         if isub==0:
-            fixed_args = var_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],spots_prop,system_param['star'],params)
+            fixed_args = var_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],spots_prop,faculae_prop,system_param['star'],params)
             fixed_args = init_custom_DI_prof(fixed_args,gen_dic,params)                  
     
             #Effective instrumental convolution
@@ -483,32 +502,43 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
                 base_DI_prof = custom_DI_prof(params,None,args=args_exp)[0]
 
         #Planet-occulted properties
-        surf_prop_dic,spot_prop_dic,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_vis['transit_pl'],data_vis['transit_sp'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_sp,[iexp_glob],system_spot_prop_in=fixed_args['system_spot_prop'])
+        surf_prop_dic,spot_prop_dic,facula_prop_dic,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_vis['transit_pl'],data_vis['transit_sp'],data_vis['transit_fa'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_sp_fa,[iexp_glob],system_spot_prop_in=fixed_args['system_spot_prop'],system_facula_prop_in=fixed_args['system_facula_prop'])
 
-        #With spots
-        if spot_on:
+        #With spots/faculae
+        if spot_facula_on:
             save_path = gen_dic['save_data_dir']+'Diff_estimates/'+corr_mode+'/'+inst+'_'+vis+'_'+str(iexp)
 
             #Planet-occulted and spotted line profiles - unclean
             pl_line_model = surf_prop_dic[chrom_mode]['line_prof'][:,0]
             sp_line_model = spot_prop_dic[chrom_mode]['line_prof'][:,0]
-            line_prof_cons = {'unclean_pl_flux':pl_line_model, 'unclean_sp_flux':sp_line_model}
+            fa_line_model = facula_prop_dic[chrom_mode]['line_prof'][:,0]
+            line_prof_cons = {'unclean_pl_flux':pl_line_model, 'unclean_sp_flux':sp_line_model, 'unclean_fa_flux':fa_line_model}
             
             #Planet-occulted and spotted line profiles - clean
             if opt_dic['clean_calc']:
                 
                 #Only planet-occulted profiles
-                clean_surf_prop_dic,_,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_vis['transit_pl'],[],deepcopy(system_param),theo_dic,fixed_args['system_prop'],clean_params,coord_pl_sp,[iexp])
+                clean_surf_prop_dic,_,_,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_vis['transit_pl'],[],[],deepcopy(system_param),theo_dic,fixed_args['system_prop'],clean_params,coord_pl_sp_fa,[iexp])
                 
                 #Only spotted profiles
-                _,clean_spot_prop_dic,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],[],data_vis['transit_sp'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_sp,[iexp],system_spot_prop_in=fixed_args['system_spot_prop'])
-    
+                # Turning on the use of spots
+                if len(transit_spots)>0:clean_params['use_spots']=True
+                _,clean_spot_prop_dic,_,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],[],data_vis['transit_sp'],[],deepcopy(system_param),theo_dic,fixed_args['system_prop'],clean_params,coord_pl_sp_fa,[iexp],system_spot_prop_in=fixed_args['system_spot_prop'])
+                clean_params['use_spots']=False
+
+                #Only faculaed profiles
+                # Turning on the use of faculae and off the use of spots
+                if len(transit_faculae)>0:clean_params['use_faculae']=True
+                _,_,clean_facula_prop_dic,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],[],[],data_vis['transit_fa'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],clean_params,coord_pl_sp_fa,[iexp],system_facula_prop_in=fixed_args['system_facula_prop'])
+                clean_params['use_faculae']=False
+
                 #Storing
                 clean_pl_line_model = clean_surf_prop_dic[chrom_mode]['line_prof'][:,0]
                 clean_sp_line_model = clean_spot_prop_dic[chrom_mode]['line_prof'][:,0]
-                line_prof_cons.update({'clean_pl_flux':clean_pl_line_model, 'clean_sp_flux':clean_sp_line_model})
+                clean_fa_line_model = clean_facula_prop_dic[chrom_mode]['line_prof'][:,0]
+                line_prof_cons.update({'clean_pl_flux':clean_pl_line_model, 'clean_sp_flux':clean_sp_line_model, 'clean_fa_flux':clean_fa_line_model})
 
-        #Without spots
+        #Without spots/faculae
         else:
             save_path = gen_dic['save_data_dir']+'Loc_estimates/'+corr_mode+'/'+inst+'_'+vis+'_'+str(iexp)
     
@@ -536,57 +566,68 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         #Saving estimate of local profile for current exposure                 
         np.savez_compressed(save_path,data=data_store,allow_pickle=True)
 
-        for key in ['map_diff_res', 'corr_spot']:
+        for key in ['map_diff_res', 'corr_spot_facula']:
             if opt_dic[key]:
                 
-                # Correcting exposure profile for the spot contamination - planet-spot overlap is accounted for
+                # Correcting exposure profile for the spot and facula contamination - planet-spot-facula overlap is accounted for
                 # Let us define F_exp as the profile of a given exposure. Then F_exp can be expressed as:
                 #
-                # F_exp = F_DI  -  F_pl  -  F_sp
+                # F_exp = F_DI  -  F_pl  -  F_sp - F_fa
                 #
-                # where F_DI is the unocculted star profile and F_pl, F_sp are planet and spot deviation profiles
+                # where F_DI is the unocculted star profile and F_pl, F_sp, F_fa are planet, spot and facula deviation profiles
                 # The planet-deviation profile can be re-written as: 
                 #
-                # F_pl = sum( pl, sum(region A, f)  +  sum(region B, s)  )
+                # F_pl = sum( pl, sum(region A, f)  +  sum(region B, s)  +  sum(region C U D, n) )
+                #
+                # where region A is the portion of the planet-occulted regions that covers the quiet star, region B is the portion of the planet-occulted
+                # regions that covers ONLY spots, region C is the portion of the planet-occulted regions that covers ONLY faculae, and region D is the portion 
+                # of the planet-occulted regions that covers regions where there is spot-facula overlap.
                 #
                 # While the spot-deviation profile is:
                 #
-                # F_sp = sum( sp, sum(region B, f - s) + sum(region C, f - s))
+                # F_sp = sum( sp, sum(region E U F, f - s) )
                 #
-                # where region A is the portion of the planet-occulted regions that covers the quiet star, region B is the portion of the planet-occulted
-                #regions that covers one or more spots, and region C is the portion of spotted regions that is not covered by the planet(s).
-                # f is the profile assigned to a quiet star cell which s is the profile assigned to a spotted cell.
+                # where region E is the portion of the spot-occulted regions that is not covered by faculae (this portion can be planet-occulted) and region F
+                # is the portion of spot-occulted regions that is covered by faculae.
+                #
+                # the facula=deviation profile is:
+                #
+                # F_fa = sum( fa, sum(region F, s - n)  +  sum(region G, f - n) )
+                #
+                # where region G is the portion of facula-occulted regions where there is no overlap with spots.
+                # f is the profile assigned to a quiet star cell, s is the profile assigned to a spotted cell, and n is the profile assigned to a faculaed cell.
+                #
                 # To remove the impact of spots in the exposure profile F_exp, we use the best-fit results from our fitting routine to 
-                # find an estimate for F_sp and for sum(region B, s - f). The latter will act to remove the spot contamination from the planet-occulted region
-                #and adding back the quiet star. We rename the model-derived portion as F_sp' and s'. 
+                # find an estimate for F_sp, F_fa, and for the sums sum(region B, s) and sum(region C U D, s - f). The latter will act to remove the spot and facula contamination 
+                # from the planet-occulted region while adding back the quiet star. We rename the model-derived portion as F_sp', F_fa', s', and n'. 
                 #In this parametrization, we have:
                 #
-                #F_exp ~= F_DI - F_sp' - sum( pl, sum(region A, f)  +  sum(region B, s')  )
+                # F_exp ~= F_DI - F_sp' - F_fa' - sum( pl, sum(region A, f)  +  sum(region B, s')  +  sum(region C U D, n') )
                 # <==>
-                # F_exp + F_sp' + sum( pl, sum(region B, s') ) = F_DI - sum( pl, sum(region A, f))
+                # F_exp + F_sp' + F_fa' + sum( pl, sum(region B, s') ) + sum( pl, sum(region C U D, n') ) = F_DI - sum( pl, sum(region A, f))
                 #
-                # At this point, we simply need to re-inject the quiet star in region B to obtain an exposure profile uncontaminated by spots:
+                # At this point, we simply need to re-inject the quiet star in region B, C, and D to obtain an exposure profile uncontaminated by spots and faculae:
                 #
-                # F_exp + F_sp' + sum( pl, sum(region B, s') ) - sum( pl, sum(region B, f)) = F_DI - sum( pl, sum(region A, f)) - sum( pl, sum(region B, f))
+                # F_exp + F_sp' + F_fa' + sum( pl, sum(region B, s') ) + sum( pl, sum(region C U D, n') ) - sum( pl, sum(region B U C U D, f)) = F_DI - sum( pl, sum(region A, f)) - sum( pl, sum(region B U C U D, f))
                 # <==>
-                #F_exp + F_sp' + sum(  pl, sum(region B, s' - f)) = F_DI - F_pl,clean
+                # F_exp + F_sp' + F_Fa' + sum(  pl, sum(region B, s' - f) + sum(region C U D, n' - f) ) = F_DI - F_pl,clean
                 #
-                #With F_pl,clean being the the planet deviation profile if spots were not present in the planet-occulted region.
-                #In the code below, spot_prop_dic[chrom_mode]['line_prof'][:,0] corresponds to F_sp' 
-                #while surf_prop_dic[chrom_mode]['corr_supp'][:,0] corresponds to sum(  pl, sum(region B, s' - f)).
-                if key=='corr_spot':
+                # With F_pl,clean being the the planet deviation profile if spots and faculae were not present in the planet-occulted region.
+                # In the code below, spot_prop_dic[chrom_mode]['line_prof'][:,0] corresponds to F_sp' and facula_prop_dic[chrom_mode]['line_prof'][:,0] corresponds to F_fa'
+                # while surf_prop_dic[chrom_mode]['corr_supp'][:,0] corresponds to sum(  pl, sum(region B, s' - f) + sum(region C U D, n' - f) ).
+                if key=='corr_spot_facula':
                     #Retrieving exposure profile
                     data_exp_raw = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp_eff))
 
                     #Correcting exposure 
-                    line_model = data_exp_raw['flux'][iord_sel] + spot_prop_dic[chrom_mode]['line_prof'][:,0] + surf_prop_dic[chrom_mode]['corr_supp'][:,0]
+                    line_model = data_exp_raw['flux'][iord_sel] + spot_prop_dic[chrom_mode]['line_prof'][:,0] + facula_prop_dic[chrom_mode]['line_prof'][:,0] + surf_prop_dic[chrom_mode]['corr_supp'][:,0]
 
                     #Covariance matrix to use
                     cov = data_exp_raw['cov'][iord_sel]
 
                 else:
                     #Building exposure profile
-                    line_model = base_DI_prof - surf_prop_dic[chrom_mode]['line_prof'][:,0] - spot_prop_dic[chrom_mode]['line_prof'][:,0]
+                    line_model = base_DI_prof - surf_prop_dic[chrom_mode]['line_prof'][:,0] - spot_prop_dic[chrom_mode]['line_prof'][:,0] - facula_prop_dic[chrom_mode]['line_prof'][:,0]
 
                     #Covariance matrix to use
                     cov = data_loc_exp['cov'][iord_sel]
@@ -639,7 +680,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     #Complementary data
     data_add={'idx_est_loc':iexp_list,'cont':params['cont']}
 
-    for key in ['map_diff_res', 'corr_spot']:
+    for key in ['map_diff_res', 'corr_spot_facula']:
         if opt_dic[key]:        
 
             #Defined bins in binned spectrum
@@ -948,13 +989,13 @@ def plocc_prof_rec(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,coord_dic):
 
 
 #%% Differential exposure profiles.
-#    - accounting for planet-occulted and spotted stellar profiles
+#    - accounting for planet-occulted, faculaed, and spotted stellar profiles
 
 def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic):
 
-    r"""**Planet-occulted and spotted exposure profiles.**
+    r"""**Planet-occulted, faculaed and spotted exposure profiles.**
     
-    Calls requested function to define planet-occulted and spotted profiles associated with each observed exposure
+    Calls requested function to define planet-occulted, faculaed and spotted profiles associated with each observed exposure
 
     Args:
         TBD
@@ -963,8 +1004,8 @@ def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param
         TBD
     
     """ 
-    print('   > Building estimates for planet-occulted and spotted stellar profiles')
-    if data_dic['DI']['spots_prop']=={}:stop('Spot properties are not provided. We recommended using the separate routine dedicated to the extraction of planet-occulted profiles instead.')
+    print('   > Building estimates for planet-occulted, faculaed and spotted stellar profiles')
+    if (data_dic['DI']['spots_prop']=={} and data_dic['DI']['faculae_prop']=={}):stop('Spot and facula properties are not provided. We recommended using the separate routine dedicated to the extraction of planet-occulted profiles instead.')
     opt_dic = data_dic['Res']['opt_loc_data_corr'] 
     corr_mode = opt_dic['corr_mode']
     print('         Using global model')  
@@ -974,10 +1015,10 @@ def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param
         print('         Calculating data')     
              
         #Calculating the clean version of the data
-        for key in ['clean_calc','corr_spot','map_diff_res']:opt_dic[key]=False
+        for key in ['clean_calc','corr_spot_facula','map_diff_res']:opt_dic[key]=False
 
-        if (plot_dic['map_Res_prof_clean_pl_est']!='') or (plot_dic['map_Res_prof_clean_sp_est']!=''):opt_dic['clean_calc']=True
-        if plot_dic['map_Res_corr_sp']!='':opt_dic['corr_spot']=True
+        if (plot_dic['map_Res_prof_clean_pl_est']!='') or (plot_dic['map_Res_prof_clean_sp_est']!='') or (plot_dic['map_Res_prof_clean_fa_est']!=''):opt_dic['clean_calc']=True
+        if (plot_dic['map_Res_corr_sp_fa']!=''):opt_dic['corr_spot_facula']=True
         if plot_dic['map_BF_Res_prof_re']!='':opt_dic['map_diff_res']=True
 
         #Using global profile model

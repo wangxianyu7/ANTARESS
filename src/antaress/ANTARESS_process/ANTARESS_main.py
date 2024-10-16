@@ -417,6 +417,8 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             'EXPRES':'EXPRES',
             'NIRPS_HA':'NIRPS',
             'NIRPS_HE':'NIRPS',
+            'MIKE_Blue':'MIKE',
+            'MIKE_Red':'MIKE',
         }     
     
         #Number of physical orders per instrument
@@ -432,6 +434,8 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             'EXPRES':86,
             'NIRPS_HA':71,
             'NIRPS_HE':71,
+            'MIKE_Blue':37,
+            'MIKE_Red':34,
         } 
     
         #Return flag that errors on input spectra are defined or not for each instrument   
@@ -445,7 +449,11 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             'ESPRESSO_MR':True,
             'CARMENES_VIS':True,
             'EXPRES':True,
-            'NIRPS_HA':True,'NIRPS_HE':True} 
+            'NIRPS_HA':True,
+            'NIRPS_HE':True,
+            'MIKE_Blue':True,
+            'MIKE_Red':True,
+        } 
         
         #Central wavelengths of orders for known instruments
         gen_dic['wav_ord_inst']={     
@@ -495,9 +503,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                                   5568.53253104 ,5619.6440673  ,5671.70180522 ,5724.73227878 ,5778.76302323,5833.82262268 ,5889.94076065 ,5947.14827335 ,6005.47720621 ,6064.96087378,
                                   6125.63392315 ,6187.53240127 ,6250.69382638 ,6315.15726382 ,6380.96340664,6448.15466126 ,6516.77523859 ,6586.87125105 ,6658.49081593 ,6731.68416551,
                                   6806.50376456 ,6883.00443578 ,6961.24349375 ,7041.2808881  ,7123.17935679,7207.00459002 ,7292.82540601 ,7380.71393943 ,7470.74584357 ,7563.00050759,
-                                  7657.56128994 ,7754.51576965 ,7853.9560168  ,7955.97888421 ,8060.68632206,8168.18571772])
-    
-    
+                                  7657.56128994 ,7754.51576965 ,7853.9560168  ,7955.97888421 ,8060.68632206,8168.18571772]),
+            'MIKE_Blue': np.array([]),
+            'MIKE_Red': np.array([]),
     }
         gen_dic['wav_ord_inst']['NIRPS_HE'] = gen_dic['wav_ord_inst']['NIRPS_HA'] 
     
@@ -2216,7 +2224,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             DI_err_exp_Emeas2 = np.zeros(data_inst[vis]['nspec'],dtype=float)
                         data_dic_temp['flux'][iexp,0] = DI_prof_exp_Fmeas                      
                         data_dic_temp['cov'][iexp,0] = DI_err_exp_Emeas2[None,:]                        
-                        # print('0:', DI_prof_exp_Fmeas/np.sqrt(DI_err_exp_Emeas2), DI_prof_exp_Ftrue[0])
+                        # print(' 0:', DI_prof_exp_Fmeas/np.sqrt(DI_err_exp_Emeas2), DI_prof_exp_Ftrue[0])
 
 
 

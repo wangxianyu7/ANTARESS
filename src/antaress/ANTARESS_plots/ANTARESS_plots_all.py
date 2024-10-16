@@ -2475,11 +2475,15 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     ################################################################################################################ 
     #%%%%% Estimates profiles
     ################################################################################################################ 
-    for key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
+    for key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_clean_fa_est','map_Res_prof_unclean_fa_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
 
         if (key_plot in plot_settings):
             ##############################################################################
             #%%%%%% Un-cleaned estimates
+            if key_plot == 'map_Res_prof_unclean_fa_est':
+                print('-----------------------------------')
+                print('+ 2D map: un-cleaned theoretical faculaed profiles') 
+
             if key_plot == 'map_Res_prof_unclean_sp_est':
                 print('-----------------------------------')
                 print('+ 2D map: un-cleaned theoretical spotted profiles') 
@@ -2489,6 +2493,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 print('+ 2D map: un-cleaned theoretical planet-occulted profiles') 
             ##############################################################################
             #%%%%%% Cleaned estimates
+            if key_plot == 'map_Res_prof_clean_fa_est':
+                print('-----------------------------------')
+                print('+ 2D map: cleaned theoretical faculaed profiles') 
+
             if key_plot == 'map_Res_prof_clean_sp_est':
                 print('-----------------------------------')
                 print('+ 2D map: cleaned theoretical spotted profiles') 
@@ -2504,11 +2512,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     ################################################################################################################  
     #%%%%% Corrected profiles 
     ################################################################################################################  
-    if ('map_Res_corr_sp' in plot_settings):
-        key_plot = 'map_Res_corr_sp'
+    if ('map_Res_corr_sp_fa' in plot_settings):
+        key_plot = 'map_Res_corr_sp_fa'
         
         print('-----------------------------------')
-        print('+ 2D map : spot-corrected differential profiles') 
+        print('+ 2D map : spot and facula-corrected differential profiles') 
         
         #Plot map
         sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot],data_dic,gen_dic,glob_fit_dic,system_param,theo_dic,coord_dic,contact_phases,plot_dic)        
@@ -5237,8 +5245,8 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
         elif 'Res' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Diff_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
         rest_frame = 'star'
 
-    #Data correct for spot contamination
-    elif plot_mod=='map_Res_corr_sp':
+    #Data correct for spot and facula contamination
+    elif plot_mod=='map_Res_corr_sp_fa':
         data_path_all = [gen_dic['save_data_dir']+'Corr_data/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
         rest_frame='star'
      
@@ -6987,7 +6995,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
     #Options
     sc_fact=10**plot_options['sc_fact10']            
 
-    if plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
+    if plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_clean_fa_est','map_Res_prof_unclean_fa_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
 
         #Defining whether we are plotting the planet-occulted or spotted profiles and if they are clean or uncleaned
         supp_name = plot_mod.split('_')[4]
@@ -7124,7 +7132,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                 #Data
                 else:     
                     
-                    if plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
+                    if plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_clean_fa_est','map_Res_prof_unclean_fa_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
                         cond_def_map[isub] = data_exp['cond_def']
                         var_map[isub] = data_exp[corr_plot_mod+'_'+supp_name+'_flux'] 
 
@@ -7655,7 +7663,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                     cb.set_array(v_range) 	
                     cbar_txt = ''
                     if plot_mod in ['map_DIbin','map_DI_prof','map_Res_prof','map_Intr_prof','map_BF_Res_prof','map_BF_Res_prof_re','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin',
-                                    'map_Intr_1D','map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est','map_Res_corr_sp']:cbar_txt='flux'
+                                    'map_Intr_1D','map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_clean_fa_est','map_Res_prof_unclean_fa_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est','map_Res_corr_sp_fa']:cbar_txt='flux'
                     elif plot_mod in ['map_Atm_prof','map_Atmbin','map_Atm_1D']:cbar_txt=plot_options['pl_atm_sign']
                     cbar_txt = scaled_title(plot_options['sc_fact10'],cbar_txt)  
                     if plot_options['reverse_2D']:
@@ -7683,11 +7691,11 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                     elif plot_mod in ['map_BF_Res_prof', 'map_BF_Res_prof_re']:
                         add_str += '_BestFit'
                         if plot_mod=='map_BF_Res_prof_re': add_str += '_Residual'
-                    elif plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
+                    elif plot_mod in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_clean_fa_est','map_Res_prof_unclean_fa_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
                         prof_typ = plot_mod.split('_')[-1]
                         add_str += '_'+corr_plot_mod+'_'+supp_name+'_'+prof_typ
-                    elif plot_mod=='map_Res_corr_sp':
-                        add_str += '_SpotCorrected'                            
+                    elif plot_mod=='map_Res_corr_sp_fa':
+                        add_str += '_Spot_Facula_Corrected'                            
                     if ('bin' in plot_mod):add_str+='_'+plot_options['dim_plot'] 
                     plt.savefig(path_loc+'/'+add_str+'.'+save_res_map)                        
                     plt.close() 

@@ -3585,10 +3585,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         
         
     ##################################################################################################       
-    #%%% Module: planet-occulted profiles and spotted profiles estimates
+    #%%% Module: planet-occulted profiles, faculaed and spotted profiles estimates
     #    - use the module to generate:
     # + Data-drive approach : local profiles that are then used to correct differential profiles from stellar contamination
-    # + Model-driven approach : local profiles for the planet-occulted/spotted region of the star with and without planet-spot overlap being accounted for
+    # + Model-driven approach : local profiles for the planet-occulted/faculaed/spotted region of the star with and without planet-spot-facula overlap being accounted for
     #    - the choice to use measured ('meas') or theoretical ('theo') stellar surface RVs to shift local profiles is set by data_dic['Intr']['align_mode']
     ##################################################################################################     
     
@@ -3648,21 +3648,23 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #%%%% Plot settings
     
-    #%%%%% 2D maps : "clean", theoretical planet-occulted and spotted profiles
+    #%%%%% 2D maps : "clean", theoretical planet-occulted, faculaed, and spotted profiles
     #    - for original and binned exposures
-    #    - planet-occulted profiles retrieved in the case where spots were not included in the model
+    #    - planet-occulted profiles retrieved in the case where spots and faculae were not included in the model
     plot_dic['map_Res_prof_clean_sp_est']=''
+    plot_dic['map_Res_prof_clean_fa_est']=''
     plot_dic['map_Res_prof_clean_pl_est']=''   
 
-    #%%%%% 2D maps : "un-clean", theoretical planet-occulted and spotted profiles
+    #%%%%% 2D maps : "un-clean", theoretical planet-occulted, faculaed, and spotted profiles
     #    - for original and binned exposures
-    #    - planet-occulted profiles retrieved in the case where spots were not included in the model
+    #    - planet-occulted profiles retrieved in the case where spots ans faculae were included in the model
     #    - computing both "clean" and "spotted" versions of these maps can help identify if planets occulted spots during the transit or not
     plot_dic['map_Res_prof_unclean_sp_est']=''
+    plot_dic['map_Res_prof_unclean_fa_est']=''
     plot_dic['map_Res_prof_unclean_pl_est']=''      
         
-    #%%%%% 2D maps : differential profiles corrected for the impact of spots
-    plot_dic['map_Res_corr_sp']=''       
+    #%%%%% 2D maps : differential profiles corrected for the impact of spots and faculae
+    plot_dic['map_Res_corr_sp_fa']=''       
         
         
         

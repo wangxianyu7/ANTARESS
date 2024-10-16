@@ -1594,8 +1594,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ##################################################################################################
     #%%%% Estimates
     ##################################################################################################
-    for key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
-        if plot_dic[key_plot]!='':
+    for key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_clean_fa_est','map_Res_prof_unclean_fa_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
+        if gen_dic['diff_data_corr'] and (plot_dic[key_plot]!=''):
 
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
@@ -1605,7 +1605,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             ##############################################################################
             #%%%%% Estimates
-            if key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
+            if key_plot in ['map_Res_prof_clean_pl_est','map_Res_prof_clean_sp_est','map_Res_prof_clean_fa_est','map_Res_prof_unclean_fa_est','map_Res_prof_unclean_sp_est','map_Res_prof_unclean_pl_est']:
 
                 #%%%%%% Model always required
                 plot_settings[key_plot]['plot_line_model'] = True
@@ -1615,8 +1615,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Corrected profiles 
     ################################################################################################################  
-    if gen_dic['diff_data_corr'] and (plot_dic['map_Res_corr_sp']!=''):                                        
-        key_plot = 'map_Res_corr_sp'
+    if gen_dic['diff_data_corr'] and (plot_dic['map_Res_corr_sp_fa']!=''):                                        
+        key_plot = 'map_Res_corr_sp_fa'
 
         
         #%%%%% Generic settings
@@ -2436,7 +2436,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             plot_settings[key_plot]['n_facell']=121.
 
-            plot_settings[key_plot]['n_spcell']=41.
+            plot_settings[key_plot]['n_spcell']=101.
 
             # plot_settings[key_plot]['n_plcell']={'AUMicb':5.}
 

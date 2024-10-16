@@ -30,7 +30,7 @@ def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_d
 
     #Check for spots
     if (spot_dic != {}) and (inst in spot_dic['spots_prop']) and (vis in spot_dic['spots_prop'][inst]):
-        txt_spot = ' and spotted '
+        txt_spot = ' and spotted'
         cond_spot = True
     else:
         txt_spot = ' '
@@ -38,13 +38,13 @@ def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_d
     
     #Check for faculae
     if (spot_dic != {}) and (inst in spot_dic['faculae_prop']) and (vis in spot_dic['faculae_prop'][inst]):
-        txt_facula = ' and faculaed '
+        txt_facula = ' and faculaed'
         cond_facula = True
     else:
         txt_facula = ' '
         cond_facula = False
 
-    print('   > Calculating properties of planet-occulted'+txt_spot+txt_facula+'regions')    
+    print('   > Calculating properties of planet-occulted'+txt_spot+txt_facula+' regions')    
     if gen_dic['calc_theoPlOcc']:
         print('         Calculating data')
 
@@ -347,7 +347,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,t
             surf_prop_dic_pl[subkey_chrom]['line_prof']=np.zeros([args['ncen_bins'],n_exp],dtype=float)
             surf_prop_dic_spot[subkey_chrom]['line_prof']=np.zeros([args['ncen_bins'],n_exp],dtype=float)
             surf_prop_dic_facula[subkey_chrom]['line_prof']=np.zeros([args['ncen_bins'],n_exp],dtype=float)
-            if 'corr_spot' in args:surf_prop_dic_pl[subkey_chrom]['corr_supp']=np.zeros([args['ncen_bins'],n_exp],dtype=float)
+            if 'corr_spot_facula' in args:surf_prop_dic_pl[subkey_chrom]['corr_supp']=np.zeros([args['ncen_bins'],n_exp],dtype=float)
 
     #Properties to be calculated
     #    - properties in 'param' have the nominal values from system properties only if the property was not defined in the model property dictionary from settings 
@@ -578,7 +578,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,t
     #Enforcing a common oversampling factor to the spots and planets
     n_osamp_exp_all_total = np.maximum(np.maximum(n_osamp_exp_all, n_osamp_exp_all_sp),n_osamp_exp_all_fa)
 
-    #Processing each exposure 
+    #Processing each exposure
     for isub_exp,(iexp,n_osamp_exp) in enumerate(zip(iexp_list,n_osamp_exp_all_total)):
 
         #Planets in exposure
@@ -594,7 +594,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,t
 
         #Initialize averaged and range values
         Focc_star_pl={}
-        if 'corr_spot' in args:args['Focc_corr_spot']={}
+        if 'corr_spot_facula' in args:args['Focc_corr']={}
         if cond_spot:Focc_star_sp={}
         if cond_facula:Focc_star_fa={}
         sum_prop_dic={}
@@ -603,7 +603,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,t
         line_occ_HP={}
         for subkey_chrom in key_chrom:
             Focc_star_pl[subkey_chrom]=np.zeros(system_prop[subkey_chrom]['nw'],dtype=float) 
-            if 'corr_spot' in args:args['Focc_corr_spot'][subkey_chrom]=np.zeros(system_prop[subkey_chrom]['nw'],dtype=float) 
+            if 'corr_spot_facula' in args:args['Focc_corr'][subkey_chrom]=np.zeros(system_prop[subkey_chrom]['nw'],dtype=float) 
             if cond_spot:Focc_star_sp[subkey_chrom]=np.zeros(system_spot_prop[subkey_chrom]['nw'],dtype=float) 
             if cond_facula:Focc_star_fa[subkey_chrom]=np.zeros(system_facula_prop[subkey_chrom]['nw'],dtype=float) 
             sum_prop_dic[subkey_chrom]={}
@@ -626,7 +626,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,t
                         coord_reg_dic[subkey_chrom][pl_loc]['rv_broad']=np.zeros(system_prop[subkey_chrom]['nw'],dtype=float)
                     elif (theo_dic['precision']=='high'):
                         sum_prop_dic[subkey_chrom][pl_loc]['line_prof'] = np.zeros(args['ncen_bins'],dtype=float)
-                        if 'corr_spot' in args:sum_prop_dic[subkey_chrom][pl_loc]['corr_supp'] = np.zeros(args['ncen_bins'],dtype=float)
+                        if 'corr_spot_facula' in args:sum_prop_dic[subkey_chrom][pl_loc]['corr_supp'] = np.zeros(args['ncen_bins'],dtype=float)
             
             #Initializing dictionary entries for spots
             for spot in spots_in_exp:
@@ -771,7 +771,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,t
                                 if (theo_dic['precision']=='low'):surf_prop_dic_pl[subkey_chrom][pl_loc]['rv_broad'][iband,isub_exp] = np.max([coord_reg_dic[subkey_chrom][pl_loc]['rv_broad'][iband],surf_prop_dic_pl[subkey_chrom][pl_loc]['rv_broad'][iband,isub_exp]])
                                 elif (theo_dic['precision']=='high'):
                                     surf_prop_dic_pl[subkey_chrom]['line_prof'][:,isub_exp]+=sum_prop_dic[subkey_chrom][pl_loc]['line_prof']
-                                    if 'corr_spot' in args:surf_prop_dic_pl[subkey_chrom]['corr_supp'][:,isub_exp]+=sum_prop_dic[subkey_chrom][pl_loc]['corr_supp']
+                                    if 'corr_spot_facula' in args:surf_prop_dic_pl[subkey_chrom]['corr_supp'][:,isub_exp]+=sum_prop_dic[subkey_chrom][pl_loc]['corr_supp']
                     
                 #Star was effectively occulted at oversampled position
                 if cond_occ_pl:
@@ -838,6 +838,9 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,t
                     #Star was effectively occulted at oversampled position
                     if cond_occ_sp:
                         n_osamp_exp_eff_sp+=1
+
+                #If spots are not included but faculae are, the faculae calculation function needs to know
+                else:cond_occ_sp = False
         
                 #------------------------------------------------------------
                 #Faculaed, not spotted regions
@@ -938,9 +941,9 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,t
                 #    - accounting for both quiet and spotted cells
                 if (n_osamp_exp_eff_pl>0):
                     calc_mean_occ_region_line(theo_dic['precision'],system_prop,isub_exp,key_chrom,n_osamp_exp_eff_pl,Focc_star_pl,surf_prop_dic_pl,transit_pl_exp,args,par_star,theo_dic)
-                    if 'corr_spot' in args:
+                    if 'corr_spot_facula' in args:
                         surf_prop_dic_pl[key_chrom[-1]]['corr_supp'][:,isub_exp]/=n_osamp_exp_eff_pl
-                        if args['conv2intr']:surf_prop_dic_pl[key_chrom[-1]]['corr_supp'][:,isub_exp] /= (args['Focc_corr_spot'][key_chrom[-1]]/n_osamp_exp_eff_pl)   
+                        if args['conv2intr']:surf_prop_dic_pl[key_chrom[-1]]['corr_supp'][:,isub_exp] /= (args['Focc_corr'][key_chrom[-1]]/n_osamp_exp_eff_pl)   
 
                 #Deviation line profile between quiet and spotted emission, from spotted cells outside of planet-occulted regions
                 if cond_spot and (args['rout_mode']!='IntrProf') and (n_osamp_exp_eff_sp > 0):
@@ -1224,23 +1227,11 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
         _,_,mu_grid_star,Fsurf_grid_star,Ftot_star,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'pl',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
         coord_grid['mu'] = mu_grid_star[:,0]
 
-        if 'corr_spot' in args:
-            if spot_occ:args['corr_nsub_ov'] = np.sum(gen_spot_flag_map)
-            else:args['corr_nsub_ov'] = 0.
-
         #Accounting for the spots' emission
         if cond_eff_sp:
             
             #Update flux-grid for spotted cells, accounting for their specific limb-darkening and contrast
             _,_,_,Fsurf_spot_emit_grid,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_spot_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'pl',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
-            if 'corr_spot' in args:
-                args['corr_Fsp_grid'] = Fsurf_spot_emit_grid[gen_spot_flag_map, iband] * (1. - fctrst_map_spot[gen_spot_flag_map])
-                args['corr_Fstar_grid'] = Fsurf_grid_star[gen_spot_flag_map, iband]
-                for key in ['corr_Fsp_grid','corr_Fstar_grid']:args[key]=args[key].reshape(len(args[key]),1)
-                args['spot_flag_map'] = gen_spot_flag_map
-                temp = np.sum(args['corr_Fsp_grid'] - args['corr_Fstar_grid'], axis=0)*par_star['cont']
-                args['Focc_corr_spot']['achrom'][iband] += temp[0]
-                for key in ['corr_Fsp_grid','corr_Fstar_grid']:args[key]*=par_star['cont']
             Fsurf_grid_star[gen_spot_flag_map, iband] = Fsurf_spot_emit_grid[gen_spot_flag_map, iband] * (1. - fctrst_map_spot[gen_spot_flag_map]) 
 
             #Update total flux from occulted region
@@ -1251,7 +1242,6 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
 
             #Update flux-grid for spotted cells, accounting for their specific limb-darkening and contrast
             _,_,_,Fsurf_facula_emit_grid,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_facula_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'pl',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
-
             Fsurf_grid_star[gen_facula_flag_map, iband] = Fsurf_facula_emit_grid[gen_facula_flag_map, iband] * fctrst_map_facula[gen_facula_flag_map]
 
             #Update total flux from occulted region
@@ -1264,9 +1254,50 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
         #Flux and number of cells occulted from all planets, cumulated over oversampled positions
         Focc_star_band+= Ftot_star[0]   
         sum_prop_dic_pl['nocc']+=coord_grid['nsub_star']
+
+        #--------------------------------
+        #Spot/facula contamination correction
+        if 'corr_spot_facula' in args:
+            
+            #Re-calculate Local flux grid over current planet-occulted region, in current band
+            _,_,_,Fsurf_grid_star_corr,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'pl',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
+
+            #Define variables to store the total flux of the overlap regions for spots and faculae
+            temp_sp = 0.
+            temp_fa = 0.
+
+            #Define number of cells spotted
+            if spot_occ:args['corr_nsub_ov_sp'] = np.sum(gen_spot_flag_map)
+            else:args['corr_nsub_ov_sp'] = 0.
+
+            #Define number of cells faculaed
+            if facula_occ:args['corr_nsub_ov_fa'] = np.sum(gen_facula_flag_map)
+            else:args['corr_nsub_ov_fa'] = 0.
+
+            #If planet-occulted region is spotted
+            if cond_eff_sp:
+                _,_,_,Fsurf_spot_emit_grid,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_spot_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'pl',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
+                args['corr_Fsp_grid'] = Fsurf_spot_emit_grid[gen_spot_flag_map, iband] * (1. - fctrst_map_spot[gen_spot_flag_map])
+                args['corr_Fstar_grid_sp'] = Fsurf_grid_star_corr[gen_spot_flag_map, iband]
+                for key in ['corr_Fsp_grid','corr_Fstar_grid_sp']:args[key]=args[key].reshape(len(args[key]),1)
+                args['spot_flag_map'] = gen_spot_flag_map
+                temp_sp = np.sum(args['corr_Fsp_grid'] - args['corr_Fstar_grid_sp'], axis=0)*par_star['cont']
+                for key in ['corr_Fsp_grid','corr_Fstar_grid_sp']:args[key]*=par_star['cont']
+
+            #If planet-occulted region is faculaed
+            if cond_eff_fa:
+                _,_,_,Fsurf_facula_emit_grid,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_facula_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'pl',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
+                args['corr_Ffa_grid'] = Fsurf_facula_emit_grid[gen_facula_flag_map, iband] * fctrst_map_facula[gen_facula_flag_map]
+                args['corr_Fstar_grid_fa'] = Fsurf_grid_star_corr[gen_facula_flag_map, iband]
+                for key in ['corr_Ffa_grid','corr_Fstar_grid_fa']:args[key]=args[key].reshape(len(args[key]),1)
+                args['facula_flag_map'] = gen_facula_flag_map
+                temp_fa = np.sum(args['corr_Ffa_grid'] - args['corr_Fstar_grid_fa'], axis=0)*par_star['cont']
+                for key in ['corr_Ffa_grid','corr_Fstar_grid_fa']:args[key]*=par_star['cont']
+
+            #Puttigne everything together
+            args['Focc_corr']['achrom'][iband] += (temp_sp + temp_fa)
         
         #--------------------------------
-
         #Co-adding properties from current region to the cumulated values over oversampled planet positions 
         sum_region_prop(line_occ_HP_band,iband,args,parameter_list,Fsurf_grid_star[:,0],None,coord_grid,Ssub_Sstar,cb_band,range_parameter_list,range_reg,sum_prop_dic_pl,coord_reg_dic_pl,par_star,lambda_rad_pl[pl_loc],None)
 
@@ -1491,31 +1522,64 @@ def sum_region_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,Fsurf_g
         #    - cells can be quiet or spotted
         sum_prop_dic['line_prof'] = np.sum(line_prof_grid,axis=0) 
 
-        if ('corr_spot' in args) and (spot_contrast is None):
-            if args['corr_nsub_ov'] > 0.:
+        if ('corr_spot_facula' in args) and (spot_contrast is None):
+
+            #Making temporary variables to store the planet-spot overlap and planet-facula overlap contributions to the correction
+            temp_sp = np.zeros(sum_prop_dic['corr_supp'].shape, dtype=float)
+            temp_fa = np.zeros(sum_prop_dic['corr_supp'].shape, dtype=float)
+
+            if args['corr_nsub_ov_sp'] > 0.:
                 #Retrieve the quiet star and spotted profiles for the planet-spot overlapping region
                 if use_OS_grid:
-                    fit_Fstar_grid_band = np.tile(args['corr_Fstar_grid'][:,0], (args['ncen_bins'], 1)).T
+                    fit_Fstar_grid_band = np.tile(args['corr_Fstar_grid_sp'][:,0], (args['ncen_bins'], 1)).T
                     fit_Fsp_grid_band = np.tile(args['corr_Fsp_grid'][:,0], (args['ncen_bins'], 1)).T
                     star_line_prof_grid=coadd_loc_gauss_prof(coord_grid['rv'][args['spot_flag_map']],fit_Fstar_grid_band,args)
                     spot_line_prof_grid=coadd_loc_gauss_prof(coord_grid['rv'][args['spot_flag_map']],fit_Fsp_grid_band,args)
                 elif use_C_OS_grid:
-                    star_line_prof_grid = use_C_coadd_loc_gauss_prof(coord_grid['rv'][args['spot_flag_map']],args['corr_Fstar_grid'][:,0],args)
+                    star_line_prof_grid = use_C_coadd_loc_gauss_prof(coord_grid['rv'][args['spot_flag_map']],args['corr_Fstar_grid_sp'][:,0],args)
                     spot_line_prof_grid = use_C_coadd_loc_gauss_prof(coord_grid['rv'][args['spot_flag_map']],args['corr_Fsp_grid'][:,0],args)
                 else:
-                    star_line_prof_grid=coadd_loc_line_prof(coord_grid['rv'][args['spot_flag_map']],range(args['corr_nsub_ov']),args['corr_Fstar_grid'][:,0],args['flux_intr_grid'][args['spot_flag_map']],coord_grid['mu'][args['spot_flag_map']],par_star,args)
-                    spot_line_prof_grid=coadd_loc_line_prof(coord_grid['rv'][args['spot_flag_map']],range(args['corr_nsub_ov']),args['corr_Fsp_grid'][:,0],args['flux_intr_grid'][args['spot_flag_map']],coord_grid['mu'][args['spot_flag_map']],par_star,args)
+                    star_line_prof_grid=coadd_loc_line_prof(coord_grid['rv'][args['spot_flag_map']],range(args['corr_nsub_ov_sp']),args['corr_Fstar_grid_sp'][:,0],args['flux_intr_grid'][args['spot_flag_map']],coord_grid['mu'][args['spot_flag_map']],par_star,args)
+                    spot_line_prof_grid=coadd_loc_line_prof(coord_grid['rv'][args['spot_flag_map']],range(args['corr_nsub_ov_sp']),args['corr_Fsp_grid'][:,0],args['flux_intr_grid'][args['spot_flag_map']],coord_grid['mu'][args['spot_flag_map']],par_star,args)
 
                 #Putting everything together
-                sum_prop_dic['corr_supp'] = np.sum(spot_line_prof_grid, axis=0)- np.sum(star_line_prof_grid, axis=0) 
+                temp_sp = np.sum(spot_line_prof_grid, axis=0) - np.sum(star_line_prof_grid, axis=0) 
+
+            if args['corr_nsub_ov_fa'] > 0.:
+                #Retrieve the quiet star and faculaed profiles for the planet-facula overlapping region
+                if use_OS_grid:
+                    fit_Fstar_grid_band = np.tile(args['corr_Fstar_grid_fa'][:,0], (args['ncen_bins'], 1)).T
+                    fit_Ffa_grid_band = np.tile(args['corr_Ffa_grid'][:,0], (args['ncen_bins'], 1)).T
+                    star_line_prof_grid=coadd_loc_gauss_prof(coord_grid['rv'][args['facula_flag_map']],fit_Fstar_grid_band,args)
+                    facula_line_prof_grid=coadd_loc_gauss_prof(coord_grid['rv'][args['facula_flag_map']],fit_Ffa_grid_band,args)
+                elif use_C_OS_grid:
+                    star_line_prof_grid = use_C_coadd_loc_gauss_prof(coord_grid['rv'][args['facula_flag_map']],args['corr_Fstar_grid_fa'][:,0],args)
+                    facula_line_prof_grid = use_C_coadd_loc_gauss_prof(coord_grid['rv'][args['facula_flag_map']],args['corr_Ffa_grid'][:,0],args)
+                else:
+                    star_line_prof_grid=coadd_loc_line_prof(coord_grid['rv'][args['facula_flag_map']],range(args['corr_nsub_ov_fa']),args['corr_Fstar_grid_fa'][:,0],args['flux_intr_grid'][args['facula_flag_map']],coord_grid['mu'][args['facula_flag_map']],par_star,args)
+                    facula_line_prof_grid=coadd_loc_line_prof(coord_grid['rv'][args['facula_flag_map']],range(args['corr_nsub_ov_fa']),args['corr_Ffa_grid'][:,0],args['flux_intr_grid'][args['facula_flag_map']],coord_grid['mu'][args['facula_flag_map']],par_star,args)
+
+                #Putting everything together
+                temp_fa = np.sum(facula_line_prof_grid, axis=0) - np.sum(star_line_prof_grid, axis=0) 
+
+            #Putting spot and facula contamination together
+            sum_prop_dic['corr_supp'] = temp_sp + temp_fa
 
         #Remove spot line profiles from all elementary cells over current occulted region
         #    - condition is only fulfilled when calling sum_region_prop() for spotted, not planet-occulted regions
         #    - the final profile from a spotted region is Freg(quiet) - Freg(spot)
         if spot_contrast is not None:
-            if (spot_contrast > 1.) and ('mu_emit' in coord_grid):
-                F_use = Fsurf_grid_emit_band
-                mu_use = coord_grid['mu_emit']
+            #Dealing with faculae
+            if (spot_contrast > 1.): 
+                #There is spot-facula overlap
+                if ('mu_emit' in coord_grid):
+                    F_use = -Fsurf_grid_emit_band
+                    mu_use = coord_grid['mu_emit']
+                #There isn't spot-facula overlap
+                else:
+                    F_use = Fsurf_grid_emit_band
+                    mu_use = coord_grid['mu']                    
+            #Dealing with spots
             else:
                 F_use = Fsurf_grid_emit_band*(1-spot_contrast)
                 mu_use = coord_grid['mu']

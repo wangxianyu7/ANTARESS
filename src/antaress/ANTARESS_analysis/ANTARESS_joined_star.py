@@ -1003,7 +1003,7 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
         TBD
     
     """ 
-    print('   > Fitting joined differential stellar CCFs, including spots')
+    print('   > Fitting joined differential stellar CCFs, including spots and faculae')
 
     #Initializations
     fixed_args,fit_dic = init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
@@ -1385,12 +1385,12 @@ def main_joined_ResProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,the
     #    - with same structure as fit to individual profiles 
     fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
-                     'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'], 'system_spot_prop':fixed_args['system_spot_prop'], 'system_facula_prop':fixed_args['system_facula_prop'], 'grid_dic':fixed_args['grid_dic'],'var_par_list':fixed_args['var_par_list'],
-                     'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'], 'fit_spot':fixed_args['fit_spot'], 'fit_spot_ang':fixed_args['fit_spot_ang'], 'fit_star_sp':fixed_args['fit_star_sp'], 'fit_facula':fixed_args['fit_facula'],
-                     'fit_facula_ang':fixed_args['fit_facula_ang'], 'fit_star_fa':fixed_args['fit_star_fa'], 'fit_star_pl':fixed_args['fit_star_pl'], 'master_out':fixed_args['master_out'], 'unthreaded_op':fixed_args['unthreaded_op'], 
-                     'ref_pl':fixed_args['ref_pl'], 'order':fit_prop_dic['order'], 'fit_mode':fit_prop_dic['fit_mode']})
+                     'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'], 'system_spot_prop':fixed_args['system_spot_prop'], 'system_facula_prop':fixed_args['system_facula_prop'], 'grid_dic':fixed_args['grid_dic'],
+                     'var_par_list':fixed_args['var_par_list'],'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'], 'fit_star_sp':fixed_args['fit_star_sp'],'fit_star_fa':fixed_args['fit_star_fa'], 
+                     'fit_star_pl':fixed_args['fit_star_pl'], 'master_out':fixed_args['master_out'], 'unthreaded_op':fixed_args['unthreaded_op'], 'ref_pl':fixed_args['ref_pl'], 'order':fit_prop_dic['order'], 'fit_mode':fit_prop_dic['fit_mode'],
+                     'fit_spot':fixed_args['fit_spot'], 'fit_spot_ang':fixed_args['fit_spot_ang'],'fit_facula':fixed_args['fit_facula'],'fit_facula_ang':fixed_args['fit_facula_ang']})
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
-    if fixed_args['fit_mode']=='chi2':fit_save['hess_matrix'] = fixed_args['hess_matrix']
+    if fit_prop_dic['fit_mode']=='chi2':fit_save['hess_matrix'] = fixed_args['hess_matrix']
     np.savez(fit_dic['save_dir']+'Fit_results',data=fit_save,allow_pickle=True)
 
     #Post-processing    
