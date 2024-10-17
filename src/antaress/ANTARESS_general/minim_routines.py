@@ -19,7 +19,7 @@ import scipy.linalg
 from scipy import stats
 from copy import deepcopy
 import lmfit
-from lmfit import minimize, report_fit
+from lmfit import minimize, report_fit, Parameters
 from scipy import special
 import arviz
 from ..ANTARESS_plots.utils_plots import custom_axis,autom_tick_prop
@@ -845,8 +845,7 @@ def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=N
     merit['chi2r'] = merit['chi2']/result.nfree
 
     #Hessian matrix
-    if (fixed_args is not None):
-        fixed_args['hess_matrix']=compute_Hessian(p_best, ln_prob_func_lmfit, args=xtofit, kwargs=argstofit)
+    if (fixed_args is not None):fixed_args['hess_matrix']=compute_Hessian(p_best, ln_prob_func_lmfit, [xtofit], {'fixed_args':argstofit})
  
     #Bayesian Indicator Criterion   
     merit['BIC'] = merit['chi2'] + result.nvarys*np.log(result.ndata)
@@ -1198,36 +1197,95 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
 #%%%% Chi2 analysis
 ##################################################################################################   
 
-def compute_Hessian(func, x0, epsilon=1e-5):
+def compute_Hessian(params, func, args, kwargs, epsilon=1e-5):
     r"""**Compute the Hessian matrix of a function using finite differences**
     
     Args:
         func: The function whose Hessian is to be computed. It should accept a Parameters object.
         params: The lmfit.Parameters object.
         epsilon: The small perturbation for finite differences (default: 1e-5).
+        args: additional arguments required by the function used to compute the Hessian.
+        kwargs: additional keyword parameters required by the function used to compute the Hessian.
     
     Returns:
         hessian_matrix: The Hessian matrix.
     """
-    x0 = params_to_array(params)  # Convert Parameters object to array
-    n = len(x0)
-    hessian_matrix = np.zeros((n, n))
-    identity = np.eye(n)
+
+    def params_to_array(params):
+        """Convert lmfit.Parameters object to a NumPy array."""
+        return np.array([params[key].value for key in params])
+
+    def array_to_params(arr, params_template):
+        """Convert a NumPy array back to lmfit.Parameters object."""
+        params = Parameters()
+        for idx, key in enumerate(params_template.keys()):
+            params.add(key, value=arr[idx])
+        return params
+
+
+    # Convert the parameters object to an array and find the indices of varying parameters
+    x0 = params_to_array(params)
+    varying_indices = [i for i, key in enumerate(params.keys()) if params[key].vary]
+    num_varying_params = len(varying_indices)
+
+    # Create a Hessian matrix for the varying parameters
+    hessian_matrix = np.zeros((num_varying_params, num_varying_params), dtype=float)
+    identity = np.eye(num_varying_params)
     
     # Loop over each element to compute the second derivatives
-    for i in range(n):
-        for j in range(n):
-            p_ij_plus = array_to_params(x0 + epsilon * (identity[i] + identity[j]), params)
-            p_ij_minus = array_to_params(x0 - epsilon * (identity[i] + identity[j]), params)
-            p_i_plus_j_minus = array_to_params(x0 + epsilon * identity[i] - epsilon * identity[j], params)
-            p_i_minus_j_plus = array_to_params(x0 - epsilon * identity[i] + epsilon * identity[j], params)
-            
-            f_ij_plus = func(p_ij_plus)
-            f_ij_minus = func(p_ij_minus)
-            f_i_plus_j_minus = func(p_i_plus_j_minus)
-            f_i_minus_j_plus = func(p_i_minus_j_plus)
-            
-            hessian_matrix[i, j] = (f_ij_plus - f_i_plus_j_minus - f_i_minus_j_plus + f_ij_minus) / (4 * epsilon ** 2)
+    if num_varying_params == 1:
+        # Compute the Hessian as the second derivative
+        x_plus_plus = x0.copy()
+        x_minus_minus = x0.copy()
+        x_plus_plus[varying_indices[0]] += epsilon
+        x_minus_minus[varying_indices[0]] -= epsilon
+
+        p_plus_plus = array_to_params(x_plus_plus, params)
+        p_minus_minus = array_to_params(x_minus_minus, params)
+
+        f_plus_plus = np.sum(func(p_plus_plus, *args, **kwargs)**2)
+        f_minus_minus = np.sum(func(p_minus_minus, *args, **kwargs)**2)
+        f_original = np.sum(func(params, *args, **kwargs)**2)
+
+        # Calculate the second derivative (Hessian) using finite differences
+        hessian_matrix[0, 0] = (f_plus_plus - 2 * f_original + f_minus_minus) / (epsilon ** 2)
+
+    else:
+        for i in range(num_varying_params):
+            for j in range(num_varying_params):
+                
+                # Construct perturbed arrays only for the varying parameters
+                x_perturbed_ij_plus = x0.copy()
+                x_perturbed_ij_minus = x0.copy()
+                x_perturbed_i_plus_j_minus = x0.copy()
+                x_perturbed_i_minus_j_plus = x0.copy()
+
+                # Add/subtract epsilon only to/from the varying parameters
+                x_perturbed_ij_plus[varying_indices[i]] += epsilon
+                x_perturbed_ij_plus[varying_indices[j]] += epsilon
+
+                x_perturbed_ij_minus[varying_indices[i]] -= epsilon
+                x_perturbed_ij_minus[varying_indices[j]] -= epsilon
+
+                x_perturbed_i_plus_j_minus[varying_indices[i]] += epsilon
+                x_perturbed_i_plus_j_minus[varying_indices[j]] -= epsilon
+
+                x_perturbed_i_minus_j_plus[varying_indices[i]] -= epsilon
+                x_perturbed_i_minus_j_plus[varying_indices[j]] += epsilon
+
+
+                p_ij_plus = array_to_params(x_perturbed_ij_plus, params)
+                p_ij_minus = array_to_params(x_perturbed_ij_minus, params)
+                p_i_plus_j_minus = array_to_params(x_perturbed_i_minus_j_plus, params)
+                p_i_minus_j_plus = array_to_params(x_perturbed_i_minus_j_plus, params)
+                
+                f_ij_plus = np.sum(func(p_ij_plus, *args, **kwargs)**2)
+                f_ij_minus = np.sum(func(p_ij_minus, *args, **kwargs)**2)
+                f_i_plus_j_minus = np.sum(func(p_i_plus_j_minus, *args, **kwargs)**2)
+                f_i_minus_j_plus = np.sum(func(p_i_minus_j_plus, *args, **kwargs)**2)
+
+                
+                hessian_matrix[i, j] = (f_ij_plus - f_i_plus_j_minus - f_i_minus_j_plus + f_ij_minus) / (4 * epsilon ** 2)
     
     return hessian_matrix
 

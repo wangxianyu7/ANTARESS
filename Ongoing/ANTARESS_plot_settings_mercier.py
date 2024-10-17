@@ -2446,7 +2446,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             plot_settings[key_plot]['mock_spot_prop'] = True #& False
 
-            plot_settings[key_plot]['mock_facula_prop'] = True #& False
+            plot_settings[key_plot]['mock_facula_prop'] = True & False
 
             plot_settings[key_plot]['fit_spot_prop'] = True & False
 
