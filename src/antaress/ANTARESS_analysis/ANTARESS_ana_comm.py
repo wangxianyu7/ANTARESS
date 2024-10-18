@@ -306,7 +306,7 @@ def model_par_units(par):
         'LD_u1':'','LD_u2':'','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
         'f_GD':'','beta_GD':'','Tpole':'K',
         'eta_R':'','eta_T':'','ksi_R':'','ksi_T':'',
-        'Tc_sp' : 'BJD',
+        'Tc_sp' : 'BJD','lat': 'deg', 'ang': 'deg'
         } 
     if par in unit_dic:unit_par = unit_dic[par]
     elif ('Omega__' in par):unit_par='deg'
@@ -989,7 +989,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],method=fit_dic['chi2_fitting_method'],verbose=fit_dic['verbose'],fixed_args=fixed_args,fit_dic=fit_dic)[2]
 
     #------------------------------------------------------------ 
-    #Fit par emcmc 
+    #Fit by mcmc 
     elif fit_dic['fit_mode']=='mcmc':  
         fixed_args['fit'] = True
         print('       MCMC fit')

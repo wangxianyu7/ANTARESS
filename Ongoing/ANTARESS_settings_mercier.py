@@ -225,7 +225,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Star name
 
-    gen_dic['star_name']='AUMic'
+    # gen_dic['star_name']='AUMic'
     # gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
@@ -235,7 +235,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # Zodiacs
     # gen_dic['star_name']='Capricorn'
     # gen_dic['star_name']='Cancer'
-    # gen_dic['star_name']='Gemini'
+    gen_dic['star_name']='Gemini'
     # gen_dic['star_name']='Sagittarius'
     # gen_dic['star_name']='Leo'
     # gen_dic['star_name']='Aquarius'
@@ -593,13 +593,18 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - format is {inst:{vis:value}}
     mock_dic['flux_cont']={}
     
+    #%%%%% SNR and photon count
+    #   - toggle to print the average SNR and photon count of each simulated exposure.
+    #   - Can help to get a better sense of how to adjust the continuum level to achieve a certain SNR.
+    mock_dic['verbose_flux_cont']=False
     
+
     #%%%%% Instrumental gain
     #    - the final count level is proportional to 'flux_cont' x 'gcal' but we separate the two fields to control separately the stellar emission and instrumental gain
     #    - set to 1 if undefined
     #    - format is {inst:{value}}
     mock_dic['gcal']={}
-       
+
 
     #%%%% Spots
        
@@ -684,8 +689,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name'] == 'AUMic':
         mock_dic['visit_def']={
-            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30.}} #--base
-            # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':180.}}
+            # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30.}} #--base
+            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':180.}} #- ESPRESSO exposure time
             
             # 'ESPRESSO':{'mock_vis1' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30},
             #             'mock_vis2' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30},
@@ -1254,17 +1259,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         mock_dic['flux_cont']={'NIRPS_HE':{
         'mockvis':260., #--base
             }
-        } 
-
-    if gen_dic['star_name'] == 'AUMic' :
-        mock_dic['flux_cont']={'ESPRESSO':{
-        'mockvis':1e8, #--base
-            }
         }   
 
     if gen_dic['star_name'] == 'AUMic' :
         mock_dic['flux_cont']={'ESPRESSO':{
-        'mock_vis':1e8, #--base
+        'mock_vis':75,
         'mock_vis1':1e8,
         'mock_vis2':1e8,
         'mock_vis3':1e8,
@@ -1275,7 +1274,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'mock_vis8':1e8,
         'mock_vis9':1e8,
             }
-        }   
+        }
+        mock_dic['verbose_flux_cont']= False  
             
     if gen_dic['star_name'] == 'V1298tau' :
         mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e5}}   
@@ -4671,7 +4671,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='AUMic':    
         # data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 45,dtype=int))+list(np.arange(135, 180,dtype=int))}}
-        data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} 
+        # data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} #- base
+        data_dic['Res']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 45,dtype=int))+list(np.arange(135, 180,dtype=int))}} #- ESPRESSO exposure time
     
     if gen_dic['star_name']=='AU_Mic':    
         data_dic['Res']['idx_in_bin']={'ESPRESSO':{'visit1':list(np.arange(0, 15,dtype=int))+list(np.arange(67, 82,dtype=int))}}
@@ -5642,8 +5643,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         glob_fit_dic['ResProf']['mod_prop']={
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.65, 'bd':[0.6, 0.8]},
         # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.15, 1]},
-        'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
-        # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[5, 15]},
+        # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
+        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[5, 15]},
         # 'veq':{'vary':True,'guess':5, 'bd':[1, 10]},
         'veq':{'vary':False,'guess':7.9, 'bd':[1, 10]},
         # 'vsini':{'vary':True,'guess':7, 'bd':[0., 10.]},
@@ -5747,28 +5748,28 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='Gemini':
         glob_fit_dic['ResProf']['mod_prop']={
-        # 'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
-        # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        # 'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
-        # 'veq_spots':{'vary':True,'guess':10, 'bd':[2, 30]},
-        # 'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
-        'cos_istar':{'vary':False,'guess':0.0348994967, 'bd':[-1., 1.]},
+        'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
+        # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
+        # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
+        'veq_spots':{'vary':True,'guess':10, 'bd':[2, 30]},
+        'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
+        # 'cos_istar':{'vary':False,'guess':0.0348994967, 'bd':[-1., 1.]},
 
-        # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':-30, 'bd':[-90, 90]},
-        # 'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':False, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':15, 'bd':[1, 60]},
+        'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        # 'lat__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':-30, 'bd':[-90, 90]},
+        'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        # 'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1' : {'vary':False, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        # 'ang__ISESPRESSO_VSmock_vis_SPspot1'     : {'vary':False, 'guess':15, 'bd':[1, 60]},
 
-        # 'fctrst__ISESPRESSO_VSmock_vis_SP'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
-        'fctrst__ISESPRESSO_VSmock_vis_SP'   : {'vary':False, 'guess':0.6, 'bd':[0.001, 0.999]},
+        'fctrst__ISESPRESSO_VSmock_vis_SP'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
+        # 'fctrst__ISESPRESSO_VSmock_vis_SP'   : {'vary':False, 'guess':0.6, 'bd':[0.001, 0.999]},
 
-        # 'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
+        # 'lambda_rad__pl'+zodiac_pl                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
                                             
     if gen_dic['star_name']=='Sagittarius':
@@ -5959,8 +5960,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Fitting mode
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['ResProf']['fit_mode']='chi2' 
-        # glob_fit_dic['ResProf']['fit_mode']='mcmc' 
+        # glob_fit_dic['ResProf']['fit_mode']='chi2' 
+        glob_fit_dic['ResProf']['fit_mode']='mcmc' 
 
     #Fitting method - only if chi2 is used
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -6042,23 +6043,23 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         glob_fit_dic['ResProf']['deriv_prop'] = {} #{'lambda_deg':[], 'fold_Tc':[]}#, 'Peq_veq_spots':{'Rstar':{'val':0.75, 's_val':0.1}}}
     
     #Calculating/retrieving
-    glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
-    # glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
+    # glob_fit_dic['ResProf']['mcmc_run_mode']='use'    
+    glob_fit_dic['ResProf']['mcmc_run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['ResProf']['mcmc_reuse']={}
-        # glob_fit_dic['ResProf']['mcmc_reuse']={
-        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk20_steps30_AUMicb.npz'],
-        #             'nburn':[10]
-        #             }  
+        # glob_fit_dic['ResProf']['mcmc_reuse']={}
+        glob_fit_dic['ResProf']['mcmc_reuse']={
+                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/Gemini/Gemini_b_Saved_data/Joined_fits/ResProf/mcmc/raw_chains_walk40_steps10000_Gemini_b.npz'],
+                    'nburn':[3000]
+                    }  
     #Re-starting
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['ResProf']['mcmc_reboot']=''
 
     #Walkers
     if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':10,'nsteps':100,'nburn':20}
+        glob_fit_dic['ResProf']['mcmc_set']={'nwalkers':40,'nsteps':10000,'nburn':3000}
 
     #Complex priors        
          
@@ -6087,6 +6088,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     glob_fit_dic['ResProf']['save_MCMC_chains']='png'   #png  
     if gen_dic['star_name'] in ['AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']: 
         glob_fit_dic['ResProf']['save_MCMC_chains']='png'
+        glob_fit_dic['ResProf']['save_chi2_chains']='png'
 
 
     #MCMC corner plot
@@ -7361,6 +7363,10 @@ def ANTARESS_analysis_settings(data_type,local_dic,plot_dic):
     local_dic[data_type]['save_MCMC_chains']='png'        
     
     
+    #%%%%% Chi2 chains
+    local_dic[data_type]['save_chi2_chains']='png'
+            
+
     #%%%%% MCMC corner plot
     #    - see function for options
     local_dic[data_type]['corner_options']={}
@@ -7384,14 +7390,23 @@ def ANTARESS_analysis_settings(data_type,local_dic,plot_dic):
 ################################################################################################## 
 def multivar_Gauss_walk(fit_dic, fixed_args):
 
+    print('         Initializing walkers with custom Gaussian function')
+
     #Retrieve Hessian matrix
     hess_matrix = np.load('/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/ResProf/chi2/Fit_results.npz',allow_pickle=True)['data'].item()['hess_matrix']
 
     #Build covariance matrix
     cov_matrix = np.linalg.inv(hess_matrix)
 
+    #Checking that chi2 fit and current MCMC fit are run on same parameters
+    if len(fixed_args['var_par_list']) != cov_matrix.shape[0] : stop('Chi2 fit used to estimate the Hessian and current MCMC run do not share the same number of parameters.')
+
+    #Retrieving central location of parameters
+    central_loc = np.zeros(len(fixed_args['var_par_list']), dtype=float)
+    for ipar, param in enumerate(fixed_args['var_par_list']):central_loc[ipar] = fit_dic['mod_prop'][param]['guess']
+
     #Build walker starting distribution
-    fit_dic['initial_distribution'] = np.random.multivariate_normal(fit_dic['par_val'], cov_matrix, size=fit_dic['nwalkers'])
+    fit_dic['initial_distribution'] = np.random.multivariate_normal(central_loc, cov_matrix, size=fit_dic['nwalkers'])
 
     return None                  
 

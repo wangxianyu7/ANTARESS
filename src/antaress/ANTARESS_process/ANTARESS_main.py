@@ -2223,8 +2223,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             DI_prof_exp_Fmeas = DI_prof_exp_Ftrue
                             DI_err_exp_Emeas2 = np.zeros(data_inst[vis]['nspec'],dtype=float)
                         data_dic_temp['flux'][iexp,0] = DI_prof_exp_Fmeas                      
-                        data_dic_temp['cov'][iexp,0] = DI_err_exp_Emeas2[None,:]                        
-                        # print(' 0:', DI_prof_exp_Fmeas/np.sqrt(DI_err_exp_Emeas2), DI_prof_exp_Ftrue[0])
+                        data_dic_temp['cov'][iexp,0] = DI_err_exp_Emeas2[None,:]
+                        if mock_dic['verbose_flux_cont']:print('         Exposure %s: Average SNR = %.0f, Average photon count = %.0f' % (str(isub_exp), np.mean(DI_prof_exp_Fmeas/np.sqrt(DI_err_exp_Emeas2)), np.mean(DI_prof_exp_Fmeas)))                        
 
 
 

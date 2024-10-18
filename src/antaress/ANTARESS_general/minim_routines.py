@@ -2063,6 +2063,10 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,nthreads,par
     if (fit_dic['save_MCMC_chains']!=''):
         MCMC_plot_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],walker_chains,burnt_chains,fit_dic['nsteps'],fit_dic['nsteps_pb_walk'],
                     fit_dic['nwalkers'],fit_dic['nburn'],keep_chain,low_thresh_par_val,high_thresh_par_val,fit_dic['exclu_walk_autom'],verbose=verbose,verb_shift=verb_shift)
+
+    #Plot the chi2 chain of each walker
+    if (fit_dic['save_chi2_chains']!=''):
+        MCMC_plot_chains_chi2(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],walker_chains,fit_dic['nburn'],keep_chain,fixed_args,verbose=verbose,verb_shift=verb_shift)
      
     #Remove chains if required
     if (False in keep_chain):
@@ -2305,6 +2309,157 @@ def MCMC_plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,bu
         plt.close()
 
     return None  
+
+
+def MCMC_plot_chains_chi2(save_mode,save_dir_MCMC,chain,nburn,keep_chain,fixed_args,verbose=True,verb_shift=''):
+    r"""**MCMC post-proc: walker chains' chi2 plot**
+
+    Plots the chi2 values for the chain of each walker. 
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
+    if verbose:
+        print(verb_shift+'-----------------------------------')
+        print(verb_shift+'> Plotting chi2 chains')
+
+    #Font size
+    font_size=14
+    
+    #Plot size
+    margins=[0.15,0.15,0.95,0.8] 
+        
+    #Linewidth
+    lw_plot=0.1
+
+    #----------------------------------------------------------------
+    if verbose:
+        print(verb_shift+'   + Computation')
+
+    #Retrieving important values
+    nwalkers,nsteps,_ = chain.shape
+
+    #Storing all the chi2 chains
+    chi2_chains = np.zeros((nwalkers, nsteps), dtype=float)
+    
+    #Loop on walkers
+    for walker in range(nwalkers):
+
+        #Chi2 chain storage
+        chi2_chain = np.zeros(nsteps, dtype=float)
+
+        #Loop on steps
+        for step in range(nsteps):
+
+            #Retrieve associated chain for each parameter
+            p_step = {}
+
+            p_step.update(fixed_args['fixed_par_val'])
+            for ipar,parname in enumerate(fixed_args['var_par_list']):
+                p_step[parname]=chain[walker, step, ipar]  
+                
+            #Attribute value of variable parameters /non-variable parameters non defined via expressions directly to their names so that they can be identified in the expressions                
+            if len(fixed_args['linked_par_expr'])>0:
+                for ipar,parname in enumerate(fixed_args['var_par_list']):        
+                    exec(str(parname)+'='+str(p_step[parname]))
+                for ipar,parname in enumerate(fixed_args['fixed_par_val_noexp_list']):        
+                    exec(str(parname)+'='+str(p_step[parname]))
+
+            #Update fixed parameters with associated expression
+            for par in fixed_args['linked_par_expr']:
+                p_step[par]=eval(fixed_args['linked_par_expr'][par])
+
+            #Evalute likelihood function at the location on the chain to retrieve chi2
+            chi2_step = ln_lkhood_func_mcmc(p_step, fixed_args)[1]
+
+            #Store the chi2 step in the corresponding walker chain
+            chi2_chain[step] = chi2_step
+
+        #Store the chi2 chain for this walker
+        chi2_chains[walker, :] = chi2_chain
+
+    #----------------------------------------------------------------
+    if verbose:
+        print(verb_shift+'   + Global Plotting')
+
+    #Plot the chi2 chains of all walkers
+    plt.ioff()        
+    plt.figure(figsize=(10, 6))
+   
+    #Chi2 chains with burn-in phase, and removed chains
+    for iwalk,keep_chain_loc in enumerate(keep_chain):
+        if keep_chain_loc:
+            x_tab=range(nburn)
+            plt.plot(x_tab,chi2_chains[iwalk,x_tab],color='red',linestyle='-',lw=lw_plot,zorder=0)                
+            x_tab=nburn+np.arange(nsteps-nburn,dtype=int)
+            plt.plot(x_tab,chi2_chains[iwalk,x_tab],color='dodgerblue',linestyle='-',lw=lw_plot,zorder=0)                           
+        else:
+            plt.plot(np.arange(nsteps,dtype=int),chi2_chains[iwalk, :],color='red',linestyle='-',lw=lw_plot,zorder=0) 
+           
+    #Plot frame  
+    plt.title('Chain for Chi2')
+    y_min = np.min(chi2_chains)
+    y_max = np.max(chi2_chains)
+    dy_range = y_max-y_min
+    y_range = [y_min-0.05*dy_range,y_max+0.05*dy_range]    
+    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
+    custom_axis(plt,position=margins,
+                y_range=y_range,dir_y='out', 
+                ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
+                x_title='Steps',y_title='Chi2',
+                font_size=font_size,xfont_size=font_size,yfont_size=font_size)
+
+    plt.savefig(save_dir_MCMC+'/Chain_Chi2.'+save_mode) 
+    plt.close()
+    
+    #----------------------------------------------------------------
+    if verbose:
+        print(verb_shift+'   + Individual Plotting')
+    
+    #Plot the chi2 chains of individual walkers
+
+    #Make directory to store the distributions
+    if (not os_system.path.exists(save_dir_MCMC+'Indiv_Chi2_Chains')):os_system.makedirs(save_dir_MCMC+'Indiv_Chi2_Chains')   
+    
+    #Each plot will have a maximum of 10 chains (to not overload the visuals)
+    n_group = 10
+
+    #Create groups of chains
+    for iwalk in range(0, nwalkers, n_group):
+        
+        #Define chain group
+        end = min(iwalk + n_group, nwalkers)
+        walker_group = chi2_chains[iwalk:end, :]
+
+        #In each subplot highlight one chain with greyscale
+        plt.ioff()        
+        fig, axes = plt.subplots(n_group, 1, figsize=(8, 12), sharex=True)
+
+        for i, walker in enumerate(walker_group):
+            ax = axes[i]
+            ax.plot(walker, color='black', lw = lw_plot+1, zorder=1)
+
+            for otheri, otherwalker in enumerate(walker_group):
+                if otheri!=i: ax.plot(otherwalker, color='black', alpha=0.8, lw=lw_plot, zorder=0)
+           
+            ax.yaxis.set_visible(False)
+
+        # Turn off unused subplots if the walker_group is smaller than n_group
+        if len(walker_group) < n_group:
+            for j in range(len(walker_group), n_group):
+                axes[j].set_visible(False)
+
+        #Plot frame  
+        axes[0].set_title('Individual Chi2 chains '+str(iwalk)+'-'+str(end), fontsize=font_size)
+        axes[len(walker_group)-1].set_xlabel('Steps', fontsize=font_size)
+        axes[len(walker_group)-1].tick_params(axis='x', which='both', labelbottom=True)
+
+        plt.savefig(save_dir_MCMC+'Indiv_Chi2_Chains/Chain_Chi2_'+str(iwalk)+'-'+str(end)+'.'+save_mode) 
+        plt.close()
 
 
 

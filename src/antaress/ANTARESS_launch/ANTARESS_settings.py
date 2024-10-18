@@ -305,7 +305,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - format: {inst:{vis:value}}
     mock_dic['flux_cont']={}
     
-    
+    #%%%%% SNR and photon count
+    #   - toggle to print the average SNR and photon count of each simulated exposure.
+    #   - Can help to get a better sense of how to adjust the continuum level to achieve a certain SNR.
+    mock_dic['verbose_flux_cont']=False
+
+
     #%%%%% Instrumental gain
     #    - the final count level is proportional to 'flux_cont' x 'gcal' but we separate the two fields to control separately the stellar emission and instrumental gain
     #    - set to 1 if undefined
@@ -4392,6 +4397,10 @@ def ANTARESS_analysis_settings(data_type,local_dic,plot_dic):
     #%%%%% MCMC chains
     local_dic[data_type]['save_MCMC_chains']='png'        
     
+
+    #%%%%% Chi2 chains
+    local_dic[data_type]['save_chi2_chains']='png'
+            
     
     #%%%%% MCMC corner plot
     #    - see function for options
