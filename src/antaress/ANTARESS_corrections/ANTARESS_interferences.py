@@ -266,7 +266,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 dbjd_HR = 1./(3600.*24.)
                 nbjd_HR = round((max_bjd-min_bjd)/dbjd_HR)
                 bjd_HR=min_bjd+dbjd_HR*np.arange(nbjd_HR)
-                cen_ph_HR = get_timeorbit(pl_ref,coord_dic[inst][vis],bjd_HR, system_param[pl_ref], 0.)[1]
+                cen_ph_HR = get_timeorbit(coord_dic[inst][vis][pl_ref]['Tcenter'],bjd_HR, system_param[pl_ref], 0.)[1]
                 az_HR = CubicSpline(coord_dic[inst][vis]['bjd'],data_prop[inst][vis]['az'])(bjd_HR)
                 alt_HR = CubicSpline(coord_dic[inst][vis]['bjd'],data_prop[inst][vis]['alt'])(bjd_HR) 
                 cen_ph_mer = cen_ph_HR[closest(az_HR,180.)]                 

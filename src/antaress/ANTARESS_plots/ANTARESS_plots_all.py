@@ -698,12 +698,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             for molec in plot_set_key['tell_species']:
                                 if molec in data_exp:
                                     tell_prop[molec]={}  
-                                    for key in ['Temperature','IWV_LOS','Pressure_ground']:tell_prop[molec][key] = np.zeros([2,data_vis['n_in_visit']])*np.nan                            
+                                    for key in ['Temperature','ISV_LOS','Pressure_LOS']:tell_prop[molec][key] = np.zeros([2,data_vis['n_in_visit']])*np.nan                            
 
                         #Store exposure values
                         for molec in tell_prop:
                             p_best = data_exp[molec]['p_best']
-                            for key in ['Temperature','IWV_LOS','Pressure_ground']:
+                            for key in ['Temperature','ISV_LOS','Pressure_LOS']:
                                 if p_best[key].vary:
                                     if plot_settings[key_plot]['plot_err']:tell_prop[molec][key][:,iexp] = [p_best[key].value,p_best[key].stderr]
                                     else:tell_prop[molec][key][:,iexp] = [p_best[key].value,0.]
@@ -711,7 +711,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                          
                 #Loop on requested molecules
                 for molec in plot_set_key['tell_species']:
-                    for key in ['Temperature','IWV_LOS','Pressure_ground']:
+                    for key in ['Temperature','ISV_LOS','Pressure_LOS']:
                         cond_def = ~np.isnan(tell_prop[molec][key][0])
                         if True in cond_def:
 
@@ -745,7 +745,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             dy_range=y_range_loc[1]-y_range_loc[0]     
                             xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
                             ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
-                            y_title = {'Temperature':'Temperature (K)','IWV_LOS':'Column density (cm$^{-2}$)','Pressure_ground':'Pressure (atm)'}[key]
+                            y_title = {'Temperature':'Temperature (K)','ISV_LOS':'Column density (cm$^{-2}$)','Pressure_LOS':'Pressure (atm)'}[key]
                             custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
                                         x_title='Orbital phase',y_title=y_title,font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
                             plt.savefig(path_loc+molec+'_'+key+'.'+plot_dic['tell_prop']) 
@@ -2330,7 +2330,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         
                     #Imported light curve
                     if plot_set_key['plot_LC_imp'] and (data_dic['DI']['transit_prop'][inst][vis]['mode']=='imp'):
-                        ph_imp=get_timeorbit(pl_ref ,coord_dic[inst][vis], data_upload['imp_LC'][0], system_param[pl_ref], 0.)[1]
+                        ph_imp=get_timeorbit(coord_dic[inst][vis][pl_ref]['Tcenter'], data_upload['imp_LC'][0], system_param[pl_ref], 0.)[1]
                         plt.plot(ph_imp,data_upload['imp_LC'][iband]-vis_shift,color=col_vis,linestyle='--',lw=plot_set_key['lw_plot'])  
                         
                     #HR light curve
@@ -4215,7 +4215,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #Planet at given position along the orbit
                 RpRs = plot_set_key['RpRs_pl'][pl_loc]
                 if plot_set_key['t_BJD'] is not None:
-                    phase_pl=get_timeorbit(pl_loc,coord_dic[plot_set_key['t_BJD']['inst']][plot_set_key['t_BJD']['vis']],plot_t,system_param[pl_loc],0.)[1]  
+                    phase_pl=get_timeorbit(coord_dic[plot_set_key['t_BJD']['inst']][plot_set_key['t_BJD']['vis']][pl_loc]['Tcenter'],plot_t,system_param[pl_loc],0.)[1]  
                     x_pl_sky,y_pl_sky,z_pl_sky= calc_pl_coord(system_param[pl_loc]['ecc'],system_param[pl_loc]['omega_rad'],system_param[pl_loc]['aRs'],system_param[pl_loc]['inclin_rad'],phase_pl,None,None,None)[0:3]               
                     if plot_set_key['conf_system']=='sky_ste': ang_orb = system_param[pl_loc]['lambda_rad']
                     if plot_set_key['conf_system']=='sky_orb': ang_orb = system_param[pl_loc]['lambda_rad']-lref    
@@ -6273,7 +6273,7 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
     for pl_loc in gen_dic['studied_pl_list']:
 
         #High-resolution phase table
-        phase_pl = get_timeorbit(pl_loc,coord_vis,bjd_HR,system_param_loc[pl_loc],None)[1]   
+        phase_pl = get_timeorbit(coord_vis[pl_loc]['Tcenter'],bjd_HR,system_param_loc[pl_loc],None)[1]   
 
         #Overwrite default values     
         if ('lambda_rad__pl'+pl_loc in genpar_instvis):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 

@@ -19,30 +19,11 @@
 Master stellar spectra
 ======================
 
-These procedures relate to the calculation of master spectra of the star. 
+These procedures relate to the calculation of master spectra. 
 
-First, you should have uploaded, formated, and corrected your input spectra following this LIEN procedure.
+.. toctree::
+   :maxdepth: 2
 
-
-Disk-integrated master
-----------------------
-
-Aligning disk-integrated profiles
-
-Broadband flux scaling
-
-Calculating master stellar spectrum
-    do not forget so that weight profiles are calculated
-
-Converting disk-integrated spectra into 1D
-
-Binning disk-integrated profiles over phase
-    over each visit if you expect variations, otherwise over all visits
- 
- 
-montrer figure de la serie de spectre 2D dans plusieurs ordres, puis du master final
-    
-    
-
-Intrinsic master
-----------------
+   Disk-integrated stellar master spectra. <procedures_master_DI/procedures_master_DI>
+   Intrinsic stellar master spectra. <procedures_master_Intr/procedures_master_Intr>
+   Planetary master spectra. <procedures_master_Atm/procedures_master_Atm>

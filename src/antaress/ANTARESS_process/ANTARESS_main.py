@@ -25,10 +25,10 @@ from ..ANTARESS_plots.ANTARESS_plots_all import ANTARESS_plot_functions
 from ..ANTARESS_corrections.ANTARESS_calib import calc_gcal
 from ..ANTARESS_process.ANTARESS_plocc_spec import def_in_plocc_profiles,def_diff_profiles
 from ..ANTARESS_conversions.ANTARESS_masks_gen import def_masks
-from ..ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
+from ..ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,DiffIntr_CCF_from_spec,conv_2D_to_1D_spec
 from ..ANTARESS_conversions.ANTARESS_binning import process_bin_prof
 from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
-from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
+from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_diff_profiles,extract_intr_profiles,extract_pl_profiles 
 from ..ANTARESS_analysis.ANTARESS_ana_comm import MAIN_single_anaprof
 from ..ANTARESS_conversions.ANTARESS_sp_cont import process_spectral_cont
 from ..ANTARESS_general.utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data,npint
@@ -179,7 +179,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     
                 #Extracting differential profiles
                 if (gen_dic['res_data']):
-                    extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
+                    extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
     
                 #Extracting intrinsic stellar profiles
                 if gen_dic['intr_data']:
@@ -187,7 +187,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             
                 #Converting out-of-transit differential and intrinsic spectra into CCFs
                 if gen_dic[data_type_gen+'_CCF']:
-                    ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
+                    DiffIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
                       
                 #Applying PCA to out-of transit differential profiles
                 if (gen_dic['pca_ana']):
@@ -277,7 +277,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             print('-------------------------------')
             
             #Wrap-up function to fit stellar profiles and their properties
-            if gen_dic['fit_DIProp'] or gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_ResProf'] :
+            if gen_dic['fit_DIProp'] or gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_DiffProf'] :
                 joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic,data_prop)
         
             #Wrap-up function to fit atmospheric profiles and their properties
@@ -544,9 +544,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #Automatic activation/deactivation
         if gen_dic['pca_ana']:gen_dic['intr_data'] = True
         if gen_dic['intr_data']:
-            if not gen_dic['res_data']:
+            if not gen_dic['diff_data']:
                 print('Automatic activation of differential profile extraction')
-                gen_dic['res_data'] = True
+                gen_dic['diff_data'] = True
             if not gen_dic['flux_sc']:
                 print('Automatic activation of flux scaling calculation')
                 gen_dic['flux_sc'] = True
@@ -589,7 +589,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             if (not gen_dic['corr_Fbal']):gen_dic['Fbal_vis']=None
             
             #Check for arbitrary scaling        
-            elif (gen_dic['Fbal_vis']!='theo') and (gen_dic['n_instru']>1):stop('Flux balance must be set to a theoretical reference for multiple instruments')
+            elif (gen_dic['Fbal_vis']!='ext') and (gen_dic['n_instru']>1):stop('Flux balance must be set to a theoretical reference for multiple instruments')
     
             #Deactivate transit scaling if temporal flux correction is applied
             if gen_dic['corr_Ftemp']: gen_dic['flux_sc']=False
@@ -622,7 +622,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #    - the general instrument and visit dictionaries contain a field type that represents the mode of the data at the current stage of the pipeline
         #    - here we set the final mode for each type of profile, so that they can be retrieved in their original mode for plotting
         #      eg, if profiles are converted into CCF at the differential stage, we keep the information that disk-integrated profiles were in spectral mode
-        for key in ['DI','Res','Intr','Atm']:data_dic[key]['type'] = {inst:deepcopy(gen_dic['type'][inst]) for inst in gen_dic['type']}
+        for key in ['DI','Diff','Intr','Atm']:data_dic[key]['type'] = {inst:deepcopy(gen_dic['type'][inst]) for inst in gen_dic['type']}
         for inst in gen_dic['type']:
             if 'spec' in gen_dic['type'][inst]: 
             
@@ -630,7 +630,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 if gen_dic['DI_CCF']:
                     data_dic['DI']['type'][inst]='CCF'
                 if gen_dic['DI_CCF'] or gen_dic['Intr_CCF']:
-                    data_dic['Res']['type'][inst]='CCF'          
+                    data_dic['Diff']['type'][inst]='CCF'          
                     data_dic['Intr']['type'][inst]='CCF'
                 if gen_dic['DI_CCF'] or gen_dic['Atm_CCF']:
                     data_dic['Atm']['type'][inst]='CCF'
@@ -639,7 +639,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 if gen_dic['spec_1D_DI']:
                     data_dic['DI']['type'][inst]='spec1D'
                 if gen_dic['spec_1D_DI'] or gen_dic['spec_1D_Intr']:
-                    data_dic['Res']['type'][inst]='spec1D'
+                    data_dic['Diff']['type'][inst]='spec1D'
                     data_dic['Intr']['type'][inst]='spec1D'
                 if gen_dic['spec_1D_DI'] or gen_dic['spec_1D_Atm']:
                     data_dic['Atm']['type'][inst]='spec1D'
@@ -655,7 +655,8 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #Set general condition for single profiles fits
         for key in ['DI','Intr','Atm']:
             gen_dic['fit_'+key+'_gen'] = gen_dic['fit_'+key] | gen_dic['fit_'+key+'bin'] | gen_dic['fit_'+key+'binmultivis'] 
-    
+        gen_dic['fit_Diff_gen'] = False
+        
         #Automatic continuum and fit range
         for key in ['DI','Intr','Atm']:
             if gen_dic['fit_'+key+'_gen']:
@@ -762,7 +763,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             if (not gen_dic['specINtype']):gen_dic['atm_CCF']=False
     
         #Mask used to compute atmospheric CCFs and/or exclude atmospheric planetary ranges
-        #    - weights set to 1 unless requested
         if data_dic['Atm']['CCF_mask'] is not None:
             
             #Upload CCF mask
@@ -771,18 +771,21 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 hdulist = fits.open(data_dic['Atm']['CCF_mask'])
                 data_loc = hdulist[1].data
                 data_dic['Atm']['CCF_mask_wav'] = data_loc['lambda']
-                data_dic['Atm']['CCF_mask_wgt'] = data_loc['contrast'] if data_dic['Atm']['use_maskW'] == True else np.repeat(1.,len(data_dic['Atm']['CCF_mask_wav']))        
+                if data_dic['Atm']['use_maskW']:data_dic['Atm']['CCF_mask_wgt'] = data_loc['contrast']       
                 hdulist.close()
             elif (ext=='csv'):
                 data_loc = np.genfromtxt(data_dic['Atm']['CCF_mask'], delimiter=',', names=True)
                 data_dic['Atm']['CCF_mask_wav'] = data_loc['wave']
-                data_dic['Atm']['CCF_mask_wgt'] = data_loc['contrast'] if data_dic['Atm']['use_maskW'] == True else np.repeat(1.,len(data_dic['Atm']['CCF_mask_wav'])) 
+                if data_dic['Atm']['use_maskW']:data_dic['Atm']['CCF_mask_wgt'] = data_loc['contrast']
             elif (ext in ['txt','dat']):
                 data_loc = np.loadtxt(data_dic['Atm']['CCF_mask']).T            
                 data_dic['Atm']['CCF_mask_wav'] = data_loc[0]
-                data_dic['Atm']['CCF_mask_wgt'] = data_loc[1]        
+                if data_dic['Atm']['use_maskW']:data_dic['Atm']['CCF_mask_wgt'] = data_loc[1]        
             else:
                 stop('CCF mask extension TBD') 
+                
+            #No weighing of lines
+            if not data_dic['Atm']['use_maskW']:data_dic['Atm']['CCF_mask_wgt'] = np.repeat(1.,len(data_dic['Atm']['CCF_mask_wav']))        
     
 
 
@@ -1267,20 +1270,23 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             hdulist = fits.open(gen_dic['CCF_mask'][inst])
             data_loc = hdulist[1].data
             gen_dic['CCF_mask_wav'][inst] = data_loc['lambda']
-            gen_dic['CCF_mask_wgt'][inst] = data_loc['contrast']          
+            if gen_dic['use_maskW']:gen_dic['CCF_mask_wgt'][inst] = data_loc['contrast']          
             hdulist.close()
 
         elif (ext=='csv'):
             data_loc = np.genfromtxt(gen_dic['CCF_mask'][inst], delimiter=',', names=True)
             gen_dic['CCF_mask_wav'][inst] = data_loc['wave']
-            gen_dic['CCF_mask_wgt'][inst] = data_loc['contrast']  
+            if gen_dic['use_maskW']:gen_dic['CCF_mask_wgt'][inst] = data_loc['contrast']  
 
         elif (ext in ['txt','dat']):
             data_loc = np.loadtxt(gen_dic['CCF_mask'][inst]).T            
             gen_dic['CCF_mask_wav'][inst] = data_loc[0]
-            gen_dic['CCF_mask_wgt'][inst] = data_loc[1]       
+            if gen_dic['use_maskW']:gen_dic['CCF_mask_wgt'][inst] = data_loc[1]       
         else:
             stop('CCF mask extension TBD') 
+
+        #No weighing of lines
+        if not gen_dic['use_maskW']:gen_dic['CCF_mask_wgt'][inst] = np.repeat(1.,len(gen_dic['CCF_mask_wav'][inst]))  
             
         #Same convention as the ESPRESSO DRS, which takes the 'contrast' column from mask files and use its squares as weights
         #    - masks weights should have been normalized so that mean( weights ) = 1, where weight = CCF_mask_wgt^2
@@ -1467,24 +1473,24 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #    - taking the day at the start of the night, rather than the day at the start of the exposure series
                 if (not gen_dic['mock_data']):
                     if (inst in ['CORALIE','ESPRESSO','ESPRESSO_MR','HARPS','HARPN','CARMENES_VIS','EXPRES','NIRPS_HA','NIRPS_HE']):    
-                        vis_day_exp=[]
-                        vis_hour_exp=[]
-                        bjd_exp = []
+                        vis_day_exp_all=[]
+                        vis_hour_exp_all=[]
+                        bjd_exp_all = []
                         for file_path in vis_path_exp:
                             hdulist =fits.open(file_path)
                             hdr =hdulist[0].header 
                             if inst=='CORALIE':
-                                vis_day_exp+= [int(hdr['HIERARCH ESO CORA SHUTTER START DATE'][6:8])]
-                                bjd_exp  += [ hdr['HIERARCH ESO DRS BJD'] - 2400000. ]
+                                vis_day_exp_all+= [int(hdr['HIERARCH ESO CORA SHUTTER START DATE'][6:8])]
+                                bjd_exp_all  += [ hdr['HIERARCH ESO DRS BJD'] - 2400000. ]
                                 stop('Define time for CORALIE')
                             elif inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','CARMENES_VIS','NIRPS_HA','NIRPS_HE']:
-                                vis_day_exp+= [int(hdr['DATE-OBS'].split('T')[0].split('-')[2]) ]  
-                                vis_hour_exp+=[int(hdr['DATE-OBS'].split('T')[1].split(':')[0])]
-                                if inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','NIRPS_HA','NIRPS_HE']:bjd_exp +=[  hdr['HIERARCH '+facil_inst+' QC BJD'] - 2400000. ]
-                                elif inst=='CARMENES_VIS':bjd_exp  += [  hdr['CARACAL BJD']  ]                        
+                                vis_day_exp_all+= [int(hdr['DATE-OBS'].split('T')[0].split('-')[2]) ]  
+                                vis_hour_exp_all+=[int(hdr['DATE-OBS'].split('T')[1].split(':')[0])]
+                                if inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','NIRPS_HA','NIRPS_HE']:bjd_exp_all +=[  hdr['HIERARCH '+facil_inst+' QC BJD'] - 2400000. ]
+                                elif inst=='CARMENES_VIS':bjd_exp_all  += [  hdr['CARACAL BJD']  ]                        
                             elif inst=='EXPRES':
-                                vis_day_exp+= [int(hdr['DATE-OBS'].split(' ')[0].split('-')[2]) ]  
-                                vis_hour_exp+=[int(hdr['DATE-OBS'].split(' ')[1].split(':')[0])]
+                                vis_day_exp_all+= [int(hdr['DATE-OBS'].split(' ')[0].split('-')[2]) ]  
+                                vis_hour_exp_all+=[int(hdr['DATE-OBS'].split(' ')[1].split(':')[0])]
                         if inst=='CORALIE':
                             vis_yr = hdr['HIERARCH ESO CORA SHUTTER START DATE'][0:4]
                             vis_mt = hdr['HIERARCH ESO CORA SHUTTER START DATE'][4:6]
@@ -1493,22 +1499,37 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             vis_mt = hdr['DATE-OBS'].split(' ')[0].split('-')[1]                            
                         else:
                             vis_yr = hdr['DATE-OBS'].split('T')[0].split('-')[0]
-                            vis_mt = hdr['DATE-OBS'].split('T')[0].split('-')[1]
-    
-                        #Take the day before if all exposures are past midnight (ie, no exposures between 12 and 23) 
-                        vis_day = np.min(vis_day_exp)
-                        vis_hour_exp = np.array(vis_hour_exp)
-                        bjd_vis = np.mean(bjd_exp)
-                        if np.sum((vis_hour_exp>=12) & (vis_hour_exp<=23)  )==0:
-                            if vis_day==1:stop('Adapt date retrieval')
-                            vis_day-=1
-                        vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)        
-                        data_inst['dates'][vis] = str(vis_yr)+'/'+str(vis_mt)+'/'+str(vis_day_txt)
-                        data_inst['midpoints'][vis] = '%.5f'%(bjd_vis+2400000.)+' BJD'
-
+                            vis_mt = hdr['DATE-OBS'].split('T')[0].split('-')[1]  
+                              
+                        #Take the day before as reference if exposure is past midnight (ie, not between 12 and 23) 
+                        bjd_exp_all = np.array(bjd_exp_all)
+                        vis_day_exp_all = np.array(vis_day_exp_all)
+                        vis_hour_exp_all = np.array(vis_hour_exp_all)
+                        vis_day_exp_all[vis_hour_exp_all<=12]-=1
+                        if np.sum(vis_day_exp_all==0)>0:stop('ERROR: adapt date retrieval')                           
+                            
+                        #Check wether visit is contained within a single night
+                        #    - either:
+                        # + all exposures on same day before midnight or after midnight
+                        # + all exposures within two consecutive days between noon and midnight 
+                        min_day = np.min(vis_day_exp_all)
+                        max_day = np.max(vis_day_exp_all) 
+                        min_hr = np.min(vis_hour_exp_all)
+                        max_hr = np.max(vis_hour_exp_all)
+                        bjd_vis = np.mean(bjd_exp_all)
+                        if ((max_day==min_day) and ((min_hr>=12) or (max_hr<=12))) or ((max_day==min_day+1) and ((min_hr>=12) and (max_hr<=12))): 
+                            single_night = True
+                            vis_day = np.min(vis_day_exp_all)  
+                            vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)        
+                            data_inst['dates'][vis] = str(vis_yr)+'/'+str(vis_mt)+'/'+str(vis_day_txt)
+                            data_inst['midpoints'][vis] = '%.5f'%(bjd_vis+2400000.)+' BJD'
+                        
+                        else:                        
+                            single_night = False
+                            vis_day_txt_all = np.array(['0'+str(vis_day) if vis_day<10 else str(vis_day) for vis_day in vis_day_exp_all])
                 else:
                     bjd_vis = np.mean(bjd_exp_all) - 2400000.                   
-                        
+
                 #Initializing dictionaries for visit
                 theo_dic[inst][vis]={}
                 data_dic['Atm'][inst][vis]={}   
@@ -1549,6 +1570,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                     #Definition of mid-transit times for each planet associated with the visit 
                     if (pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst]):
+                        if single_night:stop('ERROR : gen_dic["Tcenter_visits"] not available for multi-epochs visits')
                         coord_dic[inst][vis][pl_loc]['Tcenter'] = gen_dic['Tcenter_visits'][pl_loc][inst][vis]
                     else:
                         norb = round((bjd_vis+2400000.-system_param[pl_loc]['TCenter'])/system_param[pl_loc]["period"])
@@ -1590,28 +1612,37 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                     #Condition to retrieve current visit
                     dace_red_inst = hdr['INSTRUME']
-                    if dace_red_inst=='ESPRESSO': 
-                        if bjd_vis<=58649.5:dace_red_inst+='18'
-                        else:dace_red_inst+='19'  
-                    elif dace_red_inst=='HARPS': 
-                        if bjd_vis<=57167.5:dace_red_inst+='03'
-                        else:dace_red_inst+='15'  
-                    cond_dace_vis = (np.asarray(DACE_sp['ins_name']) == dace_red_inst) & (np.asarray(DACE_sp['date_night']) == vis_yr+'-'+vis_mt+'-'+vis_day_txt)
-                    if True not in cond_dace_vis:
+                    if single_night:
+                        if dace_red_inst=='ESPRESSO': 
+                            if bjd_vis<=58649.5:dace_red_inst+='18'
+                            else:dace_red_inst+='19'  
+                        elif dace_red_inst=='HARPS': 
+                            if bjd_vis<=57167.5:dace_red_inst+='03'
+                            else:dace_red_inst+='15'  
+                        idx_dace_vis = np_where1D((np.asarray(DACE_sp['ins_name']) == dace_red_inst) & (np.asarray(DACE_sp['date_night']) == vis_yr+'-'+vis_mt+'-'+vis_day_txt))
+                    else:
+                        if dace_red_inst=='ESPRESSO':inst_off_all = ['18' if bjd_loc<58649.5 else '19' for bjd_loc in bjd_exp_all]
+                        elif dace_red_inst=='HARPS':inst_off_all = ['03' if bjd_loc<57167.5 else '15' for bjd_loc in bjd_exp_all]   
+                        dace_red_inst_all = np.array([dace_red_inst+inst_off for inst_off in inst_off_all])
+                        idx_dace_vis = np.zeros(0,dtype=int)
+                        vis_day_txt_un,idx_vis_day_txt_un = np.unique(vis_day_txt_all,return_index=True)
+                        for vis_day_txt,dace_red_inst in zip(vis_day_txt_un,dace_red_inst_all[idx_vis_day_txt_un]):
+                            idx_dace_vis = np.append(idx_dace_vis, np_where1D((np.asarray(DACE_sp['ins_name']) == dace_red_inst) & (np.asarray(DACE_sp['date_night']) == vis_yr+'-'+vis_mt+'-'+vis_day_txt)))
+                    if len(idx_dace_vis)==0:
                         print('         Visit not found in DACE') 
                         DACE_sp = False
                     else:
 
                         #Retrieve activity indexes and bjd
                         DACE_idx = {}
-                        DACE_idx['bjd'] =  np.array(DACE_sp['rjd'],dtype=float)[cond_dace_vis]
+                        DACE_idx['bjd'] =  np.array(DACE_sp['rjd'],dtype=float)[idx_dace_vis]
                         data_inst[vis]['act_idx'] = ['ha','na','ca','s','rhk']
                         for key in data_inst[vis]['act_idx']:
                             data_prop[inst][vis][key] = np.zeros([n_in_visit,2],dtype=float)*np.nan
                             if key=='rhk':dace_key = 'rhk'
                             else:dace_key = key+'index'
-                            DACE_idx[key] = np.array(DACE_sp[dace_key],dtype=float)[cond_dace_vis]
-                            DACE_idx[key+'_err'] = np.array(DACE_sp[dace_key+'_err'],dtype=float)[cond_dace_vis]                    
+                            DACE_idx[key] = np.array(DACE_sp[dace_key],dtype=float)[idx_dace_vis]
+                            DACE_idx[key+'_err'] = np.array(DACE_sp[dace_key+'_err'],dtype=float)[idx_dace_vis]                    
                 else:
                     DACE_sp = False
                     if inst=='EXPRES': 
@@ -1705,7 +1736,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 DI_data_inst[vis]['RVdrift'][iexp]=hdr['HIERARCH '+facil_inst+' QC DRIFT DET0 MEAN']*gen_dic['pix_size_v'][inst]*1e3    #in pix -> km/s
                     
                     #Stellar phase
-                    coord_dic[inst][vis]['st_ph_st'][iexp],coord_dic[inst][vis]['cen_ph_st'][iexp],coord_dic[inst][vis]['end_ph_st'][iexp] = get_timeorbit('star',{'star':{'Tcenter':system_param['star']['Tcenter']}},coord_dic[inst][vis]['bjd'][iexp], {'period':system_param['star']['Peq']}, coord_dic[inst][vis]['t_dur'][iexp])[0:3] 
+                    coord_dic[inst][vis]['st_ph_st'][iexp],coord_dic[inst][vis]['cen_ph_st'][iexp],coord_dic[inst][vis]['end_ph_st'][iexp] = get_timeorbit(system_param['star']['Tcenter'],coord_dic[inst][vis]['bjd'][iexp], {'period':system_param['star']['Peq']}, coord_dic[inst][vis]['t_dur'][iexp])[0:3] 
                     
                     #Orbital coordinates for each studied planet
                     for pl_loc in data_inst[vis]['studied_pl']:
@@ -1742,17 +1773,11 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #Processing all exposures in visit
                 for isub_exp,iexp in enumerate(range(n_in_visit)):
 
-                    #Observational data for current exposure
-                    if not gen_dic['mock_data']:
-                        hdulist =fits.open(vis_path_exp[iexp])
-                        if vis_path_skysub_exp is not None:hdulist_skysub =fits.open(vis_path_skysub_exp[iexp])
-                        hdr =hdulist[0].header                     
-
-                    #Initialize data at first exposure
-                    if isub_exp==0:
+                    #Artificial data 
+                    if gen_dic['mock_data']: 
                         
-                        #Artificial data 
-                        if gen_dic['mock_data']: 
+                        #Initialize data at first exposure
+                        if isub_exp==0:
                             print('            Building exposures ... ')
                             data_inst[vis]['mock'] = True
                             fixed_args = {}
@@ -1822,18 +1847,26 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             #Initializing stellar properties
                             fixed_args = var_stellar_prop(fixed_args,theo_dic,data_dic['DI']['system_prop'],spots_prop,system_param['star'],params_mock)
 
-                        #Observational data            
-                        else:   
+                    #Observational data            
+                    else: 
+
+                        #Observational data for current exposure
+                        hdulist =fits.open(vis_path_exp[iexp])
+                        if vis_path_skysub_exp is not None:hdulist_skysub =fits.open(vis_path_skysub_exp[iexp])
+                        hdr =hdulist[0].header                     
+
+                        #VLT UT used by ESPRESSO
+                        if (inst=='ESPRESSO') and ((isub_exp==0) or (not single_night)):
+                            tel_inst = {
+                                'ESO-VLT-U1':'1',
+                                'ESO-VLT-U2':'2',
+                                'ESO-VLT-U3':'3',
+                                'ESO-VLT-U4':'4'
+                                }[hdr['TELESCOP']]                                
+                       
+                        #Initialize data at first exposure
+                        if isub_exp==0:                        
                             data_inst[vis]['mock'] = False                      
-    
-                            #VLT UT used by ESPRESSO
-                            if inst=='ESPRESSO':
-                                tel_inst = {
-                                    'ESO-VLT-U1':'1',
-                                    'ESO-VLT-U2':'2',
-                                    'ESO-VLT-U3':'3',
-                                    'ESO-VLT-U4':'4'
-                                    }[hdr['TELESCOP']]                                
 
                             #Instrumental mode
                             if inst in ['ESPRESSO']: 
@@ -1846,7 +1879,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             #Radial velocity tables for input CCFs
                             #    - assumed to be common for all CCFs of the visit dataset, and thus calculated only once
                             if (data_inst['type']=='CCF'):
-                                    
                                 if inst in ['HARPN','HARPS','ESPRESSO','ESPRESSO_MR','NIRPS_HA','NIRPS_HE']:
                                     start_rv =  hdr['HIERARCH '+facil_inst+' RV START']    # first velocity
                                     delta_rv = hdr['HIERARCH '+facil_inst+' RV STEP']     # delta vel step
@@ -1900,6 +1932,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                     if inst in ['ESPRESSO','ESPRESSO_MR','HARPN','HARPS','CARMENES_VIS','NIRPS_HA','NIRPS_HE']:data_inst[vis]['nspec']  = (hdulist[1].header)['NAXIS1']
                                     elif inst=='EXPRES':data_inst[vis]['nspec'] = 7920
                                     else:stop('TBD')
+
+                    #Initialize data at first exposure
+                    if isub_exp==0: 
 
                         #Table dimensions
                         data_inst[vis]['dim_all'] = [n_in_visit,data_inst['nord'],data_inst[vis]['nspec']]
@@ -2118,7 +2153,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 else:hdulist_dat = hdulist
                                     
                                 if inst in ['HARPS','ESPRESSO','ESPRESSO_MR','HARPN','NIRPS_HA','NIRPS_HE']:
-
+                           
                                     #Bin centers
                                     #    - dimension norder x nbins
                                     if gen_dic['sp_frame']=='air':ikey_wav = 5
@@ -2128,7 +2163,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                     if (vis_path_skysub_exp is not None) and (gen_dic['fibB_corr'][inst][vis]!='all'):
                                         data_dic_temp['cen_bins'][iexp][idxsub_ord_skysub] = (hdulist_skysub[ikey_wav].data)[idx_ord_kept][idxsub_ord_skysub]                                 
                                         dll[idxsub_ord_skysub] = (hdulist_skysub[ikey_wav+2].data)[idx_ord_kept][idxsub_ord_skysub]   
-                                        
+
                                     #Spectra   
                                     #    - the overall flux level is changed in the sky-corrected data, messing up with the flux balance corrections if only some orders were corrected
                                     #      we thus roughly rescale the flux in the corrected orders to their original level (assuming constant resolution over the order to calculate the mean flux)   
@@ -2189,7 +2224,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                             #    - negative values are set to undefined, so that they are replaced by the calibration model in the calc_gcal() routine
                                             gcal_temp = 1./(dll[iord,cond_gcal[iord]]*count_blaze_exp[iord,cond_gcal[iord]]/count_exp[iord,cond_gcal[iord]])
                                             cond_gcal_pos = gcal_temp > 0.
-                                            data_dic_temp['gcal'][iexp,iord,cond_gcal[iord][cond_gcal_pos]] = gcal_temp[cond_gcal_pos] 
+                                            data_dic_temp['gcal'][iexp,iord,cond_gcal[iord]][cond_gcal_pos] = gcal_temp[cond_gcal_pos] 
 
                                             #Defining detector noise
                                             #    - Edet_meas(w,t,v)^2 = EN_meas[bl](w,t,v)^2 - N_meas[bl](w,t,v)
@@ -2609,7 +2644,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                
                 #Undefined bins
                 data_dic_temp['cond_def'] = ~np.isnan(data_dic_temp['flux'])
-                    
+
                 #Definition of edge spectral table
                 #    - spectral bins must be continuous for the resampling routine of the pipeline to work
                 #    - bin width are included in ESPRESSO files, but to have exactly the same lower/upper boundary between successive bins we redefine them manually  
@@ -2875,9 +2910,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         else:print('         All visits share a common spectral table')    
     spot_check = False
     for vis in data_dic[inst]['visit_list']:
-        print('         Processing visit '+vis)                                      
-        if vis in data_dic[inst]['dates']:print('           Date (night start) : '+data_dic[inst]['dates'][vis])
-        if vis in data_dic[inst]['midpoints']:print('           Visit midpoint: '+data_dic[inst]['midpoints'][vis])
+        if single_night:    
+            print('         Processing visit '+vis)                                  
+            if vis in data_dic[inst]['dates']:print('           Date (night start) : '+data_dic[inst]['dates'][vis])
+            if vis in data_dic[inst]['midpoints']:print('           Visit midpoint: '+data_dic[inst]['midpoints'][vis])
+        else:
+            print('         Processing multi-epoch visit '+vis)              
         data_vis = data_dic[inst][vis]
         coord_vis = coord_dic[inst][vis]
         gen_vis = gen_dic[inst][vis] 
@@ -3146,7 +3184,7 @@ def init_vis(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic):
     #Dictionaries initialization
     data_vis=data_dic[inst][vis]
     coord_vis = coord_dic[inst][vis] 
-    data_dic['Res'][inst][vis]={}
+    data_dic['Diff'][inst][vis]={}
     gen_vis = gen_dic[inst][vis] 
     data_dic['Intr'][inst][vis]={}    
 

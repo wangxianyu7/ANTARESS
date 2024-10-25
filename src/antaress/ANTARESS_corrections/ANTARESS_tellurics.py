@@ -45,7 +45,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
             #HITRAN properties
             static_model_path = 'ANTARESS_corrections/Telluric_processing/Static_model/'
             tell_mol_dic={}
-            for key in ['range_mol_prop','fit_range_mol_prop','lines_fit_molecules','qt_molec','temp_offset_molecules','iwv_value_molecules','temp_bool_molecules' ]:tell_mol_dic[key] = {}
+            for key in ['range_mol_prop','fit_range_mol_prop','lines_fit_molecules','qt_molec','temp_offset_molecules','isv_value_molecules','temp_bool_molecules' ]:tell_mol_dic[key] = {}
             for molec in gen_dic['tell_species']:
 
                 #Full line list for considered species 
@@ -93,7 +93,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
                 'CO2':20.,
                 'O2':20.}
                     
-            tell_mol_dic['iwv_value_molecules']={# [cm]
+            tell_mol_dic['isv_value_molecules']={# [cm]
                 'H2O':None,
                 'CH4':2163379.,
                 'CO2':951782.,
@@ -316,8 +316,8 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
         
         #Guess for pressure and integrated species vapour toward zenith
         if molec=='H2O':
-            if np.isnan(IWV_airmass_exp):IWV_zenith_exp = 0.1
-            else:IWV_zenith_exp = IWV_airmass_exp/ 10.0 # /10. to put in cm
+            if np.isnan(IWV_airmass_exp):ISV_zenith_exp = 0.1
+            else:ISV_zenith_exp = IWV_airmass_exp/ 10.0 # /10. to put in cm
             if np.isnan(press_exp):
                 press_guess = 0.5
                 press_max = 10.
@@ -327,7 +327,7 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
 
         #Other molecules
         else:
-            IWV_zenith_exp = tell_mol_dic['iwv_value_molecules'][molec]               
+            ISV_zenith_exp = tell_mol_dic['isv_value_molecules'][molec]               
             if np.isnan(press_exp):
                 press_guess = 0.5
                 press_max = 10.
@@ -336,14 +336,14 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
                 press_max = 10.*press_exp
         
         #Integrated species vapour along the LOS
-        if IWV_zenith_exp==0.:IWV_zenith_exp = 0.1
-        params.add('IWV_LOS',   value= IWV_zenith_exp*airmass_exp,  min=0., vary=True  )            
+        if ISV_zenith_exp==0.:ISV_zenith_exp = 0.1
+        params.add('ISV_LOS',   value= ISV_zenith_exp*airmass_exp,  min=0., vary=True  )            
         
         #Pressure
         #    - this parameter represents an average pressure over the layers occupied by the species
         #    - pressure should always be smaller than the pressure measured at the facility at ground level, but for safety we take twice the value
         if press_guess==0.:press_guess = 0.5
-        params.add('Pressure_ground', value= press_guess,     min=0., max=press_max,  vary=True  )
+        params.add('Pressure_LOS', value= press_guess,     min=0., max=press_max,  vary=True  )
             
         #Overwrite fit properties
         if molec in fixed_args['tell_mod_prop']:
@@ -562,7 +562,7 @@ def init_tell_molec(tell_species,params_molec,range_mol_prop,qt_molec,M_mol_mole
     nu_scaled_dic = {}
     for molec in tell_species:
         temp        = params_molec[molec]['Temperature'].value
-        P_0         = params_molec[molec]['Pressure_ground'].value
+        P_0         = params_molec[molec]['Pressure_LOS'].value
         mol_prop = range_mol_prop[molec]
         
         #Lines wavenumber [cm-1]
@@ -643,8 +643,8 @@ def calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_
                 intensity_i = line_profile_i * intensity_scaled_mod_ord[iline] 
           
                 #Co-addition to optical depth spectrum
-                #    - the column density is defined as IWV_LOS * Nx_molec, where Nx_molec is the species number density (molec cm^-3) in Earth atmosphere
-                tell_op_mod[idx_bins_li]+=intensity_i*params[molec]['IWV_LOS'] * Nx_molec[molec]
+                #    - the column density is defined as ISV_LOS * Nx_molec, where Nx_molec is the species number density (molec cm^-3) in Earth atmosphere
+                tell_op_mod[idx_bins_li]+=intensity_i*params[molec]['ISV_LOS'] * Nx_molec[molec]
 
     #end of molecules
 
@@ -872,7 +872,7 @@ def CCF_telluric_model(params,velccf,args=None):
             #CCF linelist
             #    - CCF linelist is provided at rest, and must be corrected for pressure shift (see init_tell_molec())
             CCF_line_nu_rest = 1e8/args['CCF_lines'] 
-            CCF_line_nu_scaled = CCF_line_nu_rest + args['CCF_deltas'] * param_molecules[args['molec']]['Pressure_ground'].value
+            CCF_line_nu_scaled = CCF_line_nu_rest + args['CCF_deltas'] * param_molecules[args['molec']]['Pressure_LOS'].value
             CCF_line_wav_scaled = 1e8/CCF_line_nu_scaled
 
             #Keep lines fully within spectrum range without nan

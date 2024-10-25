@@ -42,6 +42,12 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
         dim_exp_mast = data_com_inst['dim_exp']
         Mstar_vis_all = np.zeros([gen_dic[inst]['n_visits']]+dim_exp_mast,dtype=float)*np.nan 
         
+        #Check that external masters are defined for each visit, if requested
+        if gen_dic['Fbal_vis']=='ext':
+            if (inst not in gen_dic['Fbal_refFstar']):stop('ERROR: external master spectrum is requested but undefined for '+inst)
+            for vis in data_inst['visit_list']:
+                if (vis not in gen_dic['Fbal_refFstar'][inst]):stop('ERROR: external master spectrum is requested but undefined for '+vis+' of '+inst)
+
         #Calculating visit-specific masters 
         #    - the master can either be calculated using a mean, or a median to avoid introducing spurious variations such as cosmics
         #      the absolute flux level of the master does not matter, as it is used to correct for the relative flux balance correction  
@@ -145,19 +151,19 @@ def def_Mstar(gen_dic,data_inst,inst,data_prop,plot_dic,data_dic,coord_dic):
 
             ### End of exposures 
 
-            #Theoretical reference master
+            #External reference master
             #    - two columns: wavelength in star rest frame in A, flux density in arbitrary units  
-            if (gen_dic['Fbal_vis']=='theo'):
+            if (gen_dic['Fbal_vis']=='ext'):
 
                 #Retrieving input spectrum specific to the visit
                 wav_Mstar_theo,Mstar_theo=np.loadtxt(glob.glob(gen_dic['Fbal_refFstar'][inst][vis])[0]).T
                 edge_wav_Mstar_theo = def_edge_tab(wav_Mstar_theo,dim=0)
                 
-                #Check for theoretical spectrum to encompass the full visit range
+                #Check for external spectrum to encompass the full visit range
                 min_def_wav_Mstar = np.nanmin(edge_wav_Mstar[0:-1][cond_def_Mstar_vis])
                 max_def_wav_Mstar = np.nanmax(edge_wav_Mstar[1::][cond_def_Mstar_vis])
                 if (edge_wav_Mstar_theo[0]>min_def_wav_Mstar) or (edge_wav_Mstar_theo[-1]<max_def_wav_Mstar):
-                    stop('Extend range of definition of theoretical spectrum to cover visit '+vis)
+                    stop('Extend range of definition of external spectrum to cover visit '+vis)
                 
                 #Resampling on table of current visit-specific master
                 Mstar_ref = np.zeros(dim_exp_mast)*np.nan
@@ -218,8 +224,8 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
                           
     where we account for all contributions from the planet. 
     
-    We define a reference for the unocculted star :math:`F_\mathrm{ref}(w,vis)`, which can either be a theoretical spectrum, or a measured master spectrum. 
-    It is thus possible that :math:`F_\mathrm{ref}(w,vis) = C_\mathrm{ref}(w) F_\mathrm{\star}(w,vis)`, where `A` represents the deviation of the theoretical spectrum from the stellar spectrum, or a   
+    We define a reference for the unocculted star :math:`F_\mathrm{ref}(w,vis)`, which can either be an external (user-provided) spectrum, or a measured master spectrum. 
+    It is thus possible that :math:`F_\mathrm{ref}(w,vis) = C_\mathrm{ref}(w) F_\mathrm{\star}(w,vis)`, where `A` represents the deviation of the external spectrum from the stellar spectrum, or a   
     combination of the a(w,t) from the spectra used to build the master. Note that the unknown scaling of the flux due to the distance to the star is implicitely included in `A`.  
     The same reference can be used for all spectra obtained with a given instrument, but we obtain better results by calculating references specific to each visit.    
     Assuming that :math:`C_\mathrm{ref}` is dominated by low-frequency variations, we have :math:`F_\mathrm{ref}(w_\mathrm{bin},vis) = C_\mathrm{ref}(w_\mathrm{bin}) F_\mathrm{\star}(w_\mathrm{bin},vis)`
@@ -292,7 +298,7 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
     if (gen_dic['Fbal_vis']=='meas') and (gen_dic[inst]['n_visits']==1):stop('No need to set flux balance to a reference for a single visit and instrument') 
     if (gen_dic['Fbal_vis'] is None):
         if (gen_dic[inst]['n_visits']>1):stop('Flux balance must be set to a reference for multiple visits')
-    else:print('         Final scaling to '+{'meas':'measured','theo':'theoretical'}[gen_dic['Fbal_vis']]+' reference')  
+    else:print('         Final scaling to '+{'meas':'measured','ext':'external'}[gen_dic['Fbal_vis']]+' reference')  
     cond_calc = gen_dic['calc_corr_Fbal'] | gen_dic['calc_corr_FbalOrd'] 
 
     #Calculating data
@@ -357,12 +363,17 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
                 if (inst not in gen_dic['Fbal_range_fit']) or ((inst in gen_dic['Fbal_range_fit']) & (vis not in gen_dic['Fbal_range_fit'][inst])):range_fit=[]
                 else:range_fit=gen_dic['Fbal_range_fit'][inst][vis] 
 
-                #Measuring deviation between current visit and global instrument master
-                #    - see details in corrFbal_vis()
+                #Measuring deviation between current visit master and global master
+                #    - see details in corrFbal_vis():
+                # + visit masters can be measured from their own exposures, or set to an external reference (which can be different for each visit or common, but must be defined for each visit)
+                #   they cannot be a combination of both
+                # + if a single visit is processed the global master is not relevant
+                #   if a single instrument is processed, the global master in each visit can be set to the mean of the measured visit-specific masters (in which case it is common to all visits), or to the external references provided for each visit (in which case it can be visit-dependent)
+                #   if multiple instruments are processed, the global master must be set to external references so that the spectral range of all instruments are covered
                 if gen_dic['Fbal_vis'] is not None:   
                     
-                    #Set reference to theoretical master
-                    if gen_dic['Fbal_vis']=='theo':                     
+                    #Set global reference to external master
+                    if gen_dic['Fbal_vis']=='ext':                     
                         data_Mast_ref = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_theo')                     
                         cen_wav_Mstar = data_Mast_ref['cen_bins']
                         low_wav_Mstar = data_Mast_ref['edge_bins'][:,0:-1]
@@ -374,9 +385,9 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
                     
                     #Processing visit and reference masters over their commonly defined pixels, within selected ranges
                     #    - the measured reference for an instrument is only defined in pixels where all visit masters are defined
-                    #    - the theoretical reference is defined at all wavelengths
+                    #    - the external reference is defined at all wavelengths
                     if gen_dic['Fbal_vis']=='meas':cond_def_Mast = deepcopy(data_Mast_ref['cond_def'])
-                    elif gen_dic['Fbal_vis']=='theo':cond_def_Mast = deepcopy(data_Mast_vis['cond_def'])   
+                    elif gen_dic['Fbal_vis']=='ext':cond_def_Mast = deepcopy(data_Mast_vis['cond_def'])   
                     if (len(range_fit)>0):
                         cond_sel = np.zeros(data_Mast_ref['flux'].shape,dtype=bool)
                         for bd_band_loc in range_fit:cond_sel|=(low_wav_Mstar>bd_band_loc[0]) & (high_wav_Mstar<bd_band_loc[1])

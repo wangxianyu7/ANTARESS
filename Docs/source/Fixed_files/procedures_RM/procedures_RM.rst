@@ -21,7 +21,8 @@ Rossiter McLaughlin analysis
 
 ``ANTARESS`` tutorials detail how to use the configuration file (which you should have copied in your working directory from the `default configuration file <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/src/antaress/ANTARESS_launch/ANTARESS_settings.py>`_) to carry out a specific procedure. 
 Additional options are typically available in this file, so do not hesitate to read it in details. 
-``ANTARESS`` plots are activated via the configuration file and have default settings, which can be extensively customized through the plot configuration file (which you should also have copied in your working directory from the `default plot configuration file <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/src/antaress/ANTARESS_plots/ANTARESS_plot_settings.py>`_)
+``ANTARESS`` plots are activated via the configuration file and have default settings, which can be extensively customized through the plot configuration file (which you should also have copied in your working directory from the `default plot configuration file <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/src/antaress/ANTARESS_plots/ANTARESS_plot_settings.py>`_) 
+and detailed in the `plots tutorial <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_plots/procedures_plots.html>`_.
 
 The present tutorial relates to the analysis of Rossiter McLaughlin (RM) signals from transiting planets, using the *Revolutions* technique (`Bourrier et al. 2021 <https://www.aanda.org/articles/aa/full_html/2021/10/aa41527-21/aa41527-21.html>`_). 
 We illustrate the tutorial with ESPRESSO observations of TOI-421b (on 2022-11-17) and TOI-421c (on 2023-11-06). 
@@ -30,7 +31,7 @@ The Revolutions technique exploits the spectral profiles of the planet-occulted 
 The three techniques give comparable results when the RM signal is significant (eg, for bright stars and large transit depths), the occulted stellar lines Gaussian, and the scale of their spatial variations from center-to-limb variations and photospheric RV motions small compared to the planet orbital motion during an exposure (ie, blurring is negligible).   
 When these conditions are not met the Revolutions technique improves the detectability of the RM signal and reduces biases, because it fits the spectro-temporal variations of the occulted lines with a numerical model of the stellar photosphere. This allows simulating complex line profiles and photospheric variations, and accounting for the aforementioned blurring.
 
-We assume that you have already `set up your system <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_setup/procedures_setup.html>`_, `reduced <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_reduc/procedures_reduc.html>`_ and `processed <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_proc/procedures_proc.html>`_ your spectral transit time-series, 
+We assume that you have already `set up your system and dataset <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_setup/procedures_setup.html>`_, `reduced <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_reduc/procedures_reduc.html>`_ and `processed <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_proc/procedures_proc.html>`_ your spectral transit time-series, 
 extracted the `planet-occulted stellar profiles <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_extraction/procedures_extraction.html>`_, and converted them into `intrinsic CCFs <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_CCF/procedures_CCF_Intr/procedures_CCF_Intr.html>`_.
 
 

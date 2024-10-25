@@ -33,7 +33,7 @@ Each visit associated with an instrument can have an arbitrary name, but it must
 Information about the retrieval of observed spectral time-series can be found on `this page <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/data_access.html>`_.
 Once you have retrieved the data, indicate the absolute path to the directories storing each dataset with::
 
- gen_dic['data_dir_list']={'Instrument':{'Visit':'path'}}
+ gen_dic['data_dir_list']={instrument:{visit:'path'}}
 
 Information about the generation of mock spectral time-series with ``ANTARESS`` can be found `here <https://obswww.unige.ch/~bourriev/antaress/doc/html/procedures_mock/procedures_mock.html>`_.
 Once you have generated the data, make sure that the workflow is in *mock* and *retrieval* modes::
@@ -43,9 +43,16 @@ Once you have generated the data, make sure that the workflow is in *mock* and *
     
 And indicate which visits to process through::
 
- mock_dic['visit_def']={'Instrument':{'Visit':{}}}
+ mock_dic['visit_def']={instrument:{visit:{}}}
 
 The field associated with a visit is only required when generating the mock dataset.
+
+``ANTARESS`` is optimally designed to process extracted 2D echelle spectra, which is the default setting for input datasets::
+
+ gen_dic['type']={instrument:'spec2D'}
+
+Fast preliminary analysis can however be run on cross-correlation functions (CCFs) time-series, in which case you need to change :green:`'spec2D'` into :green:`'CCF'`.
+
 
 
 Planetary system
@@ -54,15 +61,15 @@ Planetary system
 The workflow processes datasets from one stellar system at a time. Multiple planets can be processed together, transiting or not during the epoch of a given dataset.
 
 First, open the copy of the `ANTARESS_systems.py <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/src/antaress/ANTARESS_launch/ANTARESS_systems.py>`_ file that you saved in your working directory.
-The file contains a dictionary in which you define the star (:green:`Star_name`) and associated planets (:green:`Planet_b`, :green:`Planet_c`, etc) as::
+The file contains a dictionary in which you define the star (:green:`star_name`) and associated planets (:green:`planet_b`, :green:`planet_c`, etc) as::
 
  all_system_params={
-    'Star_name':{
+    star_name:{
         'star':{
             'st_prop':value},  
-        'Planet_b':{
+        planet_b:{
             'pl_prop':value}, 
-        'Planet_c':{
+        planet_c:{
             'pl_prop':value},          
     }}
 
@@ -74,11 +81,11 @@ Properties that you must define for the star (:green:`st_prop`) and planets (:gr
 
 Then, in your copy of the configuration file define which star you want to process::
 
- gen_dic['star_name']='Star_name' 
+ gen_dic['star_name']=star_name
  
 And which planets you want to process::
 
- gen_dic['studied_pl'] = {'Planet_b':{'Instrument':['Visit']}} 
+ gen_dic['studied_pl'] = {planet_b:{instrument:[visit]}} 
  
 Because ``ANTARESS`` typically processes ground-based datasets obtained on a given night, you need to indicate for each planet in which observing epoch(s) it was observed with a given instrument.
 Visit names must match those you indicated in :green:`gen_dic['data_dir_list']`.
@@ -86,7 +93,7 @@ If a planet emission or its absorption of the stellar light are negligible durin
 
 All planets that have a significant impact on the Keplerian motion of the star during the observing epochs should be defined in::
 
- gen_dic['kepl_pl'] = ['Planet_b','Planet_c']
+ gen_dic['kepl_pl'] = [planet_b,planet_c]
 
 The list of planets can be replaced by :green:`'all'` to directly account for all planets set up in the :orange:`ANTARESS_systems.py` file.
 

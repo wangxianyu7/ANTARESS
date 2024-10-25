@@ -15,13 +15,14 @@ Profile extraction
 
 ``ANTARESS`` tutorials detail how to use the configuration file (which you should have copied in your working directory from the `default configuration file <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/src/antaress/ANTARESS_launch/ANTARESS_settings.py>`_) to carry out a specific procedure. 
 Additional options are typically available in this file, so do not hesitate to read it in details. 
-``ANTARESS`` plots are activated via the configuration file and have default settings, which can be extensively customized through the plot configuration file (which you should also have copied in your working directory from the `default plot configuration file <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/src/antaress/ANTARESS_plots/ANTARESS_plot_settings.py>`_)
+``ANTARESS`` plots are activated via the configuration file and have default settings, which can be extensively customized through the plot configuration file (which you should also have copied in your working directory from the `default plot configuration file <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/src/antaress/ANTARESS_plots/ANTARESS_plot_settings.py>`_) 
+and detailed in the `plots tutorial <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_plots/procedures_plots.html>`_.
 
 The present tutorial relates to the extraction of differential and intrinsic profiles from a time-series of disk-integrated profiles. 
 The generic term profile designates extracted 2D echelle spectra, order-merged 1D spectra, or cross-correlation functions (CCFs).
 We illustrate the tutorial with an extraction from 2D ESPRESSO spectra of TOI-421c acquired on 2023-11-06. We use another visit, acquired for TOI-421b on 2022-11-17, to illustrate multi-visits possibilities. 
 
-We assume that you have already `set up your system <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_setup/procedures_setup.html>`_, `reduced <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_reduc/procedures_reduc.html>`_ and `processed <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_proc/procedures_proc.html>`_ your spectral transit time-series.
+We assume that you have already `set up your system and dataset <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_setup/procedures_setup.html>`_, `reduced <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_reduc/procedures_reduc.html>`_ and `processed <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_proc/procedures_proc.html>`_ your spectral transit time-series.
 
 
 .. _Extra_sec_Diff:

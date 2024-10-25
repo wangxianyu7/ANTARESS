@@ -55,3 +55,8 @@ follow the tutorials to define ``ANTARESS`` configuration files and run its exec
    :maxdepth: 2
 
    procedures_RM/procedures_RM
+
+.. toctree::
+   :maxdepth: 2
+
+   procedures_plots/procedures_plots
