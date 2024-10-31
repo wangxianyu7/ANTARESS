@@ -198,24 +198,83 @@ def get_system_params():
         'TOI3884':{ 
             'star':{  #Libby-Roberts+2023 
                 'Rstar':0.302,              
-                'istar':90.,                    #unknown
+                'istar':155.,                    #unknown
                 'Mstar':0.298,
-                'veq':3.59,                     #unknown                
+                'veq':8.495,                     #unknown                
                 # 'veq_spots':23.59,
                 },
 
-            'TOI3884_b':{  #Libby-Roberts+2023  
-                'period':4.5445828,           
-                'TCenter':2459556.51669,      
-                'ecc':0.060,
-                'omega_deg':-112., #very different from previous studies - re-fit?
-                'Kstar':28.03,     #very different from previous studies
-                'aRs':25.90,  
-                'inclination':89.81,   
-                'TLength':1.60/24.,      
-                'lambda_proj':75.  #what we want to constrain so will vary
-                }, 
+            # 'star':{  #Equatorial band hypothesis - updated
+            #     'Rstar':0.302,              
+            #     'istar':90.,                    #unknown
+            #     'Mstar':0.298,
+            #     'veq':8.495,                     #unknown                
+            #     # 'veq_spots':23.59,
+            #     },
 
+            # 'star':{  #Equatorial band hypothesis
+            #     'Rstar':0.302,              
+            #     'istar':89.,                    #unknown
+            #     'Mstar':0.298,
+            #     'veq':1.504,                     #unknown                
+            #     # 'veq_spots':23.59,
+            #     },
+
+            # 'star':{  #Almenara+2022
+            #     'Rstar':0.3043,              
+            #     'istar':133.0,                    #unknown
+            #     'Mstar':0.2813,
+            #     'veq':1.504,                     #unknown                
+            #     # 'veq_spots':23.59,
+            #     },
+
+            # 'TOI3884_b':{  #Libby-Roberts+2023  
+            #     'period':4.5445828,           
+            #     'TCenter':2459556.51669,      
+            #     'ecc':0.060,
+            #     'omega_deg':-112., #very different from previous studies - re-fit?
+            #     'Kstar':28.03,     #very different from previous studies
+            #     'aRs':25.90,  
+            #     'inclination':89.81,   
+            #     'TLength':1.60/24.,      
+            #     'lambda_proj':75.  #what we want to constrain so will vary
+            #     }, 
+
+            # 'TOI3884_b':{  #Equatorial band hypothesis 
+            #     'period':4.5445828,           
+            #     'TCenter':2459556.51669,      
+            #     'ecc':0.060,
+            #     'omega_deg':-112., #very different from previous studies - re-fit?
+            #     'Kstar':28.03,     #very different from previous studies
+            #     'aRs':25.90,  
+            #     'inclination':90.4,   
+            #     'TLength':1.60/24.,      
+            #     'lambda_proj':30.  #what we want to constrain so will vary
+            #     },
+
+            # 'TOI3884_b':{  #Equatorial band hypothesis updated
+            #     'period':4.5445697,           
+            #     'TCenter':2459556.51669,      
+            #     'ecc':0.059,        #Unknown
+            #     'omega_deg':190., #very different from previous studies - re-fit?
+            #     'Kstar':14.9,     #very different from previous studies
+            #     'aRs':25.01,  
+            #     'inclination':90.40,   
+            #     'TLength':1.646/24.,      
+            #     'lambda_proj':30.  #what we want to constrain so will vary
+            #     }, 
+
+            'TOI3884_b':{  #Almenara+2022
+                'period':4.5445697,           
+                'TCenter':2459642.86314,      
+                'ecc':0.059,        #Unknown
+                'omega_deg':190., #very different from previous studies - re-fit?
+                'Kstar':14.9,     #very different from previous studies
+                'aRs':25.01,  
+                'inclination':90.10,   
+                'TLength':1.646/24.,      
+                'lambda_proj':50.  #what we want to constrain so will vary
+                }, 
     },      
 
         #------------------------------    

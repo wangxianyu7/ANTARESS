@@ -1163,7 +1163,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
         #Account for facula occultation in planet-occulted region
         cond_eff_fa = False
         
-        #Spots are visible over the stellar disk
+        #Faculae are visible over the stellar disk
         if facula_occ:
             n_grid = len(coord_grid['x_st_sky'])
             

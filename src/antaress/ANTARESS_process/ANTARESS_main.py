@@ -1319,7 +1319,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         'HARPN':'TNG',   
         'CARMENES_VIS':'CAHA',
         'CORALIE':'ESO','ESPRESSO':'ESO','ESPRESSO_MR':'ESO',
-        'EXPRES':'DCT','NIRPS_HE':'ESO','NIRPS_HA':'ESO'
+        'EXPRES':'DCT','NIRPS_HE':'ESO','NIRPS_HA':'ESO',
+        'MIKE_Red':'LCO','MIKE_Blue':'LCO'
         }[inst]
 
     #Error definition

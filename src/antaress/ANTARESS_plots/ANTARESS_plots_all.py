@@ -4394,12 +4394,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         params['lat__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['lat']
                         params['ang__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['ang']
                         params['Tc_fa__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['Tc_fa']
-                        if 'fctrst' in plot_set_key['custom_spot_prop'][facula]:params['fctrst__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['fctrst']
+                        if 'fctrst' in plot_set_key['custom_faculae_prop'][facula]:params['fctrst__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['fctrst']
                     
                 #Mock dataset facula properties
-                elif plot_set_key['mock_spot_prop']:
+                elif plot_set_key['mock_facula_prop']:
                     if idx_pl==0: print('   + With mock dataset facula properties')
-                    if (mock_dic['spots_prop'] != {}):
+                    if (mock_dic['faculae_prop'] != {}):
                             inst_to_use = plot_set_key['inst_to_plot'][0]
                             vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
 
@@ -4482,12 +4482,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 cond_in_prev_facula = x_prev_facula_grid**2. + y_prev_facula_grid**2 <= faculae_prop[prev_facula]['ang_rad']**2
                                 x_facula_grid = x_facula_grid[~cond_in_prev_facula]
                                 y_facula_grid = y_facula_grid[~cond_in_prev_facula]
-                                z_facula_grid = z_facula_grid=[~cond_in_prev_facula]
+                                z_facula_grid = z_facula_grid[~cond_in_prev_facula]
                         fa_proc += [facula]
 
                         #Plotting each facula grid cell
                         for x, y in zip(x_facula_grid, y_facula_grid):
-                            rect_fa = plt.Rectangle(( x-0.5*coord_grid['d_facell'][facula],y-0.5*coord_grid['d_facell'][facula]), coord_grid['d_facell'][facula],coord_grid['d_facell'][facula], facecolor='white',edgecolor='white',lw=0.1,zorder=-1, alpha=(ref_fctrst/5.))
+                            rect_fa = plt.Rectangle(( x-0.5*coord_grid['d_facell'][facula],y-0.5*coord_grid['d_facell'][facula]), coord_grid['d_facell'][facula],coord_grid['d_facell'][facula], facecolor='white',edgecolor='white',lw=0.1,zorder=-1, alpha=(ref_fctrst-1.))
                             ax1.add_artist(rect_fa)
                             
                             #Overlaying facula grid cell boundaries
@@ -4613,7 +4613,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     loc_x_st_sky_sp = coord_grid['x_st_sky_sp'][spot]+spots_prop_exp['x_sky_exp'][1]
                     loc_y_st_sky_sp = coord_grid['y_st_sky_sp'][spot]+spots_prop_exp['y_sky_exp'][1]
 
-                    #Remove cells in the grid that are outside the stellar surfacce
+                    #Remove cells in the grid that are outside the stellar surface
                     cond_in_star = loc_x_st_sky_sp**2 + loc_y_st_sky_sp**2 < 1.
                     bound_x_st_sky_sp = loc_x_st_sky_sp[cond_in_star]
                     bound_y_st_sky_sp = loc_y_st_sky_sp[cond_in_star]
@@ -4658,7 +4658,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                         #Plotting each spot grid cell
                         for x, y in zip(x_spot_grid, y_spot_grid):
-                            rect_sp = plt.Rectangle(( x-0.5*coord_grid['d_spcell'][spot],y-0.5*coord_grid['d_spcell'][spot]), coord_grid['d_spcell'][spot],coord_grid['d_spcell'][spot], facecolor='black',edgecolor='black',lw=0.1,zorder=-1, alpha=(1-ref_fctrst))
+                            rect_sp = plt.Rectangle(( x-0.5*coord_grid['d_spcell'][spot],y-0.5*coord_grid['d_spcell'][spot]), coord_grid['d_spcell'][spot],coord_grid['d_spcell'][spot], facecolor='black',edgecolor='black',lw=0.1,zorder=-1, alpha=ref_fctrst)
                             ax1.add_artist(rect_sp)
                             
                             #Overlaying spot grid cell boundaries

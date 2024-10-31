@@ -1567,7 +1567,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
-        # plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'mock_vis':[-0.02484,0.02346]}}
+        # plot_settings[key_plot]['plot_theoRV']=True
+        plot_settings[key_plot]['theoRV_HR']=True
+        # plot_settings[key_plot]['theoRV_HR_align']=True
+        # plot_settings[key_plot]['v_range_all']={'MIKE_Red':{'mockvis':[-0.02390,0.06576]}}
 
 
     ################################################################################################################  
@@ -2222,6 +2225,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             # plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':2454560.806755574+np.array([-0.5,-0.2,0.,0.2,0.5])/24. }
             # plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':2454560.806755574+np.array([0.5])/24. }
 
+        if gen_dic['star_name']=='TOI3884':
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'MIKE_Red', 'vis':'mockvis', 't':  2459556.51669+np.linspace(-0.05,0.05,6)}
+            plot_settings[key_plot]['t_BJD'] = None
+
         if gen_dic['star_name']=='AUMic':
             plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,3)}
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
@@ -2407,6 +2414,40 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%% RV range
         plot_settings[key_plot]['rv_range'] = None
+
+        if gen_dic['star_name']=='TOI3884':    
+            plot_settings[key_plot]['plot_sp_orb'] = False
+
+            plot_settings[key_plot]['plot_fa_orb'] = False
+            
+            plot_settings[key_plot]['n_stcell']=201.
+
+            plot_settings[key_plot]['mock_spot_prop'] = True #& False
+
+            plot_settings[key_plot]['fit_spot_prop'] = True & False
+
+            plot_settings[key_plot]['mock_facula_prop'] = True & False
+
+            plot_settings[key_plot]['plot_norm_orb_planes'] = False
+
+            # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
+
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 20, 'fctrst' : 0.2}
+            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  10, 'Tc_sp' : 2458330.39051+0.1, 'ang' : 25}
+            # plot_settings[key_plot]['custom_spot_prop']['spot3'] = {'lat' :  -30, 'Tc_sp' : 2458330.39051+0.3, 'ang' : 20}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
+            
+            plot_settings[key_plot]['st_grid_overlay']=True &False
+
+            plot_settings[key_plot]['sp_grid_overlay']=True &False
+
+            plot_settings[key_plot]['pl_grid_overlay']=True &False
+
+            plot_settings[key_plot]['n_spcell']=201.
+
+            # plot_settings[key_plot]['n_facell']=51.
+
+            # plot_settings[key_plot]['n_plcell']={'AUMicb':5.}
 
         if gen_dic['star_name']=='TRAPPIST1':    
             plot_settings[key_plot]['plot_sp_orb'] = False

@@ -4399,7 +4399,7 @@ def ANTARESS_analysis_settings(data_type,local_dic,plot_dic):
     
 
     #%%%%% Chi2 chains
-    local_dic[data_type]['save_chi2_chains']='png'
+    local_dic[data_type]['save_chi2_chains']=''
             
     
     #%%%%% MCMC corner plot
