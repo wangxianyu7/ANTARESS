@@ -215,7 +215,7 @@ Alternatively you can use external spectra (e.g. if you know the true stellar sp
 
  gen_dic['glob_mast_exp'] = {instrument:{visit: file_path }} 
 
-Once the visit masters are defined, you can set the module to retrieval mode (:green:`gen_dic['calc_glob_mast']=False`).
+Once the visit masters are defined, you can set the module to *retrieval* mode (:green:`gen_dic['calc_glob_mast']=False`).
 
 Activate the ``Global flux balance`` submodule (:green:`gen_dic['corr_Fbal']=True`) and set it to calculation mode (:green:`gen_dic['calc_corr_Fbal']=True`).
 
@@ -281,7 +281,7 @@ Finally, you can choose the spectral ranges to be corrected for (with :green:`l`
  
 Here we kept the default setting (:green:`gen_dic['Fbal_range_corr']=[]`) so that the entire spectra are corrected.
 
-Once you are satisfied with the correction, set the submodule to retrieval mode (:green:`gen_dic['calc_corr_Fbal']=False`).
+Once you are satisfied with the correction, set the submodule to *retrieval* mode (:green:`gen_dic['calc_corr_Fbal']=False`).
 
 The next ``Order flux balance`` submodule performs a similar correction over each spectral order independently, to correct for local variations in Earth absorption or in the instrumental response. 
 It is controlled in the same way as the previous submodule, but is limited to fitting polynomial corrections (look at the configuration file for more information).
@@ -347,7 +347,7 @@ cosmics toward the blue of the spectrum, where the noise is larger, or in lower 
 ..
   Erik: can you show a plot of the spectral detection profiles and occurences ?
 
-Once you are satisfied with the correction, set the module to retrieval mode (:green:`gen_dic['calc_cosm']=False`).
+Once you are satisfied with the correction, set the module to *retrieval* mode (:green:`gen_dic['calc_cosm']=False`).
 
 
 .. _Reduc_sec_perpeaks:
@@ -355,7 +355,51 @@ Once you are satisfied with the correction, set the module to retrieval mode (:g
 Persistent peak masking
 -----------------------
 
-This module is used to mask pixels with high flux values that persist over time, mainly hot detector pixels or sky emission lines that were not masked by the instrument DRS or removed by the sky-subtracted data. No spurious persistent peaks were found in the ESPRESSO data for TOI-421, and this correction was never used.
+This module is used to mask groups of pixels that show flux spikes persisting over time, typically hot detector pixels or sky emission lines that were not masked by the instrument DRS or removed by the sky-subtracted data. 
+
+The module relies on an estimate of the stellar continuum, calculated internally but using the settings of the ``Stellar continuum`` module.
+Look into the `stellar master <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/Fixed_files/procedures_masters/procedures_master_DI/procedures_master_DI.html>`_ tutorial how to adjust these settings.
+
+Activate the ``Persistent peak masking`` module (:green:`gen_dic['mask_permpeak']=True`) and set it to calculation mode (:green:`gen_dic['calc_permpeak']=True`).
+
+First, you need to define the exclusion settings. The module identifies pixels whose flux deviate from the stellar continuum by more than their error times a threshold::
+
+ gen_dic['permpeak_outthresh']=4
+
+Then the module marks for masking a range centered on each flagged pixel, with width (in :math:`\\A`) set as::
+
+  gen_dic['permpeak_peakwin']={instrument:width}   
+
+Finally a pixel is masked if it is marked in at least 3 consecutive exposures, or a larger number set as::
+
+  gen_dic['permpeak_nbad']=5   
+
+You can select the indexes of exposures and orders to be searched for peaks (by default left empty for full search) with::
+
+ gen_dic['permpeak_exp_corr']={instrument:{visit: [idx_exp] }} 
+ gen_dic['permpeak_ord_corr']={instrument:{visit: [idx_ord] }}
+ 
+You can further specify the spectral ranges (in :math:`\\A`) to be searched within a given order with::
+
+ gen_dic['permpeak_range_corr'] = {instrument:{order: [[l1,l2],[l3,l4], ..] }} 
+
+Because the stellar continuum may not be well-defined toward the edges of spectral orders, you can also define a range to be excluded from the search on each side of the orders::
+
+ gen_dic['permpeak_edges'] = {instrument:[dl_blue,dl_red] }
+ 
+Persistent peaks are rarely found in ESPRESSO data, and the module did not need to be used with the TOI-421 dataset. 
+This correction may become relevant when processing near-infrared data, and the following plot were made from a transit dataset of XX observed with XX. 
+
+..
+  Vincent: put figure 
+   
+To inspect the quality of the peaks correction you can plot the flux spectra (:green:`plot_dic['sp_raw']='pdf'`) from each exposure, 
+comparing the cosmics-corrected (:green:`plot_settings[key_plot]['plot_pre']='permpeak'`) and peak-corrected (:green:`plot_settings[key_plot]['plot_post']='cosm'`) spectra.
+
+You can also check the stellar continuum estimated within the module with :green:`plot_dic['permpeak_corr']='pdf'` (saved in ...).  
+
+Once you are satisfied with the correction, set the module to *retrieval* mode (:green:`gen_dic['calc_permpeak']=False`).
+
 
 
 .. _Reduc_sec_wig:
@@ -363,7 +407,8 @@ This module is used to mask pixels with high flux values that persist over time,
 Wiggle correction
 -----------------
 
-This module deals with the correction of interference patterns in ESPRESSO spectra, known as *wiggles*. Given the complexity of these patterns and their correction, we provide a `dedicated tutorial <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_reduc/procedures_wig/procedures_wig.html>`_.
+This module deals with the correction of interference patterns in ESPRESSO spectra, known as *wiggles*. 
+Given the complexity of these patterns and their correction, we provide a `dedicated tutorial <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_reduc/procedures_wig/procedures_wig.html>`_.
 
 
 .. _Reduc_sec_trim:
@@ -371,12 +416,21 @@ This module deals with the correction of interference patterns in ESPRESSO spect
 Trimming
 --------
 
+This module is the last one of the reduction steps, and allows you to trim the spectra to a chosen range for the rest of the workflow.
+If your analysis only requires a specific spectral range, there is indeed no need to use computing time and storage space to process the full specra.
+
+Activate the ``Trimming`` module (:green:`gen_dic['trim_spec']=True`) and set it to calculation mode (:green:`gen_dic['calc_trim_spec']=True`).
+
+You can define which spectral ranges should be kept (with :green:`l` in :math:`\\A` in the solar barycentric rest frame) through::
+
+ gen_dic['trim_range'] = [[l1,l2],[l3,l4],..]
+
+And/or which spectral orders should be kept through::
+   
+ gen_dic['trim_orders'] = {instrument:{visit: [idx_ord] }}
+ 
+The 2D echelle spectra now have comparable low-frequency profiles and are cleaned for environmental and instrumental effects. 
 
 
-
-
-
-
-
-The following procedures aim to clean, correct, and reduce the 2D spectral time series recorded by the detector to produce a clean 1D spectral time series. 
-To complete the steps presented in this tutorial, an initial analysis is required to retrieve the systemic velocity and broadband flux scaling to produce the stellar master spectrum. 
+You can set the present module to *retrieval* mode (:green:`gen_dic['calc_trim_spec'] = False`) if you want to further process the spectral time-series. Otherwise the data can be retrieved for external use
+in the :orange:`/Working_dir/Star/Planet_Saved_data/Corr_data/Trim/` directory.

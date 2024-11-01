@@ -103,14 +103,16 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     
             #Initialize instrument tables and dictionaries
             init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system_param,plot_dic)
-    
-            #Estimating instrumental calibration
-            if gen_dic['gcal']:
-                calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop)
-    
-            #Global corrections of spectral data
-            #    - performed before the loop on individual visits because some corrections exploit information from all visits and require the full range of the data
+
+            #Spectral data
             if ('spec' in data_dic[inst]['type']):
+
+                #Estimating instrumental calibration
+                if gen_dic['gcal']:
+                    calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop)
+
+                #Global corrections of spectral data
+                #    - performed before the loop on individual visits because some corrections exploit information from all visits and require the full range of the data        
                 red_sp_data_instru(inst,data_dic,plot_dic,gen_dic,data_prop,coord_dic,system_param)
     
             #-------------------------------------------------        
@@ -1861,7 +1863,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 d_exp_in = np.sqrt(dcoord_exp_in['x'][pl_loc]**2 + dcoord_exp_in['y'][pl_loc]**2)
                                 n_osamp_exp_all_pl=np.maximum(n_osamp_exp_all_pl,npint(np.round(d_exp_in/theo_dic['d_oversamp_pl'][pl_loc]))+1)
 
-
                     #Surface coordinates for each studied spot  
                     for spot in data_inst[vis]['transit_sp']:
                         spots_prop_exp = coord_expos_contamin(spot,coord_dic[inst][vis]['bjd'][iexp],spots_prop_nom,system_param['star'],coord_dic[inst][vis]['t_dur'][iexp],gen_dic['spot_coord_par'],'spots')                           
@@ -2186,7 +2187,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         param_exp = deepcopy(params_mock) 
 
                         #Table for model calculation
-                        args_exp = def_st_prof_tab(None,None,None,fixed_args)
+                        args_exp = def_st_prof_tab(None,None,None,deepcopy(fixed_args))
 
                         #Initializing stellar profiles
                         args_exp = init_custom_DI_prof(args_exp,gen_dic,param_exp)

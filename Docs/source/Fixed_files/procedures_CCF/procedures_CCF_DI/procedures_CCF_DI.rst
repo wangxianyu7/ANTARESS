@@ -1,4 +1,0 @@
-Disk-integrated CCFs
-====================
-
-TBD

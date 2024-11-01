@@ -1441,7 +1441,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 data_vis=data_dic[inst][vis]
 
                 #Upload data
-                data_corr = np.load(gen_dic['save_data_dir']+'Corr_data/Permpeak/'+inst+'_'+vis+'_add.npz', allow_pickle=True)['data'].item()
+                data_corr = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Permpeak/'+inst+'_'+vis+'_add')
 
                 #Orders to plot
                 order_list = plot_set_key['orders_to_plot'] if len(plot_set_key['orders_to_plot'])>0 else range(data_dic[inst]['nord']) 
@@ -5582,7 +5582,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
             if 'spec' in data_type:
                 if plot_options['sp_var'] == 'nu' :
                     if plot_options['x_range'] is None:x_range_loc = [c_light/9000.,c_light/3000.]
-                    x_title = r'$\nu$ in '+xt_str+' rest frame (10$^{-10}$s$^{-1}$)'
+                    x_title = r'$\nu$ in '+xt_str+' rest frame (10$^{13}$s$^{-1}$)'
                     
                 elif plot_options['sp_var'] == 'wav' :
                     if plot_options['x_range'] is None:x_range_loc = [3000.,9000.] 
@@ -8224,7 +8224,7 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             if 'spec' in data_type:
                 if plot_options['sp_var'] == 'nu' :
                     if plot_options['x_range'] is None:x_range_loc = [c_light/9000.,c_light/3000.]
-                    x_title = r'$\nu$ in '+xt_str+' rest frame (10$^{-10}$s$^{-1}$)'
+                    x_title = r'$\nu$ in '+xt_str+' rest frame (10$^{13}$s$^{-1}$)'
                     
                 elif plot_options['sp_var'] == 'wav' :
                     if plot_options['x_range'] is None:x_range_loc = [3000.,9000.] 
@@ -8468,7 +8468,7 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
                 #Frame
                 xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
                 ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
-                if plot_options['sp_var']=='nu':x_title=r'Nu (10$^{-10}$s$^{-1}$)'
+                if plot_options['sp_var']=='nu':x_title=r'Nu (10$^{13}$s$^{-1}$)'
                 elif plot_options['sp_var']=='wav':x_title=r'Wavelength (A)'
                 custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
                             x_title=x_title,y_title='Flux ratio',font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])

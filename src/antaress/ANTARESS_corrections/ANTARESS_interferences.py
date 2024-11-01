@@ -30,22 +30,24 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
     Determines and applies correction for ESPRESSO wiggles
     
     Wiggles are processed in wave_number space.
-    We use :math:`\nu_\mathrm{ana} = c[m s^{-1}]/w[A]` because it is on the order of 10, with :math:`\nu[s^{-1}] = 10^{10} \nu_\mathrm{ana}`
+    We use :math:`\nu_\mathrm{ana} = c[km s^{-1}]/w[A]` because it is on the order of 10, with :math:`\nu[s^{-1}] = 10^{13} \nu_\mathrm{ana}`.
+    For example a wavelength of 4000 A corresponds to :math:`\nu_\mathrm{ana} = 75 [10^{13} s^{-1}]` and :math:`\nu = 7.5 \times 10^{14} [s^{-1}]` = 750 [Thz].
     
     Periodogram frequencies :math:`F_{\nu,\mathrm{ana}}` correspond to wiggle periods 
 
     .. math::    
-       P_{\nu}[s^{-1}] &= 10^{10} P_{\nu,\mathrm{ana}} \\
-                    &= 10^{10} / F_{\nu,\mathrm{ana}}
+       P_{\nu}[s^{-1}] &= 10^{13} P_{\nu,\mathrm{ana}} \\
+                       &= 10^{13} / F_{\nu,\mathrm{ana}}
                     
-    with :math:`F_{\nu}[s] = 10^{-10} F_{\nu,\mathrm{ana}}`. 
+    or :math:`F_{\nu}[s] = 10^{-13} F_{\nu,\mathrm{ana}}`. 
     The corresponding period in wavelength space is
     
     .. math:: 
        P_{w}[A] &= c[A s^{-1}] P_{\nu}[s^{-1}]/\nu[s^{-1}]^2    \\
-                &= c[A s^{-1}]/(F_{\nu}[s^{-1}] \nu[s^{-1}]^2)    \\
-                &= c[m s^{-1}]/(F_{\nu,\mathrm{ana}} \nu_\mathrm{ana}^2)    \\
-                &= w[A]^2/(F_{\nu,\mathrm{ana}} c[m s^{-1}])
+                &= c[A s^{-1}]/(F_{\nu}[s] \nu[s^{-1}]^2)    \\
+                &= 10^{13} c[km s^{-1}]/(10^{-13} F_{\nu,\mathrm{ana}} (10^{13} \nu_\mathrm{ana})^2)    \\
+                &= c[km s^{-1}]/(F_{\nu,\mathrm{ana}} \nu_\mathrm{ana}^2)    \\
+                &= w[A]^2/(F_{\nu,\mathrm{ana}} c[km s^{-1}])
   
     at this stage spectra can be written as (see rescale_profiles())
     
@@ -128,7 +130,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             #Generic fit dictionary
             fit_dic={'calc_quant' : False}    
     
-        #Resolution of plot model (1e-10 s-1)
+        #Resolution of plot model (1e13 s-1)
         fixed_args['dnu_HR'] = gen_dic['wig_bin']/4.
 
         #Account for data noise in periodograms
@@ -522,7 +524,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         data_glob[iexp]['edge_bins']=   data_com['edge_bins']
                         data_glob[iexp]['cen_bins'] =   data_com['cen_bins']                   
                            
-                    #Convert spectral tables in 10-10 s-1
+                    #Convert spectral tables from wavelength (A) to nu_ana (10^13 s-1)
                     #    - reorderd at a later step
                     data_glob[iexp]['cen_nu'] = c_light/data_glob[iexp]['cen_bins']
                     data_glob[iexp]['edge_nu'] = c_light/data_glob[iexp]['edge_bins']
@@ -1052,7 +1054,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             fixed_args_loc['n_nu_HR'],fixed_args_loc['nu_plot_glob'] = def_wig_tab(Fr_bin_fit['nu'][0],Fr_bin_fit['nu'][-1],fixed_args_loc['dnu_HR'])   
                             samp_fit_dic['mod_plot_glob'] = {comp_id:np.ones(fixed_args_loc['n_nu_HR']) for comp_id in fixed_args_loc['comp_ids'] }              
 
-                            #Oversampling of sampling bands (in 1e-10 s-1) 
+                            #Oversampling of sampling bands (in 10^13 s-1) 
                             sampbands_shifts = deepcopy(gen_dic['wig_exp_samp']['sampbands_shifts'])
 
                             #Process a single shift for lower component than the last one
@@ -1340,8 +1342,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         for comp_id in gen_dic['wig_exp_nu_ana']['comp_ids']:
                             fixed_args['comp_id'] = comp_id
                             fixed_args['comp_str'] = str(comp_id)
-                            fit_results = np.load(path_dic['datapath_Sampling']+'/Comp'+fixed_args['comp_str']+'/Fit_results_iexpGroup'+str(iexp_glob_bin)+'.npz',allow_pickle=True)['data'].item()   
-
+                            fit_results = dataload_npz(path_dic['datapath_Sampling']+'/Comp'+fixed_args['comp_str']+'/Fit_results_iexpGroup'+str(iexp_glob_bin))
                             for par in fit_results['par_list']:
                    
                                 #Property
@@ -1450,7 +1451,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                         #Plot data
                                         x_plot = nu_samp
                                         x_range_plot = [nu_samp[0]-0.3,nu_samp[-1]+0.3]
-                                        ax[1].set_xlabel(r'$\nu$ (10$^{-10}$ s$^{-1}$)',fontsize=fontsize) 
+                                        ax[1].set_xlabel(r'$\nu$ (10$^{13}$ s$^{-1}$)',fontsize=fontsize) 
                                         if 'Amp' in par:sc_fact = 1e3
                                         else:sc_fact = 1.
                                         ax[0].plot(x_plot,sc_fact*prop_samp,marker='o',linestyle='',color='dodgerblue',zorder=0)                                    
@@ -1472,7 +1473,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                         ax[0].set_xlim(x_range_plot)  
                                         ax[0].set_ylim(y_range_plot)
                                         if 'Amp' in par:ytitle = r'Amplitude Comp.'+str(comp_id)+' (x 10$^{3}$)'
-                                        elif 'Freq' in par:ytitle=r'Frequency Comp.'+str(comp_id)+' (10$^{10}$ s)'
+                                        elif 'Freq' in par:ytitle=r'Frequency Comp.'+str(comp_id)+' (10$^{-13}$ s)'
                                         else:ytitle = par
                                         ax[0].set_ylabel(ytitle,fontsize=fontsize) 
                                         ax[0].tick_params('x',labelsize=fontsize)
@@ -1699,7 +1700,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     elif 'Freq' in par_root:
                         comp_str = str(par_root.split('Freq')[1].split('_')[0])
                         deg_str = str(par_root.split('Freq')[1].split('_c')[1])
-                        ytitle= r'Freq$_{'+deg_str+'}$ Comp. '+comp_str+' (10$^{10}$ s)'
+                        ytitle= r'Freq$_{'+deg_str+'}$ Comp. '+comp_str+' (10$^{-13}$ s)'
                         sc_fact = 1.
                       
                     #Wiggle amplitude
@@ -2381,7 +2382,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     plt.figure(figsize=(100,5)) 
                     ax=plt.gca()
                     x_range_plot = [min_max_plot[0]-0.3,min_max_plot[1]+0.3]
-                    ax.set_xlabel(r'$\nu$ (10$^{-10}$ s$^{-1}$)',fontsize=10) 
+                    ax.set_xlabel(r'$\nu$ (10$^{13}$ s$^{-1}$)',fontsize=10) 
                     ax.xaxis.set_major_locator(MultipleLocator(1))
                     ax.xaxis.set_major_formatter('{x:.0f}')
                     ax.xaxis.set_minor_locator(MultipleLocator(0.5))
@@ -2551,7 +2552,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             custom_axis(plt,position=[0.15,0.15,0.95,0.7],
                                         x_range=x_range_plot,xmajor_int=5,xminor_int=1.,
                                         y_range=y_range_plot,ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,dir_y='out',
-                                        xmajor_form='%i',x_title=r'$\nu$ (10$^{-10}$ s$^{-1}$)',y_title=prop_name,font_size=14,xfont_size=14,yfont_size=14)
+                                        xmajor_form='%i',x_title=r'$\nu$ (10$^{13}$ s$^{-1}$)',y_title=prop_name,font_size=14,xfont_size=14,yfont_size=14)
                             
                             plt.savefig(path_loc+prop_name+'_comp'+str(comp_id)+'.png')                  
                             plt.close()                             
@@ -3096,7 +3097,7 @@ def plot_sampling_perio(fixed_args,ax,best_freq,src_range,calc_perio,ls,ls_freq,
                      
     #Ranges
     ax.set_xlim(calc_perio)  
-    if plot_xlab:ax.set_xlabel(r'10$^{10}$ s',fontsize=fontsize)
+    if plot_xlab:ax.set_xlabel(r'10$^{-13}$ s',fontsize=fontsize)
     if plot_ylab:ax.set_ylabel('Power',fontsize=fontsize)
     ymax = np.max([np.max(fap_levels),max_pow])
     if log:
@@ -3161,7 +3162,7 @@ def plot_global_perio(fixed_args,comm_freq_comp,comm_power_comp,nexp,path_gen,co
         else:
             axd[ax_key].set_ylabel('Power',fontsize=fontsize)  
         axd[ax_key].set_xlim(x_range_plot) 
-        axd[ax_key].set_xlabel(r'Freq (10$^{10}$ s)',fontsize=fontsize)  
+        axd[ax_key].set_xlabel(r'Freq (10$^{-13}$ s)',fontsize=fontsize)  
         axd[ax_key].set_ylim(y_range_plot) 
         axd[ax_key].tick_params('x',labelsize=fontsize)
         axd[ax_key].tick_params('y',labelsize=fontsize)
@@ -3191,7 +3192,7 @@ def plot_sampling_spec(ax,x_range_plot_in,nu_fit,var_plot,nu_plot,mod_HR,mean_wa
     x_plot = nu_plot
     x_range_plot = x_range_plot_in
     x_cen = mean_nu
-    if plot_xlab:ax.set_xlabel(r'$\nu$ (10$^{-10}$ s$^{-1}$)',fontsize=fontsize)
+    if plot_xlab:ax.set_xlabel(r'$\nu$ (10$^{13}$ s$^{-1}$)',fontsize=fontsize)
     ax.xaxis.set_major_locator(MultipleLocator(1))
     ax.xaxis.set_major_formatter('{x:.0f}')
     ax.xaxis.set_minor_locator(MultipleLocator(0.5))
@@ -3292,7 +3293,7 @@ def wig_perio_sampling(comp_id_proc,plot_samp,samp_fit_dic,shift_off,ishift_comp
             else:nhigh_inband = 0
 
             #Periodogram calculation and search range
-            #    - 'calc_perio_comp': frequency ranges within which periodograms are calculated for each component (in 1e-10 s-1)
+            #    - 'calc_perio_comp': frequency ranges within which periodograms are calculated for each component (in 1e13 s-1)
             #                         setting 'calc_perio' to a larger range than 'src_perio' is useful to check for other peaks in the vicinity
             if src_perio_comp['mod'] is None:
                 calc_perio_comp = [fixed_args['min_x_glob_perio'],fixed_args['max_x_glob_perio']]
