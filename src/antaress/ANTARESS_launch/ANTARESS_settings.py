@@ -494,8 +494,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     ##################################################################################################
     #%%% Module: stellar continuum
     #    - continuum of the disk-integrated or intrinsic stellar spectrum in the star or surface rest frame
-    #    - used in CCF mask generation and spectrum detrending 
-    #      for persistent peak masking the continuum is always calculated if the module is activated
+    #    - the CCF mask generation (gen_dic['def_DImasks']) and spectral detrending (gen_dic['detrend_prof']) require the stellar continuum to have been estimated with this module
+    #    - the stellar continuum is calculated internally to the persistent peak masking module (gen_dic['mask_permpeak']), if activated, using the settings defined here
     ##################################################################################################
     
     #%%%%% Activating
@@ -1245,6 +1245,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     ##################################################################################################
     #%%% Module: persistent peak masking
+    #    - a stellar continuum is estimated internally to this module, using the settings from the continuum module (gen_dic['DI_stcont'])
     ##################################################################################################
     
     #%%%% Activating
@@ -1257,48 +1258,53 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%% Multi-threading
     gen_dic['permpeak_nthreads'] = int(0.8*cpu_count())      
-    
-    
-    #%%%% Correction settings
-    
-    #%%%%% Exposures to be corrected
-    #    - format: inst > vis > exp_list
-    #    - leave empty for all exposures to be corrected
-    gen_dic['permpeak_exp_corr']={}
-    
-    #%%%%% Orders to be corrected
-    #    - format: inst > vis > ord_list
-    #    - leave empty for all orders to be corrected
-    gen_dic['permpeak_ord_corr']={}
-    
-    
-    #%%%%% Spectral range(s) to be corrected
-    #    - inst > order > [[x1,x2],[x3,x4], ..]
-    #    - leave undefined or empty to take the full range 
-    gen_dic['permpeak_range_corr'] = {}
-    
-        
-    #%%%%% Non-masking of edges
-    #    - in A
-    #    - we prevent masking over the edges of the orders, where the continuum is often not well-defined
-    gen_dic['permpeak_edges']={}
-    
-    
+
+
     #%%%% Peaks exclusion settings
     
     #%%%%% Spurious peaks threshold 
-    #    - set on the residuals from continuum, compared to their error
+    #    - set on the flux difference from the stellar continuum, compared to their error
     gen_dic['permpeak_outthresh']=4
     
     
     #%%%%% Spurious peaks window
-    #    - in A
+    #    - range around flagged pixels marked for exclusion
+    #    - format: { inst : val }}
+    #      in A
     gen_dic['permpeak_peakwin']={}  
     
     
     #%%%%% Bad consecutive exposures 
     #    - a peak is masked if it is flagged in at least max(permpeak_nbad,3) consecutive exposures
     gen_dic['permpeak_nbad']=3 
+
+    
+    #%%%% Correction settings
+    
+    #%%%%% Exposures to be corrected
+    #    - format: { inst : { vis : [ idx_exp ] }}
+    #    - leave empty for all exposures to be corrected
+    gen_dic['permpeak_exp_corr']={}
+    
+    
+    #%%%%% Orders to be corrected
+    #    - format: { inst : { vis : [ idx_ord ] }}
+    #    - leave empty for all orders to be corrected
+    gen_dic['permpeak_ord_corr']={}
+    
+    
+    #%%%%% Spectral range(s) to be corrected
+    #    - format: { inst : { ord : [[l1,l2],[l3,l4], ..] }}
+    #      with l in A
+    #    - leave undefined or empty to take the full range 
+    gen_dic['permpeak_range_corr'] = {}
+    
+        
+    #%%%%% Non-masking of edges
+    #    - format: { inst : [[dl_blue,dl_red] }
+    #      with dl in A
+    #    - we prevent masking over the edges of the orders, where the continuum is often not well-defined
+    gen_dic['permpeak_edges']={}
     
     
     #%%%% Plots: master and continuum
@@ -1313,8 +1319,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - this module is used to characterize and correct wiggles, using either an analytical model over the full visit, or a filter
     #      the analytical model should be preferred whenever possible to keep as much as possible of the planetary and stellar feature at medium-resolution
     #      if the wiggle pattern is however too complex to be captured by the model, apply the filter (low-resolution variations should have been previously corrected with the flux balance module)
-    #    - wiggles are processed in wave_number space nu[1e-10 s-1] = c[m s-1]/w[A]
-    #      wiggle frequencies Fnu corresponds to wiggle periods Pw[A] = w[A]^2/(Fnu[1e10 s]*c[m s-1]) = w[A]^2*Pnu[1e-10 s-1]/c[m s-1]
+    #    - wiggles are processed in wave_number space nu[1e13 s-1] = c[km s-1]/w[A]
+    #      for example, w = 4000 [A] correspond to nu = 75 [1e13 s-1]
+    #      wiggle frequencies Fnu corresponds to wiggle periods Pw[A] = w[A]^2/(Fnu[1e-13 s]*c[km s-1]) = w[A]^2*Pnu[1e13 s-1]/c[km s-1]
     ##################################################################################################
     
     
@@ -1381,13 +1388,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%%% Spectral range(s) to be characterized
     #    - if left empty, the full spectrum is used
-    #    - units are c/w (10-10 s-1)
+    #    - units are c/w (1e13 s-1)
     gen_dic['wig_range_fit'] = []
         
         
     #%%%%% Spectral bin size
     #    - all spectra are binned prior to the analysis
-    #    - in nu space (1e-10 s-1), with dnu[1e10 s1] = c[m s-1]*dw[A]/w[A]^2   
+    #    - in nu space (1e13 s-1), with dnu[1e13 s-1] = c[km s-1]*dw[A]/w[A]^2   
     #    - bin size should be small enough to sample the period of the wiggles, but large enough to limit computing time and remove possible correlations between bins 
     # + for the two dominant wiggle component set dw = 2 A, ie dnu = 0.0166 (mind that it creates strong peaks in the periodograms at F = 60, 120, 180)
     # + for the mini-wiggle component set dw = 0.05 A, ie dnu = 0.0004 (mind that it creates a signal in the periodograms at F = 2400)
@@ -1441,12 +1448,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #                    these models control the definition of the sampling bands 
     #    - 'nsamp' : number of cycles to sample for each component, in a given band (defines the size of the sampling band, based on the guess frequency)
     #                must not be too high to ensure that the component frequency remains constant within the sampled bands 
-    #    - 'sampbands_shifts': oversampling of sampling bands (nu in 1e-10 s-1)
+    #    - 'sampbands_shifts': oversampling of sampling bands (nu in 1e13 s-1)
     #                          adjust to the scale of the frequency or amplitude variations of each component
     #                          set to [None] to prevent sampling (the full spectrum is fitted with one model)
     #                          to estimate size of shifts: nu = c/w -> dnu = cdw/w^2 
     #    - 'direct_samp': set direct_samp[comp_id] to the index of sampbands_shifts[comp_id-1] for which the sampling of comp_id should be applied
-    #    - 'src_perio': frequency ranges within which periodograms are searched for each component (in 1e-10 s-1). 
+    #    - 'src_perio': frequency ranges within which periodograms are searched for each component (in 1e13 s-1). 
     #                       + {'mod':None} : default search range  
     #                       + {'mod':'slide' , 'range':[y,z] } : the range is centered on the frequency calculated with 'freq_guess'        
     #                   the field 'up_bd':bool can be added to further use the frequency of the higher component as upper bound
@@ -1656,6 +1663,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%% Spectral ranges to be kept
     #    - define the spectral range(s) and orders over which spectra should be used in the pipeline
+    #      format: [[w1,w2],[w3,w4],..]
+    #      in A 
     #    - relevant if spectra are used as input
     #    - adapt the range to the steps that are activated in the pipeline. For example:
     # + spectra will usually need to be kept whole if used to compute CCFs on stellar line profiles
@@ -1668,6 +1677,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #%%%% Orders to be kept   
+    #      format: {inst : [ idx_ord ]}
     #    - indexes are relative to order list after exclusion with gen_dic['del_orders'] 
     gen_dic['trim_orders'] = {}
     

@@ -103,14 +103,16 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     
             #Initialize instrument tables and dictionaries
             init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system_param,plot_dic)
-    
-            #Estimating instrumental calibration
-            if gen_dic['gcal']:
-                calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop)
-    
-            #Global corrections of spectral data
-            #    - performed before the loop on individual visits because some corrections exploit information from all visits and require the full range of the data
+
+            #Spectral data
             if ('spec' in data_dic[inst]['type']):
+
+                #Estimating instrumental calibration
+                if gen_dic['gcal']:
+                    calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop)
+
+                #Global corrections of spectral data
+                #    - performed before the loop on individual visits because some corrections exploit information from all visits and require the full range of the data        
                 red_sp_data_instru(inst,data_dic,plot_dic,gen_dic,data_prop,coord_dic,system_param)
     
             #-------------------------------------------------        
@@ -1752,7 +1754,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             mini_pl_dic['y_orb_exp']=[coord_dic[inst][vis][pl_loc]['st_pos'][1, isub_exp], coord_dic[inst][vis][pl_loc]['cen_pos'][1, isub_exp], coord_dic[inst][vis][pl_loc]['end_pos'][1, isub_exp]]
                             mini_pl_dic['RpRs']=data_dic['DI']['system_prop']['achrom'][pl_loc][0]
                             mini_pl_dic['lambda']=system_param[pl_loc]['lambda_proj']
-                            pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, theo_dic['x_st_sky_grid_pl'][pl_loc], theo_dic['y_st_sky_grid_pl'][pl_loc])
+                            pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic,theo_dic['x_st_sky'],theo_dic['y_st_sky'])   # theo_dic['x_st_sky_grid_pl'][pl_loc], theo_dic['y_st_sky_grid_pl'][pl_loc])
                             plocced_star_grid |= pl_plocced_star_grid 
 
                     #Surface coordinates for each studied spot  
@@ -1763,7 +1765,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         #Unquiet star grid
                         #    - figure out which cells are spotted
                         if gen_dic['mock_data'] and (np.sum(spots_prop_exp['is_visible'])>0):
-                            _, spot_spotted_star_grid = calc_spotted_tiles(spots_prop_exp, spots_prop_nom[spot]['ang_rad'], theo_dic['x_st_sky_grid_sp'][spot], theo_dic['y_st_sky_grid_sp'][spot], theo_dic['z_st_sky_grid_sp'][spot], theo_dic, system_param['star'], use_grid_dic=True)
+                            _, spot_spotted_star_grid = calc_spotted_tiles(spots_prop_exp, spots_prop_nom[spot]['ang_rad'], theo_dic['x_st_sky'], theo_dic['y_st_sky'], theo_dic['z_st_sky'], theo_dic, system_param['star'], use_grid_dic=True)
                             spotted_star_grid |= spot_spotted_star_grid
 
                     #Update the global 2D quiet star grid
@@ -1834,6 +1836,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 'fit':False,
                                 'unquiet_star':unquiet_star_grid,                                
                                 'spot_coord_par':gen_dic['spot_coord_par'],
+                                'system_param':system_param,
                                 })
 
                             #Spots properties
@@ -1969,7 +1972,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         param_exp = deepcopy(params_mock) 
 
                         #Table for model calculation
-                        args_exp = def_st_prof_tab(None,None,None,fixed_args)
+                        args_exp = def_st_prof_tab(None,None,None,deepcopy(fixed_args))
 
                         #Initializing stellar profiles
                         args_exp = init_custom_DI_prof(args_exp,gen_dic,param_exp)

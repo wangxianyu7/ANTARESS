@@ -1446,8 +1446,8 @@ def calc_plocced_tiles(pl_prop, x_sky_grid, y_sky_grid):
     
     Args:
         pl_prop (dict) : planet properties.
-        x_sky_grid (1D array) : x coordinates of the stellar / planetary grid in the inclined star frame. (at st, cen, and end)
-        y_sky_grid (1D array) : y coordinates of the stellar / planetary grid in the inclined star frame. (at st, cen, and end)
+        x_sky_grid (1D array) : x coordinates of the stellar grid in the inclined star frame. (at st, cen, and end)
+        y_sky_grid (1D array) : y coordinates of the stellar grid in the inclined star frame. (at st, cen, and end)
      
     Returns:
         cond_in_pl (1D array) : array of booleans telling us which cells in the original grid are occulted by the planet.
@@ -1460,7 +1460,7 @@ def calc_plocced_tiles(pl_prop, x_sky_grid, y_sky_grid):
     #Processing all input exposures
     for i in range(len(pl_prop['x_orb_exp'])):
 
-        #Conversion from sky-projected orbital to stellar frame
+        #Conversion of planet coordinates from sky-projected orbital to sky-projected stellar frame
         x_sky_exp,y_sky_exp,_ = frameconv_skyorb_to_skystar(pl_prop['lambda'],pl_prop['x_orb_exp'][i],pl_prop['y_orb_exp'][i],0)
      
         #Planet-occulted cells in current exposure
@@ -1561,9 +1561,9 @@ def calc_spotted_tiles(spot_prop, ang_rad, x_sky_grid, y_sky_grid, z_sky_grid, g
 
     Args:
         spot_prop (dict) : formatted spot properties (see retrieve_spots_prop_from_param).
-        x_sky_grid (1D array) : x coordinates of the stellar / planetary grid in the inclined star frame.
-        y_sky_grid (1D array) : y coordinates of the stellar / planetary grid in the inclined star frame.
-        z_sky_grid (1D array) : z coordinates of the stellar / planetary grid in the inclined star frame.
+        x_sky_grid (1D array) : x coordinates of the stellar grid in the inclined star frame.
+        y_sky_grid (1D array) : y coordinates of the stellar grid in the inclined star frame.
+        z_sky_grid (1D array) : z coordinates of the stellar grid in the inclined star frame.
         grid_dic (dict) : dictionary containing the x/y/z grids in various reference frames, including the star rest frame and inclined star frame.
         star_param (dict) : star properties.
         use_grid_dic (bool) : whether or not to use the grid_dic provided to retrieve the x/y/z grids in the star rest frame. Turned off by default.

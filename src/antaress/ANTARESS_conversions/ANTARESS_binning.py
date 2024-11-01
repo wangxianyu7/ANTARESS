@@ -927,7 +927,8 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #   for original 2D or 1D spectra, gcal_exp is the estimated spectral calibration profile for the exposure (rescaled by the mean calibration profile over the visit if spectra to be weighted were converted back into count-equivalent values and are still in their original format)
         #   calibration profiles were estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow  
         #   for original CCFs or after conversion into CCFs or from 2D/1D it returns a global calibration
-        gcal_ord = gcal_exp[iord,cond_def_weights_ord]
+        if(gcal_exp is not None):gcal_ord = gcal_exp[iord,cond_def_weights_ord]
+        else:gcal_ord = 1.
     
         #Spectral corrections
         if ('spec' in data_mode):
@@ -978,8 +979,9 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
              
         else:
             
-            #Weights are kept undefined (ie, no weighing) where variance is null or negative      
-            EFsc2_all[iord,cond_def_weights_ord][cond_def_pos_ord] = ( flux_sc_all[iord,cond_def_weights_ord][cond_def_pos_ord]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
+            #Weights are kept undefined (ie, no weighing) where variance is null or negative  
+            if ('spec' in data_mode):EFsc2_all[iord,cond_def_weights_ord][cond_def_pos_ord] = ( flux_sc_all[iord,cond_def_weights_ord][cond_def_pos_ord]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
+            else:EFsc2_all[iord,cond_def_weights_ord][cond_def_pos_ord] = ( flux_sc_all[iord,cond_def_weights_ord][cond_def_pos_ord]*Ccorr_glob_ord*gcal_ord)**2.*Nbl_ord[cond_def_pos_ord]
             
         #Variance on master stellar spectrum
         if data_type!='DI':var_ref2[iord,cond_def_weights_ord] = cov_ref_exp[iord][0,cond_def_weights_ord]
