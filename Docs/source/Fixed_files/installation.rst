@@ -17,10 +17,10 @@ Latest stable release
 Current version
 ---------------
 
-``ANTARESS`` is hosted on `gitlab <https://gitlab.unige.ch/bourrier/antaress>`_.
+``ANTARESS`` is hosted on `gitlab <https://gitlab.unige.ch/spice_dune/antaress>`_.
 To download the repository containing the current version, you can use::
 
-    git clone https://gitlab.unige.ch/bourrier/antaress.git
+    git clone https://gitlab.unige.ch/spice_dune/antaress.git
 
 This version is being developed and may not be stable.
 
@@ -99,8 +99,8 @@ A number of packages are required to run ``ANTARESS``. They should be installed 
         
         brew install gsl
 
-    - set up the path to your local python installation in the `setup_lbl_fit.py <https://gitlab.unige.ch/bourrier/antaress/-/blob/main/src/antaress/ANTARESS_conversions/KitCat/setup_lbl_fit.py>`_ and run::
+    - set up the path to your local python installation in the `setup_lbl_fit.py <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/src/antaress/ANTARESS_conversions/KitCat/setup_lbl_fit.py>`_ and run::
     
         python setup_lbl_fit.py build
         
-      Then copy the compiled file :orange:`calculate_RV_line_by_line3.cpython-XX-darwin.so` into your `KitCat/ <https://gitlab.unige.ch/bourrier/antaress/-/blob/main/src/antaress/ANTARESS_conversions/KitCat/>`_ directory.  
+      Then copy the compiled file :orange:`calculate_RV_line_by_line3.cpython-XX-darwin.so` into your `KitCat/ <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/src/antaress/ANTARESS_conversions/KitCat/>`_ directory.  

@@ -13,23 +13,25 @@ degree_sign= u'\N{DEGREE SIGN}'
 
 #%% Routines
 
-def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,position=None,colback=None,
-		    x_mode=None,y_mode=None,z_mode=None,
-		    x_title=None,y_title=None,z_title=None,x_title_dist=None,y_title_dist=None,z_title_dist=None,
-		    no_xticks=False,no_yticks=False,no_zticks=True,
-		    top_xticks=None,right_yticks=None,   
-            hide_xticks = False,hide_yticks = False,		
-		    xmajor_int=None,xminor_int=None,ymajor_int=None,yminor_int=None,zmajor_int=None,zminor_int=None,
-		    xmajor_form=None,ymajor_form=None,zmajor_form=None,
-		    xmajor_length=None,ymajor_length=None,zmajor_length=None,xminor_length=None,yminor_length=None,zminor_length=None,
-		    font_size=None,font_thick=None,xfont_size=None,yfont_size=None,zfont_size=None,
-		    axis_thick=None,xmajor_thick=None,xminor_thick=None,ymajor_thick=None,yminor_thick=None,zmajor_thick=None,zminor_thick=None,
-		    dir_x=None,dir_y=None,dir_z=None,
-            xtick_pad=None,ytick_pad=None,ztick_pad=None,
-            xlab_col=None,ylab_col=None,zlab_col=None,
-            hide_axis=None,
-            right_axis=False,secy_title=None,secy_range=None,secy_title_dist=None,no_secyticks=None,secymajor_int=None,dir_secy=None,secyfont_size=None,
-            secymajor_length=None,secymajor_thick=None,secyminor_length=None,secyminor_thick=None,secymajor_form=None,secyminor_int=None,secylab_col=None):
+def custom_axis(plt,ax=None,fig = None,position=None,colback=None,
+                x_range=None,y_range=None,z_range=None,
+                autom_x=False,autom_y=False,autom_z=False,
+    		    x_mode=None,y_mode=None,z_mode=None,
+    		    x_title=None,y_title=None,z_title=None,x_title_dist=None,y_title_dist=None,z_title_dist=None,
+    		    no_xticks=False,no_yticks=False,no_zticks=True,
+    		    top_xticks=None,right_yticks=None,   
+                hide_xticks = False,hide_yticks = False,		
+    		    xmajor_int=None,xminor_int=None,ymajor_int=None,yminor_int=None,zmajor_int=None,zminor_int=None,
+    		    xmajor_form=None,ymajor_form=None,zmajor_form=None,
+    		    xmajor_length=None,ymajor_length=None,zmajor_length=None,xminor_length=None,yminor_length=None,zminor_length=None,
+    		    font_size=None,font_thick=None,xfont_size=None,yfont_size=None,zfont_size=None,
+    		    axis_thick=None,xmajor_thick=None,xminor_thick=None,ymajor_thick=None,yminor_thick=None,zmajor_thick=None,zminor_thick=None,
+    		    dir_x=None,dir_y=None,dir_z=None,
+                xtick_pad=None,ytick_pad=None,ztick_pad=None,
+                xlab_col=None,ylab_col=None,zlab_col=None,
+                hide_axis=None,
+                right_axis=False,secy_title=None,secy_range=None,secy_title_dist=None,no_secyticks=None,secymajor_int=None,dir_secy=None,secyfont_size=None,
+                secymajor_length=None,secymajor_thick=None,secyminor_length=None,secyminor_thick=None,secymajor_form=None,secyminor_int=None,secylab_col=None):
     r"""**Plot axis.**
     
     General routines to set up plot axis to default or user-selected values.  
@@ -58,15 +60,6 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
     if position is not None:
         if fig is None:plt.subplots_adjust(left=position[0],bottom=position[1],right=position[2],top=position[3]) 
         else:fig.subplots_adjust(left=position[0],bottom=position[1],right=position[2],top=position[3]) 
-
-    #Axis ranges
-    if x_range is not None:ax.set_xlim([x_range[0], x_range[1]])
-    else:x_range = ax.get_xlim()
-    dx_range = x_range[1]-x_range[0]
-    if y_range is not None:ax.set_ylim([y_range[0], y_range[1]])
-    else:y_range = ax.get_ylim()
-    dy_range = y_range[1]-y_range[0]
-    if z_range is not None:ax.set_zlim([z_range[0], z_range[1]])
 
     #Set axis to log mode if required
     if x_mode=='log':
@@ -121,7 +114,15 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
     #------------------------------------------------------------------------
     #X ticks (on by default)		
     if (no_xticks==False):
-      
+
+        #Axis ranges
+        if x_range is not None:ax.set_xlim([x_range[0], x_range[1]])
+        else:x_range = ax.get_xlim()
+        dx_range = x_range[1]-x_range[0]
+
+        #Self-determined axis settings
+        if autom_x:xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+
         #Interval between major ticks	
         if xmajor_int is not None:
             n_ticks = int(dx_range/xmajor_int)
@@ -166,6 +167,14 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
 	#-----------------	
     #Y ticks (on by default)	
     if (no_yticks==False):
+
+        #Axis ranges        
+        if y_range is not None:ax.set_ylim([y_range[0], y_range[1]])
+        else:y_range = ax.get_ylim()
+        dy_range = y_range[1]-y_range[0]
+
+        #Self-determined axis settings
+        if autom_y:ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
 
         #Interval between major ticks		
         if ymajor_int is not None:
@@ -214,7 +223,15 @@ def custom_axis(plt,ax=None,fig = None, x_range=None,y_range=None,z_range=None,p
 	#-----------------	
     #Z ticks (off by default)	
     if (no_zticks==False):
-		
+        
+        #Axis ranges        
+        dy_range = y_range[1]-y_range[0]
+        if z_range is not None:ax.set_zlim([z_range[0], z_range[1]])
+        dz_range = z_range[1]-z_range[0]
+
+        #Self-determined axis settings
+        if autom_z:zmajor_int,zminor_int,zmajor_form = autom_tick_prop(dz_range)
+                		
         #Interval between major ticks		
         if zmajor_int is not None:ax.zaxis.set_major_locator(MultipleLocator(zmajor_int))	
 

@@ -23,3 +23,4 @@ You are welcome to open issues and/or contribute code via pull-requests after si
 4. You will be signed in using your SWITCH edu-ID.
 
 You can contact [Vincent Bourrier](mailto:vincent.bourrier@unige.ch) if you are interested in collaborations and developments of this project. 
+

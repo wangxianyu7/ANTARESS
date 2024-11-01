@@ -10,8 +10,8 @@
 
 .. role:: green
 
-Standard procedures
-===================
+Tutorials
+=========
 
 The following pages contain step-by-step tutorials to use ``ANTARESS`` to its full capabilities. Read the `general set up <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/getting_started.html>`_ of the workflow, and 
 follow the tutorials to define ``ANTARESS`` configuration files and run its executable.
@@ -24,8 +24,27 @@ follow the tutorials to define ``ANTARESS`` configuration files and run its exec
 .. toctree::
    :maxdepth: 2
 
+   procedures_mock/procedures_mock   
+   
+.. toctree::
+   :maxdepth: 2
+
    procedures_reduc/procedures_reduc
 
+.. toctree::
+   :maxdepth: 2
+
+   procedures_proc/procedures_proc
+
+.. toctree::
+   :maxdepth: 2
+
+   procedures_masters/procedures_masters
+
+.. toctree::
+   :maxdepth: 2
+
+   procedures_extraction/procedures_extraction
 
 .. toctree::
    :maxdepth: 2
@@ -36,3 +55,8 @@ follow the tutorials to define ``ANTARESS`` configuration files and run its exec
    :maxdepth: 2
 
    procedures_RM/procedures_RM
+
+.. toctree::
+   :maxdepth: 2
+
+   procedures_plots/procedures_plots

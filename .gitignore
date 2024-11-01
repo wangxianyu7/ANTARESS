@@ -44,3 +44,7 @@ Docs/source/Fixed_files/Flowchart/Images.pptx
 src/antaress/ANTARESS_corrections/Telluric_processing/.DS_Store
 src/antaress/ANTARESS_corrections/Telluric_processing/Static_model/.DS_Store
 src/antaress/ANTARESS_corrections/Telluric_processing/Static_resolution/.DS_Store
+*.pptx
+/Docs/source/Fixed_files/procedures_RM/Fig_creation
+src/antaress/ANTARESS_corrections/Telluric_processing/Static_model/.DS_Store
+src/antaress/ANTARESS_corrections/Telluric_processing/Static_resolution/.DS_Store

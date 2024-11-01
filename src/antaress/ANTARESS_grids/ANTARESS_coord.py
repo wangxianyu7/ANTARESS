@@ -24,7 +24,7 @@ def coord_expos(pl_loc,coord_dic,inst,vis,star_params,pl_params,t_bjd,exp_time,d
     """ 
     
     #Orbital phase and corresponding times (days) of current exposure relative to transit center  
-    st_phases,phases,end_phases=get_timeorbit(pl_loc,coord_dic[inst][vis],t_bjd, pl_params, exp_time)[0:3]   
+    st_phases,phases,end_phases=get_timeorbit(coord_dic[inst][vis][pl_loc]['Tcenter'],t_bjd, pl_params, exp_time)[0:3]   
 
     #Exposure duration in phase
     ph_dur=end_phases-st_phases
@@ -183,7 +183,7 @@ def calc_rv_star(coord_dic,inst,vis,system_param,gen_dic,bjd_exp,dur_exp,sysvel)
         PlParam_loc=system_param[pl_loc]   
         
         #Orbital phase 
-        st_phase,phase,end_phase=get_timeorbit(pl_loc,coord_dic[inst][vis],bjd_exp, PlParam_loc, dur_exp)[0:3]
+        st_phase,phase,end_phase=get_timeorbit(coord_dic[inst][vis][pl_loc]['Tcenter'],bjd_exp, PlParam_loc, dur_exp)[0:3]
 
         #True anomaly for start and end of exposure
         True_anom=calc_true_anom(PlParam_loc['ecc'],np.vstack((st_phase,end_phase)),PlParam_loc['omega_rad'])[0]
@@ -823,7 +823,7 @@ def calc_contamin_coord(contamin_prop_exp,ang_rad,lat_rad,long_rad,i_pos,istar,s
 #%%% Time coordinates
 ################################################################################################## 
   
-def get_timeorbit(pl_loc,coord_vis,bjd_tab, param, exp_time_tab,conv_ang=False):
+def get_timeorbit(Tcenter,bjd_tab, param, exp_time_tab,conv_ang=False):
     r"""**Exposure time and phase**
 
     Calculates time and phase coordinates of planets or spots at the start, mid, and end of an exposure.
@@ -837,7 +837,7 @@ def get_timeorbit(pl_loc,coord_vis,bjd_tab, param, exp_time_tab,conv_ang=False):
     """ 
     
     #Transit center (days)
-    Tcen= coord_vis[pl_loc]['Tcenter'] - 2400000.  
+    Tcen= Tcenter - 2400000.  
     
     #Orbital phase (between +-0.5) and corresponding times (d)
     phase_temp=(bjd_tab-Tcen)/param["period"]

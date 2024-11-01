@@ -25,10 +25,10 @@ from ..ANTARESS_plots.ANTARESS_plots_all import ANTARESS_plot_functions
 from ..ANTARESS_corrections.ANTARESS_calib import calc_gcal
 from ..ANTARESS_process.ANTARESS_plocc_spec import def_in_plocc_profiles,def_diff_profiles
 from ..ANTARESS_conversions.ANTARESS_masks_gen import def_masks
-from ..ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,ResIntr_CCF_from_spec,conv_2D_to_1D_spec
+from ..ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,DiffIntr_CCF_from_spec,conv_2D_to_1D_spec
 from ..ANTARESS_conversions.ANTARESS_binning import process_bin_prof
 from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
-from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_res_profiles,extract_intr_profiles,extract_pl_profiles 
+from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_diff_profiles,extract_intr_profiles,extract_pl_profiles 
 from ..ANTARESS_analysis.ANTARESS_ana_comm import MAIN_single_anaprof
 from ..ANTARESS_conversions.ANTARESS_sp_cont import process_spectral_cont
 from ..ANTARESS_general.utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data,npint
@@ -106,7 +106,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     
             #Estimating instrumental calibration
             if gen_dic['gcal']:
-                calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic)
+                calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop)
     
             #Global corrections of spectral data
             #    - performed before the loop on individual visits because some corrections exploit information from all visits and require the full range of the data
@@ -141,7 +141,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                     detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
     
                 #Calculating theoretical properties of the planet-occulted and/or faculaed and/or spotted regions 
-                if gen_dic['theoPlOcc'] and ( (len(data_dic[inst][vis]['transit_pl'])>0) or (len(data_dic[inst][vis]['transit_sp'])>0) or (len(data_dic[inst][vis]['transit_fa'])>0) ):
+                if gen_dic['theoPlOcc'] and ( (len(data_dic[inst][vis]['studied_pl'])>0) or (len(data_dic[inst][vis]['transit_sp'])>0) or (len(data_dic[inst][vis]['transit_fa'])>0) ):
                     calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic,calc_pl_atm=gen_dic['calc_pl_atm'],spot_dic=theo_dic)
                     
                 #Analyzing original disk-integrated profiles
@@ -175,7 +175,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     
                 #Extracting differential profiles
                 if (gen_dic['res_data']):
-                    extract_res_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
+                    extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
     
                 #Extracting intrinsic stellar profiles
                 if gen_dic['intr_data']:
@@ -183,7 +183,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             
                 #Converting out-of-transit differential and intrinsic spectra into CCFs
                 if gen_dic[data_type_gen+'_CCF']:
-                    ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
+                    DiffIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
                       
                 #Applying PCA to out-of transit differential profiles
                 if (gen_dic['pca_ana']):
@@ -206,7 +206,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                     bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
     
                 #Building estimates for planet-occulted stellar profiles in in-transit exposures
-                if gen_dic['loc_data_corr']:
+                if gen_dic['loc_prof_est']:
                     def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
     
                 #Building estimates for differential profiles in all exposures
@@ -273,7 +273,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             print('-------------------------------')
             
             #Wrap-up function to fit stellar profiles and their properties
-            if gen_dic['fit_DIProp'] or gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_ResProf'] :
+            if gen_dic['fit_DIProp'] or gen_dic['fit_IntrProf'] or gen_dic['fit_IntrProp'] or gen_dic['fit_DiffProf'] :
                 joined_Star_ana(glob_fit_dic,system_param,theo_dic,data_dic,gen_dic,plot_dic,coord_dic,data_prop)
         
             #Wrap-up function to fit atmospheric profiles and their properties
@@ -549,9 +549,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #Automatic activation/deactivation
         if gen_dic['pca_ana']:gen_dic['intr_data'] = True
         if gen_dic['intr_data']:
-            if not gen_dic['res_data']:
+            if not gen_dic['diff_data']:
                 print('Automatic activation of differential profile extraction')
-                gen_dic['res_data'] = True
+                gen_dic['diff_data'] = True
             if not gen_dic['flux_sc']:
                 print('Automatic activation of flux scaling calculation')
                 gen_dic['flux_sc'] = True
@@ -576,13 +576,16 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if (not gen_dic['specINtype']):
             for key in sp_corr_list:gen_dic[key]=False
         else:
-            #Activate spectral calibration calculation
-            gen_dic['gcal'] = True
-            
+
             #Deactivate spectral balance correction over orders if not 2D spectra
             if ('spec2D' not in gen_dic['all_types']): 
+                gen_dic['gcal'] = False
                 gen_dic['corr_FbalOrd']=False
                 plot_dic['wig_order_fit']=''
+                
+            #Activate spectral calibration calculation if 2D spectra
+            else:
+                gen_dic['gcal'] = True
     
             #Activate global master calculation if required for flux balance corrections
             if (gen_dic['corr_Fbal']) or (gen_dic['corr_FbalOrd']):gen_dic['glob_mast']=True
@@ -591,7 +594,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             if (not gen_dic['corr_Fbal']):gen_dic['Fbal_vis']=None
             
             #Check for arbitrary scaling        
-            elif (gen_dic['Fbal_vis']!='theo') and (gen_dic['n_instru']>1):stop('Flux balance must be set to a theoretical reference for multiple instruments')
+            elif (gen_dic['Fbal_vis']!='ext') and (gen_dic['n_instru']>1):stop('Flux balance must be set to a theoretical reference for multiple instruments')
     
             #Deactivate transit scaling if temporal flux correction is applied
             if gen_dic['corr_Ftemp']: gen_dic['flux_sc']=False
@@ -624,7 +627,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #    - the general instrument and visit dictionaries contain a field type that represents the mode of the data at the current stage of the pipeline
         #    - here we set the final mode for each type of profile, so that they can be retrieved in their original mode for plotting
         #      eg, if profiles are converted into CCF at the differential stage, we keep the information that disk-integrated profiles were in spectral mode
-        for key in ['DI','Res','Intr','Atm']:data_dic[key]['type'] = {inst:deepcopy(gen_dic['type'][inst]) for inst in gen_dic['type']}
+        for key in ['DI','Diff','Intr','Atm']:data_dic[key]['type'] = {inst:deepcopy(gen_dic['type'][inst]) for inst in gen_dic['type']}
         for inst in gen_dic['type']:
             if 'spec' in gen_dic['type'][inst]: 
             
@@ -632,7 +635,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 if gen_dic['DI_CCF']:
                     data_dic['DI']['type'][inst]='CCF'
                 if gen_dic['DI_CCF'] or gen_dic['Intr_CCF']:
-                    data_dic['Res']['type'][inst]='CCF'          
+                    data_dic['Diff']['type'][inst]='CCF'          
                     data_dic['Intr']['type'][inst]='CCF'
                 if gen_dic['DI_CCF'] or gen_dic['Atm_CCF']:
                     data_dic['Atm']['type'][inst]='CCF'
@@ -641,7 +644,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 if gen_dic['spec_1D_DI']:
                     data_dic['DI']['type'][inst]='spec1D'
                 if gen_dic['spec_1D_DI'] or gen_dic['spec_1D_Intr']:
-                    data_dic['Res']['type'][inst]='spec1D'
+                    data_dic['Diff']['type'][inst]='spec1D'
                     data_dic['Intr']['type'][inst]='spec1D'
                 if gen_dic['spec_1D_DI'] or gen_dic['spec_1D_Atm']:
                     data_dic['Atm']['type'][inst]='spec1D'
@@ -657,25 +660,26 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #Set general condition for single profiles fits
         for key in ['DI','Intr','Atm']:
             gen_dic['fit_'+key+'_gen'] = gen_dic['fit_'+key] | gen_dic['fit_'+key+'bin'] | gen_dic['fit_'+key+'binmultivis'] 
-    
+        gen_dic['fit_Diff_gen'] = False
+        
         #Automatic continuum and fit range
         for key in ['DI','Intr','Atm']:
             if gen_dic['fit_'+key+'_gen']:
                 if ('cont_range' not in data_dic[key]):data_dic[key]['cont_range']={}
                 if ('fit_range' not in data_dic[key]):data_dic[key]['fit_range']={}
-        if (gen_dic['res_data']) and ('cont_range' not in data_dic['Res']):data_dic['Res']['cont_range']={}
+        if (gen_dic['diff_data']) and ('cont_range' not in data_dic['Diff']):data_dic['Diff']['cont_range']={}
     
         #Deactivate conditions
         if gen_dic['DIbin']==False:
             data_dic['DI']['fit_MCCFout']=False
         if (not gen_dic['specINtype']) or (gen_dic['DI_CCF']):plot_dic['spectral_LC']=''
-        if (not gen_dic['res_data']):
-            for key in ['map_Res_prof','Res_prof']:plot_dic[key]=''    
+        if (not gen_dic['diff_data']):
+            for key in ['map_Diff_prof','Diff_prof']:plot_dic[key]=''    
         if not gen_dic['pl_atm']:
             for key in ['map_Atm_prof','sp_atm','CCFatm']:plot_dic[key]=''  
         else:
-            if gen_dic['Intr_CCF']:stop('Atmospheric extraction cannot be performed after Res./Intr. CCF conversion')
-        if gen_dic['Intr_CCF'] and (gen_dic['pl_atm']) and (any('spec' in s for s in data_dic['Atm']['type'].values())) and (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['Intrbin','rec_prof']):stop('Intrinsic profiles cannot be converted into CCFs if also requested for planetary spectra extraction)')
+            if gen_dic['Intr_CCF']:stop('Atmospheric extraction cannot be performed after Diff./Intr. CCF conversion')
+        if gen_dic['Intr_CCF'] and (gen_dic['pl_atm']) and (any('spec' in s for s in data_dic['Atm']['type'].values())) and (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['Intrbin','rec_prof']):stop('Intrinsic profiles cannot be converted into CCFs if also requested for planetary spectra extraction)')
 
         #Telluric condition
         if (not gen_dic['specINtype']):
@@ -686,14 +690,14 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         
         #Set general condition to calculate master spectrum of the disk-integrated star and use it in weighted averages
         #    - the master needs to be calculated if weighing is needed for one of the modules below
-        if gen_dic['DImast_weight']:gen_dic['DImast_weight'] |= (gen_dic['res_data'] | (gen_dic['loc_data_corr'] &  (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['spec_1D'] | gen_dic['bin'] | gen_dic['binmultivis'])
-        if gen_dic['DImast_weight'] and gen_dic['calc_DImast']:gen_dic['calc_DImast'] =  gen_dic['calc_res_data'] | (gen_dic['calc_loc_data_corr'] &  (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['calc_spec_1D'] | gen_dic['calc_bin'] | gen_dic['calc_binmultivis']
+        if gen_dic['DImast_weight']:gen_dic['DImast_weight'] |= (gen_dic['diff_data'] | (gen_dic['loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['spec_1D'] | gen_dic['bin'] | gen_dic['binmultivis'])
+        if gen_dic['DImast_weight'] and gen_dic['calc_DImast']:gen_dic['calc_DImast'] =  gen_dic['calc_diff_data'] | (gen_dic['calc_loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['calc_spec_1D'] | gen_dic['calc_bin'] | gen_dic['calc_binmultivis']
       
         #Set general conditions to activate joined datasets modules 
         gen_dic['joined_ana']=False
         gen_dic['fit_DIProf'] = False     #module undefined for now
-        gen_dic['fit_ResProp'] = False    #module undefined for now
-        for key in ['DI','Intr','Res','Atm']:gen_dic['joined_ana'] |= (gen_dic['fit_'+key+'Prof'] or gen_dic['fit_'+key+'Prop'])
+        gen_dic['fit_DiffProp'] = False    #module undefined for now
+        for key in ['DI','Intr','Diff','Atm']:gen_dic['joined_ana'] |= (gen_dic['fit_'+key+'Prof'] or gen_dic['fit_'+key+'Prop'])
     
         #Import bin size dictionary
         gen_dic['pix_size_v']=return_pix_size()    
@@ -764,7 +768,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             if (not gen_dic['specINtype']):gen_dic['atm_CCF']=False
     
         #Mask used to compute atmospheric CCFs and/or exclude atmospheric planetary ranges
-        #    - weights set to 1 unless requested
         if data_dic['Atm']['CCF_mask'] is not None:
             
             #Upload CCF mask
@@ -773,18 +776,21 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 hdulist = fits.open(data_dic['Atm']['CCF_mask'])
                 data_loc = hdulist[1].data
                 data_dic['Atm']['CCF_mask_wav'] = data_loc['lambda']
-                data_dic['Atm']['CCF_mask_wgt'] = data_loc['contrast'] if data_dic['Atm']['use_maskW'] == True else np.repeat(1.,len(data_dic['Atm']['CCF_mask_wav']))        
+                if data_dic['Atm']['use_maskW']:data_dic['Atm']['CCF_mask_wgt'] = data_loc['contrast']       
                 hdulist.close()
             elif (ext=='csv'):
                 data_loc = np.genfromtxt(data_dic['Atm']['CCF_mask'], delimiter=',', names=True)
                 data_dic['Atm']['CCF_mask_wav'] = data_loc['wave']
-                data_dic['Atm']['CCF_mask_wgt'] = data_loc['contrast'] if data_dic['Atm']['use_maskW'] == True else np.repeat(1.,len(data_dic['Atm']['CCF_mask_wav'])) 
+                if data_dic['Atm']['use_maskW']:data_dic['Atm']['CCF_mask_wgt'] = data_loc['contrast']
             elif (ext in ['txt','dat']):
                 data_loc = np.loadtxt(data_dic['Atm']['CCF_mask']).T            
                 data_dic['Atm']['CCF_mask_wav'] = data_loc[0]
-                data_dic['Atm']['CCF_mask_wgt'] = data_loc[1]        
+                if data_dic['Atm']['use_maskW']:data_dic['Atm']['CCF_mask_wgt'] = data_loc[1]        
             else:
                 stop('CCF mask extension TBD') 
+                
+            #No weighing of lines
+            if not data_dic['Atm']['use_maskW']:data_dic['Atm']['CCF_mask_wgt'] = np.repeat(1.,len(data_dic['Atm']['CCF_mask_wav']))        
     
 
 
@@ -872,12 +878,12 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #Planets defined in the system
     gen_dic['all_pl'] = [pl_loc for pl_loc in system_param.keys() if pl_loc!='star']
 
-    #Planets considered for transit
-    gen_dic['studied_pl'] = list(gen_dic['transit_pl'].keys()) 
-    if len(gen_dic['studied_pl'])>0:
-        txt_print = 'Study of: '+gen_dic['studied_pl'][0]
-        if len(gen_dic['studied_pl'])>1:
-            for pl_loc in gen_dic['studied_pl'][1::]:txt_print+=', '+pl_loc
+    #Planets considered for analysis
+    gen_dic['studied_pl_list'] = list(gen_dic['studied_pl'].keys()) 
+    if len(gen_dic['studied_pl_list'])>0:
+        txt_print = 'Study of: '+gen_dic['studied_pl_list'][0]
+        if len(gen_dic['studied_pl_list'])>1:
+            for pl_loc in gen_dic['studied_pl_list'][1::]:txt_print+=', '+pl_loc
         print(txt_print)
 
     #Keplerian motion
@@ -944,13 +950,13 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         PlParam_loc['omega_p']=2.*np.pi*365.2425/PlParam_loc['period']
 
         #Transit duration
-        if (pl_loc in gen_dic['studied_pl']) and ('TLength' not in PlParam_loc):
+        if (pl_loc in gen_dic['studied_pl_list']) and ('TLength' not in PlParam_loc):
             contact_phases=calc_tr_contacts(data_dic['DI']['system_prop']['achrom'][pl_loc][0],PlParam_loc,plot_dic['stend_ph'],star_params)
             PlParam_loc['TLength'] = (contact_phases[3]-contact_phases[0])*PlParam_loc['period']           
             print('Automatic definition of T14['+str(pl_loc)+']='+"{0:.2f}".format(PlParam_loc['TLength']*24.)+' h')
 
     #Calculating theoretical properties of the planet-occulted regions
-    if (not gen_dic['theoPlOcc']) and ((('CCF' in data_dic['Res']['type'].values()) and (gen_dic['fit_Intr'])) or (gen_dic['align_Intr']) or (gen_dic['calc_pl_atm'])):
+    if (not gen_dic['theoPlOcc']) and ((('CCF' in data_dic['Diff']['type'].values()) and (gen_dic['fit_Intr'])) or (gen_dic['align_Intr']) or (gen_dic['calc_pl_atm'])):
         gen_dic['theoPlOcc']=True
 
     #Oversampling factor for values from planet-occulted regions
@@ -961,7 +967,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             theo_dic['d_oversamp_pl'][pl_loc] = data_dic['DI']['system_prop']['achrom'][pl_loc][0]/theo_dic['n_oversamp'][pl_loc]
          
     #Set flag for errors on estimates for local stellar profiles (depending on whether they are derived from data or models)
-    if data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['DIbin','Intrbin']:data_dic['Intr']['cov_loc_star']=True
+    if data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin']:data_dic['Intr']['cov_loc_star']=True
     else:data_dic['Intr']['cov_loc_star']=False    
 
     #Transit and stellar surfce chromatic properties
@@ -1154,14 +1160,14 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #Generic path names
     gen_dic['main_pl_text'] = ''
     gen_dic['main_pl_sp_text'] = ''
-    for pl_loc in gen_dic['studied_pl']:gen_dic['main_pl_text']+=pl_loc
+    for pl_loc in gen_dic['studied_pl_list']:gen_dic['main_pl_text']+=pl_loc
     save_system = gen_dic['save_dir']+gen_dic['star_name']+'/'
     if gen_dic['main_pl_text'] != '':save_system+=gen_dic['main_pl_text']+'_'        
     gen_dic['save_data_dir'] = save_system+'Saved_data/'
     gen_dic['save_plot_dir'] = save_system+'Plots/'
-    gen_dic['add_txt_path']={'DI':'','Intr':'','Res':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
-    gen_dic['data_type_gen']={'DI':'DI','Res':'Res','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
-    gen_dic['type_name']={'DI':'disk-integrated','Res':'differential','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
+    gen_dic['add_txt_path']={'DI':'','Intr':'','Diff':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
+    gen_dic['data_type_gen']={'DI':'DI','Diff':'Diff','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
+    gen_dic['type_name']={'DI':'disk-integrated','Diff':'differential','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
 
     #Data is processed
     if gen_dic['sequence'] not in ['system_view']:    
@@ -1180,7 +1186,8 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #Definition of model stellar grid to calculate local or disk-integrated properties
         #    - used throughout the pipeline, unless stellar properties are fitted
         if gen_dic['theoPlOcc'] or (data_dic['DI']['spots_prop'] != {}) or (gen_dic['fit_DI_gen'] and (('custom' in data_dic['DI']['model'].values()) or ('RT_ani_macro' in data_dic['DI']['model'].values()))) or gen_dic['mock_data'] \
-            or gen_dic['fit_ResProf'] or gen_dic['fit_IntrProf'] or gen_dic['loc_data_corr'] or (data_dic['DI']['faculae_prop'] != {}):
+            or gen_dic['fit_DiffProf'] or gen_dic['fit_IntrProf'] or gen_dic['loc_prof_est'] or (data_dic['DI']['faculae_prop'] != {}):
+
     
             #Stellar grid
             model_star('grid',theo_dic,grid_type,data_dic['DI']['system_prop'],theo_dic['nsub_Dstar'],star_params,True,True) 
@@ -1194,7 +1201,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 for inst in data_dic['DI']['mod_def']:
                     if (data_dic['DI']['mod_def'][inst]['mode'] == 'theo'):cond_st_atm = True
             if gen_dic['fit_IntrProf'] and (glob_fit_dic['IntrProf']['mode'] == 'theo'):cond_st_atm = True 
-            if gen_dic['loc_data_corr'] and (data_dic['Intr']['opt_loc_data_corr']['corr_mode'] in ['glob_mod','indiv_mod']) and (data_dic['Intr']['opt_loc_data_corr']['mode']=='theo'):cond_st_atm = True  
+            if gen_dic['loc_prof_est'] and (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['glob_mod','indiv_mod']) and (data_dic['Intr']['opt_loc_prof_est']['mode']=='theo'):cond_st_atm = True  
             if cond_st_atm:
                 if theo_dic['st_atm']['calc']:
                     theo_dic['sme_grid'] = gen_theo_atm(theo_dic['st_atm'],star_params)
@@ -1214,7 +1221,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             gen_dic['max_rv_shift'] = np.max([gen_dic['max_rv_shift'],system_param['star']['vsini']])
         if gen_dic['pl_atm']:
             max_rv_shift_orb = 0.
-            for pl_loc in gen_dic['studied_pl']:max_rv_shift_orb+=system_param[pl_loc]['Kp_orb']
+            for pl_loc in gen_dic['studied_pl_list']:max_rv_shift_orb+=system_param[pl_loc]['Kp_orb']
             gen_dic['max_rv_shift'] = np.max([gen_dic['max_rv_shift'],max_rv_shift_orb])
 
         #------------------------------------------------------------------------------------------------------------------------
@@ -1248,15 +1255,15 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if (gen_dic['detrend_prof']) and (not path_exist(gen_dic['save_data_dir']+'Detrend_prof/')):makedirs(gen_dic['save_data_dir']+'Detrend_prof/') 
         if (gen_dic['flux_sc']) and (not path_exist(gen_dic['save_data_dir']+'Scaled_data/')):makedirs(gen_dic['save_data_dir']+'Scaled_data/')
         if gen_dic['DImast_weight'] and (not path_exist(gen_dic['save_data_dir']+'DI_data/Master/')):makedirs(gen_dic['save_data_dir']+'DI_data/Master/')
-        if (gen_dic['res_data']) and (not path_exist(gen_dic['save_data_dir']+'Res_data/')):makedirs(gen_dic['save_data_dir']+'Res_data/')
+        if (gen_dic['diff_data']) and (not path_exist(gen_dic['save_data_dir']+'Diff_data/')):makedirs(gen_dic['save_data_dir']+'Diff_data/')
         if gen_dic['pca_ana'] and (not path_exist(gen_dic['save_data_dir']+'PCA_results/')):makedirs(gen_dic['save_data_dir']+'PCA_results/')   
         if (gen_dic['intr_data']) and (not path_exist(gen_dic['save_data_dir']+'Intr_data/')):makedirs(gen_dic['save_data_dir']+'Intr_data/')
-        if gen_dic['loc_data_corr']:
+        if gen_dic['loc_prof_est']:
             if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/')        
-            if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_data_corr']['corr_mode']+'/')
+            if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_prof_est']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_prof_est']['corr_mode']+'/')
         if gen_dic['diff_data_corr']:
             if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/')        
-            if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Res']['opt_loc_data_corr']['corr_mode']+'/')          
+            if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Diff']['opt_loc_prof_est']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Diff']['opt_loc_prof_est']['corr_mode']+'/')          
         if (gen_dic['pl_atm']):
             if (not path_exist(gen_dic['save_data_dir']+'Atm_data/')):makedirs(gen_dic['save_data_dir']+'Atm_data/')        
             if (not path_exist(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')):makedirs(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')
@@ -1265,13 +1272,13 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             if gen_dic['align_'+data_type] and (not path_exist(gen_dic['save_data_dir']+'Aligned_'+data_type+'_data/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Aligned_'+data_type+'_data/'+gen_dic['add_txt_path'][data_type])    
             if gen_dic['spec_1D_'+data_type]:
                 if (not path_exist(gen_dic['save_data_dir']+data_type+'_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])   
-                if (data_type=='Intr') and (not path_exist(gen_dic['save_data_dir']+'Res_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Res_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])  
+                if (data_type=='Intr') and (not path_exist(gen_dic['save_data_dir']+'Diff_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Diff_data/1Dfrom2D/'+gen_dic['add_txt_path'][data_type])  
             if (gen_dic[data_type+'bin'] or gen_dic[data_type+'binmultivis']) and (not path_exist(gen_dic['save_data_dir']+data_type+'bin_data/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'bin_data/'+gen_dic['add_txt_path'][data_type])
             if (gen_dic['fit_'+data_type+'bin'] or gen_dic['fit_'+data_type+'binmultivis']) and (not path_exist(gen_dic['save_data_dir']+data_type+'bin_prop/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'bin_prop/'+gen_dic['add_txt_path'][data_type])    
             if gen_dic['def_'+data_type+'masks'] and (not path_exist(gen_dic['save_data_dir']+'CCF_masks_'+data_type+'/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'CCF_masks_'+data_type+'/'+gen_dic['add_txt_path'][data_type])    
             if gen_dic[data_type+'_CCF']:
                 if (not path_exist(gen_dic['save_data_dir']+data_type+'_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+data_type+'_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])    
-                if (data_type=='Intr') and (not path_exist(gen_dic['save_data_dir']+'Res_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Res_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type]) 
+                if (data_type=='Intr') and (not path_exist(gen_dic['save_data_dir']+'Diff_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type])):makedirs(gen_dic['save_data_dir']+'Diff_data/CCFfromSpec/'+gen_dic['add_txt_path'][data_type]) 
     
         if (gen_dic['fit_DI'] or gen_dic['sav_keywords']) and (not path_exist(gen_dic['save_data_dir']+'DIorig_prop/')):makedirs(gen_dic['save_data_dir']+'DIorig_prop/')        
         if ((gen_dic['fit_Intr']) or (gen_dic['theoPlOcc'])) and (not path_exist(gen_dic['save_data_dir']+'Introrig_prop/')):makedirs(gen_dic['save_data_dir']+'Introrig_prop/')
@@ -1308,7 +1315,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
     print('  Reading and initializing '+inst_data)    
 
     #Initialize dictionaries for current instrument
-    for key_dic in [gen_dic,coord_dic,data_dic['DI'],data_dic,data_dic['Res'],data_dic['Intr'],data_dic['Atm'],data_prop,theo_dic]:key_dic[inst]={} 
+    for key_dic in [gen_dic,coord_dic,data_dic['DI'],data_dic,data_dic['Diff'],data_dic['Intr'],data_dic['Atm'],data_prop,theo_dic]:key_dic[inst]={} 
     DI_data_inst = data_dic['DI'][inst]
     if (inst not in gen_dic['scr_lgth']):gen_dic['scr_lgth'][inst]={}
 
@@ -1342,20 +1349,23 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             hdulist = fits.open(gen_dic['CCF_mask'][inst])
             data_loc = hdulist[1].data
             gen_dic['CCF_mask_wav'][inst] = data_loc['lambda']
-            gen_dic['CCF_mask_wgt'][inst] = data_loc['contrast']          
+            if gen_dic['use_maskW']:gen_dic['CCF_mask_wgt'][inst] = data_loc['contrast']          
             hdulist.close()
 
         elif (ext=='csv'):
             data_loc = np.genfromtxt(gen_dic['CCF_mask'][inst], delimiter=',', names=True)
             gen_dic['CCF_mask_wav'][inst] = data_loc['wave']
-            gen_dic['CCF_mask_wgt'][inst] = data_loc['contrast']  
+            if gen_dic['use_maskW']:gen_dic['CCF_mask_wgt'][inst] = data_loc['contrast']  
 
         elif (ext in ['txt','dat']):
             data_loc = np.loadtxt(gen_dic['CCF_mask'][inst]).T            
             gen_dic['CCF_mask_wav'][inst] = data_loc[0]
-            gen_dic['CCF_mask_wgt'][inst] = data_loc[1]       
+            if gen_dic['use_maskW']:gen_dic['CCF_mask_wgt'][inst] = data_loc[1]       
         else:
             stop('CCF mask extension TBD') 
+
+        #No weighing of lines
+        if not gen_dic['use_maskW']:gen_dic['CCF_mask_wgt'][inst] = np.repeat(1.,len(gen_dic['CCF_mask_wav'][inst]))  
             
         #Same convention as the ESPRESSO DRS, which takes the 'contrast' column from mask files and use its squares as weights
         #    - masks weights should have been normalized so that mean( weights ) = 1, where weight = CCF_mask_wgt^2
@@ -1388,7 +1398,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         #      only after all visits have been processed is the instrument type switched
         data_inst['type']=deepcopy(gen_dic['type'][inst])
         
-        #Total number of order for current instrument
+        #Total number of orders for current instrument
         #    - we define an artificial order that contains the CCF or 1D spectrum, so that the pipeline can process in the same way as with 2D spectra
         #    - if orders are fully removed from an instrument its default structure is updated
         #      if orders are trimmed after the spectral reduction the default structure is kept
@@ -1425,35 +1435,18 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         if ('spec' in data_inst['type']) and gen_dic['tell_weight'] or gen_dic['corr_tell']:data_inst['tell_sp'] = True
         else:data_inst['tell_sp'] = False
 
-        #Calibration condition
-        #    - must be calculated even if not needed for weights, but can be deactivated if conversion into CCFs or 2D->1D
-        if ('spec' in data_inst['type']):data_inst['mean_gdet'] = True
-        else:data_inst['mean_gdet'] = False
+        #Weighing calibration condition
+        #    - S2D calibration is calculated for scaling even if not needed for weights
+        #    - condition below is deactivated if conversion into CCFs or 2D->1D
+        data_inst['gcal_blaze_vis']=[]
+        if ('spec' in data_inst['type']) and gen_dic['cal_weight']:data_inst['cal_weight'] = True
+        else:data_inst['cal_weight'] = False
 
         #Initialize flag that exposures in all visits of the instrument share a common spectral table
         data_inst['comm_sp_tab'] = True 
         
         #Calibration settings
         if (inst not in gen_dic['gcal_nooutedge']):gen_dic['gcal_nooutedge'][inst] = [0.,0.]
-
-        #Instrument read noise
-        #    - when available we retrieve a static read noise table per instrument using a S2D obtained with fiber B on the sky
-        if (not gen_dic['mock_data']) and (data_inst['type']=='spec2D') and (inst in ['ESPRESSO','ESPRESSO_MR','HARPN','HARPS','NIRPS_HA','NIRPS_HE']):
-            data_inst['readnoise'] = True
-            readnoise_files = {
-                'ESPRESSO':'TBD',
-                'ESPRESSO_MR':'TBD',
-                'HARPN':'TBD',
-                'HARPS':'TBD',
-                'NIRPS_HA':'TBD',
-                'NIRPS_HE':'TBD',
-                }
-            hdulist =fits.open('ANTARESS_corrections/Telluric_processing/Static_model/'+readnoise_files[inst]+'.fits')
-            if gen_dic['sp_frame']=='air':ikey_wav = 5
-            elif gen_dic['sp_frame']=='vacuum':ikey_wav = 4
-            var_rn_inst = (hdulist[1].data)[idx_ord_kept]/dll_rn
-
-        else:data_inst['readnoise'] = False
 
         #Processing each visit
         if gen_dic['mock_data']:vis_list=list(mock_dic['visit_def'][inst].keys())
@@ -1516,11 +1509,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         'spec2D':'*',
                         }[data_inst['type']]                      
                 else:stop('Instrument undefined')
-                
-                #Use blazed data
-                if (inst in gen_dic['blazed']) and (data_inst['type']=='spec2D'):
-                    if (inst in ['ESPRESSO','ESPRESSO_MR','HARPN','HARPS','NIRPS_HA','NIRPS_HE']):vis_path+='BLAZE_'
-                    else:stop('Define blaze file names')
 
                 #Use sky-corrected data
                 if (inst in gen_dic['fibB_corr']) and (vis in gen_dic['fibB_corr'][inst]) and (len(gen_dic['fibB_corr'][inst][vis])>0):
@@ -1534,12 +1522,23 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     else:idx_ord_skysub = gen_dic['fibB_corr'][inst][vis]
                     
                 else:vis_path_skysub_exp = None
-              
-                #Path of visits exposures
+
+                #Use blazed data
+                if (data_inst['type']=='spec2D') and gen_dic['gcal_blaze']:   
+                    if (inst in ['ESPRESSO','ESPRESSO_MR','HARPN','HARPS','NIRPS_HA','NIRPS_HE']):
+                        vis_path_blaze = vis_path+'BLAZE_A'
+                        vis_path_blaze_exp = np.array(glob.glob(vis_path_blaze+'.fits'))
+                        if len(vis_path_blaze_exp)==0:print('No blaze data found at '+vis_path_blaze+'.fits. Switching to estimate mode.')
+                        else:data_inst['gcal_blaze_vis']+=[vis]
+                    else:print('Blaze names undefined for '+inst+'. Switching to estimate mode.')
+
+                #Final path of visits exposures
                 if inst not in ['EXPRES']:vis_path+='A'
+                
+                #Retrieve files
                 vis_path_exp = np.array(glob.glob(vis_path+'.fits'))
                 n_in_visit=len(vis_path_exp) 
-                if n_in_visit==0:stop('No data found. Check path.')
+                if n_in_visit==0:stop('No data found at '+vis_path+'.fits. Check path.')
 
             #Remove/keep visits
             if (vis in gen_dic['unused_visits'][inst]):   
@@ -1553,24 +1552,24 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #    - taking the day at the start of the night, rather than the day at the start of the exposure series
                 if (not gen_dic['mock_data']):
                     if (inst in ['CORALIE','ESPRESSO','ESPRESSO_MR','HARPS','HARPN','CARMENES_VIS','EXPRES','NIRPS_HA','NIRPS_HE']):    
-                        vis_day_exp=[]
-                        vis_hour_exp=[]
-                        bjd_exp = []
+                        vis_day_exp_all=[]
+                        vis_hour_exp_all=[]
+                        bjd_exp_all = []
                         for file_path in vis_path_exp:
                             hdulist =fits.open(file_path)
                             hdr =hdulist[0].header 
                             if inst=='CORALIE':
-                                vis_day_exp+= [int(hdr['HIERARCH ESO CORA SHUTTER START DATE'][6:8])]
-                                bjd_exp  += [ hdr['HIERARCH ESO DRS BJD'] - 2400000. ]
+                                vis_day_exp_all+= [int(hdr['HIERARCH ESO CORA SHUTTER START DATE'][6:8])]
+                                bjd_exp_all  += [ hdr['HIERARCH ESO DRS BJD'] - 2400000. ]
                                 stop('Define time for CORALIE')
                             elif inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','CARMENES_VIS','NIRPS_HA','NIRPS_HE']:
-                                vis_day_exp+= [int(hdr['DATE-OBS'].split('T')[0].split('-')[2]) ]  
-                                vis_hour_exp+=[int(hdr['DATE-OBS'].split('T')[1].split(':')[0])]
-                                if inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','NIRPS_HA','NIRPS_HE']:bjd_exp +=[  hdr['HIERARCH '+facil_inst+' QC BJD'] - 2400000. ]
-                                elif inst=='CARMENES_VIS':bjd_exp  += [  hdr['CARACAL BJD']  ]                        
+                                vis_day_exp_all+= [int(hdr['DATE-OBS'].split('T')[0].split('-')[2]) ]  
+                                vis_hour_exp_all+=[int(hdr['DATE-OBS'].split('T')[1].split(':')[0])]
+                                if inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','NIRPS_HA','NIRPS_HE']:bjd_exp_all +=[  hdr['HIERARCH '+facil_inst+' QC BJD'] - 2400000. ]
+                                elif inst=='CARMENES_VIS':bjd_exp_all  += [  hdr['CARACAL BJD']  ]                        
                             elif inst=='EXPRES':
-                                vis_day_exp+= [int(hdr['DATE-OBS'].split(' ')[0].split('-')[2]) ]  
-                                vis_hour_exp+=[int(hdr['DATE-OBS'].split(' ')[1].split(':')[0])]
+                                vis_day_exp_all+= [int(hdr['DATE-OBS'].split(' ')[0].split('-')[2]) ]  
+                                vis_hour_exp_all+=[int(hdr['DATE-OBS'].split(' ')[1].split(':')[0])]
                         if inst=='CORALIE':
                             vis_yr = hdr['HIERARCH ESO CORA SHUTTER START DATE'][0:4]
                             vis_mt = hdr['HIERARCH ESO CORA SHUTTER START DATE'][4:6]
@@ -1579,29 +1578,45 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             vis_mt = hdr['DATE-OBS'].split(' ')[0].split('-')[1]                            
                         else:
                             vis_yr = hdr['DATE-OBS'].split('T')[0].split('-')[0]
-                            vis_mt = hdr['DATE-OBS'].split('T')[0].split('-')[1]
-    
-                        #Take the day before if all exposures are past midnight (ie, no exposures between 12 and 23) 
-                        vis_day = np.min(vis_day_exp)
-                        vis_hour_exp = np.array(vis_hour_exp)
-                        bjd_vis = np.mean(bjd_exp)
-                        if np.sum((vis_hour_exp>=12) & (vis_hour_exp<=23)  )==0:
-                            if vis_day==1:stop('Adapt date retrieval')
-                            vis_day-=1
-                        vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)        
-                        data_inst['dates'][vis] = str(vis_yr)+'/'+str(vis_mt)+'/'+str(vis_day_txt)
-                        data_inst['midpoints'][vis] = '%.5f'%(bjd_vis+2400000.)+' BJD'
-
+                            vis_mt = hdr['DATE-OBS'].split('T')[0].split('-')[1]  
+                              
+                        #Take the day before as reference if exposure is past midnight (ie, not between 12 and 23) 
+                        bjd_exp_all = np.array(bjd_exp_all)
+                        vis_day_exp_all = np.array(vis_day_exp_all)
+                        vis_hour_exp_all = np.array(vis_hour_exp_all)
+                        vis_day_exp_all[vis_hour_exp_all<=12]-=1
+                        if np.sum(vis_day_exp_all==0)>0:stop('ERROR: adapt date retrieval')                           
+                            
+                        #Check wether visit is contained within a single night
+                        #    - either:
+                        # + all exposures on same day before midnight or after midnight
+                        # + all exposures within two consecutive days between noon and midnight 
+                        min_day = np.min(vis_day_exp_all)
+                        max_day = np.max(vis_day_exp_all) 
+                        min_hr = np.min(vis_hour_exp_all)
+                        max_hr = np.max(vis_hour_exp_all)
+                        bjd_vis = np.mean(bjd_exp_all)
+                        if ((max_day==min_day) and ((min_hr>=12) or (max_hr<=12))) or ((max_day==min_day+1) and ((min_hr>=12) and (max_hr<=12))): 
+                            single_night = True
+                            vis_day = np.min(vis_day_exp_all)  
+                            vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)        
+                            data_inst['dates'][vis] = str(vis_yr)+'/'+str(vis_mt)+'/'+str(vis_day_txt)
+                            data_inst['midpoints'][vis] = '%.5f'%(bjd_vis+2400000.)+' BJD'
+                        
+                        else:                        
+                            single_night = False
+                            vis_day_txt_all = np.array(['0'+str(vis_day) if vis_day<10 else str(vis_day) for vis_day in vis_day_exp_all])
                 else:
                     bjd_vis = np.mean(bjd_exp_all) - 2400000.                   
-                        
+
                 #Initializing dictionaries for visit
                 theo_dic[inst][vis]={}
                 data_dic['Atm'][inst][vis]={}   
-                data_inst[vis] = {'n_in_visit':n_in_visit,'transit_pl':[],'transit_sp':[],'transit_fa':[],'comm_sp_tab':True} 
+                data_inst[vis] = {'n_in_visit':n_in_visit,'studied_pl':[],'transit_sp':[],'transit_fa':[],'comm_sp_tab':True} 
+
                 coord_dic[inst][vis] = {}
-                for pl_loc in gen_dic['studied_pl']:
-                    if (inst in gen_dic['transit_pl'][pl_loc]) and (vis in gen_dic['transit_pl'][pl_loc][inst]):data_inst[vis]['transit_pl']+=[pl_loc]
+                for pl_loc in gen_dic['studied_pl_list']:
+                    if (inst in gen_dic['studied_pl'][pl_loc]) and (vis in gen_dic['studied_pl'][pl_loc][inst]):data_inst[vis]['studied_pl']+=[pl_loc]
                 for spot in gen_dic['studied_sp']:
                     if (inst in gen_dic['transit_sp'][spot]) and (vis in gen_dic['transit_sp'][spot][inst]):data_inst[vis]['transit_sp']+=[spot]                    
                 for facula in gen_dic['studied_fa']:
@@ -1613,9 +1628,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                          
                 #Associating telluric spectrum with each exposure
                 if not gen_dic['mock_data']:data_inst[vis]['tell_DI_data_paths']={}
+
+                #Exposure-specific calibration profile for weighing
+                if data_inst['cal_weight']:data_inst[vis]['sing_gcal_DI_data_paths']={}             
                 
                 #Initialize current data type and conditions for the visit
-                for key in ['type','tell_sp','mean_gdet']:data_inst[vis][key]=deepcopy(data_inst[key])                
+                for key in ['type','tell_sp','cal_weight']:data_inst[vis][key]=deepcopy(data_inst[key])                
                 
                 #Initialize exposure tables
                 #    - spatial positions in x/y in front of the stellar disk
@@ -1626,14 +1644,15 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #    - phase of in/out exposures, per instrument and per visit   
                 #    - radial velocity of planet in star rest frame  
                 for key in ['bjd','t_dur','RV_star_solCDM','RV_star_stelCDM','cen_ph_st','st_ph_st','end_ph_st']:coord_dic[inst][vis][key] = np.zeros(n_in_visit,dtype=float)*np.nan
-                for pl_loc in list(set(gen_dic['studied_pl']+gen_dic['kepl_pl'])):
+                for pl_loc in list(set(gen_dic['studied_pl_list']+gen_dic['kepl_pl'])):
                     coord_dic[inst][vis][pl_loc]={} 
-                    if pl_loc in data_inst[vis]['transit_pl']:
+                    if pl_loc in data_inst[vis]['studied_pl']:
                         for key in ['ecl','cen_ph','st_ph','end_ph','ph_dur','rv_pl','v_pl']:coord_dic[inst][vis][pl_loc][key] = np.zeros(n_in_visit,dtype=float)*np.nan
                         for key in ['cen_pos','st_pos','end_pos']:coord_dic[inst][vis][pl_loc][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
 
                     #Definition of mid-transit times for each planet associated with the visit 
                     if (pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst]):
+                        if single_night:stop('ERROR : gen_dic["Tcenter_visits"] not available for multi-epochs visits')
                         coord_dic[inst][vis][pl_loc]['Tcenter'] = gen_dic['Tcenter_visits'][pl_loc][inst][vis]
                     else:
                         norb = round((bjd_vis+2400000.-system_param[pl_loc]['TCenter'])/system_param[pl_loc]["period"])
@@ -1675,28 +1694,37 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                     #Condition to retrieve current visit
                     dace_red_inst = hdr['INSTRUME']
-                    if dace_red_inst=='ESPRESSO': 
-                        if bjd_vis<=58649.5:dace_red_inst+='18'
-                        else:dace_red_inst+='19'  
-                    elif dace_red_inst=='HARPS': 
-                        if bjd_vis<=57167.5:dace_red_inst+='03'
-                        else:dace_red_inst+='15'  
-                    cond_dace_vis = (np.asarray(DACE_sp['ins_name']) == dace_red_inst) & (np.asarray(DACE_sp['date_night']) == vis_yr+'-'+vis_mt+'-'+vis_day_txt)
-                    if True not in cond_dace_vis:
+                    if single_night:
+                        if dace_red_inst=='ESPRESSO': 
+                            if bjd_vis<=58649.5:dace_red_inst+='18'
+                            else:dace_red_inst+='19'  
+                        elif dace_red_inst=='HARPS': 
+                            if bjd_vis<=57167.5:dace_red_inst+='03'
+                            else:dace_red_inst+='15'  
+                        idx_dace_vis = np_where1D((np.asarray(DACE_sp['ins_name']) == dace_red_inst) & (np.asarray(DACE_sp['date_night']) == vis_yr+'-'+vis_mt+'-'+vis_day_txt))
+                    else:
+                        if dace_red_inst=='ESPRESSO':inst_off_all = ['18' if bjd_loc<58649.5 else '19' for bjd_loc in bjd_exp_all]
+                        elif dace_red_inst=='HARPS':inst_off_all = ['03' if bjd_loc<57167.5 else '15' for bjd_loc in bjd_exp_all]   
+                        dace_red_inst_all = np.array([dace_red_inst+inst_off for inst_off in inst_off_all])
+                        idx_dace_vis = np.zeros(0,dtype=int)
+                        vis_day_txt_un,idx_vis_day_txt_un = np.unique(vis_day_txt_all,return_index=True)
+                        for vis_day_txt,dace_red_inst in zip(vis_day_txt_un,dace_red_inst_all[idx_vis_day_txt_un]):
+                            idx_dace_vis = np.append(idx_dace_vis, np_where1D((np.asarray(DACE_sp['ins_name']) == dace_red_inst) & (np.asarray(DACE_sp['date_night']) == vis_yr+'-'+vis_mt+'-'+vis_day_txt)))
+                    if len(idx_dace_vis)==0:
                         print('         Visit not found in DACE') 
                         DACE_sp = False
                     else:
 
                         #Retrieve activity indexes and bjd
                         DACE_idx = {}
-                        DACE_idx['bjd'] =  np.array(DACE_sp['rjd'],dtype=float)[cond_dace_vis]
+                        DACE_idx['bjd'] =  np.array(DACE_sp['rjd'],dtype=float)[idx_dace_vis]
                         data_inst[vis]['act_idx'] = ['ha','na','ca','s','rhk']
                         for key in data_inst[vis]['act_idx']:
                             data_prop[inst][vis][key] = np.zeros([n_in_visit,2],dtype=float)*np.nan
                             if key=='rhk':dace_key = 'rhk'
                             else:dace_key = key+'index'
-                            DACE_idx[key] = np.array(DACE_sp[dace_key],dtype=float)[cond_dace_vis]
-                            DACE_idx[key+'_err'] = np.array(DACE_sp[dace_key+'_err'],dtype=float)[cond_dace_vis]                    
+                            DACE_idx[key] = np.array(DACE_sp[dace_key],dtype=float)[idx_dace_vis]
+                            DACE_idx[key+'_err'] = np.array(DACE_sp[dace_key+'_err'],dtype=float)[idx_dace_vis]                    
                 else:
                     DACE_sp = False
                     if inst=='EXPRES': 
@@ -1806,7 +1834,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 DI_data_inst[vis]['RVdrift'][iexp]=hdr['HIERARCH '+facil_inst+' QC DRIFT DET0 MEAN']*gen_dic['pix_size_v'][inst]*1e3    #in pix -> km/s
                     
                    #Stellar phase
-                    coord_dic[inst][vis]['st_ph_st'][iexp],coord_dic[inst][vis]['cen_ph_st'][iexp],coord_dic[inst][vis]['end_ph_st'][iexp] = get_timeorbit('star',{'star':{'Tcenter':system_param['star']['Tcenter']}},coord_dic[inst][vis]['bjd'][iexp], {'period':system_param['star']['Peq']}, coord_dic[inst][vis]['t_dur'][iexp])[0:3] 
+                    coord_dic[inst][vis]['st_ph_st'][iexp],coord_dic[inst][vis]['cen_ph_st'][iexp],coord_dic[inst][vis]['end_ph_st'][iexp] = get_timeorbit(system_param['star']['Tcenter'],coord_dic[inst][vis]['bjd'][iexp], {'period':system_param['star']['Peq']}, coord_dic[inst][vis]['t_dur'][iexp])[0:3] 
 
                     if gen_dic['mock_data']:
                         n_osamp_exp_all_sp=1
@@ -1815,7 +1843,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         dcoord_exp_in = {'x':{}, 'y':{}}
 
                     #Orbital coordinates for each studied planet
-                    for pl_loc in data_inst[vis]['transit_pl']:
+                    for pl_loc in data_inst[vis]['studied_pl']:
                         coord_dic[inst][vis][pl_loc]['cen_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['st_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['end_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['ecl'][iexp],coord_dic[inst][vis][pl_loc]['rv_pl'][iexp],coord_dic[inst][vis][pl_loc]['v_pl'][iexp],\
                         coord_dic[inst][vis][pl_loc]['st_ph'][iexp],coord_dic[inst][vis][pl_loc]['cen_ph'][iexp],coord_dic[inst][vis][pl_loc]['end_ph'][iexp],coord_dic[inst][vis][pl_loc]['ph_dur'][iexp]=coord_expos(pl_loc,coord_dic,inst,vis,system_param['star'],
                                             system_param[pl_loc],coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic,data_dic['DI']['system_prop']['achrom'][pl_loc][0])                    
@@ -1948,23 +1976,17 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #Processing all exposures in visit
                 for isub_exp,iexp in enumerate(range(n_in_visit)):
 
-                    #Observational data for current exposure
-                    if not gen_dic['mock_data']:
-                        hdulist =fits.open(vis_path_exp[iexp])
-                        if vis_path_skysub_exp is not None:hdulist_skysub =fits.open(vis_path_skysub_exp[iexp])
-                        hdr =hdulist[0].header                     
-
-                    #Initialize data at first exposure
-                    if isub_exp==0:
+                    #Artificial data 
+                    if gen_dic['mock_data']: 
                         
-                        #Artificial data 
-                        if gen_dic['mock_data']: 
+                        #Initialize data at first exposure
+                        if isub_exp==0:
                             print('            Building exposures ... ')
                             data_inst[vis]['mock'] = True
                             fixed_args = {}
                             if inst not in mock_dic['intr_prof']:
                                 print('           Automatic definition of mock line profile')
-                                mock_dic['intr_prof'][inst] = {'mode':'ana','coord_line':'mu','func_prof_name': 'gauss', 'line_trans':None,'mod_prop':{'ctrst_ord0__IS__VS_' : 0.5,'FWHM_ord0__IS__VS_'  : 5. },'pol_mode' : 'modul'}                                             
+                                mock_dic['intr_prof'][inst] = {'mode':'ana','coord_line':'mu','model': 'gauss', 'line_trans':None,'mod_prop':{'ctrst_ord0__IS__VS_' : 0.5,'FWHM_ord0__IS__VS_'  : 5. },'pol_mode' : 'modul'}                                             
                             fixed_args.update(mock_dic['intr_prof'][inst])
 
                             #Activation of spectral conversion and resampling 
@@ -2041,18 +2063,26 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             #Initializing stellar properties
                             fixed_args = var_stellar_prop(fixed_args,theo_dic,data_dic['DI']['system_prop'],spots_prop,faculae_prop,system_param['star'],params_mock)
 
-                        #Observational data            
-                        else:   
+                    #Observational data            
+                    else: 
+
+                        #Observational data for current exposure
+                        hdulist =fits.open(vis_path_exp[iexp])
+                        if vis_path_skysub_exp is not None:hdulist_skysub =fits.open(vis_path_skysub_exp[iexp])
+                        hdr =hdulist[0].header                     
+
+                        #VLT UT used by ESPRESSO
+                        if (inst=='ESPRESSO') and ((isub_exp==0) or (not single_night)):
+                            tel_inst = {
+                                'ESO-VLT-U1':'1',
+                                'ESO-VLT-U2':'2',
+                                'ESO-VLT-U3':'3',
+                                'ESO-VLT-U4':'4'
+                                }[hdr['TELESCOP']]                                
+                       
+                        #Initialize data at first exposure
+                        if isub_exp==0:                        
                             data_inst[vis]['mock'] = False                      
-    
-                            #VLT UT used by ESPRESSO
-                            if inst=='ESPRESSO':
-                                tel_inst = {
-                                    'ESO-VLT-U1':'1',
-                                    'ESO-VLT-U2':'2',
-                                    'ESO-VLT-U3':'3',
-                                    'ESO-VLT-U4':'4'
-                                    }[hdr['TELESCOP']]                                
 
                             #Instrumental mode
                             if inst in ['ESPRESSO']: 
@@ -2065,7 +2095,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             #Radial velocity tables for input CCFs
                             #    - assumed to be common for all CCFs of the visit dataset, and thus calculated only once
                             if (data_inst['type']=='CCF'):
-                                    
                                 if inst in ['HARPN','HARPS','ESPRESSO','ESPRESSO_MR','NIRPS_HA','NIRPS_HE']:
                                     start_rv =  hdr['HIERARCH '+facil_inst+' RV START']    # first velocity
                                     delta_rv = hdr['HIERARCH '+facil_inst+' RV STEP']     # delta vel step
@@ -2120,6 +2149,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                     elif inst=='EXPRES':data_inst[vis]['nspec'] = 7920
                                     else:stop('TBD')
 
+                    #Initialize data at first exposure
+                    if isub_exp==0: 
+
                         #Table dimensions
                         data_inst[vis]['dim_all'] = [n_in_visit,data_inst['nord'],data_inst[vis]['nspec']]
                         data_inst[vis]['dim_exp'] = [data_inst['nord'],data_inst[vis]['nspec']]
@@ -2130,7 +2162,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         data_dic_temp['cen_bins'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)
                         data_dic_temp['flux'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)*np.nan
                         data_dic_temp['cov'] = np.zeros(data_inst[vis]['dim_sp'], dtype=object)
-
+                        
+                        #Initialize blaze-derived and detector noise profiles
+                        if (vis in data_inst['gcal_blaze_vis']):
+                            data_dic_temp['gcal'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)*np.nan
+                            if gen_dic['cal_weight']:data_dic_temp['sdet2'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)
+                            
                         #Telluric spectrum
                         if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):data_dic_temp['tell'] = np.ones(data_inst[vis]['dim_all'], dtype=float)
 
@@ -2170,6 +2207,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                         #Deviation from nominal stellar profile 
                         surf_prop_dic, surf_prop_dic_sp, surf_prop_dic_fa, _ = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],data_dic[inst][vis]['transit_sp'],data_dic[inst][vis]['transit_fa'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp], system_spot_prop_in=args_exp['system_spot_prop'], system_facula_prop_in=args_exp['system_facula_prop'])
+
 
                         #Correcting the disk-integrated profile for planet, facula, and spot contributions
                         DI_prof_exp = base_DI_prof - surf_prop_dic[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_fa[data_dic['DI']['system_prop']['chrom_mode']]['line_prof'][:,0]
@@ -2225,9 +2263,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             DI_err_exp_Emeas2 = np.zeros(data_inst[vis]['nspec'],dtype=float)
                         data_dic_temp['flux'][iexp,0] = DI_prof_exp_Fmeas                      
                         data_dic_temp['cov'][iexp,0] = DI_err_exp_Emeas2[None,:]
-                        if mock_dic['verbose_flux_cont']:print('         Exposure %s: Average SNR = %.0f, Average photon count = %.0f' % (str(isub_exp), np.mean(DI_prof_exp_Fmeas/np.sqrt(DI_err_exp_Emeas2)), np.mean(DI_prof_exp_Fmeas)))                        
-
-
+                        if mock_dic['verbose_flux_cont']:print('         Exposure %s: Average SNR = %.0f, Average photon count = %.0f' % (str(isub_exp), np.mean(DI_prof_exp_Fmeas/np.sqrt(DI_err_exp_Emeas2)), np.mean(DI_prof_exp_Fmeas)))                      
 
                     #-----------------------------------
                     #Observational data
@@ -2335,7 +2371,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 else:hdulist_dat = hdulist
                                     
                                 if inst in ['HARPS','ESPRESSO','ESPRESSO_MR','HARPN','NIRPS_HA','NIRPS_HE']:
-
+                           
                                     #Bin centers
                                     #    - dimension norder x nbins
                                     if gen_dic['sp_frame']=='air':ikey_wav = 5
@@ -2345,7 +2381,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                     if (vis_path_skysub_exp is not None) and (gen_dic['fibB_corr'][inst][vis]!='all'):
                                         data_dic_temp['cen_bins'][iexp][idxsub_ord_skysub] = (hdulist_skysub[ikey_wav].data)[idx_ord_kept][idxsub_ord_skysub]                                 
                                         dll[idxsub_ord_skysub] = (hdulist_skysub[ikey_wav+2].data)[idx_ord_kept][idxsub_ord_skysub]   
-                                        
+
                                     #Spectra   
                                     #    - the overall flux level is changed in the sky-corrected data, messing up with the flux balance corrections if only some orders were corrected
                                     #      we thus roughly rescale the flux in the corrected orders to their original level (assuming constant resolution over the order to calculate the mean flux)   
@@ -2353,6 +2389,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                     #    - the flux is not per unit of time, but corresponds to the number of photoelectrons measured during the exposure corrected for the blaze function
                                     data_dic_temp['flux'][iexp] = (hdulist_dat[1].data)[idx_ord_kept]/dll
                                     err_raw = (hdulist_dat[2].data)[idx_ord_kept]/dll  
+
+                                    #Replacing with sky-corrected data
                                     if (vis_path_skysub_exp is not None) and (gen_dic['fibB_corr'][inst][vis]!='all'):
                                         dll_ord_skysub = dll[idxsub_ord_skysub]
                                         mean_Fraw_ord_skysub = np.nansum(data_dic_temp['flux'][iexp][idxsub_ord_skysub]*dll_ord_skysub,axis=1)/np.nansum(dll_ord_skysub,axis=1)
@@ -2368,8 +2406,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                     if (vis_path_skysub_exp is not None) and (gen_dic['fibB_corr'][inst][vis]!='all'):
                                         qualdata_exp[idxsub_ord_skysub] = (hdulist_skysub[3].data)[idx_ord_kept][idxsub_ord_skysub]
                                     cond_bad_exp |= (qualdata_exp == 16384)
-                                    
-                                    #Remove pixels at the edge of the red detector
+
+                                    #Removing pixels at the edge of the red detector
                                     #    - usually too poorly defined even for bright stars
                                     if inst=='ESPRESSO':
                                         for iord_bad in [90,91]: 
@@ -2377,6 +2415,46 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                             if len(isub_ord)>0:
                                                 data_dic_temp['flux'][iexp][isub_ord,0:30] = np.nan
                                                 qualdata_exp[isub_ord,0:30] = 1                                   
+
+                                    #Calibration and detector noise profiles
+                                    #    - see weights_bin_prof() for details       
+                                    #    - non sky-corrected data must be used
+                                    if (vis in data_inst['gcal_blaze_vis']):
+                                        
+                                        #Retrieving counts per pixels
+                                        #    - blazed and unblazed pixels are undefined and null in the same pixels
+                                        hdulist_dat_blaze =fits.open(vis_path_blaze_exp[iexp])
+                                        count_exp = (hdulist[1].data)[idx_ord_kept]
+                                        count_blaze_exp = (hdulist_dat_blaze[1].data)[idx_ord_kept]
+                                        err_count_blaze_exp = (hdulist_dat_blaze[2].data)[idx_ord_kept]
+                                        cond_def = (~np.isnan(count_exp)) & (~cond_bad_exp)
+                                        cond_gcal = cond_def & (count_exp!=0.)
+                                        cond_pos_ct = count_blaze_exp>0.
+                                        cond_def_pos = cond_def & cond_pos_ct
+                                        cond_def_neg = cond_def & ~cond_pos_ct
+
+                                        #Processing each order
+                                        for iord in range(data_inst['nord']):
+    
+                                            #Defining calibration profile
+                                            #    - gcal(w,t,v) = 1/(dw(w)*bl(w,t,v)))
+                                            # with bl(w,t,v) = N_meas[bl](w,t,v)/N_meas(w,t,v) 
+                                            #    - negative values are set to undefined, so that they are replaced by the calibration model in the calc_gcal() routine
+                                            gcal_temp = 1./(dll[iord,cond_gcal[iord]]*count_blaze_exp[iord,cond_gcal[iord]]/count_exp[iord,cond_gcal[iord]])
+                                            cond_gcal_pos = gcal_temp > 0.
+                                            data_dic_temp['gcal'][iexp,iord,cond_gcal[iord]][cond_gcal_pos] = gcal_temp[cond_gcal_pos] 
+
+                                            #Defining detector noise
+                                            #    - Edet_meas(w,t,v)^2 = EN_meas[bl](w,t,v)^2 - N_meas[bl](w,t,v)
+                                            #    - kept to 0 at undefined pixels, or where negative
+                                            #    - at pixels where counts are negative the DRS consider them null to define error tables, so that the detector noise is then retrieved as
+                                            #      Edet_meas(w,t,v)^2 = EN_meas[bl](w,t,v)^2
+                                            #    - some pixels have large errors despite not having large fluxes; this may come from hot pixels subtracted from the extracted counts
+                                            if gen_dic['cal_weight']:
+                                                data_dic_temp['sdet2'][iexp,iord,cond_def_pos[iord]] = err_count_blaze_exp[iord,cond_def_pos[iord]]**2. - count_blaze_exp[iord,cond_def_pos[iord]]
+                                                cond_neg_sub = (data_dic_temp['sdet2'][iexp,iord,cond_def_pos[iord]]<0.) 
+                                                data_dic_temp['sdet2'][iexp,iord,cond_def_pos[iord]][cond_neg_sub] = 0.
+                                                data_dic_temp['sdet2'][iexp,iord,cond_def_neg[iord]] = err_count_blaze_exp[iord,cond_def_neg[iord]]**2. 
 
                                 elif inst=='CARMENES_VIS':             
                                     if (vis_path_skysub_exp is not None):stop('No sky-corrected data available')
@@ -2700,6 +2778,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #------------------------------------------------------------------------------------
 
                 #Scaling of errors
+                if not gen_dic[inst][vis]['flag_err']:print('           Uncertainties are set to sqrt(F)')
                 if (inst not in gen_dic['g_err']):gen_dic['g_err'][inst]=1.
                 elif gen_dic['g_err'][inst]!=1.:
                     print('           Uncertainties are scaled by sqrt('+str(gen_dic['g_err'][inst])+')')
@@ -2710,7 +2789,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 if (inst in gen_dic['used_exp']) and (vis in gen_dic['used_exp'][inst]) and (len(gen_dic['used_exp'][inst][vis])>0):remove_exp=True
                 else:remove_exp=False
                 w_sorted=coord_dic[inst][vis]['bjd'].argsort()    
-                for pl_loc in data_inst[vis]['transit_pl']:
+                for pl_loc in data_inst[vis]['studied_pl']:
                     for key in ['ecl','cen_ph','st_ph','end_ph','ph_dur','rv_pl','v_pl']:
                         coord_dic[inst][vis][pl_loc][key]=coord_dic[inst][vis][pl_loc][key][w_sorted]                        
                         if remove_exp:coord_dic[inst][vis][pl_loc][key] = coord_dic[inst][vis][pl_loc][key][gen_dic['used_exp'][inst][vis]]
@@ -2791,7 +2870,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                
                 #Undefined bins
                 data_dic_temp['cond_def'] = ~np.isnan(data_dic_temp['flux'])
-                    
+
                 #Definition of edge spectral table
                 #    - spectral bins must be continuous for the resampling routine of the pipeline to work
                 #    - bin width are included in ESPRESSO files, but to have exactly the same lower/upper boundary between successive bins we redefine them manually  
@@ -2888,32 +2967,36 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if gen_dic['comm_sp_tab'][inst]:
                         print('           Resampling on common table')
 
-                        #Initializes path to read noise table  
-                        if data_inst['readnoise']:data_inst[vis]['rn_data_paths'] = {iexp:gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_rn_' for iexp in range(n_in_visit)}                        
-
-                        #Processing each exposure                        
+                        #Processing each exposure    
+                        flux_resamp = np.zeros(data_com['dim_all'], dtype=float)*np.nan
+                        cov_resamp = np.zeros(data_com['dim_sp'], dtype=object)   
+                        if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):tell_resamp =  np.ones(data_com['dim_all'], dtype=float)
+                        if (vis in data_inst['gcal_blaze_vis']):
+                            gcal_blaze_resamp = np.zeros(data_com['dim_all'], dtype=float)*np.nan
+                            if gen_dic['cal_weight']:sdet2_resamp = np.zeros(data_com['dim_all'], dtype=float)
                         for iexp in range(n_in_visit):
-                            if data_inst['readnoise']:var_rn_exp = np.zeros(data_inst[vis]['dim_exp'], dtype=float)
                             for iord in range(data_inst['nord']): 
-                                data_dic_temp['flux'][iexp,iord],data_dic_temp['cov'][iexp][iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['flux'][iexp,iord] , cov = data_dic_temp['cov'][iexp][iord], kind=gen_dic['resamp_mode']) 
+                                flux_resamp[iexp,iord],cov_resamp[iexp][iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['flux'][iexp,iord] , cov = data_dic_temp['cov'][iexp][iord], kind=gen_dic['resamp_mode']) 
                                 
                                 #Resampling input telluric spectrum
                                 if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):
-                                    data_dic_temp['tell'][iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['tell'][iexp,iord], kind=gen_dic['resamp_mode']) 
+                                    tell_resamp[iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['tell'][iexp,iord], kind=gen_dic['resamp_mode']) 
                                     
-                                #Resampling read-noise table
-                                #    - read noise values are associated with the detector pixels, and we thus consider them defined on the same grid as each exposure
-                                if data_inst['readnoise']:
-                                    var_rn_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], var_rn_inst[iord], kind=gen_dic['resamp_mode'])
-                                    var_rn_exp[iord][np.isnan(var_rn_exp[iord])] = 0.
-                                
-                            #Saving read noise table
-                            if data_inst['readnoise']:datasave_npz(data_inst[vis]['rn_data_paths']+str(iexp),{'var_rn':var_rn_exp})
-                                
+                                #Resampling blazed-derived calibration and detector noise profiles
+                                if (vis in data_inst['gcal_blaze_vis']):
+                                    gcal_blaze_resamp[iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['gcal'][iexp,iord], kind=gen_dic['resamp_mode'])
+                                    if gen_dic['cal_weight']:sdet2_resamp[iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['sdet2'][iexp,iord], kind=gen_dic['resamp_mode'])
+
                         #Overwrite exposure tables
                         data_dic_temp['cen_bins'][:] = deepcopy(data_com['cen_bins'])
-                        data_dic_temp['edge_bins'][:] = deepcopy(data_com['edge_bins'])                                    
+                        data_dic_temp['edge_bins'][:] = deepcopy(data_com['edge_bins'])  
+                        data_dic_temp['flux'] = flux_resamp 
+                        data_dic_temp['cov'] = cov_resamp 
                         data_dic_temp['cond_def'] = ~np.isnan(data_dic_temp['flux'])
+                        if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):data_dic_temp['tell'] = tell_resamp
+                        if (vis in data_inst['gcal_blaze_vis']):
+                            data_dic_temp['gcal'] = gcal_blaze_resamp
+                            if gen_dic['cal_weight']:data_dic_temp['sdet2'] = sdet2_resamp
                         
                         #Set flag that all exposures in the visit are now defined on a common table
                         data_inst[vis]['comm_sp_tab'] = True
@@ -2928,12 +3011,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     data_dic[inst]['com_vis'] = vis   
                     data_com_inst = deepcopy(data_com)
                     datasave_npz(data_dic[inst]['proc_com_data_path'],data_com_inst)
-                    
-                    #Saving common read noise table  
-                    if data_inst['readnoise']:
-                        datasave_npz(gen_dic['save_data_dir']+'Processed_data/Global/Readnoise_'+inst,{'var_rn':var_rn_inst})
-                        data_inst[vis]['rn_data_paths'] = {iexp:gen_dic['save_data_dir']+'Processed_data/Global/Readnoise_'+inst for iexp in range(n_in_visit)}                        
-
 
                 #Check wether all visits of current instrument share a common table
                 #    - flag remains True if the common table of current visit is the same as the common table for the instrument
@@ -2967,8 +3044,17 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     #    - path is made specific to the exposure to be able to point from in-transit to global profiles without copying them to disk
                     if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):
                         data_inst[vis]['tell_DI_data_paths'][iexp] = data_inst[vis]['proc_DI_data_paths']+'tell_'+str(iexp)
-                        datasave_npz(data_inst[vis]['tell_DI_data_paths'][iexp],{'tell':data_dic_temp['tell'][iexp]})
-                        data_dic_temp.pop('tell')    
+                        datasave_npz(data_inst[vis]['tell_DI_data_paths'][iexp],{'tell':data_dic_temp['tell'][iexp]}) 
+
+                    #Blazed-derived calibration and detector noise profiles
+                    #    - if defined with input data
+                    #    - path is made specific to the exposure to be able to point from in-transit to global profiles without copying them to disk
+                    #    - path is created in any case as it will be used in the calibration routine
+                    if data_inst['cal_weight']:data_inst[vis]['sing_gcal_DI_data_paths'][iexp] = data_inst[vis]['proc_DI_data_paths']+'sing_gcal_'+str(iexp)
+                    if (vis in data_inst['gcal_blaze_vis']):
+                        data_gcal_save = {'gcal':data_dic_temp['gcal'][iexp]}
+                        if data_inst['cal_weight']:data_gcal_save['sdet2'] = data_dic_temp['sdet2'][iexp]
+                        datasave_npz(data_inst[vis]['sing_gcal_DI_data_paths'][iexp],data_gcal_save)
                         
                     #Saving path to initialized raw data
                     #    - saving data per exposure to prevent size issue with npz files
@@ -3052,9 +3138,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
     spot_check = False
     facula_check = False
     for vis in data_dic[inst]['visit_list']:
-        print('         Processing visit '+vis)                                      
-        if vis in data_dic[inst]['dates']:print('           Date (night start) : '+data_dic[inst]['dates'][vis])
-        if vis in data_dic[inst]['midpoints']:print('           Visit midpoint: '+data_dic[inst]['midpoints'][vis])
+        if single_night:    
+            print('         Processing visit '+vis)                                  
+            if vis in data_dic[inst]['dates']:print('           Date (night start) : '+data_dic[inst]['dates'][vis])
+            if vis in data_dic[inst]['midpoints']:print('           Visit midpoint: '+data_dic[inst]['midpoints'][vis])
+        else:
+            print('         Processing multi-epoch visit '+vis)              
         data_vis = data_dic[inst][vis]
         coord_vis = coord_dic[inst][vis]
         gen_vis = gen_dic[inst][vis] 
@@ -3072,6 +3161,11 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             data_dic['DI']['sysvel'][inst][vis] = system_param['star']['sysvel']
             print('           WARNING : sysvel set to default '+str(system_param['star']['sysvel'])+' km/s')
 
+        #Min/max BERV
+        if ('spec' in data_dic[inst]['type']):
+            data_vis['min_BERV'] = np.nanmin(data_prop[inst][vis]['BERV'])
+            data_vis['max_BERV'] = np.nanmax(data_prop[inst][vis]['BERV'])
+            
         #Define CCF resolution, range, and sysvel here so that spectral data needs not be uploaded again after processing
         if gen_dic['CCF_from_sp'] or gen_dic['Intr_CCF']:
           
@@ -3098,10 +3192,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         #Automatic continuum and fit range
         #    - done here rather than in the 'calc_proc_data' condition so that ranges can be defined for already-processed observed or mock datasets, even if the analysis modules were not activated 
         # at the time of processing
-        for key in ['DI','Intr','Atm']:
-            if gen_dic['fit_'+key+'_gen'] or ((key=='Intr') & gen_dic['fit_IntrProf']):
+        for key in ['DI','Diff','Intr','Atm']:
+            if ((key=='Diff') and gen_dic['diff_data']) or gen_dic['fit_'+key+'_gen'] or ((key=='Intr') & gen_dic['fit_IntrProf']):
                 autom_cont = True if (inst not in data_dic[key]['cont_range']) else False
-                autom_fit = True if ((inst not in data_dic[key]['fit_range']) or (vis not in data_dic[key]['fit_range'][inst])) else False
+                autom_fit = True if (key!='Diff') and ((inst not in data_dic[key]['fit_range']) or (vis not in data_dic[key]['fit_range'][inst])) else False
                 if autom_cont or autom_fit:
 
                     #Path to data used for automatic definition
@@ -3112,79 +3206,116 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     else:
                         data_path = data_vis['proc_DI_data_paths']
                         nspec = data_vis['nspec']
-                    
+
                     #Processing CCF order or selected spectral order 
-                    if (data_dic[key]['type'][inst]=='CCF'):iord_fit = 0
-                    else:iord_fit = data_dic[key]['fit_prof']['order'][inst]
+                    if (data_dic[key]['type'][inst]=='CCF'):iord_sel = 0
+                    else:iord_sel = data_dic[key]['fit_order'][inst]
                     cen_bins_all = np.zeros([0,nspec],dtype=float)
                     edge_bins_all = np.zeros([0,nspec+1],dtype=float)
                     flux_all = np.zeros([0,nspec],dtype=float)   
                     for iexp in range(data_vis['n_in_visit']):
                         data_exp = dataload_npz(data_path+str(iexp))
-                        cen_bins_all=np.append(cen_bins_all,[data_exp['cen_bins'][iord_fit]],axis=0)     #dimension nexp x nspec
-                        edge_bins_all=np.append(edge_bins_all,[data_exp['edge_bins'][iord_fit]],axis=0)  #dimension nexp x nspec+1
-                        flux_all=np.append(flux_all,[data_exp['flux'][iord_fit]],axis=0)                 #dimension nexp x nspec
-                    if (data_dic[key]['type'][inst]=='CCF'):
-                        RVcen_bins = cen_bins_all
-                        RVedge_bins = edge_bins_all
-                    else:
-                        RVcen_bins = c_light*((cen_bins_all/data_dic[key]['line_trans']) - 1.)
-                        RVedge_bins = c_light*((edge_bins_all/data_dic[key]['line_trans']) - 1.)
+                        cen_bins_all=np.append(cen_bins_all,[data_exp['cen_bins'][iord_sel]],axis=0)     #dimension nexp x nspec
+                        edge_bins_all=np.append(edge_bins_all,[data_exp['edge_bins'][iord_sel]],axis=0)  #dimension nexp x nspec+1
+                        flux_all=np.append(flux_all,[data_exp['flux'][iord_sel]],axis=0)                 #dimension nexp x nspec
+  
+                    #Range space
+                    #    - continuum is defined in RV space if data is in CCF mode, and in wavelength space if data is in spectral mode
+                    #    - fit range is defined in RV space if data is in CCF mode or in spectral mode and fitted with an analytical model on a single line, and in wavelength space otherwise
+                    if autom_fit:
+                        if ('spec' in data_dic[key]['type'][inst]) and (data_dic[key]['fit_prof']['mode']=='ana'):
+                            if data_dic[key]['fit_prof']['line_trans'] is None:stop('Define "line_trans" to fit spectral data with "mode = ana"')
+                            spec2rv = True
+                        else:spec2rv = False     
+                    else:spec2rv = False
+                    
+                    #Condition to define line-specific boundaries
+                    if autom_fit or (autom_cont and ((data_dic[key]['type'][inst]=='CCF') or spec2rv)):
+                        if (data_dic[key]['type'][inst]=='CCF'):
+                            RVcen_bins = cen_bins_all
+                            RVedge_bins = edge_bins_all
+                        else:
+                            RVcen_bins = c_light*((cen_bins_all/data_dic[key]['line_trans']) - 1.)
+                            RVedge_bins = c_light*((edge_bins_all/data_dic[key]['line_trans']) - 1.)
 
-                    #Estimate of systemic velocity for disk-integrated profiles
-                    #    - as median of the RV corresponding to the CCF minima over the visit
-                    #    - intrinsic and atmospheric profiles are fitted in the star rest frame
-                    cond_check = (RVcen_bins[0]>-500.) & (RVcen_bins[0]<500.)
-                    idx_min_all = np.argmin(flux_all[:,cond_check],axis=1)    #dimension nexp (index of minimum over nspec_check for each exposure)
-                    sys_RV = np.nanmedian(np.take_along_axis(RVcen_bins[:,cond_check],idx_min_all[:,None],axis=1))
-                    if key=='DI':cen_RV = sys_RV
-                    else:cen_RV = 0.
-
-                    #Minimum/maximum velocity of the CCF range in the input rest frame
-                    min_bin = np.max(np.nanmin(RVedge_bins))
-                    max_bin = np.min(np.nanmax(RVedge_bins)) 
-                    if key in ['Intr','Atm']:
-                        min_bin-=sys_RV
-                        max_bin-=sys_RV
-                       
-                    #Excluded range for disk-integrated and intrinsic profiles 
-                    #    - we assume +-3 vsini accounts for both rotational and thermal broadening of DI profiles, and for rotational shift + thermal broadening
-                    if key in ['DI','Intr']:
-                        min_exc = np.max([cen_RV - 3.*system_param['star']['vsini'] -5.,min_bin+5.])
-                        max_exc = np.min([cen_RV + 3.*system_param['star']['vsini'] +5.,max_bin-5.])
-
-                    #Excluded range for atmospheric profiles
-                    #    - we account for a width of 20km/s over the range of studied orbital velocities, for all planets considered for atmospheric signals
-                    elif key=='Atm':
-                        min_pl_RV = 1e100
-                        max_pl_RV = -1e100
-                        if data_dic['Atm']['pl_atm_sign']=='Absorption':idx_atm = gen_dic[inst][vis]['idx_in']                                 
-                        elif data_dic['Atm']['pl_atm_sign']=='Emission': idx_atm = data_dic[inst][vis]['n_in_tr']
-                        for pl_atm in data_dic[inst][vis]['pl_with_atm']:
-                            min_pl_RV = np.min([min_pl_RV,np.min(coord_dic[inst][vis][pl_atm]['rv_pl'][idx_atm])])
-                            max_pl_RV = np.max([max_pl_RV,np.max(coord_dic[inst][vis][pl_atm]['rv_pl'][idx_atm])])  
-                        min_exc = np.min(min_pl_RV -20.,min_bin+5.)
-                        max_exc = np.max(max_pl_RV +20.,max_bin-5.)    
-
-                    #Outer boundaries of continuum and fitted ranges
-                    min_contfit = np.max([min_bin, min_exc - 50.])
-                    max_contfit = np.min([max_bin, max_exc + 50.])
-
-                    #RV/wave conversion
-                    if (data_dic[key]['type'][inst]!='CCF'):
-                        min_contfit = data_dic[key]['line_trans']*(1.+(min_contfit/c_light))
-                        max_contfit = data_dic[key]['line_trans']*(1.+(max_contfit/c_light))
-                        min_exc = data_dic[key]['line_trans']*(1.+(min_exc/c_light))
-                        max_exc = data_dic[key]['line_trans']*(1.+(max_exc/c_light))
+                        #Estimate of systemic velocity for disk-integrated profiles
+                        #    - as median of the RV corresponding to the CCF minima over the visit
+                        #    - differential, intrinsic and atmospheric profiles are analyzed in the star rest frame
+                        cond_check = (RVcen_bins[0]>-500.) & (RVcen_bins[0]<500.)
+                        idx_min_all = np.argmin(flux_all[:,cond_check],axis=1)    #dimension nexp (index of minimum over nspec_check for each exposure)
+                        sys_RV = np.nanmedian(np.take_along_axis(RVcen_bins[:,cond_check],idx_min_all[:,None],axis=1))
+                        if key=='DI':cen_RV = sys_RV
+                        else:cen_RV = 0.
+    
+                        #Minimum/maximum velocity of the CCF range in the input rest frame
+                        min_bin = np.max(np.nanmin(RVedge_bins))
+                        max_bin = np.min(np.nanmax(RVedge_bins)) 
+                        if key in ['Diff','Intr','Atm']:
+                            min_bin-=sys_RV
+                            max_bin-=sys_RV
+                           
+                        #Excluded range for disk-integrated, differential, and intrinsic profiles 
+                        #    - we assume +-3 vsini accounts for both rotational and thermal broadening of DI profiles, and for rotational shift + thermal broadening
+                        if key in ['DI','Diff','Intr']:
+                            min_exc = np.max([cen_RV - 3.*system_param['star']['vsini'] -5.,min_bin+5.])
+                            max_exc = np.min([cen_RV + 3.*system_param['star']['vsini'] +5.,max_bin-5.])
+    
+                        #Excluded planet range
+                        #    - we account for a width of 20km/s over the range of studied orbital velocities, for all planets considered for atmospheric signals
+                        if (key=='Atm') or (len(data_dic['Atm']['no_plrange'])>0):
+                            min_pl_RV = 1e100
+                            max_pl_RV = -1e100
+                            if data_dic['Atm']['pl_atm_sign']=='Absorption':idx_atm = gen_dic[inst][vis]['idx_in']                                 
+                            elif data_dic['Atm']['pl_atm_sign']=='Emission': idx_atm = data_dic[inst][vis]['n_in_tr']
+                            for pl_atm in data_dic[inst][vis]['pl_with_atm']:
+                                min_pl_RV = np.min([min_pl_RV,np.min(coord_dic[inst][vis][pl_atm]['rv_pl'][idx_atm])])
+                                max_pl_RV = np.max([max_pl_RV,np.max(coord_dic[inst][vis][pl_atm]['rv_pl'][idx_atm])])                          
+                            
+                            #Exclusion in atmospheric profiles
+                            if key=='Atm':
+                                min_exc = np.min(min_pl_RV -20.,min_bin+5.)
+                                max_exc = np.max(max_pl_RV +20.,max_bin-5.)   
+                                
+                            else:
+                            
+                                #Exclusion in other profiles
+                                if (key=='DI') and ('DI' in key_loc for key_loc in data_dic['Atm']['no_plrange']):
+                                    min_exc = np.min((min_exc,min_pl_RV -20.+sys_RV,min_bin+5.))
+                                    max_exc = np.max((max_exc,max_pl_RV +20.+sys_RV,max_bin-5.))   
+                                    
+                                elif ((key=='Diff') and ('Diff' in key_loc for key_loc in data_dic['Atm']['no_plrange'])) or ((key=='Intr') and ('Intr' in key_loc for key_loc in data_dic['Atm']['no_plrange'])):
+                                    min_exc = np.min((min_exc,min_pl_RV -20.,min_bin+5.))
+                                    max_exc = np.max((max_exc,max_pl_RV +20.,max_bin-5.))                                   
+                            
+                        #Outer boundaries of continuum and fitted ranges in RV space
+                        min_contfit = np.max([min_bin, min_exc - 50.])
+                        max_contfit = np.min([max_bin, max_exc + 50.])                            
 
                     #Continuum range
+                    #    - in spectral mode, the continuum is set to the full line range if a fit is requested in spectral mode with an analytical model
                     if autom_cont:
-                        data_dic[key]['cont_range'][inst] = {0:[[min_contfit,min_exc],[max_exc,max_contfit]]}
+                        if (data_dic[key]['type'][inst]=='CCF'):
+                            data_dic[key]['cont_range'][inst] = {iord_sel:[[min_contfit,min_exc],[max_exc,max_contfit]]}
+                        else:
+                            if spec2rv:
+                                min_contrange = data_dic[key]['line_trans']*gen_specdopshift(min_contfit)  
+                                min_exrange = data_dic[key]['line_trans']*gen_specdopshift(min_exc)  
+                                max_contrange = data_dic[key]['line_trans']*gen_specdopshift(max_contfit)  
+                                max_exrange = data_dic[key]['line_trans']*gen_specdopshift(max_exc)  
+                                data_dic[key]['cont_range'][inst] = {iord_sel:[[min_contrange,min_exrange],[max_exrange,max_contrange]]}
+                            else:
+                                data_dic[key]['cont_range'][inst] = {iord_sel:[[edge_bins_all[0],edge_bins_all[-1]]]}
              
                     #Fitting range
                     if autom_fit:      
                         if inst not in data_dic[key]['fit_range']:data_dic[key]['fit_range'][inst]={}
-                        data_dic[key]['fit_range'][inst][vis] = [[min_contfit,max_contfit]]
+                        if spec2rv:                        
+                            min_fitrange = data_dic[key]['line_trans']*gen_specdopshift(min_contfit)  
+                            max_fitrange = data_dic[key]['line_trans']*gen_specdopshift(max_contfit)  
+                        else:
+                            min_fitrange = min_contfit
+                            max_fitrange = max_contfit
+                        data_dic[key]['fit_range'][inst][vis] = [[min_fitrange,max_fitrange]]
 
         #------------------------------------------------------------------------------------
 
@@ -3199,14 +3330,14 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         print('           '+str(data_vis['n_in_visit'])+' exposures')  
         if ('in' in data_dic['DI']['idx_ecl']) and (inst in data_dic['DI']['idx_ecl']['in']) and (vis in data_dic['DI']['idx_ecl']['in'][inst]):
             for iexp in data_dic['DI']['idx_ecl']['in'][inst][vis]:
-                for pl_loc in data_vis['transit_pl']:coord_vis[pl_loc]['ecl'][iexp] = 3*np.sign(coord_vis[pl_loc]['ecl'][iexp]) 
+                for pl_loc in data_vis['studied_pl']:coord_vis[pl_loc]['ecl'][iexp] = 3*np.sign(coord_vis[pl_loc]['ecl'][iexp]) 
         if ('out' in data_dic['DI']['idx_ecl']) and (inst in data_dic['DI']['idx_ecl']['out']) and (vis in data_dic['DI']['idx_ecl']['out'][inst]):
             for iexp in data_dic['DI']['idx_ecl']['out'][inst][vis]:
-                for pl_loc in data_vis['transit_pl']:coord_vis[pl_loc]['ecl'][iexp] = 1*np.sign(coord_vis[pl_loc]['ecl'][iexp]) 
+                for pl_loc in data_vis['studied_pl']:coord_vis[pl_loc]['ecl'][iexp] = 1*np.sign(coord_vis[pl_loc]['ecl'][iexp]) 
         cond_in = np.zeros(data_vis['n_in_visit'],dtype=bool)
         cond_pre = np.ones(data_vis['n_in_visit'],dtype=bool) 
         cond_post = np.ones(data_vis['n_in_visit'],dtype=bool) 
-        for pl_loc in data_vis['transit_pl']:
+        for pl_loc in data_vis['studied_pl']:
             cond_in|=(np.abs(coord_vis[pl_loc]['ecl'])>1) 
             cond_pre&=(coord_vis[pl_loc]['ecl']==-1.)
             cond_post&=(coord_vis[pl_loc]['ecl']==1.)
@@ -3285,7 +3416,7 @@ def init_vis(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic):
     #Dictionaries initialization
     data_vis=data_dic[inst][vis]
     coord_vis = coord_dic[inst][vis] 
-    data_dic['Res'][inst][vis]={}
+    data_dic['Diff'][inst][vis]={}
     gen_vis = gen_dic[inst][vis] 
     data_dic['Intr'][inst][vis]={}    
 
@@ -3330,7 +3461,7 @@ def init_vis(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic):
         #    - if input data is in spectral mode, ranges are defined in both spectral and rv space so that they are available in case of CCF conversion
         #      if input data is in CCF mode, ranges are only defined in rv  
         plrange_star={}
-        for pl_loc in data_vis['transit_pl']:
+        for pl_loc in data_vis['studied_pl']:
             
             #Planetary range shifted from planet (source) to star (receiver) rest frame
             #    - we define the range excluded in the planet rest frame as rv(atom/pl), where we consider an absorbing or emitting atom in the planet as the source
@@ -3387,12 +3518,12 @@ def update_inst(data_dic,inst,gen_dic):
     elif gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:
         if gen_dic['spec_1D']:
             data_inst['type']='spec1D' 
-            data_inst['mean_gdet'] = False     
+            data_inst['cal_weight'] = False     
             data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com'+com_star 
         elif gen_dic['CCF_from_sp']:
             data_inst['type']='CCF'                 
             data_inst['tell_sp'] = False 
-            data_inst['mean_gdet'] = False     
+            data_inst['cal_weight'] = False     
             data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_com'+com_star 
             if ('chrom' in data_inst['system_prop']):
                 data_inst['system_prop']['chrom_mode'] = 'achrom'

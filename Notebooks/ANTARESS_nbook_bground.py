@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Oct 19 22:39:27 2023
-
-@author: V. Bourrier
-"""
 from copy import deepcopy
 import numpy as np
 import os as os_system
@@ -18,13 +13,8 @@ def init(nbook_type):
         'settings' : {'gen_dic':{'data_dir_list':{}},
                       'mock_dic':{'visit_def':{},'sysvel':{},'intr_prof':{},'flux_cont':{},'set_err':{}},
                       'data_dic':{'DI':{'sysvel':{}},
-<<<<<<< HEAD
-                                  'Intr':{},
-                                  'Res':{}},
-=======
-                                  'Intr':{},'Res':{}},
->>>>>>> main
-                      'glob_fit_dic':{'IntrProp':{},'IntrProf':{},'ResProf':{}},
+                                  'Intr':{},'Diff':{}},
+                      'glob_fit_dic':{'IntrProp':{},'IntrProf':{},'DiffProf':{}},
                       'plot_dic':{}
                      },
         #notebook inputs related to system properties
@@ -194,9 +184,9 @@ def DImast_weight(input_nbook):
     input_nbook['settings']['gen_dic']['DImast_weight']=True
     return None
 
-def extract_res(input_nbook):
-    input_nbook['settings']['gen_dic']['res_data']=True
-    input_nbook['settings']['data_dic']['Res']['extract_in'] = False
+def extract_diff(input_nbook):
+    input_nbook['settings']['gen_dic']['diff_data']=True
+    input_nbook['settings']['data_dic']['Diff']['extract_in'] = False
     return None
 
 def extract_intr(input_nbook):
@@ -301,37 +291,21 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
         elif (ana_type=='Prof'):input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'][prop_name]=fit_prop_dic
         if prop in input_nbook['par']['priors']:
             input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['priors'][prop_name] = {'mod':'uf','low':bd_prior[0],'high':bd_prior[1]}
-                                               
-        if data_type == 'Res':
+            
+        if data_type == 'Diff':
             #Defining continuum range
             low_low = input_nbook['settings']['mock_dic']['DI_table']['x_start']
             low_high = input_nbook['settings']['mock_dic']['DI_table']['x_start'] + 5*input_nbook['settings']['mock_dic']['DI_table']['dx']
             high_low = input_nbook['settings']['mock_dic']['DI_table']['x_end'] - 5*input_nbook['settings']['mock_dic']['DI_table']['dx']
             high_high = input_nbook['settings']['mock_dic']['DI_table']['x_end']
             input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['cont_range'] = {input_nbook['par']['instrument']:{0:[[low_low,low_high],[high_low,high_high]]}}
-            
-<<<<<<< HEAD
-=======
-        if data_type == 'Res':
-            #Defining continuum range
-            low_low = input_nbook['settings']['mock_dic']['DI_table']['x_start']
-            low_high = input_nbook['settings']['mock_dic']['DI_table']['x_start'] + 5*input_nbook['settings']['mock_dic']['DI_table']['dx']
-            high_low = input_nbook['settings']['mock_dic']['DI_table']['x_end'] - 5*input_nbook['settings']['mock_dic']['DI_table']['dx']
-            high_high = input_nbook['settings']['mock_dic']['DI_table']['x_end']
-            input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['cont_range'] = {input_nbook['par']['instrument']:{0:[[low_low,low_high],[high_low,high_high]]}}
-            
->>>>>>> main
+
             #Defining fitting range
             input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_range'] = {input_nbook['par']['instrument']:{input_nbook['par']['night']:[[low_high,high_low]]}}
             
             #Defining optimization level
             input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['Opt_Lvl'] = 3
-<<<<<<< HEAD
 
-
-=======
-            
->>>>>>> main
     if ('priors' in input_nbook['par']):input_nbook['par'].pop('priors')
     
     #Walkers
@@ -354,11 +328,8 @@ def diff_prof_corr(input_nbook):
     input_nbook['settings']['gen_dic']['calc_diff_data_corr']=True
     input_nbook['par']['diff_prof_corr'] = True
     return None
-<<<<<<< HEAD
-=======
 
 
->>>>>>> main
 
 '''
 Plot functions
@@ -437,21 +408,13 @@ def plot_spot(input_nbook):
     input_nbook['plots']['system_view']['mock_spot_prop'] = True
     input_nbook['plots']['system_view']['n_spcell'] = 101
     return None
-<<<<<<< HEAD
-    
-=======
 
->>>>>>> main
 def plot_map(input_nbook,data_type):
 
     #Activate plot related to intrinsic CCF model only if model was calculated
     def_map = True
     if data_type in ['Intr_prof_est','Intr_prof_res'] and (not input_nbook['par']['loc_prof_corr']):def_map=False
-    if data_type in ['Res_prof_est','Res_prof_res'] and (not input_nbook['par']['diff_prof_corr']):def_map=False
-<<<<<<< HEAD
-
-=======
->>>>>>> main
+    if data_type in ['Diff_prof_est','Diff_prof_res'] and (not input_nbook['par']['diff_prof_corr']):def_map=False
     if def_map:
         input_nbook['settings']['plot_dic']['map_'+data_type] = 'png'
         input_nbook['plots']['map_'+data_type] = {}

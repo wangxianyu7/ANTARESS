@@ -45,7 +45,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
             #HITRAN properties
             static_model_path = 'ANTARESS_corrections/Telluric_processing/Static_model/'
             tell_mol_dic={}
-            for key in ['range_mol_prop','fit_range_mol_prop','lines_fit_molecules','qt_molec','temp_offset_molecules','iwv_value_molecules','temp_bool_molecules' ]:tell_mol_dic[key] = {}
+            for key in ['range_mol_prop','fit_range_mol_prop','lines_fit_molecules','qt_molec','temp_offset_molecules','isv_value_molecules','temp_bool_molecules' ]:tell_mol_dic[key] = {}
             for molec in gen_dic['tell_species']:
 
                 #Full line list for considered species 
@@ -93,7 +93,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
                 'CO2':20.,
                 'O2':20.}
                     
-            tell_mol_dic['iwv_value_molecules']={# [cm]
+            tell_mol_dic['isv_value_molecules']={# [cm]
                 'H2O':None,
                 'CH4':2163379.,
                 'CO2':951782.,
@@ -176,7 +176,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
             #Processing all exposures    
             proc_DI_data_paths_new = gen_dic['save_data_dir']+'Corr_data/Tell/'+inst+'_'+vis+'_'
             iexp_all = range(data_vis['n_in_visit'])
-            common_args = (data_vis['proc_DI_data_paths'],iexp_corr_list,inst,vis,gen_dic['tell_range_corr'],iord_corr_list,gen_dic['calc_tell_mode'],fixed_args,gen_dic['tell_species'],tell_mol_dic,gen_dic['sp_frame'],gen_dic['resamp_mode'],data_inst[vis]['dim_exp'],plot_dic['tell_CCF'],plot_dic['tell_prop'],proc_DI_data_paths_new,data_inst[vis]['mean_gdet_DI_data_paths'])
+            common_args = (data_vis['proc_DI_data_paths'],iexp_corr_list,inst,vis,gen_dic['tell_range_corr'],iord_corr_list,gen_dic['calc_tell_mode'],fixed_args,gen_dic['tell_species'],tell_mol_dic,gen_dic['sp_frame'],gen_dic['resamp_mode'],data_inst[vis]['dim_exp'],plot_dic['tell_CCF'],plot_dic['tell_prop'],proc_DI_data_paths_new,data_inst[vis]['mean_gcal_DI_data_paths'])
             if gen_dic['tell_nthreads']>1:MAIN_multithread(corr_tell_vis,gen_dic['tell_nthreads'],data_vis['n_in_visit'],[iexp_all,data_prop_vis['AM'],data_prop_vis['IWV_AM'],data_prop_vis['TEMP'],data_prop_vis['PRESS'],data_prop_vis['BERV']],common_args)                           
             else:corr_tell_vis(iexp_all,data_prop_vis['AM'],data_prop_vis['IWV_AM'],data_prop_vis['TEMP'],data_prop_vis['PRESS'],data_prop_vis['BERV'],*common_args)  
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
@@ -195,7 +195,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
     return None   
 
 
-def corr_tell_vis(iexp_group,airmass_group,IWV_airmass_group,temp_group,press_group,BERV_group,proc_DI_data_paths,iexp_corr_list,inst,vis,tell_range_corr,iord_corr_list,calc_tell_mode,fixed_args,tell_species,tell_mol_dic,sp_frame,resamp_mode,dim_exp,tell_CCF,tell_prop,proc_DI_data_paths_new,mean_gdet_DI_data_paths):
+def corr_tell_vis(iexp_group,airmass_group,IWV_airmass_group,temp_group,press_group,BERV_group,proc_DI_data_paths,iexp_corr_list,inst,vis,tell_range_corr,iord_corr_list,calc_tell_mode,fixed_args,tell_species,tell_mol_dic,sp_frame,resamp_mode,dim_exp,tell_CCF,tell_prop,proc_DI_data_paths_new,mean_gcal_DI_data_paths):
     """**Telluric correction per visit.**
 
     Applies the chosen telluric correction in a given visit.
@@ -213,9 +213,9 @@ def corr_tell_vis(iexp_group,airmass_group,IWV_airmass_group,temp_group,press_gr
             edge_bins = deepcopy(data_exp['edge_bins'])
             cen_bins = deepcopy(data_exp['cen_bins'])
             
-            #Retrieve calibration profile
+            #Retrieve scaling calibration profile
             #    - defined in the same frame and over the same table as the exposure spectrum
-            mean_gdet_exp = dataload_npz(mean_gdet_DI_data_paths[iexp])['mean_gdet'] 
+            mean_gcal_exp = dataload_npz(mean_gcal_DI_data_paths[iexp])['mean_gcal'] 
 
             #Define correction range
             cond_corr = data_exp['cond_def']
@@ -232,7 +232,7 @@ def corr_tell_vis(iexp_group,airmass_group,IWV_airmass_group,temp_group,press_gr
             #    - defined over the exposure spectral table, in the telluric rest frame and vacuum
             #      since the pixels of the shifted spectral table still match the original exposure ones, no conversion needs to be applied to the final telluric spectrum 
             if calc_tell_mode=='autom': 
-                tell_exp,data_exp['flux'],data_exp['cov'],outputs = Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,cen_bins,data_exp['flux'],data_exp['cov'],data_exp['cond_def'],mean_gdet_exp,inst,tell_species,tell_mol_dic,sp_frame,resamp_mode,dim_exp,iord_corr_exp,tell_CCF,tell_prop,fixed_args)
+                tell_exp,data_exp['flux'],data_exp['cov'],outputs = Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,cen_bins,data_exp['flux'],data_exp['cov'],data_exp['cond_def'],mean_gcal_exp,inst,tell_species,tell_mol_dic,sp_frame,resamp_mode,dim_exp,iord_corr_exp,tell_CCF,tell_prop,fixed_args)
         
                 #Save correction data for plotting purposes
                 dic_sav = {}  
@@ -259,7 +259,7 @@ def corr_tell_vis(iexp_group,airmass_group,IWV_airmass_group,temp_group,press_gr
     return None
 
 
-def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,cen_bins,flux_exp,cov_exp,cond_def_exp,mean_gdet_exp,inst,tell_species,tell_mol_dic,sp_frame,resamp_mode,dim_exp,iord_corr_list,tell_CCF,tell_prop,fixed_args):
+def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,cen_bins,flux_exp,cov_exp,cond_def_exp,mean_gcal_exp,inst,tell_species,tell_mol_dic,sp_frame,resamp_mode,dim_exp,iord_corr_list,tell_CCF,tell_prop,fixed_args):
     """**ATC function.**
     
     Adaptation of the Automatic Telluric Correction routine by R. Allart.
@@ -293,7 +293,7 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
     fixed_args['flux'] =  flux_exp
     fixed_args['cov'] =  cov_exp
     fixed_args['cond_def'] = cond_def_exp
-    fixed_args['mean_gdet'] =  mean_gdet_exp
+    fixed_args['mean_gcal'] =  mean_gcal_exp
     fixed_args['ccf_corr'] = False
     
     #Store for plotting
@@ -316,8 +316,8 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
         
         #Guess for pressure and integrated species vapour toward zenith
         if molec=='H2O':
-            if np.isnan(IWV_airmass_exp):IWV_zenith_exp = 0.1
-            else:IWV_zenith_exp = IWV_airmass_exp/ 10.0 # /10. to put in cm
+            if np.isnan(IWV_airmass_exp):ISV_zenith_exp = 0.1
+            else:ISV_zenith_exp = IWV_airmass_exp/ 10.0 # /10. to put in cm
             if np.isnan(press_exp):
                 press_guess = 0.5
                 press_max = 10.
@@ -327,7 +327,7 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
 
         #Other molecules
         else:
-            IWV_zenith_exp = tell_mol_dic['iwv_value_molecules'][molec]               
+            ISV_zenith_exp = tell_mol_dic['isv_value_molecules'][molec]               
             if np.isnan(press_exp):
                 press_guess = 0.5
                 press_max = 10.
@@ -336,14 +336,14 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
                 press_max = 10.*press_exp
         
         #Integrated species vapour along the LOS
-        if IWV_zenith_exp==0.:IWV_zenith_exp = 0.1
-        params.add('IWV_LOS',   value= IWV_zenith_exp*airmass_exp,  min=0., vary=True  )            
+        if ISV_zenith_exp==0.:ISV_zenith_exp = 0.1
+        params.add('ISV_LOS',   value= ISV_zenith_exp*airmass_exp,  min=0., vary=True  )            
         
         #Pressure
         #    - this parameter represents an average pressure over the layers occupied by the species
         #    - pressure should always be smaller than the pressure measured at the facility at ground level, but for safety we take twice the value
         if press_guess==0.:press_guess = 0.5
-        params.add('Pressure_ground', value= press_guess,     min=0., max=press_max,  vary=True  )
+        params.add('Pressure_LOS', value= press_guess,     min=0., max=press_max,  vary=True  )
             
         #Overwrite fit properties
         if molec in fixed_args['tell_mod_prop']:
@@ -562,7 +562,7 @@ def init_tell_molec(tell_species,params_molec,range_mol_prop,qt_molec,M_mol_mole
     nu_scaled_dic = {}
     for molec in tell_species:
         temp        = params_molec[molec]['Temperature'].value
-        P_0         = params_molec[molec]['Pressure_ground'].value
+        P_0         = params_molec[molec]['Pressure_LOS'].value
         mol_prop = range_mol_prop[molec]
         
         #Lines wavenumber [cm-1]
@@ -643,8 +643,8 @@ def calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_
                 intensity_i = line_profile_i * intensity_scaled_mod_ord[iline] 
           
                 #Co-addition to optical depth spectrum
-                #    - the column density is defined as IWV_LOS * Nx_molec, where Nx_molec is the species number density (molec cm^-3) in Earth atmosphere
-                tell_op_mod[idx_bins_li]+=intensity_i*params[molec]['IWV_LOS'] * Nx_molec[molec]
+                #    - the column density is defined as ISV_LOS * Nx_molec, where Nx_molec is the species number density (molec cm^-3) in Earth atmosphere
+                tell_op_mod[idx_bins_li]+=intensity_i*params[molec]['ISV_LOS'] * Nx_molec[molec]
 
     #end of molecules
 
@@ -872,13 +872,13 @@ def CCF_telluric_model(params,velccf,args=None):
             #CCF linelist
             #    - CCF linelist is provided at rest, and must be corrected for pressure shift (see init_tell_molec())
             CCF_line_nu_rest = 1e8/args['CCF_lines'] 
-            CCF_line_nu_scaled = CCF_line_nu_rest + args['CCF_deltas'] * param_molecules[args['molec']]['Pressure_ground'].value
+            CCF_line_nu_scaled = CCF_line_nu_rest + args['CCF_deltas'] * param_molecules[args['molec']]['Pressure_LOS'].value
             CCF_line_wav_scaled = 1e8/CCF_line_nu_scaled
 
             #Keep lines fully within spectrum range without nan
             flux_ord = args['flux'][iord,idx_def_ord[0]:idx_def_ord[-1]+1]        
             cov_ord = args['cov'][iord][:,idx_def_ord[0]:idx_def_ord[-1]+1] 
-            gdet_ord = args['mean_gdet'][iord,idx_def_ord[0]:idx_def_ord[-1]+1] 
+            gcal_ord = args['mean_gcal'][iord,idx_def_ord[0]:idx_def_ord[-1]+1] 
             cond_def_ord = args['cond_def'][iord,idx_def_ord[0]:idx_def_ord[-1]+1]        
             idx_maskL_kept = check_CCF_mask_lines(1,np.array([edge_bins_ord]),np.array([cond_def_ord]),CCF_line_wav_scaled,args['edge_velccf'])
             if len(idx_maskL_kept)>0:
@@ -891,7 +891,7 @@ def CCF_telluric_model(params,velccf,args=None):
                 #Compute CCFs
                 #    - multiprocessing not efficient for these calculations
                 edge_velccf_fit = args['edge_velccf'][args['idx_mod'][0]:args['idx_mod'][-1]+2]
-                ccf_uncorr_ord,    cov_ccf_uncorr_ord      = new_compute_CCF(edge_bins_ord,flux_ord,cov_ord,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gdet_ord)[0:2]
+                ccf_uncorr_ord,    cov_ccf_uncorr_ord      = new_compute_CCF(edge_bins_ord,flux_ord,cov_ord,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gcal_ord)[0:2]
                 cov_uncorr_ord[isub_ord] = cov_ccf_uncorr_ord 
                 nd_cov_uncorr_ord[isub_ord] = np.shape(cov_ccf_uncorr_ord)[0]
                 ccf_model_conv_ord = new_compute_CCF(edge_bins_mod,telluric_spectrum_conv,None,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1)[0]
@@ -919,7 +919,7 @@ def CCF_telluric_model(params,velccf,args=None):
                         ord_coadd_eff_corr+=[isub_ord]
                         sij_ccf       = np.ones(len(idx_maskL_kept))
                         wave_line_ccf = CCF_line_wav_scaled[idx_maskL_kept]
-                        ccf_corr_ord = new_compute_CCF(edge_bins_ord,flux_corr_ord,None,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gdet_ord)[0]
+                        ccf_corr_ord = new_compute_CCF(edge_bins_ord,flux_corr_ord,None,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gcal_ord)[0]
                         norm_cont_corr+=np.nanmedian(ccf_corr_ord[cond_cont_ccf])
                         ccf_corr+=ccf_corr_ord
 

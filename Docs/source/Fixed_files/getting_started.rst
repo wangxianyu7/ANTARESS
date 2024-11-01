@@ -45,13 +45,13 @@ Follow these steps to run ``ANTARESS``:
 
 1. Create a working directory and copy the following configuration files inside:   
 
-- `ANTARESS_systems.py <https://gitlab.unige.ch/bourrier/antaress/-/blob/main/src/antaress/ANTARESS_launch/ANTARESS_systems.py>`_: to define the system properties for the host star and its planets. 
+- `ANTARESS_systems.py <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/src/antaress/ANTARESS_launch/ANTARESS_systems.py>`_: to define the system properties for the host star and its planets. 
   The default file contains a mock system as example, but you will certainly want to define your target one !  
 
-- `ANTARESS_settings.py <https://gitlab.unige.ch/bourrier/antaress/-/blob/main/src/antaress/ANTARESS_launch/ANTARESS_settings.py>`_: to define your input datasets, and the modules to process and analyze them. 
+- `ANTARESS_settings.py <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/src/antaress/ANTARESS_launch/ANTARESS_settings.py>`_: to define your input datasets, and the modules to process and analyze them. 
   Although the default file allows running the workflow with minimal intervention, any detailed analysis will require that you define your own settings.
 
-- `ANTARESS_plot_settings.py <https://gitlab.unige.ch/bourrier/antaress/-/blob/main/src/antaress/ANTARESS_plots/ANTARESS_plot_settings.py>`_: to define the settings controlling the plots from the workflow (see below).
+- `ANTARESS_plot_settings.py <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/src/antaress/ANTARESS_plots/ANTARESS_plot_settings.py>`_: to define the settings controlling the plots from the workflow (see below).
 
 2. Move to the working directory and run the workflow from terminal with the command::
 

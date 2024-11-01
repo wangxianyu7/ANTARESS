@@ -30,7 +30,7 @@ def init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,mode,dir_save,data_d
         data_type = data_type_gen
         if data_type_gen=='Intr':
             iexp_conv = list(gen_dic[inst][vis]['idx_out'])+list(gen_dic[inst][vis]['idx_in'][prop_dic[inst][vis]['idx_def']])    #Global indexes
-            data_type_key = ['Res','Intr']
+            data_type_key = ['Diff','Intr']
             print('   > Converting OT differential and intrinsic spectra into '+txt_print)
         else:iexp_conv = range(data_dic[inst][vis]['n_in_visit'])    #Global indexes
     if data_type_gen in ['DI','Atm']:  
@@ -81,13 +81,13 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
         ord_coadd = gen_dic[inst]['orders4ccf'] 
         nord_coadd = len(ord_coadd)
 
-        #Calibration profile
+        #Scaling calibration profile
         #    - to be calculated on the common table, which is defined in the input rest frame if non-aligned, disk-integrated spectra are cross-correlated or in the star rest frame otherwise
         #    - if alignment in the star rest frame was not applied, the common star table points toward the common input table
-        if data_vis['mean_gdet']:
+        if data_vis['type']=='spec2D':
             data_com = dataload_npz(data_vis['proc_com_star_data_paths'])
-            mean_gdet_com = np.zeros([nord_coadd,data_com['dim_exp'][1]],dtype=float)
-        else:gdet_ord=None
+            mean_gcal_com = np.zeros([nord_coadd,data_com['dim_exp'][1]],dtype=float)
+        else:gcal_ord=None
     
         #Upload data from all exposures 
         if flux_sc:data_scaling_all={}
@@ -102,7 +102,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
             iexp_eff = deepcopy(iexp)     
             if (gen=='Intr'):
                 if (iexp in gen_vis['idx_in']):iexp_eff = gen_vis['idx_exp2in'][iexp]    
-                else:gen = 'Res'
+                else:gen = 'Diff'
             data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
          
             #Check that planetary ranges were not yet excluded
@@ -130,18 +130,18 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
             #Mean calibration profile over processed exposures
             #    - due to the various shifts of the processed spectra from the input rest frame, calibration profiles are not equivalent for a given line between exposure
             #      to maintain the relative flux balance between lines when computing CCFs, we calculate a common calibration profile to all processes exposures
-            if data_vis['mean_gdet']:
-                mean_gdet_exp = dataload_npz(data_vis['mean_gdet_'+gen+'_data_paths'][iexp_eff])['mean_gdet'] 
+            if gcal_ord is not None:
+                mean_gcal_exp = dataload_npz(data_vis['mean_gcal_'+gen+'_data_paths'][iexp_eff])['mean_gcal'] 
                 for isub_ord,iord in enumerate(ord_coadd):
-                    mean_gdet_com_ord=bind.resampling(data_com['edge_bins'][iord], data_proc['edge_bins'][iexp_sub,isub_ord],mean_gdet_exp[iord], kind=gen_dic['resamp_mode'])/n_exp 
+                    mean_gcal_com_ord=bind.resampling(data_com['edge_bins'][iord], data_proc['edge_bins'][iexp_sub,isub_ord],mean_gcal_exp[iord], kind=gen_dic['resamp_mode'])/n_exp 
                     
                     #Filling-in undefined edges
-                    idx_def_loc = np_where1D(~np.isnan(mean_gdet_com_ord))
-                    mean_gdet_com_ord[0:idx_def_loc[0]+1]=mean_gdet_com_ord[idx_def_loc[0]]
-                    mean_gdet_com_ord[idx_def_loc[-1]:]=mean_gdet_com_ord[idx_def_loc[-1]]
+                    idx_def_loc = np_where1D(~np.isnan(mean_gcal_com_ord))
+                    mean_gcal_com_ord[0:idx_def_loc[0]+1]=mean_gcal_com_ord[idx_def_loc[0]]
+                    mean_gcal_com_ord[idx_def_loc[-1]:]=mean_gcal_com_ord[idx_def_loc[-1]]
                     
                     #Co-adding exposure contribution
-                    mean_gdet_com[isub_ord]+=mean_gdet_com_ord
+                    mean_gcal_com[isub_ord]+=mean_gcal_com_ord
                     
             #Upload weighing disk-integrated master 
             #    - the master always remains either defined on the common table, or on a specific table different from the table of its associated exposure
@@ -200,13 +200,13 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
             #    - parallelisation is disabled, as it is inefficient given the size of the tables to process
             if len(idx_maskL_kept)>0:
                 ord_coadd_eff+=[isub]
-                if data_vis['mean_gdet']:
-                    gdet_ord = bind.resampling(data_proc['edge_bins'][iexp_sub,isub],data_com['edge_bins'][iord],mean_gdet_com[isub], kind=gen_dic['resamp_mode'])  
-                    idx_def_loc = np_where1D(~np.isnan(gdet_ord))
-                    gdet_ord[0:idx_def_loc[0]+1]=gdet_ord[idx_def_loc[0]]
-                    gdet_ord[idx_def_loc[-1]:]=gdet_ord[idx_def_loc[-1]]
+                if gcal_ord is not None:
+                    gcal_ord = bind.resampling(data_proc['edge_bins'][iexp_sub,isub],data_com['edge_bins'][iord],mean_gcal_com[isub], kind=gen_dic['resamp_mode'])  
+                    idx_def_loc = np_where1D(~np.isnan(gcal_ord))
+                    gcal_ord[0:idx_def_loc[0]+1]=gcal_ord[idx_def_loc[0]]
+                    gcal_ord[idx_def_loc[-1]:]=gcal_ord[idx_def_loc[-1]]
                 for iexp_sub,iexp in enumerate(iexp_conv):                      
-                    flux_ord,cov_ord = new_compute_CCF(data_proc['edge_bins'][iexp_sub,isub],data_proc['flux'][iexp_sub,isub],data_proc['cov'][iexp_sub,isub],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gdet_ord)[0:2]
+                    flux_ord,cov_ord = new_compute_CCF(data_proc['edge_bins'][iexp_sub,isub],data_proc['flux'][iexp_sub,isub],data_proc['cov'][iexp_sub,isub],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gcal_ord)[0:2]
                     CCF_all[iexp_sub,0]+=flux_ord
                     cov_exp_ord[iexp_sub,isub] = cov_ord 
                     nd_cov_exp_ord[iexp_sub,isub] = np.shape(cov_ord)[0]
@@ -216,14 +216,14 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
                     #      loc_flux_scaling_CCF = X - CCF_LC
                     #       we thus calculate the CCF of 1 to get X and normalize the scaling profile
                     if flux_sc and (not data_scaling_all[iexp]['null_loc_flux_scaling']):                
-                        loc_flux_scaling_CCF_exp,_,norm_loc_flux_scaling_CCF_exp = new_compute_CCF(data_proc['edge_bins'][iexp_sub,isub],data_scaling_all[iexp]['loc_flux_scaling'](data_proc['cen_bins'][iexp_sub,isub]),None,gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gdet_ord)
+                        loc_flux_scaling_CCF_exp,_,norm_loc_flux_scaling_CCF_exp = new_compute_CCF(data_proc['edge_bins'][iexp_sub,isub],data_scaling_all[iexp]['loc_flux_scaling'](data_proc['cen_bins'][iexp_sub,isub]),None,gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gcal_ord)
                         loc_flux_scaling_CCF[iexp_sub] +=loc_flux_scaling_CCF_exp
                         norm_loc_flux_scaling_CCF[iexp_sub] += norm_loc_flux_scaling_CCF_exp
 
                     #Computing CCF of master disk-integrated spectrum
                     #    - so that it can be used in the weighing profiles
                     if data_type_gen in ['Intr','Atm']:
-                        flux_temp,cov_temp = new_compute_CCF(data_proc['edge_bins_ref'][iexp_sub,isub],data_proc['flux_ref'][iexp_sub,isub],data_proc['cov_ref'][iexp_sub,isub],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gdet_ord)[0:2]
+                        flux_temp,cov_temp = new_compute_CCF(data_proc['edge_bins_ref'][iexp_sub,isub],data_proc['flux_ref'][iexp_sub,isub],data_proc['cov_ref'][iexp_sub,isub],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gcal_ord)[0:2]
                         CCF_ref[iexp_sub,0]+=flux_temp
                         cov_ref_ord[iexp_sub,isub] = cov_temp 
                         nd_cov_ref_ord[iexp_sub,isub] = np.shape(cov_temp)[0]
@@ -250,7 +250,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
                         data_CCF_exp['plrange_exc'] = True
                     else:data_CCF_exp['plrange_exc'] = False
                         
-                else:gen = 'Res'
+                else:gen = 'Diff'
 
             #Maximum dimension of covariance matrix in current exposure from all contributing orders
             nd_cov_exp = np.amax(nd_cov_exp_ord[iexp_sub,:])
@@ -315,7 +315,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
     print('         ANTARESS switched to CCF processing')
     data_vis['comm_sp_tab']=True
     data_vis['tell_sp'] = False 
-    data_vis['mean_gdet'] = False 
+    data_vis['cal_weight'] = False 
     data_vis['type']='CCF'
     data_vis['nspec'] = data_vis['nvel']
     data_dic[inst]['nord'] = 1
@@ -328,7 +328,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
 
     return None    
 
-def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
+def DiffIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
     r"""**CCF conversion** 
     
     Wrap-up for conversion of out-of-transit differential and intrinsic spectra into CCFs.
@@ -353,53 +353,52 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
     #Continuum pixels over all defined exposures
     #    - exclusion of planetary ranges is not required for intrinsic profiles if already applied to their definition, and if not already applied contamination is either negligible or neglected  
     #    - intrinsic profiles at the limbs may not be defined
+    #    - the continuum is common to differential and intrinsic profiles, and defined from both their input continuum ranges, if required for error definition
+    #      if only required for the calculation of the intrinsic profile continuum, it does not account for differential profile continuum
     iexp_conv = list(gen_dic[inst][vis]['idx_out'])+list(gen_dic[inst][vis]['idx_in'][data_dic['Intr'][inst][vis]['idx_def']])   
     cond_def_cont_all  = np.zeros([len(iexp_conv)]+data_dic[inst][vis]['dim_exp'],dtype=bool)        
     for isub,iexp in enumerate(iexp_conv):         
         i_in = gen_vis['idx_exp2in'][iexp]
-        if i_in ==-1:
-            gen ='Res'
+        if (i_in ==-1) and data_dic['Intr']['disp_err']:
+            gen ='Diff'
             iexp_eff = iexp
-        else:
+        elif i_in !=-1:
             gen='Intr'
             iexp_eff = i_in
-        data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
-
-        #Continuum ranges
-        #    - if planetary contamination is excluded from differential out-of-transit profiles, define a large enough initial continuum range if the planet has a wide velocimetric motion 
-        for iord in range(data_dic[inst]['nord']):
-            if iord in data_dic[gen]['cont_range'][inst]:
-                for bd_int in data_dic[gen]['cont_range'][inst][iord]:
-                    cond_def_cont_all[isub,iord] |= ((data_exp['edge_bins'][iord,0:-1]>=bd_int[0]) & (data_exp['edge_bins'][iord,1:]<=bd_int[1]))        
-            else:cond_def_cont_all[isub,iord] = True
-            cond_def_cont_all[isub,iord] &= data_exp['cond_def'][iord]
-            if (gen=='Res') and ('Res_prof' in data_dic['Atm']['no_plrange']) and (iexp in data_dic['Atm'][inst][vis]['iexp_no_plrange']):     
-                cond_def_cont_all[isub,iord] &= excl_plrange(cond_def_cont_all[isub,iord],data_dic['Atm'][inst][vis]['exclu_range_star'],iexp,data_exp['edge_bins'][iord],'CCF')[0]
-
-    #Definition of continuum pixels and errors
-    if data_dic['Intr']['disp_err']:print('         Setting errors on intrinsic CCFs to continuum dispersion')
-    for isub,iexp in enumerate(iexp_conv):         
-        i_in = gen_vis['idx_exp2in'][iexp]
-        if i_in ==-1:
-            gen = 'Res'
-            iexp_eff = iexp
         else:
-            gen='Intr'
-            iexp_eff = i_in
-        data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
+            gen = None
+        if gen is not None:
+            data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
     
-        #Definition of errors on based on the dispersion in the continuum
-        #    - attributing constant error to all points, if requested
-        #    - if atmospheric profiles are extracted this operation must be done on differential profiles, and not intrinsic ones, so that errors can then be propagated         
-        if data_dic['Intr']['disp_err']: 
+            #Continuum ranges
+            #    - if planetary contamination is excluded from differential out-of-transit profiles, define a large enough initial continuum range if the planet has a wide velocimetric motion 
+            for iord in range(data_dic[inst]['nord']):
+                if iord in data_dic[gen]['cont_range'][inst]:
+                    for bd_int in data_dic[gen]['cont_range'][inst][iord]:
+                        cond_def_cont_all[isub,iord] |= ((data_exp['edge_bins'][iord,0:-1]>=bd_int[0]) & (data_exp['edge_bins'][iord,1:]<=bd_int[1]))        
+                else:cond_def_cont_all[isub,iord] = True
+                cond_def_cont_all[isub,iord] &= data_exp['cond_def'][iord]
+                if (gen=='Diff') and ('Diff_prof' in data_dic['Atm']['no_plrange']) and (iexp in data_dic['Atm'][inst][vis]['iexp_no_plrange']):     
+                    cond_def_cont_all[isub,iord] &= excl_plrange(cond_def_cont_all[isub,iord],data_dic['Atm'][inst][vis]['exclu_range_star'],iexp,data_exp['edge_bins'][iord],'CCF')[0]
 
-            #Continuum dispersion
+    #Redefinition of continuum errors
+    #    - attributing constant error to all points, if requested, based on the dispersion in the continuum
+    if data_dic['Intr']['disp_err'] is not None:
+        print('         Setting errors on intrinsic CCFs to continuum dispersion')
+        for isub,iexp in enumerate(iexp_conv):         
+            i_in = gen_vis['idx_exp2in'][iexp]
+            if i_in ==-1:
+                gen = 'Diff'
+                iexp_eff = iexp
+            else:
+                gen='Intr'
+                iexp_eff = i_in
+            data_exp = dataload_npz(data_vis['proc_'+gen+'_data_paths']+str(iexp_eff))
+
+            #Error set to scaled continuum dispersion
             for iord in range(data_dic[inst]['nord']):
                 disp_cont=data_exp['flux'][iord,cond_def_cont_all[isub,iord]].std() 
-
-                #Error table
-                #    - scaled if requested
-                err_tab = np.sqrt(gen_dic['g_err'][inst])*np.repeat(disp_cont,data_vis['nspec'])
+                err_tab = np.sqrt(data_dic['Intr']['disp_err'])*np.repeat(disp_cont,data_vis['nspec'])
                 data_exp['cov'][iord] = (err_tab*err_tab)[None,:]
 
             #Overwrite exposure data
@@ -421,7 +420,7 @@ def ResIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
 
     #Determine the correlation length for the visit
     if gen_dic['scr_search']:
-        corr_length_determination(data_dic['Res'][inst][vis],data_vis,gen_dic[inst][vis]['scr_search'],inst,vis,gen_dic)    
+        corr_length_determination(data_dic['Diff'][inst][vis],data_vis,gen_dic[inst][vis]['scr_search'],inst,vis,gen_dic)    
 
     return None
 
@@ -700,25 +699,23 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
         proc_data_paths = {}
         scaling_data_paths = {} if gen_dic['flux_sc'] else None
         tell_data_paths =  {} if data_vis['tell_sp'] else None
-        if gen_dic['cal_weight'] and data_vis['mean_gdet']:
-            proc_weight=True
-            mean_gdet_data_paths = {}
-        else:
-            proc_weight=False
-            mean_gdet_data_paths = None
+        mean_gcal_data_paths = {}
+        if data_vis['cal_weight']:sing_gcal_data_paths = {}
+        else:sing_gcal_data_paths = None
         DImast_weight_data_paths = {} if gen_dic['DImast_weight'] else None
         for key in data_type_key:   
             proc_data_paths[key] = data_vis['proc_'+key+'_data_paths']
             if scaling_data_paths is not None:scaling_data_paths[key] = data_vis['scaled_'+key+'_data_paths']
             if tell_data_paths is not None:tell_data_paths[key] = data_vis['tell_'+key+'_data_paths']
-            if mean_gdet_data_paths is not None:mean_gdet_data_paths[key] = data_vis['mean_gdet_'+key+'_data_paths']
+            mean_gcal_data_paths[key] = data_vis['mean_gcal_'+key+'_data_paths']
+            if sing_gcal_data_paths is not None:sing_gcal_data_paths[key] = data_vis['sing_gcal_'+key+'_data_paths']
             if DImast_weight_data_paths is not None:DImast_weight_data_paths[key] = data_vis['mast_'+key+'_data_paths']
         LocEst_Atm_data_paths = data_vis['LocEst_Atm_data_paths'] if data_type_gen=='Atm' else None
 
         #Processing all exposures
         ifirst = iexp_conv[0]
-        common_args = (data_type_gen,gen_dic['resamp_mode'],dir_save,cen_bins_1D,edge_bins_1D,nspec_1D,data_dic[inst]['nord'],ifirst,proc_com_data_paths_new,proc_weight,\
-                       gen_dic[inst][vis]['idx_in2exp'],data_dic['Intr']['cov_loc_star'],proc_data_paths,tell_data_paths,scaling_data_paths,mean_gdet_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],\
+        common_args = (data_type_gen,gen_dic['resamp_mode'],dir_save,cen_bins_1D,edge_bins_1D,nspec_1D,data_dic[inst]['nord'],ifirst,proc_com_data_paths_new,\
+                       gen_dic[inst][vis]['idx_in2exp'],data_dic['Intr']['cov_loc_star'],proc_data_paths,tell_data_paths,scaling_data_paths,mean_gcal_data_paths,sing_gcal_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],\
                        gen_dic['save_data_dir'],gen_dic['type'],data_vis['type'],data_vis['dim_exp'],gen_vis['idx_exp2in'],gen_vis['idx_in'])
         if nthreads>1: MAIN_multithread(conv_2D_to_1D_exp,nthreads,len(iexp_conv),[iexp_conv],common_args)                           
         else: conv_2D_to_1D_exp(iexp_conv,*common_args)  
@@ -728,7 +725,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
             rest_frame = data_dic[gen][inst][vis]['rest_frame']         #Rest frame propagated from original data       
             data_add = {'rest_frame':rest_frame,'dim_exp':[1,prop_dic['spec_1D_prop'][inst]['nspec']]}
             if gen=='Intr':data_add['iexp_conv'] = prop_dic[inst][vis]['idx_def'] 
-            elif gen=='Res':data_add['iexp_conv'] = gen_dic[inst][vis]['idx_out']
+            elif gen=='Diff':data_add['iexp_conv'] = gen_dic[inst][vis]['idx_out']
             else:data_add['iexp_conv'] = iexp_conv
             datasave_npz(dir_save[gen]+'add',data_add)  
 
@@ -737,6 +734,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
    
     #Updating paths
     #    - scaling is defined as a function and does not need updating
+    #    - calibration profiles are not used with 1D spectra and do not need to be defined
     data_vis['proc_com'+com_frame+'_data_paths'] = proc_com_data_paths_new
     for gen in dir_save:
         data_vis['proc_'+gen+'_data_paths'] = dir_save[gen]  
@@ -748,14 +746,14 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
         iexp_eff = deepcopy(iexp) 
         if data_type_gen=='Intr':         
             if (iexp in gen_vis['idx_in']):iexp_eff = gen_vis['idx_exp2in'][iexp] 
-            else:gen = 'Res'
+            else:gen = 'Diff'
         data_vis['mast_'+gen+'_data_paths'][iexp_eff] = dir_save[gen]+'ref_'+str(iexp_eff)
         if data_vis['tell_sp']:data_vis['tell_'+data_type_gen+'_data_paths'][iexp] = dir_save[gen]+'_tell'+str(iexp_eff)
         if data_type_gen=='Atm':data_vis['LocEst_Atm_data_paths'][iexp] = dir_save[gen]+'estloc_'+str(iexp_eff)
       
     #Convert spectral mode 
     print('         ANTARESS switched to 1D processing')
-    data_vis['mean_gdet'] = False 
+    data_vis['cal_weight'] = False 
     data_vis['comm_sp_tab']=True
     data_vis['type']='spec1D'
     data_vis['nspec'] = prop_dic['spec_1D_prop'][inst]['nspec']
@@ -781,8 +779,8 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
      
     return None
 
-def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,edge_bins_1D,nspec_1D,nord,ifirst,proc_com_data_paths,proc_weight,\
-                      idx_in2exp,cov_loc_star,proc_data_paths,tell_data_paths,scaling_data_paths,mean_gdet_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,\
+def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,edge_bins_1D,nspec_1D,nord,ifirst,proc_com_data_paths,\
+                      idx_in2exp,cov_loc_star,proc_data_paths,tell_data_paths,scaling_data_paths,mean_gcal_data_paths,sing_gcal_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,\
                       save_data_dir,gen_type,data_mode,dim_exp,idx_exp2in,idx_in):
     r"""**Main routine to convert 2D spectra into 1D spectra** 
     
@@ -811,7 +809,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
             if (data_type_gen=='Intr'):
                 if (iexp in idx_in):
                     iexp_eff = idx_exp2in[iexp] 
-                else:data_type = 'Res'
+                else:data_type = 'Diff'
             elif data_type=='Absorption':iexp_glob = idx_in[iexp]
        
         #Upload spectra and associated tables in star or local frame
@@ -820,8 +818,14 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
         SpSstar_spec = None    
         data_exp = dataload_npz(proc_data_paths[data_type]+str(iexp_eff))
         if tell_data_paths is not None:data_exp['tell'] = dataload_npz(tell_data_paths[data_type][iexp_eff])['tell'] 
-        if proc_weight:data_exp['mean_gdet'] = dataload_npz(mean_gdet_data_paths[data_type][iexp_eff])['mean_gdet'] 
-        else:data_exp['mean_gdet'] = None
+        data_exp['mean_gcal'] = dataload_npz(mean_gcal_data_paths[data_type][iexp_eff])['mean_gcal'] 
+        if sing_gcal_data_paths is not None:
+            data_gcal = dataload_npz(sing_gcal_data_paths[data_type][iexp_eff])
+            data_exp['sing_gcal'] = data_gcal['gcal'] 
+            if 'sdet2' in data_gcal:data_exp['sdet2'] = data_gcal['sdet2']   
+        else:
+            data_exp['sing_gcal']=None   
+            data_exp['sdet2'] = None   
         if DImast_weight_data_paths is not None:data_ref = dataload_npz(DImast_weight_data_paths[data_type][iexp_eff])
         if data_type_gen=='Atm':
             data_est_loc=dataload_npz(LocEst_Atm_data_paths[iexp_eff])
@@ -835,7 +839,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
         #      all profiles that are the same for overlapping orders (tellurics, disk-integrated stellar spectrum, global flux scaling, ...) are thus not used in the weighing 
         #      they are however processed in the same way as the exposure if used later on in the pipeline 
         #    - for intrinsic and atmospheric profiles we provide the broadband flux scaling, even if does not matter to the weighing, because it is otherwise set to 0 and messes up with weights definition
-        data_exp['weights'] = weights_bin_prof(range(nord),scaling_data_paths[data_type],inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,None,data_exp['mean_gdet'], data_exp['cen_bins'],1.,np.ones(dim_exp),np.zeros([dim_exp[0],1,dim_exp[1]]),corr_Fbal=False,bdband_flux_sc=bdband_flux_sc)
+        data_exp['weights'] = weights_bin_prof(range(nord),scaling_data_paths[data_type],inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,None,data_exp['sing_gcal'], data_exp['cen_bins'],1.,np.ones(dim_exp),np.zeros([dim_exp[0],1,dim_exp[1]]),corr_Fbal=False,bdband_flux_sc=bdband_flux_sc,sdet_exp2 = data_exp['sdet2'])
 
         #Resample spectra and weights on 1D table in each order, and clean weights
         flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned,weight_exp_all = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_exp,edge_bins_1D)
