@@ -6122,23 +6122,23 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         glob_fit_dic['DiffProf']['deriv_prop'] = {'lambda_deg':[]}#, 'Peq_veq_spots':{'Rstar':{'val':0.75, 's_val':0.1}}}
     
     #Calculating/retrieving
-    # glob_fit_dic['DiffProf']['mcmc_run_mode']='use'    
-    glob_fit_dic['DiffProf']['mcmc_run_mode']='reuse'    
+    glob_fit_dic['DiffProf']['mcmc_run_mode']='use'    
+    # glob_fit_dic['DiffProf']['mcmc_run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        # glob_fit_dic['DiffProf']['mcmc_reuse']={}
-        glob_fit_dic['DiffProf']['mcmc_reuse']={
-                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk10_steps200_AUMicb.npz'],
-                    'nburn':[60]
-                    }  
+        glob_fit_dic['DiffProf']['mcmc_reuse']={}
+        # glob_fit_dic['DiffProf']['mcmc_reuse']={
+        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk10_steps200_AUMicb.npz'],
+        #             'nburn':[60]
+        #             }  
     #Re-starting
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['mcmc_reboot']=''
 
     #Walkers
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['mcmc_set']={'nwalkers':10,'nsteps':200,'nburn':60}
+        glob_fit_dic['DiffProf']['mcmc_set']={'nwalkers':10,'nsteps':20,'nburn':6}
 
     #Complex priors        
          
@@ -6693,8 +6693,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + chose a dimension over which the fit/interpolation is performed         
     # + option to select exposures contributing to the fit/interpolation
     # > 'theo': use imported theoretical local intrinsic stellar profiles
-    gen_dic['diff_data_corr']=True  &  False
-    gen_dic['calc_diff_data_corr']=True  &  False 
+    gen_dic['diff_data_corr']=True  #&  False
+    gen_dic['calc_diff_data_corr']=True  #&  False 
 
     data_dic['Diff']['opt_loc_prof_est']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
     
