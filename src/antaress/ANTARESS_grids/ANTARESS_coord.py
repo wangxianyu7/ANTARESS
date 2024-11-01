@@ -87,7 +87,7 @@ def coord_expos_contamin(contamin_name,t_bjd,contamin_prop,star_params,exp_dur,c
 
     # Spot/facula longitude - varies over time
     P = 2*np.pi/((1.-star_params['alpha_rot_'+contamin_type]*np.sin(contamin_prop[contamin_name]['lat_rad'])**2.-star_params['beta_rot_'+contamin_type]*np.sin(contamin_prop[contamin_name]['lat_rad'])**4.)*star_params['om_eq_'+contamin_type]*3600.*24.)  
-    long_t_start,long_t_center,long_t_end = get_timeorbit(contamin_name,{contamin_name:{'Tcenter':contamin_prop[contamin_name]['Tc_'+contamin_type[:2]]}},t_bjd, {'period':P}, exp_dur,conv_ang = True)[0:3]
+    long_t_start,long_t_center,long_t_end = get_timeorbit(contamin_prop[contamin_name]['Tc_'+contamin_type[:2]],t_bjd, {'period':P}, exp_dur,conv_ang = True)[0:3]
 
     #Coordinates start, mid, end exposure 
     istar = np.arccos(contamin_prop['cos_istar'])

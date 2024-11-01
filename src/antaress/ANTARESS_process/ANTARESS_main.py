@@ -174,7 +174,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 #--------------------------------------------------------------------------------------------------
     
                 #Extracting differential profiles
-                if (gen_dic['res_data']):
+                if (gen_dic['diff_data']):
                     extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
     
                 #Extracting intrinsic stellar profiles
@@ -1607,6 +1607,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             single_night = False
                             vis_day_txt_all = np.array(['0'+str(vis_day) if vis_day<10 else str(vis_day) for vis_day in vis_day_exp_all])
                 else:
+                    single_night = True
                     bjd_vis = np.mean(bjd_exp_all) - 2400000.                   
 
                 #Initializing dictionaries for visit
@@ -1899,7 +1900,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         
                         #Unquiet star grid
                         #    - figure out which cells are planet-occulted
-                        for pl_loc in data_inst[vis]['transit_pl']:
+                        for pl_loc in data_inst[vis]['studied_pl']:
                             if np.abs(coord_dic[inst][vis][pl_loc]['ecl'][iexp])!=1:
                                 mini_pl_dic = {}
                                 #No oversampling
@@ -2206,7 +2207,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         base_DI_prof = custom_DI_prof(param_exp,None,args=args_exp)[0]
 
                         #Deviation from nominal stellar profile 
-                        surf_prop_dic, surf_prop_dic_sp, surf_prop_dic_fa, _ = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['transit_pl'],data_dic[inst][vis]['transit_sp'],data_dic[inst][vis]['transit_fa'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp], system_spot_prop_in=args_exp['system_spot_prop'], system_facula_prop_in=args_exp['system_facula_prop'])
+                        surf_prop_dic, surf_prop_dic_sp, surf_prop_dic_fa, _ = sub_calc_plocc_spot_prop([data_dic['DI']['system_prop']['chrom_mode']],args_exp,['line_prof'],data_dic[inst][vis]['studied_pl'],data_dic[inst][vis]['transit_sp'],data_dic[inst][vis]['transit_fa'],deepcopy(system_param),theo_dic,args_exp['system_prop'],param_exp,coord_dic[inst][vis],[iexp], system_spot_prop_in=args_exp['system_spot_prop'], system_facula_prop_in=args_exp['system_facula_prop'])
 
 
                         #Correcting the disk-integrated profile for planet, facula, and spot contributions

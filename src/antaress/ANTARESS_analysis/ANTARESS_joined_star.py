@@ -453,8 +453,8 @@ def joined_IntrProp(param,args):
             args['vis']=vis 
             
             #Calculate coordinates and properties of occulted regions 
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
-            surf_prop_dic,spotocc_prop,facocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['transit_pl'][inst][vis],[],[],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
+            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,param,args['studied_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
+            surf_prop_dic,spotocc_prop,facocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args,args['par_list'],args['studied_pl'][inst][vis],[],[],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl,range(args['nexp_fit_all'][inst][vis]))
 
             #Properties associated with the transiting planet in the visit 
             pl_vis = args['studied_pl'][inst][vis][0]
@@ -909,7 +909,7 @@ def joined_IntrProf(param,fixed_args):
 
             #-----------------------------------------------------------
             #Retrieve updated coordinates of occulted regions or use imported values
-            system_param_loc,coord_pl_sp_fa,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis],transit_faculae=args['transit_fa'][inst][vis])
+            system_param_loc,coord_pl_sp_fa,param_val = up_plocc_prop(inst,vis,args,param,args['studied_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis],transit_faculae=args['transit_fa'][inst][vis])
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -926,7 +926,7 @@ def joined_IntrProf(param,fixed_args):
                 #    - occulted stellar cells (from planet and spots) are automatically identified within sub_calc_plocc_spot_prop() 
                 #    - see joined_DiffProf() for details about spot contribution
                 #    - the planet-occulted profile is calculated over both quiet and spotted cells
-                surf_prop_dic,spotocc_prop,facocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],args['transit_sp'][inst][vis],args['transit_fa'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp_fa,[isub],system_spot_prop_in=args['system_spot_prop'],system_facula_prop_in=args['system_facula_prop'])
+                surf_prop_dic,spotocc_prop,facocc_prop,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['studied_pl'][inst][vis],args['transit_sp'][inst][vis],args['transit_fa'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp_fa,[isub],system_spot_prop_in=args['system_spot_prop'],system_facula_prop_in=args['system_facula_prop'])
                 sp_line_model = surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] 
 
                 #Conversion and resampling 
@@ -1060,6 +1060,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fixed_args['master_out']['idx_in_master_out']={}
     fixed_args['master_out']['master_out_tab']={}
     fixed_args['master_out']['scaled_data_paths']={}
+    fixed_args['master_out']['gcal']={}
     fixed_args['master_out']['multivisit_weights_total']={}
     fixed_args['master_out']['weights']={}
     fixed_args['master_out']['flux']={}
@@ -1259,7 +1260,8 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]
 
                     #Calibration profile for weighing    
-                    fixed_args['master_out']['gcal'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['sing_gcal_Diff_data_paths'][i_in])['sing_gcal'][iord_sel,idx_range_kept] 
+                    if data_dic[inst][vis]['type']=='spec2D':fixed_args['master_out']['gcal'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['sing_gcal_Diff_data_paths'][i_in])['sing_gcal'][iord_sel,idx_range_kept]
+                    else: fixed_args['master_out']['gcal'][inst][vis][isub] = None
 
                     #Oversampled line profile model table
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
@@ -1410,11 +1412,11 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
 
     #Save best-fit properties
     #    - with same structure as fit to individual profiles 
-    fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'func_prof_name':fixed_args['func_prof_name'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
+    fit_save.update({'p_final':p_final,'coeff_line_dic':coeff_line_dic,'model':fixed_args['model'],'name_prop2input':fixed_args['name_prop2input'],'coord_line':fixed_args['coord_line'],'merit':fit_dic['merit'],
                      'pol_mode':fit_prop_dic['pol_mode'],'coeff_ord2name':fixed_args['coeff_ord2name'],'idx_in_fit':fixed_args['idx_in_fit'],'genpar_instvis':fixed_args['genpar_instvis'],'linevar_par':fixed_args['linevar_par'],
                      'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'], 'system_spot_prop':fixed_args['system_spot_prop'], 'system_facula_prop':fixed_args['system_facula_prop'], 'grid_dic':fixed_args['grid_dic'],
                      'var_par_list':fixed_args['var_par_list'],'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'], 'fit_star_sp':fixed_args['fit_star_sp'],'fit_star_fa':fixed_args['fit_star_fa'], 
-                     'fit_star_pl':fixed_args['fit_star_pl'], 'master_out':fixed_args['master_out'], 'unthreaded_op':fixed_args['unthreaded_op'], 'ref_pl':fixed_args['ref_pl'], 'order':fit_prop_dic['order'], 'fit_mode':fit_prop_dic['fit_mode'],
+                     'fit_star_pl':fixed_args['fit_star_pl'], 'master_out':fixed_args['master_out'], 'unthreaded_op':fixed_args['unthreaded_op'], 'ref_pl':fixed_args['ref_pl'], 'fit_order':fit_prop_dic['fit_order'], 'fit_mode':fit_prop_dic['fit_mode'],
                      'fit_spot':fixed_args['fit_spot'], 'fit_spot_ang':fixed_args['fit_spot_ang'],'fit_facula':fixed_args['fit_facula'],'fit_facula_ang':fixed_args['fit_facula_ang']})
 
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
@@ -1548,7 +1550,7 @@ def joined_DiffProf(param,fixed_args):
 
             #-----------------------------------------------------------
             #Retrieve updated coordinates of occulted, faculaed, and spotted regions or use imported values
-            system_param_loc,coord_pl_sp_fa,param_val = up_plocc_prop(inst,vis,args,param,args['transit_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis],transit_faculae=args['transit_fa'][inst][vis])
+            system_param_loc,coord_pl_sp_fa,param_val = up_plocc_prop(inst,vis,args,param,args['studied_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],transit_spots=args['transit_sp'][inst][vis],transit_faculae=args['transit_fa'][inst][vis])
             
             #-----------------------------------------------------------
             #Figuring out which cells of the stellar grid are never faculaed or spotted or planet-occulted
@@ -1561,7 +1563,7 @@ def joined_DiffProf(param,fixed_args):
             # for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
             #     #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
             #     plocced_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-            #     for pl_loc in args['transit_pl'][inst][vis]:
+            #     for pl_loc in args['studied_pl'][inst][vis]:
             #         if np.abs(coord_pl_sp_fa[pl_loc]['ecl'][isub])!=1:
             #             mini_pl_dic = {}
             #             mini_pl_dic['x_orb_exp']=[coord_pl_sp_fa[pl_loc]['st_pos'][0, isub], coord_pl_sp_fa[pl_loc]['cen_pos'][0, isub], coord_pl_sp_fa[pl_loc]['end_pos'][0, isub]]
@@ -1625,7 +1627,7 @@ def joined_DiffProf(param,fixed_args):
                 # + the total deviation profile from spotted regions, which is the difference between the quiet stellar emission and the spotted emission 
                 #   cells occulted by planets do not contribute to this profile 
                 #    - occulted stellar cells (from planet and spots) are automatically identified within sub_calc_plocc_spot_prop() 
-                surf_prop_dic,surf_prop_dic_sp,surf_prop_dic_fa,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['transit_pl'][inst][vis],args['transit_sp'][inst][vis],args['transit_fa'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp_fa,[isub],system_spot_prop_in=args['system_spot_prop'],system_facula_prop_in=args['system_facula_prop'])
+                surf_prop_dic,surf_prop_dic_sp,surf_prop_dic_fa,_ = sub_calc_plocc_spot_prop([args['chrom_mode']],args_exp,args['par_list'],args['studied_pl'][inst][vis],args['transit_sp'][inst][vis],args['transit_fa'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_sp_fa,[isub],system_spot_prop_in=args['system_spot_prop'],system_facula_prop_in=args['system_facula_prop'])
                 sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_sp[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_fa[args['chrom_mode']]['line_prof'][:,0]
 
                 #Properties of all planet-occulted and spotted regions used to calculate spectral line profiles
@@ -1670,7 +1672,7 @@ def joined_DiffProf(param,fixed_args):
                     raw_weights=weights_bin_prof(range(args['master_out']['nord']), args['master_out']['scaled_data_paths'][inst][vis],inst,vis,args['master_out']['corr_Fbal'],args['master_out']['corr_FbalOrd'],\
                                                         args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'DI',args['type'],args['dim_exp'][inst][vis],args['master_out']['gcal'][inst][vis][isub],\
                                                         None,np.array([args['cen_bins'][inst][vis][isub]]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([conv_line_model]),\
-                                                        np.array([args['cov'][inst][vis][isub]]), bdband_flux_sc=args['master_out']['flux_sc'])[0]
+                                                        np.array([args['cov'][inst][vis][isub]]), ref_val=base_DI_prof[0]-1, bdband_flux_sc=args['master_out']['flux_sc'])[0]
 
                     # - Re-sample the weights
                     resamp_weights = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],raw_weights,kind=args['master_out']['master_out_tab']['resamp_mode'])

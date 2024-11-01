@@ -741,7 +741,7 @@ def init_bin_prof(data_type,ref_pl,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bin,
 
 
 
-def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True , sdet_exp2 = None):
+def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,ref_val=0.,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True , sdet_exp2 = None):
     r"""**Binning routine: weights**
 
     Defines weights to be used when binning profiles.
@@ -920,7 +920,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
 
     #Calculate weights at pixels where the master stellar spectrum is defined
     #    - condition on null and negative counts is accounted for in the error calculation function
-    cond_def_weights = (~np.isnan(flux_ref_exp))
+    cond_def_weights = (~np.isnan(flux_ref_exp)) & (flux_ref_exp>ref_val)
     if np.sum(cond_def_weights)==0:stop('Issue with master definition')
 
     #Flux balance functions
@@ -958,7 +958,8 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #   for original 2D or 1D spectra, gcal_exp is the estimated spectral calibration profile for the exposure (rescaled by the mean calibration profile over the visit if spectra to be weighted were converted back into count-equivalent values and are still in their original format)
         #   calibration profiles were estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow  
         #   for original CCFs or after conversion into CCFs or from 2D/1D it returns a global calibration
-        gcal_ord = gcal_exp[iord,cond_def_weights_ord]
+        if (gcal_exp is None):gcal_ord=np.ones(cond_def_weights_ord.shape, dtype=float)
+        else:gcal_ord = gcal_exp[iord,cond_def_weights_ord]
     
         #Spectral corrections
         if ('spec' in data_mode):
@@ -987,7 +988,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
             # > fringing and wiggles: ignored for now
             # > final spectral correction
             spec_corr_ord = 1./(tell_ord*corr_Fbal_glob_ord)
-        else:spec_corr_ord = 1.
+        else:spec_corr_ord = np.ones(cond_def_weights_ord.shape, dtype=float)
 
         #Spectral broadband flux scaling 
         if bdband_flux_sc:flux_sc_all[iord,cond_def_weights_ord] = 1. - data_scaling['loc_flux_scaling'](cen_bins_ord)      

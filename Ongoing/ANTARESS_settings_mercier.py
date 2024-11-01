@@ -26,6 +26,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
      - NIRPS (high-efficiency mode) : 'NIRPS_HE'
      - SOPHIE (high-efficiency mode) : 'SOPHIE_HE'
      - SOPHIE (high-resolution mode) : 'SOPHIE_HR'
+     - MIKE (red arm) : 'MIKE_Red'
+     - MIKE (blue arm) : 'MIKE_Blue'
 
     Args:
         TBD
@@ -249,12 +251,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Star name
 
-    # gen_dic['star_name']='AUMic'
+    gen_dic['star_name']='AUMic'
     # gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
     # gen_dic['star_name']='TRAPPIST1'
-    gen_dic['star_name']='TOI3884'
+    # gen_dic['star_name']='TOI3884'
 
     # Zodiacs
     # gen_dic['star_name']='Capricorn'
@@ -722,8 +724,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name'] == 'AUMic':
         mock_dic['visit_def']={
-            # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30.}} #--base
-            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':180.}} #- ESPRESSO exposure time
+            'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30.}} #--base
+            # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':180.}} #- ESPRESSO exposure time
             
             # 'ESPRESSO':{'mock_vis1' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30},
             #             'mock_vis2' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30},
@@ -1255,7 +1257,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         mock_dic['intr_prof']={'MIKE_Red':{
             'mode':'ana',        
             'coord_line':'mu',
-            'func_prof_name': 'gauss',
+            'model': 'gauss',
             'line_trans':None, 
             'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
                         'FWHM__ord0__IS__VS_'  : 8 },
@@ -1266,7 +1268,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         mock_dic['intr_prof']={'NIRPS_HE':{
             'mode':'ana',        
             'coord_line':'mu',
-            'func_prof_name': 'gauss',
+            'model': 'gauss',
             'line_trans':None, 
             'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
                         'FWHM__ord0__IS__VS_'  : 8 },
@@ -1277,7 +1279,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         mock_dic['intr_prof']={'ESPRESSO':{
             'mode':'ana',        
             'coord_line':'mu',
-            'func_prof_name': 'gauss',
+            'model': 'gauss',
             'line_trans':None, 
             'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
                         'FWHM__ord0__IS__VS_'  : 8 },
@@ -1288,7 +1290,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         mock_dic['intr_prof']={'ESPRESSO':{
             'mode':'ana',        
             'coord_line':'mu',
-            'func_prof_name': 'gauss',
+            'model': 'gauss',
             'line_trans':None, 
             'mod_prop':{'ctrst__ord0__IS__VS_' : 0.66439240394,
                         'FWHM__ord0__IS__VS_'  : 1.9571368614},
@@ -1299,7 +1301,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         mock_dic['intr_prof']={'ESPRESSO':{
             'mode':'ana',        
             'coord_line':'r_proj',
-            'func_prof_name': 'gauss',             
+            'model': 'gauss',             
             'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
                         'FWHM__ord0__IS__VS_'  : 4,
                         
@@ -1317,7 +1319,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         mock_dic['intr_prof']={'ESPRESSO':{
             'mode':'ana',        
             'coord_line':'mu',
-            'func_prof_name': 'gauss',
+            'model': 'gauss',
             'line_trans':None, 
             'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
                         'FWHM__ord0__IS__VS_'  : 8 },
@@ -1342,7 +1344,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name'] == 'AUMic' :
         mock_dic['flux_cont']={'ESPRESSO':{
-        'mock_vis':75,
+        'mock_vis':1e8,
         'mock_vis1':1e8,
         'mock_vis2':1e8,
         'mock_vis3':1e8,
@@ -3568,7 +3570,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #         data_dic['DI']['fit_range']['HARPN']= { 'mock_vis' : [[-50, 50]]  }
     
 
-    #         data_dic['DI']['mod_def']['HARPN']={'mode':'ana','coord_line':'mu','func_prof_name':'gauss'} 
+    #         data_dic['DI']['mod_def']['HARPN']={'mode':'ana','coord_line':'mu','model':'gauss'} 
     #         data_dic['DI']['mod_prop']={}
     #         data_dic['DI']['mod_prop'].update({
     #                                         'rv':{'vary':True     ,'HARPN':{'mock_vis':{'guess':0,'bd':[-10.,10.]}}},
@@ -3823,7 +3825,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #     corr_spot_dic['intr_prof']={
     #         'mode':'ana',        
     #         'coord_line':'mu',
-    #         'func_prof_name': {'HARPN' : 'gauss'},             
+    #         'model': {'HARPN' : 'gauss'},             
     #         'mod_prop':{'ctrst__ord0__ISHARPN_VSmock_vis' : 0.7,
     #                     'FWHM__ord0__ISHARPN_VSmock_vis'  : 4,
     #                     }   ,   
@@ -3914,7 +3916,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #%%%% Spot intensity settings
     #    - same format as 'system_prop'
-    # data_dic['DI']['spots_prop']={}
+    data_dic['DI']['spots_prop']={}
     
     
     #%%%% Facula intensity settings
@@ -4670,7 +4672,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - leave empty for the master to be calculated with the exposures of the considered visit only
     #      otherwise this option can be used to boost the SNR of the master and/or smooth out variations in its shape
     #      in that case aligned, scaled disk-integrated profiles must have been first calculated for all chosen visits
-    #    - which exposures contribute to the master in each visit is set through data_dic['Res']['idx_in_bin']
+    #    - which exposures contribute to the master in each visit is set through data_dic['Diff']['idx_in_bin']
     #    - if multiple planets are transiting in binned visits, the reference planet for orbital phase (ie, the dimension along which exposures are binned) can be forced through data_dic['DI']['pl_in_bin']={inst:{vis:XX}} 
     #      this has however no impact since the weights associated with exposure duration do not depend on the planet phase, and out-of-transit exposures are defined accouting for all transiting planets
     data_dic['Diff']['vis_in_bin']={}  
@@ -4758,8 +4760,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='AUMic':    
         # data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 45,dtype=int))+list(np.arange(135, 180,dtype=int))}}
-        # data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} #- base
-        data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 45,dtype=int))+list(np.arange(135, 180,dtype=int))}} #- ESPRESSO exposure time
+        data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} #- base
+        # data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 45,dtype=int))+list(np.arange(135, 180,dtype=int))}} #- ESPRESSO exposure time
     
     if gen_dic['star_name']=='AU_Mic':    
         data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'visit1':list(np.arange(0, 15,dtype=int))+list(np.arange(67, 82,dtype=int))}}
@@ -4873,13 +4875,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Continuum range
     if gen_dic['star_name']=='AUMic':
-        data_dic['Intr']['cont_range'] = deepcopy(data_dic['Res']['cont_range'])
+        data_dic['Intr']['cont_range'] = deepcopy(data_dic['Diff']['cont_range'])
 
     if gen_dic['star_name']=='V1298tau':
-        data_dic['Intr']['cont_range'] = deepcopy(data_dic['Res']['cont_range'])
+        data_dic['Intr']['cont_range'] = deepcopy(data_dic['Diff']['cont_range'])
 
     if gen_dic['star_name']=='AU_Mic':
-        data_dic['Intr']['cont_range'] = deepcopy(data_dic['Res']['cont_range'])
+        data_dic['Intr']['cont_range'] = deepcopy(data_dic['Diff']['cont_range'])
 
     #Calculating/retrieving continuum 
     data_dic['Intr']['calc_cont'] = True# & False
@@ -5535,7 +5537,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
      
     #%%%%% Analytical profile
     #    - default: 'gauss' 
-    glob_fit_dic['DiffProf']['func_prof_name'] = {}
+    glob_fit_dic['DiffProf']['model'] = {}
     
         
      #%%%%% Fixed/variable properties
@@ -5579,10 +5581,6 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%% Plot settings
             
     #%%%%% Plot best-fit 2D differential map
-    glob_fit_dic['DiffProf']['map_Res_prof']=''
-
-
-    #%%%%% Plot best-fit 2D differential map
     plot_dic['map_BF_Diff_prof']=''   
     
     
@@ -5591,7 +5589,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_DiffProf'] = True  #&  False
+    gen_dic['fit_DiffProf'] = True  &  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5648,7 +5646,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Trimming
-    glob_fit_dic['DiffProf']['trim_range'] = deepcopy(data_dic['Intr']['fit_prof']['trim_range'])   
+    glob_fit_dic['DiffProf']['trim_range'] = deepcopy(data_dic['DI']['fit_prof']['trim_range'])   
 
 
 
@@ -5680,7 +5678,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     # Analytical profile
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['func_prof_name']={'ESPRESSO':'gauss'}
+        glob_fit_dic['DiffProf']['model']={'ESPRESSO':'gauss'}
     
     #Analytical profile coordinate
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','V1298tau','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -6131,7 +6129,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         # glob_fit_dic['DiffProf']['mcmc_reuse']={}
         glob_fit_dic['DiffProf']['mcmc_reuse']={
-                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/TOI3884/TOI3884_b_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk10_steps200_TOI3884_b.npz'],
+                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk10_steps200_AUMicb.npz'],
                     'nburn':[60]
                     }  
     #Re-starting
@@ -6341,7 +6339,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
      glob_fit_dic['IntrProf']['idx_in_fit'] = deepcopy(glob_fit_dic['IntrProp']['idx_in_fit'])
 
     #Trimming
-    glob_fit_dic['IntrProf']['trim_range'] = deepcopy(data_dic['Intr']['fit_prof']['trim_range'])   
+    glob_fit_dic['IntrProf']['trim_range'] = deepcopy(data_dic['DI']['fit_prof']['trim_range'])   
 
     #Continuum range
     if gen_dic['star_name'] == 'AUMic':
@@ -6357,7 +6355,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Analytical profile
     if gen_dic['star_name'] in ['AUMic','TOI3884'] :
-        glob_fit_dic['IntrProf']['func_prof_name']={'ESPRESSO':'gauss'}
+        glob_fit_dic['IntrProf']['model']={'ESPRESSO':'gauss'}
     
     #Analytical profile coordinate
     if gen_dic['star_name'] in ['AUMic','V1298tau','TOI3884']:glob_fit_dic['IntrProf']['dim_fit']='r_proj'
@@ -6712,17 +6710,17 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%%% 2D maps : "clean", theoretical planet-occulted, faculaed, and spotted profiles
     #    - for original and binned exposures
     #    - planet-occulted profiles retrieved in the case where spots and faculae were not included in the model
-    plot_dic['map_Diff_prof_clean_sp_est']='png'
-    plot_dic['map_Diff_prof_clean_fa_est']='png'
-    plot_dic['map_Diff_prof_clean_pl_est']='png'   
+    plot_dic['map_Diff_prof_clean_sp_est']=''
+    plot_dic['map_Diff_prof_clean_fa_est']=''
+    plot_dic['map_Diff_prof_clean_pl_est']=''   
 
     #%%%%% 2D maps : "un-clean", theoretical planet-occulted, faculaed, and spotted profiles
     #    - for original and binned exposures
     #    - planet-occulted profiles retrieved in the case where spots ans faculae were included in the model
     #    - computing both "clean" and "spotted" versions of these maps can help identify if planets occulted spots during the transit or not
-    plot_dic['map_Diff_prof_unclean_sp_est']='png'
-    plot_dic['map_Diff_prof_unclean_fa_est']='png'
-    plot_dic['map_Diff_prof_unclean_pl_est']='png'      
+    plot_dic['map_Diff_prof_unclean_sp_est']=''
+    plot_dic['map_Diff_prof_unclean_fa_est']=''
+    plot_dic['map_Diff_prof_unclean_pl_est']=''      
 
     #%%%%% 2D maps : residuals theoretical planet-occulted and faculaed, spotted profiles (for "clean" and/or "unclean" profiles)
     #    - same format as 'map_Diff_prof_pl_est'
@@ -6732,7 +6730,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['map_Diff_prof_unclean_sp_res']=''
     plot_dic['map_Diff_prof_unclean_fa_res']=''
     plot_dic['map_Diff_prof_unclean_pl_res']=''
-    
+
     #%%%%% 2D maps : differential profiles corrected for the impact of spots and faculae
     plot_dic['map_Diff_corr_sp_fa']='png'
 

@@ -5242,8 +5242,8 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
     
         #Planet-occulted models from reconstruction
         if plot_options['line_model']=='rec':
-            if 'Intr' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
-            elif 'Diff' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Diff_estimates/'+plot_options['mode_loc_data_corr']+'/'+inst+'_'+vis+'_add')
+            if 'Intr' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Loc_estimates/'+plot_options['mode_loc_prof_est']+'/'+inst+'_'+vis+'_add')
+            elif 'Diff' in plot_mod:prof_fit_vis = dataload_npz(gen_dic['save_data_dir']+'Diff_estimates/'+plot_options['mode_loc_prof_est']+'/'+inst+'_'+vis+'_add')
     
         #Line profile from best-fit
         else:
@@ -6543,7 +6543,7 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
         coord_pl_in[pl_loc]['cen_pos'] = coord_pl_in[pl_loc]['cen_pos'][:,cond_occ_HR]
         coord_pl_in[pl_loc]['phase'] = coord_pl_in[pl_loc]['phase'][cond_occ_HR]     
         coord_pl_in[pl_loc]['ecl'] = coord_pl_in[pl_loc]['ecl'][cond_occ_HR] 
-    surf_prop_dic, surf_prop_dic_spot, surf_prop_dic_facula, surf_prop_dic_common = sub_calc_plocc_spot_prop(['achrom'],args,par_list,gen_dic['studied_pl'],[],[],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))
+    surf_prop_dic, surf_prop_dic_spot, surf_prop_dic_facula, surf_prop_dic_common = sub_calc_plocc_spot_prop(['achrom'],args,par_list,gen_dic['def_pl'],[],[],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))
 
     theo_HR_prop_plocc = surf_prop_dic['achrom']
     theo_HR_prop_plocc['nph_HR'] = coord_pl_in['nph_HR']

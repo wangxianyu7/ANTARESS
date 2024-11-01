@@ -2213,7 +2213,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         #%%%% Default planets to plot
         #    - set to transiting ones if undefined
-        plot_settings[key_plot]['pl_to_plot'] = gen_dic['studied_pl']
+        plot_settings[key_plot]['pl_to_plot'] = gen_dic['def_pl']
 
         # if gen_dic['star_name']=='TRAPPIST1':
         #     plot_settings[key_plot]['pl_to_plot']=gen_dic['kepl_pl']

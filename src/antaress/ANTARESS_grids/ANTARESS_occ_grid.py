@@ -67,7 +67,7 @@ def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_d
         if ('spec' in data_dic[inst][vis]['type']) and ('chrom' in data_dic[inst][vis]['system_prop']):key_chrom+=['chrom']
         
         #Calculate properties
-        plocc_prop,spot_prop,facula_prop,common_prop = sub_calc_plocc_spot_prop(key_chrom,args,par_list,data_dic[inst][vis]['transit_pl'],data_dic[inst][vis]['transit_sp'],data_dic[inst][vis]['transit_fa'],system_param,theo_dic,data_dic[inst][vis]['system_prop'],param,coord_dic[inst][vis],gen_dic[inst][vis]['idx_in'], system_spot_prop_in = data_dic['DI']['spots_prop'], system_facula_prop_in = data_dic['DI']['faculae_prop'], out_ranges=True)
+        plocc_prop,spot_prop,facula_prop,common_prop = sub_calc_plocc_spot_prop(key_chrom,args,par_list,data_dic[inst][vis]['studied_pl'],data_dic[inst][vis]['transit_sp'],data_dic[inst][vis]['transit_fa'],system_param,theo_dic,data_dic[inst][vis]['system_prop'],param,coord_dic[inst][vis],gen_dic[inst][vis]['idx_in'], system_spot_prop_in = data_dic['DI']['spots_prop'], system_facula_prop_in = data_dic['DI']['faculae_prop'], out_ranges=True)
         
         #Save spot-occulted region properties
         if cond_spot:
@@ -96,7 +96,7 @@ def calc_plocc_spot_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_d
 
 
 
-def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_grid,coord_grid, transit_spots=[], transit_faculae=[]):
+def up_plocc_prop(inst,vis,args,param_in,studied_pl,ph_grid,coord_grid, transit_spots=[], transit_faculae=[]):
 
     r"""**Planet-occulted and spotted region properties: update**
 
@@ -250,7 +250,7 @@ def up_plocc_prop(inst,vis,args,param_in,transit_pl,ph_grid,coord_grid, transit_
 
 
 
-def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,transit_fa,system_param,theo_dic,system_prop_in,param,coord_in,iexp_list,system_spot_prop_in={},system_facula_prop_in={},out_ranges=False,Ftot_star=False):
+def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,studied_pl,transit_sp,transit_fa,system_param,theo_dic,system_prop_in,param,coord_in,iexp_list,system_spot_prop_in={},system_facula_prop_in={},out_ranges=False,Ftot_star=False):
     r"""**Planet-occulted and spot properties: exposure**
 
     Calculates average theoretical properties of the stellar surface occulted by all transiting planets and/or spotted during an exposure
@@ -271,7 +271,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,t
         param (dict) : fitted or fixed star/planet/spot properties.
         coord_in (dict) : dictionary containing the various coordinates of each planet and spot (e.g., exposure time, exposure phase, exposure x/y/z coordinate)
         iexp_list (list) : exposures to process.
-        transit_pl (list) : optional, list of transiting spots in the exposures considered.
+        studied_pl (list) : optional, list of transiting spots in the exposures considered.
         system_spot_prop_in (dict) : optional, spot limb-darkening properties.
         system_faculae_prop_in (dict) : optional, facula limb-darkening properties.
         out_ranges (bool) : optional, whether or not to calculate the range of values the parameters of interest (par_list_gen) will take. Turned off by default.
@@ -940,7 +940,7 @@ def sub_calc_plocc_spot_prop(key_chrom,args,par_list_gen,transit_pl,transit_sp,t
                 #Stellar line profile from planet-occulted region
                 #    - accounting for both quiet and spotted cells
                 if (n_osamp_exp_eff_pl>0):
-                    calc_mean_occ_region_line(theo_dic['precision'],system_prop,isub_exp,key_chrom,n_osamp_exp_eff_pl,Focc_star_pl,surf_prop_dic_pl,transit_pl_exp,args,par_star,theo_dic)
+                    calc_mean_occ_region_line(theo_dic['precision'],system_prop,isub_exp,key_chrom,n_osamp_exp_eff_pl,Focc_star_pl,surf_prop_dic_pl,studied_pl_exp,args,par_star,theo_dic)
                     if 'corr_spot_facula' in args:
                         surf_prop_dic_pl[key_chrom[-1]]['corr_supp'][:,isub_exp]/=n_osamp_exp_eff_pl
                         if args['conv2intr']:surf_prop_dic_pl[key_chrom[-1]]['corr_supp'][:,isub_exp] /= (args['Focc_corr'][key_chrom[-1]]/n_osamp_exp_eff_pl)   

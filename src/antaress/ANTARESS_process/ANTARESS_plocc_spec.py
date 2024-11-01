@@ -300,7 +300,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         'mode':opt_dic['mode'],
         'type':data_vis['type'],
         'nord':data_dic[inst]['nord'],
-        'order':data_prop['order'],
+        'fit_order':data_prop['fit_order'],
         'nthreads': opt_dic['nthreads'],
         'resamp_mode' : gen_dic['resamp_mode'], 
         'inst':inst,
@@ -375,11 +375,11 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
                 print('         Building best-fit differential profiles')
                 
                 #Retrieving the order
-                if (inst in fixed_args['order']):iord_sel =  fixed_args['order'][inst]
+                if (inst in fixed_args['fit_order']):iord_sel =  fixed_args['fit_order'][inst]
                 else:iord_sel = 0
 
-                if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst)):makedirs(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst) 
-                if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)):makedirs(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)
+                if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/DiffProf/'+fixed_args['fit_mode']+'/'+inst)):makedirs(gen_dic['save_data_dir']+'Joined_fits/DiffProf/'+fixed_args['fit_mode']+'/'+inst) 
+                if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/DiffProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)):makedirs(gen_dic['save_data_dir']+'Joined_fits/DiffProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)
 
             else:
                 print('         Correcting for spot / facula contamination in data')
@@ -389,7 +389,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
 
             #Initializing necesary dictionaries
             fixed_args[key+'_dic']={}
-            fixed_args['rout_mode']='ResProf'
+            fixed_args['rout_mode']='DiffProf'
             fixed_args[key+'_dic']['raw_DI_profs']={}
             fixed_args[key+'_dic']['cond_def_fit']={}
             fixed_args[key+'_dic']['plot_edge_bins']={}
@@ -411,7 +411,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     coord_vis = coord_dic[inst][vis]
     for pl_loc in data_vis['studied_pl']:
         ph_rec[pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'],coord_vis[pl_loc]['cen_ph'],coord_vis[pl_loc]['end_ph']) ) 
-    system_param_loc,coord_pl_sp_fa,_ = up_plocc_prop(inst,vis,fixed_args,params,data_vis['transit_pl'],ph_rec,coord_vis,transit_spots=transit_spots,transit_faculae=transit_faculae)
+    system_param_loc,coord_pl_sp_fa,_ = up_plocc_prop(inst,vis,fixed_args,params,data_vis['studied_pl'],ph_rec,coord_vis,transit_spots=transit_spots,transit_faculae=transit_faculae)
 
     #-----------------------------------------------------------
     #Figuring out which cells of the stellar grid are never spotted or planet-occulted
@@ -424,7 +424,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
 
         #     #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
         #     plocced_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
-        #     for pl_loc in data_vis['transit_pl']:
+        #     for pl_loc in data_vis['studied_pl']:
         #         if np.abs(coord_pl_sp_fa[pl_loc]['ecl'][isub])!=1:
         #             mini_pl_dic = {}
         #             mini_pl_dic['x_orb_exp']=[coord_pl_sp_fa[pl_loc]['st_pos'][0, isub], coord_pl_sp_fa[pl_loc]['cen_pos'][0, isub], coord_pl_sp_fa[pl_loc]['end_pos'][0, isub]]
@@ -513,7 +513,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
                 base_DI_prof = custom_DI_prof(params,None,args=args_exp)[0]
 
         #Planet-occulted properties
-        surf_prop_dic,spot_prop_dic,facula_prop_dic,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_vis['transit_pl'],data_vis['transit_sp'],data_vis['transit_fa'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_sp_fa,[iexp_glob],system_spot_prop_in=fixed_args['system_spot_prop'],system_facula_prop_in=fixed_args['system_facula_prop'])
+        surf_prop_dic,spot_prop_dic,facula_prop_dic,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_vis['studied_pl'],data_vis['transit_sp'],data_vis['transit_fa'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_sp_fa,[iexp_glob],system_spot_prop_in=fixed_args['system_spot_prop'],system_facula_prop_in=fixed_args['system_facula_prop'])
 
         #With spots/faculae
         if spot_facula_on:
@@ -529,7 +529,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
             if opt_dic['clean_calc']:
                 
                 #Only planet-occulted profiles
-                clean_surf_prop_dic,_,_,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_vis['transit_pl'],[],[],deepcopy(system_param),theo_dic,fixed_args['system_prop'],clean_params,coord_pl_sp_fa,[iexp])
+                clean_surf_prop_dic,_,_,_ = sub_calc_plocc_spot_prop([chrom_mode],args_exp,['line_prof'],data_vis['studied_pl'],[],[],deepcopy(system_param),theo_dic,fixed_args['system_prop'],clean_params,coord_pl_sp_fa,[iexp])
                 
                 #Only spotted profiles
                 # Turning on the use of spots
@@ -730,7 +730,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
                 diff_prof_mod['edge_bins'] = np.array([fixed_args[key+'_dic']['plot_edge_bins'][isub]])
 
                 #Storing best-fit differential profiles
-                if key=='map_diff_res':datasave_npz(gen_dic['save_data_dir']+'Joined_fits/ResProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis+'/BestFit'+'_'+str(isub),diff_prof_mod)
+                if key=='map_diff_res':datasave_npz(gen_dic['save_data_dir']+'Joined_fits/DiffProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis+'/BestFit'+'_'+str(isub),diff_prof_mod)
                 else:datasave_npz(gen_dic['save_data_dir']+'Corr_data/'+inst+'_'+vis+'_'+str(isub),diff_prof_mod)
 
 

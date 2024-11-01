@@ -817,7 +817,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         else:fixed_args = init_custom_DI_prof(fixed_args,gen_dic,p_start)
     
         #Stellar grid properties
-        for key in ['pl','sp','fa']:
+        if fixed_args['cond_studied_pl']:
+            for subkey in ['Ssub_Sstar_','x_st_sky_grid_','y_st_sky_grid_','nsub_D','d_oversamp_']:fixed_args['grid_dic'][subkey+'pl'] = theo_dic[subkey+'pl']            
+        for key in ['sp','fa']:
             if fixed_args['cond_transit_'+key]:
                 for subkey in ['Ssub_Sstar_','x_st_sky_grid_','y_st_sky_grid_','nsub_D','d_oversamp_']:fixed_args['grid_dic'][subkey+key] = theo_dic[subkey+key]            
         if fixed_args['cond_studied_pl']:fixed_args['grid_dic']['Istar_norm_achrom']=theo_dic['Istar_norm_achrom']

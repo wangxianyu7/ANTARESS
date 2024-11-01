@@ -26,6 +26,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
      - NIRPS (high-efficiency mode) : 'NIRPS_HE'
      - SOPHIE (high-efficiency mode) : 'SOPHIE_HE'
      - SOPHIE (high-resolution mode) : 'SOPHIE_HR'
+     - MIKE (red arm) : 'MIKE_Red'
+     - MIKE (blue arm) : 'MIKE_Blue'
 
     Args:
         TBD
