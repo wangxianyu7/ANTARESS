@@ -359,8 +359,10 @@ def ln_lkhood_func_mcmc(p_step,fixed_args):
         
     #Store true output or not
     if not fixed_args['step_output']:outputs = None
+    if fixed_args['step_chi2']:chi2_outputs = np.sum(chi2_step)
+    else:chi2_outputs = None
 
-    return ln_lkhood,chi2_step,outputs
+    return ln_lkhood,chi2_step,[outputs,chi2_outputs]
     
 
 
@@ -687,6 +689,9 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         #Store outputs from MCMC steps
         if ('step_output' not in fixed_args):fixed_args['step_output'] = False
 
+        #Store chi2 outputs from MCMC steps
+        if ('step_chi2' not in fixed_args):fixed_args['step_chi2'] = True
+
         #Do not use complex prior function by default
         fixed_args['global_ln_prior'] = False if (('global_ln_prior' not in fixed_args) or ('prior_func' not in fixed_args)) else fixed_args['global_ln_prior']
 
@@ -754,6 +759,9 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         #Plot chains for MCMC parameters    
         if ('save_MCMC_chains' not in fit_dic):fit_dic['save_MCMC_chains']='png'
         
+        #Plot chi2 chains for MCMC run    
+        if ('save_chi2_chains' not in fit_dic):fit_dic['save_chi2_chains']=''
+
         #Run name
         if ('run_name' not in fit_dic):fit_dic['run_name']='' 
         
@@ -946,14 +954,17 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
         walker_chains = sampler.chain    
         
         #Complementary outputs
-        #    - shape (nsteps,nwalkers) 
-        if fixed_args['step_output']:step_outputs = sampler.get_blobs()
+        #    - shape (nsteps,nwalkers,2)
+        if fixed_args['step_output']:step_outputs = sampler.get_blobs()[:,:,0]
         else:step_outputs = None
-     
+        #    - retrieving chi2 chains
+        if fixed_args['step_chi2']:fixed_args['chi2_storage'] = sampler.get_blobs()[:,:,1]
+        else:fixed_args['chi2_storage'] = None
+
         #Save raw MCMC results 
         if save_raw:
             if (not os_system.path.exists(fit_dic['save_dir'])):os_system.makedirs(fit_dic['save_dir'])
-            np.savez(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name,walker_chains=walker_chains, initial_distribution=fit_dic['initial_distribution'],step_outputs = step_outputs)
+            np.savez(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name,walker_chains=walker_chains, initial_distribution=fit_dic['initial_distribution'],step_outputs = step_outputs, step_chi2 = fixed_args['chi2_storage'])
     
         #Delete temporary chains after final walkers are saved
         if backend is not None:os_system.remove(fit_dic['save_dir']+'monitor'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name+'.h5')
@@ -974,21 +985,26 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
             mcmc_load = np.load(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name']+'.npz',allow_pickle = True)
             walker_chains=mcmc_load['walker_chains']  #(nwalkers, nsteps, n_free)
             step_outputs=mcmc_load['step_outputs']  #(nsteps, nwalkers)
+            fixed_args['chi2_storage'] = mcmc_load['step_chi2'] #(nsteps, nwalkers)
 
         #Retrieve mcmc run(s) from list of input paths
         else:
             walker_chains = np.empty([fit_dic['nwalkers'],0,fit_dic['merit']['n_free'] ],dtype=float)
             if fixed_args['step_output']:step_outputs = np.empty([0,fit_dic['nwalkers']],dtype=object)
             else:step_outputs=None
+            if fixed_args['step_chi2']:fixed_args['chi2_storage'] = np.empty([0,fit_dic['nwalkers']],dtype=object)
+            else:fixed_args['chi2_storage']=None
             fit_dic['nsteps'] = 0
             fit_dic['nburn'] = 0
             for mcmc_path,nburn in zip(fit_dic['mcmc_reuse']['paths'],fit_dic['mcmc_reuse']['nburn']):
-                mcmc_load=np.load(mcmc_path)
+                mcmc_load=np.load(mcmc_path, allow_pickle=True)
                 walker_chains_loc=mcmc_load['walker_chains'][:,nburn::,:] 
                 if fixed_args['step_output']:step_output_loc=mcmc_load['step_output'][nburn::] 
+                if fixed_args['step_chi2']:step_chi2_loc=mcmc_load['step_chi2'][nburn::] 
                 fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
                 walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
                 if fixed_args['step_output']:step_outputs = np.append(step_outputs,step_output_loc,axis=0)
+                if fixed_args['step_chi2']:fixed_args['chi2_storage'] = np.append(fixed_args['chi2_storage'],step_chi2_loc,axis=0)
 
     return walker_chains,step_outputs
 
@@ -2066,7 +2082,7 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,nthreads,par
 
     #Plot the chi2 chain of each walker
     if (fit_dic['save_chi2_chains']!=''):
-        MCMC_plot_chains_chi2(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],walker_chains,fit_dic['nburn'],keep_chain,fixed_args,verbose=verbose,verb_shift=verb_shift)
+        MCMC_plot_chains_chi2(fit_dic,walker_chains,keep_chain,fixed_args,verbose=verbose,verb_shift=verb_shift)
      
     #Remove chains if required
     if (False in keep_chain):
@@ -2311,7 +2327,7 @@ def MCMC_plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,bu
     return None  
 
 
-def MCMC_plot_chains_chi2(save_mode,save_dir_MCMC,chain,nburn,keep_chain,fixed_args,verbose=True,verb_shift=''):
+def MCMC_plot_chains_chi2(fit_dic,chain,keep_chain,fixed_args,verbose=True,verb_shift=''):
     r"""**MCMC post-proc: walker chains' chi2 plot**
 
     Plots the chi2 values for the chain of each walker. 
@@ -2338,49 +2354,14 @@ def MCMC_plot_chains_chi2(save_mode,save_dir_MCMC,chain,nburn,keep_chain,fixed_a
 
     #----------------------------------------------------------------
     if verbose:
-        print(verb_shift+'   + Computation')
+        print(verb_shift+'   + Retrieval')
 
     #Retrieving important values
     nwalkers,nsteps,_ = chain.shape
 
-    #Storing all the chi2 chains
-    chi2_chains = np.zeros((nwalkers, nsteps), dtype=float)
-    
-    #Loop on walkers
-    for walker in range(nwalkers):
-
-        #Chi2 chain storage
-        chi2_chain = np.zeros(nsteps, dtype=float)
-
-        #Loop on steps
-        for step in range(nsteps):
-
-            #Retrieve associated chain for each parameter
-            p_step = {}
-
-            p_step.update(fixed_args['fixed_par_val'])
-            for ipar,parname in enumerate(fixed_args['var_par_list']):
-                p_step[parname]=chain[walker, step, ipar]  
-                
-            #Attribute value of variable parameters /non-variable parameters non defined via expressions directly to their names so that they can be identified in the expressions                
-            if len(fixed_args['linked_par_expr'])>0:
-                for ipar,parname in enumerate(fixed_args['var_par_list']):        
-                    exec(str(parname)+'='+str(p_step[parname]))
-                for ipar,parname in enumerate(fixed_args['fixed_par_val_noexp_list']):        
-                    exec(str(parname)+'='+str(p_step[parname]))
-
-            #Update fixed parameters with associated expression
-            for par in fixed_args['linked_par_expr']:
-                p_step[par]=eval(fixed_args['linked_par_expr'][par])
-
-            #Evalute likelihood function at the location on the chain to retrieve chi2
-            chi2_step = ln_lkhood_func_mcmc(p_step, fixed_args)[1]
-
-            #Store the chi2 step in the corresponding walker chain
-            chi2_chain[step] = chi2_step
-
-        #Store the chi2 chain for this walker
-        chi2_chains[walker, :] = chi2_chain
+    chi2_chains = fixed_args['chi2_storage']
+    if chi2_chains is None:stop('Chi2 chains were not stored. Make sure fixed_args[\'step_chi2\'] is turned on.')
+    chi2_chains = chi2_chains.T
 
     #----------------------------------------------------------------
     if verbose:
@@ -2393,9 +2374,9 @@ def MCMC_plot_chains_chi2(save_mode,save_dir_MCMC,chain,nburn,keep_chain,fixed_a
     #Chi2 chains with burn-in phase, and removed chains
     for iwalk,keep_chain_loc in enumerate(keep_chain):
         if keep_chain_loc:
-            x_tab=range(nburn)
+            x_tab=range(fit_dic['nburn'])
             plt.plot(x_tab,chi2_chains[iwalk,x_tab],color='red',linestyle='-',lw=lw_plot,zorder=0)                
-            x_tab=nburn+np.arange(nsteps-nburn,dtype=int)
+            x_tab=fit_dic['nburn']+np.arange(nsteps-fit_dic['nburn'],dtype=int)
             plt.plot(x_tab,chi2_chains[iwalk,x_tab],color='dodgerblue',linestyle='-',lw=lw_plot,zorder=0)                           
         else:
             plt.plot(np.arange(nsteps,dtype=int),chi2_chains[iwalk, :],color='red',linestyle='-',lw=lw_plot,zorder=0) 
@@ -2413,7 +2394,7 @@ def MCMC_plot_chains_chi2(save_mode,save_dir_MCMC,chain,nburn,keep_chain,fixed_a
                 x_title='Steps',y_title='Chi2',
                 font_size=font_size,xfont_size=font_size,yfont_size=font_size)
 
-    plt.savefig(save_dir_MCMC+'/Chain_Chi2.'+save_mode) 
+    plt.savefig(fit_dic['save_dir']+'/Chain_Chi2.'+fit_dic['save_MCMC_chains']) 
     plt.close()
     
     #----------------------------------------------------------------
@@ -2423,7 +2404,7 @@ def MCMC_plot_chains_chi2(save_mode,save_dir_MCMC,chain,nburn,keep_chain,fixed_a
     #Plot the chi2 chains of individual walkers
 
     #Make directory to store the distributions
-    if (not os_system.path.exists(save_dir_MCMC+'Indiv_Chi2_Chains')):os_system.makedirs(save_dir_MCMC+'Indiv_Chi2_Chains')   
+    if (not os_system.path.exists(fit_dic['save_dir']+'Indiv_Chi2_Chains')):os_system.makedirs(fit_dic['save_dir']+'Indiv_Chi2_Chains')   
     
     #Each plot will have a maximum of 10 chains (to not overload the visuals)
     n_group = 10
@@ -2458,7 +2439,7 @@ def MCMC_plot_chains_chi2(save_mode,save_dir_MCMC,chain,nburn,keep_chain,fixed_a
         axes[len(walker_group)-1].set_xlabel('Steps', fontsize=font_size)
         axes[len(walker_group)-1].tick_params(axis='x', which='both', labelbottom=True)
 
-        plt.savefig(save_dir_MCMC+'Indiv_Chi2_Chains/Chain_Chi2_'+str(iwalk)+'-'+str(end)+'.'+save_mode) 
+        plt.savefig(fit_dic['save_dir']+'Indiv_Chi2_Chains/Chain_Chi2_'+str(iwalk)+'-'+str(end)+'.'+fit_dic['save_MCMC_chains']) 
         plt.close()
 
 

@@ -1417,7 +1417,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                      'ph_fit':fixed_args['ph_fit'], 'system_prop':fixed_args['system_prop'], 'system_spot_prop':fixed_args['system_spot_prop'], 'system_facula_prop':fixed_args['system_facula_prop'], 'grid_dic':fixed_args['grid_dic'],
                      'var_par_list':fixed_args['var_par_list'],'fit_orbit':fixed_args['fit_orbit'], 'fit_RpRs':fixed_args['fit_RpRs'], 'fit_star_sp':fixed_args['fit_star_sp'],'fit_star_fa':fixed_args['fit_star_fa'], 
                      'fit_star_pl':fixed_args['fit_star_pl'], 'master_out':fixed_args['master_out'], 'unthreaded_op':fixed_args['unthreaded_op'], 'ref_pl':fixed_args['ref_pl'], 'fit_order':fit_prop_dic['fit_order'], 'fit_mode':fit_prop_dic['fit_mode'],
-                     'fit_spot':fixed_args['fit_spot'], 'fit_spot_ang':fixed_args['fit_spot_ang'],'fit_facula':fixed_args['fit_facula'],'fit_facula_ang':fixed_args['fit_facula_ang']})
+                     'fit_spot':fixed_args['fit_spot'], 'fit_spot_ang':fixed_args['fit_spot_ang'],'fit_facula':fixed_args['fit_facula'],'fit_facula_ang':fixed_args['fit_facula_ang'], 'chi2_storage':fixed_args['chi2_storage']})
 
     if fixed_args['mode']=='ana':fit_save['func_prof'] = fixed_args['func_prof']
     if fit_prop_dic['fit_mode']=='chi2':fit_save['hess_matrix'] = fixed_args['hess_matrix']
