@@ -180,7 +180,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 #--------------------------------------------------------------------------------------------------
     
                 #Extracting differential profiles
-                if (gen_dic['res_data']):
+                if (gen_dic['diff_data']):
                     extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
     
                 #Extracting intrinsic stellar profiles
@@ -1530,7 +1530,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             single_night = False
                             vis_day_txt_all = np.array(['0'+str(vis_day) if vis_day<10 else str(vis_day) for vis_day in vis_day_exp_all])
                 else:
-                    bjd_vis = np.mean(bjd_exp_all) - 2400000.                   
+                    bjd_vis = np.mean(bjd_exp_all) - 2400000.    
+                    single_night = True
 
                 #Initializing dictionaries for visit
                 theo_dic[inst][vis]={}
@@ -1595,8 +1596,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     
                 #Set error flag per visit
                 #    - same for a given instrument, but this allows dealing with binned visits
-                if gen_dic['mock_data']:gen_dic[inst][vis]['flag_err']=False
-                else:gen_dic[inst][vis]['flag_err']=deepcopy(gen_dic['flag_err_inst'][inst])     
+                gen_dic[inst][vis]['flag_err']=deepcopy(gen_dic['flag_err_inst'][inst])     
         
                 #Raw CCF properties
                 if inst in ['HARPN','HARPS','CORALIE','SOPHIE','ESPRESSO','ESPRESSO_MR','NIRPS_HA','NIRPS_HE']:
@@ -1813,7 +1813,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             fixed_args['FWHM_inst'] = get_FWHM_inst(inst,fixed_args,fixed_args['cen_bins'])
                  
                             #Initialize intrinsic profile properties   
+                            #    - removing Peq, as it is always defined in the nominal stellar properties, but used as condition to switch from veq to Peq within var_stellar_prop() when Peq is defined as model parameter instead of veq
                             params_mock = deepcopy(system_param['star']) 
+                            params_mock.pop('Peq')
                             if inst not in mock_dic['flux_cont']:mock_dic['flux_cont'][inst]={}
                             if vis not in mock_dic['flux_cont'][inst]:mock_dic['flux_cont'][inst][vis] = 1.
                             params_mock.update({'rv':0.,'cont':mock_dic['flux_cont'][inst][vis]})  
@@ -2914,9 +2916,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
     spot_check = False
     for vis in data_dic[inst]['visit_list']:
         if single_night:    
-            print('         Processing visit '+vis)                                  
-            if vis in data_dic[inst]['dates']:print('           Date (night start) : '+data_dic[inst]['dates'][vis])
-            if vis in data_dic[inst]['midpoints']:print('           Visit midpoint: '+data_dic[inst]['midpoints'][vis])
+            print('         Processing visit '+vis)
+            if not gen_dic['mock_data']:                                  
+                if vis in data_dic[inst]['dates']:print('           Date (night start) : '+data_dic[inst]['dates'][vis])
+                if vis in data_dic[inst]['midpoints']:print('           Visit midpoint: '+data_dic[inst]['midpoints'][vis])
         else:
             print('         Processing multi-epoch visit '+vis)              
         data_vis = data_dic[inst][vis]
