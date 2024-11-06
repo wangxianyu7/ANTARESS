@@ -1367,6 +1367,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
         #Initialize flag that exposures in all visits of the instrument share a common spectral table
         data_inst['comm_sp_tab'] = True 
+
+        #Initialize list of instrument visits contained within a single night
+        data_inst['single_night'] = []
         
         #Calibration settings
         if (inst not in gen_dic['gcal_nooutedge']):gen_dic['gcal_nooutedge'][inst] = [0.,0.]
@@ -1520,18 +1523,17 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         max_hr = np.max(vis_hour_exp_all)
                         bjd_vis = np.mean(bjd_exp_all)
                         if ((max_day==min_day) and ((min_hr>=12) or (max_hr<=12))) or ((max_day==min_day+1) and ((min_hr>=12) and (max_hr<=12))): 
-                            single_night = True
+                            data_inst['single_night']+=[vis]
                             vis_day = np.min(vis_day_exp_all)  
                             vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)        
                             data_inst['dates'][vis] = str(vis_yr)+'/'+str(vis_mt)+'/'+str(vis_day_txt)
                             data_inst['midpoints'][vis] = '%.5f'%(bjd_vis+2400000.)+' BJD'
                         
-                        else:                        
-                            single_night = False
+                        else:                    
                             vis_day_txt_all = np.array(['0'+str(vis_day) if vis_day<10 else str(vis_day) for vis_day in vis_day_exp_all])
                 else:
                     bjd_vis = np.mean(bjd_exp_all) - 2400000.    
-                    single_night = True
+                    data_inst['single_night']+=[vis]
 
                 #Initializing dictionaries for visit
                 theo_dic[inst][vis]={}
@@ -1573,7 +1575,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                     #Definition of mid-transit times for each planet associated with the visit 
                     if (pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst]):
-                        if single_night:stop('ERROR : gen_dic["Tcenter_visits"] not available for multi-epochs visits')
+                        if vis in data_inst['single_night']:stop('ERROR : gen_dic["Tcenter_visits"] not available for multi-epochs visits')
                         coord_dic[inst][vis][pl_loc]['Tcenter'] = gen_dic['Tcenter_visits'][pl_loc][inst][vis]
                     else:
                         norb = round((bjd_vis+2400000.-system_param[pl_loc]['TCenter'])/system_param[pl_loc]["period"])
@@ -1614,7 +1616,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                     #Condition to retrieve current visit
                     dace_red_inst = hdr['INSTRUME']
-                    if single_night:
+                    if vis in data_inst['single_night']:
                         if dace_red_inst=='ESPRESSO': 
                             if bjd_vis<=58649.5:dace_red_inst+='18'
                             else:dace_red_inst+='19'  
@@ -1861,7 +1863,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         hdr =hdulist[0].header                     
 
                         #VLT UT used by ESPRESSO
-                        if (inst=='ESPRESSO') and ((isub_exp==0) or (not single_night)):
+                        if (inst=='ESPRESSO') and ((isub_exp==0) or (vis not in data_inst['single_night'])):
                             tel_inst = {
                                 'ESO-VLT-U1':'1',
                                 'ESO-VLT-U2':'2',
@@ -2915,7 +2917,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         else:print('         All visits share a common spectral table')    
     spot_check = False
     for vis in data_dic[inst]['visit_list']:
-        if single_night:    
+        if (vis in data_dic[inst]['single_night']):    
             print('         Processing visit '+vis)
             if not gen_dic['mock_data']:                                  
                 if vis in data_dic[inst]['dates']:print('           Date (night start) : '+data_dic[inst]['dates'][vis])

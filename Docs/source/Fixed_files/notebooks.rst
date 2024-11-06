@@ -32,5 +32,8 @@ The following notebooks are available:
 - `ANTARESS_nbook_mock <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/Notebooks/ANTARESS_nbook_mock.ipynb>`_
     Use to generate a mock CCF dataset.
 
+- `ANTARESS_nbook_proc <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/Notebooks/ANTARESS_nbook_proc.ipynb>`_
+    Use to process a dataset.
+
 - `ANTARESS_nbook_RMR <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/Notebooks/ANTARESS_nbook_RMR.ipynb>`_
     Use to perform a Rossiter-McLaughlin `Revolutions` of a CCF dataset.    
