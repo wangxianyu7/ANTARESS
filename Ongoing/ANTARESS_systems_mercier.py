@@ -196,13 +196,13 @@ def get_system_params():
         #------------------------------    
 
         'TOI3884':{ 
-            'star':{  #Libby-Roberts+2023 
-                'Rstar':0.302,              
-                'istar':155.,                    #unknown
-                'Mstar':0.298,
-                'veq':8.495,                     #unknown                
-                # 'veq_spots':23.59,
-                },
+            # 'star':{  #Libby-Roberts+2023 
+            #     'Rstar':0.302,              
+            #     'istar':155.,                    #unknown
+            #     'Mstar':0.298,
+            #     'veq':8.495,                     #unknown                
+            #     # 'veq_spots':23.59,
+            #     },
 
             # 'star':{  #Equatorial band hypothesis - updated
             #     'Rstar':0.302,              
@@ -220,13 +220,13 @@ def get_system_params():
             #     # 'veq_spots':23.59,
             #     },
 
-            # 'star':{  #Almenara+2022
-            #     'Rstar':0.3043,              
-            #     'istar':133.0,                    #unknown
-            #     'Mstar':0.2813,
-            #     'veq':1.504,                     #unknown                
-            #     # 'veq_spots':23.59,
-            #     },
+            'star':{  #Almenara+2022
+                'Rstar':0.3043,              
+                'istar':90.,                    #unknown
+                'Mstar':0.2813,
+                'veq':1.504,                     #unknown                
+                # 'veq_spots':23.59,
+                },
 
             # 'TOI3884_b':{  #Libby-Roberts+2023  
             #     'period':4.5445828,           

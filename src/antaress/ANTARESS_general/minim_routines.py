@@ -362,7 +362,7 @@ def ln_lkhood_func_mcmc(p_step,fixed_args):
     if fixed_args['step_chi2']:chi2_outputs = np.sum(chi2_step)
     else:chi2_outputs = None
 
-    return ln_lkhood,chi2_step,[outputs,chi2_outputs]
+    return ln_lkhood,chi2_step,outputs,chi2_outputs
     
 
 
@@ -419,7 +419,7 @@ def ln_prob_func_mcmc(p_step,fixed_args):
     if not np.isinf(ln_prior):
 
         #Likelihood function
-        ln_lkhood,_,outputs = ln_lkhood_func_mcmc(p_step_all,fixed_args)
+        ln_lkhood,_,step_outputs,chi2_outputs = ln_lkhood_func_mcmc(p_step_all,fixed_args)
 
         #Set log-probability to -inf if likelihood is nan
         #    - happens when parameters go beyond their boundaries (hence ln_prior=-inf) but the model fails (hence ln_lkhood = nan)
@@ -427,9 +427,10 @@ def ln_prob_func_mcmc(p_step,fixed_args):
 
     else: 
         ln_prob=-np.inf
-        outputs = None
+        step_outputs = None
+        chi2_outputs = None
 
-    return ln_prob,np.array(outputs)
+    return ln_prob,step_outputs,chi2_outputs
 
 
  
@@ -929,7 +930,9 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
         #Call to MCMC
         st0=get_time()
         n_free=np.shape(fit_dic['initial_distribution'])[1]
-    
+        
+        #Defining blobs format
+        blobs_dtype = [("step_outputs", dict), ("step_chi2", float)]
         #Multiprocessing
         if nthreads>1:
             pool_proc = Pool(processes=nthreads)  
@@ -939,8 +942,9 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
                                             ln_prob_func_mcmc,              #Log-probability function 
                                             args=[fixed_args],              #Fixed arguments for the calculation of the likelihood and priors
                                             pool = pool_proc,
-                                            backend=backend)                #Monitor chain progress 
-        else:sampler = emcee.EnsembleSampler(fit_dic['nwalkers'],n_free,ln_prob_func_mcmc,args=[fixed_args],backend=backend)         
+                                            backend=backend,                #Monitor chain progress 
+                                            blobs_dtype=blobs_dtype)
+        else:sampler = emcee.EnsembleSampler(fit_dic['nwalkers'],n_free,ln_prob_func_mcmc,args=[fixed_args],backend=backend,blobs_dtype=blobs_dtype)         
             
         #Run MCMC
         #    - possible options:
@@ -955,10 +959,12 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
         
         #Complementary outputs
         #    - shape (nsteps,nwalkers,2)
-        if fixed_args['step_output']:step_outputs = sampler.get_blobs()[:,:,0]
+        blobs = sampler.get_blobs()
+        #    - retrieve step-by-step function output
+        if fixed_args['step_output']:step_outputs = blobs["step_outputs"]
         else:step_outputs = None
         #    - retrieving chi2 chains
-        if fixed_args['step_chi2']:fixed_args['chi2_storage'] = sampler.get_blobs()[:,:,1]
+        if fixed_args['step_chi2']:fixed_args['chi2_storage'] = blobs["step_chi2"]
         else:fixed_args['chi2_storage'] = None
 
         #Save raw MCMC results 

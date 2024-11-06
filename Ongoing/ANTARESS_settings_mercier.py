@@ -251,12 +251,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Star name
 
-    gen_dic['star_name']='AUMic'
+    # gen_dic['star_name']='AUMic'
     # gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
     # gen_dic['star_name']='TRAPPIST1'
-    # gen_dic['star_name']='TOI3884'
+    gen_dic['star_name']='TOI3884'
 
     # Zodiacs
     # gen_dic['star_name']='Capricorn'
@@ -836,12 +836,18 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #                 'fctrst__ISMIKE_Red_VSmockvis_SP'    : 0.55,
 
 
-                    # For the spot 'spot1' : -- Almenara+2022
-                     'lat__ISMIKE_Red_VSmockvis_SPspot1'     : -90,
-                     'Tc_sp__ISMIKE_Red_VSmockvis_SPspot1' : 2459642.86314 + 2.4,
-                     'ang__ISMIKE_Red_VSmockvis_SPspot1'     : 48.6,
+                    # # For the spot 'spot1' : -- Almenara+2022
+                    #  'lat__ISMIKE_Red_VSmockvis_SPspot1'     : -90,
+                    #  'Tc_sp__ISMIKE_Red_VSmockvis_SPspot1' : 2459642.86314 + 2.4,
+                    #  'ang__ISMIKE_Red_VSmockvis_SPspot1'     : 48.6,
 
-                    #All spots in the a given visit must have the same contrast -- Almenara+2022
+                    # #All spots in the a given visit must have the same contrast -- Almenara+2022
+                    # 'fctrst__ISMIKE_Red_VSmockvis_SP'    : 0.41,
+
+                    # Test
+                     'lat__ISMIKE_Red_VSmockvis_SPspot1'     : -10,
+                     'Tc_sp__ISMIKE_Red_VSmockvis_SPspot1' : 2459642.86314 + 0.6,
+                     'ang__ISMIKE_Red_VSmockvis_SPspot1'     : 25,
                     'fctrst__ISMIKE_Red_VSmockvis_SP'    : 0.41,
 
                     },
@@ -6138,7 +6144,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Walkers
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['mcmc_set']={'nwalkers':10,'nsteps':200,'nburn':30}
+        glob_fit_dic['DiffProf']['mcmc_set']={'nwalkers':3,'nsteps':20,'nburn':3}
 
     #Complex priors        
          
