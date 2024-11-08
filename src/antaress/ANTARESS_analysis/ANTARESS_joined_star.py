@@ -540,6 +540,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         'ncen_bins':{},
         'cond_fit':{},
         'cond_def_cont_all':{},
+        'flux_cont_all':{},
         'cond_def':{},
         'flux':{},
         'cov':{},
@@ -577,7 +578,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     for par in ['coord_obs','coord_fit','ph_fit']:fixed_args[par]={}
     for inst in np.intersect1d(data_dic['instrum_list'],list(fit_dic['idx_in_fit'].keys())):  
         init_joined_routines_inst(inst,fit_dic,fixed_args)
-        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','cond_def_cont_all','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
+        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','cond_def_cont_all','flux_cont_all','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
         if (fixed_args['mode']=='ana') and (inst not in fixed_args['model']):fixed_args['model'][inst] = 'gauss'
@@ -755,6 +756,23 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
             if fixed_args['cond_transit_sp']:
                 fixed_args['bjd_time_shift'][inst][vis]=np.floor(fixed_args['coord_fit'][inst][vis]['bjd'][0])+2400000.
 
+            #Continuum common to all processed profiles within visit
+            #    - collapsed along temporal axis
+            cond_cont_com  = np.all(fixed_args['cond_def_cont_all'][inst][vis],axis=0)
+            if np.sum(cond_cont_com)==0.:stop('No pixels in common continuum')  
+
+            #Continuum flux
+            #    - calculated over the defined bins common to all processed profiles
+            #    - defined as a weighted mean because intrinsic profiles at the limbs can be very poorly defined due to the partial occultation and limb-darkening
+            #    - we use the covariance diagonal to define a representative weight
+            cont_intr = np.zeros(fixed_args['nexp_fit_all'][inst][vis])*np.nan
+            wcont_intr = np.zeros(fixed_args['nexp_fit_all'][inst][vis])*np.nan
+            for isub in range(fixed_args['nexp_fit_all'][inst][vis]):
+                dw_sum = np.sum(fixed_args['dcen_bins'][inst][vis][isub][cond_cont_com])
+                cont_intr[isub] = np.sum(fixed_args['flux'][inst][vis][isub][cond_cont_com]*fixed_args['dcen_bins'][inst][vis][isub][cond_cont_com])/dw_sum
+                wcont_intr[isub] = dw_sum**2./np.sum(fixed_args['cov'][inst][vis][isub][0,cond_cont_com]*fixed_args['dcen_bins'][inst][vis][isub][cond_cont_com]**2.)
+            fixed_args['flux_cont_all'][inst][vis]=np.nansum(cont_intr*wcont_intr)/np.nansum(wcont_intr)
+
     #Artificial observation table
     #    - covariance condition is set to False so that chi2 values calculated here are not further modified within the residual() function
     #    - unfitted pixels are removed from the chi2 table passed to residual() , so that they are then summed over the full tables
@@ -806,7 +824,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
 
     #Best-fit model and derived properties
     fixed_args['fit'] = False
-    mod_dic,coeff_line_dic,mod_prop_dic = fixed_args['mod_func'](p_final,fixed_args)
+    mod_dic,coeff_line_dic,mod_prop_dic,_ = fixed_args['mod_func'](p_final,fixed_args)
 
     #Save best-fit properties
     #    - with same structure as fit to individual profiles 
@@ -948,7 +966,7 @@ def joined_IntrProf(param,fixed_args):
                     for pl_loc in args['studied_pl'][inst][vis]:                    
                         for prop_loc in mod_prop_dic[inst][vis][pl_loc]:mod_prop_dic[inst][vis][pl_loc][prop_loc][isub] = surf_prop_dic[args['chrom_mode']][pl_loc][prop_loc][0] 
 
-    return mod_dic,coeff_line_dic,mod_prop_dic
+    return mod_dic,coeff_line_dic,mod_prop_dic,None
 
 
 

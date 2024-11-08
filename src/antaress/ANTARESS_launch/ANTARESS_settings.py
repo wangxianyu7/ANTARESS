@@ -3126,6 +3126,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     glob_fit_dic['IntrProp']['idx_in_fit'] = {}
 
 
+    #%%% Scaled data errors
+    #    - local scaling of data errors
+    #    - you can scale by sqrt(reduced chi2 of original fit) to ensure a reduced chi2 unity
+    glob_fit_dic['IntrProp']['sc_err']={}  
+
+
     #%%%% Fitted properties
 
     #%%%%% Properties and model
@@ -3266,7 +3272,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + 2: multithreading turned off AND over-simplified grid building is used
     # + 3: multithreading turned off AND over-simplified grid building is used AND grid building function coded in C 
     #    - over-simplified grid building: instead of assigning complex profiles to individual cells and summing them for the entire disk, we now use Gaussian profiles for each cell. 
-    # Additionally, we optimize performance by representing the grid of profiles as an array rather than a list.
+    #      additionally, we optimize performance by representing the grid of profiles as an array rather than a list.
     glob_fit_dic['DiffProf']['Opt_Lvl']=0
     
     
@@ -4235,7 +4241,7 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
         #%%%%% Detection thresholds
         #    - define area and amplitude thresholds for detection of stellar line (in sigma)
         #    - for the amplitude, it might be more relevant to consider the actual SNR of the derived value (shown in plots)
-        #    - require 'true_amp' or 'amp' in 'deriv_prop'
+        #    - requires 'true_amp' or 'amp' in 'deriv_prop'
         #    - if set to None, lines are considered as detected in all exposures
         local_dic[data_type]['thresh_area']=5.
         local_dic[data_type]['thresh_amp']=4.   
