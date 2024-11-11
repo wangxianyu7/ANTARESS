@@ -2399,6 +2399,7 @@ def MCMC_plot_chains_chi2(fit_dic,chain,keep_chain,fixed_args,verbose=True,verb_
                 ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
                 x_title='Steps',y_title='Chi2',
                 font_size=font_size,xfont_size=font_size,yfont_size=font_size)
+    plt.yscale('log')
 
     plt.savefig(fit_dic['save_dir']+'/Chain_Chi2.'+fit_dic['save_MCMC_chains']) 
     plt.close()
@@ -2434,6 +2435,7 @@ def MCMC_plot_chains_chi2(fit_dic,chain,keep_chain,fixed_args,verbose=True,verb_
                 if otheri!=i: ax.plot(otherwalker, color='black', alpha=0.8, lw=lw_plot, zorder=0)
            
             ax.yaxis.set_visible(False)
+            ax.set_yscale('log')
 
         # Turn off unused subplots if the walker_group is smaller than n_group
         if len(walker_group) < n_group:

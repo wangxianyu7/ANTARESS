@@ -256,12 +256,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
     # gen_dic['star_name']='TRAPPIST1'
-    gen_dic['star_name']='TOI3884'
+    # gen_dic['star_name']='TOI3884'
 
     # Zodiacs
     # gen_dic['star_name']='Capricorn'
     # gen_dic['star_name']='Cancer'
-    # gen_dic['star_name']='Gemini'
+    gen_dic['star_name']='Gemini'
     # gen_dic['star_name']='Sagittarius'
     # gen_dic['star_name']='Leo'
     # gen_dic['star_name']='Aquarius'
@@ -836,18 +836,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #                 'fctrst__ISMIKE_Red_VSmockvis_SP'    : 0.55,
 
 
-                    # # For the spot 'spot1' : -- Almenara+2022
-                    #  'lat__ISMIKE_Red_VSmockvis_SPspot1'     : -90,
-                    #  'Tc_sp__ISMIKE_Red_VSmockvis_SPspot1' : 2459642.86314 + 2.4,
-                    #  'ang__ISMIKE_Red_VSmockvis_SPspot1'     : 48.6,
+                    # For the spot 'spot1' : -- Almenara+2022
+                     'lat__ISMIKE_Red_VSmockvis_SPspot1'     : -90,
+                     'Tc_sp__ISMIKE_Red_VSmockvis_SPspot1' : 2459642.86314 + 2.4,
+                     'ang__ISMIKE_Red_VSmockvis_SPspot1'     : 48.6,
 
-                    # #All spots in the a given visit must have the same contrast -- Almenara+2022
-                    # 'fctrst__ISMIKE_Red_VSmockvis_SP'    : 0.41,
-
-                    # Test
-                     'lat__ISMIKE_Red_VSmockvis_SPspot1'     : -10,
-                     'Tc_sp__ISMIKE_Red_VSmockvis_SPspot1' : 2459642.86314 + 0.6,
-                     'ang__ISMIKE_Red_VSmockvis_SPspot1'     : 25,
+                    #All spots in the a given visit must have the same contrast -- Almenara+2022
                     'fctrst__ISMIKE_Red_VSmockvis_SP'    : 0.41,
 
                     },
@@ -1369,7 +1363,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':80.}} 
+        mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':80.}}
+        mock_dic['verbose_flux_cont']= True 
 
     if gen_dic['star_name'] == 'fakeAU_Mic' :
         mock_dic['flux_cont']={'ESPRESSO':{'mockvisit1':1e8}}
@@ -3412,6 +3407,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Order to be fitted
+    if gen_dic['star_name']=='TOI3884':
+        data_dic['DI']['fit_prof']['order']={'MIKE_Red':0} 
+
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}     
     
@@ -3425,6 +3423,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         data_dic['DI']['fit_prof']['order']={'ESPRESSO':0} 
 
     #Continuum range
+    if gen_dic['star_name']=='TOI3884':data_dic['DI']['cont_range']['MIKE_Red']={0:[[-30.,-20.],[20.,30.]]} 
+
     if gen_dic['star_name']=='AUMic':data_dic['DI']['cont_range']['ESPRESSO']={0:[[-100.,-80.],[80.,100.]]} 
         
     if gen_dic['star_name']=='AU_Mic':data_dic['DI']['cont_range']['ESPRESSO']={0:[[-25,-15.],[10.,20.]]} 
@@ -3434,6 +3434,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:data_dic['DI']['cont_range']['ESPRESSO']={0:[[-25., -20.],[10.,15.]]} 
 
     #Spectral range(s) to be fitted
+    if gen_dic['star_name']=='TOI3884':data_dic['DI']['fit_range']['MIKE_Red']={'mockvis':[[-20., 20.]]}  
+
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['fit_range']['ESPRESSO']={
         'mock_vis':[[-100.,100.]], #--base
@@ -3473,6 +3475,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             
 
     #Model type    
+    if gen_dic['star_name']=='TOI3884':    
+        data_dic['DI']['model']['MIKE_Red']='gauss'
+
     if gen_dic['star_name']=='AUMic':    
         data_dic['DI']['model']['ESPRESSO']='gauss'
 
@@ -3495,7 +3500,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         data_dic['DI']['mod_prop']={'FWHM':{'vary':True, 'ESPRESSO':{'visit1':{'guess':5}}},#, 'bd':[1., 50.] } } },
                                 'rv':{'vary':True, 'ESPRESSO':{'visit1':{'guess':-5}}},#, 'bd':[-4., -7.] } } },
                                 'ctrst':{'vary':True, 'ESPRESSO':{'visit1':{'guess':0.6}}}}#:0.1, 'bd':[0., 1.] } } },
-                                
+    
+    if gen_dic['star_name']=='TOI3884':    
+        data_dic['DI']['mod_prop']={'FWHM':{'vary':True, 'MIKE_Red':{'mockvis':{'guess':5}}},#, 'bd':[1., 50.] } } },
+                                'rv':{'vary':True, 'MIKE_Red':{'mockvis':{'guess':0.}}},#, 'bd':[-4., -7.] } } },
+                                'ctrst':{'vary':True, 'MIKE_Red':{'mockvis':{'guess':0.6}}}}#:0.1, 'bd':[0., 1.] } } },
 
 
     #Best model table
@@ -3511,7 +3520,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
    
     #Priors on variable properties
     data_dic['DI']['line_fit_priors']={}
-    if gen_dic['star_name']=='AU_Mic':
+    if gen_dic['star_name'] in ['AU_Mic','TOI3884']:
         data_dic['DI']['line_fit_priors']={'rv':{'mod': 'uf', 'low':0.,'high':100.},
                                     'ctrst':{'mod': 'uf', 'low':0.,'high':1.},
                                     'FWHM':{'mod': 'uf', 'low':0.1,'high':40.},                                    
@@ -3523,7 +3532,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # deriv_prop+=['FWHM_LOR','FWHM_voigt']   #voigt
     # deriv_prop+=['cont_amp','RV_lobe','amp_lobe','FWHM_lobe']    #double-gaussian
     # deriv_prop+=['vsini']    #custom
-    for par_loc in deriv_prop:data_dic['DI']['deriv_prop'][par_loc]={}
+    for par_loc in deriv_prop:data_dic['DI']['deriv_prop'][par_loc]={'prop_DI_rv':{}}
 
 
     #Calculating/retrieving
@@ -5595,7 +5604,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_DiffProf'] = True  #&  False
+    gen_dic['fit_DiffProf'] = True  &  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5827,7 +5836,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
         'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
-        'veq_spots':{'vary':True,'guess':10, 'bd':[2, 30]},
+        # 'veq_spots':{'vary':True,'guess':10, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
         # 'cos_istar':{'vary':False,'guess':0.0348994967, 'bd':[-1., 1.]},
 
@@ -6128,23 +6137,23 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         glob_fit_dic['DiffProf']['deriv_prop'] = {'lambda_deg':[]}#, 'Peq_veq_spots':{'Rstar':{'val':0.75, 's_val':0.1}}}
     
     #Calculating/retrieving
-    glob_fit_dic['DiffProf']['mcmc_run_mode']='use'    
-    # glob_fit_dic['DiffProf']['mcmc_run_mode']='reuse'    
+    # glob_fit_dic['DiffProf']['mcmc_run_mode']='use'    
+    glob_fit_dic['DiffProf']['mcmc_run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['mcmc_reuse']={}
-        # glob_fit_dic['DiffProf']['mcmc_reuse']={
-        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk3_steps20_AUMicb.npz'],
-        #             'nburn':[6]
-        #             }  
+        # glob_fit_dic['DiffProf']['mcmc_reuse']={}
+        glob_fit_dic['DiffProf']['mcmc_reuse']={
+                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/Gemini_with_chi2_OG/Gemini_b_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk40_steps10000_Gemini_b.npz'],
+                    'nburn':[3000]
+                    }  
     #Re-starting
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['mcmc_reboot']=''
 
     #Walkers
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['mcmc_set']={'nwalkers':3,'nsteps':20,'nburn':3}
+        glob_fit_dic['DiffProf']['mcmc_set']={'nwalkers':40,'nsteps':10000,'nburn':3000}
 
     #Complex priors        
          
@@ -6707,7 +6716,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         data_dic['Diff']['opt_loc_prof_est'].update({'DiffProf_prop_path':{
                                                                 'ESPRESSO':{
-                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/DiffProf/mcmc/Fit_results'
+                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/Gemini/Gemini_b_Saved_data/Joined_fits/DiffProf/mcmc/Fit_results'
                                                                             }
                                                                         }
                                                     })
