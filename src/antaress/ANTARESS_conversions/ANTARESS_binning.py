@@ -920,14 +920,14 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     EFsc2_all = np.zeros(dim_exp,dtype=float)*np.nan 
     if data_type!='DI':var_ref2 = np.zeros(dim_exp,dtype=float)*np.nan  
     for iord,iord_orig in enumerate(iord_orig_list):
-        cond_def_weights_ord = cond_def_weights[iord]
-        cen_bins_ord = cen_bins[iord,cond_def_weights_ord]
+        idx_def_weights_ord = np_where1D(cond_def_weights[iord])
+        cen_bins_ord = cen_bins[iord,idx_def_weights_ord]
     
         #Instrumental calibration: gcal_exp(w,t,v)
         #   for original 2D or 1D spectra, gcal_exp is the estimated spectral calibration profile for the exposure (rescaled by the mean calibration profile over the visit if spectra to be weighted were converted back into count-equivalent values and are still in their original format)
         #   calibration profiles were estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow  
         #   for original CCFs or after conversion into CCFs or from 2D/1D it returns a global calibration
-        if(gcal_exp is not None):gcal_ord = gcal_exp[iord,cond_def_weights_ord]
+        if(gcal_exp is not None):gcal_ord = gcal_exp[iord,idx_def_weights_ord]
         else:gcal_ord = 1.
     
         #Spectral corrections
@@ -952,7 +952,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
             #   telluric profiles (contained in the data upload specific to the exposure) were defined on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow
             #   they are propagated through 2D/1D conversion but not CCF conversion    
             if (tell_exp is None):tell_ord = 1.
-            else:tell_ord = tell_exp[iord,cond_def_weights_ord]
+            else:tell_ord = tell_exp[iord,idx_def_weights_ord]
             # > cosmics and permanent peaks: ignored in the weighing, as flux values are not scaled but replaced
             # > fringing and wiggles: ignored for now
             # > final spectral correction
@@ -960,31 +960,31 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         else:spec_corr_ord = 1.
 
         #Spectral broadband flux scaling 
-        if bdband_flux_sc:flux_sc_all[iord,cond_def_weights_ord] = 1. - data_scaling['loc_flux_scaling'](cen_bins_ord)      
+        if bdband_flux_sc:flux_sc_all[iord,idx_def_weights_ord] = 1. - data_scaling['loc_flux_scaling'](cen_bins_ord)      
         
         #Global scaling factor     
         Ccorr_glob_ord = spec_corr_ord/(dt*glob_flux_sc)
 
         #Estimate of true blazed counts     
-        Nbl_ord = flux_ref_exp[iord,cond_def_weights_ord]/(gcal_ord*Ccorr_glob_ord)
+        Nbl_ord = flux_ref_exp[iord,idx_def_weights_ord]/(gcal_ord*Ccorr_glob_ord)
 
         #Estimate of variance on scaled disk-integrated profiles
         #    - required for all weights calculations
         #    - detector noise, if defined for S2D, has been estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow 
         cond_def_pos_ord = (Nbl_ord>0.) 
         if (sdet_exp2 is not None):
-            EFsc2_all[iord,cond_def_weights_ord] = sdet_exp2[iord,cond_def_weights_ord][cond_def_pos_ord]       #detector variance
-            EFsc2_all[iord,cond_def_weights_ord][cond_def_pos_ord]+= Nbl_ord[cond_def_pos_ord]                  #co-adding photoelectron variance where positive
-            EFsc2_all[iord,cond_def_weights_ord] *= ( flux_sc_all[iord,cond_def_weights_ord]*Ccorr_glob_ord*gcal_ord)**2.            #scaling
+            EFsc2_all[iord,idx_def_weights_ord] = sdet_exp2[iord,idx_def_weights_ord[cond_def_pos_ord]]       #detector variance
+            EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]]+= Nbl_ord[cond_def_pos_ord]                  #co-adding photoelectron variance where positive
+            EFsc2_all[iord,idx_def_weights_ord] *= ( flux_sc_all[iord,idx_def_weights_ord]*Ccorr_glob_ord*gcal_ord)**2.            #scaling
              
         else:
             
             #Weights are kept undefined (ie, no weighing) where variance is null or negative  
-            if ('spec' in data_mode):EFsc2_all[iord,cond_def_weights_ord][cond_def_pos_ord] = ( flux_sc_all[iord,cond_def_weights_ord][cond_def_pos_ord]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
-            else:EFsc2_all[iord,cond_def_weights_ord][cond_def_pos_ord] = ( flux_sc_all[iord,cond_def_weights_ord][cond_def_pos_ord]*Ccorr_glob_ord*gcal_ord)**2.*Nbl_ord[cond_def_pos_ord]
+            if ('spec' in data_mode):EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
+            else:EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord*gcal_ord)**2.*Nbl_ord[cond_def_pos_ord]
             
         #Variance on master stellar spectrum
-        if data_type!='DI':var_ref2[iord,cond_def_weights_ord] = cov_ref_exp[iord][0,cond_def_weights_ord]
+        if data_type!='DI':var_ref2[iord,idx_def_weights_ord] = cov_ref_exp[iord][0,idx_def_weights_ord]
             
     #--------------------------------------------------------   
     #Weights on disk-integrated spectra

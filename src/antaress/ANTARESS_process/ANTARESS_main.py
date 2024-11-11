@@ -2235,10 +2235,11 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                             #    - gcal(w,t,v) = 1/(dw(w)*bl(w,t,v)))
                                             # with bl(w,t,v) = N_meas[bl](w,t,v)/N_meas(w,t,v) 
                                             #    - negative values are set to undefined, so that they are replaced by the calibration model in the calc_gcal() routine
-                                            gcal_temp = 1./(dll[iord,cond_gcal[iord]]*count_blaze_exp[iord,cond_gcal[iord]]/count_exp[iord,cond_gcal[iord]])
+                                            idx_gcal_ord = np_where1D(cond_gcal[iord])
+                                            gcal_temp = 1./(dll[iord,idx_gcal_ord]*count_blaze_exp[iord,idx_gcal_ord]/count_exp[iord,idx_gcal_ord])
                                             cond_gcal_pos = gcal_temp > 0.
-                                            data_dic_temp['gcal'][iexp,iord,cond_gcal[iord]][cond_gcal_pos] = gcal_temp[cond_gcal_pos] 
-
+                                            data_dic_temp['gcal'][iexp,iord,idx_gcal_ord[cond_gcal_pos]] = gcal_temp[cond_gcal_pos] 
+                                            
                                             #Defining detector noise
                                             #    - Edet_meas(w,t,v)^2 = EN_meas[bl](w,t,v)^2 - N_meas[bl](w,t,v)
                                             #    - kept to 0 at undefined pixels, or where negative
@@ -2246,9 +2247,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                             #      Edet_meas(w,t,v)^2 = EN_meas[bl](w,t,v)^2
                                             #    - some pixels have large errors despite not having large fluxes; this may come from hot pixels subtracted from the extracted counts
                                             if gen_dic['cal_weight']:
-                                                data_dic_temp['sdet2'][iexp,iord,cond_def_pos[iord]] = err_count_blaze_exp[iord,cond_def_pos[iord]]**2. - count_blaze_exp[iord,cond_def_pos[iord]]
-                                                cond_neg_sub = (data_dic_temp['sdet2'][iexp,iord,cond_def_pos[iord]]<0.) 
-                                                data_dic_temp['sdet2'][iexp,iord,cond_def_pos[iord]][cond_neg_sub] = 0.
+                                                idx_def_pos = np_where1D(cond_def_pos[iord])
+                                                data_dic_temp['sdet2'][iexp,iord,idx_def_pos] = err_count_blaze_exp[iord,idx_def_pos]**2. - count_blaze_exp[iord,idx_def_pos]
+                                                cond_neg_sub = (data_dic_temp['sdet2'][iexp,iord,idx_def_pos]<0.) 
+                                                data_dic_temp['sdet2'][iexp,iord,idx_def_pos[cond_neg_sub]] = 0.
                                                 data_dic_temp['sdet2'][iexp,iord,cond_def_neg[iord]] = err_count_blaze_exp[iord,cond_def_neg[iord]]**2. 
 
                                 elif inst=='CARMENES_VIS':             

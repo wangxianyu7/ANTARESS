@@ -471,19 +471,15 @@ def inst_cal(input_nbook):
     input_nbook['settings']['gen_dic']['calc_gcal']=input_nbook['sp_reduc']['calc_gcal']
     return None
 
-def tell_corr(input_nbook, plot=False):
+def tell_corr(input_nbook):
     '''
     input_nbook: containing parameters used for telluric correction
-    plot: set to true to generate plots
     '''
     input_nbook['settings']['gen_dic']['corr_tell']=True 
     input_nbook['settings']['gen_dic']['calc_corr_tell']=input_nbook['sp_reduc']['calc_tell']
 
     input_nbook['settings']['gen_dic']['tell_species']    =input_nbook['sp_reduc']['tell_species']
     input_nbook['settings']['gen_dic']['tell_thresh_corr']=input_nbook['sp_reduc']['tell_thresh']
-    if plot:
-        input_nbook['settings']['plot_dic']['tell_CCF'] = 'png'
-        input_nbook['settings']['plot_dic']['tell_prop'] = 'png'
     return None
 
 def fbal_corr(input_nbook):
@@ -701,9 +697,14 @@ def inst_cal_plot(input_nbook):
     input_nbook['settings']['plot_dic']['noises_ord'] = 'png'
     input_nbook['plots']['gcal']={}
     for key in ['iexp2plot','iord2plot']:
-        input_nbook['plots']['gcal'][key] = deepcopy(input_nbook['sp_reduc'][key])
+        input_nbook['plots']['gcal'][key] = [deepcopy(input_nbook['sp_reduc'][key])]
         input_nbook['sp_reduc'].pop(key)
 
+    return None
+
+def tell_corr_plot(input_nbook):
+    input_nbook['settings']['plot_dic']['tell_CCF'] = 'png'
+    input_nbook['settings']['plot_dic']['tell_prop'] = 'png'
     return None
 
 def plot_prop(input_nbook,data_type):
