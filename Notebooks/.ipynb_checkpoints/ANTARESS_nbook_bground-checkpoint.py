@@ -41,6 +41,9 @@ def call_sequence(input_nbook, nbook_type):
 
 def init():
     input_nbook = {
+        #notebook inputs that will overwrite system properties file
+        'system' : {},  
+        #notebook inputs that will overwrite configuration settings file
         'settings' : {'gen_dic':{'data_dir_list':{},'type':{}},
                       'mock_dic':{'visit_def':{},'sysvel':{},'intr_prof':{},'flux_cont':{},'set_err':{}},
                       'data_dic':{'DI':{'sysvel':{}},
@@ -49,18 +52,19 @@ def init():
                       'plot_dic':{},
                       'detrend_prof_dic':{}
                      },
-        #notebook inputs related to system properties
-        'system' : {},        
-        #notebook inputs related to processing and analysis
+        #notebook inputs that will overwrite plot configuration settings file
+        'plots' : {},
+        #---------------------------------------
+        #Notebook inputs for internal use
+        #Processing and analysis
         'par' : {'loc_prof_est':False},      
-        #notebook inputs related to the spectral reduction
+        #Spectral reduction
         'sp_reduc':{},
-        #notebook inputs related to the detrending of CCFs
+        #Detrending of CCFs
         'DI_trend':{},
-        #tracks which fits were performed
+        #Tracks which fits were performed
         'fits':[],            
-        #notebook inputs related to plots
-        'plots' : {}}         
+    }         
 
     return input_nbook
 
@@ -134,23 +138,9 @@ def add_vis(input_nbook,mock=False):
         input_nbook['settings']['gen_dic']['studied_pl'][input_nbook['par']['main_pl']][inst]=[]
     input_nbook['settings']['gen_dic']['studied_pl'][input_nbook['par']['main_pl']][inst]+=[vis]
     
-    # #Mock dataset to be generated
-    # if mock:
-    #     input_nbook['settings']['gen_dic']['mock_data']=True
-    #     input_nbook['settings']['gen_dic']['type'][inst] = 'CCF'
-    #     if inst not in input_nbook['settings']['mock_dic']['visit_def']:
-    #         input_nbook['settings']['mock_dic']['visit_def'][inst]={}
-    #     input_nbook['settings']['mock_dic']['visit_def'][inst][vis]={'exp_range':np.array(input_nbook['par']['range']),'nexp':int(input_nbook['par']['nexp'])}
-        
-    #     dbjd =  (input_nbook['settings']['mock_dic']['visit_def'][inst][vis]['exp_range'][1]-input_nbook['settings']['mock_dic']['visit_def'][inst][vis]['exp_range'][0])/input_nbook['settings']['mock_dic']['visit_def'][inst][vis]['nexp']
-    #     n_in_visit = int((input_nbook['settings']['mock_dic']['visit_def'][inst][vis]['exp_range'][1]-input_nbook['settings']['mock_dic']['visit_def'][inst][vis]['exp_range'][0])/dbjd)
-    #     bjd_exp_low = input_nbook['settings']['mock_dic']['visit_def'][inst][vis]['exp_range'][0] + dbjd*np.arange(n_in_visit)
-    #     bjd_exp_high = bjd_exp_low+dbjd      
-    #     bjd_exp_all = 0.5*(bjd_exp_low+bjd_exp_high)
-    #     input_nbook['par']['t_BJD'] = {'inst':inst,'vis':vis,'t':bjd_exp_all}
-    
+
     # #Dataset to be processed
-    # else:
+    # if not mock:
         
     #     #Mock dataset
     #     if input_nbook['settings']['gen_dic']['mock_data']:
@@ -166,13 +156,13 @@ def add_vis(input_nbook,mock=False):
     #             input_nbook['settings']['gen_dic']['data_dir_list'][inst]={}
     #         input_nbook['settings']['gen_dic']['data_dir_list'][inst][vis] = input_nbook['par']['data_dir']
             
-    #         # For sp_reduc notebook only S2D type is processed
-    #         if input_nbook['type'] == 'SP_reduc':input_nbook['settings']['gen_dic']['type'][inst] = 'spec2D'
+
 
     #Initializing mock dataset
     if mock:   
         input_nbook['settings']['gen_dic']['mock_data']=True
         input_nbook['settings']['gen_dic']['type'][inst] = 'CCF'
+        input_nbook['par']['type']='CCF'
         if inst not in input_nbook['settings']['mock_dic']['visit_def']:
             input_nbook['settings']['mock_dic']['visit_def'][inst]={}
         input_nbook['settings']['mock_dic']['visit_def'][inst][vis]={'exp_range':np.array(input_nbook['par']['range']),'nexp':int(input_nbook['par']['nexp'])}
@@ -186,15 +176,11 @@ def add_vis(input_nbook,mock=False):
     
     #Initializing real dataset
     else:
-
+        input_nbook['settings']['gen_dic']['type'][inst] = input_nbook['par']['type']
         if inst not in input_nbook['settings']['gen_dic']['data_dir_list']:
             input_nbook['settings']['gen_dic']['data_dir_list'][inst]={}
         input_nbook['settings']['gen_dic']['data_dir_list'][inst][vis] = input_nbook['par']['data_dir']
 
-    #Define local profile type for internal use
-    if input_nbook['settings']['gen_dic']['type'][inst]=='CCF':input_nbook['par']['prof_type']='CCF'
-    else:input_nbook['par']['prof_type']='Spec'
-    
     return None
 
 def set_sysvel(input_nbook):
@@ -245,23 +231,23 @@ def extract_intr(input_nbook):
 def conv_CCF(input_nbook,prof_type):
     inst = input_nbook['par']['instrument']
     vis = input_nbook['par']['night']
-    if ('spec' not in input_nbook['settings']['gen_dic']['type'][inst]):
+    if (input_nbook['settings']['gen_dic']['type'][inst]=='CCF'):
         print('WARNING : dataset is already in CCF format, skipping conversion')
     else:
-        input_nbook['par']['prof_type'] = 'CCFfromSpec'
+        input_nbook['par']['type'] = 'CCFfromSpec'
         
         input_nbook['settings']['gen_dic'][prof_type+'_CCF'] = True
         input_nbook['settings']['gen_dic']['calc_'+prof_type+'_CCF'] = input_nbook['par']['calc_CCF']
     
         #ANTARESS RV grid settings are defined in the solar barycentric rest frame
-        #   - for notebook intrinsic spectra, settings are provided relative to the input systemic rv and must be shifted back
-        if prof_type=='DI':rv_shift=0
-        elif prof_type=='Intr':rv_shift = input_nbook['settings']['data_dic']['DI']['sysvel'][inst][vis]
+        #   - settings are provided relative to the input systemic rv and must be shifted by the input 'sysvel' (at this
+        # stage of the notebooks the visit-specific values are not available)
+        rv_shift = input_nbook['system'][input_nbook['par']['star_name']]['star']['sysvel']
         input_nbook['settings']['gen_dic'].update({
-            'start_RV' : input_nbook['par']['start_RV'] - rv_shift,
-            'end_RV'   : input_nbook['par']['end_RV']   - rv_shift,
+            'start_RV' : input_nbook['par']['start_RV'] + rv_shift,
+            'end_RV'   : input_nbook['par']['end_RV']   + rv_shift,
             'dRV'      : input_nbook['par']['dRV'],
-            'CCF_mask' : {inst : input_nbook['working_path'] + '/' +input_nbook['sp_reduc']['mask_path']}
+            'CCF_mask' : {inst : input_nbook['working_path'] + '/' +input_nbook['par']['mask_path']}
             })
     return None
 
@@ -443,127 +429,6 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
     return None
 
 
-'''
-Plot functions
-'''
-def plot_system(input_nbook):
-    input_nbook['settings']['plot_dic']['system_view'] = 'png' 
-    input_nbook['plots']['system_view']={'t_BJD':input_nbook['par']['t_BJD'],'GIF_generation':True}
-    return None
-
-def plot_prop(input_nbook,data_type):
-    input_nbook['settings']['plot_dic']['prop_'+data_type] = 'png' 
-
-    if input_nbook['type']=='RMR':
-        nbook_prop_names = ['rv','contrast','FWHM']
-        input_nbook['plots']['prop_'+data_type+'_ordin'] = ['rv','ctrst','FWHM']
-        input_nbook['par']['print_disp'] = ['plot']
-    elif input_nbook['type']=='mock':
-        nbook_prop_names = ['rv']
-        input_nbook['plots']['prop_'+data_type+'_ordin'] = ['rv']
-    input_nbook['plots']['prop_'+data_type+'_ordin'] = np.array(input_nbook['plots']['prop_'+data_type+'_ordin'])
-
-    for name_prop,plot_prop in zip(nbook_prop_names,input_nbook['plots']['prop_'+data_type+'_ordin']):
-        input_nbook['plots']['prop_'+data_type+'_'+plot_prop]={}
-        if 'x_range' in input_nbook['par']:
-            input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['x_range'] = deepcopy(input_nbook['par']['x_range'])
-        if ('y_range' in input_nbook['par']) and (name_prop in input_nbook['par']['y_range']):
-            input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['y_range'] = deepcopy(input_nbook['par']['y_range'][name_prop])
-    if 'x_range' in input_nbook['par']:input_nbook['par'].pop('x_range')            
-    if 'y_range' in input_nbook['par']:input_nbook['par'].pop('y_range')              
-    
-    if ('print_disp' in input_nbook['par']):  
-        for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
-            input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['print_disp']=input_nbook['par']['print_disp']
-        input_nbook['par'].pop('print_disp') 
-    
-    #Set error bars depending on the type of fit
-    if input_nbook['settings']['data_dic'][data_type]['fit_mode']=='mcmc':
-        for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
-            input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['plot_HDI']=True
-            input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['plot_err'] = False 
-            
-    if (data_type=='Intr'):
-        for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
-            input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['plot_disp'] = False         
-        
-        #Models
-        prop_path = input_nbook['saved_data_path']+'/Joined_fits/'
-        
-        #Plot fit to joint properties if carried out
-        if 'IntrProp' in input_nbook['fits']:
-            for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
-                input_nbook['plots']['prop_Intr_'+plot_prop].update({
-                    'IntrProp_path' : prop_path+'/IntrProp/'+input_nbook['settings']['glob_fit_dic'][data_type+'Prop']['fit_mode']+'/'   ,
-                    'theo_HR_prop' : True}) 
-            
-        #Plot fit to joint profiles if carried out
-        if 'IntrProf' in input_nbook['fits']:        
-            for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
-                input_nbook['plots']['prop_Intr_'+plot_prop].update({
-                    'IntrProf_path' : prop_path+'/IntrProf/'+input_nbook['settings']['glob_fit_dic'][data_type+'Prop']['fit_mode']+'/'   ,
-                    'theo_HR_prof' : True}) 
-
-    return None
-
-def plot_prof(input_nbook,data_type):
-    input_nbook['settings']['plot_dic'][data_type] = 'png'
-    if input_nbook['type']=='RMR':
-        input_nbook['par']['fit_type'] = 'indiv'   #overplot fits to individual exposures 
-    
-    input_nbook['plots'][data_type]={'GIF_generation':True,'shade_cont':True,'plot_line_model':True,'plot_prop':False} 
-    if 'x_range' in input_nbook['par']:
-        input_nbook['plots'][data_type]['x_range'] = deepcopy(input_nbook['par']['x_range'])
-        input_nbook['par'].pop('x_range')
-    if 'y_range' in input_nbook['par']:
-        input_nbook['plots'][data_type]['y_range'] = deepcopy(input_nbook['par']['y_range'])
-        input_nbook['par'].pop('y_range')
-    if data_type=='Intr_prof':
-        input_nbook['plots'][data_type]['norm_prof'] = True
-    if 'fit_type' in input_nbook['par']:
-        input_nbook['plots'][data_type]['fit_type'] = deepcopy(input_nbook['par']['fit_type'])
-        input_nbook['par'].pop('fit_type')  
-    return None
-
-def plot_spot(input_nbook):
-    input_nbook['plots']['system_view']['plot_spots'] = True
-    input_nbook['plots']['system_view']['mock_spot_prop'] = True
-    input_nbook['plots']['system_view']['n_spcell'] = 101
-    return None
-
-def plot_map(input_nbook,data_type):
-    inst = input_nbook['par']['instrument']
-    
-    #Plot specific order only if spectral data
-    if ('spec' in input_nbook['settings']['gen_dic']['type'][inst]):
-        input_nbook['plots']['map_'+data_type]['orders_to_plot'] = deepcopy(input_nbook['par']['plot_ord'])
-    else:input_nbook['par']['plot_ord']=0
-
-    #Activate plot related to intrinsic CCF model only if model was calculated
-    def_map = True
-    if data_type in ['Intr_prof_est','Intr_prof_res'] and (not input_nbook['par']['loc_prof_est']):def_map=False
-    if data_type in ['Diff_prof_est','Diff_prof_res'] and (not input_nbook['par']['diff_prof_corr']):def_map=False
-    if def_map:
-        input_nbook['settings']['plot_dic']['map_'+data_type] = 'png'
-        input_nbook['plots']['map_'+data_type] = {}
-        input_nbook['plots']['map_'+data_type]['verbose'] = False
-        if 'x_range' in input_nbook['par']:
-            input_nbook['plots']['map_'+data_type]['x_range'] = deepcopy(input_nbook['par']['x_range'])
-        if 'v_range' in input_nbook['par']:
-            input_nbook['plots']['map_'+data_type].update({'v_range_all':{inst:{input_nbook['par']['night']:deepcopy(input_nbook['par']['v_range'])}}}) 
-            input_nbook['par'].pop('v_range')
-        if data_type=='Intr_prof':
-            input_nbook['plots']['map_'+data_type]['norm_prof'] = True
-            input_nbook['plots']['map_'+data_type]['theoRV_HR'] = True
-        elif data_type=='Intr_prof_est':
-            input_nbook['plots']['map_'+data_type]['norm_prof'] = True
-            input_nbook['plots']['map_'+data_type]['line_model']='rec'
-        elif data_type=='Intr_prof_res':
-            input_nbook['plots']['map_'+data_type]['cont_only']=False
-            input_nbook['plots']['map_'+data_type]['line_model']='rec'
-    return None
-
-
 
 
 '''
@@ -589,15 +454,10 @@ def set_mock_prof(input_nbook):
 '''
 Spectral reduction functions
 '''
-def inst_cal(input_nbook, plot=False):
-    '''
-    input_nbook, parameters for the calibration will be stored in input_nbook
-    plot, set to true to generate plots
-    '''
-    input_nbook['settings']['gen_dic']['calc_gcal']=input_nbook['sp_reduc']['calc_gcal']
-    input_nbook['settings']['gen_dic']['gcal_blaze'] = input_nbook['sp_reduc']['blaze']
+def processing_mode(input_nbook):
+    input_nbook['settings']['gen_dic']['calc_proc_data'] = input_nbook['sp_reduc']['calc_proc_data']
 
-    #setting spectral reduction modules after calibration to False, will be acitvated in separate cells when defined
+    #Deactivate all default modules so that the workflow can be run with the selected modules
     input_nbook['settings']['gen_dic']['corr_tell'] = False
     input_nbook['settings']['gen_dic']['glob_mast'] = False
     input_nbook['settings']['gen_dic']['corr_Fbal'] = False
@@ -605,11 +465,10 @@ def inst_cal(input_nbook, plot=False):
     input_nbook['settings']['gen_dic']['corr_cosm'] = False    
     input_nbook['settings']['gen_dic']['calc_FbalOrd'] = False    
 
+    return None
 
-    if plot:
-        input_nbook['settings']['plot_dic']['gcal'] = 'png'
-        input_nbook['settings']['plot_dic']['gcal_ord'] = 'png'
-#        input_nbook['settings']['plot_dic']['sdet_ord'] ='png'
+def inst_cal(input_nbook):
+    input_nbook['settings']['gen_dic']['calc_gcal']=input_nbook['sp_reduc']['calc_gcal']
     return None
 
 def tell_corr(input_nbook, plot=False):
@@ -691,10 +550,6 @@ def wiggle_corr(input_nbook):
                                                           'win' :input_nbook['sp_reduc']['window'],
                                                           'deg' :input_nbook['sp_reduc']['deg'],
                                                           'plot':True}
-    return None
-
-def processing_mode(input_nbook):
-    input_nbook['settings']['gen_dic']['calc_proc_data'] = input_nbook['sp_reduc']['proc_data']
     return None
 
 def mask_pix(input_nbook):
@@ -829,3 +684,140 @@ def fit_prop(input_nbook):
 
     input_nbook['settings']['plot_dic']['porp_DI'] = 'png'
     return None
+
+
+
+'''
+Plot functions
+'''
+def plot_system(input_nbook):
+    input_nbook['settings']['plot_dic']['system_view'] = 'png' 
+    input_nbook['plots']['system_view']={'t_BJD':input_nbook['par']['t_BJD'],'GIF_generation':True}
+    return None
+
+
+def inst_cal_plot(input_nbook):
+    input_nbook['settings']['plot_dic']['gcal_ord'] = 'png'
+    input_nbook['settings']['plot_dic']['noises_ord'] = 'png'
+    input_nbook['plots']['gcal']={}
+    for key in ['iexp2plot','iord2plot']:
+        input_nbook['plots']['gcal'][key] = deepcopy(input_nbook['sp_reduc'][key])
+        input_nbook['sp_reduc'].pop(key)
+
+    return None
+
+def plot_prop(input_nbook,data_type):
+    input_nbook['settings']['plot_dic']['prop_'+data_type] = 'png' 
+
+    if input_nbook['type']=='RMR':
+        nbook_prop_names = ['rv','contrast','FWHM']
+        input_nbook['plots']['prop_'+data_type+'_ordin'] = ['rv','ctrst','FWHM']
+        input_nbook['par']['print_disp'] = ['plot']
+    elif input_nbook['type']=='mock':
+        nbook_prop_names = ['rv']
+        input_nbook['plots']['prop_'+data_type+'_ordin'] = ['rv']
+    input_nbook['plots']['prop_'+data_type+'_ordin'] = np.array(input_nbook['plots']['prop_'+data_type+'_ordin'])
+
+    for name_prop,plot_prop in zip(nbook_prop_names,input_nbook['plots']['prop_'+data_type+'_ordin']):
+        input_nbook['plots']['prop_'+data_type+'_'+plot_prop]={}
+        if 'x_range' in input_nbook['par']:
+            input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['x_range'] = deepcopy(input_nbook['par']['x_range'])
+        if ('y_range' in input_nbook['par']) and (name_prop in input_nbook['par']['y_range']):
+            input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['y_range'] = deepcopy(input_nbook['par']['y_range'][name_prop])
+    if 'x_range' in input_nbook['par']:input_nbook['par'].pop('x_range')            
+    if 'y_range' in input_nbook['par']:input_nbook['par'].pop('y_range')              
+    
+    if ('print_disp' in input_nbook['par']):  
+        for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
+            input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['print_disp']=input_nbook['par']['print_disp']
+        input_nbook['par'].pop('print_disp') 
+    
+    #Set error bars depending on the type of fit
+    if input_nbook['settings']['data_dic'][data_type]['fit_mode']=='mcmc':
+        for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
+            input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['plot_HDI']=True
+            input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['plot_err'] = False 
+            
+    if (data_type=='Intr'):
+        for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
+            input_nbook['plots']['prop_'+data_type+'_'+plot_prop]['plot_disp'] = False         
+        
+        #Models
+        prop_path = input_nbook['saved_data_path']+'/Joined_fits/'
+        
+        #Plot fit to joint properties if carried out
+        if 'IntrProp' in input_nbook['fits']:
+            for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
+                input_nbook['plots']['prop_Intr_'+plot_prop].update({
+                    'IntrProp_path' : prop_path+'/IntrProp/'+input_nbook['settings']['glob_fit_dic'][data_type+'Prop']['fit_mode']+'/'   ,
+                    'theo_HR_prop' : True}) 
+            
+        #Plot fit to joint profiles if carried out
+        if 'IntrProf' in input_nbook['fits']:        
+            for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
+                input_nbook['plots']['prop_Intr_'+plot_prop].update({
+                    'IntrProf_path' : prop_path+'/IntrProf/'+input_nbook['settings']['glob_fit_dic'][data_type+'Prop']['fit_mode']+'/'   ,
+                    'theo_HR_prof' : True}) 
+
+    return None
+
+def plot_prof(input_nbook,data_type):
+    input_nbook['settings']['plot_dic'][data_type] = 'png'
+    if input_nbook['type']=='RMR':
+        input_nbook['par']['fit_type'] = 'indiv'   #overplot fits to individual exposures 
+    
+    input_nbook['plots'][data_type]={'GIF_generation':True,'shade_cont':True,'plot_line_model':True,'plot_prop':False} 
+    if 'x_range' in input_nbook['par']:
+        input_nbook['plots'][data_type]['x_range'] = deepcopy(input_nbook['par']['x_range'])
+        input_nbook['par'].pop('x_range')
+    if 'y_range' in input_nbook['par']:
+        input_nbook['plots'][data_type]['y_range'] = deepcopy(input_nbook['par']['y_range'])
+        input_nbook['par'].pop('y_range')
+    if data_type=='Intr_prof':
+        input_nbook['plots'][data_type]['norm_prof'] = True
+    if 'fit_type' in input_nbook['par']:
+        input_nbook['plots'][data_type]['fit_type'] = deepcopy(input_nbook['par']['fit_type'])
+        input_nbook['par'].pop('fit_type')  
+    return None
+
+def plot_spot(input_nbook):
+    input_nbook['plots']['system_view']['plot_spots'] = True
+    input_nbook['plots']['system_view']['mock_spot_prop'] = True
+    input_nbook['plots']['system_view']['n_spcell'] = 101
+    return None
+
+def plot_map(input_nbook,data_type):
+    inst = input_nbook['par']['instrument']
+    
+    #Plot specific order only if spectral data
+    if (input_nbook['settings']['gen_dic']['type'][inst]=='CCF'):input_nbook['par']['plot_ord']=0
+    input_nbook['plots']['map_'+data_type]['ord2plot']=[deepcopy(input_nbook['par']['plot_ord'])]
+    
+    #Activate plot related to intrinsic CCF model only if model was calculated
+    def_map = True
+    if data_type in ['Intr_prof_est','Intr_prof_res'] and (not input_nbook['par']['loc_prof_est']):def_map=False
+    if data_type in ['Diff_prof_est','Diff_prof_res'] and (not input_nbook['par']['diff_prof_corr']):def_map=False
+    if def_map:
+        input_nbook['settings']['plot_dic']['map_'+data_type] = 'png'
+        input_nbook['plots']['map_'+data_type] = {}
+        input_nbook['plots']['map_'+data_type]['verbose'] = False
+        if 'x_range' in input_nbook['par']:
+            input_nbook['plots']['map_'+data_type]['x_range'] = deepcopy(input_nbook['par']['x_range'])
+        if 'v_range' in input_nbook['par']:
+            input_nbook['plots']['map_'+data_type].update({'v_range_all':{inst:{input_nbook['par']['night']:deepcopy(input_nbook['par']['v_range'])}}}) 
+            input_nbook['par'].pop('v_range')
+        if data_type=='Intr_prof':
+            input_nbook['plots']['map_'+data_type]['norm_prof'] = True
+            input_nbook['plots']['map_'+data_type]['theoRV_HR'] = True
+        elif data_type=='Intr_prof_est':
+            input_nbook['plots']['map_'+data_type]['norm_prof'] = True
+            input_nbook['plots']['map_'+data_type]['line_model']='rec'
+        elif data_type=='Intr_prof_res':
+            input_nbook['plots']['map_'+data_type]['cont_only']=False
+            input_nbook['plots']['map_'+data_type]['line_model']='rec'
+    return None
+
+
+
+
+

@@ -773,8 +773,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - applied over each order independently
     #    - if set to a larger value than an order width, calibration will not be fitted but set to the measured value over each order
     #      binw should be large enough to smoot out sharp variations in the model calibration profile
-    #    - format: value
-    gen_dic['gcal_binw'] = 0.5
+    #    - format: inst : value
+    #      leave empty to use default values 
+    gen_dic['gcal_binw'] = {}
     
     
     #%%%%% Temporal bin size

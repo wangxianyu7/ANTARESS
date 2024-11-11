@@ -24,6 +24,10 @@ To download the repository containing the current version, you can use::
 
 This version is being developed and may not be stable.
 
+The pipeline runs on Mac, Linux, and Windows (``pySME`` is however not available on the latter).
+
+  
+
 Manual installation
 -------------------
 
@@ -48,7 +52,8 @@ Secondary packages
 A number of packages are required to run ``ANTARESS``. They should be installed automatically, but if you encounter some trouble you can install them manually as described below.
 
 - Standard packages
-    Install `scipy <https://scipy.org/>`_, `lmfit <https://lmfit.github.io/lmfit-py/>`_, `batman-package <https://lkreidberg.github.io/batman/docs/html/index.html>`_, `astropy <https://www.astropy.org/>`_, `emcee <https://emcee.readthedocs.io/en/stable/>`_, `pathos <https://pathos.readthedocs.io/en/latest/pathos.html>`_, `pandas <https://pandas.pydata.org/>`_, `dace_query <https://dace.unige.ch/dashboard/>`_, `statsmodels <https://www.statsmodels.org/stable/index.html>`_, `PyAstronomy <https://pyastronomy.readthedocs.io/en/latest/>`_ using::
+    Install `arviz <https://python.arviz.org/en/stable/>`_, `astropy <https://www.astropy.org/>`_, `batman-package <https://lkreidberg.github.io/batman/docs/html/index.html>`_, `dace_query <https://dace.unige.ch/dashboard/>`_, `emcee <https://emcee.readthedocs.io/en/stable/>`_, `lmfit <https://lmfit.github.io/lmfit-py/>`_, `pandas <https://pandas.pydata.org/>`_, 
+    `pathos <https://pathos.readthedocs.io/en/latest/pathos.html>`_, `PyAstronomy <https://pyastronomy.readthedocs.io/en/latest/>`_, `scipy <https://scipy.org/>`_, `statsmodels <https://www.statsmodels.org/stable/index.html>`_ using::
     
         pip install package         
 

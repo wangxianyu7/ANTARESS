@@ -709,8 +709,14 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if gen_dic['gcal']: 
             for inst in data_dic['instrum_list'] :
                 
+                #Spectral bin width (A)
+                if (inst not in gen_dic['gcal_binw']):
+                    def_gcal_binw = {'ESPRESSO':0.5}
+                    if inst in def_gcal_binw:gen_dic['gcal_binw'][inst] = def_gcal_binw[inst]
+                    else:stop('ERROR: no default value of "gen_dic["gcal_binw"]" for '+inst+'. Run the module with a custom value for this field.')
+
                 #Threshold
-                gen_dic['gcal_thresh'][inst] = {'outliers':5.,'global':1e10}            
+                if (inst not in gen_dic['gcal_thresh']):gen_dic['gcal_thresh'][inst] = {'outliers':5.,'global':1e10}            
                 
         #Stellar continuum
         for key in ['DI','Intr']:
