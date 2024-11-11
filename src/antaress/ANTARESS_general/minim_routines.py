@@ -19,7 +19,7 @@ import scipy.linalg
 from scipy import stats
 from copy import deepcopy
 import lmfit
-from lmfit import minimize, report_fit, Parameters
+from lmfit import minimize
 from scipy import special
 import arviz
 from ..ANTARESS_plots.utils_plots import custom_axis,autom_tick_prop
@@ -1081,13 +1081,17 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                         [" "],
                         ['Mode : '+{'chi2':'Chi square','mcmc':'MCMC','fixed':'Forward'}[fit_dic['fit_mode']]]]  
             if fit_dic['fit_mode']=='chi2':
+<<<<<<< HEAD
                 txt_print+=[["Fitting method                = %r"%fit_dic['merit']['method']]]
                 txt_print+=[["Fit success                = %r"%fit_dic['merit']['success']]]
+=======
+                txt_print+=[["Fit success                 = %r"%fit_dic['merit']['success']]]
+>>>>>>> main
                 if not fit_dic['merit']['success']:txt_print+=[["  " + fit_dic['merit']['message'][:-1]]]  
                 else:
                     if len(fit_dic['merit']['message'])>32:txt_print+=[["  " + fit_dic['merit']['message']]]  
                     elif (fit_dic['merit']['message'][:-1]!='Fit succeeded'):txt_print+=[["  " + fit_dic['merit']['message'][:-1]]]  
-                txt_print+=[["Function evals             = %i"%fit_dic['merit']['eval']]]    
+                txt_print+=[["Function evals              = %i"%fit_dic['merit']['eval']]]    
             elif fit_dic['fit_mode']=='mcmc':        
                 txt_print+=[
                     ["Walkers                     = "+str(fit_dic['nwalkers'])],
@@ -1095,6 +1099,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                     ["Steps (initial, per walker) = "+str(fit_dic['nsteps'])],
                     ["Steps (final, all walkers)  = "+str(fit_dic['nsteps_final_merged'])],
                 ]        
+            rms_text = fit_dic['merit']['rms'] if type(fit_dic['merit']['rms'])==str else '%f'%fit_dic['merit']['rms'] 
             txt_print+=[
                 ["Duration                    = "+"{0:.4f}".format(fit_dic['fit_dur'])+' s'],
                 ['Data points                 = %i'%fit_dic['nx_fit']],
@@ -1102,12 +1107,16 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                 ['Degree of freedom           = %i'%fit_dic['merit']['dof']],
                 ['Best Chi-square             = %f'%fit_dic['merit']['chi2']],
                 ['Reduced Chi-square          = %f'%fit_dic['merit']['red_chi2']],
+<<<<<<< HEAD
                 ['RMS of residuals            = %s'%fit_dic['merit']['rms']],
+=======
+                ['RMS of residuals            = '+rms_text],
+>>>>>>> main
                 ['Bayesian Info. crit. (BIC)  = %f'%fit_dic['merit']['BIC']], 
                 ['Akaike Info. crit. (AIC)    = %f'%fit_dic['merit']['AIC']],
                 ['Gelman-Rubin statistic      = %s'%fit_dic['merit']['GR_stat']], 
                 ]
-            if fit_dic['fit_mode']=='chi2':txt_print+=[["Cumul. dist. funct. (cdf)  = %e"%fit_dic['merit']['cdf']]]
+            if fit_dic['fit_mode']=='chi2':txt_print+=[["Cumul. dist. funct. (cdf)   = %e"%fit_dic['merit']['cdf']]]
             txt_print+=[[" "]]
 
     elif mode=='derived':
@@ -1239,7 +1248,7 @@ def compute_Hessian(params, func, args, kwargs, epsilon=1e-5):
 
     def array_to_params(arr, params_template):
         """Convert a NumPy array back to lmfit.Parameters object."""
-        params = Parameters()
+        params = lmfit.parameter.Parameters()
         for idx, key in enumerate(params_template.keys()):
             params.add(key, value=arr[idx])
         return params

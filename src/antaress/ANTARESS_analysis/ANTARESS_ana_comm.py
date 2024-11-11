@@ -371,7 +371,7 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         TBD
     
     """
-    
+
     #Fit dictionary
     fit_dic = deepcopy(fit_prop_dic)
     fit_dic.update({
@@ -385,7 +385,6 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
     #Arguments to be passed to the fit function
     fixed_args={
         'rout_mode':rout_mode,
-        'cst_err':fit_prop_dic['cst_err'],
         'sc_err':fit_prop_dic['sc_err'],
             
         #Global model properties        
@@ -407,7 +406,7 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
 
         #Intrinsic continuum flux
         #    - IntrProp: required for the intensity weighing but absolute value does not matter
-        #    - IntrProf: required for parameter initialization, but set within the fit function to the visit-specific flux
+        #    - IntrProf: required for parameter initialization in init_custom_DI_par(), but set within the fit function to the visit-specific continuum provided as model parameter.
         'flux_cont':1.,     
         
         'inst_list':[],
@@ -423,6 +422,9 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'fit' : {'chi2':True,'fixed':False,'mcmc':True}[fit_prop_dic['fit_mode']], 
         'unthreaded_op':fit_prop_dic['unthreaded_op'],     
         }
+
+    if 'Prof' in fixed_args['rout_mode']:
+        fixed_args['cst_err']=fit_prop_dic['cst_err']
 
     if fixed_args['rout_mode']!='DIProp':
         fixed_args.update({      
@@ -783,17 +785,23 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         if ((rout_mode=='IntrProp') and (fixed_args['prop_fit']=='FWHM')) or (rout_mode in ['IntrProf','DiffProf']):
             if not any(['FWHM_' in prop for prop in mod_prop]):p_start.add_many(('FWHM__ord0__IS__VS_', 5.,   True, 0.,100.  ,None))
         if rout_mode=='IntrProp':line_type='ana'                                  #to avoid raising warning, even though properties are not used to calculate a line profile
-        elif ('Prof' in rout_mode):line_type = fixed_args['mode']
+        elif ('Prof' in rout_mode):
+            line_type = fixed_args['mode']
+            
+            #Continuum is initialized and left free to vary if not defined as model parameters
+            if not any(['cont_' in prop for prop in mod_prop]):
+                p_start.add_many(('cont__IS__VS_', fixed_args['flux_cont_all'][inst][vis],   True,0.9*fixed_args['flux_cont_all'][inst][vis],1.1*fixed_args['flux_cont_all'][inst][vis],None))
+                fit_dic['priors']['cont__IS__VS_']={'mod':'uf','low':0.,'high':10.*fixed_args['flux_cont_all'][inst][vis]}
 
     else:line_type = None
-    
+
     #Store custom check functions
     if rout_mode!='DI_prop':
         fixed_args['prior_check'] = prior_check
         fixed_args['MCMC_walkers_check'] = MCMC_walkers_check
 
     #------------------------------------------------------------ 
-    
+   
     #Parameter initialization
     #    - default system properties are overwritten in p_start if they are defined in 'mod_prop', whether the model is fitted or called in forward mode
     p_start = par_formatting(p_start,mod_prop,fit_dic['priors'],fit_dic,fixed_args,'','')
@@ -817,12 +825,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         else:fixed_args = init_custom_DI_prof(fixed_args,gen_dic,p_start)
     
         #Stellar grid properties
-        if fixed_args['cond_studied_pl']:
-            for subkey in ['Ssub_Sstar_','x_st_sky_grid_','y_st_sky_grid_','nsub_D','d_oversamp_']:fixed_args['grid_dic'][subkey+'pl'] = theo_dic[subkey+'pl']            
-        for key in ['sp','fa']:
-            if fixed_args['cond_transit_'+key]:
+        for cond_key,key in zip(['cond_studied_pl','cond_transit_sp','cond_transit_fa'],['pl','sp','fa']):
+            if fixed_args[cond_key]:
                 for subkey in ['Ssub_Sstar_','x_st_sky_grid_','y_st_sky_grid_','nsub_D','d_oversamp_']:fixed_args['grid_dic'][subkey+key] = theo_dic[subkey+key]            
-        if fixed_args['cond_studied_pl']:fixed_args['grid_dic']['Istar_norm_achrom']=theo_dic['Istar_norm_achrom']
 
         #------------------------------------------------------------        
         #Determine if orbital and light curve properties are fitted or whether nominal values are used
@@ -832,6 +837,11 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         
         #Planet
         if fixed_args['cond_studied_pl']:
+            
+            #Stellar grid properties
+            fixed_args['grid_dic']['Istar_norm_achrom']=theo_dic['Istar_norm_achrom']
+            
+            #Orbital and transit properties
             par_orb=['inclin_rad','aRs','lambda_rad']
             par_LC=['RpRs']    
             for par in par_orb+par_LC:fixed_args[par+'_pl']=[]
@@ -987,7 +997,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
             if cond_unocc:
                 print('WARNING: the model planet does not occult the star over in-transit exposures at these indexes. Exclude them from the fit.')
                 stop()
-            
+
     #------------------------------------------------------------
     #Fit by chi2 minimization
     if fit_dic['fit_mode']=='chi2':
@@ -1555,7 +1565,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
         if (data_type_gen=='Intr'):
             cont_intr = np.zeros(fit_dic['n_exp'])*np.nan
             wcont_intr = np.zeros(fit_dic['n_exp'])*np.nan
-            for isub,iexp in enumerate(iexp_def):
+            for isub in range(fit_dic['n_exp']):
                 dw_sum = np.sum(data_fit[isub]['dcen_bins'][cond_cont_com])
                 cont_intr[isub] = np.sum(data_fit[isub]['flux'][cond_cont_com]*data_fit[isub]['dcen_bins'][cond_cont_com])/dw_sum
                 wcont_intr[isub] = dw_sum**2./np.sum(data_fit[isub]['cov'][0,cond_cont_com]*data_fit[isub]['dcen_bins'][cond_cont_com]**2.)
@@ -1572,7 +1582,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
             cont_Intrbin = np.zeros(data_bin['n_exp'])*np.nan
             wcont_Intrbin = np.zeros(data_bin['n_exp'])*np.nan            
             for isub,iexp in enumerate(data_bin['n_exp']):
-                data_Intrbin_loc = np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis_det+'_'+fit_properties['dim_bin']+str(iexp)+'.npz',allow_pickle=True)['data'].item()         
+                data_Intrbin_loc = dataload_npz(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+vis_det+'_'+fit_properties['dim_bin']+str(iexp))    
                 if False in data_Intrbin_loc['cond_def'][iord_sel,idx_range_kept] :stop('Binned intrinsic profiles must be fully defined to be used in the reconstruction')    
                 fit_properties['flux_Intrbin'][isub] = data_Intrbin_loc['flux'][iord_sel,idx_range_kept]
                 cov_loc = data_Intrbin_loc['cov'][iord_sel][:,idx_range_kept]
@@ -2018,11 +2028,12 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     ######################################################################################################## 
 
     #Fit dictionary
-    fit_dic={
-        'fit_mode':fit_prop_dic['fit_mode'],
+    fit_dic = deepcopy(fit_prop_dic)
+    fit_dic.update({
         'verb_shift':'',
+        'nthreads':gen_dic['fit_prof_nthreads'],
         'nx_fit':len(fixed_args['y_val'])
-        }
+        })
     fixed_args['fit'] = {'chi2':True,'fixed':False,'mcmc':True}[fit_prop_dic['fit_mode']]
 
     #Parameter initialization
@@ -2073,7 +2084,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
         for key in ['nwalkers','nsteps','nburn']:fit_dic[key] = fit_prop_dic['mcmc_set'][key][inst][vis]
 
         #Call MCMC
-        walker_chains,step_outputs=call_MCMC(fit_prop_dic['mcmc_run_mode'],gen_dic['fit_prof_nthreads'],fixed_args,fit_dic,verbose=verbose)
+        walker_chains,step_outputs=call_MCMC(fit_prop_dic['mcmc_run_mode'],fit_dic['nthreads'],fixed_args,fit_dic,verbose=verbose)
 
         #Excluding parts of the chains
         if fit_dic['exclu_walk']:
@@ -2085,7 +2096,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
  
     
         #Processing:
-        p_final,merged_chain,merged_outputs,par_sample_sig1,par_sample=postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,gen_dic['fit_prof_nthreads'],fixed_args['par_names'],verbose=verbose)
+        p_final,merged_chain,merged_outputs,par_sample_sig1,par_sample=postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,fit_dic['nthreads'],fixed_args['par_names'],verbose=verbose)
 
     #--------------------------------------------------------------   
     #Fixed model

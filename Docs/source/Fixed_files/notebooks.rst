@@ -24,8 +24,16 @@ Possibilities
 
 The following notebooks are available:
 
+- `ANTARESS_nbook_setup <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/Notebooks/ANTARESS_nbook_setup.ipynb>`_
+    Use to set up the workflow with a real planetary system and dataset.
+  `ANTARESS_nbook_setup_Arda <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/Notebooks/ANTARESS_nbook_setup_Arda.ipynb>`_
+    Use to set up the workflow with a mock planetary system.
+
 - `ANTARESS_nbook_mock <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/Notebooks/ANTARESS_nbook_mock.ipynb>`_
     Use to generate a mock CCF dataset.
+
+- `ANTARESS_nbook_proc <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/Notebooks/ANTARESS_nbook_proc.ipynb>`_
+    Use to process a dataset.
 
 - `ANTARESS_nbook_RMR <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/Notebooks/ANTARESS_nbook_RMR.ipynb>`_
     Use to perform a Rossiter-McLaughlin `Revolutions` of a CCF dataset.    

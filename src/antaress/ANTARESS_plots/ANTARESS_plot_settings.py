@@ -125,7 +125,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     plot_options['visits_to_plot']=deepcopy(plot_dic['visits_to_plot'])
     
     #Indexes of exposures to be plotted 
-    plot_options['iexp_plot']={}
+    plot_options['iexp2plot']={}
 
     #Indexes of exposures to be removed from the plot
     plot_options['idx_noplot'] = {}
@@ -144,7 +144,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
 
     #Indexes of orders to be plotted         
     #    - leave empty to plot all orders
-    plot_options['orders_to_plot']=[]    
+    plot_options['iord2plot']=[]    
     
     #Colors
     plot_options['color_dic']={}  

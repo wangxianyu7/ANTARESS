@@ -131,7 +131,7 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
                         if (not gcal_blaze_vis):
                             flux_group = np.zeros(0,dtype=float)
                             var_group = np.zeros(0,dtype=float)
-                            gcal_blaze_group=None#  
+                            gcal_blaze_group=None  
                         else:
                             flux_group = None
                             var_group = None
@@ -165,9 +165,9 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
 
                         #Process (grouped) exposures
                         if np.sum(idx_def_group)>0:
-                   
+
                             #Binned calibration tables                          
-                            bin_bd,raw_loc_dic = sub_def_bins(gen_dic['gcal_binw'],idx_def_group,low_wav_group,high_wav_group,high_wav_group-low_wav_group,wav_group,flux_group,var1D_loc=var_group,gcal_blaze = gcal_blaze_group)
+                            bin_bd,raw_loc_dic = sub_def_bins(gen_dic['gcal_binw'][inst],idx_def_group,low_wav_group,high_wav_group,high_wav_group-low_wav_group,wav_group,flux_group,var1D_loc=var_group,gcal_blaze = gcal_blaze_group)
                             
                             #Adding progressively bins that will be used to fit the correction
                             #    - calibration values are scaled down temporarily to values closer to unity
@@ -184,7 +184,7 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
                     ### End of exposure groups
 
                 ### End of orders
-          
+
                 #Initialize fit structure
                 iexp_glob_groups_vis[vis] = range(n_glob_groups) 
                 p_start = Parameters()           

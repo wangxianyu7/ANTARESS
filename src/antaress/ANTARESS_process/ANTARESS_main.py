@@ -714,8 +714,14 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if gen_dic['gcal']: 
             for inst in data_dic['instrum_list'] :
                 
+                #Spectral bin width (A)
+                if (inst not in gen_dic['gcal_binw']):
+                    def_gcal_binw = {'ESPRESSO':0.5}
+                    if inst in def_gcal_binw:gen_dic['gcal_binw'][inst] = def_gcal_binw[inst]
+                    else:stop('ERROR: no default value of "gen_dic["gcal_binw"]" for '+inst+'. Run the module with a custom value for this field.')
+
                 #Threshold
-                gen_dic['gcal_thresh'][inst] = {'outliers':5.,'global':1e10}            
+                if (inst not in gen_dic['gcal_thresh']):gen_dic['gcal_thresh'][inst] = {'outliers':5.,'global':1e10}            
                 
         #Stellar continuum
         for key in ['DI','Intr']:
@@ -1446,6 +1452,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
         #Initialize flag that exposures in all visits of the instrument share a common spectral table
         data_inst['comm_sp_tab'] = True 
+
+        #Initialize list of instrument visits contained within a single night
+        data_inst['single_night'] = []
         
         #Calibration settings
         if (inst not in gen_dic['gcal_nooutedge']):gen_dic['gcal_nooutedge'][inst] = [0.,0.]
@@ -1599,18 +1608,17 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         max_hr = np.max(vis_hour_exp_all)
                         bjd_vis = np.mean(bjd_exp_all)
                         if ((max_day==min_day) and ((min_hr>=12) or (max_hr<=12))) or ((max_day==min_day+1) and ((min_hr>=12) and (max_hr<=12))): 
-                            single_night = True
+                            data_inst['single_night']+=[vis]
                             vis_day = np.min(vis_day_exp_all)  
                             vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)        
                             data_inst['dates'][vis] = str(vis_yr)+'/'+str(vis_mt)+'/'+str(vis_day_txt)
                             data_inst['midpoints'][vis] = '%.5f'%(bjd_vis+2400000.)+' BJD'
                         
-                        else:                        
-                            single_night = False
+                        else:                    
                             vis_day_txt_all = np.array(['0'+str(vis_day) if vis_day<10 else str(vis_day) for vis_day in vis_day_exp_all])
                 else:
-                    single_night = True
-                    bjd_vis = np.mean(bjd_exp_all) - 2400000.                   
+                    bjd_vis = np.mean(bjd_exp_all) - 2400000.    
+                    data_inst['single_night']+=[vis]
 
                 #Initializing dictionaries for visit
                 theo_dic[inst][vis]={}
@@ -1655,7 +1663,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                     #Definition of mid-transit times for each planet associated with the visit 
                     if (pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst]):
-                        if single_night:stop('ERROR : gen_dic["Tcenter_visits"] not available for multi-epochs visits')
+                        if vis in data_inst['single_night']:stop('ERROR : gen_dic["Tcenter_visits"] not available for multi-epochs visits')
                         coord_dic[inst][vis][pl_loc]['Tcenter'] = gen_dic['Tcenter_visits'][pl_loc][inst][vis]
                     else:
                         norb = round((bjd_vis+2400000.-system_param[pl_loc]['TCenter'])/system_param[pl_loc]["period"])
@@ -1678,8 +1686,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     
                 #Set error flag per visit
                 #    - same for a given instrument, but this allows dealing with binned visits
-                if gen_dic['mock_data']:gen_dic[inst][vis]['flag_err']=False
-                else:gen_dic[inst][vis]['flag_err']=deepcopy(gen_dic['flag_err_inst'][inst])     
+                gen_dic[inst][vis]['flag_err']=deepcopy(gen_dic['flag_err_inst'][inst])     
         
                 #Raw CCF properties
                 if inst in ['HARPN','HARPS','CORALIE','SOPHIE','ESPRESSO','ESPRESSO_MR','NIRPS_HA','NIRPS_HE']:
@@ -1697,7 +1704,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                     #Condition to retrieve current visit
                     dace_red_inst = hdr['INSTRUME']
-                    if single_night:
+                    if vis in data_inst['single_night']:
                         if dace_red_inst=='ESPRESSO': 
                             if bjd_vis<=58649.5:dace_red_inst+='18'
                             else:dace_red_inst+='19'  
@@ -2016,7 +2023,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             fixed_args['FWHM_inst'] = get_FWHM_inst(inst,fixed_args,fixed_args['cen_bins'])
                  
                             #Initialize intrinsic profile properties   
-                            params_mock = deepcopy(system_param['star'])
+                            #    - removing Peq, as it is always defined in the nominal stellar properties, but used as condition to switch from veq to Peq within var_stellar_prop() when Peq is defined as model parameter instead of veq
+                            params_mock = deepcopy(system_param['star']) 
+                            params_mock.pop('Peq')
                             if inst not in mock_dic['flux_cont']:mock_dic['flux_cont'][inst]={}
                             if vis not in mock_dic['flux_cont'][inst]:mock_dic['flux_cont'][inst][vis] = 1.
                             params_mock.update({'rv':0.,'cont':mock_dic['flux_cont'][inst][vis]})  
@@ -2074,7 +2083,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         hdr =hdulist[0].header                     
 
                         #VLT UT used by ESPRESSO
-                        if (inst=='ESPRESSO') and ((isub_exp==0) or (not single_night)):
+                        if (inst=='ESPRESSO') and ((isub_exp==0) or (vis not in data_inst['single_night'])):
                             tel_inst = {
                                 'ESO-VLT-U1':'1',
                                 'ESO-VLT-U2':'2',
@@ -2442,10 +2451,11 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                             #    - gcal(w,t,v) = 1/(dw(w)*bl(w,t,v)))
                                             # with bl(w,t,v) = N_meas[bl](w,t,v)/N_meas(w,t,v) 
                                             #    - negative values are set to undefined, so that they are replaced by the calibration model in the calc_gcal() routine
-                                            gcal_temp = 1./(dll[iord,cond_gcal[iord]]*count_blaze_exp[iord,cond_gcal[iord]]/count_exp[iord,cond_gcal[iord]])
+                                            idx_gcal_ord = np_where1D(cond_gcal[iord])
+                                            gcal_temp = 1./(dll[iord,idx_gcal_ord]*count_blaze_exp[iord,idx_gcal_ord]/count_exp[iord,idx_gcal_ord])
                                             cond_gcal_pos = gcal_temp > 0.
-                                            data_dic_temp['gcal'][iexp,iord,cond_gcal[iord]][cond_gcal_pos] = gcal_temp[cond_gcal_pos] 
-
+                                            data_dic_temp['gcal'][iexp,iord,idx_gcal_ord[cond_gcal_pos]] = gcal_temp[cond_gcal_pos] 
+                                            
                                             #Defining detector noise
                                             #    - Edet_meas(w,t,v)^2 = EN_meas[bl](w,t,v)^2 - N_meas[bl](w,t,v)
                                             #    - kept to 0 at undefined pixels, or where negative
@@ -2453,9 +2463,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                             #      Edet_meas(w,t,v)^2 = EN_meas[bl](w,t,v)^2
                                             #    - some pixels have large errors despite not having large fluxes; this may come from hot pixels subtracted from the extracted counts
                                             if gen_dic['cal_weight']:
-                                                data_dic_temp['sdet2'][iexp,iord,cond_def_pos[iord]] = err_count_blaze_exp[iord,cond_def_pos[iord]]**2. - count_blaze_exp[iord,cond_def_pos[iord]]
-                                                cond_neg_sub = (data_dic_temp['sdet2'][iexp,iord,cond_def_pos[iord]]<0.) 
-                                                data_dic_temp['sdet2'][iexp,iord,cond_def_pos[iord]][cond_neg_sub] = 0.
+                                                idx_def_pos = np_where1D(cond_def_pos[iord])
+                                                data_dic_temp['sdet2'][iexp,iord,idx_def_pos] = err_count_blaze_exp[iord,idx_def_pos]**2. - count_blaze_exp[iord,idx_def_pos]
+                                                cond_neg_sub = (data_dic_temp['sdet2'][iexp,iord,idx_def_pos]<0.) 
+                                                data_dic_temp['sdet2'][iexp,iord,idx_def_pos[cond_neg_sub]] = 0.
                                                 data_dic_temp['sdet2'][iexp,iord,cond_def_neg[iord]] = err_count_blaze_exp[iord,cond_def_neg[iord]]**2. 
 
                                 elif inst=='CARMENES_VIS':             
@@ -3140,10 +3151,11 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
     spot_check = False
     facula_check = False
     for vis in data_dic[inst]['visit_list']:
-        if single_night:    
-            print('         Processing visit '+vis)                                  
-            if vis in data_dic[inst]['dates']:print('           Date (night start) : '+data_dic[inst]['dates'][vis])
-            if vis in data_dic[inst]['midpoints']:print('           Visit midpoint: '+data_dic[inst]['midpoints'][vis])
+        if (vis in data_dic[inst]['single_night']):    
+            print('         Processing visit '+vis)
+            if not gen_dic['mock_data']:                                  
+                if vis in data_dic[inst]['dates']:print('           Date (night start) : '+data_dic[inst]['dates'][vis])
+                if vis in data_dic[inst]['midpoints']:print('           Visit midpoint: '+data_dic[inst]['midpoints'][vis])
         else:
             print('         Processing multi-epoch visit '+vis)              
         data_vis = data_dic[inst][vis]
