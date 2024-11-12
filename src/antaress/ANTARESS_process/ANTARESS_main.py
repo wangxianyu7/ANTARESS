@@ -15,7 +15,7 @@ from ..ANTARESS_grids.ANTARESS_star_grid import model_star
 from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop,retrieve_spots_prop_from_param,calc_plocced_tiles,calc_spotted_tiles
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm,var_stellar_prop
 from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos,coord_expos_spots,get_timeorbit
-from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab
+from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab,return_spec_nord
 from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting_inst_vis
 from ..ANTARESS_general.minim_routines import par_formatting
 from ..ANTARESS_corrections.ANTARESS_sp_reduc import red_sp_data_instru
@@ -423,22 +423,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             'NIRPS_HA':'NIRPS',
             'NIRPS_HE':'NIRPS',
         }     
-    
-        #Number of physical orders per instrument
-        gen_dic['norders_instru']={
-            'SOPHIE_HE':39,
-            'SOPHIE_HR':39,
-            'CORALIE':69,           
-            'HARPN':69,
-            'HARPS':71,
-            'ESPRESSO':170,
-            'ESPRESSO_MR':85,
-            'CARMENES_VIS':61,
-            'EXPRES':86,
-            'NIRPS_HA':71,
-            'NIRPS_HE':71,
-        } 
-    
+
         #Return flag that errors on input spectra are defined or not for each instrument   
         gen_dic['flag_err_inst']={          
             'SOPHIE_HE':False,
@@ -585,8 +570,26 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 gen_dic['gcal'] = True
     
             #Activate global master calculation if required for flux balance corrections
-            if (gen_dic['corr_Fbal']) or (gen_dic['corr_FbalOrd']):gen_dic['glob_mast']=True
-            
+            if (gen_dic['corr_Fbal']) or (gen_dic['corr_FbalOrd']):
+                gen_dic['glob_mast']=True
+
+                #Default bin size for flux balance (in 1e13 s-1)
+                if (inst not in gen_dic['Fbal_bin_nu']):
+                    Fbal_bin_nu_inst = {
+                        'SOPHIE_HE':1.,
+                        'SOPHIE_HR':1.,
+                        'CORALIE':1.,
+                        'HARPN':1.,
+                        'HARPS':1.,
+                        'ESPRESSO':1.,
+                        'ESPRESSO_MR':1.,
+                        'CARMENES_VIS':1.,
+                        'EXPRES':1.,
+                        'NIRPS_HA':1.,
+                        'NIRPS_HE':1.}
+                    if inst not in Fbal_bin_nu_inst:stop('ERROR : default value for "gen_dic["Fbal_bin_nu"]" undefined for '+inst)
+                    gen_dic['Fbal_bin_nu'][inst] = Fbal_bin_nu_inst[inst] 
+    
             #Deactivate arbitrary scaling if global scaling not required
             if (not gen_dic['corr_Fbal']):gen_dic['Fbal_vis']=None
             
@@ -1336,15 +1339,17 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             data_inst['nord'] = 1
             gen_dic[inst]['norders_instru'] = 1
         else:
-            data_inst['idx_ord_ref']=deepcopy(np.arange(gen_dic['norders_instru'][inst]))      #to keep track of the original orders
-            idx_ord_kept = list(np.arange(gen_dic['norders_instru'][inst]))
+            norders_instru_ref = return_spec_nord(inst)
+            data_inst['idx_ord_ref']=deepcopy(np.arange(norders_instru_ref))      #to keep track of the original orders
+            idx_ord_kept = list(np.arange(norders_instru_ref))
             if (data_inst['type'] in ['spec1D','CCF']):
                 data_inst['nord'] = 1
                 gen_dic[inst]['wav_ord_inst'] = gen_dic['wav_ord_inst'][inst]
-                gen_dic[inst]['norders_instru']=gen_dic['norders_instru'][inst]
+                gen_dic[inst]['norders_instru']=norders_instru_ref
             elif (data_inst['type']=='spec2D'):
-                if inst in gen_dic['del_orders']:
-                    idx_ord_kept = list(np.delete(np.arange(gen_dic['norders_instru'][inst]),gen_dic['del_orders'][inst]))
+                if (inst in gen_dic['del_orders']) and (len(gen_dic['del_orders'][inst])>0):
+                    print('           Removing '+str(len(gen_dic['del_orders'][inst]))+' orders from the analysis')
+                    idx_ord_kept = list(np.delete(np.arange(norders_instru_ref),gen_dic['del_orders'][inst]))
                     gen_dic[inst]['wav_ord_inst'] = gen_dic['wav_ord_inst'][inst][idx_ord_kept]
                     data_inst['idx_ord_ref'] = data_inst['idx_ord_ref'][idx_ord_kept]
                 gen_dic[inst]['norders_instru'] = len(idx_ord_kept)
@@ -2053,10 +2058,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         #      beware that this error does not necessarily match the flux dispersion
                         if (inst in mock_dic['set_err']) and mock_dic['set_err'][inst]:
                             DI_prof_exp_Fmeas = np.array(list(map(np.random.poisson, DI_prof_exp_Ftrue,  data_inst[vis]['nspec']*[1]))).flatten()
-                            DI_err_exp_Emeas2 = mock_gcal*DI_prof_exp_Fmeas
                         else:
                             DI_prof_exp_Fmeas = DI_prof_exp_Ftrue
-                            DI_err_exp_Emeas2 = np.zeros(data_inst[vis]['nspec'],dtype=float)
+                        DI_err_exp_Emeas2 = mock_gcal*DI_prof_exp_Fmeas
                         data_dic_temp['flux'][iexp,0] = DI_prof_exp_Fmeas                      
                         data_dic_temp['cov'][iexp,0] = DI_err_exp_Emeas2[None,:]                        
 
@@ -2109,7 +2113,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             #Construction of the total CCF
                             #    - we re-calculate the CCF rather than taking the total CCF stored in the last column of the matrix to be able to account for sky-correction in specific orders
                             #    - we use the input "gen_dic['orders4ccf'][inst]" rather than "gen_dic[inst]['orders4ccf']", which is used for CCF computed from spectral data 
-                            if inst not in gen_dic['orders4ccf']:flux_raw = np.nansum(all_ccf[ range(gen_dic['norders_instru'][inst])],axis=0)     
+                            if inst not in gen_dic['orders4ccf']:flux_raw = np.nansum(all_ccf[ range(return_spec_nord(inst))],axis=0)     
                             else:flux_raw = np.nansum(all_ccf[gen_dic['orders4ccf'][inst]],axis=0)             
 
                             #Screening CCF
@@ -2118,7 +2122,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             
                             #Error table
                             if gen_dic[inst][vis]['flag_err']:
-                                if inst not in gen_dic['orders4ccf']:err_raw = np.sqrt(np.nansum(all_eccf[range(gen_dic['norders_instru'][inst])]**2.,axis=0))      
+                                if inst not in gen_dic['orders4ccf']:err_raw = np.sqrt(np.nansum(all_eccf[range(return_spec_nord(inst))]**2.,axis=0))      
                                 else:err_raw = np.sqrt(np.nansum(all_eccf[gen_dic['orders4ccf'][inst]]**2.,axis=0))                                                          
                                 if gen_dic[inst][vis]['scr_lgth']>1:err_raw = err_raw[idx_scr_bins]
                                 err_raw = np.tile(err_raw,[data_inst['nord'],1])
@@ -2160,7 +2164,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 if (vis_path_skysub_exp is not None):
                                     if (gen_dic['fibB_corr'][inst][vis]=='all'):hdulist_dat= hdulist_skysub
                                     else:
-                                        cond_skysub = np.repeat(False,gen_dic['norders_instru'][inst])     #Conditions on original order indexes 
+                                        cond_skysub = np.repeat(False,return_spec_nord(inst))     #Conditions on original order indexes 
                                         cond_skysub[idx_ord_skysub] = True  
                                         idxsub_ord_skysub = np_where1D(cond_skysub[idx_ord_kept])          #Indexes in reduced tables 
                                 else:hdulist_dat = hdulist
@@ -2583,7 +2587,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                 #Sort exposures by increasing time
                 #    - remove exposures if requested, using their index after time-sorting 
-                if (inst in gen_dic['used_exp']) and (vis in gen_dic['used_exp'][inst]) and (len(gen_dic['used_exp'][inst][vis])>0):remove_exp=True
+                if (inst in gen_dic['used_exp']) and (vis in gen_dic['used_exp'][inst]) and (len(gen_dic['used_exp'][inst][vis])>0):
+                    remove_exp=True
+                    print('           Removing '+str(data_inst[vis]['n_in_visit']-len(gen_dic['used_exp'][inst][vis]))+' exposures from the analysis')
                 else:remove_exp=False
                 w_sorted=coord_dic[inst][vis]['bjd'].argsort()    
                 for pl_loc in data_inst[vis]['studied_pl']:
@@ -2811,15 +2817,21 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                 #------------------------------------------------------------------------------------
 
+                #Masking condition
+                if ('spec' in data_inst['type']) and (inst in gen_dic['masked_pix']) and (vis in gen_dic['masked_pix'][inst]):
+                    cond_mask_gen = True
+                    print('           Masking spectral ranges from the analysis')
+                else:cond_mask_gen = False
+            
                 #Final processing of exposures
                 data_inst[vis]['proc_DI_data_paths']=gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'
                 for iexp in range(n_in_visit):
 
                     #Set masked pixels to nan
                     #    - masked orders and positions are assumed to be the same for all exposures, but positions have to be specific to a given order as orders can overlap
-                    if (inst in gen_dic['masked_pix']) and (vis in gen_dic['masked_pix'][inst]):
+                    if cond_mask_gen:
                         mask_exp = gen_dic['masked_pix'][inst][vis]['exp_list']
-                        if (len(mask_exp)==0) or (iexp in gen_dic['masked_pix'][inst][vis]):
+                        if (len(mask_exp)==0) or (iexp in mask_exp):
                             for iord in gen_dic['masked_pix'][inst][vis]['ord_list']:
                                 mask_bd = gen_dic['masked_pix'][inst][vis]['ord_list'][iord]
                                 cond_mask  = np.zeros(data_inst[vis]['nspec'],dtype=bool)

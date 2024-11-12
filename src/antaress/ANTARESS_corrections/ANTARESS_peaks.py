@@ -318,7 +318,7 @@ def MAIN_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop):
             cond_def_mast = (np.sum(cond_def_all,axis=0)>0)                 
                 
             #Save for plotting
-            if (plot_dic['permpeak_corr']!='') or (plot_dic['sp_raw']!=''):
+            if (plot_dic['permpeak_corr']!='') or (plot_dic['flux_sp']!=''):
                 dic_sav = {
                     'tot_Fr_all':np.ones(data_vis['dim_sp'],dtype=float),
                     'count_bad_all':np.zeros( [data_vis['n_in_visit'],data_inst['nord']] , dtype=int)}
@@ -331,7 +331,7 @@ def MAIN_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop):
             common_args = (nord_corr_list,data_vis['nspec'],data_vis['proc_DI_data_paths'],ord_corr_list,permpeak_edges,inst,gen_dic['permpeak_range_corr'],gen_dic['permpeak_outthresh'],gen_dic['permpeak_peakwin'][inst],range_proc_ord,mean_flux_mast,data_inst['nord'],cont_func_dic)
             if gen_dic['permpeak_nthreads']>1:cond_bad_all,cond_undef_all,tot_Fr_all=multithread_permpeak_flag(permpeak_flag,gen_dic['permpeak_nthreads'],len(exp_corr_list),[exp_corr_list,data_prop[inst][vis]['BERV'][exp_corr_list]],common_args)                           
             else:cond_bad_all,cond_undef_all,tot_Fr_all=permpeak_flag(exp_corr_list,data_prop[inst][vis]['BERV'][exp_corr_list],*common_args) 
-            if (plot_dic['permpeak_corr']!='') or (plot_dic['sp_raw']!=''):
+            if (plot_dic['permpeak_corr']!='') or (plot_dic['flux_sp']!=''):
                 dic_sav['tot_Fr_all'][exp_corr_list] = tot_Fr_all
                 dic_sav['cont_func_dic'] = cont_func_dic
 
@@ -379,7 +379,7 @@ def MAIN_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop):
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new            
             
             #Number of masked pixels in each order
-            if (plot_dic['permpeak_corr']!='') or (plot_dic['sp_raw']!=''):
+            if (plot_dic['permpeak_corr']!='') or (plot_dic['flux_sp']!=''):
                 for isub_exp,iexp in enumerate(exp_corr_list):
                     dic_sav['count_bad_all'][iexp,ord_corr_list] = np.sum(cond_mask_all[isub_exp],axis=1)
                     
@@ -387,7 +387,7 @@ def MAIN_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop):
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
 
             #Save for plotting
-            if (plot_dic['permpeak_corr']!='') or (plot_dic['sp_raw']!=''):
+            if (plot_dic['permpeak_corr']!='') or (plot_dic['flux_sp']!=''):
                 np.savez_compressed(gen_dic['save_data_dir']+'Corr_data/Permpeak/'+inst+'_'+vis+'_add',data=dic_sav,allow_pickle=True)
 
     #Updating path to processed data and checking it has been calculated
@@ -640,7 +640,7 @@ def corr_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop):
             common_args = (nord_corr_list,data_vis['nspec'],data_vis['proc_DI_data_paths'],ord_corr_list,permpeak_edges,inst,gen_dic['permpeak_range_corr'],gen_dic['permpeak_outthresh'],gen_dic['permpeak_peakwin'][inst],range_proc_ord,mean_flux_mast,data_inst['nord'],cont_func_dic)
             if gen_dic['permpeak_nthreads']>1:cond_bad_all,cond_undef_all,tot_Fr_all=multithread_permpeak_flag(permpeak_flag,gen_dic['permpeak_nthreads'],len(exp_corr_list),[exp_corr_list,data_prop[inst][vis]['BERV'][exp_corr_list]],common_args)                           
             else:cond_bad_all,cond_undef_all,tot_Fr_all=permpeak_flag(exp_corr_list,data_prop[inst][vis]['BERV'][exp_corr_list],*common_args) 
-            if (plot_dic['permpeak_corr']!='') or (plot_dic['sp_raw']!=''):
+            if (plot_dic['permpeak_corr']!='') or (plot_dic['flux_sp']!=''):
                 dic_sav['tot_Fr_all'][exp_corr_list] = tot_Fr_all
                 dic_sav['cont_func_dic'] = cont_func_dic
 
@@ -688,7 +688,7 @@ def corr_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop):
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new            
             
             #Number of masked pixels in each order
-            if (plot_dic['permpeak_corr']!='') or (plot_dic['sp_raw']!=''):
+            if (plot_dic['permpeak_corr']!='') or (plot_dic['flux_sp']!=''):
                 for isub_exp,iexp in enumerate(exp_corr_list):
                     dic_sav['count_bad_all'][iexp,ord_corr_list] = np.sum(cond_mask_all[isub_exp],axis=1)
                     
@@ -696,7 +696,7 @@ def corr_permpeak(inst,gen_dic,data_inst,plot_dic,data_dic,data_prop):
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
 
             #Save for plotting
-            if (plot_dic['permpeak_corr']!='') or (plot_dic['sp_raw']!=''):
+            if (plot_dic['permpeak_corr']!='') or (plot_dic['flux_sp']!=''):
                 np.savez_compressed(gen_dic['save_data_dir']+'Corr_data/Permpeak/'+inst+'_'+vis+'_add',data=dic_sav,allow_pickle=True)
 
     #Updating path to processed data and checking it has been calculated

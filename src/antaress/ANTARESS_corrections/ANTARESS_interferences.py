@@ -145,6 +145,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             if gen_dic['wig_vis_fit']['fixed'] and not (gen_dic['wig_vis_fit']['plot_mod'] | gen_dic['wig_vis_fit']['plot_rms'] | gen_dic['wig_vis_fit']['plot_hist']| gen_dic['wig_vis_fit']['plot_par_chrom']):cond_exp_proc_vis = False  
         else:cond_exp_proc_vis = False  
         cond_exp_proc = gen_dic['wig_exp_filt']['mode'] | gen_dic['wig_exp_init']['mode'] | gen_dic['wig_exp_samp']['mode'] | gen_dic['wig_exp_fit']['mode'] 
+        cond_coord_use = (not gen_dic['wig_exp_filt']['mode']) & (gen_dic['wig_exp_fit']['mode'] | gen_dic['wig_exp_point_ana']['mode'] | gen_dic['wig_vis_fit']['mode'])
         
         #Indexes of order to be fitted
         iord_fit_ref = range(data_inst['nord_ref'])
@@ -197,62 +198,65 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             # y = sin(th) = cos(az) 
             #      with th = pi/2 - az, assuming az = 0 at the north and positive toward the east
             #    - coordinate in the perpendicular plane, along the zenith axis
-            # z = sin(alt)     
-            fixed_args['z_mer']  = data_dic[inst][vis]['z_mer'] 
+            # z = sin(alt)   
             tel_coord_vis={
                 'pl_ref':pl_ref,
                 't_dur' : coord_dic[inst][vis]['t_dur'], 
-                'cen_ph' : coord_dic[inst][vis][pl_ref]['cen_ph'],
-                'az': data_prop_vis['az'],
-                'x_az' : np.sin(data_prop_vis['az']*np.pi/180.),
-                'y_az' : np.cos(data_prop_vis['az']*np.pi/180.), 
-                'z_alt' : np.sin(data_prop_vis['alt']*np.pi/180.),  
-                'cond_eastmer' : np.repeat(False,data_vis['n_in_visit'])}
-            tel_coord_vis['cond_eastmer'][data_vis['idx_eastmer']] = True    
-            tel_coord_vis['cond_westmer'] = ~tel_coord_vis['cond_eastmer']
-          
+                'cen_ph' : coord_dic[inst][vis][pl_ref]['cen_ph']}
+            if cond_coord_use:
+                fixed_args['z_mer']  = data_dic[inst][vis]['z_mer'] 
+                tel_coord_vis.update({
+                    'az': data_prop_vis['az'],
+                    'x_az' : np.sin(data_prop_vis['az']*np.pi/180.),
+                    'y_az' : np.cos(data_prop_vis['az']*np.pi/180.), 
+                    'z_alt' : np.sin(data_prop_vis['alt']*np.pi/180.),  
+                    'cond_eastmer' : np.repeat(False,data_vis['n_in_visit'])})
+                tel_coord_vis['cond_eastmer'][data_vis['idx_eastmer']] = True    
+                tel_coord_vis['cond_westmer'] = ~tel_coord_vis['cond_eastmer']                
+
             #Check for guide star change during night, unless disabled
             #    - the wiggle are modeled in three phases, as wiggle behaviour changes with guide star:
             #      if the guide star changed before meridian crossing, the model is shift / A / B
             #      if the guide star changed after meridian crossing, the model is A / B / shift
             #      where A and B are models east or west of the meridian  
-            if not gen_dic['wig_exp_filt']['mode']:suf_hyper_vis = deepcopy(suf_hyper)
-            fixed_args['iexp_guidchange'] = 1e10
-            cen_ph_guid = None
-            shift_group = None
-            tel_coord_vis['cond_shift'] = np.repeat(False,data_vis['n_in_visit'])
-            if vis not in gen_dic['wig_no_guidchange']:
-                delta_guid_RA = data_prop_vis['guid_coord'][1:,0] - data_prop_vis['guid_coord'][0:-1,0]    
-                delta_guid_DEC = data_prop_vis['guid_coord'][1:,1] - data_prop_vis['guid_coord'][0:-1,1]
-                iexp_guidchange =  np_where1D((np.abs(delta_guid_RA)>1e-2) | (np.abs(delta_guid_DEC)>1e-2)) 
-                
-                
-                #Manual fix for TOI421
-                if vis=='20231106':
-                    print('MANUAL CHANGE at 28')
-                    iexp_guidchange = [28]
-                
-                if len(iexp_guidchange)>0:
-                    if len(iexp_guidchange)>1:stop('             Check guide star coordinates')
-                    print('             Guide star changed during visit: enabling offset')
-                    fixed_args['iexp_guidchange'] = iexp_guidchange[0] 
-                    cen_ph_guid = 0.5*(tel_coord_vis['cen_ph'][fixed_args['iexp_guidchange']]+tel_coord_vis['cen_ph'][fixed_args['iexp_guidchange']+1])
+            if cond_coord_use:
+                suf_hyper_vis = deepcopy(suf_hyper)
+                fixed_args['iexp_guidchange'] = 1e10
+                cen_ph_guid = None
+                shift_group = None
+                tel_coord_vis['cond_shift'] = np.repeat(False,data_vis['n_in_visit'])
+                if vis not in gen_dic['wig_no_guidchange']:
+                    delta_guid_RA = data_prop_vis['guid_coord'][1:,0] - data_prop_vis['guid_coord'][0:-1,0]    
+                    delta_guid_DEC = data_prop_vis['guid_coord'][1:,1] - data_prop_vis['guid_coord'][0:-1,1]
+                    iexp_guidchange =  np_where1D((np.abs(delta_guid_RA)>1e-2) | (np.abs(delta_guid_DEC)>1e-2)) 
                     
-                    #Exposures before (resp. after) guide star change are set as 'shifted' if the change occurs before (resp. after) meridian crossing 
-                    if fixed_args['iexp_guidchange']<data_vis['idx_mer']:
-                        shift_group = 'pre'
-                        tel_coord_vis['cond_shift'] = (np.arange(data_vis['n_in_visit']) <= fixed_args['iexp_guidchange'])             
-                    else:
-                        shift_group = 'post'                        
-                        tel_coord_vis['cond_shift'] = (np.arange(data_vis['n_in_visit']) > fixed_args['iexp_guidchange'])  
-            
-                    #Removing shift exposures from other models
-                    tel_coord_vis['cond_eastmer'][tel_coord_vis['cond_shift']] = False
-                    tel_coord_vis['cond_westmer'][tel_coord_vis['cond_shift']] = False
                     
-                    #Hyperparameter suffix
-                    if not gen_dic['wig_exp_filt']['mode']:
-                        suf_hyper_vis+=['_doff_sh','_dx_shift','_dy_shift','_dz_shift']
+                    #Manual fix for TOI421
+                    if (vis=='20231106'):
+                        print('MANUAL CHANGE at 28')
+                        iexp_guidchange = [28]
+                    
+                    if len(iexp_guidchange)>0:
+                        if len(iexp_guidchange)>1:stop('             Check guide star coordinates')
+                        print('             Guide star changed during visit: enabling offset')
+                        fixed_args['iexp_guidchange'] = iexp_guidchange[0] 
+                        cen_ph_guid = 0.5*(tel_coord_vis['cen_ph'][fixed_args['iexp_guidchange']]+tel_coord_vis['cen_ph'][fixed_args['iexp_guidchange']+1])
+                        
+                        #Exposures before (resp. after) guide star change are set as 'shifted' if the change occurs before (resp. after) meridian crossing 
+                        if fixed_args['iexp_guidchange']<data_vis['idx_mer']:
+                            shift_group = 'pre'
+                            tel_coord_vis['cond_shift'] = (np.arange(data_vis['n_in_visit']) <= fixed_args['iexp_guidchange'])             
+                        else:
+                            shift_group = 'post'                        
+                            tel_coord_vis['cond_shift'] = (np.arange(data_vis['n_in_visit']) > fixed_args['iexp_guidchange'])  
+                
+                        #Removing shift exposures from other models
+                        tel_coord_vis['cond_eastmer'][tel_coord_vis['cond_shift']] = False
+                        tel_coord_vis['cond_westmer'][tel_coord_vis['cond_shift']] = False
+                        
+                        #Hyperparameter suffix
+                        if not gen_dic['wig_exp_filt']['mode']:
+                            suf_hyper_vis+=['_doff_sh','_dx_shift','_dy_shift','_dz_shift']
 
             #Maximum edges of fitted spectral tables
             glob_min_bins = 1e100
@@ -867,20 +871,23 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     #    - calculated as a time-weighted average
                     if wig_exp_groups is not None:
                         t_dur_tot = np.sum(tel_coord_vis['t_dur'][wig_exp_group])
-                        for key in ['cen_ph','az','x_az','y_az','z_alt']:tel_coord_expgroup[key][isub_group] = np.sum(tel_coord_vis['t_dur'][wig_exp_group]*tel_coord_vis[key][iexp_glob_bin])/t_dur_tot 
-                        n_shift_expgroups = np.sum(tel_coord_vis['cond_shift'][iexp_glob_bin]) 
-                        n_unshift_expgroups = len(iexp_glob_bin) - n_shift_expgroups
-                        tel_coord_expgroup['cond_shift'][isub_group] = True if n_shift_expgroups>n_unshift_expgroups else False                        
-                        if tel_coord_expgroup['cond_shift'][isub_group]:
-                            tel_coord_expgroup['cond_eastmer'][isub_group] = False
-                            tel_coord_expgroup['cond_westmer'][isub_group] = False
-                        else:
-                            n_eastmer_expgroups = np.sum(tel_coord_vis['cond_eastmer'][iexp_glob_bin]) 
-                            n_westmer_expgroups = len(iexp_glob_bin) - n_eastmer_expgroups
-                            tel_coord_expgroup['cond_eastmer'][isub_group] = True if n_eastmer_expgroups>n_westmer_expgroups else False
-                            tel_coord_expgroup['cond_westmer'][isub_group] = ~tel_coord_expgroup['cond_eastmer'][isub_group]                                         
+                        for key in ['cen_ph','az','x_az','y_az','z_alt']:
+                            if key in tel_coord_vis:tel_coord_expgroup[key][isub_group] = np.sum(tel_coord_vis['t_dur'][wig_exp_group]*tel_coord_vis[key][iexp_glob_bin])/t_dur_tot 
+                        if cond_coord_use:
+                            n_shift_expgroups = np.sum(tel_coord_vis['cond_shift'][iexp_glob_bin]) 
+                            n_unshift_expgroups = len(iexp_glob_bin) - n_shift_expgroups
+                            tel_coord_expgroup['cond_shift'][isub_group] = True if n_shift_expgroups>n_unshift_expgroups else False                        
+                            if tel_coord_expgroup['cond_shift'][isub_group]:
+                                tel_coord_expgroup['cond_eastmer'][isub_group] = False
+                                tel_coord_expgroup['cond_westmer'][isub_group] = False
+                            else:
+                                n_eastmer_expgroups = np.sum(tel_coord_vis['cond_eastmer'][iexp_glob_bin]) 
+                                n_westmer_expgroups = len(iexp_glob_bin) - n_eastmer_expgroups
+                                tel_coord_expgroup['cond_eastmer'][isub_group] = True if n_eastmer_expgroups>n_westmer_expgroups else False
+                                tel_coord_expgroup['cond_westmer'][isub_group] = ~tel_coord_expgroup['cond_eastmer'][isub_group]                                         
                     else:
-                        for key in ['cen_ph','az','x_az','y_az','z_alt','cond_eastmer','cond_westmer','cond_shift']:tel_coord_expgroup[key][isub_group] = tel_coord_vis[key][iexp_glob_bin]
+                        for key in ['cen_ph','az','x_az','y_az','z_alt','cond_eastmer','cond_westmer','cond_shift']:
+                            if key in tel_coord_vis:tel_coord_expgroup[key][isub_group] = tel_coord_vis[key][iexp_glob_bin]
                                                              
                     #Exposure processing
                     if cond_exp_proc:

@@ -295,11 +295,14 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
     if gen_dic['corr_FbalOrd']:txt_print+=' and intra-order'
     txt_print+=' flux balance'
     print(txt_print)
-    if (gen_dic['Fbal_vis']=='meas') and (gen_dic[inst]['n_visits']==1):stop('No need to set flux balance to a reference for a single visit and instrument') 
-    if (gen_dic['Fbal_vis'] is None):
+    Fbal_vis_inst = deepcopy(gen_dic['Fbal_vis'])
+    if (Fbal_vis_inst=='meas') and (gen_dic[inst]['n_visits']==1):
+        print('WARNING : "gen_dic["Fbal_vis"]" switched to None (no need to set flux balance to a reference for a single visit and instrument)') 
+        Fbal_vis_inst = None
+    if (Fbal_vis_inst is None):
         if (gen_dic[inst]['n_visits']>1):stop('Flux balance must be set to a reference for multiple visits')
-    else:print('         Final scaling to '+{'meas':'measured','ext':'external'}[gen_dic['Fbal_vis']]+' reference')  
-    cond_calc = gen_dic['calc_corr_Fbal'] | gen_dic['calc_corr_FbalOrd'] 
+    else:print('         Final scaling to '+{'meas':'measured','ext':'external'}[Fbal_vis_inst]+' reference')  
+    cond_calc = (gen_dic['corr_Fbal'] & gen_dic['calc_corr_Fbal']) | (gen_dic['corr_FbalOrd'] & gen_dic['calc_corr_FbalOrd']) 
 
     #Calculating data
     if cond_calc:
@@ -312,13 +315,13 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
             iord_fit_Fbal = range(data_inst['nord_ref'])
 
             #Deviation between current visit and reference
-            if gen_dic['Fbal_vis'] is not None:
+            if Fbal_vis_inst is not None:
 
                 #Common calibration profile function
                 mean_gcal_func = dataload_npz(gen_dic['save_data_dir']+'Processed_data/Calibration/'+inst+'_mean_gcal')['func'] 
 
                 #Set reference to average of measured visit masters
-                if gen_dic['Fbal_vis']=='meas':  
+                if Fbal_vis_inst=='meas':  
                     data_Mast_ref = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_meas')                     
                     cen_wav_Mstar = data_Mast_ref['cen_bins']
                     low_wav_Mstar = data_Mast_ref['edge_bins'][:,0:-1]
@@ -335,8 +338,8 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
 
         #Default options
         for key in ['Fbal_deg','Fbal_smooth','Fbal_deg_vis','Fbal_smooth_vis','Fbal_deg_ord']:
-            if (inst not in gen_dic[key]):gen_dic[key][inst]={}            
-
+            if (inst not in gen_dic[key]):gen_dic[key][inst]={}    
+        
         #Process each visit
         corr_func_vis = None
         for ivisit,vis in enumerate(deepcopy(data_inst['visit_list'])):
@@ -370,10 +373,10 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
                 # + if a single visit is processed the global master is not relevant
                 #   if a single instrument is processed, the global master in each visit can be set to the mean of the measured visit-specific masters (in which case it is common to all visits), or to the external references provided for each visit (in which case it can be visit-dependent)
                 #   if multiple instruments are processed, the global master must be set to external references so that the spectral range of all instruments are covered
-                if gen_dic['Fbal_vis'] is not None:   
+                if Fbal_vis_inst is not None:   
                     
                     #Set global reference to external master
-                    if gen_dic['Fbal_vis']=='ext':                     
+                    if Fbal_vis_inst=='ext':                     
                         data_Mast_ref = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_theo')                     
                         cen_wav_Mstar = data_Mast_ref['cen_bins']
                         low_wav_Mstar = data_Mast_ref['edge_bins'][:,0:-1]
@@ -386,8 +389,8 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
                     #Processing visit and reference masters over their commonly defined pixels, within selected ranges
                     #    - the measured reference for an instrument is only defined in pixels where all visit masters are defined
                     #    - the external reference is defined at all wavelengths
-                    if gen_dic['Fbal_vis']=='meas':cond_def_Mast = deepcopy(data_Mast_ref['cond_def'])
-                    elif gen_dic['Fbal_vis']=='ext':cond_def_Mast = deepcopy(data_Mast_vis['cond_def'])   
+                    if Fbal_vis_inst=='meas':cond_def_Mast = deepcopy(data_Mast_ref['cond_def'])
+                    elif Fbal_vis_inst=='ext':cond_def_Mast = deepcopy(data_Mast_vis['cond_def'])   
                     if (len(range_fit)>0):
                         cond_sel = np.zeros(data_Mast_ref['flux'].shape,dtype=bool)
                         for bd_band_loc in range_fit:cond_sel|=(low_wav_Mstar>bd_band_loc[0]) & (high_wav_Mstar<bd_band_loc[1])
@@ -464,8 +467,8 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
             #--------------------------------------------------------
             #Processing all exposures    
             iexp_all = range(data_vis['n_in_visit'])
-            common_args = (data_vis['proc_DI_data_paths'],inst,vis,gen_dic['save_data_dir'],range_fit,data_vis['dim_exp'],iord_fit_list,gen_dic['Fbal_bin_nu'],data_dic['DI']['scaling_range'],gen_dic['Fbal_mod'],gen_dic['Fbal_deg'][inst][vis],gen_dic['Fbal_smooth'][inst][vis],gen_dic['Fbal_clip'],data_inst['nord'],data_vis['nspec'],gen_dic['Fbal_range_corr'],\
-                            plot_dic['Fbal_corr'],plot_dic['sp_raw'],gen_dic['Fbal_binw_ord'],plot_dic['Fbal_corr_ord'],proc_DI_data_paths_new,gen_dic['Fbal_ord_clip'],gen_dic['resamp_mode'],gen_dic['Fbal_deg_ord'][inst][vis],gen_dic['Fbal_expvar'],data_dic[inst][vis]['mean_gcal_DI_data_paths'],corr_func_vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['Fbal_phantom_range'])
+            common_args = (data_vis['proc_DI_data_paths'],inst,vis,gen_dic['save_data_dir'],range_fit,data_vis['dim_exp'],iord_fit_list,gen_dic['Fbal_bin_nu'][inst],data_dic['DI']['scaling_range'],gen_dic['Fbal_mod'],gen_dic['Fbal_deg'][inst][vis],gen_dic['Fbal_smooth'][inst][vis],gen_dic['Fbal_clip'],data_inst['nord'],data_vis['nspec'],gen_dic['Fbal_range_corr'],\
+                            plot_dic['Fbal_corr'],plot_dic['flux_sp'],gen_dic['Fbal_binw_ord'],plot_dic['Fbal_corr_ord'],proc_DI_data_paths_new,gen_dic['Fbal_ord_clip'],gen_dic['resamp_mode'],gen_dic['Fbal_deg_ord'][inst][vis],gen_dic['Fbal_expvar'],data_dic[inst][vis]['mean_gcal_DI_data_paths'],corr_func_vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['Fbal_phantom_range'])
             if gen_dic['Fbal_nthreads']>1:tot_Fr_all = MAIN_multithread(corrFbal_vis,gen_dic['Fbal_nthreads'],data_vis['n_in_visit'],[iexp_all],common_args,output = True)                           
             else:tot_Fr_all = corrFbal_vis(iexp_all,*common_args)  
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
@@ -481,12 +484,12 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
             data_vis=data_inst[vis] 
             data_vis['proc_DI_data_paths']=gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_'         
             check_data({'path':data_vis['proc_DI_data_paths']+str(0)},vis=vis)
-
+      
     return None
 
 
 def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,dim_exp,iord_fit_list,Fbal_bin_nu,scaling_range,Fbal_mod,Fbal_deg,Fbal_smooth,Fbal_clip,nord,nspec,Fbal_range_corr,\
-                 plot_Fbal_corr,plot_sp_raw,Fbal_binw_ord,plot_Fbal_corr_ord,proc_DI_data_paths_new,Fbal_ord_clip,resamp_mode,Fbal_deg_ord,Fbal_expvar,mean_gcal_DI_data_paths,corr_func_vis,corr_Fbal,corr_FbalOrd,Fbal_phantom_range):
+                 plot_Fbal_corr,plot_flux_sp,Fbal_binw_ord,plot_Fbal_corr_ord,proc_DI_data_paths_new,Fbal_ord_clip,resamp_mode,Fbal_deg_ord,Fbal_expvar,mean_gcal_DI_data_paths,corr_func_vis,corr_Fbal,corr_FbalOrd,Fbal_phantom_range):
     r"""**Flux balance correction per visit.**    
 
     Determines and applies flux balance correction in each visit.    
@@ -607,14 +610,22 @@ def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,
 
             #Phantom bins
             #    - we add artificial bins on the blue side of the spectrum to prevent the fit from diverging
-            if Fbal_phantom_range is not None:
-
-                #Fit linear model over bluest part of the spectrum
+            if Fbal_phantom_range != 0.:
                 nu_min = np.min(cen_bins_fit)
                 nu_max = np.max(cen_bins_fit)
                 nu_mid = 0.5*(nu_min+nu_max)
+                
+                #Automatic determination
+                #    - taking 25% of the fitted spectrum as phantom bins
+                if Fbal_phantom_range is None:
+                    Fbal_phantom_range = 0.25*(nu_max - nu_min)
+                
+                #Fixed phantom range
+                elif Fbal_phantom_range<0.:stop('ERROR: "gen_dic["Fbal_phantom_range"]" must be positive.')
+                  
+                #Fit linear model over bluest part of the spectrum
                 nu_min_blue = nu_max-Fbal_phantom_range
-                cond_blue = (cen_bins_fit>=nu_min_blue) & (cen_bins_fit<=nu_max)  
+                cond_blue = (cen_bins_fit>=nu_min_blue)
                 coeffs_blue = poly.polyfit(cen_bins_fit[cond_blue]-nu_mid,norm_Fr_fit[cond_blue],1)            
     
                 #Define new bins
@@ -697,9 +708,9 @@ def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,
 
             #Save independently correction data
             dic_sav.update({'corr_func':corr_func,'corr_func_vis':corr_func_vis})                          
-            if (plot_Fbal_corr!='') or (plot_sp_raw!=''):
+            if (plot_Fbal_corr!='') or (plot_flux_sp!=''):
                 dic_sav['Fbal_wav_bin_all'] = np.vstack((c_light/bin_exp_dic['high_bins'][::-1],c_light/bin_exp_dic['cen_bins'][::-1],c_light/bin_exp_dic['low_bins'][::-1]))
-                if plot_sp_raw!='':
+                if plot_flux_sp!='':
                     dic_sav['idx_ord_bin'] = bin_exp_dic['idx_ord_bin'][::-1]
                     dic_sav['uncorrected_data_path'] = deepcopy(proc_DI_data_paths+str(iexp)) #save path to data before correction 
                 if (plot_Fbal_corr!=''):

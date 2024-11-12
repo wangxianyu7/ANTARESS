@@ -897,7 +897,8 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         data_Fbal = dataload_npz(save_data_dir+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp_glob)+'_add')
     if gen_corr_Fbal and ('spec' in data_mode) and corr_Fbal: 
         Fbal_glob = data_Fbal['corr_func']
-        Fbal_glob_vis = data_Fbal['corr_func_vis']
+        if data_Fbal['corr_func_vis'] is None:Fbal_glob_vis=default_func    #single visit, no correction relative to global master 
+        else:Fbal_glob_vis = data_Fbal['corr_func_vis']
     else:
         Fbal_glob=default_func 
         Fbal_glob_vis=default_func 

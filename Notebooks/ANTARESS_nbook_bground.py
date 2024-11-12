@@ -6,7 +6,7 @@ import sys
 import os as os_system
 from os.path import exists as path_exist
 from antaress.ANTARESS_general.utils import dataload_npz, datasave_npz,stop
-
+from antaress.ANTARESS_analysis.ANTARESS_inst_resp import return_spec_nord
 
 '''
 Initialization functions
@@ -455,6 +455,9 @@ def set_mock_prof(input_nbook):
 Spectral reduction functions
 '''
 def processing_mode(input_nbook):
+    inst = input_nbook['par']['instrument']
+    input_nbook['par']['nord'] = return_spec_nord(inst)
+    vis = input_nbook['par']['night']
     input_nbook['settings']['gen_dic']['calc_proc_data'] = input_nbook['sp_reduc']['calc_proc_data']
 
     #Deactivate all default modules so that the workflow can be run with the selected modules
@@ -465,6 +468,16 @@ def processing_mode(input_nbook):
     input_nbook['settings']['gen_dic']['corr_cosm'] = False    
     input_nbook['settings']['gen_dic']['calc_FbalOrd'] = False    
 
+    #Masking
+    if len(input_nbook['sp_reduc']['iexp2keep'])>0:input_nbook['settings']['gen_dic']['used_exp'] = {inst:{vis:input_nbook['sp_reduc']['iexp2keep']}}
+    if len(input_nbook['sp_reduc']['iord2del'])>0:
+        input_nbook['par']['nord']-=len(input_nbook['sp_reduc']['iord2del'])
+        input_nbook['settings']['gen_dic']['del_orders'] = {inst:input_nbook['sp_reduc']['iord2del']}
+    if len(input_nbook['sp_reduc']['wav2mask'])>0:
+        input_nbook['settings']['gen_dic']['masked_pix'] = {inst:{vis:{'exp_list':[],'ord_list':{}}}}
+        for iord in input_nbook['sp_reduc']['wav2mask']:
+            input_nbook['settings']['gen_dic']['masked_pix'][inst][vis]['ord_list'][iord] = input_nbook['sp_reduc']['wav2mask'][iord]
+    
     return None
 
 def inst_cal(input_nbook):
@@ -472,9 +485,6 @@ def inst_cal(input_nbook):
     return None
 
 def tell_corr(input_nbook):
-    '''
-    input_nbook: containing parameters used for telluric correction
-    '''
     input_nbook['settings']['gen_dic']['corr_tell']=True 
     input_nbook['settings']['gen_dic']['calc_corr_tell']=input_nbook['sp_reduc']['calc_tell']
 
@@ -484,88 +494,85 @@ def tell_corr(input_nbook):
 
 def fbal_corr(input_nbook):
     inst = input_nbook['par']['instrument']
-    vis = input_nbook['par']['night']   
+    vis = input_nbook['par']['night'] 
 
+    input_nbook['settings']['gen_dic']['glob_mast'] = True
+    input_nbook['settings']['gen_dic']['calc_glob_mast']=input_nbook['sp_reduc']['calc_Fbal']
+    
     input_nbook['settings']['gen_dic']['corr_Fbal']=True
     input_nbook['settings']['gen_dic']['calc_corr_Fbal']=input_nbook['sp_reduc']['calc_Fbal']
 
-    input_nbook['settings']['gen_dic']['Fbal_vis']=None
-    input_nbook['settings']['gen_dic']['Fbal_range_corr']   ={}
-    
-    input_nbook['settings']['gen_dic']['Fbal_clip']         =input_nbook['sp_reduc']['sigma_clip']
-    input_nbook['settings']['gen_dic']['Fbal_phantom_range']=input_nbook['sp_reduc']['phantom_range']
-    input_nbook['settings']['gen_dic']['Fbal_expvar']       =input_nbook['sp_reduc']['unc_scaling']
-    input_nbook['settings']['gen_dic']['Fbal_mod']          =input_nbook['sp_reduc']['fit_mode']
+    input_nbook['settings']['gen_dic']['Fbal_vis']=None    #for single visit
 
-    input_nbook['settings']['gen_dic']['Fbal_deg']          ={inst: {vis: input_nbook['sp_reduc']['pol_deg']}}
+    #Orders excluded from the fit
+    input_nbook['settings']['gen_dic']['Fbal_clip']=False  #forcing the user to select fitted orders
+    if len(input_nbook['sp_reduc']['iord2excl']) > 0:
+        input_nbook['settings']['gen_dic']['Fbal_ord_fit']  ={inst:{vis:[iord for iord in range(input_nbook['par']['nord']) if iord not in input_nbook['sp_reduc']['iord2excl']]}}
+
+    #Using spline by default
+    input_nbook['settings']['gen_dic']['Fbal_mod']          = 'spline'
     input_nbook['settings']['gen_dic']['Fbal_smooth']       ={inst: {vis: input_nbook['sp_reduc']['smooth_fac']}}    
 
-    if ((input_nbook['sp_reduc']['nord'] != None) & (len(input_nbook['sp_reduc']['ord_excl_fit']) > 0)):
-        ord_fit = range(input_nbook['sp_reduc']['nord'])
-        ord_fit = [order for order in ord_fit if order not in input_nbook['sp_reduc']['ord_excl_fit']]
-        input_nbook['settings']['gen_dic']['Fbal_ord_fit']  ={inst:{vis:ord_fit}}
     return None
 
-def plot_fbal_corr(input_nbook):
-    input_nbook['settings']['plot_dic']['Fbal_corr'] = 'png'
-    if input_nbook['plots']['gap_exp']:
-        input_nbook['plots']['Fbal_corr'] = {'gap_exp': 0.1}
-    else:
-        input_nbook['plots']['Fbal_corr'] = {'gap_exp': 0.0}
-    return None
-
-def cosm_corr(input_nbook, plot=False):
+def cosm_corr(input_nbook):
     inst = input_nbook['par']['instrument']
     vis = input_nbook['par']['night']
 
     input_nbook['settings']['gen_dic']['corr_cosm'] = True
     input_nbook['settings']['gen_dic']['calc_cosm'] = input_nbook['sp_reduc']['calc_cosm']
 
-    input_nbook['settings']['gen_dic']['al_cosm'] = {'mode':input_nbook['sp_reduc']['align_method']}
+    input_nbook['settings']['gen_dic']['al_cosm'] = {'mode':input_nbook['sp_reduc']['align']}
     input_nbook['settings']['gen_dic']['cosm_ncomp'] = input_nbook['sp_reduc']['ncomp']
     input_nbook['settings']['gen_dic']['cosm_thresh'] = {inst:{vis: input_nbook['sp_reduc']['thresh']}}
-    if plot:
-        input_nbook['setting']['plot_dic']['cosm_corr']='png'
+
     return None
 
 def wiggle_corr(input_nbook):
     vis = input_nbook['par']['night']
-    input_nbook['settings']['gen_dic']['corr_wig']= input_nbook['sp_reduc']['corr_wig']
+    input_nbook['settings']['gen_dic']['corr_wig'] = True
     input_nbook['settings']['gen_dic']['calc_wig']= input_nbook['sp_reduc']['calc_wig']
 
-    if input_nbook['sp_reduc']['fit_range']==[[]]:
-        input_nbook['settings']['gen_dic']['wig_range_fit'] = []
-    else: input_nbook['settings']['gen_dic']['wig_range_fit'] = {vis : input_nbook['sp_reduc']['range_to_fit']}
-
+    #Screening
     input_nbook['settings']['gen_dic']['wig_exp_init'] = {'mode'     :input_nbook['sp_reduc']['screening'],
                                                           'plot_spec':True,
                                                           'plot_hist':True,
-                                                          'y_range'  :input_nbook['sp_reduc']['y_range']}
+                                                          'y_range'  :input_nbook['sp_reduc']['y_range_scr']}
+    
+    #Fitted ranges
+    if input_nbook['sp_reduc']['fit_range']==[[]]:input_nbook['settings']['gen_dic']['wig_range_fit'] = {}
+    else: input_nbook['settings']['gen_dic']['wig_range_fit'] = {vis : input_nbook['sp_reduc']['fit_range']}
 
+    #Filtering
+    if input_nbook['sp_reduc']['filter']:input_nbook['settings']['gen_dic']['wig_norm_ord'] = False
     input_nbook['settings']['gen_dic']['wig_exp_filt'] = {'mode':input_nbook['sp_reduc']['filter'],
                                                           'win' :input_nbook['sp_reduc']['window'],
                                                           'deg' :input_nbook['sp_reduc']['deg'],
                                                           'plot':True}
+
+    #Conditionning correction to filter activation
+    input_nbook['settings']['gen_dic']['wig_corr'] = {'mode':input_nbook['sp_reduc']['filter'],
+                                                      'path':{},
+                                                      'exp_list':{},
+                                                      'range':{}}
+    
     return None
 
-def mask_pix(input_nbook):
+    
+def detrend(input_nbook):
     inst = input_nbook['par']['instrument']
     vis = input_nbook['par']['night']
-    input_nbook['settings']['gen_dic']['masked_pix'] = {inst:{vis:{'exp_list':[],'ord_list':{}}}}
-    if input_nbook['sp_reduc']['order'] != []:
-        for i,k in zip(input_nbook['sp_reduc']['order'],input_nbook['sp_reduc']['range']):
-            input_nbook['settings']['gen_dic']['wig_exp_filt'][inst][vis]['ord_list'].update({
-                i:[k]
-                })
-    return None
+    if len(input_nbook['sp_reduc']['detrend'])==0:stop('ERROR: no detrending defined')
 
-def plot_spec(input_nbook):
-    input_nbook['plots']['sp_var'] = 'wav'
+    input_nbook['settings']['gen_dic']['detrend_prof'] = True
+    input_nbook['settings']['gen_dic']['calc_detrend_prof']= input_nbook['sp_reduc']['calc_detrend']
+    input_nbook['settings']['gen_dic']['full_spec']= True
+    input_nbook['settings']['detrend_prof_dic']['corr_trend'] = True
 
-    if input_nbook['sp_reduc']['sp_raw']:
-        input_nbook['settings']['plot_dic']['sp_raw'] = 'png'
-    if input_nbook['sp_reduc']['trans_sp']:
-        input_nbook['settings']['plot_dic']['sp_raw'] = 'png'
+    input_nbook['settings']['detrend_prof_dic']['prop'] = {inst:{vis:{}}}
+    for prop_coord in input_nbook['sp_reduc']['detrend]:
+        input_nbook['settings']['detrend_prof_dic']['prop'][inst][vis][prop_coord]={'pol':np.array(input_nbook['par']['coeff'])}
+
     return None
 
 
@@ -613,19 +620,6 @@ def build_1D_master(input_nbook, plot=False):
     }
     if plot:input_nbook['settings']['plot_dic']['DIbin']='png'
     return None
-
-def detrend(input_nbook):
-    inst = input_nbook['par']['instrument']
-    vis = input_nbook['par']['night']
-
-    input_nbook['settings']['gen_dic']['detrend_prof'] = input_nbook['par']['use']
-    input_nbook['settings']['detrend_prof_dic']['corr_trend'] = input_nbook['par']['use']
-    input_nbook['settings']['detrend_prof_dic']['prop'] = {inst:{vis:{}}}
-
-    for (prop,i) in zip(input_nbook['par']['prop'], range(len(input_nbook['par']['prop']))):
-        input_nbook['settings']['detrend_prof_dic']['prop'][inst][vis].update({
-            prop: {'pol': np.array(input_nbook['par']['coeff'][i])}
-            })
 
     return None
 
@@ -692,20 +686,82 @@ def plot_system(input_nbook):
     return None
 
 
+def plot_spec(input_nbook):
+
+    #input_nbook['plots']['DI_prof_corr']['plot_master']    = input_nbook['sp_reduc']['plot_master']
+    #input_nbook['plots']['DI_prof_corr']['orders_to_plot'] = input_nbook['sp_reduc']['iord2plot']
+    #input_nbook['plots']['DI_prof_corr']['iexp_plot']      = input_nbook['sp_reduc']['iexp2plot']
+
+    spec_keys=[]
+    if input_nbook['sp_reduc']['flux_sp']:
+        spec_keys+=['DI_prof_corr']
+        input_nbook['plots']['DI_prof_corr'] = {}
+        input_nbook['plots']['DI_prof_corr']['y_range']   = input_nbook['sp_reduc']['y_range_flux']
+        #input_nbook['plots']['DI_prof_corr']['norm_prof'] = input_nbook['sp_reduc']['norm_prof']
+        #input_nbook['plots']['DI_prof_corr']['multi_exp'] = input_nbook['sp_reduc']['multi_exp']
+ 
+    if input_nbook['sp_reduc']['trans_sp']:
+        spec_keys+=['trans_sp']
+        input_nbook['plots']['trans_sp'] = {}        
+        input_nbook['plots']['trans_sp']['y_range']   = input_nbook['sp_reduc']['y_range_trans']
+
+    #Common options
+    for plot_key in spec_keys:
+        input_nbook['settings']['plot_dic'][plot_key] = 'png'
+        input_nbook['plots'][plot_key]['sp_var']   = 'wav'        
+        input_nbook['plots'][plot_key]['x_range']  = input_nbook['sp_reduc']['x_range']
+        input_nbook['plots'][plot_key]['plot_pre']  = input_nbook['sp_reduc']['pre']
+        input_nbook['plots'][plot_key]['plot_post']  = input_nbook['sp_reduc']['post']
+        input_nbook['plots'][plot_key]['iord2plot']  = input_nbook['sp_reduc']['iord2plot']
+        if len(input_nbook['sp_reduc']['iord2plot'])>1:input_nbook['plots'][plot_key]['multi_ord'] = True
+        
+    for key in ['x_range','pre','post','iord2plot']:input_nbook['sp_reduc'].pop(key)
+        
+    return None
+
+
 def inst_cal_plot(input_nbook):
     input_nbook['settings']['plot_dic']['gcal_ord'] = 'png'
     input_nbook['settings']['plot_dic']['noises_ord'] = 'png'
-    input_nbook['plots']['gcal']={}
-    for key in ['iexp2plot','iord2plot']:
-        input_nbook['plots']['gcal'][key] = [deepcopy(input_nbook['sp_reduc'][key])]
-        input_nbook['sp_reduc'].pop(key)
-
+    input_nbook['plots']['gcal']={'iord2plot':[deepcopy(input_nbook['sp_reduc']['iord2plot_gcal'])]}
     return None
 
 def tell_corr_plot(input_nbook):
     input_nbook['settings']['plot_dic']['tell_CCF'] = 'png'
     input_nbook['settings']['plot_dic']['tell_prop'] = 'png'
     return None
+
+
+def fbal_corr_plot(input_nbook):
+    input_nbook['settings']['plot_dic']['Fbal_corr'] = 'png'
+    input_nbook['plots']['Fbal_corr'] = {'gap_exp': input_nbook['sp_reduc']['gap_exp'] }
+    return None
+
+    
+def cosm_corr_plot(input_nbook):
+    input_nbook['settings']['plot_dic']['cosm_corr']='png'
+    return None
+
+def cosmic_search(iexp, iord, input_nbook):
+    '''
+    Function used for searching for cosmics
+    '''
+    path = input_nbook['plot_path'] + 'Spec_raw/Cosmics/'+input_nbook['par']['instrument']+'_'+input_nbook['par']['night']
+
+    if os.path.exists(path + '/idx'+ str(iexp) + '_iord' + str(iord) + '.png'):
+        print('Exposure and order have detected cosmics')
+        return True
+
+    else:
+        files = sorted(list(file for file in os.listdir(path) if file.startswith("idx")))
+        l = []
+        for file in files:
+            val = re.split('[x _ d .]', str(file))
+            to_add = 'Exposure ' + val[2] + ', order ' + val[-2]
+            l.append(to_add)
+        print('No cosmic detected in the defined exposure and order. \nExposures and Orders with cosmics are:\n', '\n'.join(l))
+        return False
+
 
 def plot_prop(input_nbook,data_type):
     input_nbook['settings']['plot_dic']['prop_'+data_type] = 'png' 
@@ -792,7 +848,6 @@ def plot_map(input_nbook,data_type):
     
     #Plot specific order only if spectral data
     if (input_nbook['settings']['gen_dic']['type'][inst]=='CCF'):input_nbook['par']['plot_ord']=0
-    input_nbook['plots']['map_'+data_type]['ord2plot']=[deepcopy(input_nbook['par']['plot_ord'])]
     
     #Activate plot related to intrinsic CCF model only if model was calculated
     def_map = True
@@ -802,6 +857,7 @@ def plot_map(input_nbook,data_type):
         input_nbook['settings']['plot_dic']['map_'+data_type] = 'png'
         input_nbook['plots']['map_'+data_type] = {}
         input_nbook['plots']['map_'+data_type]['verbose'] = False
+        input_nbook['plots']['map_'+data_type]['ord2plot']=[deepcopy(input_nbook['par']['plot_ord'])]
         if 'x_range' in input_nbook['par']:
             input_nbook['plots']['map_'+data_type]['x_range'] = deepcopy(input_nbook['par']['x_range'])
         if 'v_range' in input_nbook['par']:

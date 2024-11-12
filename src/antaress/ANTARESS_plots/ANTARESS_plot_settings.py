@@ -239,7 +239,6 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     # + 'raw' : before any correction
     # + 'all' : after all requested corrections
     # + 'tell' : after telluric correction 
-    # + 'count' : after flux-to-count scaling
     # + 'fbal_glob' : after global flux balance correction 
     # + 'fbal_ord' : after order/orde flux balance correction  
     # + 'cosm' : after cosmics correction  
@@ -815,7 +814,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     #    - before and after spectral corrections 
     #    - in their input rest frame (typically heliocentric)
     ##################################################################################################
-    if gen_dic['specINtype'] and (plot_dic['sp_raw']!=''):
+    if gen_dic['specINtype'] and (plot_dic['flux_sp']!=''):
         key_plot = 'DI_prof_corr' #key must be different from 'DI_prof' to differentiate from original profile plot
 
         #%%%%% Generic settings
@@ -823,7 +822,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         #%%%%% Plot spectra at two chosen steps of the correction process
         plot_settings[key_plot]['plot_pre']='raw'
-        plot_settings[key_plot]['plot_postsub_plot_DI_transDI']='all'
+        plot_settings[key_plot]['plot_post']='all'
 
         #%%%%% Plot binned data and errors
         plot_settings[key_plot]['plot_bin'] = True
@@ -848,7 +847,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%%% Plot continuum used for persistent peak masking
         plot_settings[key_plot]['plot_contmax']=True 
 
-
+        #%%%%% Plot order indexes
+        plot_settings[key_plot]['plot_idx_ord'] = True
 
 
 
@@ -892,6 +892,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%%% Vertical range for dispersion plot
         plot_settings[key_plot]['y_range_disp'] = {}
 
+        #%%%%% Plot order indexes
+        plot_settings[key_plot]['plot_idx_ord'] = True
 
 
 

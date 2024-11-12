@@ -1349,9 +1349,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             dy_range=y_range_loc[1]-y_range_loc[0]
                                 
                             #Relative difference exposure-master over :
-                            #    - dispersion of complementary spectra (blue)
+                            #    - dispersion of complementary spectra (black)
                             #    - error of processed spectrum (green)
-                            # If current exposure has a larger noise level than complementary spectra, the threshold might be exceeded for the blue spectrum (simply because of the dispersion intrinsic to this spectrum) but not for the green spectrum 
+                            # If current exposure has a larger noise level than complementary spectra, the threshold might be exceeded for the black spectrum (simply because of the dispersion intrinsic to this spectrum) but not for the green spectrum 
                             plt.plot(wav_tab,data_cosm['SNR_diff_exp'][0,iord],linestyle='-',color='black',rasterized=plot_set_key['rasterized'],zorder=0,drawstyle='steps-mid',lw=plot_set_key['lw_plot'])
                             plt.plot(wav_tab,data_cosm['SNR_diff_exp'][1,iord],linestyle='-',color='limegreen',rasterized=plot_set_key['rasterized'],zorder=1,drawstyle='steps-mid',lw=plot_set_key['lw_plot'])
                  
@@ -1634,12 +1634,12 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     ##################################################################################################
     #%%%% Original spectra (correction steps) 
     ##################################################################################################
-    if gen_dic['specINtype'] and (plot_dic['sp_raw']!=''):
+    if gen_dic['specINtype'] and (plot_dic['flux_sp']!=''):
         key_plot = 'DI_prof_corr'
         
         print('-----------------------------------')
         print('+ Individual disk-integrated spectra')
-        sub_plot_prof(plot_settings[key_plot],key_plot,plot_dic['sp_raw'],data_dic,gen_dic,glob_fit_dic,data_prop,coord_dic)               
+        sub_plot_prof(plot_settings[key_plot],key_plot,plot_dic['flux_sp'],data_dic,gen_dic,glob_fit_dic,data_prop,coord_dic)               
                         
 
 
@@ -7967,6 +7967,7 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             
             rest_frame='star'
             fixed_args_loc = {}
+            p_best = None
             if 'wiggle' in data_list:
                 data_com_wig = dataload_npz(gen_dic['save_data_dir']+'/Corr_data/Wiggles/Vis_fit/'+inst+'_'+vis+'_add')   
 

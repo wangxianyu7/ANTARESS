@@ -7,6 +7,34 @@ import bindensity as bind
 from ..ANTARESS_general.utils import npint,stop,gen_specdopshift
 from ..ANTARESS_general.constant_data import c_light
 
+def return_spec_nord(inst): 
+    r"""**Number of orders**
+
+    Returns number of spectral orders in spectrographs.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """     
+    spec_nord = {
+        'SOPHIE_HE':39,
+        'SOPHIE_HR':39,
+        'CORALIE':69,           
+        'HARPN':69,
+        'HARPS':71,
+        'ESPRESSO':170,
+        'ESPRESSO_MR':85,
+        'CARMENES_VIS':61,
+        'EXPRES':86,
+        'NIRPS_HA':71,
+        'NIRPS_HE':71,
+    } 
+    if inst not in spec_nord:stop('ERROR : define number of spectral orders in '+inst)
+    return spec_nord[inst]
+ 
 
 def return_SNR_orders(inst): 
     r"""**Orders for S/N ratio**

@@ -351,11 +351,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%% Noise settings
     
-    #%%%%% Flux errors
-    #    - controls error calculation
-    #    - noise value is drawn for each pixel based on number of measured counts
-    #    - leave undefined to prevent noise being defined
+    #%%%%% Measured-like profile
     #    - format: {inst:bool}
+    #    - set to True to draw randomly flux values in each pixel based on the model number of measured counts 
+    #      leave empty or set to False to maintain flux values to the exact model profile
+    #    - noise value are always defined as mock_dic['gcal'][inst] times the flux values
     mock_dic['set_err'] = {}    
      
      
@@ -434,9 +434,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - set ranges of masked pixels in the spectral format of the input data, in the following format
     # inst > vis > { exp_list : [ iexp0, iexp1, ... ] ; ord_list : {iord0 : [ [x1,x2] , [x3,x4] .. ], ... }}
     #      exposures index relate to time-ordered tables after 'used_exp' has been applied, leave empty to mask all exposures 
+    #      order indexes are relative to the effective order list, after orders are possibly excluded
     #      define position xk in A in the input rest frame
     #    - only relevant if part of the order is masked, otherwise remove the full order 
-    #    - order indexes are relative to the effective order list, after orders are possibly excluded
     #    - if several visits of a given instrument are processed together, it is advised to exclude the minimum ranges common to all of them so that CCF are comparable
     #    - plot flux and transmission spectra after telluric and flux balance corrections to identify the ranges to exclude 
     gen_dic['masked_pix'] = {}
@@ -732,7 +732,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%% Individual disk-integrated flux spectra
     #    - before/after the various spectral corrections for disk-integrated data
-    plot_dic['sp_raw']=''    
+    plot_dic['flux_sp']=''    
     
     
     #%%%% Individual disk-integrated transmission spectra
@@ -825,7 +825,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     ##################################################################################################
     #%%% Module: telluric correction
-    #    - use plot_dic['sp_raw'] to compare spectra before/after correction and identify orders in which tellurics are too deep and numerous to be well corrected, and that should be excluded from the entire analysis
+    #    - use plot_dic['flux_sp'] to compare spectra before/after correction and identify orders in which tellurics are too deep and numerous to be well corrected, and that should be excluded from the entire analysis
     ##################################################################################################
     
     #%%%% Activating
@@ -1015,13 +1015,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
             
     #%%%%%% Spectral bin size
-    #    - bin size of the fitted data (in 1e-10 s-1)
-    # dnu[1e10 s1] = c[m s-1]*dw[A]/w[A]^2
+    #    - format: {inst:val}
+    #      bin size of the fitted data (in 1e13 s-1)
+    # dnu[1e13 s1] = c[km s-1]*dw[A]/w[A]^2
     #      for ESPRESSO dnu < 0.9 (0.5) yields more than 1 (2) bins in most orders
     #    - for the correction relative to measured visit masters: binning is applied over each order (set a value larger than an order width to bin over the entire order)
     #      for the correction relative to reference masters, binning is applied over full orders by default
     #    - bin size should be small enough to capture low-frequency flux balance variations but large enough to smooth high-frequency variations and reduce computing time.
-    gen_dic['Fbal_bin_nu'] = 1.  
+    gen_dic['Fbal_bin_nu'] = {} 
     
     
     #%%%%%% Spectral range(s) to be fitted
@@ -1038,10 +1039,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                
     
     #%%%%%% Phantom bins
-    #    - format: float (in 1e-10 s-1)
+    #    - format: float (in 1e13 s-1)
     #    - range in 'nu' on the blue side of the fitted spectrum that is fitted with a linear model and mirrored in the fitted spectrum
     #      this limits the divergence of the model on the blue side
-    #    - set to None to prevent 
+    #    - set to None for automatic determination and to 0 to prevent
     gen_dic['Fbal_phantom_range'] = None  
       
     
@@ -1217,7 +1218,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #%%%%% Outlier threshold 
-    #    - foprmat is {instrument : {visit: value }}
+    #    - format is {instrument : {visit: value }}
+    #    - a pixel is flagged as cosmic hit if its flux deviates from the mean over adjacent exposures by more than a 'cosm_thresh' times
+    # the standard-deviation over adjacent exposures and the error on the pixel flux
     gen_dic['cosm_thresh'] = {} 
 
     #%%%% Correction settings     
@@ -1309,7 +1312,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #%%%% Plots: master and continuum
-    #    - to check the flagged pixels use plot_dic['sp_raw'] before/after correction
+    #    - to check the flagged pixels use plot_dic['flux_sp'] before/after correction
     plot_dic['permpeak_corr']=''  
     
     
@@ -1345,6 +1348,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - the analytical wiggle model can only capture medium-frequency modulations around unity
     #      low-frequency variations must be captured with the flux balance correction or with the wiggle filter, or later on in planetary spectra (it is in this later case 
     # that normalization can be forced here temporarily)
+    #    - it is advised to disable this field with filter mode
     gen_dic['wig_norm_ord'] = True  
     
     
@@ -1388,9 +1392,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         
     
     #%%%%% Spectral range(s) to be characterized
+    #    - format is {vis:[[nu1,nu2],[nu3,nu4],..]}
     #    - if left empty, the full spectrum is used
     #    - units are c/w (1e13 s-1)
-    gen_dic['wig_range_fit'] = []
+    gen_dic['wig_range_fit'] = {}
         
         
     #%%%%% Spectral bin size
