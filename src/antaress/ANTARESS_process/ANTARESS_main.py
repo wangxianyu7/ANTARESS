@@ -129,7 +129,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 #Processing disk-integrated stellar profiles
                 data_type_gen = 'DI'
                 #------------------------------------------------- 
-    
+                print('MAIN',gen_dic['detrend_prof'] , detrend_prof_dic['full_spec'])
                 #Spectral detrending   
                 if gen_dic['detrend_prof'] and (detrend_prof_dic['full_spec']):
                     detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
