@@ -570,8 +570,12 @@ def detrend(input_nbook):
     input_nbook['settings']['detrend_prof_dic']['corr_trend'] = True
 
     input_nbook['settings']['detrend_prof_dic']['prop'] = {inst:{vis:{}}}
-    for prop_coord in input_nbook['sp_reduc']['detrend]:
-        input_nbook['settings']['detrend_prof_dic']['prop'][inst][vis][prop_coord]={'pol':np.array(input_nbook['par']['coeff'])}
+    for prop_coord in input_nbook['sp_reduc']['detrend']:
+        if (inst=='ESPRESSO') and ('snr' in prop_coord):
+            prop_str = prop_coord.split('_snr')[0]
+            prop_coord_ref = prop_str+'_snrQ'
+        else:prop_coord_ref = prop_coord
+        input_nbook['settings']['detrend_prof_dic']['prop'][inst][vis][prop_coord_ref]={'pol':np.array(input_nbook['sp_reduc']['detrend'][prop_coord])}
 
     return None
 
@@ -687,28 +691,24 @@ def plot_system(input_nbook):
 
 
 def plot_spec(input_nbook):
-
-    #input_nbook['plots']['DI_prof_corr']['plot_master']    = input_nbook['sp_reduc']['plot_master']
-    #input_nbook['plots']['DI_prof_corr']['orders_to_plot'] = input_nbook['sp_reduc']['iord2plot']
-    #input_nbook['plots']['DI_prof_corr']['iexp_plot']      = input_nbook['sp_reduc']['iexp2plot']
-
     spec_keys=[]
     if input_nbook['sp_reduc']['flux_sp']:
+        input_nbook['settings']['plot_dic']['flux_sp'] = 'png'
         spec_keys+=['DI_prof_corr']
         input_nbook['plots']['DI_prof_corr'] = {}
         input_nbook['plots']['DI_prof_corr']['y_range']   = input_nbook['sp_reduc']['y_range_flux']
-        #input_nbook['plots']['DI_prof_corr']['norm_prof'] = input_nbook['sp_reduc']['norm_prof']
-        #input_nbook['plots']['DI_prof_corr']['multi_exp'] = input_nbook['sp_reduc']['multi_exp']
  
     if input_nbook['sp_reduc']['trans_sp']:
+        input_nbook['settings']['plot_dic']['trans_sp'] = 'png'
         spec_keys+=['trans_sp']
         input_nbook['plots']['trans_sp'] = {}        
         input_nbook['plots']['trans_sp']['y_range']   = input_nbook['sp_reduc']['y_range_trans']
 
     #Common options
     for plot_key in spec_keys:
-        input_nbook['settings']['plot_dic'][plot_key] = 'png'
-        input_nbook['plots'][plot_key]['sp_var']   = 'wav'        
+        input_nbook['plots'][plot_key]['sp_var']   = 'wav'   
+        input_nbook['plots'][plot_key]['rasterized'] = False
+        input_nbook['plots'][plot_key]['plot_err'] = input_nbook['sp_reduc']['plot_err']
         input_nbook['plots'][plot_key]['x_range']  = input_nbook['sp_reduc']['x_range']
         input_nbook['plots'][plot_key]['plot_pre']  = input_nbook['sp_reduc']['pre']
         input_nbook['plots'][plot_key]['plot_post']  = input_nbook['sp_reduc']['post']
@@ -744,7 +744,7 @@ def cosm_corr_plot(input_nbook):
 
 def cosmic_search(iexp, iord, input_nbook):
     '''
-    Function used for searching for cosmics
+    Function used to search for cosmics plot
     '''
     path = input_nbook['plot_path'] + 'Spec_raw/Cosmics/'+input_nbook['par']['instrument']+'_'+input_nbook['par']['night']
 
@@ -847,7 +847,7 @@ def plot_map(input_nbook,data_type):
     inst = input_nbook['par']['instrument']
     
     #Plot specific order only if spectral data
-    if (input_nbook['settings']['gen_dic']['type'][inst]=='CCF'):input_nbook['par']['plot_ord']=0
+    if (input_nbook['settings']['gen_dic']['type'][inst]=='CCF'):input_nbook['par']['iord2plot']=0
     
     #Activate plot related to intrinsic CCF model only if model was calculated
     def_map = True
@@ -857,7 +857,7 @@ def plot_map(input_nbook,data_type):
         input_nbook['settings']['plot_dic']['map_'+data_type] = 'png'
         input_nbook['plots']['map_'+data_type] = {}
         input_nbook['plots']['map_'+data_type]['verbose'] = False
-        input_nbook['plots']['map_'+data_type]['ord2plot']=[deepcopy(input_nbook['par']['plot_ord'])]
+        input_nbook['plots']['map_'+data_type]['iord2plot']=[deepcopy(input_nbook['par']['iord2plot'])]
         if 'x_range' in input_nbook['par']:
             input_nbook['plots']['map_'+data_type]['x_range'] = deepcopy(input_nbook['par']['x_range'])
         if 'v_range' in input_nbook['par']:

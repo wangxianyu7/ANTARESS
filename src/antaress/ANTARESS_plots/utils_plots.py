@@ -398,6 +398,7 @@ def autom_tick_prop(dax_range):
     elif dax_range>1e8+0.1: axmajor_int,axminor_int,axmajor_form=5e7,1e7,'%.1e'     
     elif dax_range>1e7+0.1: axmajor_int,axminor_int,axmajor_form=5e6,1e6,'%.1e' 
     elif dax_range>1e6+0.1: axmajor_int,axminor_int,axmajor_form=5e5,1e5,'%.1e' 
+    elif dax_range>5e5+0.1: axmajor_int,axminor_int,axmajor_form=1e5,5e4,'%.1e' 
     elif dax_range>1e5+0.1: axmajor_int,axminor_int,axmajor_form=5e4,1e4,'%.1e' 
     elif dax_range>1e4+0.1: axmajor_int,axminor_int,axmajor_form=5000.,1000.,'%.1e' 
     elif dax_range>5e3+0.1: axmajor_int,axminor_int,axmajor_form=1000.,500.,'%i'     

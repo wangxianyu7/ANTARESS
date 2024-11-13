@@ -817,7 +817,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - options:
     # + 'gcal_all': mean calibration over each order, for all orders and all exposures 
     # + 'gcal_ord': spectral calibration profile over each order, for each exposure 
-    # + 'sdet_ord': noise contributions (if available from blaze measurements) 
+    # + 'noises_ord': noise contributions (if available from blaze measurements) 
     plot_dic['gcal_all']=''
     plot_dic['gcal_ord']=''
     plot_dic['noises_ord']=''    

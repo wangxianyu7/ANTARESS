@@ -2916,7 +2916,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             data_load = np.load(gen_dic['save_data_dir']+'Processed_data/Global/'+inst+'_'+vis+'.npz',allow_pickle=True)
             data_dic[inst][vis]=data_load['data_add'].item()
             data_dic[inst][vis]['proc_DI_data_paths']  = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'           #temporary redef; retrieved in  data_load['data_add'].item() no ?
-            data_dic[inst][vis]['proc_com_data_paths'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com'     #temporary redef; retrieved in  data_load['data_add'].item() no ?
+            data_dic[inst][vis]['proc_com_data_paths'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com'        #temporary redef; retrieved in  data_load['data_add'].item() no ?
             coord_dic[inst][vis]=data_load['coord_add'].item()
             data_prop[inst][vis]=data_load['data_prop_add'].item() 
             gen_dic[inst][vis]=data_load['gen_add'].item()
@@ -3300,32 +3300,32 @@ def update_inst(data_dic,inst,gen_dic):
     data_inst = data_dic[inst] 
     
     #Common table for the reference visit
-    #    - at this stage all modules call the common table in the star rest frame, so we update this one 
+    #    - after this stage, all modules call the common table in the star rest frame, so we update this one while keeping the original one for plotting purposes
     #      if profiles were not aligned the common visit table below points toward the input one
     data_com_ref = dataload_npz(data_inst[data_inst['com_vis']]['proc_com_star_data_paths']) 
-    
+
     #Check alignment status
     if gen_dic['align_DI']:com_star='_star'
     else:com_star=''
     
     #Define instrument table
     if data_inst['comm_sp_tab'] and (gen_dic['align_DI']) and (data_dic['DI']['type'][inst]=='CCF'):
-        data_inst['proc_com_star_data_path']=gen_dic['save_data_dir']+'Processed_data/'+inst+'_com'+com_star    
+        data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com_up'+com_star    
     elif gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:
         if gen_dic['spec_1D']:
             data_inst['type']='spec1D' 
             data_inst['cal_weight'] = False     
-            data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com'+com_star 
+            data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com_up'+com_star 
         elif gen_dic['CCF_from_sp']:
             data_inst['type']='CCF'                 
             data_inst['tell_sp'] = False 
             data_inst['cal_weight'] = False     
-            data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_com'+com_star 
+            data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_com_up'+com_star 
             if ('chrom' in data_inst['system_prop']):
                 data_inst['system_prop']['chrom_mode'] = 'achrom'
                 data_inst['system_prop'].pop('chrom')
         else:
-            data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com'+com_star 
+            data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com_up'+com_star 
         
     #Common instrument table is set to the table of the visit taken as reference
     datasave_npz(data_inst['proc_com_star_data_path'],data_com_ref)  

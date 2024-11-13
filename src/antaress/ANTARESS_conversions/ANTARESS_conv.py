@@ -82,7 +82,8 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
         nord_coadd = len(ord_coadd)
 
         #Scaling calibration profile
-        #    - to be calculated on the common table, which is defined in the input rest frame if non-aligned, disk-integrated spectra are cross-correlated or in the star rest frame otherwise
+        #    - always defined for echelle spectra
+        #    - the effective calibration profile used here will be calculated on the common table, which is defined in the input rest frame if non-aligned, disk-integrated spectra are cross-correlated or in the star rest frame otherwise
         #    - if alignment in the star rest frame was not applied, the common star table points toward the common input table
         if data_vis['type']=='spec2D':
             data_com = dataload_npz(data_vis['proc_com_star_data_paths'])
@@ -130,7 +131,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
             #Mean calibration profile over processed exposures
             #    - due to the various shifts of the processed spectra from the input rest frame, calibration profiles are not equivalent for a given line between exposure
             #      to maintain the relative flux balance between lines when computing CCFs, we calculate a common calibration profile to all processes exposures
-            if gcal_ord is not None:
+            if data_vis['type']=='spec2D':
                 mean_gcal_exp = dataload_npz(data_vis['mean_gcal_'+gen+'_data_paths'][iexp_eff])['mean_gcal'] 
                 for isub_ord,iord in enumerate(ord_coadd):
                     mean_gcal_com_ord=bind.resampling(data_com['edge_bins'][iord], data_proc['edge_bins'][iexp_sub,isub_ord],mean_gcal_exp[iord], kind=gen_dic['resamp_mode'])/n_exp 
@@ -200,7 +201,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
             #    - parallelisation is disabled, as it is inefficient given the size of the tables to process
             if len(idx_maskL_kept)>0:
                 ord_coadd_eff+=[isub]
-                if gcal_ord is not None:
+                if data_vis['type']=='spec2D':
                     gcal_ord = bind.resampling(data_proc['edge_bins'][iexp_sub,isub],data_com['edge_bins'][iord],mean_gcal_com[isub], kind=gen_dic['resamp_mode'])  
                     idx_def_loc = np_where1D(~np.isnan(gcal_ord))
                     gcal_ord[0:idx_def_loc[0]+1]=gcal_ord[idx_def_loc[0]]
@@ -302,7 +303,9 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
         check_data({'path':proc_com_data_paths_new})
 
     #Updating path to processed data and checking it has been calculated
+    #    - if data is still in the input frame we update the path to the common grid in the star frame as well, or it will later still point toward the original spectral grid
     data_vis['proc_com'+com_frame+'_data_paths'] = proc_com_data_paths_new
+    if com_frame=='':data_vis['proc_com_star_data_paths'] = deepcopy(data_vis['proc_com'+com_frame+'_data_paths'])
     for gen in dir_save:
         data_vis['proc_'+gen+'_data_paths'] = dir_save[gen]  
         if flux_sc:data_vis['scaled_'+gen+'_data_paths'] = dir_save[gen]+'_scaling_'
@@ -736,6 +739,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
     #    - scaling is defined as a function and does not need updating
     #    - calibration profiles are not used with 1D spectra and do not need to be defined
     data_vis['proc_com'+com_frame+'_data_paths'] = proc_com_data_paths_new
+    if com_frame=='':data_vis['proc_com_star_data_paths'] = deepcopy(data_vis['proc_com'+com_frame+'_data_paths'])
     for gen in dir_save:
         data_vis['proc_'+gen+'_data_paths'] = dir_save[gen]  
         if data_vis['tell_sp']:data_vis['tell_'+gen+'_data_paths'] = {}        

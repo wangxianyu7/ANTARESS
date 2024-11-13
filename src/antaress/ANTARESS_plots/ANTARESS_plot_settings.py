@@ -154,6 +154,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     
     #Scaling factor 
     #    - in power of ten, ie flux are multiplied by 10**sc_fact10)
+    #    - set to None for automatic determination
     plot_options['sc_fact10'] = 0.
     
     #Spectral variable
@@ -239,8 +240,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     # + 'raw' : before any correction
     # + 'all' : after all requested corrections
     # + 'tell' : after telluric correction 
-    # + 'fbal_glob' : after global flux balance correction 
-    # + 'fbal_ord' : after order/orde flux balance correction  
+    # + 'fbal' : after flux balance correction  
     # + 'cosm' : after cosmics correction  
     # + 'permpeak' : after persistent peak correction 
     # + 'wig' : after wiggle correction 
@@ -468,7 +468,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         ################################################################################################################    
         #%%% Instrumental calibration estimates
         ################################################################################################################ 
-        if (plot_dic['gcal_all']!='') or (plot_dic['gcal_ord']!='') or (plot_dic['sdet_ord']!=''):
+        if (plot_dic['gcal_all']!='') or (plot_dic['gcal_ord']!='') or (plot_dic['noises_ord']!=''):
             key_plot = 'gcal'
             
             #%%%% Generic settings
@@ -883,7 +883,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['gap_exp'] = 0.03
         
         #%%%%% Path to correction
-        #%%%%%     - leave empty to use last result from 'wig_vis_fit'
+        #          - leave empty to use last result from 'wig_vis_fit'
         plot_settings[key_plot]['wig_path_corr'] = {}  
 
         #%%%%% Plot mean value over exposures
