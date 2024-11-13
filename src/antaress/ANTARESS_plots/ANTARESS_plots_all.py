@@ -4955,7 +4955,8 @@ def sub_plot_prof_init(plot_mod,plot_options,inst,data_dic):
     elif 'Diff' in plot_mod:data_type_gen = 'Diff'
     elif 'Intr' in plot_mod:data_type_gen = 'Intr'
     elif 'Atm' in plot_mod:data_type_gen = 'Atm'  
-    data_type = data_dic[data_type_gen]['type'][inst] 
+    if (plot_mod=='DI_prof_corr'):data_type='spec2D'
+    else:data_type = data_dic[data_type_gen]['type'][inst] 
     if ('bin' in plot_mod):data_mode = 'bin'
     else:data_mode = 'orig'   
     add_txt_path = plot_options['add_txt_path'][data_type_gen]
@@ -6037,7 +6038,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
            
     return None
 
-def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop):
+def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_inst,data_vis,dim_exp,nspec,data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop):
     print('           Pre-processing exposures')
     data_proc = {} 
     data4mast = {} 
@@ -6046,7 +6047,7 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_
         data4mast[maink] = {}                            
     data_mod = {}
     iexp_proc_list = np.unique(list(iexp_mast_list)+list(iexp2plot)) 
-    flux_ref = np.ones(data_vis['dim_exp']) 
+    flux_ref = np.ones(dim_exp) 
     nord_eff = len(idx_sel_ord)
     for isub_exp,iexp in enumerate(iexp_proc_list):
 
@@ -6107,7 +6108,7 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_
             for isub in range(nord_proc):
                 flux_glob+= np.sum(dcen_wav[isub][cond_def[isub]])/np.sum(data_proc[maink][iexp]['flux'][isub][cond_def[isub]]*dcen_wav[isub][cond_def[isub]])
             for isub in range(nord_proc):
-                data_proc[maink][iexp]['flux'][isub],data_proc[maink][iexp]['cov'][isub] = bind.mul_array(data_proc[maink][iexp]['flux'][isub] , data_proc[maink][iexp]['cov'][isub],np.repeat(flux_glob,data_vis['nspec']))
+                data_proc[maink][iexp]['flux'][isub],data_proc[maink][iexp]['cov'][isub] = bind.mul_array(data_proc[maink][iexp]['flux'][isub] , data_proc[maink][iexp]['cov'][isub],np.repeat(flux_glob,nspec))
    
             #Exposures used in master calculations
             if iexp in iexp_mast_list:
@@ -7954,7 +7955,8 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
         print('   - Instrument :',inst)
         for key in ['color_dic','color_dic_sec','color_dic_bin','color_dic_bin_sec']:
             if inst not in plot_options[key]:plot_options[key][inst]={}
-            data_type = data_dic['DI']['type'][inst]
+        if (data_dic['DI']['type'][inst] =='CCF') and ('spec' not in gen_dic['type'][inst]):stop('ERROR: plot not intended for input CCF datasets')
+        data_type ='spec2D'
         
         #Data to plot
         maink_list = []
@@ -7972,6 +7974,8 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
         #Plot for each visit
         for vis in np.intersect1d(list(data_dic[inst].keys()),plot_options['visits_to_plot'][inst]): 
             print('     - Visit :',vis)
+            data_inst=data_dic[inst]
+            data_vis = data_inst[vis]
             if vis not in plot_options['color_dic'][inst]:plot_options['color_dic'][inst][vis] ='red' 
             if vis not in plot_options['color_dic_bin'][inst]:plot_options['color_dic_bin'][inst][vis] ='limegreen' 
             if vis not in plot_options['color_dic_sec'][inst]:plot_options['color_dic_sec'][inst][vis] ='dodgerblue' 
@@ -7981,10 +7985,12 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             path_loc = gen_dic['save_plot_dir']+'Spec_raw/DI_trans/'+inst+'_'+vis+'/'
             if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
-            #Data
-            data_inst=data_dic[inst]
-            data_vis = data_inst[vis]
-            data_com = dataload_npz(data_vis['proc_com_data_paths'])
+            #Common spectral grid
+            #    - we retrieve the original one in the star rest frame, as:
+            # - it is not modified during correction steps for which this function is used
+            # - the generic path to the grid is updated toward the rv grid if spectra are converted into CCFs
+            # - transmission spectra are calculated in the star rest frame, after spectra are being shifted and resampled over the common grid
+            data_com = dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com')
             
             rest_frame='star'
             fixed_args_loc = {}
@@ -8013,7 +8019,8 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             else:x_title='Velocity in '+xt_str+' rest frame (km s$^{-1}$)'     
             
             #Selected ranges and orders
-            cond_sel = np.zeros(data_vis['dim_exp'],dtype=bool)
+            dim_exp = [data_inst['nord_ref'],data_vis['nspec_ref']]
+            cond_sel = np.zeros(dim_exp,dtype=bool)
             if plot_options['sp_var'] == 'nu' :edge_bins_var = c_light/data_com['edge_bins'][:,::-1]    
             elif plot_options['sp_var'] == 'wav' :edge_bins_var = data_com['edge_bins']
             cond_sel|=(edge_bins_var[:,0:-1]>x_range_loc[0]) & (edge_bins_var[:,1::]<x_range_loc[1])
@@ -8022,7 +8029,7 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             cond_sel_proc = cond_sel[idx_sel_ord]
             nord_proc = len(idx_sel_ord)
             if nord_proc==0:stop('No orders left')
-            dim_exp_proc = [nord_proc,data_vis['nspec']]
+            dim_exp_proc = [nord_proc,data_vis['nspec_ref']]
             edge_bins_var = edge_bins_var[idx_sel_ord]
             cen_bins_com = data_com['cen_bins'][idx_sel_ord]
             edge_bins_com = data_com['edge_bins'][idx_sel_ord]
@@ -8070,7 +8077,7 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             else:iexp_mast_list = gen_dic[inst][vis]['idx_out']
             
             #Pre-process all exposures
-            data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_inst,data_vis,data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop)  
+            data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_inst,data_vis,dim_exp,data_vis['nspec_ref'],data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop)  
  
             #Calculate master for requested data steps
             data_mast={}
@@ -8079,7 +8086,7 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             
                 #Calculate common master
                 #    - defined over common table if exposures are defined over independent tables, or over common table shared by all exposures                       
-                data_mast[maink] = calc_bin_prof(iexp_mast_list,nord_proc,dim_exp_proc,data_dic[inst]['nspec'],data4mast[maink],inst,len(iexp_mast_list),cen_bins_com,edge_bins_com)
+                data_mast[maink] = calc_bin_prof(iexp_mast_list,nord_proc,dim_exp_proc,nspec_com,data4mast[maink],inst,len(iexp_mast_list),cen_bins_com,edge_bins_com)
 
                 #Dispersion tables
                 if plot_options['print_disp']:disp_dic[maink] = np.zeros([2,len(iexp2plot)])*np.nan 

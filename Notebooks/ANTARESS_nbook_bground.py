@@ -156,6 +156,7 @@ def add_vis(input_nbook,mock=False):
     
     #Initializing real dataset
     else:
+        input_nbook['settings']['gen_dic']['mock_data']=False
         input_nbook['settings']['gen_dic']['type'][inst] = deepcopy(input_nbook['par']['type'])
         if inst not in input_nbook['settings']['gen_dic']['data_dir_list']:
             input_nbook['settings']['gen_dic']['data_dir_list'][inst]={}
@@ -246,8 +247,6 @@ def diff_prof_corr(input_nbook):
 '''
 Analysis functions
 '''
-
-
 def ana_prof(input_nbook,data_type):
     inst = input_nbook['par']['instrument']
     if ('spec' in input_nbook['settings']['gen_dic']['type'][inst]):
@@ -259,7 +258,16 @@ def ana_prof(input_nbook,data_type):
         if 'calc_fit' in input_nbook['par']:
             input_nbook['settings']['gen_dic']['calc_fit_'+data_type] = deepcopy(input_nbook['par']['calc_fit'])
             input_nbook['par'].pop('calc_fit')
-        
+
+        #Fit and continuum ranges
+        if 'cont_range' in input_nbook['par']:
+            input_nbook['settings']['data_dic'][data_type]['cont_range']: {inst: {0: input_nbook['par']['cont_range']}}
+            input_nbook['par'].pop('cont_range')
+        if 'fit_range' in input_nbook['par']:
+            input_nbook['settings']['data_dic'][data_type]['fit_range']: {inst: {vis: input_nbook['par']['fit_range']}}
+            input_nbook['par'].pop('fit_range')
+
+        #Fit settings
         if ('fit_mode' in input_nbook['par']):
             input_nbook['settings']['data_dic'][data_type]['fit_mode']=deepcopy(input_nbook['par']['fit_mode'])
             input_nbook['par'].pop('fit_mode')
@@ -284,6 +292,41 @@ def ana_prof(input_nbook,data_type):
         input_nbook['settings']['data_dic'][data_type]['thresh_amp']=None
 
     return None
+
+
+def fit_DI(input_nbook, plot=False):
+
+
+    
+    input_nbook['settings']['data_dic']['mod_prop']={
+        'rv'    : {'vary':True, inst:{vis:{'guess':input_nbook['DI_trend']['rv']}}},
+        'FWHM'  : {'vary':True, inst:{vis:{'guess':input_nbook['DI_trend']['FWHM']}}},
+        'ctrst' : {'vary':True, inst:{vis:{'guess':input_nbook['DI_trend']['ctrst']}}},
+    }
+
+    return None
+
+def fit_prop(input_nbook):
+    inst = input_nbook['par']['instrument']
+    vis = input_nbook['par']['night']    
+
+    if ((inst=='ESPRESSO') & (input_nbook['DI_trend']['x_var']=='snr')):
+        input_nbook['DI_trend']['x_var'] = 'snrQ'
+
+    for prop in ['rv', 'rv_res', 'FWHM', 'ctrst']:
+        input_nbook['plots']['prop_DI_'+ prop] = {
+            'prop_DI_absc': input_nbook['DI_trend']['x_var']
+        }
+        input_nbook['plots']['prop_DI_'+ prop] = {
+            {'deg_prop_fit': {inst: {vis:{ 
+            input_nbook['DI_trend']['x_var']:input_nbook['DI_trend']['pol_deg']}
+            }}}
+        }
+
+    input_nbook['settings']['plot_dic']['porp_DI'] = 'png'
+    return None
+
+
 
 
 def ana_jointprop(input_nbook,data_type):
@@ -556,7 +599,6 @@ def detrend(input_nbook):
 
     input_nbook['settings']['gen_dic']['detrend_prof'] = True
     input_nbook['settings']['gen_dic']['calc_detrend_prof']= input_nbook['sp_reduc']['calc_detrend']
-    input_nbook['settings']['gen_dic']['full_spec']= True
     input_nbook['settings']['detrend_prof_dic']['corr_trend'] = True
 
     input_nbook['settings']['detrend_prof_dic']['prop'] = {inst:{vis:{}}}
@@ -616,59 +658,6 @@ def build_1D_master(input_nbook, plot=False):
     return None
 
     return None
-
-'''
-Functions used for trend characterisation and detrending
-'''
-def fit_range(input_nbook):
-    inst = input_nbook['par']['instrument']
-    vis = input_nbook['par']['night']    
-
-    input_nbook['settings']['gen_dic']['fit_DI'] = True
-    input_nbook['settings']['gen_dic']['calc_fit_DI'] = True
-
-    input_nbook['settings']['data_dic']['DI'] = {
-        'cont_range': {inst: {0: input_nbook['DI_trend']['cont_range']}},
-        'fit_range' : {inst: {vis: input_nbook['DI_trend']['fit_range']}}
-        }
-    return None
-
-def fit_DI(input_nbook, plot=False):
-    inst = input_nbook['par']['instrument']
-    vis = input_nbook['par']['night']    
-
-    input_nbook['settings']['data_dic']['mod_prop']={
-        'rv'    : {'vary':True, inst:{vis:{'guess':input_nbook['DI_trend']['rv']}}},
-        'FWHM'  : {'vary':True, inst:{vis:{'guess':input_nbook['DI_trend']['FWHM']}}},
-        'ctrst' : {'vary':True, inst:{vis:{'guess':input_nbook['DI_trend']['ctrst']}}},
-    }
-    if plot:
-        input_nbook['settings']['plot_dic']['porp_DI'] = 'png'
-        if input_nbook['DI_trend']['plot_CCF']:
-            input_nbook['settings']['plot_dic']['DI_prof'] = 'png'
-            input_nbook['settings']['plot_dic']['DI_prof_res'] = 'png'
-    return None
-
-def fit_prop(input_nbook):
-    inst = input_nbook['par']['instrument']
-    vis = input_nbook['par']['night']    
-
-    if ((inst=='ESPRESSO') & (input_nbook['DI_trend']['x_var']=='snr')):
-        input_nbook['DI_trend']['x_var'] = 'snrQ'
-
-    for prop in ['rv', 'rv_res', 'FWHM', 'ctrst']:
-        input_nbook['plots']['prop_DI_'+ prop] = {
-            'prop_DI_absc': input_nbook['DI_trend']['x_var']
-        }
-        input_nbook['plots']['prop_DI_'+ prop] = {
-            {'deg_prop_fit': {inst: {vis:{ 
-            input_nbook['DI_trend']['x_var']:input_nbook['DI_trend']['pol_deg']}
-            }}}
-        }
-
-    input_nbook['settings']['plot_dic']['porp_DI'] = 'png'
-    return None
-
 
 
 '''
@@ -817,7 +806,7 @@ def plot_prof(input_nbook,data_type):
     input_nbook['settings']['plot_dic'][data_type] = 'png'
     if input_nbook['type']=='RMR':
         input_nbook['par']['fit_type'] = 'indiv'   #overplot fits to individual exposures 
-    
+
     input_nbook['plots'][data_type]={'GIF_generation':True,'shade_cont':True,'plot_line_model':True,'plot_prop':False} 
     if 'x_range' in input_nbook['par']:
         input_nbook['plots'][data_type]['x_range'] = deepcopy(input_nbook['par']['x_range'])

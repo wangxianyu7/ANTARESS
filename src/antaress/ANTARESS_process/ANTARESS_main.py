@@ -58,6 +58,7 @@ def ANTARESS_settings_overwrite(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob
         for key in ['IntrProf','IntrProp']:
             if key in input_dic['settings']['glob_fit_dic']:glob_fit_dic[key].update(input_dic['settings']['glob_fit_dic'][key])
     if 'plot_dic' in input_dic['settings']:plot_dic.update(input_dic['settings']['plot_dic'])
+    if 'detrend_prof_dic' in input_dic['settings']:detrend_prof_dic.update(input_dic['settings']['detrend_prof_dic'])
     
     #Overwriting specific fields
     if ('orders4ccf' in input_dic) and (len(input_dic['orders4ccf'])>0):
@@ -129,7 +130,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 #Processing disk-integrated stellar profiles
                 data_type_gen = 'DI'
                 #------------------------------------------------- 
-                print('MAIN',gen_dic['detrend_prof'] , detrend_prof_dic['full_spec'])
+              
                 #Spectral detrending   
                 if gen_dic['detrend_prof'] and (detrend_prof_dic['full_spec']):
                     detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
@@ -2949,6 +2950,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         gen_vis = gen_dic[inst][vis] 
         if (not data_vis['comm_sp_tab']):print('           Exposures do not share a common spectral table')      
         else:print('           All exposures share a common spectral table')   
+
+        #Keeping track of original dimensions
+        data_vis['nspec_ref'] = deepcopy(data_vis['nspec'])
 
         #Initialize all exposures as being defined
         data_dic['DI'][inst][vis]['idx_def'] = np.arange(data_vis['n_in_visit'],dtype=int)

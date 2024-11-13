@@ -1726,7 +1726,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - will be applied before spectra are converted into CCFs
     
     #%%%%% Full spectrum
-    detrend_prof_dic['full_spec']=False
+    detrend_prof_dic['full_spec']=True
     
     #%%%%% Transition wavelength
     #    - for single line profile
