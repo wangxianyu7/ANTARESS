@@ -4,6 +4,7 @@ from matplotlib.ticker import MultipleLocator, FormatStrFormatter,ScalarFormatte
 import matplotlib.colors as colors
 import numpy as np
 from copy import deepcopy
+import sys
 from ..ANTARESS_general.utils import stop
 
 
@@ -48,7 +49,8 @@ def custom_axis(plt,ax=None,fig = None,position=None,colback=None,
     #    - thick: 'light', 'normal', 'medium', 'semibold', 'bold', 'heavy', 'black'					
     font_size_loc=font_size if font_size is not None else 10.
     font_thick_loc=font_thick if font_thick is not None else 'normal'
-    plt.rc('font', size=font_size_loc,weight=font_thick_loc,**{'family':'sans-serif','sans-serif':['Helvetica']})
+    if sys.platform == 'darwin':plt.rc('font', size=font_size_loc,weight=font_thick_loc,**{'family':'sans-serif','sans-serif':['Helvetica']})
+    else:plt.rc('font', size=font_size_loc,weight=font_thick_loc)
 # 	plt.rc('text', usetex=True)
     plt.rcParams['pdf.fonttype'] = 42
 

@@ -1794,7 +1794,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         
                         #Initialize data at first exposure
                         if isub_exp==0:
-                            print('            Building exposures ... ')
+                            print('           Building exposures ... ')
                             data_inst[vis]['mock'] = True
                             fixed_args = {}
                             if inst not in mock_dic['intr_prof']:

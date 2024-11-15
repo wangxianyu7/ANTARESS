@@ -17,12 +17,28 @@ def save_system(input_nbook):
     input_nbook['saved_data_path'] = input_nbook['working_path']+input_nbook['par']['star_name'] +'/'+input_nbook['par']['main_pl'] + '_Saved_data'
     print('System stored in : ', input_nbook['saved_data_path'])
     if (not path_exist(input_nbook['saved_data_path'])): os_system.makedirs(input_nbook['saved_data_path'])
-    datasave_npz(input_nbook['saved_data_path']+'/'+'init_sys',input_nbook)
+
+    #Saving contents in notebook-specific field, so that we can track the origin of the settings in other notebooks
+    datasave_npz(input_nbook['saved_data_path']+'/'+'init_sys',{input_nbook['type'] : input_nbook})
+    
     return None
 
 
 def load_nbook(input_nbook, nbook_type):
-    input_nbook = dataload_npz(input_nbook['working_path']+'/'+input_nbook['star_name']+'/'+input_nbook['pl_name']+'_Saved_data/init_sys')
+    all_input_nbook = dataload_npz(input_nbook['working_path']+'/'+input_nbook['star_name']+'/'+input_nbook['pl_name']+'_Saved_data/init_sys')
+
+    #Retrieving relevant notebook settings
+    if nbook_type in ['mock','Reduc']:
+        input_nbook = all_input_nbook['setup']
+    elif nbook_type=='Processing':
+        if ('mock' in all_input_nbook) and ('Reduc' in all_input_nbook):
+            stop('ERROR: do not generate a mock dataset of a system while processing a real dataset of the same system')
+        elif ('mock' in all_input_nbook):input_nbook = all_input_nbook['mock']
+        elif ('Reduc' in all_input_nbook):input_nbook = all_input_nbook['Reduc']
+    elif nbook_type=='RMR': 
+        input_nbook = all_input_nbook['Processing']  
+    elif nbook_type=='Trends':     
+        input_nbook = all_input_nbook['Reduc']
     input_nbook['type'] = nbook_type 
 
     #Retrieving dataset in ANTARESS format
@@ -45,11 +61,12 @@ def load_nbook(input_nbook, nbook_type):
         input_nbook['settings']['gen_dic']['corr_cosm'] = False    
         input_nbook['settings']['gen_dic']['calc_FbalOrd'] = False    
 
-
     return input_nbook
 
 def init():
     input_nbook = {
+        #current notebook type
+        'type':'setup',
         #notebook inputs that will overwrite system properties file
         'system' : {},  
         #notebook inputs that will overwrite configuration settings file
@@ -820,11 +837,13 @@ def plot_prop(input_nbook,data_type):
                 
         if (data_type=='DI'):
             for plot_prop in input_nbook['plots']['prop_'+data_type+'_ordin']:
-                prop_fit = {'FWHM':'FWHM','ctrst':'contrast','rv_res':'rv_res','rv':'rv_res'}[plot_prop]
-                coord_ref = deepcopy(input_nbook['DI_trend'][prop_fit]['coord'])
-                if (inst=='ESPRESSO') and (coord_ref=='snr'):coord = 'snrQ'
-                elif 'phase' in coord_ref:coord = 'phase'
-                else:coord = coord_ref                
+                if input_nbook['type']=='mock':coord = 'phase'
+                elif input_nbook['type']=='Trends':
+                    prop_fit = {'FWHM':'FWHM','ctrst':'contrast','rv_res':'rv_res','rv':'rv_res'}[plot_prop]
+                    coord_ref = deepcopy(input_nbook['DI_trend'][prop_fit]['coord'])
+                    if (inst=='ESPRESSO') and (coord_ref=='snr'):coord = 'snrQ'
+                    elif 'phase' in coord_ref:coord = 'phase'
+                    else:coord = coord_ref                
                 input_nbook['plots']['prop_DI_'+plot_prop]['prop_DI_absc'] = coord
      
         elif (data_type=='Intr'):

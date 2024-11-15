@@ -9834,11 +9834,9 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
             icol = isub%nsub_col             
 
             #Single/multiple subplots
-            if n_inst == 1:ax = axes
-            else:
-                if nsub_rows==1:ax = axes[icol]
-                else:ax = axes[irow, icol]
-            
+            if nsub_rows==1:ax = axes[icol]
+            else:ax = axes[irow, icol]
+
             #Print instrument
             ax.text(0.2,0,inst,fontsize=plot_options['font_size_txt']-1,color = 'black',verticalalignment='center', horizontalalignment='left')
  	
