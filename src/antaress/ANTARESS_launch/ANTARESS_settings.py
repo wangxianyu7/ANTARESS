@@ -2005,6 +2005,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     glob_fit_dic['DIProp']['idx_in_fit'] = {}
 
 
+    #%%% Scaled data errors
+    #    - local scaling of data errors
+    #    - you can scale by sqrt(reduced chi2 of original fit) to ensure a reduced chi2 unity
+    glob_fit_dic['DIProp']['sc_err']={}  
+
+
     #%%%% Fitted properties
     
     #%%%%% Property, coordinate, model
@@ -2017,7 +2023,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #           coord__puls__Y__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...}
     #           }
     #    - 'prop' defines the measured property to be fitted:
-    # + RV : residuals between disk-integrated RVs and the Keplerian model (km/s)
+    # + rv : residuals between disk-integrated RVs and the Keplerian model (km/s)
     # + ctrst : disk-integrated line contrast
     # + FWHM : disk-integrated line FWHM (km/s)   
     #    - 'coord' defines the coordinate as a function of which the property is modelled:
@@ -2046,7 +2052,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #      F(x) = c0 + pol(x) + sine(x) + puls(x)
     #   with ci and Amp in km/s    
     glob_fit_dic['DIProp']['mod_prop']={
-        'RV':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
+        'rv':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
               'time__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},
         'ctrst':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
                  'snr__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},

@@ -70,7 +70,7 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
     #Initializations
     for prop_loc in fit_prop_dic['mod_prop']:  
         fixed_args,fit_dic = init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
-        print('     - '+{'RV':'RV residuals','FWHM':'Line FWHM','ctrst':'Line contrast'}[prop_loc])        
+        print('     - '+{'rv':'RV residuals','FWHM':'Line FWHM','ctrst':'Line contrast'}[prop_loc])        
         fit_dic['save_dir']+=prop_loc+'/'       
     
         #Arguments to be passed to the fit function
@@ -81,7 +81,7 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
             'SNRorders':{},
             'coord_ref':fit_prop_dic['coord_ref']
             })    
-        if prop_loc=='RV':fixed_args['prop_fit'] = 'rv_res'
+        if prop_loc=='rv':fixed_args['prop_fit'] = 'rv_res'
         else:fixed_args['prop_fit'] = prop_loc
 
         #Initialization
@@ -95,7 +95,9 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
         #Identify models and coordinates
         #    - must be done here to retrieve coordinate grids within init_joined_routines_vis_fit()
         for par in fit_dic['mod_prop'][prop_loc]:
+            print('PAR',par)
             coord = par.split('__')[0]
+            print(coord)
             if coord!='c':
                 model_type = []
                 if 'pol' in par:model_type+=['pol']
@@ -164,6 +166,7 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
         if (plot_dic['prop_DI']!='') or (plot_dic['chi2_fit_DIProp']!=''):
             for key in ['coord_obs','coord_list','coord_fit']:fit_save[key] = fixed_args[key]
             fit_save['coord_mod'] = fixed_args['coord_fit']
+            print('coord_fit',fixed_args['coord_fit'])
             key_list = ['prop_fit','err_prop_fit']
             for key in key_list:fit_save[key] = {}
             for inst in fixed_args['inst_list']:

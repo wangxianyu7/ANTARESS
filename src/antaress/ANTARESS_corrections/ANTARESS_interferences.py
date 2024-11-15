@@ -79,6 +79,9 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
         print('         Fitting/correcting wiggles') 
         fixed_args = {'rasterized':True}
 
+        #Component colors
+        color_comps={1:'dodgerblue',2:'orange',3:'limegreen',4:'magenta'}
+
         #Optional arguments to be passed to the fit functions
         #    - common to all steps in the module
         fixed_args['use_cov'] = False 
@@ -107,9 +110,6 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             #Maximum degree of polynomial amplitude variations
             #    - defined for each component
             fixed_args['deg_Amp'] = gen_dic['wig_deg_Amp'] 
-
-            #Component colors
-            color_comps={1:'dodgerblue',2:'orange',3:'limegreen',4:'magenta'}
 
             #Parameters generic names
             pref_names_amp={}
@@ -3063,7 +3063,7 @@ def plot_screening(ibin2exp_fit,ibin2ord_fit,min_plot,max_plot,gen_dic,Fr_bin_fi
     custom_axis(plt,position=[0.15,0.15,0.95,0.7],
                 x_range=x_range,xmajor_int=xmajor_int,xminor_int=xminor_int,
                 y_range=y_range,ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,dir_y='out',
-                xmajor_form=xmajor_form,x_title=r'$\nu$ (10$^{-10}$ s$^{-1}$)',y_title='Flux ratio',font_size=16,xfont_size=16,yfont_size=16)
+                xmajor_form=xmajor_form,x_title=r'$\nu$ (10$^{13}$ s$^{-1}$)',y_title='Flux ratio',font_size=16,xfont_size=16,yfont_size=16)
     plt.savefig(plot_path+'.png') 
     plt.close()  
 
@@ -3501,7 +3501,7 @@ def plot_wig_glob(low_nu_fit,high_nu_fit,nu_fit,flux_fit,err_fit,nu_mod,mod_plot
     x_range_plot = [min_max_plot[0]-0.3,min_max_plot[1]+0.3]
     x_res = nu_res
     for ax_key in ['00','10']:
-        axd[ax_key].set_xlabel(r'$\nu$ (10$^{-10}$ s$^{-1}$)',fontsize=fontsize) 
+        axd[ax_key].set_xlabel(r'$\nu$ (10$^{13}$ s$^{-1}$)',fontsize=fontsize) 
         axd[ax_key].xaxis.set_major_locator(MultipleLocator(1))
         axd[ax_key].xaxis.set_major_formatter('{x:.0f}')
         axd[ax_key].xaxis.set_minor_locator(MultipleLocator(0.5))

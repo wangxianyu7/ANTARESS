@@ -25,7 +25,7 @@ from ..ANTARESS_plots.ANTARESS_plots_all import ANTARESS_plot_functions
 from ..ANTARESS_corrections.ANTARESS_calib import calc_gcal
 from ..ANTARESS_process.ANTARESS_plocc_spec import def_in_plocc_profiles,def_diff_profiles
 from ..ANTARESS_conversions.ANTARESS_masks_gen import def_masks
-from ..ANTARESS_conversions.ANTARESS_conv import CCF_from_spec,DiffIntr_CCF_from_spec,conv_2D_to_1D_spec
+from ..ANTARESS_conversions.ANTARESS_conv import DI_CCF_from_spec,DiffIntr_CCF_from_spec,Atm_CCF_from_spec,conv_2D_to_1D_spec
 from ..ANTARESS_conversions.ANTARESS_binning import process_bin_prof
 from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
 from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_diff_profiles,extract_intr_profiles,extract_pl_profiles 
@@ -55,7 +55,7 @@ def ANTARESS_settings_overwrite(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob
         for key in ['DI','Intr']:
             if key in input_dic['settings']['data_dic']:data_dic[key].update(input_dic['settings']['data_dic'][key])
     if 'glob_fit_dic' in input_dic['settings']:
-        for key in ['IntrProf','IntrProp']:
+        for key in ['DIProp','IntrProf','IntrProp']:
             if key in input_dic['settings']['glob_fit_dic']:glob_fit_dic[key].update(input_dic['settings']['glob_fit_dic'][key])
     if 'plot_dic' in input_dic['settings']:plot_dic.update(input_dic['settings']['plot_dic'])
     if 'detrend_prof_dic' in input_dic['settings']:detrend_prof_dic.update(input_dic['settings']['detrend_prof_dic'])
@@ -134,11 +134,11 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 #Spectral detrending   
                 if gen_dic['detrend_prof'] and (detrend_prof_dic['full_spec']):
                     detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
-    
+
                 #Converting DI stellar spectra into CCFs
                 if gen_dic[data_type_gen+'_CCF']:
-                    CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,data_dic[data_type_gen])
-            
+                    DI_CCF_from_spec(inst,vis,data_dic,gen_dic)
+                  
                 #Single line detrending    
                 if gen_dic['detrend_prof'] and (not detrend_prof_dic['full_spec']):
                     detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
@@ -232,8 +232,8 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     
                 #Converting atmospheric spectra into CCFs
                 if gen_dic[data_type_gen+'_CCF'] and ('spec' in data_dic[inst][vis]['type']):
-                    CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,data_dic[data_type_gen])
-    
+                    Atm_CCF_from_spec(inst,vis,data_dic,gen_dic)
+
                 #Fitting atmospheric profiles in the star rest frame
                 if gen_dic['fit_'+data_type_gen]:
                     MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])

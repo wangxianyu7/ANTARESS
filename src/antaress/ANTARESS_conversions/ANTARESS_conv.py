@@ -331,8 +331,29 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
 
     return None    
 
+def DI_CCF_from_spec(inst,vis,data_dic,gen_dic):
+    r"""**CCF conversion: DI** 
+    
+    Wrap-up for conversion of disk-integrated spectra into CCFs.
+    
+    Args:
+        TDB
+    
+    Returns:
+        None
+    
+    """ 
+
+    #Calculating CCFs
+    CCF_from_spec('DI',inst,vis,data_dic,gen_dic,data_dic['DI'])
+
+    #Saving complementary data
+    datasave_npz(data_dic[inst][vis]['proc_DI_data_paths']+'add',{'rest_frame':data_dic['DI'][inst][vis]['rest_frame'],'dim_exp':data_dic[inst][vis]['dim_exp']})
+
+    return None
+
 def DiffIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
-    r"""**CCF conversion** 
+    r"""**CCF conversion: Diff, Intr** 
     
     Wrap-up for conversion of out-of-transit differential and intrinsic spectra into CCFs.
     
@@ -428,6 +449,26 @@ def DiffIntr_CCF_from_spec(inst,vis,data_dic,gen_dic):
     return None
 
 
+def Atm_CCF_from_spec(inst,vis,data_dic,gen_dic):
+    r"""**CCF conversion: Atm** 
+    
+    Wrap-up for conversion of atmospheric spectra into CCFs.
+    
+    Args:
+        TDB
+    
+    Returns:
+        None
+    
+    """ 
+
+    #Calculating CCFs
+    CCF_from_spec('Atm',inst,vis,data_dic,gen_dic,data_dic['Atm'])
+
+    #Saving complementary data
+    datasave_npz(data_dic[inst][vis]['proc_Atm_data_paths']+'add',{'rest_frame':data_dic['Atm'][inst][vis]['rest_frame'],'dim_exp':data_dic[inst][vis]['dim_exp']})
+
+    return None
 
 
 

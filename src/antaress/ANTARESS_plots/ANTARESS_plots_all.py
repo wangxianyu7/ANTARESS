@@ -4992,7 +4992,7 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
     
     #Data at chosen steps
     data_path_dic = get_data_path(plot_mod,data_type,inst,vis,data_dic,gen_dic)
-    
+
     #Reference planet for the visit
     pl_ref=plot_options['pl_ref'][inst][vis] 
     
@@ -5101,7 +5101,7 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
     #Path of retrieved data
     #    - for each type of data we define the rest frame and number of spectral orders (because the generic field is overwritten with the latest value we get if from the data structure itself)
     #----------------------------------------
-    
+  
     #PCA results
     if plot_mod=='map_pca_prof':
         data_path_all = [gen_dic['save_data_dir']+'PCA_results/'+inst+'_'+vis+'_model'+str(iexp) for iexp in iexp2plot] 
@@ -5171,7 +5171,7 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
                         
                     #Disk-integrated profiles
                     elif ('DI_prof' in plot_mod): 
-
+                     
                         #Spectral profiles
                         if ('spec' in data_type):         
                             
@@ -5212,7 +5212,7 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
                                 data_path = data_dic[inst][vis]['proc_DI_data_paths']
                                 rest_frame = dataload_npz(data_path+'add')['rest_frame']                                    
                             data_path_all = [data_path+str(iexp) for iexp in iexp2plot]                  
-                      
+                        
                 #Other types of profiles
                 else:  
                     data_path_all = [gen_dic['save_data_dir']+txt_aligned+data_type_gen+'_data/'+add_txt_path+'/'+txt_conv+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp2plot]   
@@ -5402,14 +5402,13 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
             print('           Processing and plotting exposures')
             for isub,(iexp,data_path_exp) in enumerate(zip(iexp2plot,data_path_all)): 
                 iexp_or=iexp_orig[isub]     
-             
+
                 #Colors
                 col_exp = plot_options['color_dic'][inst][vis][isub]
                 col_exp_sec = plot_options['color_dic_sec'][inst][vis][isub]        
                 
                 #Upload data
                 if data_path_exp is not None:data_exp = dataload_npz(data_path_exp)
-
                 if (data_mode == 'orig'):       
 
                     #Specific options
@@ -5992,12 +5991,12 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                                     #----------------------------------------
                                     if ((not plot_options['multi_exp']) or (isub==len(iexp2plot)-1)): 
                                         filename = end_plot_prof(pl_ref,inst,vis,all_figs[key_frame],all_ax[key_frame],x_range_loc[key_frame],y_range_loc[key_frame],hide_yticks,plot_options,iexp_or,plot_mod,title_name,ref_name,iord,plot_ext,x_title,y_title,path_loc,data_bin,coord_dic,data_type,data_dic,gen_dic)
- 
+                                        
                                         #Store image for GIF generation
                                         if (images_to_make_GIF is not None): 
                                             if (not plot_options['multi_exp']):images_to_make_GIF[iord].append(imageio.v2.imread(filename))   
                                             else:images_to_make_GIF.append(imageio.v2.imread(filename))   
-            
+                                   
                     ### End of loop on orders         
 
                     #----------------------------------------
@@ -6008,7 +6007,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                     #----------------------------------------
                     if plot_options['multi_ord'] and ((not plot_options['multi_exp']) or (isub==len(iexp2plot)-1)): 
                         filename = end_plot_prof(pl_ref,inst,vis,all_figs[key_frame],all_ax[key_frame],x_range_loc[key_frame],y_range_loc[key_frame],hide_yticks,plot_options,iexp_or,plot_mod,title_name,ref_name,None,plot_ext,x_title,y_title,path_loc,data_bin,coord_dic,data_type,data_dic,gen_dic)    
-                                                 
+                      
                 ### End of condition to plot current exposure
 
             ### End of loop on exposures
@@ -6021,7 +6020,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
             #----------------------------------------
             if plot_options['multi_ord'] and plot_options['multi_exp']:
                 filename = end_plot_prof(pl_ref,inst,vis,all_figs[key_frame],all_ax[key_frame],x_range_loc[key_frame],y_range_loc[key_frame],hide_yticks,plot_options,None,plot_mod,title_name,ref_name,None,plot_ext,x_title,y_title,path_loc,data_bin,coord_dic,data_type,data_dic,gen_dic)                
-
+         
             #Generate GIF
             if (images_to_make_GIF is not None):
                 
@@ -8019,8 +8018,8 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             else:x_title='Velocity in '+xt_str+' rest frame (km s$^{-1}$)'     
             
             #Selected ranges and orders
-            dim_exp = [data_inst['nord_ref'],data_vis['nspec_ref']]
-            cond_sel = np.zeros(dim_exp,dtype=bool)
+            nspec_com = data_com['nspec']
+            cond_sel = np.zeros(data_com['dim_exp'],dtype=bool)
             if plot_options['sp_var'] == 'nu' :edge_bins_var = c_light/data_com['edge_bins'][:,::-1]    
             elif plot_options['sp_var'] == 'wav' :edge_bins_var = data_com['edge_bins']
             cond_sel|=(edge_bins_var[:,0:-1]>x_range_loc[0]) & (edge_bins_var[:,1::]<x_range_loc[1])
@@ -8033,7 +8032,6 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             edge_bins_var = edge_bins_var[idx_sel_ord]
             cen_bins_com = data_com['cen_bins'][idx_sel_ord]
             edge_bins_com = data_com['edge_bins'][idx_sel_ord]
-            nspec_com = data_com['nspec']
             if plot_options['x_range'] is None:x_range_loc = [np.max([x_range_loc[0],np.min(edge_bins_var)]),np.min([x_range_loc[1],np.max(edge_bins_var)])]
             dx_range = x_range_loc[1]-x_range_loc[0]
 
@@ -8077,7 +8075,7 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             else:iexp_mast_list = gen_dic[inst][vis]['idx_out']
             
             #Pre-process all exposures
-            data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_inst,data_vis,dim_exp,data_vis['nspec_ref'],data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop)  
+            data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_inst,data_vis,data_com['dim_exp'],data_vis['nspec_ref'],data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop)  
  
             #Calculate master for requested data steps
             data_mast={}
@@ -8249,7 +8247,7 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
                 elif plot_options['sp_var']=='wav':x_title=r'Wavelength in star rest frame (A)'
                 custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,xmajor_form=xmajor_form,ymajor_form=ymajor_form,
                             x_title=x_title,y_title='Flux ratio',font_size=plot_options['font_size'],xfont_size=plot_options['font_size'],yfont_size=plot_options['font_size'])
-                plt.savefig(path_loc+'idx'+str(iexp)+'.'+plot_dic['trans_sp']) 
+                plt.savefig(path_loc+'idx'+str(iexp)+'_multi_ord.'+plot_dic['trans_sp']) 
                 plt.close()      
              
 
@@ -8806,7 +8804,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                         coord_plot = plot_options['prop_'+data_mode+'_absc']
                         if (coord_plot=='phase'):coord_plot_eff = 'phase'+pl_ref 
                         else:coord_plot_eff = coord_plot
-                            
+                        print('coord_list',coord_list)
                         #Data-equivalent model
                         #    - abscissa property must be among those used to calculate the fitted model
                         if plot_options['theo_obs_prop']:
@@ -8819,37 +8817,43 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                         if plot_options['theo_HR_prop']:
                             fixed_args = deepcopy(data_fit_prop)
                             fixed_args['prop_fit'] = prop_mode      
-                            
-                            #Single coordinate
-                            if len(coord_list)==1:
-                            
-                                #High-resolution grid of coordinate
-                                #    - the grid is defined between the min/max of the coordinate time-series over the full visit
-                                n_HR = 1000                             
-                                if coord_plot_eff != coord_list[0]:stop('ERROR: plot and fit coordinates must match') 
-                                coord_obs = data_fit_prop['coord_obs'][inst][vis][coord_plot_eff]
-                                min_coord_obs = min(coord_obs)
-                                max_coord_obs = max(coord_obs)
-                                d_HR=(max_coord_obs-min_coord_obs)/n_HR
-                                coord_HR = min_coord_obs + d_HR*np.arange(n_HR)
-                                fixed_args['coord_fit'][inst][vis][coord_plot_eff] = coord_HR
 
-                            #Multiple coordinates
-                            #    - the model can still be calculated over the full observed coordinate time-series
-                            else:    
-                                print('WARNING: HR model cannot be calculated with multiple coordinates')
+                            #Constant value was fitted (coordinate-independent)
+                            if len(coord_list)==0:
+                                mod_prop_HR = sc_unit*mod_DIProp(data_fit_prop['p_final'],fixed_args,inst,vis,1)
+                                plt.axhline(mod_prop_HR[0],color='darkgrey', lw=1,linestyle='-',zorder=50)              
+                               
+                            #Single coordinate  
+                            else:                              
+                                if len(coord_list)==1:
                                 
-                                #Observed grid of coordinates
-                                for coord in coord_list:fixed_args['coord_fit'][inst][vis][coord]  = data_fit_prop['coord_obs'][inst][vis][coord]
-                                coord_HR = fixed_args['coord_fit'][inst][vis][coord_plot_eff]
-                                n_HR = len(coord_HR)
-                    
-                            #Model
-                            mod_prop_HR = sc_unit*mod_DIProp(data_fit_prop['p_final'],fixed_args,inst,vis,n_HR)
-                          
-                            #Plotting
-                            wsort = np.argsort(coord_HR)
-                            plt.plot(coord_HR[wsort],mod_prop_HR[wsort],color='darkgrey',linestyle='-',lw=1,zorder=50) 
+                                    #High-resolution grid of coordinate
+                                    #    - the grid is defined between the min/max of the coordinate time-series over the full visit
+                                    n_HR = 1000   
+                                    if (coord_plot_eff != coord_list[0]):stop('ERROR: plot and fit coordinates must match') 
+                                    coord_obs = data_fit_prop['coord_obs'][inst][vis][coord_plot_eff]
+                                    min_coord_obs = min(coord_obs)
+                                    max_coord_obs = max(coord_obs)
+                                    d_HR=(max_coord_obs-min_coord_obs)/n_HR
+                                    coord_HR = min_coord_obs + d_HR*np.arange(n_HR)
+                                    fixed_args['coord_fit'][inst][vis][coord_plot_eff] = coord_HR
+    
+                                #Multiple coordinates
+                                #    - the model can still be calculated over the full observed coordinate time-series
+                                else:    
+                                    print('WARNING: HR model cannot be calculated with multiple coordinates')
+                                    
+                                    #Observed grid of coordinates
+                                    for coord in coord_list:fixed_args['coord_fit'][inst][vis][coord]  = data_fit_prop['coord_obs'][inst][vis][coord]
+                                    coord_HR = fixed_args['coord_fit'][inst][vis][coord_plot_eff]
+                                    n_HR = len(coord_HR)
+                        
+                                #Model
+                                mod_prop_HR = sc_unit*mod_DIProp(data_fit_prop['p_final'],fixed_args,inst,vis,n_HR)
+    
+                                #Plotting
+                                wsort = np.argsort(coord_HR)
+                                plt.plot(coord_HR[wsort],mod_prop_HR[wsort],color='darkgrey',linestyle='-',lw=1,zorder=50) 
 
                 #-------------------------------------------------------          
                 #Intrinsic properties

@@ -1395,6 +1395,12 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%% Print and plot mean value and dispersion 
             plot_settings[key_plot]['disp_mod']='out' 
             
+            #%%%% General path to the best-fit model to property series
+            plot_settings[key_plot]['DIProp_path']=None            
+
+            #%%%% Plot high-resolution model from property fit
+            plot_settings[key_plot]['theo_HR_prop'] = False
+            
             #%%%% Save dispersion values for analysis in external routine
             plot_settings[key_plot]['save_disp']=False
             
