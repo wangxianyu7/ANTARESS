@@ -8804,7 +8804,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                         coord_plot = plot_options['prop_'+data_mode+'_absc']
                         if (coord_plot=='phase'):coord_plot_eff = 'phase'+pl_ref 
                         else:coord_plot_eff = coord_plot
-                        print('coord_list',coord_list)
+                  
                         #Data-equivalent model
                         #    - abscissa property must be among those used to calculate the fitted model
                         if plot_options['theo_obs_prop']:

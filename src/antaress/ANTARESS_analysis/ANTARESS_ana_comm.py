@@ -552,7 +552,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
             fixed_args['coord_fit'][inst][vis]['bjd']=coord_vis['bjd'][sub_idx_in_fit]
             fixed_args['coord_fit'][inst][vis]['t_dur']=coord_vis['t_dur'][sub_idx_in_fit]
     elif ('DI' in rout_mode):
-        print('INIT DI',fixed_args['coord_list'][inst][vis])
+      
         #Retrieving coordinates for model of disk-integrated property
         for coord in fixed_args['coord_list'][inst][vis]:
       
@@ -595,7 +595,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
             #Store full time-series for plot purpose
             if (plot_dic['prop_DI']!=''):
                 fixed_args['coord_obs'][inst][vis][coord] = coord_obs
-        print('END DI',fixed_args['coord_fit'][inst][vis])
+   
     return bin_mode
     
     

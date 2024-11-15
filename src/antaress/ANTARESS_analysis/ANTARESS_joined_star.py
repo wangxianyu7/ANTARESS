@@ -95,9 +95,7 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
         #Identify models and coordinates
         #    - must be done here to retrieve coordinate grids within init_joined_routines_vis_fit()
         for par in fit_dic['mod_prop'][prop_loc]:
-            print('PAR',par)
             coord = par.split('__')[0]
-            print(coord)
             if coord!='c':
                 model_type = []
                 if 'pol' in par:model_type+=['pol']
@@ -166,7 +164,6 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
         if (plot_dic['prop_DI']!='') or (plot_dic['chi2_fit_DIProp']!=''):
             for key in ['coord_obs','coord_list','coord_fit']:fit_save[key] = fixed_args[key]
             fit_save['coord_mod'] = fixed_args['coord_fit']
-            print('coord_fit',fixed_args['coord_fit'])
             key_list = ['prop_fit','err_prop_fit']
             for key in key_list:fit_save[key] = {}
             for inst in fixed_args['inst_list']:
