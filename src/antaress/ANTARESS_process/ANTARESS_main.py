@@ -3311,10 +3311,11 @@ def update_inst(data_dic,inst,gen_dic):
     #Check alignment status
     if gen_dic['align_DI']:com_star='_star'
     else:com_star=''
-    
-    #Define instrument table
+
+    #Defining instrument table
+    #    - we define a specific path to prevent overwriting the original common grid
     if data_inst['comm_sp_tab'] and (gen_dic['align_DI']) and (data_dic['DI']['type'][inst]=='CCF'):
-        data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com_up'+com_star    
+        data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com_up'+com_star  
     elif gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:
         if gen_dic['spec_1D']:
             data_inst['type']='spec1D' 
@@ -3328,12 +3329,13 @@ def update_inst(data_dic,inst,gen_dic):
             if ('chrom' in data_inst['system_prop']):
                 data_inst['system_prop']['chrom_mode'] = 'achrom'
                 data_inst['system_prop'].pop('chrom')
-        else:
-            data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com_up'+com_star 
+    else:
+        data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com_up'+com_star 
         
     #Common instrument table is set to the table of the visit taken as reference
     datasave_npz(data_inst['proc_com_star_data_path'],data_com_ref)  
-    
+
+    #Updating dimensions
     if gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:    
         data_inst['dim_exp'] = deepcopy(data_com_ref['dim_exp'])
         data_inst['nspec'] = deepcopy(data_com_ref['nspec'])

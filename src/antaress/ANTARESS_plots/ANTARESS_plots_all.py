@@ -7954,6 +7954,8 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
         print('   - Instrument :',inst)
         for key in ['color_dic','color_dic_sec','color_dic_bin','color_dic_bin_sec']:
             if inst not in plot_options[key]:plot_options[key][inst]={}
+            
+        #DI profiles are now in CCF and were not originally spectral (ie, they wer already CCF as input)
         if (data_dic['DI']['type'][inst] =='CCF') and ('spec' not in gen_dic['type'][inst]):stop('ERROR: plot not intended for input CCF datasets')
         data_type ='spec2D'
         
@@ -7985,11 +7987,14 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
             #Common spectral grid
-            #    - we retrieve the original one in the star rest frame, as:
-            # - it is not modified during correction steps for which this function is used
-            # - the generic path to the grid is updated toward the rv grid if spectra are converted into CCFs
-            # - transmission spectra are calculated in the star rest frame, after spectra are being shifted and resampled over the common grid
+            #    - we retrieve the original grid in the input frame and shift it to the star rest frame, because:
+            # + we cannot use the generic path to the common grid, as it is updated toward the rv grid if spectra are converted into S1D or CCFs
+            # + the original grid is not modified during correction steps, for which this plotting function is used, so the grid matches the corrected profiles
+            # + transmission spectra are calculated in the star rest frame, after spectra are being shifted and resampled over the common grid in pre_proc_exp
             data_com = dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com')
+            spec_dopshift = 1./gen_specdopshift(data_dic['DI']['sysvel'][inst][vis])
+            data_com['cen_bins']*=spec_dopshift
+            data_com['edge_bins']*=spec_dopshift            
             
             rest_frame='star'
             fixed_args_loc = {}

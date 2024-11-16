@@ -26,7 +26,7 @@ def save_system(input_nbook):
 
 def load_nbook(input_nbook, nbook_type):
     all_input_nbook = dataload_npz(input_nbook['working_path']+'/'+input_nbook['star_name']+'/'+input_nbook['pl_name']+'_Saved_data/init_sys')
-
+    
     #Retrieving relevant notebook settings
     if nbook_type in ['mock','Reduc']:
         input_nbook = all_input_nbook['setup']
@@ -39,6 +39,7 @@ def load_nbook(input_nbook, nbook_type):
         input_nbook = all_input_nbook['Processing']  
     elif nbook_type=='Trends':     
         input_nbook = all_input_nbook['Reduc']
+    else:stop('ERROR : notebook type '+nbook_type+' not recognized')
     input_nbook['type'] = nbook_type 
 
     #Retrieving dataset in ANTARESS format
