@@ -14,6 +14,10 @@ Initialization functions
 '''
 
 def save_system(input_nbook):
+
+    #Deactivate all notebook plots
+    for key_plot in ['system_view','prop_DI','prop_Intr','DI_prof','Intr_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_Diff_prof','flux_sp','trans_sp','gcal_ord','noises_ord','tell_CCF','tell_prop','Fbal_corr','cosm_corr']:input_nbook['settings']['plot_dic'][key_plot] = ''
+    
     input_nbook['saved_data_path'] = input_nbook['working_path']+input_nbook['par']['star_name'] +'/'+input_nbook['par']['main_pl'] + '_Saved_data'
     print('System stored in : ', input_nbook['saved_data_path'])
     if (not path_exist(input_nbook['saved_data_path'])): os_system.makedirs(input_nbook['saved_data_path'])
@@ -26,6 +30,7 @@ def save_system(input_nbook):
 
 def load_nbook(input_nbook, nbook_type):
     all_input_nbook = dataload_npz(input_nbook['working_path']+'/'+input_nbook['star_name']+'/'+input_nbook['pl_name']+'_Saved_data/init_sys')
+    curr_working_path = deepcopy(input_nbook['working_path'])
     
     #Retrieving relevant notebook settings
     if nbook_type in ['mock','Reduc']:
@@ -41,7 +46,8 @@ def load_nbook(input_nbook, nbook_type):
         input_nbook = all_input_nbook['Reduc']
     else:stop('ERROR : notebook type '+nbook_type+' not recognized')
     input_nbook['type'] = nbook_type 
-
+    input_nbook['working_path'] = curr_working_path
+    
     #Retrieving dataset in ANTARESS format
     if nbook_type in ['Processing','RMR','Trends']:
         input_nbook['settings']['gen_dic']['calc_proc_data']=False
@@ -475,7 +481,8 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
         input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_range'] = {input_nbook['par']['instrument']:{input_nbook['par']['night']:[[low_high,high_low]]}}
         
         #Defining optimization level
-        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['Opt_Lvl'] = 3
+        #     - set to 2 to avoid system-related issues with C grid file 
+        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['Opt_Lvl'] = 2
             
     if ('priors' in input_nbook['par']):input_nbook['par'].pop('priors')
     
