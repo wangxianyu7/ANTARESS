@@ -416,9 +416,8 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
                     'c__ord0__IS__VS_':{'vary':True ,'guess':guess_val,'bd':[-100.,100.]}}
                 deg = input_nbook['DI_trend'][prop_in]['deg']
                 if deg>0:
-                    for ideg in range(deg+1):
-                        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'][prop_in][coord+'__pol__ord1__IS__VS_']={
-                            {'vary':True ,'guess':0,'bd':[-100.,100.]}}
+                    for ideg in range(int(deg)+1):
+                        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'][prop][coord+'__pol__ord1__IS__VS_']={'vary':True ,'guess':0,'bd':[-100.,100.]}
     
     elif (ana_type=='Prof'):
         input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'] = {}        
