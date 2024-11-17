@@ -2005,7 +2005,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     glob_fit_dic['DIProp']['idx_in_fit'] = {}
 
 
-    #%%% Scaled data errors
+    #%%%%% Scaled data errors
     #    - local scaling of data errors
     #    - you can scale by sqrt(reduced chi2 of original fit) to ensure a reduced chi2 unity
     glob_fit_dic['DIProp']['sc_err']={}  
@@ -2079,7 +2079,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
 
 
-
+    ##################################################################################################       
+    #%%% Module: joined disk-integrated profiles fit    
+    #    - not implemented for now
+    ##################################################################################################     
+            
+    #%%%% Activating 
+    gen_dic['fit_DIProf'] = False  
     
     
     
