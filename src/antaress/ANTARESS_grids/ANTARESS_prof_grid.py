@@ -214,7 +214,7 @@ def custom_DI_prof(param,x,args=None):
         #    - if the line properties or the stellar grid cells to which they are attributed to vary
         if args['var_line'] or args['var_star_grid']:
             init_st_intr_prof(args,args['grid_dic'],param)
-            
+          
     #--------------------------------------------------------------------------------
     #Radial velocities of the stellar surface (km/s)
     #    - an offset is allowed to account for the star/input frame velocity when the model is used on raw data 

@@ -1835,7 +1835,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             params_mock.update({'rv':0.,'cont':mock_dic['flux_cont'][inst][vis]})  
                             params_mock = par_formatting(params_mock,fixed_args['mod_prop'],None,None,fixed_args,inst,vis)
                             params_mock = par_formatting_inst_vis(params_mock,fixed_args,inst,vis,mock_dic['intr_prof'][inst]['mode']) 
-             
+
                             #Generic properties required for model calculation
                             if inst not in mock_dic['sysvel']:mock_dic['sysvel'][inst]={}
                             if vis not in mock_dic['sysvel'][inst]:mock_dic['sysvel'][inst][vis] = 0.
@@ -1850,7 +1850,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 'inst':inst,
                                 'vis':vis, 
                                 'fit':False,
-                                'unquiet_star':unquiet_star_grid,                                
+                                'unquiet_star':None,      #unquiet_star_grid,      INTRODUCES SPURIOUS RV SHIFT, TO BE INVESTIGATED                          
                                 'spot_coord_par':gen_dic['spot_coord_par'],
                                 'system_param':system_param,
                                 })
@@ -1865,7 +1865,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                             #Initializing stellar properties
                             fixed_args = var_stellar_prop(fixed_args,theo_dic,data_dic['DI']['system_prop'],spots_prop,system_param['star'],params_mock)
-
+                           
                     #Observational data            
                     else: 
 
@@ -2004,7 +2004,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 if par_drift in param_exp:
                                     if (par_drift=='rv'):param_exp[par_drift] += mock_dic['drift_intr'][inst][vis][par_drift][iexp]
                                     else:param_exp[par_drift] *= mock_dic['drift_intr'][inst][vis][par_drift][iexp]
-
+                            
                         #Disk-integrated stellar line     
                         base_DI_prof = custom_DI_prof(param_exp,None,args=args_exp)[0]
 
