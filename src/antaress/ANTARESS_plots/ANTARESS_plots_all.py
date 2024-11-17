@@ -6037,7 +6037,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
            
     return None
 
-def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_inst,data_vis,dim_exp,nspec,data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop):
+def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_inst,data_vis,nspec,data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop):
     print('           Pre-processing exposures')
     data_proc = {} 
     data4mast = {} 
@@ -6046,7 +6046,6 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_
         data4mast[maink] = {}                            
     data_mod = {}
     iexp_proc_list = np.unique(list(iexp_mast_list)+list(iexp2plot)) 
-    flux_ref = np.ones(dim_exp) 
     nord_eff = len(idx_sel_ord)
     for isub_exp,iexp in enumerate(iexp_proc_list):
 
@@ -6065,21 +6064,25 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_
             else:data_proc[maink][iexp]['tell'] = None
             if data_inst['cal_weight']:
                 data_gcal = dataload_npz(data_vis['sing_gcal_DI_data_paths'][iexp])
-                data_proc[maink][iexp]['sing_gcal'] = data_gcal['gcal'] 
-                if 'sdet2' in data_gcal:data_proc[maink][iexp]['sdet2'] = data_gcal['sdet2'] 
+                data_proc[maink][iexp]['sing_gcal'] = data_gcal['gcal'][idx_sel_ord] 
+                if 'sdet2' in data_gcal:data_proc[maink][iexp]['sdet2'] = data_gcal['sdet2'][idx_sel_ord] 
                 else:data_proc[maink][iexp]['sdet2'] = None                
             else:
                 data_proc[maink][iexp]['sing_gcal']=None   
-                data_proc[maink][iexp]['sdet2'] = None               
+                data_proc[maink][iexp]['sdet2'] = None     
          
             #Only the exposure table is modified if data do not share a common table
             #    - data will be resampled along with the master in a later stage
             if (not data_vis['comm_sp_tab']):
                 data_proc[maink][iexp]['edge_bins']*=dopp_fact
                 data_proc[maink][iexp]['cen_bins']*=dopp_fact                        
+    
+                #No weighing contribution from reference spectrum in DI profiles
+                flux_ref = np.ones([len(idx_sel_ord),nspec]) 
 
             #Exposure is resampled on common table otherwise
             else:
+                flux_ref = np.ones([len(idx_sel_ord),nspec_com])
                 flux_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan   
                 if data_vis['tell_sp']:tell_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan
                 if data_proc[maink][iexp]['sing_gcal'] is not None:sing_gcal_temp = np.zeros([nord_eff,nspec_com],dtype=float)*np.nan
@@ -6113,7 +6116,7 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_
             if iexp in iexp_mast_list:
                 data4mast[maink][iexp]={}
                 for key in ['cen_bins','edge_bins','flux','cov','cond_def']:data4mast[maink][iexp][key]=deepcopy(data_proc[maink][iexp][key])
-                
+             
                 #Weight definition   
                 #    - at this stage, no broadband flux scaling has been applied to the data
                 data4mast[maink][iexp]['weight'] = weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',data_inst['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['sing_gcal'],data_proc[maink][iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc = 1./flux_glob,sdet_exp2=data_proc[maink][iexp]['sdet2'])                       
@@ -6130,7 +6133,7 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_
                     data4mast[maink][iexp]['cond_def'] = ~np.isnan(data4mast[maink][iexp]['flux']) 
                     data4mast[maink][iexp]['cen_bins'] = cen_bins_com
                     data4mast[maink][iexp]['edge_bins'] = edge_bins_com
-          
+        
         #Calculating wiggle model for current exposure and shifting it from the telluric (source) to the star (receiver) rest frame
         #    - see gen_specdopshift():
         # w_receiver = w_source * (1+ (rv[s/r]/c))
@@ -8033,12 +8036,16 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             cond_sel_proc = cond_sel[idx_sel_ord]
             nord_proc = len(idx_sel_ord)
             if nord_proc==0:stop('No orders left')
-            dim_exp_proc = [nord_proc,data_vis['nspec_ref']]
+            dim_exp_proc = [nord_proc,data_vis['nspec_ref']]  #effective dimension of exposures
             edge_bins_var = edge_bins_var[idx_sel_ord]
             cen_bins_com = data_com['cen_bins'][idx_sel_ord]
             edge_bins_com = data_com['edge_bins'][idx_sel_ord]
             if plot_options['x_range'] is None:x_range_loc = [np.max([x_range_loc[0],np.min(edge_bins_var)]),np.min([x_range_loc[1],np.max(edge_bins_var)])]
             dx_range = x_range_loc[1]-x_range_loc[0]
+
+            #Dimension of master spectrum
+            if (not data_vis['comm_sp_tab']):dim_mast_proc = [nord_proc,nspec_com]
+            else:dim_mast_proc = deepcopy(dim_exp_proc)
 
             #Retrieve wiggle model
             if 'wiggle' in data_list:
@@ -8080,16 +8087,16 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
             else:iexp_mast_list = gen_dic[inst][vis]['idx_out']
             
             #Pre-process all exposures
-            data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_inst,data_vis,data_com['dim_exp'],data_vis['nspec_ref'],data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop)  
- 
+            data_proc,data_mod,data4mast = pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_inst,data_vis,data_vis['nspec_ref'],data_path_dic,idx_sel_ord,nspec_com,cen_bins_com,edge_bins_com,nord_proc,dim_exp_proc,data_list,fixed_args_loc,data_dic,coord_dic,gen_dic,p_best,data_prop)  
+
             #Calculate master for requested data steps
             data_mast={}
             disp_dic={}
             for maink in maink_list:
-            
+           
                 #Calculate common master
                 #    - defined over common table if exposures are defined over independent tables, or over common table shared by all exposures                       
-                data_mast[maink] = calc_bin_prof(iexp_mast_list,nord_proc,dim_exp_proc,nspec_com,data4mast[maink],inst,len(iexp_mast_list),cen_bins_com,edge_bins_com)
+                data_mast[maink] = calc_bin_prof(iexp_mast_list,nord_proc,dim_mast_proc,dim_mast_proc[1],data4mast[maink],inst,len(iexp_mast_list),cen_bins_com,edge_bins_com)
 
                 #Dispersion tables
                 if plot_options['print_disp']:disp_dic[maink] = np.zeros([2,len(iexp2plot)])*np.nan 
@@ -8118,8 +8125,18 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
                     #Master table is shared by all exposures
                     else:data_mast_exp = deepcopy(data_mast[maink])
 
+                    #Selection on plotted range
+                    cond_sel_exp = np.zeros(dim_exp_proc,dtype=bool)
+                    if plot_options['sp_var'] == 'nu' :
+                        cen_bins_exp = c_light/data_proc[maink][iexp]['cen_bins'][:,::-1] 
+                        edge_bins_exp = c_light/data_proc[maink][iexp]['edge_bins'][:,::-1]    
+                    elif plot_options['sp_var'] == 'wav' :
+                        cen_bins_exp = data_proc[maink][iexp]['cen_bins']
+                        edge_bins_exp = data_proc[maink][iexp]['edge_bins']
+                    cond_sel_exp|=(edge_bins_exp[:,0:-1]>x_range_loc[0]) & (edge_bins_exp[:,1::]<x_range_loc[1])
+
                     #Defined pixels in exposure and master over selected range
-                    cond_kept_all = data_proc[maink][iexp]['cond_def'] & data_mast_exp['cond_def'] & cond_sel_proc
+                    cond_kept_all = data_proc[maink][iexp]['cond_def'] & data_mast_exp['cond_def'] & cond_sel_exp
                     idx_proc_ord = np_where1D(np.sum( cond_kept_all,axis=1 )>0 )
                     if len(idx_proc_ord)==0:stop('No orders left')
                     if len(maink_list)==1:
@@ -8132,24 +8149,20 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
                     bin_Fr_all = np.empty(0,dtype=float)
                     for isub_ord in idx_proc_ord[::-1]:
                         cond_kept_ord = cond_kept_all[isub_ord]
-                        mast_flux_ord=data_mast[maink]['flux'][isub_ord]
+                        mast_flux_ord=data_mast_exp['flux'][isub_ord]
                         flux_ord=data_proc[maink][iexp]['flux'][isub_ord]
                         cov_ord=data_proc[maink][iexp]['cov'][isub_ord]
                         
-                        #Spectral grid
-                        if plot_options['sp_var'] == 'nu' :                
-                            cen_bins_ord = c_light/data_proc[maink][iexp]['cen_bins'][isub_ord,::-1]
-                            edge_bins_ord = c_light/data_proc[maink][iexp]['edge_bins'][isub_ord,::-1]    
+                        #Spectral grid      
+                        cen_bins_ord = cen_bins_exp[isub_ord]
+                        edge_bins_ord = edge_bins_exp[isub_ord]  
+                        if plot_options['sp_var'] == 'nu' :            
                             
                             #Order tables with nu 
                             cond_kept_ord = cond_kept_ord[::-1]
                             mast_flux_ord=mast_flux_ord[::-1]
                             flux_ord=flux_ord[::-1]
                             cov_ord=cov_ord[:,::-1]   
-                                
-                        elif plot_options['sp_var'] == 'wav' :
-                            cen_bins_ord = data_proc[maink][iexp]['cen_bins'][isub_ord]
-                            edge_bins_ord = data_proc[maink][iexp]['edge_bins'][isub_ord]                            
 
                         #Defining bins at the requested resolution over the range of original defined bins
                         min_pix = np.nanmin(edge_bins_ord[0:-1][cond_kept_ord])
@@ -8160,7 +8173,7 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
                         bin_dic={}
                         bin_dic['cen_bins'] = 0.5*(bin_bd[0:-1]+bin_bd[1::])
                         bin_dic['dcen_bins'] = (bin_bd[1::]-bin_bd[0:-1])
-
+                       
                         #Resampling at lower resolution
                         flux_rb,cov_rb = bind.resampling(bin_bd, edge_bins_ord, flux_ord , cov = cov_ord, kind=gen_dic['resamp_mode'])
                         mast_rb = bind.resampling(bin_bd, edge_bins_ord, mast_flux_ord , kind=gen_dic['resamp_mode'])

@@ -22,8 +22,17 @@ def save_system(input_nbook):
     print('System stored in : ', input_nbook['saved_data_path'])
     if (not path_exist(input_nbook['saved_data_path'])): os_system.makedirs(input_nbook['saved_data_path'])
 
+    #Saving previously processed notebooks
+    if 'all_nbooks' in input_nbook:
+        all_input_nbook = input_nbook['all_nbooks']
+        input_nbook.pop('all_nbooks')
+    else:all_input_nbook={}
+    
+    #Saving contents of current notebook under its name, so that we can track the origin of the settings in other notebooks
+    all_input_nbook[input_nbook['type']] = input_nbook 
+    
     #Saving contents in notebook-specific field, so that we can track the origin of the settings in other notebooks
-    datasave_npz(input_nbook['saved_data_path']+'/'+'init_sys',{input_nbook['type'] : input_nbook})
+    datasave_npz(input_nbook['saved_data_path']+'/'+'init_sys',all_input_nbook)
     
     return None
 
@@ -45,8 +54,16 @@ def load_nbook(input_nbook, nbook_type):
     elif nbook_type=='Trends':     
         input_nbook = all_input_nbook['Reduc']
     else:stop('ERROR : notebook type '+nbook_type+' not recognized')
+
+    #Updating notebook type to current notebook
     input_nbook['type'] = nbook_type 
+
+    #Updating working directory to the one from current notebook
     input_nbook['working_path'] = curr_working_path
+
+    #Storing settings of all processed notebooks
+    #    - keys of all_input_nbook are nbook names
+    input_nbook['all_nbooks'] = deepcopy(all_input_nbook)
     
     #Retrieving dataset in ANTARESS format
     if nbook_type in ['Processing','RMR','Trends']:
@@ -408,7 +425,7 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
 
         #For joint intrinsic profiles the continuum is left free to vary but initialized within the workflow itself
         if data_type == 'Intr':
-            input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['Opt_Lvl']=3
+            input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['Opt_Lvl']=2
             input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['verbose']=True
 
     if ('priors' in input_nbook['par']):input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['priors']={}
@@ -874,8 +891,8 @@ def plot_prof(input_nbook,data_type):
         'shade_cont':True,
         'plot_line_model':True,
         'plot_prop':False} 
-    if input_nbook['type'] in ['Trends','RMR']:
-        input_nbook['par']['fit_type'] = 'indiv'   #overplot fits to individual exposures 
+    if input_nbook['type'] in ['Trends','RMR','Reduc']:
+        if input_nbook['type'] in ['Trends','RMR']:input_nbook['par']['fit_type'] = 'indiv'   #overplot fits to individual exposures 
         input_nbook['plots'][data_type]['step'] = 'latest'
     if 'x_range' in input_nbook['par']:
         input_nbook['plots'][data_type]['x_range'] = deepcopy(input_nbook['par']['x_range'])
