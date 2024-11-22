@@ -5345,7 +5345,7 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
 
     #Data correct for spot and facula contamination
     elif plot_mod=='map_Diff_corr_sp_fa':
-        data_path_all = [gen_dic['save_data_dir']+'Corr_data/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp_plot]
+        data_path_all = [gen_dic['save_data_dir']+'Corr_data/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp2plot]
         rest_frame='star'
      
     #Residual maps from Intrinsic and out-of-transit Residual profiles

@@ -421,7 +421,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         gen_dic['transit_fa'] = {}
         # gen_dic['transit_fa'] = {
         #     'facula1':{'ESPRESSO' : ['mock_vis']}, 
-        #     }
+        #     }s
 
 
     #Plot settings    
@@ -4251,16 +4251,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                 },
                 }
 
-    if gen_dic['star_name']=='AUMic':
-        data_dic['DI']['faculae_prop'] = {}
-        # data_dic['DI']['faculae_prop']={
-        #         'achrom':{
-        #             'facula1' : [mock_dic['faculae_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_FAfacula1'] * np.pi/180],#--base
-        #             'LD' : ['quadratic'],
-        #             'LD_u1' : [0.35],
-        #             'LD_u2' : [0.16],
-        #         },
-        #         }
+    # if gen_dic['star_name']=='AUMic':
+    #     # data_dic['DI']['faculae_prop'] = {}
+    #     data_dic['DI']['faculae_prop']={
+    #             'achrom':{
+    #                 'facula1' : [mock_dic['faculae_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_FAfacula1'] * np.pi/180],#--base
+    #                 'LD' : ['quadratic'],
+    #                 'LD_u1' : [0.35],
+    #                 'LD_u2' : [0.16],
+    #             },
+    #             }
 
     #Transit light curve model    
     if gen_dic['star_name']=='TOI3884':
@@ -5606,7 +5606,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_DiffProf'] = True  #&  False
+    gen_dic['fit_DiffProf'] = True  &  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5710,6 +5710,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Fixed/variable properties   
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.65, 'bd':[0.6, 0.8]},
         # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.15, 1]},
         # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
@@ -6058,25 +6059,26 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Priors on variable properties
     if gen_dic['star_name'] == 'AUMic':
         glob_fit_dic['DiffProf']['priors']={
+                    'cont__IS__VS_'                           :{'mod':'uf','low':0.,'high':1e10},
                     'ctrst__ord0__IS__VS_'                    :{'mod':'uf','low':0.,'high':1.},  
                     'FWHM__ord0__IS__VS_'                     :{'mod':'uf','low':0,'high':30},
-                    'veq'                                    :{'mod':'uf', 'low':1., 'high':100.},
-                    # 'vsini'                                  :{'mod':'uf', 'low':0., 'high':100.},
-                    'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
-                    # 'alpha_rot'                              :{'mod':'uf', 'low':0., 'high':1.},
-                    # 'alpha_rot_spots'                        :{'mod':'uf', 'low':0., 'high':1.},
-                    # 'beta_rot'                               :{'mod':'uf', 'low':0., 'high':1.},
-                    # 'beta_rot_spots'                         :{'mod':'uf', 'low':0., 'high':1.},
-                    'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
-                    'lat__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1'   :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
-                    'ang__ISESPRESSO_VSmock_vis_SPspot1'     :{'mod':'uf', 'low':0., 'high':45.},
-                    'fctrst__ISESPRESSO_VSmock_vis_SPspot1'  :{'mod':'uf', 'low':0, 'high':1},
-                    # 'lat__ISESPRESSO_VSmock_vis_FAfacula1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    # 'Tc_fa__ISESPRESSO_VSmock_vis_FAfacula1'   :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
-                    # 'ang__ISESPRESSO_VSmock_vis_FAfacula1'     :{'mod':'uf', 'low':0., 'high':45.},
-                    # 'fctrst__ISESPRESSO_VSmock_vis_FAfacula1'  :{'mod':'uf', 'low':1, 'high':10},
-                    'lambda_rad__plAUMicb'                   :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
+                    'veq'                                     :{'mod':'uf', 'low':1., 'high':100.},
+                    # 'vsini'                                   :{'mod':'uf', 'low':0., 'high':100.},
+                    'veq_spots'                               :{'mod':'uf', 'low':1., 'high':100.},
+                    # 'alpha_rot'                               :{'mod':'uf', 'low':0., 'high':1.},
+                    # 'alpha_rot_spots'                         :{'mod':'uf', 'low':0., 'high':1.},
+                    # 'beta_rot'                                :{'mod':'uf', 'low':0., 'high':1.},
+                    # 'beta_rot_spots'                          :{'mod':'uf', 'low':0., 'high':1.},
+                    'cos_istar'                               :{'mod':'uf', 'low':-1., 'high':1.},
+                    'lat__ISESPRESSO_VSmock_vis_SPspot1'      :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_sp__ISESPRESSO_VSmock_vis_SPspot1'    :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
+                    'ang__ISESPRESSO_VSmock_vis_SPspot1'      :{'mod':'uf', 'low':0., 'high':45.},
+                    'fctrst__ISESPRESSO_VSmock_vis_SPspot1'   :{'mod':'uf', 'low':0, 'high':1},
+                    'lat__ISESPRESSO_VSmock_vis_FAfacula1'    :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_fa__ISESPRESSO_VSmock_vis_FAfacula1'  :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
+                    'ang__ISESPRESSO_VSmock_vis_FAfacula1'    :{'mod':'uf', 'low':0., 'high':45.},
+                    'fctrst__ISESPRESSO_VSmock_vis_FAfacula1' :{'mod':'uf', 'low':1, 'high':10},
+                    'lambda_rad__plAUMicb'                    :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }
 
     if gen_dic['star_name'] == 'AU_Mic':
@@ -6155,7 +6157,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Walkers
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['mcmc_set']={'nwalkers':40,'nsteps':10000,'nburn':3000}
+        glob_fit_dic['DiffProf']['mcmc_set']={'nwalkers':4,'nsteps':10,'nburn':3}
 
     #Complex priors        
          
@@ -6718,7 +6720,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         data_dic['Diff']['opt_loc_prof_est'].update({'DiffProf_prop_path':{
                                                                 'ESPRESSO':{
-                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/Gemini/Gemini_b_Saved_data/Joined_fits/DiffProf/mcmc/Fit_results'
+                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/DiffProf/mcmc/Fit_results'
                                                                             }
                                                                         }
                                                     })
