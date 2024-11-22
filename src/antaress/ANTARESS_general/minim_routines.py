@@ -1081,12 +1081,8 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                         [" "],
                         ['Mode : '+{'chi2':'Chi square','mcmc':'MCMC','fixed':'Forward'}[fit_dic['fit_mode']]]]  
             if fit_dic['fit_mode']=='chi2':
-<<<<<<< HEAD
                 txt_print+=[["Fitting method                = %r"%fit_dic['merit']['method']]]
                 txt_print+=[["Fit success                = %r"%fit_dic['merit']['success']]]
-=======
-                txt_print+=[["Fit success                 = %r"%fit_dic['merit']['success']]]
->>>>>>> main
                 if not fit_dic['merit']['success']:txt_print+=[["  " + fit_dic['merit']['message'][:-1]]]  
                 else:
                     if len(fit_dic['merit']['message'])>32:txt_print+=[["  " + fit_dic['merit']['message']]]  
@@ -1107,11 +1103,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                 ['Degree of freedom           = %i'%fit_dic['merit']['dof']],
                 ['Best Chi-square             = %f'%fit_dic['merit']['chi2']],
                 ['Reduced Chi-square          = %f'%fit_dic['merit']['red_chi2']],
-<<<<<<< HEAD
-                ['RMS of residuals            = %s'%fit_dic['merit']['rms']],
-=======
                 ['RMS of residuals            = '+rms_text],
->>>>>>> main
                 ['Bayesian Info. crit. (BIC)  = %f'%fit_dic['merit']['BIC']], 
                 ['Akaike Info. crit. (AIC)    = %f'%fit_dic['merit']['AIC']],
                 ['Gelman-Rubin statistic      = %s'%fit_dic['merit']['GR_stat']], 

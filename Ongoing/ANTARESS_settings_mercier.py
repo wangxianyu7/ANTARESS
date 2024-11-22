@@ -251,7 +251,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Star name
 
-    # gen_dic['star_name']='AUMic'
+    gen_dic['star_name']='AUMic'
     # gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
@@ -261,7 +261,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # Zodiacs
     # gen_dic['star_name']='Capricorn'
     # gen_dic['star_name']='Cancer'
-    gen_dic['star_name']='Gemini'
+    # gen_dic['star_name']='Gemini'
     # gen_dic['star_name']='Sagittarius'
     # gen_dic['star_name']='Leo'
     # gen_dic['star_name']='Aquarius'
@@ -5606,7 +5606,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_DiffProf'] = True  &  False
+    gen_dic['fit_DiffProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -6139,16 +6139,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         glob_fit_dic['DiffProf']['deriv_prop'] = {'lambda_deg':[]}#, 'Peq_veq_spots':{'Rstar':{'val':0.75, 's_val':0.1}}}
     
     #Calculating/retrieving
-    # glob_fit_dic['DiffProf']['mcmc_run_mode']='use'    
-    glob_fit_dic['DiffProf']['mcmc_run_mode']='reuse'    
+    glob_fit_dic['DiffProf']['mcmc_run_mode']='use'    
+    # glob_fit_dic['DiffProf']['mcmc_run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        # glob_fit_dic['DiffProf']['mcmc_reuse']={}
-        glob_fit_dic['DiffProf']['mcmc_reuse']={
-                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/Gemini_with_chi2_OG/Gemini_b_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk40_steps10000_Gemini_b.npz'],
-                    'nburn':[3000]
-                    }  
+        glob_fit_dic['DiffProf']['mcmc_reuse']={}
+        # glob_fit_dic['DiffProf']['mcmc_reuse']={
+        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/Gemini_with_chi2_OG/Gemini_b_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk40_steps10000_Gemini_b.npz'],
+        #             'nburn':[3000]
+        #             }  
     #Re-starting
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['mcmc_reboot']=''

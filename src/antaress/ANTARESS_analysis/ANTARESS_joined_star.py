@@ -1053,6 +1053,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         'cond_fit' :{},
         'cond_def_cont_all':{},
         'cond_def_plot_all':{},
+        'flux_cont_all':{},
         'cond_def' :{},
         'flux':{},
         'cov' :{},
@@ -1136,7 +1137,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         
         if (inst not in fixed_args['ref_pl']) and (fixed_args['ref_pl']!={}):fixed_args['ref_pl'][inst]={}
 
-        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
+        for key in ['cen_bins','edge_bins','dcen_bins','cond_fit','cond_def_cont_all','flux_cont_all','flux','cov','cond_def','n_pc','dim_exp','ncen_bins']:fixed_args[key][inst]={}
         if len(fit_prop_dic['PC_model'])>0:fixed_args['eig_res_matr'][inst]={}
         fit_save['idx_trim_kept'][inst] = {}
         if (fixed_args['mode']=='ana') and (inst not in fixed_args['model']):fixed_args['model'][inst] = 'gauss'
@@ -1269,7 +1270,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                         fixed_args['dim_exp'][inst][vis] = [1,ncen_bins]
 
                         fit_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
-                        fit_dic[inst][vis]['cond_def_cont_all'] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
+                        fixed_args['cond_def_cont_all'][inst][vis] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
 
                     #Trimming profile         
                     for key in ['cen_bins','flux','cond_def']:fixed_args[key][inst][vis][isub] = data_exp[key][iord_sel,idx_range_kept]
@@ -1285,9 +1286,9 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
 
                     #Initializing ranges in the relevant rest frame
-                    if len(cont_range)==0:fit_dic[inst][vis]['cond_def_cont_all'][isub] = True    
+                    if len(cont_range)==0:fixed_args['cond_def_cont_all'][inst][vis][isub] = True    
                     else:
-                        for bd_int in cont_range:fit_dic[inst][vis]['cond_def_cont_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
+                        for bd_int in cont_range:fixed_args['cond_def_cont_all'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
                     if len(fit_prop_dic['fit_range'][inst][vis])==0:
                         fit_dic[inst][vis]['cond_def_fit_all'][isub] = True
                     else:
@@ -1295,7 +1296,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                             fit_dic[inst][vis]['cond_def_fit_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])
 
                     #Accounting for undefined pixels
-                    fit_dic[inst][vis]['cond_def_cont_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]           
+                    fixed_args['cond_def_cont_all'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]           
                     fit_dic[inst][vis]['cond_def_fit_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]          
                     fit_dic['nx_fit']+=np.sum(fit_dic[inst][vis]['cond_def_fit_all'][isub])
                     fixed_args['cond_fit'][inst][vis][isub] = fit_dic[inst][vis]['cond_def_fit_all'][isub]
@@ -1373,7 +1374,24 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
 
             #Defining flux table
             fixed_args['master_out']['flux'][inst][vis]=np.zeros([len(fixed_args['master_out']['master_out_tab']['cen_bins'])], dtype=float)
-         
+       
+            #Continuum common to all processed profiles within visit
+            #    - collapsed along temporal axis
+            cond_cont_com  = np.all(fixed_args['cond_def_cont_all'][inst][vis],axis=0)
+            if np.sum(cond_cont_com)==0.:stop('No pixels in common continuum')  
+
+            #Continuum flux
+            #    - calculated over the defined bins common to all processed profiles
+            #    - defined as a weighted mean because intrinsic profiles at the limbs can be very poorly defined due to the partial occultation and limb-darkening
+            #    - we use the covariance diagonal to define a representative weight
+            cont_intr = np.zeros(fixed_args['nexp_fit_all'][inst][vis])*np.nan
+            wcont_intr = np.zeros(fixed_args['nexp_fit_all'][inst][vis])*np.nan
+            for isub in range(fixed_args['nexp_fit_all'][inst][vis]):
+                dw_sum = np.sum(fixed_args['dcen_bins'][inst][vis][isub][cond_cont_com])
+                cont_intr[isub] = np.sum(fixed_args['flux'][inst][vis][isub][cond_cont_com]*fixed_args['dcen_bins'][inst][vis][isub][cond_cont_com])/dw_sum
+                wcont_intr[isub] = dw_sum**2./np.sum(fixed_args['cov'][inst][vis][isub][0,cond_cont_com]*fixed_args['dcen_bins'][inst][vis][isub][cond_cont_com]**2.)
+            fixed_args['flux_cont_all'][inst][vis]=np.nansum(cont_intr*wcont_intr)/np.nansum(wcont_intr)
+  
     #Artificial observation table
     #    - covariance condition is set to False so that chi2 values calculated here are not further modified within the residual() function
     #    - unfitted pixels are removed from the chi2 table passed to residual() , so that they are then summed over the full tables
