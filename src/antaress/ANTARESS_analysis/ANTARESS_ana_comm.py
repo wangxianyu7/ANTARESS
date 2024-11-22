@@ -439,6 +439,7 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         fixed_args.update({
             'facula_coord_par':gen_dic['facula_coord_par'],        
         })
+
     #Checks
     if len(fit_prop_dic['idx_in_fit'])==0:stop('No exposures are included in the fit')
 
@@ -619,7 +620,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
                 fixed_args['coord_fit'][inst][vis]['bjd']=coord_vis['bjd'][sub_idx_in_fit]
                 fixed_args['coord_fit'][inst][vis]['t_dur']=coord_vis['t_dur'][sub_idx_in_fit]
     elif ('DI' in rout_mode):
-        
+      
         #Retrieving coordinates for model of disk-integrated property
         for coord in fixed_args['coord_list'][inst][vis]:
       
@@ -662,7 +663,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
             #Store full time-series for plot purpose
             if (plot_dic['prop_DI']!=''):
                 fixed_args['coord_obs'][inst][vis][coord] = coord_obs
-
+   
     return bin_mode
     
     
@@ -3379,7 +3380,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                                     lamb_chain[inst][vis] = np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']==lambda_rad_pl+'__IS'+inst+'_VS'+vis)]  ) 
                         else:
                             lamb_chain = {'':{'':np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']==lambda_rad_pl)]  )}} 
-                    
+                
                     #Stellar inclination
                     if ('istar_deg' in fixed_args['var_par_list']):
                         print('           Using derived istar')
@@ -3397,7 +3398,18 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                                 istarN_chain=np.pi-istarS_chain 
                         else:
                             degen_psi = False
-                           
+
+                    elif ('cos_istar' in fixed_args['fix_par_list']):
+                        print('           Using fixed istar')
+                        degen_psi = True        #we assume the degeneracy exists and the fixed value is either North or South   
+                        istar_rad = np.arccos(p_final['cos_istar'])
+                        if istar_rad<=np.pi/2:
+                            istarN_chain = istar_rad
+                            istarS_chain=np.pi-istarN_chain
+                        else:                            
+                            istarS_chain = istar_rad
+                            istarN_chain=np.pi-istarS_chain                          
+
                     else:
                         print('           Using external istar')
 

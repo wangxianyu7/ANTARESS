@@ -378,11 +378,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%% Noise settings
     
-    #%%%%% Flux errors
-    #    - controls error calculation
-    #    - noise value is drawn for each pixel based on number of measured counts
-    #    - leave undefined to prevent noise being defined
+    #%%%%% Measured-like profile
     #    - format: {inst:bool}
+    #    - set to True to draw randomly flux values in each pixel based on the model number of measured counts 
+    #      leave empty or set to False to maintain flux values to the exact model profile
+    #    - noise value are always defined as mock_dic['gcal'][inst] times the flux values
     mock_dic['set_err'] = {}    
      
      
@@ -461,9 +461,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - set ranges of masked pixels in the spectral format of the input data, in the following format
     # inst > vis > { exp_list : [ iexp0, iexp1, ... ] ; ord_list : {iord0 : [ [x1,x2] , [x3,x4] .. ], ... }}
     #      exposures index relate to time-ordered tables after 'used_exp' has been applied, leave empty to mask all exposures 
+    #      order indexes are relative to the effective order list, after orders are possibly excluded
     #      define position xk in A in the input rest frame
     #    - only relevant if part of the order is masked, otherwise remove the full order 
-    #    - order indexes are relative to the effective order list, after orders are possibly excluded
     #    - if several visits of a given instrument are processed together, it is advised to exclude the minimum ranges common to all of them so that CCF are comparable
     #    - plot flux and transmission spectra after telluric and flux balance corrections to identify the ranges to exclude 
     gen_dic['masked_pix'] = {}
@@ -779,7 +779,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%% Individual disk-integrated flux spectra
     #    - before/after the various spectral corrections for disk-integrated data
-    plot_dic['sp_raw']=''    
+    plot_dic['flux_sp']=''    
     
     
     #%%%% Individual disk-integrated transmission spectra
@@ -864,7 +864,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - options:
     # + 'gcal_all': mean calibration over each order, for all orders and all exposures 
     # + 'gcal_ord': spectral calibration profile over each order, for each exposure 
-    # + 'sdet_ord': noise contributions (if available from blaze measurements) 
+    # + 'noises_ord': noise contributions (if available from blaze measurements) 
     plot_dic['gcal_all']=''
     plot_dic['gcal_ord']=''
     plot_dic['noises_ord']=''    
@@ -872,7 +872,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     ##################################################################################################
     #%%% Module: telluric correction
-    #    - use plot_dic['sp_raw'] to compare spectra before/after correction and identify orders in which tellurics are too deep and numerous to be well corrected, and that should be excluded from the entire analysis
+    #    - use plot_dic['flux_sp'] to compare spectra before/after correction and identify orders in which tellurics are too deep and numerous to be well corrected, and that should be excluded from the entire analysis
     ##################################################################################################
     
     #%%%% Activating
@@ -1062,13 +1062,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
             
     #%%%%%% Spectral bin size
-    #    - bin size of the fitted data (in 1e-10 s-1)
-    # dnu[1e10 s1] = c[m s-1]*dw[A]/w[A]^2
+    #    - format: {inst:val}
+    #      bin size of the fitted data (in 1e13 s-1)
+    # dnu[1e13 s1] = c[km s-1]*dw[A]/w[A]^2
     #      for ESPRESSO dnu < 0.9 (0.5) yields more than 1 (2) bins in most orders
     #    - for the correction relative to measured visit masters: binning is applied over each order (set a value larger than an order width to bin over the entire order)
     #      for the correction relative to reference masters, binning is applied over full orders by default
     #    - bin size should be small enough to capture low-frequency flux balance variations but large enough to smooth high-frequency variations and reduce computing time.
-    gen_dic['Fbal_bin_nu'] = 1.  
+    gen_dic['Fbal_bin_nu'] = {} 
     
     
     #%%%%%% Spectral range(s) to be fitted
@@ -1085,10 +1086,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                
     
     #%%%%%% Phantom bins
-    #    - format: float (in 1e-10 s-1)
+    #    - format: float (in 1e13 s-1)
     #    - range in 'nu' on the blue side of the fitted spectrum that is fitted with a linear model and mirrored in the fitted spectrum
     #      this limits the divergence of the model on the blue side
-    #    - set to None to prevent 
+    #    - set to None for automatic determination and to 0 to prevent
     gen_dic['Fbal_phantom_range'] = None  
       
     
@@ -1264,7 +1265,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #%%%%% Outlier threshold 
-    #    - foprmat is {instrument : {visit: value }}
+    #    - format is {instrument : {visit: value }}
+    #    - a pixel is flagged as cosmic hit if its flux deviates from the mean over adjacent exposures by more than a 'cosm_thresh' times
+    # the standard-deviation over adjacent exposures and the error on the pixel flux
     gen_dic['cosm_thresh'] = {} 
 
     #%%%% Correction settings     
@@ -1356,7 +1359,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #%%%% Plots: master and continuum
-    #    - to check the flagged pixels use plot_dic['sp_raw'] before/after correction
+    #    - to check the flagged pixels use plot_dic['flux_sp'] before/after correction
     plot_dic['permpeak_corr']=''  
     
     
@@ -1392,6 +1395,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - the analytical wiggle model can only capture medium-frequency modulations around unity
     #      low-frequency variations must be captured with the flux balance correction or with the wiggle filter, or later on in planetary spectra (it is in this later case 
     # that normalization can be forced here temporarily)
+    #    - it is advised to disable this field with filter mode
     gen_dic['wig_norm_ord'] = True  
     
     
@@ -1435,9 +1439,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         
     
     #%%%%% Spectral range(s) to be characterized
+    #    - format is {vis:[[nu1,nu2],[nu3,nu4],..]}
     #    - if left empty, the full spectrum is used
     #    - units are c/w (1e13 s-1)
-    gen_dic['wig_range_fit'] = []
+    gen_dic['wig_range_fit'] = {}
         
         
     #%%%%% Spectral bin size
@@ -1768,7 +1773,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - will be applied before spectra are converted into CCFs
     
     #%%%%% Full spectrum
-    detrend_prof_dic['full_spec']=False
+    detrend_prof_dic['full_spec']=True
     
     #%%%%% Transition wavelength
     #    - for single line profile
@@ -2047,6 +2052,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     glob_fit_dic['DIProp']['idx_in_fit'] = {}
 
 
+    #%%%%% Scaled data errors
+    #    - local scaling of data errors
+    #    - you can scale by sqrt(reduced chi2 of original fit) to ensure a reduced chi2 unity
+    glob_fit_dic['DIProp']['sc_err']={}  
+
+
     #%%%% Fitted properties
     
     #%%%%% Property, coordinate, model
@@ -2059,7 +2070,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #           coord__puls__Y__ISinst_VSvis':{'vary':True ,'guess':x,'bd':[x1,x2]} , ...}
     #           }
     #    - 'prop' defines the measured property to be fitted:
-    # + RV : residuals between disk-integrated RVs and the Keplerian model (km/s)
+    # + rv : residuals between disk-integrated RVs and the Keplerian model (km/s)
     # + ctrst : disk-integrated line contrast
     # + FWHM : disk-integrated line FWHM (km/s)   
     #    - 'coord' defines the coordinate as a function of which the property is modelled:
@@ -2088,7 +2099,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #      F(x) = c0 + pol(x) + sine(x) + puls(x)
     #   with ci and Amp in km/s    
     glob_fit_dic['DIProp']['mod_prop']={
-        'RV':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
+        'rv':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
               'time__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},
         'ctrst':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
                  'snr__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},
@@ -2115,7 +2126,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
 
 
-
+    ##################################################################################################       
+    #%%% Module: joined disk-integrated profiles fit    
+    #    - not implemented for now
+    ##################################################################################################     
+            
+    #%%%% Activating 
+    gen_dic['fit_DIProf'] = False  
     
     
     
@@ -2274,24 +2291,37 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #%%%% Stellar and planet intensity settings
-    #    - limb-darkening properties and planet-to-star radius ratios need to be defined in 'system_prop' for each planet whose transit is studied, even if no scaling is applied
-    #    - the chromatic set of values ('chrom') is used:  
-    # + to calculate model or simulated light curves (or define the bands of input light curves) used to scale chromatically disk-integrated spectra
-    # + to calculate chromatic RVs of planet-occulted regions used to align intrinsic spectral profiles (as those RVs are flux-weighted, and thus depend on the chromatic RpRs and LD)    
-    #      if CCFs are used, if 'chrom' is not provided, or is provided with a single band, 'achrom' will be used automatically
-    #      the chromatic bands are common to all planets
-    #    - the achromatic set of values ('achrom') must always be defined and is used:
+    #    - broadband stellar intensity properties (limb-darkening LD and/or gravity-darkening GD) and planet-to-star radius ratios need to be defined in 'system_prop' for each planet whose transit is studied, even if no scaling is applied    
+    #    - format is 'system_prop' : {
+    # 'achrom':{'LD':[LD_law],'LD_u1':[u1],'LD_u2':[u2],..,PlName:[RpRs]},
+    # 'chrom': {'w':    [wA,     wB,     ..],
+    #           'LD':   [LD_lawA,LD_lawB,..],
+    #           'LD_u1':[u1_A,   u1_B,..],    
+    #           'LD_u2':[u2_A,   u2_B,..],
+    #           ...
+    #           PlName: [RpRsA,  RpRsB, ..]}}
+    #      with
+    # + 'LD' : limb-darkening law
+    #   'LD_ui' with i>=1 : limb-darkening coefficients
+    #    possible limb-darkening laws (name, number of coefficients) :
+    #       uniform (uf,0), linear(lin,1), quadratic(quad,2), squareroot(sr,2), logarithmic(log,2), exponential(exp,2), power2 (pw2, 2), nonlinear(nl,4)
+    #    LD coefficients can be derived at first order with http://astroutils.astronomy.ohio-state.edu/exofast/limbdark.shtml   
+    #    consider using the Limb Darkening Toolkit (LDTk, Parviainen & Aigrain 2015) tool do determine chromatic LD coefficients     
+    # + PlName : planet-to-star radius ratio    
+    #   can be defined from the transit depth = (Rpl/Rstar)^2     
+    #    - the achromatic set ('achrom') must always be defined and is used:
     # + to scale input data, unless 'chrom' is used
     # + to define the transit contacts
-    # + to calculate theoretical properties of the 'average' planet-occulted regions throughout the pipeline. The spectral band of the properties should thus match that over which measured planet-occulted properties were derived  
-    #    - planet-to-star radius ratios can be defined from the transit depth = (Rpl/Rstar)^2 
-    #    - possible limb-darkening laws (name, number of coefficients) include :
-    # uniform (uf,0), linear(lin,1), quadratic(quad,2), squareroot(sr,2), logarithmic(log,2), exponential(exp,2), power2 (pw2, 2), nonlinear(nl,4)
-    #      LD coefficients can be derived at first order with http://astroutils.astronomy.ohio-state.edu/exofast/limbdark.shtml   
-    #      consider using the Limb Darkening Toolkit (LDTk, Parviainen & Aigrain 2015) tool do determine chromatic LD coefficients 
-    #    - if the star is oblate (defined through ANTARESS_system_properties), then GD can be accounted for in the same way as LD
-    #      this is however not necessary: to account for oblateness but not GD, simply comment the 'GD_' fields
-    #      otherwise GD will be estimated based on a blackbody flux integrated between GD_min and GD_max, at the resolution GD_dw
+    # + to calculate theoretical properties of the 'average' planet-occulted regions throughout the pipeline. The spectral band of the properties should thus match that over which measured planet-occulted properties were derived      
+    #    - the chromatic set ('chrom') is used:  
+    # + to calculate model or simulated light curves (or define the bands of input light curves) used to scale chromatically disk-integrated spectra
+    # + to calculate chromatic RVs of planet-occulted regions used to align intrinsic spectral profiles (as those RVs are flux-weighted, and thus depend on the chromatic RpRs and LD)    
+    #      in that case the fields are list of values associated with chromatic bands centered at wavelengths 'w'
+    #      the chromatic bands are common to the star and all studied planets, so they should be sampled enough to resolve the shortest-frequency variations of stellar intensity and planet transit depths.
+    #      if CCFs are used, if 'chrom' is not provided, or is provided with a single band, 'achrom' will be used automatically
+    #    - if the star is oblate (defined through ANTARESS_system_properties), then GD can be accounted for in the same way as LD in the 'achrom' set
+    #      note that this is not necessary, oblateness can be considered without inclusion of GD
+    #      if requested GD is estimated based on a stellar blackbody flux, integrated between 'GD_min':[val] and 'GD_max':[val], at the resolution 'GD_dw':[val] 
     data_dic['DI']['system_prop']={}
       
     

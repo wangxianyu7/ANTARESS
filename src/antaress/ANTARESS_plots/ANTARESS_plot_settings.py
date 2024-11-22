@@ -146,6 +146,9 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     #    - leave empty to plot all orders
     plot_options['iord2plot']=[]    
     
+    #Plot order indexes
+    plot_settings[key_plot]['plot_idx_ord'] = False
+    
     #Colors
     plot_options['color_dic']={}  
     plot_options['color_dic_sec']={}
@@ -154,6 +157,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     
     #Scaling factor 
     #    - in power of ten, ie flux are multiplied by 10**sc_fact10)
+    #    - set to None for automatic determination
     plot_options['sc_fact10'] = 0.
     
     #Spectral variable
@@ -239,9 +243,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     # + 'raw' : before any correction
     # + 'all' : after all requested corrections
     # + 'tell' : after telluric correction 
-    # + 'count' : after flux-to-count scaling
-    # + 'fbal_glob' : after global flux balance correction 
-    # + 'fbal_ord' : after order/orde flux balance correction  
+    # + 'fbal' : after flux balance correction  
     # + 'cosm' : after cosmics correction  
     # + 'permpeak' : after persistent peak correction 
     # + 'wig' : after wiggle correction 
@@ -470,7 +472,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         ################################################################################################################    
         #%%% Instrumental calibration estimates
         ################################################################################################################ 
-        if (plot_dic['gcal_all']!='') or (plot_dic['gcal_ord']!='') or (plot_dic['sdet_ord']!=''):
+        if (plot_dic['gcal_all']!='') or (plot_dic['gcal_ord']!='') or (plot_dic['noises_ord']!=''):
             key_plot = 'gcal'
             
             #%%%% Generic settings
@@ -816,7 +818,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     #    - before and after spectral corrections 
     #    - in their input rest frame (typically heliocentric)
     ##################################################################################################
-    if gen_dic['specINtype'] and (plot_dic['sp_raw']!=''):
+    if gen_dic['specINtype'] and (plot_dic['flux_sp']!=''):
         key_plot = 'DI_prof_corr' #key must be different from 'DI_prof' to differentiate from original profile plot
 
         #%%%%% Generic settings
@@ -824,7 +826,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         #%%%%% Plot spectra at two chosen steps of the correction process
         plot_settings[key_plot]['plot_pre']='raw'
-        plot_settings[key_plot]['plot_postsub_plot_DI_transDI']='all'
+        plot_settings[key_plot]['plot_post']='all'
 
         #%%%%% Plot binned data and errors
         plot_settings[key_plot]['plot_bin'] = True
@@ -849,7 +851,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%%% Plot continuum used for persistent peak masking
         plot_settings[key_plot]['plot_contmax']=True 
 
-
+        #%%%%% Plot order indexes
+        plot_settings[key_plot]['plot_idx_ord'] = True
 
 
 
@@ -884,7 +887,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['gap_exp'] = 0.03
         
         #%%%%% Path to correction
-        #%%%%%     - leave empty to use last result from 'wig_vis_fit'
+        #          - leave empty to use last result from 'wig_vis_fit'
         plot_settings[key_plot]['wig_path_corr'] = {}  
 
         #%%%%% Plot mean value over exposures
@@ -893,6 +896,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%%% Vertical range for dispersion plot
         plot_settings[key_plot]['y_range_disp'] = {}
 
+        #%%%%% Plot order indexes
+        plot_settings[key_plot]['plot_idx_ord'] = True
 
 
 
@@ -1390,6 +1395,12 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             #%%%% Print and plot mean value and dispersion 
             plot_settings[key_plot]['disp_mod']='out' 
+            
+            #%%%% General path to the best-fit model to property series
+            plot_settings[key_plot]['DIProp_path']=None            
+
+            #%%%% Plot high-resolution model from property fit
+            plot_settings[key_plot]['theo_HR_prop'] = False
             
             #%%%% Save dispersion values for analysis in external routine
             plot_settings[key_plot]['save_disp']=False

@@ -315,11 +315,11 @@ Cosmic ray hits are identified by comparing the spectrum of interest with spectr
  gen_dic[’cosm_ncomp']=10
  
 Here 5 exposures before (resp. after) the processed one will be used. 
-Pixels are flagged as cosmics if their flux deviates from the mean of adjacent spectra by more than the pixel flux error (from the exposure, and from the mean) times a threshold, set as:: 
+Pixels are flagged as cosmics if their flux deviates from the mean of adjacent spectra by more than the pixel flux error, and the standard deviation over adjacent spectra, times a threshold, set as:: 
 
  gen_dic['cosm_thresh'] = {'ESPRESSO':{'20221117':10,'20231106':10}}
 
-This limits the risk of correcting pixels whose flux deviates due to the exposure noise alone. Cosmic-flagged pixels are then replaced by their mean over adjacent spectra. 
+This limits the risk of correcting pixels whose flux deviates due to the exposure noise alone. Cosmic-flagged pixels flux and error are then replaced by the mean and standard-deviation over adjacent spectra, respectively. 
 
 .. Tip:: 
  If your dataset displays large RV variations due, e.g., to a strong RM effect, use a small number of adjacent exposures to avoid blurring the flux of the corrected pixels.

@@ -5,10 +5,6 @@ from scipy.interpolate import interp1d
 from copy import deepcopy
 import astropy.convolution.convolve as astro_conv
 import bindensity as bind
-# from pysme import sme as SME
-# from pysme.linelist.vald import ValdFile
-# from pysme.abund         import Abund
-# from pysme.synthesize import synthesize_spectrum
 import lmfit
 from ctypes import CDLL,c_double,c_int,POINTER
 import os as os_system
@@ -238,7 +234,7 @@ def custom_DI_prof(param,x,args=None):
         #    - if the line properties or the stellar grid cells to which they are attributed to vary
         if args['var_line'] or args['var_star_grid']:
             init_st_intr_prof(args,args['grid_dic'],param)
-            
+          
     #--------------------------------------------------------------------------------
     #Radial velocities of the stellar surface (km/s)
     #    - an offset is allowed to account for the star/input frame velocity when the model is used on raw data 
@@ -562,7 +558,13 @@ def gen_theo_atm(st_atm,star_params):
         TBD
     
     """
-
+               
+    #Import pySME 
+    #    - the package raises issues on some operating system, so it is just retrieved if needed
+    from pysme import sme as SME    
+    from pysme.linelist.vald import ValdFile    
+    from pysme.abund         import Abund
+    
     #Atmosphere structure
     sme_grid = SME.SME_Structure()
     
@@ -630,7 +632,9 @@ def gen_theo_intr_prof(sme_grid):
     Returns:
         TBD
     
-    """    
+    """   
+    from pysme.synthesize import synthesize_spectrum
+    
     #Initialize grid of synthetic spectra
     flux_intr_grid = np.zeros([sme_grid['n_mu'],sme_grid['n_wav']],dtype=float)
     

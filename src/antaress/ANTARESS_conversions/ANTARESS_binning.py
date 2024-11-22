@@ -301,7 +301,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     if data_type_gen!='DI':cov_ref_exp=np.zeros(data_inst['nord'],dtype=object)
                 tell_exp=np.ones(dim_exp_new,dtype=float) if (data_exp['tell'] is not None) else None
                 sing_gcal_exp=np.ones(dim_exp_new,dtype=float) if (data_exp['sing_gcal'] is not None) else None 
-                sdet2_exp=np.zeros(dim_exp_new,dtype=float) if (data_exp['sdet2'] is not None) else None    
+                sdet_exp2=np.zeros(dim_exp_new,dtype=float) if (data_exp['sdet2'] is not None) else None    
                 for iord in range(data_inst['nord']): 
                     data_to_bin[iexp_off]['flux'][iord],data_to_bin[iexp_off]['cov'][iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['flux'][iord] , cov = data_exp['cov'][iord], kind=gen_dic['resamp_mode'])                                                        
                     if not masterDIweigh:
@@ -309,7 +309,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                         elif (data_type_gen!='DI'):flux_ref_exp[iord],cov_ref_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_ref['edge_bins'][iord], data_ref['flux'][iord] , cov = data_ref['cov'][iord], kind=gen_dic['resamp_mode'])                                                        
                     if tell_exp is not None:tell_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['tell'][iord] , kind=gen_dic['resamp_mode']) 
                     if sing_gcal_exp is not None:sing_gcal_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['sing_gcal'][iord] , kind=gen_dic['resamp_mode']) 
-                    if sdet2_exp is not None:sdet2_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['sdet2'][iord] , kind=gen_dic['resamp_mode'])                   
+                    if sdet_exp2 is not None:sdet_exp2[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['sdet2'][iord] , kind=gen_dic['resamp_mode'])                   
                 data_to_bin[iexp_off]['cond_def'] = ~np.isnan(data_to_bin[iexp_off]['flux'])  
 
                 #Resample local stellar profile estimate
@@ -928,7 +928,8 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         data_Fbal = dataload_npz(save_data_dir+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp_glob)+'_add')
     if gen_corr_Fbal and ('spec' in data_mode) and corr_Fbal: 
         Fbal_glob = data_Fbal['corr_func']
-        Fbal_glob_vis = data_Fbal['corr_func_vis']
+        if data_Fbal['corr_func_vis'] is None:Fbal_glob_vis=default_func    #single visit, no correction relative to global master 
+        else:Fbal_glob_vis = data_Fbal['corr_func_vis']
     else:
         Fbal_glob=default_func 
         Fbal_glob_vis=default_func 
@@ -953,7 +954,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     for iord,iord_orig in enumerate(iord_orig_list):
         idx_def_weights_ord = np_where1D(cond_def_weights[iord])
         cen_bins_ord = cen_bins[iord,idx_def_weights_ord]
-    
+
         #Instrumental calibration: gcal_exp(w,t,v)
         #   for original 2D or 1D spectra, gcal_exp is the estimated spectral calibration profile for the exposure (rescaled by the mean calibration profile over the visit if spectra to be weighted were converted back into count-equivalent values and are still in their original format)
         #   calibration profiles were estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow  
@@ -1004,7 +1005,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #    - detector noise, if defined for S2D, has been estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow 
         cond_def_pos_ord = (Nbl_ord>0.) 
         if (sdet_exp2 is not None):
-            EFsc2_all[iord,idx_def_weights_ord] = sdet_exp2[iord,idx_def_weights_ord[cond_def_pos_ord]]       #detector variance
+            EFsc2_all[iord,idx_def_weights_ord] = sdet_exp2[iord,idx_def_weights_ord]                          #detector variance
             EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]]+= Nbl_ord[cond_def_pos_ord]                  #co-adding photoelectron variance where positive
             EFsc2_all[iord,idx_def_weights_ord] *= ( flux_sc_all[iord,idx_def_weights_ord]*Ccorr_glob_ord*gcal_ord)**2.            #scaling
              

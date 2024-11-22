@@ -70,7 +70,7 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
     #Initializations
     for prop_loc in fit_prop_dic['mod_prop']:  
         fixed_args,fit_dic = init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_prop_dic)
-        print('     - '+{'RV':'RV residuals','FWHM':'Line FWHM','ctrst':'Line contrast'}[prop_loc])        
+        print('     - '+{'rv':'RV residuals','FWHM':'Line FWHM','ctrst':'Line contrast'}[prop_loc])        
         fit_dic['save_dir']+=prop_loc+'/'       
     
         #Arguments to be passed to the fit function
@@ -81,7 +81,7 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
             'SNRorders':{},
             'coord_ref':fit_prop_dic['coord_ref']
             })    
-        if prop_loc=='RV':fixed_args['prop_fit'] = 'rv_res'
+        if prop_loc=='rv':fixed_args['prop_fit'] = 'rv_res'
         else:fixed_args['prop_fit'] = prop_loc
 
         #Initialization
