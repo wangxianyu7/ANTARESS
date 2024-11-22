@@ -5225,6 +5225,7 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
                         else:rest_frame='star'   
         
     #Data dimensions
+    #    - dimensions may change across the workflow (in particular CCFs are resampled on the common table, so that the spectral grid of raw CCFs is not of the same size as all later resampled profiles)
     if data_path_all[0] is not None:
         if ('Diff_prof' in plot_mod) and ('_est' in plot_mod):
             flux_supp = plot_mod.split('_')[4]
@@ -5233,10 +5234,12 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
         else:flux_name='flux'
         dim_exp_data = list(np.shape(dataload_npz(data_path_all[0])[flux_name]))
         nord_data = dim_exp_data[0] 
+        nspec_data = dim_exp_data[1] 
     else:
         nord_data = None
-                        
-    return pl_ref,txt_conv,iexp2plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data,data_bin
+        nspec_data = None
+  
+    return pl_ref,txt_conv,iexp2plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data,nspec_data,data_bin
 
 
 
@@ -5314,10 +5317,9 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
         #Plot for each visit
         for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst]): 
             print('     - Visit :',vis)
-            data_inst=data_dic[inst]
 
             #Data
-            pl_ref,txt_conv,iexp2plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data,data_bin = sub_plot_prof_dir(inst,vis,plot_options,data_mode,'Indiv',add_txt_path,plot_mod,txt_aligned,data_type,data_type_gen,data_dic,gen_dic,glob_fit_dic)
+            pl_ref,txt_conv,iexp2plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data,nspec_eff,data_bin = sub_plot_prof_dir(inst,vis,plot_options,data_mode,'Indiv',add_txt_path,plot_mod,txt_aligned,data_type,data_type_gen,data_dic,gen_dic,glob_fit_dic)
             
             #Order list
             if data_type=='CCF':order_list=[0]
@@ -5325,6 +5327,8 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                 order_list = plot_options['iord2plot'] if len(plot_options['iord2plot'])>0 else range(nord_data)  
             idx_sel_ord = order_list
             if len(order_list)==1:plot_options['multi_ord']=False
+            nord_proc = len(idx_sel_ord)
+            if nord_proc==0:stop('No orders left')
 
             #Spectral variable
             if plot_options['aligned']:title_name='Aligned '+title_name
@@ -5339,7 +5343,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                     if plot_options['x_range'] is None:x_range_loc = [3000.,9000.] 
                     x_title = r'Wavelength in '+xt_str+' rest frame (A)'                        
             else:x_title='Velocity in '+xt_str+' rest frame (km s$^{-1}$)'                    
-
+            
             #Colors
             if vis not in plot_options['color_dic'][inst]:plot_options['color_dic'][inst][vis] = np.repeat('dodgerblue',nexp_plot)
             else:
@@ -5353,12 +5357,6 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                     cmap = plt.get_cmap('jet') 
                     plot_options['color_dic_sec'][inst][vis]=np.array([cmap(0)]) if nexp_plot==1 else cmap( np.arange(nexp_plot)/(nexp_plot-1.))         
                 else:plot_options['color_dic_sec'][inst][vis] = np.repeat(plot_options['color_dic_sec'][inst][vis],nexp_plot)
-
-            #Process selected ranges and orders
-            nord_proc = len(idx_sel_ord)
-            if nord_proc==0:stop('No orders left')
-            if vis=='binned':nspec_eff = data_inst['nspec']
-            else:nspec_eff = data_inst[vis]['nspec']
 
             #Stellar continuum
             if ('spec' in data_type) and (plot_options['st_cont'] is not None):
@@ -5522,7 +5520,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
  
                     #Plot each order 
                     for isub_ord,iord in enumerate(order_list):                    
-                       
+                        
                         #Only plot order if it overlaps with the requested window
                         plot_ord=True
                         cen_bins = data_exp['cen_bins'][iord]
@@ -6943,7 +6941,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
             data_vis = data_inst[vis]
             
             #Data
-            pl_ref,txt_conv,iexp2plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data,data_bin = sub_plot_prof_dir(inst,vis,plot_options,data_mode,'Map',add_txt_path,plot_mod,txt_aligned,data_type,data_type_gen,data_dic,gen_dic,glob_fit_dic)
+            pl_ref,txt_conv,iexp2plot,iexp_orig,prof_fit_vis,fit_results,data_path_all,rest_frame,data_path_dic,nexp_plot,inout_flag,path_loc,iexp_mast_list,nord_data,nspec_data,data_bin = sub_plot_prof_dir(inst,vis,plot_options,data_mode,'Map',add_txt_path,plot_mod,txt_aligned,data_type,data_type_gen,data_dic,gen_dic,glob_fit_dic)
             
             #Order list
             order_list = plot_options['iord2plot'] if len(plot_options['iord2plot'])>0 else range(nord_data) 

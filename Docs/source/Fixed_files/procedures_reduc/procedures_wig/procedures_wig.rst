@@ -19,29 +19,57 @@
 Wiggle correction
 =================
 
-In this module two methods can be used to correct for the ESPRESSO "wiggles", using either an analytical model over the full visit (preferred), or a filter. The filter apporach is faster to implment, but introduces the risk where planetary and stellar features at medium resolution may be removed. The approach using a filter should be limited to observations where the wiggle patter is too complex to be captured with the analytical model. In this tutorial we first go thorugh the screening and filter methods, these are both relevant steps in order to perform before the final analytical correction.
+This tutorial is part of the `spectral reduction <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_reduc/procedures_reduc.html>`_ steps.
 
-Activate the module by setting :green:`gen_dic["corr_wig"]= True`. 
+This module offers two methods to correct for the ESPRESSO *wiggles*, using either an analytical model over a full visit dataset (preferred approach), or a filter in each exposure. 
+The analytical model describes a beat pattern between two sine-like components, which are dominating the wiggle pattern in most ESPRESSO datasets. Because this model only describes the wiggle signal and is constrained by all exposures, it prevents overfitting and provides a robust and homogeneous correction between ESPRESSO datasets.
+The filter approach is more efficient and easier to set-up, but introduces the risk of overcorrecting planetary and stellar features at medium spectral resolution. It should be limited to observations in which the wiggle pattern is too complex to be captured with the analytical model.
+ 
+Activate the ``ESPRESSO "wiggles"`` module (:green:`gen_dic['corr_wig']= True`) and set it to *calculation* mode (:green:`gen_dic['calc_wig'] = True`).
 
-ESPRESSO wiggles screening
--------------------------------------
+Initialization
+--------------
 
-Go down to analysis and activate screening as shown below::
+Wiggles are processed as a function of light frequency (:math:`\nu = c/\lambda`), to be distinguished from the frequency `F` of the wiggle patterns.
 
- gen_dic['wig_exp_init']={
-     'mode':True,
-     'plot_spec':True,
-     'plot_hist':True,
-     'y_range':None
-     }
+TBD
 
-Initially, the noise levels in some parts of the spectrum will be much larger than the amplitude of the wiggles. Hence, use the screening to choose which ranges in :math:`\nu`, to include in the fit. In general, you will see large noise levels at the center of the spectrum :math:`(57-58)\nu` located at the edges of the blue and red detector. Furhter, you will see incerasing noise levels at the blue end of the spectrum, regions where the noise is much larger than the wiggle amplitude should be removed when fitting and characterising the wiggles. In :numref:`Fbal`, the wiggles are clearly visible, but the spectrum is dominated by noise at the blue end of the spectrum and at the center located at the edges of the blue and red detector. See the transmission spectrum for one exposure of TOI-421 b in :numref:`screening`.
+Screening
+---------
+
+This step is common to both wiggle correction methods. It is used to identify the spectral ranges to be included in the analysis (i.e., where wiggles are larger than noise) and check which wiggle components affect your dataset.
+
+Activate the screening submodule with :green:`gen_dic['wig_exp_init']= True`. You can leave the other submodule settings to their default value.
+
+Plots of the spectral ratios between each exposure spectrum and a chosen master (ie, transmission spectra) are automatically saved in the :orange:`/Working_dir/Star/Planet_Plots/Spec_raw/Wiggles/Exp_fit/Instrument_Visit/Init/` directory.
+As illustrated in :numref:`screening`, wiggles usually decrease in amplitude toward the blue of the spectrum, where the S/R also decreases (as the flux gets lower due to Earth diffusion and the black body of typical exoplanet host stars). You thus need to decide beyond which light frequency the transmission spectra do not bring any more constraints to the wiggle characterization. Here we chose :math:`\nu` = 6.73 nHz.   
+Wiggles are also typically dominated by noise toward the center of the center of the spectrum (:math:`\nu \sim` 57-58 nHz) at the edges of the blue and red detectors.
+
+.. Tip:: 
+ Although this is not the case in this example, some datasets may display an additional wiggle pattern with lower frequency and localized S-shaped features (typically at :math:`\nu \sim` 47, 51, 55 :math:`10^13` Hz).
+ The current version of the analytical model does not account for this pattern. You can exclude those S-shaped features to correct for the classical wiggles with the analytical model, and 
+ ignore them (if they fall in a range you do not plan on analyzing) or correct them locally later on. Or you can use the filter approach, keeping in mind that you may overcorrect other signals of interest.   
+
+
+
+
+
 
 .. figure:: wig_screening.png
   :width: 800
   :name: screening
 
-  Transmission spectrum for TOI-421 b, displayed as the flux ratio as a funciton of frequeny. The wiggle pattern is clearly visible, but dominated by noise at the center and blue end of the spectrum. The spectrum is colour coded by spectral order.
+  Transmission spectrum in one of the 20221117 exposures, as a function of light frequency. 
+  The wiggle pattern is clearly visible, but dominated by noise at the center and blue end of the spectrum. The spectrum is colour coded by spectral order.
+
+.. Erik
+  can you redo this first figure with no excluded range at all ?
+
+
+
+In general, you will see large noise levels at the 
+
+
 
 From the transmission spectrum identify spectral ranges that are too noisy to be included in the fit::
 
@@ -59,10 +87,11 @@ The final transmission spectrum with the excluded regions should show some clear
   Final transmission spectrum after removing the noisy regions. Bottom the periodogram computed for all exposures from the observation.
 
 
-ESPRESSO wiggles filter
+Method 1: filter
 -------------------------------------
 
-After removing the noisy ranges the wiggle pattern should be clearly visible from the screening, if that is not the case the wiggle correction will not be applied. When the spectral ranges to be included have been defined you can charecatrise the wiggles using the filter approach. Choose values for 'win' and 'deg', that are fine enough to capture the wiggle pattern without fitting spurious features in the data.::
+After removing the noisy ranges the wiggle pattern should be clearly visible from the screening, if that is not the case the wiggle correction will not be applied. 
+When the spectral ranges to be included have been defined you can charecatrise the wiggles using the filter approach. Choose values for 'win' and 'deg', that are fine enough to capture the wiggle pattern without fitting spurious features in the data.::
 
  gen_dic['wig_exp_filt']={
          'mode':True,
@@ -73,7 +102,7 @@ After removing the noisy ranges the wiggle pattern should be clearly visible fro
 
 `Finish the Filter method later`
 
-ESPRESSO wiggles Analytical model
+Method 2: Analytical model
 -------------------------------------
 
 From previous analyses we have determined that the wiggles are best described as the sum of multiple sinusoidal components, and can be expressed as

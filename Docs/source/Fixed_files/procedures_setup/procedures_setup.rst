@@ -83,15 +83,7 @@ Then, in your copy of the configuration file define which star you want to proce
 
  gen_dic['star_name']=star_name
  
-And which planets you want to process::
-
- gen_dic['studied_pl'] = {planet_b:{instrument:[visit]}} 
- 
-Because ``ANTARESS`` typically processes ground-based datasets obtained on a given night, you need to indicate for each planet in which observing epoch(s) it was observed with a given instrument.
-Visit names must match those you indicated in :green:`gen_dic['data_dir_list']`.
-If a planet emission or its absorption of the stellar light are negligible during an observing epoch, or do not affect the part of the data that you intend to study, there is no need to associate it to this epoch in :green:`gen_dic['studied_pl']`.
-
-All planets that have a significant impact on the Keplerian motion of the star during the observing epochs should be defined in::
+All planets that have a significant impact on the Keplerian motion of the star during the observing epochs should be listed in::
 
  gen_dic['kepl_pl'] = [planet_b,planet_c]
 
@@ -99,8 +91,28 @@ The list of planets can be replaced by :green:`'all'` to directly account for al
 
 .. Tip::
    If a planet induces a constant reflex motion of its star during an observing epoch, for example if it has a long orbital period, it does not need be defined in :green:`gen_dic['kepl_pl']`.
-   Its contribution will be absorbed in the value that you will derive for the systemic RV of the system in each epoch.
+   Its contribution will be absorbed in the value that you will derive for the systemic RV of the system in each epoch. 
+ 
 
+Because ``ANTARESS`` typically processes ground-based datasets obtained during a night, you need to indicate which planet(s) affected the light measured from the system in a given observing epoch::
+
+ gen_dic['studied_pl'] = {planet_b:{instrument:[visit]}} 
+ 
+Instruments and visits must match those you indicated in :green:`gen_dic['data_dir_list']`.
+If a planet emission or its absorption of the stellar light are negligible during an observing epoch, or if they do not affect the part of the data that you intend to study, there is no need to associate the planet to this epoch in :green:`gen_dic['studied_pl']`.
+
+Planet-to-star radius ratios :green:`RpRs` must be defined for all planets in :green:`gen_dic['studied_pl']` using the configuration file::
+
+ data_dic['DI']['system_prop']={
+     'achrom':{'LD':[LD_law],'LD_u1':[u1],'LD_u2':[u2],..,planet_b:[RpRs_b],planet_c:[RpRs_c]}}
+
+This field also defines the broadband intensity variations of the stellar photosphere, through a given limb-darkening law :green:`LD` and associated coefficients :green:`LD_ui`. 
+More information about this field are available in the configuration file.
+
+.. Note::
+   Broadband stellar intensity variations and planet-to-star radius ratios are controlled through the configuration file rather than the system property file because they can be defined chromatically through an optional sub-field :green:`chrom`. 
+   This is to allow for possible variations of the stellar intensity and planet apparent size at low medium frequencies, for example if the planetary atmosphere yields strong Rayleigh scattering. 
+   
 
 
 

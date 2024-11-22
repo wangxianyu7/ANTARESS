@@ -2983,7 +2983,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                                     lamb_chain[inst][vis] = np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']==lambda_rad_pl+'__IS'+inst+'_VS'+vis)]  ) 
                         else:
                             lamb_chain = {'':{'':np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']==lambda_rad_pl)]  )}} 
-                    
+                
                     #Stellar inclination
                     if ('istar_deg' in fixed_args['var_par_list']):
                         print('           Using derived istar')
@@ -3001,7 +3001,18 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                                 istarN_chain=np.pi-istarS_chain 
                         else:
                             degen_psi = False
-                           
+
+                    elif ('cos_istar' in fixed_args['fix_par_list']):
+                        print('           Using fixed istar')
+                        degen_psi = True        #we assume the degeneracy exists and the fixed value is either North or South   
+                        istar_rad = np.arccos(p_final['cos_istar'])
+                        if istar_rad<=np.pi/2:
+                            istarN_chain = istar_rad
+                            istarS_chain=np.pi-istarN_chain
+                        else:                            
+                            istarS_chain = istar_rad
+                            istarN_chain=np.pi-istarS_chain                          
+
                     else:
                         print('           Using external istar')
 

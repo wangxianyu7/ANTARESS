@@ -40,7 +40,7 @@ def save_system(input_nbook):
 def load_nbook(input_nbook, nbook_type):
     all_input_nbook = dataload_npz(input_nbook['working_path']+'/'+input_nbook['star_name']+'/'+input_nbook['pl_name']+'_Saved_data/init_sys')
     curr_working_path = deepcopy(input_nbook['working_path'])
-    
+
     #Retrieving relevant notebook settings
     if nbook_type in ['mock','Reduc']:
         input_nbook = all_input_nbook['setup']
@@ -60,6 +60,7 @@ def load_nbook(input_nbook, nbook_type):
 
     #Updating working directory to the one from current notebook
     input_nbook['working_path'] = curr_working_path
+    input_nbook['plot_path']=input_nbook['working_path']+'/'+input_nbook['par']['star_name']+'/'+input_nbook['par']['main_pl']+'_Plots/'
 
     #Storing settings of all processed notebooks
     #    - keys of all_input_nbook are nbook names
@@ -316,7 +317,10 @@ def ana_prof(input_nbook,data_type):
         if data_type=='DI':rv_shift = input_nbook['system'][input_nbook['par']['star_name']]['star']['sysvel']
         else:rv_shift=0.
         if 'cont_range' in input_nbook['par']:
-            input_nbook['settings']['data_dic'][data_type]['cont_range']: {inst: {0:input_nbook['par']['cont_range']+rv_shift}}
+            cont_range = deepcopy(input_nbook['par']['cont_range'])
+            cont_range_shifted = []
+            for bd in cont_range:cont_range_shifted+=[bd[0]+rv_shift,bd[1]+rv_shift]
+            input_nbook['settings']['data_dic'][data_type]['cont_range']: {inst: {0:cont_range_shifted}}
             input_nbook['par'].pop('cont_range')
         if 'fit_range' in input_nbook['par']:
             input_nbook['settings']['data_dic'][data_type]['fit_range']: {inst: {vis: input_nbook['par']['fit_range']+rv_shift}}
@@ -416,8 +420,9 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
                     'c__ord0__IS__VS_':{'vary':True ,'guess':guess_val,'bd':[-100.,100.]}}
                 deg = input_nbook['DI_trend'][prop_in]['deg']
                 if deg>0:
-                    for ideg in range(int(deg)+1):
-                        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'][prop][coord+'__pol__ord1__IS__VS_']={'vary':True ,'guess':0,'bd':[-100.,100.]}
+                    for ideg in range(deg+1):
+                        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'][prop_in][coord+'__pol__ord1__IS__VS_']={
+                            {'vary':True ,'guess':0,'bd':[-100.,100.]}}
     
     elif (ana_type=='Prof'):
         input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'] = {}        
@@ -426,6 +431,14 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
         if data_type == 'Intr':
             input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['Opt_Lvl']=2
             input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['verbose']=True
+
+            #Continuum range
+            if 'cont_range' in input_nbook['par']:
+                cont_range = deepcopy(input_nbook['par']['cont_range'])
+                cont_range_shifted = []
+                for bd in cont_range:cont_range_shifted+=[bd[0]+rv_shift,bd[1]+rv_shift]
+                input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['cont_range']: {inst: {0:cont_range_shifted}} 
+                input_nbook['par'].pop('cont_range')
 
     if ('priors' in input_nbook['par']):input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['priors']={}
 

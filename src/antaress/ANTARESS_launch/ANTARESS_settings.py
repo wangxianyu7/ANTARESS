@@ -2244,24 +2244,37 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #%%%% Stellar and planet intensity settings
-    #    - limb-darkening properties and planet-to-star radius ratios need to be defined in 'system_prop' for each planet whose transit is studied, even if no scaling is applied
-    #    - the chromatic set of values ('chrom') is used:  
-    # + to calculate model or simulated light curves (or define the bands of input light curves) used to scale chromatically disk-integrated spectra
-    # + to calculate chromatic RVs of planet-occulted regions used to align intrinsic spectral profiles (as those RVs are flux-weighted, and thus depend on the chromatic RpRs and LD)    
-    #      if CCFs are used, if 'chrom' is not provided, or is provided with a single band, 'achrom' will be used automatically
-    #      the chromatic bands are common to all planets
-    #    - the achromatic set of values ('achrom') must always be defined and is used:
+    #    - broadband stellar intensity properties (limb-darkening LD and/or gravity-darkening GD) and planet-to-star radius ratios need to be defined in 'system_prop' for each planet whose transit is studied, even if no scaling is applied    
+    #    - format is 'system_prop' : {
+    # 'achrom':{'LD':[LD_law],'LD_u1':[u1],'LD_u2':[u2],..,PlName:[RpRs]},
+    # 'chrom': {'w':    [wA,     wB,     ..],
+    #           'LD':   [LD_lawA,LD_lawB,..],
+    #           'LD_u1':[u1_A,   u1_B,..],    
+    #           'LD_u2':[u2_A,   u2_B,..],
+    #           ...
+    #           PlName: [RpRsA,  RpRsB, ..]}}
+    #      with
+    # + 'LD' : limb-darkening law
+    #   'LD_ui' with i>=1 : limb-darkening coefficients
+    #    possible limb-darkening laws (name, number of coefficients) :
+    #       uniform (uf,0), linear(lin,1), quadratic(quad,2), squareroot(sr,2), logarithmic(log,2), exponential(exp,2), power2 (pw2, 2), nonlinear(nl,4)
+    #    LD coefficients can be derived at first order with http://astroutils.astronomy.ohio-state.edu/exofast/limbdark.shtml   
+    #    consider using the Limb Darkening Toolkit (LDTk, Parviainen & Aigrain 2015) tool do determine chromatic LD coefficients     
+    # + PlName : planet-to-star radius ratio    
+    #   can be defined from the transit depth = (Rpl/Rstar)^2     
+    #    - the achromatic set ('achrom') must always be defined and is used:
     # + to scale input data, unless 'chrom' is used
     # + to define the transit contacts
-    # + to calculate theoretical properties of the 'average' planet-occulted regions throughout the pipeline. The spectral band of the properties should thus match that over which measured planet-occulted properties were derived  
-    #    - planet-to-star radius ratios can be defined from the transit depth = (Rpl/Rstar)^2 
-    #    - possible limb-darkening laws (name, number of coefficients) include :
-    # uniform (uf,0), linear(lin,1), quadratic(quad,2), squareroot(sr,2), logarithmic(log,2), exponential(exp,2), power2 (pw2, 2), nonlinear(nl,4)
-    #      LD coefficients can be derived at first order with http://astroutils.astronomy.ohio-state.edu/exofast/limbdark.shtml   
-    #      consider using the Limb Darkening Toolkit (LDTk, Parviainen & Aigrain 2015) tool do determine chromatic LD coefficients 
-    #    - if the star is oblate (defined through ANTARESS_system_properties), then GD can be accounted for in the same way as LD
-    #      this is however not necessary: to account for oblateness but not GD, simply comment the 'GD_' fields
-    #      otherwise GD will be estimated based on a blackbody flux integrated between GD_min and GD_max, at the resolution GD_dw
+    # + to calculate theoretical properties of the 'average' planet-occulted regions throughout the pipeline. The spectral band of the properties should thus match that over which measured planet-occulted properties were derived      
+    #    - the chromatic set ('chrom') is used:  
+    # + to calculate model or simulated light curves (or define the bands of input light curves) used to scale chromatically disk-integrated spectra
+    # + to calculate chromatic RVs of planet-occulted regions used to align intrinsic spectral profiles (as those RVs are flux-weighted, and thus depend on the chromatic RpRs and LD)    
+    #      in that case the fields are list of values associated with chromatic bands centered at wavelengths 'w'
+    #      the chromatic bands are common to the star and all studied planets, so they should be sampled enough to resolve the shortest-frequency variations of stellar intensity and planet transit depths.
+    #      if CCFs are used, if 'chrom' is not provided, or is provided with a single band, 'achrom' will be used automatically
+    #    - if the star is oblate (defined through ANTARESS_system_properties), then GD can be accounted for in the same way as LD in the 'achrom' set
+    #      note that this is not necessary, oblateness can be considered without inclusion of GD
+    #      if requested GD is estimated based on a stellar blackbody flux, integrated between 'GD_min':[val] and 'GD_max':[val], at the resolution 'GD_dw':[val] 
     data_dic['DI']['system_prop']={}
       
     

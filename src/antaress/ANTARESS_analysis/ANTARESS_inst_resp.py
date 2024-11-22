@@ -28,6 +28,7 @@ def return_spec_nord(inst):
         'ESPRESSO':170,
         'ESPRESSO_MR':85,
         'CARMENES_VIS':61,
+        'CARMENES_VIS_CCF':61,
         'EXPRES':86,
         'NIRPS_HA':71,
         'NIRPS_HE':71,
@@ -119,6 +120,7 @@ def return_pix_size():
         #    optical resolving power = 93400 -> deltav_instru = 3.2 km/s   
         #    - 2.8 pixel / FWHM, so that pixel size = 1.1317 km/s             
         'CARMENES_VIS':1.1317,
+        'CARMENES_VIS_CCF':1.1317,
         #    near-infrared resolving power = 80400 -> deltav_instru = 3.72876 km/s   
         #    - 2.3 pixel / FWHM, so that pixel size = 1.62 km/s   
         'CARMENES_NIR':1.1317,

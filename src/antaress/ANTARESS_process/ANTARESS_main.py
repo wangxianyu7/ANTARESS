@@ -425,7 +425,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             'NIRPS_HE':'NIRPS',
         }     
 
-        #Return flag that errors on input spectra are defined or not for each instrument   
+        #Return flag that errors on input data are defined or not for each instrument   
         gen_dic['flag_err_inst']={          
             'SOPHIE_HE':False,
             'SOPHIE_HR':False,
@@ -435,6 +435,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             'ESPRESSO':True,
             'ESPRESSO_MR':True,
             'CARMENES_VIS':True,
+            'CARMENES_VIS_CCF':True,
             'EXPRES':True,
             'NIRPS_HA':True,'NIRPS_HE':True} 
         
@@ -491,6 +492,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     
     }
         gen_dic['wav_ord_inst']['NIRPS_HE'] = gen_dic['wav_ord_inst']['NIRPS_HA'] 
+        gen_dic['wav_ord_inst']['CARMENES_VIS_CCF'] = gen_dic['wav_ord_inst']['CARMENES_VIS'] 
     
         #Data type
         if gen_dic['mock_data']: 
@@ -958,9 +960,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #    - uses the nominal planet-to-star radius ratios, which must correspond to the band from which local properties are derived
     theo_dic['d_oversamp_pl']={}
     for pl_loc in theo_dic['n_oversamp']:
-        if (theo_dic['n_oversamp'][pl_loc]>0.):
+        if (pl_loc in gen_dic['def_pl']) and (theo_dic['n_oversamp'][pl_loc]>0.):
             theo_dic['d_oversamp_pl'][pl_loc] = data_dic['DI']['system_prop']['achrom'][pl_loc][0]/theo_dic['n_oversamp'][pl_loc]
-         
+ 
     #Set flag for errors on estimates for local stellar profiles (depending on whether they are derived from data or models)
     if data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin']:data_dic['Intr']['cov_loc_star']=True
     else:data_dic['Intr']['cov_loc_star']=False    
@@ -1258,7 +1260,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         'SOPHIE':'OHP',
         'HARPS':'ESO',
         'HARPN':'TNG',   
-        'CARMENES_VIS':'CAHA',
+        'CARMENES_VIS':'CAHA','CARMENES_VIS_CCF':'CAHA',
         'CORALIE':'ESO','ESPRESSO':'ESO','ESPRESSO_MR':'ESO',
         'EXPRES':'DCT','NIRPS_HE':'ESO','NIRPS_HA':'ESO'
         }[inst]
@@ -1426,10 +1428,14 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         'CCF':'*ccf*',
                         'spec2D':'*S2D_',
                         }[data_inst['type']]
-                elif inst in ['CARMENES_VIS']:
+                elif inst=='CARMENES_VIS':
                     vis_path+= {
                         'spec2D':'*sci-allr-vis_',
                         }[data_inst['type']]                    
+                elif inst=='CARMENES_VIS_CCF':     #current reduction is not standard, better to consider as independent instrument
+                    vis_path+= {
+                        'CCF':'*CCF*',
+                        }[data_inst['type']]  
                 elif inst in ['ESPRESSO','ESPRESSO_MR','HARPN','HARPS']:
                     vis_path+= {
                         'CCF':'*CCF_',
@@ -1471,7 +1477,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     else:print('Blaze names undefined for '+inst+'. Switching to estimate mode.')
 
                 #Final path of visits exposures
-                if inst not in ['EXPRES']:vis_path+='A'
+                if (inst not in ['EXPRES','CARMENES_VIS_CCF']):vis_path+='A'
                 
                 #Retrieve files
                 vis_path_exp = np.array(glob.glob(vis_path+'.fits'))
@@ -1489,7 +1495,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #Print visit date if available 
                 #    - taking the day at the start of the night, rather than the day at the start of the exposure series
                 if (not gen_dic['mock_data']):
-                    if (inst in ['CORALIE','ESPRESSO','ESPRESSO_MR','HARPS','HARPN','CARMENES_VIS','EXPRES','NIRPS_HA','NIRPS_HE']):    
+                    if (inst in ['CORALIE','ESPRESSO','ESPRESSO_MR','HARPS','HARPN','CARMENES_VIS','CARMENES_VIS_CCF','EXPRES','NIRPS_HA','NIRPS_HE']):    
                         vis_day_exp_all=[]
                         vis_hour_exp_all=[]
                         bjd_exp_all = []
@@ -1500,49 +1506,56 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 vis_day_exp_all+= [int(hdr['HIERARCH ESO CORA SHUTTER START DATE'][6:8])]
                                 bjd_exp_all  += [ hdr['HIERARCH ESO DRS BJD'] - 2400000. ]
                                 stop('Define time for CORALIE')
+                            elif inst=='EXPRES':
+                                vis_day_exp_all+= [int(hdr['DATE-OBS'].split(' ')[0].split('-')[2]) ]  
+                                vis_hour_exp_all+=[int(hdr['DATE-OBS'].split(' ')[1].split(':')[0])]                            
+                            elif inst=='CARMENES_VIS_CCF':bjd_exp_all  += [  hdr['BJD']  ] 
                             elif inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','CARMENES_VIS','NIRPS_HA','NIRPS_HE']:
                                 vis_day_exp_all+= [int(hdr['DATE-OBS'].split('T')[0].split('-')[2]) ]  
                                 vis_hour_exp_all+=[int(hdr['DATE-OBS'].split('T')[1].split(':')[0])]
                                 if inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','NIRPS_HA','NIRPS_HE']:bjd_exp_all +=[  hdr['HIERARCH '+facil_inst+' QC BJD'] - 2400000. ]
                                 elif inst=='CARMENES_VIS':bjd_exp_all  += [  hdr['CARACAL BJD']  ]                        
-                            elif inst=='EXPRES':
-                                vis_day_exp_all+= [int(hdr['DATE-OBS'].split(' ')[0].split('-')[2]) ]  
-                                vis_hour_exp_all+=[int(hdr['DATE-OBS'].split(' ')[1].split(':')[0])]
                         if inst=='CORALIE':
                             vis_yr = hdr['HIERARCH ESO CORA SHUTTER START DATE'][0:4]
                             vis_mt = hdr['HIERARCH ESO CORA SHUTTER START DATE'][4:6]
                         elif inst=='EXPRES':
                             vis_yr = hdr['DATE-OBS'].split(' ')[0].split('-')[0]
                             vis_mt = hdr['DATE-OBS'].split(' ')[0].split('-')[1]                            
-                        else:
+                        elif (inst not in ['CARMENES_VIS_CCF']):
                             vis_yr = hdr['DATE-OBS'].split('T')[0].split('-')[0]
                             vis_mt = hdr['DATE-OBS'].split('T')[0].split('-')[1]  
                               
-                        #Take the day before as reference if exposure is past midnight (ie, not between 12 and 23) 
+                        #BJD midpoint
                         bjd_exp_all = np.array(bjd_exp_all)
-                        vis_day_exp_all = np.array(vis_day_exp_all)
-                        vis_hour_exp_all = np.array(vis_hour_exp_all)
-                        vis_day_exp_all[vis_hour_exp_all<=12]-=1
-                        if np.sum(vis_day_exp_all==0)>0:stop('ERROR: adapt date retrieval')                           
-                            
-                        #Check wether visit is contained within a single night
-                        #    - either:
-                        # + all exposures on same day before midnight or after midnight
-                        # + all exposures within two consecutive days between noon and midnight 
-                        min_day = np.min(vis_day_exp_all)
-                        max_day = np.max(vis_day_exp_all) 
-                        min_hr = np.min(vis_hour_exp_all)
-                        max_hr = np.max(vis_hour_exp_all)
                         bjd_vis = np.mean(bjd_exp_all)
-                        if ((max_day==min_day) and ((min_hr>=12) or (max_hr<=12))) or ((max_day==min_day+1) and ((min_hr>=12) and (max_hr<=12))): 
-                            data_inst['single_night']+=[vis]
-                            vis_day = np.min(vis_day_exp_all)  
-                            vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)        
-                            data_inst['dates'][vis] = str(vis_yr)+'/'+str(vis_mt)+'/'+str(vis_day_txt)
-                            data_inst['midpoints'][vis] = '%.5f'%(bjd_vis+2400000.)+' BJD'
-                        
-                        else:                    
-                            vis_day_txt_all = np.array(['0'+str(vis_day) if vis_day<10 else str(vis_day) for vis_day in vis_day_exp_all])
+                        data_inst['midpoints'][vis] = '%.5f'%(bjd_vis+2400000.)+' BJD'
+                            
+                        #Take the day before as reference if exposure is past midnight (ie, not between 12 and 23) 
+                        if len(vis_day_exp_all)>0:
+                            vis_day_exp_all = np.array(vis_day_exp_all)
+                            vis_hour_exp_all = np.array(vis_hour_exp_all)
+                            vis_day_exp_all[vis_hour_exp_all<=12]-=1
+                            if np.sum(vis_day_exp_all==0)>0:stop('ERROR: adapt date retrieval')                           
+                            
+                            #Check wether visit is contained within a single night
+                            #    - either:
+                            # + all exposures on same day before midnight or after midnight
+                            # + all exposures within two consecutive days between noon and midnight 
+                            min_day = np.min(vis_day_exp_all)
+                            max_day = np.max(vis_day_exp_all) 
+                            min_hr = np.min(vis_hour_exp_all)
+                            max_hr = np.max(vis_hour_exp_all)
+                            if ((max_day==min_day) and ((min_hr>=12) or (max_hr<=12))) or ((max_day==min_day+1) and ((min_hr>=12) and (max_hr<=12))): 
+                                data_inst['single_night']+=[vis]
+                                vis_day = np.min(vis_day_exp_all)  
+                                vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)        
+                                data_inst['dates'][vis] = str(vis_yr)+'/'+str(vis_mt)+'/'+str(vis_day_txt)
+                            else:                    
+                                vis_day_txt_all = np.array(['0'+str(vis_day) if vis_day<10 else str(vis_day) for vis_day in vis_day_exp_all])
+                        else:
+                            print('WARNING: data could not be retrieved')
+                            if (np.max(bjd_exp_all) - np.min(bjd_exp_all))<1.:data_inst['single_night']+=[vis]
+                            
                 else:
                     bjd_vis = np.mean(bjd_exp_all) - 2400000.    
                     data_inst['single_night']+=[vis]
@@ -1584,10 +1597,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if pl_loc in data_inst[vis]['studied_pl']:
                         for key in ['ecl','cen_ph','st_ph','end_ph','ph_dur','rv_pl','v_pl']:coord_dic[inst][vis][pl_loc][key] = np.zeros(n_in_visit,dtype=float)*np.nan
                         for key in ['cen_pos','st_pos','end_pos']:coord_dic[inst][vis][pl_loc][key] = np.zeros([3,n_in_visit],dtype=float)*np.nan
-
+             
                     #Definition of mid-transit times for each planet associated with the visit 
                     if (pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst]):
-                        if vis in data_inst['single_night']:stop('ERROR : gen_dic["Tcenter_visits"] not available for multi-epochs visits')
+                        if vis not in data_inst['single_night']:stop('ERROR : gen_dic["Tcenter_visits"] not available for multi-epochs visits')
                         coord_dic[inst][vis][pl_loc]['Tcenter'] = gen_dic['Tcenter_visits'][pl_loc][inst][vis]
                     else:
                         norb = round((bjd_vis+2400000.-system_param[pl_loc]['TCenter'])/system_param[pl_loc]["period"])

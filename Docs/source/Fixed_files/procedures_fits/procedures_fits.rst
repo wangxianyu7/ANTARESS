@@ -77,11 +77,17 @@ local_dic[data_type]['mcmc_reuse']={}
 #      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'mcmc_set'
 local_dic[data_type]['mcmc_reboot']=''
 
+
+ANTARESS allows you to reboot an existing MCMC run so that it is advised to run
+
 #%%%%%% Walkers
     data_dic['Intr']['mcmc_set']={'nwalkers':{'ESPRESSO':{'20221117':30,'20231106':30}},
                                   'nsteps':{'ESPRESSO':{'20221117':1000,'20231106':1000}},
                                   'nburn':{'ESPRESSO':{'20221117':200,'20231106':200}}} 
                                   
+
+Tip: when defining ranges for walkers initialization, it is advised to define broad range for the first runs to ensure a good exploration of the parameter space
+for final and refined runs, ranges can be set to narrower windows aroudn the expected best fit so that it converges faster
                                   
 
 #%%%%%% Complex priors
