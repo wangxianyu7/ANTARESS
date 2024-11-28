@@ -651,6 +651,21 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - format: {inst : {vis : {prop : val}}}
     #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_diff_prof']    
     mock_dic['spots_prop'] = {}
+
+    #%%%%% Automatic generation of spots
+    #    - Instead of defining individual spots, define multiple spots
+    #    - by providing distribution and relevant parameters from which 
+    #    - to draw values for the latitude, crossing time and size.
+    #    - format: {inst : {vis : {prop : distrib}}}
+    #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_diff_prof']
+    #      and distrib is a dictionary with the following possible formats:
+    #    - {distrib : 'gauss', val, s_val}    # Drawing from a Gaussian distribution with median val and standard deviation s_val
+    #    - {distrib : 'uf', low, high}        # Drawing from a Uniform distribution with boundaries low and high
+    #    - Additionally, you must provide the number of spots to generate with the following format:
+    #    - {inst : {vis : {num}}}
+    #    - and a single value for the contrast of the spots, using the following format:
+    #    - {inst : {vis : {fctrst}}}
+    mock_dic['auto_gen_spots'] = {}
     
     #%%%% Faculae
        
@@ -666,6 +681,20 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #      where prop is defined as par_ISinst_VSvis_FAfacula_name, to match with the structure used in gen_dic['fit_diff_prof']    
     mock_dic['faculae_prop'] = {}
 
+    #%%%%% Automatic generation of faculae
+    #    - Instead of defining individual faculae, define multiple faculae
+    #    - by providing distribution and relevant parameters from which 
+    #    - to draw values for the latitude, crossing time and size.
+    #    - format: {inst : {vis : {prop : distrib}}}
+    #      where prop is defined as par_ISinst_VSvis_FAfacula_name, to match with the structure used in gen_dic['fit_diff_prof']
+    #      and distrib is a dictionary with the following possible formats:
+    #    - {distrib : 'gauss', val, s_val}    # Drawing from a Gaussian distribution with median val and standard deviation s_val    
+    #    - {distrib : 'uf', low, high}        # Drawing from a Uniform distribution with boundaries low and high
+    #    - Additionally, you must provide the number of faculae to generate with the following format:
+    #    - {inst : {vis : {num}}}
+    #    - and a single value for the contrast of the faculae, using the following format:
+    #    - {inst : {vis : {fctrst}}}    
+    mock_dic['auto_gen_faculae'] = {}
 
     #%%%% Noise settings
     
@@ -811,8 +840,6 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Defining spot properties
     if gen_dic['star_name'] == 'TOI3884': 
-        # generate_spots_prop(700, 5, 0.62, mock_dic['spots_prop'], data_dic, gen_dic, 'MIKE_Red', 'mockvis', 2459556.51669 - 4.0, 2459556.51669 + 4.0, 15., -15.)
-        # generate_spots_prop(300, 5, 0.55, mock_dic['spots_prop'], data_dic, gen_dic, 'MIKE_Red', 'mockvis', 2459642.86314 - 1.5, 2459642.86314 + 1.5, 15., -15.)
         mock_dic['spots_prop']={
              'MIKE_Red':{
                  'mockvis':{
@@ -850,7 +877,6 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     if gen_dic['star_name']=='TRAPPIST1':
-        generate_spots_prop(200, 3, 0.4, mock_dic['spots_prop'], data_dic, gen_dic, 'NIRPS_HE', 'mockvis')
         # mock_dic['spots_prop']={
         #      'NIRPS_HE':{
         #          'mockvis':{
@@ -1078,6 +1104,20 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     },
                 }
             }
+
+        mock_dic['auto_gen_spots'] = {
+            'ESPRESSO':{
+                     'mock_vis':{
+
+                         'lat'     : {'distrib':'uf', 'low':10, 'high':20},
+                         'Tc_sp' : {'distrib':'uf', 'low':2458330.39051 - 0.3, 'high':2458330.39051 + 0.3},
+                         'ang'     : {'distrib':'uf', 'low':10, 'high':20},
+                         'num': 20,
+                        'fctrst'    : 0.5,
+                        },
+                    }
+        }
+
     
     if gen_dic['star_name']=='fakeAU_Mic':
         mock_dic['spots_prop']={
@@ -7580,52 +7620,3 @@ def multivar_Gauss_walk(fit_dic, fixed_args):
     fit_dic['initial_distribution'] = np.random.multivariate_normal(central_loc, cov_matrix, size=fit_dic['nwalkers'])
 
     return None                  
-
-##################################################################################################         
-#%%% Automatic spot generation
-################################################################################################## 
-def generate_spots_prop(num_spots, spot_size, spot_ctrst, spot_dic, data_dic, gen_dic, inst, vis, low_sp_T, high_sp_T, low_lat, high_lat):
-    r"""**ANTARESS spot settings: generation module**
-    
-    Generates distribution of spots. The properties of each spot is randomly drawn from a uniform distribution. 
-    
-    Args:
-        TBD
-    
-    Returns:
-        None
-    
-    """  
-
-    spot_dic[inst]={'mockvis':{'fctrst__IS'+inst+'_VS'+vis+'_SP':spot_ctrst}}
-    for isp in range(num_spots):
-
-        #Finding random location of the spot
-        sp_lat = np.random.uniform(low = low_lat, high = high_lat)
-        sp_T = np.random.uniform(low = low_sp_T, high = high_sp_T)
-
-        #Making and storing spot name
-        spot_name = 'spot'+str(isp+1)
-
-        #Updating spot properties
-        spot_dic[inst]['mockvis'].update({
-        'lat__IS'+inst+'_VS'+vis+'_SP'+spot_name     : sp_lat,
-        'Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot_name : sp_T,
-        'ang__IS'+inst+'_VS'+vis+'_SP'+spot_name     : spot_size,
-            })
-
-        #Updating spot LD properties dictionary
-        if 'achrom' not in data_dic['DI']['spots_prop'].keys():data_dic['DI']['spots_prop']['achrom']={}
-        if spot_name not in data_dic['DI']['spots_prop']['achrom'].keys():
-            data_dic['DI']['spots_prop']['achrom'].update({spot_name : [spot_size * np.pi/180]})
-
-        #Updating spot triggers
-        if spot_name not in gen_dic['transit_sp'].keys():
-            gen_dic['transit_sp'].update({spot_name : {inst : [vis]}})
-
-    #Finishing construction of LD dictionary 
-    data_dic['DI']['spots_prop']['achrom'].update({'LD':['quadratic'], 'LD_u1':[0.1155], 'LD_u2':[0.3578]})
-
-
-    return None
-

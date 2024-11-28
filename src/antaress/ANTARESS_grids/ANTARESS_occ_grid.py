@@ -1873,7 +1873,7 @@ def calc_plocced_tiles(pl_prop, x_sky_grid, y_sky_grid):
     r"""**'Planet-occulted' tiles** 
     
     Args:
-        pl_prop (dict) : planet properties.
+        pl_prop (dict) : relevant planet properties.
         x_sky_grid (1D array) : x coordinates of the stellar grid in the inclined star frame. (at st, cen, and end)
         y_sky_grid (1D array) : y coordinates of the stellar grid in the inclined star frame. (at st, cen, and end)
      
@@ -1898,6 +1898,78 @@ def calc_plocced_tiles(pl_prop, x_sky_grid, y_sky_grid):
     return cond_in_pl
 
 
+def generate_contamin_prop(mock_dic, data_dic, gen_dic, contamin_type):
+    r"""**Automatic active region generation**
+    
+    Generates distribution of active regions and updates relevant dictionaries. 
+    The properties of each region is randomly drawn from a uniform or gaussian distribution. 
+    
+    Args:
+        mock_dic (dict) : mock dictionary.
+        data_dic (dict) : data dictionary.
+        gen_dic (dict)  : general dictionary.
+        contamin_type (str) : name of the active region considered ('spots' or 'faculae').
+    
+    Returns:
+        None
+    
+    """  
+
+    #Checking which active region is considered.
+    contamin_str = {'spots':'_SP','faculae':'_FA'}[contamin_type]
+
+    #Initializing the mock dictionary if not done previously
+    for inst in mock_dic['auto_gen_'+contamin_type]:
+        if inst not in mock_dic[contamin_type+'_prop']:mock_dic[contamin_type+'_prop'][inst]={}
+        for vis in mock_dic['auto_gen_'+contamin_type][inst]:
+            if vis not in mock_dic[contamin_type+'_prop'][inst]:mock_dic[contamin_type+'_prop'][inst][vis]={}
+
+            auto_gen_dic = mock_dic['auto_gen_'+contamin_type][inst][vis]
+
+            #If dictionary has previously been initialized retrieve active region counter
+            ctrst_present = False
+            for prop in mock_dic[contamin_type+'_prop'][inst][vis]:
+                if 'fctrst' in prop : ctrst_present = True
+            
+            #Iterating over the number of active regions to update the dictionary
+            for iac in range(auto_gen_dic['num']):
+
+                #Making active region name
+                ac_reg_name = 'gen_'+contamin_type[:-1]+str(iac+1)
+
+                #Looping over all relevant properties
+                for prop in ['lat','Tc_sp','ang']:
+
+                    #Retrieve dictionary
+                    prop_dic = auto_gen_dic[prop]
+
+                    #Drawing from distributions provided
+                    if prop_dic['distrib']=='uf':prop_gen_val = np.random.uniform(low = prop_dic['low'], high = prop_dic['high'])
+                    elif prop_dic['distrib']=='gauss':prop_gen_val = np.random.normal(loc = prop_dic['val'], scale = prop_dic['s_val'])
+                    else:stop('Unrecognized distribution.')
+
+                    #Updating mock properties
+                    mock_dic[contamin_type+'_prop'][inst][vis].update({
+                    prop+'__IS'+inst+'_VS'+vis+contamin_str+ac_reg_name : prop_gen_val,
+                        })
+        
+                #Updating LD properties
+                if data_dic['DI'][contamin_type+'_prop'] == {}:data_dic['DI'][contamin_type+'_prop']['achrom'] = {}
+                if ac_reg_name not in data_dic['DI'][contamin_type+'_prop']['achrom']:data_dic['DI'][contamin_type+'_prop']['achrom'][ac_reg_name]=[mock_dic[contamin_type+'_prop'][inst][vis]['ang__IS'+inst+'_VS'+vis+contamin_str+ac_reg_name] * np.pi/180]  
+       
+                #Updating triggers
+                if ac_reg_name not in gen_dic['transit_sp']:gen_dic['transit_sp'].update({ac_reg_name : {inst : [vis]}}) 
+
+            #Updating contrast
+            if not ctrst_present:
+                if 'fctrst' not in auto_gen_dic:stop('Active region contrast must be provided!')
+                else:mock_dic[contamin_type+'_prop'][inst][vis].update({'fctrst__IS'+inst+'_VS'+vis+contamin_str:auto_gen_dic['fctrst']})
+
+    #Finishing construction of LD dictionary 
+    data_dic['DI'][contamin_type+'_prop']['achrom'].update({'LD':data_dic['DI']['system_prop']['achrom']['LD']})
+    for ideg in range(1,5):data_dic['DI'][contamin_type+'_prop']['achrom'].update({'LD_u'+str(ideg):data_dic['DI']['system_prop']['achrom']['LD_u'+str(ideg)]})
+
+    return None
 
 
 def retrieve_contamin_prop_from_param(param, inst, vis, contamin_type): 
@@ -1921,8 +1993,7 @@ def retrieve_contamin_prop_from_param(param, inst, vis, contamin_type):
     """ 
 
     #Checking which stellar contamination is considered.
-    if contamin_type=='spots':contamin_str = '_SP'
-    else:contamin_str = '_FA'
+    contamin_str = {'spots':'_SP','faculae':'_FA'}[contamin_type]
 
     #Initializing necessary dictionary/list
     contamin_prop = {}

@@ -12,7 +12,7 @@ from dace_query.spectroscopy import Spectroscopy
 from scipy.interpolate import CubicSpline
 from ..ANTARESS_analysis.ANTARESS_model_prof import calc_macro_ker_anigauss,calc_macro_ker_rt 
 from ..ANTARESS_grids.ANTARESS_star_grid import model_star
-from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop,retrieve_contamin_prop_from_param,calc_plocced_tiles,calc_spotted_tiles
+from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,calc_plocc_spot_prop,retrieve_contamin_prop_from_param,calc_plocced_tiles,calc_spotted_tiles,generate_contamin_prop
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm,var_stellar_prop
 from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos,coord_expos_contamin,get_timeorbit
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab,return_spec_nord
@@ -1050,6 +1050,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #Spots
     #------------------------------------------------------------------------------
 
+    #Generating multiple spots
+    if (mock_dic['auto_gen_spots'] != {}):generate_contamin_prop(mock_dic, data_dic, gen_dic, 'spots')
+
     #Initialize spot use
     gen_dic['studied_sp'] = list(gen_dic['transit_sp'].keys()) 
     if len(gen_dic['studied_sp'])!=len(np.unique(gen_dic['studied_sp'])):stop('Spots must have unique names in each visit')
@@ -1110,6 +1113,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #------------------------------------------------------------------------------
     #Faculae
     #------------------------------------------------------------------------------
+
+    #Generating multiple faculae
+    if (mock_dic['auto_gen_faculae'] != {}):generate_contamin_prop(mock_dic, data_dic, gen_dic, 'faculae')
 
     #Initialize facula use
     gen_dic['studied_fa'] = list(gen_dic['transit_fa'].keys()) 
@@ -1935,7 +1941,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 #Theoretical properties from regions occulted by each planet, averaged over full exposure duration  
                                 #    - only if oversampling is effective for this exposure
                                 else:
-                                    for ikey,key in enumerate(['x','y']):mini_pl_dic[key+'_orb_exp'] = coord_dic[inst][vis][pl_loc]['st_pos'][ikey][iexp]+np.arange(n_osamp_exp_all_total)*dcoord_exp_in[key][pl_loc]/(n_osamp_exp_all_total-1.)  
+                                    for ikey,key in enumerate(['x','y']):mini_pl_dic[key+'_orb_exp'] = coord_dic[inst][vis][pl_loc]['st_pos'][ikey,iexp]+np.arange(n_osamp_exp_all_total)*dcoord_exp_in[key][pl_loc]/(n_osamp_exp_all_total-1.)  
                                 mini_pl_dic['RpRs']=data_dic['DI']['system_prop']['achrom'][pl_loc][0]
                                 mini_pl_dic['lambda']=system_param[pl_loc]['lambda_rad']
                                 pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, theo_dic['x_st_sky'], theo_dic['y_st_sky'])
@@ -1984,19 +1990,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                         #Update the global 2D quiet star grid
                         unquiet_star_grid |= (spotted_star_grid | plocced_star_grid | faculaed_star_grid)
-
-                    # if iexp==0:print('0:', theo_dic['nsub_star'], theo_dic['nsub_Dsp'], theo_dic['x_st_sky_grid_sp']['spot1'].shape, theo_dic['x_st_sky_grid_pl']['AUMicb'].shape)
-                    # print(iexp, np.sum(spotted_star_grid), np.sum(plocced_star_grid), np.abs(coord_dic[inst][vis]['AUMicb']['ecl'][iexp]), np.sum(coord_dic[inst][vis][spot]['is_visible'][:, iexp]))
-                    # print(spotted_star_grid)
-                    # print(plocced_star_grid)
-                    # import matplotlib.pyplot as plt
-                    # plt.scatter(theo_dic['x_st_sky'], theo_dic['y_st_sky'], c='blue', marker='s', s=10)
-                    # pl_x, pl_y, _ = frameconv_skyorb_to_skystar(system_param['AUMicb']['lambda_rad'],coord_dic[inst][vis]['AUMicb']['cen_pos'][0,iexp],coord_dic[inst][vis]['AUMicb']['cen_pos'][1,iexp],0)
-                    # plt.scatter(theo_dic['x_st_sky_grid_pl']['AUMicb'] + pl_x, theo_dic['y_st_sky_grid_pl']['AUMicb'] + pl_y, c='black', marker='s', s=10)
-                    # plt.scatter(theo_dic['x_st_sky_grid_sp']['spot1'] + coord_dic[inst][vis]['spot1']['x_sky_exp'][0,iexp], theo_dic['y_st_sky_grid_sp']['spot1'] + coord_dic[inst][vis]['spot1']['y_sky_exp'][1,iexp], alpha=0.5, c='darkgreen', marker='s', s=10)
-                    # plt.xlim([-1.5, 1.5])
-                    # plt.ylim([-1.5, 1.5])
-                    # plt.show()
 
                 #--------------------------------------------------------------------------------------------------
                 #Processing all exposures in visit

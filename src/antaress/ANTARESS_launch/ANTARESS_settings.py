@@ -362,6 +362,21 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_diff_prof']    
     mock_dic['spots_prop'] = {}
     
+    #%%%%% Automatic generation of spots
+    #    - Instead of defining individual spots, define multiple spots
+    #    - by providing distribution and relevant parameters from which 
+    #    - to draw values for the latitude, crossing time and size.
+    #    - format: {inst : {vis : {prop : distrib}}}
+    #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_diff_prof']
+    #      and distrib is a dictionary with the following possible formats:
+    #    - {distrib : 'gauss', val, s_val}    # Drawing from a Gaussian distribution with median val and standard deviation s_val
+    #    - {distrib : 'uf', low, high}        # Drawing from a Uniform distribution with boundaries low and high
+    #    - Additionally, you must provide the number of spots to generate with the following format:
+    #    - {inst : {vis : {num}}}
+    #    - and a single value for the contrast of the spots, using the following format:
+    #    - {inst : {vis : {fctrst}}}
+    mock_dic['auto_gen_spots'] = {}
+    
     #%%%% Faculae
        
     #%%%%% Properties
@@ -373,9 +388,24 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + 'fctrst' : the flux level of the facula surface, relative to the quiet surface of the star
     #              10 = maximum emission, 1 = quiet-star level emission (no contrast with the stellar surface) 
     #    - format: {inst : {vis : {prop : val}}}
-    #      where prop is defined as par_ISinst_VSvis_FAfacula_name, to match with the structure used in gen_dic['fit_res_prof']    
+    #      where prop is defined as par_ISinst_VSvis_FAfacula_name, to match with the structure used in gen_dic['fit_diff_prof']    
     mock_dic['faculae_prop'] = {}
-    
+
+    #%%%%% Automatic generation of faculae
+    #    - Instead of defining individual faculae, define multiple faculae
+    #    - by providing distribution and relevant parameters from which 
+    #    - to draw values for the latitude, crossing time and size.
+    #    - format: {inst : {vis : {prop : distrib}}}
+    #      where prop is defined as par_ISinst_VSvis_FAfacula_name, to match with the structure used in gen_dic['fit_diff_prof']
+    #      and distrib is a dictionary with the following possible formats:
+    #    - {distrib : 'gauss', val, s_val}    # Drawing from a Gaussian distribution with median val and standard deviation s_val    
+    #    - {distrib : 'uf', low, high}        # Drawing from a Uniform distribution with boundaries low and high
+    #    - Additionally, you must provide the number of faculae to generate with the following format:
+    #    - {inst : {vis : {num}}}
+    #    - and a single value for the contrast of the faculae, using the following format:
+    #    - {inst : {vis : {fctrst}}}    
+    mock_dic['auto_gen_faculae'] = {}
+
     #%%%% Noise settings
     
     #%%%%% Measured-like profile
