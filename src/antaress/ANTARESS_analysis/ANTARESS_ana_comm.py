@@ -185,25 +185,39 @@ def prior_check(par,priors_par,params,args):
     elif ('Peq' in par) and (priors_par['low']<0):stop('Prior error: Cannot have negative stellar rotation period. Re-define your priors.')
     return None
 
-def MCMC_walkers_check(par,uf_bd_par,params,args):
+def MCMC_walkers_check(par,fit_dic,params,args):
     r"""**MCMC walkers check**
 
     Checks that walkers initialization range is valid.
 
     Args:
-        TBD
+        par (str): Parameter to check.
+        fit_dic (dict): Dictionary containing fitting information.
+        params (dict): Parameter values.
+        args (dict): Additional arguments.
 
     Returns:
         None
   
     """
-    if 'jitter' in par and uf_bd_par[0]<0.:uf_bd_par[0]=0.
+
+    #Retrieve bounds/distribution used to initlize walker for parameter considered
+    uf=False
+    if fit_dic.get('uf_bd', {}).get(par):uf=True
+    bounds = fit_dic.get('uf_bd', {}).get(par) or fit_dic.get('gauss', {}).get(par)
+    if not bounds:stop('Walker initialization was not defined for '+par)
+
+    if 'jitter' in par:bounds[0]=max(bounds[0], 0.)
     elif 'ang' in par:
-        if uf_bd_par[0]<0.:uf_bd_par[0]=0.
-        if uf_bd_par[1]>90:uf_bd_par[1]=90
-    elif 'veq' in par and uf_bd_par[0]<0:uf_bd_par[0]=0.
-    elif 'Peq' in par and uf_bd_par[0]<0:uf_bd_par[0]=0.
-    elif ('Tc_sp' in par) and ((uf_bd_par[0] <= params[par].value - args['system_param']['star']['Peq']) or (uf_bd_par[1] >= params[par].value + args['system_param']['star']['Peq'])):uf_bd_par = [params[par].value - args['system_param']['star']['Peq'] + 0.001, params[par].value + args['system_param']['star']['Peq'] - 0.001]
+        bounds[0] = max(bounds[0], 0.)
+        if uf:bounds[1] = min(bounds[1], 90.)
+        else:bounds[0] = min(bounds[0], 90.)
+    elif 'veq' in par:bounds[0]=max(bounds[0], 0.)
+    elif 'Peq' in par:bounds[0]=max(bounds[0], 0.)
+    elif ('Tc_sp' in par):
+        if (bounds[0] <= params[par].value - args['system_param']['star']['Peq']): bounds[0] = params[par].value - args['system_param']['star']['Peq'] + 0.001
+        if uf:
+            if bounds[1] >= params[par].value + args['system_param']['star']['Peq']: bounds[1] = params[par].value + args['system_param']['star']['Peq'] - 0.001
     return None
 
 

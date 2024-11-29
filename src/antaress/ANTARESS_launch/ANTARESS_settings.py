@@ -3250,8 +3250,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%%% Properties and model
     #    - format is:
     # mod_prop = { prop_main : { prop_name : {'vary': bool ,'guess': x,'bd':[x_low,x_high]} } }
+    # OR
+    # mod_prop = { prop_main : { prop_name : {'vary': bool ,'guess': x,'gauss':[val,s_val]} } }
     #      where 'prop_main' defines the measured variable to be fitted
     #            'prop_name' defines the properties of the model describing 'prop_main'
+    #      In the first/second case, the walkers' starting positions are drawn from a uniform/gaussian distribution.
     #    - typical variables:
     # + 'rv': fitted using surface RV model
     # + 'ctrst', 'FWHM': fitted using polynomial models
@@ -4400,6 +4403,15 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #%%% MCMC settings
     ################################################################################################## 
     
+    #%%%%% Hessian matrix
+    #    - string containing the location of a Fit_results.npz file containing a Hessian matrix.
+    #    - This Hessian matrix must have been computed from the same parameters are the ones used in the MCMC fit.
+    #    - To use this option, we recommend users first run a fit with fit_mode set to chi2. The chi2 fit will automatically
+    #    - create and store the Hessian matrix. An MCMC can subsequently be run with the path to the Hessian being set as
+    #    - the location of the chi2 fit results.
+    glob_fit_dic['DiffProf']['use_hess'] = ''
+
+
     #%%%% Run mode
     #    - set to
     # + 'use': runs MCMC  

@@ -69,6 +69,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
         if (fit_dic['fit_mode']!='fixed'):
             fit_used=True
             fit_dic['uf_bd']={}
+            fit_dic['gauss']={}
     else:par_struct = False
 
     #Process default / additional parameters
@@ -147,7 +148,12 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
             elif (fit_dic['fit_mode']=='mcmc'):
                 
                 #Range for walkers initialization
-                if (par in model_prop):fit_dic['uf_bd'][par]=model_prop_par['bd']
+                #%% Walkers can be initialized with either a uniform or gaussian distribution. Only one can be provided.
+                #%% If parameters are not included we default to a uniform distribution
+                if (par in model_prop):
+                    if 'bd' in model_prop_par:fit_dic['uf_bd'][par]=model_prop_par['bd']
+                    if 'gauss' in model_prop_par:fit_dic['gauss'][par]=model_prop_par['gauss']
+                    if ('bd' in model_prop_par) and ('gauss' in model_prop_par):stop('Must provide either bd or gauss but not both in initialization of '+par)
                 else:
                     uf_bd=[-1e6,1e6]
                     if (not np.isinf(p_start[par].min)):uf_bd[0]=p_start[par].min
@@ -155,7 +161,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
                     fit_dic['uf_bd'][par]=uf_bd
                     
                 #Check walkers initialization
-                if ('MCMC_walkers_check' in fixed_args):fixed_args['MCMC_walkers_check'](par,fit_dic['uf_bd'][par],p_start,fixed_args)
+                if ('MCMC_walkers_check' in fixed_args):fixed_args['MCMC_walkers_check'](par,fit_dic,p_start,fixed_args)
 
                 #Input priors
                 if (par in priors_prop):
@@ -175,8 +181,12 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
                 #Change guess value and walker range if beyond prior range
                 if fixed_args['varpar_priors'][par]['mod']=='uf':
                     if ((p_start[par].value<fixed_args['varpar_priors'][par]['low']) or (p_start[par].value>fixed_args['varpar_priors'][par]['high'])):p_start[par].value=0.5*(fixed_args['varpar_priors'][par]['low']+fixed_args['varpar_priors'][par]['high'])
-                    if (fit_dic['uf_bd'][par][0]<fixed_args['varpar_priors'][par]['low']):fit_dic['uf_bd'][par][0]=fixed_args['varpar_priors'][par]['low']
-                    if (fit_dic['uf_bd'][par][1]>fixed_args['varpar_priors'][par]['high']):fit_dic['uf_bd'][par][1]=fixed_args['varpar_priors'][par]['high']
+                    if par in fit_dic['uf_bd']:
+                        if (fit_dic['uf_bd'][par][0]<fixed_args['varpar_priors'][par]['low']):fit_dic['uf_bd'][par][0]=fixed_args['varpar_priors'][par]['low']
+                        if (fit_dic['uf_bd'][par][1]>fixed_args['varpar_priors'][par]['high']):fit_dic['uf_bd'][par][1]=fixed_args['varpar_priors'][par]['high']
+                    elif par in fit_dic['gauss']:
+                        if (fit_dic['gauss'][par][0]<fixed_args['varpar_priors'][par]['low']):fit_dic['gauss'][par][0]=fixed_args['varpar_priors'][par]['low']
+                        if (fit_dic['gauss'][par][0]>fixed_args['varpar_priors'][par]['high']):fit_dic['gauss'][par][0]=fixed_args['varpar_priors'][par]['high']
 
     return p_start
 
@@ -684,6 +694,9 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         
     if fit_dic['fit_mode']=='mcmc':
 
+        #Option to initialize walker distribution using a pre-computed Hessian matrix
+        if ('use_hess' not in fit_dic):fit_dic['use_hess']=''
+        
         #Monitor progress
         if ('progress' not in fit_dic):fit_dic['progress']=True 
         
@@ -915,9 +928,29 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
 
             #Random distribution within defined range
             else:
-                for ipar,par in enumerate(fixed_args['var_par_list']):
-                    fit_dic['initial_distribution'][:,ipar]=np.random.uniform(low=fit_dic['uf_bd'][par][0], high=fit_dic['uf_bd'][par][1], size=fit_dic['nwalkers'])                     
-    
+                if fit_dic['use_hess'] != '':
+                    print('         Initializing walkers with Hessian')
+                    #Retrieve Hessian matrix
+                    hess_matrix = np.load(fit_dic['use_hess'],allow_pickle=True)['data'].item()['hess_matrix']
+
+                    #Build covariance matrix
+                    cov_matrix = np.linalg.inv(hess_matrix)
+
+                    #Checking that chi2 fit and current MCMC fit are run on same parameters
+                    if len(fixed_args['var_par_list']) != cov_matrix.shape[0] : stop('Chi2 fit used to estimate the Hessian and current MCMC run do not share the same parameters.')
+
+                    #Retrieving central location of parameters
+                    central_loc = np.zeros(len(fixed_args['var_par_list']), dtype=float)
+                    for ipar, param in enumerate(fixed_args['var_par_list']):central_loc[ipar] = fit_dic['mod_prop'][param]['guess']
+
+                    fit_dic['initial_distribution'] = np.random.multivariate_normal(central_loc, cov_matrix, size=fit_dic['nwalkers'])
+                
+                else:
+                    print('         Initializing walkers with uniform/gaussian distributions')
+                    for ipar,par in enumerate(fixed_args['var_par_list']):
+                        if par in fit_dic['uf_bd']:fit_dic['initial_distribution'][:,ipar]=np.random.uniform(low=fit_dic['uf_bd'][par][0], high=fit_dic['uf_bd'][par][1], size=fit_dic['nwalkers']) 
+                        elif par in fit_dic['gauss']:fit_dic['initial_distribution'][:, ipar]=np.random.normal(loc=fit_dic['gauss'][par][0], scale=fit_dic['gauss'][par][1], size=fit_dic['nwalkers']) 
+
         #By default use variance
         if 'use_cov' not in fixed_args:fixed_args['use_cov']=False
     

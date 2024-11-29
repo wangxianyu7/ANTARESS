@@ -877,9 +877,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     if gen_dic['star_name']=='TRAPPIST1':
-        # mock_dic['spots_prop']={
-        #      'NIRPS_HE':{
-        #          'mockvis':{
+        mock_dic['spots_prop']={
+             'NIRPS_HE':{
+                 'mockvis':{
         #             # # For the spot 'spot1' : 
         #             'lat__ISNIRPS_HE_VSmockvis_SPspot1'     : 30,
         #             'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot1' : 2460472.0,
@@ -1048,15 +1048,15 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     # 'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot33' : 2460470.3+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_SPspot33' : 3,
                     
-                    # # For the spot 'spot34' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_SPspot34'     : 85,
-                    # 'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot34' : 2460470.3+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_SPspot34' : 3,
+                    # For the spot 'spot34' :
+                    'lat__ISNIRPS_HE_VSmockvis_SPspot34'     : 85,
+                    'Tc_sp__ISNIRPS_HE_VSmockvis_SPspot34' : 2460470.3+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis_SPspot34' : 3,
                     
-                #     'fctrst__ISNIRPS_HE_VSmockvis_SP'    : 0.3,
-                #         },
-                #     }
-                # }
+                    'fctrst__ISNIRPS_HE_VSmockvis_SP'    : 0.3,
+                        },
+                    }
+                }
 
 
     if gen_dic['star_name'] == 'AUMic': 
@@ -1105,18 +1105,18 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                 }
             }
 
-        mock_dic['auto_gen_spots'] = {
-            'ESPRESSO':{
-                     'mock_vis':{
+        # mock_dic['auto_gen_spots'] = {
+        #     'ESPRESSO':{
+        #              'mock_vis':{
 
-                         'lat'     : {'distrib':'uf', 'low':10, 'high':20},
-                         'Tc_sp' : {'distrib':'uf', 'low':2458330.39051 - 0.3, 'high':2458330.39051 + 0.3},
-                         'ang'     : {'distrib':'uf', 'low':10, 'high':20},
-                         'num': 20,
-                        'fctrst'    : 0.5,
-                        },
-                    }
-        }
+        #                  'lat'     : {'distrib':'uf', 'low':10, 'high':20},
+        #                  'Tc_sp' : {'distrib':'uf', 'low':2458330.39051 - 0.3, 'high':2458330.39051 + 0.3},
+        #                  'ang'     : {'distrib':'uf', 'low':10, 'high':20},
+        #                  'num': 20,
+        #                 'fctrst'    : 0.5,
+        #                 },
+        #             }
+        # }
 
     
     if gen_dic['star_name']=='fakeAU_Mic':
@@ -5487,8 +5487,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%%% Properties and model
     #    - format is:
     # mod_prop = { prop_main : { prop_name : {'vary': bool ,'guess': x,'bd':[x_low,x_high]} } }
+    # OR
+    # mod_prop = { prop_main : { prop_name : {'vary': bool ,'guess': x,'gauss':[val,s_val]} } }
     #      where 'prop_main' defines the measured variable to be fitted
     #            'prop_name' defines the properties of the model describing 'prop_main'
+    #      In the first/second case, the walkers' starting positions are drawn from a uniform/gaussian distribution.
     #    - typical variables:
     # + 'rv': fitted using surface RV model
     # + 'ctrst', 'FWHM': fitted using polynomial models
@@ -5646,7 +5649,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_DiffProf'] = True  &  False
+    gen_dic['fit_DiffProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5751,6 +5754,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['DiffProf']['mod_prop']={
         'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.65, 'bd':[0.6, 0.8]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.65, 'bd':[0.6, 0.8]},
         # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.15, 1]},
         # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
@@ -7499,6 +7503,15 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #%%% MCMC settings
     ################################################################################################## 
     
+    #%%%%% Hessian matrix
+    #    - string containing the location of a Fit_results.npz file containing a Hessian matrix.
+    #    - This Hessian matrix must have been computed from the same parameters are the ones used in the MCMC fit.
+    #    - To use this option, we recommend users first run a fit with fit_mode set to chi2. The chi2 fit will automatically
+    #    - create and store the Hessian matrix. An MCMC can subsequently be run with the path to the Hessian being set as
+    #    - the location of the chi2 fit results.
+    glob_fit_dic['DiffProf']['use_hess'] = ''
+
+
     #%%%% Run mode
     #    - set to
     # + 'use': runs MCMC  
