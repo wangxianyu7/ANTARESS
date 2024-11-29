@@ -458,57 +458,57 @@ def open_resolution_map(instrument,time_science,ins_mod,bin_x):
     if instrument =='ESPRESSO':
         if ins_mod == 'SINGLEUHR':
             if time_science < 58421.5:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-09-09T12:18:49.369_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-09-09T12_18_49.369_resolution_map.fits')
                 #period = 'UHR_1x1_pre_october_2018'
             elif (time_science > 58421.5) and (time_science < 58653.1):
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-04-06T11:52:27.477_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-04-06T11_52_27.477_resolution_map.fits')
                 #period = 'UHR_1x1_post_october_2018'
             elif time_science > 58653.1:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-06T11:06:36.913_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-06T11_06_36.913_resolution_map.fits')
                 #period = 'UHR_1x1_post_june_2019'
             
         elif (ins_mod == 'MULTIMR') and (bin_x == 4):
             if time_science < 58421.5:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-07-08T14:51:53.873_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-07-08T14_51_53.873_resolution_map.fits')
                 #period = 'MR_4x2_pre_october_2018'
             elif (time_science > 58421.5) and (time_science < 58653.1):
-                instrumental_function = fits.open(static_resol_path+'r.ESPRE.2018-12-01T11:25:27.377_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'r.ESPRE.2018-12-01T11_25_27.377_resolution_map.fits')
                 #period = 'MR_4x2_post_october_2018'
             elif time_science > 58653.1:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-05T12:23:45.139_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-05T12_23_45.139_resolution_map.fits')
                 #period = 'MR_4x2_post_june_2019'
         
         elif (ins_mod == 'MULTIMR') and (bin_x == 8):
             if time_science < 58421.5:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-07-06T11:48:22.862_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-07-06T11_48_22.862_resolution_map.fits')
                 #period = 'MR_8x4_pre_october_2018'
             elif (time_science > 58421.5) and (time_science < 58653.1):
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-10-24T14:16:52.394_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-10-24T14_16_52.394_resolution_map.fits')
                 #period = 'MR_8x4_post_october_2018'
             elif time_science > 58653.1:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-05T12:59:57.138_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-05T12_59_57.138_resolution_map.fits')
                 #period = 'MR_8x4_post_june_2019'
         
         elif (ins_mod == 'SINGLEHR') and (bin_x == 1):
             if time_science < 58421.5:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-07-04T21:28:53.759_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-07-04T21_28_53.759_resolution_map.fits')
                 #period = 'HR_1x1_pre_october_2018'
             elif (time_science > 58421.5) and (time_science < 58653.1):
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-01-05T19:53:55.501_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-01-05T19_53_55.501_resolution_map.fits')
                 #period = 'HR_1x1_post_october_2018'
             elif time_science > 58653.1:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-19T10:10:12.384_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-19T10_10_12.384_resolution_map.fits')
                 #period = 'HR_1x1_post_june_2019'
         
         elif (ins_mod == 'SINGLEHR') and (bin_x == 2):
             if time_science < 58421.5:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-09-05T14:01:58.063_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-09-05T14_01_58.063_resolution_map.fits')
                 #period = 'HR_2x1_pre_october_2018'
             elif (time_science > 58421.5) and (time_science < 58653.1):
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-03-30T21:28:32.060_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-03-30T21_28_32.060_resolution_map.fits')
                 #period = 'HR_2x1_post_october_2018'
             elif time_science > 58653.1:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-09-26T11:06:01.271_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-09-26T11_06_01.271_resolution_map.fits')
                 #period = 'HR_2x1_post_june_2019'
         
     elif instrument in ['NIRPS_HE','NIRPS_HA']:
@@ -856,6 +856,7 @@ def CCF_telluric_model(params,velccf,args=None):
         nu_sel_max = 1./((edge_bins_ord[0]-4*dwav_mod)*10**-8)                 
             
         #Model telluric spectrum
+        #    - flat at unity level outside of absorption lines
         telluric_spectrum = calc_tell_model(tell_species,args['range_mol_prop'],nu_sel_min,nu_sel_max,intensity_scaled_dic,nu_scaled_dic,param_molecules,args['Nx_molec'],hwhm_scaled_dic,nu_mod,nbins_mod,edge_mod) 
  
        	#Convolution and binning  
@@ -875,33 +876,43 @@ def CCF_telluric_model(params,velccf,args=None):
             CCF_line_nu_scaled = CCF_line_nu_rest + args['CCF_deltas'] * param_molecules[args['molec']]['Pressure_LOS'].value
             CCF_line_wav_scaled = 1e8/CCF_line_nu_scaled
 
-            #Keep lines fully within spectrum range without nan
+            #Keeping lines fully within spectrum range and without nan
             flux_ord = args['flux'][iord,idx_def_ord[0]:idx_def_ord[-1]+1]        
             cov_ord = args['cov'][iord][:,idx_def_ord[0]:idx_def_ord[-1]+1] 
             gcal_ord = args['mean_gcal'][iord,idx_def_ord[0]:idx_def_ord[-1]+1] 
             cond_def_ord = args['cond_def'][iord,idx_def_ord[0]:idx_def_ord[-1]+1]        
             idx_maskL_kept = check_CCF_mask_lines(1,np.array([edge_bins_ord]),np.array([cond_def_ord]),CCF_line_wav_scaled,args['edge_velccf'])
+            
+            #Computing CCF if enough line remain
             if len(idx_maskL_kept)>0:
                 ord_coadd_eff+=[isub_ord]
+          
+                #Resample scaling calibration profile over telluric spectrum grid
+                gcal_ord_tell = bind.resampling(edge_bins_mod, edge_bins_ord,gcal_ord, kind=args['resamp_mode'])                       
           
                 #Weights unity
                 sij_ccf       = np.ones(len(idx_maskL_kept))
                 wave_line_ccf = CCF_line_wav_scaled[idx_maskL_kept]
 
-                #Compute CCFs
+                #Compute CCFs on observed spectrum and model telluric spectrum 
                 #    - multiprocessing not efficient for these calculations
+                #    - the observed spectrum is blaze-corrected, but reblazed locally around each telluric line within the CCF function
+                #      the model telluric spectrum has a continuum unity, and is blazed to better match the spectral profile of the measured spectrum in the order (assuming that the true stellar continuum is roughly flat over the order)  
                 edge_velccf_fit = args['edge_velccf'][args['idx_mod'][0]:args['idx_mod'][-1]+2]
                 ccf_uncorr_ord,    cov_ccf_uncorr_ord      = new_compute_CCF(edge_bins_ord,flux_ord,cov_ord,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal = gcal_ord)[0:2]
                 cov_uncorr_ord[isub_ord] = cov_ccf_uncorr_ord 
                 nd_cov_uncorr_ord[isub_ord] = np.shape(cov_ccf_uncorr_ord)[0]
-                ccf_model_conv_ord = new_compute_CCF(edge_bins_mod,telluric_spectrum_conv,None,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1)[0]
+                ccf_model_conv_ord = new_compute_CCF(edge_bins_mod,telluric_spectrum_conv,None,args['resamp_mode'],edge_velccf_fit,sij_ccf,wave_line_ccf,1,cal=gcal_ord_tell)[0]
                
-                #Normalize CCFs and co-add
-                #    - data-based CCF is kept to its original level to naturally account for SNR and noise variations between orders
+                #Co-adding measured spectrum CCF  
+                #    - data-based CCF is kept to its original level to naturally account for SNR and noise variations between orders 
+                ccf_uncorr+=ccf_uncorr_ord 
+               
+                #Scaling telluric spectrum CCF and co-adding
+                #    - telluric CCF is scaled to the measured CCF level, which naturally accounts for flux balance variations (ie, it approximates scaling the telluric spectrum to the broadband flux balance of the measured spectrum)    
                 cond_cont_ccf = (edge_velccf_fit[0:-1] < args['mol_cont_range'][0] ) | (edge_velccf_fit[1::] > args['mol_cont_range'][1] )
                 cont_data = np.nanmedian(ccf_uncorr_ord[cond_cont_ccf])
                 norm_cont+=cont_data
-                ccf_uncorr+=ccf_uncorr_ord
                 ccf_model_conv+=ccf_model_conv_ord*cont_data/np.nanmedian(ccf_model_conv_ord[cond_cont_ccf])
 
                 #Compute CCF from corrected spectrum independently
