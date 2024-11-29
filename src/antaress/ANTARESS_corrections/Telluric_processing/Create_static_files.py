@@ -693,8 +693,13 @@ def Instrumental_resolution(THAR_LINE_TABLE_THAR_FP_A, function_map_resolution):
                                           matrix_resolution_red_hr_theo_slice2, matrix_resolution_red_hr_theo_slice1)
         resolution_map = np.where(resolution_map == 0., np.nan, resolution_map)
     prihdu = fits.PrimaryHDU(header=THAR_LINE_TABLE_THAR_FP_A[0].header)
-    prihdu.writeto('Static_resolution/ESPRESSO/r.' + header['ARCFILE'][:-5] + '_RESOLUTION_MAP.fits', overwrite=True)
-    fits.append('Static_resolution/ESPRESSO/r.' + header['ARCFILE'][:-5] + '_RESOLUTION_MAP.fits', resolution_map)
+    sub_name = header['ARCFILE'][:-5]
+    #Replace : and / so that ANTARESS repository can be cloned on Windows
+    sub_name = sub_name.replace("/", "_")
+    sub_name = sub_name.replace(":", "_")
+    file_path = 'Static_resolution/ESPRESSO/r.' + sub_name + '_RESOLUTION_MAP.fits'
+    prihdu.writeto(file_path, overwrite=True)
+    fits.append(file_path, resolution_map)
     return
 
 

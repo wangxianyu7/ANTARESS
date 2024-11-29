@@ -637,7 +637,7 @@ def sub_new_compute_CCF(edge_mask,wght_mask,n_RV,edge_wav,flux,cov,cal,resamp_mo
         if cal is not None:
             idxCCF_sub = np_where1D((edge_wav>=edge_mask_line[0]) & (edge_wav<=edge_mask_line[-1]))    #indexes where spectrum falls within mask line range
             idxCCF_sub_max = min([len(edge_wav)-1,idxCCF_sub[-1]])                                     
-            mean_gainCCF_sub = np.mean(cal[idxCCF_sub[0]:idxCCF_sub_max+1])
+            mean_gainCCF_sub = np.nanmean(cal[idxCCF_sub[0]:idxCCF_sub_max+1])
         else:mean_gainCCF_sub =  1.
 
         #Spectrum around current line resampled on the CCF table
