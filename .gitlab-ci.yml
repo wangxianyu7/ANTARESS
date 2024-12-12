@@ -16,7 +16,7 @@ stages:
 
 .setup_env:
   before_script:
-  #  - apt update
+    - apt update
     - apt install -y curl rsync bzip2 build-essential openssh-client git
     - eval $(ssh-agent -s)
     - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
