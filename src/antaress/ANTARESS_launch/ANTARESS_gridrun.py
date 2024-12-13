@@ -3,7 +3,7 @@
 import numpy as np
 from ..ANTARESS_process.ANTARESS_main import ANTARESS_main,ANTARESS_settings_overwrite
 
-def ANTARESS_gridrun(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_params,nbook_dic,input_path,custom_plot_settings):
+def ANTARESS_gridrun(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,system_params,nbook_dic,input_path,custom_plot_settings):
     r"""**ANTARESS grid run launch.**
     
     Runs ANTARESS over a grid of values for a given set of fields in the configuration file.  
@@ -62,10 +62,10 @@ def ANTARESS_gridrun(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,de
             #----------------------------------------------------------------------------------------------------------------------------------   
             
             #Overwrite current settings
-            ANTARESS_settings_overwrite(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,corr_spot_dic,gridstep_dic)        
+            ANTARESS_settings_overwrite(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,gridstep_dic)        
             
             #Run code for current parameter set        
-            ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic, corr_spot_dic,system_params,nbook_dic,custom_plot_settings)
+            ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,system_params,nbook_dic,custom_plot_settings)
 
 
     print('End of grid')

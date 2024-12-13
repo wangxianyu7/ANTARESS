@@ -23,10 +23,10 @@ from ..ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_
 from ..ANTARESS_analysis.ANTARESS_joined_star import mod_DIProp
 from ..ANTARESS_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
 from ..ANTARESS_grids.ANTARESS_coord import calc_pl_coord_plots,calc_pl_coord,calc_rv_star_HR,frameconv_skyorb_to_skystar,frameconv_skystar_to_skyorb,get_timeorbit,\
-    calc_zLOS_oblate,frameconv_star_to_skystar,calc_tr_contacts,coord_expos_contamin,frameconv_skystar_to_star
+    calc_zLOS_oblate,frameconv_star_to_skystar,calc_tr_contacts,coord_expos_actreg,frameconv_skystar_to_star
 from ..ANTARESS_corrections.ANTARESS_calib import cal_piecewise_func
 from ..ANTARESS_grids.ANTARESS_star_grid import get_LD_coeff,calc_CB_RV,calc_RVrot,calc_Isurf_grid,calc_st_sky
-from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_spot_prop,retrieve_contamin_prop_from_param, calc_spotted_tiles
+from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_actreg_prop,retrieve_actreg_prop_from_param, calc_actreged_tiles
 
 
 def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,theo_dic,data_prop,glob_fit_dic,mock_dic,nbook_dic,custom_plot_settings):
@@ -2554,50 +2554,38 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     ################################################################################################################ 
     #%%%%% Estimates profiles
     ################################################################################################################ 
-    for key_plot in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_sp_est','map_Diff_prof_clean_fa_est','map_Diff_prof_unclean_sp_est','map_Diff_prof_unclean_pl_est','map_Diff_prof_unclean_fa_est'
-                     'map_Diff_prof_clean_sp_res','map_Diff_prof_clean_pl_res','map_Diff_prof_clean_fa_res','map_Diff_prof_unclean_sp_res','map_Diff_prof_unclean_fa_res','map_Diff_prof_unclean_pl_res']:
+    for key_plot in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_ar_est','map_Diff_prof_unclean_pl_est',
+                     'map_Diff_prof_clean_pl_res','map_Diff_prof_clean_ar_res','map_Diff_prof_unclean_ar_res','map_Diff_prof_unclean_pl_res']:
         if (key_plot in plot_settings):
             ##############################################################################
             #%%%%%% Un-cleaned estimates
-            if key_plot == 'map_Diff_prof_unclean_sp_est':
+            if key_plot == 'map_Diff_prof_unclean_ar_est':
                 print('-----------------------------------')
-                print('+ 2D map: un-cleaned theoretical spotted profiles') 
-            if key_plot == 'map_Diff_prof_unclean_fa_est':
-                print('-----------------------------------')
-                print('+ 2D map: un-cleaned theoretical faculaed profiles')
+                print('+ 2D map: un-cleaned theoretical active region profiles') 
             if key_plot == 'map_Diff_prof_unclean_pl_est':
                 print('-----------------------------------')
                 print('+ 2D map: un-cleaned theoretical planet-occulted profiles') 
             
             ##############################################################################
             #%%%%%% Cleaned estimates
-            if key_plot == 'map_Res_prof_clean_sp_est':
+            if key_plot == 'map_Diff_prof_clean_ar_est':
                 print('-----------------------------------')
-                print('+ 2D map: cleaned theoretical spotted profiles')
-            if key_plot == 'map_Res_prof_clean_fa_est':
-                print('-----------------------------------')
-                print('+ 2D map: cleaned theoretical faculaed profiles') 
+                print('+ 2D map: cleaned theoretical active region profiles')
             if key_plot == 'map_Diff_prof_clean_pl_est':
                 print('-----------------------------------')
                 print('+ 2D map: cleaned theoretical planet-occulted profiles') 
 
             ##############################################################################
             #%%%%%% Residuals    
-            if key_plot == 'map_Diff_prof_clean_sp_res':
+            if key_plot == 'map_Diff_prof_clean_ar_res':
                 print('-----------------------------------')
-                print('+ 2D map: residuals from cleaned spotted profiles') 
-            if key_plot == 'map_Diff_prof_clean_fa_res':
-                print('-----------------------------------')
-                print('+ 2D map: residuals from cleaned faculaed profiles')
+                print('+ 2D map: residuals from cleaned active region profiles') 
             if key_plot == 'map_Diff_prof_clean_pl_res':
                 print('-----------------------------------')
                 print('+ 2D map: residuals from cleaned planet-occulted profiles') 
-            if key_plot == 'map_Diff_prof_unclean_sp_res':
+            if key_plot == 'map_Diff_prof_unclean_ar_res':
                 print('-----------------------------------')
-                print('+ 2D map: residuals from un-cleaned spotted profiles') 
-            if key_plot == 'map_Diff_prof_unclean_fa_res':
-                print('-----------------------------------')
-                print('+ 2D map: residuals from un-cleaned faculaed profiles')
+                print('+ 2D map: residuals from un-cleaned active region profiles')
             if key_plot == 'map_Diff_prof_unclean_pl_res':
                 print('-----------------------------------')
                 print('+ 2D map: residuals from un-cleaned planet-occulted profiles') 
@@ -2609,11 +2597,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     ################################################################################################################  
     #%%%%% Corrected profiles 
     ################################################################################################################  
-    if ('map_Diff_corr_sp_fa' in plot_settings):
-        key_plot = 'map_Diff_corr_sp_fa'
+    if ('map_Diff_corr_actreg' in plot_settings):
+        key_plot = 'map_Diff_corr_actreg'
         
         print('-----------------------------------')
-        print('+ 2D map : spot and facula-corrected differential profiles') 
+        print('+ 2D map : active region-corrected differential profiles') 
         
         #Plot map
         sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot],data_dic,gen_dic,glob_fit_dic,system_param,theo_dic,coord_dic,contact_phases,plot_dic)        
@@ -3710,11 +3698,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         path_loc = gen_dic['save_plot_dir']+'System_view/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
-        #Spot condition
-        plot_spots = plot_set_key['mock_spot_prop'] | plot_set_key['fit_spot_prop'] | (len(plot_set_key['custom_spot_prop'])>0)
-
-        #Facula condition
-        plot_faculae = plot_set_key['mock_facula_prop'] | plot_set_key['fit_facula_prop'] | (len(plot_set_key['custom_facula_prop'])>0)
+        #Active region condition
+        plot_actreg = plot_set_key['mock_actreg_prop'] | plot_set_key['fit_actreg_prop'] | (len(plot_set_key['custom_actreg_prop'])>0)
          
         #--------------------------------------------
         #Coordinates
@@ -4071,7 +4056,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         ld_grid_star,gd_grid_star,mu_grid_star,Fsurf_grid_star,_,_ = calc_Isurf_grid(range(system_prop['nw']),nsub_star,system_prop,coord_grid,star_params,Ssub_Sstar)
 
         #Stellar surface radial velocity 
-        #    - common to all cells if there are no spots
+        #    - common to all cells if there are no active regions
         RVstel = calc_RVrot(coord_grid['x_st_sky'],coord_grid['y_st'],istar_rad,star_params['veq'],star_params['alpha_rot'],star_params['beta_rot'])[0]
         cb_band = calc_CB_RV(get_LD_coeff(system_prop,iband),system_prop['LD'][iband],star_params['c1_CB'],star_params['c2_CB'],star_params['c3_CB'],star_params) 
         for icb in range(4):RVstel+=cb_band[icb]*np.power(mu_grid_star[:,iband],icb)
@@ -4466,331 +4451,161 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if coord_Spole[2]>0.:alph_loc = 1.
                     else:alph_loc = 0.3
                     plt.plot(coord_Spole[0],coord_Spole[1],zorder=4., color='black',marker='o',markersize=6,alpha = alph_loc,markerfacecolor='black') 
-                
+
             #-------------------------------------------------------
-            #Faculaed cells 
+            #Active region cells 
             #-------------------------------------------------------
-            if plot_faculae:
+            if plot_actreg:
 
-                #Initialize facula grid
-                for key in ['x', 'y']:coord_grid[key+'_st_sky_fa']={}
-                coord_grid['d_facell']={}
-                coord_grid['faculae_prop_exp']={}
+                #Initialize active region grid
+                for key in ['x', 'y']:coord_grid[key+'_st_sky_ar']={}
+                coord_grid['d_arcell']={}
+                coord_grid['actreg_prop_exp']={}
 
-                #Initialize boolean grid to identify which cells within the stellar grid are faculaed
-                # - Used in the updating of the stellar surface RV for faculaed cells
-                general_faculaed_tiles = np.zeros(len(coord_grid['x_st_sky']), dtype=bool)
+                #Initialize boolean grid to identify which cells within the stellar grid are active region-occulted
+                # - Used in the updating of the stellar surface RV for active region-occulted cells
+                general_actreged_tiles = np.zeros(len(coord_grid['x_st_sky']), dtype=bool)
 
-                #Custom facula properties
-                if len(plot_set_key['custom_facula_prop'])>0:
-                    if idx_pl==0: print('   + With custom facula properties')
+                #Custom active region properties
+                if len(plot_set_key['custom_actreg_prop'])>0:
+                    if idx_pl==0: print('   + With custom active region properties')
 
                     # Initialize params to use the retrieve_contamin_prop_from_param function.
                     params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
-                    for facula in plot_set_key['custom_facula_prop'] : 
-                        params['lat__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['lat']
-                        params['ang__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['ang']
-                        params['Tc_fa__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['Tc_fa']
-                        if 'fctrst' in plot_set_key['custom_faculae_prop'][facula]:params['fctrst__IS__VS__FA'+facula] = plot_set_key['custom_facula_prop'][facula]['fctrst']
+                    for actreg in plot_set_key['custom_actreg_prop'] : 
+                        params['lat__IS__VS__AR'+actreg] = plot_set_key['custom_actreg_prop'][actreg]['lat']
+                        params['ang__IS__VS__AR'+actreg] = plot_set_key['custom_actreg_prop'][actreg]['ang']
+                        params['Tc_ar__IS__VS__AR'+actreg] = plot_set_key['custom_actreg_prop'][actreg]['Tc_ar']
+                        if 'fctrst' in plot_set_key['custom_actreg_prop'][actreg]:params['fctrst__IS__VS__AR'+actreg] = plot_set_key['custom_actreg_prop'][actreg]['fctrst']
                     
-                #Mock dataset facula properties
-                elif plot_set_key['mock_facula_prop']:
-                    if idx_pl==0: print('   + With mock dataset facula properties')
-                    if (mock_dic['faculae_prop'] != {}):
+                #Mock dataset active region properties
+                elif plot_set_key['mock_actreg_prop']:
+                    if idx_pl==0: print('   + With mock dataset active region properties')
+                    if (mock_dic['actreg_prop'] != {}):
                             inst_to_use = plot_set_key['inst_to_plot'][0]
                             vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
 
-                            #Retrieve the facula parameters from the mock dictionary
-                            params = deepcopy(mock_dic['faculae_prop'][inst_to_use][vis_to_use])
+                            #Retrieve the active region parameters from the mock dictionary
+                            params = deepcopy(mock_dic['actreg_prop'][inst_to_use][vis_to_use])
                             params['cos_istar'] = star_params['cos_istar'] 
                             params['alpha_rot'] = star_params['alpha_rot']
                             params['beta_rot'] = star_params['beta_rot']   
-                    else:stop('Mock facula properties undefined for this system.')   
+                    else:stop('Mock active region properties undefined for this system.')   
                     
-                #Fitted facula properties
-                elif plot_set_key['fit_facula_prop']:
-                    if idx_pl==0: print('   + With fitted facula properties')
+                #Fitted active region properties
+                elif plot_set_key['fit_qctreg_prop']:
+                    if idx_pl==0: print('   + With fitted active region properties')
                     inst_to_use = plot_set_key['inst_to_plot'][0]
                     vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
                     if plot_set_key['fit_results_file'] !='':fit_res = dataload_npz(plot_set_key['fit_results_file'])
                     else:stop('No best-fit output file provided.')
                     params = fit_res['p_final']
-                else:stop('System view unavailable : Facula generation initialized with no facula properties provided')
+                else:stop('System view unavailable : Active region generation initialized with no active region properties provided')
   
-                #Facula Equatorial rotation rate (rad/s)
-                if 'veq_faculae' in star_params:star_params['om_eq_faculae']=star_params['veq_faculae']/star_params['Rstar_km']
-                else:star_params['om_eq_faculae']=star_params['om_eq']
+                #Active region equatorial rotation rate (rad/s)
+                for actreg_name in ['spots','faculae']:
+                    if 'veq_'+actreg_name in star_params:star_params['om_eq_'+actreg_name]=star_params['veq_'+actreg_name]/star_params['Rstar_km']
+                    else:star_params['om_eq_'+actreg_name]=star_params['om_eq']
 
-                #Retrieving facula properties
-                if len(plot_set_key['custom_facula_prop'])>0:faculae_prop = retrieve_contamin_prop_from_param(params, '_', '_','faculae') 
-                else:faculae_prop = retrieve_contamin_prop_from_param(params, inst_to_use, vis_to_use,'faculae') 
-                faculae_prop['cos_istar'] = params['cos_istar']
+                #Retrieving active region properties
+                if len(plot_set_key['custom_actreg_prop'])>0:actreg_prop = retrieve_actreg_prop_from_param(params, '_', '_') 
+                else:actreg_prop = retrieve_actreg_prop_from_param(params, inst_to_use, vis_to_use) 
+                actreg_prop['cos_istar'] = params['cos_istar']
                 
-                #Define a reference facula for later
-                ref_facula = faculae_prop['faculae'][0]
+                #Define a reference active region for later
+                ref_actreg = actreg_prop['actreg'][0]
 
-                #Build facula grids
-                for facula in faculae_prop['faculae']:
-                    coord_grid['d_facell'][facula],_,coord_grid['x_st_sky_fa'][facula], coord_grid['y_st_sky_fa'][facula],_ = occ_region_grid(np.sin(faculae_prop[facula]['ang_rad']), plot_set_key['n_facell'],spot=True)
+                #Build active region grids
+                for actreg in actreg_prop['actreg']:
+                    coord_grid['d_arcell'][actreg],_,coord_grid['x_st_sky_ar'][actreg], coord_grid['y_st_sky_ar'][actreg],_ = occ_region_grid(np.sin(actreg_prop[actreg]['ang_rad']), plot_set_key['n_arcell'],planet=True)
 
                 #Check if we have provided times for the plotting
                 if plot_set_key['t_BJD'] is not None:t_exp = plot_t
-
-                #If no times provided for the plotting, then put facula at a given location
+                       
+                #If no times provided for the plotting, then put active region at a given location
                 else:
-                    t_ref = faculae_prop[ref_facula]['Tc_fa']
-                    P_fa = 2*np.pi/((1.-star_params['alpha_rot_faculae']*np.sin(faculae_prop[ref_facula]['lat_rad'])**2.-star_params['beta_rot_faculae']*np.sin(faculae_prop[ref_facula]['lat_rad'])**4.)*star_params['om_eq_faculae']*3600.*24.)
-                    t_exp = t_ref + P_fa/10 - 2400000.
-                                    
-                #Defining a reference facula contrast - since all faculae share the same contrast
-                ref_fctrst = faculae_prop[ref_facula]['fctrst']
+                    t_ref = actreg_prop[ref_actreg]['Tc_ar']
+                    P_ar = 2*np.pi/((1.-star_params['alpha_rot']*np.sin(actreg_prop[ref_actreg]['lat_rad'])**2.-star_params['beta_rot']*np.sin(actreg_prop[ref_actreg]['lat_rad'])**4.)*star_params['om_eq']*3600.*24.)
+                    t_exp = t_ref + P_ar/10 - 2400000.
 
-                #Defining a list that will store which faculae have already been processed
-                fa_proc = []
+                #Defining a list that will store which active regions have already been processed
+                ar_proc = []
+                #Pre-process observations to get coordinates - needed to deal with overlap
+                for iactreg, actreg in enumerate(actreg_prop['actreg']) : coord_grid['actreg_prop_exp'][actreg] = coord_expos_actreg(actreg,t_exp,actreg_prop,star_params,None,gen_dic['actreg_coord_par'])
 
-                for facula in faculae_prop['faculae'] :
-                    faculae_prop_exp = coord_expos_contamin(facula,t_exp,faculae_prop,star_params,None,gen_dic['facula_coord_par'],'faculae')
-                    coord_grid['faculae_prop_exp'][facula] = faculae_prop_exp
+                #Process observations
+                for iactreg, actreg in enumerate(actreg_prop['actreg']) :
 
                     #Localize grid
-                    loc_x_st_sky_fa = coord_grid['x_st_sky_fa'][facula]+faculae_prop_exp['x_sky_exp'][1]
-                    loc_y_st_sky_fa = coord_grid['y_st_sky_fa'][facula]+faculae_prop_exp['y_sky_exp'][1]
-
-                    #Remove cells in the grid that are outside the stellar surfacce
-                    cond_in_star = loc_x_st_sky_fa**2 + loc_y_st_sky_fa**2 < 1.
-                    bound_x_st_sky_fa = loc_x_st_sky_fa[cond_in_star]
-                    bound_y_st_sky_fa = loc_y_st_sky_fa[cond_in_star]
-                    bound_z_st_sky_fa = np.sqrt(1 - bound_x_st_sky_fa**2 - bound_y_st_sky_fa**2)
-
-                    if faculae_prop_exp['is_visible'][1]:
-
-                        #Determining which cells are faculaed
-                        _, faculaed_tiles = calc_spotted_tiles(faculae_prop_exp,faculae_prop[facula]['ang_rad'], bound_x_st_sky_fa, bound_y_st_sky_fa, bound_z_st_sky_fa,{}, params, use_grid_dic = False, disc_exp = False)
-                        x_facula_grid = loc_x_st_sky_fa[cond_in_star][faculaed_tiles]
-                        y_facula_grid = loc_y_st_sky_fa[cond_in_star][faculaed_tiles]
-                        z_facula_grid = bound_z_st_sky_fa[faculaed_tiles]
-
-                        #Accounting for facula-facula overlap
-                        if len(fa_proc)>0:
-                            for prev_facula in fa_proc:
-                                prev_x_st_grid, prev_y_st_grid, prev_z_st_grid = frameconv_skystar_to_star(x_facula_grid, y_facula_grid, z_facula_grid, istar_rad)
-                                x_prev_facula_grid = prev_x_st_grid*coord_grid['faculae_prop_exp'][prev_facula]['cos_long_exp'][1] - prev_z_st_grid*coord_grid['faculae_prop_exp'][prev_facula]['sin_long_exp'][1]
-                                y_prev_facula_grid = prev_y_st_grid*coord_grid['faculae_prop_exp'][prev_facula]['cos_lat_exp'][1] - (prev_z_st_grid*coord_grid['faculae_prop_exp'][prev_facula]['cos_long_exp'][1] + prev_x_st_grid*coord_grid['faculae_prop_exp'][prev_facula]['sin_long_exp'][1]) * coord_grid['faculae_prop_exp'][prev_facula]['sin_lat_exp'][1]
-                                cond_in_prev_facula = x_prev_facula_grid**2. + y_prev_facula_grid**2 <= faculae_prop[prev_facula]['ang_rad']**2
-                                x_facula_grid = x_facula_grid[~cond_in_prev_facula]
-                                y_facula_grid = y_facula_grid[~cond_in_prev_facula]
-                                z_facula_grid = z_facula_grid[~cond_in_prev_facula]
-                        fa_proc += [facula]
-
-                        #Plotting each facula grid cell
-                        for x, y in zip(x_facula_grid, y_facula_grid):
-                            rect_fa = plt.Rectangle(( x-0.5*coord_grid['d_facell'][facula],y-0.5*coord_grid['d_facell'][facula]), coord_grid['d_facell'][facula],coord_grid['d_facell'][facula], facecolor='white',edgecolor='white',lw=0.1,zorder=-1, alpha=(ref_fctrst-1.))
-                            ax1.add_artist(rect_fa)
-                            
-                            #Overlaying facula grid cell boundaries
-                            if plot_set_key['fa_grid_overlay']:
-                                rect_fa = plt.Rectangle(( x-0.5*coord_grid['d_facell'][facula],y-0.5*coord_grid['d_facell'][facula]), coord_grid['d_facell'][facula],coord_grid['d_facell'][facula], facecolor='None',edgecolor=plot_settings[key_plot]['col_orb_fa'],lw=0.5,zorder=-1)
-                                ax1.add_artist(rect_fa)
-
-                    #Updating stellar surface radial velocity for faculaed cells
-                    _, gen_faculaed_tiles = calc_spotted_tiles(faculae_prop_exp,faculae_prop[facula]['ang_rad'], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], {}, params, use_grid_dic = False, disc_exp = False)
-                general_faculaed_tiles |= gen_faculaed_tiles
-                RVstel[general_faculaed_tiles] = calc_RVrot(coord_grid['x_st_sky'][general_faculaed_tiles],coord_grid['y_st'][general_faculaed_tiles],istar_rad,star_params['veq_faculae'],star_params['alpha_rot_faculae'],star_params['beta_rot_faculae'])[0]
-                for icb in range(4):RVstel[general_faculaed_tiles]+=cb_band[icb]*np.power(mu_grid_star[general_faculaed_tiles,iband],icb)
-
-                #Facula orbit
-                # - Generating array of times at which we want to retrieve the facula center coordinates
-                orbit_t = np.linspace(0,2*np.pi/((1.-star_params['alpha_rot_faculae']*faculae_prop_exp['sin_lat_exp'][1]**2.-star_params['beta_rot_faculae']*faculae_prop_exp['sin_lat_exp'][1]**4.)*star_params['om_eq_faculae']*3600.*24.),plot_set_key['npts_orbits_fa'])
-                num_faculae = len(faculae_prop['faculae'])
-                
-                # - Dictionary in which we will store the facula center coordinates
-                orb_coords = {'x':np.zeros([num_faculae, plot_set_key['npts_orbits_fa']], dtype=float),'y':np.zeros([num_faculae, plot_set_key['npts_orbits_fa']], dtype=float),'z':np.zeros([num_faculae, plot_set_key['npts_orbits_fa']], dtype=float)}
-                
-                # - Calculate facula center coordinates
-                for i_t, t in enumerate(orbit_t) :
-                    for ifacula, facula in enumerate(faculae_prop['faculae']):
-                        orb_faculae_prop_exp = coord_expos_contamin(facula,t,faculae_prop,star_params,None,gen_dic['facula_coord_par'],'faculae')
-                        for key in ['x', 'y', 'z']:
-                            orb_coords[key][ifacula, i_t] = orb_faculae_prop_exp[key+'_sky_exp'][1]
-
-                # - Only plotting the facula orbit coordinates that are in the front hemisphere of the star
-                if plot_set_key['plot_fa_orb']:
-                    for ifacula in range(num_faculae):
-                        pos_x = orb_coords['x'][ifacula, :][orb_coords['z'][ifacula, :]>0]
-                        pos_y = orb_coords['y'][ifacula, :][orb_coords['z'][ifacula, :]>0]
-
-                        ax1.plot(pos_x, pos_y, color=plot_set_key['col_orb_fa'],lw=plot_set_key['lw_plot'],alpha=1.)
-
-            #-------------------------------------------------------
-            #Spotted cells 
-            #-------------------------------------------------------
-            if plot_spots:
-
-                #Initialize spot grid
-                for key in ['x', 'y']:coord_grid[key+'_st_sky_sp']={}
-                coord_grid['d_spcell']={}
-                coord_grid['spots_prop_exp']={}
-
-                #Initialize boolean grid to identify which cells within the stellar grid are spotted
-                # - Used in the updating of the stellar surface RV for spotted cells
-                general_spotted_tiles = np.zeros(len(coord_grid['x_st_sky']), dtype=bool)
-
-                #Custom spot properties
-                if len(plot_set_key['custom_spot_prop'])>0:
-                    if idx_pl==0: print('   + With custom spot properties')
-
-                    # Initialize params to use the retrieve_contamin_prop_from_param function.
-                    params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
-                    for spot in plot_set_key['custom_spot_prop'] : 
-                        params['lat__IS__VS__SP'+spot] = plot_set_key['custom_spot_prop'][spot]['lat']
-                        params['ang__IS__VS__SP'+spot] = plot_set_key['custom_spot_prop'][spot]['ang']
-                        params['Tc_sp__IS__VS__SP'+spot] = plot_set_key['custom_spot_prop'][spot]['Tc_sp']
-                        if 'fctrst' in plot_set_key['custom_spot_prop'][spot]:params['fctrst__IS__VS__SP'+spot] = plot_set_key['custom_spot_prop'][spot]['fctrst']
-                    
-                #Mock dataset spot properties
-                elif plot_set_key['mock_spot_prop']:
-                    if idx_pl==0: print('   + With mock dataset spot properties')
-                    if (mock_dic['spots_prop'] != {}):
-                            inst_to_use = plot_set_key['inst_to_plot'][0]
-                            vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
-
-                            #Retrieve the spot parameters from the mock dictionary
-                            params = deepcopy(mock_dic['spots_prop'][inst_to_use][vis_to_use])
-                            params['cos_istar'] = star_params['cos_istar'] 
-                            params['alpha_rot'] = star_params['alpha_rot']
-                            params['beta_rot'] = star_params['beta_rot']   
-                    else:stop('Mock spot properties undefined for this system.')   
-                    
-                #Fitted spot properties
-                elif plot_set_key['fit_spot_prop']:
-                    if idx_pl==0: print('   + With fitted spot properties')
-                    inst_to_use = plot_set_key['inst_to_plot'][0]
-                    vis_to_use = plot_set_key['visits_to_plot'][inst_to_use][0]
-                    if plot_set_key['fit_results_file'] !='':fit_res = dataload_npz(plot_set_key['fit_results_file'])
-                    else:stop('No best-fit output file provided.')
-                    params = fit_res['p_final']
-                else:stop('System view unavailable : Spot generation initialized with no spot properties provided')
-  
-                #Spot Equatorial rotation rate (rad/s)
-                if 'veq_spots' in star_params:star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
-                else:star_params['om_eq_spots']=star_params['om_eq']
-
-                #Retrieving spot properties
-                if len(plot_set_key['custom_spot_prop'])>0:spots_prop = retrieve_contamin_prop_from_param(params, '_', '_','spots') 
-                else:spots_prop = retrieve_contamin_prop_from_param(params, inst_to_use, vis_to_use,'spots') 
-                spots_prop['cos_istar'] = params['cos_istar']
-                
-                #Define a reference spot for later
-                ref_spot = spots_prop['spots'][0]
-
-                #Build spot grids
-                for spot in spots_prop['spots']:
-                    coord_grid['d_spcell'][spot],_,coord_grid['x_st_sky_sp'][spot], coord_grid['y_st_sky_sp'][spot],_ = occ_region_grid(np.sin(spots_prop[spot]['ang_rad']), plot_set_key['n_spcell'],spot=True)
-
-                #Check if we have provided times for the plotting
-                if plot_set_key['t_BJD'] is not None:t_exp = plot_t
-
-                #If no times provided for the plotting, then put spot at a given location
-                else:
-                    t_ref = spots_prop[ref_spot]['Tc_sp']
-                    P_sp = 2*np.pi/((1.-star_params['alpha_rot_spots']*np.sin(spots_prop[ref_spot]['lat_rad'])**2.-star_params['beta_rot_spots']*np.sin(spots_prop[ref_spot]['lat_rad'])**4.)*star_params['om_eq_spots']*3600.*24.)
-                    t_exp = t_ref + P_sp/10 - 2400000.
-                                    
-                #Defining a reference spot contrast - since all spots share the same contrast
-                ref_fctrst = spots_prop[ref_spot]['fctrst']
-
-                #Defining a list that will store which spots have already been processed
-                sp_proc = []
-
-                for spot in spots_prop['spots'] :
-                    spots_prop_exp = coord_expos_contamin(spot,t_exp,spots_prop,star_params,None,gen_dic['spot_coord_par'],'spots')
-                    coord_grid['spots_prop_exp'][spot] = spots_prop_exp
-
-                    #Localize grid
-                    loc_x_st_sky_sp = coord_grid['x_st_sky_sp'][spot]+spots_prop_exp['x_sky_exp'][1]
-                    loc_y_st_sky_sp = coord_grid['y_st_sky_sp'][spot]+spots_prop_exp['y_sky_exp'][1]
+                    loc_x_st_sky_ar = coord_grid['x_st_sky_ar'][actreg]+coord_grid['actreg_prop_exp'][actreg]['x_sky_exp'][1]
+                    loc_y_st_sky_ar = coord_grid['y_st_sky_ar'][actreg]+coord_grid['actreg_prop_exp'][actreg]['y_sky_exp'][1]
 
                     #Remove cells in the grid that are outside the stellar surface
-                    cond_in_star = loc_x_st_sky_sp**2 + loc_y_st_sky_sp**2 < 1.
-                    bound_x_st_sky_sp = loc_x_st_sky_sp[cond_in_star]
-                    bound_y_st_sky_sp = loc_y_st_sky_sp[cond_in_star]
-                    bound_z_st_sky_sp = np.sqrt(1 - bound_x_st_sky_sp**2 - bound_y_st_sky_sp**2)
+                    cond_in_star = loc_x_st_sky_ar**2 + loc_y_st_sky_ar**2 < 1.
+                    bound_x_st_sky_ar = loc_x_st_sky_ar[cond_in_star]
+                    bound_y_st_sky_ar = loc_y_st_sky_ar[cond_in_star]
+                    bound_z_st_sky_ar = np.sqrt(1 - bound_x_st_sky_ar**2 - bound_y_st_sky_ar**2)
 
-                    if spots_prop_exp['is_visible'][1]:
+                    if coord_grid['actreg_prop_exp'][actreg]['is_visible'][1]:
 
-                        #Determining which cells are spotted
-                        _, spotted_tiles = calc_spotted_tiles(spots_prop_exp,spots_prop[spot]['ang_rad'], bound_x_st_sky_sp, bound_y_st_sky_sp, bound_z_st_sky_sp,{}, params, use_grid_dic = False, disc_exp = False)
-                        x_spot_grid = loc_x_st_sky_sp[cond_in_star][spotted_tiles]
-                        y_spot_grid = loc_y_st_sky_sp[cond_in_star][spotted_tiles]
-                        z_spot_grid = bound_z_st_sky_sp[spotted_tiles]
+                        #Determining which cells are active region-occulted
+                        _, actreged_tiles = calc_actreged_tiles(coord_grid['actreg_prop_exp'][actreg],actreg_prop[actreg]['ang_rad'], bound_x_st_sky_ar, bound_y_st_sky_ar, bound_z_st_sky_ar,{}, params, use_grid_dic = False, disc_exp = False)
+                        x_actreg_grid = loc_x_st_sky_ar[cond_in_star][actreged_tiles]
+                        y_actreg_grid = loc_y_st_sky_ar[cond_in_star][actreged_tiles]
+                        z_actreg_grid = bound_z_st_sky_ar[actreged_tiles]
 
-                        #Accounting for spot-spot overlap
-                        if len(sp_proc)>0:
-                            for prev_spot in sp_proc:
-                                prev_x_st_grid, prev_y_st_grid, prev_z_st_grid = frameconv_skystar_to_star(x_spot_grid, y_spot_grid, z_spot_grid, istar_rad)
-                                x_prev_spot_grid = prev_x_st_grid*coord_grid['spots_prop_exp'][prev_spot]['cos_long_exp'][1] - prev_z_st_grid*coord_grid['spots_prop_exp'][prev_spot]['sin_long_exp'][1]
-                                y_prev_spot_grid = prev_y_st_grid*coord_grid['spots_prop_exp'][prev_spot]['cos_lat_exp'][1] - (prev_z_st_grid*coord_grid['spots_prop_exp'][prev_spot]['cos_long_exp'][1] + prev_x_st_grid*coord_grid['spots_prop_exp'][prev_spot]['sin_long_exp'][1]) * coord_grid['spots_prop_exp'][prev_spot]['sin_lat_exp'][1]
-                                cond_in_prev_spot = x_prev_spot_grid**2. + y_prev_spot_grid**2 <= spots_prop[prev_spot]['ang_rad']**2
-                                x_spot_grid = x_spot_grid[~cond_in_prev_spot]
-                                y_spot_grid = y_spot_grid[~cond_in_prev_spot]
-                                z_spot_grid = z_spot_grid[~cond_in_prev_spot]
-                        sp_proc += [spot]
+                        #Accounting for actve region - active region overlap
+                        temp_actreg_list = np.delete(actreg_prop['actreg'], iactreg)
+                        for prev_reg in temp_actreg_list:
+                            if actreg_prop[prev_reg]['fctrst'] > actreg_prop[actreg]['fctrst']:
+                                prev_x_st_grid, prev_y_st_grid, prev_z_st_grid = frameconv_skystar_to_star(x_actreg_grid, y_actreg_grid, z_actreg_grid, istar_rad)
+                                x_prev_actreg_grid = prev_x_st_grid*coord_grid['actreg_prop_exp'][prev_reg]['cos_long_exp'][1] - prev_z_st_grid*coord_grid['actreg_prop_exp'][prev_reg]['sin_long_exp'][1]
+                                y_prev_actreg_grid = prev_y_st_grid*coord_grid['actreg_prop_exp'][prev_reg]['cos_lat_exp'][1] - (prev_z_st_grid*coord_grid['actreg_prop_exp'][prev_reg]['cos_long_exp'][1] + prev_x_st_grid*coord_grid['actreg_prop_exp'][prev_reg]['sin_long_exp'][1]) * coord_grid['actreg_prop_exp'][prev_reg]['sin_lat_exp'][1]
+                                cond_in_prev_actreg = x_prev_actreg_grid**2. + y_prev_actreg_grid**2 <= actreg_prop[prev_reg]['ang_rad']**2
+                                x_actreg_grid = x_actreg_grid[~cond_in_prev_actreg]
+                                y_actreg_grid = y_actreg_grid[~cond_in_prev_actreg]
+                                z_actreg_grid = z_actreg_grid[~cond_in_prev_actreg]
 
-                        #Accounting for spot-facula overlap
-                        if plot_faculae:
-                            for facula in faculae_prop['faculae']:
-
-                                #Move spot coordinates to star reference frame
-                                sp_x_st_grid, sp_y_st_grid, sp_z_st_grid = frameconv_skystar_to_star(x_spot_grid, y_spot_grid, z_spot_grid, istar_rad)
-
-                                #Move spot coordinates to the facula reference frame
-                                x_fa_sp_grid = sp_x_st_grid*coord_grid['faculae_prop_exp'][facula]['cos_long_exp'][1] - sp_z_st_grid*coord_grid['faculae_prop_exp'][facula]['sin_long_exp'][1]
-                                y_fa_sp_grid = sp_y_st_grid*coord_grid['faculae_prop_exp'][facula]['cos_lat_exp'][1] - (sp_z_st_grid*coord_grid['faculae_prop_exp'][facula]['cos_long_exp'][1] + sp_x_st_grid*coord_grid['faculae_prop_exp'][facula]['sin_long_exp'][1]) * coord_grid['faculae_prop_exp'][facula]['sin_lat_exp'][1]
-                                cond_in_facula = x_fa_sp_grid**2. + y_fa_sp_grid**2 <= faculae_prop[facula]['ang_rad']**2
-
-                                #Remove spot cells which are under the faculae
-                                x_spot_grid = x_spot_grid[~cond_in_facula]
-                                y_spot_grid = y_spot_grid[~cond_in_facula]
-                                z_spot_grid = z_spot_grid[~cond_in_facula]                                
-
-                        #Plotting each spot grid cell
-                        for x, y in zip(x_spot_grid, y_spot_grid):
-                            rect_sp = plt.Rectangle(( x-0.5*coord_grid['d_spcell'][spot],y-0.5*coord_grid['d_spcell'][spot]), coord_grid['d_spcell'][spot],coord_grid['d_spcell'][spot], facecolor='black',edgecolor='black',lw=0.1,zorder=-1, alpha=ref_fctrst)
-                            ax1.add_artist(rect_sp)
+                        #Plotting each active region grid cell
+                        for x, y in zip(x_actreg_grid, y_actreg_grid):
+                            if actreg_prop[actreg]['fctrst'] < 1.:rect_ar = plt.Rectangle(( x-0.5*coord_grid['d_arcell'][actreg],y-0.5*coord_grid['d_arcell'][actreg]), coord_grid['d_arcell'][actreg],coord_grid['d_arcell'][actreg], facecolor='black',edgecolor='black',lw=0.1,zorder=-1, alpha=(1-actreg_prop[actreg]['fctrst']))
+                            else:rect_ar = plt.Rectangle(( x-0.5*coord_grid['d_arcell'][actreg],y-0.5*coord_grid['d_arcell'][actreg]), coord_grid['d_arcell'][actreg],coord_grid['d_arcell'][actreg], facecolor='white',edgecolor='white',lw=0.1,zorder=-1, alpha=(2-actreg_prop[actreg]['fctrst']))
+                            ax1.add_artist(rect_ar)
                             
-                            #Overlaying spot grid cell boundaries
-                            if plot_set_key['sp_grid_overlay']:
-                                rect_sp = plt.Rectangle(( x-0.5*coord_grid['d_spcell'][spot],y-0.5*coord_grid['d_spcell'][spot]), coord_grid['d_spcell'][spot],coord_grid['d_spcell'][spot], facecolor='None',edgecolor=plot_settings[key_plot]['col_orb_sp'],lw=0.5,zorder=-1)
-                                ax1.add_artist(rect_sp)
+                            #Overlaying active region grid cell boundaries
+                            if plot_set_key['ar_grid_overlay']:
+                                rect_ar = plt.Rectangle(( x-0.5*coord_grid['d_arcell'][actreg],y-0.5*coord_grid['d_arcell'][actreg]), coord_grid['d_arcell'][actreg],coord_grid['d_arcell'][actreg], facecolor='None',edgecolor=plot_settings[key_plot]['col_orb_ar'],lw=0.5,zorder=-1)
+                                ax1.add_artist(rect_ar)
 
-                    #Updating stellar surface radial velocity  for spotted cells
-                    _, gen_spotted_tiles = calc_spotted_tiles(spots_prop_exp,spots_prop[spot]['ang_rad'], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], {}, params, use_grid_dic = False, disc_exp = False)
-                general_spotted_tiles |= gen_spotted_tiles
-                RVstel[general_spotted_tiles] = calc_RVrot(coord_grid['x_st_sky'][general_spotted_tiles],coord_grid['y_st'][general_spotted_tiles],istar_rad,star_params['veq_spots'],star_params['alpha_rot_spots'],star_params['beta_rot_spots'])[0]
-                for icb in range(4):RVstel[general_spotted_tiles]+=cb_band[icb]*np.power(mu_grid_star[general_spotted_tiles,iband],icb)
+                    #Updating stellar surface radial velocity  for active region - covered cells
+                    _, gen_actreged_tiles = calc_actreged_tiles(coord_grid['actreg_prop_exp'][actreg],actreg_prop[actreg]['ang_rad'], coord_grid['x_st_sky'], coord_grid['y_st_sky'], coord_grid['z_st_sky'], {}, params, use_grid_dic = False, disc_exp = False)
+                general_actreged_tiles |= gen_actreged_tiles
 
-                #Spot orbit
-                # - Generating array of times at which we want to retrieve the spot center coordinates
-                orbit_t = np.linspace(0,2*np.pi/((1.-star_params['alpha_rot_spots']*spots_prop_exp['sin_lat_exp'][1]**2.-star_params['beta_rot_spots']*spots_prop_exp['sin_lat_exp'][1]**4.)*star_params['om_eq_spots']*3600.*24.),plot_set_key['npts_orbits_sp'])
-                num_spots = len(spots_prop['spots'])
+                RVstel[general_actreged_tiles] = calc_RVrot(coord_grid['x_st_sky'][general_actreged_tiles],coord_grid['y_st'][general_actreged_tiles],istar_rad,star_params['veq_spots'],star_params['alpha_rot_spots'],star_params['beta_rot_spots'])[0]
+                for icb in range(4):RVstel[general_actreged_tiles]+=cb_band[icb]*np.power(mu_grid_star[general_actreged_tiles,iband],icb)
+
+                #Active region orbit
+                # - Generating array of times at which we want to retrieve the active region center coordinates
+                orbit_t = np.linspace(0,2*np.pi/((1.-star_params['alpha_rot']*coord_grid['actreg_prop_exp'][actreg]['sin_lat_exp'][1]**2.-star_params['beta_rot']*coord_grid['actreg_prop_exp'][actreg]['sin_lat_exp'][1]**4.)*star_params['om_eq']*3600.*24.),plot_set_key['npts_orbits_ar'])
+                num_actreg = len(actreg_prop['actreg'])
                 
-                # - Dictionary in which we will store the spot center coordinates
-                orb_coords = {'x':np.zeros([num_spots, plot_set_key['npts_orbits_sp']], dtype=float),'y':np.zeros([num_spots, plot_set_key['npts_orbits_sp']], dtype=float),'z':np.zeros([num_spots, plot_set_key['npts_orbits_sp']], dtype=float)}
+                # - Dictionary in which we will store the active region center coordinates
+                orb_coords = {'x':np.zeros([num_actreg, plot_set_key['npts_orbits_ar']], dtype=float),'y':np.zeros([num_actreg, plot_set_key['npts_orbits_ar']], dtype=float),'z':np.zeros([num_actreg, plot_set_key['npts_orbits_ar']], dtype=float)}
                 
-                # - Calculate spot center coordinates
+                # - Calculate active region center coordinates
                 for i_t, t in enumerate(orbit_t) :
-                    for ispot, spot in enumerate(spots_prop['spots']):
-                        orb_spots_prop_exp = coord_expos_contamin(spot,t,spots_prop,star_params,None,gen_dic['spot_coord_par'],'spots')
+                    for iar, actreg in enumerate(actreg_prop['actreg']):
+                        orb_actreg_prop_exp = coord_expos_actreg(actreg,t,actreg_prop,star_params,None,gen_dic['actreg_coord_par'])
                         for key in ['x', 'y', 'z']:
-                            orb_coords[key][ispot, i_t] = orb_spots_prop_exp[key+'_sky_exp'][1]
+                            orb_coords[key][iar, i_t] = orb_actreg_prop_exp[key+'_sky_exp'][1]
 
-                # - Only plotting the spot orbit coordinates that are in the front hemisphere of the star
-                if plot_set_key['plot_sp_orb']:
-                    for ispot in range(num_spots):
-                        pos_x = orb_coords['x'][ispot, :][orb_coords['z'][ispot, :]>0]
-                        pos_y = orb_coords['y'][ispot, :][orb_coords['z'][ispot, :]>0]
+                # - Only plotting the active region orbit coordinates that are in the front hemisphere of the star
+                if plot_set_key['plot_ar_orb']:
+                    for iactreg in range(num_actreg):
+                        pos_x = orb_coords['x'][iactreg, :][orb_coords['z'][iactreg, :]>0]
+                        pos_y = orb_coords['y'][iactreg, :][orb_coords['z'][iactreg, :]>0]
 
-                        ax1.plot(pos_x, pos_y, color=plot_set_key['col_orb_sp'],lw=plot_set_key['lw_plot'],alpha=1.)
+                        ax1.plot(pos_x, pos_y, color=plot_set_key['col_orb_ar'],lw=plot_set_key['lw_plot'],alpha=1.)
     
             #------------------------------------------------------------          
             #Color table (from 0 to 1)
@@ -5344,7 +5159,7 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
         rest_frame = 'star'
 
     #Data correct for spot and facula contamination
-    elif plot_mod=='map_Diff_corr_sp_fa':
+    elif plot_mod=='map_Diff_corr_actreg':
         data_path_all = [gen_dic['save_data_dir']+'Corr_data/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp2plot]
         rest_frame='star'
      
@@ -6564,7 +6379,7 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
         coord_pl_in[pl_loc]['cen_pos'] = coord_pl_in[pl_loc]['cen_pos'][:,cond_occ_HR]
         coord_pl_in[pl_loc]['phase'] = coord_pl_in[pl_loc]['phase'][cond_occ_HR]     
         coord_pl_in[pl_loc]['ecl'] = coord_pl_in[pl_loc]['ecl'][cond_occ_HR] 
-    surf_prop_dic, surf_prop_dic_spot, surf_prop_dic_facula, surf_prop_dic_common = sub_calc_plocc_spot_prop(['achrom'],args,par_list,gen_dic['def_pl'],[],[],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))
+    surf_prop_dic, _, _ = sub_calc_plocc_actreg_prop(['achrom'],args,par_list,gen_dic['def_pl'],[],system_param_loc,theo_dic_loc,system_prop_loc,param_loc,coord_pl_in,range(coord_pl_in['nph_HR']))
 
     theo_HR_prop_plocc = surf_prop_dic['achrom']
     theo_HR_prop_plocc['nph_HR'] = coord_pl_in['nph_HR']
@@ -7141,8 +6956,8 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
     #Options
     sc_fact=10**plot_options['sc_fact10']            
 
-    if plot_mod in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_sp_est','map_Diff_prof_clean_fa_est','map_Diff_prof_unclean_sp_est','map_Diff_prof_unclean_pl_est','map_Diff_prof_unclean_fa_est'
-                'map_Diff_prof_clean_sp_res','map_Diff_prof_clean_fa_res','map_Diff_prof_clean_pl_res','map_Diff_prof_unclean_sp_res','map_Diff_prof_unclean_fa_res','map_Diff_prof_unclean_pl_res']:
+    if plot_mod in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_ar_est','map_Diff_prof_unclean_pl_est',
+                    'map_Diff_prof_clean_pl_res','map_Diff_prof_clean_ar_res','map_Diff_prof_unclean_ar_res','map_Diff_prof_unclean_pl_res']:
 
         #Defining whether we are plotting the planet-occulted or spotted profiles and if they are clean or uncleaned
         supp_name = plot_mod.split('_')[4]
@@ -7279,8 +7094,8 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                 #Data
                 else:     
                     
-                    if plot_mod in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_sp_est','map_Diff_prof_clean_fa_est','map_Diff_prof_unclean_sp_est','map_Diff_prof_unclean_pl_est','map_Diff_prof_unclean_fa_est'
-                                    'map_Diff_prof_clean_pl_res','map_Diff_prof_clean_sp_res','map_Diff_prof_clean_fa_res','map_Diff_prof_unclean_sp_res','map_Diff_prof_unclean_pl_res','map_Diff_prof_unclean_fa_res']:
+                    if plot_mod in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_ar_est','map_Diff_prof_unclean_pl_est',
+                                    'map_Diff_prof_clean_pl_res','map_Diff_prof_clean_ar_res','map_Diff_prof_unclean_ar_res','map_Diff_prof_unclean_pl_res']:
                         
                         cond_def_map[isub] = data_exp['cond_def']
                         #Retrieving flux for these regions
@@ -7818,9 +7633,8 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                     cb.set_array(v_range) 	
                     cbar_txt = ''
                     if plot_mod in ['map_DIbin','map_DI_prof','map_Diff_prof','map_Intr_prof','map_BF_Diff_prof','map_BF_Diff_prof_re','map_Intr_prof_est','map_Intr_prof_res','map_pca_prof','map_Intrbin',
-                                    'map_Intr_1D','map_Diff_prof_clean_pl_est','map_Diff_prof_clean_sp_est','map_Diff_prof_clean_fa_est','map_Diff_prof_unclean_sp_est','map_Diff_prof_unclean_pl_est',
-                                    'map_Diff_prof_unclean_fa_est','map_Diff_prof_clean_sp_res','map_Diff_prof_clean_fa_res','map_Diff_prof_unclean_fa_res','map_Diff_prof_clean_pl_res','map_Diff_prof_unclean_sp_res',
-                                    'map_Diff_prof_unclean_pl_res']:cbar_txt='flux'
+                                    'map_Intr_1D','map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_pl_est','map_Diff_prof_unclean_ar_est','map_Diff_prof_clean_ar_res',
+                                    'map_Diff_prof_clean_pl_res','map_Diff_prof_unclean_pl_res','map_Diff_prof_clean_ar_res','map_Diff_prof_unclean_pl_res']:cbar_txt='flux'
                     elif plot_mod in ['map_Atm_prof','map_Atmbin','map_Atm_1D']:cbar_txt=plot_options['pl_atm_sign']
                     cbar_txt = scaled_title(plot_options['sc_fact10'],cbar_txt)  
                     if plot_options['reverse_2D']:
@@ -7848,12 +7662,12 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                     elif plot_mod in ['map_BF_Diff_prof', 'map_BF_Diff_prof_re']:
                         add_str += 'BestFit'
                         if plot_mod=='map_BF_Diff_prof_re': add_str += 'Differential'
-                    elif plot_mod in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_sp_est','map_Diff_prof_clean_fa_est','map_Diff_prof_unclean_sp_est','map_Diff_prof_unclean_pl_est','map_Diff_prof_unclean_fa_est'
-                                    'map_Diff_prof_clean_sp_res','map_Diff_prof_clean_fa_res','map_Diff_prof_clean_pl_res','map_Diff_prof_unclean_sp_res','map_Diff_prof_unclean_fa_res','map_Diff_prof_unclean_pl_res']:
+                    elif plot_mod in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_pl_est','map_Diff_prof_unclean_ar_est',
+                                      'map_Diff_prof_clean_pl_res','map_Diff_prof_clean_ar_res','map_Diff_prof_unclean_pl_res','map_Diff_prof_unclean_ar_res']:
                         prof_typ = plot_mod.split('_')[-1]
                         add_str += '_'+corr_plot_mod+'_'+supp_name+'_'+prof_typ
-                    elif plot_mod=='map_Diff_corr_sp_fa':
-                        add_str += '_Spot_Facula_Corrected'                            
+                    elif plot_mod=='map_Diff_corr_actreg':
+                        add_str += '_ActReg_Corrected'                            
                     if ('bin' in plot_mod):add_str+='_'+plot_options['dim_plot'] 
                     plt.savefig(path_loc+'/'+add_str+'.'+save_res_map)                        
                     plt.close() 
@@ -8942,7 +8756,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
 
                         #Generic functions
                         #    - fixed parameters do not need to be input as they are defined at the definition of the function
-                        def sub_calc_plocc_spot_prop_threads(par_subsample,pl_loc):
+                        def sub_calc_plocc_actreg_prop_threads(par_subsample,pl_loc):
                             nsamp=len(par_subsample[0])
                             RV_stsurf_HR_thread=np.empty([nsamp,theo_HR_prop_plocc['nph_HR']])
                             
@@ -8951,11 +8765,11 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             theo_dic_samp = deepcopy(theo_dic)
                             theo_dic_samp['d_oversamp_pl'] = []
                             for isamp in range(nsamp):
-                                surf_prop_dic,_,_,_ = sub_calc_plocc_spot_prop(['achrom'],{},['rv'],[pl_loc],[],[],system_param,theo_dic_samp,data_dic['DI']['system_prop'],par_subsample[0][isamp],coord_pl_in_samp,range(theo_HR_prop_plocc['nph_HR']))        
+                                surf_prop_dic,_,_,_ = sub_calc_plocc_actreg_prop(['achrom'],{},['rv'],[pl_loc],[],system_param,theo_dic_samp,data_dic['DI']['system_prop'],par_subsample[0][isamp],coord_pl_in_samp,range(theo_HR_prop_plocc['nph_HR']))        
                                 RV_stsurf_HR_thread[isamp,:] =surf_prop_dic['achrom'][pl_loc]['rv'][0,:]                                
                             return RV_stsurf_HR_thread
                         
-                        def sub_calc_plocc_spot_prop_par(pool_proc,func_input,nthreads,n_elem,y_inputs,common_args):     
+                        def sub_calc_plocc_actreg_prop_par(pool_proc,func_input,nthreads,n_elem,y_inputs,common_args):     
                             ind_chunk_list=init_parallel_func(nthreads,n_elem)
                             chunked_args=[(y_inputs[0][ind_chunk[0]:ind_chunk[1]],)+common_args for ind_chunk in ind_chunk_list]	
                             all_results=tuple(tab for tab in pool_proc.map(func_input,chunked_args))			
@@ -8976,9 +8790,9 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             if nthreads>1:                    
                                 common_args=()
                                 chunkable_args=[par_sample_sig1]
-                                RV_stsurf_HR_sig1_all=sub_calc_plocc_spot_prop_par(pool_proc,sub_calc_plocc_spot_prop_threads,nthreads,len(par_sample_sig1),chunkable_args,common_args)                           
+                                RV_stsurf_HR_sig1_all=sub_calc_plocc_actreg_prop_par(pool_proc,sub_calc_plocc_actreg_prop_threads,nthreads,len(par_sample_sig1),chunkable_args,common_args)                           
                             else:        
-                                RV_stsurf_HR_sig1_all=sub_calc_plocc_spot_prop_threads([par_sample_sig1],pl_ref)
+                                RV_stsurf_HR_sig1_all=sub_calc_plocc_actreg_prop_threads([par_sample_sig1],pl_ref)
                             RV_stsurf_HR_sig1=np.vstack((np.repeat(1e100,theo_HR_prop_plocc['nph_HR']),np.repeat(-1e100,theo_HR_prop_plocc['nph_HR'])))   
                             for isamp in range(len(par_sample_sig1)):
                                 RV_stsurf_HR_sig1[0,:]=np.minimum(RV_stsurf_HR_sig1[0,:],RV_stsurf_HR_sig1_all[isamp])
@@ -9002,9 +8816,9 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             if nthreads>1:
                                 common_args=()
                                 chunkable_args=[par_sample]
-                                RV_stsurf_HR_sample=sub_calc_plocc_spot_prop_par(pool_proc,sub_calc_plocc_spot_prop_threads,nthreads,len(par_sample),chunkable_args,common_args)                           
+                                RV_stsurf_HR_sample=sub_calc_plocc_actreg_prop_par(pool_proc,sub_calc_plocc_actreg_prop_threads,nthreads,len(par_sample),chunkable_args,common_args)                           
                             else:
-                                RV_stsurf_HR_sample=sub_calc_plocc_spot_prop_threads([par_sample],pl_ref)
+                                RV_stsurf_HR_sample=sub_calc_plocc_actreg_prop_threads([par_sample],pl_ref)
                            
                             #Plot random sample
                             for isamp in range(len(RV_stsurf_HR_sample)):

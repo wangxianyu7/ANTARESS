@@ -59,7 +59,7 @@ class CFunctionWrapper:
 
 
 
-def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,system_faculae_prop,star_params,param_in):   
+def var_stellar_prop(fixed_args,theo_dic,system_prop,system_actreg_prop,star_params,param_in):   
     r"""**Stellar properties: variables**
 
     Defines variable stellar properties.
@@ -77,15 +77,16 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,system_fac
     #Store nominal properties potentially overwritten in the fitting procedure
     fixed_args['grid_dic'] = deepcopy(theo_dic) 
     fixed_args['system_prop'] = deepcopy(system_prop) 
-    fixed_args['system_spot_prop'] = deepcopy(system_spot_prop)
-    fixed_args['system_facula_prop'] = deepcopy(system_faculae_prop)
+    fixed_args['system_actreg_prop'] = deepcopy(system_actreg_prop)
     
     #List of stellar properties potentially modified as model parameter
     stargrid_prop_nom = np.array(['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'])
-    if len(system_spot_prop)>0:stargrid_prop_spots_nom = np.array(['veq','alpha_rot','beta_rot'])
-    else:stargrid_prop_spots_nom=[]    
-    if len(system_faculae_prop)>0:stargrid_prop_faculae_nom = np.array(['veq','alpha_rot','beta_rot'])
-    else:stargrid_prop_faculae_nom=[]
+    if len(system_actreg_prop)>0:
+        stargrid_prop_spots_nom = np.array(['veq','alpha_rot','beta_rot'])
+        stargrid_prop_faculae_nom = np.array(['veq','alpha_rot','beta_rot'])
+    else:
+        stargrid_prop_spots_nom=[]    
+        stargrid_prop_faculae_nom=[]
 
     #Define stellar rotational property
     #    - at this stage 'params' contains 'veq' by default and only contains 'Peq' if it was requested as a model parameter
@@ -459,20 +460,12 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
                                       [1e4,   None,       None,      None,   None,   None,    1.,       1.,     1.,      1e5,    1.,    1e5,   1e5,   1e5,    100.,   100.]):
         if key in star_params:params.add_many((key, star_params[key],   vary,    bd_min,bd_max,None))
 
-    #Spot properties
-    if fixed_args['cond_transit_sp']:
-        for key,vary,bd_min,bd_max in zip(['veq_spots','alpha_rot_spots','beta_rot_spots','c1_CB_spots','c2_CB_spots','c3_CB_spots'],
-                                          [False,      False,            False,            False,         False,          False],
-                                          [1.,         None,             None,             None,          None,           None],
-                                          [1e4,        None,             None,             None,          None,           None]):
-            if key in star_params:params.add_many((key, star_params[key],   vary,    bd_min,bd_max,None))
-
-    #Facula properties
-    if fixed_args['cond_transit_fa']:
-        for key,vary,bd_min,bd_max in zip(['veq_faculae','alpha_rot_faculae','beta_rot_faculae','c1_CB_faculae','c2_CB_faculae','c3_CB_faculae'],
-                                          [False,      False,            False,            False,         False,          False],
-                                          [1.,         None,             None,             None,          None,           None],
-                                          [1e4,        None,             None,             None,          None,           None]):
+    #Active region properties
+    if fixed_args['cond_transit_ar']:
+        for key,vary,bd_min,bd_max in zip(['veq_spots','alpha_rot_spots','beta_rot_spots','c1_CB_spots','c2_CB_spots','c3_CB_spots','veq_faculae','alpha_rot_faculae','beta_rot_faculae','c1_CB_faculae','c2_CB_faculae','c3_CB_faculae'],
+                                          [False,      False,            False,            False,         False,          False,       False,           False,            False,            False,         False,          False],
+                                          [1.,         None,             None,             None,          None,           None,         1.,             None,             None,             None,           None,          None],
+                                          [1e4,        None,             None,             None,          None,           None,         1e4,            None,             None,             None,           None,          None]):
             if key in star_params:params.add_many((key, star_params[key],   vary,    bd_min,bd_max,None))
 
     #Properties specific to disk-integrated profiles

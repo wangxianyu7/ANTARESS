@@ -583,21 +583,17 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         inst_par = '_'
         vis_par = '_'
         pl_name = None                
-        sp_name = None
-        fa_name = None
+        ar_name = None
         
         #Parameter depends on epoch
         if ('__IS') and ('_VS') in par:
             inst_vis_par = par.split('__IS')[1]
             inst_par  = inst_vis_par.split('_VS')[0]
             vis_par  = inst_vis_par.split('_VS')[1]   
-            if ('__sp' in par) or ('__pl' in par) or ('__fa' in par):
-                if ('__sp' in par):
-                    sp_name = (par.split('__IS')[0]).split('__sp')[1]  
-                    par_name_root = par.split('__sp')[0]
-                if ('__fa' in par):
-                    fa_name = (par.split('__IS')[0]).split('__fa')[1]  
-                    par_name_root = par.split('__fa')[0]
+            if ('__ar' in par) or ('__pl' in par):
+                if ('__ar' in par):
+                    ar_name = (par.split('__IS')[0]).split('__ar')[1]  
+                    par_name_root = par.split('__ar')[0]
                 if ('__pl' in par):
                     pl_name = (par.split('__IS')[0]).split('__pl')[1]
                     par_name_root = par.split('__pl')[0]
@@ -606,22 +602,18 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         
         #Parameter does not depend on epoch
         else:
-            if ('__sp' in par) or ('__pl' in par) or ('__fa' in par):
-                if ('__sp' in par):
-                    sp_name = par.split('__sp')[1]  
-                    par_name_root = par.split('__sp')[0]
+            if ('__ar' in par) or ('__pl' in par):
+                if ('__ar' in par):
+                    ar_name = par.split('__ar')[1]  
+                    par_name_root = par.split('__ar')[0]
                 if ('__pl' in par):
                     pl_name = par.split('__pl')[1]    
                     par_name_root = par.split('__pl')[0]
-                if ('__fa' in par):
-                    fa_name = par.split('__fa')[1]  
-                    par_name_root = par.split('__fa')[0]
             else: 
                 par_name_root = par                                                     
         par_name_loc = model_par_names(par_name_root)
         
-        if sp_name is not None:par_name_loc+='['+sp_name+']'
-        if fa_name is not None:par_name_loc+='['+fa_name+']'
+        if ar_name is not None:par_name_loc+='['+ar_name+']'
         if pl_name is not None:par_name_loc+='['+pl_name+']'                             
         if inst_par != '_':
             par_name_loc+='['+inst_par+']'
@@ -652,19 +644,12 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
     fixed_args['fix_par_names']=np.array(fix_par_names,dtype='U50')
     fixed_args['fix_par_units']=np.array(fix_par_units,dtype='U50')
 
-    #Retrieve the number of spots that are present (whether their parameters are fixed or fitted)
-    spot_names=[]
+    #Retrieve the number of active regions that are present (whether their parameters are fixed or fitted)
+    actreg_names=[]
     for par in fixed_args['par_names']:
-        if '__sp' in par:
-            spot_names.append(par.split('__sp')[1])
-    fixed_args['num_spots']=len(np.unique(spot_names))
-
-    #Retrieve the number of faculae that are present (whether their parameters are fixed or fitted)
-    facula_names=[]
-    for par in fixed_args['par_names']:
-        if '__fa' in par:
-            facula_names.append(par.split('__fa')[1])
-    fixed_args['num_faculae']=len(np.unique(facula_names))
+        if '__ar' in par:
+            actreg_names.append(par.split('__ar')[1])
+    fixed_args['num_actreg']=len(np.unique(actreg_names))
 
     #Update value of fixed parameters linked to variable parameters through an expression
     if len(fixed_args['linked_par_expr'])>0:

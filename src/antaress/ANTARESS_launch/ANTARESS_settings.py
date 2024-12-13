@@ -8,7 +8,7 @@ import numpy as np
 #%% Global settings
 ##################################################################################################  
 
-def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,corr_spot_dic):
+def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic):
     r"""**ANTARESS default settings: global**
     
     Initializes ANTARESS configuration settings with default values.  
@@ -57,18 +57,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     gen_dic['studied_pl']={}  
     
 
-    #%%%%% Visible spots
-    #    - indicate names (defined here) of the visible spots to be processed
-    #    - for each spot, indicate the instrument and visits in which its transit should be taken into account (visit names are those given through 'data_dir_list')
-    #    - format: 'spot':{'inst':['vis']}
-    gen_dic['transit_sp']={}  
-    
-    
-    #%%%%% Visible faculae
-    #    - indicate names (defined here) of the visible spots to be processed
-    #    - for each facula, indicate the instrument and visits in which its transit should be taken into account (visit names are those given through 'data_dir_list')
-    #    - format: 'facula':{'inst':['vis']}
-    gen_dic['transit_fa']={} 
+    #%%%%% Transiting active regions
+    #    - indicate names (as defined in ANTARESS_systems) of the transiting active regions to be processed
+    #    - for each active region, indicate the instrument and visits in which its transit should be taken into account (visit names are those given through 'data_dir_list')
+    #    - format: 'actreg':{'inst':['vis']}
+    gen_dic['studied_actreg']={}  
 
 
     #%%%%% TTVs
@@ -348,63 +341,32 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     mock_dic['gcal']={}
 
 
-    #%%%% Spots
+    #%%%% Active regions
        
     #%%%%% Properties
-    #    - spot inclusion is conditioned by this dictionary being filled in
-    #    - spots are defined by 4 parameters : 
-    # + 'lat' : constant latitude of the spot, in star rest frame (in deg)
-    # + 'Tc_sp' : Time (bjd) at which the spot is at longitude 0
-    # + 'ang' : half-angular size (in deg) of the spot
-    # + 'fctrst' : the flux level of the spot surface, relative to the quiet surface of the star
+    #    - active region inclusion is conditioned by this dictionary being filled in
+    #    - active regions are defined by 4 parameters : 
+    # + 'lat' : constant latitude of the active region, in star rest frame (in deg)
+    # + 'Tc_ar' : Time (bjd) at which the active region is at longitude 0
+    # + 'ang' : half-angular size (in deg) of the active region (we assume each region is circular)
+    # + 'fctrst' : the flux level of the active region surface, relative to the quiet surface of the star
     #              0 = no emission, 1 = maximum emission (no contrast with the stellar surface) 
     #    - format: {inst : {vis : {prop : val}}}
-    #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_diff_prof']    
-    mock_dic['spots_prop'] = {}
-    
-    #%%%%% Automatic generation of spots
-    #    - Instead of defining individual spots, define multiple spots
+    #      where prop is defined as par_ISinst_VSvis_ARactreg_name, to match with the structure used in gen_dic['fit_diff_prof']    
+    mock_dic['actreg_prop'] = {}
+
+    #%%%%% Automatic generation of active regions
+    #    - Instead of defining individual active regions, define multiple active regions
     #    - by providing distribution and relevant parameters from which 
-    #    - to draw values for the latitude, crossing time and size.
+    #    - to draw values for the latitude, crossing time, size, and contrast.
     #    - format: {inst : {vis : {prop : distrib}}}
-    #      where prop is defined as par_ISinst_VSvis_SPspot_name, to match with the structure used in gen_dic['fit_diff_prof']
+    #      where prop is defined as par_ISinst_VSvis_ARactreg_name, to match with the structure used in gen_dic['fit_diff_prof']
     #      and distrib is a dictionary with the following possible formats:
     #    - {distrib : 'gauss', val, s_val}    # Drawing from a Gaussian distribution with median val and standard deviation s_val
     #    - {distrib : 'uf', low, high}        # Drawing from a Uniform distribution with boundaries low and high
-    #    - Additionally, you must provide the number of spots to generate with the following format:
+    #    - Additionally, you must provide the number of active regions to generate with the following format:
     #    - {inst : {vis : {num}}}
-    #    - and a single value for the contrast of the spots, using the following format:
-    #    - {inst : {vis : {fctrst}}}
-    mock_dic['auto_gen_spots'] = {}
-    
-    #%%%% Faculae
-       
-    #%%%%% Properties
-    #    - facula inclusion is conditioned by this dictionary being filled in
-    #    - faculae are defined by 4 parameters : 
-    # + 'lat' : constant latitude of the facula, in star rest frame (in deg)
-    # + 'Tc_fa' : Time (bjd) at which the facula is at longitude 0
-    # + 'ang' : half-angular size (in deg) of the facula
-    # + 'fctrst' : the flux level of the facula surface, relative to the quiet surface of the star
-    #              10 = maximum emission, 1 = quiet-star level emission (no contrast with the stellar surface) 
-    #    - format: {inst : {vis : {prop : val}}}
-    #      where prop is defined as par_ISinst_VSvis_FAfacula_name, to match with the structure used in gen_dic['fit_diff_prof']    
-    mock_dic['faculae_prop'] = {}
-
-    #%%%%% Automatic generation of faculae
-    #    - Instead of defining individual faculae, define multiple faculae
-    #    - by providing distribution and relevant parameters from which 
-    #    - to draw values for the latitude, crossing time and size.
-    #    - format: {inst : {vis : {prop : distrib}}}
-    #      where prop is defined as par_ISinst_VSvis_FAfacula_name, to match with the structure used in gen_dic['fit_diff_prof']
-    #      and distrib is a dictionary with the following possible formats:
-    #    - {distrib : 'gauss', val, s_val}    # Drawing from a Gaussian distribution with median val and standard deviation s_val    
-    #    - {distrib : 'uf', low, high}        # Drawing from a Uniform distribution with boundaries low and high
-    #    - Additionally, you must provide the number of faculae to generate with the following format:
-    #    - {inst : {vis : {num}}}
-    #    - and a single value for the contrast of the faculae, using the following format:
-    #    - {inst : {vis : {fctrst}}}    
-    mock_dic['auto_gen_faculae'] = {}
+    mock_dic['auto_gen_actreg'] = {}
 
     #%%%% Noise settings
     
@@ -721,44 +683,24 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     theo_dic['rv_osamp_line_mod']=None
 
 
-    #%%%% Spots
+    #%%%% Active regions
 
     #%%%%% Nominal properties
-    #    - same as mock_dic['spots_prop']
-    #    - required for the calculation of nominal spot coordinates used throughout the pipeline
-    theo_dic['spots_prop']={}
+    #    - same as mock_dic['actreg_prop']
+    #    - required for the calculation of nominal active region coordinates used throughout the pipeline
+    theo_dic['actreg_prop']={}
 
 
     #%%%%% Discretization     
-    #    - format is {spot : val}} 
-    # where each simulated spot must be associated with a unique name
-    theo_dic['nsub_Dsp']={} 
+    #    - format is {actreg : val}} 
+    # where each simulated active region must be associated with a unique name
+    theo_dic['nsub_Dar']={} 
 
 
     #%%%%% Exposure oversampling     
-    #    - format is {spot : val}} 
-    # where each simulated spot must be associated with a unique name
-    theo_dic['n_oversamp_spot']={}  
-    
-
-    #%%%% Faculae
-
-    #%%%%% Nominal properties
-    #    - same as mock_dic['faculae_prop']
-    #    - required for the calculation of nominal facula coordinates used throughout the pipeline
-    theo_dic['faculae_prop']={}
-
-
-    #%%%%% Discretization     
-    #    - format is {facula : val}} 
-    # where each simulated facula must be associated with a unique name
-    theo_dic['nsub_Dfa']={} 
-
-
-    #%%%%% Exposure oversampling     
-    #    - format is {facula : val}} 
-    # where each simulated facula must be associated with a unique name
-    theo_dic['n_oversamp_facula']={}
+    #    - format is {actreg : val}} 
+    # where each simulated active region must be associated with a unique name
+    theo_dic['n_oversamp_actreg']={} 
 
 
     #%%%% Plot settings
@@ -2200,74 +2142,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         
         
         
-        # """
-        # Routine to correct DI CFFs from spot occultation
-        #     - CCF continuum are set to the expected value given planetary and spot contamination
-        #     - spot occulted profiles are then added to the DI CCF
-        #     - It's assumed that DI CCF are aligned in the star rest frame
-        #     - 2 options : 
-        #         - Ignore overlapping between spots and planet (in the case lambda_pl is unknown)
-        #         - Or, if lambda is known, one can choose to take overlapping between spots and planet into account
-        
-        
-        #     - Correction will be performed within the 'detrend_prof' module, after all other DI corrections. 
-        # """
-        
-        
-        
-        # gen_dic['correct_spots'] = True &  False
-        # gen_dic['calc_correct_spots'] = True  #&  False
-        
-    corr_spot_dic = {}
-        
-        # # List all spots that should be included in the correction 
-        # if gen_dic['star_name'] == 'V1298tau' : 
-        #     corr_spot_dic['spots_prop']={
-        #         'HARPN':{
-        #             'mock_vis':{
-                        
-        #                 # Pour le spot 'spot1' : 
-        #                 'lat__ISHARPN_VSmock_vis_SPspot1'     : 30,
-        #                 'Tc_sp__ISHARPN_VSmock_vis_SPspot1' : 2458877.6306 - 12/24,     # 2458877.213933
-        #                 'ang__ISHARPN_VSmock_vis_SPspot1'     : 20,
-        #                 'flux__ISHARPN_VSmock_vis_SPspot1'    : 0.4,
-                        
-        #                 # Pour le spot 'spot2' : 
-        #                 'lat__ISHARPN_VSmock_vis_SPspot2'     : 40,
-        #                 'Tc_sp__ISHARPN_VSmock_vis_SPspot2' : 2458877.6306 + 5/24,
-        #                 'ang__ISHARPN_VSmock_vis_SPspot2'     : 25,
-        #                 'flux__ISHARPN_VSmock_vis_SPspot2'    : 0.4
-                        
-        #                     },
-                            
-        #                 'mock_vis2' : {}
-                        
-        #                     }}
-                            
-    
-    
-        # # Properties of stellar ray
-        # if gen_dic['star_name'] in ['V1298tau'] :
-            
-        #     corr_spot_dic['intr_prof']={
-        #         'mode':'ana',        
-        #         'coord_line':'mu',
-        #         'model': {'HARPN' : 'gauss'},             
-        #         'mod_prop':{'ctrst__ord0__ISHARPN_VSmock_vis' : 0.7,
-        #                     'FWHM__ord0__ISHARPN_VSmock_vis'  : 4,
-        #                     }   ,   
-        #         'pol_mode' : 'abs'
-        #     }
-            
-    
-        # # Precision used for calculating planet-occulted profiles (almost useless here, only relevant to the case where planet + spot overlap)
-        # corr_spot_dic['precision']='high'
-    
-        # # Corresponding dimension (for now, stick to 'mu' and 'r_proj').
-        # corr_spot_dic['coord_line']='mu'
-    
-        # # Choose between taking overlapping spot/planet into account or not. 
-        # corr_spot_dic['overlap'] = True   #& False
+
     
     
         
@@ -2355,14 +2230,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     data_dic['DI']['system_prop']={}
       
     
-    #%%%% Spot intensity settings
+    #%%%% Active region intensity settings
     #    - same format as 'system_prop'
-    data_dic['DI']['spots_prop']={}
-    
-    
-    #%%%% Facula intensity settings
-    #    - same format as 'system_prop'
-    data_dic['DI']['faculae_prop']={}
+    data_dic['DI']['actreg_prop']={}
 
     
     #%%%% Transit light curve model
@@ -3266,7 +3136,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - the names of properties specific to a given planet 'PL' must be defined as 'prop_name = prop_ordi__plPL'  
     #
     #%%%% WARNING
-    # + For spot properties common to quiet star ones (veq, alpha_rot, beta_rot), no linking is done internally.
+    # + For active region properties common to quiet star ones (veq, alpha_rot, beta_rot), no linking is done internally.
     # + Therefore, the user must specify values for these properties if they wish to fix them to values which differ from the base ones provided in the systems file.
     glob_fit_dic['IntrProp']['mod_prop']={'rv':{}}
 
@@ -3302,7 +3172,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - fitting joined differential profiles from combined (unbinned) instruments and visits 
     #    - structure is similar to the joined intrinsic profiles fit
     #    - fits are performed on all in-transit and out-transit exposures
-    #    - allows including spot properties (latitude, size, Tc_sp, flux level) in the fitted properties
+    #    - allows including active region properties (latitude, size, Tc_ar, flux level) in the fitted properties
     ##################################################################################################     
             
     #%%%% Activating 
@@ -3675,32 +3545,28 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #%%%% Plot settings
     
-    #%%%%% 2D maps : "clean", theoretical planet-occulted, faculaed, and spotted profiles
+    #%%%%% 2D maps : "clean", theoretical planet-occulted, active region-covered profiles
     #    - for original and binned exposures
-    #    - planet-occulted profiles retrieved in the case where spots and faculae were not included in the model
-    plot_dic['map_Diff_prof_clean_sp_est']=''
-    plot_dic['map_Diff_prof_clean_fa_est']=''
-    plot_dic['map_Diff_prof_clean_pl_est']=''   
+    #    - planet-occulted profiles retrieved in the case where active regions were not included in the model
+    plot_dic['map_Diff_prof_clean_pl_est']=''
+    plot_dic['map_Diff_prof_clean_ar_est']=''
 
-    #%%%%% 2D maps : "un-clean", theoretical planet-occulted, faculaed, and spotted profiles
+    #%%%%% 2D maps : "un-clean", theoretical planet-occulted, active region-covered profiles
     #    - for original and binned exposures
-    #    - planet-occulted profiles retrieved in the case where spots ans faculae were included in the model
-    #    - computing both "clean" and "spotted" versions of these maps can help identify if planets occulted spots during the transit or not
-    plot_dic['map_Diff_prof_unclean_sp_est']=''
-    plot_dic['map_Diff_prof_unclean_fa_est']=''
-    plot_dic['map_Diff_prof_unclean_pl_est']=''   
-    
-    #%%%%% 2D maps : residuals theoretical planet-occulted and faculaed, spotted profiles (for "clean" and/or "unclean" profiles)
+    #    - planet-occulted profiles retrieved in the case where active regions were included in the model
+    #    - computing both "clean" and "unclean" versions of these maps can help identify if planets occulted active regions during the transit or not
+    plot_dic['map_Diff_prof_unclean_pl_est']=''
+    plot_dic['map_Diff_prof_unclean_ar_est']=''
+
+    #%%%%% 2D maps : residuals theoretical planet-occulted and active region-covered profiles (for "clean" and/or "unclean" profiles)
     #    - same format as 'map_Diff_prof_pl_est'
-    plot_dic['map_Diff_prof_clean_sp_res']=''
-    plot_dic['map_Diff_prof_clean_fa_res']=''
     plot_dic['map_Diff_prof_clean_pl_res']=''
-    plot_dic['map_Diff_prof_unclean_sp_res']=''
-    plot_dic['map_Diff_prof_unclean_fa_res']=''
-    plot_dic['map_Diff_prof_unclean_pl_res']=''   
-                
-    #%%%%% 2D maps : differential profiles corrected for the impact of spots and faculae
-    plot_dic['map_Diff_corr_sp_fa']=''       
+    plot_dic['map_Diff_prof_clean_ar_res']=''
+    plot_dic['map_Diff_prof_unclean_pl_res']=''
+    plot_dic['map_Diff_prof_unclean_ar_res']=''
+
+    #%%%%% 2D maps : differential profiles corrected for the impact of active regions
+    plot_dic['map_Diff_corr_actreg']='png'      
         
         
         
@@ -4341,8 +4207,18 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #                  to be used when only sin(istar) is constrained and the stellar inclination remains degenerate between istar and 180-istar 
     # + 'istar_Peq' : derive the stellar inclination from the fitted 'vsini' and user-provided measurements of 'Rstar' and 'Peq'
     #                 warning: it is better to fit directly for 'Peq', 'cosistar', and 'Rstar'
+    # + 'fold_Tc_ar' : folds the active region crossing time around a central Peq value that can be calculated in the following ways:
+    #                       - If active region values for veq/Peq are fitted/specified, they take priority
+    #                       - If veq/Peq/veq_spots/Peq_spots/veq_faculae/Peq_faculae is fit with an MCMC, we use the corresponding chain
+    #                       - If veq/Peq/veq_spots/Peq_spots/veq_faculae/Peq_faculae is fit with chi2 or fixed, we use the corresponding value
+    #                       - If veq_spots/Peq_spots/veq_faculae/Peq_faculae is fixed but its values is different from the default, use the active region value
+    #                       - If none of veq, Peq, veq_spots, Peq_spots, veq_faculae, Peq_faculae are fixed or fit, default to the value of Peq calculated from the systems configuration file.
+    #                  warning: if faculae and spot values are both fitted (whether that is Peq or veq) the user must specify which one to use for the folding with deriv_prop['fold_Tc_ar']['reg_to_use']='spots'/'faculae'
+    #                  warning: if veq/veq_spots/veq_faculae is used to perform the folding, the corresponding derived property option 'Peq_veq'/'Peq_veq_spots'/'Peq_veq_faculae' must be activated. 
     # + 'istar_Peq_vsini' : derive the stellar inclination from user-provided measurements of 'Rstar','Peq', and 'vsini'
     # + 'Peq_veq' : adds 'Peq' using the fitted 'veq' and a user-provided measurement of 'Rstar'
+    # + 'Peq_veq_spots' : adds 'Peq_spots' using the fitted 'veq_spots' and a user-provided measurement of 'Rstar'
+    # + 'Peq_veq_faculae' : adds 'Peq_faculae' using the fitted 'veq_faculae' and a user-provided measurement of 'Rstar'
     # + 'Peq_vsini' : adds 'Peq' using the fitted 'vsini' and user-provided measurements for 'Rstar' and 'istar' 
     # + 'psi' : adds 3D spin-orbit angle for all planets using the fitted 'lambda', and fitted or user-provided measurements for 'istar' and 'ip_plNAME'
     #           put 'North' and/or 'South' in  'config' to return the corresponding Psi configurations associated with istar (Northern configuration) and 180-istar (Southern configuration) 
@@ -4409,7 +4285,7 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #    - To use this option, we recommend users first run a fit with fit_mode set to chi2. The chi2 fit will automatically
     #    - create and store the Hessian matrix. An MCMC can subsequently be run with the path to the Hessian being set as
     #    - the location of the chi2 fit results.
-    glob_fit_dic['DiffProf']['use_hess'] = ''
+    local_dic[data_type]['use_hess'] = ''
 
 
     #%%%% Run mode

@@ -1606,7 +1606,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ##################################################################################################
     #%%%% Estimates
     ##################################################################################################
-    for key_plot in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_sp_est','map_Diff_prof_clean_fa_est','map_Diff_prof_unclean_fa_est','map_Diff_prof_unclean_sp_est','map_Diff_prof_unclean_pl_est']:
+    for key_plot in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_ar_est','map_Diff_prof_unclean_pl_est']:
         if gen_dic['diff_data_corr'] and (plot_dic[key_plot]!=''):
 
             #%%%%% Generic settings
@@ -1617,7 +1617,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             ##############################################################################
             #%%%%% Estimates
-            if key_plot in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_sp_est','map_Diff_prof_clean_fa_est','map_Diff_prof_unclean_fa_est','map_Diff_prof_unclean_sp_est','map_Diff_prof_unclean_pl_est']:
+            if key_plot in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_ar_est','map_Diff_prof_unclean_pl_est']:
 
                 #%%%%%% Model always required
                 plot_settings[key_plot]['plot_line_model'] = True
@@ -1627,8 +1627,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Corrected profiles 
     ################################################################################################################  
-    if gen_dic['diff_data_corr'] and (plot_dic['map_Diff_corr_sp_fa']!=''):                                        
-        key_plot = 'map_Diff_corr_sp_fa'
+    if gen_dic['diff_data_corr'] and (plot_dic['map_Diff_corr_actreg']!=''):                                        
+        key_plot = 'map_Diff_corr_actreg'
 
         
         #%%%%% Generic settings
@@ -2221,11 +2221,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Number of points in the planet orbits
         plot_settings[key_plot]['npts_orbits'] = np.repeat(10000,len(plot_settings[key_plot]['pl_to_plot'])) 
 
-        #%%%% Number of points in the spot orbits
-        plot_settings[key_plot]['npts_orbits_sp'] = 10000
-
-        #%%%% Number of points in the facula orbits
-        plot_settings[key_plot]['npts_orbits_fa'] = 10000
+        #%%%% Number of points in the active region orbits
+        plot_settings[key_plot]['npts_orbits_ar'] = 10000
 
         #%%%% Position of planets along their orbit
         plot_settings[key_plot]['t_BJD'] = None
@@ -2307,17 +2304,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['col_orb'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
         plot_settings[key_plot]['col_orb_samp'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
         
-        #%%%% Spot trajectory and color
-        plot_settings[key_plot]['plot_sp_orb'] = True
-        plot_settings[key_plot]['col_orb_sp'] = 'greenyellow'
-
-        #%%%% Spot trajectory color
-        plot_settings[key_plot]['plot_sp_orb'] = True
-        plot_settings[key_plot]['col_orb_sp'] = 'greenyellow'
-                
-        #%%%% Facula trajectory color
-        plot_settings[key_plot]['plot_fa_orb'] = True
-        plot_settings[key_plot]['col_orb_fa'] = 'turquoise'
+        #%%%% Active region trajectory and color
+        plot_settings[key_plot]['plot_ar_orb'] = True
+        plot_settings[key_plot]['col_orb_ar'] = 'greenyellow'
 
         #%%%% Number of orbits drawn randomly
         plot_settings[key_plot]['norb']=np.repeat(100,len(plot_settings[key_plot]['pl_to_plot'])) 
@@ -2340,15 +2329,13 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Overlaying grid cell boundaries
         plot_settings[key_plot]['st_grid_overlay']=False
         plot_settings[key_plot]['pl_grid_overlay']=False
-        plot_settings[key_plot]['sp_grid_overlay']=False
-        plot_settings[key_plot]['fa_grid_overlay']=False
+        plot_settings[key_plot]['ar_grid_overlay']=False
 
         #%%%% Number of cells on a diameter of the star, planets, faculae, and spots (must be odd)
         plot_settings[key_plot]['n_stcell']=theo_dic['nsub_Dstar']
         plot_settings[key_plot]['n_plcell']={}
         for pl_loc in plot_settings[key_plot]['pl_to_plot']:plot_settings[key_plot]['n_plcell'][pl_loc] = theo_dic['nsub_Dpl'][pl_loc]
-        plot_settings[key_plot]['n_spcell']=21
-        plot_settings[key_plot]['n_facell']=21
+        plot_settings[key_plot]['n_arcell']=21
 
         #%%%% Color stellar disk with RV, with limb-darkened specific intensity, with gravity-darkened specific intensity, or total flux
         plot_settings[key_plot]['disk_color']='RV'
@@ -2379,25 +2366,15 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['plot_poles']=True  
         plot_settings[key_plot]['plot_hidden_pole']= False  
 
-        #%%%% Source for spots
-        #    - spot properties can come from three sources for this plot:
-        # + the mock dataset (mock_spot_prop) - from mock_dic
-        # + fitted spot properties (fit_spot_prop) - from glob_fit_dic
-        # + custom user-specified properties (custom_spot_prop) - parameterized below
+        #%%%% Source for active regions
+        #    - active region properties can come from three sources for this plot:
+        # + the mock dataset (mock_actreg_prop) - from mock_dic
+        # + fitted active region properties (fit_actreg_prop) - from glob_fit_dic
+        # + custom user-specified properties (custom_actreg_prop) - parameterized below
         # + If none of these are activated, spots will not be plotted.
-        plot_settings[key_plot]['mock_spot_prop'] = False
-        plot_settings[key_plot]['fit_spot_prop'] = False
-        plot_settings[key_plot]['custom_spot_prop'] = {}
-        
-        #%%%% Source for faculae
-        #    - facula properties can come from three sources for this plot:
-        # + the mock dataset (mock_facula_prop) - from mock_dic
-        # + fitted facula properties (fit_facula_prop) - from glob_fit_dic
-        # + custom user-specified properties (custom_facula_prop) - parameterized below
-        # + If none of these are activated, faculae will not be plotted.
-        plot_settings[key_plot]['mock_facula_prop'] = False
-        plot_settings[key_plot]['fit_facula_prop'] = False
-        plot_settings[key_plot]['custom_facula_prop'] = {}
+        plot_settings[key_plot]['mock_actreg_prop'] = False
+        plot_settings[key_plot]['fit_actreg_prop'] = False
+        plot_settings[key_plot]['custom_actreg_prop'] = {}
         
         #%%%% Name of the file storing the best-fit results we want to plot
         plot_settings[key_plot]['fit_results_file'] = ''
@@ -2425,68 +2402,54 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['rv_range'] = None
 
         if gen_dic['star_name']=='TOI3884':    
-            plot_settings[key_plot]['plot_sp_orb'] = False
-
-            plot_settings[key_plot]['plot_fa_orb'] = False
+            plot_settings[key_plot]['plot_ar_orb'] = False
             
             plot_settings[key_plot]['n_stcell']=201.
 
-            plot_settings[key_plot]['mock_spot_prop'] = True #& False
+            plot_settings[key_plot]['mock_actreg_prop'] = True #& False
 
-            plot_settings[key_plot]['fit_spot_prop'] = True & False
-
-            plot_settings[key_plot]['mock_facula_prop'] = True & False
+            plot_settings[key_plot]['fit_actreg_prop'] = True & False
 
             plot_settings[key_plot]['plot_norm_orb_planes'] = False
 
             # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
 
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 20, 'fctrst' : 0.2}
-            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  10, 'Tc_sp' : 2458330.39051+0.1, 'ang' : 25}
-            # plot_settings[key_plot]['custom_spot_prop']['spot3'] = {'lat' :  -30, 'Tc_sp' : 2458330.39051+0.3, 'ang' : 20}
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_ar' : 2458330.39051, 'ang' : 20, 'fctrst' : 0.2}
+            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  10, 'Tc_ar' : 2458330.39051+0.1, 'ang' : 25}
+            # plot_settings[key_plot]['custom_spot_prop']['spot3'] = {'lat' :  -30, 'Tc_ar' : 2458330.39051+0.3, 'ang' : 20}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_ar' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
             
             plot_settings[key_plot]['st_grid_overlay']=True &False
 
-            plot_settings[key_plot]['sp_grid_overlay']=True &False
+            plot_settings[key_plot]['ar_grid_overlay']=True &False
 
-            plot_settings[key_plot]['pl_grid_overlay']=True &False
-
-            plot_settings[key_plot]['n_spcell']=201.
-
-            # plot_settings[key_plot]['n_facell']=51.
+            plot_settings[key_plot]['n_arcell']=201.
 
             # plot_settings[key_plot]['n_plcell']={'AUMicb':5.}
 
         if gen_dic['star_name']=='TRAPPIST1':    
-            plot_settings[key_plot]['plot_sp_orb'] = False
-
-            plot_settings[key_plot]['plot_fa_orb'] = False
+            plot_settings[key_plot]['plot_ar_orb'] = False
             
             # plot_settings[key_plot]['n_stcell']=201.
 
-            plot_settings[key_plot]['mock_spot_prop'] = True #& False
+            plot_settings[key_plot]['mock_actreg_prop'] = True #& False
 
-            plot_settings[key_plot]['mock_facula_prop'] = True #& False
-
-            plot_settings[key_plot]['fit_spot_prop'] = True & False
+            plot_settings[key_plot]['fit_actreg_prop'] = True & False
 
             # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
 
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 20, 'fctrst' : 0.2}
-            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  10, 'Tc_sp' : 2458330.39051+0.1, 'ang' : 25}
-            # plot_settings[key_plot]['custom_spot_prop']['spot3'] = {'lat' :  -30, 'Tc_sp' : 2458330.39051+0.3, 'ang' : 20}
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_ar' : 2458330.39051, 'ang' : 20, 'fctrst' : 0.2}
+            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  10, 'Tc_ar' : 2458330.39051+0.1, 'ang' : 25}
+            # plot_settings[key_plot]['custom_spot_prop']['spot3'] = {'lat' :  -30, 'Tc_ar' : 2458330.39051+0.3, 'ang' : 20}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_ar' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
             
             plot_settings[key_plot]['st_grid_overlay']=True &False
 
-            plot_settings[key_plot]['sp_grid_overlay']=True &False
+            plot_settings[key_plot]['ar_grid_overlay']=True &False
 
             plot_settings[key_plot]['pl_grid_overlay']=True &False
 
-            plot_settings[key_plot]['n_facell']=121.
-
-            plot_settings[key_plot]['n_spcell']=101.
+            plot_settings[key_plot]['n_arcell']=101.
 
             # plot_settings[key_plot]['n_plcell']={'AUMicb':5.}
 
@@ -2494,27 +2457,24 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             # plot_settings[key_plot]['n_stcell']=12.
 
-            plot_settings[key_plot]['mock_spot_prop'] = True #& False
+            plot_settings[key_plot]['mock_actreg_prop'] = True #& False
 
-            plot_settings[key_plot]['mock_facula_prop'] = True & False
-
-            plot_settings[key_plot]['fit_spot_prop'] = True & False
+            plot_settings[key_plot]['fit_actreg_prop'] = True & False
 
             # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
 
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 20, 'fctrst' : 0.2}
-            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  10, 'Tc_sp' : 2458330.39051+0.1, 'ang' : 25}
-            # plot_settings[key_plot]['custom_spot_prop']['spot3'] = {'lat' :  -30, 'Tc_sp' : 2458330.39051+0.3, 'ang' : 20}
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_ar' : 2458330.39051, 'ang' : 20, 'fctrst' : 0.2}
+            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  10, 'Tc_ar' : 2458330.39051+0.1, 'ang' : 25}
+            # plot_settings[key_plot]['custom_spot_prop']['spot3'] = {'lat' :  -30, 'Tc_ar' : 2458330.39051+0.3, 'ang' : 20}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_ar' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
             
             plot_settings[key_plot]['st_grid_overlay']=True &False
 
-            plot_settings[key_plot]['sp_grid_overlay']=True &False
+            plot_settings[key_plot]['ar_grid_overlay']=True &False
 
             plot_settings[key_plot]['pl_grid_overlay']=True &False
 
-            plot_settings[key_plot]['n_spcell']=51.
-            plot_settings[key_plot]['n_facell']=51.
+            plot_settings[key_plot]['n_arcell']=51.
 
             plot_settings[key_plot]['n_plcell']={'AUMicb':5.}
 
@@ -2523,22 +2483,22 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             plot_settings[key_plot]['n_stcell']=37.
 
-            plot_settings[key_plot]['mock_spot_prop'] = True #& False
+            plot_settings[key_plot]['mock_actreg_prop'] = True #& False
 
-            plot_settings[key_plot]['fit_spot_prop'] = True & False
+            plot_settings[key_plot]['fit_actreg_prop'] = True & False
 
             # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
 
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 0, 'Tc_sp' : 2458702.76484-0.8, 'ang' : 10, 'fctrst' : 0.35}
-            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -10, 'Tc_sp' : 2458702.76484, 'ang' : 14}
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 0, 'Tc_ar' : 2458702.76484-0.8, 'ang' : 10, 'fctrst' : 0.35}
+            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -10, 'Tc_ar' : 2458702.76484, 'ang' : 14}
 
             plot_settings[key_plot]['st_grid_overlay']=True &False
 
-            plot_settings[key_plot]['sp_grid_overlay']=True &False
+            plot_settings[key_plot]['ar_grid_overlay']=True &False
 
             plot_settings[key_plot]['pl_grid_overlay']=True &False
 
-            plot_settings[key_plot]['n_spcell']=33.
+            plot_settings[key_plot]['n_arcell']=33.
 
             plot_settings[key_plot]['n_plcell']={'Sagittarius_b':33.}
 
@@ -2546,39 +2506,39 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             plot_settings[key_plot]['n_stcell']=81.
 
-            plot_settings[key_plot]['mock_spot_prop'] = True & False
+            plot_settings[key_plot]['mock_actreg_prop'] = True & False
 
-            plot_settings[key_plot]['fit_spot_prop'] = True & False
+            plot_settings[key_plot]['fit_actreg_prop'] = True & False
 
             # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
 
-            plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 0, 'Tc_sp' : 2458702.76484-0.8, 'ang' : 10, 'fctrst' : 0.35}
-            plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -10, 'Tc_sp' : 2458702.76484, 'ang' : 14}
+            plot_settings[key_plot]['custom_actreg_prop']['spot1'] = {'lat' : 0, 'Tc_ar' : 2458702.76484-0.8, 'ang' : 10, 'fctrst' : 0.35}
+            plot_settings[key_plot]['custom_actreg_prop']['spot2'] = {'lat' :  -10, 'Tc_ar' : 2458702.76484, 'ang' : 14}
             
             plot_settings[key_plot]['st_grid_overlay']=False
 
-            plot_settings[key_plot]['sp_grid_overlay']=False
+            plot_settings[key_plot]['ar_grid_overlay']=False
 
-            plot_settings[key_plot]['n_spcell']=31
+            plot_settings[key_plot]['n_arcell']=31
 
         if gen_dic['star_name']=='fakeAU_Mic':    
 
             plot_settings[key_plot]['n_stcell']=81.
 
-            plot_settings[key_plot]['mock_spot_prop'] = True #& False
+            plot_settings[key_plot]['mock_actreg_prop'] = True #& False
 
-            plot_settings[key_plot]['fit_spot_prop'] = True & False
+            plot_settings[key_plot]['fit_actreg_prop'] = True & False
 
             plot_settings[key_plot]['fit_results_file'] = ''
 
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 10, 'Tc_sp' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
-            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -20, 'Tc_sp' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
-            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 30, 'Tc_sp' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
+            # plot_settings[key_plot]['custom_actreg_prop']['spot1'] = {'lat' : 10, 'Tc_ar' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
+            # plot_settings[key_plot]['custom_actreg_prop']['spot2'] = {'lat' :  -20, 'Tc_ar' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
+            # plot_settings[key_plot]['custom_actreg_prop']['spot1'] = {'lat' : 30, 'Tc_ar' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
             
         elif gen_dic['star_name']=='V1298tau':
-            plot_settings[key_plot]['mock_spot_prop'] = True #& False
+            plot_settings[key_plot]['mock_actreg_prop'] = True #& False
             
-            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' : -40, 'Tc_sp' : 2458877.6306  + 5/24, 'ang' : 7, 'ctrst' : 0.6}   
+            # plot_settings[key_plot]['custom_actreg_prop']['spot2'] = {'lat' : -40, 'Tc_ar' : 2458877.6306  + 5/24, 'ang' : 7, 'ctrst' : 0.6}   
                             
 
 

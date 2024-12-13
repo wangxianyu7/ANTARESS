@@ -6,10 +6,10 @@ from copy import deepcopy
 import glob
 from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,default_func,check_data
 from ..ANTARESS_general.constant_data import c_light
-from ..ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase,coord_expos_contamin
-from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_spot_prop,retrieve_contamin_prop_from_param
+from ..ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase,coord_expos_actreg
+from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_actreg_prop,retrieve_actreg_prop_from_param
 
-def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,spot_dic={},masterDIweigh=False):
+def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,actreg_dic={},masterDIweigh=False):
     r"""**Binning routine**
 
     Bins series of input spectral profile into a new series along the chosen temporal/spatial dimension.
@@ -475,62 +475,39 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             data_glob_new['coord']['bjd'] = binned_time
             data_glob_new['coord']['t_dur'] = binned_t_dur
 
-            #Properties of planet-occulted and spot-occulted regions 
+            #Properties of planet- and active region-occulted regions 
             params = deepcopy(system_param['star'])
             params.update({'rv':0.,'cont':1.}) 
-            params['use_spots']=False
-            params['use_faculae']=False
-            if (inst in spot_dic):
+            params['use_actreg']=False
+            if (inst in actreg_dic):
                 if mode=='multivis':
-                    print('WARNING: spots properties are not propagated for multiple visits.')
-                    data_glob_new['transit_sp'] = []
-                    data_glob_new['transit_fa'] = []
-                elif vis_in in spot_dic[inst]:
-                    if ('spots_prop' in spot_dic[inst][vis_in]) and (spot_dic[inst][vis_in]['spots_prop'] != {}):
-                        data_glob_new['transit_sp'] = data_dic[inst][vis_in]['transit_sp']
+                    print('WARNING: active region properties are not propagated for multiple visits.')
+                    data_glob_new['studied_actreg'] = []
+                elif vis_in in actreg_dic[inst]:
+                    if ('actreg_prop' in actreg_dic[inst][vis_in]) and (actreg_dic[inst][vis_in]['actreg_prop'] != {}):
+                        data_glob_new['studied_actreg'] = data_dic[inst][vis_in]['studied_actreg']
                         
-                        #Trigger spot use
-                        params['use_spots']=True
+                        #Trigger active region use
+                        params['use_actreg']=True
 
-                        #Retrieve spot coordinates/properties for new exposures
-                        spots_prop = retrieve_contamin_prop_from_param(spot_dic[inst][vis_in]['spots_prop'],inst,vis_in,'spots')
-                        spots_prop['cos_istar']=system_param['star']['cos_istar']
-                        for spot in data_dic[inst][vis_in]['transit_sp']:
-                            data_glob_new['coord'][spot]={}
-                            for key in gen_dic['spot_coord_par']:data_glob_new['coord'][spot][key] = np.zeros([3,n_bin],dtype=float)*np.nan
-                            data_glob_new['coord'][spot]['is_visible'] = np.zeros([3,n_bin],dtype=float)
-                            for key in ['Tc_sp',  'ang_rad', 'lat_rad', 'fctrst']:data_glob_new['coord'][spot][key] = spots_prop[spot][key]
+                        #Retrieve active region coordinates/properties for new exposures
+                        actreg_prop = retrieve_actreg_prop_from_param(actreg_dic[inst][vis_in]['actreg_prop'],inst,vis_in)
+                        actreg_prop['cos_istar']=system_param['star']['cos_istar']
+                        for actreg in data_dic[inst][vis_in]['studied_actreg']:
+                            data_glob_new['coord'][actreg]={}
+                            for key in gen_dic['actreg_coord_par']:data_glob_new['coord'][actreg][key] = np.zeros([3,n_bin],dtype=float)*np.nan
+                            data_glob_new['coord'][actreg]['is_visible'] = np.zeros([3,n_bin],dtype=float)
+                            for key in ['Tc_ar',  'ang_rad', 'lat_rad', 'fctrst']:data_glob_new['coord'][actreg][key] = actreg_prop[actreg][key]
                         for i_new in range(n_bin):
-                            for spot in data_dic[inst][vis_in]['transit_sp']:
-                                spots_prop_exp = coord_expos_contamin(spot,data_glob_new['coord']['bjd'][i_new],spots_prop,system_param['star'],data_glob_new['coord']['t_dur'][i_new],gen_dic['spot_coord_par'],'spots')                           
-                                for key in spots_prop_exp:data_glob_new['coord'][spot][key][:, i_new] = [spots_prop_exp[key][0],spots_prop_exp[key][1],spots_prop_exp[key][2]]                              
-
-
-
-                    if ('faculae_prop' in spot_dic[inst][vis_in]) and (spot_dic[inst][vis_in]['faculae_prop'] != {}):
-                        data_glob_new['transit_fa'] = data_dic[inst][vis_in]['transit_fa']
-
-                        #Trigger facula use
-                        params['use_faculae']=True
-                        
-                        #Retrieve facula coordinates/properties for new exposures
-                        faculae_prop = retrieve_contamin_prop_from_param(spot_dic[inst][vis_in]['faculae_prop'],inst,vis_in,'faculae')
-                        faculae_prop['cos_istar']=system_param['star']['cos_istar']
-                        for facula in data_dic[inst][vis_in]['transit_fa']:
-                            data_glob_new['coord'][facula]={}
-                            for key in gen_dic['facula_coord_par']:data_glob_new['coord'][facula][key] = np.zeros([3,n_bin],dtype=float)*np.nan
-                            data_glob_new['coord'][facula]['is_visible'] = np.zeros([3,n_bin],dtype=float)
-                            for key in ['Tc_fa',  'ang_rad', 'lat_rad', 'fctrst']:data_glob_new['coord'][facula][key] = faculae_prop[facula][key]
-                        for i_new in range(n_bin):
-                            for facula in data_dic[inst][vis_in]['transit_fa']:
-                                faculae_prop_exp = coord_expos_contamin(facula,data_glob_new['coord']['bjd'][i_new],faculae_prop,system_param['star'],data_glob_new['coord']['t_dur'][i_new],gen_dic['facula_coord_par'],'faculae')                           
-                                for key in faculae_prop_exp:data_glob_new['coord'][facula][key][:, i_new] = [faculae_prop_exp[key][0],faculae_prop_exp[key][1],faculae_prop_exp[key][2]]                              
+                            for actreg in data_dic[inst][vis_in]['studied_actreg']:
+                                actreg_prop_exp = coord_expos_actreg(actreg,data_glob_new['coord']['bjd'][i_new],actreg_prop,system_param['star'],data_glob_new['coord']['t_dur'][i_new],gen_dic['actreg_coord_par'])                           
+                                for key in actreg_prop_exp:data_glob_new['coord'][actreg][key][:, i_new] = [actreg_prop_exp[key][0],actreg_prop_exp[key][1],actreg_prop_exp[key][2]]                              
 
                                         
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
             if ('spec' in data_mode) and ('chrom' in system_prop):key_chrom+=['chrom']
-            data_glob_new['plocc_prop'],data_glob_new['spot_prop'],data_glob_new['facula_prop'],data_glob_new['common_prop'] = sub_calc_plocc_spot_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],data_inst[vis_save]['transit_sp'],data_inst[vis_save]['transit_fa'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_spot_prop_in=data_dic['DI']['spots_prop'],system_facula_prop_in=data_dic['DI']['faculae_prop'],out_ranges=True)
+            data_glob_new['plocc_prop'],data_glob_new['actreg_prop'],data_glob_new['common_prop'] = sub_calc_plocc_actreg_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],data_inst[vis_save]['studied_actreg'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_actreg_prop_in=data_dic['DI']['actreg_prop'],out_ranges=True)
             
         #---------------------------------------------------------------------------
 

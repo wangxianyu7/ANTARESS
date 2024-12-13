@@ -50,7 +50,6 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
     #Initializes main dictionaries
     gen_dic={}
     plot_dic={}
-    corr_spot_dic={}
     data_dic={
         'DI':{'fit_prof':{},'mask':{}},
         'Diff':{},
@@ -68,7 +67,7 @@ def ANTARESS_launcher(custom_systems = '',custom_settings = '',custom_plot_setti
         'AtmProp':{},
         'AtmProf':{},
         }  
-    input_dics = (data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,corr_spot_dic)
+    input_dics = (data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic)
     
     #Retrieve default settings
     from ..ANTARESS_launch.ANTARESS_settings import ANTARESS_settings
