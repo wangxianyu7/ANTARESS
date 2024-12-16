@@ -4,7 +4,8 @@ Notebooks
 Motivation
 ----------
 
-Notebooks allow you to run a simplified version of the ``ANTARESS`` workflow. Their purpose is to help you familiarize with ``ANTARESS``. To exploit the workflow to its full capabilities, run its executable with the `configuration files <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/installation.html>`_.
+Notebooks allow you to run simplified versions of the ``ANTARESS`` workflow. Their purpose is to help you familiarize with ``ANTARESS`` and run preliminary analyses. 
+To exploit the workflow to its full capabilities, run its executable with the `configuration files <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/installation.html>`_.
 
 
 How to

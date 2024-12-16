@@ -93,7 +93,7 @@ In most modules you can choose to compute data (`calculation mode`, in which cas
 Plots
 -----
 
-Plots are generated `at the end` of the workflow processing, upon request.
+Plots are generated *at the end* of the workflow processing, upon request.
 
 At the end of each module in the main configuration file :orange:`ANTARESS_settings.py` you can activate a given :orange:`plot_name` by setting :orange:`plot_dic['plot_name']` to an extension, such as :orange:`pdf`.
 

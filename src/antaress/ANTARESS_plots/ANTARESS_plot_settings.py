@@ -307,6 +307,22 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
         #Plot exposure indexes
         plot_options['plot_expid'] = True
         
+    #--------------------------------------           
+    #Flux balance options
+    if ('Fbal_corr' in key_plot):
+
+        #Overplot all exposures or offset them
+        plot_options['gap_exp']=0.  
+        
+        #Indexes of bins to be plotted 
+        #    - format is {inst : { vis : [idx0, idx1, ..]}
+        #      where 'idxi' are the indexes of the spectral bins used in the flux balance fit
+        #    - use this option to identify bins biasing the fit
+        plot_options['ibin_plot'] = {}        
+
+        #Plot order indexes
+        plot_options['plot_idx_ord'] = True
+
     #--------------------------------------   
     #Binned profiles settings     
     if ('map_' in key_plot) or ('bin' in key_plot) or ('prop_' in key_plot) or (key_plot in ['occulted_regions']):
@@ -584,15 +600,6 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
     
-            #%%%%% Plot order indexes
-            plot_settings[key_plot]['plot_idx_ord'] = True
-            
-            #%%%%% Indexes of exposures and bins to be plotted 
-            plot_settings[key_plot]['ibin_plot'] = {}
-              
-            #%%%%% Overplot all exposures or offset them
-            plot_settings[key_plot]['gap_exp']=0.        
-    
             #%%%%% Strip range used for correction
             plot_settings[key_plot]['strip_corr'] = False
     
@@ -625,16 +632,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
-    
-            #%%%%% Plot order indexes
-            plot_settings[key_plot]['plot_idx_ord'] = True
-            
-            #%%%%% Indexes of bins to be plotted 
-            plot_settings[key_plot]['ibin_plot'] = {}
-              
-            #%%%%% Overplot all profiles or offset them
-            plot_settings[key_plot]['gap_exp']=0.        
-    
+
             #%%%%% Strip range used for correction
             plot_settings[key_plot]['strip_corr'] = False
     

@@ -25,7 +25,7 @@ Because the workflow is modular and its concepts are general, it can support new
 
 Please cite:
 
-- TBD: if you use ``ANTARESS`` for any purpose.
+- `Bourrier et al. 2024, A&A, 691, A113 <https://www.aanda.org/articles/aa/full_html/2024/11/aa49203-24/aa49203-24.html>`_: if you use ``ANTARESS`` for any purpose.
 - TBD: if you use ``ANTARESS`` to extract and analyze planetary spectra.
 - TBD: if you use ``ANTARESS`` to extract and analyze spotted stellar spectra.
 

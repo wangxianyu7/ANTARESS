@@ -18,7 +18,7 @@ def save_system(input_nbook):
     #Deactivate all notebook plots
     for key_plot in ['system_view','prop_DI','prop_Intr','DI_prof','Intr_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_Diff_prof','flux_sp','trans_sp','gcal_ord','noises_ord','tell_CCF','tell_prop','Fbal_corr','cosm_corr']:input_nbook['settings']['plot_dic'][key_plot] = ''
     
-    input_nbook['saved_data_path'] = input_nbook['working_path']+input_nbook['par']['star_name'] +'/'+input_nbook['par']['main_pl'] + '_Saved_data'
+    input_nbook['saved_data_path'] = input_nbook['working_path']+'/'+input_nbook['par']['star_name'] +'/'+input_nbook['par']['main_pl'] + '_Saved_data'
     print('System stored in : ', input_nbook['saved_data_path'])
     if (not path_exist(input_nbook['saved_data_path'])): os_system.makedirs(input_nbook['saved_data_path'])
 
@@ -85,6 +85,12 @@ def load_nbook(input_nbook, nbook_type):
         input_nbook['settings']['gen_dic']['corr_FbalOrd'] = False    
         input_nbook['settings']['gen_dic']['corr_cosm'] = False    
         input_nbook['settings']['gen_dic']['calc_FbalOrd'] = False    
+
+    # Detrended data
+    if ('detrend_prof' in input_nbook['settings']['gen_dic']) & (nbook_type!='Trends'):
+        input_nbook['settings']['gen_dic']['detrend_prof'] = True
+        input_nbook['settings']['gen_dic']['calc_detrend_prof']= False
+        input_nbook['settings']['detrend_prof_dic']['corr_trend'] = True
 
     return input_nbook
 
@@ -253,6 +259,7 @@ def DImast_weight(input_nbook):
 
 def extract_diff(input_nbook):
     input_nbook['settings']['gen_dic']['diff_data']=True
+    input_nbook['settings']['gen_dic']['nthreads_diff_data'] = 8
     input_nbook['settings']['data_dic']['Diff']['extract_in'] = False
     return None
 
@@ -299,11 +306,11 @@ def diff_prof_corr(input_nbook):
 Analysis functions
 '''
 def ana_prof(input_nbook,data_type):
-    inst = input_nbook['par']['instrument']
-    vis = input_nbook['par']['night'] 
     if ('CCF' not in input_nbook['par']['type']):
         print('Data in spectral mode: no fit performed')
     else:
+        inst = input_nbook['par']['instrument']
+        vis = input_nbook['par']['night'] 
         input_nbook['settings']['gen_dic']['fit_'+data_type]=True
     
         #Retrieval mode
@@ -320,10 +327,10 @@ def ana_prof(input_nbook,data_type):
             cont_range = deepcopy(input_nbook['par']['cont_range'])
             cont_range_shifted = []
             for bd in cont_range:cont_range_shifted+=[bd[0]+rv_shift,bd[1]+rv_shift]
-            input_nbook['settings']['data_dic'][data_type]['cont_range']: {inst: {0:cont_range_shifted}}
+            input_nbook['settings']['data_dic'][data_type]['cont_range']= {inst: {0:cont_range_shifted}}
             input_nbook['par'].pop('cont_range')
         if 'fit_range' in input_nbook['par']:
-            input_nbook['settings']['data_dic'][data_type]['fit_range']: {inst: {vis: input_nbook['par']['fit_range']+rv_shift}}
+            input_nbook['settings']['data_dic'][data_type]['fit_range'] = {inst: {vis: input_nbook['par']['fit_range']+rv_shift}}
             input_nbook['par'].pop('fit_range')
 
         #Guess values
@@ -420,8 +427,8 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
                     'c__ord0__IS__VS_':{'vary':True ,'guess':guess_val,'bd':[-100.,100.]}}
                 deg = input_nbook['DI_trend'][prop_in]['deg']
                 if deg>0:
-                    for ideg in range(deg+1):
-                        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'][prop_in][coord+'__pol__ord1__IS__VS_']={
+                    for ideg in range(1,int(deg)+1):
+                        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'][prop][coord+'__pol__ord'+str(ideg)+'__IS__VS_']={
                             {'vary':True ,'guess':0,'bd':[-100.,100.]}}
     
     elif (ana_type=='Prof'):
@@ -429,15 +436,17 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
 
         #For joint intrinsic profiles the continuum is left free to vary but initialized within the workflow itself
         if data_type == 'Intr':
+            #     - 'Opt_Lvl' set to 2 to avoid system-related issues with C grid file
             input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['Opt_Lvl']=2
             input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['verbose']=True
 
             #Continuum range
+            #    - defined in star rest frame in both notebook and pipeline
             if 'cont_range' in input_nbook['par']:
                 cont_range = deepcopy(input_nbook['par']['cont_range'])
                 cont_range_shifted = []
-                for bd in cont_range:cont_range_shifted+=[bd[0]+rv_shift,bd[1]+rv_shift]
-                input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['cont_range']: {inst: {0:cont_range_shifted}} 
+                for bd in cont_range:cont_range_shifted+=[bd[0],bd[1]]
+                input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['cont_range'] = {inst: {0:cont_range_shifted}} 
                 input_nbook['par'].pop('cont_range')
 
     if ('priors' in input_nbook['par']):input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['priors']={}
@@ -490,7 +499,6 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
                 prop_name = temp_prop_name+'__IS'+input_nbook['par']['instrument']+'_VS'+input_nbook['par']['night']+'_SP'+spot_name
             elif  'fctrst' in prop:
                 prop_name = 'fctrst__IS'+input_nbook['par']['instrument']+'_VS'+input_nbook['par']['night']+'_SP'
-    
             mean_prop = np.mean(bd_prop)
             fit_prop_dic = {'vary':True,'guess':mean_prop,'bd':bd_prop}
             if (ana_type=='Prop'):input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'][prop_main][prop_name]=fit_prop_dic
@@ -659,21 +667,32 @@ def wiggle_corr(input_nbook):
 
     
 def detrend(input_nbook):
-    inst = input_nbook['par']['instrument']
-    vis = input_nbook['par']['night']
-    if len(input_nbook['sp_reduc']['detrend'])==0:stop('ERROR: no detrending defined')
+    if ('CCF' not in input_nbook['par']['type']):
+        print('Data in spectral mode: no fit performed')
+    else:
+        inst = input_nbook['par']['instrument']
+        vis = input_nbook['par']['night']
+        if len(input_nbook['sp_reduc']['detrend'])==0:stop('ERROR: no detrending defined')
+    
+        input_nbook['settings']['gen_dic']['detrend_prof'] = True
+        input_nbook['settings']['gen_dic']['calc_detrend_prof']= input_nbook['sp_reduc']['calc_detrend']
+        input_nbook['settings']['detrend_prof_dic']['corr_trend'] = True
+    
+        rv_shift = input_nbook['system'][input_nbook['par']['star_name']]['star']['sysvel']
+        if ('cont_range' in input_nbook['par']):
+            cont_range = deepcopy(input_nbook['par']['cont_range'])
+            cont_range_shifted = []
+            for bd in cont_range:cont_range_shifted+=[bd[0]+rv_shift,bd[1]+rv_shift]
+            input_nbook['settings']['data_dic']['DI']['cont_range']= {inst: {0:cont_range_shifted}}
+            input_nbook['par'].pop('cont_range')
 
-    input_nbook['settings']['gen_dic']['detrend_prof'] = True
-    input_nbook['settings']['gen_dic']['calc_detrend_prof']= input_nbook['sp_reduc']['calc_detrend']
-    input_nbook['settings']['detrend_prof_dic']['corr_trend'] = True
-
-    input_nbook['settings']['detrend_prof_dic']['prop'] = {inst:{vis:{}}}
-    for prop_coord in input_nbook['sp_reduc']['detrend']:
-        if (inst=='ESPRESSO') and ('snr' in prop_coord):
-            prop_str = prop_coord.split('_snr')[0]
-            prop_coord_ref = prop_str+'_snrQ'
-        else:prop_coord_ref = prop_coord
-        input_nbook['settings']['detrend_prof_dic']['prop'][inst][vis][prop_coord_ref]={'pol':np.array(input_nbook['sp_reduc']['detrend'][prop_coord])}
+        input_nbook['settings']['detrend_prof_dic']['prop'] = {inst:{vis:{}}}
+        for prop_coord in input_nbook['sp_reduc']['detrend']:
+            if (inst=='ESPRESSO') and ('snr' in prop_coord):
+                prop_str = prop_coord.split('_snr')[0]
+                prop_coord_ref = prop_str+'_snrQ'
+            else:prop_coord_ref = prop_coord
+            input_nbook['settings']['detrend_prof_dic']['prop'][inst][vis][prop_coord_ref]={'pol':np.array(input_nbook['sp_reduc']['detrend'][prop_coord])}
 
     return None
 
@@ -810,7 +829,7 @@ def cosmic_search(iexp, iord, input_nbook):
         return True
 
     else:
-        files = sorted(list(file for file in os.listdir(path) if file.startswith("idx")))
+        files = sorted(list(file for file in os_system.listdir(path) if file.startswith("idx")))
         l = []
         for file in files:
             val = re.split('[x _ d .]', str(file))
@@ -825,7 +844,7 @@ def plot_prop(input_nbook,data_type):
     input_nbook['settings']['plot_dic']['prop_'+data_type] = 'png' 
 
     #Plotted properties
-    if input_nbook['type']=='Trends':
+    if input_nbook['type'] in ['Trends','Processing']:
         nbook_prop_names = ['rv','rv_res','contrast','FWHM']
         input_nbook['plots']['prop_'+data_type+'_ordin'] = ['rv','rv_res','ctrst','FWHM']
         input_nbook['par']['print_disp'] = ['plot']
