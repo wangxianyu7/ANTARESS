@@ -820,7 +820,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         
     #%%%%% Threshold
     #    - calibration values above the global threshold, or outliers in the residuals from a preliminary fit, are sigma-clipped and not fitted
-    #    - format: {inst : {prop : value} }   
+    #    - format: {inst : {'outliers' : val,'global' : val} }   
     gen_dic['gcal_thresh']={}
     
     
@@ -1640,7 +1640,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - 'range': define the spectral range(s) over which correction should be applied (in A); leave empty to apply to the full spectrum
     #    - use plot_dic['trans_sp'] to assess the correction
     gen_dic['wig_corr'] = {
-        'mode':True   ,
+        'mode':False   ,
         'path':{},
         'exp_list':{},
         'comp_ids':[1,2],
@@ -4300,9 +4300,11 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     
     
     #%%%% Runs to re-use
-    #    - list of mcmc runs to reuse
-    #    - if 'reuse' is requested, leave empty to automatically retrieve the mcmc run available in the default directory
-    #  or set the list of mcmc runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
+    #    - list of mcmc runs to reuse, when 'mcmc_run_mode' = 'reuse'
+    #    - leave empty to automatically retrieve the mcmc run available in the default directory
+    #      or set the list of mcmc runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run) as:
+    # { 'paths' : ['path1/raw_chains_walkN_stepsM1_name.npz','path2/raw_chains_walkN_stepsM2_name.npz',..],
+    #   'nburn' : [ n1, n2, ..]}
     local_dic[data_type]['mcmc_reuse']={}
 
 

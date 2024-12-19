@@ -480,7 +480,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
     ################################################################################################################    
-    #%%%% Telluric CCF
+    #%%% Telluric CCF
     ################################################################################################################  
     if ('tell_CCF' in plot_settings):
         key_plot = 'tell_CCF'
@@ -655,7 +655,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
     ################################################################################################################    
-    #%%%% Telluric properties
+    #%%% Telluric properties
     ################################################################################################################ 
     if ('tell_prop' in plot_settings):
         key_plot = 'tell_prop'
@@ -1028,7 +1028,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 lev_exp = isub*plot_set_key['gap_exp'] 
 
                 #Upload flux balance correction data
-                data_Fbal = np.load(gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_add.npz', allow_pickle=True)['data'].item()              
+                data_Fbal = np.load(gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_add.npz', allow_pickle=True)['data'].item()   
+                if 'Fbal_wav_bin_vis' not in data_Fbal:stop('ERROR : "Plot data is missing. This plot can only be used if more than one visit per instrument is processed, and if "gen_dic["corr_Fbal""]" was run with "plot_dic["Fbal_corr_vis"]" enabled.')
                 if (inst in plot_set_key['ibin_plot']) and (vis in plot_set_key['ibin_plot'][inst]) and (len(plot_set_key['ibin_plot'][inst][vis])>0):ibin_exp = list(plot_set_key['ibin_plot'][inst][vis])
                 else:ibin_exp=range(len(data_Fbal['Fbal_wav_bin_vis'])) 
 

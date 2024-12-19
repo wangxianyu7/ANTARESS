@@ -75,7 +75,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
                 'CH4':16.04,
                 'CO2':44.01,
                 'O2':31.9988 }
-            if inst in ['HARPS','SOPHIE','ESPRESSO','NIRPS_HA','NIRPS_HE','HARPSN','CARMENES_VIS']:   #Fix temperature if it is known from in-situ measurements
+            if inst in ['HARPS','SOPHIE','ESPRESSO','NIRPS_HA','NIRPS_HE','HARPN','CARMENES_VIS']:   #Fix temperature if it is known from in-situ measurements
                 tell_mol_dic['temp_bool_molecules']={
                     'H2O':False,
                     'CH4':False,                  
@@ -148,7 +148,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
             if gen_dic['calc_tell_mode']=='autom':
                 
                 #Resolution map or constant resolution for instrumental response
-                if (data_inst['type']=='spec2D') and (inst in ['ESPRESSO','NIRPS_HE','NIRPS_HA']):
+                if (data_inst['type']=='spec2D') and (inst in ['ESPRESSO','NIRPS_HE','NIRPS_HA','HARPS','HARPN']):
                     print('         Using resolution map for instrumental response')
                     fixed_args['fixed_res'] = False
                     mean_bjd = np.mean(coord_dic[inst][vis]['bjd'])
@@ -522,6 +522,30 @@ def open_resolution_map(instrument,time_science,ins_mod,bin_x):
                 instrumental_function = fits.open(static_resol_path+'NIRPS/r.NIRPS.2022-06-15T17_52_36.533_resolution_map.fits')
             elif (time_science > 59850.5):
                 instrumental_function = fits.open(static_resol_path+'NIRPS/r.NIRPS.2022-11-28T20_47_51.815_resolution_map.fits')         
+
+    elif instrument == 'HARPN':
+        if time_science < 56738.5: 
+            instrumental_function = fits.open(static_resol_path+'HARPN/r.HARPN_2012_RESOLUTION_MAP.fits')
+        elif time_science < 59515.5:
+            instrumental_function = fits.open(static_resol_path+'HARPN/r.HARPN_2014_RESOLUTION_MAP.fits')
+        elif time_science > 59515.5:
+            instrumental_function = fits.open(static_resol_path+'HARPN/r.HARPN_2021_RESOLUTION_MAP.fits')
+
+    elif instrument == 'HARPS':
+        if ins_mod == 'HARPS   ': #keyword from header
+            if time_science < 57176.5: #03-06-2015 - fiber change
+                instrumental_function = fits.open(static_resol_path+'HARPS/r.HARPS_2003_RESOLUTION_MAP.fits')
+            elif time_science < 60218.5: #01-10-2023 - cryostat change
+                instrumental_function = fits.open(static_resol_path+'HARPS/r.HARPS_2015_RESOLUTION_MAP.fits')
+            elif time_science > 60218.5:
+                instrumental_function = fits.open(static_resol_path+'HARPS/r.HARPS_2023_RESOLUTION_MAP.fits')
+        elif ins_mod == 'EGGS    ': #keyword from header
+            if time_science < 57176.5: 
+                instrumental_function = fits.open(static_resol_path+'HARPS/r.EGGS_2003_RESOLUTION_MAP.fits')
+            elif time_science < 60218.5: #01 oct 2023
+                instrumental_function = fits.open(static_resol_path+'HARPS/r.EGGS_2015_RESOLUTION_MAP.fits')
+            elif time_science > 60218.5:
+                instrumental_function = fits.open(static_resol_path+'HARPS/r.EGGS_2023_RESOLUTION_MAP.fits')
 
     #Resolution map
     #    - defined as a function of detector pixels

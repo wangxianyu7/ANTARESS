@@ -6,7 +6,7 @@ The documentation of the current version on the gitlab repository can be found [
 
 
 ## Contributors
-Omar Attia, Romain Allart, Khaled Al Moulla, Vincent Bourrier, Heather Cegla, Michaël Cretignier, William Dethier, Jean-Baptiste Delisle, Xavier Dumusque, David Ehrenreich, Erik Fridén, Nathan Hara, Christophe Lovis, Samson Jules Mercier, Dany Mounzer, Francesco Alfonso Pepe, Julia Victoria Seidel, Michal Steiner, Sara Tavella, Valentina Vaulato, Theo Vrignaud, Aurélien Wyttenbach.
+Romain Allart, Khaled Al Moulla, Mara Attia, Vincent Bourrier, Heather Cegla, Michaël Cretignier, William Dethier, Jean-Baptiste Delisle, Xavier Dumusque, David Ehrenreich, Erik Fridén, Nathan Hara, Christophe Lovis, Samson Jules Mercier, Dany Mounzer, Francesco Alfonso Pepe, Julia Victoria Seidel, Michal Steiner, Sara Tavella, Valentina Vaulato, Theo Vrignaud, Aurélien Wyttenbach.
 
 
 ## References

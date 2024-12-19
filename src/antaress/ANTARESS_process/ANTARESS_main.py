@@ -2495,7 +2495,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             if inst in ['SOPHIE','HARPS','NIRPS_HA','NIRPS_HE']:pre_txt=''                             
                             elif inst=='ESPRESSO':pre_txt = tel_inst
                             data_prop[inst][vis]['TEMP'][iexp] = hdr['HIERARCH '+facil_inst+' TEL'+pre_txt+' AMBI TEMP'] + 273.15
-                        elif inst=='HARPN':   #Validated by Rosario Cosentino (harpsn instrument scientist)
+                        elif inst=='HARPN':   #Validated by Rosario Cosentino (HARPSN instrument scientist)
                             pre_txt=''
                             data_prop[inst][vis]['TEMP'][iexp] = hdr['HIERARCH '+facil_inst+' METEO TEMP10M'] + 273.15
                         elif inst=='CARMENES_VIS':
@@ -2508,7 +2508,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             if inst in ['SOPHIE','HARPS','NIRPS_HA','NIRPS_HE']:pre_txt=''                             
                             elif inst=='ESPRESSO':pre_txt = tel_inst
                             data_prop[inst][vis]['PRESS'][iexp]=0.5*(hdr['HIERARCH '+facil_inst+' TEL'+pre_txt+' AMBI PRES START']+hdr['HIERARCH '+facil_inst+' TEL'+pre_txt+' AMBI PRES START'] )/1013.2501                                                             
-                        elif inst=='HARPN':    #Validated by Rosario Cosentino (harpsn instrument scientist)
+                        elif inst=='HARPN':    #Validated by Rosario Cosentino (HARPSN instrument scientist)
                             pre_txt=''
                             data_prop[inst][vis]['PRESS'][iexp] = hdr['HIERARCH '+facil_inst+' METEO PRESSURE'] / 1013.2501
                         elif inst=='CARMENES_VIS':

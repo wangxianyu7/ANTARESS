@@ -1008,8 +1008,9 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
         if len(fit_dic['mcmc_reuse'])==0:
             mcmc_load = np.load(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name']+'.npz',allow_pickle = True)
             walker_chains=mcmc_load['walker_chains']  #(nwalkers, nsteps, n_free)
-            step_outputs=mcmc_load['step_outputs']  #(nsteps, nwalkers)
+            step_outputs=mcmc_load['step_outputs']    #(nsteps, nwalkers)
             fixed_args['chi2_storage'] = mcmc_load['step_chi2'] #(nsteps, nwalkers)
+
 
         #Retrieve mcmc run(s) from list of input paths
         else:
@@ -1023,7 +1024,7 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
             for mcmc_path,nburn in zip(fit_dic['mcmc_reuse']['paths'],fit_dic['mcmc_reuse']['nburn']):
                 mcmc_load=np.load(mcmc_path, allow_pickle=True)
                 walker_chains_loc=mcmc_load['walker_chains'][:,nburn::,:] 
-                if fixed_args['step_output']:step_output_loc=mcmc_load['step_output'][nburn::] 
+                if fixed_args['step_output']:step_output_loc=mcmc_load['step_outputs'][nburn::] 
                 if fixed_args['step_chi2']:step_chi2_loc=mcmc_load['step_chi2'][nburn::] 
                 fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
                 walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
@@ -1841,12 +1842,13 @@ def PDF_smooth(chain_par,bw_fact):
         TBD
     
     """ 
+
     #Define smoothed density profile using Gaussian kernels      
     #    - includes automatic bandwidth determination    
     #    - works best for a unimodal distribution; bimodal or multi-modal distributions tend to be oversmoothed.
     #    - default 'scott' approach used bw = npts**(-1./(dimension + 4))
     dens_func = stats.gaussian_kde(chain_par,bw_method=bw_fact*len(chain_par)**(-1./5.))
-    
+
     #Calculate density profile over HR grid
     bin_edges_par = np.linspace(np.min(chain_par), np.max(chain_par), 2001)
     dbin_par=bin_edges_par[1::]-bin_edges_par[0:-1]
@@ -2013,7 +2015,7 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,calc_quant=True,
             nbins_par=None if (('HDI_nbins' not in fit_dic) or (parname not in fit_dic['HDI_nbins'])) else fit_dic['HDI_nbins'][parname]
             dbins_par=None if (('HDI_dbins' not in fit_dic) or (parname not in fit_dic['HDI_dbins'])) else fit_dic['HDI_dbins'][parname]
             bw_fact=None if (('HDI_bwf' not in fit_dic) or (parname not in fit_dic['HDI_bwf'])) else fit_dic['HDI_bwf'][parname]
-            
+  
             #HDI intervals
             HDI_interv_txt[ipar],HDI_frac[ipar],HDI_sig_txt_par[ipar]=MCMC_HDI(merged_chain[:,ipar],nbins_par,dbins_par,bw_fact,frac_search,HDI_interv[ipar],HDI_interv_txt[ipar],HDI_sig_txt_par[ipar],med_par[ipar],use_arviz = fit_dic['use_arviz'])
             
@@ -2572,7 +2574,7 @@ def MCMC_corner_plot(save_mode,save_dir_MCMC,xs,HDI_interv,
         plot_contours (bool): draw contours for dense regions of the 2D histograms
         color_levels (str): ``matplotlib`` style color for `plot_contours`
         use_math_text (bool): if true, then axis tick labels for very large or small exponents will be displayed as powers of 10 rather than using `e`
-        range_par (list): each element is either a length 2 tuple containing lower and upper bounds, or a float in (0., 1.) giving the fraction of samples to include in bounds, e.g.,
+        range_par (list or dict): each element is either a length 2 tuple containing lower and upper bounds, or a float in (0., 1.) giving the fraction of samples to include in bounds, e.g.,
                           [(0.,10.), (1.,5), 0.999, etc.]. If a fraction, the bounds are chosen to be equal-tailed.
         smooth1d, smooth2D (float or list of float): standard deviation for Gaussian kernel passed to `scipy.ndimage.gaussian_filter` to smooth the 2-D and 1-D histograms respectively. 
                                                      If `None` (default), no smoothing is applied. If list, each element is associated with a parameter 
