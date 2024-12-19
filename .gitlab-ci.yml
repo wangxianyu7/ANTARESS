@@ -1,4 +1,5 @@
 default:
+  image: ubuntu:noble
   tags:
     - vb-runner
 
