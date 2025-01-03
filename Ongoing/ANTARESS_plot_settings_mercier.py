@@ -1980,7 +1980,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################
     #%%% 1D PDFs from analysis of individual profiles
     ################################################################################################################
-    for key_plot in ['prop_DI_mcmc_PDFs','prop_Intr_mcmc_PDFs']:
+    for key_plot in ['prop_DI_mcmc_PDFs','prop_Intr_mcmc_PDFs','prop_DI_ns_PDFs','prop_Intr_ns_PDFs']:
         if plot_dic[key_plot]!='':
 
             #%%%% Generic settings
@@ -1993,8 +1993,13 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings[key_plot]['plot_prop_list']=['rv']
             
             #%%%% Default MCMC settings
-            plot_settings[key_plot]['nwalkers'] = 50
-            plot_settings[key_plot]['nsteps'] = 1000
+            if 'mcmc' in key_plot:
+                plot_settings[key_plot]['nwalkers'] = 50
+                plot_settings[key_plot]['nsteps'] = 1000
+
+            #%%%% Default NS settings
+            else:
+                plot_settings[key_plot]['nlive'] = 400
     
             #%%%% Number of subplots per row (>=1)
             plot_settings[key_plot]['nsub_col'] = 5
@@ -2068,6 +2073,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%% Default MCMC settings
             plot_settings[key_plot]['nwalkers'] = 50
             plot_settings[key_plot]['nsteps'] = 1000
+
+            #%%%% Default NS settings
+            plot_settings[key_plot]['nlive'] = 400
 
             #%%%% Plot data-equivalent model from property fit 
             plot_settings[key_plot]['theo_obs_prop'] = False

@@ -1343,7 +1343,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name'] == 'AUMic' :
         mock_dic['flux_cont']={'ESPRESSO':{
-        'mock_vis':1e8,
+        'mock_vis':40.,
         'mock_vis1':1e8,
         'mock_vis2':1e8,
         'mock_vis3':1e8,
@@ -1355,7 +1355,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'mock_vis9':1e8,
             }
         }
-        mock_dic['verbose_flux_cont']= False  
+        mock_dic['verbose_flux_cont']= True & False  
             
     if gen_dic['star_name'] == 'V1298tau' :
         mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e5}}   
@@ -3323,7 +3323,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # > 'vary' indicates whether the parameter is fixed or variable
     #   if 'vary' = True:
     #       'guess' is the guess value of the parameter for a chi2 fit, also used in any fit to define default constraints
-    #       'bd' is the range from which walkers starting points are randomly drawn for a mcmc fit
+    #       'bd' is the range from which walkers starting points are randomly drawn for a mcmc/ns fit
     #   if 'vary' = False:
     #       'guess' is the constant value of the parameter
     #   'guess' and 'bd' can be specific to a given instrument and visit
@@ -5475,7 +5475,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_DiffProf'] = True  &  False
+    gen_dic['fit_DiffProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5896,15 +5896,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                                             
 
 
-    #Walker initial distribution function
-    # if gen_dic['star_name'] in ['AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-    #     glob_fit_dic['DiffProf']['custom_init_walkers']=multivar_Gauss_walk
-
-
     #Fitting mode
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         # glob_fit_dic['DiffProf']['fit_mode']='chi2' 
-        glob_fit_dic['DiffProf']['fit_mode']='mcmc' 
+        # glob_fit_dic['DiffProf']['fit_mode']='mcmc'
+        glob_fit_dic['DiffProf']['fit_mode']='ns' 
 
     #Fitting method - only if chi2 is used
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5998,6 +5994,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['deriv_prop'] = {'lambda_deg':[]}#, 'Peq_veq_spots':{'Rstar':{'val':0.75, 's_val':0.1}}}
     
+    #%%% MCMC
+
     #Calculating/retrieving
     glob_fit_dic['DiffProf']['mcmc_run_mode']='use'    
     # glob_fit_dic['DiffProf']['mcmc_run_mode']='reuse'    
@@ -6015,7 +6013,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Walkers
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['mcmc_set']={'nwalkers':4,'nsteps':10,'nburn':3}
+        glob_fit_dic['DiffProf']['mcmc_set']={'nwalkers':4,'nsteps':100,'nburn':30}
 
     #Complex priors        
          
@@ -6029,6 +6027,27 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     glob_fit_dic['DiffProf']['exclu_walk_autom']=None  #  5.
     if gen_dic['star_name'] in ['TOI3884','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:   
             glob_fit_dic['DiffProf']['exclu_walk_autom']= 5
+
+
+    #%%% Nested Sampling
+    
+    #Calculating/retrieving
+    glob_fit_dic['DiffProf']['ns_run_mode']='use'    
+    # glob_fit_dic['DiffProf']['ns_run_mode']='reuse'    
+
+    #Re-using
+    if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+        glob_fit_dic['DiffProf']['ns_reuse']={}
+        # glob_fit_dic['DiffProf']['ns_reuse']={
+        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/Gemini_with_chi2_OG/Gemini_b_Saved_data/Joined_fits/DiffProf/ns/raw_chains_live1000_Gemini_b.npz'],
+        #             }  
+    #Re-starting
+    if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+        glob_fit_dic['DiffProf']['ns_reboot']=''
+
+    #Walkers
+    if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+        glob_fit_dic['DiffProf']['ns_set']={'nlive':400}
 
 
     #Derived errors         
@@ -6047,7 +6066,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         glob_fit_dic['DiffProf']['save_chi2_chains']='png'
 
 
-    #MCMC corner plot
+    # Corner plot
     glob_fit_dic['DiffProf']['corner_options']={
 #            'bins_1D_par':[50,50,50,50],       #vsini, ip, lambda, b
 #            'bins_2D_par':[30,30,30,30], 
@@ -6569,8 +6588,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + chose a dimension over which the fit/interpolation is performed         
     # + option to select exposures contributing to the fit/interpolation
     # > 'theo': use imported theoretical local intrinsic stellar profiles
-    gen_dic['diff_data_corr']=True  #&  False
-    gen_dic['calc_diff_data_corr']=True  #&  False 
+    gen_dic['diff_data_corr']=True  &  False
+    gen_dic['calc_diff_data_corr']=True  &  False 
 
     data_dic['Diff']['opt_loc_prof_est']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
     
@@ -7219,7 +7238,7 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     ################################################################################################## 
     
     #%%%% Fitting mode 
-    #    - 'chi2', 'mcmc', 'fixed'
+    #    - 'chi2', 'mcmc', 'ns','fixed'
     local_dic[data_type]['fit_mode']='chi2'  
     
     
@@ -7252,7 +7271,7 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #                 warning: it is better to fit directly for 'Peq', 'cosistar', and 'Rstar'
     # + 'fold_Tc_ar' : folds the active region crossing time around a central Peq value that can be calculated in the following ways:
     #                       - If active region values for veq/Peq are fitted/specified, they take priority
-    #                       - If veq/Peq/veq_spots/Peq_spots/veq_faculae/Peq_faculae is fit with an MCMC, we use the corresponding chain
+    #                       - If veq/Peq/veq_spots/Peq_spots/veq_faculae/Peq_faculae is fit with an MCMC/NS, we use the corresponding chain
     #                       - If veq/Peq/veq_spots/Peq_spots/veq_faculae/Peq_faculae is fit with chi2 or fixed, we use the corresponding value
     #                       - If veq_spots/Peq_spots/veq_faculae/Peq_faculae is fixed but its values is different from the default, use the active region value
     #                       - If none of veq, Peq, veq_spots, Peq_spots, veq_faculae, Peq_faculae are fixed or fit, default to the value of Peq calculated from the systems configuration file.
@@ -7399,6 +7418,75 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
 
 
     ##################################################################################################         
+    #%%% NS settings
+    ################################################################################################## 
+    
+    #%%%%% Hessian matrix
+    #    - string containing the location of a Fit_results.npz file containing a Hessian matrix.
+    #    - This Hessian matrix must have been computed from the same parameters are the ones used in the NS fit.
+    #    - To use this option, we recommend users first run a fit with fit_mode set to chi2. The chi2 fit will automatically
+    #    - create and store the Hessian matrix. A NS can subsequently be run with the path to the Hessian being set as
+    #    - the location of the chi2 fit results.
+    local_dic[data_type]['use_hess'] = ''
+
+
+    #%%%% Run mode
+    #    - set to
+    # + 'use': runs NS  
+    # + 'reuse' (with gen_dic['calc_fit_X']=True): load NS results, allow changing error definitions without running the ns again
+    local_dic[data_type]['ns_run_mode']='use'
+    
+    
+    #%%%% Monitor NS
+    local_dic[data_type]['progress']= True
+    
+    
+    #%%%% Runs to re-use
+    #    - list of ns runs to reuse
+    #    - if 'reuse' is requested, leave empty to automatically retrieve the ns run available in the default directory
+    #  or set the list of ns runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
+    local_dic[data_type]['ns_reuse']={}
+
+
+    #%%%%%% Runs to re-start
+    #    - indicate path to a 'raw_chains' file
+    #      the ns will restart at the last step of the previous chains, and run with the number of live points indicated in 'ns_set'
+    local_dic[data_type]['ns_reboot']=''
+        
+    
+    #%%%% Walkers
+    #    - settings per instrument & visit
+    local_dic[data_type]['ns_set']={}
+    
+    
+    #%%%%%% Complex priors
+    #    - to be defined manually within the code
+    #    - leave empty, or put in field for each priors and corresponding options
+    local_dic[data_type]['prior_func']={}       
+
+
+    #%%%% Sample exclusion 
+    #    - keep samples within the requested ranges of the chosen parameter (on original fit parameters)
+    #    - format: 'par' : [[x1,x2],[x3,x4],...] 
+    local_dic[data_type]['exclu_samp']={}
+        
+    
+    #%%%% Derived errors
+    #    - 'quant' (quantiles) or 'HDI' (highest density intervals)
+    #    - if 'HDI' is selected:
+    # + by default a smoothed density profile is used to define HDI intervals
+    # + multiple HDI intervals can be avoided by defined the density profile as a histogram (by setting its resolution 'HDI_dbins') or by defining the bandwith factor of the smoothed profile ('HDI_bw')
+    local_dic[data_type]['out_err_mode']='HDI'
+    local_dic[data_type]['HDI']='1s'   
+    
+    
+    #%%%% Derived lower/upper limits
+    #    - format: {par:{'bound':val,'type':str,'level':[...]}}
+    # where 'bound' sets the limit, 'type' is 'upper' or 'lower', 'level' is a list of thresholds ('1s', '2s', '3s')
+    local_dic[data_type]['conf_limits']={}   
+
+
+    ##################################################################################################         
     #%%% Plot settings
     ################################################################################################## 
 
@@ -7410,15 +7498,16 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     local_dic[data_type]['save_chi2_chains']=''
             
     
-    #%%%%% MCMC corner plot
+    #%%%%% Corner plot
     #    - see function for options
     local_dic[data_type]['corner_options']={}
 
 
-    #%%%%% MCMC 1D PDF
+    #%%%%% 1D PDF
     #    - on properties derived from the fits to individual profiles
     if data_type in ['DI','Intr','Atm']:
-        plot_dic['prop_'+data_type+'_mcmc_PDFs']=''      
+        plot_dic['prop_'+data_type+'_mcmc_PDFs']='' 
+        plot_dic['prop_'+data_type+'_ns_PDFs']=''      
     
     
     #%%%%% Chi2 values

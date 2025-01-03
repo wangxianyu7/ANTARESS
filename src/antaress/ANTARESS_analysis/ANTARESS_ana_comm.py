@@ -6,7 +6,7 @@ import lmfit
 import numpy as np
 import bindensity as bind
 from ..ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,gen_specdopshift,closest,def_edge_tab,check_data
-from ..ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,fit_merit,call_lmfit,gen_hrand_chain,par_formatting,up_var_par
+from ..ANTARESS_general.minim_routines import init_fit,call_MCMC,call_NS,postMCMCwrapper_1,postMCMCwrapper_2,fit_merit,call_lmfit,gen_hrand_chain,par_formatting,up_var_par
 from ..ANTARESS_general.constant_data import Rsun,c_light
 from ..ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,up_model_star
 from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_actreg_prop,up_plocc_actregocc_prop
@@ -432,7 +432,8 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'studied_actreg':{},
         'cond_studied_actreg':False,
         'bin_mode':{},
-        'fit' : {'chi2':True,'fixed':False,'mcmc':True}[fit_prop_dic['fit_mode']], 
+        'fit' : {'chi2':True,'fixed':False,'mcmc':True,'ns':True}[fit_prop_dic['fit_mode']],
+        'fit_mode' :  fit_prop_dic['fit_mode'],
         'unthreaded_op':fit_prop_dic['unthreaded_op'],     
         }
 
@@ -713,7 +714,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     #    - use 'expression' to set properties to the same value :
     # define par1, then define par2 and set it to expr='par1'
     #      do not include in the expression of a parameter another parameter linked with an expression
-    #    - all parameter options are valid for both chi2 and mcmc, except for boundary conditions that must be defined differently for the mcmc
+    #    - all parameter options are valid for both chi2, mcmc, and ns, except for boundary conditions that must be defined differently for mcmc and ns
     #    - parameters specific to a given planet should be defined as 'parname__plX', where X is the name of the planet used throughout the pipeline
     #    - models use the nominal RpRs and LD coefficients, which must be suited to the spectral band from which the local stellar properties were derived
     #------------------------------------------------------------
@@ -723,7 +724,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     #    - there is a general, uniform prior on cos(istar) between -1 and 1 that allows us to limit istar in 0:180 
     # since there is a bijection between istar and cos(istar) over this range
     #    - lambda is defined over the entire angular space, however it might need to be limited to a fixed range to prevent the 
-    # mcmc to switch from one best-fit region defined in [-180;180] to the next in x+[-180;180]. By default we take -2*180:2*180. 
+    # mcmc/ns to switch from one best-fit region defined in [-180;180] to the next in x+[-180;180]. By default we take -2*180:2*180. 
     #      this range might need to be shifted if the best-fit is at +-180
     #      the posterior distribution is folded over x+[-180;180] in the end
     #    - we use the same approach for the orbital inclination, which must be limited in the post-processing to the range [0-90]°
@@ -921,7 +922,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units)     
 
     #Calculating a first model to check all in-transit model exposures are defined
-    if fit_dic['fit_mode'] in ['chi2','mcmc'] and ('Intr' in rout_mode):
+    if fit_dic['fit_mode'] in ['chi2','mcmc','ns'] and ('Intr' in rout_mode):
         mod_dic,coeff_line_dic,mod_prop_dic,_ = fixed_args['mod_func'](p_start,fixed_args)
         if rout_mode=='IntrProp':
             if True in np.isnan(mod_dic):
@@ -1100,6 +1101,36 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         p_final,merged_chain,merged_outputs,par_sample_sig1,par_sample=postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,fit_dic['emcee_nthreads'],fixed_args['par_names'],verbose=fit_dic['verbose'],verb_shift=fit_dic['verb_shift']+'    ')
 
     #------------------------------------------------------------ 
+    #Fit by nested sampling 
+    elif fit_dic['fit_mode']=='ns':  
+        fixed_args['fit'] = True
+        print('       Nested sampling fit')
+
+        #Complex prior function
+        if (fit_dic['ns_run_mode']=='use') and (len(fixed_args['prior_func'])>0):
+            prior_functions={
+                'sinistar_geom':prior_sini_geom,
+                'cosi':prior_cosi,
+                'sini':prior_sini,
+                'b':prior_b,
+                'DR':prior_DR,
+                'vsini':prior_vsini,
+                'vsini_deriv':prior_vsini_deriv,
+                'contrast':prior_contrast,
+                'FWHM_vsini':prior_FWHM_vsini
+            }
+            for key in fixed_args['prior_func']:fixed_args['prior_func'][key]['func'] = prior_functions[key]
+            fixed_args['global_ln_prior']=True
+
+        #NS run
+        walker_chains,step_outputs=call_NS(fit_dic['ns_run_mode'],fit_dic['dynesty_nthreads'],fixed_args,fit_dic,run_name=fit_dic['run_name'],verbose=fit_dic['verbose'])
+               
+        #------------------------------------------------------------------------------------------------            
+ 
+        #Processing
+        p_final,merged_chain,merged_outputs,par_sample_sig1,par_sample=postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,fit_dic['dynesty_nthreads'],fixed_args['par_names'],verbose=fit_dic['verbose'],verb_shift=fit_dic['verb_shift']+'    ')
+
+    #------------------------------------------------------------ 
     #No fit is performed: guess parameters are kept
     else:
         fixed_args['fit'] = False
@@ -1118,7 +1149,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                 for actreg in fixed_args['studied_actreg'][inst][vis]:
                     par = 'Tc_ar__IS'+inst+'_VS'+vis+'_AR'+actreg
                     p_final[par] += fixed_args['bjd_time_shift'][inst][vis]
-                    if fit_dic['fit_mode']=='mcmc':merged_chain[:,np_where1D(fixed_args['var_par_list']==par)]+= fixed_args['bjd_time_shift'][inst][vis]
+                    if fit_dic['fit_mode'] in ['mcmc','ns']:merged_chain[:,np_where1D(fixed_args['var_par_list']==par)]+= fixed_args['bjd_time_shift'][inst][vis]
                     fixed_args['bjd_time_shift'][inst][vis] = 0.
     
     #------------------------------------------------------------
@@ -2769,7 +2800,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
     #Call to specific post-processing
     #    - Fit from chi2 or fixed
     # + combination/modification of best-fit results to add new parameters
-    #    - Fit from mcmc
+    #    - Fit from mcmc or ns
     # + combination/modification of MCMC chains to add new parameters
     # + new parameters are not used for model
     # + we calculate median and errors after chain are added   
@@ -2785,7 +2816,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             if fit_dic['fit_mode'] in ['chi2','fixed']: 
                 cosistar = (p_final['cos_istar']-(1.)) % 2 - 1.
                 p_final['cos_istar'] = cosistar
-            elif fit_dic['fit_mode']=='mcmc':   
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:   
                 iistar = np_where1D(fixed_args['var_par_list']=='cos_istar')
                 if ('cos_istar' in fixed_args['var_par_list']):cosistar_chain=merged_chain[:,iistar]  
                 else:cosistar_chain=p_final['cos_istar']     
@@ -2800,7 +2831,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 if fit_dic['fit_mode']=='chi2': 
                     sig_loc=np.nan
                     fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))
-            elif fit_dic['fit_mode']=='mcmc':   
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:   
                 n_chain = len(merged_chain[:,0])
                 if 'Rstar' in fixed_args['var_par_list']:
                     print('           Using fitted Rstar')
@@ -2837,7 +2868,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     else:
                         sig_temp = fit_dic['sig_parfinal_err']['1s'][:,iveq]*sin_istar            
                     fit_dic['sig_parfinal_err']['1s'][:,iveq] = sig_temp
-            elif fit_dic['fit_mode']=='mcmc':                  
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:                  
                 if ('cos_istar' in fixed_args['var_par_list']):
                     cosistar_chain=merged_chain[:,iistar]  
                 else:
@@ -2882,7 +2913,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 if fit_dic['fit_mode']=='chi2': 
                     sig_loc=np.nan
                     fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))
-            elif fit_dic['fit_mode']=='mcmc':   
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:   
                 n_chain = len(merged_chain[:,0])
                 if 'istar_Peq_vsini' in deriv_prop:
                     print('           Using external vsini')
@@ -2940,7 +2971,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             iistar = np_where1D(fixed_args['var_par_list']=='istar_deg')
             if fit_dic['fit_mode'] in ['chi2','fixed']:
                 stop('Not relevant')
-            elif fit_dic['fit_mode']=='mcmc':   
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:   
                 istar_temp=np.squeeze(merged_chain[:,iistar])  
                 if deriv_prop['fold_istar']['config']=='North':
                     cond_fold=(istar_temp > 90.)         
@@ -2965,7 +2996,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 if fit_dic['fit_mode']=='chi2': 
                     sig_loc=np.nan
                     fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))
-            elif fit_dic['fit_mode']=='mcmc': 
+            elif fit_dic['fit_mode'] in ['mcmc','ns']: 
                 n_chain = len(merged_chain[:,0])
             
                 #Generate gaussian distribution for Rstar
@@ -2992,7 +3023,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     p_final[f'Peq_{actreg_name}_d']=(2.*np.pi*Rstar_dic['val'])/(p_final[f'veq_{actreg_name}']*3600.*24.)
                     sig_loc=np.nan
                     fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))
-                elif fit_dic['fit_mode']=='mcmc': 
+                elif fit_dic['fit_mode'] in ['mcmc','ns']: 
                     n_chain = len(merged_chain[:,0])
                 
                     #Generate gaussian distribution for Rstar
@@ -3017,7 +3048,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             
             if fit_dic['fit_mode'] in ['chi2','fixed']: 
                 stop('TBD')
-            elif fit_dic['fit_mode']=='mcmc':  
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:  
                 n_chain = len(merged_chain[:,0])
                 if 's_val' in Rstar_dic:Rstar_chain = np.random.normal(Rstar_dic['val'], Rstar_dic['s_val'], n_chain)
                 else:Rstar_chain = gen_hrand_chain(Rstar_dic['val'],Rstar_dic['s_val_low'],Rstar_dic['s_val_high'],n_chain)
@@ -3069,7 +3100,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                         actreg_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
                         if f'Peq_veq_{actreg_name}' not in deriv_prop: stop(f'WARNING: Peq_veq_{actreg_name} needs to be activated in deriv_prop if the active region crossing time folding is done with the fitted veq_{actreg_name}.')
                         print(f'           + Folding with fitted veq_{actreg_name}')
-                        if fit_dic['fit_mode']=='mcmc':
+                        if fit_dic['fit_mode'] in ['mcmc','ns']:
                             Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq_'+actreg_name)])
                             use_chain = True
                         else:
@@ -3081,7 +3112,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     fitted_param = 'veq_spots' if veq_spots_fitted else 'veq_faculae'
                     print(f'           + Folding with fitted {fitted_param}')
                     Peq_key = f'Peq_{"spots" if fitted_param == "veq_spots" else "faculae"}'
-                    if fit_dic['fit_mode'] == 'mcmc':
+                    if fit_dic['fit_mode'] in ['mcmc','ns']:
                         Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list'] == Peq_key)])
                         use_chain = True
                     else:
@@ -3099,7 +3130,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     else:
                         actreg_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
                         print(f'           + Folding with fitted Peq_{actreg_name}')
-                        if fit_dic['fit_mode']=='mcmc':
+                        if fit_dic['fit_mode'] in ['mcmc','ns']:
                             Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq_'+actreg_name)])
                             use_chain = True
                         else:
@@ -3111,7 +3142,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     fitted_param = 'Peq_spots' if Peq_spots_fitted else 'Peq_faculae'
                     print(f'           + Folding with fitted {fitted_param}')
                     Peq_key = f'Peq_{"spots" if fitted_param == "Peq_spots" else "faculae"}'
-                    if fit_dic['fit_mode'] == 'mcmc':
+                    if fit_dic['fit_mode'] in ['mcmc','ns']:
                         Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list'] == Peq_key)])
                         use_chain = True
                     else:
@@ -3164,7 +3195,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             elif ('veq' in fixed_args['var_par_list']):
                 print('           + Folding with fitted veq')
                 if 'Peq_veq' not in deriv_prop: stop('WARNING: Peq_veq needs to be activated in deriv_prop if the active region crossing time folding is done with the fitted veq.')
-                if fit_dic['fit_mode']=='mcmc':
+                if fit_dic['fit_mode'] in ['mcmc','ns']:
                     Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq')])
                     use_chain = True
                 else:
@@ -3174,7 +3205,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             #If Peq is fit for
             elif ('Peq' in fixed_args['var_par_list']):
                 print('           + Folding with fitted Peq')
-                if fit_dic['fit_mode']=='mcmc':
+                if fit_dic['fit_mode'] in ['mcmc','ns']:
                     Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq')])
                     use_chain = True
                 else:
@@ -3202,7 +3233,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             for actreg in fixed_args['studied_actreg']:
 
                 def sub_func(Tc_name,new_Tc_name,new_Tc_name_txt):
-                    if fit_dic['fit_mode']=='mcmc' and use_chain:print('           + Folding with full chain')
+                    if (fit_dic['fit_mode'] in ['mcmc','ns']) and use_chain:print('           + Folding with full chain')
                     else:print('           + Folding with single value')
                     #Peq is either a single value if use_chains is False
                     #or a chain if use_chains is True
@@ -3210,7 +3241,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     #Get location of Tc chain
                     iTc=np_where1D(fixed_args['var_par_list']==Tc_name)     
 
-                    if fit_dic['fit_mode']=='mcmc':
+                    if fit_dic['fit_mode'] in ['mcmc','ns']:
                         #Fold Tc_ar over x+[-Peq/2;Peq/2]
                         #    - we want Tc_ar in x+[-Peq/2;Peq/2] i.e. Tc_ar-x+Peq/2 in 0;Peq
                         #      we fold over 0;Peq and then get back to the final range
@@ -3284,7 +3315,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     else:        
                         p_final['Psi__pl'+pl_loc]=np.arccos(np.sin(istar)*np.cos(p_final[lambda_rad_pl])*np.sin(p_final['inclin_rad__pl'+pl_loc]) + np.cos(istar)*np.cos(p_final['inclin_rad__pl'+pl_loc]))*180./np.pi
                         if fit_dic['fit_mode']=='chi2':fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[np.nan],[np.nan]]))
-                elif fit_dic['fit_mode']=='mcmc':    
+                elif fit_dic['fit_mode'] in ['mcmc','ns']:    
                     n_chain = len(merged_chain[:,0])
                     
                     #Obliquity 
@@ -3494,7 +3525,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             print('        + Adding mutual inclination between '+pl_loc1+' and '+pl_loc2)           
             if fit_dic['fit_mode'] in ['chi2','fixed']: 
                 stop('TBD')
-            elif fit_dic['fit_mode']=='mcmc': 
+            elif fit_dic['fit_mode'] in ['mcmc','ns']: 
                 n_chain = len(merged_chain[:,0])
                 lamb_chain_pl1 = np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']==lambda_rad_pl1)]  ) 
                 lamb_chain_pl2 = np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']==lambda_rad_pl2)]  )
@@ -3551,7 +3582,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     else: 
                         p_final['Omega__pl'+pl_loc]=np.arctan( -np.sin(p_final[lambda_rad_pl])*np.tan(ip_loc) )*180./np.pi
                         if fit_dic['fit_mode']=='chi2':fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[np.nan],[np.nan]]))
-                elif fit_dic['fit_mode']=='mcmc': 
+                elif fit_dic['fit_mode'] in ['mcmc','ns']: 
                     if ('inclin_rad__pl'+pl_loc in fixed_args['var_par_list']):ip_loc=merged_chain[:,np_where1D(fixed_args['var_par_list']=='inclin_rad__pl'+pl_loc)]
                     if lambda_rad_pl in fixed_args['genpar_instvis']:
                         lamb_chain={}
@@ -3599,7 +3630,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                         sig_loc=p_final['b']*np.sqrt( (daRs/aRs_loc)**2. + (np.tan(ip_loc)*dip_loc)**2. )  
                         fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]])    )            
                     
-                elif fit_dic['fit_mode']=='mcmc':             
+                elif fit_dic['fit_mode'] in ['mcmc','ns']:             
                     if ('inclin_rad__pl'+pl_loc in fixed_args['var_par_list']):ip_loc=merged_chain[:,iip]
                     if ('aRs__pl'+pl_loc in fixed_args['var_par_list']):aRs_loc=merged_chain[:,iaRs]          
                     chain_loc=aRs_loc*np.abs(np.cos(ip_loc))
@@ -3616,7 +3647,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 iip=np_where1D(fixed_args['var_par_list']=='inclin_rad__pl'+pl_loc)
                 if fit_dic['fit_mode'] in ['chi2','fixed']:  
                     p_final['ip_deg']=p_final['inclin_rad__pl'+pl_loc]*180./np.pi                     
-                elif fit_dic['fit_mode']=='mcmc':                      
+                elif fit_dic['fit_mode'] in ['mcmc','ns']:                      
                     merged_chain[:,iip]*=180./np.pi   
                     
                     #Fold ip over 0-90
@@ -3668,7 +3699,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     else:sub_func(lambda_rad_pl,lambda_deg_pl,'$\lambda$['+pl_loc+']($^{\circ}$)')   
                 
                     
-                elif fit_dic['fit_mode']=='mcmc':   
+                elif fit_dic['fit_mode'] in ['mcmc','ns']:   
                     def sub_func(lamb_name,new_lamb_name,new_lamb_name_txt):  
                         ilamb=np_where1D(fixed_args['var_par_list']==lamb_name)                     
                         merged_chain[:,ilamb]*=180./np.pi  
@@ -3715,7 +3746,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     sig_loc=np.nan  
                     fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]) )     
                           
-            elif fit_dic['fit_mode']=='mcmc':   
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:   
                 chain_loc=np.empty(0,dtype=float)            
                 p_final_loc={}
                 p_final_loc.update(fixed_args['fixed_par_val'])
@@ -3747,7 +3778,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 if fit_dic['fit_mode'] in ['chi2','fixed']: 
                     p_final[ipar_name]*=1e3 
                     if fit_dic['fit_mode']=='chi2':fit_dic['sig_parfinal_err']['1s'][:,ipar_loc]*=1e3  
-                elif fit_dic['fit_mode']=='mcmc':  
+                elif fit_dic['fit_mode'] in ['mcmc','ns']:  
                     merged_chain[:,ipar_loc]*=1e3 
     
         #-------------------------------------------------            
@@ -3766,7 +3797,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
     #Process:
     #    - best-fit values and confidence interval for the final parameters, potentially modified
     #    - correlation diagram plot
-    if fit_dic['fit_mode']=='mcmc':   
+    if fit_dic['fit_mode'] in ['mcmc','ns']:   
         p_final=postMCMCwrapper_2(fit_dic,fixed_args,merged_chain)
 
     #----------------------------------------------------------
@@ -3783,7 +3814,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
 def conv_cosistar(deriv_prop,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in):
     r"""**Parameter conversion: cos(i_star)**
 
-    Converts results from :math:`\chi^2` or mcmc fitting: from :math:`\cos(i_\star)` to :math:`i_\star`. 
+    Converts results from :math:`\chi^2`, mcmc, or ns fitting: from :math:`\cos(i_\star)` to :math:`i_\star`. 
 
     Args:
         TBD
@@ -3804,7 +3835,7 @@ def conv_cosistar(deriv_prop,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in
             sig_loc= (180./np.pi)*fit_dic_in['sig_parfinal_err']['1s'][0,iistar][0] / np.sqrt(1.-cosistar**2.)   
             if ('istar_deg_conv') in deriv_prop:fit_dic_in['sig_parfinal_err']['1s'][:,iistar] = [[sig_loc],[sig_loc]]
             elif ('istar_deg_add') in deriv_prop:fit_dic_in['sig_parfinal_err']['1s'] = np.hstack((fit_dic_in['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]])  )               
-        elif fit_dic_in['fit_mode']=='mcmc':
+        elif fit_dic['fit_mode'] in ['mcmc','ns']:
             #Folding cos(istar) within -1 : 1
             cosistar_chain = (merged_chain_in[:,iistar]-(1.)) % 2 - 1.
             chain_loc = np.arccos(cosistar_chain)*180./np.pi     
@@ -3818,7 +3849,7 @@ def conv_cosistar(deriv_prop,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in
             up_var_par(fixed_args_in,'istar_deg')
     else:
         if fit_dic_in['fit_mode']=='chi2':p_final_in['istar_deg']=np.arccos(p_final_in['cos_istar'])*180./np.pi  
-        elif fit_dic_in['fit_mode']=='mcmc':fixed_args_in['fixed_par_val']['istar_deg']=np.arccos(p_final_in['cos_istar'])*180./np.pi                          
+        elif fit_dic['fit_mode'] in ['mcmc','ns']:fixed_args_in['fixed_par_val']['istar_deg']=np.arccos(p_final_in['cos_istar'])*180./np.pi                          
     return merged_chain_in
 
 
@@ -3826,7 +3857,7 @@ def conv_cosistar(deriv_prop,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in
 def conv_CF_intr_meas(deriv_prop,inst_list,inst_vis_list,fixed_args,merged_chain,gen_dic,p_final,fit_dic):
     r"""**Parameter conversion: line contrast and FWHM**
 
-    Converts results from :math:`\chi^2` or mcmc fitting: from intrinsic width and contrast to measured-like values. 
+    Converts results from :math:`\chi^2`, mcmc or ns fitting: from intrinsic width and contrast to measured-like values. 
 
     Args:
         TBD
@@ -3865,7 +3896,7 @@ def conv_CF_intr_meas(deriv_prop,inst_list,inst_vis_list,fixed_args,merged_chain
                 sig_loc=np.nan 
                 if varC:fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]])) 
                 if varF:fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))                                                      
-            elif fit_dic['fit_mode']=='mcmc':  
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:  
                 if varC:ictrst_loc = np_where1D(fixed_args['var_par_list']==ctrst0_name)[0]
                 if varF:iFWHM_loc = np_where1D(fixed_args['var_par_list']==FWHM0_name)[0] 
                 if fixed_args['model']=='gauss':

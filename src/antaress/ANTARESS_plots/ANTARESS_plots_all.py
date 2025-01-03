@@ -3362,23 +3362,24 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     ################################################################################################################
     #%%% 1D PDFs from analysis of individual profiles
     ################################################################################################################
-    for key_plot in ['prop_DI_mcmc_PDFs','prop_Intr_mcmc_PDFs']:
+    for key_plot in ['prop_DI_mcmc_PDFs','prop_Intr_mcmc_PDFs','prop_DI_ns_PDFs','prop_Intr_ns_PDFs']:
         if (key_plot in plot_settings):
 
             ##############################################################################
             #%%%% Disk-integrated profiles
-            if (key_plot=='prop_DI_mcmc_PDFs'):
+            if (key_plot=='prop_DI_mcmc_PDFs') or (key_plot=='prop_DI_ns_PDFs'):
                 print('-----------------------------------')
                 print('+ 1D PDFs of disk-integrated properties')
         
             ##############################################################################
             #%%%% Intrinsic profiles            
-            if (key_plot=='prop_Intr_mcmc_PDFs'):
+            if (key_plot=='prop_Intr_mcmc_PDFs') or (key_plot=='prop_Intr_ns_PDFs'):
                 print('-----------------------------------')
                 print('+ 1D PDFs of intrinsic properties')
 
             #%%%% Plot  
-            path_loc = gen_dic['save_plot_dir']+plot_settings[key_plot]['data_mode']+'_prop/MCMC/'
+            if 'mcmc' in key_plot:path_loc = gen_dic['save_plot_dir']+plot_settings[key_plot]['data_mode']+'_prop/MCMC/'
+            else:path_loc = gen_dic['save_plot_dir']+plot_settings[key_plot]['data_mode']+'_prop/NS/'
             if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
                         
             #Plot for each instrument
@@ -3416,7 +3417,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             for isub,iexp in enumerate(idx_in_plot):
         
                                 #Upload chains and properties
-                                data_exp =np.load(gen_dic['save_data_dir']+data_type+'_prop/'+inst+'_'+vis+'_mcmc/iexp'+str(iexp)+'/merged_deriv_chains_walk'+str(plot_settings[key_plot]['nwalkers'])+'_steps'+str(plot_settings[key_plot]['nsteps'])+'.npz',allow_pickle=True)['data'].item() 
+                                if 'mcmc' in key_plot:data_exp =np.load(gen_dic['save_data_dir']+data_type+'_prop/'+inst+'_'+vis+'_mcmc/iexp'+str(iexp)+'/merged_deriv_chains_walk'+str(plot_settings[key_plot]['nwalkers'])+'_steps'+str(plot_settings[key_plot]['nsteps'])+'.npz',allow_pickle=True)['data'].item() 
+                                else:data_exp =np.load(gen_dic['save_data_dir']+data_type+'_prop/'+inst+'_'+vis+'_ns/iexp'+str(iexp)+'/merged_deriv_chains_live'+str(plot_settings[key_plot]['nlive'])+'.npz',allow_pickle=True)['data'].item()
+                                
                                 ipar = np_where1D(data_exp['var_par_list']==plot_prop)[0]
                                 xchain = data_exp['merged_chain'][:,ipar]
                                 
@@ -9375,7 +9378,8 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                         if plot_options['plot_err']:
                             plt.errorbar(x_obs[i_loc],val_obs[i_loc],yerr=[[eval_obs[0,i_loc]],[eval_obs[1,i_loc]]],color=col_obs[i_loc],markeredgecolor=col_obs[i_loc],markerfacecolor=col_face_obs[i_loc],marker='',markersize=plot_options['markersize'],linestyle='',zorder=0,alpha=plot_options['alpha_err'])
                         if plot_options['plot_HDI']:                            
-                            data_exp = dataload_npz(gen_dic['save_data_dir']+data_type+'_prop/'+inst+'_'+vis+'_mcmc/iexp'+str(iexp_eff)+'/merged_deriv_chains_walk'+str(plot_options['nwalkers'])+'_steps'+str(plot_options['nsteps']))
+                            if 'mcmc' in plot_options['IntrProf_path']:data_exp = dataload_npz(gen_dic['save_data_dir']+data_type+'_prop/'+inst+'_'+vis+'_mcmc/iexp'+str(iexp_eff)+'/merged_deriv_chains_walk'+str(plot_options['nwalkers'])+'_steps'+str(plot_options['nsteps']))
+                            elif 'ns' in plot_options['IntrProf_path']:data_exp = dataload_npz(gen_dic['save_data_dir']+data_type+'_prop/'+inst+'_'+vis+'_mcmc/iexp'+str(iexp_eff)+'/merged_deriv_chains_live'+str(plot_options['nlive']))
                             if prop_mode=='rv_res':ipar = np_where1D(data_exp['var_par_list']=='rv')[0] 
                             else:ipar = np_where1D(data_exp['var_par_list']==prop_mode)[0] 
                             yerr_sub_minmax = [1e100,-1e100]

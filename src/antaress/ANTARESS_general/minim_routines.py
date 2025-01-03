@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import emcee
+import dynesty
 exec('log10=np.log10')  #necessary to use log10 in expressions linking parameters
 import logging
 from matplotlib.ticker import MaxNLocator
@@ -145,7 +146,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
                 if (not np.isinf(p_start[par].min)) and (not np.isinf(p_start[par].max)) and ((p_start[par].value<p_start[par].min) or (p_start[par].value>p_start[par].max)):p_start[par].value=0.5*(p_start[par].min+p_start[par].max)
 
             #MCMC fit
-            elif (fit_dic['fit_mode']=='mcmc'):
+            elif (fit_dic['fit_mode']=='mcmc') or (fit_dic['fit_mode']=='ns'):
                 
                 #Range for walkers initialization
                 #%% Walkers can be initialized with either a uniform or gaussian distribution. Only one can be provided.
@@ -255,6 +256,54 @@ def ln_prior_func(p_step,fixed_args):
     return ln_p
 
 
+def ln_prior_func_NS(cube,fixed_args): 
+    r"""**Prior tranform function for nested sampling.**
+
+    The prior transform function is used to implicitly specify the Bayesian prior for dynesty. 
+    It functions as a transformation from a space where variables are i.i.d. within the n-dimensional
+     unit cube (i.e. uniformly distributed from 0 to 1) to the parameter space of interest.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
+
+
+    x = cube.copy()  # copy cube
+
+    #Priors on variable parameters
+    for idx, parname in enumerate(fixed_args['var_par_list']):
+        if parname in fixed_args['varpar_priors']:
+    
+            #Cube prior considered
+            cube_prior=cube[idx]
+    
+            #Parameter prior properties
+            parprior=fixed_args['varpar_priors'][parname]
+    
+            #Uniform prior
+            if parprior['mod']=='uf':
+                x[idx] = cube_prior * (parprior['high'] - parprior['low']) + parprior['low']
+        
+            #Gaussian prior   
+            elif parprior['mod']=='gauss':
+                x[idx] = stats.norm.ppf(cube_prior, parprior['val'], parprior['s_val'])
+    
+            #Gaussian prior with different halves
+            # elif parprior['mod']=='dgauss':
+                # TODO
+                # if (parval <= parprior['val']):ln_p += - 0.5*(np.log(2.*np.pi*parprior['low']**2.) + ( (parval - parprior['val'])/parprior['low']  )**2.)                       
+                # else:ln_p += - 0.5*(np.log(2.*np.pi*parprior['high']**2.) + ( (parval - parprior['val'])/parprior['high']  )**2.)   
+
+            #Undefined prior
+            else:
+                stop('Undefined prior')
+
+    return x
+
 def global_ln_prior_func(p_step,fixed_args):
     r"""**Global prior function.**
 
@@ -273,8 +322,7 @@ def global_ln_prior_func(p_step,fixed_args):
     for key in fixed_args['prior_func']:ln_p_loc+=fixed_args['prior_func'][key]['func'](p_step,fixed_args,fixed_args['prior_func'][key])
     return ln_p_loc
 
-
-def ln_lkhood_func_mcmc(p_step,fixed_args):
+def ln_lkhood_func(p_step,fixed_args):
     r"""**Log(likelihood)**
 
     Calculates the natural logarithm of the likelihood.
@@ -327,13 +375,47 @@ def ln_lkhood_func_mcmc(p_step,fixed_args):
     
     """
     
+    #If nested sampling is used, posterior function is not called and dictionary of p_step must be initialized
+    if (fixed_args['fit_mode']=='ns') and (type(p_step)!=dict):
+        
+        #Combine fixed and chain parameters into single dictionary for model        
+        p_step_all={}
+
+        #Include variable parameters
+        #    - the order of variable parameters in 'var_par_list' must match how they were defined in 'p_step'
+        #    - we do not include yet the variable parameters as they might be modified through expression based on the local variable parameters
+        for ipar,parname in enumerate(fixed_args['var_par_list']):
+            p_step_all[parname]=p_step[ipar]
+
+        #Update value of fixed parameters linked to variable parameters through an expression
+        if len(fixed_args['linked_par_expr'])>0:
+            
+            #Attribute parameters values directly to their names so that they can be identified in the expressions
+            #    - it would be better to only define parameters used in expression but they are not easy to identify from the expressions
+            #    - exec allows us to attribute to the parameter name (and not the string of its name) its value
+            #    - we also attribute their fixed value to parameters that are not variable and not linked via an expression, but might be used in the expression
+            # of other non-variable parameters (it has to be done within each step, values are not exported from one function to the other)
+            for par in fixed_args['var_par_list']:
+                exec(str(par)+'='+str(p_step_all[par]))
+            for par in fixed_args['fixed_par_val_noexp_list']:
+                exec(str(par)+'='+str(fixed_args['fixed_par_val'][par]))
+
+            #Update parameters with associated expression
+            for par in fixed_args['linked_par_expr']:
+                fixed_args['fixed_par_val'][par]=eval(fixed_args['linked_par_expr'][par])
+             
+        #Include fixed parameters into local input dictionary
+        p_step_all.update(fixed_args['fixed_par_val'])
+
+    else:
+        p_step_all = p_step
 
     #Model for current set of parameter values  
     #    - fit_func returns either 
     # + the model, in which case y_val is set to the data and s_val ; cov_val to its variance ; covariance)
     # + a 'chi' array defined as the individual elements of 'chi2_step' below, in which case y_val is set to 0 and s_val to 1 (use_cov is set to False so that we enter the 'variance' condition below)
     #   so that 'res' below equals 'y_step' which is 'chi', and 'chi2_step' is the sum of the 'chi' values squared
-    y_step,outputs = fixed_args['fit_func'](p_step, fixed_args['x_val'],args=fixed_args)
+    y_step,outputs = fixed_args['fit_func'](p_step_all, fixed_args['x_val'],args=fixed_args)
 
     #Fitted pixels
     idx_fit = fixed_args['idx_fit']
@@ -358,7 +440,7 @@ def ln_lkhood_func_mcmc(p_step,fixed_args):
     else:
     
         #Modification of error bars on fitted values in case of jitter used as free parameter
-        if (fixed_args['jitter']):sjitt_val=np.sqrt(fixed_args['cov_val'][0,idx_fit] + p_step['jitter']**2.)
+        if (fixed_args['jitter']):sjitt_val=np.sqrt(fixed_args['cov_val'][0,idx_fit] + p_step_all['jitter']**2.)
         else:sjitt_val=np.sqrt(fixed_args['cov_val'][0,idx_fit])
             
         #Chi2
@@ -366,14 +448,27 @@ def ln_lkhood_func_mcmc(p_step,fixed_args):
 
         #Ln likelihood
         ln_lkhood = - np.sum(np.log(np.sqrt(2.*np.pi)*sjitt_val)) - (chi2_step/2.)
-        
-    #Store true output or not
-    if not fixed_args['step_output']:outputs = None
-    if fixed_args['step_chi2']:chi2_outputs = np.sum(chi2_step)
-    else:chi2_outputs = None
-
-    return ln_lkhood,chi2_step,outputs,chi2_outputs
     
+
+    if fixed_args['fit_mode']=='mcmc':
+        
+        #Store true output or not
+        if not fixed_args['step_output']:outputs = None
+        if fixed_args['step_chi2']:chi2_outputs = np.sum(chi2_step)
+        else:chi2_outputs = None
+        
+        return ln_lkhood,chi2_step,outputs,chi2_outputs
+
+    elif fixed_args['fit_mode']=='ns':
+    
+        #Store blobs
+        blob = {}
+        blob['step_chi2']=chi2_step
+        if not fixed_args['step_output']:outputs = None
+        blob['outputs']=outputs
+
+        return ln_lkhood, blob
+
 
 
 
@@ -429,7 +524,7 @@ def ln_prob_func_mcmc(p_step,fixed_args):
     if not np.isinf(ln_prior):
 
         #Likelihood function
-        ln_lkhood,_,step_outputs,chi2_outputs = ln_lkhood_func_mcmc(p_step_all,fixed_args)
+        ln_lkhood,_,step_outputs,chi2_outputs = ln_lkhood_func(p_step_all,fixed_args)
 
         #Set log-probability to -inf if likelihood is nan
         #    - happens when parameters go beyond their boundaries (hence ln_prior=-inf) but the model fails (hence ln_lkhood = nan)
@@ -534,7 +629,7 @@ def gen_hrand_chain(par_med,epar_low,epar_high,n_throws):
 def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
     r"""**Fit initialization**
 
-    Initializes lmfit and MCMC.
+    Initializes lmfit, MCMC, and nested sampling.
       
     Args:
         TBD
@@ -781,7 +876,97 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         #Disable multi-threading
         if ('unthreaded_op' in fit_dic) and ('emcee' in fit_dic['unthreaded_op']):fit_dic['emcee_nthreads']=1
         else:fit_dic['emcee_nthreads'] = fit_dic['nthreads']
+
+    if fit_dic['fit_mode']=='ns':
+
+        #Option to initialize walker distribution using a pre-computed Hessian matrix
+        if ('use_hess' not in fit_dic):fit_dic['use_hess']=''
         
+        #Monitor progress
+        if ('progress' not in fit_dic):fit_dic['progress']=True 
+        
+        #Store outputs from MCMC steps
+        if ('step_output' not in fixed_args):fixed_args['step_output'] = False
+
+        #Store chi2 outputs from MCMC steps
+        if ('step_chi2' not in fixed_args):fixed_args['step_chi2'] = True
+
+        #Excluding manually some of the walkers
+        fit_dic['exclu_walk']=False 
+
+        #Excluding automatically walkers with median beyond +- threshold * (1 sigma) of global median 
+        #    - set to None, or exclusion threshold
+        fit_dic['exclu_walk_autom']=None 
+
+        #Excluding manually some of the samples
+        if ('exclu_samp' not in fit_dic):fit_dic['exclu_samp']={} 
+
+        #Quantiles calculated by default
+        if ('calc_quant' not in fit_dic):fit_dic['calc_quant']=True 
+
+        #No thinning of the chains
+        fit_dic['thin_MCMC']=False        
+
+        #Calculation of 1sigma HDI intervals
+        #    - set fit_dic['HDI'] to None in options to prevent calculation
+        #    - applied within 'postMCMCwrapper_2' to the modified final chains
+        if ('HDI' not in fit_dic):fit_dic['HDI']='1s' 
+        
+        #Number of bins in 1D histograms used for HDI definition
+        #    - adjust HDI_nbins or HDI_dbins for each parameter: there must be enough bins for the HDI interval to contain a fraction of samples close
+        # to the requested confidence interval, but not so much that bins within the histogram are empty and artificially create several HDI intervals
+        #      alternatively set fit_dic['HDI_nbins']= {} or set it to None for a given value for automatic definition (preferred solution for unimodal PDFs)
+        if ('HDI_nbins' not in fit_dic):fit_dic['HDI_nbins']={} 
+        
+        #Use custom HDI calculation by default
+        if ('use_arviz' not in fit_dic):fit_dic['use_arviz'] = False
+
+        #No calculation of upper/lower limits
+        #    - to be used for PDFs bounded by the parameter space
+        #    - define the type of limits and the confidence level
+        #      limits will then be calculated from the minimum or maximum of the distribution
+        #    - this should return similar results as the HDI intervals, but more precise because it does not rely on the sampling of the PDF
+        if ('conf_limits' not in fit_dic):fit_dic['conf_limits']={} 
+
+        #Retrieve model sample
+        #    - calculation of models sampling randomly the full distribution of the parameters
+        #    - disabled by default
+        fit_dic['calc_sampMCMC']=False  
+
+        #No calculation of envelopes
+        #    - calculation of models using parameter values within their 1sigma range
+        fit_dic['calc_envMCMC']=False 
+
+        #On-screen printing of errors
+        fit_dic['sig_list']=['1s'] 
+
+        #Plot correlation diagram for final parameters      
+        if ('save_MCMC_corner' not in fit_dic):fit_dic['save_MCMC_corner']='pdf' 
+        if ('corner_options' not in fit_dic):fit_dic['corner_options']={'plot_HDI':True,'color_levels':['deepskyblue','lime']}
+        
+        #Plot chain for NS parameters    
+        if ('save_MCMC_chains' not in fit_dic):fit_dic['save_MCMC_chains']='png'
+        
+        #Plot chi2 chain for NS run    
+        if ('save_chi2_chains' not in fit_dic):fit_dic['save_chi2_chains']=''
+
+        #Run name
+        if ('run_name' not in fit_dic):fit_dic['run_name']='' 
+        
+        #NS reboot
+        if ('ns_reboot' not in fit_dic):fit_dic['ns_reboot']='' 
+
+        #Live points
+        if 'nlive' not in fit_dic['ns_set']:fit_dic['nlive'] = 400 #TODO figure out optimal number of live points
+        else:fit_dic['nlive'] = fit_dic['ns_set']['nlive']
+        
+        #Set burn-in steps to 0 to makes post-processing with the MCMC functions possible
+        fit_dic['nburn'] = 0.
+
+        #Disable multi-threading
+        if ('unthreaded_op' in fit_dic) and ('dynesty' in fit_dic['unthreaded_op']):fit_dic['dynesty_nthreads']=1
+        else:fit_dic['dynesty_nthreads'] = fit_dic['nthreads']
+
     return None
 
 
@@ -1035,6 +1220,182 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
 
 
 
+def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True):
+    r"""**Wrapper to Nested Sampling**
+
+    Runs `dynesty` and outputs results and merit values.
+      
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """
+    
+    #Run nested sampling
+    if run_mode=='use':
+        print('         Applying nested sampling') 
+
+        #Automatic definition of undefined priors                
+        for par in fixed_args['var_par_list']:
+            if par not in fixed_args['varpar_priors']:fixed_args['varpar_priors'][par]={'mod':'uf','low':-1e10,'high':1e10}
+    
+        #Set initial parameter distribution
+        live_points = np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float) #Coordinates of starting live points
+        #Dictionary entry for storage
+        fit_dic['initial_distribution'] = [np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Coordinates of starting live points
+                                           np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Corresponding transformed variables
+                                           np.zeros((fit_dic['nlive'],), dtype=float), #Corresponding log-likelihood values
+                                           np.zeros((fit_dic['nlive']), dtype=dict)] 
+
+        if (len(fit_dic['ns_reboot'])>0):
+            print('         Rebooting previous run')
+            
+            #Reboot nested sampling from end of previous run
+            live_points=np.load(fit_dic['ns_reboot'])['walker_chains'][:,-1,:]  #(nwalkers, nsteps, n_free)
+              
+        else:
+            
+            #Custom initialization
+            if 'custom_init_nlive' in fit_dic:fit_dic['custom_init_nlive'](fit_dic,fixed_args)
+
+            #Random distribution within defined range
+            else:
+                if fit_dic['use_hess'] != '':
+                    print('         Initializing live points with Hessian')
+                    #Retrieve Hessian matrix
+                    hess_matrix = np.load(fit_dic['use_hess'],allow_pickle=True)['data'].item()['hess_matrix']
+
+                    #Build covariance matrix
+                    cov_matrix = np.linalg.inv(hess_matrix)
+
+                    #Checking that chi2 fit and current MCMC fit are run on same parameters
+                    if len(fixed_args['var_par_list']) != cov_matrix.shape[0] : stop('Chi2 fit used to estimate the Hessian and current MCMC run do not share the same parameters.')
+
+                    #Retrieving central location of parameters
+                    central_loc = np.zeros(len(fixed_args['var_par_list']), dtype=float)
+                    for ipar, param in enumerate(fixed_args['var_par_list']):central_loc[ipar] = fit_dic['mod_prop'][param]['guess']
+
+                    live_points = np.random.multivariate_normal(central_loc, cov_matrix, size=fit_dic['nlive'])
+                
+                else:
+                    print('         Initializing live points with uniform/gaussian distributions')
+                    print('         WARNING : It is crucial that the initial set of live points have been sampled from the prior. Failure to provide a set of valid live points will result in incorrect results.')
+                    for ipar,par in enumerate(fixed_args['var_par_list']):
+                        if par in fit_dic['uf_bd']:live_points[:,ipar]=np.random.uniform(low=fit_dic['uf_bd'][par][0], high=fit_dic['uf_bd'][par][1], size=fit_dic['nlive']) 
+                        elif par in fit_dic['gauss']:live_points[:, ipar]=np.random.normal(loc=fit_dic['gauss'][par][0], scale=fit_dic['gauss'][par][1], size=fit_dic['nlive']) 
+
+        #Overwrite starting values of new chains
+        fit_dic['initial_distribution'][0] = live_points
+        for idx, live_point in enumerate(live_points):
+            fit_dic['initial_distribution'][1][idx, :] = ln_prior_func_NS(live_point, fixed_args)
+            lklhood = ln_lkhood_func(live_point, fixed_args)
+            fit_dic['initial_distribution'][2][idx] = lklhood[0] 
+            fit_dic['initial_distribution'][3][idx] = lklhood[1] 
+
+        #By default use variance
+        if 'use_cov' not in fixed_args:fixed_args['use_cov']=False
+
+        #Call to NS
+        st0=get_time()
+        n_free=np.shape(fit_dic['initial_distribution'][0])[1]
+        
+        #Multiprocessing
+        if nthreads>1:
+            pool_proc = Pool(processes=nthreads)  
+            print('         Running with '+str(nthreads)+' threads')
+            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func,                                 #Log-likelihood function
+                                                   ln_prior_func_NS,                               #Log-prior function
+                                                   nlive = fit_dic['nlive'],                       #Number of live points
+                                                   ndim = n_free,                                  #Number of parameters accepted by ln_prior_func_NS
+                                                   pool = pool_proc,                               #Multiprocessing pool considered
+                                                   queue_size = nthreads,                          #Multiprocessing queue size
+                                                   logl_args = [fixed_args],                       #Fixed arguments for the calculation of the likelihood
+                                                   ptform_args = [fixed_args],                     #Fixed arguments for the calculation of the priors
+                                                   blob=True                                       #Whether blobs are present or not
+                                                   )
+        else:
+            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func, ln_prior_func_NS, nlive=fixed_args['nlive'], ndim=n_free, logl_args=[fixed_args],blob=True)
+        
+        #Run NS
+        #    - possible options:
+        # + iterations: number of iterations to run
+        sampler.run_nested(live_points = fit_dic['initial_distribution'], print_progress=fit_dic['progress'])
+
+
+        if verbose:print('   duration : '+str((get_time()-st0)/60.)+' mn')
+
+        #Chains
+        #    - result.samples is of shape (nsteps, n_free), and we will reshape it to (1, nsteps, n_free) to make the next steps easier
+        #     - parameters have the same order as in 'initial_distribution' and 'var_par_list'
+        result = sampler.results
+        NS_chains = result.samples
+        fit_dic['nsteps'] = NS_chains.shape[0]
+        fit_dic['nwalkers'] = 1
+        fit_dic['nburn'] = 1
+        walker_chains = NS_chains.reshape((fit_dic['nwalkers'], fit_dic['nsteps'], n_free))
+        
+        #Complementary outputs
+        #    - shape (nsteps,2)
+        blobs = result['blob']
+        #    - building storage for step-by-step function output and chi2 chains
+        blob_steps = np.zeros(fit_dic['nsteps'])
+        blob_chi2 = np.zeros(fit_dic['nsteps'])
+        #    - Populating arrays
+        for step in range(fit_dic['nsteps']):
+            for blob_arr, blob_name in zip([blob_steps, blob_chi2], ["outputs", "step_chi2"]):blob_arr[step]=blobs[step][blob_name]
+        #    - storing them in fixed_args for future steps
+        if fixed_args['step_output']:step_outputs = blob_steps
+        else:step_outputs = None
+        if fixed_args['step_chi2']:fixed_args['chi2_storage'] = blob_chi2.reshape((fit_dic['nsteps'],fit_dic['nwalkers']))
+        else:fixed_args['chi2_storage'] = None
+
+        #Save raw NS results 
+        if save_raw:
+            if (not os_system.path.exists(fit_dic['save_dir'])):os_system.makedirs(fit_dic['save_dir'])
+            np.savez(fit_dic['save_dir']+'raw_chains_live'+str(fit_dic['nlive'])+run_name,walker_chains=walker_chains, initial_distribution=fit_dic['initial_distribution'][0], step_outputs = step_outputs, step_chi2 = fixed_args['chi2_storage'])
+        
+        #Close workers
+        if nthreads>1:    
+            pool_proc.close()
+            pool_proc.join()    
+
+    #---------------------------------------------------------------  
+   
+    #Reuse NS
+    elif run_mode=='reuse':
+        print('         Retrieving NS') 
+        
+        #Retrieve NS run from standard NS directory
+        if len(fit_dic['ns_reuse'])==0:
+            NS_load = np.load(fit_dic['save_dir']+'raw_chains_live'+str(fit_dic['nlive'])+fit_dic['run_name']+'.npz',allow_pickle = True)
+            walker_chains=NS_load['walker_chains']  #(1, nsteps, n_free)
+            step_outputs=NS_load['step_outputs']    #(nsteps, nwalkers)
+            fixed_args['chi2_storage'] = NS_load['step_chi2'] #(nsteps, nwalkers)
+
+
+        #Retrieve NS run(s) from list of input paths
+        else:
+            walker_chains = np.empty([0,0,0],dtype=float)
+            if fixed_args['step_output']:step_outputs = np.empty([0,0],dtype=object)
+            else:step_outputs=None
+            if fixed_args['step_chi2']:fixed_args['chi2_storage'] = np.empty([0,fit_dic['nwalkers']],dtype=object)
+            else:fixed_args['chi2_storage']=None
+            fit_dic['nsteps'] = 0
+            fit_dic['nburn'] = 0
+            for NS_path in fit_dic['ns_reuse']['paths']:
+                NS_load=np.load(mcmc_path, allow_pickle=True)
+                walker_chains_loc=NS_load['walker_chains'] 
+                if fixed_args['step_output']:step_output_loc=NS_load['step_outputs']
+                if fixed_args['step_chi2']:step_chi2_loc=NS_load['step_chi2']
+                fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
+                walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
+                if fixed_args['step_output']:step_outputs = np.append(step_outputs,step_output_loc,axis=0)
+                if fixed_args['step_chi2']:fixed_args['chi2_storage'] = np.append(fixed_args['chi2_storage'],step_chi2_loc,axis=0)
+
+    return walker_chains,step_outputs
+
 ##################################################################################################
 #%%% Post-processing
 ##################################################################################################   
@@ -1063,7 +1424,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
         fit_dic['fit_dur'] = get_time()-fit_dic['st0']
     
         #Convert parameters() structure into dictionary 
-        if fit_dic['fit_mode'] !='mcmc': 
+        if (fit_dic['fit_mode'] !='mcmc') and (fit_dic['fit_mode'] !='ns'): 
             p_final={}
             for par in p_final_in:p_final[par]=p_final_in[par].value   
             if fit_dic['fit_mode']=='chi2':
@@ -1084,11 +1445,12 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
         else:fit_dic['merit']['mode']='fit'    
         fit_dic['merit']['dof']=fit_dic['nx_fit']-fit_dic['merit']['n_free']
         if fit_dic['fit_mode'] in ['fixed','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
-        elif fit_dic['fit_mode'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1] 
+        elif fit_dic['fit_mode']=='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func(p_final,fixed_args)[1]
+        elif fit_dic['fit_mode']=='ns': fit_dic['merit']['chi2']=ln_lkhood_func(p_final,fixed_args)[1]['step_chi2'] 
         fit_dic['merit']['red_chi2']=fit_dic['merit']['chi2']/fit_dic['merit']['dof']
         fit_dic['merit']['BIC']=fit_dic['merit']['chi2']+fit_dic['merit']['n_free']*np.log(fit_dic['nx_fit'])      
         fit_dic['merit']['AIC']=fit_dic['merit']['chi2']+2.*fit_dic['merit']['n_free']
-        if fit_dic['fit_mode']=='mcmc':fit_dic['merit']['GR_stat']=fit_dic['GR_stat']
+        if fit_dic['fit_mode'] in ['mcmc','ns']:fit_dic['merit']['GR_stat']=fit_dic['GR_stat']
         else:fit_dic['merit']['GR_stat']='N/A, MCMC run needed.'
 
         
@@ -1098,7 +1460,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                         ["Fit statistics"],
                         ["==============================================================================="],
                         [" "],
-                        ['Mode : '+{'chi2':'Chi square','mcmc':'MCMC','fixed':'Forward'}[fit_dic['fit_mode']]]]  
+                        ['Mode : '+{'chi2':'Chi square','mcmc':'MCMC','ns':'Nested sampling','fixed':'Forward'}[fit_dic['fit_mode']]]]  
             if fit_dic['fit_mode']=='chi2':
                 txt_print+=[["Fitting method                = %r"%fit_dic['merit']['method']]]
                 txt_print+=[["Fit success                = %r"%fit_dic['merit']['success']]]
@@ -1107,7 +1469,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                     if len(fit_dic['merit']['message'])>32:txt_print+=[["  " + fit_dic['merit']['message']]]  
                     elif (fit_dic['merit']['message'][:-1]!='Fit succeeded'):txt_print+=[["  " + fit_dic['merit']['message'][:-1]]]  
                 txt_print+=[["Function evals              = %i"%fit_dic['merit']['eval']]]    
-            elif fit_dic['fit_mode']=='mcmc':        
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:        
                 txt_print+=[
                     ["Walkers                     = "+str(fit_dic['nwalkers'])],
                     ["Burn-in steps               = "+str(fit_dic['nburn'])],
@@ -1171,7 +1533,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
             if 'sig_parfinal_err' in fit_dic:
                 txt_print+=[['     1-sigma uncertainties from quantiles']]
                 txt_print+=[['     Interval around median from 1-sigma quantiles']]
-            if (fit_dic['fit_mode']=='mcmc') and (fit_dic['HDI'] is not None):  
+            if (fit_dic['fit_mode'] in ['mcmc','ns']) and (fit_dic['HDI'] is not None):  
                 sig_txt = {'1s':'1-sigma','2s':'2-sigma','3s':'3-sigma'}[fit_dic['HDI']]
                 txt_print+=[['     '+sig_txt+' uncertainties from HDI']]
                 txt_print+=[['     Interval around median from '+sig_txt+' HDI']]     
@@ -1198,7 +1560,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                         txt_print+=[['     Quant. 1s int. = ['+"{0:.10e}".format(nom_val-lower_sig)+'\t'+"{0:.10e}".format(nom_val+upper_sig)+"]"]]
                     
                     #HDI (MCMC only)
-                    if (fit_dic['fit_mode']=='mcmc'): 
+                    if (fit_dic['fit_mode'] in ['mcmc','ns']): 
                         if (fit_dic['HDI'] is not None):
                             txt_print+=[['     HDI '+fit_dic['HDI']+' err.    = '+fit_dic['HDI_sig_txt'][ipar]]]
                             txt_print+=[['     HDI '+fit_dic['HDI']+' int.    = '+fit_dic['HDI_interv_txt'][ipar]]]
@@ -1210,7 +1572,8 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
         #    - to calculate chi2 (=BIC) with respect to a null level for comparison of best-fit model with null hypothesis
         if (mode=='derived') and ('p_null' in fit_dic):
             if fit_dic['fit_mode'] in ['fixed','chi2']: chi2_null=np.sum(ln_prob_func_lmfit(fit_dic['p_null'], fixed_args['x_val'], fixed_args=fixed_args)**2.)
-            elif fit_dic['fit_mode'] =='mcmc':chi2_null=ln_lkhood_func_mcmc(fit_dic['p_null'],fixed_args)[1]   
+            elif fit_dic['fit_mode']=='mcmc': chi2_null=ln_lkhood_func(p_final,fixed_args)[1]
+            elif fit_dic['fit_mode']=='ns': chi2_null=ln_lkhood_func(p_final,fixed_args)[1]['step_chi2']   
             txt_print+=[            
                 [''],
                 ['==============================================================================='],    
@@ -2200,7 +2563,8 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
 
     #Save merged chains for derived parameters and various estimates
     data_save = {'merged_chain':merged_chain,'HDI_interv':fit_dic['HDI_interv'],'sig_parfinal_val':fit_dic['sig_parfinal_val']['1s'],'var_par_list':fixed_args['var_par_list'],'var_par_names':fixed_args['var_par_names'],'med_parfinal':fit_dic['med_parfinal']}
-    np.savez(fit_dic['save_dir']+'merged_deriv_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name'],data=data_save,allow_pickle=True)
+    if fit_dic['fit_mode']=='mcmc':np.savez(fit_dic['save_dir']+'merged_deriv_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name'],data=data_save,allow_pickle=True)
+    elif fit_dic['fit_mode']=='ns':np.savez(fit_dic['save_dir']+'merged_deriv_chains_live'+str(fit_dic['nlive'])+fit_dic['run_name'],data=data_save,allow_pickle=True)
 
     #Plot correlation diagram for all param    
     if fit_dic['save_MCMC_corner']!='':
@@ -2426,50 +2790,51 @@ def MCMC_plot_chains_chi2(fit_dic,chain,keep_chain,fixed_args,verbose=True,verb_
     plt.close()
     
     #----------------------------------------------------------------
-    if verbose:
-        print(verb_shift+'   + Individual Plotting')
-    
-    #Plot the chi2 chains of individual walkers
-
-    #Make directory to store the distributions
-    if (not os_system.path.exists(fit_dic['save_dir']+'Indiv_Chi2_Chains')):os_system.makedirs(fit_dic['save_dir']+'Indiv_Chi2_Chains')   
-    
-    #Each plot will have a maximum of 10 chains (to not overload the visuals)
-    n_group = 10
-
-    #Create groups of chains
-    for iwalk in range(0, nwalkers, n_group):
+    if nwalkers > 1.:
+        if verbose:
+            print(verb_shift+'   + Individual Plotting')
         
-        #Define chain group
-        end = min(iwalk + n_group, nwalkers)
-        walker_group = chi2_chains[iwalk:end, :]
+        #Plot the chi2 chains of individual walkers
 
-        #In each subplot highlight one chain with greyscale
-        plt.ioff()        
-        fig, axes = plt.subplots(n_group, 1, figsize=(8, 12), sharex=True)
+        #Make directory to store the distributions
+        if (not os_system.path.exists(fit_dic['save_dir']+'Indiv_Chi2_Chains')):os_system.makedirs(fit_dic['save_dir']+'Indiv_Chi2_Chains')   
+        
+        #Each plot will have a maximum of 10 chains (to not overload the visuals)
+        n_group = 10
 
-        for i, walker in enumerate(walker_group):
-            ax = axes[i]
-            ax.plot(walker, color='black', lw = lw_plot+1, zorder=1)
+        #Create groups of chains
+        for iwalk in range(0, nwalkers, n_group):
+            
+            #Define chain group
+            end = min(iwalk + n_group, nwalkers)
+            walker_group = chi2_chains[iwalk:end, :]
 
-            for otheri, otherwalker in enumerate(walker_group):
-                if otheri!=i: ax.plot(otherwalker, color='black', alpha=0.8, lw=lw_plot, zorder=0)
-           
-            ax.yaxis.set_visible(False)
-            ax.set_yscale('log')
+            #In each subplot highlight one chain with greyscale
+            plt.ioff()        
+            fig, axes = plt.subplots(n_group, 1, figsize=(8, 12), sharex=True)
 
-        # Turn off unused subplots if the walker_group is smaller than n_group
-        if len(walker_group) < n_group:
-            for j in range(len(walker_group), n_group):
-                axes[j].set_visible(False)
+            for i, walker in enumerate(walker_group):
+                ax = axes[i]
+                ax.plot(walker, color='black', lw = lw_plot+1, zorder=1)
 
-        #Plot frame  
-        axes[0].set_title('Individual Chi2 chains '+str(iwalk)+'-'+str(end), fontsize=font_size)
-        axes[len(walker_group)-1].set_xlabel('Steps', fontsize=font_size)
-        axes[len(walker_group)-1].tick_params(axis='x', which='both', labelbottom=True)
+                for otheri, otherwalker in enumerate(walker_group):
+                    if otheri!=i: ax.plot(otherwalker, color='black', alpha=0.8, lw=lw_plot, zorder=0)
+               
+                ax.yaxis.set_visible(False)
+                ax.set_yscale('log')
 
-        plt.savefig(fit_dic['save_dir']+'Indiv_Chi2_Chains/Chain_Chi2_'+str(iwalk)+'-'+str(end)+'.'+fit_dic['save_MCMC_chains']) 
-        plt.close()
+            # Turn off unused subplots if the walker_group is smaller than n_group
+            if len(walker_group) < n_group:
+                for j in range(len(walker_group), n_group):
+                    axes[j].set_visible(False)
+
+            #Plot frame  
+            axes[0].set_title('Individual Chi2 chains '+str(iwalk)+'-'+str(end), fontsize=font_size)
+            axes[len(walker_group)-1].set_xlabel('Steps', fontsize=font_size)
+            axes[len(walker_group)-1].tick_params(axis='x', which='both', labelbottom=True)
+
+            plt.savefig(fit_dic['save_dir']+'Indiv_Chi2_Chains/Chain_Chi2_'+str(iwalk)+'-'+str(end)+'.'+fit_dic['save_MCMC_chains']) 
+            plt.close()
 
 
 
