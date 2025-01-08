@@ -6,10 +6,10 @@ import lmfit
 import numpy as np
 import bindensity as bind
 from ..ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,gen_specdopshift,closest,def_edge_tab,check_data
-from ..ANTARESS_general.minim_routines import init_fit,call_MCMC,postMCMCwrapper_1,postMCMCwrapper_2,fit_merit,call_lmfit,gen_hrand_chain,par_formatting,up_var_par
+from ..ANTARESS_general.minim_routines import init_fit,call_MCMC,call_NS,postMCMCwrapper_1,postMCMCwrapper_2,fit_merit,call_lmfit,gen_hrand_chain,par_formatting,up_var_par,lmfit_fitting_method_check
 from ..ANTARESS_general.constant_data import Rsun,c_light
 from ..ANTARESS_grids.ANTARESS_star_grid import calc_CB_RV,get_LD_coeff,up_model_star
-from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_spot_prop,up_plocc_prop
+from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_ar_prop,up_plocc_arocc_prop
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,custom_DI_prof,theo_intr2loc,CFunctionWrapper,var_stellar_prop
 from ..ANTARESS_analysis.ANTARESS_model_prof import para_cust_mod_true_prop,proc_cust_mod_true_prop,cust_mod_true_prop,gauss_intr_prop,calc_biss,\
     dgauss,gauss_poly,voigt,gauss_herm_lin,gen_fit_prof
@@ -53,7 +53,7 @@ def par_formatting_inst_vis(p_start,fixed_args,inst,vis,line_type):
     if 'inst_list' not in fixed_args:fixed_args['inst_list']=[inst]
     if 'inst_vis_list' not in fixed_args:fixed_args['inst_vis_list']={inst:[vis]}
     for par in p_start:
- 
+
         #Parameter has dependence
         if (('__IS') and ('_VS') in par) or ('__ord' in par):
             
@@ -78,7 +78,7 @@ def par_formatting_inst_vis(p_start,fixed_args,inst,vis,line_type):
             #Parameter has order dependence
             if ('__ord' in par):
                 gen_root_par = par.split('__ord')[0] 
-                
+
                 #Define parameter for current instrument and visit (if specified) or all instruments and visits (if undefined) 
                 if inst_vis_par is not None:
                     if inst_par in fixed_args['inst_list']:inst_list = [inst_par]
@@ -183,28 +183,44 @@ def prior_check(par,priors_par,params,args):
     elif ('ang' in par) and ((priors_par['low']<0) or (priors_par['high']>90)):stop('Prior error: Spot angular size cannot be negative or exceed 90 deg. Re-define your priors.')
     elif ('veq' in par) and (priors_par['low']<0):stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
     elif ('Peq' in par) and (priors_par['low']<0):stop('Prior error: Cannot have negative stellar rotation period. Re-define your priors.')
-    elif ('Tc_sp' in par) and ((priors_par['low'] <= params[par].value - args['system_param']['star']['Peq']) or (priors_par['high'] >= params[par].value + args['system_param']['star']['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
+    elif ('Tc_ar' in par) and ((priors_par['low'] <= params[par].value - args['system_param']['star']['Peq']) or (priors_par['high'] >= params[par].value + args['system_param']['star']['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
     return None
 
-def MCMC_walkers_check(par,uf_bd_par,params,args):
+def MCMC_walkers_check(par,fit_dic,params,args):
     r"""**MCMC walkers check**
 
     Checks that walkers initialization range is valid.
 
     Args:
-        TBD
+        par (str): Parameter to check.
+        fit_dic (dict): Dictionary containing fitting information.
+        params (dict): Parameter values.
+        args (dict): Additional arguments.
 
     Returns:
         None
   
     """
-    if 'jitter' in par and uf_bd_par[0]<0.:uf_bd_par[0]=0.
+    
+    # Retrieving uniform bounds / gaussian distribution used to initialize walkers for parameter considered
+    uf=False
+    if fit_dic.get('uf_bd', {}).get(par):uf=True
+    bounds = fit_dic.get('uf_bd', {}).get(par) or fit_dic.get('gauss_bd', {}).get(par)
+    if not bounds:stop('ERROR : Walker initialization was not defined for '+par)
+    
+    #Checks
+    if any(par_loc in par for par_loc in ['jitter','veq','Peq']):bounds[0]=max(bounds[0], 0.)
+    
+    if 'jitter' in par:bounds[0]=max(bounds[0], 0.)
     elif 'ang' in par:
-        if uf_bd_par[0]<0.:uf_bd_par[0]=0.
-        if uf_bd_par[1]>90:uf_bd_par[1]=90
-    elif 'veq' in par and uf_bd_par[0]<0:uf_bd_par[0]=0.
-    elif 'Peq' in par and uf_bd_par[0]<0:uf_bd_par[0]=0.
-    elif ('Tc_sp' in par) and ((uf_bd_par[0] <= params[par].value - args['system_param']['star']['Peq']) or (uf_bd_par[1] >= params[par].value + args['system_param']['star']['Peq'])):uf_bd_par = [params[par].value - args['system_param']['star']['Peq'] + 0.001, params[par].value + args['system_param']['star']['Peq'] - 0.001]
+        bounds[0] = max(bounds[0], 0.)
+        if uf:bounds[1] = min(bounds[1], 90.)
+        else:bounds[0] = min(bounds[0], 90.)
+    elif ('Tc_ar' in par):
+        if (bounds[0] <= params[par].value - args['system_param']['star']['Peq']): bounds[0] = params[par].value - args['system_param']['star']['Peq'] + 0.001
+        if uf:
+            if bounds[1] >= params[par].value + args['system_param']['star']['Peq']: bounds[1] = params[par].value + args['system_param']['star']['Peq'] - 0.001
+    
     return None
 
 
@@ -226,9 +242,10 @@ def model_par_names(par):
         
     """
     name_dic = {
-        'veq':'v$_\mathrm{eq}$ (km s$^{-1}$)','vsini':'v$_\mathrm{eq}$sin i$_{*}$ (km/s)',
-        'Peq':'P$_\mathrm{eq}$ (d)',
-        'alpha_rot':r'$\alpha_\mathrm{rot}$','beta_rot':r'$\beta_\mathrm{rot}$',       
+        'vsini':'v$_\mathrm{eq}$sin i$_{*}$ (km/s)','veq':'v$_\mathrm{eq}$ (km s$^{-1}$)','veq_spots':'v$_\mathrm{eq, sp}$ (km s$^{-1}$)','veq_faculae':'v$_\mathrm{eq, fa}$ (km s$^{-1}$)',
+        'Peq':'P$_\mathrm{eq}$ (d)','Peq_spots':r'P$_{\mathrm{eq, sp}}$ (d)','Peq_faculae':r'P$_{\mathrm{eq, fa}}$ (d)',
+        'alpha_rot':r'$\alpha_\mathrm{rot}$','alpha_rot_spots':r'$\alpha_{\mathrm{rot, sp}}$','alpha_rot_faculae':r'$\alpha_{\mathrm{rot, fa}}$',
+        'beta_rot':r'$\beta_\mathrm{rot}$','beta_rot_spots':r'$\beta_{\mathrm{rot, sp}}$','beta_rot_faculae':r'$\beta_{\mathrm{rot, fa}}$',         
         'cos_istar':r'cos(i$_{*}$)','istar_deg':'i$_{*}(^{\circ}$)',
         'lambda_rad':'$\lambda$', 
         'c0_CB':'CB$_{0}$ (km s$^{-1}$)','c1_CB':'CB$_{1}$ (km s$^{-1}$)','c2_CB':'CB$_{2}$ (km s$^{-1}$)','c3_CB':'CB$_{3}$ (km s$^{-1}$)',  
@@ -248,7 +265,7 @@ def model_par_names(par):
         'LD_u1':'LD$_1$','LD_u2':'LD$_2$','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
         'f_GD':'f$_{\rm GD}$','beta_GD':'$\beta_{\rm GD}$','Tpole':'T$_{\rm pole}$',
         'eta_R':r'$\eta_{\rm R}$','eta_T':r'$\eta_{\rm T}$','ksi_R':r'\Ksi$_\mathrm{R}$','ksi_T':r'\Ksi$_\mathrm{T}$',
-        'Tc_sp' : 'T$_{sp}$', 'ang' : r'$\alpha_{sp}$', 'lat' : 'lat$_{sp}$', 'fctrst' : 'F$_{sp}$',
+        'Tc_ar' : 'T$_{AR}$', 'ang' : r'$\alpha_{AR}$', 'lat' : 'lat$_{AR}$', 'fctrst' : 'F$_{AR}$',
         } 
     if par in name_dic:name_par = name_dic[par]
     elif ('__pl' in par):
@@ -282,9 +299,10 @@ def model_par_units(par):
         
     """
     unit_dic = {
-        'veq':'km/s','vsini':'km/s',
-        'Peq':'d',
-        'alpha_rot':'','beta_rot':'',       
+        'vsini':'km/s','veq':'km/s','veq_spots':'km/s','veq_faculae':'km/s',
+        'Peq':'d','Peq_spots':'d','Peq_faculae':'d',
+        'alpha_rot':'','alpha_rot_spots':'','alpha_rot_faculae':'',
+        'beta_rot':'','beta_rot_spots':'','beta_rot_faculae':'',       
         'cos_istar':'','istar_deg':'deg',
         'lambda_rad':'rad', 
         'c0_CB':'km/s','c1_CB':'km/s','c2_CB':'km/s','c3_CB':'km/s',  
@@ -304,7 +322,7 @@ def model_par_units(par):
         'LD_u1':'','LD_u2':'','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
         'f_GD':'','beta_GD':'','Tpole':'K',
         'eta_R':'','eta_T':'','ksi_R':'','ksi_T':'',
-        'Tc_sp' : 'BJD',
+        'Tc_ar' : 'BJD','lat': 'deg', 'ang': 'deg','fctrst':''
         } 
     if par in unit_dic:unit_par = unit_dic[par]
     elif ('Omega__' in par):unit_par='deg'
@@ -348,11 +366,18 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'sc_err':fit_prop_dic['sc_err'],
             
         #Global model properties        
-        'system_param':deepcopy(system_param),
+        'system_param':deepcopy(system_param),        
+        'base_system_param':deepcopy(system_param),
         'system_prop':deepcopy(data_dic['DI']['system_prop']),
-        'system_spot_prop':deepcopy(data_dic['DI']['spots_prop']), 
+        'system_ar_prop':deepcopy(data_dic['DI']['ar_prop']), 
         'DI_grid':False,
         'ph_fit':{},
+        
+        #Minimization options
+        'prior_func':fit_prop_dic['prior_func'], 
+        'fit' : {'chi2':True,'fixed':False,'mcmc':True,'ns':True}[fit_prop_dic['fit_mode']],         
+        'fit_mode' :  fit_prop_dic['fit_mode'],
+        'unthreaded_op':fit_prop_dic['unthreaded_op'], 
 
         #Fit parameters
         'par_list':[],
@@ -361,22 +386,19 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         'nexp_fit_all':{},
         'idx_in_fit':{},        
         'master_out':{},
-
+        'inst_list':[],
+        'inst_vis_list':{},
+        
         #Intrinsic continuum flux
         #    - IntrProp: required for the intensity weighing but absolute value does not matter
         #    - IntrProf: required for parameter initialization in init_custom_DI_par(), but set within the fit function to the visit-specific continuum provided as model parameter.
         'flux_cont':1.,     
         
-        'inst_list':[],
-        'prior_func':fit_prop_dic['prior_func'], 
-        'inst_vis_list':{},
         'studied_pl':{},
         'cond_studied_pl':False,
-        'transit_sp':{},
-        'cond_transit_sp':False,
-        'bin_mode':{},
-        'fit' : {'chi2':True,'fixed':False,'mcmc':True}[fit_prop_dic['fit_mode']], 
-        'unthreaded_op':fit_prop_dic['unthreaded_op'],     
+        'studied_ar':{},
+        'cond_studied_ar':False,
+        'bin_mode':{},    
         }
 
     if 'Prof' in fixed_args['rout_mode']:
@@ -386,9 +408,9 @@ def init_joined_routines(rout_mode,gen_dic,system_param,theo_dic,data_dic,fit_pr
         fixed_args.update({      
         'pol_mode':fit_prop_dic['pol_mode']})
         
-    if len(gen_dic['studied_sp'])>0:    
+    if len(gen_dic['studied_ar'])>0:    
         fixed_args.update({
-            'spot_coord_par':gen_dic['spot_coord_par'],        
+            'ar_coord_par':gen_dic['ar_coord_par'],        
         })
 
     #Checks
@@ -414,7 +436,7 @@ def init_joined_routines_inst(inst,fit_dic,fixed_args):
     fit_dic[inst]={}
     fixed_args['inst_list']+=[inst]
     fixed_args['inst_vis_list'][inst]=[]  
-    for key in ['ph_fit','nexp_fit_all','studied_pl','transit_sp','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
+    for key in ['ph_fit','nexp_fit_all','studied_pl','studied_ar','bin_mode','idx_in_fit']:fixed_args[key][inst]={}
     fixed_args['coord_fit'][inst]={}
     fixed_args['coord_obs'][inst]={}
     
@@ -481,7 +503,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
         n_in_tr = data_vis_bin['n_in_tr']
         n_in_visit = data_vis_bin['n_in_visit']
         studied_pl = data_vis_bin['studied_pl']
-        transit_sp = data_vis_bin['transit_sp']
+        studied_ar = data_vis_bin['studied_ar']
         bin_mode = data_vis_bin['mode']
 
     #Original data
@@ -490,7 +512,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
         n_in_tr = data_vis['n_in_tr']    
         n_in_visit = data_vis['n_in_visit']
         studied_pl = data_vis['studied_pl']
-        transit_sp = data_vis['transit_sp']
+        studied_ar = data_vis['studied_ar']
 
     #Planets are transiting
     if len(studied_pl)>0:
@@ -503,13 +525,13 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
             fixed_args['studied_pl'][inst][vis]=[studied_pl[0]] 
         else:fixed_args['studied_pl'][inst][vis]=studied_pl
 
-    #Spots are visible
-    #    - spots cannot be processed from multi-visit bins
-    if len(transit_sp)>0:
-        fixed_args['cond_transit_sp'] = True    
-        fixed_args['transit_sp'][inst][vis]=transit_sp
-        if theo_dic['precision'] != 'high':stop('WARNING : spot simulation requires "theo_dic["precision"] = "high"" ')
-    else:fixed_args['transit_sp'][inst][vis] = []
+    #Active regions are visible
+    #    - active regions cannot be processed from multi-visit bins
+    if len(studied_ar)>0:
+        fixed_args['cond_studied_ar'] = True    
+        fixed_args['studied_ar'][inst][vis]=studied_ar
+        if theo_dic['precision'] != 'high':stop('WARNING : active region simulation requires "theo_dic["precision"] = "high"" ')
+    else:fixed_args['studied_ar'][inst][vis] = []
 
     #Fitted exposures
     if ('DI' in rout_mode) or ('Diff' in rout_mode):n_default_fit = n_in_visit
@@ -524,7 +546,7 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
     fixed_args['nexp_fit_all'][inst][vis]=len(fixed_args['idx_in_fit'][inst][vis])     
    
     #Store coordinates of fitted exposures in global table
-    #    - planet-occulted and spotted regions coordinates were calculated with the nominal properties from ANTARESS_systems and theo_dic
+    #    - planet-occulted and active regions coordinates were calculated with the nominal properties from ANTARESS_systems and theo_dic
     #    - if relevant, they will be updated during the fitting process
     if fixed_args['bin_mode'][inst][vis]=='_bin':
         sub_idx_in_fit = fixed_args['idx_in_fit'][inst][vis]
@@ -543,12 +565,12 @@ def init_joined_routines_vis_fit(rout_mode,inst,vis,fit_dic,fixed_args,data_vis,
                 fixed_args['coord_fit'][inst][vis][pl_loc] = {}
                 for key in ['cen_pos','st_pos','end_pos']:fixed_args['coord_fit'][inst][vis][pl_loc][key] = coord_vis[pl_loc][key][:,sub_idx_in_fit]    
                 fixed_args['coord_fit'][inst][vis][pl_loc]['ecl'] = coord_vis[pl_loc]['ecl'][sub_idx_in_fit]  
-        if fixed_args['cond_transit_sp']:
-            for spot in fixed_args['transit_sp'][inst][vis]:
-                fixed_args['coord_fit'][inst][vis][spot] = {}
-                for key in ['Tc_sp',  'ang_rad', 'lat_rad', 'fctrst']:fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key]
-                for key in fixed_args['spot_coord_par']:fixed_args['coord_fit'][inst][vis][spot][key] = coord_vis[spot][key][:,sub_idx_in_fit] 
-                fixed_args['coord_fit'][inst][vis][spot]['is_visible'] = coord_vis[spot]['is_visible'][:,sub_idx_in_fit] 
+        if fixed_args['cond_studied_ar']:
+            for ar in fixed_args['studied_ar'][inst][vis]:
+                fixed_args['coord_fit'][inst][vis][ar] = {}
+                for key in ['Tc_ar',  'ang_rad', 'lat_rad', 'fctrst']:fixed_args['coord_fit'][inst][vis][ar][key] = coord_vis[ar][key]
+                for key in fixed_args['ar_coord_par']:fixed_args['coord_fit'][inst][vis][ar][key] = coord_vis[ar][key][:,sub_idx_in_fit] 
+                fixed_args['coord_fit'][inst][vis][ar]['is_visible'] = coord_vis[ar]['is_visible'][:,sub_idx_in_fit] 
             fixed_args['coord_fit'][inst][vis]['bjd']=coord_vis['bjd'][sub_idx_in_fit]
             fixed_args['coord_fit'][inst][vis]['t_dur']=coord_vis['t_dur'][sub_idx_in_fit]
     elif ('DI' in rout_mode):
@@ -656,7 +678,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     #    - use 'expression' to set properties to the same value :
     # define par1, then define par2 and set it to expr='par1'
     #      do not include in the expression of a parameter another parameter linked with an expression
-    #    - all parameter options are valid for both chi2 and mcmc, except for boundary conditions that must be defined differently for the mcmc
+    #    - all parameter options are valid for both chi2, mcmc, and ns, except for boundary conditions that must be defined differently for mcmc and ns
     #    - parameters specific to a given planet should be defined as 'parname__plX', where X is the name of the planet used throughout the pipeline
     #    - models use the nominal RpRs and LD coefficients, which must be suited to the spectral band from which the local stellar properties were derived
     #------------------------------------------------------------
@@ -666,7 +688,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     #    - there is a general, uniform prior on cos(istar) between -1 and 1 that allows us to limit istar in 0:180 
     # since there is a bijection between istar and cos(istar) over this range
     #    - lambda is defined over the entire angular space, however it might need to be limited to a fixed range to prevent the 
-    # mcmc to switch from one best-fit region defined in [-180;180] to the next in x+[-180;180]. By default we take -2*180:2*180. 
+    # mcmc/ns to switch from one best-fit region defined in [-180;180] to the next in x+[-180;180]. By default we take -2*180:2*180. 
     #      this range might need to be shifted if the best-fit is at +-180
     #      the posterior distribution is folded over x+[-180;180] in the end
     #    - we use the same approach for the orbital inclination, which must be limited in the post-processing to the range [0-90]°
@@ -689,7 +711,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     # + c1, c2 and c3 : coefficients of the mu-dependent CB velocity polynomial (km/s) 
     # + aRs, inclin_rad: in some cases these properties can be better constrained by the fit to the local RVs
     #                    since they control the orbital trajectory of the planet, fitting these parameters will make the code recalculate the coordinates of the planet-occulted regions    
-    #      for more details see calc_plocc_spot_prop()  
+    #      for more details see calc_plocc_ar_prop()  
     #    - some parameters can be left undefined and will be set to default values:
     # + alpha, beta : 0
     # + CB coefficients: 0
@@ -746,9 +768,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         
         #Variable stellar properties
         #    - must be done after 'par_formatting' to identify variable line parameters 
-        if fixed_args['cond_transit_sp']:spots_prop = data_dic['DI']['spots_prop']
-        else:spots_prop={}
-        fixed_args = var_stellar_prop(fixed_args,theo_dic,data_dic['DI']['system_prop'],spots_prop,fixed_args['system_param']['star'],p_start)
+        if fixed_args['cond_studied_ar']:ar_prop = data_dic['DI']['ar_prop']
+        else:ar_prop={}
+        fixed_args = var_stellar_prop(fixed_args,theo_dic,data_dic['DI']['system_prop'],ar_prop,fixed_args['system_param']['star'],p_start)
        
         #Initializing stellar profile grid
         #    - must be done after 'par_formatting' to identify variable line parameters
@@ -756,7 +778,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         else:fixed_args = init_custom_DI_prof(fixed_args,gen_dic,p_start)
     
         #Stellar grid properties
-        for cond_key,key in zip(['cond_studied_pl','cond_transit_sp'],['pl','sp']):
+        for cond_key,key in zip(['cond_studied_pl','cond_studied_ar'],['pl','ar']):
             if fixed_args[cond_key]:
                 for subkey in ['Ssub_Sstar_','x_st_sky_grid_','y_st_sky_grid_','nsub_D','d_oversamp_']:fixed_args['grid_dic'][subkey+key] = theo_dic[subkey+key]            
 
@@ -779,24 +801,24 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
             fixed_args['fit_orbit']=False
             fixed_args['fit_RpRs']=False
             
-        #Spot
-        if fixed_args['cond_transit_sp']:
-            par_spot=['lat', 'Tc_sp', 'ang', 'fctrst']    
-            for par in par_spot:fixed_args[par+'_sp']=[]
-            fixed_args['fit_spot']=False
-            fixed_args['fit_spot_ang']=[]
+        #Active region
+        if fixed_args['cond_studied_ar']:
+            par_ar=['lat', 'Tc_ar', 'ang', 'fctrst']    
+            for par in par_ar:fixed_args[par+'_ar']=[]
+            fixed_args['fit_ar']=False
+            fixed_args['fit_ar_ang']=[]
 
         #Star
-        par_star_sp = ['cos_istar', 'f_GD', 'veq', 'Peq', 'alpha_rot', 'beta_rot' ]
+        par_star_ar = ['cos_istar', 'f_GD', 'veq', 'Peq', 'alpha_rot', 'beta_rot' ]
         par_star_pl = ['cos_istar', 'f_GD']
-        fixed_args['fit_star_sp']=False
+        fixed_args['fit_star_ar']=False
         fixed_args['fit_star_pl']=False
-            
+
         #Processing parameters
         for par in p_start:
     
-            #Check if rootname of orbital/LC or spot properties is one of the parameters left free to vary for a given planet or spot    
-            #    - if so, store name of planet or spot for this property
+            #Check if rootname of orbital/LC or active region properties is one of the parameters left free to vary for a given planet or active region    
+            #    - if so, store name of planet or active region for this property
             #    - 'fit_X' conditions are activated if model is 'fixed' so that coordinates are re-calculated in case system properties are amongst the properties of the fixed model
             
             #Planet
@@ -816,43 +838,43 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                             fixed_args[par_check+'_pl'] += [pl_name]
                             fixed_args['fit_RpRs']=True 
             
-            #Spot
-            if fixed_args['cond_transit_sp']:        
-                for par_check in par_spot:
-                    if (par_check in par) and ('_SP' in par):
-                        spot_name = par.split('_SP')[1]
+            #Active region
+            if fixed_args['cond_studied_ar']:        
+                for par_check in par_ar:
+                    if (par_check in par) and ('__ar' in par):
+                        ar_name = par.split('__ar')[1]
                         if (p_start[par].vary) or fit_dic['fit_mode']=='fixed':
-                            fixed_args[par_check+'_sp']+= [spot_name]
-                            fixed_args['fit_spot']=True
+                            fixed_args[par_check+'_ar']+= [ar_name]
+                            fixed_args['fit_ar']=True
                         if ('ang' in par_check) and p_start[par].vary:
-                            fixed_args['fit_spot_ang']+=[spot_name]
+                            fixed_args['fit_ar_ang']+=[ar_name]
 
             #Star
             if (par in par_star_pl) and (par in fixed_args['var_stargrid_prop']):fixed_args['fit_star_pl']=True
-            if (par in par_star_sp) and ((par in fixed_args['var_stargrid_prop']) or (par in fixed_args['var_stargrid_prop_spots'])):fixed_args['fit_star_sp']=True
-                            
+            if (par in par_star_ar) and ((par in fixed_args['var_stargrid_prop']) or (par in fixed_args['var_stargrid_prop_spots']) or (par in fixed_args['var_stargrid_prop_faculae'])):fixed_args['fit_star_ar']=True
+
         #Unique list of planets with variable properties  
         if fixed_args['cond_studied_pl']:                
             for par in par_orb:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
             for par in par_LC:fixed_args[par+'_pl'] = list(np.unique(fixed_args[par+'_pl']))
             fixed_args['b_pl'] = list(np.unique(fixed_args['inclin_rad_pl']+fixed_args['aRs_pl']))
        
-        #Unique list of spots with variable properties
-        if fixed_args['cond_transit_sp']:  
-            for par in par_spot:fixed_args[par+'_sp'] = list(np.unique(fixed_args[par+'_sp']))
+        #Unique list of active regions with variable properties
+        if fixed_args['cond_studied_ar']:  
+            for par in par_ar:fixed_args[par+'_ar'] = list(np.unique(fixed_args[par+'_ar']))
     
-            #Redefining spot's Tcenter bounds, guess and priors with the cross-time supplement
-            if fixed_args['fit_spot']:
-                for inst in fixed_args['transit_sp']:
-                    for vis in fixed_args['transit_sp'][inst]:
-                        for spot in fixed_args['transit_sp'][inst][vis]:
-                            par = 'Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot
+            #Redefining active regions Tcenter bounds, guess and priors with the cross-time supplement
+            if fixed_args['fit_ar']:
+                for inst in fixed_args['studied_ar']:
+                    for vis in fixed_args['studied_ar'][inst]:
+                        for ar in fixed_args['studied_ar'][inst][vis]:
+                            par = 'Tc_ar__IS'+inst+'_VS'+vis+'_AR'+ar
                             p_start[par].value -= fixed_args['bjd_time_shift'][inst][vis]
                             p_start[par].min-= fixed_args['bjd_time_shift'][inst][vis]
                             p_start[par].max-= fixed_args['bjd_time_shift'][inst][vis]
                             if (fit_dic['fit_mode']!='fixed') and (p_start[par].vary):
                                 fit_dic['uf_bd'][par] -= fixed_args['bjd_time_shift'][inst][vis]
-                                if fixed_args['varpar_priors'][par]['mod']!='uf':stop('WARNING: use uniform prior for Tc_sp')                        
+                                if fixed_args['varpar_priors'][par]['mod']!='uf':stop('WARNING: use uniform prior for Tc_ar')                        
                                 fixed_args['varpar_priors'][par]['low'] -= fixed_args['bjd_time_shift'][inst][vis]
                                 fixed_args['varpar_priors'][par]['high'] -= fixed_args['bjd_time_shift'][inst][vis]
 
@@ -863,7 +885,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units)     
 
     #Calculating a first model to check all in-transit model exposures are defined
-    if fit_dic['fit_mode'] in ['chi2','mcmc'] and ('Intr' in rout_mode):
+    if fit_dic['fit_mode'] in ['chi2','mcmc','ns'] and ('Intr' in rout_mode):
         mod_dic,coeff_line_dic,mod_prop_dic,_ = fixed_args['mod_func'](p_start,fixed_args)
         if rout_mode=='IntrProp':
             if True in np.isnan(mod_dic):
@@ -893,18 +915,17 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     #Fit by chi2 minimization
     if fit_dic['fit_mode']=='chi2':
         fixed_args['fit'] = True
-        merged_chain = None
-        print('       Chi2 fit')   
-        p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=fit_dic['verbose'],fixed_args=fixed_args,fit_dic=fit_dic)[2]
+        merged_chain = None 
+        print('       Chi2 fit ('+lmfit_fitting_method_check(fit_dic['chi2_fitting_method'])+' method)')   
+        p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=fit_dic['verbose'],fixed_args=fixed_args,fit_dic=fit_dic,method=fit_dic['chi2_fitting_method'])[2]
 
     #------------------------------------------------------------ 
-    #Fit par emcmc 
-    elif fit_dic['fit_mode']=='mcmc':  
-        fixed_args['fit'] = True
-        print('       MCMC fit')
-
+    #Fit with emcmc or nested sampling
+    elif fit_dic['fit_mode'] in ['mcmc','ns']:    
+        fixed_args['fit'] = True   
+    
         #Complex prior function
-        if (fit_dic['mcmc_run_mode']=='use') and (len(fixed_args['prior_func'])>0):
+        if (fit_dic['run_mode']=='use') and (len(fixed_args['prior_func'])>0):
             prior_functions={
                 'sinistar_geom':prior_sini_geom,
                 'cosi':prior_cosi,
@@ -918,122 +939,137 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
             }
             for key in fixed_args['prior_func']:fixed_args['prior_func'][key]['func'] = prior_functions[key]
             fixed_args['global_ln_prior']=True
+        
+        
+        #Fit with emcmc 
+        if fit_dic['fit_mode']=='mcmc': 
+            print('       MCMC fit')
+            fit_nthreads = fit_dic['emcee_nthreads']
 
-        #MCMC run
-        walker_chains,step_outputs=call_MCMC(fit_dic['mcmc_run_mode'],fit_dic['emcee_nthreads'],fixed_args,fit_dic,run_name=fit_dic['run_name'],verbose=fit_dic['verbose'])
-
-        #Excluding parts of the chains
-        if fit_dic['exclu_walk']:
-            print('       Excluding walkers manually')
-
-            #DI fit
-            if gen_dic['fit_DIProp']:
-                if gen_dic['star_name'] == 'TOI2669':            
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='starphase__puls__phiHF__ISESPRESSO_VS_')],axis=1)<2.2))
-            
-            #Joined fit
-            if gen_dic['fit_IntrProf']:
-            
-                # ipar_loc=np_where1D(fixed_args['var_par_list']=='lambda_rad__plHD3167_c')
-                # # wgood=np_where1D(np.min(walker_chains[:,:,ipar_loc],axis=1)>-1.)
-                # # wgood=np_where1D(np.median(walker_chains[:,:,ipar_loc],axis=1)>-2.5)
-                # wgood=np_where1D(np.median(walker_chains[:,:,ipar_loc],axis=1)<-1.)
-                # wgood=np_where1D(np.median(walker_chains[:,:,ipar_loc],axis=1)<-1.5)
+            #MCMC run
+            walker_chains,step_outputs=call_MCMC(fit_dic['run_mode'],fit_nthreads,fixed_args,fit_dic,run_name=fit_dic['run_name'],verbose=fit_dic['verbose'])
     
-                # ipar_loc=np_where1D(fixed_args['var_par_list']=='lambda_rad__plTOI858b')
-                # wgood=np_where1D(np.median(walker_chains[:,:,ipar_loc],axis=1)<5.)
+            #Excluding parts of the chains
+            if fit_dic['exclu_walk']:
+                print('       Excluding walkers manually')
     
-                if gen_dic['star_name'] == 'GJ436':
-                    # wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='amp_l2c__ISESPRESSO_VS20190228')],axis=1)<1.) &\
-                    #                  (np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='amp_l2c__ISESPRESSO_VS20190429')],axis=1)<1.)&\
-                    #                  (np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__ISESPRESSO_VS20190429')],axis=1)>2.))
+                #DI fit
+                if gen_dic['fit_DIProp']:
+                    if gen_dic['star_name'] == 'TOI2669':            
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='starphase__puls__phiHF__ISESPRESSO_VS_')],axis=1)<2.2))
+                
+                #Joined fit
+                if gen_dic['fit_IntrProf']:
+                
+                    # ipar_loc=np_where1D(fixed_args['var_par_list']=='lambda_rad__plHD3167_c')
+                    # # wgood=np_where1D(np.min(walker_chains[:,:,ipar_loc],axis=1)>-1.)
+                    # # wgood=np_where1D(np.median(walker_chains[:,:,ipar_loc],axis=1)>-2.5)
+                    # wgood=np_where1D(np.median(walker_chains[:,:,ipar_loc],axis=1)<-1.)
+                    # wgood=np_where1D(np.median(walker_chains[:,:,ipar_loc],axis=1)<-1.5)
+        
+                    # ipar_loc=np_where1D(fixed_args['var_par_list']=='lambda_rad__plTOI858b')
+                    # wgood=np_where1D(np.median(walker_chains[:,:,ipar_loc],axis=1)<5.)
+        
+                    if gen_dic['star_name'] == 'GJ436':
+                        # wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='amp_l2c__ISESPRESSO_VS20190228')],axis=1)<1.) &\
+                        #                  (np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='amp_l2c__ISESPRESSO_VS20190429')],axis=1)<1.)&\
+                        #                  (np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__ISESPRESSO_VS20190429')],axis=1)>2.))
+        
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='amp_l2c__IS__VS_')],axis=1)<1.)&\
+                                          (np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__ISESPRESSO_VS20190228')],axis=1)>2.)&\
+                                          (np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__ISESPRESSO_VS20190429')],axis=1)>2.))
     
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='amp_l2c__IS__VS_')],axis=1)<1.)&\
-                                      (np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__ISESPRESSO_VS20190228')],axis=1)>2.)&\
-                                      (np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__ISESPRESSO_VS20190429')],axis=1)>2.))
-
-                elif gen_dic['star_name'] == 'HAT_P3':
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__ISHARPN_VS20200130')],axis=1)>0.))
-
-                elif gen_dic['star_name'] == 'HAT_P33':
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__ISHARPN_VS20191204')],axis=1)>0.))
-
-
-                elif gen_dic['star_name'] == 'HAT_P49':
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__ISHARPN_VS20200730')],axis=1)<20.))
-
-                elif gen_dic['star_name'] == 'WASP107':
-                    # wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='lambda_rad__plWASP107b')],axis=1)<0.))
-                    # wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='lambda_rad__plWASP107b')],axis=1)>0.))
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='a_damp__ISCARMENES_VIS_VS20180224')],axis=1)<10.))
-
-                elif gen_dic['star_name'] == 'HIP41378':
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='lambda_rad__plHIP41378d')],axis=1)<4.))
-
-                elif gen_dic['star_name'] == 'WASP156':
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='a_damp__ISCARMENES_VIS_VS20190928')],axis=1)<2.))
-
-                elif gen_dic['star_name'] == 'WASP166':
-                    # wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__IS__VS_')],axis=1)>5.))
-                    # wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='ctrst_ord0__ISHARPS_VS_')],axis=1)<0.63) )
-                    # wgood=np_where1D((np.min(walker_chains[:,250:750,np_where1D(fixed_args['var_par_list']=='veq')],axis=1)>5.) )
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='veq')],axis=1)>4.5) )
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='Rstar')],axis=1)<1.45) )
-
-                elif gen_dic['star_name'] == 'Kepler25':
-                    ilamb = np_where1D(fixed_args['var_par_list']=='lambda_rad__plKepler25c')
-                    for iwalk in range(fit_dic['nwalkers']):
-                        lambda_temp=np.squeeze(walker_chains[iwalk,:,ilamb])+np.pi
-                        w_gt_360=(lambda_temp > 2.*np.pi)
-                        if True in w_gt_360:
-                            walker_chains[iwalk,w_gt_360,ilamb]=np.mod(lambda_temp[w_gt_360],2.*np.pi)-np.pi
-                        w_lt_0=(lambda_temp < 0.)
-                        if True in w_lt_0:
-                            i_mod=npint(np.abs(lambda_temp[w_lt_0])/(2.*np.pi))+1.
-                            walker_chains[iwalk,w_lt_0,ilamb] = lambda_temp[w_lt_0]+i_mod*2.*np.pi-np.pi
-                        
-                    wgood=np_where1D( (np.max(walker_chains[:,:,ilamb],axis=1)<80.*np.pi/180.) & (np.min(walker_chains[:,:,ilamb],axis=1)>-80.*np.pi/180.) )
-
-
-                elif gen_dic['star_name'] == '55Cnc':
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='veq')],axis=1)>0.5) )
-
-                elif gen_dic['star_name'] == 'WASP76':
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='lambda_rad__plWASP76b')],axis=1)<-1.1) )
-
-                elif gen_dic['star_name'] == 'HD189733':
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='cos_istar')],axis=1)<-0.35) )
-
-            #Surface RV fit
-            if gen_dic['fit_IntrProp']:
+                    elif gen_dic['star_name'] == 'HAT_P3':
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__ISHARPN_VS20200130')],axis=1)>0.))
     
-                ipar_loc=np_where1D(fixed_args['var_par_list']=='lambda_rad__plGJ436_b')
-                wgood=np_where1D(np.min(walker_chains[:,:,ipar_loc],axis=1)>-1.)    
+                    elif gen_dic['star_name'] == 'HAT_P33':
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__ISHARPN_VS20191204')],axis=1)>0.))
     
-                # ipar_loc=np_where1D(fixed_args['var_par_list']=='veq')
-                # wgood=np_where1D(walker_chains[:,-1,ipar_loc]>2.)                    
-                # ipar_loc=np_where1D(fixed_args['var_par_list']=='cos_istar')
-                # wgood=np_where1D(walker_chains[:,-1,ipar_loc]<0.)   
     
-                ipar_loc=np_where1D(fixed_args['var_par_list']=='inclin_rad__plGJ436_b')
-                wgood=np_where1D(walker_chains[:,-1,ipar_loc]<=0.5*np.pi)  
+                    elif gen_dic['star_name'] == 'HAT_P49':
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__ISHARPN_VS20200730')],axis=1)<20.))
+    
+                    elif gen_dic['star_name'] == 'WASP107':
+                        # wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='lambda_rad__plWASP107b')],axis=1)<0.))
+                        # wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='lambda_rad__plWASP107b')],axis=1)>0.))
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='a_damp__ISCARMENES_VIS_VS20180224')],axis=1)<10.))
+    
+                    elif gen_dic['star_name'] == 'HIP41378':
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='lambda_rad__plHIP41378d')],axis=1)<4.))
+    
+                    elif gen_dic['star_name'] == 'WASP156':
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='a_damp__ISCARMENES_VIS_VS20190928')],axis=1)<2.))
+    
+                    elif gen_dic['star_name'] == 'WASP166':
+                        # wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='FWHM_ord0__IS__VS_')],axis=1)>5.))
+                        # wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='ctrst_ord0__ISHARPS_VS_')],axis=1)<0.63) )
+                        # wgood=np_where1D((np.min(walker_chains[:,250:750,np_where1D(fixed_args['var_par_list']=='veq')],axis=1)>5.) )
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='veq')],axis=1)>4.5) )
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='Rstar')],axis=1)<1.45) )
+    
+                    elif gen_dic['star_name'] == 'Kepler25':
+                        ilamb = np_where1D(fixed_args['var_par_list']=='lambda_rad__plKepler25c')
+                        for iwalk in range(fit_dic['nwalkers']):
+                            lambda_temp=np.squeeze(walker_chains[iwalk,:,ilamb])+np.pi
+                            w_gt_360=(lambda_temp > 2.*np.pi)
+                            if True in w_gt_360:
+                                walker_chains[iwalk,w_gt_360,ilamb]=np.mod(lambda_temp[w_gt_360],2.*np.pi)-np.pi
+                            w_lt_0=(lambda_temp < 0.)
+                            if True in w_lt_0:
+                                i_mod=npint(np.abs(lambda_temp[w_lt_0])/(2.*np.pi))+1.
+                                walker_chains[iwalk,w_lt_0,ilamb] = lambda_temp[w_lt_0]+i_mod*2.*np.pi-np.pi
+                            
+                        wgood=np_where1D( (np.max(walker_chains[:,:,ilamb],axis=1)<80.*np.pi/180.) & (np.min(walker_chains[:,:,ilamb],axis=1)>-80.*np.pi/180.) )
+    
+    
+                    elif gen_dic['star_name'] == '55Cnc':
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='veq')],axis=1)>0.5) )
+    
+                    elif gen_dic['star_name'] == 'WASP76':
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='lambda_rad__plWASP76b')],axis=1)<-1.1) )
+    
+                    elif gen_dic['star_name'] == 'HD189733':
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='cos_istar')],axis=1)<-0.35) )
+    
+                #Surface RV fit
+                if gen_dic['fit_IntrProp']:
+        
+                    ipar_loc=np_where1D(fixed_args['var_par_list']=='lambda_rad__plGJ436_b')
+                    wgood=np_where1D(np.min(walker_chains[:,:,ipar_loc],axis=1)>-1.)    
+        
+                    # ipar_loc=np_where1D(fixed_args['var_par_list']=='veq')
+                    # wgood=np_where1D(walker_chains[:,-1,ipar_loc]>2.)                    
+                    # ipar_loc=np_where1D(fixed_args['var_par_list']=='cos_istar')
+                    # wgood=np_where1D(walker_chains[:,-1,ipar_loc]<0.)   
+        
+                    ipar_loc=np_where1D(fixed_args['var_par_list']=='inclin_rad__plGJ436_b')
+                    wgood=np_where1D(walker_chains[:,-1,ipar_loc]<=0.5*np.pi)  
+    
+    
+                    if gen_dic['star_name'] == 'HD189733':
+                        wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='cos_istar')],axis=1)<0.) )
+    
+    
+    
+    
+    
+                print('   ',len(wgood),' walkers kept / ',fit_dic['nwalkers'])
+                walker_chains=np.take(walker_chains,wgood,axis=0)     
+                fit_dic['nwalkers']=len(wgood)  
 
+        #------------------------------------------------------------ 
+        #Fit by nested sampling 
+        elif fit_dic['fit_mode']=='ns':  
+            print('       Nested sampling fit')
+            fit_nthreads = fit_dic['dynesty_nthreads']
 
-                if gen_dic['star_name'] == 'HD189733':
-                    wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='cos_istar')],axis=1)<0.) )
-
-
-
-
-
-            print('   ',len(wgood),' walkers kept / ',fit_dic['nwalkers'])
-            walker_chains=np.take(walker_chains,wgood,axis=0)     
-            fit_dic['nwalkers']=len(wgood)  
-               
+            #NS run
+            walker_chains,step_outputs=call_NS(fit_dic['run_mode'],fit_nthreads,fixed_args,fit_dic,run_name=fit_dic['run_name'],verbose=fit_dic['verbose'])
+                   
         #------------------------------------------------------------------------------------------------            
- 
+     
         #Processing
-        p_final,merged_chain,merged_outputs,par_sample_sig1,par_sample=postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,fit_dic['emcee_nthreads'],fixed_args['par_names'],verbose=fit_dic['verbose'],verb_shift=fit_dic['verb_shift']+'    ')
+        p_final,merged_chain,merged_outputs,par_sample_sig1,par_sample=postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,fit_nthreads,fixed_args['par_names'],verbose=fit_dic['verbose'],verb_shift=fit_dic['verb_shift']+'    ')
 
     #------------------------------------------------------------ 
     #No fit is performed: guess parameters are kept
@@ -1047,15 +1083,16 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
     ########################################################################################################   
     #Post-processing final results     
 
-    #Redefining spot's Tcenter bounds, guess and priors with the cross-time supplement
-    if fixed_args['cond_transit_sp'] and fixed_args['fit_spot']:
-        for inst in fixed_args['transit_sp']:
-            for vis in fixed_args['transit_sp'][inst]:
-                for spot in fixed_args['transit_sp'][inst][vis]:
-                    par = 'Tc_sp__IS'+inst+'_VS'+vis+'_SP'+spot
-                    p_final[par] += fixed_args['bjd_time_shift'][inst][vis]
-                    if fit_dic['fit_mode']=='mcmc':merged_chain[:,np_where1D(fixed_args['var_par_list']==par)[0]]+= fixed_args['bjd_time_shift'][inst][vis]    
+    #Redefining active region Tcenter bounds, guess and priors with the cross-time supplement
+    if fixed_args['cond_studied_ar'] and fixed_args['fit_ar']:
+        for inst in fixed_args['studied_ar']:
+            for vis in fixed_args['studied_ar'][inst]:
+                for ar in fixed_args['studied_ar'][inst][vis]:
+                    par = 'Tc_ar__IS'+inst+'_VS'+vis+'_AR'+ar
+                    p_final[par] += fixed_args['bjd_time_shift'][inst][vis] 
+                    if fit_dic['fit_mode'] in ['mcmc','ns']:merged_chain[:,np_where1D(fixed_args['var_par_list']==par)]+= fixed_args['bjd_time_shift'][inst][vis]
                     fixed_args['bjd_time_shift'][inst][vis] = 0.
+
     
     #------------------------------------------------------------
 
@@ -1173,13 +1210,13 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
  
         #MCMC fit default options
         if prop_dic['fit_mode']=='mcmc': 
-            if ('mcmc_set' not in prop_dic):prop_dic['mcmc_set']={}
+            if ('walkers_set' not in prop_dic):prop_dic['walkers_set']={}
             for key in ['nwalkers','nsteps','nburn']:
-                if key not in prop_dic['mcmc_set']:prop_dic['mcmc_set'][key] = {}
-                if (inst not in prop_dic['mcmc_set'][key]):prop_dic['mcmc_set'][key][inst] = {}
-            if (vis not in prop_dic['mcmc_set']['nwalkers'][inst]):prop_dic['mcmc_set']['nwalkers'][inst][vis] = 50
-            if (vis not in prop_dic['mcmc_set']['nsteps'][inst]):prop_dic['mcmc_set']['nsteps'][inst][vis] = 1000
-            if (vis not in prop_dic['mcmc_set']['nburn'][inst]):prop_dic['mcmc_set']['nburn'][inst][vis] = 200
+                if key not in prop_dic['walkers_set']:prop_dic['walkers_set'][key] = {}
+                if (inst not in prop_dic['walkers_set'][key]):prop_dic['walkers_set'][key][inst] = {}
+            if (vis not in prop_dic['walkers_set']['nwalkers'][inst]):prop_dic['walkers_set']['nwalkers'][inst][vis] = 50
+            if (vis not in prop_dic['walkers_set']['nsteps'][inst]):prop_dic['walkers_set']['nsteps'][inst][vis] = 1000
+            if (vis not in prop_dic['walkers_set']['nburn'][inst]):prop_dic['walkers_set']['nburn'][inst][vis] = 200
        
         #Default model
         if ('model' not in prop_dic):prop_dic['model']={}
@@ -1795,7 +1832,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
             'inst':inst,
             'vis':vis})
         
-        #Assuming no spots are fitted
+        #Assuming no active regions are fitted
         fixed_args['unquiet_star'] = None
 
         #Grid initialization
@@ -1921,8 +1958,8 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
         
         #Initializing stellar properties
         #    - must be done after 'par_formatting' to identify variable line parameters 
-        spots_prop={}     #for now no spots are included 
-        fixed_args = var_stellar_prop(fixed_args,theo_dic,data_dic['DI']['system_prop'],spots_prop,fixed_args['system_param']['star'],p_start)
+        ar_prop={}     #for now no active regions are included 
+        fixed_args = var_stellar_prop(fixed_args,theo_dic,data_dic['DI']['system_prop'],ar_prop,fixed_args['system_param']['star'],p_start)
                
         #Initializing stellar profile grid        
         fixed_args = init_custom_DI_prof(fixed_args,gen_dic,p_start)
@@ -1955,10 +1992,10 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
                 fit_dic['HDI_bwf'][param_loc]=fit_prop_dic['HDI_bwf'][param_loc][inst][vis]
     
         #Store options
-        for key in ['nwalkers','nsteps','nburn']:fit_dic[key] = fit_prop_dic['mcmc_set'][key][inst][vis]
+        for key in ['nwalkers','nsteps','nburn']:fit_dic[key] = fit_prop_dic['walkers_set'][key][inst][vis]
 
         #Call MCMC
-        walker_chains,step_outputs=call_MCMC(fit_prop_dic['mcmc_run_mode'],fit_dic['nthreads'],fixed_args,fit_dic,verbose=verbose)
+        walker_chains,step_outputs=call_MCMC(fit_prop_dic['run_mode'],fit_dic['nthreads'],fixed_args,fit_dic,verbose=verbose)
 
         #Excluding parts of the chains
         if fit_dic['exclu_walk']:
@@ -2043,7 +2080,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
     
     #Custom model
     if (model_choice=='custom') and (prof_type=='DI'):
-        fixed_args = var_stellar_prop(fixed_args,theo_dic,data_dic['DI']['system_prop'],spots_prop,fixed_args['system_param']['star'],p_final)
+        fixed_args = var_stellar_prop(fixed_args,theo_dic,data_dic['DI']['system_prop'],ar_prop,fixed_args['system_param']['star'],p_final)
         fixed_args = init_custom_DI_prof(fixed_args,gen_dic,p_final)
         fixed_args['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],fixed_args['args_exp'],fixed_args['args_exp']['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
             
@@ -2641,8 +2678,8 @@ def prior_contrast(p_step_loc,args_in,prior_func_prop):
         for vis in args['inst_vis_list'][inst]:   
             args['vis']=vis
             pl_vis = args['studied_pl'][inst][vis][0]
-            system_param_loc,coord_pl,param_val = up_plocc_prop(inst,vis,args,p_step_loc,[pl_vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
-            surf_prop_dic,spot_prop_dic,surf_prop_dic_common = sub_calc_plocc_spot_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
+            system_param_loc,coord_pl,param_val = up_plocc_arocc_prop(inst,vis,args,p_step_loc,[pl_vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis])
+            surf_prop_dic,_,surf_prop_dic_common = sub_calc_plocc_ar_prop([args['chrom_mode']],args,[args['coord_line']],[pl_vis],[],system_param_loc,args['grid_dic'],args['system_prop'],param_val,args['coord_fit'][inst][vis],range(args['nexp_fit_all'][inst][vis]),False)
             ctrst_vis = surf_prop_dic[pl_vis]['ctrst'][0]       
             break_cond = (ctrst_vis<0.) | (ctrst_vis>1.)
             if True in break_cond:
@@ -2705,7 +2742,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
     #Call to specific post-processing
     #    - Fit from chi2 or fixed
     # + combination/modification of best-fit results to add new parameters
-    #    - Fit from mcmc
+    #    - Fit from mcmc or ns
     # + combination/modification of MCMC chains to add new parameters
     # + new parameters are not used for model
     # + we calculate median and errors after chain are added   
@@ -2715,19 +2752,19 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
         fixed_args['model_par_names']= model_par_names
         fixed_args['model_par_units']= model_par_units
     
-        #Fold cos(istar) within -1 : 1
+        #%%%% Folding cos(istar) within -1 : 1
         if 'cosistar_fold' in deriv_prop:
             print('        + Folding cos(istar)')
             if fit_dic['fit_mode'] in ['chi2','fixed']: 
                 cosistar = (p_final['cos_istar']-(1.)) % 2 - 1.
                 p_final['cos_istar'] = cosistar
-            elif fit_dic['fit_mode']=='mcmc':   
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:   
                 iistar = np_where1D(fixed_args['var_par_list']=='cos_istar')
                 if ('cos_istar' in fixed_args['var_par_list']):cosistar_chain=merged_chain[:,iistar]  
                 else:cosistar_chain=p_final['cos_istar']     
                 merged_chain[:,iistar]= (cosistar_chain-(1.)) % 2 - 1.         
     
-        #Convert Rstar and Peq into veq
+        #%%%% Converting (Rstar,Peq) into veq
         #    - veq = (2*pi*Rstar/Peq)
         if 'veq_from_Peq_Rstar' in deriv_prop:
             print('        + Deriving veq from Peq and Rstar ')
@@ -2736,7 +2773,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 if fit_dic['fit_mode']=='chi2': 
                     sig_loc=np.nan
                     fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))
-            elif fit_dic['fit_mode']=='mcmc':   
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:   
                 n_chain = len(merged_chain[:,0])
                 if 'Rstar' in fixed_args['var_par_list']:
                     print('           Using fitted Rstar')
@@ -2752,7 +2789,8 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             up_var_par(fixed_args,'veq')   
     
     
-        #Convert veq into veq*sin(istar) to be comparable with solid-body values
+        #%%%% Converting veq into veq*sin(istar)
+        #    - to be comparable with solid-body values
         #    - must be done before modification of istar chain
         if ('vsini' in deriv_prop) and ((fixed_args['rout_mode'] in ['IntrProf','DiffProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):
             print('        + Converting veq to vsini')
@@ -2773,7 +2811,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     else:
                         sig_temp = fit_dic['sig_parfinal_err']['1s'][:,iveq]*sin_istar            
                     fit_dic['sig_parfinal_err']['1s'][:,iveq] = sig_temp
-            elif fit_dic['fit_mode']=='mcmc':                  
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:                  
                 if ('cos_istar' in fixed_args['var_par_list']):
                     cosistar_chain=merged_chain[:,iistar]  
                 else:
@@ -2791,14 +2829,14 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
     
             
         #-------------------------------------------------            
-
-        #Replace cos(istar[rad]) by istar[deg]
+        #%%%% Replacing cos(istar[rad]) by istar[deg]
         if ('istar_deg_conv' in deriv_prop) or ('istar_deg_add' in deriv_prop):
             print('        + Converting cos(istar) to istar')
             conv_cosistar(deriv_prop,fixed_args,fit_dic,p_final,merged_chain)
 
         #-------------------------------------------------
-        #Add istar using the fitted value for vsini / an  external value for vsini, and independent measurements of Peq and Rstar
+        #%%%% Adding istar[deg]
+        #    - using the fitted value for vsini / an  external value for vsini, and independent measurements of Peq and Rstar
         #    - vsini = veq*sin(istar) = (2*pi*Rstar/Peq)*sin(istar)
         #      istar = np.arcsin( vsini*peq/(2*pi*Rstar) )
         if ('istar_Peq' in deriv_prop) or ('istar_Peq_vsini' in deriv_prop):
@@ -2818,7 +2856,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 if fit_dic['fit_mode']=='chi2': 
                     sig_loc=np.nan
                     fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))
-            elif fit_dic['fit_mode']=='mcmc':   
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:   
                 n_chain = len(merged_chain[:,0])
                 if 'istar_Peq_vsini' in deriv_prop:
                     print('           Using external vsini')
@@ -2868,15 +2906,14 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             up_var_par(fixed_args,'istar_deg')   
 
         #-------------------------------------------------            
-
-        #Folding istar[deg] around 90
+        #%%%% Folding istar[deg] around 90°
         #    - only use if all other parameters are degenerate with istar
         if ('fold_istar' in deriv_prop):        
             print('        + Folding istar')
             iistar = np_where1D(fixed_args['var_par_list']=='istar_deg')
             if fit_dic['fit_mode'] in ['chi2','fixed']:
                 stop('Not relevant')
-            elif fit_dic['fit_mode']=='mcmc':   
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:   
                 istar_temp=np.squeeze(merged_chain[:,iistar])  
                 if deriv_prop['fold_istar']['config']=='North':
                     cond_fold=(istar_temp > 90.)         
@@ -2888,34 +2925,36 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 if True in cond_fold:merged_chain[cond_fold,iistar]=180.-istar_temp[cond_fold] 
 
         #-------------------------------------------------
-        #Add Peq using the value derived from veq and independent measurement of Rstar
+        #%%%% Adding Peq from (veq,Rstar)
+        #    - using the value derived from veq and independent measurement of Rstar
         #    - Peq = (2*pi*Rstar/veq)
-        if 'Peq_veq' in deriv_prop:
-            if ('cos_istar' in fixed_args['var_par_list']):stop('    istar has been fitted')
-            print('        + Deriving Peq from veq ')
-            Rstar_dic = deepcopy(deriv_prop['Peq_veq']['Rstar'])
-            for subpar in Rstar_dic:Rstar_dic[subpar]*=Rsun 
-            
-            if fit_dic['fit_mode'] in ['chi2','fixed']:   
-                p_final['Peq_d']=(2.*np.pi*Rstar_dic['val'])/(p_final['veq']*3600.*24.)
-                if fit_dic['fit_mode']=='chi2': 
-                    sig_loc=np.nan
-                    fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))
-            elif fit_dic['fit_mode']=='mcmc': 
-                n_chain = len(merged_chain[:,0])
-            
-                #Generate gaussian distribution for Rstar
-                if 's_val' in Rstar_dic:Rstar_chain = np.random.normal(Rstar_dic['val'], Rstar_dic['s_val'], n_chain)
-                else:Rstar_chain = gen_hrand_chain(Rstar_dic['val'],Rstar_dic['s_val_low'],Rstar_dic['s_val_high'],n_chain)
+        for sub_name in ['','_spots', '_faculae']:
+            if 'Peq_veq'+sub_name in deriv_prop:        
+                if ('cos_istar' in fixed_args['var_par_list']):stop('    istar has been fitted')        
+                print(f'        + Deriving Peq{sub_name} from veq{sub_name}')
+                Rstar_dic = deepcopy(deriv_prop[f'Peq_veq{sub_name}']['Rstar'])
+                for subpar in Rstar_dic:Rstar_dic[subpar]*=Rsun 
+                if fit_dic['fit_mode'] in ['chi2','fixed']:  
+                    p_final[f'Peq{sub_name}_d']=(2.*np.pi*Rstar_dic['val'])/(p_final[f'veq{sub_name}']*3600.*24.)
+                    if fit_dic['fit_mode']=='chi2': 
+                        sig_loc=np.nan
+                        fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))
+                elif fit_dic['fit_mode'] in ['mcmc','ns']: 
+                    n_chain = len(merged_chain[:,0])
                 
-                #Calculate Peq chain
-                iveq = np_where1D(fixed_args['var_par_list']=='veq')
-                chain_loc=(2.*np.pi*Rstar_chain)/(np.squeeze(merged_chain[:,iveq])*3600.*24.)
-                merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
-            up_var_par(fixed_args,'Peq')
-    
+                    #Generate gaussian distribution for Rstar
+                    if 's_val' in Rstar_dic:Rstar_chain = np.random.normal(Rstar_dic['val'], Rstar_dic['s_val'], n_chain)
+                    else:Rstar_chain = gen_hrand_chain(Rstar_dic['val'],Rstar_dic['s_val_low'],Rstar_dic['s_val_high'],n_chain)
+                    
+                    #Calculate Peq chain
+                    iveq = np_where1D(fixed_args['var_par_list']=='veq'+sub_name)
+                    chain_loc=(2.*np.pi*Rstar_chain)/(np.squeeze(merged_chain[:,iveq])*3600.*24.)
+                    merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
+                up_var_par(fixed_args,f'Peq{sub_name}')        
+        
         #-------------------------------------------------
-        #Add Peq using the value derived from vsini and independent measurement of Rstar and istar
+        #%%%% Adding Peq from (vsini,Rstar,istar)
+        #    - using the value derived from vsini and independent measurement of Rstar and istar
         #    - Peq = (2*pi*Rstar*sin(istar)/vsini)
         if 'Peq_vsini' in deriv_prop:
             print('        + Deriving Peq from vsini')
@@ -2926,7 +2965,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             
             if fit_dic['fit_mode'] in ['chi2','fixed']: 
                 stop('TBD')
-            elif fit_dic['fit_mode']=='mcmc':  
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:  
                 n_chain = len(merged_chain[:,0])
                 if 's_val' in Rstar_dic:Rstar_chain = np.random.normal(Rstar_dic['val'], Rstar_dic['s_val'], n_chain)
                 else:Rstar_chain = gen_hrand_chain(Rstar_dic['val'],Rstar_dic['s_val_low'],Rstar_dic['s_val_high'],n_chain)
@@ -2940,10 +2979,242 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 chain_loc=(2.*np.pi*Rstar_chain*sinistar_chain)/(np.squeeze(merged_chain[:,ivsini])*3600.*24.)
                 merged_chain=np.concatenate((merged_chain,chain_loc[:,None]),axis=1)  
             up_var_par(fixed_args,'Peq')
-    
+
         #-------------------------------------------------
+        #%%%% Folding active region crossing time (Tc_ar) around average value
+        if ('fold_Tc_ar' in deriv_prop) and (fixed_args['rout_mode'] in ['IntrProf','ResProf']):
+            print('        + Folding active region crossing time (Tc_ar)')
+
+            #Set up triggers
+            # - If veq_spots or veq_faculae or both are fitted for
+            veq_spots_fitted = ('veq_spots' in fixed_args['var_par_list'])
+            veq_faculae_fitted = ('veq_faculae' in fixed_args['var_par_list'])
+            
+            # - If Peq_spots or Peq_faculae or both are fitted for
+            Peq_spots_fitted = ('Peq_spots' in fixed_args['var_par_list'])
+            Peq_faculae_fitted = ('Peq_faculae' in fixed_args['var_par_list'])
+            
+            # - If veq_spots or veq_faculae or both are fixed to values different from the base one
+            veq_spots_fixed = ('veq_spots' in fixed_args['fix_par_list']) and (p_final['veq_spots'] != fixed_args['base_system_param']['star']['veq_spots'])
+            veq_faculae_fixed = ('veq_faculae' in fixed_args['fix_par_list']) and (p_final['veq_faculae'] != fixed_args['base_system_param']['star']['veq_faculae'])
+            
+            # - If Peq_spots or Peq_faculae or both are fixed to values different from the base one
+            Peq_spots_fixed = ('Peq_spots' in fixed_args['fix_par_list']) and (p_final['Peq_spots'] != fixed_args['base_system_param']['star']['Peq_spots'])
+            Peq_faculae_fixed = ('Peq_faculae' in fixed_args['fix_par_list']) and (p_final['Peq_faculae'] != fixed_args['base_system_param']['star']['Peq_faculae'])
+
+
+            #Retrieve the value of Peq to fold
+            
+            # If veq_spots or veq_faculae or both are fitted for
+            if veq_spots_fitted or veq_faculae_fitted:
                 
-        #Add 3D spin-orbit angle
+                #If both are fitted - check that the user provided info. on which one to use
+                if veq_spots_fitted and veq_faculae_fitted:
+                    #If both spots and faculae or neither are provided by the user raise error
+                    if len(deriv_prop['fold_Tc_ar']['reg_to_use']) > 1:stop('Both "spots" and "faculae" cannot be provided to fold the active region Tc if both veq_spots and veq_faculae are fitted.') 
+                    elif len(deriv_prop['fold_Tc_ar']['reg_to_use']) == 0:stop('If users want to perform the active region crossing time folding with the fitted veq_spots/veq_faculae values, they must specify which one to use with "deriv_prop["fold_TC_ar"]["spots/faculae"]=True."')
+                    else:
+                        actreg_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
+                        if f'Peq_veq_{actreg_name}' not in deriv_prop: stop(f'WARNING: Peq_veq_{actreg_name} needs to be activated in deriv_prop if the active region crossing time folding is done with the fitted veq_{actreg_name}.')
+                        print(f'           + Folding with fitted veq_{actreg_name}')
+                        if fit_dic['fit_mode'] in ['mcmc','ns']:
+                            Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq_'+actreg_name)])
+                            use_chain = True
+                        else:
+                            Peq = p_final[f'Peq_{actreg_name}_d']
+                            use_chain = False
+                
+                # Only one of veq_spots or veq_faculae is fitted; no need to check deriv_prop['fold_Tc_ar']
+                else:
+                    fitted_param = 'veq_spots' if veq_spots_fitted else 'veq_faculae'
+                    print(f'           + Folding with fitted {fitted_param}')
+                    Peq_key = f'Peq_{"spots" if fitted_param == "veq_spots" else "faculae"}'
+                    if fit_dic['fit_mode'] in ['mcmc','ns']:
+                        Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list'] == Peq_key)])
+                        use_chain = True
+                    else:
+                        Peq = p_final[f'{Peq_key}_d']
+                        use_chain = False
+
+            # If Peq_spots or Peq_faculae or both are fitted for
+            elif (Peq_spots_fitted or Peq_faculae_fitted):
+                
+                #If both are fitted - check that the user provided info. on which one to use
+                if Peq_spots_fitted and Peq_faculae_fitted:
+                    #If both spots and faculae or neither are provided by the user raise error
+                    if len(deriv_prop['fold_Tc_ar']['reg_to_use']) > 1:stop('Both "spots" and "faculae" cannot be provided to fold the active region Tc if both Peq_spots and Peq_faculae are fitted.') 
+                    elif len(deriv_prop['fold_Tc_ar']['reg_to_use']) == 0:stop('If users want to perform the active region crossing time folding with the fitted Peq_spots/Peq_faculae values, they must specify which one to use with "deriv_prop["fold_TC_ar"]["spots/faculae"]=True."')
+                    else:
+                        actreg_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
+                        print(f'           + Folding with fitted Peq_{actreg_name}')
+                        if fit_dic['fit_mode'] in ['mcmc','ns']:
+                            Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq_'+actreg_name)])
+                            use_chain = True
+                        else:
+                            Peq = p_final[f'Peq_{actreg_name}_d']
+                            use_chain = False
+                
+                # Only one of Peq_spots or Peq_faculae is fitted; no need to check deriv_prop['fold_Tc_ar']
+                else:
+                    fitted_param = 'Peq_spots' if Peq_spots_fitted else 'Peq_faculae'
+                    print(f'           + Folding with fitted {fitted_param}')
+                    Peq_key = f'Peq_{"spots" if fitted_param == "Peq_spots" else "faculae"}'
+                    if fit_dic['fit_mode'] in ['mcmc','ns']:
+                        Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list'] == Peq_key)])
+                        use_chain = True
+                    else:
+                        Peq = p_final[f'{Peq_key}_d']
+                        use_chain = False
+
+            #If veq_spots or veq_faculae or both are fixed to values different from the base one
+            elif veq_spots_fixed or veq_faculae_fixed:
+
+                #If both are fitted - check that the user provided info. on which one to use
+                if veq_spots_fixed and veq_faculae_fixed:
+                    #If both spots and faculae or neither are provided by the user raise error
+                    if len(deriv_prop['fold_Tc_ar']['reg_to_use']) > 1:stop('Both "spots" and "faculae" cannot be provided to fold the active region Tc if both veq_spots and veq_faculae are fixed to values different than the baseline.') 
+                    elif len(deriv_prop['fold_Tc_ar']['reg_to_use']) == 0:stop('If users want to perform the active region crossing time folding with the fixed veq_spots/veq_faculae values, they must specify which one to use with "deriv_prop["fold_TC_ar"]["spots/faculae"]=True."')
+                    else:
+                        actreg_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
+                        print(f'           + Folding with fixed veq_{actreg_name}')
+                        Peq = 2*np.pi*fixed_args['system_param']['star']['Rstar']*Rsun/(p_final[f'veq_{actreg_name}']*3600.*24.)
+                        use_chain = False
+
+                #Only one of veq_spots or veq_faculae is fixed and differs from the base values
+                else:
+                    fixed_param = 'veq_spots' if Peq_spots_fitted else 'veq_faculae'
+                    print(f'           + Folding with fixed {fixed_param}')
+                    Peq = 2*np.pi*fixed_args['system_param']['star']['Rstar']*Rsun/(p_final[fixed_param]*3600.*24.)
+                    use_chain = False
+
+            #If Peq_spots or Peq_faculae or both are fixed to values different from the base one
+            elif Peq_spots_fixed or Peq_faculae_fixed:
+
+                #If both are fitted - check that the user provided info. on which one to use
+                if Peq_spots_fixed and Peq_faculae_fixed:
+                    #If both spots and faculae or neither are provided by the user raise error
+                    if len(deriv_prop['fold_Tc_ar']['reg_to_use']) > 1:stop('Both "spots" and "faculae" cannot be provided to fold the active region Tc if both Peq_spots and Peq_faculae are fixed to values different than the baseline.') 
+                    elif len(deriv_prop['fold_Tc_ar']['reg_to_use']) == 0:stop('If users want to perform the active region crossing time folding with the fixed Peq_spots/Peq_faculae values, they must specify which one to use with "deriv_prop["fold_TC_ar"]["spots/faculae"]=True."')
+                    else:
+                        actreg_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
+                        print(f'           + Folding with fixed Peq_{actreg_name}')
+                        Peq = 2*np.pi*fixed_args['system_param']['star']['Rstar']*Rsun/(p_final[f'Peq_{actreg_name}']*3600.*24.)
+                        use_chain = False
+
+                #Only one of Peq_spots or Peq_faculae is fixed and differs from the base values
+                else:
+                    fixed_param = 'Peq_spots' if Peq_spots_fitted else 'Peq_faculae'
+                    print(f'           + Folding with fixed {fixed_param}')
+                    Peq = 2*np.pi*fixed_args['system_param']['star']['Rstar']*Rsun/(p_final[fixed_param]*3600.*24.)
+                    use_chain = False
+
+            #If veq is fit for
+            elif ('veq' in fixed_args['var_par_list']):
+                print('           + Folding with fitted veq')
+                if 'Peq_veq' not in deriv_prop: stop('WARNING: Peq_veq needs to be activated in deriv_prop if the active region crossing time folding is done with the fitted veq.')
+                if fit_dic['fit_mode'] in ['mcmc','ns']:
+                    Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq')])
+                    use_chain = True
+                else:
+                    Peq = p_final['Peq_d']
+                    use_chain = False
+            
+            #If Peq is fit for
+            elif ('Peq' in fixed_args['var_par_list']):
+                print('           + Folding with fitted Peq')
+                if fit_dic['fit_mode'] in ['mcmc','ns']:
+                    Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq')])
+                    use_chain = True
+                else:
+                    Peq = p_final['Peq_d']
+                    use_chain = False
+
+            #If veq is fixed to a different values that the base one
+            elif ('veq' in fixed_args['fix_par_list']) and (p_final['veq'] != fixed_args['base_system_param']['star']['veq']):
+                print('           + Folding with fixed veq')
+                Peq = 2*np.pi*fixed_args['system_param']['star']['Rstar']*Rsun/(p_final['veq']*3600.*24.)
+                use_chain = False
+            
+            #If Peq is fixed to a different values that the base one
+            elif ('Peq' in fixed_args['fix_par_list']) and (p_final['Peq'] != fixed_args['base_system_param']['star']['Peq']):
+                print('           + Folding with fixed Peq')
+                Peq = p_final['Peq_d']
+                use_chain = False
+
+            #If nothing else has been provided / fitted, default to using the base Peq
+            else:
+                print('           + Using default Peq value')
+                use_chain=False
+                Peq = fixed_args['base_system_param']['star']['Peq']
+
+            for actreg in fixed_args['studied_actreg']:
+
+                def sub_func(Tc_name,new_Tc_name,new_Tc_name_txt):
+                    if (fit_dic['fit_mode'] in ['mcmc','ns']) and use_chain:print('           + Folding with full chain')
+                    else:print('           + Folding with single value')
+                    #Peq is either a single value if use_chains is False
+                    #or a chain if use_chains is True
+
+                    #Get location of Tc chain
+                    iTc=np_where1D(fixed_args['var_par_list']==Tc_name)     
+
+                    if fit_dic['fit_mode'] in ['mcmc','ns']:
+                        #Fold Tc_ar over x+[-Peq/2;Peq/2]
+                        #    - we want Tc_ar in x+[-Peq/2;Peq/2] i.e. Tc_ar-x+Peq/2 in 0;Peq
+                        #      we fold over 0;Peq and then get back to the final range
+                        if actreg in deriv_prop['fold_Tc_ar']:x_mid = deriv_prop['fold_Tc_ar'][actreg]
+                        else:x_mid=np.median(merged_chain[:,iTc])
+                        print('           + Folding around ',x_mid)
+                        mid_shift = x_mid-Peq/2
+                        Tc_temp=np.squeeze(merged_chain[:,iTc])-mid_shift
+                        w_gt_top=(Tc_temp > Peq)
+                        if True in w_gt_top:
+                            if use_chain:
+                                Peq_temp = Peq[w_gt_top]
+                                mid_shift_temp = mid_shift[w_gt_top]
+                            else:
+                                Peq_temp = Peq
+                                mid_shift_temp = mid_shift
+                            merged_chain[w_gt_top,iTc]=np.mod(Tc_temp[w_gt_top],Peq_temp)+mid_shift_temp
+                        w_lt_bot=(Tc_temp < 0.)
+                        if True in w_lt_bot:
+                            if use_chain:
+                                Peq_temp = Peq[w_lt_bot]
+                                mid_shift_temp = mid_shift[w_lt_bot]
+                            else:
+                                Peq_temp = Peq
+                                mid_shift_temp = mid_shift
+                            i_mod=npint(np.abs(Tc_temp[w_lt_bot])/Peq_temp)+1.
+                            merged_chain[w_lt_bot,iTc] = Tc_temp[w_lt_bot]+i_mod*Peq_temp+mid_shift_temp                                
+
+
+                    elif fit_dic['fit_mode']=='chi2':
+                        mid_shift = -Peq/2
+                        Tc_temp = p_final[Tc_name] - mid_shift
+                        if Tc_temp>Peq:Tc_temp = np.mod(Tc_temp,Peq) + mid_shift
+                        elif Tc_temp<0.:
+                            i_mod=npint(np.abs(Tc_temp)/Peq)+1.
+                            Tc_temp += i_mod*Peq+mid_shift  
+                        else:Tc_temp += mid_shift
+                        p_final[new_Tc_name] = Tc_temp
+                        sig_temp = fit_dic['sig_parfinal_err']['1s'][0,iTc]
+                        fit_dic['sig_parfinal_err']['1s'][:,iTc] = sig_temp 
+
+                    fixed_args['var_par_list'][iTc]=new_Tc_name
+                    fixed_args['var_par_names'][iTc]=new_Tc_name_txt  
+                    fixed_args['var_par_units'][iTc]='BJD' 
+
+                    return None 
+                
+                if 'Tc_ar' in fixed_args['genpar_instvis']:
+                    for inst in fixed_args['genpar_instvis']['Tc_ar']:
+                        for vis in fixed_args['genpar_instvis']['Tc_ar'][inst]:
+                            Tc_name = 'Tc_ar__IS'+inst+'_VS'+vis
+                            new_Tc_name = 'fold_Tc_ar__IS'+inst+'_VS'+vis
+                            sub_func(Tc_name, new_Tc_name,'T$_{ar}$['+actreg+'](BJD)')
+
+        #-------------------------------------------------                
+        #%%%% Adding 3D spin-orbit angle [deg]
         #    - psi = acos(sin(istar)*cos(lamba)*sin(ip) + cos(istar)*cos(ip))
         #    - must be done before modification of lambda chains
         if ('psi' in deriv_prop) or ('psi_lambda' in deriv_prop):
@@ -2960,7 +3231,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     else:        
                         p_final['Psi__pl'+pl_loc]=np.arccos(np.sin(istar)*np.cos(p_final[lambda_rad_pl])*np.sin(p_final['inclin_rad__pl'+pl_loc]) + np.cos(istar)*np.cos(p_final['inclin_rad__pl'+pl_loc]))*180./np.pi
                         if fit_dic['fit_mode']=='chi2':fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[np.nan],[np.nan]]))
-                elif fit_dic['fit_mode']=='mcmc':    
+                elif fit_dic['fit_mode'] in ['mcmc','ns']:    
                     n_chain = len(merged_chain[:,0])
                     
                     #Obliquity 
@@ -3137,7 +3408,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],var_par_units_add))                      
                  
         #-------------------------------------------------                
-        #Calculation of mutual inclination
+        #%%%% Adding mutual inclination [deg]
         #    - cos(i_m)=cos(i_b)*cos(i_c)+cos(Omega)*sin(i_b)*sin(i_c)
         #      Omega = om_c - om_b     difference between longitudes of ascending nodes
         #      taking the sky-projected node line of the star as a reference for the longitude of the ascending node, there are two possible
@@ -3170,7 +3441,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             print('        + Adding mutual inclination between '+pl_loc1+' and '+pl_loc2)           
             if fit_dic['fit_mode'] in ['chi2','fixed']: 
                 stop('TBD')
-            elif fit_dic['fit_mode']=='mcmc': 
+            elif fit_dic['fit_mode'] in ['mcmc','ns']: 
                 n_chain = len(merged_chain[:,0])
                 lamb_chain_pl1 = np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']==lambda_rad_pl1)]  ) 
                 lamb_chain_pl2 = np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']==lambda_rad_pl2)]  )
@@ -3207,8 +3478,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],['deg','deg','deg']))  
 
         #-------------------------------------------------
-            
-        #Add argument of ascending node
+        #%%%% Adding argument of ascending node [deg]
         #    - Om = np.arctan( -sin(lambda)*tan(ip) )
         #    - must be done before modification of ip and lambda chains
         if 'om' in deriv_prop:
@@ -3227,7 +3497,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     else: 
                         p_final['Omega__pl'+pl_loc]=np.arctan( -np.sin(p_final[lambda_rad_pl])*np.tan(ip_loc) )*180./np.pi
                         if fit_dic['fit_mode']=='chi2':fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[np.nan],[np.nan]]))
-                elif fit_dic['fit_mode']=='mcmc': 
+                elif fit_dic['fit_mode'] in ['mcmc','ns']: 
                     if ('inclin_rad__pl'+pl_loc in fixed_args['var_par_list']):ip_loc=merged_chain[:,np_where1D(fixed_args['var_par_list']=='inclin_rad__pl'+pl_loc)]
                     if lambda_rad_pl in fixed_args['genpar_instvis']:
                         lamb_chain={}
@@ -3248,8 +3518,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 else:up_var_par(fixed_args,'Omega__pl'+pl_loc)              
 
         #-------------------------------------------------
-            
-        #Add impact parameter
+        #%%%% Adding impact parameter
         #    - b = aRs*cos(ip)
         if ('b' in deriv_prop) and (fixed_args['fit_orbit']):
             print('        + Adding impact parameter')
@@ -3275,7 +3544,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                         sig_loc=p_final['b']*np.sqrt( (daRs/aRs_loc)**2. + (np.tan(ip_loc)*dip_loc)**2. )  
                         fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]])    )            
                     
-                elif fit_dic['fit_mode']=='mcmc':             
+                elif fit_dic['fit_mode'] in ['mcmc','ns']:             
                     if ('inclin_rad__pl'+pl_loc in fixed_args['var_par_list']):ip_loc=merged_chain[:,iip]
                     if ('aRs__pl'+pl_loc in fixed_args['var_par_list']):aRs_loc=merged_chain[:,iaRs]          
                     chain_loc=aRs_loc*np.abs(np.cos(ip_loc))
@@ -3283,16 +3552,14 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 up_var_par(fixed_args,'b__pl'+pl_loc)
     
         #-------------------------------------------------            
-            
-        #Orbital inclination
-        #    - convert ip[rad] to ip[deg]
+        #%%%% Converting ip[rad] to ip[deg]
         if ('ip' in deriv_prop) and (fixed_args['fit_orbit']):
             print('        + Converting ip in degrees')
             for pl_loc in fixed_args['lambda_rad_pl']:
                 iip=np_where1D(fixed_args['var_par_list']=='inclin_rad__pl'+pl_loc)
                 if fit_dic['fit_mode'] in ['chi2','fixed']:  
                     p_final['ip_deg']=p_final['inclin_rad__pl'+pl_loc]*180./np.pi                     
-                elif fit_dic['fit_mode']=='mcmc':                      
+                elif fit_dic['fit_mode'] in ['mcmc','ns']:                      
                     merged_chain[:,iip]*=180./np.pi   
                     
                     #Fold ip over 0-90
@@ -3311,8 +3578,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 fixed_args['var_par_units'][iip]='deg' 
     
         #-------------------------------------------------            
-            
-        #Convert lambda[rad] to lambda[deg]
+        #%%%% Converting lambda[rad] to lambda[deg]
         if ('lambda_deg' in deriv_prop) and ((fixed_args['rout_mode'] in ['IntrProf','DiffProf']) or ((fixed_args['rout_mode']=='IntrProp') and (fixed_args['prop_fit']=='rv'))):  
             print('        + Converting lambda into degrees')       
             for pl_loc in fixed_args['lambda_rad_pl']:
@@ -3344,7 +3610,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     else:sub_func(lambda_rad_pl,lambda_deg_pl,'$\lambda$['+pl_loc+']($^{\circ}$)')   
                 
                     
-                elif fit_dic['fit_mode']=='mcmc':   
+                elif fit_dic['fit_mode'] in ['mcmc','ns']:   
                     def sub_func(lamb_name,new_lamb_name,new_lamb_name_txt):  
                         ilamb=np_where1D(fixed_args['var_par_list']==lamb_name)                     
                         merged_chain[:,ilamb]*=180./np.pi  
@@ -3380,8 +3646,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
     
     
         #-------------------------------------------------            
-         
-        #Retrieve zeroth order CB coefficient
+        #%%%% Retrieving 0th order CB coefficient
         #    - independent of visits or planets
         if 'c0' in deriv_prop: 
             print('        + Adding c0(CB)')
@@ -3391,7 +3656,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     sig_loc=np.nan  
                     fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]) )     
                           
-            elif fit_dic['fit_mode']=='mcmc':   
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:   
                 chain_loc=np.empty(0,dtype=float)            
                 p_final_loc={}
                 p_final_loc.update(fixed_args['fixed_par_val'])
@@ -3407,8 +3672,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
             up_var_par(fixed_args,'c0_CB')
 
         #-------------------------------------------------            
-         
-        #Convert CB coefficients from km/s to m/s
+        #%%%% Converting CB coefficients from km/s to m/s
         if 'CB_ms' in deriv_prop: 
             print('        + Converting CB coefficients to m/s') 
             ipar_mult_loc=[]
@@ -3423,12 +3687,11 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 if fit_dic['fit_mode'] in ['chi2','fixed']: 
                     p_final[ipar_name]*=1e3 
                     if fit_dic['fit_mode']=='chi2':fit_dic['sig_parfinal_err']['1s'][:,ipar_loc]*=1e3  
-                elif fit_dic['fit_mode']=='mcmc':  
+                elif fit_dic['fit_mode'] in ['mcmc','ns']:  
                     merged_chain[:,ipar_loc]*=1e3 
     
         #-------------------------------------------------            
-            
-        #Convert FWHM and contrast of true intrinsic stellar profiles into values for observed profiles
+        #%%%% Convert FWHM and contrast of true intrinsic stellar profiles into values for observed profiles
         #    - only for constant FWHM and contrast with no variation in mu
         #    - for double-gaussian profiles the values can be converted into the 'true' contrast and FWHM, either of the intrinsic or of the observed profile
         if ('CF0_meas_add' in deriv_prop) or ('CF0_meas_conv' in deriv_prop):  
@@ -3442,7 +3705,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
     #Process:
     #    - best-fit values and confidence interval for the final parameters, potentially modified
     #    - correlation diagram plot
-    if fit_dic['fit_mode']=='mcmc':   
+    if fit_dic['fit_mode'] in ['mcmc','ns']:   
         p_final=postMCMCwrapper_2(fit_dic,fixed_args,merged_chain)
 
     #----------------------------------------------------------
@@ -3459,7 +3722,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
 def conv_cosistar(deriv_prop,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in):
     r"""**Parameter conversion: cos(i_star)**
 
-    Converts results from :math:`\chi^2` or mcmc fitting: from :math:`\cos(i_\star)` to :math:`i_\star`. 
+    Converts results from :math:`\chi^2`, mcmc, or ns fitting: from :math:`\cos(i_\star)` to :math:`i_\star`. 
 
     Args:
         TBD
@@ -3480,7 +3743,7 @@ def conv_cosistar(deriv_prop,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in
             sig_loc= (180./np.pi)*fit_dic_in['sig_parfinal_err']['1s'][0,iistar][0] / np.sqrt(1.-cosistar**2.)   
             if ('istar_deg_conv') in deriv_prop:fit_dic_in['sig_parfinal_err']['1s'][:,iistar] = [[sig_loc],[sig_loc]]
             elif ('istar_deg_add') in deriv_prop:fit_dic_in['sig_parfinal_err']['1s'] = np.hstack((fit_dic_in['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]])  )               
-        elif fit_dic_in['fit_mode']=='mcmc':
+        elif fit_dic_in['fit_mode'] in ['mcmc','ns']:
             #Folding cos(istar) within -1 : 1
             cosistar_chain = (merged_chain_in[:,iistar]-(1.)) % 2 - 1.
             chain_loc = np.arccos(cosistar_chain)*180./np.pi     
@@ -3494,7 +3757,7 @@ def conv_cosistar(deriv_prop,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in
             up_var_par(fixed_args_in,'istar_deg')
     else:
         if fit_dic_in['fit_mode']=='chi2':p_final_in['istar_deg']=np.arccos(p_final_in['cos_istar'])*180./np.pi  
-        elif fit_dic_in['fit_mode']=='mcmc':fixed_args_in['fixed_par_val']['istar_deg']=np.arccos(p_final_in['cos_istar'])*180./np.pi                          
+        elif fit_dic_in['fit_mode'] in ['mcmc','ns']:fixed_args_in['fixed_par_val']['istar_deg']=np.arccos(p_final_in['cos_istar'])*180./np.pi                          
     return merged_chain_in
 
 
@@ -3502,7 +3765,7 @@ def conv_cosistar(deriv_prop,fixed_args_in,fit_dic_in,p_final_in,merged_chain_in
 def conv_CF_intr_meas(deriv_prop,inst_list,inst_vis_list,fixed_args,merged_chain,gen_dic,p_final,fit_dic):
     r"""**Parameter conversion: line contrast and FWHM**
 
-    Converts results from :math:`\chi^2` or mcmc fitting: from intrinsic width and contrast to measured-like values. 
+    Converts results from :math:`\chi^2`, mcmc, or ns fitting: from intrinsic width and contrast to measured-like values. 
 
     Args:
         TBD
@@ -3541,7 +3804,7 @@ def conv_CF_intr_meas(deriv_prop,inst_list,inst_vis_list,fixed_args,merged_chain
                 sig_loc=np.nan 
                 if varC:fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]])) 
                 if varF:fit_dic['sig_parfinal_err']['1s']= np.hstack((fit_dic['sig_parfinal_err']['1s'],[[sig_loc],[sig_loc]]))                                                      
-            elif fit_dic['fit_mode']=='mcmc':  
+            elif fit_dic['fit_mode'] in ['mcmc','ns']:
                 if varC:ictrst_loc = np_where1D(fixed_args['var_par_list']==ctrst0_name)[0]
                 if varF:iFWHM_loc = np_where1D(fixed_args['var_par_list']==FWHM0_name)[0] 
                 if fixed_args['model']=='gauss':

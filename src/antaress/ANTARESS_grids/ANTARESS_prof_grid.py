@@ -6,7 +6,7 @@ from copy import deepcopy
 import astropy.convolution.convolve as astro_conv
 import bindensity as bind
 import lmfit
-from ctypes import CDLL,c_double,c_int,POINTER
+from ctypes import CDLL,c_double,c_int
 import os as os_system
 from ..ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
@@ -38,7 +38,7 @@ class CFunctionWrapper:
         ]
         self.fun_to_use.restype = None
 
-    def coadd_loc_gauss_prof(self, rv_surf_star_grid, ctrst_grid, FWHM_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, gauss_grid):
+    def coadd_loc_gauss_prof_with_C(self, rv_surf_star_grid, ctrst_grid, FWHM_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, gauss_grid):
         self.fun_to_use(rv_surf_star_grid, ctrst_grid, FWHM_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, gauss_grid)
 
     def __getstate__(self):
@@ -59,7 +59,7 @@ class CFunctionWrapper:
 
 
 
-def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_params,param_in):   
+def var_stellar_prop(fixed_args,theo_dic,system_prop,system_ar_prop,star_params,param_in):   
     r"""**Stellar properties: variables**
 
     Defines variable stellar properties.
@@ -77,13 +77,17 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
     #Store nominal properties potentially overwritten in the fitting procedure
     fixed_args['grid_dic'] = deepcopy(theo_dic) 
     fixed_args['system_prop'] = deepcopy(system_prop) 
-    fixed_args['system_spot_prop'] = deepcopy(system_spot_prop)
+    fixed_args['system_ar_prop'] = deepcopy(system_ar_prop)
     
     #List of stellar properties potentially modified as model parameter
     stargrid_prop_nom = np.array(['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'])
-    if len(system_spot_prop)>0:stargrid_prop_spots_nom = np.array(['veq','alpha_rot','beta_rot'])
-    else:stargrid_prop_spots_nom=[]    
- 
+    if len(system_ar_prop)>0:
+        stargrid_prop_spots_nom = np.array(['veq','alpha_rot','beta_rot'])
+        stargrid_prop_faculae_nom = np.array(['veq','alpha_rot','beta_rot'])
+    else:
+        stargrid_prop_spots_nom=[]    
+        stargrid_prop_faculae_nom=[]
+
     #Define stellar rotational property
     #    - at this stage 'params' contains 'veq' by default and only contains 'Peq' if it was requested as a model parameter
     #      in this case 'veq' is removed from the model parameters and its value is updated in the stellar property dictionary (here in forward mode, or at each time step of the fit)
@@ -91,6 +95,7 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
         print('       Switching veq for Peq as model parameter')
         stargrid_prop_nom[np_where1D(stargrid_prop_nom=='veq')]='Peq'
         if (len(stargrid_prop_spots_nom)>0):stargrid_prop_spots_nom[np_where1D(stargrid_prop_spots_nom=='veq')]='Peq'
+        if (len(stargrid_prop_faculae_nom)>0):stargrid_prop_faculae_nom[np_where1D(stargrid_prop_faculae_nom=='veq')]='Peq'
 
     #--------------------------------------------------------------------------------------------
 
@@ -102,6 +107,7 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
     fixed_args['var_star_grid'] = False
     fixed_args['var_stargrid_prop'] = []  
     fixed_args['var_stargrid_prop_spots']=[]
+    fixed_args['var_stargrid_prop_faculae']=[]
     fixed_args['var_stargrid_bulk']=False 
     fixed_args['var_stargrid_I']=False        
     for par in params:
@@ -122,6 +128,12 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
                 fixed_args['var_star_grid'] = True
                 fixed_args['var_stargrid_prop_spots']+=[par]
             if (params[par_spot] != params[par]):print('WARNING: quiet and spot values for '+par+' are different.')
+        if par in stargrid_prop_faculae_nom:
+            par_facula = par+'_faculae'
+            if (params[par_facula] != star_params[par_facula]):
+                fixed_args['var_star_grid'] = True
+                fixed_args['var_stargrid_prop_faculae']+=[par]
+            if (params[par_facula] != params[par]):print('WARNING: quiet and facula values for '+par+' are different.')
 
     #Update stellar grid
     if fixed_args['var_star_grid']:up_model_star(fixed_args,params)
@@ -140,7 +152,8 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
         
         #Properties to update are stored in these lists
         fixed_args['var_stargrid_prop'] = []   
-        fixed_args['var_stargrid_prop_spots']=[]   
+        fixed_args['var_stargrid_prop_spots']=[]  
+        fixed_args['var_stargrid_prop_faculae']=[]  
         fixed_args['var_stargrid_I']=False   
         fixed_args['var_stargrid_bulk']=False    
         
@@ -156,15 +169,27 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_spot_prop,star_param
                     fixed_args['var_stargrid_bulk']= True
                 if par=='cos_istar':fixed_args['var_stargrid_bulk'] = True
                 
-            #Link spot and quiet properties
-            #    - if one of the quiet properties is modelled but the equivalent spot one is not modelled, the spot value is made to follow the quiet value
+            #Check spot properties
+            # - We distinguish three cases for properties common to the spots and quiet star:
+            #   1 - Both quiet and spot properties are fit. In this case, both properties will behave independently.
+            #   2 - Both quiet and spot properties are fixed. In this case, we issue a warning to inform the user if these properties have different values.
+            #       It is important to stress that, in this case, the user is responsible for controlling the fixed values used.
+            #   3 - Fixed/fit quiet properties and fit/fixed spot properties. In this case, the user is responsible for controlling the value of the fixed quantity,
+            #       while the fit quantity behaves by itself.
             if (par in stargrid_prop_spots_nom):
                 par_spot = par+'_spots'
                 if (param_in[par_spot].vary):
                     fixed_args['var_star_grid']=True 
-                    fixed_args['var_stargrid_prop_spots']+=[par]       
-                if (param_in[par].vary) and (not param_in[par_spot].vary):param_in[par_spot].expr = par
-                elif (params[par_spot] != params[par]):print('WARNING: quiet and spot values for '+par+' are different.')
+                    fixed_args['var_stargrid_prop_spots']+=[par]
+                elif (params[par_spot] != params[par]) and (not param_in[par].vary) and (not param_in[par_spot].vary):print('WARNING: quiet and spot values for '+par+' are different.')
+
+            #Check faculae properties
+            if (par in stargrid_prop_faculae_nom):
+                par_facula = par+'_faculae'
+                if (param_in[par_facula].vary):
+                    fixed_args['var_star_grid']=True 
+                    fixed_args['var_stargrid_prop_faculae']+=[par]
+                elif (params[par_facula] != params[par]) and (not param_in[par].vary) and (not param_in[par_facula].vary):print('WARNING: quiet and facula values for '+par+' are different.')
 
     return fixed_args
 
@@ -435,12 +460,12 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
                                       [1e4,   None,       None,      None,   None,   None,    1.,       1.,     1.,      1e5,    1.,    1e5,   1e5,   1e5,    100.,   100.]):
         if key in star_params:params.add_many((key, star_params[key],   vary,    bd_min,bd_max,None))
 
-    #Spot properties
-    if fixed_args['cond_transit_sp']:
-        for key,vary,bd_min,bd_max in zip(['veq_spots','alpha_rot_spots','beta_rot_spots','c1_CB_spots','c2_CB_spots','c3_CB_spots','ang', 'Tc_sp'],
-                                          [False,      False,            False,            False,         False,          False,    False,  False],
-                                          [1.,         None,             None,             None,          None,           None,      0.,     0.],
-                                          [1e4,        None,             None,             None,          None,           None,      90.,    3000000.]):
+    #Active region properties
+    if fixed_args['cond_studied_ar']:
+        for key,vary,bd_min,bd_max in zip(['veq_spots','alpha_rot_spots','beta_rot_spots','c1_CB_spots','c2_CB_spots','c3_CB_spots','veq_faculae','alpha_rot_faculae','beta_rot_faculae','c1_CB_faculae','c2_CB_faculae','c3_CB_faculae'],
+                                          [False,      False,            False,            False,         False,          False,       False,           False,            False,            False,         False,          False],
+                                          [1.,         None,             None,             None,          None,           None,         1.,             None,             None,             None,           None,          None],
+                                          [1e4,        None,             None,             None,          None,           None,         1e4,            None,             None,             None,           None,          None]):
             if key in star_params:params.add_many((key, star_params[key],   vary,    bd_min,bd_max,None))
 
     #Properties specific to disk-integrated profiles
@@ -815,17 +840,12 @@ def use_C_coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
         TBD
     
     """ 
-    sc_10 = get_pw10(np.mean(Fsurf_grid_spec))
+    if np.mean(Fsurf_grid_spec)==0.:sc_10 = 1
+    else: sc_10 = get_pw10(np.abs(np.mean(Fsurf_grid_spec)))
     Fsurf_grid_spec_shape0 = len(Fsurf_grid_spec)
     ncen_bins = args['ncen_bins']
     gauss_grid = np.zeros((Fsurf_grid_spec_shape0, ncen_bins), dtype=np.float64).flatten()
     c_function_wrapper = args['c_function_wrapper']
-    c_function_wrapper.coadd_loc_gauss_prof(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec / sc_10,ncen_bins,Fsurf_grid_spec_shape0,gauss_grid)
+    c_function_wrapper.coadd_loc_gauss_prof_with_C(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec / sc_10,ncen_bins,Fsurf_grid_spec_shape0,gauss_grid)
     truegauss_grid = gauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins)) * sc_10
     return truegauss_grid
-
-
-
-
-
-

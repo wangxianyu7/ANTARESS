@@ -117,7 +117,7 @@ First, there may be generic (e.g. a typical rotational velocity, line depth, and
 For example, surface RVs are here bounded within :math:`\pm` 5 km/s (i.e. at about 3 :math:`\sigma` from the spectroscopic stellar rotational velocity of 1.8 :math:`\pm` 1 km/s from `Carleo et al. 2020 <https://iopscience.iop.org/article/10.3847/1538-3881/aba124>`_),
 an upper boundary on the FWHM is set at three times the width of the disk-integrated CCF, and the contrast is bounded by its physical range between 0 and 1.
 
-PDFs for the fitted properties (e.g., :numref:`Intrinsic_PDFs`) are plotted by activating :green:`plot_dic['prop_Intr_mcmc_PDFs'] = 'pdf'` and are saved in :orange:`/Working_dir/Star/Planet_Plots/Intr_prop/MCMC/`.  
+PDFs for the fitted properties (e.g., :numref:`Intrinsic_PDFs`) are plotted by activating :green:`plot_dic['prop_Intr_PDFs'] = 'pdf'` and are saved in :orange:`/Working_dir/Star/Planet_Plots/Intr_prop/MCMC/`.  
 
 .. figure:: Intrinsic_PDFs.png
   :width: 800
@@ -247,7 +247,7 @@ Uniform priors on the fit properties are set with::
    We set a broad prior range on :green:`lambda` to avoid walkers bumping into the prior boundaries, in case the best-fit is close to :math:`\pm180^{\circ}`. 
    Values for :green:`lambda` can be folded during post-processing, using the options :green:`glob_fit_dic['IntrProp']['deriv_prop']` as described in the `fit tutorial <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_fits/procedures_fits.html>`_. 
 
-You can now run the fits. It will be fast in :math:`\chi^2` mode but may take some time with a MCMC. To alleviate this, you can set :green:`glob_fit_dic['IntrProp']['mcmc_run_mode']='reuse'` when the fit is done and you only want to retrieve and manipulate its results. 
+You can now run the fits. It will be fast in :math:`\chi^2` mode but may take some time with a MCMC. To alleviate this, you can set :green:`glob_fit_dic['IntrProp']['run_mode']='reuse'` when the fit is done and you only want to retrieve and manipulate its results. 
 
 .. Tip::
    If the star is too faint or the planet too small, all intrinsic properties may be derived with a precision that is too low to analyze them in this step. 

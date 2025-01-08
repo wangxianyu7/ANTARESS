@@ -16,7 +16,7 @@ Initialization functions
 def save_system(input_nbook):
 
     #Deactivate all notebook plots
-    for key_plot in ['system_view','prop_DI','prop_Intr','DI_prof','Intr_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_Diff_prof','flux_sp','trans_sp','gcal_ord','noises_ord','tell_CCF','tell_prop','Fbal_corr','cosm_corr']:input_nbook['settings']['plot_dic'][key_plot] = ''
+    for key_plot in ['system_view','prop_DI','prop_Intr','DI_prof','Intr_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_Diff_prof','flux_ar','trans_ar','gcal_ord','noises_ord','tell_CCF','tell_prop','Fbal_corr','cosm_corr']:input_nbook['settings']['plot_dic'][key_plot] = ''
     
     input_nbook['saved_data_path'] = input_nbook['working_path']+'/'+input_nbook['par']['star_name'] +'/'+input_nbook['par']['main_pl'] + '_Saved_data'
     print('System stored in : ', input_nbook['saved_data_path'])
@@ -145,23 +145,23 @@ def init_spot(input_nbook,sp_type):
     inst = input_nbook['par']['instrument']
     vis = input_nbook['par']['night']
     if sp_type == 'main':
-        input_nbook['settings']['mock_dic']['spots_prop']={inst:{
+        input_nbook['settings']['mock_dic']['ar_prop']={inst:{
                                                                 vis:{}
                                                                 }
                                                            }
-        input_nbook['settings']['gen_dic']['transit_sp'] = {}
-        input_nbook['settings']['data_dic']['DI']['spots_prop'] = {'achrom':{'LD':['quadratic'],'LD_u1' : [input_nbook['par']['ld_spot_u1']],'LD_u2' : [input_nbook['par']['ld_spot_u2']]}}
+        input_nbook['settings']['gen_dic']['studied_ar'] = {}
+        input_nbook['settings']['data_dic']['DI']['ar_prop'] = {'achrom':{'LD':['quadratic'],'LD_u1' : [input_nbook['par']['ld_spot_u1']],'LD_u2' : [input_nbook['par']['ld_spot_u2']]}}
         input_nbook['settings']['data_dic']['DI']['transit_prop'] = {'nsub_Dstar':201., 
                                                                      inst:{
                                                                           vis:{'mode':'simu', 'n_oversamp':5.}
                                                                           }
                                                                      }
     for key in ['lat', 'Tc', 'ang', 'fctrst']:
-        if key=='Tc': temp=key+'_sp'
+        if key=='Tc': temp=key+'_ar'
         else:temp=key
-        input_nbook['settings']['mock_dic']['spots_prop'][inst][vis][temp+'__IS'+inst+'_VS'+vis+'_SP'+input_nbook['par']['spot_name']]=input_nbook['par'][key]
-    input_nbook['settings']['gen_dic']['transit_sp'][input_nbook['par']['spot_name']]={inst:[vis]}
-    input_nbook['settings']['data_dic']['DI']['spots_prop']['achrom'][input_nbook['par']['spot_name']]=[input_nbook['par']['ang']*np.pi/180.]
+        input_nbook['settings']['mock_dic']['ar_prop'][inst][vis][temp+'__IS'+inst+'_VS'+vis+'_AR'+input_nbook['par']['spot_name']]=input_nbook['par'][key]
+    input_nbook['settings']['gen_dic']['studied_ar'][input_nbook['par']['spot_name']]={inst:[vis]}
+    input_nbook['settings']['data_dic']['DI']['ar_prop']['achrom'][input_nbook['par']['spot_name']]=[input_nbook['par']['ang']*np.pi/180.]
     input_nbook['settings']['theo_dic']=input_nbook['settings']['mock_dic']
     return None
 
@@ -346,7 +346,7 @@ def ana_prof(input_nbook,data_type):
             input_nbook['settings']['data_dic'][data_type]['progress']=False
         else:input_nbook['settings']['data_dic'][data_type]['fit_mode'] = 'chi2'
         if 'run_mode' in input_nbook['par']:
-            input_nbook['settings']['data_dic'][data_type]['mcmc_run_mode']=deepcopy(input_nbook['par']['run_mode'])   
+            input_nbook['settings']['data_dic'][data_type]['run_mode']=deepcopy(input_nbook['par']['run_mode'])   
             if input_nbook['par']['run_mode']=='reuse':
                 input_nbook['settings']['data_dic'][data_type]['save_MCMC_chains']=''
                 input_nbook['settings']['data_dic'][data_type]['save_MCMC_corner']=''
@@ -390,7 +390,7 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
     
     #Running the module, but retrieving the results if MCMC was used already
     if ('calc_fit' in input_nbook['par']) and (not input_nbook['par']['calc_fit']) and (input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['fit_mode']=='mcmc'):
-        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mcmc_run_mode'] = 'reuse'
+        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['run_mode'] = 'reuse'
         input_nbook['par'].pop('calc_fit')
 
     #Fitted exposures
@@ -495,10 +495,10 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
             #Spot properties
             elif (('lat' in prop) or ('Tc' in prop) or ('ang' in prop)):
                 temp_prop_name,spot_name = prop.split('_')
-                if 'Tc' in prop:temp_prop_name+='_sp'
-                prop_name = temp_prop_name+'__IS'+input_nbook['par']['instrument']+'_VS'+input_nbook['par']['night']+'_SP'+spot_name
+                if 'Tc' in prop:temp_prop_name+='_ar'
+                prop_name = temp_prop_name+'__IS'+input_nbook['par']['instrument']+'_VS'+input_nbook['par']['night']+'_AR'+spot_name
             elif  'fctrst' in prop:
-                prop_name = 'fctrst__IS'+input_nbook['par']['instrument']+'_VS'+input_nbook['par']['night']+'_SP'
+                prop_name = 'fctrst__IS'+input_nbook['par']['instrument']+'_VS'+input_nbook['par']['night']+'_AR'
             mean_prop = np.mean(bd_prop)
             fit_prop_dic = {'vary':True,'guess':mean_prop,'bd':bd_prop}
             if (ana_type=='Prop'):input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mod_prop'][prop_main][prop_name]=fit_prop_dic
@@ -524,9 +524,9 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
     if ('priors' in input_nbook['par']):input_nbook['par'].pop('priors')
     
     #Walkers
-    if ('mcmc_set' in input_nbook['par']):
-        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['mcmc_set']=deepcopy(input_nbook['par']['mcmc_set'])
-        input_nbook['par'].pop('mcmc_set')  
+    if ('walkers_set' in input_nbook['par']):
+        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['walkers_set']=deepcopy(input_nbook['par']['walkers_set'])
+        input_nbook['par'].pop('walkers_set')  
         
     #Save chains by default
     input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['save_MCMC_chains']='png' 
@@ -940,7 +940,7 @@ def plot_prof(input_nbook,data_type):
 
 def plot_spot(input_nbook):
     input_nbook['plots']['system_view']['plot_spots'] = True
-    input_nbook['plots']['system_view']['mock_spot_prop'] = True
+    input_nbook['plots']['system_view']['mock_ar_prop'] = True
     input_nbook['plots']['system_view']['n_spcell'] = 101
     return None
 
