@@ -52,7 +52,7 @@ MCMC settings
 Since a MCMC can take several hours to run, the 
 
 #%%%%%% Calculating/retrieving
-data_dic['Intr']['mcmc_run_mode']='use'
+data_dic['Intr']['run_mode']='use'
 
 #    - set to
 # + 'use': runs MCMC  
@@ -69,19 +69,19 @@ local_dic[data_type]['progress']= True
 #    - list of mcmc runs to reuse
 #    - if 'reuse' is requested, leave empty to automatically retrieve the mcmc run available in the default directory
 #  or set the list of mcmc runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
-local_dic[data_type]['mcmc_reuse']={}
+local_dic[data_type]['reuse']={}
 
 
 #%%%%%% Runs to re-start
 #    - indicate path to a 'raw_chains' file
-#      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'mcmc_set'
-local_dic[data_type]['mcmc_reboot']=''
+#      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'walkers_set'
+local_dic[data_type]['reboot']=''
 
 
 ANTARESS allows you to reboot an existing MCMC run so that it is advised to run
 
 #%%%%%% Walkers
-    data_dic['Intr']['mcmc_set']={'nwalkers':{'ESPRESSO':{'20221117':30,'20231106':30}},
+    data_dic['Intr']['walkers_set']={'nwalkers':{'ESPRESSO':{'20221117':30,'20231106':30}},
                                   'nsteps':{'ESPRESSO':{'20221117':1000,'20231106':1000}},
                                   'nburn':{'ESPRESSO':{'20221117':200,'20231106':200}}} 
                                   
@@ -144,7 +144,7 @@ local_dic[data_type]['corner_options']={}
 #%%%%% MCMC 1D PDF
 #    - on properties derived from the fits to individual profiles
 if data_type in ['DI','Intr','Atm']:
-    plot_dic['prop_'+data_type+'_mcmc_PDFs']=''      
+    plot_dic['prop_'+data_type+'_PDFs']=''      
 
 
 #%%%%% Chi2 values

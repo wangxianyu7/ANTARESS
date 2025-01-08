@@ -6,10 +6,10 @@ from copy import deepcopy
 import glob
 from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,default_func,check_data
 from ..ANTARESS_general.constant_data import c_light
-from ..ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase,coord_expos_actreg
-from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_actreg_prop,retrieve_actreg_prop_from_param
+from ..ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase,coord_expos_ar
+from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_ar_prop,retrieve_ar_prop_from_param
 
-def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,actreg_dic={},masterDIweigh=False):
+def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,ar_dic={},masterDIweigh=False):
     r"""**Binning routine**
 
     Bins series of input spectral profile into a new series along the chosen temporal/spatial dimension.
@@ -475,39 +475,36 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             data_glob_new['coord']['bjd'] = binned_time
             data_glob_new['coord']['t_dur'] = binned_t_dur
 
-            #Properties of planet- and active region-occulted regions 
+            #Properties of planet-occulted and active regions 
             params = deepcopy(system_param['star'])
             params.update({'rv':0.,'cont':1.}) 
-            params['use_actreg']=False
-            if (inst in actreg_dic):
+            params['use_ar']=False
+            if (inst in ar_dic):
                 if mode=='multivis':
                     print('WARNING: active region properties are not propagated for multiple visits.')
-                    data_glob_new['studied_actreg'] = []
-                elif vis_in in actreg_dic[inst]:
-                    if ('actreg_prop' in actreg_dic[inst][vis_in]) and (actreg_dic[inst][vis_in]['actreg_prop'] != {}):
-                        data_glob_new['studied_actreg'] = data_dic[inst][vis_in]['studied_actreg']
-                        
-                        #Trigger active region use
-                        params['use_actreg']=True
+                    data_glob_new['studied_ar'] = []
+                elif (vis_in in ar_dic[inst]) and ('ar_prop' in ar_dic[inst][vis_in]) and (ar_dic[inst][vis_in]['ar_prop'] != {}):
+                    data_glob_new['studied_ar'] = data_dic[inst][vis_in]['studied_ar']
 
-                        #Retrieve active region coordinates/properties for new exposures
-                        actreg_prop = retrieve_actreg_prop_from_param(actreg_dic[inst][vis_in]['actreg_prop'],inst,vis_in)
-                        actreg_prop['cos_istar']=system_param['star']['cos_istar']
-                        for actreg in data_dic[inst][vis_in]['studied_actreg']:
-                            data_glob_new['coord'][actreg]={}
-                            for key in gen_dic['actreg_coord_par']:data_glob_new['coord'][actreg][key] = np.zeros([3,n_bin],dtype=float)*np.nan
-                            data_glob_new['coord'][actreg]['is_visible'] = np.zeros([3,n_bin],dtype=float)
-                            for key in ['Tc_ar',  'ang_rad', 'lat_rad', 'fctrst']:data_glob_new['coord'][actreg][key] = actreg_prop[actreg][key]
-                        for i_new in range(n_bin):
-                            for actreg in data_dic[inst][vis_in]['studied_actreg']:
-                                actreg_prop_exp = coord_expos_actreg(actreg,data_glob_new['coord']['bjd'][i_new],actreg_prop,system_param['star'],data_glob_new['coord']['t_dur'][i_new],gen_dic['actreg_coord_par'])                           
-                                for key in actreg_prop_exp:data_glob_new['coord'][actreg][key][:, i_new] = [actreg_prop_exp[key][0],actreg_prop_exp[key][1],actreg_prop_exp[key][2]]                              
+                    #Trigger active region use
+                    params['use_ar']=True
 
-                                        
+                    #Retrieve active region coordinates/properties for new exposures
+                    ar_prop = retrieve_ar_prop_from_param(ar_dic[inst][vis_in]['ar_prop'],inst,vis_in)
+                    ar_prop['cos_istar']=system_param['star']['cos_istar']
+                    for ar in data_dic[inst][vis_in]['studied_ar']:
+                        data_glob_new['coord'][ar]={}
+                        for key in gen_dic['ar_coord_par']:data_glob_new['coord'][ar][key] = np.zeros([3,n_bin],dtype=float)*np.nan
+                        data_glob_new['coord'][ar]['is_visible'] = np.zeros([3,n_bin],dtype=float)
+                        for key in ['Tc_ar',  'ang_rad', 'lat_rad', 'fctrst']:data_glob_new['coord'][ar][key] = ar_prop[ar][key]
+                    for i_new in range(n_bin):
+                        for ar in data_dic[inst][vis_in]['studied_ar']:
+                            ar_prop_exp = coord_expos_ar(ar,data_glob_new['coord']['bjd'][i_new],ar_prop,system_param['star'],data_glob_new['coord']['t_dur'][i_new],gen_dic['ar_coord_par'])                           
+                            for key in ar_prop_exp:data_glob_new['coord'][ar][key][:, i_new] = [ar_prop_exp[key][0],ar_prop_exp[key][1],ar_prop_exp[key][2]]                              
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
             if ('spec' in data_mode) and ('chrom' in system_prop):key_chrom+=['chrom']
-            data_glob_new['plocc_prop'],data_glob_new['actreg_prop'],data_glob_new['common_prop'] = sub_calc_plocc_actreg_prop(key_chrom,{},par_list,data_inst[vis_save]['studied_pl'],data_inst[vis_save]['studied_actreg'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_actreg_prop_in=data_dic['DI']['actreg_prop'],out_ranges=True)
+            data_glob_new['plocc_prop'],data_glob_new['ar_prop'],data_glob_new['common_prop'] = sub_calc_plocc_ar_prop(key_chrom,{},par_list,data_inst[vis_save]['studied_pl'],data_inst[vis_save]['studied_ar'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_ar_prop_in=data_dic['DI']['ar_prop'],out_ranges=True)
             
         #---------------------------------------------------------------------------
 
@@ -989,7 +986,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         else:
             
             #Weights are kept undefined (ie, no weighing) where variance is null or negative  
-            if ('spec' in data_mode):EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
+            if ('spec' in data_mode):EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord)**2.*Nbl_ord[cond_def_pos_ord]
             else:EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord*gcal_ord)**2.*Nbl_ord[cond_def_pos_ord]
             
         #Variance on master stellar spectrum

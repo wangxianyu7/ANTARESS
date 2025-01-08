@@ -11,7 +11,7 @@ from antaress.ANTARESS_general.utils import stop,np_where1D,dataload_npz,datasav
 
 
 
-def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_param,data_prop):
+def def_masks(mask_mode,vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_param,data_prop):
     r"""**CCF mask generation**
 
     Generates CCF binary masks from processed stellar spectrum. 
@@ -36,13 +36,16 @@ def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_p
     
     data_inst = data_dic[inst]
     print('   > Defining CCF mask for '+gen_dic['type_name'][data_type_gen]+' profiles') 
-    if data_inst['type']!='spec1D':stop('Spectra must be 1D')
     
     #Using master from several visits
-    if vis_mode=='multivis':vis_det='binned'
+    if vis_mode=='multivis':
+        vis_det='binned'
+        if data_inst['type']!='spec1D':stop('Spectra must be 1D')
 
     #Using master from single visit
-    elif vis_mode=='':vis_det=vis    
+    elif vis_mode=='':
+        vis_det=vis   
+        if data_dic[inst][vis]['type']!='spec1D':stop('Spectra must be 1D') 
     
     print('         Calculating data')
     save_data_paths = gen_dic['save_data_dir']+'CCF_masks_'+data_type_gen+'/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis_det+'/'

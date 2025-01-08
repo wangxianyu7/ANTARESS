@@ -374,7 +374,7 @@ def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params,Ssu
     
     #Flux values from stellar cells, normalized by total stellar flux
     if region == 'star':Fsurf_grid_star = Isurf_grid_star / Istar_norm                                  #fcell = I*SpSs/Ftot, where Ftot = sum(I*SpSs) = Itot*SpSs                            
-    elif region == 'pl':Fsurf_grid_star = Isurf_grid_star*Ssub_Sstar / (Istar_norm*Ssub_Sstar_ref)      #fcell = I_pl*SpSs_pl/Ftot = I_pl*SpSs_pl/(Itot*SpSs)
+    elif region == 'local':Fsurf_grid_star = Isurf_grid_star*Ssub_Sstar / (Istar_norm*Ssub_Sstar_ref)      #fcell = I_pl*SpSs_pl/Ftot = I_pl*SpSs_pl/(Itot*SpSs)
 
     #Total flux over the full star in each band
     Ftot_star = np.sum(Fsurf_grid_star,axis=0)
@@ -541,12 +541,13 @@ def up_model_star(args,param_in):
             if par=='veq':star_params['Peq'] = (2*np.pi*star_params['Rstar_km'])/(param['veq']*24*3600)
             elif par=='Peq':star_params['veq'] = (2*np.pi*star_params['Rstar_km'])/(param['Peq']*24*3600)    
             
-    #Updating spot properties
-    for par in args['var_stargrid_prop_spots']:
-        par_spot = par+'_spots'
-        star_params[par_spot] = param[par_spot]
-        if par=='veq':star_params['Peq_spots'] = (2*np.pi*star_params['Rstar_km'])/(param['veq_spots']*24*3600) 
-        elif par=='Peq':star_params['veq_spots'] = (2*np.pi*star_params['Rstar_km'])/(param['Peq_spots']*24*3600)
+    #Updating spot and facula properties
+    for ar in ['spots','faculae']:
+        for par in args['var_stargrid_prop_'+ar]:
+            par_ar = par+'_'+ar
+            star_params[par_ar] = param[par_ar]
+            if par=='veq':star_params['Peq_'+ar] = (2*np.pi*star_params['Rstar_km'])/(param['veq_'+ar]*24*3600) 
+            elif par=='Peq':star_params['veq_'+ar] = (2*np.pi*star_params['Rstar_km'])/(param['Peq_'+ar]*24*3600)        
 
     #Updating facula properties
     for par in args['var_stargrid_prop_faculae']:
@@ -558,9 +559,8 @@ def up_model_star(args,param_in):
     #Updating stellar properties derived from main properties
     if 'f_GD' in args['var_stargrid_prop']:star_params['RpoleReq']=1.-star_params['f_GD']
     if 'cos_istar' in args['var_stargrid_prop']:star_params['istar_rad']=np.arccos(star_params['cos_istar'])
-    if ('veq' in args['var_stargrid_prop']) or ('Peq' in args['var_stargrid_prop']):star_params['om_eq']=star_params['veq']/star_params['Rstar_km']
-    if ('veq' in args['var_stargrid_prop_spots']) or ('Peq' in args['var_stargrid_prop_spots']):star_params['om_eq_spots']=star_params['veq_spots']/star_params['Rstar_km']
-    if ('veq' in args['var_stargrid_prop_faculae']) or ('Peq' in args['var_stargrid_prop_faculae']):star_params['om_eq_faculae']=star_params['veq_faculae']/star_params['Rstar_km']
+    for key in ['','_spots','_faculae']:
+        if ('veq' in args['var_stargrid_prop'+key]) or ('Peq' in args['var_stargrid_prop'+key]):star_params['om_eq'+key]=star_params['veq'+key]/star_params['Rstar_km']
 
     #Updating stellar grid
     #    - physical sky-projected grid and broadband intensity variations     

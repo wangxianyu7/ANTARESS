@@ -31,7 +31,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     """
     plot_settings[key_plot]={}
     plot_options = plot_settings[key_plot]
-
+    
     #Figure size
     plot_options['fig_size'] = (10,6)
     
@@ -54,6 +54,10 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     
     #Linestyle
     plot_options['ls_plot']='-'
+
+    #Linestyle for transit contacts
+    #    - indexed by planet
+    plot_options['ls_pl_ct'] = {0:':',1:'--',2:'-.',3:':',4:'--',5:'-.',6:':'}
     
     #Color for transit contacts
     plot_options['col_contacts']='black'
@@ -104,7 +108,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     
     #FPS for gif
     plot_options['fps'] = 5
-
+    
     #Print information
     plot_options['verbose']=True 
 
@@ -144,6 +148,9 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     #    - leave empty to plot all orders
     plot_options['iord2plot']=[]    
     
+    #Plot order indexes
+    plot_settings[key_plot]['plot_idx_ord'] = False
+    
     #Colors
     plot_options['color_dic']={}  
     plot_options['color_dic_sec']={}
@@ -152,6 +159,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     
     #Scaling factor 
     #    - in power of ten, ie flux are multiplied by 10**sc_fact10)
+    #    - set to None for automatic determination
     plot_options['sc_fact10'] = 0.
     
     #Spectral variable
@@ -227,19 +235,18 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     plot_options['telldepth_min'] = 0.
     
     #Plot master used as reference for flux balance correction
-    plot_options['plot_mast'] = False        
-    
-    #Plot stellar continuum
-    plot_options['st_cont']=None
+    plot_options['plot_mast'] = False    
 
+    #Plot stellar continuum
+    #    - set to 'DI' or 'Intr' (corresponding continuum must have been calculated)
+    plot_options['st_cont']=None    
+    
     #Plot spectra at two chosen steps of the correction process
     #    - set to None, or chose amongst:
     # + 'raw' : before any correction
     # + 'all' : after all requested corrections
     # + 'tell' : after telluric correction 
-    # + 'count' : after flux-to-count scaling
-    # + 'fbal_glob' : after global flux balance correction 
-    # + 'fbal_ord' : after order/orde flux balance correction  
+    # + 'fbal' : after flux balance correction  
     # + 'cosm' : after cosmics correction  
     # + 'permpeak' : after persistent peak correction 
     # + 'wig' : after wiggle correction 
@@ -273,7 +280,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     #Measured values
     plot_options['print_mes']=False
     
-    #Aligned profiles
+    #Plot reference level
     plot_options['plot_reflev']=False
 
     #Plot reference velocity
@@ -298,11 +305,27 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
         plot_options['plot_input']=True
         
     #--------------------------------------              
-    if (key_plot in ['Fbal_corr','input_LC','plocc_ranges','prop_DI_mcmc_PDFs','prop_Intr_mcmc_PDFs']):
+    if (key_plot in ['Fbal_corr','Fbal_corr_vis','input_LC','plocc_ranges','prop_DI_PDFs','prop_Intr_PDFs']):
 
         #Plot exposure indexes
         plot_options['plot_expid'] = True
         
+    #--------------------------------------           
+    #Flux balance options
+    if ('Fbal_corr' in key_plot):
+
+        #Overplot all exposures or offset them
+        plot_options['gap_exp']=0.  
+        
+        #Indexes of bins to be plotted 
+        #    - format is {inst : { vis : [idx0, idx1, ..]}
+        #      where 'idxi' are the indexes of the spectral bins used in the flux balance fit
+        #    - use this option to identify bins biasing the fit
+        plot_options['ibin_plot'] = {}        
+
+        #Plot order indexes
+        plot_options['plot_idx_ord'] = True
+
     #--------------------------------------   
     #Binned profiles settings     
     if ('map_' in key_plot) or ('bin' in key_plot) or ('prop_' in key_plot) or (key_plot in ['occulted_regions']):
@@ -333,7 +356,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
         plot_options['plot_det']=False 
 
         #Print min/max values (to adjust plot ranges)
-        plot_options['plot_bounds']=False            
+        plot_options['plot_bounds']=False
 
         #Print and plot mean value and dispersion 
         plot_options['plot_disp']=True    
@@ -411,8 +434,8 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
         
         #Color map
         if 'map_DI' in key_plot:plot_options['cmap']="jet" 
-        if 'map_Diff' in key_plot:plot_options['cmap']="jet" 
-        if 'map_BF' in key_plot:plot_options['cmap']="jet"         
+        elif 'map_Diff' in key_plot:plot_options['cmap']="jet"   
+        elif 'map_BF' in key_plot:plot_options['cmap']="jet"           
         elif 'map_Intr' in key_plot:plot_options['cmap']="afmhot_r" 
         elif 'map_Intr_prof_res' in key_plot:plot_options['cmap']="afmhot_r" 
         elif 'map_Atm' in key_plot:plot_options['cmap']="winter"             
@@ -1980,7 +2003,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################
     #%%% 1D PDFs from analysis of individual profiles
     ################################################################################################################
-    for key_plot in ['prop_DI_mcmc_PDFs','prop_Intr_mcmc_PDFs','prop_DI_ns_PDFs','prop_Intr_ns_PDFs']:
+    for key_plot in ['prop_DI_PDFs','prop_Intr_PDFs']:
         if plot_dic[key_plot]!='':
 
             #%%%% Generic settings
@@ -1993,13 +2016,11 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings[key_plot]['plot_prop_list']=['rv']
             
             #%%%% Default MCMC settings
-            if 'mcmc' in key_plot:
-                plot_settings[key_plot]['nwalkers'] = 50
-                plot_settings[key_plot]['nsteps'] = 1000
+            plot_settings[key_plot]['nwalkers'] = 50
+            plot_settings[key_plot]['nsteps'] = 1000
 
             #%%%% Default NS settings
-            else:
-                plot_settings[key_plot]['nlive'] = 400
+            plot_settings[key_plot]['nlive'] = 400
     
             #%%%% Number of subplots per row (>=1)
             plot_settings[key_plot]['nsub_col'] = 5
@@ -2020,13 +2041,13 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     
             ##############################################################################
             #%%%% Disk-integrated profiles
-            if (key_plot=='prop_DI_mcmc_PDFs'):
+            if (key_plot=='prop_DI_PDFs'):
                 plot_settings[key_plot]['data_mode'] = 'DI'
                 plot_settings[key_plot]['data_dic_idx'] = 'DI'
 
             ##############################################################################
             #%%%% Intrinsic profiles            
-            if (key_plot=='prop_Intr_mcmc_PDFs'):
+            if (key_plot=='prop_Intr_PDFs'):
                 plot_settings[key_plot]['data_mode'] = 'Intr'
                 plot_settings[key_plot]['data_dic_idx'] = 'Diff'
                 
@@ -2229,73 +2250,16 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Number of points in the planet orbits
         plot_settings[key_plot]['npts_orbits'] = np.repeat(10000,len(plot_settings[key_plot]['pl_to_plot'])) 
 
-        #%%%% Number of points in the active region orbits
-        plot_settings[key_plot]['npts_orbits_ar'] = 10000
-
-        #%%%% Position of planets along their orbit
+        #%%%% List of times at which to generate the plot
         plot_settings[key_plot]['t_BJD'] = None
-
-        # if gen_dic['star_name']=='HD209458':   #ANTARESS I, mock, multi-pl
-            # plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':2454560.806755574+np.array([-0.5,-0.2,0.,0.2,0.5])/24. }
-            # plot_settings[key_plot]['t_BJD'] = { 'inst':'ESPRESSO','vis':'mock_vis','t':2454560.806755574+np.array([0.5])/24. }
-
-        if gen_dic['star_name']=='TOI3884':
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'MIKE_Red', 'vis':'mockvis', 't':  2459556.51669+np.linspace(-0.05,0.05,6)}
-            plot_settings[key_plot]['t_BJD'] = None
-
-        if gen_dic['star_name']=='AUMic':
-            plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,3)}
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
-            # plot_settings[key_plot]['t_BJD'] = None
-
-        if gen_dic['star_name']=='TRAPPIST1':
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': 2460472.586+np.linspace(-0.02, 0.02,10)} #b-transit
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': 2460472.206+np.linspace(-0.06, 0.06,10)} #d-transit
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': 2460472.502+np.linspace(-0.243, 0.243,3)} #c-transit
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': 2460472.934+np.linspace(-0.06, 0.06,10)} #e-transit
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': np.linspace(2460472.5, 2460473, 30)}
-            plot_settings[key_plot]['t_BJD'] = None
-
-        #Zodiacs
-        if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,30)}
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,180)}
-            plot_settings[key_plot]['t_BJD'] = None
-            
-        if gen_dic['star_name']=='fakeAU_Mic':
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mockvisit1', 't':  2458702.77+ np.linspace(-0.5,0.5, 30)}
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
-            plot_settings[key_plot]['t_BJD'] = None
-
-        if gen_dic['star_name']=='AU_Mic':
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'visit1', 't':  np.linspace(2458702.64361574,2458702.89017524, 30)}
-            plot_settings[key_plot]['t_BJD'] = None
-
-        if gen_dic['star_name']=='V1298tau':
-            plot_settings[key_plot]['t_BJD'] = None
+        
+        #Defining a boolean to decide whether we make a GIF
+        #    - this is only used if we plot multiple exposures.        
+        plot_settings[key_plot]['GIF_generation'] = False
 
         #Defining a boolean to decide whether we make a GIF
         #    - this is only used if we plot multiple exposures.
         plot_settings[key_plot]['GIF_generation']=True & False
-
-        if gen_dic['star_name']=='TRAPPIST1':
-            plot_settings[key_plot]['GIF_generation']=True&False
-
-        if gen_dic['star_name']=='AUMic':
-            plot_settings[key_plot]['GIF_generation']=True&False
-
-        #Zodiacs
-        if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-            plot_settings[key_plot]['GIF_generation']=True&False
-
-        if gen_dic['star_name']=='fakeAU_Mic':
-            plot_settings[key_plot]['GIF_generation']=True &False
-
-        if gen_dic['star_name']=='AU_Mic':
-            plot_settings[key_plot]['GIF_generation']=True &False
-
-        if gen_dic['star_name']=='V1298tau':
-            plot_settings[key_plot]['GIF_generation']=True
 
         plot_settings[key_plot]['xorp_pl'] = np.tile([[-0.5],[0.5]],len(plot_settings[key_plot]['pl_to_plot'])).T
         plot_settings[key_plot]['yorb_pl'] = np.repeat(0.5,len(plot_settings[key_plot]['pl_to_plot']))  
@@ -2307,12 +2271,11 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Apparent size of the planet
         plot_settings[key_plot]['RpRs_pl'] = {pl_loc:data_dic['DI']['system_prop']['achrom'][pl_loc][0] for pl_loc in plot_settings[key_plot]['pl_to_plot']}
        
-        #%%%% Orbit colors
-        # - Planets
+        #%%%% Planetary orbit colors
         plot_settings[key_plot]['col_orb'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
         plot_settings[key_plot]['col_orb_samp'] = np.repeat('forestgreen',len(plot_settings[key_plot]['pl_to_plot']))
-        
-        #%%%% Active region trajectory and color
+            
+        #%%%% Active region trajectory color
         plot_settings[key_plot]['plot_ar_orb'] = True
         plot_settings[key_plot]['col_orb_ar'] = 'greenyellow'
 
@@ -2339,7 +2302,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['pl_grid_overlay']=False
         plot_settings[key_plot]['ar_grid_overlay']=False
 
-        #%%%% Number of cells on a diameter of the star, planets, faculae, and spots (must be odd)
+        #%%%% Number of cells on a diameter of the star, planets, and active regions (must be odd)
         plot_settings[key_plot]['n_stcell']=theo_dic['nsub_Dstar']
         plot_settings[key_plot]['n_plcell']={}
         for pl_loc in plot_settings[key_plot]['pl_to_plot']:plot_settings[key_plot]['n_plcell'][pl_loc] = theo_dic['nsub_Dpl'][pl_loc]
@@ -2376,13 +2339,13 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         #%%%% Source for active regions
         #    - active region properties can come from three sources for this plot:
-        # + the mock dataset (mock_actreg_prop) - from mock_dic
-        # + fitted active region properties (fit_actreg_prop) - from glob_fit_dic
-        # + custom user-specified properties (custom_actreg_prop) - parameterized below
+        # + the mock dataset (mock_ar_prop) - from mock_dic
+        # + fitted active region properties (fit_ar_prop) - from glob_fit_dic
+        # + custom user-specified properties (custom_ar_prop) - parameterized below
         # + If none of these are activated, spots will not be plotted.
-        plot_settings[key_plot]['mock_actreg_prop'] = False
-        plot_settings[key_plot]['fit_actreg_prop'] = False
-        plot_settings[key_plot]['custom_actreg_prop'] = {}
+        plot_settings[key_plot]['mock_ar_prop'] = False
+        plot_settings[key_plot]['fit_ar_prop'] = False
+        plot_settings[key_plot]['custom_ar_prop'] = {}
         
         #%%%% Name of the file storing the best-fit results we want to plot
         plot_settings[key_plot]['fit_results_file'] = ''
@@ -2409,14 +2372,20 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% RV range
         plot_settings[key_plot]['rv_range'] = None
 
-        if gen_dic['star_name']=='TOI3884':    
+        if gen_dic['star_name']=='TOI3884': 
+            
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'MIKE_Red', 'vis':'mockvis', 't':  2459556.51669+np.linspace(-0.05,0.05,6)}
+            plot_settings[key_plot]['t_BJD'] = None
+
+            plot_settings[key_plot]['GIF_generation']=True&False
+
             plot_settings[key_plot]['plot_ar_orb'] = False
             
             plot_settings[key_plot]['n_stcell']=201.
 
-            plot_settings[key_plot]['mock_actreg_prop'] = True #& False
+            plot_settings[key_plot]['mock_ar_prop'] = True #& False
 
-            plot_settings[key_plot]['fit_actreg_prop'] = True & False
+            plot_settings[key_plot]['fit_ar_prop'] = True & False
 
             plot_settings[key_plot]['plot_norm_orb_planes'] = False
 
@@ -2436,13 +2405,23 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             # plot_settings[key_plot]['n_plcell']={'AUMicb':5.}
 
         if gen_dic['star_name']=='TRAPPIST1':    
+            
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': 2460472.586+np.linspace(-0.02, 0.02,10)} #b-transit
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': 2460472.206+np.linspace(-0.06, 0.06,10)} #d-transit
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': 2460472.502+np.linspace(-0.243, 0.243,3)} #c-transit
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': 2460472.934+np.linspace(-0.06, 0.06,10)} #e-transit
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'NIRPS_HE', 'vis':'mockvis', 't': np.linspace(2460472.5, 2460473, 30)}
+            plot_settings[key_plot]['t_BJD'] = None
+
+            plot_settings[key_plot]['GIF_generation']=True&False
+
             plot_settings[key_plot]['plot_ar_orb'] = False
             
             # plot_settings[key_plot]['n_stcell']=201.
 
-            plot_settings[key_plot]['mock_actreg_prop'] = True #& False
+            plot_settings[key_plot]['mock_ar_prop'] = True #& False
 
-            plot_settings[key_plot]['fit_actreg_prop'] = True & False
+            plot_settings[key_plot]['fit_ar_prop'] = True & False
 
             # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
 
@@ -2463,11 +2442,17 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         if gen_dic['star_name']=='AUMic':    
 
+            plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,3)}
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
+            # plot_settings[key_plot]['t_BJD'] = None
+
+            plot_settings[key_plot]['GIF_generation']=True&False
+
             # plot_settings[key_plot]['n_stcell']=12.
 
-            plot_settings[key_plot]['mock_actreg_prop'] = True #& False
+            plot_settings[key_plot]['mock_ar_prop'] = True #& False
 
-            plot_settings[key_plot]['fit_actreg_prop'] = True & False
+            plot_settings[key_plot]['fit_ar_prop'] = True & False
 
             # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
 
@@ -2489,11 +2474,17 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #Zodiacs
         if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
 
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,30)}
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,180)}
+            plot_settings[key_plot]['t_BJD'] = None
+
+            plot_settings[key_plot]['GIF_generation']=True&False
+
             plot_settings[key_plot]['n_stcell']=37.
 
-            plot_settings[key_plot]['mock_actreg_prop'] = True #& False
+            plot_settings[key_plot]['mock_ar_prop'] = True #& False
 
-            plot_settings[key_plot]['fit_actreg_prop'] = True & False
+            plot_settings[key_plot]['fit_ar_prop'] = True & False
 
             # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
 
@@ -2512,16 +2503,21 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         if gen_dic['star_name']=='AU_Mic':    
 
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'visit1', 't':  np.linspace(2458702.64361574,2458702.89017524, 30)}
+            plot_settings[key_plot]['t_BJD'] = None
+
+            plot_settings[key_plot]['GIF_generation']=True&False
+
             plot_settings[key_plot]['n_stcell']=81.
 
-            plot_settings[key_plot]['mock_actreg_prop'] = True & False
+            plot_settings[key_plot]['mock_ar_prop'] = True & False
 
-            plot_settings[key_plot]['fit_actreg_prop'] = True & False
+            plot_settings[key_plot]['fit_ar_prop'] = True & False
 
             # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
 
-            plot_settings[key_plot]['custom_actreg_prop']['spot1'] = {'lat' : 0, 'Tc_ar' : 2458702.76484-0.8, 'ang' : 10, 'fctrst' : 0.35}
-            plot_settings[key_plot]['custom_actreg_prop']['spot2'] = {'lat' :  -10, 'Tc_ar' : 2458702.76484, 'ang' : 14}
+            plot_settings[key_plot]['custom_ar_prop']['spot1'] = {'lat' : 0, 'Tc_ar' : 2458702.76484-0.8, 'ang' : 10, 'fctrst' : 0.35}
+            plot_settings[key_plot]['custom_ar_prop']['spot2'] = {'lat' :  -10, 'Tc_ar' : 2458702.76484, 'ang' : 14}
             
             plot_settings[key_plot]['st_grid_overlay']=False
 
@@ -2529,24 +2525,34 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             plot_settings[key_plot]['n_arcell']=31
 
-        if gen_dic['star_name']=='fakeAU_Mic':    
+        if gen_dic['star_name']=='fakeAU_Mic':   
+
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mockvisit1', 't':  2458702.77+ np.linspace(-0.5,0.5, 30)}
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't': 2458330.39051 + np.linspace(-3.5, 3.5, 5)}
+            plot_settings[key_plot]['t_BJD'] = None
+
+            plot_settings[key_plot]['GIF_generation']=True&False
 
             plot_settings[key_plot]['n_stcell']=81.
 
-            plot_settings[key_plot]['mock_actreg_prop'] = True #& False
+            plot_settings[key_plot]['mock_ar_prop'] = True #& False
 
-            plot_settings[key_plot]['fit_actreg_prop'] = True & False
+            plot_settings[key_plot]['fit_ar_prop'] = True & False
 
             plot_settings[key_plot]['fit_results_file'] = ''
 
-            # plot_settings[key_plot]['custom_actreg_prop']['spot1'] = {'lat' : 10, 'Tc_ar' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
-            # plot_settings[key_plot]['custom_actreg_prop']['spot2'] = {'lat' :  -20, 'Tc_ar' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
-            # plot_settings[key_plot]['custom_actreg_prop']['spot1'] = {'lat' : 30, 'Tc_ar' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
+            # plot_settings[key_plot]['custom_ar_prop']['spot1'] = {'lat' : 10, 'Tc_ar' : 2458330.39051, 'ang' : 20, 'ctrst' : 0.2}
+            # plot_settings[key_plot]['custom_ar_prop']['spot2'] = {'lat' :  -20, 'Tc_ar' : 2458330.39051+1.5, 'ang' : 25, 'ctrst' : 0.4}
+            # plot_settings[key_plot]['custom_ar_prop']['spot1'] = {'lat' : 30, 'Tc_ar' : 2458330.39051, 'ang' : 25, 'ctrst' : 0.4}
             
         elif gen_dic['star_name']=='V1298tau':
-            plot_settings[key_plot]['mock_actreg_prop'] = True #& False
+            plot_settings[key_plot]['t_BJD'] = None
+
+            plot_settings[key_plot]['GIF_generation']=True&False
+
+            plot_settings[key_plot]['mock_ar_prop'] = True #& False
             
-            # plot_settings[key_plot]['custom_actreg_prop']['spot2'] = {'lat' : -40, 'Tc_ar' : 2458877.6306  + 5/24, 'ang' : 7, 'ctrst' : 0.6}   
+            # plot_settings[key_plot]['custom_ar_prop']['spot2'] = {'lat' : -40, 'Tc_ar' : 2458877.6306  + 5/24, 'ang' : 7, 'ctrst' : 0.6}   
                             
 
 
