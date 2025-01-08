@@ -1388,6 +1388,9 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
     #Reuse NS
     elif run_mode=='reuse':
         print('         Retrieving NS') 
+
+        #Fix/initialize number of walkers and steps  - needed for subsequent analyses
+        fit_dic['nwalkers'] = 1
         
         #Retrieve NS run from standard NS directory
         if len(fit_dic['ns_reuse'])==0:
@@ -1399,18 +1402,18 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
 
         #Retrieve NS run(s) from list of input paths
         else:
-            walker_chains = np.empty([0,0,0],dtype=float)
-            if fixed_args['step_output']:step_outputs = np.empty([0,0],dtype=object)
+            walker_chains = np.empty([fit_dic['nwalkers'],0,fit_dic['merit']['n_free'] ],dtype=float)
+            if fixed_args['step_output']:step_outputs = np.empty([0,fit_dic['nwalkers']],dtype=object)
             else:step_outputs=None
             if fixed_args['step_chi2']:fixed_args['chi2_storage'] = np.empty([0,fit_dic['nwalkers']],dtype=object)
             else:fixed_args['chi2_storage']=None
             fit_dic['nsteps'] = 0
             fit_dic['nburn'] = 0
-            for NS_path in fit_dic['ns_reuse']['paths']:
-                NS_load=np.load(mcmc_path, allow_pickle=True)
-                walker_chains_loc=NS_load['walker_chains'] 
-                if fixed_args['step_output']:step_output_loc=NS_load['step_outputs']
-                if fixed_args['step_chi2']:step_chi2_loc=NS_load['step_chi2']
+            for NS_path, nburn in zip(fit_dic['ns_reuse']['paths'], fit_dic['ns_reuse']['nburn']):
+                NS_load=np.load(NS_path, allow_pickle=True)
+                walker_chains_loc=NS_load['walker_chains'][:,nburn::,:]
+                if fixed_args['step_output']:step_output_loc=NS_load['step_outputs'][nburn::]
+                if fixed_args['step_chi2']:step_chi2_loc=NS_load['step_chi2'][nburn::]
                 fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
                 walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
                 if fixed_args['step_output']:step_outputs = np.append(step_outputs,step_output_loc,axis=0)
