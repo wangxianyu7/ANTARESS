@@ -391,7 +391,7 @@ def sub_calc_plocc_actreg_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar
 
             #Update cond_actreg_all
             cond_actreg_all[isub_exp]=actreg_within_grid_all
-        if np.sum(cond_actreg_all)==0:print('WARNING: no active regions are visible in any exposure for nominal properties')
+        if (np.sum(cond_actreg_all)==0) and (args['fit']==False):print('WARNING: no active regions are visible in any exposure for nominal properties')
 
     #If active regions are not present, need to initialize the active region LD dictionary entry for later purposes
     else:
@@ -1607,7 +1607,7 @@ def retrieve_actreg_prop_from_param(param, inst, vis):
     for par in param : 
         
         # Parameter is active region-related and linked to the right visit and instrument
-        if (('_IS_' in par) or ('_IS'+inst in par)) and (('_VS'+vis in par) or ('_VS_' in par)): 
+        if (('_IS_' in par) or ('_IS'+inst in par)) and (('_VS'+vis in par) or ('_VS_' in par)) and ('_AR' in par): 
             contamin_par = par.split('__IS')[0]
             contamin_name = par.split('_AR')[1]
             if contamin_name not in contamin_prop : contamin_prop[contamin_name] = {}

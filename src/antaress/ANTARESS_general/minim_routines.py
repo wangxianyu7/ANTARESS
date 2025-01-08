@@ -959,7 +959,15 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         #Live points
         if 'nlive' not in fit_dic['ns_set']:fit_dic['nlive'] = 400 #TODO figure out optimal number of live points
         else:fit_dic['nlive'] = fit_dic['ns_set']['nlive']
+
+        #Bounding method used 
+        if ('bound_method' not in fit_dic['ns_set']):fit_dic['bound_method']='none'
+        else:fit_dic['bound_method']=fit_dic['ns_set']['bound_method']
         
+        #Sampling method used 
+        if ('sample_method' not in fit_dic['ns_set']):fit_dic['sample_method']='auto'
+        else:fit_dic['sample_method']=fit_dic['ns_set']['sample_method']
+
         #Set burn-in steps to 0 to makes post-processing with the MCMC functions possible
         fit_dic['nburn'] = 0.
 
@@ -1313,10 +1321,21 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
                                                    queue_size = nthreads,                          #Multiprocessing queue size
                                                    logl_args = [fixed_args],                       #Fixed arguments for the calculation of the likelihood
                                                    ptform_args = [fixed_args],                     #Fixed arguments for the calculation of the priors
-                                                   blob=True                                       #Whether blobs are present or not
+                                                   blob=True,                                      #Whether blobs are present or not
+                                                   bound=fit_dic['bound_method'],                  #Method for approximately bounding the prior. Plays a role in proposing new line points.
+                                                   sample=fit_dic['sample_method'],                #Method used to sample uniformly within the liklelihood constraint.
                                                    )
         else:
-            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func, ln_prior_func_NS, nlive=fixed_args['nlive'], ndim=n_free, logl_args=[fixed_args],blob=True)
+            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func,
+                                                   ln_prior_func_NS,
+                                                   nlive=fixed_args['nlive'],
+                                                   ndim=n_free,
+                                                   logl_args=[fixed_args],
+                                                   ptform_args = [fixed_args],
+                                                   blob=True,
+                                                   bound=fit_dic['bound_method'],
+                                                   sample=fit_dic['sample_method'],
+                                                   )
         
         #Run NS
         #    - possible options:

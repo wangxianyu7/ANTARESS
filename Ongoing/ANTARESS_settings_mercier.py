@@ -5601,14 +5601,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'cos_istar':{'vary':True,'guess':0.1, 'bd':[-1., 1.]},
         'cos_istar':{'vary':False,'guess':0.01745240644, 'bd':[-1., 1.]},
 
-        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
-        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 10., 2458330.39051 + 10.]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
-        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':25, 'bd':[10, 50]},
-        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.1, 'bd':[0.05, 0.3]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
+        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 10., 2458330.39051 + 10.]},
+        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
+        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':25, 'bd':[10, 50]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
+        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.1, 'bd':[0.05, 0.3]},
         
         # # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
         # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':False, 'guess':0, 'bd':[-50, 10]},
@@ -5619,8 +5619,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # # 'fctrst__ISESPRESSO_VSmock_vis_ARfacula1'   : {'vary':True, 'guess':1.5, 'bd':[1.3, 1.9]},
         # 'fctrst__ISESPRESSO_VSmock_vis_ARfacula1'   : {'vary':False, 'guess':1.5, 'bd':[1.3, 1.9]},
 
-        # 'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
-        'lambda_rad__plAUMicb'                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
+        # 'lambda_rad__plAUMicb'                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
 
 
@@ -7454,8 +7454,13 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     local_dic[data_type]['ns_reboot']=''
         
     
-    #%%%% Walkers
+    #%%%% Live points
     #    - settings per instrument & visit
+    #    - users can specify the number of live points (nlive) used in the initial nested sampoing run.
+    #    - users can specify the prior bounding method to use (bound_method). If not specified it will default to 'auto' (see doc. in dynesty API to see what this specifically does).
+    #    - While the default bounding method is 'auto', 'multi' is better at dealing with posterior distributions with complex shapes and is therefore recommended when dealing with complex problems.
+    #    - users can specify the method used to uniformly sample within the likliehood constraint, conditioned on the provided bounds (sample_method). If not specified the default is 'auto', i.e. dynesty will
+    #    - pick a method based on the dimensionaly of the problem. If dealing with posterior distributions with complex shapes, 'slice' is recommended.
     local_dic[data_type]['ns_set']={}
     
     

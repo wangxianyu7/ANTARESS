@@ -4392,8 +4392,13 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     local_dic[data_type]['ns_reboot']=''
         
     
-    #%%%% Walkers
+    #%%%% Live points
     #    - settings per instrument & visit
+    #    - users can specify the number of live points (nlive) used in the initial nested sampoing run.
+    #    - users can specify the prior bounding method to use (bound_method). If not specified it will default to 'auto' (see doc. in dynesty API to see what this specifically does).
+    #    - While the default bounding method is 'auto', 'multi' is better at dealing with posterior distributions with complex shapes and is therefore recommended when dealing with complex problems.
+    #    - users can specify the method used to uniformly sample within the likliehood constraint, conditioned on the provided bounds (sample_method). If not specified the default is 'auto', i.e. dynesty will
+    #    - pick a method based on the dimensionaly of the problem. If dealing with posterior distributions with complex shapes, 'slice' is recommended.
     local_dic[data_type]['ns_set']={}
     
     
