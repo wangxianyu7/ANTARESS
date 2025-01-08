@@ -280,7 +280,7 @@ def ln_prior_func_NS(cube,fixed_args):
     
             #Cube prior considered
             cube_prior=cube[idx]
-    
+
             #Parameter prior properties
             parprior=fixed_args['varpar_priors'][parname]
     
@@ -292,11 +292,12 @@ def ln_prior_func_NS(cube,fixed_args):
             elif parprior['mod']=='gauss':
                 x[idx] = stats.norm.ppf(cube_prior, parprior['val'], parprior['s_val'])
     
-            #Gaussian prior with different halves
-            # elif parprior['mod']=='dgauss':
-                # TODO
-                # if (parval <= parprior['val']):ln_p += - 0.5*(np.log(2.*np.pi*parprior['low']**2.) + ( (parval - parprior['val'])/parprior['low']  )**2.)                       
-                # else:ln_p += - 0.5*(np.log(2.*np.pi*parprior['high']**2.) + ( (parval - parprior['val'])/parprior['high']  )**2.)   
+            # Gaussian prior with different halves
+            elif parprior['mod'] == 'dgauss':
+                # Map to the left half
+                if cube_prior < parprior['val']:x[idx] = stats.norm.ppf(cube_prior, parprior['val'], parprior['low'])
+                # Map to the right half
+                else:x[idx] = stats.norm.ppf(cube_prior, parprior['val'], parprior['high'])
 
             #Undefined prior
             else:
@@ -1298,6 +1299,8 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
         fit_dic['initial_distribution'][0] = live_points
         for idx, live_point in enumerate(live_points):
             fit_dic['initial_distribution'][1][idx, :] = ln_prior_func_NS(live_point, fixed_args)
+            print('1:', live_point)
+            print('2:', fit_dic['initial_distribution'][1][idx, :])
             lklhood = ln_lkhood_func(live_point, fixed_args)
             fit_dic['initial_distribution'][2][idx] = lklhood[0] 
             fit_dic['initial_distribution'][3][idx] = lklhood[1] 

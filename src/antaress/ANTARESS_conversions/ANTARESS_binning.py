@@ -507,7 +507,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
             if ('spec' in data_mode) and ('chrom' in system_prop):key_chrom+=['chrom']
-            data_glob_new['plocc_prop'],data_glob_new['actreg_prop'],data_glob_new['common_prop'] = sub_calc_plocc_actreg_prop(key_chrom,{},par_list,data_inst[vis_save]['transit_pl'],data_inst[vis_save]['studied_actreg'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_actreg_prop_in=data_dic['DI']['actreg_prop'],out_ranges=True)
+            data_glob_new['plocc_prop'],data_glob_new['actreg_prop'],data_glob_new['common_prop'] = sub_calc_plocc_actreg_prop(key_chrom,{},par_list,data_inst[vis_save]['studied_pl'],data_inst[vis_save]['studied_actreg'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_actreg_prop_in=data_dic['DI']['actreg_prop'],out_ranges=True)
             
         #---------------------------------------------------------------------------
 

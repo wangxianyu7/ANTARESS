@@ -170,7 +170,7 @@ def up_plocc_actregocc_prop(inst,vis,args,param_in,studied_pl,ph_grid,coord_grid
             if args['fit_actreg']:param['Tc_ar__IS'+inst+'_VS'+vis+'_AR'+actreg] += args['bjd_time_shift'][inst][vis]
 
         #Recalculate active region coordinates if relevant        
-        if args['fit_actreg'] or args['fit_actreg_ang']:
+        if args['fit_actreg'] or (args['fit_actreg_ang'] != []):
     
             #Retrieving the active region coordinates for all the times that we have
             actreg_prop = retrieve_actreg_prop_from_param(param,inst,vis)
