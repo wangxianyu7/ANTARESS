@@ -63,15 +63,15 @@ def coord_expos(pl_loc,coord_dic,inst,vis,star_params,pl_params,t_bjd,exp_time,d
     return positions,st_positions,end_positions,eclipse,rv_pl_all,v_pl_all,st_phases,phases,end_phases,ph_dur
 
 
-def coord_expos_actreg(actreg_name,t_bjd,actreg_prop,star_params,exp_dur,coord_par):
+def coord_expos_ar(ar_name,t_bjd,ar_prop,star_params,exp_dur,coord_par):
     r"""**Exposure active region coordinates**
 
     Calculates temporal and spatial coordinates of active regions at the start, mid, and end of an exposure.
     
     Args:
-        actreg_name (str) : name of the active region considered.
+        ar_name (str) : name of the active region considered.
         t_bjd (float) : timestamp of the exposure considered. Needed to calculate the active region longitude.
-        actreg_prop (dict) : nominal properties of the active region considered.
+        ar_prop (dict) : nominal properties of the active region considered.
         star_params (dict) : star properties.
         exp_dur (float) : optional, duration of the exposure considered. If left as None, only the active region properties at the center of the exposure will be computed.
                             Otherwise, the active region properties at the start, center and end of exposure will be computed.
@@ -81,27 +81,26 @@ def coord_expos_actreg(actreg_name,t_bjd,actreg_prop,star_params,exp_dur,coord_p
         None
     
     """ 
-
-    actreg_prop_exp = {} 
+    ar_prop_exp = {} 
 
     #Finding type of active region used
-    if actreg_prop[actreg_name]['fctrst'] < 1.:contamin_type = 'spots'
+    if ar_prop[ar_name]['fctrst'] < 1.:contamin_type = 'spots'
     else:contamin_type = 'faculae'
 
     # Active region longitude - varies over time
-    P = 2*np.pi/((1.-star_params['alpha_rot_'+contamin_type]*np.sin(actreg_prop[actreg_name]['lat_rad'])**2.-star_params['beta_rot_'+contamin_type]*np.sin(actreg_prop[actreg_name]['lat_rad'])**4.)*star_params['om_eq_'+contamin_type]*3600.*24.)  
-    long_t_start,long_t_center,long_t_end = get_timeorbit(actreg_prop[actreg_name]['Tc_ar'],t_bjd, {'period':P}, exp_dur,conv_ang = True)[0:3]
+    P = 2*np.pi/((1.-star_params['alpha_rot_'+contamin_type]*np.sin(ar_prop[ar_name]['lat_rad'])**2.-star_params['beta_rot_'+contamin_type]*np.sin(ar_prop[ar_name]['lat_rad'])**4.)*star_params['om_eq_'+contamin_type]*3600.*24.)  
+    long_t_start,long_t_center,long_t_end = get_timeorbit(ar_prop[ar_name]['Tc_ar'],t_bjd, {'period':P}, exp_dur,conv_ang = True)[0:3]
 
     #Coordinates start, mid, end exposure 
-    istar = np.arccos(actreg_prop['cos_istar'])
-    for key in coord_par:actreg_prop_exp[key] = np.zeros(3,dtype=float)*np.nan
-    actreg_prop_exp['is_visible'] = np.zeros(3,dtype=bool)
-    calc_actreg_coord(actreg_prop_exp,actreg_prop[actreg_name]['ang_rad'],actreg_prop[actreg_name]['lat_rad'],long_t_center*2*np.pi,1,istar,star_params)
+    istar = np.arccos(ar_prop['cos_istar'])
+    for key in coord_par:ar_prop_exp[key] = np.zeros(3,dtype=float)*np.nan
+    ar_prop_exp['is_visible'] = np.zeros(3,dtype=bool)
+    calc_ar_coord(ar_prop_exp,ar_prop[ar_name]['ang_rad'],ar_prop[ar_name]['lat_rad'],long_t_center*2*np.pi,1,istar,star_params)
     if exp_dur is not None:
-        calc_actreg_coord(actreg_prop_exp,actreg_prop[actreg_name]['ang_rad'],actreg_prop[actreg_name]['lat_rad'],long_t_start*2*np.pi,0,istar,star_params)
-        calc_actreg_coord(actreg_prop_exp,actreg_prop[actreg_name]['ang_rad'],actreg_prop[actreg_name]['lat_rad'],long_t_end*2*np.pi,2,istar,star_params)
+        calc_ar_coord(ar_prop_exp,ar_prop[ar_name]['ang_rad'],ar_prop[ar_name]['lat_rad'],long_t_start*2*np.pi,0,istar,star_params)
+        calc_ar_coord(ar_prop_exp,ar_prop[ar_name]['ang_rad'],ar_prop[ar_name]['lat_rad'],long_t_end*2*np.pi,2,istar,star_params)
   
-    return actreg_prop_exp
+    return ar_prop_exp
 
 
 
@@ -780,7 +779,7 @@ def excl_plrange(cond_def,range_star_in,iexp,edge_bins,data_type):
     return cond_kept,idx_excl_bd_ranges
 
 
-def calc_actreg_coord(actreg_prop_exp,ang_rad,lat_rad,long_rad,i_pos,istar,star_params):
+def calc_ar_coord(ar_prop_exp,ang_rad,lat_rad,long_rad,i_pos,istar,star_params):
     r"""**Active region track**
 
     Calculates position of active regions across the stellar surface, in the aligned star rest frame.
@@ -793,11 +792,11 @@ def calc_actreg_coord(actreg_prop_exp,ang_rad,lat_rad,long_rad,i_pos,istar,star_
     
     """     
 
-    # Active region latitude - constant in time
+    # Active regions latitude - constant in time
     clat_rad = np.cos(lat_rad)
     slat_rad = np.sin(lat_rad)
 
-    # Active region center coordinates in star rest frame
+    # Active regions center coordinates in star rest frame
     #Exposure center
     x_st = np.sin(long_rad)*clat_rad
     y_st = slat_rad
@@ -807,16 +806,16 @@ def calc_actreg_coord(actreg_prop_exp,ang_rad,lat_rad,long_rad,i_pos,istar,star_
     x_sky,y_sky,z_sky = frameconv_star_to_skystar(x_st,y_st,z_st,istar)
 
     # Store properties
-    actreg_prop_exp['lat_rad_exp'][i_pos] = lat_rad
-    actreg_prop_exp['sin_lat_exp'][i_pos] = slat_rad
-    actreg_prop_exp['cos_lat_exp'][i_pos] = clat_rad
-    actreg_prop_exp['long_rad_exp'][i_pos] = long_rad    
-    actreg_prop_exp['sin_long_exp'][i_pos] = np.sin(long_rad)
-    actreg_prop_exp['cos_long_exp'][i_pos] = np.cos(long_rad)
-    actreg_prop_exp['x_sky_exp'][i_pos] = x_sky
-    actreg_prop_exp['y_sky_exp'][i_pos] = y_sky
-    actreg_prop_exp['z_sky_exp'][i_pos] = z_sky
-    actreg_prop_exp['is_visible'][i_pos] = is_actreg_visible(istar,long_rad, lat_rad,ang_rad, star_params['f_GD'], star_params['RpoleReq'])
+    ar_prop_exp['lat_rad_exp'][i_pos] = lat_rad
+    ar_prop_exp['sin_lat_exp'][i_pos] = slat_rad
+    ar_prop_exp['cos_lat_exp'][i_pos] = clat_rad
+    ar_prop_exp['long_rad_exp'][i_pos] = long_rad    
+    ar_prop_exp['sin_long_exp'][i_pos] = np.sin(long_rad)
+    ar_prop_exp['cos_long_exp'][i_pos] = np.cos(long_rad)
+    ar_prop_exp['x_sky_exp'][i_pos] = x_sky
+    ar_prop_exp['y_sky_exp'][i_pos] = y_sky
+    ar_prop_exp['z_sky_exp'][i_pos] = z_sky
+    ar_prop_exp['is_visible'][i_pos] = is_ar_visible(istar,long_rad, lat_rad,ang_rad, star_params['f_GD'], star_params['RpoleReq'])
     
     return None
 
@@ -1121,7 +1120,7 @@ def pl_limb_in_oblate_star(nlimb,RpRs,xp_st_sk,yp_st_sk,star_params):
         nlimb_in_ph[iloc] = np.sum( cond_in_stphot )    
     return nlimb_in_ph
 
-def is_actreg_visible(istar, long_rad, lat_rad, ang_rad, f_GD, RpoleReq) :
+def is_ar_visible(istar, long_rad, lat_rad, ang_rad, f_GD, RpoleReq) :
     r"""**Active region visibility**
 
     Performs a rough estimation of the visibility of an active region, based on star inclination (istar), active region coordinates in star rest frame (long, lat) and active region angular size (ang).
@@ -1163,15 +1162,15 @@ def is_actreg_visible(istar, long_rad, lat_rad, ang_rad, f_GD, RpoleReq) :
         actreg_visible (bool) : active region visibility criterion.
         
     """ 
-    actreg_visible = False
+    ar_visible = False
     
     for arg in np.linspace(0,2*np.pi, 20) :
         
-        #Define the edges of the active region
+        #Define the edges of the active regions
         long_edge = long_rad + ang_rad * np.sin(arg)
         lat_edge  = lat_rad  + ang_rad * np.cos(arg)
 
-        #Define the corresponding x, y, and z coordinates of the edges of the active region in the un-inclined star rest frame
+        #Define the corresponding x, y, and z coordinates of the edges of the active regions in the un-inclined star rest frame
         x_st_edge = np.sin(long_edge)*np.cos(lat_edge)
         y_st_edge = np.sin(lat_edge)
         z_st_edge = np.cos(long_edge)*np.cos(lat_edge)
@@ -1194,9 +1193,9 @@ def is_actreg_visible(istar, long_rad, lat_rad, ang_rad, f_GD, RpoleReq) :
         else:
             criterion = (z_sky_edge > 0)
         
-        actreg_visible |= criterion
+        ar_visible |= criterion
 
-    return actreg_visible
+    return ar_visible
 
 
 

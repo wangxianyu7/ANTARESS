@@ -9,7 +9,7 @@ from os.path import exists as path_exist
 import glob
 from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,weights_bin_prof,init_bin_prof
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc,var_stellar_prop,custom_DI_prof
-from ..ANTARESS_grids.ANTARESS_occ_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_actreg_prop,up_plocc_actregocc_prop,calc_plocced_tiles,calc_actreged_tiles
+from ..ANTARESS_grids.ANTARESS_occ_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_ar_prop,up_plocc_arocc_prop,calc_plocced_tiles,calc_ar_tiles
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange
 from ..ANTARESS_process.ANTARESS_data_align import align_data
 from ..ANTARESS_analysis.ANTARESS_inst_resp import def_st_prof_tab,cond_conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab,conv_st_prof_tab,convol_prof
@@ -34,7 +34,7 @@ def def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_p
     """ 
     print('   > Building estimates for planet-occulted stellar profiles')
     opt_dic = data_dic['Intr']['opt_loc_prof_est'] 
-    for key in ['clean_calc','corr_actreg','map_diff_res']:opt_dic[key]=False
+    for key in ['clean_calc','corr_ar','map_diff_res']:opt_dic[key]=False
     corr_mode = opt_dic['corr_mode']
     text_print={
         'DIbin':    '         Using DI master',
@@ -55,7 +55,7 @@ def def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_p
             
         #Using global profile model
         elif corr_mode=='glob_mod': 
-            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,False)
+            data_add = plocc_ar_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,False)
             
         #Using individual profile models
         elif corr_mode=='indiv_mod': 
@@ -253,10 +253,10 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
 
 
 
-def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,actreg_on):
-    r"""**Planet-occulted / active-region occulted exposure profiles: global model**
+def plocc_ar_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,ar_on):
+    r"""**Planet-occulted / active-region contaminated exposure profiles: global model**
     
-    Sub-function to define planet-occulted and active region-occulted profiles using line profile models fitted to all
+    Sub-function to define planet-occulted and active region profiles using line profile models fitted to all
         - intrinsic profiles together in `fit_IntrProf_all()`.
           This model can be based on analytical, measured, or theoretical profiles.        
         - to all differential profiles together with `fit_DiffProf_all()`.
@@ -278,8 +278,8 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
 
     #Retrieving selected model properties
     fit_txt = None
-    if (not actreg_on) and ('IntrProf_prop_path' not in opt_dic):fit_txt = 'Intr'
-    if (actreg_on) and ('DiffProf_prop_path' not in opt_dic):fit_txt = 'Diff'
+    if (not ar_on) and ('IntrProf_prop_path' not in opt_dic):fit_txt = 'Intr'
+    if (ar_on) and ('DiffProf_prop_path' not in opt_dic):fit_txt = 'Diff'
     if fit_txt is not None:
         fit_subdirs = glob.glob(gen_dic['save_data_dir']+'/Joined_fits/'+fit_txt+'Prof/*/')
         if len(fit_subdirs)==0:stop('         No existing fit directory. Run a fit to the '+{'Intr':'intrinsic','Diff':'differential'}[fit_txt]+' line profiles.')
@@ -289,7 +289,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
             else:fit_used  ='chi2'
             print('         Using existing '+fit_used+' fit as default')
             opt_dic[fit_txt+'Prof_prop_path']={inst:{vis:gen_dic['save_data_dir']+'/Joined_fits/'+fit_txt+'Prof/'+fit_used+'/Fit_results'}}  
-    if actreg_on:prof_type = 'Diff'
+    if ar_on:prof_type = 'Diff'
     else:prof_type='Intr'   
 
     #Retrieve best-fit system properties    
@@ -299,7 +299,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     fixed_args={  
         'mode':opt_dic['mode'],
         'type':data_vis['type'],
-        'nord':data_dic[inst]['nord'],
+        'nord':data_dic[inst]['nord'],    
         'fit_order':data_prop['fit_order'],
         'nthreads': opt_dic['nthreads'],
         'resamp_mode' : gen_dic['resamp_mode'], 
@@ -315,7 +315,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         'fit_star_pl':data_prop['fit_star_pl'],
         'var_par_list':data_prop['var_par_list'],
         'system_prop':data_prop['system_prop'],
-        'grid_dic':data_prop['grid_dic'],
+        'grid_dic':data_prop['grid_dic'],      
         'unthreaded_op':data_prop['unthreaded_op'],
         'ref_pl':data_prop['ref_pl'][inst][vis],
         'fit_mode':data_prop['fit_mode'],
@@ -327,38 +327,38 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
             'model':data_prop['model'][inst]
         })        
         for key in ['coeff_ord2name','pol_mode','coord_line','linevar_par']:fixed_args[key] = data_prop[key]
-    if actreg_on:  
+    if ar_on:  
         fixed_args.update({          
-        'fit_actreg_ang':data_prop['fit_actreg_ang'],
-        'fit_actreg':data_prop['fit_actreg'],
+        'fit_ar_ang':data_prop['fit_ar_ang'],
+        'fit_ar':data_prop['fit_ar'], 
         'fit_star_ar':data_prop['fit_star_ar'],
-        'system_actreg_prop':data_prop['system_actreg_prop'],   
-        'actreg_coord_par':gen_dic['actreg_coord_par'],
+        'system_ar_prop':data_prop['system_ar_prop'],   
+        'ar_coord_par':gen_dic['ar_coord_par'], 
         'bjd_time_shift':{inst:{vis:0.}},
         'conv2intr' :False,           
             })
-        studied_actreg=data_vis['studied_actreg']
+        studied_ar=data_vis['studied_ar']
         iexp_list = range(data_vis['n_in_visit'])
-        actreg_prop = data_vis['actreg_prop']
+        ar_prop = data_vis['ar_prop']
         plocc_prof_type = 'Diff'
         
         #Defining parameters for the clean version of profiles
         if opt_dic['clean_calc']:
             clean_params = deepcopy(params)
-            clean_params['use_actreg']=False
+            clean_params['use_ar']=False        
         
     else:
-        fixed_args.update({'system_actreg_prop':{}})
+        fixed_args.update({'system_ar_prop':{}})
         plocc_prof_type = data_dic['Intr']['plocc_prof_type']
         if plocc_prof_type=='Intr':fixed_args['conv2intr'] = True
         else:fixed_args['conv2intr'] = False 
-        studied_actreg=[]
-        actreg_prop ={}
+        studied_ar=[]
+        ar_prop ={}
         iexp_list = data_dic[prof_type][inst][vis]['idx_def']
     chrom_mode = data_vis['system_prop']['chrom_mode']
   
     #Figuring out if we need to build residuals from best-fit differential profiles
-    for key in ['map_diff_res', 'corr_actreg']:
+    for key in ['map_diff_res', 'corr_ar']:
         if opt_dic[key]:
             if key=='map_diff_res':
                 print('         Building best-fit differential profiles')
@@ -366,14 +366,12 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
                 #Retrieving the order
                 if (inst in fixed_args['fit_order']):iord_sel =  fixed_args['fit_order'][inst]
                 else:iord_sel = 0
-
                 if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/DiffProf/'+fixed_args['fit_mode']+'/'+inst)):makedirs(gen_dic['save_data_dir']+'Joined_fits/DiffProf/'+fixed_args['fit_mode']+'/'+inst) 
                 if (not path_exist(gen_dic['save_data_dir']+'Joined_fits/DiffProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)):makedirs(gen_dic['save_data_dir']+'Joined_fits/DiffProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis)
 
             else:
                 print('         Correcting for active region contamination in data')
-
-                fixed_args['corr_actreg']=True
+                fixed_args['corr_ar']=True
                 if (not path_exist(gen_dic['save_data_dir']+'Corr_data/')):makedirs(gen_dic['save_data_dir']+'Corr_data/') 
 
             #Initializing necesary dictionaries
@@ -391,21 +389,21 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     #Activation of spectral conversion and resampling 
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_vis['type']) 
 
-    #Initializing stellar profiles
-    fixed_args = var_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],actreg_prop,system_param['star'],params)
-    fixed_args = init_custom_DI_prof(fixed_args,gen_dic,params)                  
+    #Initializing stellar profiles 
+    fixed_args = var_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],ar_prop,system_param['star'],params)
+    fixed_args = init_custom_DI_prof(fixed_args,gen_dic,params)  
 
     #Updating coordinates with the best-fit properties
     ph_rec = {}
     coord_vis = coord_dic[inst][vis]
     for pl_loc in data_vis['studied_pl']:
         ph_rec[pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'],coord_vis[pl_loc]['cen_ph'],coord_vis[pl_loc]['end_ph']) ) 
-    system_param_loc,coord_pl_actreg,_ = up_plocc_actregocc_prop(inst,vis,fixed_args,params,data_vis['studied_pl'],ph_rec,coord_vis,studied_actreg=studied_actreg)
+    system_param_loc,coord_pl_ar,_ = up_plocc_arocc_prop(inst,vis,fixed_args,params,data_vis['studied_pl'],ph_rec,coord_vis,studied_ar=studied_ar)
 
     #-----------------------------------------------------------
     #Figuring out which cells of the stellar grid are never active region-occulted or planet-occulted
     #-----------------------------------------------------------
-    if (opt_dic['map_diff_res']) or (opt_dic['corr_actreg']):
+    if (opt_dic['map_diff_res']) or (opt_dic['corr_ar']):
         #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
         #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
         fixed_args['unquiet_star'] = np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
@@ -431,7 +429,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         #         if np.sum(coord_pl_sp_fa[spot]['is_visible'][:, isub])>0:
         #             mini_spot_dic = {}
         #             for par_spot in fixed_args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp_fa[spot][par_spot][:, isub]
-        #             _, spot_spotted_star_grid = calc_actreged_tiles(mini_spot_dic,coord_pl_sp_fa[spot]['ang_rad'], fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'], fixed_args['grid_dic']['z_st_sky'], fixed_args['grid_dic'], system_param_loc['star'])
+        #             _, spot_spotted_star_grid = calc_ared_tiles(mini_spot_dic,coord_pl_sp_fa[spot]['ang_rad'], fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'], fixed_args['grid_dic']['z_st_sky'], fixed_args['grid_dic'], system_param_loc['star'])
         #             spotted_star_grid |= spot_spotted_star_grid
 
         #     #Figure out which cells of the full stellar grid are faculaed in at least one exposure
@@ -440,7 +438,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         #         if np.sum(coord_pl_sp_fa[facula]['is_visible'][:, isub])>0:
         #             mini_facula_dic = {}
         #             for par_facula in fixed_args['facula_coord_par']:mini_facula_dic[par_facula] = coord_pl_sp_fa[facula][par_facula][:, isub]
-        #             _, facula_faculaed_star_grid = calc_actreged_tiles(mini_facula_dic,coord_pl_sp_fa[facula]['ang_rad'], fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'], fixed_args['grid_dic']['z_st_sky'], fixed_args['grid_dic'], system_param_loc['star'])
+        #             _, facula_faculaed_star_grid = calc_ared_tiles(mini_facula_dic,coord_pl_sp_fa[facula]['ang_rad'], fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'], fixed_args['grid_dic']['z_st_sky'], fixed_args['grid_dic'], system_param_loc['star'])
         #             faculaed_star_grid |= facula_faculaed_star_grid
 
         #     #Update the global 2D quiet star grid
@@ -448,9 +446,11 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         #     #      contributions from the other cells do not need to be calculated because they are removed when computing differential profiles
         #     fixed_args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid | faculaed_star_grid)
 
+
+
     #Processing relevant exposures
     for isub,iexp in enumerate(iexp_list):
-        if not actreg_on:
+        if not ar_on:
             iexp_glob = gen_dic[inst][vis]['idx_in2exp'][iexp]
             if plocc_prof_type=='Intr':iexp_eff = iexp
             else:iexp_eff = iexp_glob
@@ -481,7 +481,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         #Initializing stellar profiles
         #    - can be defined using the first exposure table
         if isub==0:
-            fixed_args = var_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],actreg_prop,system_param['star'],params)
+            fixed_args = var_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],ar_prop,system_param['star'],params)
             fixed_args = init_custom_DI_prof(fixed_args,gen_dic,params)                  
     
             #Effective instrumental convolution
@@ -496,38 +496,37 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         #Define broadband scaling of intrinsic profiles into local profiles
         if plocc_prof_type=='Diff':
             args_exp['Fsurf_grid_spec'] = theo_intr2loc(fixed_args['grid_dic'],fixed_args['system_prop'],args_exp,args_exp['ncen_bins'],fixed_args['grid_dic']['nsub_star']) 
-            
-            if opt_dic['map_diff_res']:
-                #Construction of stellar flux grid 
-                base_DI_prof = custom_DI_prof(params,None,args=args_exp)[0]
 
+            #Construction of stellar flux grid
+            if opt_dic['map_diff_res']:
+                base_DI_prof = custom_DI_prof(params,None,args=args_exp)[0]
+    
         #Planet-occulted properties
-        surf_prop_dic,actreg_prop_dic,_ = sub_calc_plocc_actreg_prop([chrom_mode],args_exp,['line_prof'],data_vis['studied_pl'],data_vis['studied_actreg'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_actreg,[iexp_glob],system_actreg_prop_in=fixed_args['system_actreg_prop'])
+        surf_prop_dic,ar_prop_dic,_ = sub_calc_plocc_ar_prop([chrom_mode],args_exp,['line_prof'],data_vis['studied_pl'],data_vis['studied_ar'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_ar,[iexp_glob],system_ar_prop_in=fixed_args['system_ar_prop'])
 
         #With active regions
-        if actreg_on:
+        if ar_on:
             save_path = gen_dic['save_data_dir']+'Diff_estimates/'+corr_mode+'/'+inst+'_'+vis+'_'+str(iexp)
 
-            #Planet-occulted and active region-occulted line profiles - unclean
+            #Planet-occulted and active regions line profiles - unclean
             pl_line_model = surf_prop_dic[chrom_mode]['line_prof'][:,0]
-            ar_line_model = actreg_prop_dic[chrom_mode]['line_prof'][:,0]
-            line_prof_cons = {'unclean_pl_flux':pl_line_model, 'unclean_ar_flux':ar_line_model}
+            sp_line_model = ar_prop_dic[chrom_mode]['line_prof'][:,0]
+            line_prof_cons = {'unclean_pl_flux':pl_line_model, 'unclean_ar_flux':sp_line_model}
             
-            #Planet-occulted and active region-occulted line profiles - clean
+            #Planet-occulted and active regions line profiles - clean
             if opt_dic['clean_calc']:
                 
                 #Only planet-occulted profiles
-                clean_surf_prop_dic,_,_ = sub_calc_plocc_actreg_prop([chrom_mode],args_exp,['line_prof'],data_vis['studied_pl'],[],deepcopy(system_param),theo_dic,fixed_args['system_prop'],clean_params,coord_pl_actreg,[iexp])
+                clean_surf_prop_dic,_,_ = sub_calc_plocc_ar_prop([chrom_mode],args_exp,['line_prof'],data_vis['studied_pl'],[],deepcopy(system_param),theo_dic,fixed_args['system_prop'],clean_params,coord_pl_ar,[iexp])
                 
-                #Only active region-occulted profiles
-                # Turning on the use of active regions
-                if len(studied_actreg)>0:clean_params['use_actreg']=True
-                _,clean_actreg_prop_dic,_ = sub_calc_plocc_actreg_prop([chrom_mode],args_exp,['line_prof'],[],data_vis['studied_actreg'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],clean_params,coord_pl_actreg,[iexp],system_actreg_prop_in=fixed_args['system_actreg_prop'])
-                clean_params['use_actreg']=False
+                #Only active regions profiles
+                if len(studied_ar)>0:clean_params['use_ar']=True
+                _,clean_ar_prop_dic,_ = sub_calc_plocc_ar_prop([chrom_mode],args_exp,['line_prof'],[],data_vis['studied_ar'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_ar,[iexp],system_ar_prop_in=fixed_args['system_ar_prop'])
+                clean_params['use_ar']=False
 
                 #Storing
                 clean_pl_line_model = clean_surf_prop_dic[chrom_mode]['line_prof'][:,0]
-                clean_ar_line_model = clean_actreg_prop_dic[chrom_mode]['line_prof'][:,0]
+                clean_ar_line_model = clean_ar_prop_dic[chrom_mode]['line_prof'][:,0]
                 line_prof_cons.update({'clean_pl_flux':clean_pl_line_model, 'clean_ar_flux':clean_ar_line_model})
 
         #Without active regions
@@ -558,7 +557,8 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
         #Saving estimate of local profile for current exposure                 
         np.savez_compressed(save_path,data=data_store,allow_pickle=True)
 
-        for key in ['map_diff_res', 'corr_actreg']:
+
+        for key in ['map_diff_res', 'corr_ar']:
             if opt_dic[key]:
                 
                 # Correcting exposure profile for the active region contamination - planet-active region overlap is accounted for
@@ -599,21 +599,21 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
                 # F_exp + F_ar' + sum( ar', sum(region B, s' - f) ) = F_DI - F_pl,clean
                 #
                 # With F_pl,clean being the the planet deviation profile if active regions were not present in the planet-occulted region.
-                # In the code below, actreg_prop_dic[chrom_mode]['line_prof'][:,0] corresponds to F_ar' while surf_prop_dic[chrom_mode]['corr_supp'][:,0]
+                # In the code below, ar_prop_dic[chrom_mode]['line_prof'][:,0] corresponds to F_ar' while surf_prop_dic[chrom_mode]['corr_supp'][:,0]
                 # corresponds to sum( ar', sum(region B, s' - f) ).
-                if key=='corr_actreg':
+                if key=='corr_ar':
                     #Retrieving exposure profile
                     data_exp_raw = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp_eff))
 
                     #Correcting exposure 
-                    line_model = data_exp_raw['flux'][iord_sel] + actreg_prop_dic[chrom_mode]['line_prof'][:,0] + surf_prop_dic[chrom_mode]['corr_supp'][:,0]
+                    line_model = data_exp_raw['flux'][iord_sel] + ar_prop_dic[chrom_mode]['line_prof'][:,0] + surf_prop_dic[chrom_mode]['corr_supp'][:,0]
 
                     #Covariance matrix to use
                     cov = data_exp_raw['cov'][iord_sel]
 
                 else:
                     #Building exposure profile
-                    line_model = base_DI_prof - surf_prop_dic[chrom_mode]['line_prof'][:,0] - actreg_prop_dic[chrom_mode]['line_prof'][:,0]
+                    line_model = base_DI_prof - surf_prop_dic[chrom_mode]['line_prof'][:,0] - ar_prop_dic[chrom_mode]['line_prof'][:,0]
 
                     #Covariance matrix to use
                     cov = data_loc_exp['cov'][iord_sel]
@@ -666,7 +666,7 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
     #Complementary data
     data_add={'idx_est_loc':iexp_list,'cont':params['cont']}
 
-    for key in ['map_diff_res', 'corr_actreg']:
+    for key in ['map_diff_res', 'corr_ar']:
         if opt_dic[key]:        
 
             #Defined bins in binned spectrum
@@ -707,7 +707,6 @@ def plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_pr
                 #Storing best-fit differential profiles
                 if key=='map_diff_res':datasave_npz(gen_dic['save_data_dir']+'Joined_fits/DiffProf/'+fixed_args['fit_mode']+'/'+inst+'/'+vis+'/BestFit'+'_'+str(isub),diff_prof_mod)
                 else:datasave_npz(gen_dic['save_data_dir']+'Corr_data/'+inst+'_'+vis+'_'+str(isub),diff_prof_mod)
-
 
     return data_add
 
@@ -975,13 +974,12 @@ def plocc_prof_rec(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,coord_dic):
 
 
 #%% Differential exposure profiles.
-#    - accounting for planet- and active region-occulted stellar profiles
+#    - accounting for planet-occulted and active regions stellar profiles
 
 def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic):
-
-    r"""**Planet and active region-occulted exposure profiles.**
+    r"""**Planet-occulted and active regions exposure profiles.**
     
-    Calls requested function to define planet and active region-occulted profiles associated with each observed exposure
+    Calls requested function to define planet-occulted and active regions profiles associated with each observed exposure
 
     Args:
         TBD
@@ -991,7 +989,7 @@ def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param
     
     """ 
     print('   > Building estimates for planet and active region-occulted stellar profiles')
-    if (data_dic['DI']['actreg_prop']=={}):stop('SActive region properties are not provided. We recommended using the separate routine dedicated to the extraction of planet-occulted profiles instead.')
+    if (data_dic['DI']['ar_prop']=={}):stop('ERROR : Active region properties are not provided. We recommend using the separate routine dedicated to the extraction of planet-occulted profiles instead.')
     opt_dic = data_dic['Diff']['opt_loc_prof_est'] 
 
     corr_mode = opt_dic['corr_mode']
@@ -1002,15 +1000,14 @@ def def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param
         print('         Calculating data')     
              
         #Calculating the clean version of the data
-        for key in ['clean_calc','corr_actreg','map_diff_res']:opt_dic[key]=False
-
+        for key in ['clean_calc','corr_ar','map_diff_res']:opt_dic[key]=False
         if (plot_dic['map_Diff_prof_clean_pl_est']!='') or (plot_dic['map_Diff_prof_clean_ar_est']!=''):opt_dic['clean_calc']=True
-        if (plot_dic['map_Diff_corr_actreg']!=''):opt_dic['corr_actreg']=True
+        if (plot_dic['map_Diff_corr_ar']!=''):opt_dic['corr_ar']=True
         if plot_dic['map_BF_Diff_prof_re']!='':opt_dic['map_diff_res']=True
 
         #Using global profile model
         if corr_mode=='glob_mod': 
-            data_add = plocc_spocc_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,True)
+            data_add = plocc_ar_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,True)
         
         else:stop('WARNING: Only joined-fit results can be used at the moment. Set corr_mode to \'glob_mod\'')
 

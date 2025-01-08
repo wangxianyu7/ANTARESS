@@ -37,6 +37,7 @@ dependencies = [
   "pysme-astro",
   "jupyterlab",
   "arviz",
+  "dynesty"
   ]
 
 [project.urls]

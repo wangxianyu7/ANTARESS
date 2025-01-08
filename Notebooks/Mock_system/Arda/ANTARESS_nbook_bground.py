@@ -3,6 +3,7 @@
 from copy import deepcopy
 import numpy as np
 import sys
+import re as re
 import os as os_system
 import glob as glob
 from os.path import exists as path_exist
@@ -97,23 +98,23 @@ def init_spot(input_nbook,sp_type):
     inst = input_nbook['par']['instrument']
     vis = input_nbook['par']['night']
     if sp_type == 'main':
-        input_nbook['settings']['mock_dic']['spots_prop']={inst:{
+        input_nbook['settings']['mock_dic']['ar_prop']={inst:{
                                                                 vis:{}
                                                                 }
                                                            }
-        input_nbook['settings']['gen_dic']['transit_sp'] = {}
-        input_nbook['settings']['data_dic']['DI']['spots_prop'] = {'achrom':{'LD':['quadratic'],'LD_u1' : [input_nbook['par']['ld_spot_u1']],'LD_u2' : [input_nbook['par']['ld_spot_u2']]}}
+        input_nbook['settings']['gen_dic']['studied_ar'] = {}
+        input_nbook['settings']['data_dic']['DI']['ar_prop'] = {'achrom':{'LD':['quadratic'],'LD_u1' : [input_nbook['par']['ld_spot_u1']],'LD_u2' : [input_nbook['par']['ld_spot_u2']]}}
         input_nbook['settings']['data_dic']['DI']['transit_prop'] = {'nsub_Dstar':201., 
                                                                      inst:{
                                                                           vis:{'mode':'simu', 'n_oversamp':5.}
                                                                           }
                                                                      }
     for key in ['lat', 'Tc', 'ang', 'fctrst']:
-        if key=='Tc': temp=key+'_sp'
+        if key=='Tc': temp=key+'_ar'
         else:temp=key
-        input_nbook['settings']['mock_dic']['spots_prop'][inst][vis][temp+'__IS'+inst+'_VS'+vis+'_SP'+input_nbook['par']['spot_name']]=input_nbook['par'][key]
-    input_nbook['settings']['gen_dic']['transit_sp'][input_nbook['par']['spot_name']]={inst:[vis]}
-    input_nbook['settings']['data_dic']['DI']['spots_prop']['achrom'][input_nbook['par']['spot_name']]=[input_nbook['par']['ang']*np.pi/180.]
+        input_nbook['settings']['mock_dic']['ar_prop'][inst][vis][temp+'__IS'+inst+'_VS'+vis+'_AR'+input_nbook['par']['spot_name']]=input_nbook['par'][key]
+    input_nbook['settings']['gen_dic']['studied_ar'][input_nbook['par']['spot_name']]={inst:[vis]}
+    input_nbook['settings']['data_dic']['DI']['ar_prop']['achrom'][input_nbook['par']['spot_name']]=[input_nbook['par']['ang']*np.pi/180.]
     input_nbook['settings']['theo_dic']=input_nbook['settings']['mock_dic']
     return None
 
@@ -275,10 +276,10 @@ def ana_prof(input_nbook,data_type):
         if data_type=='DI':rv_shift = input_nbook['system'][input_nbook['par']['star_name']]['star']['sysvel']
         else:rv_shift=0.
         if 'cont_range' in input_nbook['par']:
-            input_nbook['settings']['data_dic'][data_type]['cont_range']: {inst: {0:input_nbook['par']['cont_range']+rv_shift}}
+            input_nbook['settings']['data_dic'][data_type]['cont_range'] = {inst: {0:input_nbook['par']['cont_range']+rv_shift}}
             input_nbook['par'].pop('cont_range')
         if 'fit_range' in input_nbook['par']:
-            input_nbook['settings']['data_dic'][data_type]['fit_range']: {inst: {vis: input_nbook['par']['fit_range']+rv_shift}}
+            input_nbook['settings']['data_dic'][data_type]['fit_range'] = {inst: {vis: input_nbook['par']['fit_range']+rv_shift}}
             input_nbook['par'].pop('fit_range')
 
         #Guess values
@@ -433,10 +434,10 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
             #Spot properties
             elif (('lat' in prop) or ('Tc' in prop) or ('ang' in prop)):
                 temp_prop_name,spot_name = prop.split('_')
-                if 'Tc' in prop:temp_prop_name+='_sp'
-                prop_name = temp_prop_name+'__IS'+input_nbook['par']['instrument']+'_VS'+input_nbook['par']['night']+'_SP'+spot_name
+                if 'Tc' in prop:temp_prop_name+='_ar'
+                prop_name = temp_prop_name+'__IS'+input_nbook['par']['instrument']+'_VS'+input_nbook['par']['night']+'_AR'+spot_name
             elif  'fctrst' in prop:
-                prop_name = 'fctrst__IS'+input_nbook['par']['instrument']+'_VS'+input_nbook['par']['night']+'_SP'
+                prop_name = 'fctrst__IS'+input_nbook['par']['instrument']+'_VS'+input_nbook['par']['night']+'_AR'
     
             mean_prop = np.mean(bd_prop)
             fit_prop_dic = {'vary':True,'guess':mean_prop,'bd':bd_prop}
@@ -756,7 +757,7 @@ def cosmic_search(iexp, iord, input_nbook):
         return True
 
     else:
-        files = sorted(list(file for file in os.listdir(path) if file.startswith("idx")))
+        files = sorted(list(file for file in os_system.listdir(path) if file.startswith("idx")))
         l = []
         for file in files:
             val = re.split('[x _ d .]', str(file))

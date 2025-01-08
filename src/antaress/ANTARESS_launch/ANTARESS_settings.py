@@ -22,6 +22,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
      - EXPRES : 'EXPRES'
      - HARPS-N : 'HARPN'
      - HARPS : 'HARPS'
+     - MIKE (blue arm) : 'MIKE_Blue'
+     - MIKE (red arm) : 'MIKE_Red'   
      - NIRPS (high-accuracy mode) : 'NIRPS_HA'
      - NIRPS (high-efficiency mode) : 'NIRPS_HE'
      - SOPHIE (high-efficiency mode) : 'SOPHIE_HE'
@@ -57,13 +59,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     gen_dic['studied_pl']={}  
     
 
-    #%%%%% Transiting active regions
-    #    - indicate names (as defined in ANTARESS_systems) of the transiting active regions to be processed
-    #    - for each active region, indicate the instrument and visits in which its transit should be taken into account (visit names are those given through 'data_dir_list')
-    #    - format: 'actreg':{'inst':['vis']}
-    gen_dic['studied_actreg']={}  
-
-
+    #%%%%% Visible active regions
+    #    - indicate names (as defined in ANTARESS_systems) of the visible active regions to be processed
+    #    - for each active region, indicate the instrument and visits in which it should be taken into account (visit names are those given through 'data_dir_list')
+    #    - format: 'ar':{'inst':['vis']}
+    gen_dic['studied_ar']={}  
+    
+    
     #%%%%% TTVs
     #    - if a visit is defined in this dictionary, the mid-transit time for this visit will be set to the specific value defined here
     #    - for single-night visits only
@@ -327,6 +329,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - mean flux density of the unocculted star over the 'DI_range' band (specific to each visit), ie number of photoelectrons received for an exposure time of 1s
     #    - format: {inst:{vis:value}}
     mock_dic['flux_cont']={}
+
+    
+    #%%%%% SNR and photon count
+    #   - toggle to print the average SNR and photon count of each simulated exposure.
+    #   - can help to get a better sense of how to adjust the continuum level to achieve a certain SNR.
+    mock_dic['verbose_flux_cont']=False
     
     #%%%%% SNR and photon count
     #   - toggle to print the average SNR and photon count of each simulated exposure.
@@ -342,6 +350,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #%%%% Active regions
+    #    - can be (dark) spots and/or (bright) faculae
        
     #%%%%% Properties
     #    - active region inclusion is conditioned by this dictionary being filled in
@@ -352,8 +361,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + 'fctrst' : the flux level of the active region surface, relative to the quiet surface of the star
     #              0 = no emission, 1 = maximum emission (no contrast with the stellar surface) 
     #    - format: {inst : {vis : {prop : val}}}
-    #      where prop is defined as par_ISinst_VSvis_ARactreg_name, to match with the structure used in gen_dic['fit_diff_prof']    
-    mock_dic['actreg_prop'] = {}
+    #      where prop is defined as par_ISinst_VSvis_ARar, to match with the structure used in gen_dic['fit_diff_prof']    
+    mock_dic['ar_prop'] = {}
 
     #%%%%% Automatic generation of active regions
     #    - Instead of defining individual active regions, define multiple active regions
@@ -366,7 +375,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - {distrib : 'uf', low, high}        # Drawing from a Uniform distribution with boundaries low and high
     #    - Additionally, you must provide the number of active regions to generate with the following format:
     #    - {inst : {vis : {num}}}
-    mock_dic['auto_gen_actreg'] = {}
+    mock_dic['auto_gen_ar'] = {}
 
     #%%%% Noise settings
     
@@ -686,23 +695,23 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%% Active regions
 
     #%%%%% Nominal properties
-    #    - same as mock_dic['actreg_prop']
+    #    - same as mock_dic['ar_prop']
     #    - required for the calculation of nominal active region coordinates used throughout the pipeline
-    theo_dic['actreg_prop']={}
+    theo_dic['ar_prop']={}
 
 
     #%%%%% Discretization     
-    #    - format is {actreg : val}} 
+    #    - format : {ar : val}} 
     # where each simulated active region must be associated with a unique name
     theo_dic['nsub_Dar']={} 
 
 
     #%%%%% Exposure oversampling     
-    #    - format is {actreg : val}} 
+    #    - format : {ar : val}} 
     # where each simulated active region must be associated with a unique name
-    theo_dic['n_oversamp_actreg']={} 
-
-
+    theo_dic['n_oversamp_ar']={}  
+    
+    
     #%%%% Plot settings
     
     #%%%%% Planetary orbit discretization
@@ -1951,12 +1960,15 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #%%%%% Fixed/variable properties
-    #    - structure is mod_prop = { 'par_name' : { 'vary' : bool , 'inst' : { 'visit' : {'guess':X , 'bd':[Y,Z] } } } }
-    # > par_name is specific to the model selected
+    #    - format is:
+    # mod_prop = { prop_name : { 'vary' : bool , 'inst' : { 'visit' : { 'guess': x, 
+    #                                                                   'bd': [x_low,x_high] OR 'gauss': [val,s_val] } } } }
+    #      where 
+    # > 'prop_name' defines a property of the selected model
     # > 'vary' indicates whether the parameter is fixed or variable
     #   if 'vary' = True:
     #       'guess' is the guess value of the parameter for a chi2 fit, also used in any fit to define default constraints
-    #       'bd' is the range from which walkers starting points are randomly drawn for a mcmc/ns fit
+    #       walkers' starting positions are randomly drawn from a uniform (defined by 'bd') or gaussian (defined by 'gauss') distribution for a mcmc/ns fit
     #   if 'vary' = False:
     #       'guess' is the constant value of the parameter
     #   'guess' and 'bd' can be specific to a given instrument and visit
@@ -2139,28 +2151,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['all_DI_data']=''      
     
         
-        
-        
-        
 
-    
-    
-        
-        
-        
-    
-        
-        
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
         
     ##################################################################################################
     #%%% Module: broadband flux scaling
@@ -2232,8 +2223,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%% Active region intensity settings
     #    - same format as 'system_prop'
-    data_dic['DI']['actreg_prop']={}
-
+    data_dic['DI']['ar_prop']={}
+    
     
     #%%%% Transit light curve model
     #    - there are several possibilities to define the light curves, specific to each instrument and visit, via 'transit_prop':inst:vis
@@ -3109,7 +3100,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     glob_fit_dic['IntrProp']['idx_in_fit'] = {}
 
 
-    #%%% Scaled data errors
+    #%%%%% Scaled data errors
     #    - local scaling of data errors
     #    - you can scale by sqrt(reduced chi2 of original fit) to ensure a reduced chi2 unity
     glob_fit_dic['IntrProp']['sc_err']={}  
@@ -3119,12 +3110,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #%%%%% Properties and model
     #    - format is:
-    # mod_prop = { prop_main : { prop_name : {'vary': bool ,'guess': x,'bd':[x_low,x_high]} } }
-    # OR
-    # mod_prop = { prop_main : { prop_name : {'vary': bool ,'guess': x,'gauss':[val,s_val]} } }
-    #      where 'prop_main' defines the measured variable to be fitted
-    #            'prop_name' defines the properties of the model describing 'prop_main'
-    #      In the first/second case, the walkers' starting positions are drawn from a uniform/gaussian distribution.
+    # mod_prop = { prop_main : { prop_name : { 'vary' : bool , 'guess': x, 
+    #                                                          'bd': [x_low,x_high] OR 'gauss': [val,s_val] } } }
+    #      where 
+    # > 'prop_main' defines the measured variable to be fitted
+    # > 'prop_name' defines a property of the model describing 'prop_main'
+    # > the other fields are described in data_dic['DI']['mod_prop'] 
     #    - typical variables:
     # + 'rv': fitted using surface RV model
     # + 'ctrst', 'FWHM': fitted using polynomial models
@@ -3133,11 +3124,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + 'i' is the polynomial degree
     # + 'inst' is the name of the instrument, which should be set to '_' for the property to be common to all instruments and their visits
     # + 'vis' is the name of the visit, which should be set to '_' for the property to be common to all visits of this instrument 
-    #    - the names of properties specific to a given planet 'PL' must be defined as 'prop_name = prop_ordi__plPL'  
-    #
-    #%%%% WARNING
-    # + For active region properties common to quiet star ones (veq, alpha_rot, beta_rot), no linking is done internally.
-    # + Therefore, the user must specify values for these properties if they wish to fix them to values which differ from the base ones provided in the systems file.
+    #    - the names of properties specific to a given planet 'PL' must be defined as 'prop_name = prop__ordi__plPL'  
+    #    - the names of properties specific to a given active region 'AR' must be defined as 'prop_name = prop__ordi__arAR' 
+    #%%%% WARNING 
+    # + for active region properties common to quiet star ones (veq, alpha_rot, beta_rot), no linking is done internally.
+    # + therefore, the user must specify values for these properties if they wish to fix them to values which differ from the base ones provided in the systems file.
     glob_fit_dic['IntrProp']['mod_prop']={'rv':{}}
 
 
@@ -3482,7 +3473,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         
         
     ##################################################################################################       
-    #%%% Module: planet-occulted profiles, faculaed and spotted profiles estimates
+    #%%% Module: planet-occulted and active region profile estimates
     #    - use the module to generate:
     # + local profiles that are then used to correct differential profiles from stellar contamination
     # + intrinsic profiles that are corrected from measured ones to assess the quality of the estimates 
@@ -3545,28 +3536,31 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #%%%% Plot settings
     
-    #%%%%% 2D maps : "clean", theoretical planet-occulted, active region-covered profiles
+    #%%%%% 2D maps : "clean", theoretical planet-occulted and active region profiles
     #    - for original and binned exposures
     #    - planet-occulted profiles retrieved in the case where active regions were not included in the model
-    plot_dic['map_Diff_prof_clean_pl_est']=''
     plot_dic['map_Diff_prof_clean_ar_est']=''
+    plot_dic['map_Diff_prof_clean_pl_est']=''   
 
-    #%%%%% 2D maps : "un-clean", theoretical planet-occulted, active region-covered profiles
+
+    #%%%%% 2D maps : "un-clean", theoretical planet-occulted and active region profiles
     #    - for original and binned exposures
-    #    - planet-occulted profiles retrieved in the case where active regions were included in the model
-    #    - computing both "clean" and "unclean" versions of these maps can help identify if planets occulted active regions during the transit or not
-    plot_dic['map_Diff_prof_unclean_pl_est']=''
+    #    - planet-occulted profiles retrieved in the case where spots were not included in the model
+    #    - computing both "clean" and "spotted" versions of these maps can help identify if planets occulted spots during the transit or not
     plot_dic['map_Diff_prof_unclean_ar_est']=''
+    plot_dic['map_Diff_prof_unclean_pl_est']=''   
 
-    #%%%%% 2D maps : residuals theoretical planet-occulted and active region-covered profiles (for "clean" and/or "unclean" profiles)
+    
+    #%%%%% 2D maps : residuals theoretical planet-occulted and active region profiles (for "clean" and/or "unclean" profiles)
     #    - same format as 'map_Diff_prof_pl_est'
-    plot_dic['map_Diff_prof_clean_pl_res']=''
     plot_dic['map_Diff_prof_clean_ar_res']=''
-    plot_dic['map_Diff_prof_unclean_pl_res']=''
+    plot_dic['map_Diff_prof_clean_pl_res']=''
     plot_dic['map_Diff_prof_unclean_ar_res']=''
-
+    plot_dic['map_Diff_prof_unclean_pl_res']=''   
+        
+        
     #%%%%% 2D maps : differential profiles corrected for the impact of active regions
-    plot_dic['map_Diff_corr_actreg']='png'      
+    plot_dic['map_Diff_corr_ar']=''    
         
         
         
@@ -3639,6 +3633,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     ##################################################################################################
     #%%% Module: atmospheric signals extraction
+    #    - atmospheric profiles are corrected for quiet stellar profiles built from the 'planet-occulted profile estimates' modules, or when relevant for quiet+active stellar profiles built from the 'planet-occulted and active region profile estimates' module.
     ##################################################################################################  
 
     #%%%% Activating
@@ -4176,7 +4171,11 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     ################################################################################################## 
     
     #%%%% Fitting mode 
-    #    - 'chi2', 'mcmc', 'ns','fixed'
+    #    - options :
+    # + 'chi2' : least-square minimization
+    # + 'mcmc' : Markov chain Monte Carlo exploration
+    # + 'ns' : nested sampling exploration
+    # + 'fixed' : forward model
     local_dic[data_type]['fit_mode']='chi2'  
     
     
@@ -4216,6 +4215,14 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #                  warning: if faculae and spot values are both fitted (whether that is Peq or veq) the user must specify which one to use for the folding with deriv_prop['fold_Tc_ar']['reg_to_use']='spots'/'faculae'
     #                  warning: if veq/veq_spots/veq_faculae is used to perform the folding, the corresponding derived property option 'Peq_veq'/'Peq_veq_spots'/'Peq_veq_faculae' must be activated. 
     # + 'istar_Peq_vsini' : derive the stellar inclination from user-provided measurements of 'Rstar','Peq', and 'vsini'
+    # + 'fold_Tc_ar' : folds the active region crossing time around a central Peq value that can be calculated in the following ways:
+    #                       - If active region values for veq/Peq are fitted/specified, they take priority
+    #                       - If veq/Peq/veq_spots/Peq_spots/veq_faculae/Peq_faculae is fit with an MCMC/NS, we use the corresponding chain
+    #                       - If veq/Peq/veq_spots/Peq_spots/veq_faculae/Peq_faculae is fit with chi2 or fixed, we use the corresponding value
+    #                       - If veq_spots/Peq_spots/veq_faculae/Peq_faculae is fixed but its values is different from the default, use the active region value
+    #                       - If none of veq, Peq, veq_spots, Peq_spots, veq_faculae, Peq_faculae are fixed or fit, default to the value of Peq calculated from the systems configuration file.
+    #                  warning: if faculae and spot values are both fitted (whether that is Peq or veq) the user must specify which one to use for the folding with deriv_prop['fold_Tc_ar']['reg_to_use']='spots'/'faculae'
+    #                  warning: if veq/veq_spots/veq_faculae is used to perform the folding, the corresponding derived property option 'Peq_veq'/'Peq_veq_spots'/'Peq_veq_faculae' must be activated. 
     # + 'Peq_veq' : adds 'Peq' using the fitted 'veq' and a user-provided measurement of 'Rstar'
     # + 'Peq_veq_spots' : adds 'Peq_spots' using the fitted 'veq_spots' and a user-provided measurement of 'Rstar'
     # + 'Peq_veq_faculae' : adds 'Peq_faculae' using the fitted 'veq_faculae' and a user-provided measurement of 'Rstar'
@@ -4264,72 +4271,82 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
         local_dic[data_type]['idx_force_det']={}
         local_dic[data_type]['idx_force_detbin']={} 
         local_dic[data_type]['idx_force_detbinmultivis']={} 
-    
 
     ##################################################################################################         
     #%%% Chi2 settings
     ################################################################################################## 
-    #%%%% Fitting method
-    # + Fitting method used to perform the chi2 miniminzation with lmfit
-    # + Examples include leastsq, bfgs, newton, ...
-    # + String must be in the format supported by lmfit
-    local_dic[data_type]['chi2_fitting_method']='leastsq' 
     
+    #%%%% Fitting method
+    #    - fitting method used to perform the chi2 miniminzation with lmfit
+    #    - options include leastsq, bfgs, newton, ... (string must be in the format supported by lmfit)
+    local_dic[data_type]['chi2_fitting_method']='leastsq' 
+
+
     ##################################################################################################         
-    #%%% MCMC settings
+    #%%% MCMC and Nested-sampling settings
     ################################################################################################## 
     
-    #%%%%% Hessian matrix
+    #%%%% Hessian matrix
     #    - string containing the location of a Fit_results.npz file containing a Hessian matrix.
-    #    - This Hessian matrix must have been computed from the same parameters are the ones used in the MCMC fit.
-    #    - To use this option, we recommend users first run a fit with fit_mode set to chi2. The chi2 fit will automatically
-    #    - create and store the Hessian matrix. An MCMC can subsequently be run with the path to the Hessian being set as
-    #    - the location of the chi2 fit results.
-    local_dic[data_type]['use_hess'] = ''
+    #      this Hessian matrix must have been computed from the same parameters are the ones used in the fit.
+    #    - to use this option, we recommend users first run a fit with fit_mode set to chi2. The chi2 fit will automatically create and 
+    # store the Hessian matrix. An MCMC / NS  fit can subsequently be run with the path to the Hessian being set as the location of the chi2 fit results.
+    local_dic[data_type]['use_hess'] = ''    
 
 
+    #%%%% Monitor progress
+    local_dic[data_type]['progress']= True
+
+    
     #%%%% Run mode
     #    - set to
-    # + 'use': runs MCMC  
-    # + 'reuse' (with gen_dic['calc_fit_X']=True): load MCMC results, allow changing nburn and error definitions without running the mcmc again
-    local_dic[data_type]['mcmc_run_mode']='use'
-    
-    
-    #%%%% Monitor MCMC
-    local_dic[data_type]['progress']= True
-    
-    
-    #%%%% Runs to re-use
-    #    - list of mcmc runs to reuse
-    #    - if 'reuse' is requested, leave empty to automatically retrieve the mcmc run available in the default directory
-    #  or set the list of mcmc runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
-    local_dic[data_type]['mcmc_reuse']={}
+    # + 'use': runs the MCMC / NS fit 
+    # + 'reuse' (with gen_dic['calc_fit_X']=True): load MCMC / NS results, allow changing nburn and/or error definitions without running the fit again
+    local_dic[data_type]['run_mode']='use'    
 
 
-    #%%%%%% Runs to re-start
-    #    - indicate path to a 'raw_chains' file
-    #      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'mcmc_set'
-    local_dic[data_type]['mcmc_reboot']=''
-        
-    
+    #%%%%% Runs to re-use
+    #    - list of runs to reuse, when 'run_mode' = 'reuse'
+    #    - leave empty to automatically retrieve the run available in the default directory or set the list of runs to retrieve
+    # + for MCMC the runs must have been run with the same settings, but the burnin can be specified for each run :
+    #   { 'paths' : ['path1/raw_chains_walkN_stepsM1_name.npz','path2/raw_chains_walkN_stepsM2_name.npz',..],
+    #     'nburn' : [ n1, n2, ..]}
+    # + for NS the runs must have been run with the same settings :
+    #   { 'paths' : ['path1/raw_chains_liveL_name.npz','path2/raw_chains_liveL_name.npz',..] }
+    local_dic[data_type]['reuse']={}
+
+
+    #%%%%% Runs to re-start
+    #    - indicate path to a 'raw_chains' file:
+    # + for a MCMC fit : 'path1/raw_chains_walkN_stepsM1_name.npz'
+    # + for a NS fit: 'path1/raw_chains_liveL_name.npz'
+    #    - the fit will restart the same walkers from their last step, and run from the number of steps indicated in 'walkers_set'
+    local_dic[data_type]['reboot']=''
+
+
     #%%%% Walkers
-    #    - settings per instrument & visit
-    local_dic[data_type]['mcmc_set']={}
+    #    - for a MCMC fit define:
+    # + 'nwalkers' : number of walkers
+    # + 'nsteps' : total number of steps
+    # + 'nburn' : number of burn-in steps
+    #    - for a NS fit define:
+    # + 'nlive' : number of live points 
+    local_dic[data_type]['walkers_set']={}
     
     
-    #%%%%%% Complex priors
+    #%%%% Complex priors
     #    - to be defined manually within the code
     #    - leave empty, or put in field for each priors and corresponding options
-    local_dic[data_type]['prior_func']={}      
-    
-    
+    local_dic[data_type]['prior_func']={}    
+
+
     #%%%% Manual walkers exclusion        
     #    - excluding manually some of the walkers
     #    - define conditions within routine
     local_dic[data_type]['exclu_walk']=  False           
 
 
-    #%%%%%% Automatic walkers exclusion        
+    #%%%% Automatic walkers exclusion        
     #    - set to None, or exclusion threshold
     local_dic[data_type]['exclu_walk_autom']= None  
 
@@ -4337,9 +4354,9 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #%%%% Sample exclusion 
     #    - keep samples within the requested ranges of the chosen parameter (on original fit parameters)
     #    - format: 'par' : [[x1,x2],[x3,x4],...] 
-    local_dic[data_type]['exclu_samp']={}
-        
-    
+    local_dic[data_type]['exclu_samp']={}    
+
+
     #%%%% Derived errors
     #    - 'quant' (quantiles) or 'HDI' (highest density intervals)
     #    - if 'HDI' is selected:
@@ -4352,8 +4369,8 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #%%%% Derived lower/upper limits
     #    - format: {par:{'bound':val,'type':str,'level':[...]}}
     # where 'bound' sets the limit, 'type' is 'upper' or 'lower', 'level' is a list of thresholds ('1s', '2s', '3s')
-    local_dic[data_type]['conf_limits']={}   
-
+    local_dic[data_type]['conf_limits']={}  
+    
 
     ##################################################################################################         
     #%%% NS settings
@@ -4372,7 +4389,7 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #    - set to
     # + 'use': runs NS  
     # + 'reuse' (with gen_dic['calc_fit_X']=True): load NS results, allow changing error definitions without running the ns again
-    local_dic[data_type]['ns_run_mode']='use'
+    local_dic[data_type]['run_mode']='use'
     
     
     #%%%% Monitor NS
@@ -4383,18 +4400,24 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #    - list of ns runs to reuse
     #    - if 'reuse' is requested, leave empty to automatically retrieve the ns run available in the default directory
     #  or set the list of ns runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
-    local_dic[data_type]['ns_reuse']={}
+    local_dic[data_type]['reuse']={}
 
 
     #%%%%%% Runs to re-start
     #    - indicate path to a 'raw_chains' file
     #      the ns will restart at the last step of the previous chains, and run with the number of live points indicated in 'ns_set'
-    local_dic[data_type]['ns_reboot']=''
+    local_dic[data_type]['reboot']=''
         
     
-    #%%%% Walkers
+    #%%%% Live points
     #    - settings per instrument & visit
+    #    - users can specify the number of live points (nlive) used in the initial nested sampoing run.
+    #    - users can specify the prior bounding method to use (bound_method). If not specified it will default to 'auto' (see doc. in dynesty API to see what this specifically does).
+    #    - While the default bounding method is 'auto', 'multi' is better at dealing with posterior distributions with complex shapes and is therefore recommended when dealing with complex problems.
+    #    - users can specify the method used to uniformly sample within the likliehood constraint, conditioned on the provided bounds (sample_method). If not specified the default is 'auto', i.e. dynesty will
+    #    - pick a method based on the dimensionaly of the problem. If dealing with posterior distributions with complex shapes, 'slice' is recommended.
     local_dic[data_type]['ns_set']={}
+
     
     
     #%%%%%% Complex priors
@@ -4436,16 +4459,19 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     local_dic[data_type]['save_chi2_chains']=''
             
     
-    #%%%%% Corner plot
+    #%%%%% Chi2 chains
+    local_dic[data_type]['save_chi2_chains']=''
+         
+    
+    #%%%%% Corner plot for MCMC / NS fits
     #    - see function for options
     local_dic[data_type]['corner_options']={}
 
 
-    #%%%%% 1D PDF
+    #%%%%% 1D PDF for MSMS / NS fits
     #    - on properties derived from the fits to individual profiles
     if data_type in ['DI','Intr','Atm']:
-        plot_dic['prop_'+data_type+'_mcmc_PDFs']='' 
-        plot_dic['prop_'+data_type+'_ns_PDFs']=''      
+        plot_dic['prop_'+data_type+'_PDFs']=''      
     
     
     #%%%%% Chi2 values

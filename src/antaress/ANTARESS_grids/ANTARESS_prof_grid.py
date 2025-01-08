@@ -6,7 +6,7 @@ from copy import deepcopy
 import astropy.convolution.convolve as astro_conv
 import bindensity as bind
 import lmfit
-from ctypes import CDLL,c_double,c_int,POINTER
+from ctypes import CDLL,c_double,c_int
 import os as os_system
 from ..ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
@@ -59,7 +59,7 @@ class CFunctionWrapper:
 
 
 
-def var_stellar_prop(fixed_args,theo_dic,system_prop,system_actreg_prop,star_params,param_in):   
+def var_stellar_prop(fixed_args,theo_dic,system_prop,system_ar_prop,star_params,param_in):   
     r"""**Stellar properties: variables**
 
     Defines variable stellar properties.
@@ -77,11 +77,11 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_actreg_prop,star_par
     #Store nominal properties potentially overwritten in the fitting procedure
     fixed_args['grid_dic'] = deepcopy(theo_dic) 
     fixed_args['system_prop'] = deepcopy(system_prop) 
-    fixed_args['system_actreg_prop'] = deepcopy(system_actreg_prop)
+    fixed_args['system_ar_prop'] = deepcopy(system_ar_prop)
     
     #List of stellar properties potentially modified as model parameter
     stargrid_prop_nom = np.array(['veq','alpha_rot','beta_rot','c1_CB','c2_CB','c3_CB','cos_istar','f_GD','beta_GD','Tpole','A_R','ksi_R','A_T','ksi_T','eta_R','eta_T'])
-    if len(system_actreg_prop)>0:
+    if len(system_ar_prop)>0:
         stargrid_prop_spots_nom = np.array(['veq','alpha_rot','beta_rot'])
         stargrid_prop_faculae_nom = np.array(['veq','alpha_rot','beta_rot'])
     else:
@@ -152,8 +152,8 @@ def var_stellar_prop(fixed_args,theo_dic,system_prop,system_actreg_prop,star_par
         
         #Properties to update are stored in these lists
         fixed_args['var_stargrid_prop'] = []   
-        fixed_args['var_stargrid_prop_spots']=[]
-        fixed_args['var_stargrid_prop_faculae']=[]   
+        fixed_args['var_stargrid_prop_spots']=[]  
+        fixed_args['var_stargrid_prop_faculae']=[]  
         fixed_args['var_stargrid_I']=False   
         fixed_args['var_stargrid_bulk']=False    
         
@@ -461,7 +461,7 @@ def init_custom_DI_par(fixed_args,gen_dic,system_prop,star_params,params,RV_gues
         if key in star_params:params.add_many((key, star_params[key],   vary,    bd_min,bd_max,None))
 
     #Active region properties
-    if fixed_args['cond_transit_ar']:
+    if fixed_args['cond_studied_ar']:
         for key,vary,bd_min,bd_max in zip(['veq_spots','alpha_rot_spots','beta_rot_spots','c1_CB_spots','c2_CB_spots','c3_CB_spots','veq_faculae','alpha_rot_faculae','beta_rot_faculae','c1_CB_faculae','c2_CB_faculae','c3_CB_faculae'],
                                           [False,      False,            False,            False,         False,          False,       False,           False,            False,            False,         False,          False],
                                           [1.,         None,             None,             None,          None,           None,         1.,             None,             None,             None,           None,          None],
@@ -851,5 +851,5 @@ def use_C_coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
     c_function_wrapper = args['c_function_wrapper']
     c_function_wrapper.coadd_loc_gauss_prof_with_C(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec / sc_10,ncen_bins,Fsurf_grid_spec_shape0,gauss_grid)
     truegauss_grid = gauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins)) * sc_10
-    return truegauss_grid
 
+    return truegauss_grid

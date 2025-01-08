@@ -20,20 +20,20 @@ def return_spec_nord(inst):
     
     """     
     spec_nord = {
-        'SOPHIE_HE':39,
-        'SOPHIE_HR':39,
-        'CORALIE':69,           
-        'HARPN':69,
-        'HARPS':71,
-        'ESPRESSO':170,
-        'ESPRESSO_MR':85,
         'CARMENES_VIS':61,
         'CARMENES_VIS_CCF':61,
+        'CORALIE':69,         
+        'ESPRESSO':170,
+        'ESPRESSO_MR':85,
         'EXPRES':86,
-        'NIRPS_HA':71,
-        'NIRPS_HE':71,
+        'HARPN':69,
+        'HARPS':71,        
         'MIKE_Blue':37,
         'MIKE_Red':34,
+        'NIRPS_HA':71,
+        'NIRPS_HE':71,
+        'SOPHIE_HE':39,
+        'SOPHIE_HR':39,
     } 
     if inst not in spec_nord:stop('ERROR : define number of spectral orders in '+inst)
     return spec_nord[inst]
@@ -50,16 +50,19 @@ def return_SNR_orders(inst):
     Returns:
         TBD
     
-    """             
-    return {'HARPS':[49],
-            'HARPN':[46],
-            'ESPRESSO_MR':[39],
-            'ESPRESSO':[102,103],
-            'CARMENES_VIS':[40],
-            'NIRPS_HA':[57],
-            'NIRPS_HE':[57],        #H band, 1.63 mic, order not affected by tellurics thus stable for SNR measurement
-            'EXPRES':[14]           #562 nm  
-            }[inst]            
+    """       
+    SNR_orders = {
+        'CARMENES_VIS':[40],        
+        'ESPRESSO_MR':[39],
+        'ESPRESSO':[102,103], 
+        'EXPRES':[14],           #562 nm         
+        'HARPS':[49],
+        'HARPN':[46],
+        'NIRPS_HA':[57],
+        'NIRPS_HE':[57],        #H band, 1.63 mic, order not affected by tellurics thus stable for SNR measurement
+    }
+    if inst not in SNR_orders:stop('ERROR : define spectral orders for S/R in '+inst)
+    return SNR_orders[inst]
 
 def return_pix_size(): 
     r"""**Spectrograph sampling**
@@ -77,21 +80,54 @@ def return_pix_size():
     
     """             
     return {
-            
-        #Sophie HE mod: pix_size = 0.0275 A ~ 1.4 km/s at 5890 A 
-        'SOPHIE_HE':1.4,  
 
+        #CARMENES   
+        #    optical resolving power = 93400 -> deltav_instru = 3.2 km/s   
+        #    - 2.8 pixel / FWHM, so that pixel size = 1.1317 km/s             
+        'CARMENES_VIS':1.1317,
+        'CARMENES_VIS_CCF':1.1317,
+        #    near-infrared resolving power = 80400 -> deltav_instru = 3.72876 km/s   
+        #    - 2.3 pixel / FWHM, so that pixel size = 1.62 km/s   
+        'CARMENES_NIR':1.1317,
+            
         #CORALIE:
         #    ordre 10:  deltaV = 1.7240 km/s
         #    ordre 35:  deltaV = 1.7315 km/s
         #    ordre 60:  deltaV = 1.7326 km/s
         #    resolving power = 55000 -> deltav_instru = 5.45 km/s          
         'CORALIE':1.73,
+        
+        #ESPRESSO in HR mode
+        #    - pixel size = 0.5 km/s
+        # 0.01 A at 6000A
+        #    - resolving power = 140000 -> deltav_instru = 2.1km/s           
+        'ESPRESSO':0.5,
 
+        #ESPRESSO in MR mode
+        'ESPRESSO_MR':1.,
+
+        'EXPRES':0.5,
+
+        'GIANO':3.1280284,
+        
         #HARPS-N or HARPS: pix_size = 0.016 A ~ 0.8 km/s at 5890 A         
         #    - resolving power = 120000 -> deltav_instru = 2.6km/s         
         'HARPN':0.82,
-        'HARPS':0.82,
+        'HARPS':0.82,            
+
+        'IRD':2.08442,
+        
+        #MIKE
+        #    blue arm : pix_size ~= 0.02 A -> 1.43 km/s at 4190 A 
+        'MIKE_Blue':1.43,
+        #    red arm : pix_size ~= 0.05 A -> 2.10 km/s at 7130 A 
+        'MIKE_Red':2.10,
+        
+        'NIRPS_HA':0.93,
+        'NIRPS_HE':0.93,          
+        
+        #Sophie HE mod: pix_size = 0.0275 A ~ 1.4 km/s at 5890 A 
+        'SOPHIE_HE':1.4,  
         
         #STIS E230M
         #    - size varies in wavelength but is roughly constant in velocity:
@@ -108,40 +144,6 @@ def return_pix_size():
         # ie about 4.87 A 
         #      we take an average pix_size ~ 235 km/s       
         'STIS_G750L':235.,  
-        
-        #ESPRESSO in HR mode
-        #    - pixel size = 0.5 km/s
-        # 0.01 A at 6000A
-        #    - resolving power = 140000 -> deltav_instru = 2.1km/s           
-        'ESPRESSO':0.5,
-
-        #ESPRESSO in MR mode
-        'ESPRESSO_MR':1.,
-        
-        #CARMENES   
-        #    optical resolving power = 93400 -> deltav_instru = 3.2 km/s   
-        #    - 2.8 pixel / FWHM, so that pixel size = 1.1317 km/s             
-        'CARMENES_VIS':1.1317,
-        'CARMENES_VIS_CCF':1.1317,
-        #    near-infrared resolving power = 80400 -> deltav_instru = 3.72876 km/s   
-        #    - 2.3 pixel / FWHM, so that pixel size = 1.62 km/s   
-        'CARMENES_NIR':1.1317,
-        
-        'NIRPS_HA':0.93,
-        'NIRPS_HE':0.93,  
-        
-        'EXPRES':0.5,
-        
-        'IRD':2.08442,
-        
-        'GIANO':3.1280284,
-
-        #MIKE
-        #    blue arm : pix_size ~= 0.02 A -> 1.43 km/s at 4190 A 
-        'MIKE_Blue':1.43,
-        #    red arm : pix_size ~= 0.05 A -> 2.10 km/s at 7130 A 
-        'MIKE_Red':2.10,
-        
     }     
 
 
@@ -220,8 +222,7 @@ def def_st_prof_tab(inst,vis,isub,args):
     Returns:
         TBD
     
-    """
-    #Revert to deepcopy -> dict did not work as intended  
+    """  
     args_exp = deepcopy(args)
     if args['resamp']:suff='_HR'
     else:suff=''
@@ -248,28 +249,29 @@ def return_resolv(inst):
         inst_res (float) : Resolving power of the spectrograph.
     
     """
-    inst_res = {        
-        'SOPHIE_HR':75000.,  
-        'SOPHIE_HE':40000.,  
-        'CORALIE':55000.,
-        'HARPN':120000.,
-        'HARPS':120000.,
-        'STIS_E230M':30000.,     
-        'STIS_G750L':1280.,         
-        'ESPRESSO':140000.,
-        'ESPRESSO_MR':70000.,
+    inst_res = {
         'CARMENES_NIR':80400.,
         'CARMENES_VIS':94600.,
-        'NIRPS_HE':75000.,
-        'NIRPS_HA':88000.,
+        'CORALIE':55000.,
+        'ESPRESSO':140000.,
+        'ESPRESSO_MR':70000.,
         'EXPRES':137500.,
-        'NIRSPEC':25000.,
-        'IRD':70000.,
         'GIANO':50000.,
         'MIKE_Red':83000.,
         'MIKE_Blue':65000.,
-    }[inst]  
-    return inst_res
+        'HARPN':120000.,
+        'HARPS':120000.,        
+        'IRD':70000.,
+        'NIRPS_HE':75000.,
+        'NIRPS_HA':88000.,
+        'NIRSPEC':25000.,
+        'SOPHIE_HR':75000.,  
+        'SOPHIE_HE':40000.,  
+        'STIS_E230M':30000.,     
+        'STIS_G750L':1280.,         
+    }
+    if inst not in inst_res:stop('ERROR : define spectral resolving power for '+inst)
+    return inst_res[inst]
 
 def calc_FWHM_inst(inst,w_c):
     r"""**Spectral resolution**
