@@ -1570,58 +1570,8 @@ def joined_DiffProf(param,fixed_args):
             if not args['fit']:outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param) 
 
             #-----------------------------------------------------------
-            #Updating flux grid if stellar grid was updated
-            #TODO : test removal of this
-            if args['var_star_grid']:
-                args['Fsurf_grid_spec'] = theo_intr2loc(args['grid_dic'],args['system_prop'],args,args['ncen_bins'][inst][vis],args['grid_dic']['nsub_star'])     
-
             #Retrieve updated coordinates of planet- and active region-oculted regions or use imported values
             system_param_loc,coord_pl_ar,param_val = up_plocc_arocc_prop(inst,vis,args,param,args['studied_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],studied_ar=args['studied_ar'][inst][vis])
-            
-            #-----------------------------------------------------------
-            #Figuring out which cells of the stellar grid are never planet-occulted or within active regions
-            #-----------------------------------------------------------
-            
-            #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
-            #are never planet-occulted or within active regions over all the exposures (True = occulted or within active regions, False = quiet)
-            args['unquiet_star'] = np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-            # for isub,i_in in enumerate(args['idx_in_fit'][inst][vis]): 
-            #     #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
-            #     plocced_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-            #     for pl_loc in args['studied_pl'][inst][vis]:
-            #         if np.abs(coord_pl_ar[pl_loc]['ecl'][isub])!=1:
-            #             mini_pl_dic = {}
-            #             mini_pl_dic['x_orb_exp']=[coord_pl_ar[pl_loc]['st_pos'][0, isub], coord_pl_ar[pl_loc]['cen_pos'][0, isub], coord_pl_ar[pl_loc]['end_pos'][0, isub]]
-            #             mini_pl_dic['y_orb_exp']=[coord_pl_ar[pl_loc]['st_pos'][1, isub], coord_pl_ar[pl_loc]['cen_pos'][1, isub], coord_pl_ar[pl_loc]['end_pos'][1, isub]]
-            #             mini_pl_dic['RpRs']=args['system_prop']['achrom'][pl_loc][0]
-            #             if ('lambda_rad__pl'+pl_loc in args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
-            #             else:lamb_name = 'lambda_rad__pl'+pl_loc 
-            #             mini_pl_dic['lambda']=param_val[lamb_name]
-            #             pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'])
-            #             plocced_star_grid |= pl_plocced_star_grid
-
-            #     #Figure out which cells of the full stellar grid are spotted in at least one exposure
-            #     spotted_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-            #     for spot in args['transit_sp'][inst][vis]:
-            #         if np.sum(coord_pl_ar[spot]['is_visible'][:, isub])>0:
-            #             mini_spot_dic = {}
-            #             for par_spot in args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_ar[spot][par_spot][:, isub]
-            #             _, spot_spotted_star_grid = calc_actreged_tiles(mini_spot_dic,coord_pl_ar[spot]['ang_rad'], args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
-            #             spotted_star_grid |= spot_spotted_star_grid
-
-            #     #Figure out which cells of the full stellar grid are spotted in at least one exposure
-            #     faculaed_star_grid=np.zeros(args['grid_dic']['nsub_star'], dtype=bool)
-            #     for facula in args['transit_fa'][inst][vis]:
-            #         if np.sum(coord_pl_ar[facula]['is_visible'][:, isub])>0:
-            #             mini_facula_dic = {}
-            #             for par_facula in args['facula_coord_par']:mini_facula_dic[par_facula] = coord_pl_ar[facula][par_facula][:, isub]
-                        # _, facula_faculaed_star_grid = calc_actreged_tiles(mini_facula_dic,coord_pl_ar[facula]['ang_rad'], args['grid_dic']['x_st_sky'], args['grid_dic']['y_st_sky'], args['grid_dic']['z_st_sky'], args['grid_dic'], system_param_loc['star'])
-            #             faculaed_star_grid |= facula_faculaed_star_grid
-
-            #     #Update the global 2D quiet star grid
-            #     #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots and planets in one of the processed exposure
-            #     #      contributions from the other cells do not need to be calculated because they are removed when computing differential profiles
-            #     args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid | faculaed_star_grid)
 
             #-----------------------------------------------------------
             #Defining the base stellar profile
@@ -1651,7 +1601,7 @@ def joined_DiffProf(param,fixed_args):
                 #   with occulted cells that may be part of active regions 
                 # + the total deviation profile from active region-occulted regions, which is the difference between the quiet stellar emission and the active region emission  
                 #   cells occulted by planets do not contribute to this profile 
-                #    - occulted stellar cells (from planet and active regions) are automatically identified within sub_calc_plocc_actreg_prop() 
+                #    - occulted stellar cells (from planet and active regions) are automatically identified within sub_calc_plocc_ar_prop() 
                 surf_prop_dic,surf_prop_dic_ar,_ = sub_calc_plocc_ar_prop([args['chrom_mode']],args_exp,args['par_list'],args['studied_pl'][inst][vis],args['studied_ar'][inst][vis],system_param_loc,args['grid_dic'],args['system_prop'],param_val,coord_pl_ar,[isub],system_ar_prop_in=args['system_ar_prop'])
                 sp_line_model = base_DI_prof - surf_prop_dic[args['chrom_mode']]['line_prof'][:,0] - surf_prop_dic_ar[args['chrom_mode']]['line_prof'][:,0]
 

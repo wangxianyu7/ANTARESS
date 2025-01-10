@@ -847,9 +847,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     for key in ['','_spots','_faculae']:
         star_params['Peq'+key] = (2.*np.pi*star_params['Rstar_km'])/(star_params['veq'+key]*24*3600)
 
-    #Spot equatorial rotational period (s)
-    star_params['Peq_spots']=(2.*np.pi*star_params['Rstar_km'])/(star_params['veq_spots']*24*3600)
-
     #Facula equatorial rotation rate (rad/s)
     if 'veq_faculae' in star_params:star_params['om_eq_faculae']=star_params['veq_faculae']/star_params['Rstar_km']
     else:
@@ -1128,14 +1125,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     
             #Corresponding active region grid
             _,theo_dic['Ssub_Sstar_ar'][ar],theo_dic['x_st_sky_grid_ar'][ar], theo_dic['y_st_sky_grid_ar'][ar],_ = occ_region_grid(RarRs_max, theo_dic['nsub_Dar'][ar],planet=False)
-
-            if (actreg not in theo_dic['n_oversamp_actreg']):
-                if (theo_dic['n_oversamp_actreg'] != {}):theo_dic['n_oversamp_actreg'][actreg] = theo_dic['n_oversamp_actreg'][list(theo_dic['n_oversamp_actreg'].keys())[0]]
-                elif (theo_dic['n_oversamp'] != {}):theo_dic['n_oversamp_actreg'][actreg] = theo_dic['n_oversamp'][list(theo_dic['n_oversamp'].keys())[0]]
-                else:theo_dic['n_oversamp_actreg'][actreg] = 1.
-    
-            #Corresponding active region grid
-            _,theo_dic['Ssub_Sstar_ar'][actreg],theo_dic['x_st_sky_grid_ar'][actreg], theo_dic['y_st_sky_grid_ar'][actreg],_ = occ_region_grid(RspRs_max, theo_dic['nsub_Dar'][actreg],planet=False)
 
     #------------------------------------------------------------------------------
     #Generic path names
@@ -1740,12 +1729,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis][ar]['is_visible'] = np.zeros([3,n_in_visit],dtype=bool) 
                         for key in ['Tc_ar', 'ang_rad','lat_rad', 'fctrst']:coord_dic[inst][vis][ar][key] = ar_prop_nom[ar][key]  
 
-                #Initialization of unquiet star grid
-                if gen_dic['mock_data']:unquiet_star_grid = np.zeros(theo_dic['nsub_star'], dtype=bool)
 
                 #Pre-processing all exposures in visit
-                #    - this is necessary to define the 'unquiet_star_grid' for mock dataset
-                #      since it requires planet and active regions coordinates, we perform the coordinate calculations for both observational and mock data in this first loop
                 for isub_exp,iexp in enumerate(range(n_in_visit)):
 
                     #Artificial data            
@@ -1812,11 +1797,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                    #Stellar phase
                     coord_dic[inst][vis]['st_ph_st'][iexp],coord_dic[inst][vis]['cen_ph_st'][iexp],coord_dic[inst][vis]['end_ph_st'][iexp] = get_timeorbit(system_param['star']['Tcenter'],coord_dic[inst][vis]['bjd'][iexp], {'period':system_param['star']['Peq']}, coord_dic[inst][vis]['t_dur'][iexp])[0:3] 
                     
-                    #Mock data
-                    if gen_dic['mock_data']:
-                        n_osamp_exp_all_ar=1
-                        n_osamp_exp_all_pl=1
-                        dcoord_exp_in = {'x':{}, 'y':{}}
                     
                     #Orbital coordinates for each studied planet
                     for pl_loc in data_inst[vis]['studied_pl']:
@@ -1824,88 +1804,11 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis][pl_loc]['st_ph'][iexp],coord_dic[inst][vis][pl_loc]['cen_ph'][iexp],coord_dic[inst][vis][pl_loc]['end_ph'][iexp],coord_dic[inst][vis][pl_loc]['ph_dur'][iexp]=coord_expos(pl_loc,coord_dic,inst,vis,system_param['star'],
                                             system_param[pl_loc],coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic,data_dic['DI']['system_prop']['achrom'][pl_loc][0])                    
                         
-                        #Exposure oversampling
-                        if len(theo_dic['d_oversamp_pl'])>0:
-                            
-                            #Oriented distance covered along each dimension (in Rstar)
-                            for ikey,key in enumerate(['x','y']):dcoord_exp_in[key][pl_loc] = coord_dic[inst][vis][pl_loc]['end_pos'][ikey,iexp]-coord_dic[inst][vis][pl_loc]['st_pos'][ikey,iexp]
-
-                        #Mock data
-                        if gen_dic['mock_data']:
-    
-                            #Exposure oversampling
-                            if len(theo_dic['d_oversamp_pl'])>0:
-                                
-                                #Oriented distance covered along each dimension (in Rstar)
-                                for ikey,key in enumerate(['x','y']):dcoord_exp_in[key][pl_loc] = coord_dic[inst][vis][pl_loc]['end_pos'][ikey,iexp]-coord_dic[inst][vis][pl_loc]['st_pos'][ikey,iexp]
-    
-                                #Number of oversampling points for current exposure  
-                                #    - for each exposure we take the maximum oversampling all planets considered 
-                                if (pl_loc in theo_dic['d_oversamp_pl']):
-                                    d_exp_in = np.sqrt(dcoord_exp_in['x'][pl_loc]**2 + dcoord_exp_in['y'][pl_loc]**2)
-                                    n_osamp_exp_all_pl=np.maximum(n_osamp_exp_all_pl,npint(np.round(d_exp_in/theo_dic['d_oversamp_pl'][pl_loc]))+1)
     
                     #Surface coordinates for each studied active region  
                     for ar in data_inst[vis]['studied_ar']:
                         ar_prop_exp = coord_expos_ar(ar,coord_dic[inst][vis]['bjd'][iexp],ar_prop_nom,system_param['star'],coord_dic[inst][vis]['t_dur'][iexp],gen_dic['ar_coord_par'])                           
                         for key in ar_prop_exp:coord_dic[inst][vis][ar][key][:, iexp] = [ar_prop_exp[key][0],ar_prop_exp[key][1],ar_prop_exp[key][2]]  
-
-                        #Mock data    
-                        if gen_dic['mock_data']:
-                            
-                            #Exposure oversampling
-                            if len(theo_dic['n_oversamp_ar'])>0:
-    
-                                #Oriented distance covered along each dimension (in Rstar)
-                                for key in ['x','y']:dcoord_exp_in[key][ar] = coord_dic[inst][vis][ar][key+'_sky_exp'][2,iexp] - coord_dic[inst][vis][ar][key+'_sky_exp'][0,iexp]
-    
-                                #Check if oversampling is turned on for this active region and force all active regions to have same oversampling rate
-                                if (ar in theo_dic['n_oversamp_ar']):
-                                    n_osamp_exp_all_ar = np.maximum(n_osamp_exp_all_ar, theo_dic['n_oversamp_ar'][ar])
-
-                        #Unquiet stellar grid for mock data    
-                        if gen_dic['mock_data']:
-    
-                            #Enforcing a common oversampling factor to the active regions and planets
-                            n_osamp_exp_all_total = np.maximum(n_osamp_exp_all_pl, n_osamp_exp_all_ar)
-    
-                            #Figure out which cells are planet-occulted
-                            for pl_loc in data_inst[vis]['studied_pl']:
-                                if np.abs(coord_dic[inst][vis][pl_loc]['ecl'][iexp])!=1:
-                                    mini_pl_dic = {}
-                                    
-                                    #No oversampling
-                                    if n_osamp_exp_all_total==1:
-                                        for ikey,key in enumerate(['x','y']):mini_pl_dic[key+'_orb_exp'] = [coord_dic[inst][vis][pl_loc]['cen_pos'][ikey,iexp]]
-                        
-                                    #Theoretical properties from regions occulted by each planet, averaged over full exposure duration  
-                                    #    - only if oversampling is effective for this exposure
-                                    else:
-                                        for ikey,key in enumerate(['x','y']):mini_pl_dic[key+'_orb_exp'] = coord_dic[inst][vis][pl_loc]['st_pos'][ikey,iexp]+np.arange(n_osamp_exp_all_total)*dcoord_exp_in[key][pl_loc]/(n_osamp_exp_all_total-1.)  
-                                    mini_pl_dic['RpRs']=data_dic['DI']['system_prop']['achrom'][pl_loc][0]
-                                    mini_pl_dic['lambda']=system_param[pl_loc]['lambda_rad']
-                                    plocced_star_grid |= calc_plocced_tiles(mini_pl_dic, theo_dic['x_st_sky'], theo_dic['y_st_sky'])
-
-                            #Figure out which cells are covered by active regions
-                            for ar in data_inst[vis]['studied_ar']:
-                                if np.sum(coord_dic[inst][vis][ar]['is_visible'][:, iexp])>0:
-                                    mini_ar_dic={}
-                                    
-                                    #No oversampling
-                                    if n_osamp_exp_all_total==1:
-                                        for key in ['x_sky_exp','y_sky_exp','cos_lat_exp','sin_lat_exp','cos_long_exp','sin_long_exp']:mini_ar_dic[key] = [coord_dic[inst][vis][ar][key][1,iexp]]
-                        
-                                    #If we want to oversample
-                                    else:
-                                        for key in ['x','y']:mini_ar_dic[key+'_sky_exp'] = coord_dic[inst][vis][ar][key+'_sky_exp'][0,iexp] + np.arange(n_osamp_exp_all_total)*dcoord_exp_in[key][ar]/(n_osamp_exp_all_total-1.)            
-                                        for key in ['cos_lat_exp','sin_lat_exp']:mini_ar_dic[key] = np.repeat(coord_dic[inst][vis][ar][key][1,iexp], n_osamp_exp_all_total)
-                                        mini_ar_dic['cos_long_exp'] = np.cos(np.arcsin(mini_ar_dic['x_sky_exp']/ mini_ar_dic['cos_lat_exp'][0]))
-                                        mini_ar_dic['sin_long_exp'] = mini_ar_dic['x_sky_exp']/ mini_ar_dic['cos_lat_exp'][0]
-    
-                                    ar_star_grid |= calc_ar_tiles(mini_ar_dic, ar_prop_nom[ar]['ang_rad'], theo_dic['x_st_sky'], theo_dic['y_st_sky'], theo_dic['z_st_sky'], theo_dic, system_param['star'], use_grid_dic=True)[1]
-    
-                            #Update the global 2D quiet star grid
-                            unquiet_star_grid |= (plocced_star_grid | ar_star_grid)
 
                 #--------------------------------------------------------------------------------------------------
                 #Processing all exposures in visit
@@ -1973,8 +1876,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 'vis':vis, 
                                 'fit':False,
                                 'system_param':system_param,
-                                # 'unquiet_star':unquiet_star_grid,
-                               'unquiet_star':None,
                                'ar_coord_par':gen_dic['ar_coord_par'],
                                'rout_mode':'Intr_prop',
                                 })

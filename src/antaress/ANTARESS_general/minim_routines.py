@@ -284,19 +284,17 @@ def ln_prior_func_NS(cube,fixed_args):
             parprior=fixed_args['varpar_priors'][parname]
     
             #Uniform prior
-            if parprior['mod']=='uf':
-                x[idx] = cube_prior * (parprior['high'] - parprior['low']) + parprior['low']
+            if parprior['mod']=='uf':x[idx] = cube_prior * (parprior['high'] - parprior['low']) + parprior['low']
         
             #Gaussian prior   
-            elif parprior['mod']=='gauss':
-                x[idx] = stats.norm.ppf(cube_prior, parprior['val'], parprior['s_val'])
+            elif parprior['mod']=='gauss':x[idx] = stats.norm.ppf(cube_prior, parprior['val'], parprior['s_val'])
     
             # Gaussian prior with different halves
             elif parprior['mod'] == 'dgauss':
                 # Map to the left half
-                if cube_prior < parprior['val']:x[idx] = stats.norm.ppf(cube_prior, parprior['val'], parprior['low'])
+                if cube_prior < 0.5:x[idx] = stats.norm.ppf(cube_prior, loc=parprior['val'], scale=parprior['low'])
                 # Map to the right half
-                else:x[idx] = stats.norm.ppf(cube_prior, parprior['val'], parprior['high'])
+                else:x[idx] = stats.norm.ppf(cube_prior, loc=parprior['val'], scale=parprior['high'])
 
             #Undefined prior
             else:
@@ -381,7 +379,7 @@ def sub_ln_lkhood_func(p_step,fixed_args):
     # + the model, in which case y_val is set to the data and s_val ; cov_val to its variance ; covariance)
     # + a 'chi' array defined as the individual elements of 'chi2_step' below, in which case y_val is set to 0 and s_val to 1 (use_cov is set to False so that we enter the 'variance' condition below)
     #   so that 'res' below equals 'y_step' which is 'chi', and 'chi2_step' is the sum of the 'chi' values squared
-    y_step,outputs = fixed_args['fit_func'](p_step_all, fixed_args['x_val'],args=fixed_args)
+    y_step,outputs = fixed_args['fit_func'](p_step, fixed_args['x_val'],args=fixed_args)
 
     #Fitted pixels
     idx_fit = fixed_args['idx_fit']
@@ -406,7 +404,7 @@ def sub_ln_lkhood_func(p_step,fixed_args):
     else:
     
         #Modification of error bars on fitted values in case of jitter used as free parameter
-        if (fixed_args['jitter']):sjitt_val=np.sqrt(fixed_args['cov_val'][0,idx_fit] + p_step_all['jitter']**2.)
+        if (fixed_args['jitter']):sjitt_val=np.sqrt(fixed_args['cov_val'][0,idx_fit] + p_step['jitter']**2.)
         else:sjitt_val=np.sqrt(fixed_args['cov_val'][0,idx_fit])
             
         #Chi2
@@ -496,7 +494,7 @@ def ln_lkhood_func_ns(p_step,fixed_args):
     blob = {}
     if not fixed_args['step_chi2']:blob['step_chi2']=None
     else:blob['step_chi2']=ln_lkhood[1]
-    blob['step_outputs']=ln_lkhood[2]
+    blob['outputs']=ln_lkhood[2]
 
     return ln_lkhood[0], blob
 
@@ -1216,8 +1214,8 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
             walker_chains = np.empty([fit_dic['nwalkers'],0,fit_dic['merit']['n_free'] ],dtype=float)
             if fixed_args['step_output']:step_outputs = np.empty([0,fit_dic['nwalkers']],dtype=object)
             else:step_outputs=None
-            if fixed_args['step_chi2']:step_chi2 = np.empty([0,fit_dic['nwalkers']],dtype=object)
-            else:step_chi2=None
+            if fixed_args['step_chi2']:fixed_args['chi2_storage'] = np.empty([0,fit_dic['nwalkers']],dtype=object)
+            else:fixed_args['chi2_storage']=None
             fit_dic['nsteps'] = 0
             fit_dic['nburn'] = 0
             for mcmc_path,nburn in zip(fit_dic['reuse']['paths'],fit_dic['reuse']['nburn']):

@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 import numpy as np
 from copy import deepcopy
 from antaress.ANTARESS_general.utils import stop
-    
+
 def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     r"""**Default plot settings.**
     
@@ -478,7 +480,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################    
     #%% Weighing master
     ################################################################################################################  
-    if gen_dic['specINtype'] and (plot_dic['DImast']!=''):
+    if (plot_dic['DImast']!='') and gen_dic['specINtype']:
         key_plot = 'DImast'
         
         #%%% Generic settings
@@ -493,7 +495,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         ################################################################################################################    
         #%%% Instrumental calibration estimates
         ################################################################################################################ 
-        if (plot_dic['gcal_all']!='') or (plot_dic['gcal_ord']!='') or (plot_dic['sdet_ord']!=''):
+        if (plot_dic['gcal_all']!='') or (plot_dic['gcal_ord']!='') or (plot_dic['noises_ord']!=''):
             key_plot = 'gcal'
             
             #%%%% Generic settings
@@ -524,7 +526,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings[key_plot]['y_range_ord'] = None          
             
            
-
+    
         ##################################################################################################
         #%%% Tellurics
         ##################################################################################################        
@@ -534,10 +536,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         ################################################################################################################  
         if (plot_dic['tell_CCF']!=''):
             key_plot = 'tell_CCF'
-
+    
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
-
+    
             #%%%% Plot axis boundaries
             plot_settings[key_plot]['margins']=[0.15,0.15,0.85,0.88]  
     
@@ -550,10 +552,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             
             #%%%%% Plot dispersion  
             plot_settings[key_plot]['print_disp']=None 
-
-
-
-
+    
+    
+    
+    
         ################################################################################################################    
         #%%%% Telluric properties
         ################################################################################################################   
@@ -562,15 +564,15 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
-
+    
             #%%%%% Molecules to plot
             plot_settings[key_plot]['tell_species'] = gen_dic['tell_species']
       
-
-
-
-
-
+    
+    
+    
+    
+    
         ##################################################################################################
         #%%% Flux balance corrections
         ##################################################################################################        
@@ -583,49 +585,40 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         ################################################################################################################
         if (plot_dic['glob_mast']!=''):
             key_plot = 'glob_mast'
-
+    
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)        
-
+    
             #%%%%% Plot global master over all visits    
             plot_settings[key_plot]['glob_mast_all']=None 
-
+    
             #%%%%% Plot master of each visit    
             plot_settings[key_plot]['glob_mast_vis']=True 
-
+    
             
-
-
+    
+    
         ################################################################################################################    
         #%%%% Global flux balance (exposures)
         #    - relative to the mean level of each profile
         ################################################################################################################
         if (plot_dic['Fbal_corr']!=''):   
             key_plot = 'Fbal_corr'
-
+    
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
-
-            #%%%%% Plot order indexes
-            plot_settings[key_plot]['plot_idx_ord'] = True
-            
-            #%%%%% Indexes of exposures and bins to be plotted 
-            plot_settings[key_plot]['ibin_plot'] = {}
-              
-            #%%%%% Overplot all exposures or offset them
-            plot_settings[key_plot]['gap_exp']=0.        
-
+    
             #%%%%% Strip range used for correction
             plot_settings[key_plot]['strip_corr'] = False
-
+    
             #%%%%% Model spectral resolution 
             #    - in dlnw = dw/w, if x_range is defined
             plot_settings[key_plot]['dlnw_plot'] = 0.002
+        
     
-
+        
     
-
-
+    
             ################################################################################################################    
             #%%%% Global DRS flux balance (exposures)
             ################################################################################################################
@@ -634,52 +627,43 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
                 #%%%%% Generic settings
                 plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
+            
+      
         
-  
+      
+        ################################################################################################################    
+        #%%%% Global flux balance (visits)
+        #    - relative to the mean level of each profile
+        ################################################################################################################
+        if (plot_dic['Fbal_corr_vis']!=''):   
+            key_plot = 'Fbal_corr_vis'
     
-  
-    ################################################################################################################    
-    #%%%% Global flux balance (visits)
-    #    - relative to the mean level of each profile
-    ################################################################################################################
-    if (plot_dic['Fbal_corr_vis']!=''):   
-        key_plot = 'Fbal_corr_vis'
+            #%%%%% Generic settings
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
 
-        #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
-
-        #%%%%% Plot order indexes
-        plot_settings[key_plot]['plot_idx_ord'] = True
+            #%%%%% Strip range used for correction
+            plot_settings[key_plot]['strip_corr'] = False
+    
+            #%%%%% Model spectral resolution 
+            #    - in dlnw = dw/w, if x_range is defined
+            plot_settings[key_plot]['dlnw_plot'] = 0.002   
+    
         
-        #%%%%% Indexes of bins to be plotted 
-        plot_settings[key_plot]['ibin_plot'] = {}
-          
-        #%%%%% Overplot all profiles or offset them
-        plot_settings[key_plot]['gap_exp']=0.        
-
-        #%%%%% Strip range used for correction
-        plot_settings[key_plot]['strip_corr'] = False
-
-        #%%%%% Model spectral resolution 
-        #    - in dlnw = dw/w, if x_range is defined
-        plot_settings[key_plot]['dlnw_plot'] = 0.002   
-
+        
+        
+        
     
-    
-    
-    
-
         ################################################################################################################ 
         #%%%% Intra-order flux balance
         ################################################################################################################ 
         if (plot_dic['Fbal_corr_ord']!=''):
             key_plot = 'Fbal_corr_ord' 
-
+    
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)          
-
-
-
+    
+    
+    
             
             
             
@@ -691,53 +675,53 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         ################################################################################################################ 
         if (plot_dic['Ftemp_corr']!=''):
             key_plot = 'Ftemp_corr'
-
+    
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
             
-
-
-
-
+    
+    
+    
+    
                      
-
-
-
+    
+    
+    
         ################################################################################################################ 
         #%%% Cosmics correction
         ################################################################################################################ 
         if (plot_dic['cosm_corr']!=''):
             key_plot = 'cosm_corr'
-
+    
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
-
+    
             #%%%% Cosmic marker
             plot_settings[key_plot]['markcosm'] = True  
             plot_settings[key_plot]['ncosm'] = True  
-
+    
             #%%%% Plot orders with detected cosmics only  
-            plot_settings[key_plot]['detcosm'] = True
-
+            plot_settings[key_plot]['det_cosm'] = True
+    
             #%%%% Plot number of cosmics per order
             plot_settings[key_plot]['cosm_vs_ord']=True         
-
-
-
-
-
-
-
-
-
-
-
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
         ################################################################################################################ 
         #%%% Persistent peaks master
         ################################################################################################################ 
         if (plot_dic['permpeak_corr']!=''):
             key_plot = 'permpeak_corr'
-
+    
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)          
             
@@ -749,16 +733,16 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             
             
             
-
-
-
-
+    
+    
+    
+    
         ################################################################################################################ 
         #%%% Fringing correction
         ################################################################################################################ 
         if (plot_dic['fring_corr']!=''):
             key_plot = 'fring_corr'
-
+    
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
         
@@ -839,7 +823,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     #    - before and after spectral corrections 
     #    - in their input rest frame (typically heliocentric)
     ##################################################################################################
-    if gen_dic['specINtype'] and (plot_dic['sp_raw']!=''):
+    if gen_dic['specINtype'] and (plot_dic['flux_sp']!=''):
         key_plot = 'DI_prof_corr' #key must be different from 'DI_prof' to differentiate from original profile plot
 
         #%%%%% Generic settings
@@ -847,7 +831,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         #%%%%% Plot spectra at two chosen steps of the correction process
         plot_settings[key_plot]['plot_pre']='raw'
-        plot_settings[key_plot]['plot_postsub_plot_DI_transDI']='all'
+        plot_settings[key_plot]['plot_post']='all'
 
         #%%%%% Plot binned data and errors
         plot_settings[key_plot]['plot_bin'] = True
@@ -872,7 +856,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%%% Plot continuum used for persistent peak masking
         plot_settings[key_plot]['plot_contmax']=True 
 
-
+        #%%%%% Plot order indexes
+        plot_settings[key_plot]['plot_idx_ord'] = True
 
 
 
@@ -907,7 +892,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['gap_exp'] = 0.03
         
         #%%%%% Path to correction
-        #%%%%%     - leave empty to use last result from 'wig_vis_fit'
+        #          - leave empty to use last result from 'wig_vis_fit'
         plot_settings[key_plot]['wig_path_corr'] = {}  
 
         #%%%%% Plot mean value over exposures
@@ -916,6 +901,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%%% Vertical range for dispersion plot
         plot_settings[key_plot]['y_range_disp'] = {}
 
+        #%%%%% Plot order indexes
+        plot_settings[key_plot]['plot_idx_ord'] = True
 
 
 
@@ -941,7 +928,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             ##############################################################################
             #%%%%% Profile and its fit
             #    - ccfs are continuum-normalized for the purpose of the plot
-            if (key_plot=='DI_prof'): 
+            if (key_plot=='DI_prof'):  
                 pass
             
             ##############################################################################
@@ -1414,6 +1401,12 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%% Print and plot mean value and dispersion 
             plot_settings[key_plot]['disp_mod']='out' 
             
+            #%%%% General path to the best-fit model to property series
+            plot_settings[key_plot]['DIProp_path']=None            
+
+            #%%%% Plot high-resolution model from property fit
+            plot_settings[key_plot]['theo_HR_prop'] = False
+            
             #%%%% Save dispersion values for analysis in external routine
             plot_settings[key_plot]['save_disp']=False
             
@@ -1500,7 +1493,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             if (plot_prop=='RV_lobe'):pass
 
             #%%%% True contrast
-            if (plot_prop=='true_ctrst'):pass        
+            if (plot_prop=='true_ctrst'):pass
+    
+
     
     
         
@@ -1553,8 +1548,6 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Plot in orbital phase (True) or BJD (False)
         plot_settings[key_plot]['plot_phase']=True
 
-        #%%%% Exposure ids
-        plot_settings[key_plot]['plot_expid']=False
 
 
 
@@ -1650,14 +1643,13 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Corrected profiles 
     ################################################################################################################  
-    if gen_dic['diff_data_corr'] and (plot_dic['map_Diff_corr_actreg']!=''):                                        
-        key_plot = 'map_Diff_corr_actreg'
+    if gen_dic['diff_data_corr'] and (plot_dic['map_Diff_corr_ar']!=''):                                        
+        key_plot = 'map_Diff_corr_ar'
 
         
         #%%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
         # plot_settings[key_plot]['v_range_all']={'ESPRESSO':{'mock_vis':[-0.00001,0.00309]}}  
-
 
 
 
@@ -1797,7 +1789,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
 
-            #%%%%% Mode to retrieve
+            #%%%%% Model to retrieve
             plot_settings[key_plot]['mode_loc_prof_est'] = 'glob_mod'
 
             ##############################################################################
@@ -1818,7 +1810,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
                 plot_settings[key_plot]['cont_only']=True
                 plot_settings[key_plot]['plot_line_model'] = False
                 
-
+        
 
  
     ################################################################################################################ 
@@ -1886,10 +1878,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             ##############################################################################
             #%%%%% Residuals profiles
-            if (key_plot=='Intr_prof_res'):
-                if not ((gen_dic['fit_Intr']) or (gen_dic['fit_IntrProf'])): 
-                    if (not gen_dic['fit_Intr']):stop('Activate "gen_dic["fit_Intr"]" to plot "plot_dic["Intr_prof_res"]"')     
-                    if (not gen_dic['fit_IntrProf']):stop('Activate "gen_dic["fit_IntrProf"]" to plot "plot_dic["Intr_prof_res"]"')     
+            if (key_plot=='Intr_prof_res'):pass
+  
                    
    
 
@@ -2015,6 +2005,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%% Choose property to plot
             plot_settings[key_plot]['plot_prop_list']=['rv']
             
+            #%%%% Fit mode to retrieve
+            #    - 'MCMC' or 'NS'
+            plot_settings[key_plot]['fit_mode'] = 'MCMC'            
+            
             #%%%% Default MCMC settings
             plot_settings[key_plot]['nwalkers'] = 50
             plot_settings[key_plot]['nsteps'] = 1000
@@ -2085,12 +2079,16 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%% Print and plot mean value and dispersion 
             plot_settings[key_plot]['disp_mod']='all'  
 
+            #%%%% Fit mode to retrieve
+            #    - 'MCMC' or 'NS'
+            plot_settings[key_plot]['fit_mode'] = 'MCMC'  
+
             #%%%% General path to the best-fit model to property series
             plot_settings[key_plot]['IntrProp_path']=None
                     
             #%%%% General path to the best-fit model to profile series
             plot_settings[key_plot]['IntrProf_path']=None
-                
+            
             #%%%% Default MCMC settings
             plot_settings[key_plot]['nwalkers'] = 50
             plot_settings[key_plot]['nsteps'] = 1000
@@ -2129,7 +2127,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
                 plot_settings[key_plot]['calc_sampMCMC_theo_HR_nom']=''   
                 
                 #%%%%% Predict local RVs measurements from nominal model with errors, and SNR of RMR signal
-                plot_settings[key_plot]['predic']={}
+                plot_settings[key_plot]['predic']={}   
                 
             #%%%% RV residual plot 
             if (plot_prop=='rv_res' ):
@@ -2192,6 +2190,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         #%%%% Choose bin dimension for intrinsic profiles
         plot_settings[key_plot]['dim_plot_intr']='r_proj' 
+ 
 
 
 
@@ -2241,14 +2240,13 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
 
         #%%%% Default planets to plot
-        #    - set to transiting ones if undefined
         plot_settings[key_plot]['pl_to_plot'] = gen_dic['def_pl']
-
-        # if gen_dic['star_name']=='TRAPPIST1':
-        #     plot_settings[key_plot]['pl_to_plot']=gen_dic['kepl_pl']
 
         #%%%% Number of points in the planet orbits
         plot_settings[key_plot]['npts_orbits'] = np.repeat(10000,len(plot_settings[key_plot]['pl_to_plot'])) 
+
+        #%%%% Number of points in the active region orbits
+        plot_settings[key_plot]['npts_orbits_ar'] = 10000
 
         #%%%% List of times at which to generate the plot
         plot_settings[key_plot]['t_BJD'] = None
@@ -2257,10 +2255,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #    - this is only used if we plot multiple exposures.        
         plot_settings[key_plot]['GIF_generation'] = False
 
-        #Defining a boolean to decide whether we make a GIF
-        #    - this is only used if we plot multiple exposures.
-        plot_settings[key_plot]['GIF_generation']=True & False
-
+        #%%%% Position of planets along their orbit
         plot_settings[key_plot]['xorp_pl'] = np.tile([[-0.5],[0.5]],len(plot_settings[key_plot]['pl_to_plot'])).T
         plot_settings[key_plot]['yorb_pl'] = np.repeat(0.5,len(plot_settings[key_plot]['pl_to_plot']))  
 
@@ -2278,7 +2273,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Active region trajectory color
         plot_settings[key_plot]['plot_ar_orb'] = True
         plot_settings[key_plot]['col_orb_ar'] = 'greenyellow'
-
+                
         #%%%% Number of orbits drawn randomly
         plot_settings[key_plot]['norb']=np.repeat(100,len(plot_settings[key_plot]['pl_to_plot'])) 
 
@@ -2301,7 +2296,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['st_grid_overlay']=False
         plot_settings[key_plot]['pl_grid_overlay']=False
         plot_settings[key_plot]['ar_grid_overlay']=False
-
+        
         #%%%% Number of cells on a diameter of the star, planets, and active regions (must be odd)
         plot_settings[key_plot]['n_stcell']=theo_dic['nsub_Dstar']
         plot_settings[key_plot]['n_plcell']={}
@@ -2320,7 +2315,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #%%%% Position of oriented arrow along stellar equator
         plot_settings[key_plot]['xst_dir'] = [-0.1,0.1]  
         plot_settings[key_plot]['yst_dir'] = 0.
-        
+    
         #%%%% Plot the normal vector to the orbital planes of all planets
         plot_settings[key_plot]['plot_norm_orb_planes'] = True
 
@@ -2335,19 +2330,19 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%% Plot stellar poles
         plot_settings[key_plot]['plot_poles']=True  
-        plot_settings[key_plot]['plot_hidden_pole']= False  
+        plot_settings[key_plot]['plot_hidden_pole']= False 
 
         #%%%% Source for active regions
         #    - active region properties can come from three sources for this plot:
         # + the mock dataset (mock_ar_prop) - from mock_dic
         # + fitted active region properties (fit_ar_prop) - from glob_fit_dic
         # + custom user-specified properties (custom_ar_prop) - parameterized below
-        # + If none of these are activated, spots will not be plotted.
+        # + If none of these are activated, active regions will not be plotted.
         plot_settings[key_plot]['mock_ar_prop'] = False
         plot_settings[key_plot]['fit_ar_prop'] = False
         plot_settings[key_plot]['custom_ar_prop'] = {}
-        
-        #%%%% Name of the file storing the best-fit results we want to plot
+
+        #%%%% Path to the file storing the best-fit results to plot
         plot_settings[key_plot]['fit_results_file'] = ''
     
         #%%%% Overlay to the RV-colored disk a shade controlled by flux
@@ -2371,7 +2366,6 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%% RV range
         plot_settings[key_plot]['rv_range'] = None
-
         if gen_dic['star_name']=='TOI3884': 
             
             # plot_settings[key_plot]['t_BJD'] = {'inst':'MIKE_Red', 'vis':'mockvis', 't':  2459556.51669+np.linspace(-0.05,0.05,6)}
@@ -2704,7 +2698,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################   
     #%%%% 1D converted spectra
     ################################################################################################################   
-    if (any('spec' in s for s in data_dic['Atm']['type'].values())) and ((plot_dic['sp_Atm_1D']!='') or (plot_dic['sp_Atm_1D_res']!='')):
+    if ((plot_dic['sp_Atm_1D']!='') or (plot_dic['sp_Atm_1D_res']!='')) and (any('spec' in s for s in data_dic['Atm']['type'].values())):
         for key_plot in ['sp_Atm_1D','sp_Atm_1D_res']:
             if plot_dic[key_plot]!='':
 
