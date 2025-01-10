@@ -2381,12 +2381,12 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         # + the mock dataset (mock_ar_prop) - from mock_dic
         # + fitted active region properties (fit_ar_prop) - from glob_fit_dic
         # + custom user-specified properties (custom_ar_prop) - parameterized below
-        # + If none of these are activated, spots will not be plotted.
+        # + If none of these are activated, active regions will not be plotted.
         plot_settings[key_plot]['mock_ar_prop'] = False
         plot_settings[key_plot]['fit_ar_prop'] = False
         plot_settings[key_plot]['custom_ar_prop'] = {}
 
-        #%%%% Path to the file storing the best-fit spot results to plot
+        #%%%% Path to the file storing the best-fit results to plot
         plot_settings[key_plot]['fit_results_file'] = ''
     
         #%%%% Overlay to the RV-colored disk a shade controlled by flux

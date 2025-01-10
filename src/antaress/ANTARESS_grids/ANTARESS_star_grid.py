@@ -258,7 +258,7 @@ def get_LD_coeff(transit_prop,iband):
     Store input limb-darkening coefficients in common structure [LD_u1,LD_u2,LD_u3,LD_u4].
 
     Args:
-        transit_prop (dict) : dictionary containing the planet/spot limb-darkening properties.
+        transit_prop (dict) : dictionary containing the planet/active region limb-darkening properties.
         iband (int) : index of the band considered.
 
     Returns:
@@ -445,7 +445,7 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params,var
     """ 
  
     #Initializing velocity grid
-    #    - if spots are accounted for, the surface rv properties will be stored as cell-dependent grids to allow distinguishing between quiet and spotted cells
+    #    - if active regions are accounted for, the surface rv properties will be stored as cell-dependent grids to allow distinguishing between quiet and active cells
     for key in ['veq','alpha_rot','beta_rot']:grid_dic[key] = star_params[key]    
      
     #Updating bulk stellar grid
@@ -548,13 +548,6 @@ def up_model_star(args,param_in):
             star_params[par_ar] = param[par_ar]
             if par=='veq':star_params['Peq_'+ar] = (2*np.pi*star_params['Rstar_km'])/(param['veq_'+ar]*24*3600) 
             elif par=='Peq':star_params['veq_'+ar] = (2*np.pi*star_params['Rstar_km'])/(param['Peq_'+ar]*24*3600)        
-
-    #Updating facula properties
-    for par in args['var_stargrid_prop_faculae']:
-        par_facula = par+'_faculae'
-        star_params[par_facula] = param[par_facula]
-        if par=='veq':star_params['Peq_faculae'] = (2*np.pi*star_params['Rstar_km'])/(param['veq_faculae']*24*3600) 
-        elif par=='Peq':star_params['veq_faculae'] = (2*np.pi*star_params['Rstar_km'])/(param['Peq_faculae']*24*3600)
 
     #Updating stellar properties derived from main properties
     if 'f_GD' in args['var_stargrid_prop']:star_params['RpoleReq']=1.-star_params['f_GD']

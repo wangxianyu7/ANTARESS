@@ -45,7 +45,7 @@ def calc_plocc_ar_prop(system_param,gen_dic,theo_dic,coord_dic,inst,vis,data_dic
         param = deepcopy(system_param['star'])
         param['use_ar']=cond_ar
         args={'rout_mode':'Intr_prop'}
-        if cond_ar:args = {'ar_coord_par':gen_dic['ar_coord_par']}
+        if cond_ar:args['ar_coord_par'] = gen_dic['ar_coord_par']
         
         #Theoretical properties of planet occulted-regions
         #    - calculated for the nominal and broadband planet properties 
@@ -302,7 +302,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
         #Disk-integrated stellar flux
         if Ftot_star:
             surf_prop_dic_pl[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
-            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
+            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.ones([system_prop[subkey_chrom]['nw'],n_exp]) 
             if cond_ar:
                 surf_prop_dic_ar[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
 
@@ -600,7 +600,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                 #------------------------------------------------------------
                 #Active regions
                 #    - calculated only for differential profiles
-                if cond_ar and (args['rout_mode']=='DiffProf'):
+                if cond_ar and (args['rout_mode']!='IntrProf'):
                     cond_occ_ar = False
                     
                     #Need to make a new dictionary that contains the active region properties for this oversampled exposure
@@ -638,10 +638,10 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                             #Going over the bands in each chromatic mode
                             for iband in range(system_ar_prop[subkey_chrom]['nw']):
                                 Focc_star_ar[subkey_chrom][iband], cond_occ_ar = calc_ar_region_prop(line_occ_HP[subkey_chrom][iband], cond_occ_ar, ar_prop_oversamp, iband, system_prop[subkey_chrom], 
-                                                                system_ar_prop[subkey_chrom], par_star, ar_proc[subkey_chrom][iband],ar,theo_dic['Ssub_Sstar_ar'][ar], 
+                                                                system_ar_prop[subkey_chrom], par_star, ar_proc,ar,theo_dic['Ssub_Sstar_ar'][ar], 
                                                                 theo_dic['Ssub_Sstar'], theo_dic['Istar_norm_'+subkey_chrom], sum_prop_dic[subkey_chrom][ar], coord_reg_dic[subkey_chrom][ar],
                                                                 range_dic[subkey_chrom][ar], Focc_star_ar[subkey_chrom][iband], par_list, range_par_list, args, cb_band_ar_dic[subkey_chrom][iband])
-    
+
                                 #Cumulate line profile from active region cells
                                 #    - this is a deviation profile, corresponding to Freg(quiet) - Freg(ar) over 
                                 #    - in high-precision mode there is a single subkey_chrom and achromatic band, but several active regions may have been processed
@@ -660,7 +660,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
             #    - undefined values remain set to nan, and are otherwise normalized by the flux from the planet-occulted region
             #    - we use a single Itot as condition that the planet occulted the star
             calc_mean_occ_region_prop(studied_pl_exp,surf_prop_dic_pl,n_osamp_exp_eff_pl,sum_prop_dic,key_chrom,par_list,isub_exp,out_ranges,range_par_list,range_dic)     
-            if cond_ar and (args['rout_mode']=='DiffProf'):               
+            if cond_ar and (args['rout_mode']!='IntrProf'):               
                 calc_mean_occ_region_prop(ar_in_exp,surf_prop_dic_ar,n_osamp_exp_eff_ar,sum_prop_dic,key_chrom,par_list,isub_exp,out_ranges,range_par_list,range_dic)                            
                             
             #Normalized stellar flux after occultation by all planets and by all active regions
@@ -668,7 +668,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
             if Ftot_star:
                 for subkey_chrom in key_chrom:
                     surf_prop_dic_pl[subkey_chrom]['Ftot_star'][:,isub_exp] = 1.
-                    if cond_ar and (args['rout_mode']=='DiffProf'):surf_prop_dic_ar[subkey_chrom]['Ftot_star'][:,isub_exp] = 1.
+                    if cond_ar and (args['rout_mode']!='IntrProf'):surf_prop_dic_ar[subkey_chrom]['Ftot_star'][:,isub_exp] = 1.
 
                     #Planets
                     if n_osamp_exp_eff_pl>0:
@@ -676,7 +676,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                         surf_prop_dic_common[subkey_chrom]['Ftot_star'][:,isub_exp] -= Focc_star_pl[subkey_chrom]/(n_osamp_exp_eff_pl*theo_dic['Ftot_star_'+subkey_chrom])
                     
                     #Active regions
-                    if cond_ar and (args['rout_mode']=='DiffProf') and (n_osamp_exp_eff_ar>0):
+                    if cond_ar and (args['rout_mode']!='IntrProf') and (n_osamp_exp_eff_ar>0):
                         surf_prop_dic_ar[subkey_chrom]['Ftot_star'][:,isub_exp] -= (Focc_star_ar[subkey_chrom])/(n_osamp_exp_eff_ar*theo_dic['Ftot_star_'+subkey_chrom])
                         surf_prop_dic_common[subkey_chrom]['Ftot_star'][:,isub_exp] -= (Focc_star_ar[subkey_chrom])/(n_osamp_exp_eff_ar*theo_dic['Ftot_star_'+subkey_chrom])
 
@@ -693,7 +693,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                         if args['conv2intr']:surf_prop_dic_pl[key_chrom[-1]]['corr_supp'][:,isub_exp] /= (args['Focc_corr'][key_chrom[-1]]/n_osamp_exp_eff_pl)
  
                 #Deviation line profile between quiet and active emission, from active cells outside of planet-occulted regions
-                if cond_ar and (args['rout_mode']=='DiffProf') and (n_osamp_exp_eff_ar > 0):
+                if cond_ar and (args['rout_mode']!='IntrProf') and (n_osamp_exp_eff_ar > 0):
                     calc_mean_occ_region_line(theo_dic['precision'],system_prop,isub_exp,key_chrom,n_osamp_exp_eff_ar,Focc_star_ar,surf_prop_dic_ar,ar_in_exp,args,par_star,theo_dic)
 
     ### end of exposures
@@ -891,6 +891,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
             cond_eff_ar = np.sum(gen_ar_flag_map)
             if cond_eff_ar:
                 for key in ['veq','alpha_rot','beta_rot']:
+                    coord_grid[key] = np.repeat(par_star[key],n_pl_occ)
                     coord_grid[key][fctrst_map_ar < 1.] = par_star[key+'_spots']
                     coord_grid[key][fctrst_map_ar >= 1.] = par_star[key+'_faculae']
 
@@ -908,7 +909,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
             
             #Update flux-grid for active region cells, accounting for their specific limb-darkening and contrast
             _,_,_,Fsurf_ar_emit_grid,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_ar_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'local',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
-            Fsurf_grid_star[gen_ar_flag_map, iband] -= Fsurf_ar_emit_grid[gen_ar_flag_map, iband] * (1. - fctrst_map_ar[gen_ar_flag_map]) 
+            Fsurf_grid_star[gen_ar_flag_map, iband] = Fsurf_ar_emit_grid[gen_ar_flag_map, iband] * fctrst_map_ar[gen_ar_flag_map] 
 
             #Update total flux from occulted region
             Ftot_star = np.sum(Fsurf_grid_star, axis=0)
@@ -938,7 +939,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
             #If planet-occulted region covers active regions
             if cond_eff_ar:
                 _,_,_,Fsurf_ar_emit_grid,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_ar_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'local',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
-                args['corr_Far_grid'] = Fsurf_ar_emit_grid[gen_ar_flag_map, iband] * (1. - fctrst_map_ar[gen_ar_flag_map])
+                args['corr_Far_grid'] = Fsurf_ar_emit_grid[gen_ar_flag_map, iband] * fctrst_map_ar[gen_ar_flag_map]
                 args['corr_Fstar_grid_ar'] = Fsurf_grid_star_corr[gen_ar_flag_map, iband]
                 for key in ['corr_Far_grid','corr_Fstar_grid_ar']:args[key]=args[key].reshape(len(args[key]),1)
                 args['ar_flag_map'] = gen_ar_flag_map
@@ -1177,7 +1178,7 @@ def sum_region_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,Fsurf_g
         #Active region correction
         if ('corr_ar' in args) and (ar_contrast is None):
 
-            #Making temporary variables to store the planet-active region overlap and planet-facula overlap contributions to the correction
+            #Making temporary variables to store the planet-active region overlap contributions to the correction
             temp_line_ar = np.zeros(sum_prop_dic['corr_supp'].shape, dtype=float)
 
             if args['corr_nsub_ov_ar'] > 0.:
@@ -1508,64 +1509,6 @@ def calc_plocced_tiles(pl_prop, x_sky_grid, y_sky_grid):
     return cond_in_pl
 
 
-def generate_actreg_prop(mock_dic, data_dic, gen_dic):
-    r"""**Automatic active region generation**
-    
-    Generates distribution of active regions and updates relevant dictionaries. 
-    The properties of each region is randomly drawn from a uniform or gaussian distribution. 
-    
-    Args:
-        mock_dic (dict) : mock dictionary.
-        data_dic (dict) : data dictionary.
-        gen_dic (dict)  : general dictionary.
-    
-    Returns:
-        None
-    
-    """  
-
-    #Initializing the mock dictionary if not done previously
-    for inst in mock_dic['auto_gen_actreg']:
-        if inst not in mock_dic['actreg_prop']:mock_dic['actreg_prop'][inst]={}
-        for vis in mock_dic['auto_gen_actreg'][inst]:
-            if vis not in mock_dic['actreg_prop'][inst]:mock_dic['actreg_prop'][inst][vis]={}
-
-            auto_gen_dic = mock_dic['auto_gen_actreg'][inst][vis]
-            
-            #Iterating over the number of active regions to update the dictionary
-            for iac in range(auto_gen_dic['num']):
-
-                #Making active region name
-                ac_reg_name = 'gen_actreg'+str(iac+1)
-
-                #Looping over all relevant properties
-                for prop in ['fctrst','lat','Tc_ar','ang']:
-
-                    #Retrieve dictionary
-                    prop_dic = auto_gen_dic[prop]
-
-                    #Drawing from distributions provided
-                    if prop_dic['distrib']=='uf':prop_gen_val = np.random.uniform(low = prop_dic['low'], high = prop_dic['high'])
-                    elif prop_dic['distrib']=='gauss':prop_gen_val = np.random.normal(loc = prop_dic['val'], scale = prop_dic['s_val'])
-                    else:stop('Unrecognized distribution.')
-
-                    #Updating mock properties
-                    mock_dic['actreg_prop'][inst][vis].update({
-                    prop+'__IS'+inst+'_VS'+vis+'_AR'+ac_reg_name : prop_gen_val,
-                        })
-        
-                #Updating LD properties
-                if data_dic['DI']['actreg_prop'] == {}:data_dic['DI']['actreg_prop']['achrom'] = {}
-                if ac_reg_name not in data_dic['DI']['actreg_prop']['achrom']:data_dic['DI']['actreg_prop']['achrom'][ac_reg_name]=[mock_dic['actreg_prop'][inst][vis]['ang__IS'+inst+'_VS'+vis+'_AR'+ac_reg_name] * np.pi/180]  
-       
-                #Updating triggers
-                if ac_reg_name not in gen_dic['studied_actreg']:gen_dic['studied_actreg'].update({ac_reg_name : {inst : [vis]}}) 
-
-    #Finishing construction of LD dictionary 
-    data_dic['DI']['actreg_prop']['achrom'].update({'LD':data_dic['DI']['system_prop']['achrom']['LD']})
-    for ideg in range(1,5):data_dic['DI']['actreg_prop']['achrom'].update({'LD_u'+str(ideg):data_dic['DI']['system_prop']['achrom']['LD_u'+str(ideg)]})
-
-    return None
 
 #%% Active region routines
 def generate_ar_prop(mock_dic, data_dic, gen_dic):

@@ -221,7 +221,7 @@ def custom_DI_prof(param,x,args=None):
 
         #Updating stellar grid
         #    - if stellar grid is different from the default one 
-        if args['var_star_grid'] and (args['unquiet_star'] is None):
+        if args['var_star_grid']:
 
             #Update variable stellar properties and stellar grid
             up_model_star(args,param)
@@ -239,7 +239,7 @@ def custom_DI_prof(param,x,args=None):
     #--------------------------------------------------------------------------------
     #Radial velocities of the stellar surface (km/s)
     #    - an offset is allowed to account for the star/input frame velocity when the model is used on raw data 
-    #    - velocity properties are stored in grid_dic to allow disinguishing between quiet and spotted cells
+    #    - velocity properties are stored in grid_dic to allow disinguishing between quiet and active cells
     #--------------------------------------------------------------------------------
     rv_surf_star_grid = calc_RVrot(args['grid_dic']['x_st_sky'],args['grid_dic']['y_st'],args['system_param']['star']['istar_rad'],args['grid_dic']['veq'],args['grid_dic']['alpha_rot'],args['grid_dic']['beta_rot'])[0] + param['rv']
     cb_band = calc_CB_RV(get_LD_coeff(args['system_prop']['achrom'],0),args['system_prop']['achrom']['LD'][0],param['c1_CB'], param['c2_CB'], param['c3_CB'],param)
@@ -249,19 +249,7 @@ def custom_DI_prof(param,x,args=None):
     #Coadding local line profiles over stellar disk
     #--------------------------------------------------------------------------------
     icell_list = np.arange(args['grid_dic']['nsub_star'])
-    
-    #Reducing grid to quiet cells
-    if args['unquiet_star'] is not None:
-        cond_quiet_star = ~args['unquiet_star']
-        rv_surf_star_grid=rv_surf_star_grid[cond_quiet_star]
-        args['grid_dic']['mu']=args['grid_dic']['mu'][cond_quiet_star]
-        args['flux_intr_grid']=args['flux_intr_grid'][cond_quiet_star]
-        icell_list=icell_list[cond_quiet_star]
-        args['Fsurf_grid_spec']=args['Fsurf_grid_spec'][cond_quiet_star]
-        nsub_star=len(icell_list)
-    else:
-        nsub_star = len(icell_list)
-        cond_quiet_star = np.repeat(True,nsub_star)
+    nsub_star = len(icell_list)
 
     #Set up properties for fast line profile grid calculation
     use_OS_grid=False
@@ -280,11 +268,8 @@ def custom_DI_prof(param,x,args=None):
 
     #Direct call
     else:
-        if use_OS_grid:
-            for pol_par in args['input_cell_all']:args['input_cell_all'][pol_par]=args['input_cell_all'][pol_par][cond_quiet_star]
-            flux_DI_sum=coadd_loc_gauss_prof(rv_surf_star_grid,args['Fsurf_grid_spec'],args)
+        if use_OS_grid:flux_DI_sum=coadd_loc_gauss_prof(rv_surf_star_grid,args['Fsurf_grid_spec'],args)
         elif use_C_OS_grid:
-            for pol_par in args['input_cell_all']:args['input_cell_all'][pol_par]=args['input_cell_all'][pol_par][cond_quiet_star]
             Fsurf_grid_spec = args['Fsurf_grid_spec'][:, 0]
             flux_DI_sum = use_C_coadd_loc_gauss_prof(rv_surf_star_grid,Fsurf_grid_spec,args)
         else:flux_DI_sum=coadd_loc_line_prof(rv_surf_star_grid,icell_list,args['Fsurf_grid_spec'],args['flux_intr_grid'],args['grid_dic']['mu'],param,args)

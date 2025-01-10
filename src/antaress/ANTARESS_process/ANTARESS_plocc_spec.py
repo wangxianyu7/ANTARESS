@@ -389,64 +389,12 @@ def plocc_ar_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,
     #Activation of spectral conversion and resampling 
     cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_vis['type']) 
 
-    #Initializing stellar profiles 
-    fixed_args = var_stellar_prop(fixed_args,theo_dic,data_vis['system_prop'],ar_prop,system_param['star'],params)
-    fixed_args = init_custom_DI_prof(fixed_args,gen_dic,params)  
-
     #Updating coordinates with the best-fit properties
     ph_rec = {}
     coord_vis = coord_dic[inst][vis]
     for pl_loc in data_vis['studied_pl']:
         ph_rec[pl_loc] = np.vstack((coord_vis[pl_loc]['st_ph'],coord_vis[pl_loc]['cen_ph'],coord_vis[pl_loc]['end_ph']) ) 
     system_param_loc,coord_pl_ar,_ = up_plocc_arocc_prop(inst,vis,fixed_args,params,data_vis['studied_pl'],ph_rec,coord_vis,studied_ar=studied_ar)
-
-    #-----------------------------------------------------------
-    #Figuring out which cells of the stellar grid are never active region-occulted or planet-occulted
-    #-----------------------------------------------------------
-    if (opt_dic['map_diff_res']) or (opt_dic['corr_ar']):
-        #Initialize a 2D grid (which is going to be a 1D array) that will contain booleans telling us which stellar grid cells 
-        #are never planet-occulted or spotted over all the exposures (True = occulted or spotted, False = quiet)
-        fixed_args['unquiet_star'] = np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
-        # for isub,i_in in enumerate(iexp_list): 
-
-        #     #Figure out which cells of the full stellar grid are planet-occulted in at least one exposure
-        #     plocced_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
-        #     for pl_loc in data_vis['studied_pl']:
-        #         if np.abs(coord_pl_sp_fa[pl_loc]['ecl'][isub])!=1:
-        #             mini_pl_dic = {}
-        #             mini_pl_dic['x_orb_exp']=[coord_pl_sp_fa[pl_loc]['st_pos'][0, isub], coord_pl_sp_fa[pl_loc]['cen_pos'][0, isub], coord_pl_sp_fa[pl_loc]['end_pos'][0, isub]]
-        #             mini_pl_dic['y_orb_exp']=[coord_pl_sp_fa[pl_loc]['st_pos'][1, isub], coord_pl_sp_fa[pl_loc]['cen_pos'][1, isub], coord_pl_sp_fa[pl_loc]['end_pos'][1, isub]]
-        #             mini_pl_dic['RpRs']=fixed_args['system_prop']['achrom'][pl_loc][0]
-        #             if ('lambda_rad__pl'+pl_loc in fixed_args['genpar_instvis']):lamb_name = 'lambda_rad__pl'+pl_loc+'__IS'+inst+'_VS'+vis 
-        #             else:lamb_name = 'lambda_rad__pl'+pl_loc 
-        #             mini_pl_dic['lambda']=params[lamb_name]
-        #             pl_plocced_star_grid = calc_plocced_tiles(mini_pl_dic, fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'])
-        #             plocced_star_grid |= pl_plocced_star_grid
-
-        #     #Figure out which cells of the full stellar grid are spotted in at least one exposure
-        #     spotted_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
-        #     for spot in transit_spots:
-        #         if np.sum(coord_pl_sp_fa[spot]['is_visible'][:, isub])>0:
-        #             mini_spot_dic = {}
-        #             for par_spot in fixed_args['spot_coord_par']:mini_spot_dic[par_spot] = coord_pl_sp_fa[spot][par_spot][:, isub]
-        #             _, spot_spotted_star_grid = calc_ared_tiles(mini_spot_dic,coord_pl_sp_fa[spot]['ang_rad'], fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'], fixed_args['grid_dic']['z_st_sky'], fixed_args['grid_dic'], system_param_loc['star'])
-        #             spotted_star_grid |= spot_spotted_star_grid
-
-        #     #Figure out which cells of the full stellar grid are faculaed in at least one exposure
-        #     faculaed_star_grid=np.zeros(fixed_args['grid_dic']['nsub_star'], dtype=bool)
-        #     for facula in transit_faculae:
-        #         if np.sum(coord_pl_sp_fa[facula]['is_visible'][:, isub])>0:
-        #             mini_facula_dic = {}
-        #             for par_facula in fixed_args['facula_coord_par']:mini_facula_dic[par_facula] = coord_pl_sp_fa[facula][par_facula][:, isub]
-        #             _, facula_faculaed_star_grid = calc_ared_tiles(mini_facula_dic,coord_pl_sp_fa[facula]['ang_rad'], fixed_args['grid_dic']['x_st_sky'], fixed_args['grid_dic']['y_st_sky'], fixed_args['grid_dic']['z_st_sky'], fixed_args['grid_dic'], system_param_loc['star'])
-        #             faculaed_star_grid |= facula_faculaed_star_grid
-
-        #     #Update the global 2D quiet star grid
-        #     #    - to be used in 'custom_DI_prof()' to calculate the base disk-integrated profile only over stellar cells that are affected by spots, faculae and planets in one of the processed exposure
-        #     #      contributions from the other cells do not need to be calculated because they are removed when computing differential profiles
-        #     fixed_args['unquiet_star'] |= (spotted_star_grid | plocced_star_grid | faculaed_star_grid)
-
-
 
     #Processing relevant exposures
     for isub,iexp in enumerate(iexp_list):
@@ -520,9 +468,13 @@ def plocc_ar_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,
                 clean_surf_prop_dic,_,_ = sub_calc_plocc_ar_prop([chrom_mode],args_exp,['line_prof'],data_vis['studied_pl'],[],deepcopy(system_param),theo_dic,fixed_args['system_prop'],clean_params,coord_pl_ar,[iexp])
                 
                 #Only active regions profiles
-                if len(studied_ar)>0:clean_params['use_ar']=True
-                _,clean_ar_prop_dic,_ = sub_calc_plocc_ar_prop([chrom_mode],args_exp,['line_prof'],[],data_vis['studied_ar'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_ar,[iexp],system_ar_prop_in=fixed_args['system_ar_prop'])
-                clean_params['use_ar']=False
+                if len(studied_ar)>0:
+                    clean_params['use_ar']=True
+                    _,clean_ar_prop_dic,_ = sub_calc_plocc_ar_prop([chrom_mode],args_exp,['line_prof'],[],data_vis['studied_ar'],deepcopy(system_param),theo_dic,fixed_args['system_prop'],params,coord_pl_ar,[iexp],system_ar_prop_in=fixed_args['system_ar_prop'])
+                    clean_params['use_ar']=False
+                else:
+                    clean_ar_prop_dic = deepcopy(clean_surf_prop_dic)
+                    clean_ar_prop_dic[chrom_mode]['line_prof'] = np.ones(clean_ar_prop_dic[chrom_mode]['line_prof'].shape, dtype=float)
 
                 #Storing
                 clean_pl_line_model = clean_surf_prop_dic[chrom_mode]['line_prof'][:,0]
@@ -569,7 +521,7 @@ def plocc_ar_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,
                 # where F_DI is the unocculted star profile and F_pl, F_ar are planet and active region deviation profiles
                 # The planet-deviation profile can be re-written as: 
                 #
-                # F_pl = sum( pl, sum(region A, f)  +  sum(ar', sum(region B, s)))
+                # F_pl = sum( pl, sum(region A, f)  +  sum(ar, sum(region B, s)))
                 #
                 # where region A is the portion of the planet-occulted regions that covers the quiet star, region B is the portion of the planet-occulted
                 # regions that covers each active. We sum over ar' which are the subset of active regions that are occulted by the planet. By construction in the code, 
@@ -590,17 +542,17 @@ def plocc_ar_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,
                 #
                 # F_exp ~= F_DI - F_ar' - sum( pl, sum(region A, f)  +  sum( ar', sum(region B, s') ) )
                 # <==>
-                # F_exp + F_ar' + sum( ar', sum(region B, s') ) = F_DI - sum( pl, sum(region A, f))
+                # F_exp + F_ar' + sum( pl, sum( ar', sum(region B, s') ) ) = F_DI - sum( pl, sum(region A, f))
                 #
                 # At this point, we simply need to re-inject the quiet star in all the regions B to obtain an exposure profile uncontaminated by active regions:
                 #
-                # F_exp + F_ar' + sum( ar', sum(region B, s') ) - sum( ar', sum(region B, f) ) = F_DI - sum( pl, sum(region A, f)) - sum( ar', sum(region B, f) )
+                # F_exp + F_ar' + sum( pl, sum( ar', sum(region B, s') ) ) - sum( pl, sum( ar', sum(region B, f) ) ) = F_DI - sum( pl, sum(region A, f)) - sum( ar', sum(region B, f) )
                 # <==>
-                # F_exp + F_ar' + sum( ar', sum(region B, s' - f) ) = F_DI - F_pl,clean
+                # F_exp + F_ar' + sum( pl, sum( ar', sum(region B, s' - f) ) ) = F_DI - F_pl,clean
                 #
                 # With F_pl,clean being the the planet deviation profile if active regions were not present in the planet-occulted region.
                 # In the code below, ar_prop_dic[chrom_mode]['line_prof'][:,0] corresponds to F_ar' while surf_prop_dic[chrom_mode]['corr_supp'][:,0]
-                # corresponds to sum( ar', sum(region B, s' - f) ).
+                # corresponds to sum( pl, sum( ar', sum(region B, s' - f) ) ).
                 if key=='corr_ar':
                     #Retrieving exposure profile
                     data_exp_raw = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp_eff))

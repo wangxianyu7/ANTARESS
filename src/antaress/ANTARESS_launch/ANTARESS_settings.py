@@ -335,11 +335,6 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #   - toggle to print the average SNR and photon count of each simulated exposure.
     #   - can help to get a better sense of how to adjust the continuum level to achieve a certain SNR.
     mock_dic['verbose_flux_cont']=False
-    
-    #%%%%% SNR and photon count
-    #   - toggle to print the average SNR and photon count of each simulated exposure.
-    #   - Can help to get a better sense of how to adjust the continuum level to achieve a certain SNR.
-    mock_dic['verbose_flux_cont']=False
 
 
     #%%%%% Instrumental gain
@@ -359,7 +354,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + 'Tc_ar' : Time (bjd) at which the active region is at longitude 0
     # + 'ang' : half-angular size (in deg) of the active region (we assume each region is circular)
     # + 'fctrst' : the flux level of the active region surface, relative to the quiet surface of the star
-    #              0 = no emission, 1 = maximum emission (no contrast with the stellar surface) 
+    #              0 = no emission, 1 = maximum emission (no contrast with the stellar surface), and >1 = emission greater than the quiet surface 
     #    - format: {inst : {vis : {prop : val}}}
     #      where prop is defined as par_ISinst_VSvis_ARar, to match with the structure used in gen_dic['fit_diff_prof']    
     mock_dic['ar_prop'] = {}
@@ -568,12 +563,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
 
     ##################################################################################################
-    #%%% Module: stellar, spots, and planet-occulted grids
+    #%%% Module: stellar, active region, and planet-occulted grids
     ##################################################################################################
     
     #%%%% Activating module
     #    - calculated by default if transiting planets are attributed to a visit, and user has requested analysis and alignement of intrinsic local stellar profiles, or extraction and analysis of the atmospheric profiles
-    #                            if spots are attributed to a visit
+    #                            if active regions are attributed to a visit
     #      can be set to True to calculate nonetheless
     gen_dic['theoPlOcc'] = False 
         
@@ -2655,8 +2650,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     ##################################################################################################
     #%%% Module: intrinsic profiles extraction
     #    - derived from the local profiles (in-transit), reset to the same broadband flux level, with planetary contamination excluded 
-    #    - if the scaling light curve correctly accounts for spots, then their contribution is propagated in the broadband flux scaling and intrinsic profiles 
-    # from spotted regions occulted by a planet will still be scaled to the common continuum of the series
+    #    - if the scaling light curve correctly accounts for active regions, then their contribution is propagated in the broadband flux scaling and intrinsic profiles 
+    # from active regions occulted by a planet will still be scaled to the common continuum of the series
     ##################################################################################################    
     
     #%%%% Calculating
@@ -3292,11 +3287,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%% Module: joined intrinsic profiles fit  
     #    - fitting joined intrinsic stellar profiles from combined (unbinned) instruments and visits
     #    - use this module to fit the average stellar line profiles from planet-occulted regions
-    #    - the module can also be used when spot are present, as long as they remain fixed during a given visit (this requires theo_dic['precision'] = 'high'), otherwise use the 'fitting joined differential profiles' module.
-    #      however beware that in this case constraints on the spot come from the planet-occulted, spotted cells with a line profile different from the quiet star. 
-    #      since we assume the same line shape for quiet and spotted cells, the spot is constrained by the brightness-weighted rv of spotted cells within the occulted region itself
-    #      if the planet is small or the star a slow rotator, it is thus not possible to constrain the spot
-    #      if the planet is large and the star is a fast rotator, the spot stills needs to have sufficient contrast or overlaps over a sufficient fraction of the planet-occulted region for the overall line position to differ from the unspotted case 
+    #    - the module can also be used when active regions are present, as long as they remain fixed during a given visit (this requires theo_dic['precision'] = 'high'), otherwise use the 'fitting joined differential profiles' module.
+    #      however beware that in this case constraints on the active regions come from the planet-occulted, active cells with a line profile different from the quiet star. 
+    #      since we assume the same line shape for quiet and active cells, the active region is constrained by the brightness-weighted rv of active cells within the occulted region itself
+    #      if the planet is small or the star a slow rotator, it is thus not possible to constrain the active region
+    #      if the planet is large and the star is a fast rotator, the active region stills needs to have sufficient contrast or overlaps over a sufficient fraction of the planet-occulted region for the overall line position to differ from the un-active case 
     #    - use 'idx_in_fit' to choose which visits to fit (can be a single one)
     #    - the contrast and FWHM of the intrinsic stellar lines (before instrumental convolution) are fitted as polynomials of the chosen coordinate
     #      surface RVs are fitted using the reloaded RM model  
@@ -3545,8 +3540,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #%%%%% 2D maps : "un-clean", theoretical planet-occulted and active region profiles
     #    - for original and binned exposures
-    #    - planet-occulted profiles retrieved in the case where spots were not included in the model
-    #    - computing both "clean" and "spotted" versions of these maps can help identify if planets occulted spots during the transit or not
+    #    - planet-occulted profiles retrieved in the case where active regions were not included in the model
+    #    - computing both "clean" and "unclean" versions of these maps can help identify if planets occulted active regions during the transit or not
     plot_dic['map_Diff_prof_unclean_ar_est']=''
     plot_dic['map_Diff_prof_unclean_pl_est']=''   
 
@@ -3656,8 +3651,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     data_dic['Atm']['cont_range']={}
 
 
-    #%%%% Presence of spots
-    data_dic['Atm']['spot_model']=''
+    #%%%% Presence of active regions
+    data_dic['Atm']['ar_model']=''
 
 
     #%%%% Plots
@@ -4215,14 +4210,6 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #                  warning: if faculae and spot values are both fitted (whether that is Peq or veq) the user must specify which one to use for the folding with deriv_prop['fold_Tc_ar']['reg_to_use']='spots'/'faculae'
     #                  warning: if veq/veq_spots/veq_faculae is used to perform the folding, the corresponding derived property option 'Peq_veq'/'Peq_veq_spots'/'Peq_veq_faculae' must be activated. 
     # + 'istar_Peq_vsini' : derive the stellar inclination from user-provided measurements of 'Rstar','Peq', and 'vsini'
-    # + 'fold_Tc_ar' : folds the active region crossing time around a central Peq value that can be calculated in the following ways:
-    #                       - If active region values for veq/Peq are fitted/specified, they take priority
-    #                       - If veq/Peq/veq_spots/Peq_spots/veq_faculae/Peq_faculae is fit with an MCMC/NS, we use the corresponding chain
-    #                       - If veq/Peq/veq_spots/Peq_spots/veq_faculae/Peq_faculae is fit with chi2 or fixed, we use the corresponding value
-    #                       - If veq_spots/Peq_spots/veq_faculae/Peq_faculae is fixed but its values is different from the default, use the active region value
-    #                       - If none of veq, Peq, veq_spots, Peq_spots, veq_faculae, Peq_faculae are fixed or fit, default to the value of Peq calculated from the systems configuration file.
-    #                  warning: if faculae and spot values are both fitted (whether that is Peq or veq) the user must specify which one to use for the folding with deriv_prop['fold_Tc_ar']['reg_to_use']='spots'/'faculae'
-    #                  warning: if veq/veq_spots/veq_faculae is used to perform the folding, the corresponding derived property option 'Peq_veq'/'Peq_veq_spots'/'Peq_veq_faculae' must be activated. 
     # + 'Peq_veq' : adds 'Peq' using the fitted 'veq' and a user-provided measurement of 'Rstar'
     # + 'Peq_veq_spots' : adds 'Peq_spots' using the fitted 'veq_spots' and a user-provided measurement of 'Rstar'
     # + 'Peq_veq_faculae' : adds 'Peq_faculae' using the fitted 'veq_faculae' and a user-provided measurement of 'Rstar'
@@ -4290,7 +4277,9 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #    - string containing the location of a Fit_results.npz file containing a Hessian matrix.
     #      this Hessian matrix must have been computed from the same parameters are the ones used in the fit.
     #    - to use this option, we recommend users first run a fit with fit_mode set to chi2. The chi2 fit will automatically create and 
-    # store the Hessian matrix. An MCMC / NS  fit can subsequently be run with the path to the Hessian being set as the location of the chi2 fit results.
+    #      store the Hessian matrix. An MCMC / NS  fit can subsequently be run with the path to the Hessian being set as the location of the chi2 fit results.
+    #    - Evaluating the Hessian matrix prior to performing an MCMC or NS fit can be useful as it stores information on the local curvature of the target
+    #      posterior distribution. This matrix can be used to have a more efficient sampling by initializing the starting location of the MCMC/NS with it. 
     local_dic[data_type]['use_hess'] = ''    
 
 

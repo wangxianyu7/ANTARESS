@@ -4598,7 +4598,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 orbit_t = np.linspace(0,2*np.pi/((1.-star_params['alpha_rot']*coord_grid['ar_prop_exp'][ar]['sin_lat_exp'][1]**2.-star_params['beta_rot']*coord_grid['ar_prop_exp'][ar]['sin_lat_exp'][1]**4.)*star_params['om_eq']*3600.*24.),plot_set_key['npts_orbits_ar'])
                 num_ar = len(ar_prop['ar'])
  
-                # - Dictionary in which we will store the spot center coordinates
+                # - Dictionary in which we will store the active region center coordinates
                 orb_coords = {'x':np.zeros([num_ar, plot_set_key['npts_orbits_ar']], dtype=float),'y':np.zeros([num_ar, plot_set_key['npts_orbits_ar']], dtype=float),'z':np.zeros([num_ar, plot_set_key['npts_orbits_ar']], dtype=float)}
 
                 # - Calculate active region center coordinates                
@@ -6375,7 +6375,7 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
         #    - coordinates are normalized by Rstar, corresponding to the equatorial radius (and thus largest for an oblate star), so that the condition below is always conservative 
         cond_occ_HR |= Dprojplanet_HR <= (1.+data_dic['DI']['system_prop']['RpRs_max'][pl_loc])
 
-    #Planet-occulted and spot properties
+    #Planet-occulted and active region properties
     coord_pl_in['nph_HR'] =  np.sum(cond_occ_HR)   
     bjd_HR = bjd_HR[cond_occ_HR]
     args['inst'] = inst
@@ -6963,7 +6963,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
     if plot_mod in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_ar_est','map_Diff_prof_unclean_pl_est',
                     'map_Diff_prof_clean_ar_res','map_Diff_prof_clean_pl_res','map_Diff_prof_unclean_ar_res','map_Diff_prof_unclean_pl_res']:
 
-        #Defining whether we are plotting the planet-occulted or spotted profiles and if they are clean or uncleaned
+        #Defining whether we are plotting the planet-occulted or active region profiles and if they are clean or uncleaned
         supp_name = plot_mod.split('_')[4]
         corr_plot_mod = plot_mod.split('_')[3]
 

@@ -1159,7 +1159,7 @@ def is_ar_visible(istar, long_rad, lat_rad, ang_rad, f_GD, RpoleReq) :
         RpoleReq (float) : pole to equatoral radius ratio.
      
     Returns:
-        actreg_visible (bool) : active region visibility criterion.
+        ar_visible (bool) : active region visibility criterion.
         
     """ 
     ar_visible = False

@@ -38,6 +38,10 @@ def get_system_params():
     
      - `veq` [km/s] : equatorial rotational velocity 
      
+     - `veq_spots` [km/s] : equatorial rotational velocity of active regions categorized as spots (contrast < 1)
+     
+     - `veq_faculae` [km/s] : equatorial rotational velocity of active regions categorized as faculae (contrast >=1)
+     
      - `istar` [deg] : stellar inclination 
      
          + angle counted from the LOS toward the stellar spin axis
@@ -59,6 +63,10 @@ def get_system_params():
           + differential rotation is defined as :math:`\Omega = \Omega_\mathrm{eq} (1-\alpha_\mathrm{rot} y_\mathrm{lat}^2-\beta_\mathrm{rot} y_\mathrm{lat}^4)`
           + the pipeline checks that :math:`\alpha_\mathrm{rot}+\beta_\mathrm{rot}<1` (assuming that the star rotates in the same direction at all latitudes)
           + defined in percentage of rotation rate
+
+      - `alpha_rot_spots`, `beta_rot_spots` [] : differential rotation coefficients of active regions categorized as spots (contrast < 1) 
+
+      - `alpha_rot_faculae`, `beta_rot_faculae` [] : differential rotation coefficients of active regions categorized as faculae (contrast < 1)
          
       - `ci` [km/s] : coefficients of the :math:`\mu`-dependent convective blueshift velocity polynomial
     
