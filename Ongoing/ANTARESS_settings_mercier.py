@@ -5482,7 +5482,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_DiffProf'] = True  &  False
+    gen_dic['fit_DiffProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5608,14 +5608,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'cos_istar':{'vary':True,'guess':0.1, 'bd':[-1., 1.]},
         'cos_istar':{'vary':False,'guess':0.01745240644, 'bd':[-1., 1.]},
 
-        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
-        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 10., 2458330.39051 + 10.]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
-        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[10, 50]},
-        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.1, 'bd':[0.05, 0.3]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
+        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 10., 2458330.39051 + 10.]},
+        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
+        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[10, 50]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
+        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.1, 'bd':[0.05, 0.3]},
         
         # # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
         # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':False, 'guess':0, 'bd':[-50, 10]},
@@ -5906,8 +5906,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Fitting mode
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         # glob_fit_dic['DiffProf']['fit_mode']='chi2' 
-        glob_fit_dic['DiffProf']['fit_mode']='mcmc'
-        # glob_fit_dic['DiffProf']['fit_mode']='ns' 
+        # glob_fit_dic['DiffProf']['fit_mode']='mcmc'
+        glob_fit_dic['DiffProf']['fit_mode']='ns' 
 
     #Fitting method - only if chi2 is used
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5932,7 +5932,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     # 'beta_rot_spots'                          :{'mod':'uf', 'low':0., 'high':1.},
                     'cos_istar'                               :{'mod':'uf', 'low':-1., 'high':1.},
                     'lat__ISESPRESSO_VSmock_vis_ARspot1'      :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'    :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
+                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'    :{'mod':'uf', 'low':2458330.39051 - 2., 'high':2458330.39051 +2.},
                     'ang__ISESPRESSO_VSmock_vis_ARspot1'      :{'mod':'uf', 'low':0., 'high':45.},
                     'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':0, 'high':1},
                     'lat__ISESPRESSO_VSmock_vis_ARfacula1'    :{'mod':'uf', 'low':-90., 'high':90.},
@@ -7474,11 +7474,12 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     
     #%%%% Live points
     #    - settings per instrument & visit
-    #    - users can specify the number of live points (nlive) used in the initial nested sampoing run.
+    #    - users can specify the number of live points (nlive) used in the initial nested sampoing run. Starting with 400 to 1000 is generally advisable.
     #    - users can specify the prior bounding method to use (bound_method). If not specified it will default to 'auto' (see doc. in dynesty API to see what this specifically does).
     #    - While the default bounding method is 'auto', 'multi' is better at dealing with posterior distributions with complex shapes and is therefore recommended when dealing with complex problems.
     #    - users can specify the method used to uniformly sample within the likliehood constraint, conditioned on the provided bounds (sample_method). If not specified the default is 'auto', i.e. dynesty will
     #    - pick a method based on the dimensionaly of the problem. If dealing with posterior distributions with complex shapes, 'slice' is recommended.
+    #    - users can specify the log-likelihood difference threshold below which the NS run with stop (dlogz). Defaut is 0.1 and can be placed higher/lower to stop the run earlier/later.
     local_dic[data_type]['ns_set']={}
 
     
