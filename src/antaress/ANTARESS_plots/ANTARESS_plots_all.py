@@ -2607,20 +2607,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('+ 2D map : active region-corrected differential profiles') 
         
         #Plot map
-        sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot],data_dic,gen_dic,glob_fit_dic,system_param,theo_dic,coord_dic,contact_phases,plot_dic)  
-        
-    ################################################################################################################  
-    #%%%%% Corrected profiles 
-    ################################################################################################################  
-    if ('map_Diff_corr_ar' in plot_settings):
-        key_plot = 'map_Diff_corr_ar'
-        
-        print('-----------------------------------')
-        print('+ 2D map : active region-corrected differential profiles') 
-        
-        #Plot map
-        sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot],data_dic,gen_dic,glob_fit_dic,system_param,theo_dic,coord_dic,contact_phases,plot_dic)        
-        
+        sub_2D_map(key_plot,plot_dic[key_plot],plot_settings[key_plot],data_dic,gen_dic,glob_fit_dic,system_param,theo_dic,coord_dic,contact_phases,plot_dic)          
         
         
         

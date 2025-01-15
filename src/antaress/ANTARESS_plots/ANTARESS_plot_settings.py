@@ -1594,7 +1594,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Best-fit profiles 
     ################################################################################################################  
-    if gen_dic['diff_data_corr'] and (plot_dic['map_BF_Diff_prof']!=''):
+    if gen_dic['eval_bestfit'] and (plot_dic['map_BF_Diff_prof']!=''):
         key_plot = 'map_BF_Diff_prof'
 
         
@@ -1604,7 +1604,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Residual for best-fit profiles 
     ################################################################################################################  
-    if gen_dic['diff_data_corr'] and (plot_dic['map_BF_Diff_prof_re']!=''):                                        
+    if gen_dic['eval_bestfit'] and (plot_dic['map_BF_Diff_prof_re']!=''):                                        
         key_plot = 'map_BF_Diff_prof_re'
 
         
@@ -1616,7 +1616,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     #%%%% Estimates
     ##################################################################################################
     for key_plot in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_ar_est','map_Diff_prof_unclean_pl_est']:
-        if gen_dic['diff_data_corr'] and (plot_dic[key_plot]!=''):
+        if gen_dic['diff_prof_est'] and (plot_dic[key_plot]!=''):
 
             #%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
@@ -1636,60 +1636,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ################################################################################################################  
     #%%%% Corrected profiles 
     ################################################################################################################  
-    if gen_dic['diff_data_corr'] and (plot_dic['map_Diff_corr_ar']!=''):                                        
-        key_plot = 'map_Diff_corr_ar'
-
-        
-        #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
-
-    ################################################################################################################  
-    #%%%% Best-fit profiles 
-    ################################################################################################################  
-    if gen_dic['diff_data_corr'] and (plot_dic['map_BF_Diff_prof']!=''):
-        key_plot = 'map_BF_Diff_prof'
-
-        
-        #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
-
-
-    ################################################################################################################  
-    #%%%% Residual for best-fit profiles 
-    ################################################################################################################  
-    if gen_dic['diff_data_corr'] and (plot_dic['map_BF_Diff_prof_re']!=''):                                        
-        key_plot = 'map_BF_Diff_prof_re'
-
-        
-        #%%%%% Generic settings
-        plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
-
-    
-    ##################################################################################################
-    #%%%% Estimates
-    ##################################################################################################
-    for key_plot in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_ar_est','map_Diff_prof_unclean_pl_est']:
-        if gen_dic['diff_data_corr'] and (plot_dic[key_plot]!=''):
-
-            #%%%%% Generic settings
-            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
-
-            #%%%%% Mode to retrieve
-            plot_settings[key_plot]['mode_loc_prof_est'] = 'glob_mod'
-
-            ##############################################################################
-            #%%%%% Estimates
-            if key_plot in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_ar_est','map_Diff_prof_unclean_pl_est']:
-
-                #%%%%%% Model always required
-                plot_settings[key_plot]['plot_line_model'] = True
-                plot_settings[key_plot]['line_model'] = 'rec'
-
-
-    ################################################################################################################  
-    #%%%% Corrected profiles 
-    ################################################################################################################  
-    if gen_dic['diff_data_corr'] and (plot_dic['map_Diff_corr_ar']!=''):                                        
+    if gen_dic['corr_diff'] and (plot_dic['map_Diff_corr_ar']!=''):                                        
         key_plot = 'map_Diff_corr_ar'
 
         
