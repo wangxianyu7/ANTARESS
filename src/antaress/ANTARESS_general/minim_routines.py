@@ -969,6 +969,10 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
             if ('sample_method' not in fit_dic['ns_set']):fit_dic['sample_method']='unif'
             else:fit_dic['sample_method']=fit_dic['ns_set']['sample_method']
 
+            #Threshold on the log-likelihood difference between subsequent NS steps. Once the difference falls below this threshold, the run stops.
+            if ('dlogz' not in fit_dic['ns_set']):fit_dic['dlogz']=0.1
+            else:fit_dic['dlogz']=fit_dic['ns_set']['dlogz']
+
             #Set burn-in steps to 0 to makes post-processing with the MCMC functions possible
             fit_dic['nburn'] = 0.
 
@@ -1253,12 +1257,9 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
         for par in fixed_args['var_par_list']:
             if par not in fixed_args['varpar_priors']:fixed_args['varpar_priors'][par]={'mod':'uf','low':-1e10,'high':1e10}
     
-        #Set initial parameter distribution
-        live_points = np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float) #Coordinates of starting live points
-
         #Dictionary entry for storage
-        fit_dic['initial_distribution'] = [np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Coordinates of starting live points
-                                           np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Corresponding transformed variables
+        fit_dic['initial_distribution'] = [np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Prior values of starting points
+                                           np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Coordinates of starting live points
                                            np.zeros((fit_dic['nlive'],), dtype=float), #Corresponding log-likelihood values
                                            np.zeros((fit_dic['nlive']), dtype=dict)] 
 
@@ -1266,7 +1267,7 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
             print('         Rebooting previous run')
             
             #Reboot nested sampling from end of previous run
-            live_points=np.load(fit_dic['reboot'])['walker_chains'][:,-1,:]  #(nwalkers, nsteps, n_free)
+            fit_dic['initial_distribution'][1]=np.load(fit_dic['reboot'])['walker_chains'][:,-1,:]  #(nwalkers, nsteps, n_free)
               
         else:
             
@@ -1291,19 +1292,23 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
                     central_loc = np.zeros(len(fixed_args['var_par_list']), dtype=float)
                     for ipar, param in enumerate(fixed_args['var_par_list']):central_loc[ipar] = fit_dic['mod_prop'][param]['guess']
 
-                    live_points = np.random.multivariate_normal(central_loc, cov_matrix, size=fit_dic['nlive'])
+                    fit_dic['initial_distribution'][1] = np.random.multivariate_normal(central_loc, cov_matrix, size=fit_dic['nlive'])
                 
                 else:
                     print('         Initializing live points with uniform/gaussian distributions')
                     print('         WARNING : It is crucial that the initial set of live points have been sampled from the prior. Failure to provide a set of valid live points will result in incorrect results.')
                     for ipar,par in enumerate(fixed_args['var_par_list']):
-                        if par in fit_dic['uf_bd']:live_points[:,ipar]=np.random.uniform(low=fit_dic['uf_bd'][par][0], high=fit_dic['uf_bd'][par][1], size=fit_dic['nlive']) 
-                        elif par in fit_dic['gauss']:live_points[:, ipar]=np.random.normal(loc=fit_dic['gauss'][par][0], scale=fit_dic['gauss'][par][1], size=fit_dic['nlive']) 
+                        if par in fit_dic['uf_bd']:fit_dic['initial_distribution'][1][:,ipar]=np.random.uniform(low=fit_dic['uf_bd'][par][0], high=fit_dic['uf_bd'][par][1], size=fit_dic['nlive']) 
+                        elif par in fit_dic['gauss_bd']:fit_dic['initial_distribution'][1][:, ipar]=np.random.normal(loc=fit_dic['gauss_bd'][par][0], scale=fit_dic['gauss_bd'][par][1], size=fit_dic['nlive']) 
 
-        #Overwrite starting values of new chains
-        fit_dic['initial_distribution'][0] = live_points
-        for idx, live_point in enumerate(live_points):
-            fit_dic['initial_distribution'][1][idx, :] = ln_prior_func_NS(live_point, fixed_args)
+        #Retrieve prior values of starting points
+        for idx, parname in enumerate(fixed_args['var_par_list']):  
+            if parname in fit_dic['uf_bd']:fit_dic['initial_distribution'][0][:, idx] = stats.uniform.cdf(fit_dic['initial_distribution'][1][:, idx], loc=fit_dic['uf_bd'][par][0], scale=fit_dic['uf_bd'][par][1]-fit_dic['uf_bd'][par][0])
+            elif parname in fit_dic['gauss_bd']:fit_dic['initial_distribution'][0][:, idx] = stats.norm.cdf(fit_dic['initial_distribution'][1][:, idx], loc=fit_dic['gauss_bd'][par][0], scale=fit_dic['gauss_bd'][par][1])
+            else:stop('         Starting point distribution for {parname} should be gaussian or uniform.')
+
+        #Retrieve likelihood values
+        for idx, live_point in enumerate(fit_dic['initial_distribution'][1]):     
             lklhood = ln_lkhood_func_ns(live_point, fixed_args)
             fit_dic['initial_distribution'][2][idx] = lklhood[0] 
             fit_dic['initial_distribution'][3][idx] = lklhood[1] 
@@ -1346,7 +1351,7 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
         #Run NS
         #    - possible options:
         # + iterations: number of iterations to run
-        sampler.run_nested(live_points = fit_dic['initial_distribution'], print_progress=fit_dic['progress'])
+        sampler.run_nested(live_points = fit_dic['initial_distribution'], print_progress=fit_dic['progress'], dlogz_init=fit_dic['dlogz'])
 
 
         if verbose:print('   duration : '+str((get_time()-st0)/60.)+' mn')

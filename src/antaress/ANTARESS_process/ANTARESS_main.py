@@ -23,7 +23,7 @@ from ..ANTARESS_analysis.ANTARESS_joined_star import joined_Star_ana
 from ..ANTARESS_analysis.ANTARESS_joined_atm import joined_Atm_ana
 from ..ANTARESS_plots.ANTARESS_plots_all import ANTARESS_plot_functions
 from ..ANTARESS_corrections.ANTARESS_calib import calc_gcal
-from ..ANTARESS_process.ANTARESS_plocc_spec import def_in_plocc_profiles,def_diff_profiles
+from ..ANTARESS_process.ANTARESS_plocc_spec import def_in_plocc_profiles,def_diff_profiles,eval_diff_profiles
 from ..ANTARESS_conversions.ANTARESS_masks_gen import def_masks
 from ..ANTARESS_conversions.ANTARESS_conv import DI_CCF_from_spec,DiffIntr_CCF_from_spec,Atm_CCF_from_spec,conv_2D_to_1D_spec
 from ..ANTARESS_conversions.ANTARESS_binning import process_bin_prof
@@ -218,9 +218,16 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
     
                 #Building estimates for differential profiles in all exposures
                 #    - in-transit profiles include planet-occulted and active region stellar profiles
-                if gen_dic['diff_data_corr']:
+                if gen_dic['diff_prof_est']:
                     def_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic)
             
+                #Correcting exposures from (occulted/non-occulted) active region contamination using the differential profile estimates
+                if gen_dic['corr_diff']:
+                    eval_diff_profiles(inst, vis, gen_dic, data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic,'corr')
+
+                #Building best-fit differential profile time series
+                if gen_dic['eval_bestfit']:
+                    eval_diff_profiles(inst, vis, gen_dic, data_dic,data_prop,coord_dic,system_param,theo_dic,glob_fit_dic,plot_dic,'bestfit')
                 #--------------------------------------------------------------------------------------------------
                 #Processing atmospheric profiles
                 data_type_gen = 'Atm'
@@ -1230,9 +1237,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if gen_dic['loc_prof_est']:
             if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/')        
             if (not path_exist(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_prof_est']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Loc_estimates/'+data_dic['Intr']['opt_loc_prof_est']['corr_mode']+'/')
-        if gen_dic['diff_data_corr']:
+        if gen_dic['diff_prof_est']:
             if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/')        
-            if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Diff']['opt_loc_prof_est']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Diff']['opt_loc_prof_est']['corr_mode']+'/')          
+            if (not path_exist(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Diff']['opt_diff_prof_est']['corr_mode']+'/')):makedirs(gen_dic['save_data_dir']+'Diff_estimates/'+data_dic['Diff']['opt_diff_prof_est']['corr_mode']+'/')          
         if (gen_dic['pl_atm']):
             if (not path_exist(gen_dic['save_data_dir']+'Atm_data/')):makedirs(gen_dic['save_data_dir']+'Atm_data/')        
             if (not path_exist(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')):makedirs(gen_dic['save_data_dir']+'Atm_data/'+data_dic['Atm']['pl_atm_sign']+'/')

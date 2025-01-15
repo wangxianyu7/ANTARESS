@@ -5471,16 +5471,6 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     ANTARESS_fit_def_settings('DiffProf',glob_fit_dic,plot_dic)
 
 
-    #%%%% Plot settings
-
-    #%%%%% Plot best-fit 2D differential map
-    plot_dic['map_BF_Diff_prof']=''   
-    
-    
-    #%%%%% 2D maps : Plot residuals from best-fit 2D differential map
-    plot_dic['map_BF_Diff_prof_re']='' 
-
-
     #Activating 
     gen_dic['fit_DiffProf'] = True  &  False
 
@@ -5608,14 +5598,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'cos_istar':{'vary':True,'guess':0.1, 'bd':[-1., 1.]},
         'cos_istar':{'vary':False,'guess':0.01745240644, 'bd':[-1., 1.]},
 
-        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
-        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 1., 2458330.39051 + 1.]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
-        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[10, 50]},
-        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.1, 'bd':[0.05, 0.3]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
+        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 10., 2458330.39051 + 10.]},
+        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
+        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[10, 50]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
+        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.1, 'bd':[0.05, 0.3]},
         
         # # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
         # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':False, 'guess':0, 'bd':[-50, 10]},
@@ -5906,8 +5896,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Fitting mode
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         # glob_fit_dic['DiffProf']['fit_mode']='chi2' 
-        glob_fit_dic['DiffProf']['fit_mode']='mcmc'
-        # glob_fit_dic['DiffProf']['fit_mode']='ns' 
+        # glob_fit_dic['DiffProf']['fit_mode']='mcmc'
+        glob_fit_dic['DiffProf']['fit_mode']='ns' 
 
     #Fitting method - only if chi2 is used
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5932,7 +5922,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     # 'beta_rot_spots'                          :{'mod':'uf', 'low':0., 'high':1.},
                     'cos_istar'                               :{'mod':'uf', 'low':-1., 'high':1.},
                     'lat__ISESPRESSO_VSmock_vis_ARspot1'      :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'    :{'mod':'uf', 'low':2458330.39051 - 1., 'high':2458330.39051 + 1.},
+                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'    :{'mod':'uf', 'low':2458330.39051 - 2., 'high':2458330.39051 +2.},
                     'ang__ISESPRESSO_VSmock_vis_ARspot1'      :{'mod':'uf', 'low':0., 'high':45.},
                     'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':0, 'high':1},
                     'lat__ISESPRESSO_VSmock_vis_ARfacula1'    :{'mod':'uf', 'low':-90., 'high':90.},
@@ -6089,17 +6079,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'fontsize':10,
 #            'smooth2D':[0.05,5.] 
 #            'plot1s_1D':False
-        }
-        
-        
-    #%%%% Plot settings
-    
-    #%%%%% Plot best-fit 2D residual map
-    plot_dic['map_BF_Diff_prof']='png'   
-    
-    
-    #%%%%% 2D maps : Plot residuals from best-fit 2D residual map
-    plot_dic['map_BF_Diff_prof_re']='png'   
+        }   
         
         
         
@@ -6542,20 +6522,19 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%% Activating
     #    - for original and binned exposures in each visit
-    gen_dic['diff_data_corr'] = False        
-    gen_dic['res_loc_prof_est_bin']=False        
+    gen_dic['diff_prof_est'] = False        
+    gen_dic['diff_prof_est_bin']=False        
 
     
     #%%%% Calculating/retrieving
-    gen_dic['calc_diff_data_corr'] = False        
-    gen_dic['calc_res_loc_prof_est_bin']=False  
+    gen_dic['calc_diff_prof_est'] = False        
+    gen_dic['calc_diff_prof_est_bin']=False  
     
     
     #%%%% Model definition
     
     #%%%%% Model type and options
-    #    - used to define the estimates for the local stellar flux profiles
-    #    - these options partly differ from those defining intrinsic profiles (see gen_dic['mock_data']) because local profiles are associated with observed exposures
+    #    - used to define the estimates for the differential profiles
     # + 'def_iord': reconstructed order
     # + 'def_range': define the range over which profiles are reconstructed
     #    - set 'corr_mode' to:
@@ -6563,19 +6542,19 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + option to select visits contributing to the binned profiles (leave empty to use considered visit)
     # + option to select exposures contributing to the binned profiles (leave empty to use all out-transit exposures)
     # + option to select the phase range of contributing exposures
-    # > 'Intrbin': using binned intrinsic profiles series
+    # > 'Diffbin': using binned differential profiles series
     # + option to select visits contributing to the binned profiles (leave empty to use considered visit)
     # + the nearest binned profile along the binned dimension is used for a given exposure
     # + option to select exposures contributing to the binned profiles
     # + see possible bin dimensions in data_dic['Intr']['dim_bin']  
     # + see possible bin table definition in data_dic['Intr']['prop_bin']
-    # > 'glob_mod': models derived from global fit to intrinsic profiles (default)
+    # > 'glob_mod': models derived from global fit to differential profiles (default)
     # + 'mode' : 'ana' or 'theo'
     # + can be specific to the visit or common to all, depending on the fit
     # + line coordinate choice is retrieved automatically 
     # + indicate path to saved properties determining the line property variations in the processed dataset
     # + default options are used if left undefined
-    # > 'indiv_mod': models fitted to each individual intrinsic profile in each visit
+    # > 'indiv_mod': models fitted to each individual differential profile in each visit
     # + 'mode' : 'ana' or 'theo'
     # + works only in exposures where the stellar line could be fitted after planet exclusion
     # > 'rec_prof':
@@ -6583,16 +6562,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #   or via a 2D interpolation ('linear' or 'cubic') over complementary exposures and a narrow spectral band (defined in band_pix_hw pixels on each side of undefined pixels)
     # + chose a dimension over which the fit/interpolation is performed         
     # + option to select exposures contributing to the fit/interpolation
-    # > 'theo': use imported theoretical local intrinsic stellar profiles 
-    gen_dic['diff_data_corr'] = True & False        
-    gen_dic['calc_diff_data_corr'] = True & False        
+    # > 'theo': use imported theoretical local differential stellar profiles 
+    gen_dic['diff_prof_est'] = True & False        
+    gen_dic['calc_diff_prof_est'] = True & False        
 
-    data_dic['Diff']['opt_loc_prof_est']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
+    data_dic['Diff']['opt_diff_prof_est']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
     
     if gen_dic['star_name']=='AUMic':
-        data_dic['Diff']['opt_loc_prof_est'].update({'ResProf_prop_path':{
+        data_dic['Diff']['opt_diff_prof_est'].update({'DiffProf_prop_path':{
                                                                 'ESPRESSO':{
-                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/UNIGE/2023-2024/antaress/Ongoing/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
+                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/DiffProf/mcmc/Fit_results'
                                                                             }
                                                                         }
                                                     })
@@ -6619,8 +6598,48 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['map_Diff_prof_clean_ar_res']='png'
     plot_dic['map_Diff_prof_clean_pl_res']='png'
     plot_dic['map_Diff_prof_unclean_ar_res']='png'
-    plot_dic['map_Diff_prof_unclean_pl_res']='png'   
-        
+    plot_dic['map_Diff_prof_unclean_pl_res']='png'    
+
+
+
+
+
+
+    ##################################################################################################       
+    #%%% Module: correcting differential profile series from stellar contamination
+    #    - use the module to:
+    # + call previously computed differential profile estimates and the necessary corrections and use them
+    # + to perform the correction.
+    ##################################################################################################     
+    
+    #%%%% Activating
+    #    - for original exposures in each visit
+    gen_dic['corr_diff'] = False        
+
+    
+    #%%%% Calculating/retrieving
+    gen_dic['calc_corr_diff'] = False        
+    
+    
+    #%%%% Model definition
+    
+    #%%%%% Model type and options
+    #    - used to define the estimates for the differential profiles
+    # + 'def_iord': reconstructed order
+    # + 'def_range': define the range over which profiles are reconstructed
+    gen_dic['corr_diff'] = True #& False        
+    gen_dic['calc_corr_diff'] = True #& False        
+
+    data_dic['Diff']['corr_diff_dict']={'mode':'ana','def_range':[],'def_iord':0}
+    if gen_dic['star_name']=='AUMic':
+        data_dic['Diff']['corr_diff_dict'].update({'DiffProf_prop_path':{
+                                                                'ESPRESSO':{
+                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/DiffProf/mcmc/Fit_results'
+                                                                            }
+                                                                        }
+                                                    })
+    
+    #%%%% Plot settings  
         
     #%%%%% 2D maps : differential profiles corrected for the impact of active regions
     plot_dic['map_Diff_corr_ar']='png'    
@@ -6628,6 +6647,50 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
 
+
+
+    ##################################################################################################       
+    #%%% Module: Building best-fit differential profile series from fit results
+    #    - use the module to:
+    # + call previously computed differential profile estimates to build the time series of best fit
+    # + differential profiles.
+    ##################################################################################################     
+    
+    #%%%% Activating
+    #    - for original exposures in each visit
+    gen_dic['eval_bestfit'] = False        
+
+    
+    #%%%% Calculating/retrieving
+    gen_dic['calc_eval_bestfit'] = False        
+    
+    
+    #%%%% Model definition
+    
+    #%%%%% Model type and options
+    #    - used to define the estimates for the differential profiles
+    # + 'def_iord': reconstructed order
+    # + 'def_range': define the range over which profiles are reconstructed
+    gen_dic['eval_bestfit'] = True & False        
+    gen_dic['calc_eval_bestfit'] = True & False        
+
+    data_dic['Diff']['eval_bestfit_dict']={'mode':'ana','def_range':[],'def_iord':0}
+    if gen_dic['star_name']=='AUMic':
+        data_dic['Diff']['eval_bestfit_dict'].update({'DiffProf_prop_path':{
+                                                                'ESPRESSO':{
+                                                                    'mock_vis':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/DiffProf/mcmc/Fit_results'
+                                                                            }
+                                                                        }
+                                                    })
+    
+    #%%%% Plot settings  
+    
+    #%%%%% Plot best-fit 2D residual map
+    plot_dic['map_BF_Diff_prof']='png'   
+    
+    
+    #%%%%% 2D maps : Plot residuals from best-fit 2D residual map
+    plot_dic['map_BF_Diff_prof_re']='png'   
 
 
 
@@ -7474,11 +7537,12 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     
     #%%%% Live points
     #    - settings per instrument & visit
-    #    - users can specify the number of live points (nlive) used in the initial nested sampoing run.
+    #    - users can specify the number of live points (nlive) used in the initial nested sampoing run. Starting with 400 to 1000 is generally advisable.
     #    - users can specify the prior bounding method to use (bound_method). If not specified it will default to 'auto' (see doc. in dynesty API to see what this specifically does).
     #    - While the default bounding method is 'auto', 'multi' is better at dealing with posterior distributions with complex shapes and is therefore recommended when dealing with complex problems.
     #    - users can specify the method used to uniformly sample within the likliehood constraint, conditioned on the provided bounds (sample_method). If not specified the default is 'auto', i.e. dynesty will
     #    - pick a method based on the dimensionaly of the problem. If dealing with posterior distributions with complex shapes, 'slice' is recommended.
+    #    - users can specify the log-likelihood difference threshold below which the NS run with stop (dlogz). Defaut is 0.1 and can be placed higher/lower to stop the run earlier/later.
     local_dic[data_type]['ns_set']={}
 
     

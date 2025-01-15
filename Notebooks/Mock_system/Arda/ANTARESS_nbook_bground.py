@@ -249,8 +249,8 @@ def loc_prof_est(input_nbook):
     return None
 
 def diff_prof_corr(input_nbook):
-    input_nbook['settings']['gen_dic']['diff_data_corr']=True
-    input_nbook['settings']['gen_dic']['calc_diff_data_corr']=True
+    input_nbook['settings']['gen_dic']['diff_prof_est']=True
+    input_nbook['settings']['gen_dic']['calc_diff_prof_est']=True
     input_nbook['par']['diff_prof_corr'] = True
     return None
 
