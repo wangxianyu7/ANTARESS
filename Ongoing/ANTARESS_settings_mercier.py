@@ -797,25 +797,25 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #                  'lat__ISMIKE_Red_VSmockvis_ARspot1'     : -66,
     #                  'Tc_ar__ISMIKE_Red_VSmockvis_ARspot1' : 2459556.51669 + 2.4 + 0.8,
     #                  'ang__ISMIKE_Red_VSmockvis_ARspot1'     : 9,
-    #                  'fctrst__ISMIKE_Red_VSmockvis_ARspot1'    : 0.55,
+    #                  'fctrst__ISMIKE_Red_VSmockvis_ARspot1'    : 0.45,
 
     #                 # For the spot 'spot2' : -- Libby-Roberts+2023
     #                  'lat__ISMIKE_Red_VSmockvis_ARspot2'     : -82,
     #                  'Tc_ar__ISMIKE_Red_VSmockvis_ARspot2' : 2459556.51669 - 0.5 + 0.8,
     #                  'ang__ISMIKE_Red_VSmockvis_ARspot2'     : 17,
-    #                  'fctrst__ISMIKE_Red_VSmockvis_ARspot2'    : 0.55,
+    #                  'fctrst__ISMIKE_Red_VSmockvis_ARspot2'    : 0.45,
 
     #                 # For the spot 'spot3' : -- Libby-Roberts+2023
     #                  'lat__ISMIKE_Red_VSmockvis_ARspot3'     : -55,
     #                  'Tc_ar__ISMIKE_Red_VSmockvis_ARspot3' : 2459556.51669 + 0.2 + 0.8,
     #                  'ang__ISMIKE_Red_VSmockvis_ARspot3'     : 5,
-    #                  'fctrst__ISMIKE_Red_VSmockvis_ARspot3'    : 0.55,
+    #                  'fctrst__ISMIKE_Red_VSmockvis_ARspot3'    : 0.45,
 
                     # For the spot 'spot1' : -- Almenara+2022
                      'lat__ISMIKE_Red_VSmockvis_ARspot1'     : -90,
                      'Tc_ar__ISMIKE_Red_VSmockvis_ARspot1' : 2459642.86314 + 2.4,
                      'ang__ISMIKE_Red_VSmockvis_ARspot1'     : 48.6,
-                     'fctrst__ISMIKE_Red_VSmockvis_ARspot1'    : 0.41,
+                     'fctrst__ISMIKE_Red_VSmockvis_ARspot1'    : 0.59,
 
     #                 # For the facula 'facula1' : -- equatorial band hypothesis
     #                 'lat__ISMIKE_Red_VSmockvis_ARfacula1'     : 89.,
@@ -841,236 +841,236 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         #             'lat__ISNIRPS_HE_VSmockvis_ARspot1'     : 30,
         #             'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot1' : 2460472.0,
         #             'ang__ISNIRPS_HE_VSmockvis_ARspot1'     : 35, # 10, #15
-        #             'fctrst__ISNIRPS_HE_VSmockvis_ARspot1'    : 0.3,
+        #             'fctrst__ISNIRPS_HE_VSmockvis_ARspot1'    : 0.7,
 
         #             # For the spot 'spot2' :
         #             'lat__ISNIRPS_HE_VSmockvis_ARspot2'     : -20,
         #             'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot2' : 2460472.8,
         #             'ang__ISNIRPS_HE_VSmockvis_ARspot2'     : 25, # 10, #15
-        #             'fctrst__ISNIRPS_HE_VSmockvis_ARspot2'    : 0.3,
+        #             'fctrst__ISNIRPS_HE_VSmockvis_ARspot2'    : 0.7,
 
                     # # For the spot 'spot3' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot3'     : 4,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot3' : 2460471.1+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot3'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot3'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot3'    : 0.7,
 
 
                     # # For the spot 'spot4' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot4'     : 6,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot4' : 2460471.16+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot4'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot4'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot4'    : 0.7,
 
 
                     # # For the spot 'spot5' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot5'     : 12,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot5' : 2460471.14+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot5'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot5'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot5'    : 0.7,
 
 
                     # # For the spot 'spot6' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot6'     : -20,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot6' : 2460471.1+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot6'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot6'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot6'    : 0.7,
 
 
                     # # For the spot 'spot7' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot7'     : -20,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot7' : 2460471.0+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot7'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot7'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot7'    : 0.7,
 
 
                     # # For the spot 'spot8' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot8'     : -35,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot8' : 2460471.05+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot8'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot8'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot8'    : 0.7,
 
 
                     # # For the spot 'spot9' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot9'     : -46,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot9' : 2460471.05+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot9'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot9'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot9'    : 0.7,
 
 
                     # # For the spot 'spot10' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot10'     : -38,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot10' : 2460470.88+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot10'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot10'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot10'    : 0.7,
 
 
                     # # For the spot 'spot11' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot11'     : -26,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot11' : 2460470.65+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot11'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot11'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot11'    : 0.7,
 
 
                     # # For the spot 'spot12' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot12'     : -46,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot12' : 2460470.70+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot12'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot12'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot12'    : 0.7,
 
 
                     # # For the spot 'spot13' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot13'     : -15,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot13' : 2460470.5+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot13'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot13'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot13'    : 0.7,
 
 
                     # # For the spot 'spot14' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot14'     : -60,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot14' : 2460471.5+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot14'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot14'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot14'    : 0.7,
 
 
                     # # For the spot 'spot15' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot15'     : 8,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot15' : 2460471.6+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot15'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot15'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot15'    : 0.7,
 
 
                     # # For the spot 'spot16' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot16'     : 22,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot16' : 2460471.65+.51,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot16'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot16'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot16'    : 0.7,
 
 
                     # # For the spot 'spot17' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot17'     : 25,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot17' : 2460471.6+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot17'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot17'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot17'    : 0.7,
 
 
                     # # For the spot 'spot18' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot18'     : 20,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot18' : 2460471.45+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot18'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot18'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot18'    : 0.7,
 
 
                     # # For the spot 'spot19' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot19'     : 40,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot19' : 2460471.18+.51,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot19'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot19'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot19'    : 0.7,
 
 
                     # # For the spot 'spot20' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot20'     : 44,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot20' : 2460471.24+.51,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot20'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot20'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot20'    : 0.7,
 
 
                     # # For the spot 'spot21' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot21'     : 48,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot21' : 2460470.9+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot21'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot21'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot21'    : 0.7,
 
 
                     # # For the spot 'spot22' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot22'     : 60,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot22' : 2460470.4+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot22'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot22'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot22'    : 0.7,
 
 
                     # # For the spot 'spot23' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot23'     : 70,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot23' : 2460471.3+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot23'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot23'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot23'    : 0.7,
 
 
                     # # For the spot 'spot24' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot24'     : 85,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot24' : 2460470.3+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot24' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot24'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot24'    : 0.7,
 
 
                     # # For the spot 'spot25' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot25'     : -20,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot25' : 2460471.7+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot25' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot25'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot25'    : 0.7,
 
 
                     # # For the spot 'spot26' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot26'     : -10,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot26' : 2460471.4+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot26' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot26'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot26'    : 0.7,
 
                     
                     # # For the spot 'spot27' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot27'     : -35,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot27' : 2460471.55+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot27' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot27'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot27'    : 0.7,
 
                     
                     # # For the spot 'spot28' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot28'     : -42,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot28' : 2460472.75,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot28' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot28'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot28'    : 0.7,
 
 
                     # # For the spot 'spot29' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot29'     : 85,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot29' : 2460470.3+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot29' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot29'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot29'    : 0.7,
 
                     
                     # # For the spot 'spot30' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot30'     : 85,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot30' : 2460470.3+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot30' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot30'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot30'    : 0.7,
 
                     
                     # # For the spot 'spot31' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot31'     : 85,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot31' : 2460470.3+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot31' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot31'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot31'    : 0.7,
 
                     
                     # # For the spot 'spot32' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot32'     : 85,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot32' : 2460470.3+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot32' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot32'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot32'    : 0.7,
 
                     
                     # # For the spot 'spot33' :
                     # 'lat__ISNIRPS_HE_VSmockvis_ARspot33'     : 85,
                     # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot33' : 2460470.3+1.5,
                     # 'ang__ISNIRPS_HE_VSmockvis_ARspot33' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot33'    : 0.3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot33'    : 0.7,
 
                     
                     # For the spot 'spot34' :
                     'lat__ISNIRPS_HE_VSmockvis_ARspot34'     : 85,
                     'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot34' : 2460470.3+1.5,
                     'ang__ISNIRPS_HE_VSmockvis_ARspot34' : 3,
-                    'fctrst__ISNIRPS_HE_VSmockvis_ARspot34'    : 0.3,
+                    'fctrst__ISNIRPS_HE_VSmockvis_ARspot34'    : 0.7,
 
                     # For the facula 'facula1' : -- base grid run
                     # 'lat__ISNIRPS_HE_VSmockvis_ARfacula1'     : 30,
@@ -1091,32 +1091,32 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                      # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : 30,
                      # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051,
                      # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 25,
-                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.4,
+                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.6,
 
                      # # For the spot 'spot1' : 
                      # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : 30,
                      # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051,
                      # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 15,
-                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.8,
+                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.2,
                     
                      # # #For the spot 'spot2' : 
                      # 'lat__ISESPRESSO_VSmock_vis_ARspot2'     : -20,
                      # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot2' : 2458330.39051 - 0.2,
                      # 'ang__ISESPRESSO_VSmock_vis_ARspot2'     : 25,
-                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot2'    : 0.1,
+                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot2'    : 0.9,
 
                      # For the spot 'spot1' : -- plotting purposes
                      # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : 0,
                      # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051,
                      # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 25,
-                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.95,
+                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.05,
                      
 
                      # #For the spot 'spot2' :  -- plotting purposes
                      # 'lat__ISESPRESSO_VSmock_vis_ARspot2'     : 15,
                      # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot2' : 2458330.39051 - 0.4,
                      # 'ang__ISESPRESSO_VSmock_vis_ARspot2'     : 25,
-                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot2'    : 0.9,
+                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot2'    : 0.1,
 
                     # For the spot 'spot1' : -- base grid run
                      'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
@@ -1140,7 +1140,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         #                  'lat'     : {'distrib':'uf', 'low':-20, 'high':20},
         #                  'Tc_ar' : {'distrib':'uf', 'low':2458330.39051 - 0.8, 'high':2458330.39051 + 0.8},
         #                  'ang'     : {'distrib':'uf', 'low':10, 'high':20},
-        #                 'fctrst'    : {'distrib':'uf', 'low':0.6, 'high':0.7},
+        #                 'fctrst'    : {'distrib':'uf', 'low':0.3, 'high':0.4},
         #                  'num': 2,
         #                 },
         #          }
@@ -1156,13 +1156,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                      'lat__ISESPRESSO_VSmockvisit1_ARspot1'     : -45,
                      'Tc_ar__ISESPRESSO_VSmockvisit1_ARspot1' : 2458702.26484,
                      'ang__ISESPRESSO_VSmockvisit1_ARspot1'     : 20, # 10, #15
-                     'fctrst__ISESPRESSO_VSmockvisit1_ARspot1'    : 0.55,
+                     'fctrst__ISESPRESSO_VSmockvisit1_ARspot1'    : 0.45,
 
                      # For the spot 'spot2' : 
                      'lat__ISESPRESSO_VSmockvisit1_ARspot2'     : 55,
                      'Tc_ar__ISESPRESSO_VSmockvisit1_ARspot2' : 2458702.76484, 
                      'ang__ISESPRESSO_VSmockvisit1_ARspot2'     : 12, #12
-                     'fctrst__ISESPRESSO_VSmockvisit1_ARspot2'    : 0.55,
+                     'fctrst__ISESPRESSO_VSmockvisit1_ARspot2'    : 0.45,
                          }
                     }
                 }
@@ -1176,13 +1176,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                      'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
                      'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2457067.0488 - 12/24,
                      'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 20,
-                     'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.4,
+                     'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.6,
                     
                      # For the spot 'spot2' : 
                      'lat__ISESPRESSO_VSmock_vis_ARspot2'     : 40,
                      'Tc_ar__ISESPRESSO_VSmock_vis_ARspot2' : 2457067.0488 + 5/24,
                      'ang__ISESPRESSO_VSmock_vis_ARspot2'     : 25,
-                     'fctrst__ISESPRESSO_VSmock_vis_ARspot2'    : 0.6
+                     'fctrst__ISESPRESSO_VSmock_vis_ARspot2'    : 0.4
                          }
                     }
                 }
@@ -1197,7 +1197,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                      'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
                      'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051 - 0.1,
                      'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 15,
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.6,
+                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.4,
                     },
                 }
             }
@@ -1210,7 +1210,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                      'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
                      'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051 - 0.1,
                      'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 30,
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.6,
+                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.4,
                     },
                 }
             }
@@ -1223,7 +1223,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                      'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
                      'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051 - 0.1,
                      'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 5,
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.6,
+                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.4,
                     },
                 }
             }
@@ -1236,7 +1236,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                      'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
                      'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051 - 0.1,
                      'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 15,
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.95,
+                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.05,
                     },
                 }
             }
@@ -1249,7 +1249,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                      'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
                      'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051 - 0.1,
                      'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 15,
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.2,
+                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.8,
                     },
                 }
         }
@@ -2026,13 +2026,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'lat__ISESPRESSO_VSvisit1_ARspot1'     : 0,
                     'Tc_ar__ISESPRESSO_VSvisit1_ARspot1' : 2458702.76484-0.8,
                     'ang__ISESPRESSO_VSvisit1_ARspot1'     : 10,
-                    'fctrst__ISESPRESSO_VSvisit1_ARspot1'    : 0.35,
+                    'fctrst__ISESPRESSO_VSvisit1_ARspot1'    : 0.65,
 
                     # For the spot 'spot2' : -- base grid run
                     'lat__ISESPRESSO_VSvisit1_ARspot2'     : -10,
                     'Tc_ar__ISESPRESSO_VSvisit1_ARspot2' : 2458702.76484,
                     'ang__ISESPRESSO_VSvisit1_ARspot2'     : 14,
-                    'fctrst__ISESPRESSO_VSvisit1_ARspot2'    : 0.35,
+                    'fctrst__ISESPRESSO_VSvisit1_ARspot2'    : 0.65,
                     },
                 }
         }
@@ -3367,20 +3367,6 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%%% Housekeeping and derived properties 
     plot_dic['prop_DI']=''  
-
-
-    #%%%% Plot settings                         
-    
-    #%%%%% Individual disk-integrated profiles
-    plot_dic['DI_prof']=''     
-    
-    
-    #%%%%% Residuals from disk-integrated profiles
-    plot_dic['DI_prof_res']=''   
-    
-    
-    #%%%%% Housekeeping and derived properties 
-    plot_dic['prop_DI']=''  
     
         
     #Activating
@@ -4693,7 +4679,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         if gen_dic['star_name']=='Gemini':data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 41,dtype=int))+list(np.arange(139, 180,dtype=int))}} 
         elif gen_dic['star_name']=='Sagittarius':data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 47,dtype=int))+list(np.arange(133, 180,dtype=int))}} 
-        else:data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 47,dtype=int))+list(np.arange(133, 180,dtype=int))}} 
+        else:data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 45,dtype=int))+list(np.arange(135, 180,dtype=int))}} 
 
 
     #Continuum range
@@ -5604,8 +5590,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
         'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
         # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[10, 50]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.3, 0.9]},
-        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.1, 'bd':[0.05, 0.3]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.05, 0.7]},
+        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.1, 'bd':[0.05, 0.7]},
         
         # # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
         # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':False, 'guess':0, 'bd':[-50, 10]},
@@ -5632,12 +5618,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'lat__ISESPRESSO_VSvisit1_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
         'Tc_ar__ISESPRESSO_VSvisit1_ARspot1' : {'vary':True, 'guess':2458702.77-0.2, 'bd':[2458702.77 - 1, 2458702.77 + 1]},
         'ang__ISESPRESSO_VSvisit1_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSvisit1_ARspot1'   : {'vary':True, 'guess':0.9, 'bd':[0.01, 0.99]},
+        'fctrst__ISESPRESSO_VSvisit1_ARspot1'   : {'vary':True, 'guess':0.1, 'bd':[0.01, 0.99]},
 
         'lat__ISESPRESSO_VSvisit1_ARspot2'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
         'Tc_ar__ISESPRESSO_VSvisit1_ARspot2' : {'vary':True, 'guess':2458702.77+0.2, 'bd':[2458702.77 - 1, 2458702.77 + 1]},
         'ang__ISESPRESSO_VSvisit1_ARspot2'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSvisit1_ARspot2'   : {'vary':True, 'guess':0.9, 'bd':[0.01, 0.99]},
+        'fctrst__ISESPRESSO_VSvisit1_ARspot2'   : {'vary':True, 'guess':0.1, 'bd':[0.01, 0.99]},
 
         'rv_shift'                        : {'vary':True, 'guess': 1, 'bd':[-5, 5]},  
 
@@ -5715,7 +5701,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
         # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[1, 60]},
         'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
-        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.6, 'bd':[0.001, 0.999]},
+        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.4, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
         # 'lambda_rad__pl'+zodiac_pl                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
@@ -5739,8 +5725,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
         # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
         'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.4, 'bd':[0.001, 0.999]},
-        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.6, 'bd':[0.001, 0.999]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
+        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.4, 'bd':[0.001, 0.999]},
 
         # 'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]},
         'lambda_rad__pl'+zodiac_pl                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
@@ -5795,7 +5781,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
         'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
         'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.95, 'bd':[0.001, 0.999]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -5813,7 +5799,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
         'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
         'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.2, 'bd':[0.001, 0.999]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -5925,10 +5911,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'    :{'mod':'uf', 'low':2458330.39051 - 2., 'high':2458330.39051 +2.},
                     'ang__ISESPRESSO_VSmock_vis_ARspot1'      :{'mod':'uf', 'low':0., 'high':45.},
                     'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':0, 'high':1},
-                    'lat__ISESPRESSO_VSmock_vis_ARfacula1'    :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISESPRESSO_VSmock_vis_ARfacula1'  :{'mod':'uf', 'low':2458330.39051 - 1., 'high':2458330.39051 + 1.},
-                    'ang__ISESPRESSO_VSmock_vis_ARfacula1'    :{'mod':'uf', 'low':0., 'high':45.},
-                    'fctrst__ISESPRESSO_VSmock_vis_ARfacula1' :{'mod':'uf', 'low':1, 'high':10},
+                    # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'    :{'mod':'uf', 'low':-90., 'high':90.},
+                    # 'Tc_ar__ISESPRESSO_VSmock_vis_ARfacula1'  :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
+                    # 'ang__ISESPRESSO_VSmock_vis_ARfacula1'    :{'mod':'uf', 'low':0., 'high':45.},
+                    # 'fctrst__ISESPRESSO_VSmock_vis_ARfacula1' :{'mod':'uf', 'low':1, 'high':10},
                     'lambda_rad__plAUMicb'                    :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }
 
