@@ -2366,6 +2366,8 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         #%%%% RV range
         plot_settings[key_plot]['rv_range'] = None
+
+        
         if gen_dic['star_name']=='TOI3884': 
             
             # plot_settings[key_plot]['t_BJD'] = {'inst':'MIKE_Red', 'vis':'mockvis', 't':  2459556.51669+np.linspace(-0.05,0.05,6)}
