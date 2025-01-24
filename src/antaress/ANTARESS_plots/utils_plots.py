@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from matplotlib.ticker import MultipleLocator, FormatStrFormatter,ScalarFormatter
+from matplotlib.ticker import MultipleLocator, FormatStrFormatter,ScalarFormatter,AutoMinorLocator, LogLocator, NullFormatter,LogFormatterExponent
 import matplotlib.colors as colors
 import numpy as np
 from copy import deepcopy
@@ -18,6 +18,7 @@ def custom_axis(plt,ax=None,fig = None,position=None,colback=None,
                 x_range=None,y_range=None,z_range=None,
                 autom_x=False,autom_y=False,autom_z=False,
     		    x_mode=None,y_mode=None,z_mode=None,
+                xmajor_log_n=1.,ymajor_log_n=1.,zmajor_log_n=1.,
     		    x_title=None,y_title=None,z_title=None,x_title_dist=None,y_title_dist=None,z_title_dist=None,
     		    no_xticks=False,no_yticks=False,no_zticks=True,
     		    top_xticks=None,right_yticks=None,   
@@ -30,7 +31,8 @@ def custom_axis(plt,ax=None,fig = None,position=None,colback=None,
     		    dir_x=None,dir_y=None,dir_z=None,
                 xtick_pad=None,ytick_pad=None,ztick_pad=None,
                 xlab_col=None,ylab_col=None,zlab_col=None,
-                hide_axis=None,
+                hide_axis=None,tight_layout=False,
+                invert_xaxis = False,invert_yaxis = False,invert_zaxis = False,
                 right_axis=False,secy_title=None,secy_range=None,secy_title_dist=None,no_secyticks=None,secymajor_int=None,dir_secy=None,secyfont_size=None,
                 secymajor_length=None,secymajor_thick=None,secyminor_length=None,secyminor_thick=None,secymajor_form=None,secyminor_int=None,secylab_col=None):
     r"""**Plot axis.**
@@ -63,12 +65,15 @@ def custom_axis(plt,ax=None,fig = None,position=None,colback=None,
         if fig is None:plt.subplots_adjust(left=position[0],bottom=position[1],right=position[2],top=position[3]) 
         else:fig.subplots_adjust(left=position[0],bottom=position[1],right=position[2],top=position[3]) 
 
+    #Tight layout
+    if tight_layout:plt.tight_layout()
+
     #Set axis to log mode if required
-    if x_mode=='log':
+    if x_mode in ['log','log_fmt']:
         ax.set_xscale('log')
-    if y_mode=='log':
+    if y_mode in ['log','log_fmt']:
         ax.set_yscale('log')
-    if z_mode=='log':
+    if z_mode in ['log','log_fmt']:
         ax.set_zscale('log')
 
 
@@ -123,10 +128,17 @@ def custom_axis(plt,ax=None,fig = None,position=None,colback=None,
         dx_range = x_range[1]-x_range[0]
 
         #Self-determined axis settings
-        if autom_x:xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+        if autom_x:
+            if x_mode=='log_fmt':xmajor_log_n = autom_logtick_prop(x_range)
+            else:xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
 
-        #Interval between major ticks	
-        if xmajor_int is not None:
+        #Interval between major ticks
+        if x_mode=='log_fmt':
+            if xmajor_log_n>1:
+                ax.xaxis.set_major_locator(LogLocator(base=10**xmajor_log_n,subs=(1.0, ), numticks=100)) #seems necessary to specify subs and numticks to get the requested spacing
+            else:
+                ax.xaxis.set_major_locator(LogLocator(base=10.,subs=0.1*(1+np.arange(10)), numticks=100))        
+        elif xmajor_int is not None:
             n_ticks = int(dx_range/xmajor_int)
             if n_ticks>100:xmajor_int = dx_range/100.
             ax.xaxis.set_major_locator(MultipleLocator(xmajor_int))
@@ -155,13 +167,24 @@ def custom_axis(plt,ax=None,fig = None,position=None,colback=None,
 	
 	    #Interval between minor ticks	
         if x_mode=='log':xminor_int=None
-        if xminor_int is not None:ax.xaxis.set_minor_locator(MultipleLocator(xminor_int))		
+        elif (x_mode=='log_fmt') and (xmajor_log_n>1):
+            base_minor = 10**(xmajor_log_n-1.)
+            subs_minor=(10**(xmajor_log_n-2.))*(1+np.arange(10))      
+            ax.xaxis.set_minor_locator(LogLocator(base=base_minor, subs=subs_minor, numticks=20))
+            ax.xaxis.set_minor_formatter(NullFormatter()) 
+        elif (xminor_int is not None):
+            n_ticks = int(xmajor_int/xminor_int)
+            if n_ticks>50:xminor_int = xmajor_int/50.
+            ax.xaxis.set_minor_locator(MultipleLocator(xminor_int))	
 
         #Ticks labels color
         if xlab_col is not None:[i_col.set_color(xlab_col) for i_col in ax.get_xticklabels()]
 
         #Hide top ticks
         if hide_xticks:ax.xaxis.set_ticks_position('bottom')
+        
+        #Invert axis
+        if invert_xaxis:ax.invert_xaxis()  
 
     else:
         ax.set_xticks([])	
@@ -176,10 +199,17 @@ def custom_axis(plt,ax=None,fig = None,position=None,colback=None,
         dy_range = y_range[1]-y_range[0]
 
         #Self-determined axis settings
-        if autom_y:ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
-
+        if autom_y:
+            if y_mode=='log_fmt':ymajor_log_n = autom_logtick_prop(y_range)
+            else:ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)
+            
         #Interval between major ticks		
-        if ymajor_int is not None:
+        if y_mode=='log_fmt':
+            if ymajor_log_n>1:
+                ax.yaxis.set_major_locator(LogLocator(base=10**ymajor_log_n,subs=(1.0, ), numticks=100)) #seems necessary to specify subs and numticks to get the requested spacing
+            else:
+                ax.yaxis.set_major_locator(LogLocator(base=10.,subs=0.1*(1+np.arange(10)), numticks=100))
+        elif ymajor_int is not None:
             n_ticks = int(dy_range/ymajor_int)
             if n_ticks>100:ymajor_int = dy_range/100.
             ax.yaxis.set_major_locator(MultipleLocator(ymajor_int))	
@@ -204,11 +234,16 @@ def custom_axis(plt,ax=None,fig = None,position=None,colback=None,
         if ymajor_form is not None:ax.yaxis.set_major_formatter(FormatStrFormatter(ymajor_form))	
         if y_mode=='log':
             if ymajor_form is not None:ax.yaxis.set_major_formatter(ScalarFormatter(ymajor_form))
-            else:ax.yaxis.set_major_formatter(ScalarFormatter())    
+            else:ax.yaxis.set_major_formatter(ScalarFormatter())  
 
 	    #Interval between minor ticks	
         if y_mode=='log':yminor_int=None
-        if yminor_int is not None:
+        elif (y_mode=='log_fmt') and (ymajor_log_n>1):
+            base_minor = 10**(ymajor_log_n-1.)
+            subs_minor=(10**(ymajor_log_n-2.))*(1+np.arange(10))   
+            ax.yaxis.set_minor_locator(LogLocator(base=base_minor, subs=subs_minor, numticks=20))
+            ax.yaxis.set_minor_formatter(NullFormatter()) 
+        elif (yminor_int is not None):
             n_ticks = int(ymajor_int/yminor_int)
             if n_ticks>50:yminor_int = ymajor_int/50.
             ax.yaxis.set_minor_locator(MultipleLocator(yminor_int))		
@@ -219,6 +254,9 @@ def custom_axis(plt,ax=None,fig = None,position=None,colback=None,
         #Hide right ticks
         if hide_yticks:ax.yaxis.set_ticks_position('left')
 
+        #Invert axis
+        if invert_yaxis:ax.invert_yaxis()  
+        
     else:
         ax.set_yticks([])	
 
@@ -232,39 +270,59 @@ def custom_axis(plt,ax=None,fig = None,position=None,colback=None,
         dz_range = z_range[1]-z_range[0]
 
         #Self-determined axis settings
-        if autom_z:zmajor_int,zminor_int,zmajor_form = autom_tick_prop(dz_range)
+        if autom_z:
+            if z_mode=='log_fmt':zmajor_log_n = autom_logtick_prop(z_range)
+            else:zmajor_int,zminor_int,zmajor_form = autom_tick_prop(dz_range)
                 		
-        #Interval between major ticks		
-        if zmajor_int is not None:ax.zaxis.set_major_locator(MultipleLocator(zmajor_int))	
+        #Interval between major ticks
+        if z_mode=='log_fmt':
+            if zmajor_log_n>1:
+                ax.zaxis.set_major_locator(LogLocator(base=10**zmajor_log_n,subs=(1.0, ), numticks=100)) #seems necessary to specify subs and numticks to get the requested spacing		
+            else:
+                ax.zaxis.set_major_locator(LogLocator(base=10.,subs=0.1*(1+np.arange(10)), numticks=100))
+        if zmajor_int is not None:
+            ax.zaxis.set_major_locator(MultipleLocator(zmajor_int))	
 
 		#Direction of ticks
         if dir_z==None:dir_z='in' 
 
-	      #Major ticks length	
+	    #Major ticks	
         zmajor_length_loc=zmajor_length if zmajor_length is not None else 7
         zmajor_thick_loc=zmajor_thick if zmajor_thick is not None else 1.		
         ztick_pad_loc=ztick_pad if ztick_pad is not None else 5 		
         ax.tick_params('z', length=zmajor_length_loc, which='major',width=zmajor_thick_loc,
 					  direction=dir_z, pad=ztick_pad_loc,labelsize=zfont_size_loc)
 	
-	      #Minor ticks length	
+	    #Minor ticks	
         zminor_length_loc=zminor_length if zminor_length is not None else zmajor_length_loc/2.
         zminor_thick_loc=zminor_thick if zminor_thick is not None else 1.5			
         ax.tick_params('z', length=zminor_length_loc, which='minor',width=zminor_thick_loc,
 					  direction=dir_z,labelsize=zfont_size_loc)
 	
-	      #Major ticks label format		
-        if zmajor_form is not None:
-            majorFormatter = FormatStrFormatter(zmajor_form)
-            ax.zaxis.set_major_formatter(majorFormatter)		
+	    #Major ticks label format		
+        if zmajor_form is not None:ax.zaxis.set_major_formatter(FormatStrFormatter(zmajor_form))	
+        if z_mode=='log':
+            if zmajor_form is not None:ax.zaxis.set_major_formatter(ScalarFormatter(zmajor_form))
+            else:ax.zaxis.set_major_formatter(ScalarFormatter())  	
 			
-	      #Interval between minor ticks			
-        if zminor_int is not None:	
-            minorLocator   = MultipleLocator(zminor_int)
-            ax.zaxis.set_minor_locator(minorLocator)
+	    #Interval between minor ticks	
+        if z_mode=='log':zminor_int=None
+        elif (z_mode=='log_fmt') and (zmajor_log_n>1):
+            base_minor = 10**(zmajor_log_n-1.)
+            subs_minor=(10**(zmajor_log_n-2.))*(1+np.arange(10))      
+            ax.zaxis.set_minor_locator(LogLocator(base=base_minor, subs=subs_minor, numticks=20))
+            ax.zaxis.set_minor_formatter(NullFormatter()) 
+        elif (zminor_int is not None):
+            n_ticks = int(zmajor_int/zminor_int)
+            if n_ticks>50:zminor_int = zmajor_int/50.
+            ax.zaxis.set_minor_locator(MultipleLocator(zminor_int))	
 
-	      #Ticks labels color
+	    #Ticks labels color
         if zlab_col is not None:[i_col.set_color(zlab_col) for i_col in ax.get_zticklabels()]
+
+
+        #Invert axis
+        if invert_zaxis:ax.invert_zaxis() 
 
     # else:
     #     ax.set_zticks([])	
@@ -431,6 +489,26 @@ def autom_tick_prop(dax_range):
     elif dax_range>1.1e-4:  axmajor_int,axminor_int,axmajor_form=2e-4,1e-4,'%.4f' 
     else:axmajor_int,axminor_int,axmajor_form=None,None,None 
     return axmajor_int,axminor_int,axmajor_form    
+
+def autom_logtick_prop(ax_range):
+    r"""**Automatic ticks for log axis.**
+    
+    Defines tick spacings automatically.
+    Ticks are placed at (10**n)**i with i consecutive integers self-determined by the plot. 
+    
+    Args:
+        ax_range (float): axis boundaries
+    
+    Returns:
+        axmajor_int (int): major ticks spacing
+    
+    """
+    dax_range_log_abs = np.abs(np.log10(ax_range[1])-np.log10(ax_range[0]))
+    if dax_range_log_abs>20.:major_logn = 4.
+    if dax_range_log_abs>10.:major_logn = 2.
+    else:major_logn = 1.
+
+    return major_logn
     
 
 

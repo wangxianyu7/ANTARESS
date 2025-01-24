@@ -1440,50 +1440,61 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             else:
                 
                 #Adding / in case user forgets
-                vis_path = gen_dic['data_dir_list'][inst][vis]+'/'
+                vis_path_root = gen_dic['data_dir_list'][inst][vis]+'/'
         
                 #List of all exposures for current instrument
                 if inst in ['SOPHIE']:
-                    vis_path+= {
+                    vis_path= vis_path_root+ {
                         'CCF':'*ccf*',
                         'spec2D':'*e2ds_',
                         }[data_inst['type']]
                 elif inst in ['CORALIE']:
-                    vis_path+= {
+                    vis_path= vis_path_root+ {
                         'CCF':'*ccf*',
                         'spec2D':'*S2D_',
                         }[data_inst['type']]
                 elif inst=='CARMENES_VIS':
-                    vis_path+= {
+                    vis_path= vis_path_root+ {
                         'spec2D':'*sci-allr-vis_',
                         }[data_inst['type']]                    
                 elif inst=='CARMENES_VIS_CCF':     #current reduction is not standard, better to consider as independent instrument
-                    vis_path+= {
+                    vis_path= vis_path_root+ {
                         'CCF':'*CCF*',
                         }[data_inst['type']]  
                 elif inst in ['ESPRESSO','ESPRESSO_MR','HARPN','HARPS']:
-                    vis_path+= {
+                    vis_path= vis_path_root+ {
                         'CCF':'*CCF_',
                         'spec1D':'*S1D_',
                         'spec2D':'*S2D_',
                         }[data_inst['type']] 
                 elif inst in ['NIRPS_HA','NIRPS_HE']:
-                    vis_path+= {
+                    vis_path= vis_path_root+ {
                         'CCF':'*CCF_TELL_CORR_',       #CCF from telluric-corrected spectra
                         'spec1D':'*S1D_',
                         'spec2D':'*S2D_',
                         }[data_inst['type']] 
                 elif inst in ['EXPRES']:
-                    vis_path+= {
+                    vis_path= vis_path_root+ {
                         'spec2D':'*',
                         }[data_inst['type']]                      
                 else:stop('Instrument undefined')
 
-                #Use sky-corrected data
+                #Nominal data files
+                if (inst not in ['EXPRES','CARMENES_VIS_CCF']):nom_ext = 'A.fits'
+                else:nom_ext = '.fits'
+                vis_path_exp = np.array(glob.glob(vis_path+nom_ext))
+                n_in_visit=len(vis_path_exp) 
+                if n_in_visit==0:stop('No data found at '+vis_path+nom_ext+'. Check path.')
+                
+                #Retrieved file root names
+                #    - so that we can retrieve sky-corrected and blaze files in the same order
+                exp_rootnames = [path.split(vis_path_root)[1].split(nom_ext)[0] for path in vis_path_exp]
+
+                #Retrieving sky-corrected data
                 if (inst in gen_dic['fibB_corr']) and (vis in gen_dic['fibB_corr'][inst]) and (len(gen_dic['fibB_corr'][inst][vis])>0):
-                    if inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','NIRPS_HA','NIRPS_HE']:vis_path_skysub=vis_path+'SKYSUB_A'
-                    else:vis_path_skysub=vis_path+'C'   
-                    vis_path_skysub_exp = np.array(glob.glob(vis_path_skysub+'.fits'))
+                    if inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','NIRPS_HA','NIRPS_HE']:skcorr_ext = 'SKYSUB_A.fits'
+                    else:skcorr_ext = 'C.fits'                      
+                    vis_path_skysub_exp = np.array([ vis_path_root+ exp_rootname+skcorr_ext for exp_rootname in exp_rootnames   ])
                     if len(vis_path_skysub_exp)==0:stop('No sky-sub data found. Check path.') 
                     
                     #Orders to be replaced
@@ -1492,22 +1503,13 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     
                 else:vis_path_skysub_exp = None
 
-                #Use blazed data
+                #Retrieving blazed data
                 if (data_inst['type']=='spec2D') and gen_dic['gcal_blaze']:   
                     if (inst in ['ESPRESSO','ESPRESSO_MR','HARPN','HARPS','NIRPS_HA','NIRPS_HE']):
-                        vis_path_blaze = vis_path+'BLAZE_A'
-                        vis_path_blaze_exp = np.array(glob.glob(vis_path_blaze+'.fits'))
-                        if len(vis_path_blaze_exp)==0:print('No blaze data found at '+vis_path_blaze+'.fits. Switching to estimate mode.')
+                        vis_path_blaze_exp = np.array([ vis_path_root+ exp_rootname+'BLAZE_A.fits' for exp_rootname in exp_rootnames   ])                        
+                        if len(vis_path_blaze_exp)==0:print('No blaze data found. Switching to estimate mode.')
                         else:data_inst['gcal_blaze_vis']+=[vis]
                     else:print('Blaze names undefined for '+inst+'. Switching to estimate mode.')
-
-                #Final path of visits exposures
-                if (inst not in ['EXPRES','CARMENES_VIS_CCF']):vis_path+='A'
-                
-                #Retrieve files
-                vis_path_exp = np.array(glob.glob(vis_path+'.fits'))
-                n_in_visit=len(vis_path_exp) 
-                if n_in_visit==0:stop('No data found at '+vis_path+'.fits. Check path.')
 
             #Remove/keep visits
             if (vis in gen_dic['unused_visits'][inst]):   

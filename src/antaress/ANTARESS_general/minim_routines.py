@@ -242,8 +242,8 @@ def ln_prior_func(p_step,fixed_args):
     
             #Gaussian prior with different halves
             elif parprior['mod']=='dgauss':
-                if (parval <= parprior['val']):ln_p += - 0.5*(np.log(2.*np.pi*parprior['low']**2.) + ( (parval - parprior['val'])/parprior['low']  )**2.)                       
-                else:ln_p += - 0.5*(np.log(2.*np.pi*parprior['high']**2.) + ( (parval - parprior['val'])/parprior['high']  )**2.)   
+                if (parval <= parprior['val']):ln_p += - 0.5*(np.log(2.*np.pi*parprior['s_val_low']**2.) + ( (parval - parprior['val'])/parprior['s_val_low']  )**2.)                       
+                else:ln_p += - 0.5*(np.log(2.*np.pi*parprior['s_val_high']**2.) + ( (parval - parprior['val'])/parprior['s_val_high']  )**2.)   
     
             #Undefined prior
             else:
@@ -292,8 +292,7 @@ def ln_prior_func_NS(cube,fixed_args):
             #Gaussian prior with different halves
             # elif parprior['mod']=='dgauss':
                 # TODO
-                # if (parval <= parprior['val']):ln_p += - 0.5*(np.log(2.*np.pi*parprior['low']**2.) + ( (parval - parprior['val'])/parprior['low']  )**2.)                       
-                # else:ln_p += - 0.5*(np.log(2.*np.pi*parprior['high']**2.) + ( (parval - parprior['val'])/parprior['high']  )**2.)   
+
 
             #Undefined prior
             else:
@@ -821,6 +820,7 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
     fit_dic['merit'] = {}
     if fit_dic['fit_mode']=='fixed':fit_dic['merit']['n_free'] = 0.
     else:fit_dic['merit']['n_free'] = len(var_par_list) 
+    if 'calc_merit' not in fit_dic:fit_dic['calc_merit'] = True
 
     #Initialize save file
     if ('save_outputs' not in fit_dic):fit_dic['save_outputs']=True 
@@ -900,9 +900,16 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         #On-screen printing of errors
         if ('sig_list' not in fit_dic):fit_dic['sig_list']=['1s'] 
 
+        #Saving final results by default
+        if 'save_results' not in fit_dic:fit_dic['save_results']=True 
+
         #Plot correlation diagram for final parameters      
         if ('save_MCMC_corner' not in fit_dic):fit_dic['save_MCMC_corner']='pdf' 
         if ('corner_options' not in fit_dic):fit_dic['corner_options']={'plot_HDI':True,'color_levels':['deepskyblue','lime']}
+
+        #Plot corner diagram for simulated points
+        if ('save_sim_points_corner' not in fit_dic):fit_dic['save_sim_points_corner']='' 
+        if ('sim_corner_options' not in fit_dic):fit_dic['sim_corner_options']={}
         
         #Plot chains for MCMC parameters    
         if ('save_MCMC_chains' not in fit_dic):fit_dic['save_MCMC_chains']='png'
@@ -912,6 +919,9 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         
         #Run name
         if ('run_name' not in fit_dic):fit_dic['run_name']='' 
+
+        #Default thread number
+        if 'nthreads' not in fit_dic:fit_dic['nthreads'] = 1
 
         if fit_dic['fit_mode']=='mcmc':
     
@@ -934,6 +944,7 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
             if ('monitor' not in fit_dic):fit_dic['monitor']=False 
     
             #Walkers
+            if 'walkers_set' not in fit_dic:fit_dic['walkers_set']={}
             if 'nwalkers' not in fit_dic['walkers_set']:fit_dic['nwalkers'] = int(3*fit_dic['merit']['n_free'])
             else:fit_dic['nwalkers'] = fit_dic['walkers_set']['nwalkers']
             if 'nsteps' not in fit_dic['walkers_set']:fit_dic['nsteps'] = 5000
@@ -1434,89 +1445,94 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                 for ipar,par in enumerate(fixed_args['var_par_list']): 
                     fit_dic['sig_parfinal_err']['1s'][:,ipar]=p_final_in[par].stderr  
         else:p_final = deepcopy(p_final_in)
-     
-        #Calculation of best-fit model equivalent to the observations, corresponding residuals, and RMS
-        #    - only in the case where the function does return the model
-        if not fixed_args['inside_fit']:
-            res_tab = fixed_args['y_val'] - fixed_args['fit_func'](p_final,fixed_args['x_val'],args=fixed_args)[0] 
-            fit_dic['merit']['rms']=res_tab.std()       
-        else:fit_dic['merit']['rms']='Undefined'
-    
-        #Merit values 
-        if fit_dic['fit_mode'] =='fixed':fit_dic['merit']['mode']='forward'    
-        else:fit_dic['merit']['mode']='fit'    
-        fit_dic['merit']['dof']=fit_dic['nx_fit']-fit_dic['merit']['n_free']
-        if fit_dic['fit_mode'] in ['fixed','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
-        elif fit_dic['fit_mode'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1]['step_chi2']  
-        elif fit_dic['fit_mode'] =='ns': fit_dic['merit']['chi2']=ln_lkhood_func_ns(p_final,fixed_args)[1]['step_chi2'] 
-        fit_dic['merit']['red_chi2']=fit_dic['merit']['chi2']/fit_dic['merit']['dof']
-        fit_dic['merit']['BIC']=fit_dic['merit']['chi2']+fit_dic['merit']['n_free']*np.log(fit_dic['nx_fit'])      
-        fit_dic['merit']['AIC']=fit_dic['merit']['chi2']+2.*fit_dic['merit']['n_free']
-        if fit_dic['fit_mode'] in ['mcmc','ns']:fit_dic['merit']['GR_stat']=fit_dic['GR_stat']
-        else:fit_dic['merit']['GR_stat']='N/A, MCMC run needed.'
-
         
-        #Print fit statistics and results on screen
-        if txt_print is not None:
-            txt_print+=[["==============================================================================="],
-                        ["Fit statistics"],
-                        ["==============================================================================="],
-                        [" "],
-                        ['Mode : '+{'chi2':'Chi square','mcmc':'MCMC','ns':'Nested sampling','fixed':'Forward'}[fit_dic['fit_mode']]]]  
-            if fit_dic['fit_mode']=='chi2':
-                txt_print+=[["Fitting method                = %r"%fit_dic['merit']['method']]]
-                txt_print+=[["Fit success                 = %r"%fit_dic['merit']['success']]]
-                if not fit_dic['merit']['success']:txt_print+=[["  " + fit_dic['merit']['message'][:-1]]]  
-                else:
-                    if len(fit_dic['merit']['message'])>32:txt_print+=[["  " + fit_dic['merit']['message']]]  
-                    elif (fit_dic['merit']['message'][:-1]!='Fit succeeded'):txt_print+=[["  " + fit_dic['merit']['message'][:-1]]]  
-                txt_print+=[["Function evals              = %i"%fit_dic['merit']['eval']]]    
-            elif fit_dic['fit_mode'] in ['mcmc','ns']:
+        #Merit values
+        if fit_dic['calc_merit']:
+         
+            #Calculation of best-fit model equivalent to the observations, corresponding residuals, and RMS
+            #    - only in the case where the function does return the model
+            if not fixed_args['inside_fit']:
+                res_tab = fixed_args['y_val'] - fixed_args['fit_func'](p_final,fixed_args['x_val'],args=fixed_args)[0] 
+                fit_dic['merit']['rms']=res_tab.std()       
+            else:fit_dic['merit']['rms']='Undefined'
+        
+            #Merit values 
+            if fit_dic['fit_mode'] =='fixed':fit_dic['merit']['mode']='forward'    
+            else:fit_dic['merit']['mode']='fit'    
+            fit_dic['merit']['dof']=fit_dic['nx_fit']-fit_dic['merit']['n_free']
+            if fit_dic['fit_mode'] in ['fixed','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
+            elif fit_dic['fit_mode'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1]['step_chi2']  
+            elif fit_dic['fit_mode'] =='ns': fit_dic['merit']['chi2']=ln_lkhood_func_ns(p_final,fixed_args)[1]['step_chi2'] 
+            fit_dic['merit']['red_chi2']=fit_dic['merit']['chi2']/fit_dic['merit']['dof']
+            fit_dic['merit']['BIC']=fit_dic['merit']['chi2']+fit_dic['merit']['n_free']*np.log(fit_dic['nx_fit'])      
+            fit_dic['merit']['AIC']=fit_dic['merit']['chi2']+2.*fit_dic['merit']['n_free']
+            if fit_dic['fit_mode'] in ['mcmc','ns']:fit_dic['merit']['GR_stat']=fit_dic['GR_stat']
+            else:fit_dic['merit']['GR_stat']='N/A, MCMC run needed.'
+
+            
+            #Print fit statistics and results on screen
+            if txt_print is not None:
+                txt_print+=[["==============================================================================="],
+                            ["Fit statistics"],
+                            ["==============================================================================="],
+                            [" "],
+                            ['Mode : '+{'chi2':'Chi square','mcmc':'MCMC','ns':'Nested sampling','fixed':'Forward'}[fit_dic['fit_mode']]]]  
+                if fit_dic['fit_mode']=='chi2':
+                    txt_print+=[["Fitting method                = %r"%fit_dic['merit']['method']]]
+                    txt_print+=[["Fit success                 = %r"%fit_dic['merit']['success']]]
+                    if not fit_dic['merit']['success']:txt_print+=[["  " + fit_dic['merit']['message'][:-1]]]  
+                    else:
+                        if len(fit_dic['merit']['message'])>32:txt_print+=[["  " + fit_dic['merit']['message']]]  
+                        elif (fit_dic['merit']['message'][:-1]!='Fit succeeded'):txt_print+=[["  " + fit_dic['merit']['message'][:-1]]]  
+                    txt_print+=[["Function evals              = %i"%fit_dic['merit']['eval']]]    
+                elif fit_dic['fit_mode'] in ['mcmc','ns']:
+                    txt_print+=[
+                        ["Walkers                     = "+str(fit_dic['nwalkers'])],
+                        ["Burn-in steps               = "+str(fit_dic['nburn'])],
+                        ["Steps (initial, per walker) = "+str(fit_dic['nsteps'])],
+                        ["Steps (final, all walkers)  = "+str(fit_dic['nsteps_final_merged'])],
+                    ]        
+                rms_text = fit_dic['merit']['rms'] if type(fit_dic['merit']['rms'])==str else '%f'%fit_dic['merit']['rms'] 
                 txt_print+=[
-                    ["Walkers                     = "+str(fit_dic['nwalkers'])],
-                    ["Burn-in steps               = "+str(fit_dic['nburn'])],
-                    ["Steps (initial, per walker) = "+str(fit_dic['nsteps'])],
-                    ["Steps (final, all walkers)  = "+str(fit_dic['nsteps_final_merged'])],
-                ]        
-            rms_text = fit_dic['merit']['rms'] if type(fit_dic['merit']['rms'])==str else '%f'%fit_dic['merit']['rms'] 
-            txt_print+=[
-                ["Duration                    = "+"{0:.4f}".format(fit_dic['fit_dur'])+' s'],
-                ['Data points                 = %i'%fit_dic['nx_fit']],
-                ['Free variables              = %i'%fit_dic['merit']['n_free']],
-                ['Degree of freedom           = %i'%fit_dic['merit']['dof']],
-                ['Best Chi-square             = %f'%fit_dic['merit']['chi2']],
-                ['Reduced Chi-square          = %f'%fit_dic['merit']['red_chi2']],
-                ['RMS of residuals            = '+rms_text],
-                ['Bayesian Info. crit. (BIC)  = %f'%fit_dic['merit']['BIC']], 
-                ['Akaike Info. crit. (AIC)    = %f'%fit_dic['merit']['AIC']], 
-                ['Gelman-Rubin statistic      = %s'%fit_dic['merit']['GR_stat']],
-                ]
-            if fit_dic['fit_mode']=='chi2':txt_print+=[["Cumul. dist. funct. (cdf)   = %e"%fit_dic['merit']['cdf']]]
-            txt_print+=[[" "]]
+                    ["Duration                    = "+"{0:.4f}".format(fit_dic['fit_dur'])+' s'],
+                    ['Data points                 = %i'%fit_dic['nx_fit']],
+                    ['Free variables              = %i'%fit_dic['merit']['n_free']],
+                    ['Degree of freedom           = %i'%fit_dic['merit']['dof']],
+                    ['Best Chi-square             = %f'%fit_dic['merit']['chi2']],
+                    ['Reduced Chi-square          = %f'%fit_dic['merit']['red_chi2']],
+                    ['RMS of residuals            = '+rms_text],
+                    ['Bayesian Info. crit. (BIC)  = %f'%fit_dic['merit']['BIC']], 
+                    ['Akaike Info. crit. (AIC)    = %f'%fit_dic['merit']['AIC']], 
+                    ['Gelman-Rubin statistic      = %s'%fit_dic['merit']['GR_stat']],
+                    ]
+                if fit_dic['fit_mode']=='chi2':txt_print+=[["Cumul. dist. funct. (cdf)   = %e"%fit_dic['merit']['cdf']]]
+                txt_print+=[[" "]]
 
     elif mode=='derived':
         p_final = deepcopy(p_final_in)
 
     if txt_print is not None:
         if (mode=='nominal') or (print_der):
-            if (mode=='nominal'): 
-                max_len_fix = 0
-                for parname in fixed_args['fixed_par_val']:max_len_fix = max([max_len_fix,len(parname)]) 
+            if (mode=='nominal'):
                 txt_print+=[                
                     [''],    
                     ['==============================================================================='],    
                     ['Nominal parameters'],     
                     ['==============================================================================='],       
-                    [''],
-                    ['==========================================================='],    
-                    ['Fixed'],
-                    ['==========================================================='],    
-                    [''],     
-                    ['Name'+" "*(max_len_fix-len('Name'))+'\t'+'Value'+" "*16+'\t'+'Unit'],
-                    ['-----------------------------------------------------------'],      
-                    ['']]                 
-                for ipar,(parname,parunit) in enumerate(zip(fixed_args['fix_par_list'],fixed_args['fix_par_units'])):           
-                    txt_print+=[[parname+" "*(max_len_fix-len(parname))+'\t'+"{0:.10e}".format(p_final[parname])+'\t'+'['+parunit+']']]                  
+                    ['']]
+                if len(fixed_args['fix_par_list'])>0:
+                    max_len_fix = 0
+                    for parname in fixed_args['fixed_par_val']:max_len_fix = max([max_len_fix,len(parname)]) 
+                    txt_print+=[                
+                        ['==========================================================='],    
+                        ['Fixed'],
+                        ['==========================================================='],    
+                        [''],     
+                        ['Name'+" "*(max_len_fix-len('Name'))+'\t'+'Value'+" "*16+'\t'+'Unit'],
+                        ['-----------------------------------------------------------'],      
+                        ['']]                 
+                    for ipar,(parname,parunit) in enumerate(zip(fixed_args['fix_par_list'],fixed_args['fix_par_units'])):           
+                        txt_print+=[[parname+" "*(max_len_fix-len(parname))+'\t'+"{0:.10e}".format(p_final[parname])+'\t'+'['+parunit+']']]                  
             elif print_der: 
                 txt_print+=[          
                     [''],
@@ -1572,7 +1588,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
     
         #Calculation of null model hypothesis
         #    - to calculate chi2 (=BIC) with respect to a null level for comparison of best-fit model with null hypothesis
-        if (mode=='derived') and ('p_null' in fit_dic):
+        if (mode=='derived') and ('p_null' in fit_dic) and fit_dic['calc_merit']:
             if fit_dic['fit_mode'] in ['fixed','chi2']: chi2_null=np.sum(ln_prob_func_lmfit(fit_dic['p_null'], fixed_args['x_val'], fixed_args=fixed_args)**2.)
             elif fit_dic['fit_mode'] =='mcmc':chi2_null=ln_lkhood_func_mcmc(fit_dic['p_null'],fixed_args)[1]['step_chi2']
             elif fit_dic['fit_mode'] =='ns':chi2_null=ln_lkhood_func_ns(fit_dic['p_null'],fixed_args)[1]['step_chi2']   
@@ -1966,7 +1982,7 @@ def MCMC_retrieve_sample(fixed_args,fix_par_list,exp_par_list,iexp_par_list,ifix
     #Number of model parameters
     n_par=len(p_best_in)    
     
-    if (calc_envMCMC==True) or (calc_sampMCMC==True):        
+    if (calc_envMCMC) or (calc_sampMCMC):        
       
         #Create array that will contain all input parameters (fixed and variable) at their position in the original ordered dictionary  
         var_chain=np.zeros([nsteps_final_merged,n_par])
@@ -2041,7 +2057,7 @@ def MCMC_retrieve_sample(fixed_args,fix_par_list,exp_par_list,iexp_par_list,ifix
 
     #Retrieve model sample 
     #    - distribution of models following the PDF of the parameters
-    if calc_sampMCMC==True:
+    if calc_sampMCMC:
         
         #Draw nsample parameters from the chain to evaluate the model function there
         #    - we can draw the merged_chain with a fixed frequency along the chain, but it should be larger than the 
@@ -2286,7 +2302,7 @@ def MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=True,calc_quant=True,
     p_best.update(fixed_args['fixed_par_val'])
     for ipar,parname in enumerate(fixed_args['var_par_list']):
         p_best[parname]=med_par[ipar]  
-        
+           
     #Attribute value of variable parameters /non-variable parameters non defined via expressions directly to their names so that they can be identified in the expressions                
     if len(fixed_args['linked_par_expr'])>0:
         for ipar,parname in enumerate(fixed_args['var_par_list']):        
@@ -2540,7 +2556,7 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,nthreads,par
     return p_final,merged_chain,merged_outputs,par_sample_sig1,par_sample
     
     
-def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
+def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain,sim_points = None):
     r"""**MCMC post-proc: modified chains**
 
     Analyze MCMC chains of modified parameters.
@@ -2559,14 +2575,37 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
     p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=False,calc_quant=fit_dic['calc_quant'],verb_shift=fit_dic['verb_shift'])
 
     #Save merged chains for derived parameters and various estimates
-    data_save = {'merged_chain':merged_chain,'HDI_interv':fit_dic['HDI_interv'],'sig_parfinal_val':fit_dic['sig_parfinal_val']['1s'],'var_par_list':fixed_args['var_par_list'],'var_par_names':fixed_args['var_par_names'],'med_parfinal':fit_dic['med_parfinal']}
-    if fit_dic['fit_mode']=='mcmc':np.savez(fit_dic['save_dir']+'merged_deriv_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name'],data=data_save,allow_pickle=True)
-    elif fit_dic['fit_mode']=='ns':np.savez(fit_dic['save_dir']+'merged_deriv_chains_live'+str(fit_dic['nlive'])+fit_dic['run_name'],data=data_save,allow_pickle=True)
+    if fit_dic['save_results']:
+        data_save = {'merged_chain':merged_chain,'HDI_interv':fit_dic['HDI_interv'],'sig_parfinal_val':fit_dic['sig_parfinal_val']['1s'],'var_par_list':fixed_args['var_par_list'],'var_par_names':fixed_args['var_par_names'],'med_parfinal':fit_dic['med_parfinal']}
+        if fit_dic['fit_mode']=='mcmc':np.savez(fit_dic['save_dir']+'merged_deriv_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name'],data=data_save,allow_pickle=True)
+        elif fit_dic['fit_mode']=='ns':np.savez(fit_dic['save_dir']+'merged_deriv_chains_live'+str(fit_dic['nlive'])+fit_dic['run_name'],data=data_save,allow_pickle=True)
 
-    #Plot correlation diagram for all param    
-    if fit_dic['save_MCMC_corner']!='':
-        corner_options=fit_dic['corner_options']     
-
+    #Corner plots
+    #    - for samples and/or simulations
+    corner_options_dic={}
+    if (fit_dic['save_MCMC_corner']!=''):corner_options_dic['samples']=fit_dic['corner_options'] 
+    if (fit_dic['save_sim_points_corner']!=''):corner_options_dic['sims']=fit_dic['sim_corner_options']  
+    for key in corner_options_dic:
+        
+        #Default options
+        corner_options = corner_options_dic[key]
+        bins_1D_par=20 if 'bins_1D_par' not in corner_options else corner_options['bins_1D_par']
+        bins_2D_par=20 if 'bins_2D_par' not in corner_options else corner_options['bins_2D_par']
+        range_par=None if 'range_par' not in corner_options else corner_options['range_par']
+        major_int=None if 'major_int' not in corner_options else corner_options['major_int']
+        minor_int=None if 'minor_int' not in corner_options else corner_options['minor_int']
+        color_levels='black'  if 'color_levels' not in corner_options else corner_options['color_levels']
+        smooth2D=None if 'smooth2D' not in corner_options else corner_options['smooth2D']
+        plot_HDI=False if 'plot_HDI' not in corner_options else corner_options['plot_HDI']        
+        plot1s_1D=True if 'plot1s_1D' not in corner_options else corner_options['plot1s_1D']  
+        best_val = fit_dic['med_parfinal'] if (('plot_best' not in corner_options) or corner_options['plot_best']) else None
+        if 'fontsize' in corner_options:
+             label_kwargs={'fontsize':corner_options['fontsize']}
+             tick_kwargs={'labelsize':corner_options['fontsize']}
+        else:
+             label_kwargs=None
+             tick_kwargs=None   
+             
         #Reduce to required parameters
         var_par_list = np.array(fixed_args['var_par_list'])
         var_par_names = np.array(fixed_args['var_par_names'])
@@ -2579,40 +2618,43 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
             if len(ikept)==0:stop('No parameters kept in corner plot')
             var_par_list = var_par_list[ikept]
             var_par_names = var_par_names[ikept] 
-            merged_chain = merged_chain[:,ikept] 
+            if key=='samples':merged_chain = merged_chain[:,ikept] 
+            if (sim_points is not None):sim_points = sim_points[:,ikept] 
             fit_dic['med_parfinal'] = fit_dic['med_parfinal'][ikept] 
-            fit_dic['HDI_interv'] = fit_dic['HDI_interv'][ikept] 
-            
+            fit_dic['HDI_interv'] = fit_dic['HDI_interv'][ikept]              
+
         #Remove constant parameters
         for par_loc in var_par_list:
             ipar = np_where1D(var_par_list==par_loc)[0]
             if np.min(merged_chain[:,ipar])==np.max(merged_chain[:,ipar]):
                 var_par_list = np.delete(var_par_list,ipar)
                 var_par_names = np.delete(var_par_names,ipar)
-                merged_chain = np.delete(merged_chain,ipar,axis=1) 
+                if key=='samples':merged_chain = np.delete(merged_chain,ipar,axis=1) 
+                if (sim_points is not None):sim_points = np.delete(sim_points,ipar,axis=1) 
                 fit_dic['med_parfinal'] = np.delete(fit_dic['med_parfinal'],ipar)
-                fit_dic['HDI_interv'] = np.delete( fit_dic['HDI_interv'],ipar,axis=0) 
+                fit_dic['HDI_interv'] = np.delete( fit_dic['HDI_interv'],ipar,axis=0)              
 
-        #Default options    
-        bins_1D_par=20 if 'bins_1D_par' not in corner_options else corner_options['bins_1D_par']
-        bins_2D_par=20 if 'bins_2D_par' not in corner_options else corner_options['bins_2D_par']
-        range_par=None if 'range_par' not in corner_options else corner_options['range_par']
-        major_int=None if 'major_int' not in corner_options else corner_options['major_int']
-        minor_int=None if 'minor_int' not in corner_options else corner_options['minor_int']
-        color_levels='black'  if 'color_levels' not in corner_options else corner_options['color_levels']
-        smooth2D=None if 'smooth2D' not in corner_options else corner_options['smooth2D']
-        plot_HDI=False if 'plot_HDI' not in corner_options else corner_options['plot_HDI']        
-        plot1s_1D=True if 'plot1s_1D' not in corner_options else corner_options['plot1s_1D']  
-        best_val = fit_dic['med_parfinal'] if (('plot_best' not in corner_options) or corner_options['plot_best']) else None
-        if 'fontsize' in corner_options:
-            label_kwargs={'fontsize':corner_options['fontsize']}
-            tick_kwargs={'labelsize':corner_options['fontsize']}
-        else:
-            label_kwargs=None
-            tick_kwargs=None
-       
+        #Simulation points
+        if key=='samples':
+            if (('plot_sim' not in corner_options) or (not corner_options['plot_sim']) or (sim_points is None)):
+                 sim_points_sec = None
+            else:sim_points_sec = sim_points
+        elif key=='sims':sim_points_sec = None
+
         #Plot
-        MCMC_corner_plot(fit_dic['save_MCMC_corner'],fit_dic['save_dir'],merged_chain,fit_dic['HDI_interv'],
+        if key=='samples':
+            save_fmt = fit_dic['save_MCMC_corner']
+            save_name = 'Corr_diag'
+            corner_data = merged_chain
+            levels = (0.39346934028,0.86466471)
+        elif key=='sims':
+            save_fmt = fit_dic['save_sim_points_corner']
+            save_name = 'Corner_sims'
+            corner_data = sim_points
+            levels = None
+            smooth2D = None
+        MCMC_corner_plot(key,save_fmt,save_name,fit_dic['save_dir'],corner_data,fit_dic['HDI_interv'],
+                         sim_points = sim_points_sec,
                          labels_raw = var_par_list,
                          labels=var_par_names,
                          truths=best_val,
@@ -2621,14 +2663,15 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain):
                          range_par=range_par,
                          major_int=major_int,
                          minor_int=minor_int,
-                         levels=(0.39346934028,0.86466471),
+                         levels=levels,
                          color_levels=color_levels,
+                         smooth1d = None,
                          smooth2D=smooth2D, 
                          plot_HDI=plot_HDI ,
                          plot1s_1D=plot1s_1D   ,
                          label_kwargs=label_kwargs,tick_kwargs=tick_kwargs                                       
                          )    
-
+    
     return p_final   
     
     
@@ -2899,8 +2942,8 @@ def MCMC_plot_merged_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,m
     
 
     
-def MCMC_corner_plot(save_mode,save_dir_MCMC,xs,HDI_interv, 
-                     labels_raw = None,labels=None,truths=None,truth_color="#4682b4",bins_1D_par=20,bins_2D_par=20,quantiles=[0.15865525393145703,0.841344746068543],
+def MCMC_corner_plot(mode,save_mode,save_name,save_dir_MCMC,xs,HDI_interv, 
+                     sim_points = None, labels_raw = None,labels=None,truths=None,truth_color="#4682b4",bins_1D_par=20,bins_2D_par=20,quantiles=[0.15865525393145703,0.841344746068543],
                      plot1s_1D=True,plot_HDI=False,color_1D_quant='darkorange',color_1D_HDI='green',levels=(0.39346934028,0.86466471,0.988891003),  
                      plot_contours = True,color_levels='black',use_math_text=True,range_par=None,smooth1d=None,smooth2D=None,weights=None, color="k",  
                      label_kwargs=None,tick_kwargs=None,show_titles=False,title_fmt=".2f",title_kwargs=None,scale_hist=False, 
@@ -2908,8 +2951,10 @@ def MCMC_corner_plot(save_mode,save_dir_MCMC,xs,HDI_interv,
     r"""**MCMC post-proc: corner plot**
 
     Plots correlation diagram, showing the projections of a data set in a multi-dimensional space. kwargs are passed to MCMC_corner_plot_hist2d() or used for `matplotlib` styling.
+    If mode = 'sims' the plot is used to display density histograms of simulated points, rather than corner plot of MCMC samples
       
     Args:
+        mode (str): use of plot
         save_mode (str): extension of the figure (png, pdf, jpg) 
         save_dir_MCMC (str): path of the directory in which the figure is saved
         xs (array, float): Samples. This should be a 1- or 2-dimensional array with dimensions [nsamples, ndim]. 
@@ -2917,6 +2962,7 @@ def MCMC_corner_plot(save_mode,save_dir_MCMC,xs,HDI_interv,
                            For a 2-D array, the zeroth axis is the list of samples and the next axis are the dimensions of the space.
         HDI_interv (array, object): HDI intervals for each parameter
 
+        sim_points (array, float): model points. This should be a 1- or 2-dimensional array with dimensions [npoints, ndim]. 
         labels_raw (list, str): names of variable parameters, as used in the model
         labels (list, str): names of variable fitted parameters, as used in the plots. If ``xs`` is a ``pandas.DataFrame``, labels will default to column names.
         truths (array, float): a list of reference values to indicate on the plots.  Individual values can be omitted by using ``None``. Typically the best-fit values
@@ -2967,8 +3013,8 @@ def MCMC_corner_plot(save_mode,save_dir_MCMC,xs,HDI_interv,
 
     if verbose:
         print(' -----------------------------------')
-        print(' > Plot MCMC corr. diagram')
-
+        if mode=='samples':print(' > Plot MCMC correlation diagram')
+        elif mode=='sims':print(' > Plot simulations corner plot')
     plt.ioff() 
 
     if (quantiles is None) or (plot1s_1D==False):
@@ -3046,6 +3092,7 @@ def MCMC_corner_plot(save_mode,save_dir_MCMC,xs,HDI_interv,
         for par in range_par_in:
             idx_par = np_where1D(labels==par)
             if len(idx_par)>0:range_par[idx_par[0]] = range_par_in[par]
+            else:print('WARNING : '+par+' set in "range_par" not in '+labels)
         for i,x in enumerate(xs):
             if len(range_par[i])==0:range_par[i] = [x.min(), x.max()]
 
@@ -3121,7 +3168,8 @@ def MCMC_corner_plot(save_mode,save_dir_MCMC,xs,HDI_interv,
             ax = axes
         else:
             ax = axes[i, i]
-        # Plot the histograms.
+            
+        # Plot 1D histograms.
         if smooth1d is None:
             n, _, _ = ax.hist(x, bins=bins_1D_par[i], weights=weights,
                               range=np.sort(range_par[i]), **hist_kwargs)
@@ -3138,9 +3186,12 @@ def MCMC_corner_plot(save_mode,save_dir_MCMC,xs,HDI_interv,
         if truths is not None and truths[i] is not None:
             ax.axvline(truths[i], color=truth_color)
 
+        #Plot model points
+        if sim_points is not None:
+            for x_sim in sim_points[:,i]:ax.axvline(x_sim, color='grey')
 
         #Replace quantiles with HDI 
-        if (plot_HDI==True):
+        if (plot_HDI):
             if verbose:
                 print("HDI:") 
                 print(['['+str(HDI_sub[0])+';'+str(HDI_sub[1])+']' for HDI_sub in HDI_interv[i]])  
@@ -3236,9 +3287,9 @@ def MCMC_corner_plot(save_mode,save_dir_MCMC,xs,HDI_interv,
                 y = y.compressed()
 
             #Local 2D histogram
-            MCMC_corner_plot_hist2d(y, x, ax=ax, range_par=[range_par[j], range_par[i]], weights=weights,
+            MCMC_corner_plot_hist2d(mode , y, x, j , i , ax=ax, range_par=[range_par[j], range_par[i]], weights=weights,
                    color=color,levels=levels,color_levels=color_levels,rasterized=True, 
-                   smooth=[smooth2D[j],smooth2D[i]], bins_2D=[bins_2D_par[j], bins_2D_par[i]],
+                   smooth=[smooth2D[j],smooth2D[i]], bins_2D=[bins_2D_par[j], bins_2D_par[i]],sim_points=sim_points,
                    **hist2d_kwargs)
 
             if truths is not None:
@@ -3292,7 +3343,7 @@ def MCMC_corner_plot(save_mode,save_dir_MCMC,xs,HDI_interv,
                 ax.yaxis.set_major_formatter(
                     ScalarFormatter(useMathText=use_math_text))
 
-    plt.savefig(save_dir_MCMC+'/Corr_diag.'+save_mode) 
+    plt.savefig(save_dir_MCMC+'/'+save_name+'.'+save_mode) 
     plt.close()     
 
     return None
@@ -3305,10 +3356,11 @@ def MCMC_corner_plot(save_mode,save_dir_MCMC,xs,HDI_interv,
 
 
 
-def MCMC_corner_plot_hist2d(x, y, bins_2D=[20,20], range_par=None, weights=None, levels=None, smooth=None,
+def MCMC_corner_plot_hist2d(mode,x, y, i , j , bins_2D=[20,20], range_par=None, weights=None, levels=None, smooth=None,
            ax=None, color=None, plot_datapoints=True, plot_density=True,
            plot_contours=True, no_fill_contours=False, fill_contours=False,
            contour_kwargs=None, contourf_kwargs=None, data_kwargs=None,color_levels='black',
+           sim_points = None, 
            **kwargs):
     r"""**MCMC post-proc: 2-D histograms**
     
@@ -3335,6 +3387,12 @@ def MCMC_corner_plot_hist2d(x, y, bins_2D=[20,20], range_par=None, weights=None,
 
     if ax is None:
         ax = plt.gca()
+        
+    # Plot model points
+    if sim_points is not None:
+        x_sim_points = sim_points[:,i]
+        y_sim_points = sim_points[:,j]
+        plt.plot(x_sim_points,y_sim_points,marker='o',markersize=2,markerfacecolor='grey',markeredgecolor='white')
 
     # Set the default range based on the data range if not provided.
     if range_par is None:
