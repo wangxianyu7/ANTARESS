@@ -438,7 +438,7 @@ def ln_lkhood_func_mcmc(p_step,fixed_args):
     p_step_all = p_step
     
     #Log(likelihood)
-    return sub_ln_lkhood_func(p_step_all) 
+    return sub_ln_lkhood_func(p_step_all,fixed_args) 
 
 
 def ln_lkhood_func_ns(p_step,fixed_args):
@@ -490,7 +490,7 @@ def ln_lkhood_func_ns(p_step,fixed_args):
         p_step_all = p_step
         
     #Log(likelihood)
-    return sub_ln_lkhood_func(p_step_all)      
+    return sub_ln_lkhood_func(p_step_all,fixed_args)      
 
     
 
