@@ -1414,7 +1414,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                         for it_res in range(nit_hyper):
                                             
                                             #Model from previous fit iteration
-                                            mod = fit_func(p_best,nu_samp,args = fixed_args)
+                                            mod = fit_func(p_best,nu_samp,args = fixed_args)[0]
                                             
                                             #Residuals
                                             res = prop_samp - mod
@@ -1468,7 +1468,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             
                                         #Plot best fit / fixed  model
                                         n_nu_HR,nu_HR = def_wig_tab(nu_samp[0],nu_samp[-1],fixed_args['dnu_HR'])        
-                                        best_mod_HR = fit_func(p_best,nu_HR,args = fixed_args)
+                                        best_mod_HR = fit_func(p_best,nu_HR,args = fixed_args)[0]
                                         ax[0].plot(nu_HR,sc_fact*best_mod_HR,linestyle='-',color='black',zorder=2)
                                     
                                         #Frame
@@ -1490,7 +1490,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                         #------------------------------
                                     
                                         #Residuals
-                                        best_mod = fit_func(p_best,nu_samp,args = fixed_args)             
+                                        best_mod = fit_func(p_best,nu_samp,args = fixed_args)[0]             
                                         res_prop = sc_fact*(prop_samp - best_mod)   
                                         ax[1].plot(x_plot,res_prop,marker='o',linestyle='',color='dodgerblue',zorder=0)                
                                         if fit_prop:ax[1].plot(x_plot[cond_fit_all],res_prop[cond_fit_all],marker='o',linestyle='',color='red',zorder=0)  
@@ -1948,7 +1948,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                             
                             #Model from previous fit iteration
                             var_fit,fixed_args_loc = sub_prep(fixed_args_loc,np.repeat(True,n_exp_groups),y_var,sy_var)                               
-                            mod = fit_func(p_best,x_var,args = fixed_args_loc)
+                            mod = fit_func(p_best,x_var,args = fixed_args_loc)[0]
                             
                             #Residuals
                             res = y_var - mod
@@ -2006,7 +2006,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #Plotting best fit at high-resolution
                         if plot_modHR:
                             fixed_args_loc.update(tel_coord_HR)
-                            mod_HR = fit_func(p_best,np.zeros(len(cen_ph_HR)),args=fixed_args_loc)
+                            mod_HR = fit_func(p_best,np.zeros(len(cen_ph_HR)),args=fixed_args_loc)[0]
                             ax[0].plot(cen_ph_HR,sc_fact*mod_HR,linestyle=':',color='black',zorder=1,lw=1.5)   
 
                         #Range 
@@ -2036,7 +2036,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #Residuals
                         if (fitted_par[par]):
                             for key in tel_coord_expgroup:fixed_args_loc[key] = tel_coord_expgroup[key]      
-                            res_prop = sc_fact*(y_var - fit_func(p_best,x_var,args = fixed_args_loc) )             
+                            res_prop = sc_fact*(y_var - fit_func(p_best,x_var,args = fixed_args_loc)[0] )             
                             for isub_group in range(n_exp_groups): 
                                 if plot_empty and (sy_var_plot[isub_group]==0.):markerfacecolor = 'none'
                                 else:markerfacecolor=col_visit[isub_group]                  
@@ -3680,7 +3680,7 @@ def FIT_wig_submod_coord_discont(param_in,x_in,args=None):
     if isinstance(param_in,lmfit.parameter.Parameters):params={par:param_in[par].value for par in param_in}
     else:params=param_in        
     mod_exp = wig_submod_coord_discont(len(x_in),params,args)
-    return mod_exp
+    return mod_exp,None
 
 
 
@@ -3771,7 +3771,7 @@ def FIT_wig_amp_nu_poly(param_in,nu_in,args=None):
     if isinstance(param_in,lmfit.parameter.Parameters):params={par:param_in[par].value for par in param_in}
     else:params=param_in    
     mod_exp = wig_amp_nu_poly(args['comp_id'],nu_in,params,args)
-    return mod_exp
+    return mod_exp,None
 
 
 def wig_amp_nu_poly(comp_id,nu_in,params,args):
@@ -3818,7 +3818,7 @@ def FIT_wig_freq_nu(param_in,nu_in,args=None):
     if isinstance(param_in,lmfit.parameter.Parameters):params={par:param_in[par].value for par in param_in}
     else:params=param_in    
     mod_exp = wig_freq_nu(args['comp_id'],nu_in,params,args)
-    return mod_exp
+    return mod_exp,None
 
 def wig_freq_nu(comp_id,nu_in,params,args):
     r"""**Wiggle model function: chromatic frequency**
@@ -3894,7 +3894,7 @@ def FIT_calc_wig_mod_nu(param_in,nu_in,args=None):
     if isinstance(param_in,lmfit.parameter.Parameters):params={par:param_in[par].value for par in param_in}
     else:params=param_in    
     mod_exp = calc_wig_mod_nu(nu_in,params,args)[0]
-    return mod_exp
+    return mod_exp,None
 
 def calc_wig_mod_nu(nu_in,params,args):
     r"""**Wiggle model function: global chromatic model**
@@ -4244,7 +4244,7 @@ def corr_fring(inst,gen_dic,data_inst,plot_dic,data_dic):
                                 #    - correction is set to 1 for undefined pixels (the full table must be given to bind so as not to mess the covariance)
                                 cond_def_curr = data_exp['cond_def'][iord]
                                 corr_mod = np.repeat(1.,data_vis['nspec'])
-                                corr_mod[cond_def_curr] = 1./fit_func(p_best,data_exp['cen_bins'][iord,cond_def_curr],args=fixed_args)
+                                corr_mod[cond_def_curr] = 1./fit_func(p_best,data_exp['cen_bins'][iord,cond_def_curr],args=fixed_args)[0]
                                 data_exp['flux'][iord],data_exp['cov'][iord] = bind.mul_array(data_exp['flux'][iord] , data_exp['cov'][iord],corr_mod)
 
                     #-------------------------------------------------------------------------------------------------                    
@@ -4284,7 +4284,7 @@ def FIT_fring_mod(param,x,args=None):
     
     """
     ymodel=fring_mod(param,x,args)[0]
-    return ymodel
+    return ymodel,None
 
 def fring_mod(param,x,args=None):
     r"""**Fringing model function**
