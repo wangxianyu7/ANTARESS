@@ -958,7 +958,7 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
             fit_dic['calc_envMCMC']=False 
 
             #Live points
-            if 'nlive' not in fit_dic['ns_set']:fit_dic['nlive'] = 400 #TODO figure out optimal number of live points
+            if 'nlive' not in fit_dic['ns_set']:fit_dic['nlive'] = fit_dic['merit']['n_free'] * (fit_dic['merit']['n_free'] + 1) / 2
             else:fit_dic['nlive'] = fit_dic['ns_set']['nlive']
 
             #Bounding method used 
