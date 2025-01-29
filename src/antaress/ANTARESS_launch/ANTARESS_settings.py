@@ -346,7 +346,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #%%%% Active regions
     #    - can be (dark) spots and/or (bright) faculae
-       
+        
     #%%%%% Properties
     #    - active region inclusion is conditioned by this dictionary being filled in
     #    - active regions are defined by 4 parameters : 
@@ -4244,17 +4244,17 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
 
     
     #%%%% Priors on variable properties
-    #    - structure is priors = { 'par_name' : {prior_mode: X, prior_val: Y} }
-    #      where par_name is specific to the model selected, and prior_mode is one of the possibilities defined below
+    #    - format : { p : {prior_mode: X, prior_val: Y} }
+    #      where p is specific to the model selected, and 'prior_mode' defines the prior as
     #    - otherwise priors can be set to :
-    # > uniform ('uf') : 'low', 'high'
-    # > gaussian ('gauss') : 'val', 's_val'
-    # > asymetrical gaussian ('dgauss') : 'val', 's_val_low', 's_val_high'
+    # + uniform ('uf') : define lower ('low') and upper ('high') boundaries
+    # + gaussian ('gauss') : define median ('val') and std ('s_val')
+    # + asymetrical gaussian ('dgauss') : define median ('val'), and lower ('s_val_low') / upper ('s_val_high') std
     #    - chi2 fit can only use uniform priors
     #    - if left undefined, default uniform priors are used
     local_dic[data_type]['priors']={}
-    
-    
+
+
     #%%%% Derived properties
     #    - options for data_type =='IntrProp' :
     # + 'cosistar_fold' : folds cos(istar) within -1 : 1 (not required if constrained with prior)
@@ -4282,6 +4282,7 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     # + 'psi' : adds 3D spin-orbit angle for all planets using the fitted 'lambda', and fitted or user-provided measurements for 'istar' and 'ip_plNAME'
     #           put 'North' and/or 'South' in  'config' to return the corresponding Psi configurations associated with istar (Northern configuration) and 180-istar (Southern configuration) 
     #           put 'combined' in  'config' to add the combined distribution from the Northern and Southern Psi PDFs, assumed to be equiprobable (make sure that the two distributions are similar before combining them)
+    #           in the latter case, 'fold_istar' must have been requested (whether to North or South does not matter, it is just for 'combined' to use separately the Northern and Southern configurations rather than the original full one)  
     # + 'psi_lambda' : adds 3D spin-orbit angle using user-provided measurements of 'lambda', and fitted or user-provided measurements for 'istar' and 'ip'
     #                  same settings as for 'psi' 
     # + 'lambda_deg' : converts lambda[rad] to lambda[deg]

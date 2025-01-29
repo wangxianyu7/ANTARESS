@@ -3336,6 +3336,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                         inclin_rad_chain=np.squeeze(merged_chain[:,np_where1D(fixed_args['var_par_list']=='inclin_rad__pl'+pl_loc)])
                     else:
                         n_chain = len(merged_chain[:,0])
+                        if 'ip_pl'+pl_loc not in deriv_prop[key_loc]:stop('ERROR : you need to provide ip_pl'+pl_loc+' properties in degrees')
                         ip_dic = deepcopy(deriv_prop[key_loc]['ip_pl'+pl_loc])
                         for subpar in ip_dic:ip_dic[subpar]*=np.pi/180.  
                         if 's_val' in ip_dic:inclin_rad_chain = np.random.normal(ip_dic['val'], ip_dic['s_val'], n_chain)

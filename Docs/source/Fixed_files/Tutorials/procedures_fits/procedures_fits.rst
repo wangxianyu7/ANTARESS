@@ -136,9 +136,33 @@ local_dic[data_type]['conf_limits']={}
 local_dic[data_type]['save_MCMC_chains']='png'        
 
 
-#%%%%% MCMC corner plot
-#    - see function for options
-local_dic[data_type]['corner_options']={}
+
+Samples explored with the MCMC can be used to compute 1D PDF and 2D correlation diagrams of the variable fit parameters in a common plot, activated by setting :green:`local_dic[data_type]['save_MCMC_corner']='pdf'`.
+Many options are available for this plot through the :green:`local_dic[data_type]['corner_options']` dictionary, such as::
+
+ bins_1D_par : the number of bins in the range covered by the 1D PDFs, common to all parameters if set to a single integer value, or defined as a dictionary with keys the parameter names and values their specific bin number.
+ 
+        bins_2D_par=20 if 'bins_2D_par' not in corner_options else corner_options['bins_2D_par']
+        range_par=None if 'range_par' not in corner_options else corner_options['range_par']
+        major_int=None if 'major_int' not in corner_options else corner_options['major_int']
+        minor_int=None if 'minor_int' not in corner_options else corner_options['minor_int']
+        color_levels='black'  if 'color_levels' not in corner_options else corner_options['color_levels']
+        smooth2D=None if 'smooth2D' not in corner_options else corner_options['smooth2D']
+        plot_HDI=False if 'plot_HDI' not in corner_options else corner_options['plot_HDI']        
+        plot1s_1D=True if 'plot1s_1D' not in corner_options else corner_options['plot1s_1D']  
+        best_val = fit_dic['med_parfinal'] if (('plot_best' not in corner_options) or corner_options['plot_best']) else None
+        if 'fontsize' in corner_options:
+             label_kwargs={'fontsize':corner_options['fontsize']}
+             tick_kwargs={'labelsize':corner_options['fontsize']}
+        else:
+             label_kwargs=None
+             tick_kwargs=None   
+
+Activating :green:`local_dic[data_type]['save_sim_points_corner']='pdf'` will generate a plot in the same format as the PDF plot but displaying the density of simulations as a function of variable parameters. 
+This plot is useful when running a manual grid of simulations for a model with long computing time, with the PDF plot generated from samples drawn from importance sampling. 
+For example it allows checking that a region of high probability was sufficiently sampled by the simulations.
+Plot options are the same as for the PDF plot.
+
 
 
 #%%%%% MCMC 1D PDF

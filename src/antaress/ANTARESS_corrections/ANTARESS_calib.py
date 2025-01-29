@@ -56,6 +56,7 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
         min_BERV = 1e100
         max_BERV = -1e100
         iexp_glob_groups_vis = {}
+        BERV_all_vis = {}
         gcal_exp_all = {}
         plot_save = (plot_dic['gcal_all']!='') or (plot_dic['gcal_ord']!='')
         
@@ -99,18 +100,18 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
                 #    - blaze is retrieved exactly for each exposure, thus there is no need to group them over several exposures
                 if (vis in data_inst['gcal_blaze_vis']):
                     gcal_blaze_vis = True                    
-                    iexp_gain_groups = list(range(i,min(i+1,data_vis['n_in_visit'])) for i in range(0,data_vis['n_in_visit']))
+                    iexp_gain_groups = list(range(i,np.min((i+1,data_vis['n_in_visit']))) for i in range(0,data_vis['n_in_visit']))
                     
                 #Calibration estimated from sum(s[F]^2)/sum(F^2) summed over larger bins  
                 else:
                     gcal_blaze_vis = False
-                    iexp_gain_groups = list(range(i,min(i+gen_dic['gcal_binN'],data_vis['n_in_visit'])) for i in range(0,data_vis['n_in_visit'],gen_dic['gcal_binN']))
+                    iexp_gain_groups = list(range(i,np.min((i+gen_dic['gcal_binN'],data_vis['n_in_visit']))) for i in range(0,data_vis['n_in_visit'],gen_dic['gcal_binN']))
 
                 #BERV per exposure group
                 n_glob_groups = len(iexp_gain_groups)
-                BERV_all = np.zeros(n_glob_groups,dtype=float)
+                BERV_all_vis[vis] = np.zeros(n_glob_groups,dtype=float)
                 for iexp_glob,iexp_in_group in enumerate(iexp_gain_groups):
-                    BERV_all[iexp_glob] = np.mean(data_prop[inst][vis]['BERV'][iexp_in_group])
+                    BERV_all_vis[vis][iexp_glob] = np.mean(data_prop[inst][vis]['BERV'][iexp_in_group])
 
                 #Binning calibration profiles in each exposure for fitting
                 #    - measured blaze-derived profiles are binned as well as they are otherwise too heavy to store
@@ -316,7 +317,7 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
             for ivis,vis in enumerate(data_dic[inst]['visit_list']): 
                 mean_gcal_ord = np.zeros([nspec_ord,0],dtype=float)*np.nan 
                 for iexp_glob in iexp_glob_groups_vis[vis]:
-                    dopp_shift = 1./(gen_specdopshift(BERV_all[iexp_glob])*(1.+1.55e-8))
+                    dopp_shift = 1./(gen_specdopshift(BERV_all_vis[vis][iexp_glob])*(1.+1.55e-8))
                
                     #Calculating best-fit model of estimated calibration
                     #     - the model is calculated on the grid defined in detector frame, shifted back to the input rest frame, in which the model coefficients were derived
