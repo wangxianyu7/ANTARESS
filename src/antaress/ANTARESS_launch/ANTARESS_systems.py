@@ -314,6 +314,11 @@ def get_system_params():
                 'Kstar':20.,
             },           
         },
+        
+        'Star_tseries':{
+            'star':{
+                }
+            },
     }
 
     return all_system_params

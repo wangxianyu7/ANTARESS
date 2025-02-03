@@ -193,17 +193,18 @@ class tableXY(object):
             #uncertainty = np.sqrt(np.sum([(err[j]*new_x**j)**2 for j in range(len(err))],axis=0))
             #plt.fill_between(new_x,np.polyval(coeff, new_x)-uncertainty/2,np.polyval(coeff, new_x)+uncertainty/2,alpha=0.4,color=color)
 
-    def interpolate(self, new_grid = 'auto', method = 'cubic', replace = True, interpolate_x=True, fill_value='extrapolate', scale='lin'):
+    def interpolate(self, new_grid_def = 'auto', method = 'cubic', replace = True, interpolate_x=True, fill_value='extrapolate', scale='lin'):
         
         if scale!='lin':
             self.inv()
         
-        if type(new_grid)==str:
+        if type(new_grid_def)==str:
             new_grid = np.linspace(self.x.min(),self.x.max(),10*len(self.x))
-        if type(new_grid)==int:
-            new_grid = np.linspace(self.x.min(),self.x.max(),new_grid*len(self.x))
+        if type(new_grid_def)==int:
+            new_grid = np.linspace(self.x.min(),self.x.max(),new_grid_def*len(self.x))
         
-        if np.sum(new_grid!=self.x)!=0:
+        #Check if new_grid is different from original one
+        if not np.array_equal(new_grid,self.x):
             if replace:
                 self.x_backup = self.x.copy()
                 self.y_backup = self.y.copy()

@@ -1825,7 +1825,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             data_type_gen=key_plot.split('mask')[0]
             key_step = plot_set_key['step']
             for inst in np.intersect1d(data_dic['instrum_list'],list(plot_set_key['visits_to_plot'].keys())): 
-                vis_det=list(data_dic[inst].keys()) if data_dic[inst]['n_visits_inst']==1 else 'binned'
+                if data_dic[inst]['n_visits_inst']==1:vis_det = data_dic[inst]['visit_list'][0]
+                else:vis_det = 'binned'
                 data_paths = 'CCF_masks_'+data_type_gen+'/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis_det+'/'
     
                 #Create directory if required
@@ -2109,7 +2110,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #%%%% Plot
             data_type_gen=key_plot.split('mask')[0]
             for inst in np.intersect1d(data_dic['instrum_list'],list(plot_set_key['visits_to_plot'].keys())): 
-                vis_det=list(data_dic[inst].keys()) if data_dic[inst]['n_visits_inst']==1 else 'binned'
+                if data_dic[inst]['n_visits_inst']==1:vis_det = data_dic[inst]['visit_list'][0]
+                else:vis_det = 'binned'
                 data_paths = 'CCF_masks_'+data_type_gen+'/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis_det+'/'
     
                 #Create directory if required
@@ -3382,7 +3384,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #%%%% Intrinsic profiles            
             if (key_plot=='prop_Intr_PDFs'):
                 print('-----------------------------------')
-                print('+ 1D PDFs of intrinsic properties from'+plot_settings[key_plot]['fit_mode']+' fit')
+                print('+ 1D PDFs of intrinsic properties from '+plot_settings[key_plot]['fit_mode']+' fit')
 
             #%%%% Plot  
             path_loc = gen_dic['save_plot_dir']+plot_settings[key_plot]['data_mode']+'_prop/'+plot_settings[key_plot]['fit_mode']+'/'
@@ -6515,7 +6517,8 @@ def dist1D_stlines_CCFmasks(dist_info,plot_options,key_plot,plot_ext,data_dic,ge
     data_type_gen=key_plot.split('mask')[0]
     prop_type = key_plot.split('mask_')[1]
     for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
-        vis_det=list(data_dic[inst].keys()) if data_dic[inst]['n_visits_inst']==1 else 'binned'
+        if data_dic[inst]['n_visits_inst']==1:vis_det = data_dic[inst]['visit_list'][0]
+        else:vis_det = 'binned'
         data_paths = 'CCF_masks_'+data_type_gen+'/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis_det+'/'
 
         #Create directory if required
@@ -6536,12 +6539,12 @@ def dist1D_stlines_CCFmasks(dist_info,plot_options,key_plot,plot_ext,data_dic,ge
             'tellcont':'rel_contam',
             'tellcont_final':'rel_contam_final'}[prop_type]            
         var = plot_info[x_var_name]
-        
+
         #Plot frame 
-        if plot_options['x_range'] is not None:x_range_loc=plot_options['x_range'] 
+        if plot_options['x_range_hist'] is not None:x_range_loc=plot_options['x_range_hist'] 
         else:x_range_loc = np.array([np.min(var),np.max(var)])
         dx_range=x_range_loc[1]-x_range_loc[0]
-        if plot_options['x_range'] is None:
+        if plot_options['x_range_hist'] is None:
             if prop_type not in ['RVdev_fit']:x_range_loc[0]-=0.05*dx_range
             x_range_loc[1]+=0.05*dx_range
             dx_range=x_range_loc[1]-x_range_loc[0]
@@ -6582,7 +6585,7 @@ def dist1D_stlines_CCFmasks(dist_info,plot_options,key_plot,plot_ext,data_dic,ge
         #Frame
         x_lab_name = {
             'RVdisp':r'RV dispersion (m/s)',
-            'RVdev_fit':r'|RV$_{\rm fit}$| deviation',
+            'RVdev_fit':r'|RV$_{\rm fit}$| deviation (m/s)',
             'tellcont':r'Telluric/Line depth',
             'tellcont_final':r'Telluric/Line depth'}[prop_type]
         ax.set_xlabel(x_lab_name,fontsize=plot_options['font_size'])
@@ -6611,7 +6614,8 @@ def dist2D_stlines_CCFmasks(dist_info,plot_options,key_plot,plot_ext,data_dic,ge
     data_type_gen=key_plot.split('mask')[0]
     prop_type = key_plot.split('mask_')[1]
     for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())): 
-        vis_det=list(data_dic[inst].keys()) if data_dic[inst]['n_visits_inst']==1 else 'binned'
+        if data_dic[inst]['n_visits_inst']==1:vis_det = data_dic[inst]['visit_list'][0]
+        else:vis_det = 'binned'
         data_paths = 'CCF_masks_'+data_type_gen+'/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis_det+'/'
 
         #Create directory if required
@@ -6641,17 +6645,17 @@ def dist2D_stlines_CCFmasks(dist_info,plot_options,key_plot,plot_ext,data_dic,ge
         y_var = plot_info[y_var_name] 
   
         #Plot frame 
-        if plot_options['x_range'] is not None:x_range_loc=plot_options['x_range'] 
+        if plot_options['x_range_hist'] is not None:x_range_loc=plot_options['x_range_hist'] 
         else:x_range_loc = np.array([np.min(x_var),np.max(x_var)])
-        if plot_options['y_range'] is not None:y_range_loc=plot_options['y_range'] 
+        if plot_options['y_range_hist'] is not None:y_range_loc=plot_options['y_range_hist'] 
         else:y_range_loc = np.array([np.min(y_var),np.max(y_var)])
         dx_range=x_range_loc[1]-x_range_loc[0]
-        if plot_options['x_range'] is None:
+        if plot_options['x_range_hist'] is None:
             x_range_loc[0]-=0.05*dx_range
             x_range_loc[1]+=0.05*dx_range
             dx_range=x_range_loc[1]-x_range_loc[0]
         dy_range=y_range_loc[1]-y_range_loc[0]
-        if plot_options['y_range'] is None:
+        if plot_options['y_range_hist'] is None:
             y_range_loc[0]-=0.05*dy_range
             y_range_loc[1]+=0.05*dy_range
             dy_range=y_range_loc[1]-y_range_loc[0]
@@ -8689,6 +8693,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                 params.update({'rv':0.,'cont':1.})                 
                 theo_HR_prop_plocc = calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_dic,None,deepcopy(theo_dic),inst,vis,{},params,{})
                 if plot_options['prop_'+data_mode+'_absc']=='phase':xvar_HR=deepcopy(theo_HR_prop_plocc[pl_ref]['phase'])  
+                if plot_options['prop_'+data_mode+'_absc']=='time_rel':xvar_HR=deepcopy(theo_HR_prop_plocc[pl_ref]['phase'])*system_param[pl_ref]["period"]*24.  
                 elif plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']:xvar_HR=deepcopy(theo_HR_prop_plocc[pl_ref][plot_options['prop_'+data_mode+'_absc']])  
                 elif plot_options['prop_'+data_mode+'_absc']=='y_st2':xvar_HR=theo_HR_prop_plocc[pl_ref]['y_st']**2.  
                 elif plot_options['prop_'+data_mode+'_absc']=='abs_y_st':xvar_HR=np.abs(theo_HR_prop_plocc[pl_ref]['y_st'])
@@ -8952,7 +8957,8 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                                 elif plot_options['theo_HR_prof']:par_list_HR+=['ctrst','FWHM']
                             
                             theo_HR_prop_loc = calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_dic,data_bin,theo_dic_in,inst,vis,data_fit_loc['genpar_instvis'],data_fit_loc['p_final'],data_fit_loc,par_list = par_list_HR)[pl_ref]
-                            if plot_options['prop_'+data_mode+'_absc']=='phase':xvar_HR_loc=deepcopy(theo_HR_prop_loc['phase'])  
+                            if plot_options['prop_'+data_mode+'_absc']=='phase':xvar_HR_loc=deepcopy(theo_HR_prop_loc['phase']) 
+                            elif plot_options['prop_'+data_mode+'_absc']=='time_rel':xvar_HR_loc=deepcopy(theo_HR_prop_loc['phase'])*system_param[pl_ref]["period"]*24.                             
                             elif plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']:xvar_HR_loc=deepcopy(theo_HR_prop_loc[plot_options['prop_'+data_mode+'_absc']])  
                             elif plot_options['prop_'+data_mode+'_absc']=='y_st2':xvar_HR_loc=theo_HR_prop_loc['y_st']**2.  
                             elif plot_options['prop_'+data_mode+'_absc']=='abs_y_st':xvar_HR_loc=np.abs(theo_HR_prop_loc['y_st'])
@@ -9059,7 +9065,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                         input_dic = {}
                         if ((data_fit_prof['model'][inst]=='dgauss') & (prop_mode in ['true_FWHM','true_ctrst'])) | ((data_fit_prof['model'][inst]=='voigt') & (prop_mode in ['FWHM_voigt','ctrst'])):                        
                             if 'best_mod_tab' not in plot_options:
-                                dx =return_pix_size()[inst]/4.
+                                dx =return_pix_size(inst)/4.
                                 min_x = -100.
                                 max_x = 100.                             
                             else:
@@ -9130,8 +9136,8 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                 elif plot_options['prop_'+data_mode+'_absc']=='starphase':  
                     x_obs=coord_dic[inst][vis]['cen_ph_st'][iexp2plot] 
                     st_x_obs=coord_dic[inst][vis]['st_ph_st'][iexp2plot] 
-                    end_x_obs=coord_dic[inst][vis]['end_ph_st'][iexp2plot]                     
-                elif plot_options['prop_'+data_mode+'_absc']=='phase':
+                    end_x_obs=coord_dic[inst][vis]['end_ph_st'][iexp2plot] 
+                elif plot_options['prop_'+data_mode+'_absc'] in ['phase','time_rel']:
                     if ((data_mode=='DI') and (vis=='binned')) or ((data_mode=='Intr') and (data_type=='Intrbin')):
                         x_obs=data_bin['cen_bindim']
                         st_x_obs=data_bin['st_bindim']
@@ -9140,6 +9146,10 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                         x_obs=coord_vis_pl['cen_ph'][iexp2plot] 
                         st_x_obs=coord_vis_pl['st_ph'][iexp2plot] 
                         end_x_obs=coord_vis_pl['end_ph'][iexp2plot] 
+                    if plot_options['prop_'+data_mode+'_absc']=='time_rel':
+                        x_obs*=system_param[pl_ref]["period"]*24.
+                        st_x_obs*=system_param[pl_ref]["period"]*24.
+                        end_x_obs*=system_param[pl_ref]["period"]*24.
                 elif plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj','y_st2','abs_y_st']:  
                     if data_mode=='DI':iexp_in = gen_dic[inst][vis]['idx_in'] 
                     elif data_mode=='Intr':
@@ -9521,29 +9531,31 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
 
 
                 #Contacts
-                if plot_options['prop_'+data_mode+'_absc']=='phase': 
+                if plot_options['prop_'+data_mode+'_absc'] in ['time','phase','time_rel']: 
                     for ipl,pl_loc in enumerate(data_dic[inst][vis]['studied_pl']):
+                        if plot_options['prop_'+data_mode+'_absc']=='time_rel':time_conv = system_param[pl_ref]["period"]*24.
+                        else:time_conv = 1.
                         if (i_visit==0) or (plot_options['prop_'+data_mode+'_absc']=='time') or ((pl_loc in gen_dic['Tcenter_visits']) and (inst in gen_dic['Tcenter_visits'][pl_loc]) and (vis in gen_dic['Tcenter_visits'][pl_loc][inst])): 
                             ls_pl = plot_options['ls_pl_ct'][ipl]
                             if pl_loc==pl_ref:
                                 cen_ph = 0.
-                                contact_phases_vis = contact_phases[pl_ref]
+                                contact_phases_vis = contact_phases[pl_ref]*time_conv 
                             else:
                                 contact_times = coord_dic[inst][vis][pl_loc]['Tcenter']+contact_phases[pl_loc]*system_param[pl_loc]["period"]
-                                contact_phases_vis = (contact_times-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"]  
-                                cen_ph = (coord_dic[inst][vis][pl_loc]['Tcenter']-coord_dic[inst][vis][pl_ref]['Tcenter'])/system_param[pl_ref]["period"] 
+                                contact_phases_vis = (contact_times-coord_dic[inst][vis][pl_ref]['Tcenter'])*time_conv/system_param[pl_ref]["period"]  
+                                cen_ph = (coord_dic[inst][vis][pl_loc]['Tcenter']-coord_dic[inst][vis][pl_ref]['Tcenter'])*time_conv/system_param[pl_ref]["period"] 
                             for cont_ph in contact_phases_vis:plt.plot([cont_ph,cont_ph],[-1e6,1e6],color=plot_options['col_contacts'],linestyle=ls_pl,lw=plot_options['lw_plot'],zorder=0)
             
                             #Overplot transit duration from system properties
                             if (data_mode=='DI') and plot_options['plot_T14']:
-                                T14_phase = system_param[pl_loc]['TLength']/(system_param[pl_ref]['period'])
+                                T14_phase = system_param[pl_loc]['TLength']*time_conv/(system_param[pl_ref]['period'])
                                 plt.plot([cen_ph-0.5*T14_phase,cen_ph-0.5*T14_phase],[-1e6,1e6],color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=0)
                                 plt.plot([cen_ph+0.5*T14_phase,cen_ph+0.5*T14_phase],[-1e6,1e6],color='black',linestyle='--',lw=plot_options['lw_plot'],zorder=0)                              
 
                     #Use main planet contact as plot range if undefined
                     if (plot_options['x_range'] is None) and (data_mode=='Intr'):
-                        delt_range = 0.05*system_param[pl_ref]['T14_num']/system_param[pl_ref]["period"]
-                        plot_options['x_range'] = np.array([contact_phases[pl_ref][0]-delt_range,contact_phases[pl_ref][3]+delt_range])   
+                        delt_range = 0.05*system_param[pl_ref]['T14_num']*time_conv/system_param[pl_ref]["period"]
+                        plot_options['x_range'] = np.array([contact_phases[pl_ref][0]*time_conv-delt_range,contact_phases[pl_ref][3]*time_conv+delt_range])   
                                           
                 #-------------------------------------------------------
                 #Predicted local RVs measurements from nominal system properties
@@ -9732,6 +9744,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
     x_title_dic={ 
         'time':'Time (bjd)',
         'phase':'Orbital phase',
+        'time_rel':'Orbital time (h)',
         'starphase':'Stellar phase',
         'mu':'$\mu$',
         'lat':'Stellar latitude ($^{\circ}$)'   ,

@@ -7,6 +7,7 @@ import bindensity as bind
 from pathos.multiprocessing import Pool
 from ..ANTARESS_conversions.ANTARESS_sp_cont import calc_spectral_cont
 from ..ANTARESS_general.utils import stop,np_where1D,init_parallel_func,dataload_npz,MAIN_multithread,gen_specdopshift,check_data
+from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size
 
 def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
     r"""**Main cosmics correction routine.**    
@@ -26,6 +27,11 @@ def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
         if (inst not in gen_dic['cosm_thresh']):gen_dic['cosm_thresh'][inst]={}
         if (inst not in gen_dic['cosm_n_wings']):gen_dic['cosm_n_wings'][inst]=0
         
+        #Alignment mode
+        if gen_dic['al_cosm']['mode']=='kep':print('         Aligning with Keplerian model')
+        elif gen_dic['al_cosm']['mode']=='pip':print('         Aligning with DRS RVs')
+        elif (gen_dic['al_cosm']['mode']=='autom'):print('         Aligning with self-measured RVs')
+        
         #Process each visit independently
         for ivisit,vis in enumerate(data_inst['visit_list']):
             data_vis=data_inst[vis]
@@ -37,8 +43,8 @@ def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
             
             #RV used for spectra alignment set to measured values          
             elif gen_dic['al_cosm']['mode']=='pip':
-                if ('RVpip' not in data_dic['DI'][inst][vis]):stop('Pipeline RVs not available')
-                rv_al_all = data_dic['DI'][inst][vis]['RVpip']
+                if ('rv_pip' not in data_dic['DI'][inst][vis]):stop('ERROR : Pipeline RVs not available')
+                rv_al_all = data_dic['DI'][inst][vis]['rv_pip']
 
             #Exposures and orders to be corrected
             if (inst in gen_dic['cosm_exp_corr']) and (vis in gen_dic['cosm_exp_corr'][inst]) and (len(gen_dic['cosm_exp_corr'][inst][vis])>0):exp_corr_list = gen_dic['cosm_exp_corr'][inst][vis]   
@@ -91,8 +97,8 @@ def corr_cosm(inst,gen_dic,data_inst,plot_dic,data_dic,coord_dic):
             
             #Processing all exposures    
             common_args = (data_vis['proc_DI_data_paths'],hcosm_ncomp,data_vis['n_in_visit'],cosm_ncomp,data_vis['dim_all'],gen_dic['al_cosm'],idx_ord_cc,cen_bins_all,cond_cc,flux_all,\
-                           gen_dic['pix_size_v'][inst],data_inst['type'],rv_al_all,err2_all,edge_bins_all,ord_corr_list,gen_dic['resamp_mode'],data_vis['dim_exp'],data_vis['nspec'],gen_dic['cosm_thresh'][inst][vis],plot_dic['cosm_corr'],proc_DI_data_paths_new,gen_dic['cosm_n_wings'][inst])
-            if gen_dic['cosm_nthreads']>1:MAIN_multithread(corr_cosm_vis,gen_dic['cosm_nthreads'],len(exp_corr_list),[exp_corr_list],common_args)                           
+                           return_pix_size(inst),data_inst['type'],rv_al_all,err2_all,edge_bins_all,ord_corr_list,gen_dic['resamp_mode'],data_vis['dim_exp'],data_vis['nspec'],gen_dic['cosm_thresh'][inst][vis],plot_dic['cosm_corr'],proc_DI_data_paths_new,gen_dic['cosm_n_wings'][inst])
+            if (gen_dic['cosm_nthreads']>1) and (gen_dic['cosm_nthreads']<=len(exp_corr_list)):MAIN_multithread(corr_cosm_vis,gen_dic['cosm_nthreads'],len(exp_corr_list),[exp_corr_list],common_args)                           
             else:corr_cosm_vis(exp_corr_list,*common_args)  
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
 

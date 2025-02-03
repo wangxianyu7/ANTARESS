@@ -8,7 +8,7 @@ from astropy.io import fits
 from scipy import special
 import scipy.linalg
 from ..ANTARESS_conversions.ANTARESS_conv import new_compute_CCF,check_CCF_mask_lines
-from ..ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,calc_FWHM_inst,return_resolv
+from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,convol_prof,calc_FWHM_inst,return_resolv
 from ..ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,MAIN_multithread,air_index,gen_specdopshift,def_edge_tab,check_data
 from ..ANTARESS_general.constant_data import N_avo,c_light_m,k_boltz,h_planck
 from ..ANTARESS_general.minim_routines import call_lmfit
@@ -100,10 +100,10 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
                 'O2':660128.}
 
             #Telluric CCF grid
-            drv = gen_dic['pix_size_v'][inst]
+            drv = return_pix_size(inst)
             if gen_dic['tell_def_range'] is None:min_def_ccf,max_def_ccf = -40.,40.001
             else:min_def_ccf,max_def_ccf = gen_dic['tell_def_range'][0],gen_dic['tell_def_range'][1]
-            fixed_args['velccf']= np.arange(min_def_ccf,max_def_ccf,gen_dic['pix_size_v'][inst])
+            fixed_args['velccf']= np.arange(min_def_ccf,max_def_ccf,drv)
             fixed_args['edge_velccf'] = np.append(fixed_args['velccf']-0.5*drv,fixed_args['velccf'][-1]+0.5*drv)
             fixed_args['n_ccf'] = len(fixed_args['velccf'])     
             
@@ -177,7 +177,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
             proc_DI_data_paths_new = gen_dic['save_data_dir']+'Corr_data/Tell/'+inst+'_'+vis+'_'
             iexp_all = range(data_vis['n_in_visit'])
             common_args = (data_vis['proc_DI_data_paths'],iexp_corr_list,inst,vis,gen_dic['tell_range_corr'],iord_corr_list,gen_dic['calc_tell_mode'],fixed_args,gen_dic['tell_species'],tell_mol_dic,gen_dic['sp_frame'],gen_dic['resamp_mode'],data_inst[vis]['dim_exp'],plot_dic['tell_CCF'],plot_dic['tell_prop'],proc_DI_data_paths_new,data_inst[vis]['mean_gcal_DI_data_paths'])
-            if gen_dic['tell_nthreads']>1:MAIN_multithread(corr_tell_vis,gen_dic['tell_nthreads'],data_vis['n_in_visit'],[iexp_all,data_prop_vis['AM'],data_prop_vis['IWV_AM'],data_prop_vis['TEMP'],data_prop_vis['PRESS'],data_prop_vis['BERV']],common_args)                           
+            if (gen_dic['tell_nthreads']>1) and (gen_dic['tell_nthreads']<=data_vis['n_in_visit']):MAIN_multithread(corr_tell_vis,gen_dic['tell_nthreads'],data_vis['n_in_visit'],[iexp_all,data_prop_vis['AM'],data_prop_vis['IWV_AM'],data_prop_vis['TEMP'],data_prop_vis['PRESS'],data_prop_vis['BERV']],common_args)                           
             else:corr_tell_vis(iexp_all,data_prop_vis['AM'],data_prop_vis['IWV_AM'],data_prop_vis['TEMP'],data_prop_vis['PRESS'],data_prop_vis['BERV'],*common_args)  
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
             data_vis['tell_DI_data_paths'] = {}

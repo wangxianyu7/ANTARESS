@@ -13,6 +13,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     Initializes ANTARESS configuration settings with default values.  
     
+    Sequences can be requested through the workflow launch command, which will set specific settings.
+    Possible sequences are:
+
+        - 'st_master_tseries' : compute a master 1D spectrum of the star from a non-consecutive time-series of S2D spectra, with minimal information on the star and no planets
+        - 'system_view' : only plot a view of the system, based on input properties and plot settings
+    
     ANTARESS can process data from the following instruments, with the associated designation in the workflow:
         
      - CARMENES (visible detector): 'CARMENES_VIS'
@@ -45,6 +51,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%%% Star name
     gen_dic['star_name']='Arda' 
+    if gen_dic['sequence']=='st_master_tseries':gen_dic['star_name']='Star_tseries' 
     
     
     #%%%%% Transiting planets
@@ -94,22 +101,15 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%%%% Grid run
     #    - if set to True, ANTARESS is ran over a grid of values for the settings defined in ANTARESS_gridrun (using the nominal settings properties for other fields)
     gen_dic['grid_run'] = False
-     
-    
-    #%%%%%% Workflow sequence
-    #    - set to None to activate/deactivate manually each module of the workflow
-    #      otherwise set to one of the following to enable a specific sequence:
-    # + 'system_view' : only plot a view of the system, based on input properties and plot settings
-    gen_dic['sequence'] = None 
 
-    
+
     #%%%%% Input data type
     #    - for each instrument select among: 
     # + 'CCF': CCFs calculated by standard pipelines on stellar spectra
     # + 'spec1D': 1D stellar spectra
     # + 'spec2D': echelle stellar spectra
-    gen_dic['type']={'ESPRESSO':'CCF'}
-    
+    gen_dic['type']={}
+
       
     #%%%%% Spectral frame
     #    - input spectra will be put into the requested frame ('air' or 'vacuum') if relevant
@@ -400,7 +400,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - data must be stored in a unique directory for each instrument, and unique sub-directories for each instrument visit
     #    - the fields defined here will determine which instruments/visits are processed, and which names are used for each visit 
     #    - format: {inst:{vis:path}}
-    gen_dic['data_dir_list']={'ESPRESSO':{'20151021':'default_path_TBD'}}
+    gen_dic['data_dir_list']={}
 
     
     #%%%% Saving log of useful keywords
@@ -726,7 +726,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%%% Planetary system architecture
     plot_dic['system_view']=''  
-      
+    if gen_dic['sequence']=='system_view':plot_dic['system_view'] = 'pdf'
     
     
     
@@ -1213,7 +1213,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%%% Alignment mode
     #    - choose option to align spectra prior to cosmic identification and correction
-    # + 'kep': Keplerian curve 
+    # + 'kep': Keplerian model 
     # + 'pip': pipeline RVs (if available)
     # + 'autom': for automatic alignment using the specified options 'range' and 'RVrange_cc'
     #            'range' : define the spectral range(s) used to cross-correlate spectra
@@ -2111,12 +2111,21 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     ##################################################################################################
     
     #%%%% Activating
-    gen_dic['align_DI'] = False  
+    gen_dic['align_DI'] = False
+    if gen_dic['sequence']=='st_master_tseries':gen_dic['align_DI'] = True  
     
     
     #%%%% Calculating/retrieving 
     gen_dic['calc_align_DI'] = True  
     
+
+    #%%%% Alignment mode
+    #    - choose option to align spectra
+    # + 'kep': Keplerian model 
+    # + 'pip': pipeline RVs (if available)
+    #    - the Keplerian option should be preferred, as pipeline RVs will be biased by the RM effect 
+    data_dic['DI']['align_mode']='kep'   
+    if gen_dic['sequence']=='st_master_tseries':data_dic['DI']['align_mode']='pip' 
     
     #%%%% Systemic velocity 
     #    - for each instrument and visit (km/s)
@@ -2145,6 +2154,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%% Activating
     gen_dic['flux_sc'] = False
+    if gen_dic['sequence']=='st_master_tseries':gen_dic['flux_sc']=True  
     
     
     #%%%% Calculating/retrieving
@@ -2288,6 +2298,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%% Activating 
     gen_dic['DIbin'] = False
     gen_dic['DIbinmultivis'] = False
+    if gen_dic['sequence']=='st_master_tseries':gen_dic['DIbin'] = True
     
     
     #%%%% Calculating/retrieving
@@ -2312,8 +2323,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + 'phase': profiles are binned over phase    
     #            this is not possible when binning multiple visits, if different planets are transiting (use the 'masterDI' option). In that case the 
     #            phase constraints are ignored and all out-of-transit exposures (default) or the selected ones are used
+    # + 'time' : absolute time in bjd
     #    - beware to use the alignement module to calculate binned profiles in the star rest frame
     data_dic['DI']['dim_bin']='phase' 
+    if gen_dic['sequence']=='st_master_tseries':data_dic['DI']['dim_bin']='time'  
     
     
     #%%%% Bin definition
@@ -2336,7 +2349,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #%%%%% Individual binned profiles
-    plot_dic['DIbin']=''    
+    plot_dic['DIbin']='' 
+    if gen_dic['sequence']=='st_master_tseries':plot_dic['DIbin']='pdf'  
     
     
     #%%%%% Residuals from binned profiles
@@ -2412,12 +2426,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - check using plot_dic['DImask_spectra'] with step='sel1'
     
     #%%%%% Depth range
+    #    - set 'sel_ld' = True to activate
     #    - minimum/maximum line depths to be considered in the stellar mask (counted from the continuum with 'linedepth_cont_X' and from the local maxima with 'linedepth_X')
     #      between 0 and 1
     #      format is inst : val
     #    - use 'linedepth_contdepth' to define a linear threshold (line depth from maxima) = a*(line depth from continuum) + b
     #      format is inst : [a,b]
     #    - use plot_dic['DImask_ld'] to adjust
+    data_dic['DI']['mask']['sel_ld'] = True      
     data_dic['DI']['mask']['linedepth_cont_min'] = {}   
     data_dic['DI']['mask']['linedepth_min'] = {}  
     data_dic['DI']['mask']['linedepth_cont_max'] = {} 
@@ -2426,22 +2442,28 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     
     #%%%%% Minimum depth and width
+    #    - set 'sel_ld_lw' = True to activate
     #    - selection criteria on minimum line depth and half-width (between minima and closest maxima) to be kept (value > 10^(crit)) 
     #    - use plot_dic['DImask_ld_lw'] to adjust, excluding lines that contribute the least to the cumulated weight of the linelist
+    data_dic['DI']['mask']['sel_ld_lw'] = True 
     data_dic['DI']['mask']['line_width_logmin'] = None
     data_dic['DI']['mask']['line_depth_logmin'] = None
     
     
     #%%%% Line selection: position
+    #    - set 'sel_RVdev_fit' = True to activate
     #    - define RV window for line position fit (km/s)
     #    - set maximum RV deviation of fitted minimum from line minimum in resampled grid (m/s)
     #    - check using plot_dic['DImask_spectra'] with step='sel2'
     #      use plot_dic['DImask_RVdev_fit'] to adjust
+    data_dic['DI']['mask']['sel_RVdev_fit'] = True 
     data_dic['DI']['mask']['win_core_fit'] = 1
     data_dic['DI']['mask']['abs_RVdev_fit_max'] = None
     
     
     #%%%% Line selection: tellurics
+    #    - set 'sel_tellcont' = True to activate
+    data_dic['DI']['mask']['sel_tellcont'] = True 
     
     #%%%%% Threshold on telluric line depth 
     #    - minimum depth above which to consider tellurics for exclusion
@@ -2459,8 +2481,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #%%%% VALD cross-validation 
+    #    - set 'sel_vald_depthcorr' = True to activate
     #    - lines from the input VALD linelist are cross-matched with the lines identified by the module and stored for later use.
-    #    - this step has no impact on the line selection    
+    #    - this step has no impact on the line selection   
+    #      use plot_dic['DImask_vald_depthcorr'] to adjust 
+    data_dic['DI']['mask']['sel_vald_depthcorr'] = True 
     
     #%%%%% Path to VALD linelist
     #    - set to None to prevent
@@ -2475,25 +2500,29 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%% Line selection: morphological 
     
     #%%%%% Symmetry
+    #    - set 'sel_morphasym' = True to activate
     #    - selection criteria on maximum ratio between normalized continuum difference and relative line depth, and normalized asymetry parameter, to be kept (value < crit) 
     #    - check using plot_dic['DImask_spectra'] with step='sel4'
     #      use plot_dic['DImask_morphasym'] to adjust    
+    data_dic['DI']['mask']['sel_morphasym'] = True 
     data_dic['DI']['mask']['diff_cont_rel_max'] = None
     data_dic['DI']['mask']['asym_ddflux_max'] = None    
     
     
     #%%%%% Width and depth
+    #    - set 'sel_morphshape' = True to activate
     #    - selection criteria on minimum line depth (value > crit) and maximum line width (value < crit) to be kept
     #    - check using plot_dic['DImask_spectra'] with step='sel5'
-    #      use plot_dic['DImask_morphshape'] to adjust   
+    #      use plot_dic['DImask_morphshape'] to adjust  
+    data_dic['DI']['mask']['sel_morphshape'] = True  
     data_dic['DI']['mask']['width_max'] = None 
     data_dic['DI']['mask']['diff_depth_min'] = None
     
         
     #%%%% Line selection: RV dispersion 
-    #    - set to True to activate 
+    #    - set 'sel_RVdisp' = True to activate
     #    - check using plot_dic['DImask_spectra'] with step='sel6'
-    data_dic['DI']['mask']['RV_disp_sel'] = True
+    data_dic['DI']['mask']['sel_RVdisp'] = True
     
     
     #%%%%% Exposures selection
@@ -4001,6 +4030,7 @@ def ANTARESS_2D_1D_settings(data_type,local_dic,gen_dic,plot_dic):
     
     #%%%% Activating
     gen_dic['spec_1D_'+data_type] = False
+    if (gen_dic['sequence']=='st_master_tseries') and (data_type=='DI'):gen_dic['spec_1D_DI'] = True
     
     
     #%%%% Calculating/retrieving 
@@ -4013,8 +4043,9 @@ def ANTARESS_2D_1D_settings(data_type,local_dic,gen_dic,plot_dic):
     
     #%%%% 1D spectral table
     #    - specific to each instrument
-    #    - tables are uniformely spaced in ln(w) (with d[ln(w)] = dw/w)
-    #      start and end values given in A  
+    #    - tables are uniformely spaced in ln(w) (with d[ln(w)] = dw/w = drv/c)
+    #      a relevant choice can be to use the instrument pixel size, especially if constant in rv space
+    #    - start and end values given in A  
     local_dic[data_type]['spec_1D_prop']={}   
     
     
@@ -4180,7 +4211,9 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     # + 'vsini' : converts 'veq' into veq*sin(istar) using fitted or fixed 'istar'
     # + 'istar_deg_conv' : replaces cos(istar) by istar[deg]
     # + 'fold_istar' : folds istar[deg] around 90 and returns the Northern (istar < 90, 'config' = 'North') or Southern (istar > 90, 'config' = 'South')) configurations.
-    #                  to be used when only sin(istar) is constrained and the stellar inclination remains degenerate between istar and 180-istar 
+    #                  this is relevant when
+    #                       only sin(istar) is constrained and the stellar inclination remains degenerate between istar and 180-istar 
+    #                       cos(istar) converges toward a mode well-defined and distinct from 0 (ie, istar = 90), because the MCMC converged toward this mode but we know the symmetrical mode around 0 is equally valid.
     # + 'istar_Peq' : derive the stellar inclination from the fitted 'vsini' and user-provided measurements of 'Rstar' and 'Peq'
     #                 warning: it is better to fit directly for 'Peq', 'cosistar', and 'Rstar'
     # + 'istar_Peq_vsini' : derive the stellar inclination from user-provided measurements of 'Rstar','Peq', and 'vsini'
@@ -4197,7 +4230,7 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     # + 'Peq_veq_faculae' : adds 'Peq_faculae' using the fitted 'veq_faculae' and a user-provided measurement of 'Rstar'
     # + 'Peq_vsini' : adds 'Peq' using the fitted 'vsini' and user-provided measurements for 'Rstar' and 'istar' 
     # + 'psi' : adds 3D spin-orbit angle for all planets using the fitted 'lambda', and fitted or user-provided measurements for 'istar' and 'ip_plNAME'
-    #           put 'North' and/or 'South' in  'config' to return the corresponding Psi configurations associated with istar (Northern configuration) and 180-istar (Southern configuration) 
+    #           put 'North' and/or 'South' in  'config' to return the corresponding Psi configurations associated with istar (Northern configuration) and 180-istar (Southern configuration). This is only relevant if istar needed to be folded around 90 to manually produce the Northern or Southern configuration. 
     #           put 'combined' in  'config' to add the combined distribution from the Northern and Southern Psi PDFs, assumed to be equiprobable (make sure that the two distributions are similar before combining them)
     #           in the latter case, 'fold_istar' must have been requested (whether to North or South does not matter, it is just for 'combined' to use separately the Northern and Southern configurations rather than the original full one)  
     # + 'psi_lambda' : adds 3D spin-orbit angle using user-provided measurements of 'lambda', and fitted or user-provided measurements for 'istar' and 'ip'
@@ -4247,7 +4280,7 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     ################################################################################################## 
     
     #%%%% Fitting method
-    #    - fitting method used to perform the chi2 miniminzation with lmfit
+    #    - fitting method used to perform the chi2 minimization with lmfit
     #    - options include leastsq, bfgs, newton, ... (string must be in the format supported by lmfit)
     local_dic[data_type]['chi2_fitting_method']='leastsq' 
 

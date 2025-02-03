@@ -176,6 +176,8 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     matrix_wave = matrix_wave[mask_line]
     matrix_flux = matrix_flux[mask_line]
     matrix_index = matrix_index[mask_line]   
+    if np.sum(mask_line)==0:stop('ERROR : empty line list, check your settings for screening.' )
+    if mask_dic['verbose']:print('             '+str(np.sum(mask_line))+' remaining lines')
     
     #Store line list as dictionary to facilitate manipulations
     wave_minima = matrix_wave[:,0] 
@@ -241,75 +243,87 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #=============================================================================
     #Line depth and width selection
     #=============================================================================
-    if mask_dic['verbose']:print('           Selection: depth and width')
-    
-    #Depth between minima and continuum
-    line_depth_cont = 1.-np.array(Dico['f_minima'])
-    
+            
     #Depth between minima and average of bracketing maxima
-    line_depth = abs(np.array(Dico['f_minima'])  - np.mean([np.array(Dico['f_maxima_left']),np.array(Dico['f_maxima_right'])],axis=0))      
+    line_depth = abs(np.array(Dico['f_minima'])  - np.mean([np.array(Dico['f_maxima_left']),np.array(Dico['f_maxima_right'])],axis=0))     
     
-    #Depth range criteria
-    if (inst in mask_dic['linedepth_min']):linedepth_min = mask_dic['linedepth_min'][inst]
-    else:linedepth_min = 0.01    #mainly to exclude abnormal 'positive' lines
-    if (inst in mask_dic['linedepth_max']):linedepth_max = mask_dic['linedepth_max'][inst]
-    else:linedepth_max = 0.99    #mainly to exclude abnormal 'negative' lines    
-    if (inst in mask_dic['linedepth_cont_min']):linedepth_cont_min = mask_dic['linedepth_cont_min'][inst]
-    else:
-        if (fwhm_ccf<15.):linedepth_cont_min = 0.10   
-        else:linedepth_cont_min = 0.03 
-    if (inst in mask_dic['linedepth_cont_max']):linedepth_cont_max = mask_dic['linedepth_cont_max'][inst]
-    else:
-        if (fwhm_ccf<15.):linedepth_cont_max = 0.95  
-        else:linedepth_cont_max = 0.40 
+    if mask_dic['sel_ld'] or mask_dic['sel_ld_lw']:
+        if mask_dic['verbose']:print('           Selection: depth and width')
         
-    #Depth = f(continuum depth) limit
-    #    - both are correlated, so that a specific threshold can be defined
-    if (inst in mask_dic['linedepth_contdepth']):
-        linedepth_contdepth = mask_dic['linedepth_contdepth'][inst] 
+        #Depth selection
+        if mask_dic['sel_ld']:
+            if mask_dic['verbose']:print('             Sub-selection: depth range')
         
-        #Linear threshold
-        linedepth_rel = linedepth_contdepth[0]*line_depth_cont+linedepth_contdepth[1]
-        
-    else:
-        linedepth_contdepth = None
-        linedepth_rel = 10.
+            #Depth between minima and continuum
+            line_depth_cont = 1.-np.array(Dico['f_minima'])
      
-    #Store for plotting
-    if plot_ld:
-        dic_sav.update({'line_depth_cont':line_depth_cont,'line_depth':line_depth,'linedepth_cont_min':linedepth_cont_min,'linedepth_cont_max':linedepth_cont_max,'linedepth_max':linedepth_max,'linedepth_min':linedepth_min,'linedepth_contdepth':linedepth_contdepth,
-                        'weight_rv_ld':np.array(Dico[mask_dic['mask_weights']])})
-  
-    #Keep lines with continuum depth within the requested depth range, and with effective depth larger than a threshold
-    mask_line = (line_depth_cont > linedepth_cont_min)&(line_depth_cont < linedepth_cont_max)&(line_depth > linedepth_min ) & (line_depth < linedepth_max) & (line_depth<linedepth_rel)
-    Dico = Dico.loc[mask_line]
-    Dico = Dico.reset_index(drop=True)    
+            #Depth range criteria
+            if (inst in mask_dic['linedepth_min']):linedepth_min = mask_dic['linedepth_min'][inst]
+            else:linedepth_min = 0.01    #mainly to exclude abnormal 'positive' lines
+            if (inst in mask_dic['linedepth_max']):linedepth_max = mask_dic['linedepth_max'][inst]
+            else:linedepth_max = 0.99    #mainly to exclude abnormal 'negative' lines    
+            if (inst in mask_dic['linedepth_cont_min']):linedepth_cont_min = mask_dic['linedepth_cont_min'][inst]
+            else:
+                if (fwhm_ccf<15.):linedepth_cont_min = 0.10   
+                else:linedepth_cont_min = 0.03 
+            if (inst in mask_dic['linedepth_cont_max']):linedepth_cont_max = mask_dic['linedepth_cont_max'][inst]
+            else:
+                if (fwhm_ccf<15.):linedepth_cont_max = 0.95  
+                else:linedepth_cont_max = 0.40 
+            
+            #Depth = f(continuum depth) limit
+            #    - both are correlated, so that a specific threshold can be defined
+            if (inst in mask_dic['linedepth_contdepth']):
+                linedepth_contdepth = mask_dic['linedepth_contdepth'][inst] 
+                
+                #Linear threshold
+                linedepth_rel = linedepth_contdepth[0]*line_depth_cont+linedepth_contdepth[1]
+                
+            else:
+                linedepth_contdepth = None
+                linedepth_rel = 10.
+             
+            #Store for plotting
+            if plot_ld:
+                dic_sav.update({'line_depth_cont':line_depth_cont,'line_depth':line_depth,'linedepth_cont_min':linedepth_cont_min,'linedepth_cont_max':linedepth_cont_max,'linedepth_max':linedepth_max,'linedepth_min':linedepth_min,'linedepth_contdepth':linedepth_contdepth,
+                                'weight_rv_ld':np.array(Dico[mask_dic['mask_weights']])})
+      
+            #Keep lines with continuum depth within the requested depth range, and with effective depth larger than a threshold
+            mask_line = (line_depth_cont > linedepth_cont_min)&(line_depth_cont < linedepth_cont_max)&(line_depth > linedepth_min ) & (line_depth < linedepth_max) & (line_depth<linedepth_rel)
+            Dico = Dico.loc[mask_line]
+            Dico = Dico.reset_index(drop=True)  
+            if np.sum(mask_line)==0:stop('ERROR : empty line list, check your settings for depth and width.' )  
+            if mask_dic['verbose']:print('             '+str(np.sum(mask_line))+' remaining lines')
     
-    #------------------------------------------------------
-
-    #Keep lines with minimum depth and width larger than requested threshold
-    if (mask_dic['line_width_logmin'] is not None):line_width_logmin = mask_dic['line_width_logmin']
-    else:line_width_logmin = -1.3 
-    if (mask_dic['line_depth_logmin'] is not None):line_depth_logmin = mask_dic['line_depth_logmin']
-    else:line_depth_logmin = -1.4 
-    log10_min_line_width = np.log10(np.min(np.vstack([abs(Dico['left_width']),abs(Dico['right_width'])]),axis=0))
-    log10_min_line_depth = np.log10(np.min(np.vstack([abs(Dico['left_depth']),abs(Dico['right_depth'])]),axis=0))  
-    mask_line = (log10_min_line_depth>line_depth_logmin)&(log10_min_line_width>line_width_logmin)
-
-    #Store for plotting
-    if plot_ld_lw:
-        dic_sav.update({'log10_min_line_depth':log10_min_line_depth,'log10_min_line_width':log10_min_line_width,'line_depth_logmin':line_depth_logmin,'line_width_logmin':line_width_logmin,'weight_rv_ld_lw':np.array(Dico[mask_dic['mask_weights']])})
+        #------------------------------------------------------
+    
+        #Keep lines with minimum depth and width larger than requested threshold
+        if mask_dic['sel_ld_lw']:
+            if mask_dic['verbose']:print('             Sub-selection: minimum depth and width')
+            if (mask_dic['line_width_logmin'] is not None):line_width_logmin = mask_dic['line_width_logmin']
+            else:line_width_logmin = -1.3 
+            if (mask_dic['line_depth_logmin'] is not None):line_depth_logmin = mask_dic['line_depth_logmin']
+            else:line_depth_logmin = -1.4 
+            log10_min_line_width = np.log10(np.min(np.vstack([abs(Dico['left_width']),abs(Dico['right_width'])]),axis=0))
+            log10_min_line_depth = np.log10(np.min(np.vstack([abs(Dico['left_depth']),abs(Dico['right_depth'])]),axis=0))  
+            mask_line = (log10_min_line_depth>line_depth_logmin)&(log10_min_line_width>line_width_logmin)
         
-    #Restrict
-    Dico = Dico.loc[mask_line]
-    Dico = Dico.reset_index(drop=True) 
-    
-    #Store for plotting
-    dic_sav['sel1']={}
-    if plot_spec:
-        dic_sav['sel1'].update({'nl_mask_pre':nlines,'nl_mask_post':len(Dico['w_minima']),'linedepth_cont_min':linedepth_cont_min,'linedepth_cont_max':linedepth_cont_max})                                
-        for key in ['f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel1'][key] = np.array(Dico[key])
-        dic_sav['sel1']['w_lines'] = np.array(Dico['w_minima'])
+            #Store for plotting
+            if plot_ld_lw:
+                dic_sav.update({'log10_min_line_depth':log10_min_line_depth,'log10_min_line_width':log10_min_line_width,'line_depth_logmin':line_depth_logmin,'line_width_logmin':line_width_logmin,'weight_rv_ld_lw':np.array(Dico[mask_dic['mask_weights']])})
+                
+            #Restrict
+            Dico = Dico.loc[mask_line]
+            Dico = Dico.reset_index(drop=True) 
+            if np.sum(mask_line)==0:stop('ERROR : empty line list, check your settings for depth and width.' ) 
+            if mask_dic['verbose']:print('             '+str(np.sum(mask_line))+' remaining lines') 
+            
+            #Store for plotting
+            dic_sav['sel1']={}
+            if plot_spec:
+                dic_sav['sel1'].update({'nl_mask_pre':nlines,'nl_mask_post':len(Dico['w_minima']),'linedepth_cont_min':linedepth_cont_min,'linedepth_cont_max':linedepth_cont_max})                                
+                for key in ['f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel1'][key] = np.array(Dico[key])
+                dic_sav['sel1']['w_lines'] = np.array(Dico['w_minima'])
 
     #=============================================================================
     #Line properties
@@ -336,90 +350,109 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #=============================================================================
     # Line position selection
     #=============================================================================
-    if mask_dic['verbose']:print('           Selection: position')
-    
-    #RV window for line position fit (km/s)
-    if mask_dic['win_core_fit'] is None:win_core_fit=1.
-    else:win_core_fit = mask_dic['win_core_fit']
-    
-    #Fitting line central wavelength
-    coordinates = np.zeros((len(np.array(Dico['idx_minima'])),7))
-    loop = 0
-    continuum_line = 1.
-    for j in np.array(Dico['idx_minima']):
-        try:
 
-            #Local line spectrum             
-            win_core_pix = int((cen_bins_reg[j]*win_core_fit/c_light)*(1./np.diff(cen_bins_reg[j:j+2])))
-            grid_line = cen_bins_reg[j-win_core_pix:j+win_core_pix+1]
-            spectrum_line = flux_norm_reg[j-win_core_pix:j+win_core_pix+1]
-            
-            #Local normalization
-            line = myc.tableXY(grid_line, spectrum_line/continuum_line, np.sqrt(abs(spectrum_line))/continuum_line)
-            
-            #Line centered around its mean in X and Y
-            line.recenter()
-            
-            #Line fitted with parabola
-            line.fit_poly(d=2)
-            line.interpolate(replace=False)
-            
-            #Estimated wavelength of line minimum
-            center = -0.5 * line.poly_coefficient[1]/line.poly_coefficient[0]
-            center = center + line.xmean
-            coordinates[loop,0] = center   
-            
-            #Estimated line minimum  
-            line_minimum = np.polyval(line.poly_coefficient, center) + line.ymean
-            
-            #Estimated line depth              
-            coordinates[loop,1] = 1. - line_minimum
-            coordinates[loop,2] = 1 - (line.y.min() + line.ymean)
-            coordinates[loop,3] = 1 - (line.y_interp.min() + line.ymean)
-            
-            #Estimated errors
-            mini1 = np.argmin(spectrum_line) 
-            coordinates[loop,4] = np.sqrt(abs(spectrum_line[mini1]*(1+(spectrum_line[mini1]/continuum_line)**2)))/abs(continuum_line)
-            errors = np.sqrt(np.diag(line.cov))
-            coordinates[loop,5] = 0.5*np.sqrt((errors[1]/line.poly_coefficient[0])**2+(errors[0]*line.poly_coefficient[1]/line.poly_coefficient[0]**2)**2)
-            coordinates[loop,6] = line.chi2
-        except:
-           pass 
-        loop+=1
-
-        #To visualize a fit
-        # plt.plot(grid_line,spectrum_line,color='red')
-        # plt.plot(line.x+ center,np.polyval(line.poly_coefficient, line.x) + line.ymean,color='blue')
-        # plt.show()
-        # stop()
-
-
-    #Threshold on relative diffence in line position
-    if mask_dic['abs_RVdev_fit_max'] is None:abs_RVdev_fit_max=1500.
-    else:abs_RVdev_fit_max = mask_dic['abs_RVdev_fit_max']        
-        
-    #Keep lines with relative difference in position (=RV deviation) with the measured minima below threshold
-    #    - it makes more sense to use the relative difference, as it is equivalent to a RV difference (delta_rv = c*delta_w / w)
-    #    - the same criterion cannot be applied to the depth because the fit is performed in the core of the line, locally, so that the fit continuum is much lower than the actual continuum
-    Dico['w_fitted'] = coordinates[:,0]
-    abs_RVdev_fit = c_light_m*abs(np.array((Dico['w_minima']-Dico['w_fitted'])/Dico['w_minima']))
-
-    #Store for plotting
-    if plot_RVdev_fit:
-        dic_sav.update({'abs_RVdev_fit_max':abs_RVdev_fit_max,'abs_RVdev_fit':abs_RVdev_fit,'weight_rv_RVdev_fit':np.array(Dico[mask_dic['mask_weights']])})
-
-    #Restrict
-    Dico = Dico.loc[abs_RVdev_fit<abs_RVdev_fit_max]
-    Dico = Dico.reset_index(drop=True) 
-    
     #Attribute mask line positions to minima positions
-    Dico['w_lines'] = Dico['w_minima']    
-
-    #Store for plotting
-    dic_sav['sel2']={}
-    if plot_spec:
-        dic_sav['sel2'].update({'nl_mask_pre':dic_sav['sel1']['nl_mask_post'],'nl_mask_post':len(Dico['w_lines'])})
-        for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel2'][key] = np.array(Dico[key])
+    Dico['w_lines'] = Dico['w_minima']  
+    
+    if mask_dic['sel_RVdev_fit']:
+        if mask_dic['verbose']:print('           Selection: position')
+        
+        #RV window for line position fit (km/s)
+        if mask_dic['win_core_fit'] is None:win_core_fit=1.
+        else:win_core_fit = mask_dic['win_core_fit']
+        
+        #Fitting line central wavelength
+        n_lines = len(np.array(Dico['idx_minima']))
+        coordinates = np.zeros([n_lines,7])*np.nan
+        loop = 0
+        continuum_line = 1.
+        idx_fitted = []
+        for j_idx,j in enumerate(np.array(Dico['idx_minima'])):
+    
+            #Number of pixels in RV window
+            #    - n = win_rv/drv_pix = win_rv/(c*dw/w) = win_rv*w/(c*dw)    
+            win_core_pix = int((cen_bins_reg[j]*win_core_fit/c_light)*(1./np.diff(cen_bins_reg[j:j+2])))   
+            if win_core_pix==0:
+                print('WARNING: no pixels in RV window for line at '+str(cen_bins_reg[j]))
+            else:
+        
+                #Local line spectrum    
+                grid_line = cen_bins_reg[j-win_core_pix:j+win_core_pix+1]
+                spectrum_line = flux_norm_reg[j-win_core_pix:j+win_core_pix+1]
+                
+                #Local normalization
+                line = myc.tableXY(grid_line, spectrum_line/continuum_line, np.sqrt(abs(spectrum_line))/continuum_line)
+                
+                #Line centered around its mean in X and Y
+                line.recenter()
+                
+                #Line fitted with parabola
+                try:
+                    line.fit_poly(d=2)
+                    line.interpolate(replace=False)
+                    
+                    #Estimated wavelength of line minimum
+                    center = -0.5 * line.poly_coefficient[1]/line.poly_coefficient[0]
+                    center = center + line.xmean
+                    coordinates[loop,0] = center   
+                    
+                    #Estimated line minimum  
+                    line_minimum = np.polyval(line.poly_coefficient, center) + line.ymean
+                    
+                    #Estimated line depth              
+                    coordinates[loop,1] = 1. - line_minimum
+                    coordinates[loop,2] = 1 - (line.y.min() + line.ymean)
+                    coordinates[loop,3] = 1 - (line.y_interp.min() + line.ymean)
+                    
+                    #Estimated errors
+                    mini1 = np.argmin(spectrum_line) 
+                    coordinates[loop,4] = np.sqrt(abs(spectrum_line[mini1]*(1+(spectrum_line[mini1]/continuum_line)**2)))/abs(continuum_line)
+                    errors = np.sqrt(np.diag(line.cov))
+                    coordinates[loop,5] = 0.5*np.sqrt((errors[1]/line.poly_coefficient[0])**2+(errors[0]*line.poly_coefficient[1]/line.poly_coefficient[0]**2)**2)
+                    coordinates[loop,6] = line.chi2
+                
+                    idx_fitted+=[j_idx]
+                
+                except:
+                    pass
+        
+            loop+=1
+    
+            #To visualize a fit
+            # plt.plot(grid_line,spectrum_line,color='red')
+            # plt.plot(line.x+ center,np.polyval(line.poly_coefficient, line.x) + line.ymean,color='blue')
+            # plt.show()
+            # stop()
+    
+    
+        #Threshold on relative diffence in line position
+        if mask_dic['abs_RVdev_fit_max'] is None:abs_RVdev_fit_max=1500.
+        else:abs_RVdev_fit_max = mask_dic['abs_RVdev_fit_max']        
+            
+        #Keep lines with relative difference in position (=RV deviation) with the measured minima below threshold
+        #    - it makes more sense to use the relative difference, as it is equivalent to a RV difference (delta_rv = c*delta_w / w)
+        #    - the same criterion cannot be applied to the depth because the fit is performed in the core of the line, locally, so that the fit continuum is much lower than the actual continuum
+        abs_RVdev_fit = np.ones(n_lines)*1e10
+        w_fitted = coordinates[idx_fitted,0]
+        abs_RVdev_fit[idx_fitted] = c_light_m*abs(np.array((Dico['w_minima'][idx_fitted]-w_fitted)/Dico['w_minima'][idx_fitted]))
+    
+        #Store for plotting
+        #    - only lines for which position could be defined
+        if plot_RVdev_fit:
+            dic_sav.update({'abs_RVdev_fit_max':abs_RVdev_fit_max,'abs_RVdev_fit':abs_RVdev_fit[idx_fitted],'weight_rv_RVdev_fit':np.array(Dico[mask_dic['mask_weights']][idx_fitted])})
+    
+        #Restrict
+        mask_line = (abs_RVdev_fit<abs_RVdev_fit_max)
+        Dico = Dico.loc[mask_line]
+        Dico = Dico.reset_index(drop=True) 
+        if np.sum(mask_line)==0:stop('ERROR : empty line list, check your settings for position.' )  
+        if mask_dic['verbose']:print('             '+str(np.sum(mask_line))+' remaining lines')
+    
+        #Store for plotting
+        dic_sav['sel2']={}
+        if plot_spec:
+            dic_sav['sel2'].update({'nl_mask_pre':dic_sav['sel1']['nl_mask_post'],'nl_mask_post':np.sum(mask_line)})
+            for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel2'][key] = np.array(Dico[key])
 
     #=============================================================================
     # MORPHOLOGICAL properties
@@ -466,8 +499,6 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     
     #Number of maxima with dd>0 between the two dd minima (blend clue)
     Dico['num_dd_max'] = np.sum((save_diff*save_diff2)<0,axis=1) 
-    
-    
     Dico['asym_ddflux_norm'] = (flux_norm_reg[dd_left] - flux_norm_reg[dd_right])/Dico['max_depth']
     
     #Half-range covered by the line
@@ -481,7 +512,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #=============================================================================
     #Computation of telluric contamination
     #=============================================================================
-    if tell_spec is not None:
+    if (tell_spec is not None) and (mask_dic['sel_tellcont']):
         if mask_dic['verbose']:print('           Selection: tellurics') 
         
         #Resampling on regular grid
@@ -575,16 +606,18 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
             dic_sav.update({'rel_contam':deepcopy(Dico['rel_contam']),'tell_star_depthR_max':tell_star_depthR_max,'weight_rv_tellcont':np.array(Dico[mask_dic['mask_weights']])})
 
         #Remove contaminated lines
-        cond_clean = Dico['rel_contam']<tell_star_depthR_max
-        Dico = Dico.loc[cond_clean]
+        mask_line = Dico['rel_contam']<tell_star_depthR_max
+        Dico = Dico.loc[mask_line]
         Dico = Dico.reset_index(drop=True)
+        if np.sum(mask_line)==0:stop('ERROR : empty line list, check your settings for tellurics.' )
+        if mask_dic['verbose']:print('             '+str(np.sum(mask_line))+' remaining lines')
 
         #-----------------------------------------------------------------------------
         #Store for plotting
         #-----------------------------------------------------------------------------       
         dic_sav['sel3']={}
         if plot_spec:
-            idx_contam = np_where1D(~cond_clean)   #Contaminating telluric lines
+            idx_contam = np_where1D(~mask_line)   #Contaminating telluric lines
             w_tell_contam = wave_tel[idx_contam]
             f_tell_contam = 1.-depth_tel[idx_contam]
             dic_sav['sel3'].update({'nl_mask_pre':dic_sav['sel2']['nl_mask_post'],'nl_mask_post':len(Dico['w_lines']),'spectre_t':spectre_t,'min_dopp_shift':min_dopp_shift,'max_dopp_shift':max_dopp_shift,
@@ -599,7 +632,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #    - the master stellar spectrum is already at rest, as the VALD spectrum
     #    - care must however be taken about retrieving the VALD spectrum in air or vacuum (as chosen in settings)
     #=============================================================================
-    if mask_dic['VALD_linelist'] is not None:
+    if (mask_dic['VALD_linelist'] is not None) and mask_dic['sel_vald_depthcorr']:
         if mask_dic['verbose']:print('           Selection: VALD') 
             
         #Upload VALD linelist
@@ -841,42 +874,45 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #=============================================================================
     # MORPHOLOGICAL CLIPPING 1 
     #=============================================================================
-    if mask_dic['verbose']:print('           Selection: morphological asymmetry') 
+    if mask_dic['sel_morphasym']:
+        if mask_dic['verbose']:print('           Selection: morphological asymmetry') 
+        
+        #Threshold
+        if (mask_dic['diff_cont_rel_max'] is not None):diff_cont_rel_max = mask_dic['diff_cont_rel_max']
+        else:diff_cont_rel_max = 1. 
+        if (mask_dic['asym_ddflux_max'] is not None):asym_ddflux_max = mask_dic['asym_ddflux_max']
+        else:asym_ddflux_max = 0.25
+        
+        #Absolute flux difference between the two maxima normalized by the maximum flux difference between line center and one of the maxima
+        diff_continuum = abs(Dico['f_maxima_left']-Dico['f_maxima_right'])/Dico['max_depth'] 
+        
+        #Absolute flux difference between line center and mean maxima
+        Dico['diff_depth'] = abs(Dico['f_minima']-np.mean([Dico['f_maxima_left'],Dico['f_maxima_right']],axis=0))
+        
+        #Ratio of normalized continuum difference and relative depth
+        diff_continuum_rel = deepcopy(diff_continuum/Dico['diff_depth'])   
     
-    #Threshold
-    if (mask_dic['diff_cont_rel_max'] is not None):diff_cont_rel_max = mask_dic['diff_cont_rel_max']
-    else:diff_cont_rel_max = 1. 
-    if (mask_dic['asym_ddflux_max'] is not None):asym_ddflux_max = mask_dic['asym_ddflux_max']
-    else:asym_ddflux_max = 0.25
+        #Remove lines with morphological properties beyond threshold
+        asym_ddflux_norm = deepcopy(abs(Dico['asym_ddflux_norm']))
+        mask = (diff_continuum_rel<diff_cont_rel_max) & (asym_ddflux_norm<asym_ddflux_max)
+        
+        #Store for plotting    
+        if plot_morphasym:
+            dic_sav.update({'diff_continuum_rel':diff_continuum_rel,'abs_asym_ddflux_norm':asym_ddflux_norm,
+                            'diff_cont_rel_max':diff_cont_rel_max,'asym_ddflux_max':asym_ddflux_max,'weight_rv_morphasym':np.array(Dico[mask_dic['mask_weights']])})
+        
+        #Remove lines with blends
+        mask &= Dico['num_dd_max']==1
+        Dico = Dico.loc[mask]
+        Dico = Dico.reset_index(drop=True)
+        if np.sum(mask)==0:stop('ERROR : empty line list, check your settings for morphological asymmetry.' )
+        if mask_dic['verbose']:print('             '+str(np.sum(mask_line))+' remaining lines')
     
-    #Absolute flux difference between the two maxima normalized by the maximum flux difference between line center and one of the maxima
-    diff_continuum = abs(Dico['f_maxima_left']-Dico['f_maxima_right'])/Dico['max_depth'] 
-    
-    #Absolute flux difference between line center and mean maxima
-    Dico['diff_depth'] = abs(Dico['f_minima']-np.mean([Dico['f_maxima_left'],Dico['f_maxima_right']],axis=0))
-    
-    #Ratio of normalized continuum difference and relative depth
-    diff_continuum_rel = deepcopy(diff_continuum/Dico['diff_depth'])   
-
-    #Remove lines with morphological properties beyond threshold
-    asym_ddflux_norm = deepcopy(abs(Dico['asym_ddflux_norm']))
-    mask = (diff_continuum_rel<diff_cont_rel_max) & (asym_ddflux_norm<asym_ddflux_max)
-    
-    #Store for plotting    
-    if plot_morphasym:
-        dic_sav.update({'diff_continuum_rel':diff_continuum_rel,'abs_asym_ddflux_norm':asym_ddflux_norm,
-                        'diff_cont_rel_max':diff_cont_rel_max,'asym_ddflux_max':asym_ddflux_max,'weight_rv_morphasym':np.array(Dico[mask_dic['mask_weights']])})
-    
-    #Remove lines with blends
-    mask &= Dico['num_dd_max']==1
-    Dico = Dico.loc[mask]
-    Dico = Dico.reset_index(drop=True)
-
-    #Store for plotting    
-    dic_sav['sel4']={}
-    if plot_spec:
-        dic_sav['sel4'].update({'nl_mask_pre':dic_sav['sel3']['nl_mask_post'],'nl_mask_post':len(Dico['w_lines'])})                                
-        for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel4'][key] = np.array(Dico[key])        
+        #Store for plotting    
+        dic_sav['sel4']={}
+        if plot_spec:
+            dic_sav['sel4'].update({'nl_mask_pre':dic_sav['sel3']['nl_mask_post'],'nl_mask_post':len(Dico['w_lines'])})                                
+            for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel4'][key] = np.array(Dico[key])        
 
 
 
@@ -884,34 +920,37 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #=============================================================================
     # MORPHOLOGICAL CLIPPING 2 
     #=============================================================================
-    if mask_dic['verbose']:print('           Selection: morphological shape')
+    if mask_dic['sel_morphshape']:
+        if mask_dic['verbose']:print('           Selection: morphological shape')
+            
+        #Thresholds
+        if (mask_dic['diff_depth_min'] is not None):diff_depth_min = mask_dic['diff_depth_min']
+        else:diff_depth_min = 0.15 
+        if (mask_dic['width_max'] is not None):width_max = mask_dic['width_max']
+        else:width_max = 13.0
         
-    #Thresholds
-    if (mask_dic['diff_depth_min'] is not None):diff_depth_min = mask_dic['diff_depth_min']
-    else:diff_depth_min = 0.15 
-    if (mask_dic['width_max'] is not None):width_max = mask_dic['width_max']
-    else:width_max = 13.0
+        #Line width (km/s)
+        Dico['width_kms'] = Dico['line_hrange']*c_light/Dico['w_lines']
     
-    #Line width (km/s)
-    Dico['width_kms'] = Dico['line_hrange']*c_light/Dico['w_lines']
-
-    #Store for plotting
-    if plot_morphshape:
-        dic_sav.update({'diff_depth':Dico['diff_depth'],'width_kms':Dico['width_kms'],'diff_depth_min':diff_depth_min,'width_max':width_max,'weight_rv_morphshape':np.array(Dico[mask_dic['mask_weights']])})
-
-    #Remove lines with morphological properties beyond threshold  
-    #    - absolute flux difference between line center and mean maxima, line width (km/s)
-    mask = (Dico['diff_depth']>diff_depth_min)&(Dico['width_kms']<width_max)
-    Dico = Dico.loc[mask]
-    Dico = Dico.reset_index(drop=True)
+        #Store for plotting
+        if plot_morphshape:
+            dic_sav.update({'diff_depth':Dico['diff_depth'],'width_kms':Dico['width_kms'],'diff_depth_min':diff_depth_min,'width_max':width_max,'weight_rv_morphshape':np.array(Dico[mask_dic['mask_weights']])})
     
-    #-----------------------------------------------------------------------------
-    #Store for plotting
-    #-----------------------------------------------------------------------------       
-    dic_sav['sel5']={}
-    if plot_spec:
-        dic_sav['sel5'].update({'nl_mask_pre':dic_sav['sel4']['nl_mask_post'],'nl_mask_post':len(Dico['w_lines'])})                                
-        for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel5'][key] = np.array(Dico[key])        
+        #Remove lines with morphological properties beyond threshold  
+        #    - absolute flux difference between line center and mean maxima, line width (km/s)
+        mask = (Dico['diff_depth']>diff_depth_min)&(Dico['width_kms']<width_max)
+        Dico = Dico.loc[mask]
+        Dico = Dico.reset_index(drop=True)
+        if np.sum(mask)==0:stop('ERROR : empty line list, check your settings for morphological shape.' )
+        if mask_dic['verbose']:print('             '+str(np.sum(mask_line))+' remaining lines')
+        
+        #-----------------------------------------------------------------------------
+        #Store for plotting
+        #-----------------------------------------------------------------------------       
+        dic_sav['sel5']={}
+        if plot_spec:
+            dic_sav['sel5'].update({'nl_mask_pre':dic_sav['sel4']['nl_mask_post'],'nl_mask_post':len(Dico['w_lines'])})                                
+            for key in ['w_lines','f_minima','w_maxima_left','w_maxima_right','f_maxima_left','f_maxima_right']:dic_sav['sel5'][key] = np.array(Dico[key])        
 
 
 
@@ -922,7 +961,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     #=============================================================================
     # Selection based on RV dispersion
     #=============================================================================
-    if mask_dic['RV_disp_sel']:
+    if mask_dic['sel_RVdisp']:
         if mask_dic['verbose']:print('           Selection: RV dispersion')
         
         #Number of iterations on the line fit
@@ -1006,20 +1045,26 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
         
         #Exclude from mask lines with absolute RV and RV dispersion/error beyond threshold
         #    - RV should be well spread around 0, since exposures and master are aligned in the star frame, and have dispersion and error comparable over the time series
-        mask = (abs_av_RV_lines<absRV_max) & (disp_err_RV_lines<RVdisp2err_max) & (disp_RV_lines<RVdisp_max)
-        Dico = Dico.loc[mask]
+        mask_line = (abs_av_RV_lines<absRV_max) & (disp_err_RV_lines<RVdisp2err_max) & (disp_RV_lines<RVdisp_max)
+        Dico = Dico.loc[mask_line]
         Dico = Dico.reset_index(drop=True)
+        if np.sum(mask)==0:stop('ERROR : empty line list, check your settings for RV dispersion.' )
+        if mask_dic['verbose']:print('             '+str(np.sum(mask_line))+' remaining lines')
 
+    #=============================================================================
     #Final exclusion of stellar lines contaminated by tellurics
-    if tell_spec is not None:
+    #=============================================================================
+    if (tell_spec is not None) and mask_dic['sel_tellcont']:
         if mask_dic['tell_star_depthR_max_final'] is None:tell_star_depthR_max_final=0.03
         else:tell_star_depthR_max_final = mask_dic['tell_star_depthR_max_final']          
         if plot_tellcont:
             dic_sav.update({'rel_contam_final':deepcopy(Dico['rel_contam']),'tell_star_depthR_max_final':tell_star_depthR_max_final,'weight_rv_tellcont_final':np.array(Dico[mask_dic['mask_weights']])})
-        cond_clean = Dico['rel_contam']<tell_star_depthR_max_final
+        mask_line = Dico['rel_contam']<tell_star_depthR_max_final
         mask_info+='_t'+"{0:.1f}".format(100.*tell_star_depthR_max_final)
-        Dico = Dico.loc[cond_clean]
+        Dico = Dico.loc[mask_line]
         Dico = Dico.reset_index(drop=True) 
+        if np.sum(mask_line)==0:stop('ERROR : empty line list, check your settings for final telluric selection.' )
+        if mask_dic['verbose']:print('             '+str(np.sum(mask_line))+' remaining lines')
 
     #=============================================================================    
     #Final binary mask

@@ -64,7 +64,7 @@ def return_SNR_orders(inst):
     if inst not in SNR_orders:stop('ERROR : define spectral orders for S/R in '+inst)
     return SNR_orders[inst]
 
-def return_pix_size(): 
+def return_pix_size(inst): 
     r"""**Spectrograph sampling**
 
     Returns width of detector pixel in rv space (km/s).
@@ -79,7 +79,7 @@ def return_pix_size():
         TBD
     
     """             
-    return {
+    pix_size = {
 
         #CARMENES   
         #    optical resolving power = 93400 -> deltav_instru = 3.2 km/s   
@@ -145,7 +145,9 @@ def return_pix_size():
         #      we take an average pix_size ~ 235 km/s       
         'STIS_G750L':235.,  
            
-    }     
+    } 
+    if inst not in pix_size:stop('ERROR : define pixel size for "'+inst+'" in ANTARESS_inst_resp.py > return_pix_size()')
+    return pix_size[inst]
 
 
 def resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,nexp,rv_osamp_line_mod):

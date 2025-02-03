@@ -27,7 +27,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
     
     """     
     data_inst = data_dic[inst]    
-   
+    
     #Identifier for saved file
     if mode=='multivis':vis_save = 'binned'      
     else:vis_save = vis_in 
@@ -37,30 +37,31 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         data_type='DI'
 
         #Set default binning properties to calculate master spectrum
-        if (vis_save not in list(prop_dic['prop_bin'][inst].keys())):
-            prop_dic['dim_bin'] == 'phase' 
-            prop_dic['prop_bin'][inst][vis_save]={'bin_low':[-0.5],'bin_high':[0.5]} 
-
-        #Calculation of weighing master spectrum
-        #    - calculated per visit
-        #    - for the purpose of weighing we calculate a single master on the common spectral table of the visit, rather than recalculate the master for every weighing profile
-        #      we assume the blurring that will be introduced by the resampling of this master on the table of each exposure is negligible in the weighing process
-        if masterDIweigh:
-            prop_dic['dim_bin'] = 'phase' 
-            prop_dic['idx_in_bin']=gen_dic['DImast_idx_in_bin']
-            prop_dic['prop_bin'][inst][vis_save]={'bin_low':[-0.5],'bin_high':[0.5]} 
-   
-            #Initialize path of weighing master for disk-integrated exposures
-            #    - the paths return to the single master common to all exposures, and for now defined on the same table
-            data_dic[inst][vis_in]['mast_'+data_type+'_data_paths'] = {iexp:gen_dic['save_data_dir']+data_type+'_data/Master/'+inst+'_'+vis_in+'_phase' for iexp in range(data_dic[inst][vis_in]['n_in_visit'])}
-            save_pref = gen_dic['save_data_dir']+data_type+'_data/Master/'+inst+'_'+vis_in+'_phase'
+        if masterDIweigh or (vis_save not in list(prop_dic['prop_bin'][inst].keys())):        
+            if gen_dic['sequence']=='st_master_tseries': 
+                prop_dic['prop_bin'][inst][vis_save]={'bin_low':[0.],'bin_high':[1e9]} 
+            else:
+                prop_dic['dim_bin'] = 'phase' 
+                prop_dic['prop_bin'][inst][vis_save]={'bin_low':[-0.5],'bin_high':[0.5]}         
+        
+            #Calculation of weighing master spectrum
+            #    - calculated per visit
+            #    - for the purpose of weighing we calculate a single master on the common spectral table of the visit, rather than recalculate the master for every weighing profile
+            #      we assume the blurring that will be introduced by the resampling of this master on the table of each exposure is negligible in the weighing process
+            if masterDIweigh:
+                prop_dic['idx_in_bin']=gen_dic['DImast_idx_in_bin']
+       
+                #Initialize path of weighing master for disk-integrated exposures
+                #    - the paths return to the single master common to all exposures, and for now defined on the same table
+                data_dic[inst][vis_in]['mast_'+data_type+'_data_paths'] = {iexp:gen_dic['save_data_dir']+data_type+'_data/Master/'+inst+'_'+vis_in+'_phase' for iexp in range(data_dic[inst][vis_in]['n_in_visit'])}
+                save_pref = gen_dic['save_data_dir']+data_type+'_data/Master/'+inst+'_'+vis_in+'_phase'
 
     elif data_type_gen=='Intr':
         data_type='Intr'
 
         #Set default binning properties to calculate master spectrum
         if (vis_save not in list(prop_dic['prop_bin'][inst].keys())):
-            prop_dic['dim_bin'] == 'phase' 
+            prop_dic['dim_bin'] = 'phase' 
             prop_dic['prop_bin'][inst][vis_save]={'bin_low':[-0.5],'bin_high':[0.5]} 
             
     elif data_type_gen == 'Atm':
@@ -143,21 +144,22 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         #    - remains undefined if no planet is transiting
         ref_pl = {}
         vis_no_tr = [] 
-        for vis_loc in vis_to_bin:
-            if ('ref_pl' in prop_dic['prop_bin']) and (inst in prop_dic['prop_bin']['ref_pl']) and (vis_loc in prop_dic['prop_bin']['ref_pl'][inst]):
-                ref_pl[vis_loc] = prop_dic['prop_bin']['ref_pl'][inst][vis_loc]
-            elif len(data_inst[vis_loc]['studied_pl'])>0:             
-                ref_pl[vis_loc] = data_inst[vis_loc]['studied_pl'][0]  
-                print('         Reference planet for '+vis_loc+' binning set to '+ref_pl[vis_loc])
-            else:vis_no_tr += [vis_loc]
+        if prop_dic['dim_bin'] != 'time':
+            for vis_loc in vis_to_bin:
+                if ('ref_pl' in prop_dic['prop_bin']) and (inst in prop_dic['prop_bin']['ref_pl']) and (vis_loc in prop_dic['prop_bin']['ref_pl'][inst]):
+                    ref_pl[vis_loc] = prop_dic['prop_bin']['ref_pl'][inst][vis_loc]
+                elif len(data_inst[vis_loc]['studied_pl'])>0:             
+                    ref_pl[vis_loc] = data_inst[vis_loc]['studied_pl'][0]  
+                    print('         Reference planet for '+vis_loc+' binning set to '+ref_pl[vis_loc])
+                else:vis_no_tr += [vis_loc]
         
-        #Switch to absolute time as bin dimension if no planets are transiting in any of the binned visits
-        if (data_type_gen=='DI') and (len(vis_no_tr)==len(vis_to_bin)):
-            prop_dic['dim_bin'] = 'time' 
-            bin_prop['bin_low']=[0.]
-            bin_prop['bin_high']=[1e9]             
-            print('WARNING: No planets are transiting in binned visits: switching to time as bin coordinate')
-            
+            #Switch to absolute time as bin dimension if no planets are transiting in any of the binned visits
+            if (data_type_gen=='DI') and (len(vis_no_tr)==len(vis_to_bin)):
+                prop_dic['dim_bin'] = 'time' 
+                bin_prop['bin_low']=[0.]
+                bin_prop['bin_high']=[1e9]             
+                print('WARNING: No planets are transiting in binned visits: switching to time as bin coordinate')
+           
         #Check for multiple or absent reference planets
         bin_prop['multi_flag'] = False
         if (mode=='multivis'):
@@ -185,7 +187,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     studied_pl=[ref_pl[vis_to_bin[0]]]
                 
         else:studied_pl = data_dic[inst][vis_save]['studied_pl']
-            
+           
         #Initialize binning
         new_x_cen,new_x_low,new_x_high,_,n_in_bin_all,idx_to_bin_all,dx_ov_all,n_bin,idx_bin2orig,idx_bin2vis,idx_to_bin_unik = init_bin_prof(data_type,ref_pl,prop_dic['idx_in_bin'],prop_dic['dim_bin'],coord_dic,inst,vis_to_bin,data_dic,gen_dic,bin_prop)
     
