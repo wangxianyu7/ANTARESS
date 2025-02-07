@@ -922,12 +922,12 @@ def joined_IntrProf(param,fixed_args):
         for vis in args['inst_vis_list'][inst]:   
             args['vis']=vis
 
-            #Outputs
-            if not args['fit']:outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param)
-
-            #-----------------------------------------------------------
             #Retrieve updated coordinates of occulted regions or use imported values
             system_param_loc,coord_pl_ar,param_val = up_plocc_arocc_prop(inst,vis,args,param,args['studied_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],studied_ar=args['studied_ar'][inst][vis])
+
+            #-----------------------------------------------------------
+            #Outputs
+            if not args['fit']:outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param_val)
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -1825,7 +1825,7 @@ def outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param):
     Returns:
         TBD
     """
-    
+
     #Coefficients describing the polynomial variation of spectral line properties as a function of the chosen coordinate
     if ('coeff_line' in args):
         coeff_line_dic[inst][vis]={}

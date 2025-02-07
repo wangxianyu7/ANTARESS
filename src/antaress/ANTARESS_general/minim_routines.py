@@ -2726,7 +2726,7 @@ def MCMC_plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,bu
         
     #Linewidth
     lw_plot=0.1
-          
+
     #----------------------------------------------------------------
     #Loop on parameters
     med_par=np.median(burnt_chains, axis=(0,1))

@@ -2087,7 +2087,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ##################################################################################################
     if (plot_dic['prop_Intr']!=''):
 
-        #%%% Ordina properties
+        #%%%% Ordina properties
         #    - properties:
         # + 'rv' : centroid of the local stellar CCFs in the star rest frame (in km/s)
         # + 'rv_res' residuals from their RRM model (in km/s)        
@@ -2098,7 +2098,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         # + 'amp_l2c': contrast(lobe)/contrast(core) of double gaussian components
         plot_settings['prop_Intr_ordin']=['rv','rv_res','rv_l2c','RV_lobe','FWHM','FWHM_voigt','FWHM_l2c','FWHM_lobe','true_FWHM','ctrst','true_ctrst','amp','amp_l2c','amp_lobe','area','a_damp']
 
-        #%%% Settings for selected properties
+        #%%%% Settings for selected properties
         for plot_prop in plot_settings['prop_Intr_ordin']:
             key_plot = 'prop_Intr_'+plot_prop 
 
@@ -2142,6 +2142,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             #%%%% RV plot
             if (plot_prop=='rv' ):
+                
+                #%%%%% Legend for the different contributions
+                plot_settings[key_plot]['legend_rv'] = False  
                 
                 #%%%%% Plot high-resolution model from nominal values in ANTARESS_systems.py
                 plot_settings[key_plot]['theo_HR_nom'] = False            

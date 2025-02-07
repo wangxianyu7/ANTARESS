@@ -3400,7 +3400,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                             var_par_list_add+= ['PsiS__pl'+pl_loc]      
                             var_par_names_add += [pl_loc+'_$\psi_{S}$']
                             var_par_units_add += ['deg'] 
-                    if ('combined' in deriv_prop[key_loc]['config']) or (not degen_psi):
+                    if (not degen_psi) or ('combined' in deriv_prop[key_loc]['config']):
                         var_par_list_add += ['Psi__pl'+pl_loc]
                         var_par_names_add += [pl_loc+'_$\psi$']
                         var_par_units_add += ['deg']                                  

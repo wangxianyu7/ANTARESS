@@ -1753,7 +1753,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('-----------------------------------')
         print('+ Properties of raw data and disk-integrated profiles')
 
-        #%%%% Processing properties
+        #Processing properties
         for plot_prop in plot_settings['prop_DI_ordin']:
             key_plot = 'prop_DI_'+plot_prop 
             txt_print = {'rv':'RV','rv_pip':'RV pipeline','rv_res':'RV residuals','rv_pip_res':'RV pipeline residuals','RVdrift':'RV drift','rv_l2c':'RV lobe-to-core difference','RV_lobe':'Lobe RV',
@@ -1770,7 +1770,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('   ---------------')
             print('   > '+txt_print[plot_prop])
 
-            #%%%%% Plot   
+            #Plot   
             sub_plot_CCF_prop(plot_prop,plot_settings[key_plot],'DI',gen_dic,data_dic,system_param,coord_dic,contact_phases,plot_dic,theo_dic,data_prop,glob_fit_dic)  
             		 
                 
@@ -3517,7 +3517,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         print('-----------------------------------')
         print('+ Properties of intrinsic stellar profiles')
 
-        #%%%% Processing properties      
+        #Processing properties      
         for plot_prop in plot_settings['prop_Intr_ordin']:
             key_plot = 'prop_Intr_'+plot_prop 
             txt_print = {'rv':'RV','rv_res':'RV residuals','rv_l2c':'RV lobe-to-core difference','RV_lobe':'Lobe RV','FWHM':'FWHM','FWHM_voigt':'','FWHM_l2c':'FWHM lobe-to-core ratio','FWHM_lobe':'Lobe FWHM','true_FWHM':'True FWHM',
@@ -3525,7 +3525,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('   ---------------')
             print('   > '+txt_print[plot_prop])
 
-            #%%%%% Plot routine   
+            #Plot routine   
             sub_plot_CCF_prop(plot_prop,plot_settings[key_plot],'Intr',gen_dic,data_dic,system_param,coord_dic,contact_phases,plot_dic,theo_dic,data_prop,glob_fit_dic)                  
 
 
@@ -6781,7 +6781,7 @@ def dist2D_stlines_CCFmasks(dist_info,plot_options,key_plot,plot_ext,data_dic,ge
 #%%% Sub-routines for 2D maps
 ################################################################################################################ 
 
-def doppler_track_plots(key_track,line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,pl_list,pl_ref,theo_HR,line_range,iexp2plot,iexp_range,reverse_2D,data_type,x_range_loc,y_range_loc,coord_vis):
+def doppler_track_plots(key_track,line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,pl_list,theo_HR,line_range,iexp2plot,iexp_range,reverse_2D,data_type,x_range_loc,y_range_loc,coord_vis):
     r"""**Orbital and stellar tracks.**
     
     Plots the Doppler track (time vs RV or wavelength) of the planet orbital trajectory or transit chord.
@@ -6867,14 +6867,14 @@ def doppler_track_plots(key_track,line_mask,rest_frame,col_loc,cond_track,cond_r
             #RV space
             elif cond_range:
                     
-                    #Minimum lower/maximum upper boundary of rv line range 
-                    range_star_HR = line_range[:,None] + theo_HR[pl_loc]['rv']
-                    max_high_lines_HR = range_star_HR[0]
-                    max_high_lines_HR = range_star_HR[1]
+                #Minimum lower/maximum upper boundary of rv line range 
+                range_star_HR = line_range[:,None] + theo_HR[pl_loc]['rv']
+                max_high_lines_HR = range_star_HR[0]
+                max_high_lines_HR = range_star_HR[1]
 
         #Order high-resolution curves
         if reverse_2D:w_sorted=theo_HR[pl_loc]['phase'].argsort()
-        else:w_sorted=theo_HR[pl_ref]['rv'].argsort() 
+        else:w_sorted=theo_HR[pl_loc]['rv'].argsort() 
 
         #In rv space
         if (data_type == 'CCF'):                            
@@ -6884,7 +6884,7 @@ def doppler_track_plots(key_track,line_mask,rest_frame,col_loc,cond_track,cond_r
                 if (rest_frame=='star'):rv_mod_loc = theo_HR[pl_loc]['rv']
                 elif (key_track==rest_frame):rv_mod_loc = np.repeat(0.,theo_HR['nph_HR'])
                 if reverse_2D:plt.plot(theo_HR[pl_loc]['phase'][w_sorted],rv_mod_loc[w_sorted],color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10) 
-                else:plt.plot(rv_mod_loc[w_sorted],theo_HR[pl_loc]['phase'][w_sorted] ,color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10)                              
+                else:plt.plot(rv_mod_loc[w_sorted],theo_HR[pl_loc]['phase'][w_sorted] ,color=col_loc,linestyle='',lw=lw_mod,zorder=10,marker='o')                              
 
             #Excluded ranges for each/all planetary mask line
             if cond_range: 
@@ -7464,7 +7464,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                             else:
                                 line_range=None
                                 iexp_range=None
-                            doppler_track_plots('pl',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],pl_ref,theo_HR_pl,line_range,iexp2plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc,coord_dic[inst][vis])
+                            doppler_track_plots('pl',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],theo_HR_pl,line_range,iexp2plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc,coord_dic[inst][vis])
 
                         #Stellar track
                         if (rest_frame in ['star','surf']) and ((plot_mod in ['map_Diff_prof','map_Intr_prof_est','map_Intr_prof_res','map_Intrbin']) or ((plot_mod in ['map_Intr_prof']) and (not plot_options['aligned']))) and (plot_options['theoRV_HR'] or plot_options['theoRV_HR_align']): 
@@ -7495,12 +7495,12 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                             #Nominal orbit
                             if plot_options['theoRV_HR']:
                                 cond_track = plot_options['theoRVpl_HR']
-                                doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],pl_ref,theo_HR_prop_plocc,line_range,iexp2plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc,coord_dic[inst][vis])
+                                doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],theo_HR_prop_plocc,line_range,iexp2plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc,coord_dic[inst][vis])
 
                             #Aligned orbit
                             if plot_options['theoRV_HR_align']:
                                 cond_track = plot_options['theoRVpl_HR_align']
-                                doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],pl_ref,theo_HR_prop_plocc_align,line_range,iexp2plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc,coord_dic[inst][vis])
+                                doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],theo_HR_prop_plocc_align,line_range,iexp2plot,iexp_range,plot_options['reverse_2D'],data_type,x_range_loc,y_range_loc,coord_dic[inst][vis])
 
                     #------------------------------------  
                               
@@ -7513,15 +7513,15 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                             #Model at each exposure                        
                             if plot_options['plot_theoRV']:
                                 RV_plocc = dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/PlOcc_Prop_'+inst+'_'+vis)['achrom']['rv'][0]
-                                ph_theoRV=np.vstack((coord_dic[inst][vis][pl_ref]['cen_ph'][gen_dic[inst][vis]['idx_in']],RV_plocc))
+                                ph_theoRV=coord_dic[inst][vis][pl_ref]['cen_ph'][gen_dic[inst][vis]['idx_in']]
                                 if plot_options['reverse_2D']:
-                                    w_sorted=ph_theoRV[0].argsort() 
-                                    xtheoRV=ph_theoRV[0,w_sorted]
-                                    ytheoRV=ph_theoRV[1,w_sorted]
+                                    w_sorted=ph_theoRV.argsort() 
+                                    xtheoRV=ph_theoRV[w_sorted]
+                                    ytheoRV=RV_plocc[w_sorted]
                                 else:  
-                                    w_sorted=ph_theoRV[1].argsort() 
-                                    xtheoRV=ph_theoRV[1,w_sorted]
-                                    ytheoRV=ph_theoRV[0,w_sorted]
+                                    w_sorted=RV_plocc.argsort() 
+                                    xtheoRV=RV_plocc[w_sorted]
+                                    ytheoRV=ph_theoRV[w_sorted]
                                 plt.plot(xtheoRV,ytheoRV,color='black',linestyle='-',lw=1.,zorder=10,marker='o',markersize=1.5)
                
                             #High-resolution model 
@@ -7542,16 +7542,17 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                                             plt.plot(xtheoRV_HR,ytheoRV_HR,color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10) 
                                         if plot_options['theoRV_HR_align']:
                                             plt.plot(xtheoRV_HR,theo_HR_prop_plocc_align[pl_ref]['rv'][w_sorted],color=col_loc,linestyle='--',lw=lw_mod,zorder=10) 
-                                    else:  
-                                        w_sorted=rv_HR_loc.argsort() 
-                                        ytheoRV_HR=ph_HR_loc[w_sorted] 
+                                    else:                                          
                                         if plot_options['theoRV_HR']:
-                                            xtheoRV_HR=rv_HR_loc[w_sorted]
+                                            w_sorted=ph_HR_loc.argsort()
+                                            xtheoRV_HR=rv_HR_loc[w_sorted] 
+                                            ytheoRV_HR=ph_HR_loc[w_sorted]
                                             plt.plot(xtheoRV_HR,ytheoRV_HR,color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10) 
                                         if plot_options['theoRV_HR_align']:
-                                            plt.plot(theo_HR_prop_plocc_align[pl_ref]['rv'][w_sorted] ,ytheoRV_HR,color=col_loc,linestyle='--',lw=lw_mod,zorder=10) 
-
-                                
+                                            w_sorted=ph_HR_loc.argsort() 
+                                            xtheoRV_HR=theo_HR_prop_plocc_align[pl_ref]['rv'][w_sorted] 
+                                            ytheoRV_HR=ph_HR_loc[w_sorted]
+                                            plt.plot(xtheoRV_HR,ytheoRV_HR,color=col_loc,linestyle='--',lw=lw_mod,zorder=10) 
 
                                 # #Save/replot manually  
                                 # save_path = '/Users/bourrier/Travaux/ANTARESS/Ongoing/HAT_P33b_Plots/Intr_data/Maps/RMR_fits/HAT_P33_RVsurf_CB1.dat'
@@ -8593,11 +8594,14 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
     path_loc = gen_dic['save_plot_dir']+data_mode+'_prop/'  
     if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)
     
-    #Legend
+    #Legends
     if plot_options['legend']:eff_color = {}
+    check_legend_rv = []
+    handles=[]
 
     plt.ioff()        
-    plt.figure(figsize=plot_options['fig_size'])            
+    plt.figure(figsize=plot_options['fig_size'])   
+    ax_loc = plt.gca()         
      
     #Horizontal range
     x_min=1e100
@@ -8698,12 +8702,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                 elif plot_options['prop_'+data_mode+'_absc']=='y_st2':xvar_HR=theo_HR_prop_plocc[pl_ref]['y_st']**2.  
                 elif plot_options['prop_'+data_mode+'_absc']=='abs_y_st':xvar_HR=np.abs(theo_HR_prop_plocc[pl_ref]['y_st'])
                 wsort=theo_HR_prop_plocc[pl_ref]['phase'].argsort()
-   
-                #Nominal high-resolution model and associated components     
-                x_theo_HR_nom = xvar_HR[wsort]
-                y_theo_HR_nom = theo_HR_prop_plocc[pl_ref]['rv'][wsort]
-                if prop_mode=='rv':plt.plot(x_theo_HR_nom,y_theo_HR_nom,color='black',linestyle='-',lw=plot_options['lw_plot'],zorder=-1)   
-                
+
                 #Solid-body model
                 if (len(plot_options['contrib_theo_HR'])>0) or ((prop_mode=='rv_res') and (plot_options['mod_compos'] == 'SB')):
                     params['alpha_rot'] = 0.
@@ -8726,18 +8725,28 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                 y_min=min(y_min,np.nanmin(theo_HR_prop_plocc[pl_ref]['rv']))
                 y_max=max(y_max,np.nanmax(theo_HR_prop_plocc[pl_ref]['rv']))
 
-                #Surface RV model
+                #Surface RV model   
+                x_theo_HR_nom = xvar_HR[wsort]
+                y_theo_HR_nom = theo_HR_prop_plocc[pl_ref]['rv'][wsort]
                 if (prop_mode=='rv'):
+
+                    #Nominal high-resolution model and associated components  
+                    curve_loc,=ax_loc.plot(x_theo_HR_nom,y_theo_HR_nom,color='black',linestyle='-',lw=plot_options['lw_plot'],zorder=-1,label='All (nom.)')   
+                    if 'nom' not in check_legend_rv:handles+=[curve_loc]
 
                     #Contributions to the model    
                     #    - when DR is activated, 'Rot_RV' accounts for it
                     if len(plot_options['contrib_theo_HR'])>0:
                         if 'SB' in plot_options['contrib_theo_HR']:
-                            plt.plot(xvar_HR[wsort],rv_sb_theo_HR_nom,color='orange',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)  
+                            curve_loc,=ax_loc.plot(xvar_HR[wsort],rv_sb_theo_HR_nom,color='orange',linestyle='--',lw=plot_options['lw_plot'],zorder=-1,label='SB (nom.)') 
+                            if 'nom' not in check_legend_rv:handles+=[curve_loc]
                         if 'CB' in plot_options['contrib_theo_HR']:
-                            plt.plot(xvar_HR[wsort],rv_sb_theo_HR_nom+theo_HR_prop_plocc[pl_ref]['CB_RV'][wsort],color='dodgerblue',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
+                            curve_loc,=ax_loc.plot(xvar_HR[wsort],rv_sb_theo_HR_nom+theo_HR_prop_plocc[pl_ref]['CB_RV'][wsort],color='dodgerblue',linestyle='--',lw=plot_options['lw_plot'],zorder=-1,label='CB (nom.)')  
+                            if 'nom' not in check_legend_rv:handles+=[curve_loc]
                         if 'DR' in plot_options['contrib_theo_HR']:
-                            plt.plot(xvar_HR[wsort],theo_HR_prop_plocc[pl_ref]['Rot_RV'][wsort],color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
+                            curve_loc,=ax_loc.plot(xvar_HR[wsort],theo_HR_prop_plocc[pl_ref]['Rot_RV'][wsort],color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=-1,label='DR (nom.)')  
+                            if 'nom' not in check_legend_rv:handles+=[curve_loc]
+                    check_legend_rv+=['nom']
 
                     #----------------------------------------------------------------------
             
@@ -8937,12 +8946,12 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             data_bin = np.load(gen_dic['save_data_dir']+'Intrbin_data/'+inst+'_'+orig_vis+'_'+plot_options['dim_plot']+'_add.npz',allow_pickle=True)['data'].item()
                         transit_prop_nom = data_bin['plocc_prop']['achrom'][pl_ref]      
 
-                    #High-resolution models
+                    #High-resolution models from best fits
                     if ((data_fit_prop is not None) or (data_fit_prof is not None)) and (plot_options['theo_HR_prop'] or plot_options['theo_HR_prof']):  
-                        def sub_plot_HR(mode_loc,input_dic,col_loc):
+                        def sub_plot_HR(mode_loc,input_dic,col_loc,check_legend_rv,handles):
                             if mode_loc =='from_prop':data_fit_loc=data_fit_prop
                             if mode_loc =='from_prof':data_fit_loc=data_fit_prof
-                            
+
                             #Coordinates and properties associated with planet-occulted regions
                             #    - for the purpose of the plot properties are calculated in low-precision mode, as they cannot be easily extracted from the model line profiles
                             par_list_HR = ['mu','xp_abs','r_proj','y_st','lat']
@@ -8955,7 +8964,6 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             elif prop_mode in ['ctrst','FWHM','a_damp']: 
                                 if plot_options['theo_HR_prop']:par_list_HR+=[prop_mode]
                                 elif plot_options['theo_HR_prof']:par_list_HR+=['ctrst','FWHM']
-                            
                             theo_HR_prop_loc = calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_dic,data_bin,theo_dic_in,inst,vis,data_fit_loc['genpar_instvis'],data_fit_loc['p_final'],data_fit_loc,par_list = par_list_HR)[pl_ref]
                             if plot_options['prop_'+data_mode+'_absc']=='phase':xvar_HR_loc=deepcopy(theo_HR_prop_loc['phase']) 
                             elif plot_options['prop_'+data_mode+'_absc']=='time_rel':xvar_HR_loc=deepcopy(theo_HR_prop_loc['phase'])*system_param[pl_ref]["period"]*24.                             
@@ -8982,11 +8990,14 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                                 if len(plot_options['contrib_theo_HR'])>0:
                                     if (prop_mode=='rv'):
                                         if 'SB' in plot_options['contrib_theo_HR']:
-                                            plt.plot(xvar_HR_loc,rv_sb_theo_HR,color='orange',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)  
+                                            curve_loc,=ax_loc.plot(xvar_HR_loc,rv_sb_theo_HR,color='orange',linestyle='--',lw=plot_options['lw_plot'],zorder=-1,label='SB (fit)') 
+                                            if 'fit' not in check_legend_rv:handles+=[curve_loc]
                                         if 'CB' in plot_options['contrib_theo_HR']:
-                                            plt.plot(xvar_HR_loc,theo_HR_prop_loc['CB_RV'][wsort],color='dodgerblue',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)                               
+                                            curve_loc,=ax_loc.plot(xvar_HR_loc,theo_HR_prop_loc['CB_RV'][wsort],color='dodgerblue',linestyle='--',lw=plot_options['lw_plot'],zorder=-1,label='CB (fit)')  
+                                            if 'fit' not in check_legend_rv:handles+=[curve_loc]                             
                                         if 'DR' in plot_options['contrib_theo_HR']:                                           
-                                            plt.plot(xvar_HR_loc,(theo_HR_prop_loc['Rot_RV'][wsort] - rv_sb_theo_HR),color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=-1)   
+                                            curve_loc,=ax_loc.plot(xvar_HR_loc,(theo_HR_prop_loc['Rot_RV'][wsort] - rv_sb_theo_HR),color='magenta',linestyle='--',lw=plot_options['lw_plot'],zorder=-1,label='DR (fit)')    
+                                            if 'fit' not in check_legend_rv:handles+=[curve_loc] 
                                     
                                     elif (prop_mode=='rv_res'):
                                         if 'CB' in plot_options['contrib_theo_HR']:
@@ -9040,7 +9051,9 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             #Plot
                             ls_mod = '--'
                             ls_mod = '-'
-                            if prop_mode != 'rv_res':plt.plot(xvar_HR_loc,yvar_HR_loc,color=col_loc,linestyle=ls_mod,lw=1,zorder=-1) 
+                            if prop_mode != 'rv_res':
+                                curve_loc,=ax_loc.plot(xvar_HR_loc,yvar_HR_loc,color=col_loc,linestyle=ls_mod,lw=1,zorder=-1,label='All (fit)')   
+                                if (prop_mode=='rv') and ('fit' not in check_legend_rv):handles+=[curve_loc]
                             
                             return xvar_HR_loc,yvar_HR_loc
                             
@@ -9057,7 +9070,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
 
                         #High-resolution model
                         if plot_options['theo_HR_prop']:
-                            xvar_HR_loc,yvar_HR_loc = sub_plot_HR('from_prop',None,'orange')
+                            xvar_HR_loc,yvar_HR_loc = sub_plot_HR('from_prop',None,'orange',check_legend_rv,handles)
 
                     #------------------------------------------------------- 
                     #Model from profile fit
@@ -9104,7 +9117,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             col_mod_prof = 'black'
                             # col_mod_prof = col_loc
                             col_mod_prof = 'limegreen'
-                            xvar_HR_loc,yvar_HR_loc = sub_plot_HR('from_prof',input_dic,col_mod_prof)
+                            xvar_HR_loc,yvar_HR_loc = sub_plot_HR('from_prof',input_dic,col_mod_prof,check_legend_rv,handles)
                             
                 if vis=='binned':
                     n_exp_vis = data_bin['n_exp']
@@ -9875,10 +9888,13 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
     #Invert horizontal axis
     if plot_options['retro_orbit']:x_range_loc=-np.array(x_range_loc)
 
+    #Inset legend
+    if (prop_mode=='rv') and plot_options['legend_rv'] and (len(handles)>0):ax_loc.legend(handles=handles,fontsize = int(0.6*plot_options['font_size']))
+
     #Frame
     xmajor_int,xminor_int,xmajor_form=autom_tick_prop(x_range_loc[1]-x_range_loc[0])
     ymajor_int,yminor_int,ymajor_form=autom_tick_prop(y_range_loc[1]-y_range_loc[0])       
-    custom_axis(plt,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
+    custom_axis(plt,ax = ax_loc,position=plot_options['margins'],x_range=x_range_loc,y_range=y_range_loc,
                 dir_x = 'out',dir_y = 'out',
 		        xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
                 ymajor_form=ymajor_form,ymajor_int=ymajor_int,yminor_int=yminor_int,                
