@@ -1747,10 +1747,6 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis]['bjd'][iexp] = bjd_exp_all[iexp]  - 2400000.  
                         coord_dic[inst][vis]['t_dur'][iexp] = (bjd_exp_high[iexp]-bjd_exp_low[iexp])*24.*3600.
 
-                        # Initialization of individual unquiet star grids
-                        ar_star_grid=np.zeros(theo_dic['nsub_star'], dtype=bool)
-                        plocced_star_grid=np.zeros(theo_dic['nsub_star'], dtype=bool)
-
                     #Observational data
                     else:
                         

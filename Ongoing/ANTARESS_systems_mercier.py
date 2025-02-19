@@ -346,7 +346,60 @@ def get_system_params():
                 'lambda_proj':4.
             }, 
 
-        },      
+        },    
+
+        #------------------------------      
+
+        'HD189733':{
+            
+            'star':{  
+                # 'dstar':19.45,
+                # 'Mstar':0.823,
+                # 'sysvel':-2.2765,
+                
+                # #Limb-darkening
+                # 'LD_mod':'linear',
+                # 'LD_u1':0.816
+    
+                #Analysis for Mounzer+2023, from Krenn+2023            
+                'Rstar':0.784,  #+- 0.007
+                      
+                #SB
+                # 'istar':90.,        
+                # 'veq':3.1461070814, 
+                
+                #DR+CB FINAL
+                'alpha_rot':3.1975297175e-01,
+                'istar':9.1243662412e+01,         
+                'veq':3.6489555591e+00,    
+                'c1_CB':-1.7377394883e-01,
+                                                                     
+                },
+        
+            'HD189733b':{
+                #Old
+                # 'Msini':1.135,
+                # 'TDepth':0.024122,
+                # 'Rpl':1.138,
+                # 'sma':0.0312,
+    
+                #Analysis for Mounzer+2023, from Krenn+2023             
+                'period':2.2185751979,
+                'TCenter':2459446.49851,
+                'TLength':1.81/24. ,# 1.9070525639199452/24.,
+                'ecc':0.,
+                'omega_deg':90.,
+                'inclination':85.70539050086485,   #0.016060250342902198 deg   (b = 0.665)
+                'Kstar':201.3,  
+                'aRs':8.8843,
+              
+                # 'lambda_proj':-6.6062684702e-01 #SB
+                'lambda_proj':-8.0873395849e-01       #DR+CB FINAL  
+                
+                
+                },
+    
+        },
 
         #------------------------------    
 

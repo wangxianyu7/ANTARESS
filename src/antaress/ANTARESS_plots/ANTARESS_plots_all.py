@@ -2323,8 +2323,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if plot_set_key['plot_LC_imp'] and (data_dic['DI']['transit_prop'][inst][vis]['mode']=='imp'):
                         if plot_set_key['plot_phase']:idx_out = 1
                         else:idx_out = 4
-                        x_imp=get_timeorbit(pl_ref ,coord_dic[inst][vis], data_upload['imp_LC'][0], system_param[pl_ref], 0.)[idx_out]
-                        plt.plot(x_imp,data_upload['imp_LC'][iband]-vis_shift,color=col_vis,linestyle='--',lw=plot_set_key['lw_plot'])  
+                        x_imp=get_timeorbit(system_param[pl_ref]['TCenter'], data_upload['imp_LC'][0], system_param[pl_ref], 0.)[idx_out]
+                        if chrom_mode:plt.plot(x_imp,data_upload['imp_LC'][iband]-vis_shift,color=col_vis,linestyle='--',lw=plot_set_key['lw_plot'])  
+                        else:plt.plot(x_imp,data_upload['imp_LC'][1]-vis_shift,color=col_vis,linestyle='--',lw=plot_set_key['lw_plot'])  
 
                         
                     #HR light curve

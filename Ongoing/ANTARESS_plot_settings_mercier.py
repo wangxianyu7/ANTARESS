@@ -1526,10 +1526,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['plot_LC_exp'] = True
         
         #%%%% Plot HR input light curves
-        plot_settings[key_plot]['plot_LC_HR'] = True
+        plot_settings[key_plot]['plot_LC_HR'] = True #& False
         
         #%%%% Plot raw imported light curve, if available
-        plot_settings[key_plot]['plot_LC_imp'] = True
+        plot_settings[key_plot]['plot_LC_imp'] = True #& False
 
         #%%%% Print visit names
         plot_settings[key_plot]['plot_vis']=True
@@ -1596,6 +1596,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         plot_settings[key_plot]['theoRV_HR']=True
         # plot_settings[key_plot]['theoRV_HR_align']=True
         # plot_settings[key_plot]['v_range_all']={'MIKE_Red':{'mockvis':[-0.02390,0.06576]}}
+        # if gen_dic['star_name']=='HD189733':plot_settings[key_plot]['x_range']=[-20.,20.]
 
 
     ################################################################################################################  

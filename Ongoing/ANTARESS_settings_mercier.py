@@ -246,12 +246,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Star name
 
-    gen_dic['star_name']='AUMic'
+    # gen_dic['star_name']='AUMic'
     # gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
     # gen_dic['star_name']='TRAPPIST1'
     # gen_dic['star_name']='TOI3884'
+    gen_dic['star_name']='HD189733'
 
     # Zodiacs
     # gen_dic['star_name']='Capricorn'
@@ -269,6 +270,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Transiting planets
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['studied_pl'] = {
+            'HD189733b':{'ESPRESSO' : ['visit1']},
+            }
+        gen_dic['kepl_pl'] = ['HD189733b']
+
     if gen_dic['star_name']=='TOI3884':
         gen_dic['studied_pl'] = {
             'TOI3884_b':{'MIKE_Red' : ['mockvis']},
@@ -339,6 +346,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
    #Transiting active regions
+    # if gen_dic['star_name']=='HD189733':
+    #     gen_dic['studied_ar'] = {
+    #         'spot1':{'ESPRESSO' : ['visit1']} 
+    #         }
+
     if gen_dic['star_name']=='TOI3884':
         gen_dic['studied_ar'] = {
             'spot1':{'MIKE_Red' : ['mockvis']} 
@@ -406,6 +418,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Plot settings    
     
     #Input data type
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['type']={'ESPRESSO':'CCF'}
+        gen_dic['type']={'ESPRESSO':'spec2D'}
+
     if gen_dic['star_name']=='TOI3884':
         gen_dic['type']={'MIKE_Red':'CCF'}
 
@@ -474,7 +490,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Mask for stellar spectra
     #gen_dic['CCF_mask'] = '/Travaux/Radial_velocity/RV_masks/ESPRESSO_F9.fits'        #in the air 
-    
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['CCF_mask']['ESPRESSO'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ESPRESSO_new_K2.fits'   #K2V, taken as final
+
            
     #Orders
     #gen_dic['orders4ccf']={'HARPS':np.arange(36),'HARPN':np.arange(36)} 
@@ -501,6 +519,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Data processing
 
     #Calculating/retrieving
+    if gen_dic['star_name']=='HD189733':gen_dic['calc_proc_data']=True  #& False
     if gen_dic['star_name']=='TOI3884':gen_dic['calc_proc_data']=True  #& False
     if gen_dic['star_name']=='TRAPPIST1':gen_dic['calc_proc_data']=True  #& False
     if gen_dic['star_name']=='AUMic':gen_dic['calc_proc_data']=True  #& False
@@ -671,7 +690,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
          
     #Activating module
-    gen_dic['mock_data'] =  True #& False
+    gen_dic['mock_data'] =  True & False
 
     #Setting number of threads 
     mock_dic['nthreads'] = 2 
@@ -1485,7 +1504,37 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - beware that undefined pixels will 'bleed' on adjacent pixels in successive resamplings
     gen_dic['bad2nan'] = False
     
-    
+    #%%%%% Paths to data directories
+    if gen_dic['star_name']=='AU_Mic':
+        gen_dic['data_dir_list']={'ESPRESSO':{'visit1':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/AUMic_data/2019-08-06'}}
+        # gen_dic['fibB_corr']={'ESPRESSO':{'visit1':'all'}}
+
+    if gen_dic['star_name']=='HD189733':
+        if gen_dic['type']['ESPRESSO']=='CCF':
+            gen_dic['data_dir_list']={'ESPRESSO':{'visit1':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/HD189733_data/HD189733_20210830_ESPRESSO_KitCat_CCF'}}
+        elif gen_dic['type']['ESPRESSO']=='spec2D':            
+            gen_dic['data_dir_list']={'ESPRESSO':{'visit1':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/HD189733_data/ESPRESSO_data/DRS3.2.5/20210830'}}
+        # gen_dic['fibB_corr']={'ESPRESSO':{'visit1':'all'}}
+
+    #%%%%% Spectral ranges to remove from analysis
+    if gen_dic['star_name']=='HD189733':
+        #Order check based on flux balance correction + telluric correction
+        # 128,129,130,131: 6275,6316   : DO NOT EXCLUDE AT THIS STAGE, strong telluric lines used for telluric fit range between 6278.329987095841 and 6316.724823709858
+        # 146, 147, 148, 149: 6865, 6965
+        # 152, 153,154, 155, 156, 157: 7165, 7320   : DO NOT EXCLUDE AT THIS STAGE, strong telluric lines used for telluric fit range between 7178.50262359 and 7312.39401687
+        # 162, 163: 7592 , 7668
+        # 164, 165: exclure 7500 , 7668 ; 7670, 7672 ; 7675.5 , 7678 ; 7682 , 7685 ; 7688.5 , 7691.5 ; 7695 , 7698 ; 7702 - 7705.
+        # 166, 167: exclure 7600 - 7705
+        gen_dic['masked_pix'] = {'ESPRESSO':{'visit1':{'exp_list':[],'ord_list':{
+            #128: [[6275,6316]],130:[[6275,6316]],
+            146: [[6865,6965]],148:[[6865, 6965]],
+            #152: [[7165,7320]],154:[[7165, 7320]],156:[[7165, 7320]],
+            162: [[7592,7668]],
+            164: [[7500,7668],[7670, 7672 ],[ 7675.5 , 7678 ],[ 7682 , 7685 ],[ 7688.5 , 7691.5 ],[ 7695 , 7698 ],[ 7702 , 7705.]],
+            166: [[7600,7705]]}}}}
+        for vis in gen_dic['masked_pix']['ESPRESSO']:
+            for iord in [146,148,162,164,166]:gen_dic['masked_pix']['ESPRESSO'][vis]['ord_list'][iord+1]=gen_dic['masked_pix']['ESPRESSO'][vis]['ord_list'][iord]
+
     #---------------------------------------------------------------------------------------------
     #%%%% Weighing settings 
     #    - controls the weight profiles used for temporal/spatial resampling:
@@ -1573,9 +1622,27 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     gen_dic['contin_pinR']={}  
     
     
+    #Activating
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['DI_stcont'] = True #& False
+        gen_dic['calc_DI_stcont'] = True #& False
+
+    #%%%%% Rolling window for peak exclusion
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['contin_roll_win'] = {'ESPRESSO':2} 
+
+    #%%%%% Smoothing window
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['contin_smooth_win'] = {'ESPRESSO':0.3}    
+
+    #%%%%% Flux/wavelength stretching
+    #Test DI CCF masks ESPRESSO : 5 captures less well the continuum structure than 15; 25 works better for some targets; 30 captures too finely
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['contin_stretch'] = {'ESPRESSO':25} 
     
-    
-    
+    #%%%%% Rolling pin radius
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['contin_pinR'] = {'ESPRESSO':10}     #DI CCF masks
 
     ##################################################################################################
     #%%% Module: stellar, active region, and planet-occulted grids
@@ -1765,7 +1832,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
 
-    #Star discretization      
+    #Star discretization  
+    if gen_dic['star_name']=='HD189733':
+        theo_dic['nsub_Dstar']=111.
+
     if gen_dic['star_name']=='TOI3884':
         # theo_dic['nsub_Dstar']=81.
         theo_dic['nsub_Dstar']=201. #211. #-- for fitting purposes
@@ -1811,6 +1881,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Theoretical stellar atmosphere
+    if gen_dic['star_name']=='HD189733':
+        theo_dic['st_atm']['calc']=False
+
     if gen_dic['star_name']=='TOI3884':
         theo_dic['st_atm']['calc']=False
 
@@ -1851,6 +1924,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         theo_dic['nsub_Dpl']= {'AUMicb':31.} #33.}#, 'AUMicc':101.} #-- for fitting purposes 
         # theo_dic['nsub_Dpl']= {'AUMicb':23.}           
 
+    if gen_dic['star_name']=='HD189733':
+        theo_dic['nsub_Dpl']= {'HD189733b':51.}
+
     if gen_dic['star_name']=='AU_Mic':
         theo_dic['nsub_Dpl']= {'AU_Mic_b':33.}
 
@@ -1882,6 +1958,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         theo_dic['nsub_Dar']={'spot1':101., 'spot2':31., 'spot3':31.,
                               # 'facula1':31., 'facula2':31.,
                              }
+
+    if gen_dic['star_name']=='HD189733':
+        theo_dic['nsub_Dar']={'spot1':101.}
 
     if gen_dic['star_name']=='TRAPPIST1':
         theo_dic['nsub_Dar']={'spot1':31.,
@@ -1997,6 +2076,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         theo_dic['n_oversamp']={'AU_Mic_b':5.}
         theo_dic['n_oversamp_ar']={'spot1':5., 'spot2':5.}
 
+    if gen_dic['star_name']=='HD189733':
+        theo_dic['n_oversamp']={'HD189733b':5.}
+        theo_dic['n_oversamp_ar']={'spot1':5.}
+
     if gen_dic['star_name']=='fakeAU_Mic':
         theo_dic['n_oversamp']={'fakeAU_Mic_b':5.}
         theo_dic['n_oversamp_ar']={'spot1':5., 'spot2':5.}
@@ -2036,6 +2119,21 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     },
                 }
         }
+
+    # if gen_dic['star_name']=='HD189733':
+    #     theo_dic['ar_prop']={
+    #     'ESPRESSO':{
+    #              'visit1':{
+
+    #                 # For the spot 'spot1' : -- base grid run
+    #                 'lat__ISESPRESSO_VSvisit1_ARspot1'     : 0,
+    #                 'Tc_ar__ISESPRESSO_VSvisit1_ARspot1' : 2459457.589323-0.2,
+    #                 'ang__ISESPRESSO_VSvisit1_ARspot1'     : 10,
+    #                 'fctrst__ISESPRESSO_VSvisit1_ARspot1'    : 0.6,
+    #                 },
+    #             }
+    #     }
+
     if gen_dic['star_name'] in ['TRAPPIST1','AUMic','fakeAU_Mic','TOI3884']:
         theo_dic['ar_prop'] = mock_dic['ar_prop']
 
@@ -2064,7 +2162,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Planetary system architecture
     plot_dic['system_view']=''   #png
 
-    if gen_dic['star_name'] in ['fakeAU_Mic','AUMic','TRAPPIST1','TOI3884']:
+    if gen_dic['star_name'] in ['fakeAU_Mic','AUMic','TRAPPIST1','TOI3884','HD189733']:
         #Range of planet-occulted properties
         plot_dic['plocc_ranges']=''    
         
@@ -2218,7 +2316,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['gcal_ord']=''
     plot_dic['noises_ord']=''    
     
-    
+    #%%%%% Spectral bin size (in A)
+    if gen_dic['star_name']=='HD189733':gen_dic['gcal_binw'] = {'ESPRESSO': 1.}
+
+    #%%%%% Threshold
+    if gen_dic['star_name']=='HD189733':gen_dic['gcal_thresh'] = {'ESPRESSO':{'outliers':5.,'global':3e6}}
+
     ##################################################################################################
     #%%% Module: telluric correction
     #    - use plot_dic['flux_sp'] to compare spectra before/after correction and identify orders in which tellurics are too deep and numerous to be well corrected, and that should be excluded from the entire analysis
@@ -2328,8 +2431,34 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['tell_prop']=''      
     
  
+    #%%%% Activating
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['corr_tell']=True #& False
+        gen_dic['calc_corr_tell']=True & False
 
+    #%%%% Correction mode    
+    if gen_dic['star_name']=='HD189733':gen_dic['calc_tell_mode']='autom'   
     
+    #%%%% Telluric species
+    if gen_dic['star_name']=='HD189733':gen_dic['tell_species']=['H2O','O2']  
+ 
+    #%%%% Fixed/variable properties
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['tell_mod_prop']={'ESPRESSO' : {
+            '20210830' : {
+#            'O2':{'Pressure_LOS':{ 'vary' : True , 'value':300. , 'min':0.39, 'max':0.45 } } } } }
+            'O2':{'Pressure_LOS':{ 'vary' : True , 'value':0.407 , 'min':0.39, 'max':0.45 } } } }
+}
+ 
+    #%%%% Plot settings
+    if gen_dic['star_name']=='HD189733':
+        #%%%%% Telluric CCFs (automatic correction)
+        plot_dic['tell_CCF']='pdf'  #      
+
+        #%%%%% Fit results (automatic correction)
+        plot_dic['tell_prop']='pdf'  # 
+
+
     ##################################################################################################
     #%%% Modules: flux balance corrections
     ##################################################################################################
@@ -2343,11 +2472,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     ##################################################################################################
     
     #%%%%% Activating  
-    gen_dic['glob_mast']=True    
+    gen_dic['glob_mast']=True & False   
     
     
     #%%%%% Calculating/retrieving
-    gen_dic['calc_glob_mast']=True     
+    gen_dic['calc_glob_mast']=True & False
     
     
     #%%%%% Measured masters
@@ -2379,7 +2508,15 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['glob_mast']=''     
     
     
-    
+    #%%%%%% Mean ('mean') or median ('med')  
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['glob_mast']=True #& False   
+
+        gen_dic['calc_glob_mast']=True & False
+
+        gen_dic['glob_mast_exp'] = {'ESPRESSO':{'visit1':'all'}}
+        gen_dic['glob_mast_mode']='med'        #ANTARESS I
+   
     
     ##################################################################################################
     #%%%% Module: global flux balance
@@ -2498,8 +2635,46 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['Fbal_corr_vis']=''  
     
 
+
+    #%%%%% Activating
+    gen_dic['corr_Fbal']=True     &  False
+    if gen_dic['star_name']=='HD189733':gen_dic['corr_Fbal']=True  #&  False
     
+    #%%%%% Calculating/retrieving
+    gen_dic['calc_corr_Fbal']=True   & False
+
+
+    #%%%%% Reference master 
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['Fbal_vis'] = 'meas'    
     
+    #%%%%%% Spectral bin size
+    if gen_dic['star_name']=='HD189733':
+        # gen_dic['Fbal_bin_nu'] = {'ESPRESSO':1}  #smooth
+        gen_dic['Fbal_bin_nu'] = {'ESPRESSO':0.7}  #final        
+
+    #%%%%% Flux balance model  
+    #%%%%%% Model
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['Fbal_mod']='spline'        #ANTARESS I   
+
+    #%%%%%% Spline smoothing factor
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['Fbal_smooth_vis'] = {'ESPRESSO':{'visit1':2e-5  }} 
+        #ANTARESS II, low-freq correction (dnu1) to analyze spurious features and test filter wiggle correction 
+        # gen_dic['Fbal_smooth'] = {'ESPRESSO':{'visit1':3e-4  }}        
+        gen_dic['Fbal_smooth'] = {'ESPRESSO':{'visit1':1.5e-4  }}     #ANTARESS II, fine correction (dnu0.7, 1.5e-4)
+
+    #%%%%% Plot settings
+    if gen_dic['star_name']=='HD189733':
+        #%%%%%% Exposures/visit balance 
+        #    - between exposure and their visit master
+        plot_dic['Fbal_corr']='pdf'  
+        
+        #%%%%%% Exposures/visit balance (DRS)
+        #    - if available
+        plot_dic['Fbal_corr_DRS']='pdf'  
+
     ##################################################################################################
     #%%%% Module: order flux balance
     #    - same as the global correction, over each independent order
@@ -2642,7 +2817,24 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['cosm_corr']=''    
     
     
-    
+    #%%%% Activating
+    gen_dic['corr_cosm']=True     &  False
+    if gen_dic['star_name']=='HD189733':gen_dic['corr_cosm']=True  #& False
+
+    #%%%% Calculating/retrieving
+    gen_dic['calc_cosm']=True   &  False  
+
+    #%%%% Comparison spectra
+    if gen_dic['star_name']=='HD189733':gen_dic['cosm_ncomp'] = 10 
+
+    #%%%% Outlier threshold  
+    if gen_dic['star_name']=='HD189733':    
+        gen_dic['cosm_thresh'] = {'ESPRESSO':{'visit1':15}}    #ANTARESS II
+
+    #%%%% Plots:cosmics
+    if gen_dic['star_name']=='HD189733':
+        plot_dic['cosm_corr']='pdf'        
+
     ##################################################################################################
     #%%% Module: persistent peak masking
     #    - a stellar continuum is estimated internally to this module, using the settings from the continuum module (gen_dic['DI_stcont'])
@@ -3025,11 +3217,200 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     }
     
     
+    #%%%% Activating 
+    gen_dic['corr_wig']=True    &  False    
+    if gen_dic['star_name']=='HD189733':gen_dic['corr_wig']=True   #& False
+
+
+    #%%%% Calculating/retrieving
+    gen_dic['calc_wig']=True    #&  False  
+    
+    #%%%% Guide shift reset
+    gen_dic['wig_no_guidchange'] = []   
+    
+    #%%%% Forced order normalization
+    gen_dic['wig_norm_ord'] = True 
+    if gen_dic['star_name']=='HD189733':gen_dic['wig_norm_ord'] = False 
    
     
+    #%%%%% Exposure selection
+    if gen_dic['star_name']=='HD189733':
+       gen_dic['wig_exp_mast']={'visit1':np.arange(16,24)}    
+
+    #%%%%% Exposures to be fitted
+    if gen_dic['star_name']=='HD189733':
+       gen_dic['wig_exp_in_fit'] =  {'ESPRESSO':{'visit1':np.arange(0,43,5)}}
     
+    #%%%%% Spectral range(s) to be fitted
+    if gen_dic['star_name']=='HD189733':
+        # gen_dic['wig_range_fit'] = {
+        #     'visit1': [[20.,57.2],[57.8,74.2] ]   }
+
+        # gen_dic['wig_range_fit'] = {    #isolation des nlles features
+        #     'visit1': [[46.3,47.3],[50.7,51.3],[54.8,55.4],[64.5,65.4] ]   }
+            
+        # gen_dic['wig_range_fit'] = {    #TESTS
+        #     'visit1': [[20.,40.] ]   }
+
+        gen_dic['wig_range_fit'] = {    #Final correction filter
+            'visit1': [[20.,57.2],[57.8,70.] ]   }
+
+    #%%%%% Orders to be fitted
+    if gen_dic['star_name']=='HD189733':
+        
+        gen_dic['wig_ord_fit'] = {
+            'visit1':list(np.concatenate((  range(21,87),range(91,170)    ))),
+        }
+
+    #%%%% Fitting steps
+    #%%%%% Step 1: Screening 
+    gen_dic['wig_exp_init']={
+        'mode':False  ,
+        'plot_spec':True,
+        'plot_hist':True,
+        'y_range':[0.993,1.007],   #None
+        }
+
     
+    #%%%%% Filter
+    if gen_dic['star_name']=='HD189733':
+        #Les raies planetaires de Na font environ 2A de large, soit 0.016 en nu. Il faut faire attention de ne pas filtrer a si petite echelle.
+        gen_dic['wig_exp_filt']={
+            'mode':True,
+            'win':0.2,    #0.1 ne fait pas de difference, je reste conservatif avec 0.2
+            'deg':4,      #deg4 plutot que 3 diminue RMS des residus des wiggles et ne semble pas trop changer la zone du sodium planetaire
+            'plot':True        
+            }
+
+    #%%%%% Step 2: Chromatic sampling
+    gen_dic['wig_exp_samp']={
+        'mode':False,   
+        'comp_ids':[1],
+        # 'comp_ids':[1,2],        
+        # 'comp_ids':[1,2,3],
+        # 'comp_ids':[1,2,4],         
+        'freq_guess':{
+            1:{ 'c0':3.72, 'c1':0., 'c2':0.},
+            2:{ 'c0':2.05, 'c1':0., 'c2':0.},
+            # 2:{ 'c0':1.96, 'c1':0., 'c2':0.},
+            3:{ 'c0':3.55, 'c1':0., 'c2':0.},
+            4:{ 'c0':156., 'c1':0., 'c2':0.},    #mini-wiggles
+            },
+        'nsamp':{1:8,2:8,3:5,4:200}, 
+        # 'sampbands_shifts':{1:np.arange(31)*0.075,2:np.arange(31)*0.15,3:np.arange(31)*0.2},
+        'sampbands_shifts':{1:np.arange(16)*0.15,2:np.arange(16)*0.3,3:np.arange(16)*0.15,4:np.arange(16)*10.},
+        'direct_samp' : {1:0,2:0,3:0,4:0},         
+        'nit':40, 
+        'src_perio' : {1:{'mod':None}, 2:{'mod':None,'up_bd':True},3:{'mod':None,'up_bd':True},4:{'mod':None,'up_bd':True}},  
+        'fap_thresh':5,
+        # 'fix_freq2expmod':[1]
+        'fix_freq2expmod':[],
+        'fix_freq2vismod':{},
+        # 'fix_freq2vismod':{'comps':[1,2],'20190720':'/Users/bourrier/Travaux/ANTARESS/Ongoing/HD209458b_Saved_data/Corr_data/Wiggles/Vis_fit/Indep_contin_valdval/ESPRESSO_20190720/V1/Outputs_final.npz',
+        #                                  '20190911':'/Users/bourrier/Travaux/ANTARESS/Ongoing/HD209458b_Saved_data/Corr_data/Wiggles/Vis_fit/Indep_contin_valdval/ESPRESSO_20190911/V1/Outputs_loop0_it3.npz'},
+        'plot':True
+        } 
+
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['wig_exp_samp']['src_perio'] = {
+                1:{'mod':'slide','range':[0.02,0.02] ,'up_bd':False  },
+                2:{'mod':'slide','range':[0.02,0.02] ,'up_bd':True  },
+                }
+
+    #%%%%% Step 3: Chromatic analysis
+    gen_dic['wig_exp_nu_ana']={
+        'mode':False  ,     
+        'comp_ids':[1,2], 
+        # 'comp_ids':[1,2,3], 
+        # 'comp_ids':[1,2,4], 
+        'thresh':3.,   #None 
+        'plot':True
+        }
     
+    # gen_dic['wig_deg_Amp'][3]=2
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['wig_deg_Amp'][1]=0
+        gen_dic['wig_deg_Amp'][2]=0
+
+
+    #%%%%% Step 4: Exposure fit 
+    gen_dic['wig_exp_fit']={
+        'mode':False, 
+        'comp_ids':[1,2],  
+        # 'comp_ids':[1,2,3], 
+        # 'comp_ids':[1,2,4], 
+        'init_chrom':True,# & False,
+        'freq_guess':{
+            1:{ 'c0':3.72077571, 'c1':0., 'c2':0.},
+            2:{ 'c0':2.0, 'c1':0., 'c2':0.},
+            3:{ 'c0':3.55, 'c1':0., 'c2':0.},
+            4:{ 'c0':156., 'c1':0., 'c2':0.},
+            },
+        'nit':20, 
+        'fit_method':'leastsq', 
+        'use':True,
+        'fixed_pointpar':{},
+        'prior_par':{},
+        'model_par':{},
+        # 'model_par':{'AmpGlob1_c0':[0.001,0.001],'Phi1':[1.5,1.5]},
+        'plot':True,
+        } 
+
+    #%%%%% Step 5: Pointing analysis
+    gen_dic['wig_exp_point_ana']={
+        'mode':False ,    
+        # 'source':'samp',
+        'source':'glob',
+        'thresh':3.,   #None
+        # 'thresh':None,
+        'fit_range':{},
+        'fit_undef':False,
+        # 'fit_undef':True,
+        'stable_pointpar':[],
+        'conv_amp_phase':True & False ,
+        'plot':True
+        } 
+
+
+    #%%%%% Step 6: Global fit 
+    gen_dic['wig_vis_fit']={
+        'mode':False ,
+        'fit_method':'leastsq',  
+        # 'fit_method':'nelder',  
+        'wig_fit_ratio': False,
+        'wig_conv_rel_thresh':1e-5,
+        'nit':25,
+        # 'nit':15,
+        'comp_ids':[1,2],
+        'fixed':False, 
+        'reuse':{},
+        'fixed_pointpar':[],
+        # 'fixed_pointpar':['Phi1_apre','Phi1_ashift','Phi1_bpre','Phi1_bshift','Phi1_cpre','Phi1_cshift'],     #,'Phi1_off','Phi1_doff'
+        # 'fixed_par':['Phi1'],        
+        'fixed_par':[],
+        'fixed_amp' : [] ,
+        'fixed_freq' : [] ,
+        'stable_pointpar':[],
+        'n_save_it':1,
+        'plot_mod':True    ,
+        'plot_par_chrom':True  ,
+        'plot_chrompar_point':True  ,
+        'plot_pointpar_conv':True    ,
+        'plot_hist':True,
+        'plot_rms':True ,
+        }
+
+    #%%%% Correction
+    gen_dic['wig_corr'] = {
+        'mode':True, #& False,
+        'path':{},
+        'exp_list':{},
+        'comp_ids':[1,2],
+        'range':{},
+    }
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['wig_corr']['path'] = {'visit1':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/HD189733/HD189733b_Saved_data/Corr_data/Wiggles/Vis_fit/ESPRESSO_visit1/Outputs_final'}
+
     ##################################################################################################
     #%%% Module: fringing
     ##################################################################################################
@@ -3102,6 +3483,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     ANTARESS_CCF_settings('DI',gen_dic)
 
     
+    #%%%% Radial velocity table
+    # gen_dic['dRV']=0.5    #res. ESPRESSO, EXPRES
+    # gen_dic['dRV']=0.82   #res. HARPN 
+    if gen_dic['star_name']=='HD189733':      
+        gen_dic['start_RV']=-150.    
+        gen_dic['end_RV']=150.        
+        gen_dic['dRV']=None 
     
     
     ##################################################################################################
@@ -3202,6 +3590,25 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
         
     
+    if (gen_dic['star_name']==['HD189733']):gen_dic['detrend_prof']=True  #&   False    
+
+    #%%%% Trend correction
+    
+    #%%%%% Activating 
+    detrend_prof_dic['corr_trend'] = True    #& False
+
+    #%%%%% Settings   
+    if gen_dic['star_name']=='HD189733':
+        if (gen_dic['type']=='CCF'):
+            detrend_prof_dic['prop']={'ESPRESSO':
+                    {'visit1':{'RV_phase':{'pol':1e-3*np.array([ 1.895454e+01])},'FWHM_phase':{'pol':np.array([-5.935886e-03])},'ctrst_phase':{'pol':np.array([ 3.161500e-03])},'ctrst_snrQ':{'pol':np.array([-4.384908e-06])}}}}
+        else:
+            #RAPPEL: pas de FWHM correction possible pour les spectres
+            if ('new_K2' in gen_dic['CCF_mask']['ESPRESSO']):  
+                detrend_prof_dic['prop']={'ESPRESSO':{'visit1':{'RV_phase':{'pol':1e-3*np.array([1.527529e+01])},'ctrst_snrQ':{'pol':np.array([-5.941947e-06])}}}} 
+                # detrend_prof_dic['prop']={'ESPRESSO':{'visit1':{'RV_phase':{'pol':1e-3*np.array([1.527529e+01])},'ctrst_snrQ':{'pol':np.array([-9.076915e-06])},'ctrst_phase':{'pol':np.array([5.817248e-03])}}}} 
+            else:stop('Define for mask')
+
     
     ##################################################################################################
     #%%% Module: disk-integrated profiles analysis
@@ -3374,6 +3781,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     gen_dic['fit_DIbin']=True   &  False
     gen_dic['fit_DIbinmultivis']=True    &  False
 
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['fit_DI'] = True    &  False
+        gen_dic['calc_fit_DI']=True    &  False   
+
 
     #Calculating/Retrieving
     gen_dic['calc_fit_DI']=True    &  False   
@@ -3421,6 +3832,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:data_dic['DI']['cont_range']['ESPRESSO']={0:[[-25., -20.],[10.,15.]]} 
 
+    if gen_dic['star_name']=='HD189733':
+        sysguess = -2.
+        data_dic['DI']['cont_range']['ESPRESSO']={0:[[sysguess-90.,sysguess-30.],[sysguess+30.,sysguess+90.]]}        
+
+
     #Spectral range(s) to be fitted
     if gen_dic['star_name']=='TOI3884':data_dic['DI']['fit_range']['MIKE_Red']={'mockvis':[[-20., 20.]]}  
 
@@ -3443,6 +3859,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:data_dic['DI']['fit_range']['ESPRESSO']={'mock_vis':[[-100.,100.]]}  
 
     if gen_dic['star_name']=='AU_Mic':data_dic['DI']['fit_range']['ESPRESSO']={'visit1':[[-25., 20]]}  
+
+    if gen_dic['star_name']=='HD189733':
+        data_dic['DI']['fit_range']['ESPRESSO']={'visit1':[[sysguess-90.,sysguess+90.]]}       
 
     #Direct measurements
     # data_dic['DI']['meas_prop']={
@@ -3479,6 +3898,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:    
         data_dic['DI']['model']['ESPRESSO']='gauss'
     
+    if gen_dic['star_name']=='HD189733':
+        data_dic['DI']['model']['ESPRESSO']='gauss' 
     #Intrinsic line properties  
     
 
@@ -3494,6 +3915,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                                 'rv':{'vary':True, 'MIKE_Red':{'mockvis':{'guess':0.}}},#, 'bd':[-4., -7.] } } },
                                 'ctrst':{'vary':True, 'MIKE_Red':{'mockvis':{'guess':0.6}}}}#:0.1, 'bd':[0., 1.] } } },
 
+    if gen_dic['star_name']=='HD189733':
+        data_dic['DI']['mod_prop']={'rv':{'vary':True ,'ESPRESSO':{'visit1':{'guess':sysguess,'bd':[sysguess-10.,sysguess+10.]}}},
+                                    'ctrst':{'vary':True  ,'ESPRESSO':{'visit1':{'guess':0.5,'bd':[0.1,0.9]}}},
+                                    'FWHM':{'vary':True  ,'ESPRESSO':{'visit1':{'guess':7.,'bd':[2.,30.]}}}}         
 
     #Best model table
     
@@ -3514,14 +3939,18 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                                     'FWHM':{'mod': 'uf', 'low':0.1,'high':40.},                                    
                                     }
 
+    if gen_dic['star_name']=='HD189733':
+        data_dic['DI']['priors']={'veq':{'mod': 'uf', 'low':0.,'high':20.}}         
+
     #Derived properties
     deriv_prop=[]
-    # deriv_prop=['amp','area','true_ctrst','true_FWHM','true_amp']   #generic
-    # deriv_prop+=['FWHM_LOR','FWHM_voigt']   #voigt
-    # deriv_prop+=['cont_amp','RV_lobe','amp_lobe','FWHM_lobe']    #double-gaussian
-    # deriv_prop+=['vsini']    #custom
-    for par_loc in deriv_prop:data_dic['DI']['deriv_prop'][par_loc]={'prop_DI_rv':{}}
-
+    deriv_prop=['amp','area','true_ctrst','true_FWHM','true_amp']   #generic
+    deriv_prop+=['FWHM_LOR','FWHM_voigt']   #voigt
+    deriv_prop+=['cont_amp','RV_lobe','amp_lobe','FWHM_lobe']    #double-gaussian
+    deriv_prop+=['vsini']    #custom
+    deriv_prop=[]
+    data_dic['DI']['deriv_prop'] = {}
+    for par_loc in deriv_prop:data_dic['DI']['deriv_prop'][par_loc]={}
 
     #Calculating/retrieving
     data_dic['DI']['run_mode']='use'
@@ -3556,7 +3985,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Housekeeping and derived properties 
     plot_dic['prop_DI']=''   #''          
-    
+    # if gen_dic['star_name']=='HD189733':plot_dic['prop_DI']='pdf'
+
     
   #Turn this on and look at the properties
 
@@ -3741,10 +4171,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
         
     #Activating
-    gen_dic['align_DI'] = True   # &  False          
+    gen_dic['align_DI'] = True    #&  False          
     
     #Calculating/retrieving 
-    gen_dic['calc_align_DI']=True  #  &  False  
+    gen_dic['calc_align_DI']=True    #&  False  
         
     #Systemic velocity        
     if gen_dic['star_name']=='TOI3884':
@@ -3785,10 +4215,22 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='AU_Mic':
         data_dic['DI']['sysvel']={'ESPRESSO' : {'visit1' : -6.31}} #from Gaia DR2 and Palle+2020 seem to use the same
-        #Run once to get the true systemic velocity
+
+    if gen_dic['star_name']=='HD189733':
+        data_dic['DI']['sysvel']['ESPRESSO']={'visit1':-0.} 
+        if (gen_dic['type']=='CCF'):
+        
+            #CCF default DRS mask
+            data_dic['DI']['sysvel']['ESPRESSO']={'visit1':-0.0512}  #From Mout
+            data_dic['DI']['sysvel']['ESPRESSO']={'visit1':-0.0510852865}  #From RVres
+            data_dic['DI']['sysvel']['ESPRESSO']={'visit1':-0.0510852865-1e-3*3.572992e-01}  #From RVres, trend-corr
+        
+        else:
+            if ('new_K2' in gen_dic['CCF_mask']['ESPRESSO']):data_dic['DI']['sysvel']['ESPRESSO']={'visit1':-2.22896482}    #Mask K2, reduction pour Dany (+ ref. pour generation du masque)
+            else:data_dic['DI']['sysvel']['ESPRESSO']={'visit1':-2.22819514}     
 
     #Plots: aligned disk-integrated profiles
-    plot_dic['all_DI_data']=''     #pdf    
+    plot_dic['all_DI_data']='pdf'     #pdf    
                         
 
     
@@ -4042,6 +4484,28 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                 }
                 }  
 
+    if gen_dic['star_name']=='HD189733':  
+        #I choose to use results from Pont+2013 (not RM-based results like Cristo+2023 because they depend on their RM model and are lower-precision)
+        #I take their spot-corrected values (like Cristo+2023, I checked) from Table 6, excluding the high-res Na bin
+        #LD laws from Hayek+2012 (like Pont+2013); they used non-linear law from Claret+2000; 
+        #See calculations of final values in /Users/bourrier/Travaux/ANTARESS/Ongoing/HD189733b_Saved_data/Broadband_scaling_data/HD189_broadband_scaling.py
+        data_dic['DI']['system_prop']={                            
+            'chrom':{'w':np.array([3450., 3950., 4450., 4950., 5400., 5700., 5860., 5980., 6095., 6205., 6320., 6750., 7250., 7750., 8250., 8750.]),
+                      'LD':np.repeat('nonlinear',16),
+                      'LD_u1':np.array([0.6528,0.5641,0.5261,0.5476,0.6044,0.6432,0.6617,0.6746,0.6862,0.6968,0.7072,0.7405,0.7658,0.7743,0.7731,0.7807]),
+                      'LD_u2':np.array([-1.0712,-0.7602,-0.4616,-0.3749,-0.3676,-0.3809,-0.3940,-0.4038,-0.4132,-0.4222,-0.4354,-0.4848,-0.5423,-0.5802,-0.5953,-0.6104]),
+                      'LD_u3':np.array([1.8320,1.6103,1.3906,1.2243,1.1136,1.0668,1.0507,1.0386,1.0270,1.0160,1.0148,1.0104,1.0053,0.9936,0.9741,0.9546]),
+                      'LD_u4':np.array([-0.4340,-0.4830,-0.5265,-0.4975,-0.4689,-0.4571,-0.4533,-0.4504,-0.4476,-0.4450,-0.4436,-0.4385,-0.4325,-0.4249,-0.4153,-0.4057]),
+                      'HD189733b':np.array([0.15811 ,0.15751 ,0.15718 ,0.15695 ,0.15666 ,0.15644 ,0.15638 ,0.15631 ,0.15617 ,0.15600 ,0.15610 ,0.15585 ,0.15572 ,0.15586 ,0.15552 ,0.15553])},
+            'achrom':{'w':[0.],
+                    'LD':['nonlinear'],   #From Hayek+2012, Table 5 for STIS 3D
+                    'LD_u1':[0.5598], 
+                    'LD_u2':[-0.4055], 
+                    'LD_u3':[1.2498], 
+                    'LD_u4':[-0.4945], 
+                    'HD189733b':[0.15667]}  #Sing+2011
+            }
+
     #Intensity settings for the active regions 
     if gen_dic['star_name']=='TOI3884':
         # data_dic['DI']['ar_prop'] = {}
@@ -4106,6 +4570,18 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'LD_u2' : [0.16],
                 },
                 }
+
+    # if gen_dic['star_name']=='HD189733':
+    #     data_dic['DI']['ar_prop']={
+    #             'achrom':{
+    #                 'spot1' : [theo_dic['ar_prop']['ESPRESSO']['visit1']['ang__ISESPRESSO_VSvisit1_ARspot1'] * np.pi/180],#--base
+    #                 'LD':['nonlinear'],   #From Hayek+2012, Table 5 for STIS 3D
+    #                 'LD_u1':[0.5598], 
+    #                 'LD_u2':[-0.4055], 
+    #                 'LD_u3':[1.2498], 
+    #                 'LD_u4':[-0.4945],
+    #             },
+    #             }
 
     if gen_dic['star_name']=='AU_Mic':
         data_dic['DI']['ar_prop'] = {}
@@ -4210,6 +4686,17 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                 'ESPRESSO':{'mock_vis':{'mode':'model', 'dt':0.05}}
                 }) 
 
+    if gen_dic['star_name']=='HD189733':
+        if (gen_dic['type']['ESPRESSO']=='CCF'):
+            data_dic['DI']['transit_prop'].update({
+                    # 'ESPRESSO':{'mock_vis':{'mode':'model', 'dt':0.05}}
+                    'ESPRESSO':{'visit1':{'mode':'imp', 'path':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/HD189733_data/Broadband_scaling_data/lc_wavelength-5500.0 Angstrom.dat'}}
+                    }) 
+        else:
+            data_dic['DI']['transit_prop'].update({'ESPRESSO':{# '20210830':{'mode':'model','dt':0.05},    #used temporarily while finding Hritam's bug (spotted exposures are excluded from RM analysis anyway)
+                                                                '20210830':{'mode':'imp','path':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/HD189733_data/Broadband_scaling_data/lc_wavelength_chromatic.dat'}   #will use Hritam spotted chromatic fit to simultaneous EulerCamn photom
+                                                    }})
+
     #Zodiacs 
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         data_dic['DI']['transit_prop'].update({
@@ -4234,7 +4721,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['input_LC']='pdf'  #pdf
 
     #Scaling light curves
-    plot_dic['spectral_LC']='pdf'   #pdf
+    plot_dic['spectral_LC']=''   #pdf
 
     #2D maps of disk-integrated profiles
     plot_dic['map_DI_prof']=''   #png   
@@ -4262,7 +4749,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     ANTARESS_2D_1D_settings('DI',data_dic,gen_dic,plot_dic)
 
-        
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['spec_1D_DI']=True    & False      
+        gen_dic['calc_spec_1D_DI']= True    & False    
+
     ##################################################################################################
     #%%% Module: disk-integrated profiles binning
     #    - for analysis purpose (original profiles are not replaced)
@@ -4328,8 +4818,25 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%%% Residuals from binned profiles
     plot_dic['DIbin_res']=''  
     
+    #%%%% Activating 
+    gen_dic['DIbin'] = True # &  False
+    gen_dic['DIbinmultivis'] = True      &  False
+    if gen_dic['star_name']=='HD189733':gen_dic['DIbin']=True & False
     
     
+    #%%%% Calculating/retrieving
+    gen_dic['calc_DIbin']=True #  &  False  
+    gen_dic['calc_DIbinmultivis'] = True    #  &  False
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['DIbinmultivis']=True   & False  
+        gen_dic['calc_DIbinmultivis']= True  & False       
+
+    #%%%% Plot settings
+
+    #%%%%% Individual binned profiles
+    plot_dic['DIbin']=''  
+    if gen_dic['star_name']=='HD189733':plot_dic['DIbin']=''
+
     ##################################################################################################
     #%%% Module: disk-integrated CCF masks
     #    - spectra must have been aligned in the star rest frame (using a approximate 'sysvel'), converted into a 1D profile, and binned. The mask can then be used in the input rest frame (setting 'sysvel' to 0 km/s)
@@ -4541,9 +5048,126 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['DImask_RVdisp'] = ''
     
  
+    #%%%% Acxtivating 
+    gen_dic['def_DImasks'] = True #& False
+
+    #%%%% Estimate of line width 
+
+    if gen_dic['star_name']=='HD189733':
+        data_dic['DI']['mask']['fwhm_ccf'] = 7.7
+
+    #%%%%% Vicinity window
+    if gen_dic['star_name']=='HD189733':
+        data_dic['DI']['mask']['vicinity_fwhm'] = {'ESPRESSO' : 10.}
+        mask_level = 'strict'
+        mask_level = 'relax'
+        mask_level = 'rv_tell'
+        mask_level = 'loose'
     
+    #%%%% Line selection: rejection ranges
+    if gen_dic['star_name']=='HD189733':
+        if mask_level=='strict':data_dic['DI']['mask']['line_rej_range'] = {'ESPRESSO':[[3860.,3870.],[6863.,6967.],[7165.,7310.],[7705.,7707.]]}        
+        if mask_level in ['relax','rv_tell','loose']:data_dic['DI']['mask']['line_rej_range'] = {'ESPRESSO':[[3860.,3870.],[6863.,6967.],[7705.,7707.]]}
+
+
+    #%%%% Line selection: depth and width     
+
+    #%%%%% Depth range   
+    if gen_dic['star_name']=='HD189733':
+        if mask_level=='strict':
+            data_dic['DI']['mask']['linedepth_cont_min'] = {'ESPRESSO':0.1}   
+            data_dic['DI']['mask']['linedepth_cont_max'] = {'ESPRESSO':0.95}   
+            data_dic['DI']['mask']['linedepth_min'] = {'ESPRESSO':0.05}  
+            data_dic['DI']['mask']['linedepth_contdepth'] = {'ESPRESSO':[1.0,0.02]}    
+
+    #%%%%% Minimum depth and width
+    if gen_dic['star_name']=='HD189733':
+        if mask_level=='strict':
+            data_dic['DI']['mask']['line_width_logmin'] = -1.3   #env 10% du poids cum 
+            data_dic['DI']['mask']['line_depth_logmin'] = -1.2   #env 10% du poids cum 
 
     
+    #%%%% Line selection: position
+
+    if gen_dic['star_name']=='HD189733':
+        if mask_level=='strict':data_dic['DI']['mask']['abs_RVdev_fit_max'] = 180.     #~2% of cum weights
+        if mask_level=='relax':data_dic['DI']['mask']['abs_RVdev_fit_max'] = 225.  
+        if mask_level in ['rv_tell','loose']:data_dic['DI']['mask']['abs_RVdev_fit_max'] = 300.  
+
+    #%%%% Line selection: tellurics
+
+    #%%%%% Threshold on telluric line depth 
+    data_dic['DI']['mask']['tell_depth_min'] = 0.001
+
+    #%%%%% Thresholds on telluric/stellar lines depth ratio
+    if gen_dic['star_name']=='HD189733':
+        if mask_level=='strict':
+            data_dic['DI']['mask']['tell_star_depthR_max'] = 0.2            
+            data_dic['DI']['mask']['tell_star_depthR_max_final'] = 0.015            
+
+    #%%%% VALD cross-validation     
+
+    #%%%%% Path to VALD linelist
+    # if gen_dic['star_name']=='HD189733':data_dic['DI']['mask']['VALD_linelist'] = '/Users/bourrier/Travaux/Exoplanet_systems/HD/HD189733b/Star/VALD/VALD_HD189733'
+
+
+    #%%%% Line selection: morphological 
+
+    #%%%%% Symmetry  
+    if gen_dic['star_name']=='HD189733':
+        if mask_level=='strict':
+            data_dic['DI']['mask']['diff_cont_rel_max'] = 1.6   #selected to keep 80% of total weights
+            data_dic['DI']['mask']['asym_ddflux_max'] = 0.4     #selected to keep 80% of total weights  
+        if mask_level=='relax':
+            data_dic['DI']['mask']['diff_cont_rel_max'] = 5.   #selected to keep 90% of total weights
+            data_dic['DI']['mask']['asym_ddflux_max'] = 0.7           
+        if mask_level=='rv_tell':
+            data_dic['DI']['mask']['diff_cont_rel_max'] = 20.   
+            data_dic['DI']['mask']['asym_ddflux_max'] = 0.85
+        if mask_level=='loose':
+            data_dic['DI']['mask']['diff_cont_rel_max'] = 30.   
+            data_dic['DI']['mask']['asym_ddflux_max'] = 0.9
+
+    #%%%%% Width and depth
+    if gen_dic['star_name']=='HD189733':
+        if mask_level=='strict':
+            data_dic['DI']['mask']['width_max'] = 10.     #selected to keep 90% of total weights
+            data_dic['DI']['mask']['diff_depth_min'] = 0.2   #selected to keep 90% of total weights
+        if mask_level=='relax':
+            data_dic['DI']['mask']['width_max'] = 13.0 
+            data_dic['DI']['mask']['diff_depth_min'] = 0.05
+        if mask_level in ['rv_tell','loose']:
+            data_dic['DI']['mask']['width_max'] = 15.0 
+            data_dic['DI']['mask']['diff_depth_min'] = 0.02
+
+    #%%%% Line selection: RV dispersion 
+
+    data_dic['DI']['mask']['RV_disp_sel'] = True   #& False
+
+    #%%%%% Exposures selection
+    data_dic['DI']['mask']['idx_RV_disp_sel']={}
+
+    #%%%%% RV deviation
+    if gen_dic['star_name']=='HD189733':
+        if mask_level=='strict':data_dic['DI']['mask']['absRV_max'] = {'ESPRESSO':2.9}  #5% of cum weights
+        if mask_level=='relax':data_dic['DI']['mask']['absRV_max'] = {'ESPRESSO':10.}
+        if mask_level in ['rv_tell','loose']:data_dic['DI']['mask']['absRV_max'] = {'ESPRESSO':50.}
+
+    #%%%%% Dispersion deviation
+    if gen_dic['star_name']=='HD189733':
+        if mask_level=='strict':
+            data_dic['DI']['mask']['RVdisp2err_max'] = {'ESPRESSO':1.4}  #5% of cum weights
+            data_dic['DI']['mask']['RVdisp_max'] = {'ESPRESSO':50.}    #5% of cum weights
+        if mask_level=='relax':
+            data_dic['DI']['mask']['RVdisp2err_max'] = {'ESPRESSO':1.7}
+            data_dic['DI']['mask']['RVdisp_max'] = {'ESPRESSO':150.}    
+        if mask_level=='rv_tell':
+            data_dic['DI']['mask']['RVdisp2err_max'] = {'ESPRESSO':2.8}
+            data_dic['DI']['mask']['RVdisp_max'] = {'ESPRESSO':100.}               
+        if mask_level=='loose':
+            data_dic['DI']['mask']['RVdisp2err_max'] = {'ESPRESSO':2.8}
+            data_dic['DI']['mask']['RVdisp_max'] = {'ESPRESSO':150.}             
+
     ##################################################################################################
     #%% Differential and intrinsic profiles
     ##################################################################################################  
@@ -4623,10 +5247,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #Activating
-    gen_dic['diff_data'] = True   #&  False
+    gen_dic['diff_data'] = True   &  False
 
     #Calculating/retrieving 
-    gen_dic['calc_diff_data'] = True   #&  False
+    gen_dic['calc_diff_data'] = True   &  False
 
 
     #Multi-threading
@@ -4644,6 +5268,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='AU_Mic':
         data_dic['Diff']['vis_in_bin']={'ESPRESSO':['visit1']}  
+
+    if gen_dic['star_name']=='HD189733':
+        data_dic['Diff']['vis_in_bin']={'ESPRESSO':['visit1']} 
 
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -4672,6 +5299,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name']=='AU_Mic':    
         data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'visit1':list(np.arange(0, 15,dtype=int))+list(np.arange(67, 82,dtype=int))}}
 
+    if gen_dic['star_name']=='HD189733':    
+        data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'visit1':list(np.arange(0, 7,dtype=int))+list(np.arange(26, 43,dtype=int))}}
+
     if gen_dic['star_name']=='fakeAU_Mic':    
         data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mockvisit1':list(np.arange(0, 16,dtype=int))+list(np.arange(68, 84,dtype=int))}} 
 
@@ -4690,6 +5320,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name']=='V1298tau':data_dic['Diff']['cont_range']['ESPRESSO']={0 : [[-150.,-70.],[70.,150.]]  }
 
     if gen_dic['star_name']=='AU_Mic':data_dic['Diff']['cont_range']['ESPRESSO']={0 : [[-20.,-15.],[15.,20.]]}
+
+    if gen_dic['star_name']=='HD189733':data_dic['Diff']['cont_range']['ESPRESSO']={0:[[-90.,-30.],[30.,90.]]}
 
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:data_dic['Diff']['cont_range']['ESPRESSO']={0 : [[-150.,-70.],[70.,150.]]}
@@ -4775,7 +5407,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Calculating
     gen_dic['intr_data'] = True    &  False
-    
+    if (gen_dic['star_name']=='HD189733'):
+        if (gen_dic['type']['ESPRESSO']=='spec2D'):gen_dic['intr_data'] = True  & False
+        else:gen_dic['intr_data'] = True  #& False 
+
     #Calculating/retrieving
     gen_dic['calc_intr_data'] = True   &  False      
 
@@ -4795,7 +5430,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Continuum correction
     data_dic['Intr']['cont_norm'] = True   &   False
-
+    if gen_dic['star_name']=='HD189733':
+        if (gen_dic['type']['ESPRESSO']=='spec2D'):data_dic['Intr']['cont_norm'] = True   & False  #activate if CCF intr are generated
+        else: data_dic['Intr']['cont_norm'] = True   #&   False
 
 
 
@@ -5461,7 +6098,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     gen_dic['fit_DiffProf'] = True  &  False
 
     #%%%%% Optimization levels
-    if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+    if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['Opt_Lvl']=3
         # glob_fit_dic['DiffProf']['nthreads']=1
 
@@ -5473,6 +6110,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         glob_fit_dic['DiffProf']['idx_in_fit'] = {'ESPRESSO':{'mock_vis':'all'}}
 
     if gen_dic['star_name'] == 'AU_Mic':
+        glob_fit_dic['DiffProf']['idx_in_fit'] = {'ESPRESSO':{'visit1':'all'}}
+
+    if gen_dic['star_name'] == 'HD189733':
         glob_fit_dic['DiffProf']['idx_in_fit'] = {'ESPRESSO':{'visit1':'all'}}
 
     #Zodiacs
@@ -5490,6 +6130,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # glob_fit_dic['DiffProf']['master_out_tab']=[-90, 90, 200]
         glob_fit_dic['DiffProf']['master_out_tab']=[]
 
+    if gen_dic['star_name']=='HD189733':
+        glob_fit_dic['DiffProf']['master_out_tab']=[-89, 89, 200]
+        # glob_fit_dic['DiffProf']['master_out_tab']=[]
+
     #Zodiacs
     if gen_dic['star_name'] in ['TOI3884','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['master_out_tab']=[]
@@ -5503,6 +6147,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='AU_Mic':
         glob_fit_dic['DiffProf']['ref_pl']={'ESPRESSO':{'visit1':'AU_Mic_b'}}
+
+    if gen_dic['star_name']=='HD189733':
+        glob_fit_dic['DiffProf']['ref_pl']={'ESPRESSO':{'visit1':'HD189733b'}}
 
     if gen_dic['star_name']=='TOI3884':
         glob_fit_dic['DiffProf']['ref_pl']={'MIKE_Red':{'mockvis':'TOI3884_b'}}
@@ -5529,6 +6176,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] == 'AU_Mic':
         glob_fit_dic['DiffProf']['cont_range']={'ESPRESSO':{0:[[-20.0, -15.0],[15.0, 20.0]]}}
 
+    if gen_dic['star_name'] == 'HD189733':
+        glob_fit_dic['DiffProf']['cont_range']={'ESPRESSO':{0:[[-90.0, -30.0],[30.0, 90.0]]}}
+
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['cont_range']={'ESPRESSO':{0:[[-150.0,-70.0],[70.0,150.0]]}}
@@ -5540,6 +6190,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     glob_fit_dic['DiffProf']['fit_range'] = deepcopy(data_dic['Intr']['fit_range'])
     if gen_dic['star_name'] == 'AU_Mic':
         glob_fit_dic['DiffProf']['fit_range']['ESPRESSO']={'visit1' : [[-20.,13.]]}
+    if gen_dic['star_name']=='HD189733':
+        glob_fit_dic['DiffProf']['fit_range']['ESPRESSO']={'visit1' : [[-90.,90.]]}
     if gen_dic['star_name'] == 'TOI3884':
         glob_fit_dic['DiffProf']['fit_range']['MIKE_Red']={'mockvis' : [[-15.,15.]]}
 
@@ -5548,18 +6200,44 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # Analytical profile
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['model']={'ESPRESSO':'gauss'}
+    if gen_dic['star_name']=='HD189733':
+        glob_fit_dic['DiffProf']['model']={'ESPRESSO':'gauss'}
     
     #Analytical profile coordinate
-    if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','V1298tau','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+    if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','V1298tau','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['dim_fit']='r_proj'
 
 
     #Analytical profile variation
-    if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','V1298tau','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+    if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','V1298tau','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['pol_mode']='modul'  
 
      
-    #Fixed/variable properties   
+    #Fixed/variable properties 
+    if gen_dic['star_name']=='HD189733':
+        #Round 1 - wide guessing
+        # glob_fit_dic['DiffProf']['mod_prop']={
+        # 'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.65, 'bd':[0.1, 0.9]},
+        # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':8, 'bd':[5, 15]},
+        # 'lat__ISESPRESSO_VSvisit1_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        # 'Tc_ar__ISESPRESSO_VSvisit1_ARspot1' : {'vary':True, 'guess':2459457.589323-0.2, 'bd':[2459457.589323 - 1., 2459457.589323 + 1.]},
+        # 'ang__ISESPRESSO_VSvisit1_ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 60]},
+        # 'fctrst__ISESPRESSO_VSvisit1_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.1, 0.9]},
+        # 'lambda_rad__plHD189733b'                   : {'vary':False, 'guess':-0.014, 'bd':[-2*np.pi, 2*np.pi]}
+        #                                     }
+        #Round 2 - more specific guessing
+        glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
+        'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.53, 'bd':[0.45, 0.61]},
+        'FWHM__ord0__IS__VS_':{'vary':True, 'guess':6.9, 'bd':[6.7, 7.1]},
+        'lat__ISESPRESSO_VSvisit1_ARspot1'     : {'vary':True, 'guess':-37, 'bd':[-75, 5]},
+        'Tc_ar__ISESPRESSO_VSvisit1_ARspot1' : {'vary':True, 'guess':2459457.6703, 'bd':[2459457.17, 2459458.2]},
+        'ang__ISESPRESSO_VSvisit1_ARspot1'     : {'vary':True, 'guess':25, 'bd':[16, 34]},
+        'fctrst__ISESPRESSO_VSvisit1_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.5, 0.8]},
+        'lambda_rad__plHD189733b'                   : {'vary':False, 'guess':-0.014, 'bd':[-2*np.pi, 2*np.pi]}
+                                            }
+
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['DiffProf']['mod_prop']={
         'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
@@ -5648,12 +6326,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Zodiacs
     if gen_dic['star_name']=='Capricorn':
         glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
         'veq':{'vary':True,'guess':20, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':12, 'bd':[2, 30]},
+        # 'veq':{'vary':False,'guess':12, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
 
         'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
@@ -5684,6 +6363,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='Gemini':
         glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
         # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
@@ -5734,12 +6414,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                                             
     if gen_dic['star_name']=='Leo':
         glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
         'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
+        # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
 
         'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
@@ -5752,12 +6433,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                                             
     if gen_dic['star_name']=='Aquarius':
         glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
         'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
+        # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
 
         'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
@@ -5770,12 +6452,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                                             
     if gen_dic['star_name']=='Aries':
         glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
         'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
+        # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
 
         'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
@@ -5880,20 +6563,41 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Fitting mode
-    if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+    if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         # glob_fit_dic['DiffProf']['fit_mode']='chi2' 
-        # glob_fit_dic['DiffProf']['fit_mode']='mcmc'
-        glob_fit_dic['DiffProf']['fit_mode']='ns' 
+        glob_fit_dic['DiffProf']['fit_mode']='mcmc'
+        # glob_fit_dic['DiffProf']['fit_mode']='ns' 
 
     #Fitting method - only if chi2 is used
-    if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+    if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['chi2_fitting_method']='bfgs' 
 
     #Printing fits results
-    if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+    if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['verbose']=True   #& False
     
     #Priors on variable properties
+    if gen_dic['star_name'] == 'HD189733':
+        glob_fit_dic['DiffProf']['priors']={
+                    #Round 1 - wide guessing
+                    # 'ctrst__ord0__IS__VS_'                  :{'mod':'uf','low':0.,'high':1.},  
+                    # 'FWHM__ord0__IS__VS_'                   :{'mod':'uf','low':0,'high':100},
+                    # 'lat__ISESPRESSO_VSvisit1_ARspot1'      :{'mod':'uf', 'low':-90., 'high':90.},
+                    # 'Tc_ar__ISESPRESSO_VSvisit1_ARspot1'    :{'mod':'uf', 'low':2459457.589323 - 2., 'high':2459457.589323 +2.},
+                    # 'ang__ISESPRESSO_VSvisit1_ARspot1'      :{'mod':'uf', 'low':0., 'high':80.},
+                    # 'fctrst__ISESPRESSO_VSvisit1_ARspot1'   :{'mod':'uf', 'low':0, 'high':1},
+                    # 'lambda_rad__plHD189733b'               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
+                    
+                    #Round 2 - more specific guessing based on previous round
+                    'ctrst__ord0__IS__VS_'                  :{'mod':'uf','low':0.,'high':1.},  
+                    'FWHM__ord0__IS__VS_'                   :{'mod':'uf','low':0,'high':100},
+                    'lat__ISESPRESSO_VSvisit1_ARspot1'      :{'mod':'gauss', 'val':-37., 's_val':40.},
+                    'Tc_ar__ISESPRESSO_VSvisit1_ARspot1'    :{'mod':'gauss', 'val':2459457.67, 's_val':0.5},
+                    'ang__ISESPRESSO_VSvisit1_ARspot1'      :{'mod':'gauss', 'val':25., 's_val':9.},
+                    'fctrst__ISESPRESSO_VSvisit1_ARspot1'   :{'mod':'gauss', 'val':0.6, 's_val':0.2},
+                    'lambda_rad__plHD189733b'               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
+                    }
+
     if gen_dic['star_name'] == 'AUMic':
         glob_fit_dic['DiffProf']['priors']={
                     'cont__IS__VS_'                           :{'mod':'uf','low':0.,'high':1e10},
@@ -5951,7 +6655,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
                     'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
                     'lat__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
+                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 0.5, 'high':2458330.39051 +0.5},
                     'ang__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':0., 'high':90.},
                     'fctrst__ISESPRESSO_VSmock_vis_ARspot1'  :{'mod':'uf', 'low':0., 'high':1.},
                     'lambda_rad__pl'+zodiac_pl               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
@@ -5987,7 +6691,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['reuse']={}
         # glob_fit_dic['DiffProf']['reuse']={
-        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/DiffProf/ns/raw_chains_live400_AUMicb.npz'],
+        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/HD189733/HD189733b_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk40_steps1000_HD189733b.npz'],
         #             'nburn':[300]
         #             }  
     #Re-starting
@@ -5997,15 +6701,15 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     # MCMC specific
     # - Walkers
-    if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['walkers_set']={'nwalkers':4,'nsteps':50,'nburn':15}
+    if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+        glob_fit_dic['DiffProf']['walkers_set']={'nwalkers':14,'nsteps':1500,'nburn':900}
 
     # - Complex priors        
          
     # - Walkers exclusion  
     glob_fit_dic['DiffProf']['exclu_walk']=True & False  
     if gen_dic['star_name'] in ['TOI3884','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:   
-        glob_fit_dic['DiffProf']['exclu_walk']=True & False   
+        glob_fit_dic['DiffProf']['exclu_walk']=True #& False   
     
 
     # - Automatic exclusion of outlying chains
@@ -6023,7 +6727,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Derived errors         
-    if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+    if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['out_err_mode']= 'HDI'
         glob_fit_dic['DiffProf']['HDI']='1s'
 
@@ -6033,7 +6737,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #MCMC chains
     glob_fit_dic['DiffProf']['save_MCMC_chains']='png'   #png  
-    if gen_dic['star_name'] in ['TOI3884','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']: 
+    if gen_dic['star_name'] in ['HD189733','TOI3884','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']: 
         glob_fit_dic['DiffProf']['save_MCMC_chains']='png'
         glob_fit_dic['DiffProf']['save_chi2_chains']='png'
 
@@ -6613,8 +7317,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - used to define the estimates for the differential profiles
     # + 'def_iord': reconstructed order
     # + 'def_range': define the range over which profiles are reconstructed
-    gen_dic['corr_diff'] = True #& False        
-    gen_dic['calc_corr_diff'] = True #& False        
+    gen_dic['corr_diff'] = True & False        
+    gen_dic['calc_corr_diff'] = True & False        
 
     data_dic['Diff']['corr_diff_dict']={'mode':'ana','def_range':[],'def_iord':0}
     if gen_dic['star_name']=='AUMic':
