@@ -1051,7 +1051,10 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                         wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='cos_istar')],axis=1)<0.) )
     
     
-    
+                if gen_dic['fit_DiffProf']:
+
+                    ipar_loc=np_where1D(fixed_args['var_par_list']=='FWHM__ord0__IS__VS_')
+                    wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1)> 5.))                    
     
     
                 print('   ',len(wgood),' walkers kept / ',fit_dic['nwalkers'])
