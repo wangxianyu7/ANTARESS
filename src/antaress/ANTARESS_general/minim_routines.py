@@ -377,9 +377,9 @@ def sub_ln_lkhood_func(p_step,fixed_args):
     #Model for current set of parameter values  
     #    - fit_func returns either 
     # + the model, in which case y_val is set to the data and s_val ; cov_val to its variance ; covariance)
-    # + a 'chi' array defined as the individual elements of 'chi2_step' below, in which case y_val is set to 0 and s_val to 1 (use_cov is set to False so that we enter the 'variance' condition below)
-    #   so that 'res' below equals 'y_step' which is 'chi', and 'chi2_step' is the sum of the 'chi' values squared
-    y_step,outputs = fixed_args['fit_func'](p_step, fixed_args['x_val'],args=fixed_args)
+    # + a 'chi' array defined as the individual elements of 'step_chi2' below, in which case y_val is set to 0 and s_val to 1 (use_cov is set to False so that we enter the 'variance' condition below)
+    #   so that 'res' below equals 'y_step' which is 'chi', and 'step_chi2' is the sum of the 'chi' values squared
+    y_step,step_outputs = fixed_args['fit_func'](p_step, fixed_args['x_val'],args=fixed_args)
 
     #Fitted pixels
     idx_fit = fixed_args['idx_fit']
@@ -397,8 +397,8 @@ def sub_ln_lkhood_func(p_step,fixed_args):
         chi = scipy.linalg.blas.dtbsv(L_mat.shape[0]-1, L_mat, res, lower=True)
 
         #Remove chi of unfitted pixels
-        chi2_step = np.sum(np.power(chi[idx_fit],2.)) 
-        ln_lkhood = - np.sum(np.log(np.sqrt(2.*np.pi)*L_mat[0][idx_fit])) - (chi2_step/2.)   
+        step_chi2 = np.sum(np.power(chi[idx_fit],2.)) 
+        ln_lkhood = - np.sum(np.log(np.sqrt(2.*np.pi)*L_mat[0][idx_fit])) - (step_chi2/2.)   
         
     #Use of variance alone
     else:
@@ -408,17 +408,16 @@ def sub_ln_lkhood_func(p_step,fixed_args):
         else:sjitt_val=np.sqrt(fixed_args['cov_val'][0,idx_fit])
             
         #Chi2
-        chi2_step=np.sum(  np.power( res[idx_fit]/sjitt_val,2.) )
+        step_chi2=np.sum(  np.power( res[idx_fit]/sjitt_val,2.) )
 
         #Ln likelihood
-        ln_lkhood = - np.sum(np.log(np.sqrt(2.*np.pi)*sjitt_val)) - (chi2_step/2.)
-        
-    #Formulate outputs
-    if not fixed_args['step_output']:outputs = None
-    if fixed_args['step_chi2']:chi2_outputs = np.sum(chi2_step)
-    else:chi2_outputs = None
-        
-    return ln_lkhood,chi2_step,outputs,chi2_outputs
+        ln_lkhood = - np.sum(np.log(np.sqrt(2.*np.pi)*sjitt_val)) - (step_chi2/2.)
+
+    #Outputs
+    if not fixed_args['step_chi2']:step_chi2 = None
+    if not fixed_args['step_output']:step_outputs = None
+
+    return ln_lkhood,step_chi2,step_outputs
 
 
 def ln_lkhood_func_mcmc(p_step,fixed_args):
@@ -434,9 +433,8 @@ def ln_lkhood_func_mcmc(p_step,fixed_args):
     
     """
     p_step_all = p_step
-    
-    #Log(likelihood)
-    return sub_ln_lkhood_func(p_step_all,fixed_args) 
+    ln_lkhood,step_chi2,step_outputs = sub_ln_lkhood_func(p_step_all,fixed_args) 
+    return ln_lkhood,step_chi2,step_outputs
 
 
 def ln_lkhood_func_ns(p_step,fixed_args):
@@ -488,15 +486,13 @@ def ln_lkhood_func_ns(p_step,fixed_args):
         p_step_all = p_step
         
     #Log(likelihood)
-    ln_lkhood = sub_ln_lkhood_func(p_step_all,fixed_args)
+    ln_lkhood,step_chi2,step_outputs = sub_ln_lkhood_func(p_step_all,fixed_args) 
 
     #Store blobs
-    blob = {}
-    if not fixed_args['step_chi2']:blob['step_chi2']=None
-    else:blob['step_chi2']=ln_lkhood[1]
-    blob['outputs']=ln_lkhood[2]
+    blob = {'step_chi2':step_chi2,
+            'step_outputs':step_outputs}
 
-    return ln_lkhood[0], blob
+    return ln_lkhood,blob
 
 
 
@@ -552,7 +548,7 @@ def ln_prob_func_mcmc(p_step,fixed_args):
     if not np.isinf(ln_prior):
 
         #Likelihood function
-        ln_lkhood,_,step_outputs,chi2_outputs = ln_lkhood_func_mcmc(p_step_all,fixed_args)
+        ln_lkhood,step_chi2,step_outputs = ln_lkhood_func_mcmc(p_step_all,fixed_args)
 
         #Set log-probability to -inf if likelihood is nan
         #    - happens when parameters go beyond their boundaries (hence ln_prior=-inf) but the model fails (hence ln_lkhood = nan)
@@ -560,10 +556,10 @@ def ln_prob_func_mcmc(p_step,fixed_args):
 
     else: 
         ln_prob=-np.inf
+        step_chi2 = None
         step_outputs = None
-        chi2_outputs = None
 
-    return ln_prob,step_outputs,chi2_outputs
+    return ln_prob,step_chi2,step_outputs
 
 
  
@@ -1077,7 +1073,9 @@ def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=N
     merit['message'] = result.message
     merit['eval'] = result.nfev
     
-    if fit_dic is not None:fit_dic['merit'].update(merit)
+    if fit_dic is not None:
+        fit_dic['merit'].update(merit)
+        fit_dic['merit']['method'] = method
 
     return result, merit ,p_best
     
@@ -1161,7 +1159,7 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
         n_free=np.shape(fit_dic['initial_distribution'])[1]
 
         #Defining blobs format
-        blobs_dtype = [("step_outputs", dict), ("step_chi2", float)]
+        blobs_dtype = [("step_chi2", dict) , ("step_outputs", float)]
     
         #Multiprocessing
         if nthreads>1:
@@ -1191,13 +1189,13 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
         #    - shape (nsteps,nwalkers,2)
         blobs = sampler.get_blobs()
 
-        #Step-by-step complementary function output
-        if fixed_args['step_output']:step_outputs = blobs["step_outputs"]
-        else:step_outputs = None
-
         #Step-by-step chi2 chain
-        if fixed_args['step_chi2']:fixed_args['chi2_storage'] = blobs["step_chi2"]
-        else:fixed_args['chi2_storage'] = None
+        if fixed_args['step_chi2']:step_chi2 = blobs['step_chi2']
+        else:step_chi2 = None
+        
+        #Step-by-step complementary function output
+        if fixed_args['step_output']:step_outputs = blobs['step_outputs']
+        else:step_outputs = None
 
         #Save raw MCMC results 
         if save_raw:
@@ -1268,7 +1266,7 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
         #Automatic definition of undefined priors                
         for par in fixed_args['var_par_list']:
             if par not in fixed_args['varpar_priors']:fixed_args['varpar_priors'][par]={'mod':'uf','low':-1e10,'high':1e10}
-    
+            
         #Dictionary entry for storage
         fit_dic['initial_distribution'] = [np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Prior values of starting points
                                            np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Coordinates of starting live points
@@ -1321,9 +1319,9 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
 
         #Retrieve likelihood values
         for idx, live_point in enumerate(fit_dic['initial_distribution'][1]):     
-            lklhood = ln_lkhood_func_ns(live_point, fixed_args)
-            fit_dic['initial_distribution'][2][idx] = lklhood[0] 
-            fit_dic['initial_distribution'][3][idx] = lklhood[1] 
+            ln_lkhood,blob = ln_lkhood_func_ns(live_point, fixed_args)
+            fit_dic['initial_distribution'][2][idx] = ln_lkhood
+            fit_dic['initial_distribution'][3][idx] = blob 
 
         #By default use variance
         if 'use_cov' not in fixed_args:fixed_args['use_cov']=False
@@ -1384,7 +1382,7 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
         blob_chi2 = np.zeros(fit_dic['nsteps'])
         #    - Populating arrays
         for step in range(fit_dic['nsteps']):
-            for blob_arr, blob_name in zip([blob_steps, blob_chi2], ["outputs", "step_chi2"]):blob_arr[step]=blobs[step][blob_name]
+            for blob_arr, blob_name in zip([blob_steps, blob_chi2], ["step_outputs", "step_chi2"]):blob_arr[step]=blobs[step][blob_name]
         #    - storing them in fixed_args for future steps
         if fixed_args['step_output']:step_outputs = blob_steps
         else:step_outputs = None
@@ -1490,7 +1488,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                 res_tab = fixed_args['y_val'] - fixed_args['fit_func'](p_final,fixed_args['x_val'],args=fixed_args)[0] 
                 fit_dic['merit']['rms']=res_tab.std()       
             else:fit_dic['merit']['rms']='Undefined'
-        
+   
             #Merit values 
             if fit_dic['fit_mode'] =='fixed':fit_dic['merit']['mode']='forward'    
             else:fit_dic['merit']['mode']='fit'    
@@ -1498,9 +1496,15 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
             if fit_dic['fit_mode'] in ['fixed','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
             elif fit_dic['fit_mode'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1]  
             elif fit_dic['fit_mode'] =='ns': fit_dic['merit']['chi2']=ln_lkhood_func_ns(p_final,fixed_args)[1]['step_chi2'] 
-            fit_dic['merit']['red_chi2']=fit_dic['merit']['chi2']/fit_dic['merit']['dof']
-            fit_dic['merit']['BIC']=fit_dic['merit']['chi2']+fit_dic['merit']['n_free']*np.log(fit_dic['nx_fit'])      
-            fit_dic['merit']['AIC']=fit_dic['merit']['chi2']+2.*fit_dic['merit']['n_free']
+            if fit_dic['merit']['chi2'] is not None:
+                fit_dic['merit']['red_chi2']=fit_dic['merit']['chi2']/fit_dic['merit']['dof']
+                fit_dic['merit']['BIC']=fit_dic['merit']['chi2']+fit_dic['merit']['n_free']*np.log(fit_dic['nx_fit'])      
+                fit_dic['merit']['AIC']=fit_dic['merit']['chi2']+2.*fit_dic['merit']['n_free']
+            else:
+                fit_dic['merit']['chi2'] = 'Undefined'
+                fit_dic['merit']['red_chi2'] = 'Undefined'
+                fit_dic['merit']['BIC'] = 'Undefined'
+                fit_dic['merit']['AIC'] = 'Undefined'
             if fit_dic['fit_mode'] in ['mcmc','ns']:fit_dic['merit']['GR_stat']=fit_dic['GR_stat']
             else:fit_dic['merit']['GR_stat']='N/A, MCMC run needed.'
 
@@ -1527,17 +1531,19 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                         ["Steps (initial, per walker) = "+str(fit_dic['nsteps'])],
                         ["Steps (final, all walkers)  = "+str(fit_dic['nsteps_final_merged'])],
                     ]        
-                rms_text = fit_dic['merit']['rms'] if type(fit_dic['merit']['rms'])==str else '%f'%fit_dic['merit']['rms'] 
+                def fmt_loc(val):
+                    if type(val)==str:return val
+                    else:return '%f'%val
                 txt_print+=[
                     ["Duration                    = "+"{0:.4f}".format(fit_dic['fit_dur'])+' s'],
                     ['Data points                 = %i'%fit_dic['nx_fit']],
                     ['Free variables              = %i'%fit_dic['merit']['n_free']],
                     ['Degree of freedom           = %i'%fit_dic['merit']['dof']],
-                    ['Best Chi-square             = %f'%fit_dic['merit']['chi2']],
-                    ['Reduced Chi-square          = %f'%fit_dic['merit']['red_chi2']],
-                    ['RMS of residuals            = '+rms_text],
-                    ['Bayesian Info. crit. (BIC)  = %f'%fit_dic['merit']['BIC']], 
-                    ['Akaike Info. crit. (AIC)    = %f'%fit_dic['merit']['AIC']], 
+                    ['Best Chi-square             = '+fmt_loc(fit_dic['merit']['chi2'])],
+                    ['Reduced Chi-square          = '+fmt_loc(fit_dic['merit']['red_chi2'])],
+                    ['RMS of residuals            = '+fmt_loc(fit_dic['merit']['rms'])],
+                    ['Bayesian Info. crit. (BIC)  = '+fmt_loc(fit_dic['merit']['BIC'])],
+                    ['Akaike Info. crit. (AIC)    = '+fmt_loc(fit_dic['merit']['AIC'])],
                     ['Gelman-Rubin statistic      = %s'%fit_dic['merit']['GR_stat']],
                     ]
                 if fit_dic['fit_mode']=='chi2':txt_print+=[["Cumul. dist. funct. (cdf)   = %e"%fit_dic['merit']['cdf']]]
@@ -2638,7 +2644,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain,sim_points = None):
         else:
              label_kwargs=None
              tick_kwargs=None   
-             
+
         #Reduce to required parameters
         var_par_list = np.array(fixed_args['var_par_list'])
         var_par_names = np.array(fixed_args['var_par_names'])
@@ -2653,7 +2659,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain,sim_points = None):
             var_par_names = var_par_names[ikept] 
             if key=='samples':merged_chain = merged_chain[:,ikept] 
             if (sim_points is not None):sim_points = sim_points[:,ikept] 
-            fit_dic['med_parfinal'] = fit_dic['med_parfinal'][ikept] 
+            if best_val is not None:best_val = best_val[ikept] 
             fit_dic['HDI_interv'] = fit_dic['HDI_interv'][ikept]              
 
         #Remove constant parameters
@@ -2664,7 +2670,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain,sim_points = None):
                 var_par_names = np.delete(var_par_names,ipar)
                 if key=='samples':merged_chain = np.delete(merged_chain,ipar,axis=1) 
                 if (sim_points is not None):sim_points = np.delete(sim_points,ipar,axis=1) 
-                fit_dic['med_parfinal'] = np.delete(fit_dic['med_parfinal'],ipar)
+                if best_val is not None:best_val = best_val[ikept] 
                 fit_dic['HDI_interv'] = np.delete( fit_dic['HDI_interv'],ipar,axis=0)              
 
         #Simulation points
@@ -2746,7 +2752,7 @@ def MCMC_plot_chains(save_mode,save_dir_MCMC,var_par_list,var_par_names,chain,bu
         
     #Linewidth
     lw_plot=0.1
-          
+
     #----------------------------------------------------------------
     #Loop on parameters
     med_par=np.median(burnt_chains, axis=(0,1))
@@ -3125,7 +3131,7 @@ def MCMC_corner_plot(mode,save_mode,save_name,save_dir_MCMC,xs,HDI_interv,
         for par in range_par_in:
             idx_par = np_where1D(labels==par)
             if len(idx_par)>0:range_par[idx_par[0]] = range_par_in[par]
-            else:print('WARNING : '+par+' set in "range_par" not in '+labels)
+            else:print('WARNING : '+par+' set in "range_par" not in labels')
         for i,x in enumerate(xs):
             if len(range_par[i])==0:range_par[i] = [x.min(), x.max()]
 
@@ -3142,7 +3148,7 @@ def MCMC_corner_plot(mode,save_mode,save_name,save_dir_MCMC,xs,HDI_interv,
         for par in bins_1D_par_in:
             idx_par = np_where1D(labels_raw==par)
             if len(idx_par)>0:bins_1D_par[idx_par[0]] = bins_1D_par_in[par]
-            else:stop('Parameter'+par+' not in fitted list.')
+            else:stop('Parameter "'+par+'" not in fitted list.')
     if type(bins_2D_par) in [int,float]:bins_2D_par=np.repeat(bins_2D_par,npar).astype(int)
     elif type(bins_2D_par)==dict:
         if labels_raw is None:raise ValueError("Parameters must be named to be set in `range_par`")
@@ -3151,7 +3157,7 @@ def MCMC_corner_plot(mode,save_mode,save_name,save_dir_MCMC,xs,HDI_interv,
         for par in bins_2D_par_in:
             idx_par = np_where1D(labels_raw==par)
             if len(idx_par)>0:bins_2D_par[idx_par[0]] = bins_2D_par_in[par] 
-            else:stop('Parameter'+par+' not in fitted list.')
+            else:stop('Parameter "'+par+'" not in fitted list.')
 
     #Ticks interval undefined
     if major_int is None:major_int=np.repeat(None,npar)

@@ -5,7 +5,7 @@ from itertools import product as it_product
 import lmfit
 from copy import deepcopy
 from ..ANTARESS_general.utils import stop,planck
-from ..ANTARESS_general.constant_data import G_usi,Msun
+from ..ANTARESS_general.constant_data import G_usi,Msun,Rsun
 from ..ANTARESS_grids.ANTARESS_coord import calc_zLOS_oblate,frameconv_skystar_to_star
 
 
@@ -120,7 +120,7 @@ def calc_CB_RV(ld_coeff,LD_mod,c1_CB,c2_CB,c3_CB,star_params):
 
 
 
-def calc_GD(x_grid_star,y_grid_star,z_grid_star,star_params,gd_band,x_st_sky_grid,y_st_sky_grid):
+def calc_GD(x_grid_star,y_grid_star,z_grid_star,star_params_eff,gd_band,x_st_sky_grid,y_st_sky_grid):
     r"""**Gravity-darkening intensity**
 
     Calculates blackbody emission with gravity-darkening, using the formalism from Barnes+2009.
@@ -128,6 +128,7 @@ def calc_GD(x_grid_star,y_grid_star,z_grid_star,star_params,gd_band,x_st_sky_gri
 
     Args:
         TBD
+        star_params_eff (dict) : dictionary containing nominal or variable (overwritten from fit routines) stellar properties
     
     Returns:
         TBD
@@ -156,9 +157,9 @@ def calc_GD(x_grid_star,y_grid_star,z_grid_star,star_params,gd_band,x_st_sky_gri
     # xstar=0,zstar=0,ystar = +- Req*(1-f)
     # R = ystar 
     # gpole = Vgy_pole  
-    Rstar_m = star_params['Rstar_km']*1e3                                 
-    gr_R = -G_usi*star_params['Mstar']*Msun/(r_grid_star*Rstar_m)**3.
-    grp_Rp = star_params['om_eq']**2.
+    Rstar_m = star_params_eff['Rstar_km']*1e3                                 
+    gr_R = -G_usi*star_params_eff['Mstar']*Msun/(r_grid_star*Rstar_m)**3.
+    grp_Rp = star_params_eff['om_eq']**2.
     Vgx_grid_star = x_grid_star*(gr_R + grp_Rp)
     Vgy_grid_star = y_grid_star*gr_R 
     Vgz_grid_star = z_grid_star*(gr_R + grp_Rp) 
@@ -191,13 +192,13 @@ def calc_GD(x_grid_star,y_grid_star,z_grid_star,star_params,gd_band,x_st_sky_gri
     #         = (1/(2*A)) * ( -(2*ci*si*(1 - Rpole^2))   + 4*y*( ( ci^2*si^2*(1 - Rpole^2)^2 - (1 - si^2*(1-Rpole^2))*( si^2*(1- Rpole^2) + Rpole^2 )  )/sqrt(D(x,y)) ) )  
     #         the term inside the parenthesis simplifies as Rpole^2, so that:
     #         = (1/A) * ( -(ci*si*(1 - Rpole^2))   + 2*y*Rpole^2/sqrt(D(x,y)) ) 
-    RpoleReq2 = star_params['RpoleReq']**2.
-    ci = np.cos(star_params['istar_rad'])
-    si = np.sin(star_params['istar_rad'])
+    RpoleReq2 = star_params_eff['RpoleReq']**2.
+    ci = np.cos(star_params_eff['istar_rad'])
+    si = np.sin(star_params_eff['istar_rad'])
     mRp2 = (1. - RpoleReq2)
     Aquad = 1. - si**2.*mRp2
     Bquad = 2.*y_st_sky_grid*ci*si*mRp2
-    Cquad = y_st_sky_grid**2.*si**2.*mRp2 + star_params['RpoleReq']**2.*(x_st_sky_grid**2.+ y_st_sky_grid**2. - 1.) 
+    Cquad = y_st_sky_grid**2.*si**2.*mRp2 + star_params_eff['RpoleReq']**2.*(x_st_sky_grid**2.+ y_st_sky_grid**2. - 1.) 
     det = Bquad**2.-4.*Aquad*Cquad
     Nx_st_sky_grid2 = ( RpoleReq2*2.*x_st_sky_grid )**2./np.abs(det)
     Ny_st_sky_grid2 = ((1./Aquad)*( -(ci*si*mRp2)   + 2.*y_st_sky_grid*RpoleReq2/np.sqrt(det) ))**2.    
@@ -207,13 +208,13 @@ def calc_GD(x_grid_star,y_grid_star,z_grid_star,star_params,gd_band,x_st_sky_gri
 
     #Calculate gravity-darkening
     if len(gd_band)>0:
-        y_pole_star = star_params['RpoleReq']
-        gr_R_pole = -G_usi*star_params['Mstar']*Msun/(y_pole_star*Rstar_m)**3.
+        y_pole_star = star_params_eff['RpoleReq']
+        gr_R_pole = -G_usi*star_params_eff['Mstar']*Msun/(y_pole_star*Rstar_m)**3.
         g_pole_star = np.abs(y_pole_star*gr_R_pole)  
     
         #Stellar cell temperature
         #    - from Maeder+2009
-        temp_grid_star = star_params['Tpole']*(g_grid_star/g_pole_star)**star_params['beta_GD']
+        temp_grid_star = star_params_eff['Tpole']*(g_grid_star/g_pole_star)**star_params_eff['beta_GD']
     
         #Wavelength table for the band, in A
         nw_band=int((gd_band['wmax']-gd_band['wmin'])/gd_band['dw'])
@@ -325,7 +326,7 @@ def calc_LD(LD_mod,mu,ld_coeff):
 
 
 
-def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params,Ssub_Sstar,Istar_norm=1.,region = 'star',Ssub_Sstar_ref = None):
+def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params_eff,Ssub_Sstar,Istar_norm=1.,region = 'star',Ssub_Sstar_ref = None):
     r"""**Stellar intensity grid.**
 
     Calculates flux and intensity values over the stellar grid, from various contributions.
@@ -349,9 +350,9 @@ def calc_Isurf_grid(iband_list,ngrid_star,system_prop,coord_grid,star_params,Ssu
     for isubband,iband in enumerate(iband_list):
 
         #Oblate star with gravity-darkening
-        if (star_params['f_GD']>0.):
-            if star_params['GD']:gd_band = {'wmin':system_prop['GD_wmin'][iband],'wmax':system_prop['GD_wmax'][iband],'dw':system_prop['GD_dw'][iband]}
-            gd_grid_star[:,isubband],mu_grid_star[:,isubband] = calc_GD(coord_grid['x_st'],coord_grid['y_st'],coord_grid['z_st'],star_params,gd_band,coord_grid['x_st_sky'],coord_grid['y_st_sky'])         
+        if (star_params_eff['f_GD']>0.):
+            if star_params_eff['GD']:gd_band = {'wmin':system_prop['GD_wmin'][iband],'wmax':system_prop['GD_wmax'][iband],'dw':system_prop['GD_dw'][iband]}
+            gd_grid_star[:,isubband],mu_grid_star[:,isubband] = calc_GD(coord_grid['x_st'],coord_grid['y_st'],coord_grid['z_st'],star_params_eff,gd_band,coord_grid['x_st_sky'],coord_grid['y_st_sky'])         
 
         #Spherical star
         else:mu_grid_star[:,isubband] = coord_grid['z_st_sky']
@@ -431,7 +432,7 @@ def calc_st_sky(coord_grid,star_params):
 
 
 
-def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params,var_stargrid_bulk,var_stargrid_I):
+def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params_eff,var_stargrid_bulk,var_stargrid_I):
     r"""**Model stellar grid**
 
     Defines coordinates and intensity values over the stellar grid.
@@ -446,7 +447,7 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params,var
  
     #Initializing velocity grid
     #    - if active regions are accounted for, the surface rv properties will be stored as cell-dependent grids to allow distinguishing between quiet and active cells
-    for key in ['veq','alpha_rot','beta_rot']:grid_dic[key] = star_params[key]    
+    for key in ['veq','alpha_rot','beta_rot']:grid_dic[key] = star_params_eff[key]    
      
     #Updating bulk stellar grid
     #    - this is only required if :
@@ -473,7 +474,7 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params,var
         coord_grid['y_st_sky'] = xy_st_sky_grid[:,1]
     
         #Coordinates in the sky-projected star rest frame
-        nsub_star = calc_st_sky(coord_grid,star_params)
+        nsub_star = calc_st_sky(coord_grid,star_params_eff)
     
         #Storing for model fits
         if mode=='grid':
@@ -491,7 +492,7 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params,var
         for key_type in grid_type_eff:
     
             #Intensity grid
-            ld_grid_star,gd_grid_star,mu_grid_star,Fsurf_grid_star,Ftot_star,Istar_norm = calc_Isurf_grid(range(system_prop_in[key_type]['nw']),nsub_star,system_prop_in[key_type],coord_grid,star_params,Ssub_Sstar)
+            ld_grid_star,gd_grid_star,mu_grid_star,Fsurf_grid_star,Ftot_star,Istar_norm = calc_Isurf_grid(range(system_prop_in[key_type]['nw']),nsub_star,system_prop_in[key_type],coord_grid,star_params_eff,Ssub_Sstar)
         
             #Storing for model fits
             if mode=='grid':
@@ -527,38 +528,39 @@ def up_model_star(args,param_in):
     if isinstance(param_in,lmfit.parameter.Parameters):param={par:param_in[par].value for par in param_in}
     else:param=deepcopy(param_in)
     
+    #Initializing local stellar properties with nominal ones
+    star_params_eff = args['system_param']['star']    
+    
     #Updating main stellar properties with variable model parameters 
     #    - properties stored in 'var_stargrid_prop' are defined as model parameters, either with values that differ from the nominal ones, or because they are fitted
-    star_params = args['system_param']['star']
-    for par in args['var_stargrid_prop']:
-        if ('LD_u' in par):
-            ideg = par.split('LD_u')
-            args['system_prop']['achrom'].update({'LD_u'+str(ideg):[param['LD_u'+str(ideg)]]}) 
-        else:
-            star_params[par] = param[par]
+    if 'Rstar' in args['var_stargrid_prop']:Rstar_km = param['Rstar']*Rsun
+    else:Rstar_km = star_params_eff['Rstar_km']
+    for key in ['','_spots','_faculae']:    
+        for par in args['var_stargrid_prop'+key]:
+            par_ar = par+key
+            if ('LD_u' in par):
+                ideg = par.split('LD_u')
+                args['system_prop']['achrom'].update({'LD_u'+str(ideg):[param['LD_u'+str(ideg)]]}) 
+            else:
+                star_params_eff[par_ar] = param[par_ar]
 
-            #Updating rotational period or velocity
-            if par=='veq':star_params['Peq'] = (2*np.pi*star_params['Rstar_km'])/(param['veq']*24*3600)
-            elif par=='Peq':star_params['veq'] = (2*np.pi*star_params['Rstar_km'])/(param['Peq']*24*3600)    
+                #Updating rotational period or velocity
+                if par in ['veq','Peq']:
+                    if par=='veq':
+                        star_params_eff['Peq'+key] = (2*np.pi*Rstar_km)/(param['veq'+key]*24*3600) 
+                        star_params_eff['om_eq'+key]=param['veq'+key]/Rstar_km
+                    elif par=='Peq':
+                        star_params_eff['veq'+key] = (2*np.pi*Rstar_km)/(param['Peq'+key]*24*3600)  
+                        star_params_eff['om_eq'+key]=star_params_eff['veq'+key]/Rstar_km  
             
-    #Updating spot and facula properties
-    for ar in ['spots','faculae']:
-        for par in args['var_stargrid_prop_'+ar]:
-            par_ar = par+'_'+ar
-            star_params[par_ar] = param[par_ar]
-            if par=='veq':star_params['Peq_'+ar] = (2*np.pi*star_params['Rstar_km'])/(param['veq_'+ar]*24*3600) 
-            elif par=='Peq':star_params['veq_'+ar] = (2*np.pi*star_params['Rstar_km'])/(param['Peq_'+ar]*24*3600)        
-
     #Updating stellar properties derived from main properties
-    if 'f_GD' in args['var_stargrid_prop']:star_params['RpoleReq']=1.-star_params['f_GD']
-    if 'cos_istar' in args['var_stargrid_prop']:star_params['istar_rad']=np.arccos(star_params['cos_istar'])
-    for key in ['','_spots','_faculae']:
-        if ('veq' in args['var_stargrid_prop'+key]) or ('Peq' in args['var_stargrid_prop'+key]):star_params['om_eq'+key]=star_params['veq'+key]/star_params['Rstar_km']
+    if 'f_GD' in args['var_stargrid_prop']:star_params_eff['RpoleReq']=1.-star_params_eff['f_GD']
+    if 'cos_istar' in args['var_stargrid_prop']:star_params_eff['istar_rad']=np.arccos(star_params_eff['cos_istar'])
 
     #Updating stellar grid
     #    - physical sky-projected grid and broadband intensity variations     
     #    - only if grid settings or specific stellar properties changed value       
-    model_star('grid',args['grid_dic'],[args['type']],args['system_prop'],args['grid_dic']['nsub_Dstar'],star_params,args['var_stargrid_bulk'],args['var_stargrid_I'])
+    model_star('grid',args['grid_dic'],[args['type']],args['system_prop'],args['grid_dic']['nsub_Dstar'],star_params_eff,args['var_stargrid_bulk'],args['var_stargrid_I'])
 
     return None
 

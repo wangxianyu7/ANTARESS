@@ -350,103 +350,107 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
             proc_DI_data_paths_new = gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_' 
 
             #--------------------------------------------------------
-            #Defining inter-visit flux balance
-            #    - used to correct for deviation between current visit master and global master, and applied within corrFbal_vis()
-            #    - see details in corrFbal_vis():
-            # + visit masters can be measured from their own exposures, or set to an external reference (which can be different for each visit or common, but must be defined for each visit)
-            #   they cannot be a combination of both
-            # + if a single visit is processed the global master is not relevant
-            #   if a single instrument is processed, the global master in each visit can be set to the mean of the measured visit-specific masters (in which case it is common to all visits), or to the external references provided for each visit (in which case it can be visit-dependent)
-            #   if multiple instruments are processed, the global master must be set to external references so that the spectral range of all instruments are covered
-            if gen_dic['corr_Fbal'] and (Fbal_vis_inst is not None):
-
-                #Default options
-                if (vis not in gen_dic['Fbal_deg_vis'][inst]):gen_dic['Fbal_deg_vis'][inst][vis] = 4
-                if (vis not in gen_dic['Fbal_smooth_vis'][inst]):gen_dic['Fbal_smooth_vis'][inst][vis] = 1e-4                  
-
+            #Defining global correction
+            if gen_dic['corr_Fbal']:
+    
                 #Fitted orders
                 if (inst in gen_dic['Fbal_ord_fit']) and (vis in gen_dic['Fbal_ord_fit'][inst]) and (len(gen_dic['Fbal_ord_fit'][inst][vis])>0):
                     iord_fit_list = np.intersect1d(iord_fit_Fbal,gen_dic['Fbal_ord_fit'][inst][vis]) 
-                else:iord_fit_list = iord_fit_Fbal                
-                
+                else:iord_fit_list = iord_fit_Fbal  
+                    
                 #Fitted ranges
                 if (inst not in gen_dic['Fbal_range_fit']) or ((inst in gen_dic['Fbal_range_fit']) & (vis not in gen_dic['Fbal_range_fit'][inst])):range_fit=[]
                 else:range_fit=gen_dic['Fbal_range_fit'][inst][vis] 
 
-                #Set global reference to external master
-                if Fbal_vis_inst=='ext':                     
-                    data_Mast_ref = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_theo')                     
-                    cen_wav_Mstar = data_Mast_ref['cen_bins']
-                    low_wav_Mstar = data_Mast_ref['edge_bins'][:,0:-1]
-                    high_wav_Mstar = data_Mast_ref['edge_bins'][:,1::]    
-                    dwav_Mstar = high_wav_Mstar-low_wav_Mstar    
+                #--------------------------------------------------------
+                #Defining inter-visit flux balance
+                #    - used to correct for deviation between current visit master and global master, and applied within corrFbal_vis()
+                #    - see details in corrFbal_vis():
+                # + visit masters can be measured from their own exposures, or set to an external reference (which can be different for each visit or common, but must be defined for each visit)
+                #   they cannot be a combination of both
+                # + if a single visit is processed the global master is not relevant
+                #   if a single instrument is processed, the global master in each visit can be set to the mean of the measured visit-specific masters (in which case it is common to all visits), or to the external references provided for each visit (in which case it can be visit-dependent)
+                #   if multiple instruments are processed, the global master must be set to external references so that the spectral range of all instruments are covered
+                if (Fbal_vis_inst is not None):
+    
+                    #Default options
+                    if (vis not in gen_dic['Fbal_deg_vis'][inst]):gen_dic['Fbal_deg_vis'][inst][vis] = 4
+                    if (vis not in gen_dic['Fbal_smooth_vis'][inst]):gen_dic['Fbal_smooth_vis'][inst][vis] = 1e-4                  
+              
+                    #Set global reference to external master
+                    if Fbal_vis_inst=='ext':                     
+                        data_Mast_ref = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_theo')                     
+                        cen_wav_Mstar = data_Mast_ref['cen_bins']
+                        low_wav_Mstar = data_Mast_ref['edge_bins'][:,0:-1]
+                        high_wav_Mstar = data_Mast_ref['edge_bins'][:,1::]    
+                        dwav_Mstar = high_wav_Mstar-low_wav_Mstar    
+                        
+                    #Retrieve measured visit master
+                    data_Mast_vis = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_meas')
                     
-                #Retrieve measured visit master
-                data_Mast_vis = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_'+vis+'_meas')
-                
-                #Processing visit and reference masters over their commonly defined pixels, within selected ranges
-                #    - the measured reference for an instrument is only defined in pixels where all visit masters are defined
-                #    - the external reference is defined at all wavelengths
-                if Fbal_vis_inst=='meas':cond_def_Mast = deepcopy(data_Mast_ref['cond_def'])
-                elif Fbal_vis_inst=='ext':cond_def_Mast = deepcopy(data_Mast_vis['cond_def'])   
-                if (len(range_fit)>0):
-                    cond_sel = np.zeros(data_Mast_ref['flux'].shape,dtype=bool)
-                    for bd_band_loc in range_fit:cond_sel|=(low_wav_Mstar>bd_band_loc[0]) & (high_wav_Mstar<bd_band_loc[1])
-                    cond_def_Mast &= cond_sel                     
-         
-                #Mean flux ratio between visit and reference
-                tot_Fr_vis = corrFbal_totFr(data_inst['nord'],cond_def_Mast,data_dic['DI']['scaling_range'],low_wav_Mstar,high_wav_Mstar,dwav_Mstar,data_Mast_vis['flux'],data_Mast_ref['flux'])
+                    #Processing visit and reference masters over their commonly defined pixels, within selected ranges
+                    #    - the measured reference for an instrument is only defined in pixels where all visit masters are defined
+                    #    - the external reference is defined at all wavelengths
+                    if Fbal_vis_inst=='meas':cond_def_Mast = deepcopy(data_Mast_ref['cond_def'])
+                    elif Fbal_vis_inst=='ext':cond_def_Mast = deepcopy(data_Mast_vis['cond_def'])   
+                    if (len(range_fit)>0):
+                        cond_sel = np.zeros(data_Mast_ref['flux'].shape,dtype=bool)
+                        for bd_band_loc in range_fit:cond_sel|=(low_wav_Mstar>bd_band_loc[0]) & (high_wav_Mstar<bd_band_loc[1])
+                        cond_def_Mast &= cond_sel                     
+             
+                    #Mean flux ratio between visit and reference
+                    tot_Fr_vis = corrFbal_totFr(data_inst['nord'],cond_def_Mast,data_dic['DI']['scaling_range'],low_wav_Mstar,high_wav_Mstar,dwav_Mstar,data_Mast_vis['flux'],data_Mast_ref['flux'])
+               
+                    #Switching fitted data to nu space
+                    #    - the scaling must be applied uniformely to the two masters so as not introduce biases
+                    low_nu_exp = c_light/high_wav_Mstar[:,::-1]
+                    high_nu_exp = c_light/low_wav_Mstar[:,::-1]
+                    dnu_exp =  high_nu_exp - low_nu_exp   
+                    nu_bins_exp = c_light/cen_wav_Mstar[:,::-1]
+    
+                    #Processing requested orders
+                    #    - shifting from the star (source) to the detector (receiver) rest frame
+                    #      see gen_specdopshift() :
+                    # w_receiver = w_source * (1+ rv[s/r]/c))
+                    # w_earth = w_star * (1+ (rv[star/starbar]/c))* (1+ (rv[starbar/solbar]/c))/(1+ (BERV/c))     
+                    #      here we neglect the stellar keplerian motion and use the mean BERV
+                    iord_fit_list_def = np.intersect1d(iord_fit_list,np_where1D(np.sum(cond_def_Mast,axis=1)))
+                    mean_BERV = np.nanmean(data_prop[inst][vis]['BERV'])
+                    cen_wav_Mstar_earth = cen_wav_Mstar*gen_specdopshift(data_dic['DI']['sysvel'][inst][vis])/(gen_specdopshift(mean_BERV)*(1.+1.55e-8))             
+                    nu_Mstar_binned = np.zeros(0,dtype=float)
+                    Mstar_Fr = np.zeros(0,dtype=float)
+                    for iord in iord_fit_list_def:  
+                        
+                        #Scaling masters back to counts over their common defined pixels in order  
+                        #    - median calibration profile must be calculated in the detector (Earth) frame with the function, but defined over the same table that is used in the star rest frame for all masters
+                        mean_gcal_Mstar_ord = mean_gcal_func[iord](cen_wav_Mstar_earth[iord,cond_def_Mast[iord]])[::-1]
+                        count_Mstar_vis_ord = data_Mast_vis['flux'][iord,cond_def_Mast[iord]][::-1] /mean_gcal_Mstar_ord                      
+                        count_Mstar_ref_ord = data_Mast_ref['flux'][iord,cond_def_Mast[iord]][::-1]/mean_gcal_Mstar_ord
+                        
+                        #Summing over full order
+                        nu_Mstar_binned = np.append(nu_Mstar_binned,np.mean(nu_bins_exp[iord,cond_def_Mast[iord]]))
+                        dnu_Mstar_ord = dnu_exp[iord,cond_def_Mast[iord]] 
+                        totcount_Mstar_ref = np.sum(count_Mstar_ref_ord*dnu_Mstar_ord)
+                        totcount_Mstar_vis = np.sum(count_Mstar_vis_ord*dnu_Mstar_ord) 
+                        Mstar_Fr = np.append(Mstar_Fr,totcount_Mstar_vis/totcount_Mstar_ref)
+    
+                    #Fitted values
+                    id_sort=np.argsort(nu_Mstar_binned)
+                    cen_bins_fit = nu_Mstar_binned[id_sort]
+                    norm_Fr_fit = Mstar_Fr[id_sort]/tot_Fr_vis   
+                    n_bins = len(norm_Fr_fit)
+                    cond_fit = np.repeat(True,n_bins)            
            
-                #Switching fitted data to nu space
-                #    - the scaling must be applied uniformely to the two masters so as not introduce biases
-                low_nu_exp = c_light/high_wav_Mstar[:,::-1]
-                high_nu_exp = c_light/low_wav_Mstar[:,::-1]
-                dnu_exp =  high_nu_exp - low_nu_exp   
-                nu_bins_exp = c_light/cen_wav_Mstar[:,::-1]
-
-                #Processing requested orders
-                #    - shifting from the star (source) to the detector (receiver) rest frame
-                #      see gen_specdopshift() :
-                # w_receiver = w_source * (1+ rv[s/r]/c))
-                # w_earth = w_star * (1+ (rv[star/starbar]/c))* (1+ (rv[starbar/solbar]/c))/(1+ (BERV/c))     
-                #      here we neglect the stellar keplerian motion and use the mean BERV
-                iord_fit_list_def = np.intersect1d(iord_fit_list,np_where1D(np.sum(cond_def_Mast,axis=1)))
-                mean_BERV = np.nanmean(data_prop[inst][vis]['BERV'])
-                cen_wav_Mstar_earth = cen_wav_Mstar*gen_specdopshift(data_dic['DI']['sysvel'][inst][vis])/(gen_specdopshift(mean_BERV)*(1.+1.55e-8))             
-                nu_Mstar_binned = np.zeros(0,dtype=float)
-                Mstar_Fr = np.zeros(0,dtype=float)
-                for iord in iord_fit_list_def:  
-                    
-                    #Scaling masters back to counts over their common defined pixels in order  
-                    #    - median calibration profile must be calculated in the detector (Earth) frame with the function, but defined over the same table that is used in the star rest frame for all masters
-                    mean_gcal_Mstar_ord = mean_gcal_func[iord](cen_wav_Mstar_earth[iord,cond_def_Mast[iord]])[::-1]
-                    count_Mstar_vis_ord = data_Mast_vis['flux'][iord,cond_def_Mast[iord]][::-1] /mean_gcal_Mstar_ord                      
-                    count_Mstar_ref_ord = data_Mast_ref['flux'][iord,cond_def_Mast[iord]][::-1]/mean_gcal_Mstar_ord
-                    
-                    #Summing over full order
-                    nu_Mstar_binned = np.append(nu_Mstar_binned,np.mean(nu_bins_exp[iord,cond_def_Mast[iord]]))
-                    dnu_Mstar_ord = dnu_exp[iord,cond_def_Mast[iord]] 
-                    totcount_Mstar_ref = np.sum(count_Mstar_ref_ord*dnu_Mstar_ord)
-                    totcount_Mstar_vis = np.sum(count_Mstar_vis_ord*dnu_Mstar_ord) 
-                    Mstar_Fr = np.append(Mstar_Fr,totcount_Mstar_vis/totcount_Mstar_ref)
-
-                #Fitted values
-                id_sort=np.argsort(nu_Mstar_binned)
-                cen_bins_fit = nu_Mstar_binned[id_sort]
-                norm_Fr_fit = Mstar_Fr[id_sort]/tot_Fr_vis   
-                n_bins = len(norm_Fr_fit)
-                cond_fit = np.repeat(True,n_bins)            
-       
-                #Fit
-                #    - we neglect uncertainties and assume they are equal for all bins
-                if gen_dic['Fbal_mod']=='pol':corr_func_vis = np.poly1d(np.polyfit(cen_bins_fit[cond_fit], norm_Fr_fit[cond_fit], gen_dic['Fbal_deg_vis'][inst][vis] )) 
-                elif gen_dic['Fbal_mod']=='spline':corr_func_vis = UnivariateSpline(cen_bins_fit[cond_fit], norm_Fr_fit[cond_fit],s=gen_dic['Fbal_smooth_vis'][inst][vis] )
-
-                #Save correction data for plotting purposes
-                if (plot_dic['Fbal_corr_vis']!=''):
-                    data_glob.update({'corr_func_vis':corr_func_vis,'Fbal_wav_bin_vis':c_light/nu_Mstar_binned[::-1],'Fbal_T_binned_vis':Mstar_Fr[::-1],'tot_Fr_vis':tot_Fr_vis}) 
-                    data_glob['cond_fit_vis'] = np.zeros(n_bins,dtype=bool)
-                    data_glob['cond_fit_vis'][id_sort] = cond_fit[::-1]                             
+                    #Fit
+                    #    - we neglect uncertainties and assume they are equal for all bins
+                    if gen_dic['Fbal_mod']=='pol':corr_func_vis = np.poly1d(np.polyfit(cen_bins_fit[cond_fit], norm_Fr_fit[cond_fit], gen_dic['Fbal_deg_vis'][inst][vis] )) 
+                    elif gen_dic['Fbal_mod']=='spline':corr_func_vis = UnivariateSpline(cen_bins_fit[cond_fit], norm_Fr_fit[cond_fit],s=gen_dic['Fbal_smooth_vis'][inst][vis] )
+    
+                    #Save correction data for plotting purposes
+                    if (plot_dic['Fbal_corr_vis']!=''):
+                        data_glob.update({'corr_func_vis':corr_func_vis,'Fbal_wav_bin_vis':c_light/nu_Mstar_binned[::-1],'Fbal_T_binned_vis':Mstar_Fr[::-1],'tot_Fr_vis':tot_Fr_vis}) 
+                        data_glob['cond_fit_vis'] = np.zeros(n_bins,dtype=bool)
+                        data_glob['cond_fit_vis'][id_sort] = cond_fit[::-1]                             
 
             #--------------------------------------------------------
             #Intra-order flux balance
@@ -499,7 +503,7 @@ def corrFbal_vis(iexp_group,proc_DI_data_paths,inst,vis,save_data_dir,range_fit,
         TBD
     
     """       
-    
+
     #Processing each exposure
     tot_Fr_all = np.zeros(len(iexp_group),dtype=float)
     for isub_exp,iexp in enumerate(iexp_group):

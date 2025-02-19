@@ -2299,7 +2299,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         fixed_args_loc['idx_fit'] = np.ones(len(nu_all),dtype=bool)
                         for it in range(gen_dic['wig_vis_fit']['nit']):
                             print('               Iteration:',it+1,'/',gen_dic['wig_vis_fit']['nit'])
-                            p_best_curr = call_lmfit(p_best_curr,nu_all,Fr_all,np.array([varFr_all]),fixed_args_loc['fit_func'],verbose=True,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method=gen_dic['wig_vis_fit']['fit_method'])[2]
+                            p_best_curr = call_lmfit(p_best_curr,nu_all,Fr_all,np.array([varFr_all]),fixed_args_loc['fit_func'],verbose=True,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method=gen_dic['wig_vis_fit']['fit_method'],fit_dic=fit_dic)[2]
 
                             #Save results every n iterations
                             if it % gen_dic['wig_vis_fit']['n_save_it'] ==0:
@@ -2312,7 +2312,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 fit_dic['file_save'].close() 
                             
                         #Determine uncertainties by running LM fit using iterative solution as starting point
-                        _,merit,p_best_curr = call_lmfit(p_best_curr,nu_all,Fr_all,np.array([varFr_all]),fixed_args_loc['fit_func'],verbose=True ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method='leastsq')
+                        _,merit,p_best_curr = call_lmfit(p_best_curr,nu_all,Fr_all,np.array([varFr_all]),fixed_args_loc['fit_func'],verbose=True ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method='leastsq',fit_dic=fit_dic)
 
                         #Store best fit for current loop
                         for subpar in var_par_list:globvisfit_results['var_par_fit'][subpar][iloop,:] = [p_best_curr[subpar].value,p_best_curr[subpar].stderr] 

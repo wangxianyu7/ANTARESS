@@ -197,7 +197,7 @@ def up_plocc_arocc_prop(inst,vis,args,param_in,studied_pl,ph_grid,coord_grid, st
 
 
 
-def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,system_param,theo_dic,system_prop_in,param,coord_in,iexp_list,system_ar_prop_in={},out_ranges=False,Ftot_star=False):
+def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,system_param,theo_dic,star_I_prop_in,param,coord_in,iexp_list,system_ar_prop_in={},out_ranges=False,Ftot_star=False):
     r"""**Planet-occulted and active region properties: exposure**
 
     Calculates average theoretical properties of the stellar surface occulted by all transiting planets and/or within active regions during an exposure
@@ -213,7 +213,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
         studied_ar (list) : list of visible active regions in the exposures considered.
         system_param (dict) : system (star + planet + active region) properties.
         theo_dic (dict) : parameters used to generate and describe the stellar grid and planet-occulted/active regions grid.
-        system_prop_in (dict) : planet limb-darkening properties.
+        star_I_prop_in (dict) : stellar intensity properties.
         param (dict) : fitted or fixed star/planet/active region properties.
         coord_in (dict) : dictionary containing the various coordinates of each planet and active region (e.g., exposure time, exposure phase, exposure x/y/z coordinate)
         iexp_list (list) : exposures to process.
@@ -227,7 +227,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
         surf_prop_dic_common (dict) : average value of all the properties of interest considering the contributions from both the planet-occulted and active regions, in each exposure and chromatic mode considered.
 
     """ 
-    system_prop = deepcopy(system_prop_in)
+    star_I_prop = deepcopy(star_I_prop_in)
     system_ar_prop = deepcopy(system_ar_prop_in)
     par_list_in = deepcopy(par_list_gen)
     n_exp = len(iexp_list)
@@ -253,14 +253,14 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
             
             #Full profile width is smaller than the typical scale of chromatic variations
             #    - mode is switched to closest-achromatic mode, with properties set to those of the closest chromatic band
-            if (args['edge_bins'][-1]-args['edge_bins'][0]<system_prop['chrom']['med_dw']):
+            if (args['edge_bins'][-1]-args['edge_bins'][0]<star_I_prop['chrom']['med_dw']):
                 key_chrom=['achrom']
                 switch_chrom = True
-                iband_cl = closest(system_prop['chrom']['w'],np.median(args['cen_bins']))
-                for key in ['w','LD','GD_wmin','GD_wmax','GD_dw']:system_prop['achrom'][key] = [system_prop['chrom'][key][iband_cl]]
+                iband_cl = closest(star_I_prop['chrom']['w'],np.median(args['cen_bins']))
+                for key in ['w','LD','GD_wmin','GD_wmax','GD_dw']:star_I_prop['achrom'][key] = [star_I_prop['chrom'][key][iband_cl]]
                 for pl_loc in studied_pl:
-                    system_prop['achrom']['cond_in_RpRs'][pl_loc] = [system_prop['chrom']['cond_in_RpRs'][pl_loc][iband_cl]] 
-                    system_prop['achrom'][pl_loc] = [system_prop['chrom'][pl_loc][iband_cl]]                
+                    star_I_prop['achrom']['cond_in_RpRs'][pl_loc] = [star_I_prop['chrom']['cond_in_RpRs'][pl_loc][iband_cl]] 
+                    star_I_prop['achrom'][pl_loc] = [star_I_prop['chrom'][pl_loc][iband_cl]]                
 
             #Profiles covers a wide spectral band
             #    - requires calculation of achromatic properties                
@@ -287,11 +287,19 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
     #    - properties in 'param' have the nominal values from system properties only if the property was not defined in the model property dictionary from settings 
     par_star = deepcopy(param)
     par_list = ['Ftot']
+    if ('Rstar' in par_star):Rstar_km = par_star['Rstar']*Rsun
+    else:Rstar_km = system_param['star']['Rstar_km']   
+    if ('Peq' in par_star):Peq = par_star['Peq']
+    else:Peq = system_param['star']['Peq']       
     for par_loc in par_list_in:
         if par_loc=='rv':
             par_list+=['Rot_RV']
             if ('rv_line' in args['linevar_par_vis']):par_list+=['rv_line']
-            if ('Rstar' in par_star) and ('Peq' in par_star):par_star['veq'] = 2.*np.pi*par_star['Rstar']*Rsun/(par_star['Peq']*24.*3600.)
+            
+            #Updating veq (which is the parameter used to calculate surface rvs) when Peq is the fitted parameter
+            if ('Rstar' in par_star) or ('Peq' in par_star):
+                par_star['veq'] = 2.*np.pi*Rstar_km/(Peq*24.*3600.)
+            
         elif (par_loc not in ['line_prof']):par_list+=[par_loc]
     cos_istar = (par_star['cos_istar']-(1.)) % 2 - 1.   #Reset cos_istar within -1 : 1
     par_star['istar_rad']=np.arccos(cos_istar)
@@ -301,10 +309,10 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
 
         #Disk-integrated stellar flux
         if Ftot_star:
-            surf_prop_dic_pl[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
-            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.ones([system_prop[subkey_chrom]['nw'],n_exp]) 
+            surf_prop_dic_pl[subkey_chrom]['Ftot_star']=np.zeros([star_I_prop[subkey_chrom]['nw'],n_exp])*np.nan 
+            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.zeros([star_I_prop[subkey_chrom]['nw'],n_exp])*np.nan 
             if cond_ar:
-                surf_prop_dic_ar[subkey_chrom]['Ftot_star']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan 
+                surf_prop_dic_ar[subkey_chrom]['Ftot_star']=np.zeros([star_I_prop[subkey_chrom]['nw'],n_exp])*np.nan 
 
         #Convective blueshift
         #    - physically, it makes sense for us to define different CB coefficients for an active region since they are regions of magnetic suppression and would have different CB.
@@ -315,16 +323,16 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
         cb_band_dic[subkey_chrom]={}  
         if cond_ar:cb_band_ar_dic[subkey_chrom] = {}  
         if ('CB_RV' in par_list) or ('c0_CB' in par_list):     
-            surf_prop_dic_pl[subkey_chrom]['c0_CB']=np.zeros(system_prop[subkey_chrom]['nw'])*np.nan
-            if cond_ar:surf_prop_dic_ar[subkey_chrom]['c0_CB']=np.zeros(system_prop[subkey_chrom]['nw'])*np.nan
-            for iband in range(system_prop[subkey_chrom]['nw']):
-                cb_band_dic[subkey_chrom][iband] = calc_CB_RV(get_LD_coeff(system_prop[subkey_chrom],iband),system_prop[subkey_chrom]['LD'][iband],par_star['c1_CB'],par_star['c2_CB'],par_star['c3_CB'],par_star) 
+            surf_prop_dic_pl[subkey_chrom]['c0_CB']=np.zeros(star_I_prop[subkey_chrom]['nw'])*np.nan
+            if cond_ar:surf_prop_dic_ar[subkey_chrom]['c0_CB']=np.zeros(star_I_prop[subkey_chrom]['nw'])*np.nan
+            for iband in range(star_I_prop[subkey_chrom]['nw']):
+                cb_band_dic[subkey_chrom][iband] = calc_CB_RV(get_LD_coeff(star_I_prop[subkey_chrom],iband),star_I_prop[subkey_chrom]['LD'][iband],par_star['c1_CB'],par_star['c2_CB'],par_star['c3_CB'],par_star) 
                 surf_prop_dic_pl[subkey_chrom]['c0_CB'][iband]=cb_band_dic[subkey_chrom][iband][0] 
                 if cond_ar:
                     cb_band_ar_dic[subkey_chrom][iband] = calc_CB_RV(get_LD_coeff(system_ar_prop[subkey_chrom],iband),system_ar_prop[subkey_chrom]['LD'][iband],par_star['c1_CB'],par_star['c2_CB'],par_star['c3_CB'],par_star) 
                     surf_prop_dic_ar[subkey_chrom]['c0_CB'][iband]=cb_band_ar_dic[subkey_chrom][iband][0]
         else:
-            for iband in range(system_prop[subkey_chrom]['nw']):
+            for iband in range(star_I_prop[subkey_chrom]['nw']):
                 cb_band_dic[subkey_chrom][iband] = None
                 if cond_ar:cb_band_ar_dic[subkey_chrom][iband] = None
     if 'rv' in par_list_in:par_list+=['rv']  #must be placed after all other RV contributions
@@ -429,10 +437,10 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
             for subkey_chrom in key_chrom:
                 surf_prop_dic_pl[subkey_chrom][pl_loc]={}
                 for par_loc in par_list:
-                    surf_prop_dic_pl[subkey_chrom][pl_loc][par_loc]=np.zeros([system_prop[subkey_chrom]['nw'],n_exp])*np.nan        
-                for par_loc in range_par_list:surf_prop_dic_pl[subkey_chrom][pl_loc][par_loc+'_range']=np.zeros([system_prop[subkey_chrom]['nw'],n_exp,2])*np.nan
+                    surf_prop_dic_pl[subkey_chrom][pl_loc][par_loc]=np.zeros([star_I_prop[subkey_chrom]['nw'],n_exp])*np.nan        
+                for par_loc in range_par_list:surf_prop_dic_pl[subkey_chrom][pl_loc][par_loc+'_range']=np.zeros([star_I_prop[subkey_chrom]['nw'],n_exp,2])*np.nan
                 if ('line_prof' in par_list_in) and (theo_dic['precision']=='low'):
-                    surf_prop_dic_pl[subkey_chrom][pl_loc]['rv_broad']=-1e100*np.ones([system_prop[subkey_chrom]['nw'],n_exp])
+                    surf_prop_dic_pl[subkey_chrom][pl_loc]['rv_broad']=-1e100*np.ones([star_I_prop[subkey_chrom]['nw'],n_exp])
 
     #Figuring out which exposures are occulted (by active regions or planets)
     cond_iexp_proc = (np.sum(cond_ar_all, axis=1)>0)|(np.sum(cond_transit_all,axis=1)>0)
@@ -459,8 +467,8 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
         range_dic={}
         line_occ_HP={}
         for subkey_chrom in key_chrom:
-            Focc_star_pl[subkey_chrom]=np.zeros(system_prop[subkey_chrom]['nw'],dtype=float) 
-            if 'corr_ar' in args:args['Focc_corr'][subkey_chrom]=np.zeros(system_prop[subkey_chrom]['nw'],dtype=float) 
+            Focc_star_pl[subkey_chrom]=np.zeros(star_I_prop[subkey_chrom]['nw'],dtype=float) 
+            if 'corr_ar' in args:args['Focc_corr'][subkey_chrom]=np.zeros(star_I_prop[subkey_chrom]['nw'],dtype=float) 
             if cond_ar:Focc_star_ar[subkey_chrom]=np.zeros(system_ar_prop[subkey_chrom]['nw'],dtype=float) 
             sum_prop_dic[subkey_chrom]={}
             coord_reg_dic[subkey_chrom]={}
@@ -473,13 +481,13 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                 coord_reg_dic[subkey_chrom][pl_loc]={}
                 range_dic[subkey_chrom][pl_loc]={}
                 for par_loc in par_list:    
-                    sum_prop_dic[subkey_chrom][pl_loc][par_loc]=np.zeros(system_prop[subkey_chrom]['nw'],dtype=float)
-                    coord_reg_dic[subkey_chrom][pl_loc][par_loc]=np.zeros(system_prop[subkey_chrom]['nw'],dtype=float)
-                    if par_loc in range_par_list:range_dic[subkey_chrom][pl_loc][par_loc+'_range']=np.tile([1e100,-1e100],[system_prop[subkey_chrom]['nw'],1])
+                    sum_prop_dic[subkey_chrom][pl_loc][par_loc]=np.zeros(star_I_prop[subkey_chrom]['nw'],dtype=float)
+                    coord_reg_dic[subkey_chrom][pl_loc][par_loc]=np.zeros(star_I_prop[subkey_chrom]['nw'],dtype=float)
+                    if par_loc in range_par_list:range_dic[subkey_chrom][pl_loc][par_loc+'_range']=np.tile([1e100,-1e100],[star_I_prop[subkey_chrom]['nw'],1])
                 sum_prop_dic[subkey_chrom][pl_loc]['nocc']=0. 
                 if ('line_prof' in par_list_in):
                     if (theo_dic['precision'] in ['low','medium']):
-                        coord_reg_dic[subkey_chrom][pl_loc]['rv_broad']=np.zeros(system_prop[subkey_chrom]['nw'],dtype=float)
+                        coord_reg_dic[subkey_chrom][pl_loc]['rv_broad']=np.zeros(star_I_prop[subkey_chrom]['nw'],dtype=float)
                     elif (theo_dic['precision']=='high'):
                         sum_prop_dic[subkey_chrom][pl_loc]['line_prof'] = np.zeros(args['ncen_bins'],dtype=float) 
                         if 'corr_ar' in args:sum_prop_dic[subkey_chrom][pl_loc]['corr_supp'] = np.zeros(args['ncen_bins'],dtype=float)
@@ -497,8 +505,8 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                 if ('line_prof' in par_list_in):sum_prop_dic[subkey_chrom][ar]['line_prof'] = np.zeros(args['ncen_bins'],dtype=float)
                                         
             #Line profile can be calculated over each stellar cell only in achromatic / closest-achromatic mode 
-            if ('line_prof' in par_list_in):line_occ_HP[subkey_chrom] = np.repeat(theo_dic['precision'],system_prop[subkey_chrom]['nw'])
-            else:line_occ_HP[subkey_chrom] = np.repeat('',system_prop[subkey_chrom]['nw'])  
+            if ('line_prof' in par_list_in):line_occ_HP[subkey_chrom] = np.repeat(theo_dic['precision'],star_I_prop[subkey_chrom]['nw'])
+            else:line_occ_HP[subkey_chrom] = np.repeat('',star_I_prop[subkey_chrom]['nw'])  
             
         #Theoretical properties from active regions or regions occulted by planets, at exposure center       
         if cond_iexp_proc[isub_exp]:
@@ -561,7 +569,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                 #Planet-occulted regions
 
                 #Dictionary telling us which planets have been processed in which chromatic mode and band.
-                pl_proc={subkey_chrom:{iband:[] for iband in range(system_prop[subkey_chrom]['nw'])} for subkey_chrom in key_chrom}
+                pl_proc={subkey_chrom:{iband:[] for iband in range(star_I_prop[subkey_chrom]['nw'])} for subkey_chrom in key_chrom}
                 cond_occ_pl = False
                 for pl_loc in studied_pl_exp:   
                     
@@ -574,8 +582,8 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
 
                     #Calculating properties
                     for subkey_chrom in key_chrom:
-                        for iband in range(system_prop[subkey_chrom]['nw']):
-                            Focc_star_pl[subkey_chrom][iband],cond_occ_pl = calc_occ_region_prop(line_occ_HP[subkey_chrom][iband],cond_occ_pl,iband,args,system_prop[subkey_chrom],system_ar_prop[subkey_chrom],iosamp,pl_loc,pl_proc[subkey_chrom][iband],theo_dic['Ssub_Sstar_pl'][pl_loc],x_st_sky_max,y_st_sky_max,system_prop[subkey_chrom]['cond_in_RpRs'][pl_loc][iband],par_list,theo_dic['Istar_norm_'+subkey_chrom],\
+                        for iband in range(star_I_prop[subkey_chrom]['nw']):
+                            Focc_star_pl[subkey_chrom][iband],cond_occ_pl = calc_occ_region_prop(line_occ_HP[subkey_chrom][iband],cond_occ_pl,iband,args,star_I_prop[subkey_chrom],system_ar_prop[subkey_chrom],iosamp,pl_loc,pl_proc[subkey_chrom][iband],theo_dic['Ssub_Sstar_pl'][pl_loc],x_st_sky_max,y_st_sky_max,star_I_prop[subkey_chrom]['cond_in_RpRs'][pl_loc][iband],par_list,theo_dic['Istar_norm_'+subkey_chrom],\
                                                                                   coord_oversamp['x'],coord_oversamp['y'],lambda_rad_pl,par_star,sum_prop_dic[subkey_chrom][pl_loc],coord_reg_dic[subkey_chrom][pl_loc],range_dic[subkey_chrom][pl_loc],range_par_list,Focc_star_pl[subkey_chrom][iband],cb_band_dic[subkey_chrom][iband],theo_dic, ar_occ=ar_are_visible, reduced_ar_prop=reduced_ar_prop_oversamp)
             
                             #Cumulate line profile from planet-occulted cells
@@ -593,9 +601,9 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                     #Calculate line profile from planet-occulted region 
                     #    - profile is scaled to the total flux from current occulted region, stored in coord_reg_dic_pl['Ftot']
                     if ('line_prof' in par_list_in) and (theo_dic['precision']=='medium'):
-                        idx_w = {'achrom':range(system_prop['achrom']['nw'])}
-                        if ('chrom' in key_chrom):idx_w['chrom'] = range(system_prop['chrom']['nw'])
-                        surf_prop_dic_pl[key_chrom[-1]]['line_prof'][:,isub_exp]+=plocc_prof(args,studied_pl_exp,coord_reg_dic,idx_w,system_prop,key_chrom,par_star,theo_dic)
+                        idx_w = {'achrom':range(star_I_prop['achrom']['nw'])}
+                        if ('chrom' in key_chrom):idx_w['chrom'] = range(star_I_prop['chrom']['nw'])
+                        surf_prop_dic_pl[key_chrom[-1]]['line_prof'][:,isub_exp]+=plocc_prof(args,studied_pl_exp,coord_reg_dic,idx_w,star_I_prop,key_chrom,par_star,theo_dic)
 
                 #------------------------------------------------------------
                 #Active regions
@@ -637,8 +645,8 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                             
                             #Going over the bands in each chromatic mode
                             for iband in range(system_ar_prop[subkey_chrom]['nw']):
-                                Focc_star_ar[subkey_chrom][iband], cond_occ_ar = calc_ar_region_prop(line_occ_HP[subkey_chrom][iband], cond_occ_ar, ar_prop_oversamp, iband, system_prop[subkey_chrom], 
-                                                                system_ar_prop[subkey_chrom], par_star, ar_proc,ar,theo_dic['Ssub_Sstar_ar'][ar], 
+                                Focc_star_ar[subkey_chrom][iband], cond_occ_ar = calc_ar_region_prop(line_occ_HP[subkey_chrom][iband], cond_occ_ar, ar_prop_oversamp, iband, star_I_prop[subkey_chrom], 
+                                                                system_ar_prop[subkey_chrom], par_star, ar_proc[subkey_chrom][iband],ar,theo_dic['Ssub_Sstar_ar'][ar], 
                                                                 theo_dic['Ssub_Sstar'], theo_dic['Istar_norm_'+subkey_chrom], sum_prop_dic[subkey_chrom][ar], coord_reg_dic[subkey_chrom][ar],
                                                                 range_dic[subkey_chrom][ar], Focc_star_ar[subkey_chrom][iband], par_list, range_par_list, args, cb_band_ar_dic[subkey_chrom][iband])
 
@@ -687,14 +695,14 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                 #Stellar line profile from planet-occulted region
                 #    - accounting for both quiet and active cells
                 if (n_osamp_exp_eff_pl>0):
-                    calc_mean_occ_region_line(theo_dic['precision'],system_prop,isub_exp,key_chrom,n_osamp_exp_eff_pl,Focc_star_pl,surf_prop_dic_pl,studied_pl_exp,args,par_star,theo_dic)
+                    calc_mean_occ_region_line(theo_dic['precision'],star_I_prop,isub_exp,key_chrom,n_osamp_exp_eff_pl,Focc_star_pl,surf_prop_dic_pl,studied_pl_exp,args,par_star,theo_dic)
                     if 'corr_ar' in args:
                         surf_prop_dic_pl[key_chrom[-1]]['corr_supp'][:,isub_exp]/=n_osamp_exp_eff_pl
                         if args['conv2intr']:surf_prop_dic_pl[key_chrom[-1]]['corr_supp'][:,isub_exp] /= (args['Focc_corr'][key_chrom[-1]]/n_osamp_exp_eff_pl)
  
-                #Deviation line profile between quiet and active emission, from active cells outside of planet-occulted regions
-                if cond_ar and (args['rout_mode']!='IntrProf') and (n_osamp_exp_eff_ar > 0):
-                    calc_mean_occ_region_line(theo_dic['precision'],system_prop,isub_exp,key_chrom,n_osamp_exp_eff_ar,Focc_star_ar,surf_prop_dic_ar,ar_in_exp,args,par_star,theo_dic)
+                #Deviation line profile between quiet and active emission, from active region cells outside of planet-occulted regions
+                if cond_ar and (args['rout_mode']=='DiffProf') and (n_osamp_exp_eff_ar > 0):
+                    calc_mean_occ_region_line(theo_dic['precision'],star_I_prop,isub_exp,key_chrom,n_osamp_exp_eff_ar,Focc_star_ar,surf_prop_dic_ar,ar_in_exp,args,par_star,theo_dic)
 
     ### end of exposures
     #Output properties in chromatic mode if calculated in closest-achromatic mode
@@ -740,7 +748,7 @@ def calc_mean_occ_region_prop(occulters,surf_prop_dic,n_osamp_exp_eff,sum_prop_d
     return None
 
 
-def calc_mean_occ_region_line(precision,system_prop,i_in,key_chrom,n_osamp_exp_eff,Focc_star,surf_prop_dic,occ_in_exp,args,par_star,theo_dic):
+def calc_mean_occ_region_line(precision,star_I_prop,i_in,key_chrom,n_osamp_exp_eff,Focc_star,surf_prop_dic,occ_in_exp,args,par_star,theo_dic):
     r"""**Occulted region: average line**
 
     Calculates the line profile from the cumulated stellar surface regions occulted during an exposure.
@@ -755,9 +763,9 @@ def calc_mean_occ_region_line(precision,system_prop,i_in,key_chrom,n_osamp_exp_e
         
     #Profile from averaged properties over exposures
     if (precision=='low'): 
-        idx_w = {'achrom':(range(system_prop['achrom']['nw']),i_in)}
-        if ('chrom' in key_chrom):idx_w['chrom'] = (range(system_prop['chrom']['nw']),i_in)          
-        surf_prop_dic[key_chrom[-1]]['line_prof'][:,i_in]=plocc_prof(args,occ_in_exp,surf_prop_dic,idx_w,system_prop,key_chrom,par_star,theo_dic)
+        idx_w = {'achrom':(range(star_I_prop['achrom']['nw']),i_in)}
+        if ('chrom' in key_chrom):idx_w['chrom'] = (range(star_I_prop['chrom']['nw']),i_in)          
+        surf_prop_dic[key_chrom[-1]]['line_prof'][:,i_in]=plocc_prof(args,occ_in_exp,surf_prop_dic,idx_w,star_I_prop,key_chrom,par_star,theo_dic)
     
     #Averaged profiles behind all occulted regions during exposure   
     #    - the weighing by stellar intensity is naturally included when applying flux scaling 
@@ -776,7 +784,7 @@ def calc_mean_occ_region_line(precision,system_prop,i_in,key_chrom,n_osamp_exp_e
     return None
 
 
-def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system_ar_prop,idx,pl_loc,pl_proc_band,Ssub_Sstar,x_st_sky_max,y_st_sky_max,cond_in_RpRs,par_list,Istar_norm_band,x_pos_pl,y_pos_pl,lambda_rad_pl,par_star,sum_prop_dic_pl,\
+def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,star_I_prop,system_ar_prop,idx,pl_loc,pl_proc_band,Ssub_Sstar,x_st_sky_max,y_st_sky_max,cond_in_RpRs,par_list,Istar_norm_band,x_pos_pl,y_pos_pl,lambda_rad_pl,par_star,sum_prop_dic_pl,\
                          coord_reg_dic_pl,range_reg,range_par_list,Focc_star_band,cb_band,theo_dic,ar_occ = False,reduced_ar_prop={}):
     r"""**Occulted region: properties**
 
@@ -786,7 +794,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
         line_occ_HP_band (str) : The precision with which to process the exposure.
         cond_occ (bool) : Boolean telling us whether there is an occultation by at least one planet in the oversampled exposure considered.
         iband (int) : Index of the band of interest.
-        system_prop (dict) : Planet limb-darkening properties.
+        star_I_prop (dict) : Stellar intensity properties.
         system_ar_prop (dict) : Active region limb-darkening properties.
         idx (int) : Index of the oversampled exposure considered.
         pl_loc (str) : Planet considered.
@@ -843,7 +851,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
 
                 #Cells occulted by current planet and not previous ones
                 #    - condition is that cells must be beyond previous planet grid in this band
-                RpRs_prev = system_prop[pl_prev][iband]
+                RpRs_prev = star_I_prop[pl_prev][iband]
                 cond_pl_occ_corr &= ( (coord_grid['x_st_sky'] - x_st_sky_prev)**2.+(coord_grid['y_st_sky'] - y_st_sky_prev)**2. > RpRs_prev**2. )
             
             #Reduce grid to remaining cells
@@ -901,7 +909,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
 
         #--------------------------------
         #Local flux grid over current planet-occulted region, in current band
-        _,_,mu_grid_star,Fsurf_grid_star,Ftot_star,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'local',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
+        _,_,mu_grid_star,Fsurf_grid_star,Ftot_star,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],star_I_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'local',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
         coord_grid['mu'] = mu_grid_star[:,0]
 
         #Accounting for the active region emission
@@ -927,7 +935,7 @@ def calc_occ_region_prop(line_occ_HP_band,cond_occ,iband,args,system_prop,system
         if 'corr_ar' in args:
             
             #Re-calculate Local flux grid over current planet-occulted region, in current band
-            _,_,_,Fsurf_grid_star_corr,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],system_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'local',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
+            _,_,_,Fsurf_grid_star_corr,_,_ = calc_Isurf_grid([iband],coord_grid['nsub_star'],star_I_prop,coord_grid,par_star,Ssub_Sstar,Istar_norm = Istar_norm_band,region = 'local',Ssub_Sstar_ref = theo_dic['Ssub_Sstar'])
 
             #Define variables to store the total flux of the overlap between multiple active regions
             temp_ar = 0.
@@ -1106,7 +1114,8 @@ def sum_region_prop(line_occ_HP_band,iband,args,par_list,Fsurf_grid_band,Fsurf_g
                 coord_grid[par_loc] = calc_polymodu(args['pol_mode'],args['coeff_line'][par_loc],linevar_coord_grid) 
                 
             #Stellar-rotation induced radial velocity (km/s)
-            elif par_loc=='Rot_RV':coord_grid[par_loc] = calc_RVrot(coord_grid['x_st_sky'],coord_grid['y_st'],par_star['istar_rad'],coord_grid['veq'],coord_grid['alpha_rot'],coord_grid['beta_rot'])[0]
+            elif par_loc=='Rot_RV':
+                coord_grid[par_loc] = calc_RVrot(coord_grid['x_st_sky'],coord_grid['y_st'],par_star['istar_rad'],coord_grid['veq'],coord_grid['alpha_rot'],coord_grid['beta_rot'])[0]
                          
             #Disk-integrated-corrected convective blueshift polynomial (km/s)
             elif par_loc=='CB_RV':coord_grid[par_loc] = np_poly(cb_band)(coord_grid['mu'])          
@@ -1280,7 +1289,7 @@ def occ_region_grid(RregRs, nsub_Dreg , planet = True):
 
 #%% Planet-occulted region routines
 
-def plocc_prof(args,studied_pl,coord_dic,idx_w,system_prop,key_chrom,param,theo_dic):
+def plocc_prof(args,studied_pl,coord_dic,idx_w,star_I_prop,key_chrom,param,theo_dic):
     r"""**Planet-occulted line profile**
 
     Line profiles can be 
@@ -1335,7 +1344,7 @@ def plocc_prof(args,studied_pl,coord_dic,idx_w,system_prop,key_chrom,param,theo_
             else:
                 flux_sc = coord_dic[chrom_calc][pl_loc]['Ftot'][idx_w[chrom_calc]]
                 if chrom_calc=='achrom':flux_sc_spec = flux_sc[0]
-                else:flux_sc_spec = np_interp(args['cen_bins'],system_prop['chrom']['w'],flux_sc,left=flux_sc[0],right=flux_sc[-1])
+                else:flux_sc_spec = np_interp(args['cen_bins'],star_I_prop['chrom']['w'],flux_sc,left=flux_sc[0],right=flux_sc[-1])
          
             #Analytical profile
             #    - only in achromatic / closest-chromatic mode (no chromatic shift is applied)
@@ -1375,9 +1384,9 @@ def plocc_prof(args,studied_pl,coord_dic,idx_w,system_prop,key_chrom,param,theo_
                 #    - 'conv2intr' is True when the routine is used to calculate model intrinsic profiles (flux_sc_spec is then 1) to be compared with measured intrinsic profiles
                 #       since the latter were corrected for chromatic deviations upon extraction, the present model profiles are only shifted with the achromatic planet-occulted rv 
                 #    - otherwise a chromatic shift is applied
-                if args['conv2intr']:dic_rv = {'achrom':{pl_loc:{'rv': np.reshape(coord_dic['achrom'][pl_loc]['rv'][idx_w['achrom']],[system_prop['achrom']['nw'],1]) }}}
-                else:dic_rv = {chrom_calc:{pl_loc:{'rv': np.reshape(coord_dic[chrom_calc][pl_loc]['rv'][idx_w[chrom_calc]],[system_prop[chrom_calc]['nw'],1]) }}}
-                rv_surf_star,rv_surf_star_edge = def_surf_shift('theo',dic_rv,0,data_loc,pl_loc,args['type'],system_prop,[1,ncen_bins_Intr],1,ncen_bins_Intr)  
+                if args['conv2intr']:dic_rv = {'achrom':{pl_loc:{'rv': np.reshape(coord_dic['achrom'][pl_loc]['rv'][idx_w['achrom']],[star_I_prop['achrom']['nw'],1]) }}}
+                else:dic_rv = {chrom_calc:{pl_loc:{'rv': np.reshape(coord_dic[chrom_calc][pl_loc]['rv'][idx_w[chrom_calc]],[star_I_prop[chrom_calc]['nw'],1]) }}}
+                rv_surf_star,rv_surf_star_edge = def_surf_shift('theo',dic_rv,0,data_loc,pl_loc,args['type'],star_I_prop,[1,ncen_bins_Intr],1,ncen_bins_Intr)  
                 if rv_surf_star_edge is not None:
                     rv_shift_edge = -rv_surf_star_edge
                     spec_dopshift_edge = gen_specdopshift(rv_surf_star_edge)
@@ -1437,7 +1446,7 @@ def init_surf_shift(gen_dic,inst,vis,data_dic,align_mode):
     return ref_pl,dic_rv,idx_aligned
 
 
-def def_surf_shift(align_mode,dic_rv,i_in,data_exp,pl_ref,data_type,system_prop,dim_exp,nord,nspec):    
+def def_surf_shift(align_mode,dic_rv,i_in,data_exp,pl_ref,data_type,star_I_prop,dim_exp,nord,nspec):    
     r"""**Planet-occulted rv shifts**
 
     Returns rv shifts of stellar surface in star rest frame, from measured or theoretical planet-occulted rv
@@ -1469,8 +1478,8 @@ def def_surf_shift(align_mode,dic_rv,i_in,data_exp,pl_ref,data_type,system_prop,
             if align_mode=='theo':RV_shift_pl = dic_rv['chrom'][pl_ref]['rv'][:,i_in]
             elif align_mode=='theo_rel':RV_shift_pl = dic_rv['chrom'][pl_ref]['rv'][:,i_in]-dic_rv['achrom'][pl_ref]['rv'][0,i_in]              
             for iord in range(nord):
-                rv_surf_star[iord] = np_interp(data_exp['cen_bins'][iord],system_prop['chrom']['w'],RV_shift_pl,left=RV_shift_pl[0],right=RV_shift_pl[-1])
-                rv_surf_star_edge[iord] = np_interp(data_exp['edge_bins'][iord],system_prop['chrom']['w'],RV_shift_pl,left=RV_shift_pl[0],right=RV_shift_pl[-1])
+                rv_surf_star[iord] = np_interp(data_exp['cen_bins'][iord],star_I_prop['chrom']['w'],RV_shift_pl,left=RV_shift_pl[0],right=RV_shift_pl[-1])
+                rv_surf_star_edge[iord] = np_interp(data_exp['edge_bins'][iord],star_I_prop['chrom']['w'],RV_shift_pl,left=RV_shift_pl[0],right=RV_shift_pl[-1])
             
         #Achromatic RV defined for the nominal transit properties
         else:
@@ -1705,7 +1714,7 @@ def calc_ar_tiles(ar_prop, ang_rad, x_sky_grid, y_sky_grid, z_sky_grid, grid_dic
 
 
 
-def calc_ar_region_prop(line_occ_HP_band,cond_occ,contamin_prop,iband,system_prop,system_contamin_prop, par_star, proc_band, elem_consid, Ssub_Sstar, Ssub_Sstar_ref, Istar_norm_band, sum_prop_dic,\
+def calc_ar_region_prop(line_occ_HP_band,cond_occ,contamin_prop,iband,star_I_prop,system_contamin_prop, par_star, proc_band, elem_consid, Ssub_Sstar, Ssub_Sstar_ref, Istar_norm_band, sum_prop_dic,\
                                     coord_reg_dic, range_reg, Focc_star_band, par_list, range_par_list, args, cb_band) :
     
     r"""**Active region properties: define and update**
@@ -1719,7 +1728,7 @@ def calc_ar_region_prop(line_occ_HP_band,cond_occ,contamin_prop,iband,system_pro
         cond_occ (bool) : whether there is an occultation by at least one active region in the exposure considered.
         contamin_prop (dict) : formatted active region properties dictionary (see retrieve_ar_prop_from_param).
         iband (int) : index of the band used to retrieve the corresponding planet and active region limb-darkening properties.
-        system_prop (dict) : quiet star limb-darkening properties.
+        star_I_prop (dict) : quiet star intensity properties.
         system_contamin_prop (dict) : active region limb-darkening properties.        
         par_star (dict) : star properties.
         proc_band (list) : active regions to be processed to account for the overlap of active regions.
@@ -1791,7 +1800,7 @@ def calc_ar_region_prop(line_occ_HP_band,cond_occ,contamin_prop,iband,system_pro
     if n_occ > 0:
         cond_occ = True
 
-    #Making the grid of coordinates for the calc_Isurf_grid function.
+    #Making the grid of coordinates for the calc_Isurf_grid() function.
     coord_grid = {}
     
     #Getting, x, y, z, sky-projected radius, and number of occulted cells.
@@ -1812,7 +1821,7 @@ def calc_ar_region_prop(line_occ_HP_band,cond_occ,contamin_prop,iband,system_pro
     #--------------------------------    
     
     #Retrieve the quiet stellar flux grids over this local occulted-region grid.
-    _,_,mu_grid_occ,Fsurf_grid_occ,Ftot_occ,_ = calc_Isurf_grid([iband], coord_grid['nsub_star'], system_prop, coord_grid, par_star, Ssub_Sstar, Istar_norm_band, region='local', Ssub_Sstar_ref=Ssub_Sstar_ref)
+    _,_,mu_grid_occ,Fsurf_grid_occ,Ftot_occ,_ = calc_Isurf_grid([iband], coord_grid['nsub_star'], star_I_prop, coord_grid, par_star, Ssub_Sstar, Istar_norm_band, region='local', Ssub_Sstar_ref=Ssub_Sstar_ref)
 
     #Retrieve the flux grid for the active region's emission (since active regions have different LD law compared to the 'quiet' stellar surface)
     _,_,_,Fsurf_grid_emit,Ftot_emit,_ = calc_Isurf_grid([iband], coord_grid['nsub_star'], system_contamin_prop, coord_grid, par_star, Ssub_Sstar, Istar_norm_band, region='local', Ssub_Sstar_ref=Ssub_Sstar_ref)

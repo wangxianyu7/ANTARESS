@@ -31,14 +31,14 @@ from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
 from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_diff_profiles,extract_intr_profiles,extract_pl_profiles 
 from ..ANTARESS_analysis.ANTARESS_ana_comm import MAIN_single_anaprof
 from ..ANTARESS_conversions.ANTARESS_sp_cont import process_spectral_cont
-from ..ANTARESS_general.utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data,npint
+from ..ANTARESS_general.utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data,npint,path_singslash
 from ..ANTARESS_general.constant_data import Rsun,Rjup,c_light,G_usi,Msun,AU_1
 
 
 def ANTARESS_settings_overwrite(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,input_dic):
     r"""**ANTARESS settings overwrite.**
     
-    Overwrites ANTARESS settings with inputs.  
+    Overwrites ANTARESS default settings with custom inputs.  
     
     Args:
         TBD
@@ -66,9 +66,6 @@ def ANTARESS_settings_overwrite(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob
     
     return None
     
-
-
-
 
 
 def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detrend_prof_dic,system_param,input_dic,custom_plot_settings):
@@ -385,23 +382,10 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     for obj in system_param:
         if (obj!='star') and ('inclination' in system_param[obj]) and (obj in data_dic['DI']['system_prop']['achrom']):gen_dic['def_pl']+=[obj]
     
-    #Plot sequence
-    if gen_dic['sequence'] is not None:
-        
-        #Deactivate all plots
-        gen_dic['plots_on'] = False
-
     #Deactivate all plot modules if requested
     if not gen_dic['plots_on']:
         for key in plot_dic:
             if plot_dic[key] in ['png','pdf','jpg']:plot_dic[key]=''
-
-    #Plot sequence
-    if gen_dic['sequence']=='system_view':
-        gen_dic['plots_on'] = True
-        plot_dic['system_view'] = 'pdf'
-        gen_dic['specINtype'] = False
-        data_dic['instrum_list'] = []
 
     #Check for active plots to activate call to global plot function
     if gen_dic['plots_on']:
@@ -454,6 +438,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             } 
         
         #Central wavelengths of orders for known instruments
+        #    - in A
         gen_dic['wav_ord_inst']={     
             'ESPRESSO':10.*np.repeat(np.flip([784.45 ,774.52, 764.84, 755.40, 746.19, 737.19, 728.42 ,719.85, 711.48, 703.30, 695.31, 687.50, 679.86, 672.39, 665.08,
                                           657.93 ,650.93 ,644.08, 637.37, 630.80, 624.36, 618.05, 611.87, 605.81, 599.87, 594.05, 588.34, 582.74, 577.24, 571.84,
@@ -510,18 +495,18 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         gen_dic['wav_ord_inst']['NIRPS_HE'] = gen_dic['wav_ord_inst']['NIRPS_HA'] 
         gen_dic['wav_ord_inst']['CARMENES_VIS_CCF'] = gen_dic['wav_ord_inst']['CARMENES_VIS'] 
     
-        #Data type
-        if gen_dic['mock_data']: 
-            print('Running with artificial data')  
+        #Instruments to which are associated the different datasets
+        if gen_dic['mock_data']:  
             data_dic['instrum_list']=list(mock_dic['visit_def'].keys())
-            gen_dic['tell_weight']=False    
+            gen_dic['tell_weight']=False 
+            if len(data_dic['instrum_list'])==0:stop('ERROR : no instrument was requested for mock datasets.')   
+            print('Running with artificial data') 
     
-        else: 
-            print('Running with observational data')  
-            
-            #Instruments to which are associated the different datasets
+        else:  
             data_dic['instrum_list'] = list(gen_dic['data_dir_list'].keys())
-            
+            if len(data_dic['instrum_list'])==0:stop('ERROR : no instrument was requested for observed datasets.') 
+            print('Running with observational data') 
+
         #Used visits
         for inst in data_dic['instrum_list']:
             if inst not in gen_dic['unused_visits']:gen_dic['unused_visits'][inst]=[]
@@ -717,9 +702,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         gen_dic['fit_DIProf'] = False     #module undefined for now
         gen_dic['fit_DiffProp'] = False    #module undefined for now
         for key in ['DI','Intr','Diff','Atm']:gen_dic['joined_ana'] |= (gen_dic['fit_'+key+'Prof'] or gen_dic['fit_'+key+'Prop'])
-    
-        #Import bin size dictionary
-        gen_dic['pix_size_v']=return_pix_size()    
 
         #Standard-deviation curves with bin size for the out-of-transit differential CCFs
         #    - defining the maximum size of the binning window, and the binning size for the sliding window (we will average the bins in windows of width bin_size from 1 to 40 (arbitrary))
@@ -822,81 +804,73 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #------------------------------------------------------------------------------
     #Star
     #------------------------------------------------------------------------------
-    
-    #Conversions and calculations
-    star_params=system_param['star']
-    star_params['Rstar_km'] = star_params['Rstar']*Rsun
-    
-    #Spherical star
-    if ('f_GD' not in star_params):
-        star_params['f_GD']=0.
-        star_params['RpoleReq'] = 1.
+    if gen_dic['sequence'] not in ['st_master_tseries']:
         
-    #Oblate star
-    elif star_params['f_GD']>0.:
-        print('Star is oblate')
-        star_params['RpoleReq']=1.-star_params['f_GD']
-
-    #Reference time for stellar phase (bjd)
-    if 'Tcenter' not in star_params:star_params['Tcenter'] = 2400000.
-
-    #Stellar equatorial rotation rate (rad/s)
-    #    - om = 2*pi/P = v/R
-    star_params['om_eq'] = star_params['veq']/star_params['Rstar_km']    
-    for key in ['_spots','_faculae']:
-        if 'veq'+key in star_params:star_params['om_eq'+key]=star_params['veq'+key]/star_params['Rstar_km']
-        else:
-            star_params['veq'+key]=star_params['veq']
-            star_params['om_eq'+key]=star_params['om_eq']
-
-    #Stellar equatorial rotation period (d)
-    #    - P = 2*pi*R/v
-    for key in ['','_spots','_faculae']:
-        star_params['Peq'+key] = (2.*np.pi*star_params['Rstar_km'])/(star_params['veq'+key]*24*3600)
-
-    #Facula equatorial rotation rate (rad/s)
-    if 'veq_faculae' in star_params:star_params['om_eq_faculae']=star_params['veq_faculae']/star_params['Rstar_km']
-    else:
-        star_params['veq_faculae']=star_params['veq']
-        star_params['om_eq_faculae']=star_params['om_eq']
-
-    #Facula equatorial rotational period (s)
-    star_params['Peq_faculae']=(2.*np.pi*star_params['Rstar_km'])/(star_params['veq_faculae']*24*3600)
-
-    #No GD
-    if ('beta_GD' not in star_params):star_params['beta_GD']=0.
-    if ('Tpole' not in star_params):star_params['Tpole']=0.
-
-    #Conversions
-    star_params['istar_rad']=star_params['istar']*np.pi/180.
-    star_params['cos_istar']=np.cos(star_params['istar_rad'])
-    star_params['vsini']=star_params['veq']*np.sin(star_params['istar_rad'])    #km/s
+        #Conversions and calculations
+        star_params=system_param['star']
+        star_params['Rstar_km'] = star_params['Rstar']*Rsun
+        
+        #Spherical star
+        if ('f_GD' not in star_params):
+            star_params['f_GD']=0.
+            star_params['RpoleReq'] = 1.
+            
+        #Oblate star
+        elif star_params['f_GD']>0.:
+            print('Star is oblate')
+            star_params['RpoleReq']=1.-star_params['f_GD']
     
-    #Default parameters
-    for key in ['alpha_rot','beta_rot','alpha_rot_spots','beta_rot_spots','alpha_rot_faculae','beta_rot_faculae','c1_CB','c2_CB','c3_CB','c1_pol','c2_pol','c3_pol','c4_pol']:
-        if key not in star_params:star_params[key] = 0.
-
-    #Conversion factor from the LOS velocity output (/Rstar/h) to RV in km/s
-    star_params['RV_conv_fact']=-star_params['Rstar_km']/3600.
-
-    #Macroturbulence
-    if theo_dic['mac_mode'] is not None:
-        if 'rt' in theo_dic['mac_mode']:
-            theo_dic['mac_mode_func'] = calc_macro_ker_rt
-            if theo_dic['mac_mode']=='rt_iso':
-                star_params['A_T']=star_params['A_R']
-                star_params['ksi_T']=star_params['ksi_R']   
-        elif 'anigauss' in theo_dic['mac_mode']:
-            theo_dic['mac_mode_func'] = calc_macro_ker_anigauss
-            if theo_dic['mac_mode']=='anigauss_iso':
-                star_params['eta_T']=star_params['eta_R']
+        #Reference time for stellar phase (bjd)
+        if 'Tcenter' not in star_params:star_params['Tcenter'] = 2400000.
+    
+        #Stellar equatorial rotation rate (rad/s)
+        #    - om = 2*pi/P = v/R
+        star_params['om_eq'] = star_params['veq']/star_params['Rstar_km']    
+        for key in ['_spots','_faculae']:
+            if 'veq'+key in star_params:star_params['om_eq'+key]=star_params['veq'+key]/star_params['Rstar_km']
+            else:
+                star_params['veq'+key]=star_params['veq']
+                star_params['om_eq'+key]=star_params['om_eq']
+    
+        #Stellar equatorial rotation period (d)
+        #    - P = 2*pi*R/v
+        for key in ['','_spots','_faculae']:
+            star_params['Peq'+key] = (2.*np.pi*star_params['Rstar_km'])/(star_params['veq'+key]*24*3600)
+    
+        #No GD
+        if ('beta_GD' not in star_params):star_params['beta_GD']=0.
+        if ('Tpole' not in star_params):star_params['Tpole']=0.
+    
+        #Conversions
+        star_params['istar_rad']=star_params['istar']*np.pi/180.
+        star_params['cos_istar']=np.cos(star_params['istar_rad'])
+        star_params['vsini']=star_params['veq']*np.sin(star_params['istar_rad'])    #km/s
+        
+        #Default parameters
+        for key in ['alpha_rot','beta_rot','alpha_rot_spots','beta_rot_spots','alpha_rot_faculae','beta_rot_faculae','c1_CB','c2_CB','c3_CB','c1_pol','c2_pol','c3_pol','c4_pol']:
+            if key not in star_params:star_params[key] = 0.
+    
+        #Conversion factor from the LOS velocity output (/Rstar/h) to RV in km/s
+        star_params['RV_conv_fact']=-star_params['Rstar_km']/3600.
+    
+        #Macroturbulence
+        if theo_dic['mac_mode'] is not None:
+            if 'rt' in theo_dic['mac_mode']:
+                theo_dic['mac_mode_func'] = calc_macro_ker_rt
+                if theo_dic['mac_mode']=='rt_iso':
+                    star_params['A_T']=star_params['A_R']
+                    star_params['ksi_T']=star_params['ksi_R']   
+            elif 'anigauss' in theo_dic['mac_mode']:
+                theo_dic['mac_mode_func'] = calc_macro_ker_anigauss
+                if theo_dic['mac_mode']=='anigauss_iso':
+                    star_params['eta_T']=star_params['eta_R']
     
             
 
     #------------------------------------------------------------------------------
     #Planets
     #------------------------------------------------------------------------------
-    
+
     #Planets defined in the system
     gen_dic['all_pl'] = [pl_loc for pl_loc in system_param.keys() if pl_loc!='star']
 
@@ -976,9 +950,10 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             contact_phases=calc_tr_contacts(data_dic['DI']['system_prop']['achrom'][pl_loc][0],PlParam_loc,plot_dic['stend_ph'],star_params)
             PlParam_loc['TLength'] = (contact_phases[3]-contact_phases[0])*PlParam_loc['period']           
             print('Automatic definition of T14['+str(pl_loc)+']='+"{0:.2f}".format(PlParam_loc['TLength']*24.)+' h')
-
+    
     #Calculating theoretical properties of the planet-occulted regions
     if (not gen_dic['theoPlOcc']) and ((('CCF' in data_dic['Diff']['type'].values()) and (gen_dic['fit_Intr'])) or (gen_dic['align_Intr']) or (gen_dic['calc_pl_atm'])):
+        print('Automatic activation of "gen_dic["theoPlOcc"]"')
         gen_dic['theoPlOcc']=True
 
     #Oversampling factor for values from planet-occulted regions
@@ -1163,7 +1138,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #Definition of model stellar grid to calculate local or disk-integrated properties
         #    - used throughout the pipeline, unless stellar properties are fitted
         if gen_dic['theoPlOcc'] or (data_dic['DI']['ar_prop'] != {}) or (gen_dic['fit_DI_gen'] and (('custom' in data_dic['DI']['model'].values()) or ('RT_ani_macro' in data_dic['DI']['model'].values()))) or gen_dic['mock_data'] \
-            or gen_dic['fit_DiffProf'] or gen_dic['correct_ar'] or gen_dic['fit_IntrProf'] or gen_dic['loc_prof_est']:
+            or gen_dic['fit_DiffProf'] or gen_dic['fit_IntrProf'] or gen_dic['loc_prof_est']:   #or gen_dic['correct_ar'] 
     
             #Stellar grid
             model_star('grid',theo_dic,grid_type,data_dic['DI']['system_prop'],theo_dic['nsub_Dstar'],star_params,True,True) 
@@ -1456,7 +1431,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             else:
                 
                 #Adding / in case user forgets
-                vis_path_root = gen_dic['data_dir_list'][inst][vis]+'/'
+                vis_path_root = path_singslash(gen_dic['data_dir_list'][inst][vis]+'/')
         
                 #List of all exposures for current instrument
                 if inst in ['SOPHIE']:
@@ -1501,7 +1476,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 vis_path_exp = np.array(glob.glob(vis_path+nom_ext))
                 n_in_visit=len(vis_path_exp) 
                 if n_in_visit==0:stop('No data found at '+vis_path+nom_ext+'. Check path.')
-                
+          
                 #Retrieved file root names
                 #    - so that we can retrieve sky-corrected and blaze files in the same order
                 exp_rootnames = [path.split(vis_path_root)[1].split(nom_ext)[0] for path in vis_path_exp]
@@ -1797,7 +1772,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             DI_data_inst[vis]['RVdrift'][iexp]=hdr['HIERARCH OHP DRS DRIFT RV']      #in m/s                 
                         elif inst in ['HARPS','HARPN','ESPRESSO','ESPRESSO_MR','NIRPS_HA','NIRPS_HE']:
                             if 'HIERARCH '+facil_inst+' QC DRIFT DET0 MEAN' in hdr:
-                                DI_data_inst[vis]['RVdrift'][iexp]=hdr['HIERARCH '+facil_inst+' QC DRIFT DET0 MEAN']*gen_dic['pix_size_v'][inst]*1e3    #in pix -> km/s
+                                DI_data_inst[vis]['RVdrift'][iexp]=hdr['HIERARCH '+facil_inst+' QC DRIFT DET0 MEAN']*return_pix_size(inst)*1e3    #in pix -> m/s
                     
                    #Stellar phase
                     coord_dic[inst][vis]['st_ph_st'][iexp],coord_dic[inst][vis]['cen_ph_st'][iexp],coord_dic[inst][vis]['end_ph_st'][iexp] = get_timeorbit(system_param['star']['Tcenter'],coord_dic[inst][vis]['bjd'][iexp], {'period':system_param['star']['Peq']}, coord_dic[inst][vis]['t_dur'][iexp])[0:3] 
@@ -1955,7 +1930,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 # + if the correlation length is chosen, then it may depend on the visit conditions but should be constant for a given visit. In that case 
                                 # the number of screened bins has already been set in 'scr_lgth' for the visit, using the empirical estimation on the differential CCFs            
                                 if vis not in gen_dic['scr_lgth'][inst]:
-                                    gen_dic[inst][vis]['scr_lgth']=int(round(gen_dic['pix_size_v'][inst]/delta_rv))
+                                    gen_dic[inst][vis]['scr_lgth']=int(round(return_pix_size(inst)/delta_rv))
                                     if gen_dic[inst][vis]['scr_lgth']<=1:gen_dic[inst][vis]['scr_lgth']=1  
                                     if gen_dic[inst][vis]['scr_lgth']==1:print('           No CCF screening required')
                                     else:print('           Screening by '+str(gen_dic[inst][vis]['scr_lgth'])+' pixels')
@@ -3009,7 +2984,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         if gen_dic['CCF_from_sp'] or gen_dic['Intr_CCF']:
           
             #Velocity table in input frame
-            if gen_dic['dRV'] is None:dvelccf= gen_dic['pix_size_v'][inst]
+            if gen_dic['dRV'] is None:dvelccf= return_pix_size(inst)
             else:dvelccf= gen_dic['dRV']  
             n_vel = int((gen_dic['end_RV']-gen_dic['start_RV'])/dvelccf)+1
             data_vis['nvel'] = n_vel
@@ -3225,7 +3200,22 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             spec_1D_prop['cen_bins'] = 0.5*(spec_1D_prop['edge_bins'][0:-1]+spec_1D_prop['edge_bins'][1::])      
             return None
         for key in ['DI','Intr','Atm']:
-            if gen_dic['spec_1D_'+key]:def_1D_bins(data_dic[key])
+            if gen_dic['spec_1D_'+key]:
+            
+                #Default 1D table
+                #    - tables are uniformely spaced in ln(w), with d[ln(w)] = dw/w = drv/c
+                #      we use the instrument pixel size defined in rv space to set a default value
+                if (inst not in data_dic[key]['spec_1D_prop']):
+                    dlnw_inst = return_pix_size(inst)/c_light
+                    w_st_inst_all = {'ESPRESSO':3000.,'HARPN':3000.,'HARPS':3000.,'CARMENES_VIS':4500.,'NIRPS_HA':9500.}
+                    if (inst not in w_st_inst_all):print('ERROR : define w_st for "'+inst+'"')
+                    w_end_inst_all = {'ESPRESSO':8500.,'HARPN':7500.,'HARPS':7500.,'CARMENES_VIS':11500.,'NIRPS_HA':21000.}
+                    if (inst not in w_end_inst_all):print('ERROR : define w_end for "'+inst+'"')
+                    data_dic[key]['spec_1D_prop'][inst] = {'dlnw':dlnw_inst,'w_st':w_st_inst_all[inst],'w_end':w_end_inst_all[inst]}
+                    print('          Automatic definition of 1D '+gen_dic['type_name'][key]+' table : dlnw = '+str(dlnw_inst)+ ' ; w_st = '+str(w_st_inst_all[inst])+' A ; w_end = '+str(w_end_inst_all[inst])+' A.')
+
+                #Defining table                                
+                def_1D_bins(data_dic[key])
         
     return None  
 
