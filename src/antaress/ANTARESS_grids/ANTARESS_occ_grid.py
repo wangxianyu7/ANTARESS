@@ -310,7 +310,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
         #Disk-integrated stellar flux
         if Ftot_star:
             surf_prop_dic_pl[subkey_chrom]['Ftot_star']=np.zeros([star_I_prop[subkey_chrom]['nw'],n_exp])*np.nan 
-            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.zeros([star_I_prop[subkey_chrom]['nw'],n_exp])*np.nan 
+            surf_prop_dic_common[subkey_chrom]['Ftot_star']=np.ones([star_I_prop[subkey_chrom]['nw'],n_exp]) 
             if cond_ar:
                 surf_prop_dic_ar[subkey_chrom]['Ftot_star']=np.zeros([star_I_prop[subkey_chrom]['nw'],n_exp])*np.nan 
 
@@ -646,7 +646,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                             #Going over the bands in each chromatic mode
                             for iband in range(system_ar_prop[subkey_chrom]['nw']):
                                 Focc_star_ar[subkey_chrom][iband], cond_occ_ar = calc_ar_region_prop(line_occ_HP[subkey_chrom][iband], cond_occ_ar, ar_prop_oversamp, iband, star_I_prop[subkey_chrom], 
-                                                                system_ar_prop[subkey_chrom], par_star, ar_proc[subkey_chrom][iband],ar,theo_dic['Ssub_Sstar_ar'][ar], 
+                                                                system_ar_prop[subkey_chrom], par_star, ar_proc,ar,theo_dic['Ssub_Sstar_ar'][ar], 
                                                                 theo_dic['Ssub_Sstar'], theo_dic['Istar_norm_'+subkey_chrom], sum_prop_dic[subkey_chrom][ar], coord_reg_dic[subkey_chrom][ar],
                                                                 range_dic[subkey_chrom][ar], Focc_star_ar[subkey_chrom][iband], par_list, range_par_list, args, cb_band_ar_dic[subkey_chrom][iband])
 

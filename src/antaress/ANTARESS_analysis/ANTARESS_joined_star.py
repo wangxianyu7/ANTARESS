@@ -1281,12 +1281,12 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     if len(fit_prop_dic['fit_range'][inst][vis])==0:fixed_args['cond_fit'][inst][vis][isub] = True  
                     else:
                         for bd_int in fit_prop_dic['fit_range'][inst][vis]:
-                            fit_dic[inst][vis]['cond_fit'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])
+                            fixed_args['cond_fit'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])
 
                     #Accounting for undefined pixels
                     fixed_args['cond_def_cont_all'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]           
                     fixed_args['cond_fit'][inst][vis][isub]&= fixed_args['cond_def'][inst][vis][isub]          
-                    fit_dic['nx_fit']+=np.sum(fit_dic[inst][vis]['cond_fit'][isub])
+                    fit_dic['nx_fit']+=np.sum(fixed_args['cond_fit'][inst][vis][isub])
 
                     #Setting constant error
                     if fixed_args['cst_err']:

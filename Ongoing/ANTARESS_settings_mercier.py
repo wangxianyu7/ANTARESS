@@ -246,13 +246,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Star name
 
-    # gen_dic['star_name']='AUMic'
+    gen_dic['star_name']='AUMic'
     # gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
     # gen_dic['star_name']='TRAPPIST1'
     # gen_dic['star_name']='TOI3884'
-    gen_dic['star_name']='HD189733'
+    # gen_dic['star_name']='HD189733'
 
     # Zodiacs
     # gen_dic['star_name']='Capricorn'
@@ -690,7 +690,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
          
     #Activating module
-    gen_dic['mock_data'] =  True & False
+    gen_dic['mock_data'] =  True #& False
 
     #Setting number of threads 
     mock_dic['nthreads'] = 2 
@@ -761,7 +761,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] == 'TRAPPIST1' :
         mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
     if gen_dic['star_name'] == 'AUMic' :
-        mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
+        mock_dic['DI_table']={'x_start':-200.,'x_end':200.,'dx':0.82}
     if gen_dic['star_name'] == 'fakeAU_Mic' :
         mock_dic['DI_table']={'x_start':-20.2,'x_end':20.3,'dx':0.42}
     if gen_dic['star_name'] == 'V1298tau':
@@ -4819,14 +4819,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['DIbin_res']=''  
     
     #%%%% Activating 
-    gen_dic['DIbin'] = True # &  False
+    gen_dic['DIbin'] = True  &  False
     gen_dic['DIbinmultivis'] = True      &  False
     if gen_dic['star_name']=='HD189733':gen_dic['DIbin']=True & False
     
     
     #%%%% Calculating/retrieving
-    gen_dic['calc_DIbin']=True #  &  False  
-    gen_dic['calc_DIbinmultivis'] = True    #  &  False
+    gen_dic['calc_DIbin']=True   &  False  
+    gen_dic['calc_DIbinmultivis'] = True      &  False
     if gen_dic['star_name']=='HD189733':
         gen_dic['DIbinmultivis']=True   & False  
         gen_dic['calc_DIbinmultivis']= True  & False       
@@ -5247,10 +5247,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #Activating
-    gen_dic['diff_data'] = True   &  False
+    gen_dic['diff_data'] = True   #&  False
 
     #Calculating/retrieving 
-    gen_dic['calc_diff_data'] = True   &  False
+    gen_dic['calc_diff_data'] = True   #&  False
 
 
     #Multi-threading
@@ -6095,7 +6095,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_DiffProf'] = True  &  False
+    gen_dic['fit_DiffProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -6262,14 +6262,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'cos_istar':{'vary':True,'guess':0.1, 'bd':[-1., 1.]},
         'cos_istar':{'vary':False,'guess':0.01745240644, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
-        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 10., 2458330.39051 + 10.]},
-        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
-        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[10, 50]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.05, 0.7]},
-        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.1, 'bd':[0.05, 0.7]},
+        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
+        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 10., 2458330.39051 + 10.]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
+        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[10, 50]},
+        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.05, 0.7]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.1, 'bd':[0.05, 0.7]},
         
         # # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
         # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':False, 'guess':0, 'bd':[-50, 10]},
@@ -6565,8 +6565,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Fitting mode
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         # glob_fit_dic['DiffProf']['fit_mode']='chi2' 
-        glob_fit_dic['DiffProf']['fit_mode']='mcmc'
-        # glob_fit_dic['DiffProf']['fit_mode']='ns' 
+        # glob_fit_dic['DiffProf']['fit_mode']='mcmc'
+        glob_fit_dic['DiffProf']['fit_mode']='ns' 
 
     #Fitting method - only if chi2 is used
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -6702,14 +6702,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # MCMC specific
     # - Walkers
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['walkers_set']={'nwalkers':14,'nsteps':1500,'nburn':900}
+        glob_fit_dic['DiffProf']['walkers_set']={'nwalkers':5,'nsteps':15,'nburn':3}
 
     # - Complex priors        
          
     # - Walkers exclusion  
     glob_fit_dic['DiffProf']['exclu_walk']=True & False  
     if gen_dic['star_name'] in ['TOI3884','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:   
-        glob_fit_dic['DiffProf']['exclu_walk']=True #& False   
+        glob_fit_dic['DiffProf']['exclu_walk']=True & False   
     
 
     # - Automatic exclusion of outlying chains
@@ -6723,7 +6723,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     # - Live points
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['ns_set']={'nlive':400, 'bound_method':'multi', 'sample_method':'slice'}
+        glob_fit_dic['DiffProf']['ns_set']={'nlive':400, 'bound_method':'multi', 'sample_method':'slice','dlogz':10.}
 
 
     #Derived errors         

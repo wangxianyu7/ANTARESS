@@ -1190,8 +1190,8 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
         blobs = sampler.get_blobs()
 
         #Step-by-step chi2 chain
-        if fixed_args['step_chi2']:step_chi2 = blobs['step_chi2']
-        else:step_chi2 = None
+        if fixed_args['step_chi2']:fixed_args['chi2_storage'] = blobs['step_chi2']
+        else:fixed_args['chi2_storage'] = None
         
         #Step-by-step complementary function output
         if fixed_args['step_output']:step_outputs = blobs['step_outputs']
