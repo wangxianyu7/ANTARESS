@@ -39,6 +39,50 @@ local_dic[data_type]['priors']={}
 
 Describe various priors and way to set them up    
 
+Uniform Prior
+^^^^^^^^^^^^^
+
+:green:``mod:'uf'``. Set with lower range (``low``) and higher range (``high``). The parameter is 
+uniformly distributed between ``low`` and ``high``, meaning every values within this range has an equal 
+probability. Set as::
+
+ compos_dic['priors'] = { prop : {
+    'mod': 'uf', 
+    'low': val, 
+    'high': val} 
+    }
+
+Gaussian Prior
+^^^^^^^^^^^^^^
+
+:green:``mod:'gauss'``. Set with mean of the Gaussian distribution (``val``), which is the most likely
+values for the parameter; and standard devitation of Gaussian distribution (``s_val``), indicating
+how spread out the values are around the mean. Smaller ``s_val`` lead to a narrower distribution,
+implying higher confidence in the mean values. Set as::
+
+ compo_dic['priors'] = { prop : {
+    'mod': 'gauss' ,
+    'val': val ,
+    's_val': val} 
+    } 
+
+Double-Gaussian Prior
+^^^^^^^^^^^^^^^^^^^^^
+
+:green:``mod: 'dgauss'``. Set with ``val``, and standard deviations for values below the mean 
+(``s_val_low``), controlling the spread of the lower side of the distribution, and the standard
+deviation above the mean (``s_val_high``), controlling the spread of the upper side.
+Double-Gaussian approach allows an asymmetric distribution, where uncertainties might differ
+between the lower and upper bounds. Set as::
+
+ compos_dic['priors'] = { prop: {
+    'mod': 'dgauss', 
+    'val': val, 
+    's_val_low': val, 
+    's_val_high': val}
+    }
+
+
 
 Describe 
     local_dic[data_type]['deriv_prop']={}
@@ -58,6 +102,20 @@ data_dic['Intr']['run_mode']='use'
 # + 'use': runs MCMC  
 # + 'reuse' (with gen_dic['calc_fit_X']=True): load MCMC results, allow changing nburn and error definitions without running the mcmc again
 
+Run Mode
+~~~~~~~~
+
+Define the mode for running the MCMC simulations:
+
+- ``'use'``: Runs (new) MCMC from scratch.
+- ``'reuse'``: Loads previously saved MCMC results, which is saved as a :orange:`*.npz` file in :orange:`{path_to_directory}/working/output/GJ436` directory. Reusing MCMCM allows changes to the burn-in phase (``nburn``) and error definitions without re-running the MCMC from scratch.
+
+Example configuration::
+
+  compo_dic['mcmc_run_mode'] = 'use' or 'reuse'
+  
+  
+  
 
 
 #%%% Monitor MCMC
@@ -71,11 +129,41 @@ local_dic[data_type]['progress']= True
 #  or set the list of mcmc runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
 local_dic[data_type]['reuse']={}
 
+Runs to Re-use
+~~~~~~~~~~~~~~
+
+When ``mcmc_run_mode`` is set to ``'reuse'``, either leave the entry empty to automatically retrieve the MCMC result available in the default directory or specify the list of MCMC results (:orange:`*.npz`) to retrieve.
+The retrived MCMC result must have been run with the same Fit Setting and the same number of walkers (``'nwalkers'``), but the number of step (``'nsteps'``) and burn-in phrase (``'nburn'``) can be specified for each run as::
+
+  compo_dic['mcmc_reuse'] = 
+    {'paths':['{path_to_directory}/working/output/GJ436/raw_chains_walk40_steps500.npz',
+              '{path_to_directory}/working/output/GJ436/raw_chains_walk40_steps100.npz'],
+              'nburn':[200,0]}
+
+Where the :orange:`raw_chains_walk40_steps500.npz` and :orange:`raw_chains_walk40_steps100.npz` are
+the two MCMC results which to be re-use. `'nburn'` specifies the burn-in phase for each MCMC
+results.
+
+
+
 
 #%%%%%% Runs to re-start
 #    - indicate path to a 'raw_chains' file
 #      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'walkers_set'
 local_dic[data_type]['reboot']=''
+
+Run to Re-start
+~~~~~~~~~~~~~~~
+
+When ``mcmc_run_mode`` is set to `'use'`, either set an empty string to start a new MCMC run, or specify the path to an ``*.npz`` file with the same number of walkers (``'nwalkers'``) and extend the MCMC run for additional number of steps (``'nsteps'``) indicated in the ``'mcmc_set'`` from the last step.
+
+Example configuration::
+
+  compo_dic['mcmc_reboot'] = '{path_to_directory}/working/output/GJ436/raw_chains_walk40_steps200.npz'
+
+
+
+
 
 
 ANTARESS allows you to reboot an existing MCMC run so that it is advised to run
@@ -88,6 +176,35 @@ ANTARESS allows you to reboot an existing MCMC run so that it is advised to run
 
 Tip: when defining ranges for walkers initialization, it is advised to define broad range for the first runs to ensure a good exploration of the parameter space
 for final and refined runs, ranges can be set to narrower windows aroudn the expected best fit so that it converges faster
+                  
+MCMC Walkers
+~~~~~~~~~~~~
+
+Define the MCMC walkers settings:
+
+- ``'nwalkers'``: Number of walkers.
+- ``'nsteps'``: Number of samples.
+- ``'nburn'``: Burn-in phase.
+
+(Noted by Emi:) I am interested to run some more trail runs. Reasons: if possible I would like to share with the user the computation time and fititng accuracy versus 'nwalkers' and 'nsteps'. 
+Which one 'nwalkers' or 'nsteps' is more a limiting factor toward the computation time? 
+Perhaps a plotting and presenting a figures of 'nwalkers' and 'nsteps' v.s., computaional time. 
+And also remind the 'nwalkers' cannot be set to be too low, otherwise the MCMC will not converge. 
+I need to check the minimum number.
+Vincent, if you have some MCMC result, e.g., the 'output' file for different run (if you did not
+overwrite it), could you please share it with me? I can check the computation time ('Duration ') and fitting accuracy ('Best Chi-sq' and 'Best reduced Chi-sq') versus 'nwalkers' and 'nsteps'.
+
+Example configuration::
+
+    compo_dic['mcmc_set'] = {
+        'nwalkers': 20,
+        'nsteps': 1000,
+        'nburn': 200
+    }                  
+                  
+                  
+                  
+                  
                                   
 
 #%%%%%% Complex priors
@@ -162,6 +279,31 @@ Activating :green:`local_dic[data_type]['save_sim_points_corner']='pdf'` will ge
 This plot is useful when running a manual grid of simulations for a model with long computing time, with the PDF plot generated from samples drawn from importance sampling. 
 For example it allows checking that a region of high probability was sufficiently sampled by the simulations.
 Plot options are the same as for the PDF plot.
+
+
+MCMC Corner Plot
+~~~~~~~~~~~~~~~~
+
+Define the options for generating the MCMC corner plot at the end of internal structure retrieval runs:
+
+- ``'plot_HDI'``: Whether to plot the Highest Density Interval (HDI).
+- ``'use_arviz'``: Whether to use ArviZ for plotting.
+- ``'plot1s_1D'``: Whether to plot 1-sigma intervals in 1D plots.
+
+Example configuration:
+
+.. code-block:: python
+
+    compo_dic['corner_options'] = {
+        'plot_HDI': True,
+        'use_arviz': True,
+        'plot1s_1D': False
+    }
+
+
+
+
+
 
 
 

@@ -347,6 +347,26 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     if ('prop_' in key_plot):
 
         #Abscissa
+        #    - possibilities for DI properties
+        # + 'time'
+        # + 'time_rel'
+        # + 'phase'
+        # + 'starphase'
+        # + 'ctrst'
+        # + 'FWHM'
+        # + 'snr'
+        # + 'snrQ'
+        # + 'AM'
+        # + 'flux_airmass'
+        # + 'seeing'
+        # + 'colcorrmin'
+        # + 'PSFang'
+        # + 'alt'
+        # + 'ha'
+        # + 'na'
+        # + 'ca'
+        # + 's'
+        # + 'rhk'
         plot_options['prop_DI_absc']='phase'                
         plot_options['prop_Intr_absc']='phase'
         
@@ -1021,13 +1041,15 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ##################################################################################################
     #%% Stellar CCF mask
     ##################################################################################################        
+    for data_mode in ['DI','Intr']: 
+        mask_dic = data_dic[data_mode]['mask']
         
-    ##################################################################################################
-    #%%% Spectrum
-    #    - plotting spectrum used for CCF mask generation and associated properties
-    ##################################################################################################
-    for key_plot in ['DImask_spectra','Intrmask_spectra']:
-        if plot_dic[key_plot]!='':
+        ##################################################################################################
+        #%%% Spectrum
+        #    - plotting spectrum used for CCF mask generation and associated properties
+        ##################################################################################################
+        if plot_dic[data_mode+'mask_spectra']!='':
+            key_plot = data_mode+'mask_spectra'
 
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
@@ -1051,8 +1073,22 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%% Print number of line selected in step
             plot_settings[key_plot]['print_nl']=True   
 
+
+            #%%%% Plot exclusion ranges
+            plot_settings[key_plot]['line_rej_range']=True 
+
+
             #%%%% Plot minimum telluric depth to be considered
             plot_settings[key_plot]['tell_depth_min'] = False
+
+
+            #%%%% Print VALD species in final plot 
+            plot_settings[key_plot]['vald_sp']= False 
+
+
+            #%%%% Plot line ranges in final plot 
+            plot_settings[key_plot]['line_ranges'] = True  
+    
 
             ##############################################################################
             #%%%% Disk-integrated profiles
@@ -1063,15 +1099,15 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%% Intrinsic profile
             if (key_plot=='Intrmask_spectra'):
                 pass
-
-
-
-
-    ##################################################################################################
-    #%%% Line depth range selection
-    ##################################################################################################
-    for key_plot in ['DImask_ld','Intrmask_ld']:
-        if plot_dic[key_plot]!='':
+    
+    
+    
+    
+        ##################################################################################################
+        #%%% Line depth range selection
+        ##################################################################################################
+        if mask_dic['sel_ld'] and (plot_dic[data_mode+'mask_ld']!=''):
+            key_plot = data_mode+'mask_ld'
 
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
@@ -1094,15 +1130,15 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             #%%%% Intrinsic profile
             if (key_plot=='Intrmask_ld'):
                 pass
-
-
-
-
-    ##################################################################################################
-    #%%% Line depth and width selection
-    ##################################################################################################
-    for key_plot in ['DImask_ld_lw','Intrmask_ld_lw']:
-        if plot_dic[key_plot]!='':
+    
+    
+    
+    
+        ##################################################################################################
+        #%%% Line depth and width selection
+        ##################################################################################################
+        if mask_dic['sel_ld_lw'] and (plot_dic[data_mode+'mask_ld_lw']!=''):
+            key_plot = data_mode+'mask_ld_lw'
 
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
@@ -1128,16 +1164,16 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         
 
-        
-
-
-
-
-    ##################################################################################################
-    #%%% Line position selection
-    ##################################################################################################
-    for key_plot in ['DImask_RVdev_fit','Intrmask_RVdev_fit']:
-        if plot_dic[key_plot]!='':
+            
+    
+    
+    
+    
+        ##################################################################################################
+        #%%% Line position selection
+        ##################################################################################################
+        if mask_dic['sel_RVdev_fit'] and (plot_dic[data_mode+'mask_RVdev_fit']!=''):
+            key_plot = data_mode+'mask_RVdev_fit'
 
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)  
@@ -1159,16 +1195,16 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
                 pass    
 
 
-
-
-
-
-    ##################################################################################################
-    #%%% Telluric selection
-    #    - plotting relative depth between telluric and stellar lines for CCF mask generation
-    ##################################################################################################
-    for key_plot in ['DImask_tellcont','Intrmask_tellcont']:
-        if plot_dic[key_plot]!='':
+    
+    
+    
+    
+        ##################################################################################################
+        #%%% Telluric selection
+        #    - plotting relative depth between telluric and stellar lines for CCF mask generation
+        ##################################################################################################
+        if mask_dic['sel_tellcont'] and (plot_dic[data_mode+'mask_tellcont']!=''):
+            key_plot = data_mode+'mask_tellcont'
 
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
@@ -1189,15 +1225,15 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             if (key_plot=='Intrmask_tellcont'):
                 pass   
         
-
-        
-
-
-    ##################################################################################################
-    #%%% VALD line depth correction
-    ##################################################################################################
-    for key_plot in ['DImask_vald_depthcorr','Intrmask_vald_depthcorr']:
-        if plot_dic[key_plot]!='':
+    
+            
+    
+    
+        ##################################################################################################
+        #%%% VALD line depth correction
+        ##################################################################################################
+        if mask_dic['sel_vald_depthcorr'] and (plot_dic[data_mode+'mask_vald_depthcorr']!=''):
+            key_plot = data_mode+'mask_vald_depthcorr'
 
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
@@ -1215,17 +1251,17 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             if (key_plot=='Intrmask_vald_depthcorr'):
                 pass   
 
-
-
-
-
-
-
-    ##################################################################################################
-    #%%% Morphological (asymmetry) selection
-    ##################################################################################################
-    for key_plot in ['DImask_morphasym','Intrmask_morphasym']:
-        if plot_dic[key_plot]!='':
+    
+    
+    
+    
+    
+    
+        ##################################################################################################
+        #%%% Morphological (asymmetry) selection
+        ##################################################################################################
+        if mask_dic['sel_morphasym'] and (plot_dic[data_mode+'mask_morphasym']!=''):
+            key_plot = data_mode+'mask_morphasym'
 
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)        
@@ -1250,13 +1286,13 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
                 pass   
     
 
-
-
-    ##################################################################################################
-    #%%% Morphological (shape) selection
-    ##################################################################################################
-    for key_plot in ['DImask_morphshape','Intrmask_morphshape']:
-        if plot_dic[key_plot]!='':
+    
+    
+        ##################################################################################################
+        #%%% Morphological (shape) selection
+        ##################################################################################################
+        if mask_dic['sel_morphshape'] and (plot_dic[data_mode+'mask_morphshape']!=''):
+            key_plot = data_mode+'mask_morphshape'
 
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)       
@@ -1280,15 +1316,15 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             if (key_plot=='Intrmask_morphshape'):
                 pass   
 
-        
-
-        
-
-    ##################################################################################################
-    #%%% RV dispersion selection
-    ##################################################################################################
-    for key_plot in ['DImask_RVdisp','Intrmask_RVdisp']:
-        if plot_dic[key_plot]!='':
+            
+    
+            
+    
+        ##################################################################################################
+        #%%% RV dispersion selection
+        ##################################################################################################
+        if mask_dic['sel_RVdisp'] and (plot_dic[data_mode+'mask_RVdisp']!=''):
+            key_plot = data_mode+'mask_RVdisp'
 
             #%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)        
@@ -1314,11 +1350,11 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
 
 
-
-
-
-
-
+    
+    
+    
+    
+    
 
 
 
@@ -2050,7 +2086,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     ##################################################################################################
     if (plot_dic['prop_Intr']!=''):
 
-        #%%% Ordina properties
+        #%%%% Ordina properties
         #    - properties:
         # + 'rv' : centroid of the local stellar CCFs in the star rest frame (in km/s)
         # + 'rv_res' residuals from their RRM model (in km/s)        
@@ -2061,7 +2097,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         # + 'amp_l2c': contrast(lobe)/contrast(core) of double gaussian components
         plot_settings['prop_Intr_ordin']=['rv','rv_res','rv_l2c','RV_lobe','FWHM','FWHM_voigt','FWHM_l2c','FWHM_lobe','true_FWHM','ctrst','true_ctrst','amp','amp_l2c','amp_lobe','area','a_damp']
 
-        #%%% Settings for selected properties
+        #%%%% Settings for selected properties
         for plot_prop in plot_settings['prop_Intr_ordin']:
             key_plot = 'prop_Intr_'+plot_prop 
 
@@ -2105,6 +2141,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             #%%%% RV plot
             if (plot_prop=='rv' ):
+                
+                #%%%%% Legend for the different contributions
+                plot_settings[key_plot]['legend_rv'] = False  
                 
                 #%%%%% Plot high-resolution model from nominal values in ANTARESS_systems.py
                 plot_settings[key_plot]['theo_HR_nom'] = False            

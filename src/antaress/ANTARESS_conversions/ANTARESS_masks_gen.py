@@ -11,7 +11,7 @@ from antaress.ANTARESS_general.utils import stop,np_where1D,dataload_npz,datasav
 
 
 
-def def_masks(mask_mode,vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_param,data_prop):
+def def_masks(vis_mode,gen_dic,data_type_gen,inst,vis,data_dic,plot_dic,system_param,data_prop):
     r"""**CCF mask generation**
 
     Generates CCF binary masks from processed stellar spectrum. 

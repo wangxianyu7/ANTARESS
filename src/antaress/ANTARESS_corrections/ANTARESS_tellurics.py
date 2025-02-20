@@ -8,7 +8,7 @@ from astropy.io import fits
 from scipy import special
 import scipy.linalg
 from ..ANTARESS_conversions.ANTARESS_conv import new_compute_CCF,check_CCF_mask_lines
-from ..ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,calc_FWHM_inst,return_resolv
+from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,convol_prof,calc_FWHM_inst,return_resolv
 from ..ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,MAIN_multithread,air_index,gen_specdopshift,def_edge_tab,check_data
 from ..ANTARESS_general.constant_data import N_avo,c_light_m,k_boltz,h_planck
 from ..ANTARESS_general.minim_routines import call_lmfit
@@ -100,10 +100,10 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
                 'O2':660128.}
 
             #Telluric CCF grid
-            drv = gen_dic['pix_size_v'][inst]
+            drv = return_pix_size(inst)
             if gen_dic['tell_def_range'] is None:min_def_ccf,max_def_ccf = -40.,40.001
             else:min_def_ccf,max_def_ccf = gen_dic['tell_def_range'][0],gen_dic['tell_def_range'][1]
-            fixed_args['velccf']= np.arange(min_def_ccf,max_def_ccf,gen_dic['pix_size_v'][inst])
+            fixed_args['velccf']= np.arange(min_def_ccf,max_def_ccf,drv)
             fixed_args['edge_velccf'] = np.append(fixed_args['velccf']-0.5*drv,fixed_args['velccf'][-1]+0.5*drv)
             fixed_args['n_ccf'] = len(fixed_args['velccf'])     
             
@@ -177,7 +177,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
             proc_DI_data_paths_new = gen_dic['save_data_dir']+'Corr_data/Tell/'+inst+'_'+vis+'_'
             iexp_all = range(data_vis['n_in_visit'])
             common_args = (data_vis['proc_DI_data_paths'],iexp_corr_list,inst,vis,gen_dic['tell_range_corr'],iord_corr_list,gen_dic['calc_tell_mode'],fixed_args,gen_dic['tell_species'],tell_mol_dic,gen_dic['sp_frame'],gen_dic['resamp_mode'],data_inst[vis]['dim_exp'],plot_dic['tell_CCF'],plot_dic['tell_prop'],proc_DI_data_paths_new,data_inst[vis]['mean_gcal_DI_data_paths'])
-            if gen_dic['tell_nthreads']>1:MAIN_multithread(corr_tell_vis,gen_dic['tell_nthreads'],data_vis['n_in_visit'],[iexp_all,data_prop_vis['AM'],data_prop_vis['IWV_AM'],data_prop_vis['TEMP'],data_prop_vis['PRESS'],data_prop_vis['BERV']],common_args)                           
+            if (gen_dic['tell_nthreads']>1) and (gen_dic['tell_nthreads']<=data_vis['n_in_visit']):MAIN_multithread(corr_tell_vis,gen_dic['tell_nthreads'],data_vis['n_in_visit'],[iexp_all,data_prop_vis['AM'],data_prop_vis['IWV_AM'],data_prop_vis['TEMP'],data_prop_vis['PRESS'],data_prop_vis['BERV']],common_args)                           
             else:corr_tell_vis(iexp_all,data_prop_vis['AM'],data_prop_vis['IWV_AM'],data_prop_vis['TEMP'],data_prop_vis['PRESS'],data_prop_vis['BERV'],*common_args)  
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
             data_vis['tell_DI_data_paths'] = {}
@@ -458,70 +458,70 @@ def open_resolution_map(instrument,time_science,ins_mod,bin_x):
     if instrument =='ESPRESSO':
         if ins_mod == 'SINGLEUHR':
             if time_science < 58421.5:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-09-09T12_18_49.369_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-09-09T12_18_49.369_RESOLUTION_MAP.fits')
                 #period = 'UHR_1x1_pre_october_2018'
             elif (time_science > 58421.5) and (time_science < 58653.1):
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-04-06T11_52_27.477_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-04-06T11_52_27.477_RESOLUTION_MAP.fits')
                 #period = 'UHR_1x1_post_october_2018'
             elif time_science > 58653.1:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-06T11_06_36.913_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-06T11_06_36.913_RESOLUTION_MAP.fits')
                 #period = 'UHR_1x1_post_june_2019'
             
         elif (ins_mod == 'MULTIMR') and (bin_x == 4):
             if time_science < 58421.5:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-07-08T14_51_53.873_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-07-08T14_51_53.873_RESOLUTION_MAP.fits')
                 #period = 'MR_4x2_pre_october_2018'
             elif (time_science > 58421.5) and (time_science < 58653.1):
-                instrumental_function = fits.open(static_resol_path+'r.ESPRE.2018-12-01T11_25_27.377_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'r.ESPRE.2018-12-01T11_25_27.377_RESOLUTION_MAP.fits')
                 #period = 'MR_4x2_post_october_2018'
             elif time_science > 58653.1:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-05T12_23_45.139_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-05T12_23_45.139_RESOLUTION_MAP.fits')
                 #period = 'MR_4x2_post_june_2019'
         
         elif (ins_mod == 'MULTIMR') and (bin_x == 8):
             if time_science < 58421.5:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-07-06T11_48_22.862_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-07-06T11_48_22.862_RESOLUTION_MAP.fits')
                 #period = 'MR_8x4_pre_october_2018'
             elif (time_science > 58421.5) and (time_science < 58653.1):
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-10-24T14_16_52.394_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-10-24T14_16_52.394_RESOLUTION_MAP.fits')
                 #period = 'MR_8x4_post_october_2018'
             elif time_science > 58653.1:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-05T12_59_57.138_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-05T12_59_57.138_RESOLUTION_MAP.fits')
                 #period = 'MR_8x4_post_june_2019'
         
         elif (ins_mod == 'SINGLEHR') and (bin_x == 1):
             if time_science < 58421.5:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-07-04T21_28_53.759_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-07-04T21_28_53.759_RESOLUTION_MAP.fits')
                 #period = 'HR_1x1_pre_october_2018'
             elif (time_science > 58421.5) and (time_science < 58653.1):
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-01-05T19_53_55.501_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-01-05T19_53_55.501_RESOLUTION_MAP.fits')
                 #period = 'HR_1x1_post_october_2018'
             elif time_science > 58653.1:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-19T10_10_12.384_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-11-19T10_10_12.384_RESOLUTION_MAP.fits')
                 #period = 'HR_1x1_post_june_2019'
         
         elif (ins_mod == 'SINGLEHR') and (bin_x == 2):
             if time_science < 58421.5:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-09-05T14_01_58.063_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2018-09-05T14_01_58.063_RESOLUTION_MAP.fits')
                 #period = 'HR_2x1_pre_october_2018'
             elif (time_science > 58421.5) and (time_science < 58653.1):
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-03-30T21_28_32.060_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-03-30T21_28_32.060_RESOLUTION_MAP.fits')
                 #period = 'HR_2x1_post_october_2018'
             elif time_science > 58653.1:
-                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-09-26T11_06_01.271_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'ESPRESSO/r.ESPRE.2019-09-26T11_06_01.271_RESOLUTION_MAP.fits')
                 #period = 'HR_2x1_post_june_2019'
         
     elif instrument in ['NIRPS_HE','NIRPS_HA']:
         if ins_mod == 'HA':
             if time_science < 59850.5:
-                instrumental_function = fits.open(static_resol_path+'NIRPS/r.NIRPS.2022-06-15T18_09_53.175_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'NIRPS/r.NIRPS.2022-06-15T18_09_53.175_RESOLUTION_MAP.fits')
             elif (time_science > 59850.5):
-                instrumental_function = fits.open(static_resol_path+'NIRPS/r.NIRPS.2022-11-28T21_06_04.212_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'NIRPS/r.NIRPS.2022-11-28T21_06_04.212_RESOLUTION_MAP.fits')
         elif ins_mod == 'HE':
             if time_science < 59850.5:
-                instrumental_function = fits.open(static_resol_path+'NIRPS/r.NIRPS.2022-06-15T17_52_36.533_resolution_map.fits')
+                instrumental_function = fits.open(static_resol_path+'NIRPS/r.NIRPS.2022-06-15T17_52_36.533_RESOLUTION_MAP.fits')
             elif (time_science > 59850.5):
-                instrumental_function = fits.open(static_resol_path+'NIRPS/r.NIRPS.2022-11-28T20_47_51.815_resolution_map.fits')         
+                instrumental_function = fits.open(static_resol_path+'NIRPS/r.NIRPS.2022-11-28T20_47_51.815_RESOLUTION_MAP.fits')         
 
     elif instrument == 'HARPN':
         if time_science < 56738.5: 

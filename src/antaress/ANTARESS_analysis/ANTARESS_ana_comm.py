@@ -13,7 +13,7 @@ from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_ar_prop,up_plocc_a
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_par,init_custom_DI_prof,custom_DI_prof,theo_intr2loc,CFunctionWrapper,var_stellar_prop
 from ..ANTARESS_analysis.ANTARESS_model_prof import para_cust_mod_true_prop,proc_cust_mod_true_prop,cust_mod_true_prop,gauss_intr_prop,calc_biss,\
     dgauss,gauss_poly,voigt,gauss_herm_lin,gen_fit_prof
-from ..ANTARESS_analysis.ANTARESS_inst_resp import convol_prof,def_st_prof_tab,cond_conv_st_prof_tab,resamp_st_prof_tab,get_FWHM_inst,calc_FWHM_inst
+from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,convol_prof,def_st_prof_tab,cond_conv_st_prof_tab,resamp_st_prof_tab,get_FWHM_inst,calc_FWHM_inst
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange
 from ..ANTARESS_corrections.ANTARESS_detrend import return_SNR_orders
 
@@ -2412,10 +2412,10 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
         #      which can be seen as requesting that the area of a box equivalent to the CCF is larger than the area of a box equivalent to a bin with amplitude the dispersion                
         #    - see also Allart+2017
         if (model_choice in ['gauss','voigt']) and ('amp' in output_prop_dic):
-            output_prop_dic['crit_area']=np.abs(output_prop_dic['amp'])*np.sqrt(output_prop_dic['FWHM']) / (disp_cont*np.sqrt(gen_dic['pix_size_v'][inst]))            
+            output_prop_dic['crit_area']=np.abs(output_prop_dic['amp'])*np.sqrt(output_prop_dic['FWHM']) / (disp_cont*np.sqrt(return_pix_size(inst)))            
             output_prop_dic['crit_amp']=np.abs(output_prop_dic['amp'])/disp_cont 
         if (model_choice in ['dgauss','custom']) and ('true_amp' in output_prop_dic):
-            output_prop_dic['crit_area']=np.abs(output_prop_dic['true_amp'])*np.sqrt(output_prop_dic['true_FWHM']) / (disp_cont*np.sqrt(gen_dic['pix_size_v'][inst]))
+            output_prop_dic['crit_area']=np.abs(output_prop_dic['true_amp'])*np.sqrt(output_prop_dic['true_FWHM']) / (disp_cont*np.sqrt(return_pix_size(inst)))
             output_prop_dic['crit_amp']=np.abs(output_prop_dic['true_amp'])/disp_cont
 
         #---------------------------------------------------------
@@ -3403,7 +3403,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                             var_par_list_add+= ['PsiS__pl'+pl_loc]      
                             var_par_names_add += [pl_loc+'_$\psi_{S}$']
                             var_par_units_add += ['deg'] 
-                    if ('combined' in deriv_prop[key_loc]['config']) or (not degen_psi):
+                    if (not degen_psi) or ('combined' in deriv_prop[key_loc]['config']):
                         var_par_list_add += ['Psi__pl'+pl_loc]
                         var_par_names_add += [pl_loc+'_$\psi$']
                         var_par_units_add += ['deg']                                  

@@ -676,7 +676,7 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                         fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
                         fixed_args['ncen_bins'][inst][vis] = ncen_bins  
                         fixed_args['dim_exp'][inst][vis] = [1,ncen_bins] 
-                        fit_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
+                        fixed_args['cond_fit'][inst][vis]=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
                         fixed_args['cond_def_cont_all'][inst][vis] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)                      
                     
                     #Trimming profile         
@@ -694,7 +694,8 @@ def main_joined_IntrProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                         for bd_int in cont_range:fixed_args['cond_def_cont_all'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
                     if len(fit_prop_dic['fit_range'][inst][vis])==0:fixed_args['cond_fit'][inst][vis][isub] = True    
                     else:
-                        for bd_int in fit_prop_dic['fit_range'][inst][vis]:fixed_args['cond_fit'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])        
+                        for bd_int in fit_prop_dic['fit_range'][inst][vis]:
+                            fixed_args['cond_fit'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])        
 
                     #Accounting for undefined pixels
                     fixed_args['cond_def_cont_all'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]           
@@ -921,12 +922,12 @@ def joined_IntrProf(param,fixed_args):
         for vis in args['inst_vis_list'][inst]:   
             args['vis']=vis
 
-            #Outputs
-            if not args['fit']:outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param)
-
-            #-----------------------------------------------------------
             #Retrieve updated coordinates of occulted regions or use imported values
             system_param_loc,coord_pl_ar,param_val = up_plocc_arocc_prop(inst,vis,args,param,args['studied_pl'][inst][vis],args['ph_fit'][inst][vis],args['coord_fit'][inst][vis],studied_ar=args['studied_ar'][inst][vis])
+
+            #-----------------------------------------------------------
+            #Outputs
+            if not args['fit']:outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param_val)
 
             #-----------------------------------------------------------
             #Variable line model for each exposure 
@@ -1222,7 +1223,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 #Fit tables
                 #    - models must be calculated over the full, continuous spectral tables to allow for convolution
                 #      the fit is then performed on defined pixels only
-                for key in ['dcen_bins','cen_bins','edge_bins','cond_fit','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
+                for key in ['dcen_bins','cen_bins','edge_bins','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
                 for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
 
                     #Upload latest processed differential data
@@ -1256,7 +1257,6 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                         fit_save['idx_trim_kept'][inst][vis] = idx_range_kept
                         fixed_args['ncen_bins'][inst][vis] = ncen_bins
                         fixed_args['dim_exp'][inst][vis] = [1,ncen_bins]
-                        fit_dic[inst][vis]['cond_def_fit_all']=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
                         fixed_args['cond_fit'][inst][vis]=np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)
                         fixed_args['cond_def_cont_all'][inst][vis] = np.zeros([fixed_args['nexp_fit_all'][inst][vis],ncen_bins],dtype=bool)  
 
@@ -1277,16 +1277,16 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     if len(cont_range)==0:fixed_args['cond_def_cont_all'][inst][vis][isub] = True    
                     else:
                         for bd_int in cont_range:fixed_args['cond_def_cont_all'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])         
-
-                    if len(fit_prop_dic['fit_range'][inst][vis])==0:fit_dic[inst][vis]['cond_def_fit_all'][isub] = True
+                    
+                    if len(fit_prop_dic['fit_range'][inst][vis])==0:fixed_args['cond_fit'][inst][vis][isub] = True  
                     else:
-                        for bd_int in fit_prop_dic['fit_range'][inst][vis]:fit_dic[inst][vis]['cond_def_fit_all'][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])
+                        for bd_int in fit_prop_dic['fit_range'][inst][vis]:
+                            fixed_args['cond_fit'][inst][vis][isub] |= (fixed_args['edge_bins'][inst][vis][isub][0:-1]>=bd_int[0]) & (fixed_args['edge_bins'][inst][vis][isub][1:]<=bd_int[1])
 
                     #Accounting for undefined pixels
                     fixed_args['cond_def_cont_all'][inst][vis][isub] &= fixed_args['cond_def'][inst][vis][isub]           
-                    fit_dic[inst][vis]['cond_def_fit_all'][isub] &= fixed_args['cond_def'][inst][vis][isub]          
-                    fit_dic['nx_fit']+=np.sum(fit_dic[inst][vis]['cond_def_fit_all'][isub])
-                    fixed_args['cond_fit'][inst][vis][isub] = fit_dic[inst][vis]['cond_def_fit_all'][isub]
+                    fixed_args['cond_fit'][inst][vis][isub]&= fixed_args['cond_def'][inst][vis][isub]          
+                    fit_dic['nx_fit']+=np.sum(fixed_args['cond_fit'][inst][vis][isub])
 
                     #Setting constant error
                     if fixed_args['cst_err']:
@@ -1779,7 +1779,7 @@ def outputs_Prof(inst,vis,coeff_line_dic,mod_prop_dic,args,param):
     Returns:
         TBD
     """
-    
+
     #Coefficients describing the polynomial variation of spectral line properties as a function of the chosen coordinate
     if ('coeff_line' in args):
         coeff_line_dic[inst][vis]={}
