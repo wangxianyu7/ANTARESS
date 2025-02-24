@@ -246,13 +246,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Star name
 
-    gen_dic['star_name']='AUMic'
+    # gen_dic['star_name']='AUMic'
     # gen_dic['star_name']='AU_Mic'
     # gen_dic['star_name']='fakeAU_Mic'
     # gen_dic['star_name']='V1298tau'
     # gen_dic['star_name']='TRAPPIST1'
     # gen_dic['star_name']='TOI3884'
-    # gen_dic['star_name']='HD189733'
+    gen_dic['star_name']='HD189733'
 
     # Zodiacs
     # gen_dic['star_name']='Capricorn'
@@ -491,7 +491,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Mask for stellar spectra
     #gen_dic['CCF_mask'] = '/Travaux/Radial_velocity/RV_masks/ESPRESSO_F9.fits'        #in the air 
     if gen_dic['star_name']=='HD189733':
-        gen_dic['CCF_mask']['ESPRESSO'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ESPRESSO_new_K2.fits'   #K2V, taken as final
+        gen_dic['CCF_mask']['ESPRESSO'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/src/antaress/ANTARESS_conversions/DRS_CCF_masks/ESPRESSO/ESPRESSO_new_K2.fits'   #K2V, taken as final
 
            
     #Orders
@@ -690,7 +690,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
          
     #Activating module
-    gen_dic['mock_data'] =  True #& False
+    gen_dic['mock_data'] =  True & False
 
     #Setting number of threads 
     mock_dic['nthreads'] = 2 
@@ -1569,7 +1569,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #%%%%%% Using stellar spectrum  
-    gen_dic['DImast_weight'] = False  
+    gen_dic['DImast_weight'] = True & False
+    if gen_dic['star_name']=='HD189733':gen_dic['DImast_weight'] = True
     
     
     #%%%%%% Plots: weighing master 
@@ -2716,8 +2717,15 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     plot_dic['Fbal_corr_ord']='' 
     
     
-
-    
+    if gen_dic['star_name']=='HD189733':
+        #%%%%% Activating
+        #    - for 2D spectra only
+        gen_dic['corr_FbalOrd']=True 
+        
+        
+        #%%%%% Calculating/retrieving
+        gen_dic['calc_corr_FbalOrd']=True  &   False
+        
     
     ##################################################################################################
     #%%%% Module: temporal flux correction
@@ -3223,7 +3231,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #%%%% Calculating/retrieving
-    gen_dic['calc_wig']=True    #&  False  
+    gen_dic['calc_wig']=True    &  False  
     
     #%%%% Guide shift reset
     gen_dic['wig_no_guidchange'] = []   
@@ -3590,12 +3598,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
         
     
-    if (gen_dic['star_name']==['HD189733']):gen_dic['detrend_prof']=True  #&   False    
+    if (gen_dic['star_name']=='HD189733'):gen_dic['detrend_prof']=True  &   False    
 
     #%%%% Trend correction
     
     #%%%%% Activating 
-    detrend_prof_dic['corr_trend'] = True    #& False
+    detrend_prof_dic['corr_trend'] = True    & False
+
+    detrend_prof_dic['full_spec']=False
 
     #%%%%% Settings   
     if gen_dic['star_name']=='HD189733':
@@ -3605,7 +3615,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         else:
             #RAPPEL: pas de FWHM correction possible pour les spectres
             if ('new_K2' in gen_dic['CCF_mask']['ESPRESSO']):  
-                detrend_prof_dic['prop']={'ESPRESSO':{'visit1':{'RV_phase':{'pol':1e-3*np.array([1.527529e+01])},'ctrst_snrQ':{'pol':np.array([-5.941947e-06])}}}} 
+                detrend_prof_dic['prop']={'ESPRESSO':{'visit1':{'RV_phaseHD189733b':{'pol':1e-3*np.array([1.527529e+01])},'ctrst_snrQ':{'pol':np.array([-5.941947e-06])}}}} 
                 # detrend_prof_dic['prop']={'ESPRESSO':{'visit1':{'RV_phase':{'pol':1e-3*np.array([1.527529e+01])},'ctrst_snrQ':{'pol':np.array([-9.076915e-06])},'ctrst_phase':{'pol':np.array([5.817248e-03])}}}} 
             else:stop('Define for mask')
 
@@ -4230,7 +4240,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             else:data_dic['DI']['sysvel']['ESPRESSO']={'visit1':-2.22819514}     
 
     #Plots: aligned disk-integrated profiles
-    plot_dic['all_DI_data']='pdf'     #pdf    
+    plot_dic['all_DI_data']=''     #pdf    
                         
 
     
@@ -4750,8 +4760,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     ANTARESS_2D_1D_settings('DI',data_dic,gen_dic,plot_dic)
 
     if gen_dic['star_name']=='HD189733':
-        gen_dic['spec_1D_DI']=True    & False      
-        gen_dic['calc_spec_1D_DI']= True    & False    
+        gen_dic['spec_1D_DI']=True    #& False      
+        gen_dic['calc_spec_1D_DI']= True    #& False    
 
     ##################################################################################################
     #%%% Module: disk-integrated profiles binning
@@ -4821,11 +4831,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%% Activating 
     gen_dic['DIbin'] = True  &  False
     gen_dic['DIbinmultivis'] = True      &  False
-    if gen_dic['star_name']=='HD189733':gen_dic['DIbin']=True & False
+    if gen_dic['star_name']=='HD189733':gen_dic['DIbin']=True #& False
     
     
     #%%%% Calculating/retrieving
-    gen_dic['calc_DIbin']=True   &  False  
+    gen_dic['calc_DIbin']=True   #&  False  
     gen_dic['calc_DIbinmultivis'] = True      &  False
     if gen_dic['star_name']=='HD189733':
         gen_dic['DIbinmultivis']=True   & False  
@@ -5247,10 +5257,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #Activating
-    gen_dic['diff_data'] = True   #&  False
+    gen_dic['diff_data'] = True   &  False
 
     #Calculating/retrieving 
-    gen_dic['calc_diff_data'] = True   #&  False
+    gen_dic['calc_diff_data'] = True   &  False
 
 
     #Multi-threading
@@ -6095,7 +6105,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_DiffProf'] = True  #&  False
+    gen_dic['fit_DiffProf'] = True  &  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
