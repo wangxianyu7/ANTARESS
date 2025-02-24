@@ -118,7 +118,7 @@ def voigt(param,x,args=None):
         TBD
     
     """  
-    z_tab = 2.*np.sqrt(np.log(2.))*(x - param['rv' ])/param['FWHM'] +  1j*param['a_damp']
+    z_tab = 2.*np.sqrt(np.log(2.))*(x - param['rv'])/param['FWHM'] +  1j*param['a_damp']
     
     #Voigt profile
     voigt_peak = special.wofz(1j*param['a_damp']).real

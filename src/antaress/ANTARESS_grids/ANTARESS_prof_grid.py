@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy import special
 from copy import deepcopy
 import astropy.convolution.convolve as astro_conv
 import bindensity as bind
@@ -814,6 +815,37 @@ def coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
 
     return gaussian_line_grid
 
+
+def coadd_loc_voigt_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
+    r"""**Local Voigt line co-addition**
+
+    Oversimplified way of cumulating the local profiles from each cell of the stellar disk. 
+    This version assumes voigt line profiles in each cell.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    #Define necessary grids    
+    true_rv_surf_star_grid = np.tile(rv_surf_star_grid, (args['ncen_bins'], 1)).T
+    model_table = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']), dtype=float) * args['cen_bins']
+    cont_grid = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']))
+    sqrt_log2 = np.sqrt(np.log(2.))
+    ctrst_grid = np.tile(args['input_cell_all']['ctrst'], (args['ncen_bins'], 1)).T
+    FWHM_grid = np.tile(args['input_cell_all']['FWHM'], (args['ncen_bins'], 1)).T
+    a_damp_grid = np.tile(args['input_cell_all']['a_damp'], (args['ncen_bins'], 1)).T
+    
+    #Make grid of profiles   
+    z_tab_grid =  2.*sqrt_log2*(model_table - true_rv_surf_star_grid)/FWHM_grid +  1j*a_damp_grid
+    voigt_peak_grid = special.wofz(1j*a_damp_grid).real
+    voigt_mod_grid = 1. - (ctrst_grid/voigt_peak_grid)*special.wofz(z_tab_grid).real
+    cont_pol_grid = cont_grid * pol_cont(model_table,args,param)
+    voigt_line_grid = voigt_mod_grid * cont_pol_grid
+
+    return voigt_line_grid
 
 
 def use_C_coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
