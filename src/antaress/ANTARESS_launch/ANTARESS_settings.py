@@ -4231,8 +4231,8 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     # + 'Peq_vsini' : adds 'Peq' using the fitted 'vsini' and user-provided measurements for 'Rstar' and 'istar' 
     # + 'psi' : adds 3D spin-orbit angle for all planets using the fitted 'lambda', and fitted or user-provided measurements for 'istar' and 'ip_plNAME'
     #           put 'North' and/or 'South' in  'config' to return the corresponding Psi configurations associated with istar (Northern configuration) and 180-istar (Southern configuration). This is only relevant if istar needed to be folded around 90 to manually produce the Northern or Southern configuration. 
-    #           put 'combined' in  'config' to add the combined distribution from the Northern and Southern Psi PDFs, assumed to be equiprobable (make sure that the two distributions are similar before combining them)
-    #           in the latter case, 'fold_istar' must have been requested (whether to North or South does not matter, it is just for 'combined' to use separately the Northern and Southern configurations rather than the original full one)  
+    #           put 'combined' in 'config' to add the combined distribution from the Northern and Southern Psi PDFs, assumed to be equiprobable (make sure that the two distributions overlap sufficiently before combining them, otherwise they should be kept separate)
+    #               in this case, 'fold_istar' must have been requested (whether to North or South does not matter, it is just for 'combined' to use separately the Northern and Southern configurations rather than the original full one)  
     # + 'psi_lambda' : adds 3D spin-orbit angle using user-provided measurements of 'lambda', and fitted or user-provided measurements for 'istar' and 'ip'
     #                  same settings as for 'psi' 
     # + 'lambda_deg' : converts lambda[rad] to lambda[deg]
