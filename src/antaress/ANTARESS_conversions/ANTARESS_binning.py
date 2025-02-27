@@ -428,9 +428,10 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
 
             #Coordinates of planets for new exposures
             #    - phase is associated with the reference planet of the first binned visit, and must be converted into phases of the other planets in each and all visits 
+            #    - the loop is done on the list of planets for the first visit to bin, as it is either a single visit, or multiple visits with always the same list of planets
             ecl_all = np.zeros(data_glob_new['n_exp'],dtype=bool)
             data_glob_new['coord'] = {}
-            for pl_loc in data_dic[inst][vis_save]['studied_pl']:
+            for pl_loc in data_dic[inst][vis_to_bin[0]]['studied_pl']:
                 pl_params_loc=system_param[pl_loc]
             
                 #Phase conversion

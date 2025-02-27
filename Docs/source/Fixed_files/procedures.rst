@@ -27,6 +27,13 @@ A dedicated `plots tutorial <https://obswww.unige.ch/~bourriev/antaress/doc/html
    Tutorials/procedures_setup/procedures_setup
 
 ----
+
+.. toctree::
+   :maxdepth: 2
+
+   Tutorials/procedures_resmaps/procedures_resmaps
+
+----
    
 .. toctree::
    :maxdepth: 2
