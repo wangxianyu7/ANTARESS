@@ -1054,9 +1054,51 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                 if gen_dic['fit_DiffProf']:
 
                     ipar_loc=np_where1D(fixed_args['var_par_list']=='FWHM__ord0__IS__VS_')
-                    wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1)> 5.))                    
+                    wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1)> 5.)) 
+
+                    if gen_dic['star_name'] == 'Capricorn':     
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='ctrst__ord0__IS__VS_')
+                        wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) < 0.8) & (np.min(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='ang__ISESPRESSO_VSmock_vis_ARspot1')],axis=1) < 20))                                 
     
+                    if gen_dic['star_name'] == 'Pisces':     
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='lambda_rad__plPisces_b')
+                        wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) < 0.))
+
+                    if gen_dic['star_name'] == 'Scorpio':     
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='FWHM__ord0__IS__VS_')
+                        wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) < 10.))                                 
+
+                    if gen_dic['star_name'] == 'Gemini':     
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='ang__ISESPRESSO_VSmock_vis_ARspot1')
+                        ipar_loc2 = np_where1D(fixed_args['var_par_list']=='cos_istar')
+                        wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) > 15.) & (np.min(walker_chains[:,:,ipar_loc2],axis=1) < -0.24))
     
+                    if gen_dic['star_name'] == 'Aries':     
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='FWHM__ord0__IS__VS_')
+                        ipar_loc2 = np_where1D(fixed_args['var_par_list']=='Tc_ar__ISESPRESSO_VSmock_vis_ARspot1')
+                        ipar_loc3 = np_where1D(fixed_args['var_par_list']=='fctrst__ISESPRESSO_VSmock_vis_ARspot1')
+                        wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) < 10.) & (np.min(walker_chains[:,:,ipar_loc2],axis=1) > 0.261) & (np.max(walker_chains[:,:,ipar_loc3],axis=1) < 0.7))
+
+                    if gen_dic['star_name'] == 'Virgo':     
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='lambda_rad__plVirgo_b')
+                        wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) > -4.) & (np.max(walker_chains[:,:,ipar_loc],axis=1) < 2.))
+
+                    if gen_dic['star_name'] == 'Taurus':     
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='cos_istar')
+                        wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) > 0.))
+
+                    if gen_dic['star_name'] == 'Leo':     
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='ang__ISESPRESSO_VSmock_vis_ARspot1')
+                        wgood=np_where1D((np.max(walker_chains[:,:,ipar_loc],axis=1) < 26.7))
+
+                    if gen_dic['star_name'] == 'Libra':     
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='Tc_ar__ISESPRESSO_VSmock_vis_ARspot1')
+                        wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) >  0.))
+
+                    if gen_dic['star_name'] == 'Aquarius':     
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='lambda_rad__plAquarius_b')
+                        wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) > -3.) & (np.max(walker_chains[:,:,ipar_loc],axis=1) < 3.))
+
                 print('   ',len(wgood),' walkers kept / ',fit_dic['nwalkers'])
                 walker_chains=np.take(walker_chains,wgood,axis=0)     
                 fit_dic['nwalkers']=len(wgood)  

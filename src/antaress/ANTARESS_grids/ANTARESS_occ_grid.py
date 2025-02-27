@@ -400,7 +400,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
 
             #Update cond_ar_all
             cond_ar_all[isub_exp]=ar_within_grid_all
-        if (np.sum(cond_ar_all)==0) and (args['fit']==False):print('WARNING: no active regions are visible in any exposure for nominal properties')
+        if (np.sum(cond_ar_all)==0) and (('fit' in args) and (args['fit']==False)):print('WARNING: no active regions are visible in any exposure for nominal properties')
 
     #If active regions are not present, need to initialize the active region LD dictionary entry for later purposes
     else:
