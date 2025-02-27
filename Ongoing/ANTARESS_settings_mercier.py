@@ -252,7 +252,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # gen_dic['star_name']='V1298tau'
     # gen_dic['star_name']='TRAPPIST1'
     # gen_dic['star_name']='TOI3884'
-    gen_dic['star_name']='HD189733'
+    # gen_dic['star_name']='HD189733'
 
     # Zodiacs
     # gen_dic['star_name']='Capricorn'
@@ -262,7 +262,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # gen_dic['star_name']='Leo'
     # gen_dic['star_name']='Aquarius'
     # gen_dic['star_name']='Aries'
-    # gen_dic['star_name']='Libra'
+    gen_dic['star_name']='Libra'
     # gen_dic['star_name']='Taurus'
     # gen_dic['star_name']='Scorpio'
     # gen_dic['star_name']='Virgo'
@@ -690,7 +690,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
          
     #Activating module
-    gen_dic['mock_data'] =  True & False
+    gen_dic['mock_data'] =  True #& False
 
     #Setting number of threads 
     mock_dic['nthreads'] = 2 
@@ -5257,10 +5257,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #Activating
-    gen_dic['diff_data'] = True   &  False
+    gen_dic['diff_data'] = True   #&  False
 
     #Calculating/retrieving 
-    gen_dic['calc_diff_data'] = True   &  False
+    gen_dic['calc_diff_data'] = True   #&  False
 
 
     #Multi-threading
@@ -6105,7 +6105,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Activating 
-    gen_dic['fit_DiffProf'] = True  &  False
+    gen_dic['fit_DiffProf'] = True  #&  False
 
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -6341,34 +6341,32 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
         # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':20, 'bd':[2, 30]},
+        'veq':{'vary':True,'guess':15, 'bd':[12, 24]},
         # 'veq':{'vary':False,'guess':12, 'bd':[2, 30]},
-        'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
+        'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
 
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
     
     if gen_dic['star_name']=='Cancer':
         glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':0.2, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':5, 'bd':[2, 30]},
-        'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
+        'veq':{'vary':True,'guess':0.15, 'bd':[0.1, 0.3]},
+        'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0., 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
 
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
 
     if gen_dic['star_name']=='Gemini':
@@ -6378,7 +6376,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
         # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
+        'veq':{'vary':True,'guess':8.0, 'bd':[7., 9.]},
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         # 'veq_spots':{'vary':True,'guess':10, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
@@ -6396,30 +6394,30 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
         # 'lambda_rad__pl'+zodiac_pl                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
-                                            
+
     if gen_dic['star_name']=='Sagittarius':
         glob_fit_dic['DiffProf']['mod_prop']={
-        # 'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
-        # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        # 'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
-        # 'veq_spots':{'vary':True,'guess':10, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
-        # 'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
-        'cos_istar':{'vary':False,'guess':0.0348994967, 'bd':[-1., 1.]},
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
+        'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
+        # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        'veq':{'vary':True,'guess':8., 'bd':[7., 9.]},
+        # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
+        'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
+        # 'cos_istar':{'vary':False,'guess':0.0348994967, 'bd':[-1., 1.]},
 
-        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-90, 90]},
-        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[1, 60]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[1, 60]},
         'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
         # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.4, 'bd':[0.001, 0.999]},
 
-        # 'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]},
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]},
+        # 'lambda_rad__pl'+zodiac_pl                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
                                             
     if gen_dic['star_name']=='Leo':
@@ -6429,16 +6427,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
         # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
+        'veq':{'vary':True,'guess':8., 'bd':[7., 9.]},
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
-        'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
+        'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':30, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':20, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
 
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
                                             
     if gen_dic['star_name']=='Aquarius':
@@ -6448,16 +6446,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
         # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
+        'veq':{'vary':True,'guess':8., 'bd':[7., 9.]},
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':5, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':20, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
 
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
                                             
     if gen_dic['star_name']=='Aries':
@@ -6467,107 +6465,113 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
         # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
+        'veq':{'vary':True,'guess':8., 'bd':[7., 9.]},
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
-        'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
+        'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[1, 60]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
         'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
 
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
                                             
     if gen_dic['star_name']=='Libra':
         glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
-        'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
+        # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        'veq':{'vary':True,'guess':8., 'bd':[7., 9.]},
+        # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
+        'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[1, 60]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
         'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
 
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
                                             
     if gen_dic['star_name']=='Taurus':
         glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
-        'cos_istar':{'vary':True,'guess':0.984807753, 'bd':[-1., 1.]},
+        # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        'veq':{'vary':True,'guess':8., 'bd':[7., 9.]},
+        # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
+        'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.7, 'bd':[0.001, 0.999]},
 
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
                                             
     if gen_dic['star_name']=='Scorpio':
         glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
-        'cos_istar':{'vary':True,'guess':-0.3420201433, 'bd':[-1., 1.]},
+        # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        'veq':{'vary':True,'guess':8., 'bd':[7., 9.]},
+        # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
+        'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.7, 'bd':[0.001, 0.999]},
 
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
                                             
     if gen_dic['star_name']=='Virgo':
         glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
-        'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
+        # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        'veq':{'vary':True,'guess':8., 'bd':[7., 9.]},
+        # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
+        'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.7, 'bd':[0.001, 0.999]},
 
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0.1745329252, 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
                                             
     if gen_dic['star_name']=='Pisces':
         glob_fit_dic['DiffProf']['mod_prop']={
+        'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
-        'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
-        'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':10, 'bd':[2, 30]},
-        'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
-        'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
+        # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        'veq':{'vary':True,'guess':8.0, 'bd':[7., 9.]},
+        # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
+        'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
 
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':1.9198621772, 'bd':[-2*np.pi, 2*np.pi]}
-                                            }
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
+        }
+
                                             
                                             
 
@@ -6575,8 +6579,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Fitting mode
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         # glob_fit_dic['DiffProf']['fit_mode']='chi2' 
-        # glob_fit_dic['DiffProf']['fit_mode']='mcmc'
-        glob_fit_dic['DiffProf']['fit_mode']='ns' 
+        glob_fit_dic['DiffProf']['fit_mode']='mcmc'
+        # glob_fit_dic['DiffProf']['fit_mode']='ns' 
 
     #Fitting method - only if chi2 is used
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -6657,7 +6661,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     }
 
     #Zodiacs
-    if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+    if gen_dic['star_name'] in ['temp']:
         glob_fit_dic['DiffProf']['priors']={
                     'ctrst__ord0__IS__VS_'                   :{'mod':'uf','low':0,'high':1},  
                     'FWHM__ord0__IS__VS_'                    :{'mod':'uf','low':0,'high':50},
@@ -6665,11 +6669,54 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
                     'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
                     'lat__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 0.5, 'high':2458330.39051 +0.5},
-                    'ang__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':0., 'high':90.},
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'  :{'mod':'uf', 'low':0., 'high':1.},
+                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 1.1, 'high':2458330.39051 +1.1},
+                    'ang__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':0., 'high':70.},
+                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'  :{'mod':'uf', 'low':0., 'high':1},
                     'lambda_rad__pl'+zodiac_pl               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }       
+    
+
+    if gen_dic['star_name'] in ['Virgo','Taurus','Scorpio','Sagittarius','Gemini', 'Aries', 'Libra', 'Aquarius', 'Leo', 'Pisces']:
+        glob_fit_dic['DiffProf']['priors']={
+                    'ctrst__ord0__IS__VS_'                   :{'mod':'uf','low':0.1,'high':1},
+                    'FWHM__ord0__IS__VS_'                    :{'mod':'uf','low':0,'high':25},
+                    'veq'                                    :{'mod':'gauss', 'val':8.0, 's_val':0.2},
+                    # 'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
+                    'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
+                    'lat__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 1.1, 'high':2458330.39051 +1.1},
+                    'ang__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':0., 'high':45.},
+                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'  :{'mod':'uf', 'low':0., 'high':1},
+                    'lambda_rad__pl'+zodiac_pl               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
+                    }   
+
+    if gen_dic['star_name'] in ['Capricorn']:
+        glob_fit_dic['DiffProf']['priors']={
+                    'ctrst__ord0__IS__VS_'                   :{'mod':'uf','low':0.1,'high':1},
+                    'FWHM__ord0__IS__VS_'                    :{'mod':'uf','low':0,'high':25},
+                    'veq'                                    :{'mod':'gauss', 'val':20.0, 's_val':1.0},
+                    # 'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
+                    'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
+                    'lat__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 1.1, 'high':2458330.39051 +1.1},
+                    'ang__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':0., 'high':45.},
+                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'  :{'mod':'uf', 'low':0., 'high':1},
+                    'lambda_rad__pl'+zodiac_pl               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
+                    }
+
+    if gen_dic['star_name'] in ['Cancer']:
+        glob_fit_dic['DiffProf']['priors']={
+                    'ctrst__ord0__IS__VS_'                   :{'mod':'uf','low':0.1,'high':1},
+                    'FWHM__ord0__IS__VS_'                    :{'mod':'uf','low':0,'high':25},
+                    'veq'                                    :{'mod':'gauss', 'val':0.2, 's_val':0.1},
+                    # 'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
+                    'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
+                    'lat__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 1.1, 'high':2458330.39051 +1.1},
+                    'ang__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':0., 'high':45.},
+                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'  :{'mod':'uf', 'low':0., 'high':1},
+                    'lambda_rad__pl'+zodiac_pl               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
+                    } 
 
     if gen_dic['star_name'] =='TOI3884':
         glob_fit_dic['DiffProf']['priors']={
@@ -6694,16 +6741,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%% MCMC / NS
 
     #Calculating/retrieving
-    glob_fit_dic['DiffProf']['run_mode']='use'    
-    # glob_fit_dic['DiffProf']['run_mode']='reuse'    
+    # glob_fit_dic['DiffProf']['run_mode']='use'    
+    glob_fit_dic['DiffProf']['run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['reuse']={}
-        # glob_fit_dic['DiffProf']['reuse']={
-        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/HD189733/HD189733b_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk40_steps1000_HD189733b.npz'],
-        #             'nburn':[300]
-        #             }  
+        # glob_fit_dic['DiffProf']['reuse']={}
+        glob_fit_dic['DiffProf']['reuse']={
+                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS_Backup/Zodiacs2.0/Raw/Libra - bright spot - done/ALL/Libra_b_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk40_steps10000_Libra_b.npz'],
+                    'nburn':[3000]
+                    }  
     #Re-starting
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['reboot']=''
@@ -6712,14 +6759,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # MCMC specific
     # - Walkers
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['walkers_set']={'nwalkers':5,'nsteps':15,'nburn':3}
+        glob_fit_dic['DiffProf']['walkers_set']={'nwalkers':40,'nsteps':10000,'nburn':3000}
 
     # - Complex priors        
          
     # - Walkers exclusion  
     glob_fit_dic['DiffProf']['exclu_walk']=True & False  
     if gen_dic['star_name'] in ['TOI3884','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:   
-        glob_fit_dic['DiffProf']['exclu_walk']=True & False   
+        glob_fit_dic['DiffProf']['exclu_walk']=True #& False   
     
 
     # - Automatic exclusion of outlying chains
@@ -8035,7 +8082,9 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     # + 'vsini' : converts 'veq' into veq*sin(istar) using fitted or fixed 'istar'
     # + 'istar_deg_conv' : replaces cos(istar) by istar[deg]
     # + 'fold_istar' : folds istar[deg] around 90 and returns the Northern (istar < 90, 'config' = 'North') or Southern (istar > 90, 'config' = 'South')) configurations.
-    #                  to be used when only sin(istar) is constrained and the stellar inclination remains degenerate between istar and 180-istar 
+    #                  this is relevant when
+    #                       only sin(istar) is constrained and the stellar inclination remains degenerate between istar and 180-istar 
+    #                       cos(istar) converges toward a mode well-defined and distinct from 0 (ie, istar = 90), because the MCMC converged toward this mode but we know the symmetrical mode around 0 is equally valid.
     # + 'istar_Peq' : derive the stellar inclination from the fitted 'vsini' and user-provided measurements of 'Rstar' and 'Peq'
     #                 warning: it is better to fit directly for 'Peq', 'cosistar', and 'Rstar'
     # + 'fold_Tc_ar' : folds the active region crossing time around a central Peq value that can be calculated in the following ways:
@@ -8052,9 +8101,9 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     # + 'Peq_veq_faculae' : adds 'Peq_faculae' using the fitted 'veq_faculae' and a user-provided measurement of 'Rstar'
     # + 'Peq_vsini' : adds 'Peq' using the fitted 'vsini' and user-provided measurements for 'Rstar' and 'istar' 
     # + 'psi' : adds 3D spin-orbit angle for all planets using the fitted 'lambda', and fitted or user-provided measurements for 'istar' and 'ip_plNAME'
-    #           put 'North' and/or 'South' in  'config' to return the corresponding Psi configurations associated with istar (Northern configuration) and 180-istar (Southern configuration) 
-    #           put 'combined' in  'config' to add the combined distribution from the Northern and Southern Psi PDFs, assumed to be equiprobable (make sure that the two distributions are similar before combining them)
-    #           in the latter case, 'fold_istar' must have been requested (whether to North or South does not matter, it is just for 'combined' to use separately the Northern and Southern configurations rather than the original full one)  
+    #           put 'North' and/or 'South' in  'config' to return the corresponding Psi configurations associated with istar (Northern configuration) and 180-istar (Southern configuration). This is only relevant if istar needed to be folded around 90 to manually produce the Northern or Southern configuration. 
+    #           put 'combined' in 'config' to add the combined distribution from the Northern and Southern Psi PDFs, assumed to be equiprobable (make sure that the two distributions overlap sufficiently before combining them, otherwise they should be kept separate)
+    #               in this case, 'fold_istar' must have been requested (whether to North or South does not matter, it is just for 'combined' to use separately the Northern and Southern configurations rather than the original full one)  
     # + 'psi_lambda' : adds 3D spin-orbit angle using user-provided measurements of 'lambda', and fitted or user-provided measurements for 'istar' and 'ip'
     #                  same settings as for 'psi' 
     # + 'lambda_deg' : converts lambda[rad] to lambda[deg]

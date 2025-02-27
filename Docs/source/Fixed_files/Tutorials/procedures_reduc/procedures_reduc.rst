@@ -29,8 +29,8 @@ We assume that you have already `set up your system and dataset <https://obswww.
 .. toctree::
    :hidden:
 
+   procedures_tell/procedures_tell
    procedures_wig/procedures_wig
-
 ..
   Erik: every time a plot is mentioned can you add the path to the plot directory, if that's not yet the case ?
 
@@ -98,8 +98,12 @@ Once you are satisfied with the results of the module, you can set it to *retrie
 Telluric correction
 -------------------
 
-The next step deals with the correction of telluric absorption lines. In the present version of ``ANTARESS`` this is done by computing a the telluric spectrum from a simple model of the Earth atmoshere, computing its CCF over a selection of strong telluric lines, and fitting it to the equivalent CCF on the spectrum measured in each exposure.
+The next step deals with the correction of telluric absorption lines. 
 The DRS of some spectrographs provide telluric-corrected 2D echelle spectra, in which case you can skip this step - although you may still be interested in comparing both corrections.
+
+The present version of ``ANTARESS`` calculates a telluric spectrum from a simple model of Earth atmoshere, computes its CCF over a selection of strong telluric lines, and fits it to the equivalent CCF from the spectrum measured in each exposure.
+This approach exploits two types of static files: a list of telluric lines (mandatory) and a resolution map of the spectrograph (optional).  
+These files already exist for several instruments, and we provide routines and tutorials to define `resolution maps <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_resmaps/procedures_resmaps.html>`_ for additional spectrographs and `telluric linelists <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_reduc/procedures_tell/procedures_tell.html>`_ optimized to a specific wavelength range.    
 
 Activate the ``Telluric correction`` module (:green:`gen_dic['corr_tell'] = True`) and set it to *calculation* mode (:green:`gen_dic['calc_corr_tell'] = True`).
 Then define which telluric species should be corrected for. Here, we include water and oxygen as::
