@@ -345,10 +345,6 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%% Active regions
     #    - can be (dark) spots and/or (bright) faculae
 
-    #%%%%% Automatic generation       
-    mock_dic['auto_gen_ar'] = {}
-    
-    
     #%%%%% Properties
     #    - active region inclusion is conditioned by this dictionary being filled in
     #    - active regions are defined by 4 parameters : 
@@ -356,10 +352,22 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + 'Tc_ar' : Time (bjd) at which the active region is at longitude 0
     # + 'ang' : half-angular size (in deg) of the active region (we assume each region is circular)
     # + 'fctrst' : the flux level of the active region surface, relative to the quiet surface of the star
-    #              0 = no emission, 1 = maximum emission (no contrast with the stellar surface) 
+    #              0 = no emission, 1 = maximum emission (no contrast with the stellar surface), and >1 = emission greater than the quiet surface  
     #    - format: {inst : {vis : {prop : val}}}
     #      where prop is defined as par_ISinst_VSvis_ARar, to match with the structure used in gen_dic['fit_diff_prof']    
     mock_dic['ar_prop'] = {}
+
+
+    #%%%%% Automatic generation of active regions
+    #    - instead of defining individual active regions, define multiple active regions by providing distribution and relevant parameters from which 
+    # to draw values for the latitude, crossing time, size, and contrast.
+    #    - format: {inst : {vis : {'num' : n , prop : distrib }}}
+    # where n is the number of active regions to generate
+    #       prop is defined as par_ISinst_VSvis_ARactreg_name, to match with the structure used in gen_dic['fit_diff_prof']
+    #       distrib is a dictionary with the following possible formats:
+    #        + {distrib : 'gauss', val, s_val}    # Drawing from a Gaussian distribution with median val and standard deviation s_val
+    #        + {distrib : 'uf', low, high}        # Drawing from a Uniform distribution with boundaries low and high
+    mock_dic['auto_gen_ar'] = {}
 
 
     #%%%% Noise settings
@@ -553,12 +561,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
 
     ##################################################################################################
-    #%%% Module: stellar, spots, and planet-occulted grids
+    #%%% Module: stellar, active region, and planet-occulted grids
     ##################################################################################################
     
     #%%%% Activating module
     #    - calculated by default if transiting planets are attributed to a visit, and user has requested analysis and alignement of intrinsic local stellar profiles, or extraction and analysis of the atmospheric profiles
-    #                            if spots are attributed to a visit
+    #                            if active regions are attributed to a visit
     #      can be set to True to calculate nonetheless
     gen_dic['theoPlOcc'] = False 
         
@@ -2669,8 +2677,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     ##################################################################################################
     #%%% Module: intrinsic profiles extraction
     #    - derived from the local profiles (in-transit), reset to the same broadband flux level, with planetary contamination excluded 
-    #    - if the scaling light curve correctly accounts for spots, then their contribution is propagated in the broadband flux scaling and intrinsic profiles 
-    # from spotted regions occulted by a planet will still be scaled to the common continuum of the series
+    #    - if the scaling light curve correctly accounts for active regions, then their contribution is propagated in the broadband flux scaling and intrinsic profiles 
+    # from active regions occulted by a planet will still be scaled to the common continuum of the series
     ##################################################################################################    
     
     #%%%% Calculating
@@ -3134,12 +3142,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + 'rv': fitted using surface RV model
     # + 'ctrst', 'FWHM': fitted using polynomial models
     #    - structure is different from data_dic['DI']['mod_prop'], where properties are fitted independently for each instrument and visit
-    #      the names of properties varying as a function of 'coord_fit' and/or between visits must be defined as 'prop_name = prop__ordi__ISinst_VSvis'  
-    # + 'i' is the polynomial degree
+    #      the names of properties varying as a function of 'coord_fit' and/or between visits must be defined as 'prop_name = prop__ordN__ISinst_VSvis'  
+    # + 'N' is the polynomial degree
     # + 'inst' is the name of the instrument, which should be set to '_' for the property to be common to all instruments and their visits
     # + 'vis' is the name of the visit, which should be set to '_' for the property to be common to all visits of this instrument 
     #    - the names of properties specific to a given planet 'PL' must be defined as 'prop_name = prop__ordi__plPL'  
-    #    - the names of properties specific to a given active region 'AR' must be defined as 'prop_name = prop__ordi__arAR'  
+    #    - the names of properties specific to a given active region 'ar' must be defined as 'prop_name = prop__ordi__ARar'  
     # + for active region properties common to quiet star ones (veq, alpha_rot, beta_rot), no linking is done internally.
     # + therefore, the user must specify values for these properties if they wish to fix them to values which differ from the base ones provided in the systems file.
     glob_fit_dic['IntrProp']['mod_prop']={'rv':{}}
@@ -3274,29 +3282,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     ANTARESS_fit_def_settings('DiffProf',glob_fit_dic,plot_dic)
 
 
-    #%%%% Plot settings
-
-    #%%%%% Plot best-fit 2D differential map
-    plot_dic['map_BF_Diff_prof']=''   
-    
-    
-    #%%%%% 2D maps : Plot residuals from best-fit 2D differential map
-    plot_dic['map_BF_Diff_prof_re']='' 
-
     
     
         
         
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
+    
         
     
         
@@ -3305,11 +3296,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%% Module: joined intrinsic profiles fit  
     #    - fitting joined intrinsic stellar profiles from combined (unbinned) instruments and visits
     #    - use this module to fit the average stellar line profiles from planet-occulted regions
-    #    - the module can also be used when spot are present, as long as they remain fixed during a given visit (this requires theo_dic['precision'] = 'high'), otherwise use the 'fitting joined differential profiles' module.
-    #      however beware that in this case constraints on the spot come from the planet-occulted, spotted cells with a line profile different from the quiet star. 
-    #      since we assume the same line shape for quiet and spotted cells, the spot is constrained by the brightness-weighted rv of spotted cells within the occulted region itself
-    #      if the planet is small or the star a slow rotator, it is thus not possible to constrain the spot
-    #      if the planet is large and the star is a fast rotator, the spot stills needs to have sufficient contrast or overlaps over a sufficient fraction of the planet-occulted region for the overall line position to differ from the unspotted case 
+    #    - the module can also be used when active regions are present, as long as they remain fixed during a given visit (this requires theo_dic['precision'] = 'high'), otherwise use the 'fitting joined differential profiles' module.
+    #      however beware that in this case constraints on the active regions come from the planet-occulted, active cells with a line profile different from the quiet star.
+    #      since we assume the same line shape for quiet and active cells, the active region is constrained by the brightness-weighted rv of active cells within the occulted region itself
+    #      if the planet is small or the star a slow rotator, it is thus not possible to constrain the active region
+    #      if the planet is large and the star is a fast rotator, the active region stills needs to have sufficient contrast or overlaps over a sufficient fraction of the planet-occulted region for the overall line position to differ from the un-active case 
     #    - use 'idx_in_fit' to choose which visits to fit (can be a single one)
     #    - the contrast and FWHM of the intrinsic stellar lines (before instrumental convolution) are fitted as polynomials of the chosen coordinate
     #      surface RVs are fitted using the reloaded RM model  
@@ -3495,20 +3486,19 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%% Activating
     #    - for original and binned exposures in each visit
-    gen_dic['diff_data_corr'] = False        
-    gen_dic['res_loc_prof_est_bin']=False        
+    gen_dic['diff_prof_est'] = False        
+    gen_dic['diff_prof_est_bin']=False        
 
     
     #%%%% Calculating/retrieving
-    gen_dic['calc_diff_data_corr'] = False        
-    gen_dic['calc_res_loc_prof_est_bin']=False  
+    gen_dic['calc_diff_prof_est'] = False        
+    gen_dic['calc_diff_prof_est_bin']=False  
     
     
     #%%%% Model definition
     
     #%%%%% Model type and options
-    #    - used to define the estimates for the local stellar flux profiles
-    #    - these options partly differ from those defining intrinsic profiles (see gen_dic['mock_data']) because local profiles are associated with observed exposures
+    #    - used to define the estimates for the differential profiles
     # + 'def_iord': reconstructed order
     # + 'def_range': define the range over which profiles are reconstructed
     #    - set 'corr_mode' to:
@@ -3516,19 +3506,19 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + option to select visits contributing to the binned profiles (leave empty to use considered visit)
     # + option to select exposures contributing to the binned profiles (leave empty to use all out-transit exposures)
     # + option to select the phase range of contributing exposures
-    # > 'Intrbin': using binned intrinsic profiles series
+    # > 'Diffbin': using binned differential profiles series
     # + option to select visits contributing to the binned profiles (leave empty to use considered visit)
     # + the nearest binned profile along the binned dimension is used for a given exposure
     # + option to select exposures contributing to the binned profiles
     # + see possible bin dimensions in data_dic['Intr']['dim_bin']  
     # + see possible bin table definition in data_dic['Intr']['prop_bin']
-    # > 'glob_mod': models derived from global fit to intrinsic profiles (default)
+    # > 'glob_mod': models derived from global fit to differential profiles (default)
     # + 'mode' : 'ana' or 'theo'
     # + can be specific to the visit or common to all, depending on the fit
     # + line coordinate choice is retrieved automatically 
     # + indicate path to saved properties determining the line property variations in the processed dataset
     # + default options are used if left undefined
-    # > 'indiv_mod': models fitted to each individual intrinsic profile in each visit
+    # > 'indiv_mod': models fitted to each individual differential profile in each visit
     # + 'mode' : 'ana' or 'theo'
     # + works only in exposures where the stellar line could be fitted after planet exclusion
     # > 'rec_prof':
@@ -3536,9 +3526,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #   or via a 2D interpolation ('linear' or 'cubic') over complementary exposures and a narrow spectral band (defined in band_pix_hw pixels on each side of undefined pixels)
     # + chose a dimension over which the fit/interpolation is performed         
     # + option to select exposures contributing to the fit/interpolation
-    # > 'theo': use imported theoretical local intrinsic stellar profiles    
-    data_dic['Diff']['opt_loc_prof_est']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
-    
+    # > 'theo': use imported theoretical local differential stellar profiles    
+    data_dic['Diff']['opt_diff_prof_est']={'nthreads':int(0.8*cpu_count()),'corr_mode':'glob_mod','mode':'ana','def_range':[],'def_iord':0}
+
 
     #%%%% Plot settings
     
@@ -3551,8 +3541,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #%%%%% 2D maps : "un-clean", theoretical planet-occulted and active region profiles
     #    - for original and binned exposures
-    #    - planet-occulted profiles retrieved in the case where spots were not included in the model
-    #    - computing both "clean" and "spotted" versions of these maps can help identify if planets occulted spots during the transit or not
+    #    - planet-occulted profiles retrieved in the case where active regions were not included in the model
+    #    - computing both "clean" and "unclean" versions of these maps can help identify if planets occulted active regions during the transit or not
     plot_dic['map_Diff_prof_unclean_ar_est']=''
     plot_dic['map_Diff_prof_unclean_pl_est']=''   
 
@@ -3566,13 +3556,79 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         
         
     #%%%%% 2D maps : differential profiles corrected for the impact of active regions
-    plot_dic['map_Diff_corr_actreg']=''    
+    plot_dic['map_Diff_corr_ar']=''    
         
         
         
         
         
+    ##################################################################################################       
+    #%%% Module: correcting differential profile series from stellar contamination
+    #    - use the module to:
+    # + call previously computed differential profile estimates and the necessary corrections and use them
+    # + to perform the correction.
+    ##################################################################################################     
+    
+    #%%%% Activating
+    #    - for original exposures in each visit
+    gen_dic['corr_diff'] = False        
+
+    
+    #%%%% Calculating/retrieving
+    gen_dic['calc_corr_diff'] = False        
+    
+    
+    #%%%% Model definition
+    
+    #%%%%% Model type and options
+    #    - used to define the estimates for the differential profiles
+    # + 'def_iord': reconstructed order
+    # + 'def_range': define the range over which profiles are reconstructed        
+    data_dic['Diff']['corr_diff_dict']={'mode':'ana','def_range':[],'def_iord':0}
+
+
+    #%%%% Plot settings  
         
+    #%%%%% 2D maps : differential profiles corrected for the impact of active regions
+    plot_dic['map_Diff_corr_ar']=''    
+        
+        
+        
+        
+        
+    ##################################################################################################       
+    #%%% Module: Building best-fit differential profile series from fit results
+    #    - use the module to:
+    # + call previously computed differential profile estimates to build the time series of best fit
+    # + differential profiles.
+    ##################################################################################################     
+    
+    #%%%% Activating
+    #    - for original exposures in each visit
+    gen_dic['eval_bestfit'] = False        
+
+    
+    #%%%% Calculating/retrieving
+    gen_dic['calc_eval_bestfit'] = False         
+    
+    
+    #%%%% Model definition
+    
+    #%%%%% Model type and options
+    #    - used to define the estimates for the differential profiles
+    # + 'def_iord': reconstructed order
+    # + 'def_range': define the range over which profiles are reconstructed       
+    data_dic['Diff']['eval_bestfit_dict']={'mode':'ana','def_range':[],'def_iord':0}
+
+
+    #%%%% Plot settings  
+    
+    #%%%%% Plot best-fit 2D residual map
+    plot_dic['map_BF_Diff_prof']=''   
+    
+    
+    #%%%%% 2D maps : Plot residuals from best-fit 2D residual map
+    plot_dic['map_BF_Diff_prof_re']=''   
         
         
         
@@ -3662,8 +3718,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     data_dic['Atm']['cont_range']={}
 
 
-    #%%%% Presence of spots
-    data_dic['Atm']['spot_model']=''
+    #%%%% Presence of active regions
+    data_dic['Atm']['ar_model']=''
 
 
     #%%%% Plots
@@ -4192,9 +4248,8 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
 
     
     #%%%% Priors on variable properties
-    #    - format : { p : {prior_mode: X, prior_val: Y} }
-    #      where p is specific to the model selected, and 'prior_mode' defines the prior as
-    #    - otherwise priors can be set to :
+    #    - format : { p : {mod: X, prior_val: Y} }
+    #      where p is specific to the model selected, and 'mod' defines the prior as :
     # + uniform ('uf') : define lower ('low') and upper ('high') boundaries
     # + gaussian ('gauss') : define median ('val') and std ('s_val')
     # + asymetrical gaussian ('dgauss') : define median ('val'), and lower ('s_val_low') / upper ('s_val_high') std
@@ -4294,6 +4349,8 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #      this Hessian matrix must have been computed from the same parameters are the ones used in the fit.
     #    - to use this option, we recommend users first run a fit with fit_mode set to chi2. The chi2 fit will automatically create and 
     # store the Hessian matrix. An MCMC / NS  fit can subsequently be run with the path to the Hessian being set as the location of the chi2 fit results.
+    #    - evaluating the Hessian matrix prior to performing an MCMC or NS fit can be useful as it stores information on the local curvature of the target
+    # posterior distribution. This matrix can be used to have a more efficient sampling by initializing the starting location of the MCMC/NS with it. 
     local_dic[data_type]['use_hess'] = ''    
 
 
@@ -4332,8 +4389,18 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     # + 'nwalkers' : number of walkers
     # + 'nsteps' : total number of steps
     # + 'nburn' : number of burn-in steps
-    #    - for a NS fit define:
-    # + 'nlive' : number of live points 
+    #    - for a NS fit using 'dynesty' define:
+    # + 'nlive' : number of live points used in the initial nested sampoing run. 
+    #             starting with 400 to 1000 is generally advisable.
+    # + 'bound_method' : prior bounding method. 
+    #                    default to 'auto' if not defined (see doc. in dynesty API to see what this specifically does).
+    #                    'multi' is recommended for posterior distributions with complex shapes
+    # + 'sample_method' : method used to uniformly sample within the likliehood constraint, conditioned on the provided bounds. 
+    #                     default to 'auto' if not defined (dynesty will pick a method based on the dimensionaly of the problem).
+    #                     'slice' is recommended for posterior distributions with complex shapes
+    # + 'dlogz' : log-likelihood difference threshold below which the NS run will stop. 
+    #             default to 0.1 if not defined 
+    #             set higher/lower to stop the run earlier/later.
     local_dic[data_type]['walkers_set']={}
     
     
@@ -4387,12 +4454,12 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     local_dic[data_type]['save_chi2_chains']=''
          
     
-    #%%%%% Corner plot for MSMS / NS fits
+    #%%%%% Corner plot for MCMC / NS fits
     #    - see function for options
     local_dic[data_type]['corner_options']={}
 
 
-    #%%%%% 1D PDF for MSMS / NS fits
+    #%%%%% 1D PDF for MCMC / NS fits
     #    - on properties derived from the fits to individual profiles
     if data_type in ['DI','Intr','Atm']:
         plot_dic['prop_'+data_type+'_PDFs']=''      

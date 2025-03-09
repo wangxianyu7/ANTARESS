@@ -2325,9 +2325,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if plot_set_key['plot_LC_imp'] and (data_dic['DI']['transit_prop'][inst][vis]['mode']=='imp'):
                         if plot_set_key['plot_phase']:idx_out = 1
                         else:idx_out = 4
-                        x_imp=get_timeorbit(pl_ref ,coord_dic[inst][vis], data_upload['imp_LC'][0], system_param[pl_ref], 0.)[idx_out]
-                        plt.plot(x_imp,data_upload['imp_LC'][iband]-vis_shift,color=col_vis,linestyle='--',lw=plot_set_key['lw_plot'])  
-
+                        x_imp=get_timeorbit(system_param[pl_ref]['TCenter'], data_upload['imp_LC'][0], system_param[pl_ref], 0.)[idx_out]
+                        if chrom_mode:plt.plot(x_imp,data_upload['imp_LC'][iband]-vis_shift,color=col_vis,linestyle='--',lw=plot_set_key['lw_plot'])  
+                        else:plt.plot(x_imp,data_upload['imp_LC'][1]-vis_shift,color=col_vis,linestyle='--',lw=plot_set_key['lw_plot']) 
                         
                     #HR light curve
                     if plot_set_key['plot_LC_HR']:
@@ -3709,7 +3709,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         path_loc = gen_dic['save_plot_dir']+'System_view/' 
         if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
 
-        #Spot condition
+        #Active region condition
         plot_ar = plot_set_key['mock_ar_prop'] | plot_set_key['fit_ar_prop'] | (len(plot_set_key['custom_ar_prop'])>0)
          
         #--------------------------------------------
@@ -3973,7 +3973,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 
                 #Points away from us, in LOS that do not intersect the projected photosphere
                 idx_behind = np_where1D(st_spin_z_st < 0.)
-                z_st_sky_behind,_,cond_in_stphot_behind=calc_zLOS_oblate(st_spin_x_st[idx_behind],st_spin_y_st[idx_behind],star_params['istar_rad'],star_params['RpoleReq'])                  
+                z_st_sky_behind,_,cond_in_stphot_behind=calc_zLOS_oblate(st_spin_x_st[idx_behind],st_spin_y_st[idx_behind],star_params['istar_rad'],star_params['RpoleReq'])                 
                 w_vis_far = idx_behind[~cond_in_stphot_behind]
 
                 #Points away from us, in LOS that intersect the projected photosphere, outside of the photosphere   
@@ -4484,10 +4484,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     # Initialize params to use the retrieve_contamin_prop_from_param function.
                     params = {'cos_istar' : star_params['cos_istar'], 'alpha_rot' : star_params['alpha_rot'], 'beta_rot' : star_params['beta_rot'] }        
                     for ar in plot_set_key['custom_ar_prop'] : 
-                        params['lat__IS__VS__AR'+ar] = plot_set_key['custom_ar_prop'][ar]['lat']
-                        params['ang__IS__VS__AR'+ar] = plot_set_key['custom_ar_prop'][ar]['ang']
-                        params['Tc_ar__IS__VS__AR'+ar] = plot_set_key['custom_ar_prop'][ar]['Tc_ar']
-                        if 'fctrst' in plot_set_key['custom_ar_prop'][ar]:params['fctrst__IS__VS__AR'+ar] = plot_set_key['custom_ar_prop'][ar]['fctrst']
+                        params['lat__IS__VS__ar'+ar] = plot_set_key['custom_ar_prop'][ar]['lat']
+                        params['ang__IS__VS__ar'+ar] = plot_set_key['custom_ar_prop'][ar]['ang']
+                        params['Tc_ar__IS__VS__ar'+ar] = plot_set_key['custom_ar_prop'][ar]['Tc_ar']
+                        if 'fctrst' in plot_set_key['custom_ar_prop'][ar]:params['fctrst__IS__VS__ar'+ar] = plot_set_key['custom_ar_prop'][ar]['fctrst']
                     
                 #Mock dataset active region properties
                 elif plot_set_key['mock_ar_prop']:
@@ -4591,7 +4591,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 orbit_t = np.linspace(0,2*np.pi/((1.-star_params['alpha_rot']*coord_grid['ar_prop_exp'][ar]['sin_lat_exp'][1]**2.-star_params['beta_rot']*coord_grid['ar_prop_exp'][ar]['sin_lat_exp'][1]**4.)*star_params['om_eq']*3600.*24.),plot_set_key['npts_orbits_ar'])
                 num_ar = len(ar_prop['ar'])
  
-                # - Dictionary in which we will store the spot center coordinates
+                # - Dictionary in which we will store the active region center coordinates
                 orb_coords = {'x':np.zeros([num_ar, plot_set_key['npts_orbits_ar']], dtype=float),'y':np.zeros([num_ar, plot_set_key['npts_orbits_ar']], dtype=float),'z':np.zeros([num_ar, plot_set_key['npts_orbits_ar']], dtype=float)}
 
                 # - Calculate active region center coordinates                
@@ -5156,7 +5156,7 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
         elif 'Diff' in plot_mod:data_path_all = [gen_dic['save_data_dir']+'Diff_estimates/'+plot_options['mode_loc_prof_est']+'/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp2plot]
         rest_frame = 'star'
 
-    #Data corrected for spot and facula contamination
+    #Data corrected for active region contamination
     elif plot_mod=='map_Diff_corr_ar':
         data_path_all = [gen_dic['save_data_dir']+'Corr_data/'+inst+'_'+vis+'_'+str(iexp) for iexp in iexp2plot]
         rest_frame='star'
@@ -6367,7 +6367,7 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
         #    - coordinates are normalized by Rstar, corresponding to the equatorial radius (and thus largest for an oblate star), so that the condition below is always conservative 
         cond_occ_HR |= Dprojplanet_HR <= (1.+data_dic['DI']['system_prop']['RpRs_max'][pl_loc])
 
-    #Planet-occulted and spot properties
+    #Planet-occulted and active region properties
     coord_pl_in['nph_HR'] =  np.sum(cond_occ_HR)   
     bjd_HR = bjd_HR[cond_occ_HR]
     args['inst'] = inst
@@ -6957,7 +6957,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
     if plot_mod in ['map_Diff_prof_clean_pl_est','map_Diff_prof_clean_ar_est','map_Diff_prof_unclean_ar_est','map_Diff_prof_unclean_pl_est',
                     'map_Diff_prof_clean_ar_res','map_Diff_prof_clean_pl_res','map_Diff_prof_unclean_ar_res','map_Diff_prof_unclean_pl_res']:
 
-        #Defining whether we are plotting the planet-occulted or spotted profiles and if they are clean or uncleaned
+        #Defining whether we are plotting the planet-occulted or active region profiles and if they are clean or uncleaned
         supp_name = plot_mod.split('_')[4]
         corr_plot_mod = plot_mod.split('_')[3]
 

@@ -183,7 +183,7 @@ def prior_check(par,priors_par,params,args):
     elif ('ang' in par) and ((priors_par['low']<0) or (priors_par['high']>90)):stop('Prior error: Spot angular size cannot be negative or exceed 90 deg. Re-define your priors.')
     elif ('veq' in par) and (priors_par['low']<0):stop('Prior error: Cannot have negative stellar rotation velocity. Re-define your priors.')
     elif ('Peq' in par) and (priors_par['low']<0):stop('Prior error: Cannot have negative stellar rotation period. Re-define your priors.')
-    elif ('Tc_ar' in par) and ((priors_par['low'] <= params[par].value - args['system_param']['star']['Peq']) or (priors_par['high'] >= params[par].value + args['system_param']['star']['Peq'])):stop('Prior error: Spot crossing time priors should be less/more than the rotational period to avoid aliases.')
+    elif ('Tc_ar' in par) and ((priors_par['low'] <= params[par].value - args['system_param']['star']['Peq']) or (priors_par['high'] >= params[par].value + args['system_param']['star']['Peq'])):stop('Prior error: Active region crossing time priors should be less/more than the rotational period to avoid aliases.')
     return None
 
 def MCMC_walkers_check(par,fit_dic,params,args):
@@ -211,11 +211,11 @@ def MCMC_walkers_check(par,fit_dic,params,args):
     #Checks
     if any(par_loc in par for par_loc in ['jitter','veq','Peq']):bounds[0]=max(bounds[0], 0.)
     
-    if 'jitter' in par:bounds[0]=max(bounds[0], 0.)
     elif 'ang' in par:
         bounds[0] = max(bounds[0], 0.)
         if uf:bounds[1] = min(bounds[1], 90.)
         else:bounds[0] = min(bounds[0], 90.)
+    
     elif ('Tc_ar' in par):
         if (bounds[0] <= params[par].value - args['system_param']['star']['Peq']): bounds[0] = params[par].value - args['system_param']['star']['Peq'] + 0.001
         if uf:
@@ -802,11 +802,11 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
             fixed_args['fit_RpRs']=False
             
         #Active region
+        fixed_args['fit_ar']=False
+        fixed_args['fit_ar_ang']=[]
         if fixed_args['cond_studied_ar']:
             par_ar=['lat', 'Tc_ar', 'ang', 'fctrst']    
             for par in par_ar:fixed_args[par+'_ar']=[]
-            fixed_args['fit_ar']=False
-            fixed_args['fit_ar_ang']=[]
 
         #Star
         par_star_ar = ['cos_istar', 'f_GD', 'veq', 'Peq', 'alpha_rot', 'beta_rot' ]
@@ -841,10 +841,10 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
             #Active region
             if fixed_args['cond_studied_ar']:        
                 for par_check in par_ar:
-                    if (par_check in par) and ('__ar' in par):
-                        ar_name = par.split('__ar')[1]
+                    if (par_check in par) and ('__AR' in par):
+                        ar_name = par.split('__AR')[1]
                         if (p_start[par].vary) or fit_dic['fit_mode']=='fixed':
-                            fixed_args[par_check+'_ar']+= [ar_name]
+                            fixed_args[par_check+'_AR']+= [ar_name]
                             fixed_args['fit_ar']=True
                         if ('ang' in par_check) and p_start[par].vary:
                             fixed_args['fit_ar_ang']+=[ar_name]
@@ -1050,6 +1050,9 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                         wgood=np_where1D((np.median(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='cos_istar')],axis=1)<0.) )
     
     
+                if gen_dic['fit_DiffProf']:
+                    ipar_loc=np_where1D(fixed_args['var_par_list']=='FWHM__ord0__IS__VS_')
+                    wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1)> 5.))                    
     
     
     
@@ -1831,9 +1834,6 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
             'mac_mode':theo_dic['mac_mode'], 
             'inst':inst,
             'vis':vis})
-        
-        #Assuming no active regions are fitted
-        fixed_args['unquiet_star'] = None
 
         #Grid initialization
         fixed_args['DI_grid'] = True
@@ -3014,14 +3014,14 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     if len(deriv_prop['fold_Tc_ar']['reg_to_use']) > 1:stop('Both "spots" and "faculae" cannot be provided to fold the active region Tc if both veq_spots and veq_faculae are fitted.') 
                     elif len(deriv_prop['fold_Tc_ar']['reg_to_use']) == 0:stop('If users want to perform the active region crossing time folding with the fitted veq_spots/veq_faculae values, they must specify which one to use with "deriv_prop["fold_TC_ar"]["spots/faculae"]=True."')
                     else:
-                        actreg_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
-                        if f'Peq_veq_{actreg_name}' not in deriv_prop: stop(f'WARNING: Peq_veq_{actreg_name} needs to be activated in deriv_prop if the active region crossing time folding is done with the fitted veq_{actreg_name}.')
-                        print(f'           + Folding with fitted veq_{actreg_name}')
+                        ar_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
+                        if f'Peq_veq_{ar_name}' not in deriv_prop: stop(f'WARNING: Peq_veq_{ar_name} needs to be activated in deriv_prop if the active region crossing time folding is done with the fitted veq_{ar_name}.')
+                        print(f'           + Folding with fitted veq_{ar_name}')
                         if fit_dic['fit_mode'] in ['mcmc','ns']:
-                            Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq_'+actreg_name)])
+                            Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq_'+ar_name)])
                             use_chain = True
                         else:
-                            Peq = p_final[f'Peq_{actreg_name}_d']
+                            Peq = p_final[f'Peq_{ar_name}_d']
                             use_chain = False
                 
                 # Only one of veq_spots or veq_faculae is fitted; no need to check deriv_prop['fold_Tc_ar']
@@ -3045,13 +3045,13 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     if len(deriv_prop['fold_Tc_ar']['reg_to_use']) > 1:stop('Both "spots" and "faculae" cannot be provided to fold the active region Tc if both Peq_spots and Peq_faculae are fitted.') 
                     elif len(deriv_prop['fold_Tc_ar']['reg_to_use']) == 0:stop('If users want to perform the active region crossing time folding with the fitted Peq_spots/Peq_faculae values, they must specify which one to use with "deriv_prop["fold_TC_ar"]["spots/faculae"]=True."')
                     else:
-                        actreg_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
-                        print(f'           + Folding with fitted Peq_{actreg_name}')
+                        ar_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
+                        print(f'           + Folding with fitted Peq_{ar_name}')
                         if fit_dic['fit_mode'] in ['mcmc','ns']:
-                            Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq_'+actreg_name)])
+                            Peq = np.squeeze(merged_chain[:, np_where1D(fixed_args['var_par_list']=='Peq_'+ar_name)])
                             use_chain = True
                         else:
-                            Peq = p_final[f'Peq_{actreg_name}_d']
+                            Peq = p_final[f'Peq_{ar_name}_d']
                             use_chain = False
                 
                 # Only one of Peq_spots or Peq_faculae is fitted; no need to check deriv_prop['fold_Tc_ar']
@@ -3075,9 +3075,9 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     if len(deriv_prop['fold_Tc_ar']['reg_to_use']) > 1:stop('Both "spots" and "faculae" cannot be provided to fold the active region Tc if both veq_spots and veq_faculae are fixed to values different than the baseline.') 
                     elif len(deriv_prop['fold_Tc_ar']['reg_to_use']) == 0:stop('If users want to perform the active region crossing time folding with the fixed veq_spots/veq_faculae values, they must specify which one to use with "deriv_prop["fold_TC_ar"]["spots/faculae"]=True."')
                     else:
-                        actreg_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
-                        print(f'           + Folding with fixed veq_{actreg_name}')
-                        Peq = 2*np.pi*fixed_args['system_param']['star']['Rstar']*Rsun/(p_final[f'veq_{actreg_name}']*3600.*24.)
+                        ar_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
+                        print(f'           + Folding with fixed veq_{ar_name}')
+                        Peq = 2*np.pi*fixed_args['system_param']['star']['Rstar']*Rsun/(p_final[f'veq_{ar_name}']*3600.*24.)
                         use_chain = False
 
                 #Only one of veq_spots or veq_faculae is fixed and differs from the base values
@@ -3096,9 +3096,9 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                     if len(deriv_prop['fold_Tc_ar']['reg_to_use']) > 1:stop('Both "spots" and "faculae" cannot be provided to fold the active region Tc if both Peq_spots and Peq_faculae are fixed to values different than the baseline.') 
                     elif len(deriv_prop['fold_Tc_ar']['reg_to_use']) == 0:stop('If users want to perform the active region crossing time folding with the fixed Peq_spots/Peq_faculae values, they must specify which one to use with "deriv_prop["fold_TC_ar"]["spots/faculae"]=True."')
                     else:
-                        actreg_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
-                        print(f'           + Folding with fixed Peq_{actreg_name}')
-                        Peq = 2*np.pi*fixed_args['system_param']['star']['Rstar']*Rsun/(p_final[f'Peq_{actreg_name}']*3600.*24.)
+                        ar_name = deriv_prop['fold_Tc_ar']['reg_to_use'][0]
+                        print(f'           + Folding with fixed Peq_{ar_name}')
+                        Peq = 2*np.pi*fixed_args['system_param']['star']['Rstar']*Rsun/(p_final[f'Peq_{ar_name}']*3600.*24.)
                         use_chain = False
 
                 #Only one of Peq_spots or Peq_faculae is fixed and differs from the base values
@@ -3147,7 +3147,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                 use_chain=False
                 Peq = fixed_args['base_system_param']['star']['Peq']
 
-            for actreg in fixed_args['studied_actreg']:
+            for ar in fixed_args['studied_ar']:
 
                 def sub_func(Tc_name,new_Tc_name,new_Tc_name_txt):
                     if (fit_dic['fit_mode'] in ['mcmc','ns']) and use_chain:print('           + Folding with full chain')
@@ -3162,7 +3162,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                         #Fold Tc_ar over x+[-Peq/2;Peq/2]
                         #    - we want Tc_ar in x+[-Peq/2;Peq/2] i.e. Tc_ar-x+Peq/2 in 0;Peq
                         #      we fold over 0;Peq and then get back to the final range
-                        if actreg in deriv_prop['fold_Tc_ar']:x_mid = deriv_prop['fold_Tc_ar'][actreg]
+                        if ar in deriv_prop['fold_Tc_ar']:x_mid = deriv_prop['fold_Tc_ar'][ar]
                         else:x_mid=np.median(merged_chain[:,iTc])
                         print('           + Folding around ',x_mid)
                         mid_shift = x_mid-Peq/2
@@ -3211,7 +3211,7 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                         for vis in fixed_args['genpar_instvis']['Tc_ar'][inst]:
                             Tc_name = 'Tc_ar__IS'+inst+'_VS'+vis
                             new_Tc_name = 'fold_Tc_ar__IS'+inst+'_VS'+vis
-                            sub_func(Tc_name, new_Tc_name,'T$_{ar}$['+actreg+'](BJD)')
+                            sub_func(Tc_name, new_Tc_name,'T$_{ar}$['+ar+'](BJD)')
 
         #-------------------------------------------------                
         #%%%% Adding 3D spin-orbit angle [deg]

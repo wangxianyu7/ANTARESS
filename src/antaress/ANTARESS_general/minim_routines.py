@@ -186,8 +186,8 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
                         if (fit_dic['uf_bd'][par][0]<fixed_args['varpar_priors'][par]['low']):fit_dic['uf_bd'][par][0]=fixed_args['varpar_priors'][par]['low']
                         if (fit_dic['uf_bd'][par][1]>fixed_args['varpar_priors'][par]['high']):fit_dic['uf_bd'][par][1]=fixed_args['varpar_priors'][par]['high']
                     elif par in fit_dic['gauss_bd']:
-                        if (fit_dic['gauss_bd'][par][0]<fixed_args['varpar_priors'][par]['low']):fit_dic['gauss'][par][0]=fixed_args['varpar_priors'][par]['low']
-                        if (fit_dic['gauss_bd'][par][0]>fixed_args['varpar_priors'][par]['high']):fit_dic['gauss'][par][0]=fixed_args['varpar_priors'][par]['high']
+                        if (fit_dic['gauss_bd'][par][0]<fixed_args['varpar_priors'][par]['low']):fit_dic['gauss_bd'][par][0]=fixed_args['varpar_priors'][par]['low']
+                        if (fit_dic['gauss_bd'][par][0]>fixed_args['varpar_priors'][par]['high']):fit_dic['gauss_bd'][par][0]=fixed_args['varpar_priors'][par]['high']
 
     return p_start
 
@@ -290,9 +290,11 @@ def ln_prior_func_NS(cube,fixed_args):
                 x[idx] = stats.norm.ppf(cube_prior, parprior['val'], parprior['s_val'])
     
             #Gaussian prior with different halves
-            # elif parprior['mod']=='dgauss':
-                # TODO
-
+            elif parprior['mod'] == 'dgauss':
+                # Map to the left half
+                if cube_prior < 0.5:x[idx] = stats.norm.ppf(cube_prior, loc=parprior['val'], scale=parprior['low'])
+                # Map to the right half
+                else:x[idx] = stats.norm.ppf(cube_prior, loc=parprior['val'], scale=parprior['high'])
 
             #Undefined prior
             else:
@@ -843,11 +845,14 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
     
     elif fit_dic['fit_mode'] in ['mcmc','ns']:
 
-        #Option to initialize walker distribution using a pre-computed Hessian matrix
-        if ('use_hess' not in fit_dic):fit_dic['use_hess']=''
+        #Walkers/live points
+        if 'walkers_set' not in fit_dic:fit_dic['walkers_set']={}        
 
         #Reboot
         if ('reboot' not in fit_dic):fit_dic['reboot']=''     
+
+        #Option to initialize walker distribution using a pre-computed Hessian matrix
+        if ('use_hess' not in fit_dic):fit_dic['use_hess']=''
 
         #Monitor progress
         if ('progress' not in fit_dic):fit_dic['progress']=True 
@@ -947,7 +952,6 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
             if ('monitor' not in fit_dic):fit_dic['monitor']=False 
     
             #Walkers
-            if 'walkers_set' not in fit_dic:fit_dic['walkers_set']={}
             if 'nwalkers' not in fit_dic['walkers_set']:fit_dic['nwalkers'] = int(3*fit_dic['merit']['n_free'])
             else:fit_dic['nwalkers'] = fit_dic['walkers_set']['nwalkers']
             if 'nsteps' not in fit_dic['walkers_set']:fit_dic['nsteps'] = 5000
@@ -966,8 +970,20 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
             fit_dic['calc_envMCMC']=False 
 
             #Live points
-            if 'nlive' not in fit_dic['walkers_set']:fit_dic['nlive'] = 400 
+            if 'nlive' not in fit_dic['walkers_set']:fit_dic['nlive'] = fit_dic['merit']['n_free'] * (fit_dic['merit']['n_free'] + 1) / 2
             else:fit_dic['nlive'] = fit_dic['walkers_set']['nlive']
+
+            #Bounding method used 
+            if ('bound_method' not in fit_dic['walkers_set']):fit_dic['bound_method']='auto'
+            else:fit_dic['bound_method']=fit_dic['walkers_set']['bound_method']
+            
+            #Sampling method used 
+            if ('sample_method' not in fit_dic['walkers_set']):fit_dic['sample_method']='unif'
+            else:fit_dic['sample_method']=fit_dic['walkers_set']['sample_method']
+
+            #Threshold on the log-likelihood difference between subsequent NS steps. Once the difference falls below this threshold, the run stops.
+            if ('dlogz' not in fit_dic['walkers_set']):fit_dic['dlogz']=0.1
+            else:fit_dic['dlogz']=fit_dic['walkers_set']['dlogz']
 
             #Set burn-in steps to 0 to makes post-processing with the MCMC functions possible
             fit_dic['nburn'] = 0.
@@ -1055,6 +1071,7 @@ def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=N
     merit['cdf'] = special.chdtrc(result.nfree,merit['chi2'])
     
     #Varia
+    merit['method'] = result.method
     merit['success'] = result.success
     merit['message'] = result.message
     merit['eval'] = result.nfev
@@ -1219,7 +1236,6 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
             fit_dic['nsteps'] = 0
             fit_dic['nburn'] = 0
             for mcmc_path,nburn in zip(fit_dic['reuse']['paths'],fit_dic['reuse']['nburn']):
-                mcmc_load=np.load(mcmc_path)
                 mcmc_load=np.load(mcmc_path, allow_pickle=True)
                 walker_chains_loc=mcmc_load['walker_chains'][:,nburn::,:] 
                 if fixed_args['step_output']:step_output_loc=mcmc_load['step_outputs'][nburn::] 
@@ -1254,20 +1270,17 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
         for par in fixed_args['var_par_list']:
             if par not in fixed_args['varpar_priors']:fixed_args['varpar_priors'][par]={'mod':'uf','low':-1e10,'high':1e10}
     
-        #Set initial parameter distribution
-        live_points = np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float) #Coordinates of starting live points
-        
         #Dictionary entry for storage
-        fit_dic['initial_distribution'] = [np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Coordinates of starting live points
-                                           np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Corresponding transformed variables
+        fit_dic['initial_distribution'] = [np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Prior values of starting points
+                                           np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Coordinates of starting live points
                                            np.zeros((fit_dic['nlive'],), dtype=float), #Corresponding log-likelihood values
                                            np.zeros((fit_dic['nlive']), dtype=dict)] 
 
-        if (len(fit_dic['ns_reboot'])>0):
+        if (len(fit_dic['reboot'])>0):
             print('         Rebooting previous run')
             
             #Reboot nested sampling from end of previous run
-            live_points=np.load(fit_dic['ns_reboot'])['walker_chains'][:,-1,:]  #(nwalkers, nsteps, n_free)
+            live_points=np.load(fit_dic['reboot'])['walker_chains'][:,-1,:]  #(nwalkers, nsteps, n_free)
               
         else:
             
@@ -1328,16 +1341,26 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
                                                    queue_size = nthreads,                          #Multiprocessing queue size
                                                    logl_args = [fixed_args],                       #Fixed arguments for the calculation of the likelihood
                                                    ptform_args = [fixed_args],                     #Fixed arguments for the calculation of the priors
-                                                   blob=True                                       #Whether blobs are present or not
+                                                   blob=True,                                      #Whether blobs are present or not
+                                                   bound=fit_dic['bound_method'],                  #Method for approximately bounding the prior. Plays a role in proposing new line points.
+                                                   sample=fit_dic['sample_method'],                #Method used to sample uniformly within the liklelihood constraint.                                                   
                                                    )
         else:
-            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func_ns, ln_prior_func_NS, nlive=fixed_args['nlive'], ndim=n_free, logl_args=[fixed_args],blob=True)
+            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func_ns,
+                                                   ln_prior_func_NS,
+                                                   nlive=fixed_args['nlive'],
+                                                   ndim=n_free,
+                                                   logl_args=[fixed_args],
+                                                   ptform_args = [fixed_args],
+                                                   blob=True,
+                                                   bound=fit_dic['bound_method'],
+                                                   sample=fit_dic['sample_method'],
+                                                   )
         
         #Run NS
         #    - possible options:
         # + iterations: number of iterations to run
-        sampler.run_nested(live_points = fit_dic['initial_distribution'], print_progress=fit_dic['progress'])
-
+        sampler.run_nested(live_points = fit_dic['initial_distribution'], print_progress=fit_dic['progress'], dlogz_init=fit_dic['dlogz'])
 
         if verbose:print('   duration : '+str((get_time()-st0)/60.)+' mn')
 
@@ -1381,6 +1404,9 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
     #Reuse NS
     elif run_mode=='reuse':
         print('         Retrieving NS') 
+
+        #Fix/initialize number of walkers and steps  - needed for subsequent analyses
+        fit_dic['nwalkers'] = 1
         
         #Retrieve NS run from standard NS directory
         if len(fit_dic['reuse'])==0:
@@ -1392,18 +1418,18 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
 
         #Retrieve NS run(s) from list of input paths
         else:
-            walker_chains = np.empty([0,0,0],dtype=float)
-            if fixed_args['step_output']:step_outputs = np.empty([0,0],dtype=object)
+            walker_chains = np.empty([fit_dic['nwalkers'],0,fit_dic['merit']['n_free'] ],dtype=float)
+            if fixed_args['step_output']:step_outputs = np.empty([0,fit_dic['nwalkers']],dtype=object)
             else:step_outputs=None
             if fixed_args['step_chi2']:fixed_args['chi2_storage'] = np.empty([0,fit_dic['nwalkers']],dtype=object)
             else:fixed_args['chi2_storage']=None
             fit_dic['nsteps'] = 0
             fit_dic['nburn'] = 0
-            for NS_path in fit_dic['reuse']['paths']:
+            for NS_path, nburn in zip(fit_dic['reuse']['paths'], fit_dic['reuse']['nburn']):
                 NS_load=np.load(NS_path, allow_pickle=True)
-                walker_chains_loc=NS_load['walker_chains'] 
-                if fixed_args['step_output']:step_output_loc=NS_load['step_outputs']
-                if fixed_args['step_chi2']:step_chi2_loc=NS_load['step_chi2']
+                walker_chains_loc=NS_load['walker_chains'][:,nburn::,:]
+                if fixed_args['step_output']:step_output_loc=NS_load['step_outputs'][nburn::]
+                if fixed_args['step_chi2']:step_chi2_loc=NS_load['step_chi2'][nburn::]
                 fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
                 walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
                 if fixed_args['step_output']:step_outputs = np.append(step_outputs,step_output_loc,axis=0)

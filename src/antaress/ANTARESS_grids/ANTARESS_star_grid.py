@@ -259,7 +259,7 @@ def get_LD_coeff(transit_prop,iband):
     Store input limb-darkening coefficients in common structure [LD_u1,LD_u2,LD_u3,LD_u4].
 
     Args:
-        transit_prop (dict) : dictionary containing the planet/spot limb-darkening properties.
+        transit_prop (dict) : dictionary containing the planet/active region limb-darkening properties.
         iband (int) : index of the band considered.
 
     Returns:
@@ -446,7 +446,7 @@ def model_star(mode,grid_dic,grid_type,system_prop_in,nsub_Dstar,star_params_eff
     """ 
  
     #Initializing velocity grid
-    #    - if spots are accounted for, the surface rv properties will be stored as cell-dependent grids to allow distinguishing between quiet and spotted cells
+    #    - if active regions are accounted for, the surface rv properties will be stored as cell-dependent grids to allow distinguishing between quiet and active cells
     for key in ['veq','alpha_rot','beta_rot']:grid_dic[key] = star_params_eff[key]    
      
     #Updating bulk stellar grid

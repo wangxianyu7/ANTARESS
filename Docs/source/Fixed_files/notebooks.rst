@@ -34,7 +34,9 @@ The following notebooks are available:
     Use to generate a spectrograph resolution map.
 
 - `ANTARESS_nbook_mock <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/Notebooks/ANTARESS_nbook_mock.ipynb>`_
-    Use to generate a mock CCF dataset.
+    Use to generate a mock CCF dataset of a planet transiting a quiet star.
+  `ANTARESS_nbook_mock-spots <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/Notebooks/ANTARESS_nbook_mock-spots.ipynb>`_  
+    Use to generate a mock CCF dataset of a planet transiting a spotted star.
 
 - `ANTARESS_nbook_proc <https://gitlab.unige.ch/spice_dune/antaress/-/blob/main/Notebooks/ANTARESS_nbook_proc.ipynb>`_
     Use to process a dataset.
