@@ -252,7 +252,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # gen_dic['star_name']='V1298tau'
     # gen_dic['star_name']='TRAPPIST1'
     # gen_dic['star_name']='TOI3884'
-    # gen_dic['star_name']='HD189733'
+    gen_dic['star_name']='HD189733'
 
     # Zodiacs
     # gen_dic['star_name']='Capricorn'
@@ -262,7 +262,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # gen_dic['star_name']='Leo'
     # gen_dic['star_name']='Aquarius'
     # gen_dic['star_name']='Aries'
-    gen_dic['star_name']='Libra'
+    # gen_dic['star_name']='Libra'
     # gen_dic['star_name']='Taurus'
     # gen_dic['star_name']='Scorpio'
     # gen_dic['star_name']='Virgo'
@@ -690,7 +690,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
          
     #Activating module
-    gen_dic['mock_data'] =  True #& False
+    gen_dic['mock_data'] =  True & False
 
     #Setting number of threads 
     mock_dic['nthreads'] = 2 
@@ -1558,7 +1558,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%%%% Calculating/retrieving
     #    - master stellar spectrum for weighing, specific to each visit
     #    - calculated after alignment and broadband flux scaling
-    gen_dic['calc_DImast'] = True   
+    gen_dic['calc_DImast'] = True   &   False
     
     
     #%%%%%% Exposures to be binned
@@ -4130,6 +4130,23 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     ANTARESS_fit_def_settings('DIProp',glob_fit_dic,plot_dic)
 
 
+    if gen_dic['star_name']=='HD189733':
+
+        gen_dic['fit_DIProp'] = True & False
+
+        glob_fit_dic['DIProp']['idx_in_fit'] = {'ESPRESSO':{'visit1':'all'}}
+
+        glob_fit_dic['DIProp']['mod_prop']={
+        'rv':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
+              'time__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},
+        'ctrst':{'c__ord0__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]},
+                 'snr__pol__ord1__IS__VS_':{'vary':True ,'guess':0,'bd':[-100.,100.]}},
+        }
+
+        # RV_phaseHD189733b
+        # ctrst_snrQ
+
+
 
 
     
@@ -4380,7 +4397,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #Calculating/retrieving
-    gen_dic['calc_flux_sc']=True  #&  False    
+    gen_dic['calc_flux_sc']=True  &  False    
     
         
 
@@ -4831,14 +4848,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%% Activating 
     gen_dic['DIbin'] = True  &  False
     gen_dic['DIbinmultivis'] = True      &  False
-    if gen_dic['star_name']=='HD189733':gen_dic['DIbin']=True #& False
+    if gen_dic['star_name']=='HD189733':
+        gen_dic['DIbin']=True #& False
+        gen_dic['DIbinmultivis']=True   & False  
     
     
     #%%%% Calculating/retrieving
-    gen_dic['calc_DIbin']=True   #&  False  
+    gen_dic['calc_DIbin']=True   &  False  
     gen_dic['calc_DIbinmultivis'] = True      &  False
     if gen_dic['star_name']=='HD189733':
-        gen_dic['DIbinmultivis']=True   & False  
+        gen_dic['calc_DIbin']=True   #&  False  
         gen_dic['calc_DIbinmultivis']= True  & False       
 
     #%%%% Plot settings
@@ -5059,7 +5078,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
  
     #%%%% Acxtivating 
-    gen_dic['def_DImasks'] = True #& False
+    gen_dic['def_DImasks'] = True & False
 
     #%%%% Estimate of line width 
 
@@ -5257,10 +5276,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #Activating
-    gen_dic['diff_data'] = True   #&  False
+    gen_dic['diff_data'] = True  &  False
 
     #Calculating/retrieving 
-    gen_dic['calc_diff_data'] = True   #&  False
+    gen_dic['calc_diff_data'] = True   &  False
 
 
     #Multi-threading
@@ -6748,7 +6767,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         # glob_fit_dic['DiffProf']['reuse']={}
         glob_fit_dic['DiffProf']['reuse']={
-                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS_Backup/Zodiacs2.0/Raw/Libra - bright spot - done/ALL/Libra_b_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk40_steps10000_Libra_b.npz'],
+                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS_Backup/Zodiacs2.0/Raw/Cancer - slow star - done/ALL/Cancer_b_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk40_steps10000_Cancer_b.npz'],
                     'nburn':[3000]
                     }  
     #Re-starting
@@ -6759,7 +6778,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # MCMC specific
     # - Walkers
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['walkers_set']={'nwalkers':40,'nsteps':10000,'nburn':3000}
+        glob_fit_dic['DiffProf']['sampler_set']={'nwalkers':40,'nsteps':10000,'nburn':3000}
 
     # - Complex priors        
          
@@ -6780,7 +6799,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     # - Live points
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['ns_set']={'nlive':400, 'bound_method':'multi', 'sample_method':'slice','dlogz':10.}
+        glob_fit_dic['DiffProf']['sampler_set']={'nlive':400, 'bound_method':'multi', 'sample_method':'slice','dlogz':10.}
 
 
     #Derived errors         
@@ -6802,7 +6821,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # Corner plot
     glob_fit_dic['DiffProf']['corner_options']={
 #            'bins_1D_par':[50,50,50,50],       #vsini, ip, lambda, b
-#            'bins_2D_par':[30,30,30,30], 
+        # 'bins_2D_par':[30,30,30,30,30,30,30,30,30], 
 #            'range_par':[(0.,320.),(88.,90.),(86.,91.),(0.,0.13)],
         'plot_HDI':True , # & False,             
 
@@ -6824,7 +6843,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'color_levels':['deepskyblue','lime'],
         # 'fontsize':15,
         'fontsize':10,
-#            'smooth2D':[0.05,5.] 
+        # 'smooth2D':[0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5]*3, 
+        # 'smooth1D':[0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]*3 ,
 #            'plot1s_1D':False
         }   
         
@@ -7078,7 +7098,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Walkers
     if gen_dic['star_name'] in ['AUMic','TOI3884']:
-        glob_fit_dic['IntrProf']['walkers_set']={'nwalkers':24,'nsteps':10000,'nburn':5000}
+        glob_fit_dic['IntrProf']['sampler_set']={'nwalkers':24,'nsteps':10000,'nburn':5000}
 
     #Complex priors        
          
@@ -7910,7 +7930,7 @@ def ANTARESS_2D_1D_settings(data_type,local_dic,gen_dic,plot_dic):
     
     
     #%%%% Multi-threading
-    gen_dic['nthreads_spec_1D_'+data_type]= int(0.8*cpu_count())
+    gen_dic['nthreads_spec_1D_'+data_type]= 1 #int(0.8*cpu_count())
     
     
     #%%%% 1D spectral table
@@ -8196,18 +8216,27 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #    - indicate path to a 'raw_chains' file:
     # + for a MCMC fit : 'path1/raw_chains_walkN_stepsM1_name.npz'
     # + for a NS fit: 'path1/raw_chains_liveL_name.npz'
-    #    - the fit will restart the same walkers from their last step, and run from the number of steps indicated in 'walkers_set'
+    #    - the fit will restart the same walkers from their last step, and run from the number of steps indicated in 'sampler_set'
     local_dic[data_type]['reboot']=''
 
 
-    #%%%% Walkers
+    #%%%% Sampler settings
     #    - for a MCMC fit define:
     # + 'nwalkers' : number of walkers
     # + 'nsteps' : total number of steps
     # + 'nburn' : number of burn-in steps
+    #
     #    - for a NS fit define:
-    # + 'nlive' : number of live points 
-    local_dic[data_type]['walkers_set']={}
+    # + 'nlive' : number of live points. 
+    #    Starting with 400 to 1000 is generally advisable.
+    # + 'bound_method' : Prior bounding method. 
+    #    If not specified it will default to 'auto' (see doc. in dynesty API to see what this specifically does).
+    #    While the default bounding method is 'auto', 'multi' is better at dealing with posterior distributions with complex shapes and is therefore recommended when dealing with complex problems.
+    # + 'sample_method' : method used to uniformly sample within the likelihood constraint, conditioned on the provided bounds. 
+    #    If not specified the default is 'auto', i.e. dynesty will pick a method based on the dimensionaly of the problem. If dealing with posterior distributions with complex shapes, 'slice' is recommended.
+    # + 'dlogz' : log-likelihood difference threshold below which the NS run with stop (dlogz). 
+    #    Defaut is 0.1 and can be placed higher/lower to stop the run earlier/later.
+    local_dic[data_type]['sampler_set']={}
     
     
     #%%%% Complex priors
@@ -8281,21 +8310,13 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
 
     #%%%%%% Runs to re-start
     #    - indicate path to a 'raw_chains' file
-    #      the ns will restart at the last step of the previous chains, and run with the number of live points indicated in 'ns_set'
+    #      the ns will restart at the last step of the previous chains, and run with the parameters indicated in 'sampler_set'
     local_dic[data_type]['reboot']=''
-        
-    
-    #%%%% Live points
-    #    - settings per instrument & visit
-    #    - users can specify the number of live points (nlive) used in the initial nested sampoing run. Starting with 400 to 1000 is generally advisable.
-    #    - users can specify the prior bounding method to use (bound_method). If not specified it will default to 'auto' (see doc. in dynesty API to see what this specifically does).
-    #    - While the default bounding method is 'auto', 'multi' is better at dealing with posterior distributions with complex shapes and is therefore recommended when dealing with complex problems.
-    #    - users can specify the method used to uniformly sample within the likliehood constraint, conditioned on the provided bounds (sample_method). If not specified the default is 'auto', i.e. dynesty will
-    #    - pick a method based on the dimensionaly of the problem. If dealing with posterior distributions with complex shapes, 'slice' is recommended.
-    #    - users can specify the log-likelihood difference threshold below which the NS run with stop (dlogz). Defaut is 0.1 and can be placed higher/lower to stop the run earlier/later.
-    local_dic[data_type]['ns_set']={}
 
-    
+    #%%%%%% Runs to restore
+    #    - indicate path to a dynesty checkpoint file
+    #      the ns will resume the sampler, and run with the parameters indicated in 'sampler_set'
+    local_dic[data_type]['restore']=''
     
     #%%%%%% Complex priors
     #    - to be defined manually within the code

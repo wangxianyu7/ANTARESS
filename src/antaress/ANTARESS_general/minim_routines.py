@@ -926,6 +926,12 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         #Default thread number
         if 'nthreads' not in fit_dic:fit_dic['nthreads'] = 1
 
+        #MCMC walker / NS sampler monitoring
+        if ('monitor' not in fit_dic):fit_dic['monitor']=True 
+
+        #Sampler dictionary
+        if 'sampler_set' not in fit_dic:fit_dic['sampler_set']={}
+
         if fit_dic['fit_mode']=='mcmc':
     
             #Do not use complex prior function by default
@@ -942,18 +948,14 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
                 if ('st_samp' not in fit_dic):fit_dic['st_samp']=10 
                 if ('end_samp' not in fit_dic):fit_dic['end_samp']=10 
                 if ('n_samp' not in fit_dic):fit_dic['n_samp']=100 
-            
-            #MCMC monitoring
-            if ('monitor' not in fit_dic):fit_dic['monitor']=False 
     
             #Walkers
-            if 'walkers_set' not in fit_dic:fit_dic['walkers_set']={}
-            if 'nwalkers' not in fit_dic['walkers_set']:fit_dic['nwalkers'] = int(3*fit_dic['merit']['n_free'])
-            else:fit_dic['nwalkers'] = fit_dic['walkers_set']['nwalkers']
-            if 'nsteps' not in fit_dic['walkers_set']:fit_dic['nsteps'] = 5000
-            else:fit_dic['nsteps'] = fit_dic['walkers_set']['nsteps']
-            if 'nburn' not in fit_dic['walkers_set']:fit_dic['nburn'] = 1000
-            else:fit_dic['nburn'] = fit_dic['walkers_set']['nburn']
+            if 'nwalkers' not in fit_dic['sampler_set']:fit_dic['nwalkers'] = int(3*fit_dic['merit']['n_free'])
+            else:fit_dic['nwalkers'] = fit_dic['sampler_set']['nwalkers']
+            if 'nsteps' not in fit_dic['sampler_set']:fit_dic['nsteps'] = 5000
+            else:fit_dic['nsteps'] = fit_dic['sampler_set']['nsteps']
+            if 'nburn' not in fit_dic['sampler_set']:fit_dic['nburn'] = 1000
+            else:fit_dic['nburn'] = fit_dic['sampler_set']['nburn']
     
             #Disable multi-threading
             if ('unthreaded_op' in fit_dic) and ('emcee' in fit_dic['unthreaded_op']):fit_dic['emcee_nthreads']=1
@@ -961,25 +963,28 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         
         elif fit_dic['fit_mode']=='ns': 
 
+            #Restoring
+            if ('restore' not in fit_dic):fit_dic['restore']=''     
+
             #No calculation of envelopes
             #    - calculation of models using parameter values within their 1sigma range
             fit_dic['calc_envMCMC']=False 
 
             #Live points
-            if 'nlive' not in fit_dic['ns_set']:fit_dic['nlive'] = fit_dic['merit']['n_free'] * (fit_dic['merit']['n_free'] + 1) / 2
-            else:fit_dic['nlive'] = fit_dic['ns_set']['nlive']
+            if 'nlive' not in fit_dic['sampler_set']:fit_dic['nlive'] = fit_dic['merit']['n_free'] * (fit_dic['merit']['n_free'] + 1) / 2
+            else:fit_dic['nlive'] = fit_dic['sampler_set']['nlive']
 
             #Bounding method used 
-            if ('bound_method' not in fit_dic['ns_set']):fit_dic['bound_method']='auto'
-            else:fit_dic['bound_method']=fit_dic['ns_set']['bound_method']
+            if ('bound_method' not in fit_dic['sampler_set']):fit_dic['bound_method']='auto'
+            else:fit_dic['bound_method']=fit_dic['sampler_set']['bound_method']
             
             #Sampling method used 
-            if ('sample_method' not in fit_dic['ns_set']):fit_dic['sample_method']='unif'
-            else:fit_dic['sample_method']=fit_dic['ns_set']['sample_method']
+            if ('sample_method' not in fit_dic['sampler_set']):fit_dic['sample_method']='unif'
+            else:fit_dic['sample_method']=fit_dic['sampler_set']['sample_method']
 
             #Threshold on the log-likelihood difference between subsequent NS steps. Once the difference falls below this threshold, the run stops.
-            if ('dlogz' not in fit_dic['ns_set']):fit_dic['dlogz']=0.1
-            else:fit_dic['dlogz']=fit_dic['ns_set']['dlogz']
+            if ('dlogz' not in fit_dic['sampler_set']):fit_dic['dlogz']=0.1
+            else:fit_dic['dlogz']=fit_dic['sampler_set']['dlogz']
 
             #Set burn-in steps to 0 to makes post-processing with the MCMC functions possible
             fit_dic['nburn'] = 0.
@@ -1326,43 +1331,51 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
         #By default use variance
         if 'use_cov' not in fixed_args:fixed_args['use_cov']=False
 
+        #Save state of sampler in case of crash
+        if ('monitor' in fit_dic) and fit_dic['monitor']:dynesty_checkpoint = fit_dic['save_dir']+'monitor_dynesty.save'
+        else:dynesty_checkpoint=None
+        
         #Call to NS
         st0=get_time()
         n_free=np.shape(fit_dic['initial_distribution'][0])[1]
         
         #Multiprocessing
-        if nthreads>1:
-            pool_proc = Pool(processes=nthreads)  
-            print('         Running with '+str(nthreads)+' threads')
-            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func_ns,                              #Log-likelihood function
-                                                   ln_prior_func_NS,                               #Log-prior function
-                                                   nlive = fit_dic['nlive'],                       #Number of live points
-                                                   ndim = n_free,                                  #Number of parameters accepted by ln_prior_func_NS
-                                                   pool = pool_proc,                               #Multiprocessing pool considered
-                                                   queue_size = nthreads,                          #Multiprocessing queue size
-                                                   logl_args = [fixed_args],                       #Fixed arguments for the calculation of the likelihood
-                                                   ptform_args = [fixed_args],                     #Fixed arguments for the calculation of the priors
-                                                   blob=True,                                      #Whether blobs are present or not
-                                                   bound=fit_dic['bound_method'],                  #Method for approximately bounding the prior. Plays a role in proposing new line points.
-                                                   sample=fit_dic['sample_method'],                #Method used to sample uniformly within the liklelihood constraint.
-                                                   )
-        else:
-            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func_ns,
-                                                   ln_prior_func_NS,
-                                                   nlive=fixed_args['nlive'],
-                                                   ndim=n_free,
-                                                   logl_args=[fixed_args],
-                                                   ptform_args = [fixed_args],
-                                                   blob=True,
-                                                   bound=fit_dic['bound_method'],
-                                                   sample=fit_dic['sample_method'],
-                                                   )
+        use_threads = (nthreads > 1)
+        pool_proc = Pool(processes=nthreads) if use_threads else None  
         
-        #Run NS
-        #    - possible options:
-        # + iterations: number of iterations to run
-        sampler.run_nested(live_points = fit_dic['initial_distribution'], print_progress=fit_dic['progress'], dlogz_init=fit_dic['dlogz'])
+        #Restoring a previous run
+        if fit_dic['restore']:
+            print(f"         Restoring previous run with {nthreads} threads" if use_threads else "         Restoring previous run")
+            sampler = dynesty.DynamicNestedSampler.restore(fit_dic['restore'], pool=pool_proc)
+        #Doing a new run
+        else:
+            print(f"         Running with {nthreads} threads" if use_threads else "         Running")
+            sampler_kwargs = {
+                "bound": fit_dic["bound_method"],            #Prior bounding method
+                "sample": fit_dic["sample_method"],          #Likelihood sampling method
+                "nlive": fit_dic['nlive'],                   #Number of live points
+                "ndim": n_free,                              #Number of parameters accepted by ln_prior_func_NS
+                "logl_args": [fixed_args],                   #Fixed arguments for the calculation of the likelihood
+                "ptform_args": [fixed_args],                 #Fixed arguments for the calculation of the priors
+                "blob": True,                                #Whether blobs are present or not
+            }
+            if use_threads:
+                sampler_kwargs.update({"pool": pool_proc,                           #Multiprocessing pool considered
+                                       "queue_size": nthreads                       #Multiprocessing queue size
+                                       })
+            
+            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func_ns,                          #Log-likelihood function
+                                                   ln_prior_func_NS,                           #Log-prior function
+                                                   **sampler_kwargs)
 
+        # Run NS with restore or initial parameters
+        sampler.run_nested(
+            resume=bool(fit_dic['restore']),
+            live_points=fit_dic['initial_distribution'],
+            print_progress=fit_dic['progress'],
+            dlogz_init=fit_dic['dlogz'],
+            checkpoint_file=dynesty_checkpoint,
+        )
 
         if verbose:print('   duration : '+str((get_time()-st0)/60.)+' mn')
 

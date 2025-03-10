@@ -1257,14 +1257,25 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
  
         #MCMC fit default options
         if prop_dic['fit_mode']=='mcmc': 
-            if ('walkers_set' not in prop_dic):prop_dic['walkers_set']={}
+            if ('sampler_set' not in prop_dic):prop_dic['sampler_set']={}
             for key in ['nwalkers','nsteps','nburn']:
-                if key not in prop_dic['walkers_set']:prop_dic['walkers_set'][key] = {}
-                if (inst not in prop_dic['walkers_set'][key]):prop_dic['walkers_set'][key][inst] = {}
-            if (vis not in prop_dic['walkers_set']['nwalkers'][inst]):prop_dic['walkers_set']['nwalkers'][inst][vis] = 50
-            if (vis not in prop_dic['walkers_set']['nsteps'][inst]):prop_dic['walkers_set']['nsteps'][inst][vis] = 1000
-            if (vis not in prop_dic['walkers_set']['nburn'][inst]):prop_dic['walkers_set']['nburn'][inst][vis] = 200
+                if key not in prop_dic['sampler_set']:prop_dic['sampler_set'][key] = {}
+                if (inst not in prop_dic['sampler_set'][key]):prop_dic['sampler_set'][key][inst] = {}
+            if (vis not in prop_dic['sampler_set']['nwalkers'][inst]):prop_dic['sampler_set']['nwalkers'][inst][vis] = 50
+            if (vis not in prop_dic['sampler_set']['nsteps'][inst]):prop_dic['sampler_set']['nsteps'][inst][vis] = 1000
+            if (vis not in prop_dic['sampler_set']['nburn'][inst]):prop_dic['sampler_set']['nburn'][inst][vis] = 200
        
+        #NS fit default options
+        if prop_dic['fit_mode']=='ns': 
+            if ('sampler_set' not in prop_dic):prop_dic['sampler_set']={}
+            for key in ['nlive','bound_method','sample_method','dlogz']:
+                if key not in prop_dic['sampler_set']:prop_dic['sampler_set'][key] = {}
+                if (inst not in prop_dic['sampler_set'][key]):prop_dic['sampler_set'][key][inst] = {}
+            if (vis not in prop_dic['sampler_set']['nlive'][inst]):prop_dic['sampler_set']['nlive'][inst][vis] = 400
+            if (vis not in prop_dic['sampler_set']['bound_method'][inst]):prop_dic['sampler_set']['bound_method'][inst][vis] = 'auto'
+            if (vis not in prop_dic['sampler_set']['sample_method'][inst]):prop_dic['sampler_set']['sample_method'][inst][vis] = 'auto'
+            if (vis not in prop_dic['sampler_set']['dlogz'][inst]):prop_dic['sampler_set']['dlogz'][inst][vis] = 0.1
+
         #Default model
         if ('model' not in prop_dic):prop_dic['model']={}
         if (inst not in prop_dic['model']):prop_dic['model'][inst]='gauss'
@@ -2024,7 +2035,7 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
      
     #--------------------------------------------------------------   
     #Fit by emcmc 
-    elif fit_prop_dic['fit_mode']=='mcmc': 
+    elif fit_prop_dic['fit_mode'] in ['mcmc','ns']: 
         
         #Calculate HDI for error definition
         #    - automatic definition of PDF resolution is used unless histogram resolution is set
@@ -2036,19 +2047,27 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
             elif ('HDI_bwf' in fit_prop_dic) and (param_loc in fit_prop_dic['HDI_bwf']) and (inst in fit_prop_dic['HDI_bwf'][param_loc]) and (vis in fit_prop_dic['HDI_bwf'][param_loc][inst]):
                 fit_dic['HDI_bwf'][param_loc]=fit_prop_dic['HDI_bwf'][param_loc][inst][vis]
     
-        #Store options
-        for key in ['nwalkers','nsteps','nburn']:fit_dic[key] = fit_prop_dic['walkers_set'][key][inst][vis]
+        if fit_prop_dic['fit_mode']=='mcmc':
+            #Store options
+            for key in ['nwalkers','nsteps','nburn']:fit_dic[key] = fit_prop_dic['sampler_set'][key][inst][vis]
 
-        #Call MCMC
-        walker_chains,step_outputs=call_MCMC(fit_prop_dic['run_mode'],fit_dic['nthreads'],fixed_args,fit_dic,verbose=verbose)
+            #Call MCMC
+            walker_chains,step_outputs=call_MCMC(fit_prop_dic['run_mode'],fit_dic['nthreads'],fixed_args,fit_dic,verbose=verbose)
 
-        #Excluding parts of the chains
-        if fit_dic['exclu_walk']:
-            if gen_dic['star_name'] == 'HD106315':
-                wgood=np_where1D((np.min(walker_chains[:,400::,np_where1D(fixed_args['var_par_list']=='veq')],axis=1)>8.))
+            #Excluding parts of the chains
+            if fit_dic['exclu_walk']:
+                if gen_dic['star_name'] == 'HD106315':
+                    wgood=np_where1D((np.min(walker_chains[:,400::,np_where1D(fixed_args['var_par_list']=='veq')],axis=1)>8.))
 
-            walker_chains=np.take(walker_chains,wgood,axis=0)     
-            fit_dic['nwalkers']=len(wgood) 
+                walker_chains=np.take(walker_chains,wgood,axis=0)     
+                fit_dic['nwalkers']=len(wgood) 
+        else:
+            #Store options
+            for key in ['nlive','bound_method','sample_method','dlogz']:fit_dic[key] = fit_prop_dic['sampler_set'][key][inst][vis]
+
+            #Call NS
+            walker_chains,step_outputs=call_NS(fit_prop_dic['run_mode'],fit_dic['nthreads'],fixed_args,fit_dic,verbose=verbose)
+
  
     
         #Processing:
