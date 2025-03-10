@@ -7,7 +7,7 @@ from copy import deepcopy
 import astropy.convolution.convolve as astro_conv
 import bindensity as bind
 import lmfit
-from ctypes import CDLL,c_double,c_int
+from ctypes import CDLL,c_double,c_int,c_float
 import os as os_system
 from ..ANTARESS_analysis.ANTARESS_model_prof import pol_cont,dispatch_func_prof,polycoeff_def,calc_polymodu,calc_linevar_coord_grid
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star,calc_RVrot,calc_CB_RV,get_LD_coeff
@@ -22,12 +22,17 @@ class CFunctionWrapper:
     """ 
     def __init__(self):
         self._initialize_functions()
+        self.current_function_name = None
 
     def _initialize_functions(self):
         code_dir = os_system.path.dirname(__file__).split('ANTARESS_grids')[0]
-        self.myfunctions = CDLL(code_dir + '/ANTARESS_analysis/C_grid/Gauss_star_grid.so')
-        self.fun_to_use = self.myfunctions.C_coadd_loc_gauss_prof
-        self.fun_to_use.argtypes = [
+        self.myfunctions = CDLL(code_dir + '/ANTARESS_analysis/C_grid/C_star_grid.so')
+
+        #Load all functions we want to use
+        #Gauss
+        self.C_coadd_loc_gauss_prof = self.myfunctions.C_coadd_loc_gauss_prof
+
+        self.C_coadd_loc_gauss_prof.argtypes = [
             np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
             np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
             np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
@@ -37,16 +42,104 @@ class CFunctionWrapper:
             c_int,
             np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS")
         ]
-        self.fun_to_use.restype = None
+        self.C_coadd_loc_gauss_prof.restype = None
+
+        #Voigt
+        self.C_coadd_loc_voigt_prof = self.myfunctions.C_coadd_loc_voigt_prof
+
+        self.C_coadd_loc_voigt_prof.argtypes = [
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            c_int,
+            c_int,
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS")
+        ]
+        self.C_coadd_loc_voigt_prof.restype = None
+
+        #Dgauss
+        self.C_coadd_loc_dgauss_prof = self.myfunctions.C_coadd_loc_dgauss_prof
+
+        self.C_coadd_loc_dgauss_prof.argtypes = [
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            c_int,
+            c_int,
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS")
+        ]
+        self.C_coadd_loc_dgauss_prof.restype = None
+
+        #Cgauss
+        self.C_coadd_loc_cgauss_prof = self.myfunctions.C_coadd_loc_cgauss_prof
+
+        self.C_coadd_loc_cgauss_prof.argtypes = [
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            c_float,
+            c_float,
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            c_int,
+            c_int,
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS")
+        ]
+        self.C_coadd_loc_cgauss_prof.restype = None
+
+        #Pgauss
+        self.C_coadd_loc_pgauss_prof = self.myfunctions.C_coadd_loc_pgauss_prof
+
+        self.C_coadd_loc_pgauss_prof.argtypes = [
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS"),
+            c_int,
+            c_int,
+            np.ctypeslib.ndpointer(c_double, flags="C_CONTIGUOUS")
+        ]
+        self.C_coadd_loc_pgauss_prof.restype = None
 
     def coadd_loc_gauss_prof_with_C(self, rv_surf_star_grid, ctrst_grid, FWHM_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, gauss_grid):
-        self.fun_to_use(rv_surf_star_grid, ctrst_grid, FWHM_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, gauss_grid)
+        self.C_coadd_loc_gauss_prof(rv_surf_star_grid, ctrst_grid, FWHM_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, gauss_grid)
+    
+    def coadd_loc_voigt_prof_with_C(self, rv_surf_star_grid, ctrst_grid, FWHM_grid, a_damp_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, voigt_grid):
+        self.C_coadd_loc_voigt_prof(rv_surf_star_grid, ctrst_grid, FWHM_grid, a_damp_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, voigt_grid)
+    
+    def coadd_loc_dgauss_prof_with_C(self, rv_surf_star_grid, ctrst_grid, FWHM_grid, rv_l2c_grid, FWHM_l2c_grid, amp_l2c_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, dgauss_grid):
+        self.C_coadd_loc_dgauss_prof(rv_surf_star_grid, ctrst_grid, FWHM_grid, rv_l2c_grid, FWHM_l2c_grid, amp_l2c_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, dgauss_grid)
+    
+    def coadd_loc_cgauss_prof_with_C(self, rv_surf_star_grid, ctrst_grid, FWHM_grid, skew, kurt, skew_grid, kurt_grid, factor_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, cgauss_grid):
+        self.C_coadd_loc_cgauss_prof(rv_surf_star_grid, ctrst_grid, FWHM_grid, skew, kurt, skew_grid, kurt_grid, factor_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, cgauss_grid)
+    
+    def coadd_loc_pgauss_prof_with_C(self, rv_surf_star_grid, ctrst_grid, FWHM_grid, c4_pol_grid, c6_pol_grid, dRV_joint_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, pgauss_grid):
+        self.C_coadd_loc_pgauss_prof(rv_surf_star_grid, ctrst_grid, FWHM_grid, c4_pol_grid, c6_pol_grid, dRV_joint_grid, args_cen_bins, Fsurf_grid_spec, args_ncen_bins, Fsurf_grid_spec_shape_0, pgauss_grid)
 
     def __getstate__(self):
         # When pickling, we remove the ctypes function pointer
         state = self.__dict__.copy()
         del state['myfunctions']
-        del state['fun_to_use']
+        del state['C_coadd_loc_gauss_prof']
+        del state['C_coadd_loc_voigt_prof']
+        del state['C_coadd_loc_cgauss_prof']
+        del state['C_coadd_loc_pgauss_prof']
+        del state['C_coadd_loc_dgauss_prof']
         return state
 
     def __setstate__(self, state):
@@ -803,13 +896,12 @@ def coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
     #Define necessary grids    
     true_rv_surf_star_grid = np.tile(rv_surf_star_grid, (args['ncen_bins'], 1)).T
     model_table = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']), dtype=float) * args['cen_bins']
-    cont_grid = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']))
     sqrt_log2 = np.sqrt(np.log(2.))
     ctrst_grid = np.tile(args['input_cell_all']['ctrst'], (args['ncen_bins'], 1)).T
     FWHM_grid = np.tile(args['input_cell_all']['FWHM'], (args['ncen_bins'], 1)).T
     
     #Make grid of profiles    
-    gaussian_line_grid = cont_grid*(1.-ctrst_grid*np.exp(-(2.*sqrt_log2*(model_table-true_rv_surf_star_grid)/FWHM_grid)**2))
+    gaussian_line_grid = 1.-ctrst_grid*np.exp(-(2.*sqrt_log2*(model_table-true_rv_surf_star_grid)/FWHM_grid)**2)
 
     gaussian_line_grid *= Fsurf_grid_spec
 
@@ -832,7 +924,6 @@ def coadd_loc_voigt_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
     #Define necessary grids    
     true_rv_surf_star_grid = np.tile(rv_surf_star_grid, (args['ncen_bins'], 1)).T
     model_table = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']), dtype=float) * args['cen_bins']
-    cont_grid = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']))
     sqrt_log2 = np.sqrt(np.log(2.))
     ctrst_grid = np.tile(args['input_cell_all']['ctrst'], (args['ncen_bins'], 1)).T
     FWHM_grid = np.tile(args['input_cell_all']['FWHM'], (args['ncen_bins'], 1)).T
@@ -842,11 +933,126 @@ def coadd_loc_voigt_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
     z_tab_grid =  2.*sqrt_log2*(model_table - true_rv_surf_star_grid)/FWHM_grid +  1j*a_damp_grid
     voigt_peak_grid = special.wofz(1j*a_damp_grid).real
     voigt_mod_grid = 1. - (ctrst_grid/voigt_peak_grid)*special.wofz(z_tab_grid).real
-    cont_pol_grid = cont_grid * pol_cont(model_table,args,param)
-    voigt_line_grid = voigt_mod_grid * cont_pol_grid
+    voigt_mod_grid *= Fsurf_grid_spec
 
-    return voigt_line_grid
+    return voigt_mod_grid
 
+
+def coadd_loc_cgauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
+    r"""**Local skewed Gaussian line co-addition**
+
+    Oversimplified way of cumulating the local profiles from each cell of the stellar disk. 
+    This version assumes skewed gaussian line profiles in each cell.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    #Define necessary grids    
+    true_rv_surf_star_grid = np.tile(rv_surf_star_grid, (args['ncen_bins'], 1)).T
+    model_table = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']), dtype=float) * args['cen_bins']
+    factor_grid = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']))
+    sqrt2_log2 = np.sqrt(2.*np.log(2.))
+    skew1 = args['input_cell_all']['skewA']
+    kurt1 = args['input_cell_all']['kurtA']
+    skew_grid = np.tile(skew1, (args['ncen_bins'], 1)).T
+    kurt_grid = np.tile(kurt1, (args['ncen_bins'], 1)).T
+    ctrst_grid = np.tile(args['input_cell_all']['ctrst'], (args['ncen_bins'], 1)).T
+    FWHM_grid = np.tile(args['input_cell_all']['FWHM'], (args['ncen_bins'], 1)).T
+    
+    #Make grid of profiles   
+    x_tab_grid =  2.*sqrt2_log2*(model_table - true_rv_surf_star_grid)/FWHM_grid
+
+    #Skewness and kurtosis
+    if skew1!=0. or kurt1!=0.:
+        c = np.array([np.sqrt(6.)/4., -np.sqrt(3.), -np.sqrt(6.), 2./np.sqrt(3.), np.sqrt(6.)/3.])        
+    if skew1!=0.:
+        factor_grid+=skew_grid*(c[1]*x_tab_grid+c[3]*x_tab_grid**3.)
+    if kurt1!=0.:
+        factor_grid+=kurt_grid*(c[0]+c[2]*x_tab_grid**2.+c[4]*x_tab_grid**4.)   
+ 
+    #Skewd gaussian profile
+    sk_gauss_grid = 1.- factor_grid*ctrst_grid*np.exp(-0.5*x_tab_grid**2.)
+    sk_gauss_grid *= Fsurf_grid_spec
+
+    return sk_gauss_grid
+
+def coadd_loc_dgauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
+    r"""**Local double Gaussian line co-addition**
+
+    Oversimplified way of cumulating the local profiles from each cell of the stellar disk. 
+    This version assumes double gaussian line profiles in each cell.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    #Define necessary grids    
+    true_rv_surf_star_grid = np.tile(rv_surf_star_grid, (args['ncen_bins'], 1)).T
+    model_table = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']), dtype=float) * args['cen_bins']
+    sqrt_log2 = np.sqrt(np.log(2.))
+    ctrst_grid = np.tile(args['input_cell_all']['ctrst'], (args['ncen_bins'], 1)).T
+    rv_l2c_grid = np.tile(args['input_cell_all']['rv_l2c'], (args['ncen_bins'], 1)).T
+    FWHM_l2c_grid = np.tile(args['input_cell_all']['FWHM_l2c'], (args['ncen_bins'], 1)).T
+    amp_l2c_grid = np.tile(args['input_cell_all']['amp_l2c'], (args['ncen_bins'], 1)).T
+    FWHM_grid = np.tile(args['input_cell_all']['FWHM'], (args['ncen_bins'], 1)).T
+    
+    #Reduced contrast grid
+    red_ctrst_grid = ctrst_grid/(1. - amp_l2c_grid)
+
+    #Inverted gaussian core
+    y_gausscore_grid=Fsurf_grid_spec*(1. - red_ctrst_grid*np.exp(-np.power(2.*sqrt_log2*(model_table-true_rv_surf_star_grid)/FWHM_grid,2))) 
+    
+    #Gaussian lobes
+    cen_RV_lobes_grid=true_rv_surf_star_grid+rv_l2c_grid 
+    FWHM_lobes_grid = FWHM_grid*FWHM_l2c_grid   
+    y_gausslobes_grid=Fsurf_grid_spec*(1. + red_ctrst_grid*amp_l2c_grid*np.exp(-np.power(2.*sqrt_log2*(model_table-cen_RV_lobes_grid)/FWHM_lobes_grid,2)))     
+    
+    return y_gausscore_grid + y_gausslobes_grid - Fsurf_grid_spec
+
+
+def coadd_loc_pgauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
+    r"""**Local sidelobed Gaussian line co-addition**
+
+    Oversimplified way of cumulating the local profiles from each cell of the stellar disk. 
+    This version assumes sidelobed gaussian line profiles in each cell.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    #Define necessary grids    
+    true_rv_surf_star_grid = np.tile(rv_surf_star_grid, (args['ncen_bins'], 1)).T
+    model_table = np.ones((Fsurf_grid_spec.shape[0], args['ncen_bins']), dtype=float) * args['cen_bins']
+    sqrt_log2 = np.sqrt(np.log(2.))
+    ctrst_grid = np.tile(args['input_cell_all']['ctrst'], (args['ncen_bins'], 1)).T
+    c4_pol_grid = np.tile(args['input_cell_all']['c4_pol'], (args['ncen_bins'], 1)).T
+    c6_pol_grid = np.tile(args['input_cell_all']['c6_pol'], (args['ncen_bins'], 1)).T
+    dRV_joint_grid = np.tile(args['input_cell_all']['dRV_joint'], (args['ncen_bins'], 1)).T
+    FWHM_grid = np.tile(args['input_cell_all']['FWHM'], (args['ncen_bins'], 1)).T
+    
+    #Gaussian with baseline set to continuum value
+    y_gausscore_grid=1.-ctrst_grid*np.exp(-np.power( 2.*sqrt_log2*(model_table-true_rv_surf_star_grid)/FWHM_grid  ,2.  )) 
+    ymodel_grid = y_gausscore_grid*Fsurf_grid_spec
+    
+    #Polynomial
+    RV_joint_high = true_rv_surf_star_grid + dRV_joint_grid       
+    RV_joint_low  = true_rv_surf_star_grid - dRV_joint_grid
+    cond_lobes = (model_table >= RV_joint_low) & (model_table <= RV_joint_high) 
+    y_polylobe_grid = np.repeat(1.,len(model_table))
+    y_polylobe_grid[cond_lobes] *= c4_pol_grid*dRV_joint_grid**4. + 2.*c6_pol_grid*dRV_joint_grid**6. - dRV_joint_grid**2.*np.power(model_table[cond_lobes]-true_rv_surf_star_grid,2.)*(2.*c4_pol_grid + 3.*c6_pol_grid*dRV_joint_grid**2.) + c4_pol_grid*np.power(model_table[cond_lobes]-true_rv_surf_star_grid,4.) + c6_pol_grid*np.power(model_table[cond_lobes]-true_rv_surf_star_grid,6.)
+    ymodel_grid[cond_lobes]*=y_polylobe_grid[cond_lobes]    
+    
+    return ymodel_grid
 
 def use_C_coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
     r"""**C++ local Gaussian line co-addition**
@@ -868,5 +1074,97 @@ def use_C_coadd_loc_gauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
     c_function_wrapper = args['c_function_wrapper']
     c_function_wrapper.coadd_loc_gauss_prof_with_C(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec / sc_10,ncen_bins,Fsurf_grid_spec_shape0,gauss_grid)
     truegauss_grid = gauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins)) * sc_10
+
+    return truegauss_grid
+
+def use_C_coadd_loc_voigt_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
+    r"""**C++ local Voigt line co-addition**
+
+    C++ implementation of `coadd_loc_voigt_prof()`.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    if np.mean(Fsurf_grid_spec)==0.:sc_10 = 1
+    else: sc_10 = get_pw10(np.abs(np.mean(Fsurf_grid_spec)))
+    Fsurf_grid_spec_shape0 = len(Fsurf_grid_spec)
+    ncen_bins = args['ncen_bins']
+    voigt_grid = np.zeros((Fsurf_grid_spec_shape0, ncen_bins), dtype=np.float64).flatten()
+    c_function_wrapper = args['c_function_wrapper']
+    c_function_wrapper.coadd_loc_voigt_prof_with_C(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec / sc_10,ncen_bins,Fsurf_grid_spec_shape0,voigt_grid)
+    truevoigt_grid = voigt_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins)) * sc_10
+
+    return truevoigt_grid
+
+def use_C_coadd_loc_cgauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
+    r"""**C++ local skewed Gaussian line co-addition**
+
+    C++ implementation of `coadd_loc_cgauss_prof()`.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    if np.mean(Fsurf_grid_spec)==0.:sc_10 = 1
+    else: sc_10 = get_pw10(np.abs(np.mean(Fsurf_grid_spec)))
+    Fsurf_grid_spec_shape0 = len(Fsurf_grid_spec)
+    ncen_bins = args['ncen_bins']
+    cgauss_grid = np.zeros((Fsurf_grid_spec_shape0, ncen_bins), dtype=np.float64).flatten()
+    c_function_wrapper = args['c_function_wrapper']
+    c_function_wrapper.coadd_loc_cgauss_prof_with_C(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec / sc_10,ncen_bins,Fsurf_grid_spec_shape0,cgauss_grid)
+    truecgauss_grid = cgauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins)) * sc_10
+
+    return truecgauss_grid
+
+def use_C_coadd_loc_dgauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
+    r"""**C++ local double Gaussian line co-addition**
+
+    C++ implementation of `coadd_loc_dgauss_prof()`.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    if np.mean(Fsurf_grid_spec)==0.:sc_10 = 1
+    else: sc_10 = get_pw10(np.abs(np.mean(Fsurf_grid_spec)))
+    Fsurf_grid_spec_shape0 = len(Fsurf_grid_spec)
+    ncen_bins = args['ncen_bins']
+    dgauss_grid = np.zeros((Fsurf_grid_spec_shape0, ncen_bins), dtype=np.float64).flatten()
+    c_function_wrapper = args['c_function_wrapper']
+    c_function_wrapper.coadd_loc_dgauss_prof_with_C(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec / sc_10,ncen_bins,Fsurf_grid_spec_shape0,dgauss_grid)
+    truedgauss_grid = dgauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins)) * sc_10
+
+    return truedgauss_grid
+
+def use_C_coadd_loc_pgauss_prof(rv_surf_star_grid, Fsurf_grid_spec, args):
+    r"""**C++ local sidelobed Gaussian line co-addition**
+
+    C++ implementation of `coadd_loc_pgauss_prof()`.
+
+    Args:
+        TBD
+    
+    Returns:
+        TBD
+    
+    """ 
+    if np.mean(Fsurf_grid_spec)==0.:sc_10 = 1
+    else: sc_10 = get_pw10(np.abs(np.mean(Fsurf_grid_spec)))
+    Fsurf_grid_spec_shape0 = len(Fsurf_grid_spec)
+    ncen_bins = args['ncen_bins']
+    pgauss_grid = np.zeros((Fsurf_grid_spec_shape0, ncen_bins), dtype=np.float64).flatten()
+    c_function_wrapper = args['c_function_wrapper']
+    c_function_wrapper.coadd_loc_pgauss_prof_with_C(rv_surf_star_grid,args['input_cell_all']['ctrst'],args['input_cell_all']['FWHM'],args['cen_bins'],Fsurf_grid_spec / sc_10,ncen_bins,Fsurf_grid_spec_shape0,pgauss_grid)
+    truepgauss_grid = pgauss_grid.reshape((Fsurf_grid_spec_shape0, ncen_bins)) * sc_10
 
     return truegauss_grid
