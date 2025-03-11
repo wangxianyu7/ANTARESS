@@ -7930,7 +7930,7 @@ def ANTARESS_2D_1D_settings(data_type,local_dic,gen_dic,plot_dic):
     
     
     #%%%% Multi-threading
-    gen_dic['nthreads_spec_1D_'+data_type]= 1 #int(0.8*cpu_count())
+    gen_dic['nthreads_spec_1D_'+data_type]= int(0.8*cpu_count())
     
     
     #%%%% 1D spectral table
@@ -8236,6 +8236,7 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #    If not specified the default is 'auto', i.e. dynesty will pick a method based on the dimensionaly of the problem. If dealing with posterior distributions with complex shapes, 'slice' is recommended.
     # + 'dlogz' : log-likelihood difference threshold below which the NS run with stop (dlogz). 
     #    Defaut is 0.1 and can be placed higher/lower to stop the run earlier/later.
+    # + 'monitor' : store dynesty checkpoint files. Highly recommended for long NS runs that could potentially crash.
     local_dic[data_type]['sampler_set']={}
     
     
