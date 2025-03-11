@@ -94,7 +94,7 @@ def par_formatting_inst_vis(p_start,fixed_args,inst,vis,line_type):
                             if gen_root_par not in fixed_args['coeff_ord2name'][inst_loc][vis_loc]:fixed_args['coeff_ord2name'][inst_loc][vis_loc][gen_root_par]={}
         
                             #Identify stellar line properties with polynomial spatial dependence 
-                            if gen_root_par in ['ctrst','FWHM','amp_l2c','rv_l2c','FWHM_l2c','a_damp','rv_line']:
+                            if gen_root_par in ['ctrst','FWHM','amp_l2c','rv_l2c','FWHM_l2c','a_damp','rv_line','skewA','kurtA','c4_pol','c6_pol','dRV_joint']:
                                 if (line_type is not None) and (line_type!='ana') and (gen_root_par!='rv_line'):stop('Cannot use parameter '+gen_root_par+'with line model of type '+line_type)
                                 if inst_loc not in fixed_args['linevar_par']:fixed_args['linevar_par'][inst_loc]={}
                                 if vis_loc not in fixed_args['linevar_par'][inst_loc]:fixed_args['linevar_par'][inst_loc][vis_loc]=[]
@@ -105,7 +105,7 @@ def par_formatting_inst_vis(p_start,fixed_args,inst,vis,line_type):
                     if gen_root_par not in fixed_args['coeff_ord2name']:fixed_args['coeff_ord2name'][gen_root_par]={}
 
                     #Identify stellar line properties with polynomial spatial dependence 
-                    if gen_root_par in ['ctrst','FWHM','amp_l2c','rv_l2c','FWHM_l2c','a_damp','rv_line']:
+                    if gen_root_par in ['ctrst','FWHM','amp_l2c','rv_l2c','FWHM_l2c','a_damp','rv_line','skewA','kurtA','c4_pol','c6_pol','dRV_joint']:
                         if (line_type is not None) and (line_type!='ana') and (gen_root_par!='rv_line'):stop('Cannot use parameter '+gen_root_par+'with line model of type '+line_type)
                         if gen_root_par not in fixed_args['linevar_par']:fixed_args['linevar_par'][gen_root_par] = {}                     
 
@@ -256,12 +256,12 @@ def model_par_names(par):
         'FWHM_ord0':'FWHM$_{0}$','FWHM_ord1':'FWHM$_{1}$','FWHM_ord2':'FWHM$_{2}$','FWHM_ord3':'FWHM$_{3}$','FWHM_ord4':'FWHM$_{4}$','true_FWHM':'FWHM$_\mathrm{true}$',
         'FWHM':'FWHM (km/s)','FWHM_voigt':'FWHM$_\mathrm{Voigt}$ (km s$^{-1}$)','FWHM_LOR':'FWHM$_\mathrm{Lor}$ (km s$^{-1}$)','FWHM_lobe':'FWHM$_\mathrm{lobe}$ (km s$^{-1}$)',
         'area':'Area',
-        'a_damp':'a$_\mathrm{damp}$',
+        'a_damp':'a$_\mathrm{damp}$','skewA':'$\mathrm{skewness}$','kurtA':'$\mathrm{kurtosis}$','dRV_joint':'$\mathrm{dRV joint}$',
         'amp':'Amp','amp_lobe':'A$_\mathrm{lobe}$','true_amp':'A$_\mathrm{true}$','cont_amp':'A$_\mathrm{cont}$',
         'rv':'RV (km/s)','RV_lobe':'rv$_\mathrm{lobe}$ (km s$^{-1}$)',
         'rv_l2c':'RV$_{l}$-RV$_{c}$','amp_l2c':'A$_{l}$/A$_{c}$','FWHM_l2c':'FWHM$_{l}$/FWHM$_{c}$',
         'cont':'P$_\mathrm{cont}$',
-        'c1_pol':'c$_1$','c2_pol':'c$_2$','c3_pol':'c$_3$','c4_pol':'c$_4$',
+        'c1_pol':'c$_1$','c2_pol':'c$_2$','c3_pol':'c$_3$','c4_pol':'c$_4$','c6_pol':'c$_6$',
         'LD_u1':'LD$_1$','LD_u2':'LD$_2$','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
         'f_GD':'f$_{\rm GD}$','beta_GD':'$\beta_{\rm GD}$','Tpole':'T$_{\rm pole}$',
         'eta_R':r'$\eta_{\rm R}$','eta_T':r'$\eta_{\rm T}$','ksi_R':r'\Ksi$_\mathrm{R}$','ksi_T':r'\Ksi$_\mathrm{T}$',

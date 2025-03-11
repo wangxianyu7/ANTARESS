@@ -927,7 +927,7 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         if 'nthreads' not in fit_dic:fit_dic['nthreads'] = 1
 
         #MCMC walker / NS sampler monitoring
-        if ('monitor' not in fit_dic):fit_dic['monitor']=True 
+        if ('monitor' not in fit_dic):fit_dic['monitor']=False 
 
         #Sampler dictionary
         if 'sampler_set' not in fit_dic:fit_dic['sampler_set']={}
@@ -964,8 +964,8 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         elif fit_dic['fit_mode']=='ns': 
 
             #Restoring
-            if ('restore' not in fit_dic):fit_dic['restore']=''     
-
+            if ('restore' not in fit_dic):fit_dic['restore']=''
+            
             #No calculation of envelopes
             #    - calculation of models using parameter values within their 1sigma range
             fit_dic['calc_envMCMC']=False 
@@ -985,6 +985,9 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
             #Threshold on the log-likelihood difference between subsequent NS steps. Once the difference falls below this threshold, the run stops.
             if ('dlogz' not in fit_dic['sampler_set']):fit_dic['dlogz']=0.1
             else:fit_dic['dlogz']=fit_dic['sampler_set']['dlogz']
+
+            #Checkpointing the sampler
+            if ('monitor' in fit_dic['sampler_set']):fit_dic['monitor']|=fit_dic['sampler_set']['monitor']
 
             #Set burn-in steps to 0 to makes post-processing with the MCMC functions possible
             fit_dic['nburn'] = 0.
