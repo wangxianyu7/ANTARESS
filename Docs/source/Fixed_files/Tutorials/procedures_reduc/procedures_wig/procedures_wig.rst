@@ -383,11 +383,11 @@ The full spectro-temporal wiggle model :math:`W(\nu, t)` is initialized using th
      'plot_rms':True ,
      }
 
- # Fields below only relevant for 'fit_method' = 'ns'
+ # Fields below are only relevant if nested sampling is used for parameter estimation ('fit_method' = 'ns')
  gen_dic['wig_vis_fit']['ns'] = {        
-     'nthreads': int(0.8*cpu_count()),
+     'nthreads': int(0.8*cpu_count()), ### number of threads for nested sampling
      'run_mode': 'use',
-     'nlive': 2500,
+     'nlive': {}, # If empty (nlive = 50 * N_free)
      'reboot':''
  }
 
@@ -435,15 +435,13 @@ This step must be applied regardless of whether you are using the filter method 
   Parameter descriptions:
 
     + :green:`mode` enables or disables the correction step. Set to True to apply the correction.
-    + :green:`path` specifies the path to the correction file for each visit. If left empty ({}), the most recent result from :green:`'wig_vis_fit'` is used. Result files from ``Global fit`` are stored in: :orange:`/working_dir/Star/Planet/Corr_data/Wiggles/Vis_fit/Instrument_Visit/`. Format used is:
-        ::
-         'path':{'visit':'file_path'}
-
+    + :green:`path` specifies the path to the correction file for each visit. If left empty ({}), the most recent result from :green:`'wig_vis_fit'` is used. Result files from ``Global fit`` are stored in: :orange:`/working_dir/Star/Planet/Corr_data/Wiggles/Vis_fit/Instrument_Visit/`. Format used is: :green:`'path':{'visit':'file_path'}`.
     + :green:`exp_list` defines which exposures to correct for each visit. If left empty ({}), the correction is applied to all exposures.
     + :green:`comp_ids` list of components to include in the correction. These components must be present in the global fit model (wig_vis_fit).
     + :green:`range` specifies the spectral range(s) (in Å) over which the correction should be applied. If left empty ({}), the correction is applied to the full spectrum.
-    + :green:`plot_dic['trans_sp']` this plotting dictionary is used to assess the correction visually, ensuring that the wiggle patterns have been properly removed. In the ``plot_settings`` file under ``'trans_sp'`` choose :green:`['plot_pre']='cosm'` and  :green:`['plot_post']='wig'`, to plot the transmission spectra before and after wiggle correction.
 
+
+To visually assess the correction, use the plotting dictionary :green:`plot_dic['trans_sp']` to check the transmission spectra. Ensure that the wiggle patterns have been properly removed. In the ``plot_settings`` file, under :green:`'trans_sp'`, set :green:`['plot_pre']='cosm'` to plot the spectrum before the correction (after cosmic correction), and :green:`['plot_post']='wig'` to plot the spectrum after the wiggle correction.
 
 
 

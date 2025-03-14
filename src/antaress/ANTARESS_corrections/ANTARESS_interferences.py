@@ -2240,7 +2240,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     if fit_dic['fit_mode'] =='ns':
                         for par in list(fit_dic['mod_prop'].keys()):
 
-                            #Transforms priors to include 3x around best guess value for frquency and amplitude
+                            #Transforms priors to include Nx around best guess value for frquency and amplitude
                             guess = fit_dic['mod_prop'][par]['guess']
                             # Phi is periodic with pi and we only allow priors +- pi/2
                             if 'Phi' not in par:
@@ -2376,7 +2376,8 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                 fit_dic['file_save']=open(fit_dic['save_dir']+'Outputs_loop'+str(iloop)+'_it'+str(it),'w+')
                                 fit_merit('nominal',p_best_curr,fixed_args_loc,fit_dic,False)                
                                 fit_dic['file_save'].close() 
-                            
+                        
+                        stop('continue implementation for nested sampling')
                         #Determine uncertainties by running LM fit using iterative solution as starting point
                         _,merit,p_best_curr = call_lmfit(p_best_curr,nu_all,Fr_all,np.array([varFr_all]),fixed_args_loc['fit_func'],verbose=True ,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method='leastsq',fit_dic=fit_dic)
 
