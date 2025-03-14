@@ -3335,7 +3335,6 @@ def init_vis(data_prop,data_dic,vis,coord_dic,inst,system_param,gen_dic):
     print('        ',data_vis['n_in_tr'],'in-transit')
     txt_loc = '         '+str(data_vis['n_out_tr'])+' out-of-transit'
     if data_vis['n_in_tr']>0:txt_loc+=' ('+str(len(gen_vis['idx_pretr']))+' pre / '+str(len(gen_vis['idx_posttr']))+' post)'
-    print(txt_loc)
     data_vis['dim_in'] = [data_vis['n_in_tr']]+data_vis['dim_exp']
 
     #Definition of CCF continuum, and ranges contributing to master out

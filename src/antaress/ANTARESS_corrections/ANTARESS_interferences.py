@@ -21,7 +21,7 @@ from ..ANTARESS_grids.ANTARESS_coord import get_timeorbit,calc_tr_contacts
 from ..ANTARESS_analysis.ANTARESS_ana_comm import model_par_names,model_par_units
 from ..ANTARESS_general.utils import stop,np_where1D,is_odd,closest,dataload_npz,gen_specdopshift,check_data,datasave_npz
 from ..ANTARESS_general.constant_data import c_light
-from ..ANTARESS_general.minim_routines import init_fit,fit_merit,call_lmfit,par_formatting
+from ..ANTARESS_general.minim_routines import init_fit,fit_merit,call_lmfit,par_formatting,call_NS
 
 
 def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_param):
@@ -145,7 +145,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             if gen_dic['wig_vis_fit']['fixed'] and not (gen_dic['wig_vis_fit']['plot_mod'] | gen_dic['wig_vis_fit']['plot_rms'] | gen_dic['wig_vis_fit']['plot_hist']| gen_dic['wig_vis_fit']['plot_par_chrom']):cond_exp_proc_vis = False  
         else:cond_exp_proc_vis = False  
         cond_exp_proc = gen_dic['wig_exp_filt']['mode'] | gen_dic['wig_exp_init']['mode'] | gen_dic['wig_exp_samp']['mode'] | gen_dic['wig_exp_fit']['mode'] 
-        cond_coord_use = (not gen_dic['wig_exp_filt']['mode']) & (gen_dic['wig_exp_fit']['mode'] | gen_dic['wig_exp_point_ana']['mode'] | gen_dic['wig_vis_fit']['mode'])
+        cond_coord_use = (not gen_dic['wig_exp_filt']['mode']) & (gen_dic['wig_exp_fit']['mode'] | gen_dic['wig_exp_point_ana']['mode'] | gen_dic['wig_vis_fit']['mode'] | gen_dic['wig_corr']['mode'])#Also used for mode apply correction?
         
         #Indexes of order to be fitted
         iord_fit_ref = range(data_inst['nord_ref'])
@@ -180,7 +180,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
             else:iexp_mast_list = gen_dic['wig_exp_mast'][vis]
 
             #Original indexes of exposures to be fitted 
-            if (vis not in gen_dic['wig_exp_in_fit']) or (gen_dic['wig_exp_in_fit'][vis]=='all'):iexp_fit_list = np.arange(data_vis['n_in_visit'])
+            if (vis not in gen_dic['wig_exp_in_fit']) or ('all' in gen_dic['wig_exp_in_fit'][vis]):iexp_fit_list = np.arange(data_vis['n_in_visit'])
             else:iexp_fit_list = gen_dic['wig_exp_in_fit'][vis]
             nexp_fit_list = len(iexp_fit_list)            
             
@@ -1478,7 +1478,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                                             dy_range_plot = max(prop_samp)-min(prop_samp)
                                             y_range_plot = [ min(prop_samp) - 0.05*dy_range_plot , max(prop_samp) + 0.05*dy_range_plot ]  
                                         ax[0].set_xlim(x_range_plot)  
-                                        ax[0].set_ylim(y_range_plot)
+                                        ax[0].set_ylim(0,6)#y_range_plot)
                                         if 'Amp' in par:ytitle = r'Amplitude Comp.'+str(comp_id)+' (x 10$^{3}$)'
                                         elif 'Freq' in par:ytitle=r'Frequency Comp.'+str(comp_id)+' (10$^{-13}$ s)'
                                         else:ytitle = par
@@ -1870,15 +1870,33 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #     y_var[(tel_coord_expgroup['cen_ph'] > 0.047) ]+=np.pi   
                         #     sy_var[(tel_coord_expgroup['cen_ph'] > 0.065) ] = np.nan
                         # #     y_var[ ((tel_coord_expgroup['cen_ph'] > 0.002)) & ((tel_coord_expgroup['cen_ph'] < 0.019)) ]+=np.pi         
-                        # #     y_var[y_var>15]-=3.*np.pi                                
-                            
-                    if par_root=='Phi4':
-                        if vis=='20190720':
-                            y_var[(tel_coord_expgroup['cen_ph'] < 0.015)  & (y_var<0.)]+=np.pi 
-                            
+                        # #     y_var[y_var>15]-=3.*np.pi                        
+
+#                    if vis=='20231121':
+#                        x_var = tel_coord_expgroup['cen_ph']
+#                        mask1 = (x_var < -0.027) 
+#                        mask2 = ((x_var > -0.012) * (x_var < -0.002))
+#                        mask3 = (x_var > 0.003)
+#                        if 'AmpGlob1' in par:
+#                            y_var[mask1+mask2+mask3]*=-1.
+#                        if par_root=='Phi1':
+#                            y_var[mask1+mask3]-=np.pi
+#                            y_var[mask2]+=np.pi
+
+
+#                    if vis=='20231226':
+#                        x_var = tel_coord_expgroup['cen_ph']
+#                        if 'AmpGlob1' in par:
+#                            mask = (x_var < 0.0025) 
+#                            y_var[mask]*=-1.
+#
+#                        if par_root=='Phi1':
+#                            mask = (x_var < 0.0025)
+#                            y_var[mask]+=np.pi
+
                     # sy_var =  np.abs(y_var/hyper_par_tab['Freq1_c0_off'][0])*np.sqrt( (hyper_par_tab['Freq1_c0_off'][1]/hyper_par_tab['Freq1_c0_off'][0])**2. + (sy_var/y_var)**2. )  
                     # y_var/=hyper_par_tab['Freq1_c0_off'][0] 
-                    
+
                     #Variable
                     x_var = tel_coord_expgroup['cen_ph']
                     # x_var = deepcopy(hyper_par_tab['Freq1_c0_off'][0])
@@ -2097,17 +2115,21 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 #Settings for fit with wiggle ratio 
                 # n_conv = 50
                 n_conv = 10
-                nmax_loop = 50   #2000
-                n_plotchain=1  #10
+                nmax_loop = 50      #2000
+                n_plotchain=1       #10
 
                 #----------------------------------------------------------
 
                 #Initializations
                 fit_dic={'save_dir':gen_dic['save_data_dir']+'/Corr_data/Wiggles/Vis_fit/'+inst+'_'+vis+'/','merit':{}}
                 if (not os_system.path.exists(fit_dic['save_dir'])):os_system.makedirs(fit_dic['save_dir'])
-                if gen_dic['wig_vis_fit']['fixed']:fit_dic['fit_mode'] = 'fixed'
-                else:fit_dic['fit_mode'] = 'chi2'   
-                    
+                
+                if gen_dic['wig_vis_fit']['fixed']:
+                    fit_dic['fit_mode'] = 'fixed'
+                elif gen_dic['wig_vis_fit']['fit_method']=='ns':
+                    fit_dic['fit_mode'] = 'ns'
+                else: fit_dic['fit_mode'] = 'chi2'   
+                
                 #Join tables for global model
                 for key in ['az','x_az','y_az','z_alt','cond_eastmer','cond_westmer','cond_shift']:fixed_args_loc[key] = tel_coord_vis[key][iexp_fit_list] 
                 fixed_args_loc['iexp_bounds'] = np.zeros([2,0],dtype=int)    
@@ -2213,9 +2235,40 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
     
                     #Parameter initialization
                     p_start = Parameters()  
+
+                    #Generate priors from best guess values for nested sampling, the range for the distribution and type will still have to be tried out.
+                    if fit_dic['fit_mode'] =='ns':
+                        for par in list(fit_dic['mod_prop'].keys()):
+
+                            #Transforms priors to include 3x around best guess value for frquency and amplitude
+                            guess = fit_dic['mod_prop'][par]['guess']
+                            # Phi is periodic with pi and we only allow priors +- pi/2
+                            if 'Phi' not in par:
+                                bd = guess +  guess * np.array([ -5., 5.])  # ±5x range
+                            else:
+                                bd = guess + np.pi * np.array([ -0.5, 0.5])  #  ±pi/2 range
+
+                            ####Assign priors and model priors for each parameter calculated from the initial guess
+                            fit_dic['varpar_priors'][par]['low'], fit_dic['varpar_priors'][par]['high'] = np.min(bd),np.max(bd)
+                            fit_dic['mod_prop'][par]['bd'] = [0.,1.]
+
+                            ## We assign live points calculated from the number of free parameters
+                            if gen_dic['wig_vis_fit']['ns']['nlive'] != {}:
+                                fit_dic['walkers_set'] = {'nlive': gen_dic['wig_vis_fit']['ns']['nlive']}
+
+                            else: fit_dic['walkers_set'] = {'nlive': 50 * len(fit_dic['mod_prop'].keys())}
+
+                            fit_dic['nthreads'] = gen_dic['wig_vis_fit']['ns']['nthreads']
+                            fit_dic['run_mode'] = gen_dic['wig_vis_fit']['ns']['run_mode']
+                            fit_dic['ns_reboot'] = gen_dic['wig_vis_fit']['ns']['reboot']
+
+                    #### Erik 
+                        print('            - N free:    ',len(fit_dic['mod_prop'].keys()))
+                        print('            - N live points:    ',fit_dic['walkers_set']['nlive'])
+
                     par_formatting(p_start,fit_dic['mod_prop'],fit_dic['varpar_priors'],fit_dic,fixed_args_loc,'','')
-                    init_fit(fit_dic,fixed_args_loc,p_start,model_par_names,model_par_units)     
-                
+                    init_fit(fit_dic,fixed_args_loc,p_start,model_par_names,model_par_units)
+
                 #Retrieve previous fit
                 if vis in gen_dic['wig_vis_fit']['reuse']:
                     globvisfit_results = np.load(gen_dic['wig_vis_fit']['reuse'][vis],allow_pickle=True)['data'].item()
@@ -2263,7 +2316,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         'stable_pointpar':fixed_args_loc['stable_pointpar']
                     }  
                     
-                    #Initialize master wiggle
+                    #Initialize master 
                     p_best_pre = deepcopy(p_start)
                     if (gen_dic['wig_vis_fit']['wig_fit_ratio']) and (vis in gen_dic['wig_vis_fit']['reuse']):fixed_args_loc['weighted_wig_mod_HR']=sub_wig_mast(p_best_pre)
                     else:fixed_args_loc['weighted_wig_mod_HR'] = np.repeat(1.,n_nu_HR)
@@ -2297,12 +2350,25 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #Run fit over several iteration to converge
                         p_best_curr = deepcopy(p_best_pre)
                         fixed_args_loc['idx_fit'] = np.ones(len(nu_all),dtype=bool)
+
                         for it in range(gen_dic['wig_vis_fit']['nit']):
                             print('               Iteration:',it+1,'/',gen_dic['wig_vis_fit']['nit'])
-                            p_best_curr = call_lmfit(p_best_curr,nu_all,Fr_all,np.array([varFr_all]),fixed_args_loc['fit_func'],verbose=True,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method=gen_dic['wig_vis_fit']['fit_method'],fit_dic=fit_dic)[2]
 
+                            if fit_dic['fit_mode']=='ns': 
+                                print('               Iteration:   ----> number of iteration set to one. No iterations with nested sampling.')
+                                fixed_args_loc['var_par_list'] = deepcopy(var_par_list)
+
+                                walker_chains, step_outputs = call_NS(fit_dic['run_mode'],fit_dic['dynesty_nthreads'],fixed_args_loc,fit_dic)
+                                print('NS function went through')
+                                p_final,merged_chain,merged_outputs,par_sample_sig1,par_sample=postMCMCwrapper_1(fit_dic,fixed_args_loc,walker_chains,step_outputs,fit_nthreads,fixed_args['par_names'],verbose=fit_dic['verbose'],verb_shift=fit_dic['verb_shift']+'    ')
+
+                                #Break loop if nested sampling is used
+                                break 
+
+                            else: p_best_curr = call_lmfit(p_best_curr,nu_all,Fr_all,np.array([varFr_all]),fixed_args_loc['fit_func'],verbose=True,fixed_args=fixed_args_loc,maxfev = fixed_args_loc['max_nfev'],method=gen_dic['wig_vis_fit']['fit_method'],fit_dic=fit_dic)[2]
+                            if fit_dic['fit_mode']=='ns': stop('                testing out nested sampling')
                             #Save results every n iterations
-                            if it % gen_dic['wig_vis_fit']['n_save_it'] ==0:
+                            if (it % gen_dic['wig_vis_fit']['n_save_it'] ==0) & (fit_dic['fit_mode'] != 'ns'):
                                 globvisfit_results['iloop_end']=iloop
                                 globvisfit_results['it']=it
                                 globvisfit_results['p_best'] = p_best_curr
@@ -2720,15 +2786,15 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         'nexp_list':len(iexp_corr_list),
                         'stable_pointpar':data_corr['stable_pointpar']
                        })
-                    for key in ['az','x_az','y_az','z_alt','cond_eastmer','cond_westmer','cond_shift']:fixed_args_loc[key] = tel_coord_vis[key][iexp_corr_list] 
+                    for key in ['az','x_az','y_az','z_alt','cond_eastmer','cond_westmer','cond_shift']:fixed_args_loc[key] = tel_coord_vis[key][iexp_corr_list]
                     calc_chrom_coord(p_corr,fixed_args_loc)          
 
                 #Processing exposures
-                proc_DI_data_paths_new = gen_dic['save_data_dir']+'Corr_data/Wiggles/Data/'+inst+'_'+vis+'_' 
+                proc_DI_data_paths_new = gen_dic['save_data_dir']+'Corr_data/Wiggles/Data/'+inst+'_'+vis+'_'
                 for isub,iexp in enumerate(iexp_corr_list):
-               
+
                     #Latest processed disk-integrated data
-                    data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))                     
+                    data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))
                     
                     #Flatten the order matrix into a 1D table
                     #    - correction must be applied to sorted array for when interpolator is applied
@@ -2743,7 +2809,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     # w_source = w_receiver / (1+ (rv[s/r]/c))
                     # w_Earth = w_solbar / (1+ (BERV/c))   
                     #    - since flux values remain associated to the original pixels, there is no need to shift back the model after definition
-                    nu_bins_flat*=1./(gen_specdopshift(data_prop[inst][vis]['BERV'][iexp])*(1.+1.55e-8))  
+                    nu_bins_flat*=1./(gen_specdopshift(data_prop[inst][vis]['BERV'][iexp])*(1.+1.55e-8))
                             
                     #Filter
                     if ('iexp2glob' in data_corr):
@@ -3921,11 +3987,11 @@ def calc_wig_mod_nu(nu_in,params,args):
     
         #Integrated frequency
         intfreq_nu = wig_intfreq_nu(comp_id,nu_in,params,args)
-    
+
         #Global component
         comp_mod[comp_id] = amp_nu*np.sin(2.*np.pi*intfreq_nu  - params['Phi'+str(comp_id)+'_off']  )          
         full_mod += comp_mod[comp_id]
-        
+
     return full_mod, comp_mod
 
 
@@ -3948,6 +4014,11 @@ def FIT_calc_wig_mod_nu_t(param_in,nu_all,args=None):
     """
     #In case param_in is defined as a Parameters structure, retrieve values and define dictionary
     if isinstance(param_in,lmfit.parameter.Parameters):params={par:param_in[par].value for par in param_in}
+
+    elif isinstance(param_in, np.ndarray):
+        params = {}
+        for par, val in zip(args['var_par_names'], param_in):
+            params[par] = val
     else:params=param_in    
    
     #Calculate coordinate variations of chromatic parameters and offset

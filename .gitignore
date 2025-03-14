@@ -48,3 +48,7 @@ src/antaress/ANTARESS_corrections/Telluric_processing/Static_resolution/.DS_Stor
 /Docs/source/Fixed_files/procedures_RM/Fig_creation
 src/antaress/ANTARESS_corrections/Telluric_processing/Static_model/.DS_Store
 src/antaress/ANTARESS_corrections/Telluric_processing/Static_resolution/.DS_Store
+build/
+Docs/build/
+Docs/source/Package_files/
+working_dir/

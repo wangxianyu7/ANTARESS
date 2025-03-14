@@ -1592,6 +1592,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - 'fit_method': optimization method. 
     #                    if the initialization is correct, setting to 'leastsq' is sufficient and fast
     #                    if convergence is more difficult to reach, set to 'nelder'
+    #                    trying out nested sampling: use 'ns' (currently being developed)
     # + 'nit': number of fit iterations 
     # + 'comp_ids': components to include in the model
     # + 'fixed': model is fixed to the initialization or previous fit results
@@ -1625,7 +1626,15 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'plot_hist':True,
         'plot_rms':True ,
         } 
-    
+
+    # Fields below are only relevant if nested sampling is used for parameter estimation ('fit_method' = 'ns')
+    gen_dic['wig_vis_fit']['ns'] = {        
+        'nthreads': int(0.8*cpu_count()), ### number of threads for nested sampling
+        'run_mode': 'use',
+        'nlive': {}, # If empty (nlive = 50 * N_free)
+        'reboot':''
+    }
+
     #%%%% Correction
     #    - 'mode': apply correction
     #    - 'path': path to correction for each visit; leave empty to use last result from 'wig_vis_fit'

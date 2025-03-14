@@ -77,7 +77,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
     fixed_args['varpar_priors']={}
     var_par_list_temp=[]
     for par in np.unique( list(p_start.keys()) + list(model_prop.keys())  ):  
-        
+
         #Activate jitter if requested as parameter
         if par=='jitter':fixed_args['jitter'] = True
 
@@ -166,7 +166,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
 
                 #Input priors
                 if (par in priors_prop):
-                    fixed_args['varpar_priors'][par] = priors_prop[par] 
+                    fixed_args['varpar_priors'][par] = priors_prop[par]
       
                 #Default priors
                 else:
@@ -260,7 +260,7 @@ def ln_prior_func_NS(cube,fixed_args):
 
     The prior transform function is used to implicitly specify the Bayesian prior for dynesty. 
     It functions as a transformation from a space where variables are i.i.d. within the n-dimensional
-     unit cube (i.e. uniformly distributed from 0 to 1) to the parameter space of interest.
+    unit cube (i.e. uniformly distributed from 0 to 1) to the parameter space of interest.
 
     Args:
         TBD
@@ -284,7 +284,7 @@ def ln_prior_func_NS(cube,fixed_args):
             #Uniform prior
             if parprior['mod']=='uf':
                 x[idx] = cube_prior * (parprior['high'] - parprior['low']) + parprior['low']
-        
+
             #Gaussian prior   
             elif parprior['mod']=='gauss':
                 x[idx] = stats.norm.ppf(cube_prior, parprior['val'], parprior['s_val'])
@@ -449,9 +449,8 @@ def ln_lkhood_func_ns(p_step,fixed_args):
         TBD
     
     """
-    
     #If nested sampling is used, posterior function is not called and dictionary of p_step must be initialized
-    if (type(p_step)!=dict):
+    if (type(p_step)==dict):
         
         #Combine fixed and chain parameters into single dictionary for model        
         p_step_all={}
@@ -491,7 +490,7 @@ def ln_lkhood_func_ns(p_step,fixed_args):
     #Store blobs
     blob = {'step_chi2':step_chi2,
             'step_outputs':step_outputs}
-
+    if not np.isfinite(ln_lkhood):ln_lkhood = -1e300  # Avoid -inf
     return ln_lkhood,blob
 
     
@@ -965,6 +964,15 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
             #    - calculation of models using parameter values within their 1sigma range
             fit_dic['calc_envMCMC']=False 
 
+            #Walkers (not sure, but on multiple places mcmc and ns are in the same if statements where it wants walkers etc, which are not defined for nested sampling (I add this here for now so it is defined for NS too even if not used))
+            if 'walkers_set' not in fit_dic:fit_dic['walkers_set']={}
+            if 'nwalkers' not in fit_dic['walkers_set']:fit_dic['nwalkers'] = int(3*fit_dic['merit']['n_free'])
+            else:fit_dic['nwalkers'] = fit_dic['walkers_set']['nwalkers']
+            if 'nsteps' not in fit_dic['walkers_set']:fit_dic['nsteps'] = 5000
+            else:fit_dic['nsteps'] = fit_dic['walkers_set']['nsteps']
+            if 'nburn' not in fit_dic['walkers_set']:fit_dic['nburn'] = 1000
+            else:fit_dic['nburn'] = fit_dic['walkers_set']['nburn']
+
             #Live points
             if 'nlive' not in fit_dic['walkers_set']:fit_dic['nlive'] = 400 
             else:fit_dic['nlive'] = fit_dic['walkers_set']['nlive']
@@ -1237,7 +1245,7 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
     r"""**Wrapper to Nested Sampling**
 
     Runs `dynesty` and outputs results and merit values.
-      
+    
     Args:
         TBD
     
@@ -1315,7 +1323,7 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
         #Call to NS
         st0=get_time()
         n_free=np.shape(fit_dic['initial_distribution'][0])[1]
-        
+
         #Multiprocessing
         if nthreads>1:
             pool_proc = Pool(processes=nthreads)  
@@ -1463,7 +1471,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
    
             #Merit values 
             if fit_dic['fit_mode'] =='fixed':fit_dic['merit']['mode']='forward'    
-            else:fit_dic['merit']['mode']='fit'    
+            else:fit_dic['merit']['mode']='fit'
             fit_dic['merit']['dof']=fit_dic['nx_fit']-fit_dic['merit']['n_free']
             if fit_dic['fit_mode'] in ['fixed','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
             elif fit_dic['fit_mode'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1]  
@@ -1477,10 +1485,9 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                 fit_dic['merit']['red_chi2'] = 'Undefined'
                 fit_dic['merit']['BIC'] = 'Undefined'
                 fit_dic['merit']['AIC'] = 'Undefined'
-            if fit_dic['fit_mode'] in ['mcmc','ns']:fit_dic['merit']['GR_stat']=fit_dic['GR_stat']
+            if fit_dic['fit_mode'] in ['mcmc']:fit_dic['merit']['GR_stat']=fit_dic['GR_stat']#Is GR statistics used in Nested Sampling?
             else:fit_dic['merit']['GR_stat']='N/A, MCMC run needed.'
 
-            
             #Print fit statistics and results on screen
             if txt_print is not None:
                 txt_print+=[["==============================================================================="],
@@ -1501,7 +1508,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                         ["Walkers                     = "+str(fit_dic['nwalkers'])],
                         ["Burn-in steps               = "+str(fit_dic['nburn'])],
                         ["Steps (initial, per walker) = "+str(fit_dic['nsteps'])],
-                        ["Steps (final, all walkers)  = "+str(fit_dic['nsteps_final_merged'])],
+                        #["Steps (final, all walkers)  = "+str(fit_dic['nsteps_final_merged'])],
                     ]        
                 def fmt_loc(val):
                     if type(val)==str:return val
@@ -1577,7 +1584,8 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                 if (mode=='nominal') or print_der:
                     
                     #Median
-                    nom_val = p_final[parname]
+                    if fit_dic['fit_mode']=='ns':nom_val = p_final[parname].value
+                    else:nom_val = p_final[parname]
         
                     #Print median value
                     txt_print+=[['']]
@@ -1591,7 +1599,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                         txt_print+=[['     Quant. 1s int. = ['+"{0:.10e}".format(nom_val-lower_sig)+'\t'+"{0:.10e}".format(nom_val+upper_sig)+"]"]]
                     
                     #HDI (MCMC only)
-                    if (fit_dic['fit_mode'] in ['mcmc','ns']):
+                    if (fit_dic['fit_mode'] in ['mcmc','nss']):
                         if (fit_dic['HDI'] is not None):
                             txt_print+=[['     HDI '+fit_dic['HDI']+' err.    = '+fit_dic['HDI_sig_txt'][ipar]]]
                             txt_print+=[['     HDI '+fit_dic['HDI']+' int.    = '+fit_dic['HDI_interv_txt'][ipar]]]
@@ -2581,6 +2589,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain,sim_points = None):
         TBD
     
     """    
+    print('postMCMCwrapper_2')
     #Parameter estimates and confidence interval
     #    - define confidence levels to be printed
     #    - use the modified chains that can contain different parameters than those used in the model

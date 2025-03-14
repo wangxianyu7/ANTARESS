@@ -318,27 +318,27 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
             if Fbal_vis_inst is not None:
 
                 #Common calibration profile function
-                mean_gcal_func = dataload_npz(gen_dic['save_data_dir']+'Processed_data/Calibration/'+inst+'_mean_gcal')['func'] 
+                mean_gcal_func = dataload_npz(gen_dic['save_data_dir']+'Processed_data/Calibration/'+inst+'_mean_gcal')['func']
 
                 #Set reference to average of measured visit masters
                 if Fbal_vis_inst=='meas':  
-                    data_Mast_ref = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_meas')                     
+                    data_Mast_ref = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Global_Master/'+inst+'_meas')
                     cen_wav_Mstar = data_Mast_ref['cen_bins']
                     low_wav_Mstar = data_Mast_ref['edge_bins'][:,0:-1]
-                    high_wav_Mstar = data_Mast_ref['edge_bins'][:,1::]    
+                    high_wav_Mstar = data_Mast_ref['edge_bins'][:,1::]
                     dwav_Mstar = high_wav_Mstar-low_wav_Mstar
 
         #Intra-order correction
-        if gen_dic['corr_FbalOrd']:        
+        if gen_dic['corr_FbalOrd']:
             range_fit=gen_dic['FbalOrd_range_fit']
             
             #Indexes of order to be fitted
             #    - for "order" mode, the condition also defines orders to be corrected
-            iord_fit_Fbal_ord = range(data_inst['nord_ref'])    
+            iord_fit_Fbal_ord = range(data_inst['nord_ref'])
 
         #Default options
         for key in ['Fbal_deg','Fbal_smooth','Fbal_deg_vis','Fbal_smooth_vis','Fbal_deg_ord']:
-            if (inst not in gen_dic[key]):gen_dic[key][inst]={}    
+            if (inst not in gen_dic[key]):gen_dic[key][inst]={}
         
         #Process each visit
         corr_func_vis = None
