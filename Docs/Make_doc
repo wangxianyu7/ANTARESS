@@ -1,0 +1,15 @@
+#!/bin/bash 
+echo "Generating ANTARESS doc files"
+
+#Delete existing package files
+rm -rf ../Docs/source/Package_files/antaress*
+
+#Generation of .rst files
+#    - the call on the overall package below generates one .rst per sub-package (ie, directories containing __init__.py), which then yields an html page with all modules (python files) together
+#      the call on individual packages would generate .rst files in which the paths of the modules associated with the sub-packages are not complete (.. automodule:: package.module instead of antaress.package.module), thus falling the module import later on.
+#    - the --separate option generates independent .rst files per module, which are then called through fixed .rst files so that the html sidebar displays custom names from those files rather than the full path of the packages 
+sphinx-apidoc --force --separate -o "../Docs/source/Package_files/" "../src/antaress/"        
+
+#Generate html files
+#    - existing html files are deleted first
+make clean html
