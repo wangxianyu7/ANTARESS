@@ -411,6 +411,10 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             'EXPRES':'EXPRES',    
             'HARPN':'HARPN',
             'HARPS':'HARPS',  
+            'IGRINS2_Blue':'IGRINS2',
+            'IGRINS2_Red':'IGRINS2',
+            'MAROONX_Blue':'MAROONX',
+            'MAROONX_Red':'MAROONX',
             'MIKE_Blue':'MIKE',
             'MIKE_Red':'MIKE',
             'NIRPS_HA':'NIRPS',
@@ -429,6 +433,10 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             'EXPRES':True,     
             'HARPN':True   ,
             'HARPS':True,           
+            'IGRINS2_Blue':True,
+            'IGRINS2_Red':True,
+            'MAROONX_Blue':True,
+            'MAROONX_Red':True,
             'MIKE_Blue':True,
             'MIKE_Red':True,
             'NIRPS_HA':True,
@@ -469,6 +477,14 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                                       7554.208181803426,7648.626256074004,7745.4344337228085,7844.724632875495,7946.5935461392,8051.142954674568,8158.480067389824,8268.717887632938,
                                       8381.975610018162,8498.379050316224,8618.061111667314,8741.162290748554,8867.83122794844,8998.225306077602,9132.51130268578,9270.866101669406,
                                       9413.477470553611,9560.54491063029,9712.280588045605,9868.910354974394,10030.674871216968,10197.83083793165,10370.652356804127,10549.432429789025]),   
+            'IGRINS2_Blue': np.array([14748.5,14865.8,14985.0,15106.3,15229.7,15355.2,15483.0,15613.0,15745.3,
+                                      15880.0,16017.1,16156.8,16299.0,16443.9,16591.5,16741.9,16895.2,17051.5,
+                                      17210.8,17373.2,17538.9,17707.9,17880.3,18056.3,18235.9]),
+            'IGRINS2_Red': np.array([19396.5,19605.0,19818.1,20036.2,20259.2,20487.4,20720.9,2096.01,21204.9,
+                                     21455.7,21712.7,21976.1,22246.2,22523.1,22807.2,23098.7,2339.80,23705.3,
+                                     24021.0,24345.3,24678.8,25021.7]),
+            'MAROONX_Blue': np.array([]),
+            'MAROONX_Red': np.array([]),
             'MIKE_Blue': np.array([]),
             'MIKE_Red': np.array([]),
             'NIRPS_HA': np.array([   9793.31830725 , 9859.95301593 , 9927.49931744 , 9995.97622395,10065.40380975, 10135.80171767, 10207.19048503, 10279.59121586,
@@ -489,8 +505,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                                   6125.63392315 ,6187.53240127 ,6250.69382638 ,6315.15726382 ,6380.96340664,6448.15466126 ,6516.77523859 ,6586.87125105 ,6658.49081593 ,6731.68416551,
                                   6806.50376456 ,6883.00443578 ,6961.24349375 ,7041.2808881  ,7123.17935679,7207.00459002 ,7292.82540601 ,7380.71393943 ,7470.74584357 ,7563.00050759,
                                   7657.56128994 ,7754.51576965 ,7853.9560168  ,7955.97888421 ,8060.68632206,8168.18571772]),
-            'MIKE_Blue': np.array([]),
-            'MIKE_Red': np.array([]),
     }
         gen_dic['wav_ord_inst']['NIRPS_HE'] = gen_dic['wav_ord_inst']['NIRPS_HA'] 
         gen_dic['wav_ord_inst']['CARMENES_VIS_CCF'] = gen_dic['wav_ord_inst']['CARMENES_VIS'] 
@@ -589,6 +603,12 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                         'ESPRESSO_MR':1.,
                         'CARMENES_VIS':1.,
                         'EXPRES':1.,
+                        'IGRINS2_Red':1.,
+                        'IGRINS2_Blue':1.,
+                        'MAROONX_Red':1.,
+                        'MAROONX_Blue':1.,
+                        'MIKE_Red':1.,
+                        'MIKE_Blue':1.,
                         'NIRPS_HA':1.,
                         'NIRPS_HE':1.}
                     if inst not in Fbal_bin_nu_inst:stop('ERROR : default value for "gen_dic["Fbal_bin_nu"]" undefined for '+inst)
@@ -1279,6 +1299,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         'CORALIE':'ESO','ESPRESSO':'ESO','ESPRESSO_MR':'ESO',
         'EXPRES':'DCT','NIRPS_HE':'ESO','NIRPS_HA':'ESO',
         'MIKE_Red':'LCO','MIKE_Blue':'LCO',
+        'IGRINS2_Blue':'Gemini-N','IGRINS2_Red':'Gemini-N',
+        'MAROONX_Blue':'Gemini-N','MAROONX_Red':'Gemini-N',
         }[inst]
 
     #Error definition

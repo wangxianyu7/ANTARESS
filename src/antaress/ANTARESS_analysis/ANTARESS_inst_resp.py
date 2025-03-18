@@ -27,7 +27,11 @@ def return_spec_nord(inst):
         'ESPRESSO_MR':85,
         'EXPRES':86,
         'HARPN':69,
-        'HARPS':71,        
+        'HARPS':71,
+        'IGRINS2_Blue':25,
+        'IGRINS2_Red':22,
+        'MAROONX_Blue':30,
+        'MAROONX_Red':28,        
         'MIKE_Blue':37,
         'MIKE_Red':34,
         'NIRPS_HA':71,
@@ -117,12 +121,27 @@ def return_pix_size(inst):
 
         'IRD':2.08442,
         
+        #IGRINS2
+        #    blue arm resolving power = 50000 -> deltav_instru = 5.99584 km/s   
+        #    - 3 pixel / FWHM, so that pixel size = 1.9986 km/s             
+        'IGRINS2_Blue':1.9986,
+        #    red arm resolving power = 45000 -> deltav_instru = 6.66204 km/s   
+        #    - 3 pixel / FWHM, so that pixel size = 2.22068 km/s             
+        'IGRINS2_Red':2.22068,
+
+        #MAROON-X
+        #    resolving power = 85000 -> deltav_instru = 3.527 km/s  
+        #    - 3.5 pixel / FWHM, so that pixel size = 1.0077 km/s              
+        'MAROONX_Blue':1.0077,
+        'MAROONX_Red':1.0077,
+
         #MIKE
         #    blue arm : pix_size ~= 0.02 A -> 1.43 km/s at 4190 A 
         'MIKE_Blue':1.43,
         #    red arm : pix_size ~= 0.05 A -> 2.10 km/s at 7130 A 
         'MIKE_Red':2.10,
         
+        #NIRPS
         'NIRPS_HA':0.93,
         'NIRPS_HE':0.93,          
         
@@ -266,6 +285,10 @@ def return_resolv(inst):
         'HARPN':120000.,
         'HARPS':120000.,        
         'IRD':70000.,
+        'MIKE_Red':85000.,
+        'MIKE_Blue':85000.,
+        'IGRINS2_Red':50000.,
+        'IGRINS2_Blue':45000.,
         'NIRPS_HE':75000.,
         'NIRPS_HA':88000.,
         'NIRSPEC':25000.,
