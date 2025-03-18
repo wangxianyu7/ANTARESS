@@ -28,14 +28,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
      - EXPRES : 'EXPRES'
      - HARPS-N : 'HARPN'
      - HARPS : 'HARPS'
+     - IGRINS-2 (blue arm, H band) : 'IGRINS2_Blue'
+     - IGRINS-2 (red arm, K band) : 'IGRINS2_Red'
+     - MAROON-X (blue arm) : 'MAROONX_Blue'
+     - MAROON-X (red arm) : 'MAROONX_Red'
      - MIKE (blue arm) : 'MIKE_Blue'
      - MIKE (red arm) : 'MIKE_Red'   
      - NIRPS (high-accuracy mode) : 'NIRPS_HA'
      - NIRPS (high-efficiency mode) : 'NIRPS_HE'
      - SOPHIE (high-efficiency mode) : 'SOPHIE_HE'
      - SOPHIE (high-resolution mode) : 'SOPHIE_HR'
-     - MIKE (red arm) : 'MIKE_Red'
-     - MIKE (blue arm) : 'MIKE_Blue'
 
     Args:
         TBD
