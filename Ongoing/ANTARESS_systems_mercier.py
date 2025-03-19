@@ -408,7 +408,10 @@ def get_system_params():
                 'Rstar':0.302,              
                 'istar':155.,                    #unknown
                 'Mstar':0.298,
-                'veq':8.495,                     #unknown                
+                'veq':8.495,                     #unknown 
+                'logg':4.97,   
+                'Tpole':3180,
+                'vmic':0.,            
                 # 'veq_spots':23.59,
                 },
 
