@@ -286,7 +286,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='TOI3884':
         gen_dic['studied_pl'] = {
-            'TOI3884_b':{'MIKE_Red' : ['mockvis']},
+            'TOI3884_b':{'MIKE_Red'    : ['mockvis'],
+                         'IGRINS2_Red' : ['mockvis'], 
+                         'IGRINS2_Blue': ['mockvis'],
+                         'MAROONX_Red' : ['mockvis'],
+                          },
             }
         gen_dic['kepl_pl'] = ['TOI3884_b']
 
@@ -361,7 +365,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='TOI3884':
         gen_dic['studied_ar'] = {
-            'spot1':{'MIKE_Red' : ['mockvis']} 
+            'spot1':{'MIKE_Red' : ['mockvis'],
+                     'IGRINS2_Red' : ['mockvis']
+                     'IGRINS2_Blue' : ['mockvis']
+                     'MAROONX_Red' : ['mockvis']} 
     #         'spot2':{'MIKE_Red' : ['mockvis']},
     #         'spot3':{'MIKE_Red' : ['mockvis']}, 
     #         'facula1':{'MIKE_Red' : ['mockvis']},
@@ -431,7 +438,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         gen_dic['type']={'ESPRESSO':'spec2D'}
 
     if gen_dic['star_name']=='TOI3884':
-        gen_dic['type']={'MIKE_Red':'CCF'}
+        gen_dic['type']={'MIKE_Red':'CCF',
+                         'IGRINS2_Red':'CCF',
+                         'IGRINS2_Blue':'CCF',
+                         'MAROONX_Red':'CCF',
+        }
 
     if gen_dic['star_name']=='TRAPPIST1':
         gen_dic['type']={'NIRPS_HE':'CCF'}  
@@ -711,6 +722,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             'MIKE_Red':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.0686, 0.0686]),'nexp':30.}}} #Almenara+2022 #updated
             # 'MIKE_Red':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.05, 0.05]),'nexp':30.}}} #Almenara+2022
 
+            'IGRINS2_Red':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.0686, 0.0686]),'nexp':30.}}} #Almenara+2022 #updated
+            'IGRINS2_Blue':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.0686, 0.0686]),'nexp':30.}}} #Almenara+2022 #updated
+            'MAROONX_Red':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.0686, 0.0686]),'nexp':30.}}} #Almenara+2022 #updated
+
 
     if gen_dic['star_name'] == 'TRAPPIST1':
         mock_dic['visit_def']={
@@ -780,9 +795,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Heliocentric stellar RV
     if gen_dic['star_name']=='TOI3884':
         mock_dic['sysvel']= {
-            'MIKE_Red' : {'mockvis' : 0., #--base 
-            }
+            'MIKE_Red' : {'mockvis' : 0.}, #--base
+            'IGRINS2_Red' : {'mockvis' : 0.},
+            'IGRINS2_Blue' : {'mockvis' : 0.},
+            'MAROONX_Red' : {'mockvis' : 0.}, 
         }
+
     if gen_dic['star_name']=='TRAPPIST1':
         mock_dic['sysvel']= {
             'NIRPS_HE' : {'mockvis' : 0., #--base 
@@ -856,7 +874,34 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #                 'ang__ISMIKE_Red_VSmockvis_ARfacula2'     : 75.,
     #                 'fctrst__ISMIKE_Red_VSmockvis_ARfacula2'    : 1.5,
                     },
-                }
+                },
+            'IGRINS2_Red':{
+                 'mockvis':{
+                    # For the spot 'spot1' : -- Almenara+2022
+                     'lat__ISIGRINS2_Red_VSmockvis_ARspot1'     : -90,
+                     'Tc_ar__ISIGRINS2_Red_VSmockvis_ARspot1' : 2459642.86314 + 2.4,
+                     'ang__ISIGRINS2_Red_VSmockvis_ARspot1'     : 48.6,
+                     'fctrst__ISIGRINS2_Red_VSmockvis_ARspot1'    : 0.59,
+                    },
+                },
+            'IGRINS2_Blue':{
+                 'mockvis':{
+                    # For the spot 'spot1' : -- Almenara+2022
+                     'lat__ISIGRINS2_Red_VSmockvis_ARspot1'     : -90,
+                     'Tc_ar__ISIGRINS2_Red_VSmockvis_ARspot1' : 2459642.86314 + 2.4,
+                     'ang__ISIGRINS2_Red_VSmockvis_ARspot1'     : 48.6,
+                     'fctrst__ISIGRINS2_Red_VSmockvis_ARspot1'    : 0.59,
+                    },
+                },
+            'MAROONX_Red':{
+                 'mockvis':{
+                    # For the spot 'spot1' : -- Almenara+2022
+                     'lat__ISMAROONX_Red_VSmockvis_ARspot1'     : -90,
+                     'Tc_ar__ISMAROONX_Red_VSmockvis_ARspot1' : 2459642.86314 + 2.4,
+                     'ang__ISMAROONX_Red_VSmockvis_ARspot1'     : 48.6,
+                     'fctrst__ISMAROONX_Red_VSmockvis_ARspot1'    : 0.59,
+                    },
+                },
             }
 
 
@@ -1291,7 +1336,31 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             'line_trans':None, 
             'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
                         'FWHM__ord0__IS__VS_'  : 8 },
-            'pol_mode' : 'modul'}
+            'pol_mode' : 'modul'},
+            'IGRINS2_Red':{
+            'mode':'ana',        
+            'coord_line':'mu',
+            'model': 'gauss',
+            'line_trans':None, 
+            'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
+                        'FWHM__ord0__IS__VS_'  : 8 },
+            'pol_mode' : 'modul'},
+            'IGRINS2_Blue':{
+            'mode':'ana',        
+            'coord_line':'mu',
+            'model': 'gauss',
+            'line_trans':None, 
+            'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
+                        'FWHM__ord0__IS__VS_'  : 8 },
+            'pol_mode' : 'modul'},
+            'MAROONX_Red':{
+            'mode':'ana',        
+            'coord_line':'mu',
+            'model': 'gauss',
+            'line_trans':None, 
+            'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
+                        'FWHM__ord0__IS__VS_'  : 8 },
+            'pol_mode' : 'modul'},
             }
 
     if gen_dic['star_name'] == 'TRAPPIST1' :
@@ -1362,7 +1431,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'mockvis':40., #--Libby-Roberts+2023
         'mockvis':40., #--Equatorial band hypothesis
         # 'mockvis':40., #--Almenara+2022
-            }
+            },
+        'IGRINS2_Red':{
+        'mockvis':40., #--Equatorial band hypothesis
+            },
+        'IGRINS2_Blue':{
+        'mockvis':40., #--Equatorial band hypothesis
+            },
+        'MAROONX_Red':{
+        'mockvis':40., #--Equatorial band hypothesis
+            },
         }
         mock_dic['verbose_flux_cont']= True
 
@@ -1403,7 +1481,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #Instrumental calibration  
     if gen_dic['star_name'] == 'TOI3884' : 
-        mock_dic['gcal'] = {'MIKE_Red' : 1.}
+        mock_dic['gcal'] = {'MIKE_Red' : 1.,'IGRINS2_Red' : 1.,'IGRINS2_Blue' : 1.,'MAROONX_Red' : 1.}
 
     if gen_dic['star_name'] == 'TRAPPIST1' : 
         mock_dic['gcal'] = {'NIRPS_HE' : 1.}
@@ -1422,7 +1500,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         mock_dic['gcal'] = {'ESPRESSO' : 1.}   
 
     #Flux errors
-    if gen_dic['star_name'] == 'TOI3884': mock_dic['set_err']={'MIKE_Red':True}
+    if gen_dic['star_name'] == 'TOI3884': mock_dic['set_err']={'MIKE_Red':True,'IGRINS2_Red':True,'IGRINS2_Blue':True,'MAROONX_Red':True}
     if gen_dic['star_name'] == 'TRAPPIST1': mock_dic['set_err']={'NIRPS_HE':True}
     if gen_dic['star_name'] == 'AUMic': mock_dic['set_err']={'ESPRESSO':True}
     if gen_dic['star_name'] == 'fakeAU_Mic': mock_dic['set_err']={'ESPRESSO':True}
@@ -3825,7 +3903,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     #Order to be fitted
     if gen_dic['star_name']=='TOI3884':
-        data_dic['DI']['fit_prof']['order']={'MIKE_Red':0} 
+        data_dic['DI']['fit_prof']['order']={'MIKE_Red':0,'IGRINS2_Red':0,'IGRINS2_Blue':0,'MAROONX_Red':0} 
 
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['fit_prof']['order']={'ESPRESSO':0}     
@@ -3840,7 +3918,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         data_dic['DI']['fit_prof']['order']={'ESPRESSO':0} 
 
     #Continuum range
-    if gen_dic['star_name']=='TOI3884':data_dic['DI']['cont_range']['MIKE_Red']={0:[[-30.,-20.],[20.,30.]]} 
+    if gen_dic['star_name']=='TOI3884':
+        data_dic['DI']['cont_range']['MIKE_Red']={0:[[-30.,-20.],[20.,30.]]} 
+        data_dic['DI']['cont_range']['IGRINS2_Red']={0:[[-30.,-20.],[20.,30.]]} 
+        data_dic['DI']['cont_range']['IGRINS2_Blue']={0:[[-30.,-20.],[20.,30.]]} 
+        data_dic['DI']['cont_range']['MAROONX_Red']={0:[[-30.,-20.],[20.,30.]]} 
 
     if gen_dic['star_name']=='AUMic':data_dic['DI']['cont_range']['ESPRESSO']={0:[[-100.,-80.],[80.,100.]]} 
         
@@ -3856,7 +3938,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
 
     #Spectral range(s) to be fitted
-    if gen_dic['star_name']=='TOI3884':data_dic['DI']['fit_range']['MIKE_Red']={'mockvis':[[-20., 20.]]}  
+    if gen_dic['star_name']=='TOI3884':
+        data_dic['DI']['fit_range']['MIKE_Red']={'mockvis':[[-20., 20.]]}  
+        data_dic['DI']['fit_range']['IGRINS2_Red']={'mockvis':[[-20., 20.]]}  
+        data_dic['DI']['fit_range']['IGRINS2_Blue']={'mockvis':[[-20., 20.]]}  
+        data_dic['DI']['fit_range']['MAROONX_Red']={'mockvis':[[-20., 20.]]}  
 
     if gen_dic['star_name']=='AUMic':
         data_dic['DI']['fit_range']['ESPRESSO']={
@@ -3902,6 +3988,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Model type    
     if gen_dic['star_name']=='TOI3884':    
         data_dic['DI']['model']['MIKE_Red']='gauss'
+        data_dic['DI']['model']['IGRINS2_Red']='gauss'
+        data_dic['DI']['model']['IGRINS2_Blue']='gauss'
+        data_dic['DI']['model']['MAROONX_Red']='gauss'
 
     if gen_dic['star_name']=='AUMic':    
         data_dic['DI']['model']['ESPRESSO']='gauss'
@@ -4213,9 +4302,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         
     #Systemic velocity        
     if gen_dic['star_name']=='TOI3884':
-        data_dic['DI']['sysvel']={'MIKE_Red' : 
-                                    {'mockvis' : 0, #--base
-                        }}
+        data_dic['DI']['sysvel']={
+                    'MIKE_Red' : {'mockvis' : 0,},
+                    'IGRINS2_Red' : {'mockvis' : 0,},
+                    'IGRINS2_Blue' : {'mockvis' : 0,},
+                    'MAROONX_Red' : {'mockvis' : 0,},
+                    }
 
     if gen_dic['star_name']=='TRAPPIST1':
         data_dic['DI']['sysvel']={'NIRPS_HE' : 
@@ -4673,7 +4765,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                 'nsub_Dstar':101,
                 'MIKE_Red':{
                 'mockvis':{'mode':'simu','n_oversamp':5}, #--base
-                }
+                },
+                'IGRINS2_Red':{
+                'mockvis':{'mode':'simu','n_oversamp':5}, #--base
+                },
+                'IGRINS2_Blue':{
+                'mockvis':{'mode':'simu','n_oversamp':5}, #--base
+                },
+                'MAROONX_Red':{
+                'mockvis':{'mode':'simu','n_oversamp':5}, #--base
+                },
                 })
 
     if gen_dic['star_name']=='TRAPPIST1':
@@ -5318,6 +5419,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name']=='TOI3884':    
         # data_dic['Diff']['idx_in_bin']={'MIKE_Red':{'mockvis':list(np.arange(0, 4,dtype=int))+list(np.arange(26, 30,dtype=int))}}
         data_dic['Diff']['idx_in_bin']={'MIKE_Red':{'mockvis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} #Almenara+2022 updated
+        data_dic['Diff']['idx_in_bin']={'IGRINS2_Red':{'mockvis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} #Almenara+2022 updated
+        data_dic['Diff']['idx_in_bin']={'IGRINS2_Blue':{'mockvis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} #Almenara+2022 updated
+        data_dic['Diff']['idx_in_bin']={'MAROONX_Red':{'mockvis':list(np.arange(0, 7,dtype=int))+list(np.arange(23, 30,dtype=int))}} #Almenara+2022 updated
 
     if gen_dic['star_name']=='TRAPPIST1':    
         # data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 45,dtype=int))+list(np.arange(135, 180,dtype=int))}}

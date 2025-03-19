@@ -663,6 +663,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
             #------------------------------------------------------------
 
             #Averaged values behind all occulted regions during exposure
+            print('1:', surf_prop_dic_ar[subkey_chrom]['line_prof'])
             #    - with the oversampling, positions at the center of exposure will weigh more in the sum than those at start and end of exposure, like in reality
             #    - parameters are retrieved in both oversampled/not-oversampled case after they are updated within the sum_prop_dic dictionary 
             #    - undefined values remain set to nan, and are otherwise normalized by the flux from the planet-occulted region
@@ -701,7 +702,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                         if args['conv2intr']:surf_prop_dic_pl[key_chrom[-1]]['corr_supp'][:,isub_exp] /= (args['Focc_corr'][key_chrom[-1]]/n_osamp_exp_eff_pl)
  
                 #Deviation line profile between quiet and active emission, from active region cells outside of planet-occulted regions
-                if cond_ar and (args['rout_mode']=='DiffProf') and (n_osamp_exp_eff_ar > 0):
+                if cond_ar and (args['rout_mode']!='IntrProf') and (n_osamp_exp_eff_ar > 0):
                     calc_mean_occ_region_line(theo_dic['precision'],star_I_prop,isub_exp,key_chrom,n_osamp_exp_eff_ar,Focc_star_ar,surf_prop_dic_ar,ar_in_exp,args,par_star,theo_dic)
 
     ### end of exposures
