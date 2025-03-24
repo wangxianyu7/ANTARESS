@@ -524,9 +524,9 @@ def ana_jointcomm(input_nbook,data_type,ana_type):
     if ('priors' in input_nbook['par']):input_nbook['par'].pop('priors')
     
     #Walkers
-    if ('walkers_set' in input_nbook['par']):
-        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['walkers_set']=deepcopy(input_nbook['par']['walkers_set'])
-        input_nbook['par'].pop('walkers_set')  
+    if ('sampler_set' in input_nbook['par']):
+        input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['sampler_set']=deepcopy(input_nbook['par']['sampler_set'])
+        input_nbook['par'].pop('sampler_set')  
         
     #Save chains by default
     input_nbook['settings']['glob_fit_dic'][data_type+ana_type]['save_MCMC_chains']='png' 

@@ -976,7 +976,7 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             if ((mode=='') and data_vis['comm_sp_tab']) or ((mode=='multivis') and data_inst['comm_sp_tab']):
                 flux_ref_exp = np.ones(data_dic[inst][vis_bin]['dim_exp'])  
                 data_to_bin_gen[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,'DI',data_dic[inst]['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['sing_gcal'],data_to_bin_gen[iexp_off]['cen_bins'],1.,flux_ref_exp,None,bdband_flux_sc = gen_dic['flux_sc'],sdet_exp2 = data_to_bin_gen[iexp_off]['sdet2'])
-   
+
         #Processing each exposure of current visit selected for extraction
         iexp_proc = data_dic['Diff'][inst][vis]['idx_to_extract']
         common_args = (data_vis['proc_DI_data_paths'],mode,data_vis['comm_sp_tab'],data_inst['comm_sp_tab'],proc_gen_data_paths_new,idx_to_bin_all[0],n_in_bin_all[0],dx_ov_all[0],idx_bin2orig,idx_bin2vis,data_inst['com_vis'],data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],gen_dic['flux_sc'],data_to_bin_gen,gen_dic['resamp_mode'],\
@@ -1024,7 +1024,7 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
        
         #Upload latest processed DI data from which to extract local profile
         data_exp = dataload_npz(proc_DI_data_paths+str(iexp))
-
+    
         #Calculating master disk-integrated profile
         #    - the master is calculated in a given exposure:
         # + if it is the first one
@@ -1073,10 +1073,10 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
                 if (iexp_glob in iexp_no_plrange_vis[vis_bin]):
                     for iord in range(nord):                   
                         data_to_bin[iexp_off]['cond_def'][iord] &=  excl_plrange(data_to_bin[iexp_off]['cond_def'][iord],exclu_rangestar_vis[vis_bin],iexp_off,data_exp['edge_bins'][iord],vis_type)[0]
-
+        
             #Calculate master on current exposure table
             data_mast = calc_bin_prof(idx_to_bin_mast,nord,dim_exp,nspec,data_to_bin,inst,n_in_bin_mast,data_exp['cen_bins'],data_exp['edge_bins'],dx_ov_in = dx_ov_mast)
-
+       
         #Extracting differential stellar profiles  
         #    - the master is defined for each individual exposures if they are defined on different spectral table
         #      otherwise defined on a single common spectral table, in which case we repeat the master to have the same structure as individual exposures          
@@ -1090,7 +1090,7 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
 
         #Saving data
         #    - saved for each exposure, as the files are too large otherwise                
-        np.savez_compressed(proc_gen_data_paths_new+str(iexp),data=data_loc,allow_pickle=True)    
+        datasave_npz(proc_gen_data_paths_new+str(iexp),data_loc)    
     
     return None
 
@@ -1694,3 +1694,22 @@ def extract_pl_profiles(data_dic,inst,vis,gen_dic):
     return None    
 
 
+
+
+
+################################################################################################## 
+#%% EvE output routines
+################################################################################################## 
+    
+def EvE_outputs():
+    
+    # #EvE output directory
+    # if gen_dic['EvE_outputs'] and (not path_exist(gen_dic['save_data_dir']+'EvE_outputs/')):makedirs(gen_dic['save_data_dir']+'EvE_outputs/')      
+    
+    
+    return None
+    
+    
+    
+    
+    

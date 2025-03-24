@@ -32,12 +32,19 @@ Initialization
 
 Wiggles are processed as a function of light frequency (:math:`\nu = c/\lambda`), to be distinguished from the frequency `F` of the wiggle patterns.
 
-TBD
+..
+ Erik: missing all the init fields here
+
+
+
 
 Screening
 ---------
 
-This step is common to both wiggle correction methods. It is used to identify the spectral ranges to be included in the analysis (i.e., where wiggles are larger than noise) and check which wiggle components affect your dataset.
+This step is common to both wiggle correction methods. It serves two purposes:
+
++ Identifying the spectral ranges to be included in the analysis (i.e., where wiggles are significant compared to noise)
++ Determining which wiggle components affect your dataset.
 
 Activate the screening submodule with :green:`gen_dic['wig_exp_init']= True`. You can leave the other submodule settings to their default value.
 
@@ -47,12 +54,7 @@ Wiggles are also typically dominated by noise toward the center of the center of
 
 .. Tip:: 
  Although this is not the case in this example, some datasets may display an additional wiggle pattern with lower frequency and localized S-shaped features (typically at :math:`\nu \sim` 47, 51, 55 :math:`10^13` Hz).
- The current version of the analytical model does not account for this pattern. You can exclude those S-shaped features to correct for the classical wiggles with the analytical model, and 
- ignore them (if they fall in a range you do not plan on analyzing) or correct them locally later on. Or you can use the filter approach, keeping in mind that you may overcorrect other signals of interest.   
-
-
-
-
+ The current version of the analytical model does not account for this pattern. You can either ignore them, if they fall in a range you do not plan on analyzing, or follow the approach described in the next section.
 
 
 .. figure:: wig_screening.png
@@ -61,13 +63,6 @@ Wiggles are also typically dominated by noise toward the center of the center of
 
   Transmission spectrum in one of the 20221117 exposures, as a function of light frequency. 
   The wiggle pattern is clearly visible, but dominated by noise at the center and blue end of the spectrum. The spectrum is colour coded by spectral order.
-
-.. Erik
-  can you redo this first figure with no excluded range at all ?
-
-
-
-In general, you will see large noise levels at the 
 
 
 
@@ -84,14 +79,20 @@ The final transmission spectrum with the excluded regions should show some clear
   :width: 800
   :name: screening_final
 
-  Final transmission spectrum after removing the noisy regions. Bottom the periodogram computed for all exposures from the observation.
+  Final transmission spectrum after removing noisy regions. The bottom panel shows the mean periodogram computed for all exposures from the observation.
 
+After excluding spectral ranges with high noise levels, the wiggle pattern and associated peaks in the periodogram should become clearly visible, as shown in :numref:`screening_final`. 
+If they remain indistinct, wiggles may be small enough that a correction is not required. 
+Otherwise you can now deactivate this step (:green:`gen_dic['wig_exp_init']= False`) and move on to either the :ref:`filter <Wig_sec_filt>`) or :ref:`analytical <Wig_sec_ana>` correction.
+
+
+
+.. _Wig_sec_filt:
 
 Method 1: filter
--------------------------------------
+----------------
 
-After removing the noisy ranges the wiggle pattern should be clearly visible from the screening, if that is not the case the wiggle correction will not be applied. 
-When the spectral ranges to be included have been defined you can charecatrise the wiggles using the filter approach. Choose values for 'win' and 'deg', that are fine enough to capture the wiggle pattern without fitting spurious features in the data.::
+Activate the filter approach by setting :green:`mode` to :Magenta:`mode` in:: 
 
  gen_dic['wig_exp_filt']={
          'mode':True,
@@ -99,95 +100,174 @@ When the spectral ranges to be included have been defined you can charecatrise t
          'deg':4,
          'plot':True
          }
+         
+Choose values for the filter smoothing window (:green:`win`) and polynomial degree (:green:`deg`) that are fine enough to capture the wiggle pattern without fitting spurious features in the data. 
 
-`Finish the Filter method later`
+The :green:`plot` field allows you to check the efficiency of the correction in the transmission spectra (saved in the :orange:`/Working_dir/Star/Planet_Plots/Spec_raw/Wiggles/Exp_fit/Instrument_Visit/Filter/` directory), as shown in :numref:`plot_filter`.
+
+.. figure:: plot_filter.png
+  :width: 800
+  :name: plot_filter
+
+  Transmission spectrum before and after filtering.
+
+
+A drawback of this approach is that it may smooth out spectral features and potentially remove signals of planetary or stellar origin. 
+However, this method allows you to isolate and correct specific spectral ranges in which unexpected features may appear that cannot be modeled analytically.
+After this correction, you can then re-inject into the wiggle module the corrected spectra and apply the analytical model.
+
+
+
+
+.. _Wig_sec_ana:
 
 Method 2: Analytical model
--------------------------------------
+--------------------------
 
-From previous analyses we have determined that the wiggles are best described as the sum of multiple sinusoidal components, and can be expressed as
+We have determined from previous analysis that wiggles are best described as the sum of multiple sinusoidal components:
 
 :math:`W(\nu, t) = 1 + \sum _k A_k(\nu, t) \sin(2\pi \int (F_k(\nu,t)d\nu ) - \Phi_k(t)).`
 
-In this module, we follow a few iterative steps to find the best parameters to fit the wiggle pattern. The first two components to estimate are the frequencies and amplitudes, :math:`F_k(\nu)` and :math:`A_k(\nu)`, expressed as
+This module follows an iterative approach to determine the best-fitting parameters to model the wiggle pattern. 
+The first two key components to estimate are the frequencies and amplitudes, denoted as :math:`F_k(\nu)` and :math:`A_k(\nu)`, respectively. 
+They are expressed as polynomial expansions:
 
 :math:`A_k (\nu, t) = \sum_{i=0}^{d_{a,k}} a_{\text{chrom},k,i}(t)(\nu - \nu_{\text{ref}})^i`,
 
 :math:`F_k (\nu, t) = \sum_{i=0}^{d_{f,k}} f_{\text{chrom},k,i}(t)(\nu - \nu_{\text{ref}})^i`.
 
-In an earlier step, the screening, you should have identified spectral regions that can be used to constrain the wiggle pattern and to asses the strength of the two components. The second step is to sample the chromatic variations in a set of exposures. Here, we sample the frequency and amplitude of the wiggle components with :math:`\nu`. Choose a selection of exposures to sample under the field `Exposures to be characterized`, for TOI-421 we sample every fifth exposure:
-::
- if gen_dic['star_name']=='TOI421a':
-     gen_dic['wig_exp_in_fit'] =  {
-        '20221117':np.arange(0,28,5),
-        '20231106':np.arange(0,54,5)
-        }
+Where:
 
-For the chromatic sampling we use a sliding window over each transmission spectrum to identify the strongest peak in each window at every window position and fit a sine function to the window spectrum using the frequency of the strongest peak. In narrow bands, the wiggles can be approximated with constant frequencies, and in this step we sample the frequencies :math:`F_k(\nu)`, and amplitude :math:`A_k(\nu)` for each window position. The windows must be large enough to sample several periods of the frequency, further successive window positions will overlap to sample enough measurments. In the case for TOI-421 b, we used the following settings for the chromatic sampling of the first component.
-::
- gen_dic['wig_exp_samp']={
-     'mode':True,
-     'comp_ids':[1],#[1,2] for sampling second component
-     'freq_guess':{
++ :math:`A_k(\nu,t)` represents the amplitude variation as a function of light frequency and time.
++ :math:`F_k(\nu,t)` represents the frequency variation as a function of light frequency and time.
++ :math:`\nu_\text{ref}` is a light frequency reference used for normalization.
++ :math:`d_\text{a,k}` and :math:`d_\text{f,k}` define the polynomial order for amplitude and light frequency variations.
++ The coefficients :math:`a_\text{chrom,k,i}(t)` and :math:`f_\text{chrom,k,i}(t)` capture the chromatic dependence of the amplitude and light frequency, respectively.
++ :math:`\Phi_k(t)` represents the phase offset of the sinusoidal comopnent at time :math:`t`.
+
+
+Step 1: Sampling Chromatic Variations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In the screening step you identified spectral regions that can be used to constrain the wiggle pattern and assess the strength of its components. 
+In this step, activated with :green:`gen_dic['wig_exp_samp']['mode']= True`, you will sample the chromatic variations of the wiggle component across a representative set of exposures.
+This means sampling the frequency and amplitude of each component as a function of light frequency :math:`\nu`.
+ 
+First, select a set of exposures to sample using:: 
+
+ gen_dic['wig_exp_in_fit'] =  {
+    '20221117':np.arange(0,28,5),
+    '20231106':np.arange(0,54,5)}
+    
+
+.. Tip:: 
+ Since the wiggle pattern evolves relatively slowly with time, we do not need to sample their variations in every exposure.
+ For the TOI-421 datasets, we thus sample one every fifth exposure.
+ 
+In narrow bands, the wiggles can be approximated by a sine with constant frequency and amplitude.     
+The sampling is thus performed automatically by sliding a fixed window over a given transmission spectrum, and at each sampled position:
+
++ Apply a periodogram to estimate the local wiggle frequency :math:`F_k(\nu)`.
++ Fit a sine function at this frequency to estimate the local wiggle amplitude :math:`A_k(\nu)`.
+        
+The window size must be large enough to include several oscillation cycles of the wiggle pattern. 
+Furthermore, we recommend overlapping successive windows to sample more finely the wiggle pattern. 
+
+This is an iterative process. Once the first component is processed, the piecewise model built over the sliding windows is used to temporarily correct the transmission spectrum (:numref:`samp_1`). 
+The second component can then be sampled and analysed in the same way (:numref:`samp_2`).
+We describe below the settings controlling this process, using the 20221117 visit as example.
+
+Process the highest-frequency component by setting::
+
+ gen_dic['wig_exp_samp']['comp_ids'] = [1]
+ 
+Once this first component is analysed, you will correct it and process the second component by setting :green:`[1,2]`. 
+You need to provide an estimate of each component frequency :math:`F_k(\nu)`, described as a polynomial with coefficients :green:`ci`:: 
+
+ gen_dic['wig_exp_samp']['freq_guess']:{
          1:{ 'c0':3.72, 'c1':0., 'c2':0.},
-         2:{ 'c0':2.05, 'c1':0., 'c2':0.},
-            },
-     'nsamp':{1:8,2:8}, 
-     'sampbands_shifts':{1:np.arange(16)*0.15,2:np.arange(16)*0.3},
-     'direct_samp' : {2:0,3:0},
-     'nit':40,
-     'src_perio' : {
-         1:{'mod':'slide','range':[0.5,0.5] ,'up_bd':False  },
-         2:{'mod':'slide','range':[0.5,0.5] ,'up_bd':True  },
-            }
-     'fap_thresh':5,
-     'fix_freq2expmod':[],
-     'fix_freq2vismod':{},
-     'plot':True
-     }
+         2:{ 'c0':2.05, 'c1':0., 'c2':0.}}   
 
-.. Note::
- Description of parameters and variables:
+Approximating :math:`F_k(\nu)` to a constant is usually sufficient for this step, and the above values should be similar for other datasets.
+This guess frequency is also used to calculate the width of the sliding window, which is set by the number of cycles you want to sample for each component::
 
-    + :green:`comp_ids` which component to analyse, start with the first component (the high frequency component), when the first component is analysed add the second component to the list. Once the first component is processed the piecewise model built from the windows is used to temporarily correct the transmission spectrum, and the second component will be sampled and analysed. See :numref:`samp_1` and :numref:`samp_2`, for the example of TOI-421 b.
-    + :green:`freq_guess` is the polynomial coefficient describing the model frequency for each component. The models control the definition of the sampling bands.
-    + :green:`nsamp` number of cycles to sample for each compojent in a given band, this is based on the guess frequency.
-    + :green:`nsampbands_shifts` set the shifts for the window between samples.
-    + :green:`direct_samp` (check this one with vincent)
-    + :green:`nit` number of iterations in each band
-    + :green:`src_perio` frequency ranges within which periodograms are searched for each component (in :math:`1e-10 s^{-1}`). Use :green:`{'mod':None}` for default search range. To define the search range use :green:`{'mod':'slide', 'range':[y,z]}`. Use :green:`'up_bd':True` to use the the higher component as the upper bound of the search window.
-    + :green:`fap_thresh` wiggle in a band is fitted if the FAP is below this threshold (in %).
-    + :green:`fix_freq2expmod` [compi_id] fixes the frequency of 'comp_id' using the fit results from 'wig_exp_point_ana'.
-    + :green:`fix_freq2vismod` fixes the frequency of 'comps' using the fit results from :green:`'wig_vis_fit'` at the given path for each visit, format is :green:`{comps:[x,y] , vis1:path1, vis2:path2 }`.
-    + :green:`plot` plot the sampled transmission spectra and band sample analyses.
+ gen_dic['wig_exp_samp']['nsamp'] = { 1 : 8 , 2 : 8 } 
+
+The oversampling of the sliding windows is controlled by shifts in :math:`\nu` (in :math:`10^13 s^{-1}`) set as::
+
+ gen_dic['wig_exp_samp']['sampbands_shifts'] = {
+     1:np.arange(16)*0.15,
+     2:np.arange(16)*0.30 }
+
+The pipeline loops over the shifts, positions the first window at the lowest :math:`\nu` of the spectrum plus the shift, and then slides the window over consecutive (non overlapping) positions.
+When processing the second component, the first one is corrected for using the piecewise model built over the sliding windows positioned for a given shift, whose index within :green:`sampbands_shifts` is set as:: 
+
+ gen_dic['wig_exp_samp'][2] = 0
+
+Periodograms associated with each window are searched for the peak wiggle frequency over a broad default range (:green:`'mod':None`), or within a range (in :math:`10^13 s^{-1}`) centered on the guess :math:`F_k(\nu)` for this window::
+
+ gen_dic['wig_exp_samp']['src_perio']={
+         1:{'mod':'slide','range':[0.5,0.5] ,'up_bd':False },
+         2:{'mod':'slide','range':[0.5,0.5] ,'up_bd':True  }}
+
+Where :green:`'up_bd':True` restricts the range upper boundary for the second component to the first component frequency.
+The sine fit is then only performed in the window if the FAP of its peak periodogram frequency is below a threshold (in \%)::
+
+ gen_dic['wig_exp_samp']['fap_thresh'] = 5
+ 
+To better converge on the sine fit it is repeated iteratively :green:`gen_dic['wig_exp_samp']['nit']` times. 
+
+You can improve the quality of the sampling after having completed :ref:`Step 3 <Wig_sec_ana3>`, by fixing the frequency of the components (here the first) to its value from the best-fit model in each exposure::
+
+ gen_dic['wig_exp_samp']['fix_freq2expmod'] = [1]
+
+And after having completed :ref:`Step 5 <Wig_sec_ana3>`, by fixing the frequency of the components to their values from the best-fit model in each visit (stored at a given path)::
+
+ gen_dic['wig_exp_samp']['fix_freq2vismod'] = { 
+     comps:[1,2] , 
+     '20221117' : 'path1/Outputs_final.npz', 
+     '20231106' : 'path2/Outputs_final.npz' }
+
+The :green:`gen_dic['wig_exp_samp']['plot']` field plots the sampled transmission spectra and sampling analyses, stored under :orange:`/Working_dir/Star/Planet_Plots/Spec_raw/Wiggles/Exp_fit/Instrument_Visit/Sampling/`.
 
 .. figure:: wiggle_sampling_1.png
   :width: 800
   :name: samp_1
 
-  Sampling of the first component of TOI-421 b.
+  Sampling of the first wiggle component in the 20221117 visit.
 
 .. figure:: wiggle_sampling_2.png
   :width: 800
   :name: samp_2
 
-  Sampling of the second component of TOI-421 b, here the piecewise model built from the sampling of the first component has been corrected for.
+  Sampling of the second wiggle component in the 20221117 visit. The piecewise model built from the sampling of the first component has been corrected for.
+  
+You can now deactivate this step (:green:`gen_dic['wig_exp_samp']['mode']= False`) and move on to the next one.
 
-Next part is the chromatic analysis. Here we analyse the frequecy and amplitude of each sample from the previous step and model them as polynomials of :math:`\nu`. In most cases, the frequency and amplitude can be described as linear or quadratic funcitons of :math:`\nu`. This step allow us to detemine which degree and guess values a that are suitible for the chromatic coefficients :math:`a_{\text{chrom},k,i}(t)` and :math:`f_{\text{chrom},k,i}(t)` in each sampled exposure. In the case of TOI-421 b, we used the following determine the chromatic coefficients for the frequency and amplitude for the 2 components.
-::
- gen_dic['wig_exp_nu_ana']={
-     'mode':True,
-     'comp_ids':[1,2],
-     'thresh':3.,
-     'plot':True
-     }
- gen_dic['wig_deg_Freq'][1] = 1
- gen_dic['wig_deg_Freq'][2] = 0
- gen_dic['wig_deg_Amp'][1] = 2
- gen_dic['wig_deg_Amp'][2] = 2
 
-Where 
+Step 2: Chromatic analysis
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+  
 
-.. figure:: chrom_ana.png
-  :width: 800
-  :name: chrom_ana
+.. _Wig_sec_ana3:
+
+Step 3: Exposure fit
+~~~~~~~~~~~~~~~~~~~~
+
+
+Step 4: Pointing Analysis
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+
+.. _Wig_sec_ana5:
+
+Step 5: Visit fit
+~~~~~~~~~~~~~~~~~
+
+
+
+Applying the correction
+-----------------------
+

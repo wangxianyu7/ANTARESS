@@ -162,7 +162,7 @@ def gauss_herm_lin(param,x,args=None):
         TBD
         
     """    
-    x_tab = (2.*np.sqrt(2.*np.log(2.)))*(x-param['rv' ])/param['FWHM'] 
+    x_tab = (2.*np.sqrt(2.*np.log(2.)))*(x-param['rv'])/param['FWHM'] 
     
     #Skewness and kurtosis
     skew1 = param['skewA']

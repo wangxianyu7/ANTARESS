@@ -12,9 +12,9 @@ from dace_query.spectroscopy import Spectroscopy
 from scipy.interpolate import CubicSpline
 from ..ANTARESS_analysis.ANTARESS_model_prof import calc_macro_ker_anigauss,calc_macro_ker_rt 
 from ..ANTARESS_grids.ANTARESS_star_grid import model_star
-from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_ar_prop,calc_plocc_ar_prop,retrieve_ar_prop_from_param,calc_plocced_tiles,calc_ar_tiles,generate_ar_prop
+from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_ar_prop,calc_plocc_ar_prop,retrieve_ar_prop_from_param,generate_ar_prop
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm,var_stellar_prop
-from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,coord_expos,coord_expos_ar,get_timeorbit
+from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,get_timeorbit,coord_expos,coord_expos_ar
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab,return_spec_nord
 from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting_inst_vis
 from ..ANTARESS_general.minim_routines import par_formatting
@@ -28,7 +28,7 @@ from ..ANTARESS_conversions.ANTARESS_masks_gen import def_masks
 from ..ANTARESS_conversions.ANTARESS_conv import DI_CCF_from_spec,DiffIntr_CCF_from_spec,Atm_CCF_from_spec,conv_2D_to_1D_spec
 from ..ANTARESS_conversions.ANTARESS_binning import process_bin_prof
 from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof,pc_analysis
-from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_diff_profiles,extract_intr_profiles,extract_pl_profiles 
+from ..ANTARESS_process.ANTARESS_data_process import align_profiles,rescale_profiles,extract_diff_profiles,extract_intr_profiles,extract_pl_profiles,EvE_outputs 
 from ..ANTARESS_analysis.ANTARESS_ana_comm import MAIN_single_anaprof
 from ..ANTARESS_conversions.ANTARESS_sp_cont import process_spectral_cont
 from ..ANTARESS_general.utils import air_index,dataload_npz,gen_specdopshift,stop,np_where1D,closest,datasave_npz,def_edge_tab,check_data,npint,path_singslash
@@ -208,6 +208,10 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 #Processing binned intrinsic profiles
                 if gen_dic['bin']:
                     bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
+    
+                #Saving EvE outputs
+                if gen_dic['EvE_outputs']:
+                    EvE_outputs()    
     
                 #Building estimates for planet-occulted stellar profiles in in-transit exposures
                 if gen_dic['loc_prof_est']:
@@ -411,6 +415,10 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             'EXPRES':'EXPRES',    
             'HARPN':'HARPN',
             'HARPS':'HARPS',  
+            'IGRINS2_Blue':'IGRINS2',
+            'IGRINS2_Red':'IGRINS2',
+            'MAROONX_Blue':'MAROONX',
+            'MAROONX_Red':'MAROONX',
             'MIKE_Blue':'MIKE',
             'MIKE_Red':'MIKE',
             'NIRPS_HA':'NIRPS',
@@ -428,9 +436,14 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             'ESPRESSO_MR':True,
             'EXPRES':True,     
             'HARPN':True   ,
-            'HARPS':True,           
+            'HARPS':True, 
+            'IGRINS2_Blue':True,
+            'IGRINS2_Red':True,
+            'MAROONX_Blue':True,
+            'MAROONX_Red':True,
             'MIKE_Blue':True,
             'MIKE_Red':True,
+            'NIGHT':True,
             'NIRPS_HA':True,
             'NIRPS_HE':True,
             'SOPHIE_HE':False,
@@ -469,8 +482,25 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                                       7554.208181803426,7648.626256074004,7745.4344337228085,7844.724632875495,7946.5935461392,8051.142954674568,8158.480067389824,8268.717887632938,
                                       8381.975610018162,8498.379050316224,8618.061111667314,8741.162290748554,8867.83122794844,8998.225306077602,9132.51130268578,9270.866101669406,
                                       9413.477470553611,9560.54491063029,9712.280588045605,9868.910354974394,10030.674871216968,10197.83083793165,10370.652356804127,10549.432429789025]),   
+            'IGRINS2_Blue': np.array([14748.5,14865.8,14985.0,15106.3,15229.7,15355.2,15483.0,15613.0,15745.3,
+                                      15880.0,16017.1,16156.8,16299.0,16443.9,16591.5,16741.9,16895.2,17051.5,
+                                      17210.8,17373.2,17538.9,17707.9,17880.3,18056.3,18235.9]),
+            'IGRINS2_Red': np.array([19396.5,19605.0,19818.1,20036.2,20259.2,20487.4,20720.9,2096.01,21204.9,
+                                     21455.7,21712.7,21976.1,22246.2,22523.1,22807.2,23098.7,2339.80,23705.3,
+                                     24021.0,24345.3,24678.8,25021.7]),
+            'MAROONX_Blue': np.array([]),
+            'MAROONX_Red': np.array([]),
             'MIKE_Blue': np.array([]),
             'MIKE_Red': np.array([]),
+            'NIGHT': np.array([   9793.31830725 , 9859.95301593 , 9927.49931744 , 9995.97622395,10065.40380975, 10135.80171767, 10207.19048503, 10279.59121586,
+                                    10353.02577856, 10427.51660496, 10503.0864558 , 10579.75913144,10657.5589196 , 10736.51096413, 10816.64116324, 10897.97569896,
+                                    10980.54199941, 11064.36827222, 11149.48372245, 11235.91830631,11323.70300177, 11412.86989695, 11503.45207046, 11595.48314928,
+                                    11688.99793186, 11784.03276228, 11880.62559736, 11978.81474198,12078.63947148, 12180.1413448 , 12283.36401067, 12388.35148928,
+                                    12495.14844764, 12603.80175443, 12714.36064267, 12826.87609104,12941.40020952, 13057.98722241, 13176.69424781, 13297.58039703,
+                                    13420.70477935, 13546.12854527, 13673.91830748, 14072.1783805,14210.13779528, 14350.82710154, 14494.33106043, 14640.73394106,
+                                    14790.12380228, 14942.59417032, 15098.24089619, 15257.16474828,15419.46907017, 15585.26310369, 15754.66203085, 15927.78376522,
+                                    16104.75265749, 16285.69620041, 16470.75172016, 16660.06255469,16853.77645383, 17052.04937274, 17255.0418695 , 17462.92163421,
+                                    17675.87345983, 17894.08476988, 18117.75049316, 18347.07795686,18582.28588236, 18823.6030827 , 19071.27048963]),                        #UPDATE WHEN FINAL FORMAT DEFINED          
             'NIRPS_HA': np.array([   9793.31830725 , 9859.95301593 , 9927.49931744 , 9995.97622395,10065.40380975, 10135.80171767, 10207.19048503, 10279.59121586,
                                     10353.02577856, 10427.51660496, 10503.0864558 , 10579.75913144,10657.5589196 , 10736.51096413, 10816.64116324, 10897.97569896,
                                     10980.54199941, 11064.36827222, 11149.48372245, 11235.91830631,11323.70300177, 11412.86989695, 11503.45207046, 11595.48314928,
@@ -561,6 +591,12 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         sp_corr_list = ['corr_tell','corr_FbalOrd','corr_Fbal','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig','corr_fring','trim_spec','glob_mast','cal_weight','gcal']
         if (not gen_dic['specINtype']):
             for key in sp_corr_list:gen_dic[key]=False
+            
+            #Deactivate EvE outputs
+            if gen_dic['EvE_outputs']:
+                print('WARNING (EvE outputs): data must be in spectral mode')
+                gen_dic['EvE_outputs'] = False
+            
         else:
 
             #Deactivate spectral balance correction over orders if not 2D spectra
@@ -577,7 +613,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             if (gen_dic['corr_Fbal']) or (gen_dic['corr_FbalOrd']):
                 gen_dic['glob_mast']=True
 
-                #Default bin size for flux balance (in 1e13 s-1)
+                #Default bin size for global flux balance (in 1e13 s-1)
                 if (inst not in gen_dic['Fbal_bin_nu']):
                     Fbal_bin_nu_inst = {
                         'SOPHIE_HE':1.,
@@ -589,13 +625,38 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                         'ESPRESSO_MR':1.,
                         'CARMENES_VIS':1.,
                         'EXPRES':1.,
+                        'IGRINS2_Red':1.,
+                        'IGRINS2_Blue':1.,
+                        'MAROONX_Red':1.,
+                        'MAROONX_Blue':1.,
+                        'MIKE_Red':1.,
+                        'MIKE_Blue':1.,
+                        'NIGHT':1.,
                         'NIRPS_HA':1.,
                         'NIRPS_HE':1.}
-                    if inst not in Fbal_bin_nu_inst:stop('ERROR : default value for "gen_dic["Fbal_bin_nu"]" undefined for '+inst)
+                    if inst not in Fbal_bin_nu_inst:stop('ERROR : default value for "gen_dic["Fbal_bin_nu"]" undefined for '+inst+' (source : ANTARESS_main.py > init_gen()')
                     gen_dic['Fbal_bin_nu'][inst] = Fbal_bin_nu_inst[inst] 
-    
-            #Deactivate arbitrary scaling if global scaling not required
-            if (not gen_dic['corr_Fbal']):gen_dic['Fbal_vis']=None
+ 
+                #Default bin size for order flux balance (in A)
+                if (inst not in gen_dic['FbalOrd_binw']):
+                    FbalOrd_binw_inst = {
+                        'SOPHIE_HE':2.,
+                        'SOPHIE_HR':2.,
+                        'CORALIE':2.,
+                        'HARPN':2.,
+                        'HARPS':2.,
+                        'ESPRESSO':2.,
+                        'ESPRESSO_MR':2.,
+                        'CARMENES_VIS':2.,
+                        'EXPRES':2.,
+                        'NIGHT':2.,
+                        'NIRPS_HA':2.,
+                        'NIRPS_HE':2.}
+                    if inst not in FbalOrd_binw_inst:stop('ERROR : default value for "gen_dic["FbalOrd_binw"]" undefined for '+inst+' (source : ANTARESS_main.py > init_gen()')
+                    gen_dic['FbalOrd_binw'][inst] = FbalOrd_binw_inst[inst]    
+ 
+            #Deactivate arbitrary scaling if scaling not required
+            if (not gen_dic['corr_Fbal']) and (not gen_dic['corr_FbalOrd']):gen_dic['Fbal_vis']=None
             
             #Check for arbitrary scaling        
             elif (gen_dic['Fbal_vis']!='ext') and (gen_dic['n_instru']>1):stop('Flux balance must be set to a theoretical reference for multiple instruments')
@@ -609,7 +670,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     
         #Deactivate modules irrelevant to mock datasets
         if gen_dic['mock_data']:
-            for key in ['gcal','corr_tell','glob_mast','corr_Fbal','corr_FbalOrd','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig']:gen_dic[key] = False
+            for key in ['gcal','corr_tell','glob_mast','corr_Fbal','corr_FbalOrd','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig','EvE_outputs']:gen_dic[key] = False
     
         #Deactivate plot if module is not called
         if (plot_dic['glob_mast']!='') and gen_dic['glob_mast']:
@@ -715,7 +776,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 
                 #Spectral bin width (A)
                 if (inst not in gen_dic['gcal_binw']):
-                    def_gcal_binw = {'ESPRESSO':0.5}
+                    def_gcal_binw = {'NIGHT':1.,'NIRPS_HE':1.,'ESPRESSO':0.5}
                     if inst in def_gcal_binw:gen_dic['gcal_binw'][inst] = def_gcal_binw[inst]
                     else:stop('ERROR: no default value of "gen_dic["gcal_binw"]" for '+inst+'. Run the module with a custom value for this field.')
 
@@ -750,6 +811,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 #    - value corresponds to the bluest wavelength of the processed spectra
                 if (inst not in gen_dic['contin_pinR']):gen_dic['contin_pinR'][inst] = 5.
 
+        #Raise warning
+        if gen_dic['EvE_outputs']:
+            if not gen_dic['DIbin']:print('WARNING (EvE outputs): a master-out spectrum must be calculated (gen_dic["DIbin"] = True)')
     
         #------------------------------------------------------------------------------------------------------------------------
     
@@ -970,6 +1034,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #Transit and stellar surfce chromatic properties
     #    - must be defined for data processing, transit scaling, calculation of planet properties
     #    - we remove the 'chrom' dictionary if no spectral data is used as input or if a single band is defined
+    if ('LD' not in  data_dic['DI']['system_prop']['achrom']):stop('WARNING : define limb-darkening law in "data_dic["DI"]["system_prop"]["achrom"]"')
     for ideg in range(2,5):
         if 'LD_u'+str(ideg) not in data_dic['DI']['system_prop']['achrom']:data_dic['DI']['system_prop']['achrom']['LD_u'+str(ideg)] = [0.]
     if ('GD_dw' in data_dic['DI']['system_prop']['achrom']):
@@ -1239,6 +1304,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         for key in ['IntrProp','IntrProf','AtmProf','AtmProp']:
             if (gen_dic['fit_'+key]) and (not path_exist(gen_dic['save_data_dir']+'Joined_fits/'+key+'/')):makedirs(gen_dic['save_data_dir']+'Joined_fits/'+key+'/') 
 
+        #Create EvE output directory
+        if gen_dic['EvE_outputs'] and (not path_exist(gen_dic['save_data_dir']+'EvE_outputs/')):makedirs(gen_dic['save_data_dir']+'EvE_outputs/') 
+
     return coord_dic,data_prop
 
 
@@ -1272,19 +1340,27 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
     if (inst not in gen_dic['scr_lgth']):gen_dic['scr_lgth'][inst]={}
 
     #Facility and reduction id
-    facil_inst = {
-        'SOPHIE':'OHP',
+    facil_inst_all = {
         'HARPS':'ESO',
         'HARPN':'TNG',   
         'CARMENES_VIS':'CAHA','CARMENES_VIS_CCF':'CAHA',
-        'CORALIE':'ESO','ESPRESSO':'ESO','ESPRESSO_MR':'ESO',
-        'EXPRES':'DCT','NIRPS_HE':'ESO','NIRPS_HA':'ESO',
+        'CORALIE':'ESO',
+        'ESPRESSO':'ESO','ESPRESSO_MR':'ESO',
+        'EXPRES':'DCT',
         'MIKE_Red':'LCO','MIKE_Blue':'LCO',
-        }[inst]
+        'IGRINS2_Blue':'Gemini-N','IGRINS2_Red':'Gemini-N',
+        'MAROONX_Blue':'Gemini-N','MAROONX_Red':'Gemini-N',
+        'NIGHT':'ESO',    #UPDATE TO 'OHP' WHEN FINAL FORMAT AVAILABLE
+        'NIRPS_HE':'ESO','NIRPS_HA':'ESO',
+        'SOPHIE':'OHP',
+        }
+    if inst not in facil_inst_all:stop('ERROR : define facility ID for '+inst+' in "facil_inst_all"')
+    facil_inst = facil_inst_all[inst]
 
     #Error definition
     if not gen_dic['mock_data']:
-        if (not gen_dic['flag_err_inst'][inst]) and gen_dic['gcal']:stop('Error table must be available to estimate calibration')
+        if inst not in gen_dic['flag_err_inst']:stop('ERROR : define error status for '+inst+' in "gen_dic["flag_err_inst"]"')
+        if (not gen_dic['flag_err_inst'][inst]) and gen_dic['gcal']:stop('ERROR : error table must be available to estimate calibration')
         if (inst in gen_dic['force_flag_err']):gen_dic['flag_err_inst'][inst]=False
         if gen_dic['flag_err_inst'][inst]:print('   > Errors propagated from raw data')
         else:print('   > Beware: custom definition of errors')
@@ -1314,7 +1390,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             gen_dic['CCF_mask_wav'][inst] = data_loc[0]
             if gen_dic['use_maskW']:gen_dic['CCF_mask_wgt'][inst] = data_loc[1]       
         else:
-            stop('CCF mask extension TBD') 
+            stop('ERROR : CCF mask extension TBD') 
 
         #No weighing of lines
         if not gen_dic['use_maskW']:gen_dic['CCF_mask_wgt'][inst] = np.repeat(1.,len(gen_dic['CCF_mask_wav'][inst]))  
@@ -1349,6 +1425,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         #    - if mode is switched to CCFs/s1d at some point in the reduction of a visit, the visit type will be switched but the instrument type will remain the same, so that the next visits of the instrument are processed in their original mode
         #      only after all visits have been processed is the instrument type switched
         data_inst['type']=deepcopy(gen_dic['type'][inst])
+        if (inst=='NIGHT') and (data_inst['type']!='spec2D'):stop('ERROR : wrong data type for NIGHT (only S2D are available)')
         
         #Total number of orders for current instrument
         #    - we define an artificial order that contains the CCF or 1D spectrum, so that the pipeline can process in the same way as with 2D spectra
@@ -1459,6 +1536,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         'spec1D':'*S1D_',
                         'spec2D':'*S2D_',
                         }[data_inst['type']] 
+                elif inst=='NIGHT':
+                    vis_path= vis_path_root+'*S2D_'                   
                 elif inst in ['NIRPS_HA','NIRPS_HE']:
                     vis_path= vis_path_root+ {
                         'CCF':'*CCF_TELL_CORR_',       #CCF from telluric-corrected spectra
@@ -1469,14 +1548,14 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     vis_path= vis_path_root+ {
                         'spec2D':'*',
                         }[data_inst['type']]                      
-                else:stop('Instrument undefined')
+                else:stop('ERROR : root names undefined for '+inst)
 
                 #Nominal data files
                 if (inst not in ['EXPRES','CARMENES_VIS_CCF']):nom_ext = 'A.fits'
                 else:nom_ext = '.fits'
                 vis_path_exp = np.array(glob.glob(vis_path+nom_ext))
                 n_in_visit=len(vis_path_exp) 
-                if n_in_visit==0:stop('No data found at '+vis_path+nom_ext+'. Check path.')
+                if n_in_visit==0:stop('ERROR : No data found at '+vis_path+nom_ext+'. Check path.')
           
                 #Retrieved file root names
                 #    - so that we can retrieve sky-corrected and blaze files in the same order
@@ -1487,7 +1566,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','NIRPS_HA','NIRPS_HE']:skcorr_ext = 'SKYSUB_A.fits'
                     else:skcorr_ext = 'C.fits'                      
                     vis_path_skysub_exp = np.array([ vis_path_root+ exp_rootname+skcorr_ext for exp_rootname in exp_rootnames   ])
-                    if len(vis_path_skysub_exp)==0:stop('No sky-sub data found. Check path.') 
+                    if len(vis_path_skysub_exp)==0:stop('ERROR : No sky-sub data found. Check path.') 
                     
                     #Orders to be replaced
                     if gen_dic['fibB_corr'][inst][vis]=='all':idx_ord_skysub = 'all'
@@ -1513,67 +1592,66 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                 #Print visit date if available 
                 #    - taking the day at the start of the night, rather than the day at the start of the exposure series
-                if (not gen_dic['mock_data']):
-                    if (inst in ['CORALIE','ESPRESSO','ESPRESSO_MR','HARPS','HARPN','CARMENES_VIS','CARMENES_VIS_CCF','EXPRES','NIRPS_HA','NIRPS_HE']):    
-                        vis_day_exp_all=[]
-                        vis_hour_exp_all=[]
-                        bjd_exp_all = []
-                        for file_path in vis_path_exp:
-                            hdulist =fits.open(file_path)
-                            hdr =hdulist[0].header 
-                            if inst=='CORALIE':
-                                vis_day_exp_all+= [int(hdr['HIERARCH ESO CORA SHUTTER START DATE'][6:8])]
-                                bjd_exp_all  += [ hdr['HIERARCH ESO DRS BJD'] - 2400000. ]
-                                stop('Define time for CORALIE')
-                            elif inst=='EXPRES':
-                                vis_day_exp_all+= [int(hdr['DATE-OBS'].split(' ')[0].split('-')[2]) ]  
-                                vis_hour_exp_all+=[int(hdr['DATE-OBS'].split(' ')[1].split(':')[0])]                            
-                            elif inst=='CARMENES_VIS_CCF':bjd_exp_all  += [  hdr['BJD']  ] 
-                            elif inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','CARMENES_VIS','NIRPS_HA','NIRPS_HE']:
-                                vis_day_exp_all+= [int(hdr['DATE-OBS'].split('T')[0].split('-')[2]) ]  
-                                vis_hour_exp_all+=[int(hdr['DATE-OBS'].split('T')[1].split(':')[0])]
-                                if inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','NIRPS_HA','NIRPS_HE']:bjd_exp_all +=[  hdr['HIERARCH '+facil_inst+' QC BJD'] - 2400000. ]
-                                elif inst=='CARMENES_VIS':bjd_exp_all  += [  hdr['CARACAL BJD']  ]                        
+                if (not gen_dic['mock_data']) and (inst in ['CORALIE','ESPRESSO','ESPRESSO_MR','HARPS','HARPN','CARMENES_VIS','CARMENES_VIS_CCF','EXPRES','NIGHT','NIRPS_HA','NIRPS_HE']):    
+                    vis_day_exp_all=[]
+                    vis_hour_exp_all=[]
+                    bjd_exp_all = []
+                    for file_path in vis_path_exp:
+                        hdulist =fits.open(file_path)
+                        hdr =hdulist[0].header 
                         if inst=='CORALIE':
-                            vis_yr = hdr['HIERARCH ESO CORA SHUTTER START DATE'][0:4]
-                            vis_mt = hdr['HIERARCH ESO CORA SHUTTER START DATE'][4:6]
+                            vis_day_exp_all+= [int(hdr['HIERARCH ESO CORA SHUTTER START DATE'][6:8])]
+                            bjd_exp_all  += [ hdr['HIERARCH ESO DRS BJD'] - 2400000. ]
+                            stop('ERROR : Define time for CORALIE')
                         elif inst=='EXPRES':
-                            vis_yr = hdr['DATE-OBS'].split(' ')[0].split('-')[0]
-                            vis_mt = hdr['DATE-OBS'].split(' ')[0].split('-')[1]                            
-                        elif (inst not in ['CARMENES_VIS_CCF']):
-                            vis_yr = hdr['DATE-OBS'].split('T')[0].split('-')[0]
-                            vis_mt = hdr['DATE-OBS'].split('T')[0].split('-')[1]  
-                              
-                        #BJD midpoint
-                        bjd_exp_all = np.array(bjd_exp_all)
-                        bjd_vis = np.mean(bjd_exp_all)
-                        data_inst['midpoints'][vis] = '%.5f'%(bjd_vis+2400000.)+' BJD'
-                            
-                        #Take the day before as reference if exposure is past midnight (ie, not between 12 and 23) 
-                        if len(vis_day_exp_all)>0:
-                            vis_day_exp_all = np.array(vis_day_exp_all)
-                            vis_hour_exp_all = np.array(vis_hour_exp_all)
-                            vis_day_exp_all[vis_hour_exp_all<=12]-=1
-                            if np.sum(vis_day_exp_all==0)>0:stop('ERROR: adapt date retrieval')                           
-                            
-                            #Check wether visit is contained within a single night
-                            #    - either:
-                            # + all exposures on same day before midnight or after midnight
-                            # + all exposures within two consecutive days between noon and midnight 
-                            min_day = np.min(vis_day_exp_all)
-                            max_day = np.max(vis_day_exp_all) 
-                            min_hr = np.min(vis_hour_exp_all)
-                            max_hr = np.max(vis_hour_exp_all)
-                            if ((max_day==min_day) and ((min_hr>=12) or (max_hr<=12))) or ((max_day==min_day+1) and ((min_hr>=12) and (max_hr<=12))): 
-                                data_inst['single_night']+=[vis]
-                                vis_day = np.min(vis_day_exp_all)  
-                                vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)        
-                                data_inst['dates'][vis] = str(vis_yr)+'/'+str(vis_mt)+'/'+str(vis_day_txt)
-                            else:                    
-                                vis_day_txt_all = np.array(['0'+str(vis_day) if vis_day<10 else str(vis_day) for vis_day in vis_day_exp_all])
-                        else:
-                            print('WARNING: data could not be retrieved')
-                            if (np.max(bjd_exp_all) - np.min(bjd_exp_all))<1.:data_inst['single_night']+=[vis]
+                            vis_day_exp_all+= [int(hdr['DATE-OBS'].split(' ')[0].split('-')[2]) ]  
+                            vis_hour_exp_all+=[int(hdr['DATE-OBS'].split(' ')[1].split(':')[0])]                            
+                        elif inst=='CARMENES_VIS_CCF':bjd_exp_all  += [  hdr['BJD']  ] 
+                        elif inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','CARMENES_VIS','NIGHT','NIRPS_HA','NIRPS_HE']:
+                            vis_day_exp_all+= [int(hdr['DATE-OBS'].split('T')[0].split('-')[2]) ]  
+                            vis_hour_exp_all+=[int(hdr['DATE-OBS'].split('T')[1].split(':')[0])]
+                            if inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','NIGHT','NIRPS_HA','NIRPS_HE']:bjd_exp_all +=[  hdr['HIERARCH '+facil_inst+' QC BJD'] - 2400000. ]
+                            elif inst=='CARMENES_VIS':bjd_exp_all  += [  hdr['CARACAL BJD']  ]                        
+                    if inst=='CORALIE':
+                        vis_yr = hdr['HIERARCH ESO CORA SHUTTER START DATE'][0:4]
+                        vis_mt = hdr['HIERARCH ESO CORA SHUTTER START DATE'][4:6]
+                    elif inst=='EXPRES':
+                        vis_yr = hdr['DATE-OBS'].split(' ')[0].split('-')[0]
+                        vis_mt = hdr['DATE-OBS'].split(' ')[0].split('-')[1]                            
+                    elif (inst not in ['CARMENES_VIS_CCF']):
+                        vis_yr = hdr['DATE-OBS'].split('T')[0].split('-')[0]
+                        vis_mt = hdr['DATE-OBS'].split('T')[0].split('-')[1]  
+                          
+                    #BJD midpoint
+                    bjd_exp_all = np.array(bjd_exp_all)
+                    bjd_vis = np.mean(bjd_exp_all)
+                    data_inst['midpoints'][vis] = '%.5f'%(bjd_vis+2400000.)+' BJD'
+                        
+                    #Take the day before as reference if exposure is past midnight (ie, not between 12 and 23) 
+                    if len(vis_day_exp_all)>0:
+                        vis_day_exp_all = np.array(vis_day_exp_all)
+                        vis_hour_exp_all = np.array(vis_hour_exp_all)
+                        vis_day_exp_all[vis_hour_exp_all<=12]-=1
+                        if np.sum(vis_day_exp_all==0)>0:stop('ERROR: adapt date retrieval')                           
+                        
+                        #Check wether visit is contained within a single night
+                        #    - either:
+                        # + all exposures on same day before midnight or after midnight
+                        # + all exposures within two consecutive days between noon and midnight 
+                        min_day = np.min(vis_day_exp_all)
+                        max_day = np.max(vis_day_exp_all) 
+                        min_hr = np.min(vis_hour_exp_all)
+                        max_hr = np.max(vis_hour_exp_all)
+                        if ((max_day==min_day) and ((min_hr>=12) or (max_hr<=12))) or ((max_day==min_day+1) and ((min_hr>=12) and (max_hr<=12))): 
+                            data_inst['single_night']+=[vis]
+                            vis_day = np.min(vis_day_exp_all)  
+                            vis_day_txt = '0'+str(vis_day) if vis_day<10 else str(vis_day)        
+                            data_inst['dates'][vis] = str(vis_yr)+'/'+str(vis_mt)+'/'+str(vis_day_txt)
+                        else:                    
+                            vis_day_txt_all = np.array(['0'+str(vis_day) if vis_day<10 else str(vis_day) for vis_day in vis_day_exp_all])
+                    else:
+                        print('WARNING: data could not be retrieved')
+                        if (np.max(bjd_exp_all) - np.min(bjd_exp_all))<1.:data_inst['single_night']+=[vis]
                             
                 else:
                     bjd_vis = np.mean(bjd_exp_all) - 2400000.    
@@ -1703,10 +1781,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 if (len(data_inst[vis]['studied_ar'])>0):
                     if gen_dic['mock_data']:
                         if (inst in mock_dic['ar_prop']) and (vis in mock_dic['ar_prop'][inst]):ar_prop_nom = retrieve_ar_prop_from_param(mock_dic['ar_prop'][inst][vis], inst, vis)
-                        else:stop('WARNING: active regions are required in visit '+vis+' but their mock properties are not defined')
+                        else:stop('ERROR: active regions are required in visit '+vis+' but their mock properties are not defined')
                     else:
                         if (inst in theo_dic['ar_prop']) and (vis in theo_dic['ar_prop'][inst]):ar_prop_nom = retrieve_ar_prop_from_param(theo_dic['ar_prop'][inst][vis], inst, vis)
-                        else:stop('WARNING: active regions are required in visit '+vis+' but their theoretical properties are not defined')
+                        else:stop('ERROR: active regions are required in visit '+vis+' but their theoretical properties are not defined')
                     ar_prop_nom['cos_istar']=system_param['star']['cos_istar']
                     for ar in data_inst[vis]['studied_ar']: 
                         coord_dic[inst][vis][ar]={}
@@ -1732,13 +1810,13 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         hdr =hdulist[0].header 
 
                         #Retrieve exposure bjd in instrument/visit table
-                        if inst in ['HARPS','HARPN','ESPRESSO','ESPRESSO_MR','NIRPS_HA','NIRPS_HE']:
+                        if inst in ['HARPS','HARPN','ESPRESSO','ESPRESSO_MR','NIGHT','NIRPS_HA','NIRPS_HE']:
                             bjd_exp =  hdr['HIERARCH '+facil_inst+' QC BJD'] - 2400000.      
                         elif inst in ['CORALIE']:bjd_exp =  hdr['HIERARCH ESO DRS BJD'] - 2400000.  
                         elif inst in ['SOPHIE']:bjd_exp =  hdr['HIERARCH OHP DRS BJD'] - 2400000.  
                         elif inst in ['CARMENES_VIS']:bjd_exp =  hdr['CARACAL BJD']   
                         elif inst=='EXPRES':bjd_exp = hdulist[1].header['BARYMJD'] +0.5
-                        else:stop('Undefined')
+                        else:stop('ERROR : bjd keyword for '+inst+' is undefined')
                         coord_dic[inst][vis]['bjd'][iexp] = bjd_exp
                       
                         #Exposure time (s)    
@@ -1776,7 +1854,18 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     
                     #Stellar phase
                     coord_dic[inst][vis]['st_ph_st'][iexp],coord_dic[inst][vis]['cen_ph_st'][iexp],coord_dic[inst][vis]['end_ph_st'][iexp] = get_timeorbit(system_param['star']['Tcenter'],coord_dic[inst][vis]['bjd'][iexp], {'period':system_param['star']['Peq']}, coord_dic[inst][vis]['t_dur'][iexp])[0:3] 
-                    
+
+                    #Orbital coordinates for each studied planet
+                    for pl_loc in data_inst[vis]['studied_pl']:
+                        coord_dic[inst][vis][pl_loc]['cen_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['st_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['end_pos'][:,iexp],coord_dic[inst][vis][pl_loc]['ecl'][iexp],coord_dic[inst][vis][pl_loc]['rv_pl'][iexp],coord_dic[inst][vis][pl_loc]['v_pl'][iexp],\
+                        coord_dic[inst][vis][pl_loc]['st_ph'][iexp],coord_dic[inst][vis][pl_loc]['cen_ph'][iexp],coord_dic[inst][vis][pl_loc]['end_ph'][iexp],coord_dic[inst][vis][pl_loc]['ph_dur'][iexp]=coord_expos(pl_loc,coord_dic,inst,vis,system_param['star'],
+                                            system_param[pl_loc],coord_dic[inst][vis]['bjd'][iexp],coord_dic[inst][vis]['t_dur'][iexp],data_dic,data_dic['DI']['system_prop']['achrom'][pl_loc][0])                    
+                        
+                    #Surface coordinates for each studied active region  
+                    for ar in data_inst[vis]['studied_ar']:
+                        ar_prop_exp = coord_expos_ar(ar,coord_dic[inst][vis]['bjd'][iexp],ar_prop_nom,system_param['star'],coord_dic[inst][vis]['t_dur'][iexp],gen_dic['ar_coord_par'])                           
+                        for key in ar_prop_exp:coord_dic[inst][vis][ar][key][:, iexp] = [ar_prop_exp[key][0],ar_prop_exp[key][1],ar_prop_exp[key][2]]  
+
                 #--------------------------------------------------------------------------------------------------
                 #Processing all exposures in visit
                 for isub_exp,iexp in enumerate(range(n_in_visit)):
@@ -1940,9 +2029,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             
                                 #2D spectra
                                 elif (data_inst['type']=='spec2D'):
-                                    if inst in ['ESPRESSO','ESPRESSO_MR','HARPN','HARPS','CARMENES_VIS','NIRPS_HA','NIRPS_HE']:data_inst[vis]['nspec']  = (hdulist[1].header)['NAXIS1']
+                                    if inst in ['ESPRESSO','ESPRESSO_MR','HARPN','HARPS','CARMENES_VIS','NIGHT','NIRPS_HA','NIRPS_HE']:data_inst[vis]['nspec']  = (hdulist[1].header)['NAXIS1']
                                     elif inst=='EXPRES':data_inst[vis]['nspec'] = 7920
-                                    else:stop('TBD')
+                                    else:stop('ERROR : number of pixels for '+inst+' undefined (set header key)')
 
                     #Initialize data at first exposure
                     if isub_exp==0: 
@@ -2070,8 +2159,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             data_prop[inst][vis]['BERV'][iexp] = hdulist[2].header['HIERARCH wtd_mdpt_bc']*c_light
                         else:
                             if inst=='CARMENES_VIS': reduc_txt = 'CARACAL' 
-                            elif inst in ['HARPN','HARPS','ESPRESSO','ESPRESSO_MR','NIRPS_HA','NIRPS_HE']:reduc_txt = facil_inst+' QC'
-                            else:stop('Define BERV retrieval')
+                            elif inst in ['HARPN','HARPS','ESPRESSO','ESPRESSO_MR','NIGHT','NIRPS_HA','NIRPS_HE']:reduc_txt = facil_inst+' QC'
+                            else:stop('ERROR : define BERV retrieval')
                             data_prop[inst][vis]['BERV'][iexp] = hdr['HIERARCH '+reduc_txt+' BERV']
 
                         #Retrieve CCFs
@@ -2147,7 +2236,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                     qualdata_exp = data_loc['quality']    
 
                                 else:
-                                    stop('Spectra upload TBD for this instrument') 
+                                    stop('ERROR : spectra upload undefined for '+inst) 
         
                             #------------------------------
             
@@ -2163,7 +2252,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                         idxsub_ord_skysub = np_where1D(cond_skysub[idx_ord_kept])          #Indexes in reduced tables 
                                 else:hdulist_dat = hdulist
                                     
-                                if inst in ['HARPS','ESPRESSO','ESPRESSO_MR','HARPN','NIRPS_HA','NIRPS_HE']:
+                                if inst in ['HARPS','ESPRESSO','ESPRESSO_MR','HARPN','NIGHT','NIRPS_HA','NIRPS_HE']:
                            
                                     #Bin centers
                                     #    - dimension norder x nbins
@@ -2309,7 +2398,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                         data_dic_temp['tell'][iexp] = (hdulist_dat[1].data)['tellurics'][idx_ord_kept]  
 
                                 else:
-                                    stop('Spectra upload TBD for this instrument') 
+                                    stop('ERROR : spectra upload undefined for '+inst) 
                         
                         #Set bad quality pixels to nan
                         #    - bad pixels have flag > 0
@@ -2929,6 +3018,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
     data_dic[inst]['system_prop'] = deepcopy(data_dic['DI']['system_prop'])
     data_dic[inst]['ar_prop'] = deepcopy(data_dic['DI']['ar_prop'])
 
+    #Creating relevant directories
+    if gen_dic['EvE_outputs']:
+        if (not path_exist(gen_dic['save_data_dir']+'EvE_outputs/'+inst)):makedirs(gen_dic['save_data_dir']+'EvE_outputs/'+inst)
+
     #Final processing
     if len(data_dic[inst]['visit_list'])>1:
         if (not data_dic[inst]['comm_sp_tab']):print('         Visits do not share a common spectral table')      
@@ -2953,6 +3046,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
         #Initialize all exposures as being defined
         data_dic['DI'][inst][vis]['idx_def'] = np.arange(data_vis['n_in_visit'],dtype=int)
+    
+        #Creating relevant directories
+        if gen_dic['EvE_outputs']:
+            if (not path_exist(gen_dic['save_data_dir']+'EvE_outputs/'+inst+'/'+vis)):makedirs(gen_dic['save_data_dir']+'EvE_outputs/'+inst+'/'+vis)
 
         #------------------------------------------------------------------------------------
 

@@ -89,7 +89,7 @@ def kitcat_mask(mask_dic,fwhm_ccf,cen_bins_mast,inst,edge_bins_mast,flux_mask_no
     index_minima = index_minima.astype('int')
     wave_minima = cen_bins_reg[index_minima]
    
-    #Minima    
+    #Maxima
     index_maxima, flux_maxima = myf.local_max(flux_norm_reg,vicinity_reg)
     index_maxima = index_maxima.astype('int')
     wave_maxima = cen_bins_reg[index_maxima]

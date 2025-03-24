@@ -44,6 +44,9 @@ def par_formatting_inst_vis(p_start,fixed_args,inst,vis,line_type):
     fixed_args['name_prop2input'] = {}
     fixed_args['coeff_ord2name'] = {}
     fixed_args['linevar_par'] = {}
+    
+    #Stellar line properties with polynomial spatial dependence
+    stl_prop_pol = ['ctrst','FWHM','amp_l2c','rv_l2c','FWHM_l2c','a_damp','rv_line','skewA','kurtA','c4_pol','c6_pol','dRV_joint']
 
     #Retrieve all root name parameters with instrument/visit dependence, possibly with several orders (polynomial degree, or list)
     par_list=[]
@@ -94,7 +97,7 @@ def par_formatting_inst_vis(p_start,fixed_args,inst,vis,line_type):
                             if gen_root_par not in fixed_args['coeff_ord2name'][inst_loc][vis_loc]:fixed_args['coeff_ord2name'][inst_loc][vis_loc][gen_root_par]={}
         
                             #Identify stellar line properties with polynomial spatial dependence 
-                            if gen_root_par in ['ctrst','FWHM','amp_l2c','rv_l2c','FWHM_l2c','a_damp','rv_line']:
+                            if gen_root_par in stl_prop_pol:
                                 if (line_type is not None) and (line_type!='ana') and (gen_root_par!='rv_line'):stop('Cannot use parameter '+gen_root_par+'with line model of type '+line_type)
                                 if inst_loc not in fixed_args['linevar_par']:fixed_args['linevar_par'][inst_loc]={}
                                 if vis_loc not in fixed_args['linevar_par'][inst_loc]:fixed_args['linevar_par'][inst_loc][vis_loc]=[]
@@ -105,7 +108,7 @@ def par_formatting_inst_vis(p_start,fixed_args,inst,vis,line_type):
                     if gen_root_par not in fixed_args['coeff_ord2name']:fixed_args['coeff_ord2name'][gen_root_par]={}
 
                     #Identify stellar line properties with polynomial spatial dependence 
-                    if gen_root_par in ['ctrst','FWHM','amp_l2c','rv_l2c','FWHM_l2c','a_damp','rv_line']:
+                    if gen_root_par in stl_prop_pol:
                         if (line_type is not None) and (line_type!='ana') and (gen_root_par!='rv_line'):stop('Cannot use parameter '+gen_root_par+'with line model of type '+line_type)
                         if gen_root_par not in fixed_args['linevar_par']:fixed_args['linevar_par'][gen_root_par] = {}                     
 
@@ -256,12 +259,12 @@ def model_par_names(par):
         'FWHM_ord0':'FWHM$_{0}$','FWHM_ord1':'FWHM$_{1}$','FWHM_ord2':'FWHM$_{2}$','FWHM_ord3':'FWHM$_{3}$','FWHM_ord4':'FWHM$_{4}$','true_FWHM':'FWHM$_\mathrm{true}$',
         'FWHM':'FWHM (km/s)','FWHM_voigt':'FWHM$_\mathrm{Voigt}$ (km s$^{-1}$)','FWHM_LOR':'FWHM$_\mathrm{Lor}$ (km s$^{-1}$)','FWHM_lobe':'FWHM$_\mathrm{lobe}$ (km s$^{-1}$)',
         'area':'Area',
-        'a_damp':'a$_\mathrm{damp}$',
+        'a_damp':'a$_\mathrm{damp}$','skewA':'$\mathrm{skewness}$','kurtA':'$\mathrm{kurtosis}$','dRV_joint':'$\mathrm{dRV joint}$',
         'amp':'Amp','amp_lobe':'A$_\mathrm{lobe}$','true_amp':'A$_\mathrm{true}$','cont_amp':'A$_\mathrm{cont}$',
         'rv':'RV (km/s)','RV_lobe':'rv$_\mathrm{lobe}$ (km s$^{-1}$)',
         'rv_l2c':'RV$_{l}$-RV$_{c}$','amp_l2c':'A$_{l}$/A$_{c}$','FWHM_l2c':'FWHM$_{l}$/FWHM$_{c}$',
         'cont':'P$_\mathrm{cont}$',
-        'c1_pol':'c$_1$','c2_pol':'c$_2$','c3_pol':'c$_3$','c4_pol':'c$_4$',
+        'c1_pol':'c$_1$','c2_pol':'c$_2$','c3_pol':'c$_3$','c4_pol':'c$_4$','c5_pol':'c$_5$','c6_pol':'c$_6$',
         'LD_u1':'LD$_1$','LD_u2':'LD$_2$','LD_u3':'LD$_3$','LD_u4':'LD$_4$',
         'f_GD':'f$_{\rm GD}$','beta_GD':'$\beta_{\rm GD}$','Tpole':'T$_{\rm pole}$',
         'eta_R':r'$\eta_{\rm R}$','eta_T':r'$\eta_{\rm T}$','ksi_R':r'\Ksi$_\mathrm{R}$','ksi_T':r'\Ksi$_\mathrm{T}$',
@@ -1211,16 +1214,29 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
         cont_range = prop_dic['cont_range'][inst][iord_sel]
         trim_range = prop_dic['trim_range'][inst] if (inst in prop_dic['trim_range']) else None 
  
-        #MCMC fit default options
-        if prop_dic['fit_mode']=='mcmc': 
-            if ('walkers_set' not in prop_dic):prop_dic['walkers_set']={}
-            for key in ['nwalkers','nsteps','nburn']:
-                if key not in prop_dic['walkers_set']:prop_dic['walkers_set'][key] = {}
-                if (inst not in prop_dic['walkers_set'][key]):prop_dic['walkers_set'][key][inst] = {}
-            if (vis not in prop_dic['walkers_set']['nwalkers'][inst]):prop_dic['walkers_set']['nwalkers'][inst][vis] = 50
-            if (vis not in prop_dic['walkers_set']['nsteps'][inst]):prop_dic['walkers_set']['nsteps'][inst][vis] = 1000
-            if (vis not in prop_dic['walkers_set']['nburn'][inst]):prop_dic['walkers_set']['nburn'][inst][vis] = 200
-       
+        #MCMC/NS default options       
+        if prop_dic['fit_mode'] in ['mcmc','ns']: 
+            if ('sampler_set' not in prop_dic):prop_dic['sampler_set']={}
+            
+            #MCMC fit default options
+            if prop_dic['fit_mode']=='mcmc': 
+                for key in ['nwalkers','nsteps','nburn']:
+                    if key not in prop_dic['sampler_set']:prop_dic['sampler_set'][key] = {}
+                    if (inst not in prop_dic['sampler_set'][key]):prop_dic['sampler_set'][key][inst] = {}
+                if (vis not in prop_dic['sampler_set']['nwalkers'][inst]):prop_dic['sampler_set']['nwalkers'][inst][vis] = 50
+                if (vis not in prop_dic['sampler_set']['nsteps'][inst]):prop_dic['sampler_set']['nsteps'][inst][vis] = 1000
+                if (vis not in prop_dic['sampler_set']['nburn'][inst]):prop_dic['sampler_set']['nburn'][inst][vis] = 200
+    
+            #NS fit default options
+            elif prop_dic['fit_mode']=='ns': 
+                for key in ['nlive','bound_method','sample_method','dlogz']:
+                    if key not in prop_dic['sampler_set']:prop_dic['sampler_set'][key] = {}
+                    if (inst not in prop_dic['sampler_set'][key]):prop_dic['sampler_set'][key][inst] = {}
+                if (vis not in prop_dic['sampler_set']['nlive'][inst]):prop_dic['sampler_set']['nlive'][inst][vis] = 400
+                if (vis not in prop_dic['sampler_set']['bound_method'][inst]):prop_dic['sampler_set']['bound_method'][inst][vis] = 'auto'
+                if (vis not in prop_dic['sampler_set']['sample_method'][inst]):prop_dic['sampler_set']['sample_method'][inst][vis] = 'auto'
+                if (vis not in prop_dic['sampler_set']['dlogz'][inst]):prop_dic['sampler_set']['dlogz'][inst][vis] = 0.1
+
         #Default model
         if ('model' not in prop_dic):prop_dic['model']={}
         if (inst not in prop_dic['model']):prop_dic['model'][inst]='gauss'
@@ -1309,7 +1325,7 @@ def MAIN_single_anaprof(vis_mode,data_type,data_dic,gen_dic,inst,vis,coord_dic,t
                         rv_starbar_solbar = data_bin['sysvel']
                     
                 #Ranges for occulted stellar lines
-                #    - 'occ_range' define the range covered by local stellar lines in the photosphere rest frame (source), and is shifted to the star or solar barycentric rest frame (receiver) if relevant 
+                #    - 'occ_range' defines the range covered by local stellar lines in the photosphere rest frame (source), and is shifted to the star or solar barycentric rest frame (receiver) if relevant 
                 #       see gen_specdopshift() :
                 # w_receiver = w_source * (1+ rv[s/r]/c))
                 # w_star = w_photo * (1+ rv[photo/star]/c))
@@ -1978,8 +1994,8 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
         p_final = call_lmfit(p_start,fixed_args['x_val'],fixed_args['y_val'],fixed_args['cov_val'],fixed_args['fit_func'],verbose=verbose,fixed_args=fixed_args,fit_dic=fit_dic)[2]
      
     #--------------------------------------------------------------   
-    #Fit by emcmc 
-    elif fit_prop_dic['fit_mode']=='mcmc': 
+    #Fit by MCMC or Nested-sampling 
+    elif fit_prop_dic['fit_mode'] in ['mcmc','ns']:
         
         #Calculate HDI for error definition
         #    - automatic definition of PDF resolution is used unless histogram resolution is set
@@ -1991,20 +2007,31 @@ def single_anaprof(isub_exp,iexp,inst,data_dic,vis,fit_prop_dic,gen_dic,verbose,
             elif ('HDI_bwf' in fit_prop_dic) and (param_loc in fit_prop_dic['HDI_bwf']) and (inst in fit_prop_dic['HDI_bwf'][param_loc]) and (vis in fit_prop_dic['HDI_bwf'][param_loc][inst]):
                 fit_dic['HDI_bwf'][param_loc]=fit_prop_dic['HDI_bwf'][param_loc][inst][vis]
     
-        #Store options
-        for key in ['nwalkers','nsteps','nburn']:fit_dic[key] = fit_prop_dic['walkers_set'][key][inst][vis]
+        #MCMC fit
+        if fit_prop_dic['fit_mode']=='mcmc':
+    
+            #Store options
+            for key in ['nwalkers','nsteps','nburn']:fit_dic[key] = fit_prop_dic['sampler_set'][key][inst][vis]
 
-        #Call MCMC
-        walker_chains,step_outputs=call_MCMC(fit_prop_dic['run_mode'],fit_dic['nthreads'],fixed_args,fit_dic,verbose=verbose)
+            #Call MCMC
+            walker_chains,step_outputs=call_MCMC(fit_prop_dic['run_mode'],fit_dic['nthreads'],fixed_args,fit_dic,verbose=verbose)
 
-        #Excluding parts of the chains
-        if fit_dic['exclu_walk']:
-            if gen_dic['star_name'] == 'HD106315':
-                wgood=np_where1D((np.min(walker_chains[:,400::,np_where1D(fixed_args['var_par_list']=='veq')],axis=1)>8.))
+            #Excluding parts of the chains
+            if fit_dic['exclu_walk']:
+                if gen_dic['star_name'] == 'HD106315':
+                    wgood=np_where1D((np.min(walker_chains[:,400::,np_where1D(fixed_args['var_par_list']=='veq')],axis=1)>8.))
+    
+                walker_chains=np.take(walker_chains,wgood,axis=0)     
+                fit_dic['nwalkers']=len(wgood) 
 
-            walker_chains=np.take(walker_chains,wgood,axis=0)     
-            fit_dic['nwalkers']=len(wgood) 
- 
+        #NS fit
+        else:
+            
+            #Store options
+            for key in ['nlive','bound_method','sample_method','dlogz']:fit_dic[key] = fit_prop_dic['sampler_set'][key][inst][vis]
+
+            #Call NS
+            walker_chains,step_outputs=call_NS(fit_prop_dic['run_mode'],fit_dic['nthreads'],fixed_args,fit_dic,verbose=verbose)
     
         #Processing:
         p_final,merged_chain,merged_outputs,par_sample_sig1,par_sample=postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,fit_dic['nthreads'],fixed_args['par_names'],verbose=verbose)

@@ -307,26 +307,48 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
         plot_options['plot_input']=True
         
     #--------------------------------------              
-    if (key_plot in ['Fbal_corr','Fbal_corr_vis','input_LC','plocc_ranges','prop_DI_PDFs','prop_Intr_PDFs']):
+    if ('Fbal_corr' in key_plot) or ('FbalOrd_corr' in key_plot) or (key_plot in ['input_LC','plocc_ranges','prop_DI_PDFs','prop_Intr_PDFs']):
 
         #Plot exposure indexes
         plot_options['plot_expid'] = True
         
     #--------------------------------------           
     #Flux balance options
-    if ('Fbal_corr' in key_plot):
+    if ('Fbal_corr' in key_plot) or ('FbalOrd_corr' in key_plot):
 
         #Overplot all exposures or offset them
         plot_options['gap_exp']=0.  
         
-        #Indexes of bins to be plotted 
-        #    - format is {inst : { vis : [idx0, idx1, ..]}
-        #      where 'idxi' are the indexes of the spectral bins used in the flux balance fit
-        #    - use this option to identify bins biasing the fit
-        plot_options['ibin_plot'] = {}        
+        #Global flux balance
+        if ('Fbal_corr' in key_plot):
+        
+            #Indexes of bins to be plotted 
+            #    - format is {inst : { vis : [idx0, idx1, ..]}
+            #      where 'idxi' are the indexes of the spectral bins used in the flux balance fit
+            #    - use this option to identify bins biasing the fit
+            plot_options['ibin_plot'] = {}        
+    
+            #Plot order indexes
+            plot_options['plot_idx_ord'] = True
 
-        #Plot order indexes
-        plot_options['plot_idx_ord'] = True
+            #Strip range used for correction
+            plot_options['strip_corr'] = False
+
+            #Model spectral resolution 
+            #    - in dlnw = dw/w
+            plot_options['dlnw_plot'] = 0.002
+            
+        #Intra-order flux balance
+        if ('FbalOrd_corr' in key_plot):            
+
+            #Model spectral resolution 
+            #    - in dlnw = dw/w
+            plot_options['dlnw_plot'] = 1e-5    
+            
+            #Abscissa range
+            #    - format : { inst : {iord : [x0,x1], ..} }
+            plot_options['x_range'] = {}          
+
 
     #--------------------------------------   
     #Binned profiles settings     
@@ -615,77 +637,70 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
     
             
     
-    
         ################################################################################################################    
-        #%%%% Global flux balance (exposures)
+        #%%%% Global flux balance
+        ################################################################################################################
+
+        ################################################################################################################    
+        #%%%%% Exposures
         #    - relative to the mean level of each profile
         ################################################################################################################
         if (plot_dic['Fbal_corr']!=''):   
             key_plot = 'Fbal_corr'
     
-            #%%%%% Generic settings
+            #%%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
+
     
-            #%%%%% Strip range used for correction
-            plot_settings[key_plot]['strip_corr'] = False
-    
-            #%%%%% Model spectral resolution 
-            #    - in dlnw = dw/w, if x_range is defined
-            plot_settings[key_plot]['dlnw_plot'] = 0.002
-        
-    
-        
-    
+
     
         ################################################################################################################    
-        #%%%% Global DRS flux balance (exposures)
+        #%%%%% Exposures (DRS)
         ################################################################################################################
         if (plot_dic['Fbal_corr_DRS']!=''):
             key_plot = 'Fbal_corr_DRS'
     
-            #%%%%% Generic settings
+            #%%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic) 
             
       
-        
-      
         ################################################################################################################    
-        #%%%% Global flux balance (visits)
+        #%%%%% Visits
         #    - relative to the mean level of each profile
         ################################################################################################################
         if (plot_dic['Fbal_corr_vis']!=''):   
             key_plot = 'Fbal_corr_vis'
     
-            #%%%%% Generic settings
+            #%%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
 
-            #%%%%% Strip range used for correction
-            plot_settings[key_plot]['strip_corr'] = False
-    
-            #%%%%% Model spectral resolution 
-            #    - in dlnw = dw/w, if x_range is defined
-            plot_settings[key_plot]['dlnw_plot'] = 0.002   
-    
-        
-        
-        
         
     
         ################################################################################################################ 
         #%%%% Intra-order flux balance
         ################################################################################################################ 
-        if (plot_dic['Fbal_corr_ord']!=''):
-            key_plot = 'Fbal_corr_ord' 
+
+        ################################################################################################################ 
+        #%%%%% Exposures 
+        ################################################################################################################ 
+        if (plot_dic['FbalOrd_corr']!=''):
+            key_plot = 'FbalOrd_corr' 
     
-            #%%%%% Generic settings
+            #%%%%%% Generic settings
             plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)          
+
+
+        ################################################################################################################ 
+        #%%%%% Visits 
+        #    - relative to the mean level of each profile
+        ################################################################################################################
+        if (plot_dic['FbalOrd_corr_vis']!=''):   
+            key_plot = 'FbalOrd_corr_vis'
     
-    
-    
-            
-            
-            
-            
+            #%%%%%% Generic settings
+            plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)         
+
+
             
             
         ################################################################################################################ 

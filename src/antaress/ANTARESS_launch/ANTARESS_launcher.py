@@ -109,6 +109,13 @@ def ANTARESS_launcher(sequence = '' , custom_systems = '',custom_settings = '',c
     print('****************************************')
     print('')
     
+    #Sequence
+    if len(sequence)>0:
+        if sequence=='st_master_tseries':txt_seq = 'computation of stellar master from time-series'
+        elif sequence=='night_proc':txt_seq = 'processing of NIGHT data'        
+        print('Sequence : '+txt_seq)        
+        print('')
+
     #Moving to code directory
     os_system.chdir(code_dir)
   

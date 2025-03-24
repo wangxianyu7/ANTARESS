@@ -775,7 +775,11 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
     ################################################################################################################    
-    #%%%% Global flux balance (exposures)
+    #%%%% Global flux balance
+    ################################################################################################################
+
+    ################################################################################################################    
+    #%%%%% Exposures
     ################################################################################################################
     if ('Fbal_corr' in plot_settings):
         key_plot = 'Fbal_corr'
@@ -806,6 +810,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     cmap = plt.get_cmap('jet') 
                     col_visit=np.array([cmap(0)]) if n_in_visit==1 else cmap( np.arange(n_in_visit)/(n_in_visit-1.))
 
+                #Frame
                 plt.ioff()        
                 if plot_set_key['gap_exp']==0.:fig = plt.figure(figsize=plot_set_key['fig_size'])
                 else:fig = plt.figure(figsize=(10, 60))
@@ -876,7 +881,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         elif plot_set_key['sp_var'] == 'wav' :fit_range=gen_dic['Fbal_range_fit'][inst][vis]       
                     plot_shade_range(plt.gca(),fit_range,x_range_loc,y_range_loc,mode='span',zorder=-10,alpha=0.1,compl=True)
 
-                #Strip range used for correction
+                #Strip range to be corrected
                 y_range_loc=plot_set_key['y_range'] if plot_set_key['y_range'] is not None else np.array([y_min,y_max])
                 if plot_set_key['strip_corr']:
                     if len(gen_dic['Fbal_range_corr'])==0:Fbal_range_corr=[x_range_loc]
@@ -912,14 +917,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
     ################################################################################################################    
-    #%%%% Global DRS flux balance (exposures)
+    #%%%%% Exposures (DRS)
     ################################################################################################################
     if ('Fbal_corr_DRS' in plot_settings):
         key_plot = 'Fbal_corr_DRS'
         plot_set_key = plot_settings[key_plot] 
 
         print('-----------------------------------')
-        print('   > Plotting flux balance correction from DRS')
+        print('   > Global flux balance (DRS)')
                         
         #Create directory if required
         path_loc = gen_dic['save_plot_dir']+'Spec_raw/FluxBalance/'
@@ -975,7 +980,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
 
     ################################################################################################################    
-    #%%%% Global flux balance (visits)
+    #%%%%% Visits
     ################################################################################################################
     if ('Fbal_corr_vis' in plot_settings):  
         key_plot = 'Fbal_corr_vis'
@@ -993,8 +998,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             if plot_set_key['gap_exp']==0.:plot_set_key['margins']=[0.15,0.15,0.95,0.7] 
             else:plot_set_key['margins']=[0.1,0.02,0.95,0.95] 
 
+            #Frame
             plt.ioff()        
-            if plot_set_key['gap_exp']==0.:fig = plt.figure(figsize=(10, 4))
+            if plot_set_key['gap_exp']==0.:fig = plt.figure(figsize=plot_set_key['fig_size'])
             else:fig = plt.figure(figsize=(10, 10))
 
             #Vertical range
@@ -1028,7 +1034,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 lev_exp = isub*plot_set_key['gap_exp'] 
 
                 #Upload flux balance correction data
-                data_Fbal = np.load(gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_add.npz', allow_pickle=True)['data'].item()   
+                data_Fbal = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_add')   
                 if 'Fbal_wav_bin_vis' not in data_Fbal:stop('ERROR : "Plot data is missing. This plot can only be used if more than one visit per instrument is processed, and if "gen_dic["corr_Fbal""]" was run with "plot_dic["Fbal_corr_vis"]" enabled.')
                 if (inst in plot_set_key['ibin_plot']) and (vis in plot_set_key['ibin_plot'][inst]) and (len(plot_set_key['ibin_plot'][inst][vis])>0):ibin_exp = list(plot_set_key['ibin_plot'][inst][vis])
                 else:ibin_exp=range(len(data_Fbal['Fbal_wav_bin_vis'])) 
@@ -1069,7 +1075,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     elif plot_set_key['sp_var'] == 'wav' :fit_range=gen_dic['Fbal_range_fit'][inst][vis]       
                 plot_shade_range(plt.gca(),fit_range,x_range_loc,y_range_loc,mode='span',zorder=-10,alpha=0.1,compl=True)
 
-            #Strip range used for correction
+            #Strip range to be corrected
             y_range_loc=plot_set_key['y_range'] if plot_set_key['y_range'] is not None else np.array([y_min,y_max])
             if plot_set_key['strip_corr']:
                 if len(gen_dic['Fbal_range_corr'])==0:Fbal_range_corr=[x_range_loc]
@@ -1116,12 +1122,17 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     ################################################################################################################ 
     #%%%% Intra-order flux balance
     ################################################################################################################ 
-    if ('Fbal_corr_ord' in plot_settings):  
-        key_plot = 'Fbal_corr_ord'
+
+
+    ################################################################################################################ 
+    #%%%%% Exposures 
+    ################################################################################################################ 
+    if ('FbalOrd_corr' in plot_settings):  
+        key_plot = 'FbalOrd_corr'
         plot_set_key = plot_settings[key_plot]     
     
         print('-----------------------------------')
-        print('   > Plotting intra-order flux balance correction')
+        print('+ Intra-order flux balance (exposures)')
         
         #Create directory if required
         path_loc = gen_dic['save_plot_dir']+'Spec_raw/FluxBalance/Orders/'
@@ -1133,11 +1144,18 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             #Process each visit
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_set_key['visits_to_plot'][inst]): 
                 data_vis = data_dic[inst][vis]
-                data_Fbal_gen = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_add')['Ord']
+                data_FbalOrd = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_add')['Ord']
+
+                #Horizontal range
+                if (inst in plot_set_key['x_range']) and (len(plot_set_key['x_range'][inst])>0):
+                    x_range_inst = plot_set_key['x_range'][inst]    
+                else:
+                    x_range_inst = {}
+                    data_com = dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_com')     #using path to original table used in flux balance module
 
                 #Orders to process
-                order_list = data_Fbal_gen['iord_corr_list']
-                if len(plot_set_key['iord2plot'])>0:order_list = np.intersect1d(order_list,data_Fbal_gen['iord_corr_list'])
+                order_list = data_FbalOrd['iord_corr_list']
+                if len(plot_set_key['iord2plot'])>0:order_list = np.intersect1d(order_list,data_FbalOrd['iord_corr_list'])
                 nord_list = len(order_list)
 
                 #Visit color
@@ -1172,13 +1190,30 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 #Plot current order for all exposures
                 for isub_ord,iord in enumerate(order_list):
     
-                    #Global flux balance
+                    #Frame
                     plt.ioff()        
-                    fig = plt.figure(figsize=plot_set_key['fig_size'])
-
-                    #Ratio of binned spectra with stellar reference, measured and fitted
+                    if plot_set_key['gap_exp']==0.:fig = plt.figure(figsize=plot_set_key['fig_size'])
+                    else:fig = plt.figure(figsize=(10, 60))
+        
+                    #Vertical range
                     y_min=1e100
                     y_max=-1e100
+
+                    #Horizontal range
+                    if (iord in x_range_inst):x_range_loc = deepcopy(x_range_inst[iord])
+                    else:
+                        if plot_set_key['sp_var'] == 'nu' :x_range_loc = [c_light/data_com['edge_bins'][iord,-1],c_light/data_com['edge_bins'][iord,0]]
+                        elif plot_set_key['sp_var'] == 'wav' :x_range_loc = [data_com['edge_bins'][iord,0],data_com['edge_bins'][iord,-1]]
+                    if plot_set_key['plot_model']:
+                        if plot_set_key['sp_var'] == 'wav' :
+                            min_wav,max_wav = x_range_loc[0],x_range_loc[1]
+                        elif plot_set_key['sp_var'] == 'nu' :
+                            min_wav,max_wav = c_light/x_range_loc[1],c_light/x_range_loc[0] 
+                        nspec_plot = int( np.floor(   np.log(max_wav/min_wav)/np.log( plot_set_key['dlnw_plot'] + 1. ) )  ) 
+                        cen_bin_plot = min_wav*( plot_set_key['dlnw_plot'] + 1. )**(0.5+np.arange(nspec_plot))  
+                        nu_bin_plot = c_light/cen_bin_plot[::-1]
+
+                    #Ratio of binned spectra with stellar reference, measured and fitted
                     for iexp in range(n_in_visit):
                         
                         #Mesured ratio binned exposure/binned master
@@ -1194,18 +1229,159 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Plot frame  
                     if plot_set_key['title']:plt.title('Intra-order flux balance for visit '+vis+' in '+inst+' (order '+str(iord)+')')
                     y_range_loc=plot_set_key['y_range'] if plot_set_key['y_range'] is not None else np.array([y_min,y_max])
-                    custom_axis(plt,position=plot_set_key['margins'],x_range=plot_set_key['x_range'],y_range=y_range_loc,dir_y='out', 
-                                xmajor_int=10.,xminor_int=1.,
-                                xmajor_form='%.1f',ymajor_form='%.3f',
-                                x_title='Wavelength (A)',y_title='Flux ratio',
+                    dx_range=x_range_loc[1]-x_range_loc[0]
+                    dy_range=y_range_loc[1]-y_range_loc[0]
+                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range) 
+                    if plot_set_key['sp_var'] == 'nu' :x_title=r'$\nu$ (10$^{-10}$s$^{-1}$)'
+                    elif plot_set_key['sp_var'] == 'wav' :x_title='Wavelength (A)'
+                    custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
+                                xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
+                                ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
+                                x_title=x_title,y_title='Flux ratio',
                                 font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
-                    plt.savefig(path_loc+inst+'_'+vis+'_ord'+str(iord)+'.'+plot_dic['Fbal_corr_ord']) 
+                    plt.savefig(path_loc+inst+'_'+vis+'_ord'+str(iord)+'.'+plot_dic['FbalOrd_corr']) 
                     plt.close() 
 
 
 
 
+    ################################################################################################################ 
+    #%%%%% Visits 
+    ################################################################################################################ 
 
+    if ('FbalOrd_corr_vis' in plot_settings):  
+        key_plot = 'FbalOrd_corr_vis'
+        plot_set_key = plot_settings[key_plot] 
+
+        print('-----------------------------------')
+        print('+ Intra-order flux balance (visits)')
+        
+        #Create directory if required
+        path_loc = gen_dic['save_plot_dir']+'Spec_raw/FluxBalance/Orders/'
+        if not os_system.path.exists(path_loc):os_system.makedirs(path_loc)  
+
+        #Process original visits        
+        for inst in np.intersect1d(data_dic['instrum_list'],list(plot_set_key['visits_to_plot'].keys())): 
+            if plot_set_key['gap_exp']==0.:plot_set_key['margins']=[0.15,0.15,0.95,0.7] 
+            else:plot_set_key['margins']=[0.1,0.02,0.95,0.95] 
+
+            #Horizontal range
+            if (inst in plot_set_key['x_range']) and (len(plot_set_key['x_range'][inst])>0):
+                x_range_inst = plot_set_key['x_range'][inst]    
+            else:
+                x_range_inst = {}
+                data_com = dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_com') 
+
+            #Visits to plot
+            vis_list = np.intersect1d(list(data_dic[inst].keys()),plot_set_key['visits_to_plot'][inst])
+            data_Fbal_all = {}
+            order_list=[]
+            for isub,vis in enumerate(vis_list): 
+                
+                #Upload flux balance correction data
+                data_Fbal_all[vis] = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_add')['Ord']   
+                if 'Fbal_wav_bin_vis' not in data_Fbal_all[vis]:stop('ERROR : "Plot data is missing. This plot can only be used if more than one visit per instrument is processed, and if "gen_dic["corr_FbalOrd""]" was run with "plot_dic["FbalOrd_corr_vis"]" enabled.')
+
+                #Orders to process
+                order_list_vis = data_Fbal_all[vis]['iord_corr_list']
+                if len(plot_set_key['iord2plot'])>0:order_list_vis = np.intersect1d(order_list_vis,data_Fbal_all[vis]['iord_corr_list'])
+                order_list+=order_list_vis
+            
+            order_list = list(set(order_list))
+            nord_list = len(order_list)
+
+            #Plot current order for all visits
+            for isub_ord,iord in enumerate(order_list):
+
+                #Frame
+                plt.ioff()        
+                if plot_set_key['gap_exp']==0.:fig = plt.figure(figsize=plot_set_key['fig_size'])
+                else:fig = plt.figure(figsize=(10, 10))
+                
+                #Process each visit
+                for isub,vis in enumerate(vis_list): 
+                    data_vis = data_dic[inst][vis]
+                    data_Fbal = data_Fbal_all[vis]
+    
+                    #Visit color
+                    if (inst in plot_set_key['color_dic']) and (vis in plot_set_key['color_dic'][inst]):
+                        col_visit=plot_set_key['color_dic'][inst][vis]
+                    else:
+                        col_visit='dodgerblue'
+    
+                    #Binned ratio of spectrum with stellar reference, measured and fitted
+                    lev_exp = isub*plot_set_key['gap_exp'] 
+
+                    #Vertical range
+                    y_min=1e100
+                    y_max=-1e100
+        
+                    #Horizontal range
+                    if (iord in x_range_inst):x_range_loc = deepcopy(x_range_inst[iord])
+                    else:
+                        if plot_set_key['sp_var'] == 'nu' :x_range_loc = [c_light/data_com['edge_bins'][iord,-1],c_light/data_com['edge_bins'][iord,0]]
+                        elif plot_set_key['sp_var'] == 'wav' :x_range_loc = [data_com['edge_bins'][iord,0],data_com['edge_bins'][iord,-1]]
+                    if plot_set_key['plot_model']:
+                        if plot_set_key['sp_var'] == 'wav' :
+                            min_wav,max_wav = x_range_loc[0],x_range_loc[1]
+                        elif plot_set_key['sp_var'] == 'nu' :
+                            min_wav,max_wav = c_light/x_range_loc[1],c_light/x_range_loc[0] 
+                        nspec_plot = int( np.floor(   np.log(max_wav/min_wav)/np.log( plot_set_key['dlnw_plot'] + 1. ) )  ) 
+                        cen_bin_plot = min_wav*( plot_set_key['dlnw_plot'] + 1. )**(0.5+np.arange(nspec_plot))  
+                        nu_bin_plot = c_light/cen_bin_plot[::-1]
+    
+                    #Mesured ratio binned exposure/binned master
+                    if plot_set_key['plot_data']:
+                        Fbal_T_binned_plot = data_Fbal['Fbal_T_binned_vis'][iord]/data_Fbal['tot_Fr_vis'][iord]
+                        if plot_set_key['sp_var'] == 'nu' :Fbal_cen_bin_plot = c_light/data_Fbal['Fbal_wav_bin_vis'][iord]
+                        elif plot_set_key['sp_var'] == 'wav' :Fbal_cen_bin_plot = data_Fbal['Fbal_wav_bin_vis'][iord]
+                        y_min=np.min([np.min(lev_exp+Fbal_T_binned_plot),y_min])
+                        y_max=np.max([np.max(lev_exp+Fbal_T_binned_plot),y_max]) 
+                        for cen_bin,val_bin,cond_bin in zip(Fbal_cen_bin_plot,Fbal_T_binned_plot,data_Fbal['cond_fit_vis'][iord]):
+                            markerfacecolor = col_visit if cond_bin else 'None'
+                            plt.plot(cen_bin,lev_exp+val_bin,linestyle='',marker='o',markerfacecolor=markerfacecolor  ,markeredgecolor=col_visit,markersize=plot_set_key['markersize'],rasterized=plot_set_key['rasterized'])
+    
+                    #Best-fit model
+                    if plot_set_key['plot_model']:
+                        if plot_set_key['sp_var'] == 'nu' :
+                            mod_cen_bin_plot = nu_bin_plot
+                            y_mod = data_Fbal['corr_func_vis'][iord](cen_bin_plot)[::-1]
+                        elif plot_set_key['sp_var'] == 'wav' :
+                            mod_cen_bin_plot = cen_bin_plot
+                            y_mod = data_Fbal['corr_func_vis'][iord](cen_bin_plot)
+                        plt.plot(mod_cen_bin_plot,lev_exp+y_mod,linestyle='-',color=col_visit,lw=1) 
+    
+                    #Plot visit names
+                    if plot_set_key['plot_expid']:
+                        if plot_set_key['plot_data']:ytxt = np.median(Fbal_T_binned_plot)
+                        if plot_set_key['plot_model']: ytxt = np.median(y_mod)
+                        plt.text(x_range_loc[1]+0.01*(x_range_loc[1]-x_range_loc[0]),lev_exp+ytxt,vis,verticalalignment='center', horizontalalignment='left',fontsize=5.,zorder=15,color=col_visit) 
+    
+                    #Shade area not included within fit
+                    y_range_loc=plot_set_key['y_range'] if plot_set_key['y_range'] is not None else np.array([y_min,y_max])
+                    if plot_set_key['shade_unfit']:
+                        if (inst in gen_dic['FbalOrd_range_fit']) and (vis in gen_dic['FbalOrd_range_fit'][inst]) and (iord in gen_dic['FbalOrd_range_fit'][inst][vis]):
+                            if plot_set_key['sp_var'] == 'nu' :fit_range=c_light/gen_dic['Fbal_range_fit'][inst][vis][iord]  
+                            elif plot_set_key['sp_var'] == 'wav' :fit_range=gen_dic['Fbal_range_fit'][inst][vis][iord]                        
+                        else:fit_range=[x_range_loc]
+                        plot_shade_range(plt.gca(),fit_range,x_range_loc,y_range_loc,mode='span',zorder=-10,alpha=0.1,compl=True)
+    
+                #Plot frame  
+                if plot_set_key['title']:plt.title('Intra-order flux balance for '+inst+' (order '+str(iord)+')')           
+                dx_range=x_range_loc[1]-x_range_loc[0]
+                dy_range=y_range_loc[1]-y_range_loc[0]
+                xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)     
+                if plot_set_key['sp_var'] == 'nu' :x_title=r'$\nu$ (10$^{-10}$s$^{-1}$)'
+                elif plot_set_key['sp_var'] == 'wav' :x_title='Wavelength (A)'
+                custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
+                            xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
+                            ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
+                            x_title=x_title,y_title='Flux ratio',
+                            font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
+                plt.savefig(path_loc+inst+'_global_vis_ord'+str(iord)+'.'+plot_dic['FbalOrd_corr_vis']) 
+                plt.close() 
 
 
 
@@ -1328,7 +1504,6 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                             idx_cosm_tab=data_cosm['idx_cosm_exp'][iord]
                             n_cosmics_vis[isub,isub_ord] = len(idx_cosm_tab)
                         else:n_cosmics_vis[isub,isub_ord]=0
-             
                         if (not plot_set_key['det_cosm']) or (n_cosmics_vis[isub,isub_ord]>0):                         
                             wav_tab=data_exp['cen_bins'][iord]     
                             plt.ioff()        
@@ -1372,36 +1547,40 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         
                 #Plot number of comics vs order
                 if plot_set_key['cosm_vs_ord']:
-                    plt.ioff()        
-                    plt.figure(figsize=plot_set_key['fig_size'])
-                    cmap = plt.get_cmap('jet') 
-                    col_tab=np.array([cmap(0)]) if nexp_list==1 else cmap( np.arange(nexp_list)/(nexp_list-1.))
                     
-                    #Plot boundaries
-                    x_range_loc = plot_set_key['x_range'] if plot_set_key['x_range'] is not None else [gen_dic['wav_ord_inst'][inst][order_list][0],gen_dic['wav_ord_inst'][inst][order_list][-1]]
-                    y_range_loc = plot_set_key['y_range'] if plot_set_key['y_range'] is not None else [0.,np.max(n_cosmics_vis)]
-                            
-                    #Plot number of cosmics for each exposure and the total count (scaled to the axis range)
-                    for isub,iexp in enumerate(iexp2plot_vis): 
-                        plt.plot(gen_dic['wav_ord_inst'][inst][order_list],n_cosmics_vis[isub],linestyle='-',color=col_tab[isub],rasterized=plot_set_key['rasterized'],zorder=0,drawstyle='steps-mid',lw=plot_set_key['lw_plot'])
+                    #Total number of detected cosmics
                     n_cosmics_vis_tot = np.sum(n_cosmics_vis,axis = 0)
-                    n_cosmics_vis_tot=n_cosmics_vis_tot*y_range_loc[1]/np.max(n_cosmics_vis_tot)
-                    plt.plot(gen_dic['wav_ord_inst'][inst][order_list],n_cosmics_vis_tot,linestyle='-',color='black',rasterized=plot_set_key['rasterized'],zorder=0,drawstyle='steps-mid',lw=plot_set_key['lw_plot'])
-                    
-                    #Plot frame  
-                    if plot_set_key['title']:plt.title('Cosmics detections for visit '+vis+' in '+inst)
-                    dx_range=x_range_loc[1]-x_range_loc[0]
-                    dy_range=y_range_loc[1]-y_range_loc[0]
-                    xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
-                    ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)  
-                    custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
-                                xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
-                                ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
-                                x_title='Wavelength in input rest frame (A)',y_title='Cosmics occurrence',
-                                font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
-                    plt.savefig(path_loc+'Occurrences.'+plot_dic['cosm_corr'])
-                    plt.close()  
-
+                    if n_cosmics_vis_tot>1:
+                        n_cosmics_vis_tot=n_cosmics_vis_tot*y_range_loc[1]/np.max(n_cosmics_vis_tot)
+                        
+                        plt.ioff()        
+                        plt.figure(figsize=plot_set_key['fig_size'])
+                        cmap = plt.get_cmap('jet') 
+                        col_tab=np.array([cmap(0)]) if nexp_list==1 else cmap( np.arange(nexp_list)/(nexp_list-1.))
+                        
+                        #Plot boundaries
+                        x_range_loc = plot_set_key['x_range'] if plot_set_key['x_range'] is not None else [gen_dic['wav_ord_inst'][inst][order_list][0],gen_dic['wav_ord_inst'][inst][order_list][-1]]
+                        y_range_loc = plot_set_key['y_range'] if plot_set_key['y_range'] is not None else [0.,np.max(n_cosmics_vis)]
+                                
+                        #Plot number of cosmics for each exposure and the total count (scaled to the axis range)
+                        for isub,iexp in enumerate(iexp2plot_vis): 
+                            plt.plot(gen_dic['wav_ord_inst'][inst][order_list],n_cosmics_vis[isub],linestyle='-',color=col_tab[isub],rasterized=plot_set_key['rasterized'],zorder=0,drawstyle='steps-mid',lw=plot_set_key['lw_plot'])
+                        plt.plot(gen_dic['wav_ord_inst'][inst][order_list],n_cosmics_vis_tot,linestyle='-',color='black',rasterized=plot_set_key['rasterized'],zorder=0,drawstyle='steps-mid',lw=plot_set_key['lw_plot'])
+                        
+                        #Plot frame  
+                        if plot_set_key['title']:plt.title('Cosmics detections for visit '+vis+' in '+inst)
+                        dx_range=x_range_loc[1]-x_range_loc[0]
+                        dy_range=y_range_loc[1]-y_range_loc[0]
+                        xmajor_int,xminor_int,xmajor_form = autom_tick_prop(dx_range)
+                        ymajor_int,yminor_int,ymajor_form = autom_tick_prop(dy_range)  
+                        custom_axis(plt,position=plot_set_key['margins'],x_range=x_range_loc,y_range=y_range_loc,dir_y='out', 
+                                    xmajor_int=xmajor_int,xminor_int=xminor_int,xmajor_form=xmajor_form,
+                                    ymajor_int=ymajor_int,yminor_int=yminor_int,ymajor_form=ymajor_form,
+                                    x_title='Wavelength in input rest frame (A)',y_title='Cosmics occurrence',
+                                    font_size=plot_set_key['font_size'],xfont_size=plot_set_key['font_size'],yfont_size=plot_set_key['font_size'])
+                        plt.savefig(path_loc+'Occurrences.'+plot_dic['cosm_corr'])
+                        plt.close()  
+    
 
 
 

@@ -712,7 +712,7 @@ def init_bin_prof(data_type,ref_pl,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bin,
 
 
 
-def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True , sdet_exp2 = None):
+def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True , sdet_exp2 = None):
     r"""**Binning routine: weights**
 
     Defines weights to be used when binning profiles.
@@ -895,18 +895,23 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     if np.sum(cond_def_weights)==0:stop('Issue with master definition')
 
     #Flux balance functions
-    if gen_corr_Fbal and ('spec' in data_mode) and (corr_Fbal or (data_mode==gen_type[inst])): 
-        data_Fbal = dataload_npz(save_data_dir+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp_glob)+'_add')
+    #    - the generic condition 'corr_Fbal' deactivates the global correction when irrelevant because the average profiles are orders from the same spectrum
+    #      if the function is called to define weights on profiles changing types (ie, for conversion), accounting for the balance is always needed
+    if (gen_corr_Fbal or gen_corr_FbalOrd) and ('spec' in data_mode) and (corr_Fbal or (data_mode==gen_type[inst])): 
+        data_Fbal = dataload_npz(save_data_dir+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp_glob)+'_add')   #General save
     if gen_corr_Fbal and ('spec' in data_mode) and corr_Fbal: 
-        Fbal_glob = data_Fbal['corr_func']
-        if data_Fbal['corr_func_vis'] is None:Fbal_glob_vis=default_func    #single visit, no correction relative to global master 
-        else:Fbal_glob_vis = data_Fbal['corr_func_vis']
+        FbalGlob = data_Fbal['corr_func']
+        if data_Fbal['corr_func_vis'] is None:FbalGlob_vis=default_func    #single visit, no correction relative to global master 
+        else:FbalGlob_vis = data_Fbal['corr_func_vis']
     else:
-        Fbal_glob=default_func 
-        Fbal_glob_vis=default_func 
-    if gen_corr_Fbal_ord and ('spec' in data_mode) and (data_mode==gen_type[inst]):
-        Fbal_ord_all = data_Fbal['Ord']['corr_func']
-    else:Fbal_ord_all = None
+        FbalGlob=default_func 
+        FbalGlob_vis=default_func 
+    if gen_corr_FbalOrd and ('spec' in data_mode) and (data_mode==gen_type[inst]):
+        FbalOrd = data_Fbal['Ord']['corr_func']
+        FbalOrd_vis = data_Fbal['Ord']['corr_func_vis']    #single visit, no correction relative to global master 
+    else:
+        FbalOrd = None
+        FbalOrd_vis = None
 
     #Spectral broadband flux scaling 
     #    - includes broadband contribution, unless overwritten by input 
@@ -931,7 +936,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #   calibration profiles were estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow  
         #   for original CCFs or after conversion into CCFs or from 2D/1D it returns a global calibration
         if(gcal_exp is not None):gcal_ord = gcal_exp[iord,idx_def_weights_ord]
-        else:gcal_ord = 1.
+        else:gcal_ord = np.ones(len(idx_def_weights_ord))
     
         #Spectral corrections
         if ('spec' in data_mode):
@@ -947,9 +952,11 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
             #   global normalisation coefficient is not spectral and can be directly applied to any data
             #   global flux balance correction is defined as a function over the full instrument range and can be directly applied to any spectral data, but since it does not change the mean flux it is not propagated through CCF conversion
             #   order flux balance correction is not propagated through 2D/1D conversion or CCF conversion 
-            if Fbal_ord_all is None:Fbal_ord = 1.
-            else:Fbal_ord = Fbal_ord_all[iord_orig](cen_bins_ord)
-            corr_Fbal_glob_ord = Fbal_ord*(Fbal_glob(nu_bins_ord)*Fbal_glob_vis(nu_bins_ord))[::-1]
+            if FbalOrd is None:Fbal_ord = np.ones(len(cen_bins_ord))
+            else:Fbal_ord = FbalOrd[iord_orig](cen_bins_ord)
+            if FbalOrd_vis is None:FbalOrd_vis = np.ones(len(cen_bins_ord))
+            else:FbalOrd_vis = FbalOrd_vis[iord_orig](cen_bins_ord)
+            corr_FbalGlob_ord = Fbal_ord*FbalOrd_vis*(FbalGlob(nu_bins_ord)*FbalGlob_vis(nu_bins_ord))[::-1]
             # > tellurics: Ccorr(w,t,v) = 1/T(w,t,v)
             #   with T=1 if not telluric absorption, 0 if maximum absorption
             #   telluric profiles (contained in the data upload specific to the exposure) were defined on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow
@@ -959,7 +966,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
             # > cosmics and permanent peaks: ignored in the weighing, as flux values are not scaled but replaced
             # > fringing and wiggles: ignored for now
             # > final spectral correction
-            spec_corr_ord = 1./(tell_ord*corr_Fbal_glob_ord)
+            spec_corr_ord = 1./(tell_ord*corr_FbalGlob_ord)
         else:spec_corr_ord = 1.
 
         #Spectral broadband flux scaling 
@@ -983,7 +990,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         else:
             
             #Weights are kept undefined (ie, no weighing) where variance is null or negative  
-            if ('spec' in data_mode):EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord)**2.*Nbl_ord[cond_def_pos_ord]
+            if ('spec' in data_mode):EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
             else:EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord*gcal_ord)**2.*Nbl_ord[cond_def_pos_ord]
             
         #Variance on master stellar spectrum

@@ -844,10 +844,7 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         if ('chi2_fitting_method' not in fit_dic):fit_dic['chi2_fitting_method']='leastsq'
     
     elif fit_dic['fit_mode'] in ['mcmc','ns']:
-
-        #Walkers/live points
-        if 'walkers_set' not in fit_dic:fit_dic['walkers_set']={}        
-
+     
         #Reboot
         if ('reboot' not in fit_dic):fit_dic['reboot']=''     
 
@@ -931,6 +928,12 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         #Default thread number
         if 'nthreads' not in fit_dic:fit_dic['nthreads'] = 1
 
+        #Sampler dictionary
+        if 'sampler_set' not in fit_dic:fit_dic['sampler_set']={}  
+
+        #MCMC walker / NS sampler monitoring
+        if ('monitor' not in fit_dic):fit_dic['monitor']=False 
+
         if fit_dic['fit_mode']=='mcmc':
     
             #Do not use complex prior function by default
@@ -948,16 +951,12 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
                 if ('end_samp' not in fit_dic):fit_dic['end_samp']=10 
                 if ('n_samp' not in fit_dic):fit_dic['n_samp']=100 
             
-            #MCMC monitoring
-            if ('monitor' not in fit_dic):fit_dic['monitor']=False 
-    
-            #Walkers
-            if 'nwalkers' not in fit_dic['walkers_set']:fit_dic['nwalkers'] = int(3*fit_dic['merit']['n_free'])
-            else:fit_dic['nwalkers'] = fit_dic['walkers_set']['nwalkers']
-            if 'nsteps' not in fit_dic['walkers_set']:fit_dic['nsteps'] = 5000
-            else:fit_dic['nsteps'] = fit_dic['walkers_set']['nsteps']
-            if 'nburn' not in fit_dic['walkers_set']:fit_dic['nburn'] = 1000
-            else:fit_dic['nburn'] = fit_dic['walkers_set']['nburn']
+            if 'nwalkers' not in fit_dic['sampler_set']:fit_dic['nwalkers'] = int(3*fit_dic['merit']['n_free'])
+            else:fit_dic['nwalkers'] = fit_dic['sampler_set']['nwalkers']
+            if 'nsteps' not in fit_dic['sampler_set']:fit_dic['nsteps'] = 5000
+            else:fit_dic['nsteps'] = fit_dic['sampler_set']['nsteps']
+            if 'nburn' not in fit_dic['sampler_set']:fit_dic['nburn'] = 1000
+            else:fit_dic['nburn'] = fit_dic['sampler_set']['nburn']
     
             #Disable multi-threading
             if ('unthreaded_op' in fit_dic) and ('emcee' in fit_dic['unthreaded_op']):fit_dic['emcee_nthreads']=1
@@ -965,25 +964,31 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         
         elif fit_dic['fit_mode']=='ns': 
 
+            #Restoring
+            if ('restore' not in fit_dic):fit_dic['restore']=''
+            
             #No calculation of envelopes
             #    - calculation of models using parameter values within their 1sigma range
             fit_dic['calc_envMCMC']=False 
 
             #Live points
-            if 'nlive' not in fit_dic['walkers_set']:fit_dic['nlive'] = fit_dic['merit']['n_free'] * (fit_dic['merit']['n_free'] + 1) / 2
-            else:fit_dic['nlive'] = fit_dic['walkers_set']['nlive']
+            if 'nlive' not in fit_dic['sampler_set']:fit_dic['nlive'] = fit_dic['merit']['n_free'] * (fit_dic['merit']['n_free'] + 1) / 2
+            else:fit_dic['nlive'] = fit_dic['sampler_set']['nlive']
 
             #Bounding method used 
-            if ('bound_method' not in fit_dic['walkers_set']):fit_dic['bound_method']='auto'
-            else:fit_dic['bound_method']=fit_dic['walkers_set']['bound_method']
+            if ('bound_method' not in fit_dic['sampler_set']):fit_dic['bound_method']='auto'
+            else:fit_dic['bound_method']=fit_dic['sampler_set']['bound_method']
             
             #Sampling method used 
-            if ('sample_method' not in fit_dic['walkers_set']):fit_dic['sample_method']='unif'
-            else:fit_dic['sample_method']=fit_dic['walkers_set']['sample_method']
+            if ('sample_method' not in fit_dic['sampler_set']):fit_dic['sample_method']='unif'
+            else:fit_dic['sample_method']=fit_dic['sampler_set']['sample_method']
 
             #Threshold on the log-likelihood difference between subsequent NS steps. Once the difference falls below this threshold, the run stops.
-            if ('dlogz' not in fit_dic['walkers_set']):fit_dic['dlogz']=0.1
-            else:fit_dic['dlogz']=fit_dic['walkers_set']['dlogz']
+            if ('dlogz' not in fit_dic['sampler_set']):fit_dic['dlogz']=0.1
+            else:fit_dic['dlogz']=fit_dic['sampler_set']['dlogz']
+
+            #Checkpointing the sampler
+            if ('monitor' in fit_dic['sampler_set']):fit_dic['monitor']|=fit_dic['sampler_set']['monitor']
 
             #Set burn-in steps to 0 to makes post-processing with the MCMC functions possible
             fit_dic['nburn'] = 0.
@@ -1193,8 +1198,8 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
         blobs = sampler.get_blobs()
 
         #Step-by-step chi2 chain
-        if fixed_args['step_chi2']:step_chi2 = blobs['step_chi2']
-        else:step_chi2 = None
+        if fixed_args['step_chi2']:fixed_args['chi2_storage'] = blobs['step_chi2']
+        else:fixed_args['chi2_storage'] = None
         
         #Step-by-step complementary function output
         if fixed_args['step_output']:step_outputs = blobs['step_outputs']
@@ -1203,8 +1208,8 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
         #Save raw MCMC results 
         if save_raw:
             if (not os_system.path.exists(fit_dic['save_dir'])):os_system.makedirs(fit_dic['save_dir'])
-            np.savez(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name,walker_chains=walker_chains, initial_distribution=fit_dic['initial_distribution'],step_outputs = step_outputs, step_chi2 = step_chi2)
-    
+            np.savez(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name,walker_chains=walker_chains, initial_distribution=fit_dic['initial_distribution'],step_outputs = step_outputs, step_chi2 = fixed_args['chi2_storage'])
+
         #Delete temporary chains after final walkers are saved
         if backend is not None:os_system.remove(fit_dic['save_dir']+'monitor'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+run_name+'.h5')
     
@@ -1222,17 +1227,17 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
         #Retrieve mcmc run from standard mcmc directory
         if len(fit_dic['reuse'])==0:
             mcmc_load = np.load(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name']+'.npz',allow_pickle = True)
-            walker_chains=mcmc_load['walker_chains']  #(nwalkers, nsteps, n_free)
-            step_outputs=mcmc_load['step_outputs']    #(nsteps, nwalkers)
-            step_chi2 = mcmc_load['step_chi2']        #(nsteps, nwalkers)
+            walker_chains=mcmc_load['walker_chains']            #(nwalkers, nsteps, n_free)
+            step_outputs=mcmc_load['step_outputs']              #(nsteps, nwalkers)
+            fixed_args['chi2_storage'] = mcmc_load['step_chi2'] #(nsteps, nwalkers)
 
         #Retrieve mcmc run(s) from list of input paths
         else:
             walker_chains = np.empty([fit_dic['nwalkers'],0,fit_dic['merit']['n_free'] ],dtype=float)
             if fixed_args['step_output']:step_outputs = np.empty([0,fit_dic['nwalkers']],dtype=object)
             else:step_outputs=None
-            if fixed_args['step_chi2']:step_chi2 = np.empty([0,fit_dic['nwalkers']],dtype=object)
-            else:step_chi2=None
+            if fixed_args['step_chi2']:fixed_args['chi2_storage'] = np.empty([0,fit_dic['nwalkers']],dtype=object)
+            else:fixed_args['chi2_storage']=None
             fit_dic['nsteps'] = 0
             fit_dic['nburn'] = 0
             for mcmc_path,nburn in zip(fit_dic['reuse']['paths'],fit_dic['reuse']['nburn']):
@@ -1243,7 +1248,7 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
                 fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
                 walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
                 if fixed_args['step_output']:step_outputs = np.append(step_outputs,step_output_loc,axis=0)
-                if fixed_args['step_chi2']:step_chi2 = np.append(step_chi2,step_chi2_loc,axis=0)
+                if fixed_args['step_chi2']:fixed_args['chi2_storage'] = np.append(fixed_args['chi2_storage'],step_chi2_loc,axis=0)
 
     return walker_chains,step_outputs
 
@@ -1280,8 +1285,8 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
             print('         Rebooting previous run')
             
             #Reboot nested sampling from end of previous run
-            live_points=np.load(fit_dic['reboot'])['walker_chains'][:,-1,:]  #(nwalkers, nsteps, n_free)
-              
+            fit_dic['initial_distribution'][1]=np.load(fit_dic['reboot'])['walker_chains'][:,-1,:]  #(nwalkers, nsteps, n_free)
+
         else:
             
             #Custom initialization
@@ -1305,19 +1310,23 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
                     central_loc = np.zeros(len(fixed_args['var_par_list']), dtype=float)
                     for ipar, param in enumerate(fixed_args['var_par_list']):central_loc[ipar] = fit_dic['mod_prop'][param]['guess']
 
-                    live_points = np.random.multivariate_normal(central_loc, cov_matrix, size=fit_dic['nlive'])
-                
+                    fit_dic['initial_distribution'][1] = np.random.multivariate_normal(central_loc, cov_matrix, size=fit_dic['nlive'])
+
                 else:
                     print('         Initializing live points with uniform/gaussian distributions')
                     print('         WARNING : It is crucial that the initial set of live points have been sampled from the prior. Failure to provide a set of valid live points will result in incorrect results.')
                     for ipar,par in enumerate(fixed_args['var_par_list']):
-                        if par in fit_dic['uf_bd']:live_points[:,ipar]=np.random.uniform(low=fit_dic['uf_bd'][par][0], high=fit_dic['uf_bd'][par][1], size=fit_dic['nlive']) 
-                        elif par in fit_dic['gauss']:live_points[:, ipar]=np.random.normal(loc=fit_dic['gauss'][par][0], scale=fit_dic['gauss'][par][1], size=fit_dic['nlive']) 
+                        if par in fit_dic['uf_bd']:fit_dic['initial_distribution'][1][:,ipar]=np.random.uniform(low=fit_dic['uf_bd'][par][0], high=fit_dic['uf_bd'][par][1], size=fit_dic['nlive']) 
+                        elif par in fit_dic['gauss_bd']:fit_dic['initial_distribution'][1][:, ipar]=np.random.normal(loc=fit_dic['gauss_bd'][par][0], scale=fit_dic['gauss_bd'][par][1], size=fit_dic['nlive']) 
 
-        #Overwrite starting values of new chains
-        fit_dic['initial_distribution'][0] = live_points
-        for idx, live_point in enumerate(live_points):
-            fit_dic['initial_distribution'][1][idx, :] = ln_prior_func_NS(live_point, fixed_args)
+        #Retrieve prior values of starting points
+        for idx, parname in enumerate(fixed_args['var_par_list']):  
+            if parname in fit_dic['uf_bd']:fit_dic['initial_distribution'][0][:, idx] = stats.uniform.cdf(fit_dic['initial_distribution'][1][:, idx], loc=fit_dic['uf_bd'][par][0], scale=fit_dic['uf_bd'][par][1]-fit_dic['uf_bd'][par][0])
+            elif parname in fit_dic['gauss_bd']:fit_dic['initial_distribution'][0][:, idx] = stats.norm.cdf(fit_dic['initial_distribution'][1][:, idx], loc=fit_dic['gauss_bd'][par][0], scale=fit_dic['gauss_bd'][par][1])
+            else:stop('         Starting point distribution for {parname} should be gaussian or uniform.')
+
+        #Retrieve likelihood values
+        for idx, live_point in enumerate(fit_dic['initial_distribution'][1]):     
             ln_lkhood,blob = ln_lkhood_func_ns(live_point, fixed_args)
             fit_dic['initial_distribution'][2][idx] = ln_lkhood
             fit_dic['initial_distribution'][3][idx] = blob
@@ -1325,42 +1334,52 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
         #By default use variance
         if 'use_cov' not in fixed_args:fixed_args['use_cov']=False
 
+        #Save state of sampler in case of crash
+        if ('monitor' in fit_dic) and fit_dic['monitor']:dynesty_checkpoint = fit_dic['save_dir']+'monitor_dynesty.save'
+        else:dynesty_checkpoint=None
+
         #Call to NS
         st0=get_time()
         n_free=np.shape(fit_dic['initial_distribution'][0])[1]
         
         #Multiprocessing
-        if nthreads>1:
-            pool_proc = Pool(processes=nthreads)  
-            print('         Running with '+str(nthreads)+' threads')
-            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func_ns,                                 #Log-likelihood function
-                                                   ln_prior_func_NS,                               #Log-prior function
-                                                   nlive = fit_dic['nlive'],                       #Number of live points
-                                                   ndim = n_free,                                  #Number of parameters accepted by ln_prior_func_NS
-                                                   pool = pool_proc,                               #Multiprocessing pool considered
-                                                   queue_size = nthreads,                          #Multiprocessing queue size
-                                                   logl_args = [fixed_args],                       #Fixed arguments for the calculation of the likelihood
-                                                   ptform_args = [fixed_args],                     #Fixed arguments for the calculation of the priors
-                                                   blob=True,                                      #Whether blobs are present or not
-                                                   bound=fit_dic['bound_method'],                  #Method for approximately bounding the prior. Plays a role in proposing new line points.
-                                                   sample=fit_dic['sample_method'],                #Method used to sample uniformly within the liklelihood constraint.                                                   
-                                                   )
+        use_threads = (nthreads > 1)
+        pool_proc = Pool(processes=nthreads) if use_threads else None  
+
+        #Restoring a previous run
+        if fit_dic['restore']:
+            print(f"         Restoring previous run with {nthreads} threads" if use_threads else "         Restoring previous run")
+            sampler = dynesty.DynamicNestedSampler.restore(fit_dic['restore'], pool=pool_proc)
+
+        #Doing a new run
         else:
-            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func_ns,
-                                                   ln_prior_func_NS,
-                                                   nlive=fixed_args['nlive'],
-                                                   ndim=n_free,
-                                                   logl_args=[fixed_args],
-                                                   ptform_args = [fixed_args],
-                                                   blob=True,
-                                                   bound=fit_dic['bound_method'],
-                                                   sample=fit_dic['sample_method'],
-                                                   )
+            print(f"         Running with {nthreads} threads" if use_threads else "         Running")
+            sampler_kwargs = {
+                "bound": fit_dic["bound_method"],            #Prior bounding method
+                "sample": fit_dic["sample_method"],          #Likelihood sampling method
+                "nlive": fit_dic['nlive'],                   #Number of live points
+                "ndim": n_free,                              #Number of parameters accepted by ln_prior_func_NS
+                "logl_args": [fixed_args],                   #Fixed arguments for the calculation of the likelihood
+                "ptform_args": [fixed_args],                 #Fixed arguments for the calculation of the priors
+                "blob": True,                                #Whether blobs are present or not
+            }
+            if use_threads:
+                sampler_kwargs.update({"pool": pool_proc,                           #Multiprocessing pool considered
+                                       "queue_size": nthreads                       #Multiprocessing queue size
+                                       })
+            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func_ns,                          #Log-likelihood function
+                                                   ln_prior_func_NS,                           #Log-prior function
+                                                   **sampler_kwargs)
+
         
-        #Run NS
-        #    - possible options:
-        # + iterations: number of iterations to run
-        sampler.run_nested(live_points = fit_dic['initial_distribution'], print_progress=fit_dic['progress'], dlogz_init=fit_dic['dlogz'])
+        # Run NS with restore or initial parameters
+        sampler.run_nested(
+            resume=bool(fit_dic['restore']),
+            live_points=fit_dic['initial_distribution'],
+            print_progress=fit_dic['progress'],
+            dlogz_init=fit_dic['dlogz'],
+            checkpoint_file=dynesty_checkpoint,
+        )
 
         if verbose:print('   duration : '+str((get_time()-st0)/60.)+' mn')
 

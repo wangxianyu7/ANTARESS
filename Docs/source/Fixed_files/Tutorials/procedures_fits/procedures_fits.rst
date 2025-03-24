@@ -149,7 +149,7 @@ results.
 
 #%%%%%% Runs to re-start
 #    - indicate path to a 'raw_chains' file
-#      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'walkers_set'
+#      the mcmc will restart the same walkers from their last step, and run from the number of steps indicated in 'sampler_set'
 local_dic[data_type]['reboot']=''
 
 Run to Re-start
@@ -169,7 +169,7 @@ Example configuration::
 ANTARESS allows you to reboot an existing MCMC run so that it is advised to run
 
 #%%%%%% Walkers
-    data_dic['Intr']['walkers_set']={'nwalkers':{'ESPRESSO':{'20221117':30,'20231106':30}},
+    data_dic['Intr']['sampler_set']={'nwalkers':{'ESPRESSO':{'20221117':30,'20231106':30}},
                                   'nsteps':{'ESPRESSO':{'20221117':1000,'20231106':1000}},
                                   'nburn':{'ESPRESSO':{'20221117':200,'20231106':200}}} 
                                   

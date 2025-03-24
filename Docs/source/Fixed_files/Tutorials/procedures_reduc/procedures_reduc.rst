@@ -287,6 +287,7 @@ This is the option that was preferred for the TOI-421 dataset given the medium-f
   Disks show the binned exposure spectra relative to the median reference in each visit. Exposures are colour-coded over the rainbow scale with increasing time, from purple to red.
   Matching colored lines show the fitted splines, which allow capturing subtle features, such as the ones visible around spectral order 112. The use of phantom bins avoids divergences in the blue part of the spectrum.
   The bottom panel shows the ratio between the median reference in each visit and their mean over both visits.
+  These plots are automatically saved in: :orange:`/Working_dir/Star/Planet_Plots/Spec_raw/FluxBalance/`.
 
 
 Finally, you can choose the spectral ranges to be corrected for (with :green:`l` in :math:`\\A`)::
