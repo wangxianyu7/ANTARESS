@@ -6,7 +6,7 @@ setup(
   ext_modules=[
     Extension(
      'antaress.Gauss_star_grid',
-      sources=['src/antaress/ANTARESS_analysis/C_grid/Gauss_star_grid.c'],
+      sources=['src/antaress/ANTARESS_analysis/C_grid/C_star_grid.c'],
       language='c',
     )
   ],
