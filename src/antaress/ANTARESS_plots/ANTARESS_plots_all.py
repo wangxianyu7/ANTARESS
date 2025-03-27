@@ -4560,7 +4560,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         #Accounting for actve region - active region overlap
                         temp_ar_list = np.delete(ar_prop['ar'], iar)
                         for prev_reg in temp_ar_list:
-                            if ar_prop[prev_reg]['fctrst'] > ar_prop[ar]['fctrst']:
+                            if (coord_grid['ar_prop_exp'][prev_reg]['is_visible'][1]) & (ar_prop[prev_reg]['fctrst'] > ar_prop[ar]['fctrst']):
                                 prev_x_st_grid, prev_y_st_grid, prev_z_st_grid = frameconv_skystar_to_star(x_ar_grid, y_ar_grid, z_ar_grid, istar_rad)
                                 x_prev_ar_grid = prev_x_st_grid*coord_grid['ar_prop_exp'][prev_reg]['cos_long_exp'][1] - prev_z_st_grid*coord_grid['ar_prop_exp'][prev_reg]['sin_long_exp'][1]
                                 y_prev_ar_grid = prev_y_st_grid*coord_grid['ar_prop_exp'][prev_reg]['cos_lat_exp'][1] - (prev_z_st_grid*coord_grid['ar_prop_exp'][prev_reg]['cos_long_exp'][1] + prev_x_st_grid*coord_grid['ar_prop_exp'][prev_reg]['sin_long_exp'][1]) * coord_grid['ar_prop_exp'][prev_reg]['sin_lat_exp'][1]

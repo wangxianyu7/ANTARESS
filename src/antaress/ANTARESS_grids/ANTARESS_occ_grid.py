@@ -164,11 +164,11 @@ def up_plocc_arocc_prop(inst,vis,args,param_in,studied_pl,ph_grid,coord_grid, st
             
             #Recalculate active region grid if relevant
             if ar_loc in args['fit_ar_ang']:
-                args['system_ar_prop']['achrom'][ar_loc][0]=param['ang__IS'+inst+'_VS'+vis+'_AR'+ar_loc] * np.pi/180
+                args['system_ar_prop']['achrom'][ar_loc][0]=param['ang__IS'+inst+'_VS'+vis+'__AR'+ar_loc] * np.pi/180
                 _,args['grid_dic']['Ssub_Sstar_ar'][ar_loc],args['grid_dic']['x_st_sky_grid_ar'][ar_loc],args['grid_dic']['y_st_sky_grid_ar'][ar_loc],_ = occ_region_grid(np.sin(args['system_ar_prop']['achrom'][ar_loc][0]),args['grid_dic']['nsub_Dar'][ar_loc],planet=True)  
 
             #Update active region crossing time before doing active region parameters' retrieval
-            if args['fit_ar']:param['Tc_ar__IS'+inst+'_VS'+vis+'_AR'+ar_loc] += args['bjd_time_shift'][inst][vis]
+            if args['fit_ar']:param['Tc_ar__IS'+inst+'_VS'+vis+'__AR'+ar_loc] += args['bjd_time_shift'][inst][vis]
 
         #Recalculate active region coordinates if relevant        
         if args['fit_ar'] or (args['fit_ar_ang']!=[]):
@@ -662,8 +662,7 @@ def sub_calc_plocc_ar_prop(key_chrom,args,par_list_gen,studied_pl,studied_ar,sys
                     
             #------------------------------------------------------------
 
-            #Averaged values behind all occulted regions during exposure
-            print('1:', surf_prop_dic_ar[subkey_chrom]['line_prof'])
+            #Averaged values behind all occulted regions during exposures
             #    - with the oversampling, positions at the center of exposure will weigh more in the sum than those at start and end of exposure, like in reality
             #    - parameters are retrieved in both oversampled/not-oversampled case after they are updated within the sum_prop_dic dictionary 
             #    - undefined values remain set to nan, and are otherwise normalized by the flux from the planet-occulted region
@@ -1563,12 +1562,12 @@ def generate_ar_prop(mock_dic, data_dic, gen_dic):
 
                     #Updating mock properties
                     mock_dic['ar_prop'][inst][vis].update({
-                    prop+'__IS'+inst+'_VS'+vis+'_AR'+ac_reg_name : prop_gen_val,
+                    prop+'__IS'+inst+'_VS'+vis+'__AR'+ac_reg_name : prop_gen_val,
                         })
         
                 #Updating LD properties
                 if data_dic['DI']['ar_prop'] == {}:data_dic['DI']['ar_prop']['achrom'] = {}
-                if ac_reg_name not in data_dic['DI']['ar_prop']['achrom']:data_dic['DI']['ar_prop']['achrom'][ac_reg_name]=[mock_dic['ar_prop'][inst][vis]['ang__IS'+inst+'_VS'+vis+'_AR'+ac_reg_name] * np.pi/180]  
+                if ac_reg_name not in data_dic['DI']['ar_prop']['achrom']:data_dic['DI']['ar_prop']['achrom'][ac_reg_name]=[mock_dic['ar_prop'][inst][vis]['ang__IS'+inst+'_VS'+vis+'__AR'+ac_reg_name] * np.pi/180]  
        
                 #Updating triggers
                 if ac_reg_name not in gen_dic['studied_ar']:gen_dic['studied_ar'].update({ac_reg_name : {inst : [vis]}}) 
@@ -1584,7 +1583,7 @@ def generate_ar_prop(mock_dic, data_dic, gen_dic):
 def retrieve_ar_prop_from_param(param, inst, vis): 
     r"""**Active region parameters: retrieval and formatting**
 
-    Transforms a dictionary with 'raw' active region properties in the format param_ISinstrument_VSvisit_ARarname to a more convenient active region dictionary of the form : 
+    Transforms a dictionary with 'raw' active region properties in the format param_ISinstrument_VSvisit__ARarname to a more convenient active region dictionary of the form : 
         
      ar_prop = { arname : {'lat' : , 'Tc_ar' : , ....}}
     
@@ -1607,9 +1606,9 @@ def retrieve_ar_prop_from_param(param, inst, vis):
     for par in param : 
 
         # Parameter is active region-related and linked to the right visit and instrument
-        if (('_IS_' in par) or ('_IS'+inst in par)) and (('_VS'+vis in par) or ('_VS_' in par)) and ('_AR' in par): 
+        if (('_IS_' in par) or ('_IS'+inst in par)) and (('_VS'+vis in par) or ('_VS_' in par)) and ('__AR' in par): 
             contamin_par = par.split('__IS')[0]
-            contamin_name = par.split('_AR')[1]
+            contamin_name = par.split('__AR')[1]
             if contamin_name not in contamin_prop : contamin_prop[contamin_name] = {}
             contamin_prop[contamin_name][contamin_par] = param[par]
 

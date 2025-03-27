@@ -358,7 +358,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + 'fctrst' : the flux level of the active region surface, relative to the quiet surface of the star
     #              0 = no emission, 1 = maximum emission (no contrast with the stellar surface), and >1 = emission greater than the quiet surface 
     #    - format: {inst : {vis : {prop : val}}}
-    #      where prop is defined as par_ISinst_VSvis_ARar, to match with the structure used in gen_dic['fit_diff_prof']    
+    #      where prop is defined as par_ISinst_VSvis__ARar, to match with the structure used in gen_dic['fit_diff_prof']    
     mock_dic['ar_prop'] = {}
 
     #%%%%% Automatic generation of active regions
@@ -366,7 +366,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - by providing distribution and relevant parameters from which 
     #    - to draw values for the latitude, crossing time, size, and contrast.
     #    - format: {inst : {vis : {prop : distrib}}}
-    #      where prop is defined as par_ISinst_VSvis_ARactreg_name, to match with the structure used in gen_dic['fit_diff_prof']
+    #      where prop is defined as par_ISinst_VSvis__ARactreg_name, to match with the structure used in gen_dic['fit_diff_prof']
     #      and distrib is a dictionary with the following possible formats:
     #    - {distrib : 'gauss', val, s_val}    # Drawing from a Gaussian distribution with median val and standard deviation s_val
     #    - {distrib : 'uf', low, high}        # Drawing from a Uniform distribution with boundaries low and high
