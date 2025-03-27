@@ -1597,6 +1597,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         # plot_settings[key_plot]['theoRV_HR_align']=True
         # plot_settings[key_plot]['v_range_all']={'MIKE_Red':{'mockvis':[-0.02390,0.06576]}}
         # if gen_dic['star_name']=='HD189733':plot_settings[key_plot]['x_range']=[-20.,20.]
+        # plot_settings[key_plot]['v_range_all']={'IGRINS2_Red':{'mockvis':[ -0.02877,0.05412]}}
 
 
     ################################################################################################################  
@@ -2371,7 +2372,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         if gen_dic['star_name']=='TOI3884': 
             
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'MIKE_Red', 'vis':'mockvis', 't':  2459556.51669+np.linspace(-0.05,0.05,6)}
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'IGRINS2_Blue', 'vis':'mockvis', 't':  2459642.86314+np.linspace(-0.10417,0.10417,6)}
             plot_settings[key_plot]['t_BJD'] = None
 
             plot_settings[key_plot]['GIF_generation']=True&False
@@ -2398,6 +2399,9 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings[key_plot]['ar_grid_overlay']=True &False
 
             plot_settings[key_plot]['n_arcell']=201.
+
+            plot_settings[key_plot]['x_range'] = np.array([-1.1,1.1])   
+            plot_settings[key_plot]['y_range'] = np.array([-1.1,1.1]) 
 
             # plot_settings[key_plot]['n_plcell']={'AUMicb':5.}
 
@@ -2467,6 +2471,36 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             plot_settings[key_plot]['n_arcell']=51.
 
             plot_settings[key_plot]['n_plcell']={'AUMicb':5.}
+
+        #GEMS
+        if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6']:
+            
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,30)}
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,180)}
+            plot_settings[key_plot]['t_BJD'] = None
+
+            plot_settings[key_plot]['GIF_generation']=True&False
+
+            plot_settings[key_plot]['n_stcell']=37.
+
+            plot_settings[key_plot]['mock_ar_prop'] = True #& False
+
+            plot_settings[key_plot]['fit_ar_prop'] = True & False
+
+            # plot_settings[key_plot]['fit_results_file'] = '/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS Backup/Storing_MCMC_Results/Ongoing_close_input_1000_myPC/AUMicb_Saved_data/Joined_fits/ResProf/mcmc/Fit_results'
+
+            # plot_settings[key_plot]['custom_spot_prop']['spot1'] = {'lat' : 0, 'Tc_ar' : 2458702.76484-0.8, 'ang' : 10, 'fctrst' : 0.35}
+            # plot_settings[key_plot]['custom_spot_prop']['spot2'] = {'lat' :  -10, 'Tc_ar' : 2458702.76484, 'ang' : 14}
+
+            plot_settings[key_plot]['st_grid_overlay']=True &False
+
+            plot_settings[key_plot]['ar_grid_overlay']=True &False
+
+            plot_settings[key_plot]['pl_grid_overlay']=True &False
+
+            plot_settings[key_plot]['n_arcell']=33.
+
+            # plot_settings[key_plot]['n_plcell']={'Sagittarius_b':33.}
 
         #Zodiacs
         if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:

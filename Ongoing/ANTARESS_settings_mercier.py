@@ -260,10 +260,25 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # gen_dic['star_name']='V1298tau'
     # gen_dic['star_name']='TRAPPIST1'
     # gen_dic['star_name']='TOI3884'
-    gen_dic['star_name']='HD189733'
+    # gen_dic['star_name']='HD189733'
+
+    #GEMS + fast/young M dwarves
+    # gen_dic['star_name']='TOI5205'
+    # gen_dic['star_name']='TOI3714'
+    # gen_dic['star_name']='TOI5293'
+    # gen_dic['star_name']='TOI3757'
+    # gen_dic['star_name']='TOI3984'
+    # gen_dic['star_name']='HATS75'
+    # gen_dic['star_name']='HATS6'
+    
+    # gen_dic['star_name']='TOI1224'
+    # gen_dic['star_name']='TOI540'
+    # gen_dic['star_name']='TOI122'
+    # gen_dic['star_name']='K233'
+    # gen_dic['star_name']='TOI1227'
 
     # Zodiacs
-    # gen_dic['star_name']='Capricorn'
+    gen_dic['star_name']='Capricorn'
     # gen_dic['star_name']='Cancer'
     # gen_dic['star_name']='Gemini'
     # gen_dic['star_name']='Sagittarius'
@@ -286,7 +301,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='TOI3884':
         gen_dic['studied_pl'] = {
-            'TOI3884_b':{'MIKE_Red'    : ['mockvis'],
+            'TOI3884_b':{
+                         'MIKE_Red'    : ['mockvis'],
                          'IGRINS2_Red' : ['mockvis'], 
                          'IGRINS2_Blue': ['mockvis'],
                          'MAROONX_Red' : ['mockvis'],
@@ -343,8 +359,22 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             }
         gen_dic['kepl_pl'] = ['V1298tau_b']
 
-    
+    # GEMS
+    for gem in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        if gen_dic['star_name']==gem:
+            gem_pl =gem+'_b'
+            gen_dic['studied_pl'] = {
+                gem_pl:{
+                     'IGRINS2_Red' : ['mockvis'],
+                     'MIKE_Red'    : ['mockvis'],
+                     'MIKE_Blue'   : ['mockvis'], 
+                     'IGRINS2_Blue': ['mockvis'],
+                     'MAROONX_Red' : ['mockvis'],
+                }, 
+            }
+            gen_dic['kepl_pl'] = [gem_pl]
 
+    
     # Zodiacs
     for zodiac in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         if gen_dic['star_name']==zodiac:
@@ -363,17 +393,17 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #         'spot1':{'ESPRESSO' : ['visit1']} 
     #         }
 
-    if gen_dic['star_name']=='TOI3884':
-        gen_dic['studied_ar'] = {
-            'spot1':{'MIKE_Red' : ['mockvis'],
-                     'IGRINS2_Red' : ['mockvis']
-                     'IGRINS2_Blue' : ['mockvis']
-                     'MAROONX_Red' : ['mockvis']} 
-    #         'spot2':{'MIKE_Red' : ['mockvis']},
-    #         'spot3':{'MIKE_Red' : ['mockvis']}, 
-    #         'facula1':{'MIKE_Red' : ['mockvis']},
-    #         'facula2':{'MIKE_Red' : ['mockvis']}, 
-            }
+    # if gen_dic['star_name']=='TOI3884':
+    #     gen_dic['studied_ar'] = {
+    #         'spot1':{'MIKE_Red' : ['mockvis'],
+    #                  'IGRINS2_Red' : ['mockvis'],
+    #                  'IGRINS2_Blue' : ['mockvis'],
+    #                  'MAROONX_Red' : ['mockvis'],} 
+    # #         'spot2':{'MIKE_Red' : ['mockvis']},
+    # #         'spot3':{'MIKE_Red' : ['mockvis']}, 
+    # #         'facula1':{'MIKE_Red' : ['mockvis']},
+    # #         'facula2':{'MIKE_Red' : ['mockvis']}, 
+    #         }
 
     if gen_dic['star_name']=='TRAPPIST1':
         # gen_dic['studied_ar'] = {}
@@ -424,6 +454,17 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             'spot2':{'ESPRESSO' : ['mockvisit1']}, 
             }
 
+    # GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        gen_dic['studied_ar'] = {
+            'spot1':{'IGRINS2_Red' : ['mockvis'], 
+                     'IGRINS2_Blue': ['mockvis'],
+                     'MIKE_Red':     ['mockvis'],
+                     'MIKE_Blue':    ['mockvis'],
+                     'MAROONX_Red' : ['mockvis'],
+                    }, 
+            }
+
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         gen_dic['studied_ar'] = {
@@ -459,6 +500,15 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name']=='V1298tau':
         gen_dic['type']={'ESPRESSO':'CCF'}
   
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        gen_dic['type']={'IGRINS2_Red':'CCF',
+                         'IGRINS2_Blue':'CCF',
+                         'MIKE_Red':'CCF',
+                         'MIKE_Blue':'CCF',
+                         'MAROONX_Red':'CCF',}   
+
+    #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         gen_dic['type']={'ESPRESSO':'CCF'}   
 
@@ -545,6 +595,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name']=='AU_Mic':gen_dic['calc_proc_data']=True  #& False
     if gen_dic['star_name']=='V1298tau':gen_dic['calc_proc_data']=True  #& False
     if gen_dic['star_name']=='fakeAU_Mic':gen_dic['calc_proc_data']=True  #& False
+
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:gen_dic['calc_proc_data']=True  #& False
 
     #Zodiacs
     if gen_dic['star_name']in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:gen_dic['calc_proc_data']=True  #& False
@@ -667,7 +720,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + 'fctrst' : the flux level of the active region surface, relative to the quiet surface of the star
     #              0 = no emission, 1 = maximum emission (no contrast with the stellar surface), and >1 = emission greater than the quiet surface 
     #    - format: {inst : {vis : {prop : val}}}
-    #      where prop is defined as par_ISinst_VSvis_ARar, to match with the structure used in gen_dic['fit_diff_prof']    
+    #      where prop is defined as par_ISinst_VSvis__ARar, to match with the structure used in gen_dic['fit_diff_prof']    
     mock_dic['ar_prop'] = {}
 
     #%%%%% Automatic generation of active regions
@@ -675,7 +728,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - by providing distribution and relevant parameters from which 
     #    - to draw values for the latitude, crossing time, size, and contrast.
     #    - format: {inst : {vis : {prop : distrib}}}
-    #      where prop is defined as par_ISinst_VSvis_ARactreg_name, to match with the structure used in gen_dic['fit_diff_prof']
+    #      where prop is defined as par_ISinst_VSvis__ARactreg_name, to match with the structure used in gen_dic['fit_diff_prof']
     #      and distrib is a dictionary with the following possible formats:
     #    - {distrib : 'gauss', val, s_val}    # Drawing from a Gaussian distribution with median val and standard deviation s_val
     #    - {distrib : 'uf', low, high}        # Drawing from a Uniform distribution with boundaries low and high
@@ -709,7 +762,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
          
     #Activating module
-    gen_dic['mock_data'] =  True & False
+    gen_dic['mock_data'] =  True #& False
 
     #Setting number of threads 
     mock_dic['nthreads'] = 2 
@@ -719,12 +772,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         mock_dic['visit_def']={
             # 'MIKE_Red':{'mockvis' :{'exp_range':2459556.51669+np.array([-0.05, 0.05]),'nexp':30.}}} #Libby-Robert+2023
             # 'MIKE_Red':{'mockvis' :{'exp_range':2459556.51669+np.array([-0.0686, 0.0686]),'nexp':30.}}} #Libby-Robert+2023 # updated
-            'MIKE_Red':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.0686, 0.0686]),'nexp':30.}}} #Almenara+2022 #updated
+            # 'MIKE_Red':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.0686, 0.0686]),'nexp':30.}}, #Almenara+2022 #updated
             # 'MIKE_Red':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.05, 0.05]),'nexp':30.}}} #Almenara+2022
 
-            'IGRINS2_Red':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.0686, 0.0686]),'nexp':30.}}} #Almenara+2022 #updated
-            'IGRINS2_Blue':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.0686, 0.0686]),'nexp':30.}}} #Almenara+2022 #updated
-            'MAROONX_Red':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.0686, 0.0686]),'nexp':30.}}} #Almenara+2022 #updated
+            'IGRINS2_Red':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.10417, 0.10417]),'nexp':36.}},
+            # 'IGRINS2_Blue':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.10417, 0.10417]),'nexp':36.}},
+            # 'MAROONX_Red':{'mockvis' :{'exp_range':2459642.86314+np.array([-0.10417, 0.10417]),'nexp':60.}},
+            }
 
 
     if gen_dic['star_name'] == 'TRAPPIST1':
@@ -776,11 +830,30 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             # 'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':30.}}}
             'ESPRESSO':{'mock_vis' :{'exp_range':2458330.39051+np.array([-0.15,0.15]),'nexp':180.}}}
 
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        tcen = {'TOI5205':2459443.47179,'TOI3714':2459687.365240,'TOI5293':2459448.9148,'TOI3757':2458838.77148,'TOI3984':2459715.02268,'HATS75':2458611.05487,
+                'HATS6':2456643.740580,'TOI1224':2458327.70236,'TOI540':2458411.82601,'TOI122':2458425.602564,'K233':2456898.69288,'TOI1227':2458617.4621}[gen_dic['star_name']]
+        
+        half_duration = {'TOI5205':0.067,'TOI3714':0.076,'TOI5293':0.12,'TOI3757':0.12,
+                         'TOI3984':0.14,'HATS75':0.12,'HATS6':0.14,'TOI1224':0.1,'TOI540':0.1,'TOI122':0.1,'K233':0.1,'TOI1227':0.1}[gen_dic['star_name']]
+        
+        numexp = {'TOI5205':26,'TOI3714':26,'TOI5293':26,'TOI3757':22,
+                  'TOI3984':28,'HATS75':26,'HATS6':37,'TOI1224':30,'TOI540':30,'TOI122':30,'K233':30,'TOI1227':30}[gen_dic['star_name']]
+        
+        mock_dic['visit_def']={
+            'IGRINS2_Red':{'mockvis' :{'exp_range':tcen+np.array([-half_duration, half_duration]),'nexp':numexp}},
+            # 'IGRINS2_Blue':{'mockvis' :{'exp_range':tcen+np.array([-half_duration, half_duration]),'nexp':numexp}},
+            # 'MIKE_Blue':{'mockvis' :{'exp_range':tcen+np.array([-half_duration, half_duration]),'nexp':numexp}},
+            # 'MIKE_Red':{'mockvis' :{'exp_range':tcen+np.array([-half_duration, half_duration]),'nexp':numexp}},
+            # 'MAROONX_Red':{'mockvis' :{'exp_range':tcen+np.array([-half_duration, half_duration]),'nexp':numexp}},
+            }
+
     #Spectral profile settings
     
     #Spectral table for disk-integrated profiles
     if gen_dic['star_name'] == 'TOI3884' :
-        mock_dic['DI_table']={'x_start':-30.,'x_end':30.,'dx':0.2} 
+        mock_dic['DI_table']={'x_start':-50.,'x_end':50.,'dx':2.22} 
     if gen_dic['star_name'] == 'TRAPPIST1' :
         mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
     if gen_dic['star_name'] == 'AUMic' :
@@ -789,8 +862,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         mock_dic['DI_table']={'x_start':-20.2,'x_end':20.3,'dx':0.42}
     if gen_dic['star_name'] == 'V1298tau':
         mock_dic['DI_table']={'x_start':-150.,'x_end':150.,'dx':0.8}
+    #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         mock_dic['DI_table']={'x_start':-100.,'x_end':100.,'dx':0.82}
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        instrum_dx = {'IGRINS2_Red':2.22068,'IGRINS2_Blue':1.9986,
+                      'MIKE_Blue':1.43,'MIKE_Red':2.10,'MAROONX_Red':1.0077}[list(mock_dic['visit_def'].keys())[0]]
+        mock_dic['DI_table']={'x_start':-50.,'x_end':50.,'dx':instrum_dx}
 
     #Heliocentric stellar RV
     if gen_dic['star_name']=='TOI3884':
@@ -824,6 +903,17 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] == 'V1298tau' : 
         mock_dic['sysvel']= {'ESPRESSO' : {'mock_vis' : 0.}}  
 
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        mock_dic['sysvel']= {
+            'MIKE_Red' : {'mockvis' : 0.},
+            'MIKE_Blue' : {'mockvis' : 0.},
+            'IGRINS2_Red' : {'mockvis' : 0.},
+            'IGRINS2_Blue' : {'mockvis' : 0.},
+            'MAROONX_Red' : {'mockvis' : 0.}, 
+        }
+
+    #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         mock_dic['sysvel']= {'ESPRESSO' : {'mock_vis' : 0.}} 
 
@@ -839,70 +929,82 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                  'mockvis':{
 
     #                 # For the spot 'spot1' : -- Libby-Roberts+2023
-    #                  'lat__ISMIKE_Red_VSmockvis_ARspot1'     : -66,
-    #                  'Tc_ar__ISMIKE_Red_VSmockvis_ARspot1' : 2459556.51669 + 2.4 + 0.8,
-    #                  'ang__ISMIKE_Red_VSmockvis_ARspot1'     : 9,
-    #                  'fctrst__ISMIKE_Red_VSmockvis_ARspot1'    : 0.45,
+    #                  'lat__ISMIKE_Red_VSmockvis__ARspot1'     : -66,
+    #                  'Tc_ar__ISMIKE_Red_VSmockvis__ARspot1' : 2459556.51669 + 2.4 + 0.8,
+    #                  'ang__ISMIKE_Red_VSmockvis__ARspot1'     : 9,
+    #                  'fctrst__ISMIKE_Red_VSmockvis__ARspot1'    : 0.45,
 
     #                 # For the spot 'spot2' : -- Libby-Roberts+2023
-    #                  'lat__ISMIKE_Red_VSmockvis_ARspot2'     : -82,
-    #                  'Tc_ar__ISMIKE_Red_VSmockvis_ARspot2' : 2459556.51669 - 0.5 + 0.8,
-    #                  'ang__ISMIKE_Red_VSmockvis_ARspot2'     : 17,
-    #                  'fctrst__ISMIKE_Red_VSmockvis_ARspot2'    : 0.45,
+    #                  'lat__ISMIKE_Red_VSmockvis__ARspot2'     : -82,
+    #                  'Tc_ar__ISMIKE_Red_VSmockvis__ARspot2' : 2459556.51669 - 0.5 + 0.8,
+    #                  'ang__ISMIKE_Red_VSmockvis__ARspot2'     : 17,
+    #                  'fctrst__ISMIKE_Red_VSmockvis__ARspot2'    : 0.45,
 
     #                 # For the spot 'spot3' : -- Libby-Roberts+2023
-    #                  'lat__ISMIKE_Red_VSmockvis_ARspot3'     : -55,
-    #                  'Tc_ar__ISMIKE_Red_VSmockvis_ARspot3' : 2459556.51669 + 0.2 + 0.8,
-    #                  'ang__ISMIKE_Red_VSmockvis_ARspot3'     : 5,
-    #                  'fctrst__ISMIKE_Red_VSmockvis_ARspot3'    : 0.45,
+    #                  'lat__ISMIKE_Red_VSmockvis__ARspot3'     : -55,
+    #                  'Tc_ar__ISMIKE_Red_VSmockvis__ARspot3' : 2459556.51669 + 0.2 + 0.8,
+    #                  'ang__ISMIKE_Red_VSmockvis__ARspot3'     : 5,
+    #                  'fctrst__ISMIKE_Red_VSmockvis__ARspot3'    : 0.45,
 
                     # For the spot 'spot1' : -- Almenara+2022
-                     'lat__ISMIKE_Red_VSmockvis_ARspot1'     : -90,
-                     'Tc_ar__ISMIKE_Red_VSmockvis_ARspot1' : 2459642.86314 + 2.4,
-                     'ang__ISMIKE_Red_VSmockvis_ARspot1'     : 48.6,
-                     'fctrst__ISMIKE_Red_VSmockvis_ARspot1'    : 0.59,
+                     'lat__ISMIKE_Red_VSmockvis__ARspot1'     : -90,
+                     'Tc_ar__ISMIKE_Red_VSmockvis__ARspot1' : 2459642.86314 + 2.4,
+                     'ang__ISMIKE_Red_VSmockvis__ARspot1'     : 48.6,
+                     'fctrst__ISMIKE_Red_VSmockvis__ARspot1'    : 0.59,
 
     #                 # For the facula 'facula1' : -- equatorial band hypothesis
-    #                 'lat__ISMIKE_Red_VSmockvis_ARfacula1'     : 89.,
-    #                 'Tc_ar__ISMIKE_Red_VSmockvis_ARfacula1' : 2459556.51669,
-    #                 'ang__ISMIKE_Red_VSmockvis_ARfacula1'     : 75.,
-    #                 'fctrst__ISMIKE_Red_VSmockvis_ARfacula1'    : 1.5,
+    #                 'lat__ISMIKE_Red_VSmockvis__ARfacula1'     : 89.,
+    #                 'Tc_ar__ISMIKE_Red_VSmockvis__ARfacula1' : 2459556.51669,
+    #                 'ang__ISMIKE_Red_VSmockvis__ARfacula1'     : 75.,
+    #                 'fctrst__ISMIKE_Red_VSmockvis__ARfacula1'    : 1.5,
 
     #                 # For the facula 'facula2' : -- equatorial band hypothesis 
-    #                 'lat__ISMIKE_Red_VSmockvis_ARfacula2'     : -89,
-    #                 'Tc_ar__ISMIKE_Red_VSmockvis_ARfacula2' : 2459556.51669,
-    #                 'ang__ISMIKE_Red_VSmockvis_ARfacula2'     : 75.,
-    #                 'fctrst__ISMIKE_Red_VSmockvis_ARfacula2'    : 1.5,
+    #                 'lat__ISMIKE_Red_VSmockvis__ARfacula2'     : -89,
+    #                 'Tc_ar__ISMIKE_Red_VSmockvis__ARfacula2' : 2459556.51669,
+    #                 'ang__ISMIKE_Red_VSmockvis__ARfacula2'     : 75.,
+    #                 'fctrst__ISMIKE_Red_VSmockvis__ARfacula2'    : 1.5,
                     },
                 },
-            'IGRINS2_Red':{
-                 'mockvis':{
-                    # For the spot 'spot1' : -- Almenara+2022
-                     'lat__ISIGRINS2_Red_VSmockvis_ARspot1'     : -90,
-                     'Tc_ar__ISIGRINS2_Red_VSmockvis_ARspot1' : 2459642.86314 + 2.4,
-                     'ang__ISIGRINS2_Red_VSmockvis_ARspot1'     : 48.6,
-                     'fctrst__ISIGRINS2_Red_VSmockvis_ARspot1'    : 0.59,
-                    },
-                },
-            'IGRINS2_Blue':{
-                 'mockvis':{
-                    # For the spot 'spot1' : -- Almenara+2022
-                     'lat__ISIGRINS2_Red_VSmockvis_ARspot1'     : -90,
-                     'Tc_ar__ISIGRINS2_Red_VSmockvis_ARspot1' : 2459642.86314 + 2.4,
-                     'ang__ISIGRINS2_Red_VSmockvis_ARspot1'     : 48.6,
-                     'fctrst__ISIGRINS2_Red_VSmockvis_ARspot1'    : 0.59,
-                    },
-                },
+            # 'IGRINS2_Red':{
+            #      'mockvis':{
+            #         # For the spot 'spot1' : -- Almenara+2022
+            #          'lat__ISIGRINS2_Red_VSmockvis__ARspot1'     : -90,
+            #          'Tc_ar__ISIGRINS2_Red_VSmockvis__ARspot1' : 2459642.86314 + 2.4,
+            #          'ang__ISIGRINS2_Red_VSmockvis__ARspot1'     : 48.6,
+            #          'fctrst__ISIGRINS2_Red_VSmockvis__ARspot1'    : 0.59,
+            #         },
+            #     },
+            # 'IGRINS2_Blue':{
+            #      'mockvis':{
+            #         # For the spot 'spot1' : -- Almenara+2022
+            #          'lat__ISIGRINS2_Blue_VSmockvis__ARspot1'     : -90,
+            #          'Tc_ar__ISIGRINS2_Blue_VSmockvis__ARspot1' : 2459642.86314 + 2.4,
+            #          'ang__ISIGRINS2_Blue_VSmockvis__ARspot1'     : 48.6,
+            #          'fctrst__ISIGRINS2_Blue_VSmockvis__ARspot1'    : 0.59,
+            #         },
+            #     },
             'MAROONX_Red':{
                  'mockvis':{
                     # For the spot 'spot1' : -- Almenara+2022
-                     'lat__ISMAROONX_Red_VSmockvis_ARspot1'     : -90,
-                     'Tc_ar__ISMAROONX_Red_VSmockvis_ARspot1' : 2459642.86314 + 2.4,
-                     'ang__ISMAROONX_Red_VSmockvis_ARspot1'     : 48.6,
-                     'fctrst__ISMAROONX_Red_VSmockvis_ARspot1'    : 0.59,
+                     'lat__ISMAROONX_Red_VSmockvis__ARspot1'     : -90,
+                     'Tc_ar__ISMAROONX_Red_VSmockvis__ARspot1' : 2459642.86314 + 2.4,
+                     'ang__ISMAROONX_Red_VSmockvis__ARspot1'     : 48.6,
+                     'fctrst__ISMAROONX_Red_VSmockvis__ARspot1'    : 0.59,
                     },
                 },
             }
+
+        mock_dic['auto_gen_ar'] = {
+            'IGRINS2_Red':{
+                     'mockvis':{
+                         'lat'     : {'distrib':'uf', 'low':-15, 'high':15},
+                         'Tc_ar' : {'distrib':'uf', 'low':2459642.86314 - 0.6, 'high':2459642.86314 + 0.6},
+                         'ang'     : {'distrib':'uf', 'low':5, 'high':8},
+                        'fctrst'    : {'distrib':'uf', 'low':0.45, 'high':0.5},
+                         'num': 200,
+                        },
+                 }
+        }
 
 
     if gen_dic['star_name']=='TRAPPIST1':
@@ -910,245 +1012,245 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
              'NIRPS_HE':{
                  'mockvis':{
         #             # # For the spot 'spot1' : 
-        #             'lat__ISNIRPS_HE_VSmockvis_ARspot1'     : 30,
-        #             'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot1' : 2460472.0,
-        #             'ang__ISNIRPS_HE_VSmockvis_ARspot1'     : 35, # 10, #15
-        #             'fctrst__ISNIRPS_HE_VSmockvis_ARspot1'    : 0.7,
+        #             'lat__ISNIRPS_HE_VSmockvis__ARspot1'     : 30,
+        #             'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot1' : 2460472.0,
+        #             'ang__ISNIRPS_HE_VSmockvis__ARspot1'     : 35, # 10, #15
+        #             'fctrst__ISNIRPS_HE_VSmockvis__ARspot1'    : 0.7,
 
         #             # For the spot 'spot2' :
-        #             'lat__ISNIRPS_HE_VSmockvis_ARspot2'     : -20,
-        #             'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot2' : 2460472.8,
-        #             'ang__ISNIRPS_HE_VSmockvis_ARspot2'     : 25, # 10, #15
-        #             'fctrst__ISNIRPS_HE_VSmockvis_ARspot2'    : 0.7,
+        #             'lat__ISNIRPS_HE_VSmockvis__ARspot2'     : -20,
+        #             'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot2' : 2460472.8,
+        #             'ang__ISNIRPS_HE_VSmockvis__ARspot2'     : 25, # 10, #15
+        #             'fctrst__ISNIRPS_HE_VSmockvis__ARspot2'    : 0.7,
 
                     # # For the spot 'spot3' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot3'     : 4,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot3' : 2460471.1+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot3'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot3'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot3'     : 4,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot3' : 2460471.1+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot3'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot3'    : 0.7,
 
 
                     # # For the spot 'spot4' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot4'     : 6,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot4' : 2460471.16+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot4'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot4'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot4'     : 6,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot4' : 2460471.16+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot4'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot4'    : 0.7,
 
 
                     # # For the spot 'spot5' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot5'     : 12,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot5' : 2460471.14+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot5'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot5'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot5'     : 12,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot5' : 2460471.14+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot5'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot5'    : 0.7,
 
 
                     # # For the spot 'spot6' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot6'     : -20,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot6' : 2460471.1+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot6'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot6'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot6'     : -20,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot6' : 2460471.1+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot6'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot6'    : 0.7,
 
 
                     # # For the spot 'spot7' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot7'     : -20,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot7' : 2460471.0+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot7'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot7'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot7'     : -20,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot7' : 2460471.0+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot7'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot7'    : 0.7,
 
 
                     # # For the spot 'spot8' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot8'     : -35,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot8' : 2460471.05+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot8'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot8'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot8'     : -35,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot8' : 2460471.05+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot8'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot8'    : 0.7,
 
 
                     # # For the spot 'spot9' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot9'     : -46,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot9' : 2460471.05+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot9'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot9'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot9'     : -46,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot9' : 2460471.05+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot9'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot9'    : 0.7,
 
 
                     # # For the spot 'spot10' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot10'     : -38,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot10' : 2460470.88+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot10'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot10'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot10'     : -38,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot10' : 2460470.88+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot10'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot10'    : 0.7,
 
 
                     # # For the spot 'spot11' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot11'     : -26,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot11' : 2460470.65+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot11'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot11'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot11'     : -26,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot11' : 2460470.65+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot11'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot11'    : 0.7,
 
 
                     # # For the spot 'spot12' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot12'     : -46,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot12' : 2460470.70+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot12'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot12'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot12'     : -46,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot12' : 2460470.70+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot12'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot12'    : 0.7,
 
 
                     # # For the spot 'spot13' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot13'     : -15,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot13' : 2460470.5+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot13'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot13'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot13'     : -15,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot13' : 2460470.5+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot13'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot13'    : 0.7,
 
 
                     # # For the spot 'spot14' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot14'     : -60,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot14' : 2460471.5+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot14'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot14'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot14'     : -60,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot14' : 2460471.5+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot14'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot14'    : 0.7,
 
 
                     # # For the spot 'spot15' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot15'     : 8,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot15' : 2460471.6+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot15'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot15'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot15'     : 8,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot15' : 2460471.6+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot15'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot15'    : 0.7,
 
 
                     # # For the spot 'spot16' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot16'     : 22,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot16' : 2460471.65+.51,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot16'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot16'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot16'     : 22,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot16' : 2460471.65+.51,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot16'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot16'    : 0.7,
 
 
                     # # For the spot 'spot17' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot17'     : 25,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot17' : 2460471.6+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot17'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot17'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot17'     : 25,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot17' : 2460471.6+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot17'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot17'    : 0.7,
 
 
                     # # For the spot 'spot18' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot18'     : 20,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot18' : 2460471.45+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot18'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot18'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot18'     : 20,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot18' : 2460471.45+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot18'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot18'    : 0.7,
 
 
                     # # For the spot 'spot19' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot19'     : 40,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot19' : 2460471.18+.51,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot19'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot19'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot19'     : 40,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot19' : 2460471.18+.51,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot19'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot19'    : 0.7,
 
 
                     # # For the spot 'spot20' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot20'     : 44,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot20' : 2460471.24+.51,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot20'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot20'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot20'     : 44,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot20' : 2460471.24+.51,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot20'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot20'    : 0.7,
 
 
                     # # For the spot 'spot21' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot21'     : 48,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot21' : 2460470.9+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot21'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot21'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot21'     : 48,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot21' : 2460470.9+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot21'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot21'    : 0.7,
 
 
                     # # For the spot 'spot22' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot22'     : 60,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot22' : 2460470.4+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot22'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot22'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot22'     : 60,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot22' : 2460470.4+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot22'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot22'    : 0.7,
 
 
                     # # For the spot 'spot23' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot23'     : 70,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot23' : 2460471.3+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot23'     : 3, # 10, #15
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot23'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot23'     : 70,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot23' : 2460471.3+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot23'     : 3, # 10, #15
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot23'    : 0.7,
 
 
                     # # For the spot 'spot24' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot24'     : 85,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot24' : 2460470.3+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot24' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot24'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot24'     : 85,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot24' : 2460470.3+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot24' : 3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot24'    : 0.7,
 
 
                     # # For the spot 'spot25' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot25'     : -20,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot25' : 2460471.7+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot25' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot25'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot25'     : -20,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot25' : 2460471.7+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot25' : 3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot25'    : 0.7,
 
 
                     # # For the spot 'spot26' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot26'     : -10,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot26' : 2460471.4+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot26' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot26'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot26'     : -10,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot26' : 2460471.4+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot26' : 3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot26'    : 0.7,
 
                     
                     # # For the spot 'spot27' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot27'     : -35,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot27' : 2460471.55+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot27' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot27'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot27'     : -35,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot27' : 2460471.55+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot27' : 3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot27'    : 0.7,
 
                     
                     # # For the spot 'spot28' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot28'     : -42,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot28' : 2460472.75,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot28' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot28'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot28'     : -42,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot28' : 2460472.75,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot28' : 3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot28'    : 0.7,
 
 
                     # # For the spot 'spot29' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot29'     : 85,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot29' : 2460470.3+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot29' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot29'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot29'     : 85,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot29' : 2460470.3+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot29' : 3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot29'    : 0.7,
 
                     
                     # # For the spot 'spot30' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot30'     : 85,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot30' : 2460470.3+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot30' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot30'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot30'     : 85,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot30' : 2460470.3+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot30' : 3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot30'    : 0.7,
 
                     
                     # # For the spot 'spot31' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot31'     : 85,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot31' : 2460470.3+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot31' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot31'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot31'     : 85,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot31' : 2460470.3+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot31' : 3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot31'    : 0.7,
 
                     
                     # # For the spot 'spot32' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot32'     : 85,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot32' : 2460470.3+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot32' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot32'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot32'     : 85,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot32' : 2460470.3+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot32' : 3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot32'    : 0.7,
 
                     
                     # # For the spot 'spot33' :
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARspot33'     : 85,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot33' : 2460470.3+1.5,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARspot33' : 3,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARspot33'    : 0.7,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARspot33'     : 85,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot33' : 2460470.3+1.5,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARspot33' : 3,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARspot33'    : 0.7,
 
                     
                     # For the spot 'spot34' :
-                    'lat__ISNIRPS_HE_VSmockvis_ARspot34'     : 85,
-                    'Tc_ar__ISNIRPS_HE_VSmockvis_ARspot34' : 2460470.3+1.5,
-                    'ang__ISNIRPS_HE_VSmockvis_ARspot34' : 3,
-                    'fctrst__ISNIRPS_HE_VSmockvis_ARspot34'    : 0.7,
+                    'lat__ISNIRPS_HE_VSmockvis__ARspot34'     : 85,
+                    'Tc_ar__ISNIRPS_HE_VSmockvis__ARspot34' : 2460470.3+1.5,
+                    'ang__ISNIRPS_HE_VSmockvis__ARspot34' : 3,
+                    'fctrst__ISNIRPS_HE_VSmockvis__ARspot34'    : 0.7,
 
                     # For the facula 'facula1' : -- base grid run
-                    # 'lat__ISNIRPS_HE_VSmockvis_ARfacula1'     : 30,
-                    # 'Tc_ar__ISNIRPS_HE_VSmockvis_ARfacula1' : 2460473.15,
-                    # 'ang__ISNIRPS_HE_VSmockvis_ARfacula1'     : 20.,
-                    # 'fctrst__ISNIRPS_HE_VSmockvis_ARfacula1'    : 1.5,
+                    # 'lat__ISNIRPS_HE_VSmockvis__ARfacula1'     : 30,
+                    # 'Tc_ar__ISNIRPS_HE_VSmockvis__ARfacula1' : 2460473.15,
+                    # 'ang__ISNIRPS_HE_VSmockvis__ARfacula1'     : 20.,
+                    # 'fctrst__ISNIRPS_HE_VSmockvis__ARfacula1'    : 1.5,
                     },
                 }
             }
@@ -1160,47 +1262,47 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                  'mock_vis':{
 
                      # # For the spot 'spot1' : - testing
-                     # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : 30,
-                     # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051,
-                     # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 25,
-                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.6,
+                     # 'lat__ISESPRESSO_VSmock_vis__ARspot1'     : 30,
+                     # 'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : 2458330.39051,
+                     # 'ang__ISESPRESSO_VSmock_vis__ARspot1'     : 25,
+                     # 'fctrst__ISESPRESSO_VSmock_vis__ARspot1'    : 0.6,
 
                      # # For the spot 'spot1' : 
-                     # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : 30,
-                     # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051,
-                     # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 15,
-                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.2,
+                     # 'lat__ISESPRESSO_VSmock_vis__ARspot1'     : 30,
+                     # 'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : 2458330.39051,
+                     # 'ang__ISESPRESSO_VSmock_vis__ARspot1'     : 15,
+                     # 'fctrst__ISESPRESSO_VSmock_vis__ARspot1'    : 0.2,
                     
                      # # #For the spot 'spot2' : 
-                     # 'lat__ISESPRESSO_VSmock_vis_ARspot2'     : -20,
-                     # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot2' : 2458330.39051 - 0.2,
-                     # 'ang__ISESPRESSO_VSmock_vis_ARspot2'     : 25,
-                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot2'    : 0.9,
+                     # 'lat__ISESPRESSO_VSmock_vis__ARspot2'     : -20,
+                     # 'Tc_ar__ISESPRESSO_VSmock_vis__ARspot2' : 2458330.39051 - 0.2,
+                     # 'ang__ISESPRESSO_VSmock_vis__ARspot2'     : 25,
+                     # 'fctrst__ISESPRESSO_VSmock_vis__ARspot2'    : 0.9,
 
                      # For the spot 'spot1' : -- plotting purposes
-                     # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : 0,
-                     # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051,
-                     # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 25,
-                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.05,
+                     # 'lat__ISESPRESSO_VSmock_vis__ARspot1'     : 0,
+                     # 'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : 2458330.39051,
+                     # 'ang__ISESPRESSO_VSmock_vis__ARspot1'     : 25,
+                     # 'fctrst__ISESPRESSO_VSmock_vis__ARspot1'    : 0.05,
                      
 
                      # #For the spot 'spot2' :  -- plotting purposes
-                     # 'lat__ISESPRESSO_VSmock_vis_ARspot2'     : 15,
-                     # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot2' : 2458330.39051 - 0.4,
-                     # 'ang__ISESPRESSO_VSmock_vis_ARspot2'     : 25,
-                     # 'fctrst__ISESPRESSO_VSmock_vis_ARspot2'    : 0.1,
+                     # 'lat__ISESPRESSO_VSmock_vis__ARspot2'     : 15,
+                     # 'Tc_ar__ISESPRESSO_VSmock_vis__ARspot2' : 2458330.39051 - 0.4,
+                     # 'ang__ISESPRESSO_VSmock_vis__ARspot2'     : 25,
+                     # 'fctrst__ISESPRESSO_VSmock_vis__ARspot2'    : 0.1,
 
                     # For the spot 'spot1' : -- base grid run
-                     'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
-                     'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051 - 0.3,
-                     'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 15,
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.1,
+                     'lat__ISESPRESSO_VSmock_vis__ARspot1'     : -30,
+                     'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : 2458330.39051 - 0.3,
+                     'ang__ISESPRESSO_VSmock_vis__ARspot1'     : 15,
+                    'fctrst__ISESPRESSO_VSmock_vis__ARspot1'    : 0.1,
 
                     # For the facula 'facula1' : -- base grid run
-                    # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : 0,
-                    # 'Tc_ar__ISESPRESSO_VSmock_vis_ARfacula1' : 2458330.39051 - 0.3,
-                    # 'ang__ISESPRESSO_VSmock_vis_ARfacula1'     : 25,
-                    # 'fctrst__ISESPRESSO_VSmock_vis_ARfacula1'    : 1.5,
+                    # 'lat__ISESPRESSO_VSmock_vis__ARfacula1'     : 0,
+                    # 'Tc_ar__ISESPRESSO_VSmock_vis__ARfacula1' : 2458330.39051 - 0.3,
+                    # 'ang__ISESPRESSO_VSmock_vis__ARfacula1'     : 25,
+                    # 'fctrst__ISESPRESSO_VSmock_vis__ARfacula1'    : 1.5,
                     },
                 }
             }
@@ -1225,16 +1327,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                  'mockvisit1':{
 
                      # For the spot 'spot1' : 
-                     'lat__ISESPRESSO_VSmockvisit1_ARspot1'     : -45,
-                     'Tc_ar__ISESPRESSO_VSmockvisit1_ARspot1' : 2458702.26484,
-                     'ang__ISESPRESSO_VSmockvisit1_ARspot1'     : 20, # 10, #15
-                     'fctrst__ISESPRESSO_VSmockvisit1_ARspot1'    : 0.45,
+                     'lat__ISESPRESSO_VSmockvisit1__ARspot1'     : -45,
+                     'Tc_ar__ISESPRESSO_VSmockvisit1__ARspot1' : 2458702.26484,
+                     'ang__ISESPRESSO_VSmockvisit1__ARspot1'     : 20, # 10, #15
+                     'fctrst__ISESPRESSO_VSmockvisit1__ARspot1'    : 0.45,
 
                      # For the spot 'spot2' : 
-                     'lat__ISESPRESSO_VSmockvisit1_ARspot2'     : 55,
-                     'Tc_ar__ISESPRESSO_VSmockvisit1_ARspot2' : 2458702.76484, 
-                     'ang__ISESPRESSO_VSmockvisit1_ARspot2'     : 12, #12
-                     'fctrst__ISESPRESSO_VSmockvisit1_ARspot2'    : 0.45,
+                     'lat__ISESPRESSO_VSmockvisit1__ARspot2'     : 55,
+                     'Tc_ar__ISESPRESSO_VSmockvisit1__ARspot2' : 2458702.76484, 
+                     'ang__ISESPRESSO_VSmockvisit1__ARspot2'     : 12, #12
+                     'fctrst__ISESPRESSO_VSmockvisit1__ARspot2'    : 0.45,
                          }
                     }
                 }
@@ -1245,19 +1347,35 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                  'mock_vis':{
 
                      # For the spot 'spot1' : 
-                     'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
-                     'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2457067.0488 - 12/24,
-                     'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 20,
-                     'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.6,
+                     'lat__ISESPRESSO_VSmock_vis__ARspot1'     : -30,
+                     'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : 2457067.0488 - 12/24,
+                     'ang__ISESPRESSO_VSmock_vis__ARspot1'     : 20,
+                     'fctrst__ISESPRESSO_VSmock_vis__ARspot1'    : 0.6,
                     
                      # For the spot 'spot2' : 
-                     'lat__ISESPRESSO_VSmock_vis_ARspot2'     : 40,
-                     'Tc_ar__ISESPRESSO_VSmock_vis_ARspot2' : 2457067.0488 + 5/24,
-                     'ang__ISESPRESSO_VSmock_vis_ARspot2'     : 25,
-                     'fctrst__ISESPRESSO_VSmock_vis_ARspot2'    : 0.4
+                     'lat__ISESPRESSO_VSmock_vis__ARspot2'     : 40,
+                     'Tc_ar__ISESPRESSO_VSmock_vis__ARspot2' : 2457067.0488 + 5/24,
+                     'ang__ISESPRESSO_VSmock_vis__ARspot2'     : 25,
+                     'fctrst__ISESPRESSO_VSmock_vis__ARspot2'    : 0.4
                          }
                     }
                 }
+
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        mock_dic['ar_prop']={
+             list(mock_dic['visit_def'].keys())[0]:{
+                 'mockvis':{
+
+                    # For the spot 'spot1' : -- base grid run
+                     'lat__IS'+list(mock_dic['visit_def'].keys())[0]+'_VSmockvis__ARspot1'     : -20,
+                     'Tc_ar__IS'+list(mock_dic['visit_def'].keys())[0]+'_VSmockvis__ARspot1' : tcen - 0.1,
+                     'ang__IS'+list(mock_dic['visit_def'].keys())[0]+'_VSmockvis__ARspot1'     : 15,
+                    'fctrst__IS'+list(mock_dic['visit_def'].keys())[0]+'_VSmockvis__ARspot1'    : 0.99,
+                    },
+                }
+            }
+
 
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Taurus','Scorpio','Virgo','Pisces']:
@@ -1266,10 +1384,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                  'mock_vis':{
 
                     # For the spot 'spot1' : -- base grid run
-                     'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
-                     'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051 - 0.1,
-                     'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 15,
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.4,
+                     'lat__ISESPRESSO_VSmock_vis__ARspot1'     : -30,
+                     'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : 2458330.39051 - 0.1,
+                     'ang__ISESPRESSO_VSmock_vis__ARspot1'     : 15,
+                    'fctrst__ISESPRESSO_VSmock_vis__ARspot1'    : 0.4,
                     },
                 }
             }
@@ -1279,10 +1397,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                  'mock_vis':{
 
                     # For the spot 'spot1' : -- base grid run
-                     'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
-                     'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051 - 0.1,
-                     'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 30,
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.4,
+                     'lat__ISESPRESSO_VSmock_vis__ARspot1'     : -30,
+                     'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : 2458330.39051 - 0.1,
+                     'ang__ISESPRESSO_VSmock_vis__ARspot1'     : 30,
+                    'fctrst__ISESPRESSO_VSmock_vis__ARspot1'    : 0.4,
                     },
                 }
             }
@@ -1292,10 +1410,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                  'mock_vis':{
 
                     # For the spot 'spot1' : -- base grid run
-                     'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
-                     'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051 - 0.1,
-                     'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 5,
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.4,
+                     'lat__ISESPRESSO_VSmock_vis__ARspot1'     : -30,
+                     'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : 2458330.39051 - 0.1,
+                     'ang__ISESPRESSO_VSmock_vis__ARspot1'     : 5,
+                    'fctrst__ISESPRESSO_VSmock_vis__ARspot1'    : 0.4,
                     },
                 }
             }
@@ -1305,10 +1423,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                  'mock_vis':{
 
                     # For the spot 'spot1' : -- base grid run
-                     'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
-                     'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051 - 0.1,
-                     'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 15,
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.05,
+                     'lat__ISESPRESSO_VSmock_vis__ARspot1'     : -30,
+                     'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : 2458330.39051 - 0.1,
+                     'ang__ISESPRESSO_VSmock_vis__ARspot1'     : 15,
+                    'fctrst__ISESPRESSO_VSmock_vis__ARspot1'    : 0.05,
                     },
                 }
             }
@@ -1318,10 +1436,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                  'mock_vis':{
 
                     # For the spot 'spot1' : -- base grid run
-                     'lat__ISESPRESSO_VSmock_vis_ARspot1'     : -30,
-                     'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : 2458330.39051 - 0.1,
-                     'ang__ISESPRESSO_VSmock_vis_ARspot1'     : 15,
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'    : 0.8,
+                     'lat__ISESPRESSO_VSmock_vis__ARspot1'     : -30,
+                     'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : 2458330.39051 - 0.1,
+                     'ang__ISESPRESSO_VSmock_vis__ARspot1'     : 15,
+                    'fctrst__ISESPRESSO_VSmock_vis__ARspot1'    : 0.8,
                     },
                 }
         }
@@ -1337,6 +1455,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
                         'FWHM__ord0__IS__VS_'  : 8 },
             'pol_mode' : 'modul'},
+
             'IGRINS2_Red':{
             'mode':'ana',        
             'coord_line':'mu',
@@ -1345,6 +1464,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
                         'FWHM__ord0__IS__VS_'  : 8 },
             'pol_mode' : 'modul'},
+
             'IGRINS2_Blue':{
             'mode':'ana',        
             'coord_line':'mu',
@@ -1353,6 +1473,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
                         'FWHM__ord0__IS__VS_'  : 8 },
             'pol_mode' : 'modul'},
+
             'MAROONX_Red':{
             'mode':'ana',        
             'coord_line':'mu',
@@ -1413,6 +1534,18 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                         },
             'pol_mode' : 'modul'}}  
 
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        mock_dic['intr_prof']={list(mock_dic['visit_def'].keys())[0]:{
+            'mode':'ana',        
+            'coord_line':'mu',
+            'model': 'gauss',
+            'line_trans':None, 
+            'mod_prop':{'ctrst__ord0__IS__VS_' : 0.7,
+                        'FWHM__ord0__IS__VS_'  : 8 },
+            'pol_mode' : 'modul'},
+            }
+
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         mock_dic['intr_prof']={'ESPRESSO':{
@@ -1433,13 +1566,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'mockvis':40., #--Almenara+2022
             },
         'IGRINS2_Red':{
-        'mockvis':40., #--Equatorial band hypothesis
+        'mockvis':23., #--Equatorial band hypothesis
             },
         'IGRINS2_Blue':{
-        'mockvis':40., #--Equatorial band hypothesis
+        'mockvis':30., #--Equatorial band hypothesis
             },
         'MAROONX_Red':{
-        'mockvis':40., #--Equatorial band hypothesis
+        'mockvis':3., #--Equatorial band hypothesis
             },
         }
         mock_dic['verbose_flux_cont']= True
@@ -1468,6 +1601,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             
     if gen_dic['star_name'] == 'V1298tau' :
         mock_dic['flux_cont']={'ESPRESSO':{'mock_vis':1e5}}   
+
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        fluxcont = {'TOI5205':12,'TOI3714':13,'TOI5293':8,'TOI3757':14,'TOI3984':14,'HATS75':9,'HATS6':12,'TOI1224':10,'TOI540':10,'TOI122':10,'K233':10,'TOI1227':10}[gen_dic['star_name']]
+        mock_dic['flux_cont']={
+                             list(mock_dic['visit_def'].keys())[0]:{'mockvis':fluxcont},
+                            }
+        mock_dic['verbose_flux_cont']= True 
     
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -1495,6 +1636,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] == 'V1298tau' : 
         mock_dic['gcal'] = {'ESPRESSO' : 1.}  
 
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        mock_dic['gcal'] = {'MIKE_Blue' : 1.,'MIKE_Red' : 1.,'IGRINS2_Red' : 1.,'IGRINS2_Blue' : 1.,'MAROONX_Red' : 1.}  
+
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         mock_dic['gcal'] = {'ESPRESSO' : 1.}   
@@ -1505,6 +1650,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] == 'AUMic': mock_dic['set_err']={'ESPRESSO':True}
     if gen_dic['star_name'] == 'fakeAU_Mic': mock_dic['set_err']={'ESPRESSO':True}
     if gen_dic['star_name'] == 'V1298tau': mock_dic['set_err']={'ESPRESSO':True}
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:mock_dic['set_err']={'MIKE_Red':True,'MIKE_Blue':True,'IGRINS2_Red':True,'IGRINS2_Blue':True,'MAROONX_Red':True}
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:mock_dic['set_err']={'ESPRESSO':True}
 
@@ -1885,7 +2032,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%%% Contact determination
     #    - start/end phase in fraction of ingress/egress phase
-    plot_dic['stend_ph'] = 1.3
+    # plot_dic['stend_ph'] = 1.3
     
     
     #%%%%% Transit chord discretization        
@@ -1940,7 +2087,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dstar']=201.
+
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        theo_dic['nsub_Dstar']=101.
             
+    #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         # theo_dic['nsub_Dstar']=5.
         # theo_dic['nsub_Dstar']=11.
@@ -1982,7 +2134,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     if gen_dic['star_name']=='V1298tau':
         theo_dic['st_atm']['calc']=False
-    
+
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        theo_dic['st_atm']['calc']=False
+
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         theo_dic['st_atm']['calc']=False
@@ -2022,6 +2178,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dpl']={'V1298tau_b':101.}
+
+    #GEMS
+    for gem in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        if gen_dic['star_name']==gem:
+            theo_dic['nsub_Dpl']= {gem_pl:33.} 
 
     #Zodiacs
     for zodiac in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -2091,6 +2252,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='V1298tau':
         theo_dic['nsub_Dar']={'spot1':50., 'spot2':50.}
+
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        theo_dic['nsub_Dar']= {'spot1':33.} 
     
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -2108,12 +2273,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # theo_dic['nsub_Dar']={'spot1':201.}
 
     #Exposure discretization
-    if gen_dic['star_name']=='TOI3884':
-        theo_dic['n_oversamp']={'TOI3884_b':5.}#, 'AUMicc': 5.}
-        theo_dic['n_oversamp_ar']={
-                                        'spot1':5.
-                                        #'facula1':5.,'facula2':5.,
-                                      }
+    # if gen_dic['star_name']=='TOI3884':
+    #     theo_dic['n_oversamp']={'TOI3884_b':5.}#, 'AUMicc': 5.}
+    #     theo_dic['n_oversamp_ar']={
+    #                                     'spot1':5.
+    #                                     #'facula1':5.,'facula2':5.,
+    #                                   }
 
     if gen_dic['star_name']=='TRAPPIST1':
         theo_dic['n_oversamp']={'TRAPPIST1_b':5.,
@@ -2175,6 +2340,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         theo_dic['n_oversamp'] = {'V1298tau_b':5.}
         theo_dic['n_oversamp_ar']={'spot1':5., 'spot2':5.}
 
+    #GEMS
+    for gem in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        if gen_dic['star_name']==gem:
+            theo_dic['n_oversamp']={gem_pl:5.}
+            theo_dic['n_oversamp_ar']={'spot1':5.}
     #Zodiacs
     for zodiac in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         if gen_dic['star_name']==zodiac:
@@ -2193,16 +2363,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                  'visit1':{
 
                     # For the spot 'spot1' : -- base grid run
-                    'lat__ISESPRESSO_VSvisit1_ARspot1'     : 0,
-                    'Tc_ar__ISESPRESSO_VSvisit1_ARspot1' : 2458702.76484-0.8,
-                    'ang__ISESPRESSO_VSvisit1_ARspot1'     : 10,
-                    'fctrst__ISESPRESSO_VSvisit1_ARspot1'    : 0.65,
+                    'lat__ISESPRESSO_VSvisit1__ARspot1'     : 0,
+                    'Tc_ar__ISESPRESSO_VSvisit1__ARspot1' : 2458702.76484-0.8,
+                    'ang__ISESPRESSO_VSvisit1__ARspot1'     : 10,
+                    'fctrst__ISESPRESSO_VSvisit1__ARspot1'    : 0.65,
 
                     # For the spot 'spot2' : -- base grid run
-                    'lat__ISESPRESSO_VSvisit1_ARspot2'     : -10,
-                    'Tc_ar__ISESPRESSO_VSvisit1_ARspot2' : 2458702.76484,
-                    'ang__ISESPRESSO_VSvisit1_ARspot2'     : 14,
-                    'fctrst__ISESPRESSO_VSvisit1_ARspot2'    : 0.65,
+                    'lat__ISESPRESSO_VSvisit1__ARspot2'     : -10,
+                    'Tc_ar__ISESPRESSO_VSvisit1__ARspot2' : 2458702.76484,
+                    'ang__ISESPRESSO_VSvisit1__ARspot2'     : 14,
+                    'fctrst__ISESPRESSO_VSvisit1__ARspot2'    : 0.65,
                     },
                 }
         }
@@ -2213,15 +2383,19 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #              'visit1':{
 
     #                 # For the spot 'spot1' : -- base grid run
-    #                 'lat__ISESPRESSO_VSvisit1_ARspot1'     : 0,
-    #                 'Tc_ar__ISESPRESSO_VSvisit1_ARspot1' : 2459457.589323-0.2,
-    #                 'ang__ISESPRESSO_VSvisit1_ARspot1'     : 10,
-    #                 'fctrst__ISESPRESSO_VSvisit1_ARspot1'    : 0.6,
+    #                 'lat__ISESPRESSO_VSvisit1__ARspot1'     : 0,
+    #                 'Tc_ar__ISESPRESSO_VSvisit1__ARspot1' : 2459457.589323-0.2,
+    #                 'ang__ISESPRESSO_VSvisit1__ARspot1'     : 10,
+    #                 'fctrst__ISESPRESSO_VSvisit1__ARspot1'    : 0.6,
     #                 },
     #             }
     #     }
 
     if gen_dic['star_name'] in ['TRAPPIST1','AUMic','fakeAU_Mic','TOI3884']:
+        theo_dic['ar_prop'] = mock_dic['ar_prop']
+
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
         theo_dic['ar_prop'] = mock_dic['ar_prop']
 
     #Zodiacs
@@ -2249,7 +2423,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Planetary system architecture
     plot_dic['system_view']=''   #png
 
-    if gen_dic['star_name'] in ['fakeAU_Mic','AUMic','TRAPPIST1','TOI3884','HD189733']:
+    if gen_dic['star_name'] in ['fakeAU_Mic','AUMic','TRAPPIST1','TOI3884','HD189733','TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227'
+                                'AU_Mic','V1298tau','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         #Range of planet-occulted properties
         plot_dic['plocc_ranges']=''    
         
@@ -2261,46 +2436,6 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
         #Transit chord discretization        
         plot_dic['nph_HR'] = 100
-    
-    if gen_dic['star_name']=='AU_Mic':
-        #Range of planet-occulted properties
-        plot_dic['plocc_ranges']=''    
-        
-        #Planet-occulted stellar regions
-        plot_dic['occulted_regions']='png'
-        
-        #Planetary system architecture
-        plot_dic['system_view']='png'   #png
-
-        #Transit chord discretization        
-        plot_dic['nph_HR'] = 100
-
-    if gen_dic['star_name']=='V1298tau':
-        #Range of planet-occulted properties
-        plot_dic['plocc_ranges']=''    
-        
-        #Planet-occulted stellar regions
-        plot_dic['occulted_regions']='png'
-        
-        #Planetary system architecture
-        plot_dic['system_view']='png'   #png
-
-        #Transit chord discretization        
-        plot_dic['nph_HR'] = 100
-    
-    if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        #Range of planet-occulted properties
-        plot_dic['plocc_ranges']=''    
-        
-        #Planet-occulted stellar regions
-        plot_dic['occulted_regions']='png'
-        
-        #Planetary system architecture
-        plot_dic['system_view']='png'   #png
-
-        #Transit chord discretization        
-        plot_dic['nph_HR'] = 100    
-    
     
     
     
@@ -4340,6 +4475,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         data_dic['DI']['sysvel']={'ESPRESSO' : {'mock_vis' : 0}} 
 
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        data_dic['DI']['sysvel']={list(mock_dic['visit_def'].keys())[0] : {'mockvis' : 0}}
+
     if gen_dic['star_name']=='AU_Mic':
         data_dic['DI']['sysvel']={'ESPRESSO' : {'visit1' : -6.31}} #from Gaia DR2 and Palle+2020 seem to use the same
 
@@ -4497,7 +4636,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #Calculating/retrieving
-    gen_dic['calc_flux_sc']=True  &  False    
+    gen_dic['calc_flux_sc']=True  #&  False    
     
         
 
@@ -4569,6 +4708,18 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                 }
                 }
 
+    #GEMS
+    for gem in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        if gen_dic['star_name']==gem:
+            data_dic['DI']['system_prop']={
+                    'achrom':{
+                        gem_pl : [{'TOI5205':0.2720,'TOI3714':0.2057,'TOI5293':0.210,'TOI3757':0.1769,'TOI3984':0.1558,'HATS75':0.1555,'HATS6':0.17978,'TOI1224':0.0478,'TOI540':0.0436,'TOI122':0.075,'K233':0.0432,'TOI1227':0.1568}[gem]],
+                        'LD' : ['quadratic'],
+                        'LD_u1' : [{'TOI5205':0.4,'TOI3714':0.55,'TOI5293':0.4,'TOI3757':0.39,'TOI3984':0.24,'HATS75':0.36,'HATS6':0.4748,'TOI1224':0.27,'TOI540':0.1553,'TOI122':0.2558,'K233':0.4,'TOI1227':0.74}[gem]],
+                        'LD_u2' : [{'TOI5205':0.3,'TOI3714':0.26,'TOI5293':0.3,'TOI3757':0.10,'TOI3984':0.6,'HATS75':0.34,'HATS6':0.3277,'TOI1224':0.46,'TOI540':0.4742,'TOI122':0.2566,'K233':0.4,'TOI1227':0.384}[gem]],
+                    }
+                    }
+
     #Zodiacs
     for zodiac in ['Capricorn','Cancer','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         if gen_dic['star_name']==zodiac:
@@ -4634,50 +4785,53 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             }
 
     #Intensity settings for the active regions 
-    if gen_dic['star_name']=='TOI3884':
-        # data_dic['DI']['ar_prop'] = {}
-        data_dic['DI']['ar_prop']={
-                'achrom':{
-                    'spot1' : [mock_dic['ar_prop']['MIKE_Red']['mockvis']['ang__ISMIKE_Red_VSmockvis_ARspot1'] * np.pi/180],#--base
-                    # 'spot2' : [mock_dic['ar_prop']['MIKE_Red']['mockvis']['ang__ISMIKE_Red_VSmockvis_ARspot2'] * np.pi/180],#--base
-                    # 'spot3' : [mock_dic['ar_prop']['MIKE_Red']['mockvis']['ang__ISMIKE_Red_VSmockvis_ARspot3'] * np.pi/180],#--base
-        #             'facula1' : [mock_dic['ar_prop']['MIKE_Red']['mockvis']['ang__ISMIKE_Red_VSmockvis_ARfacula1'] * np.pi/180],#--base
-        #             'facula2' : [mock_dic['ar_prop']['MIKE_Red']['mockvis']['ang__ISMIKE_Red_VSmockvis_ARfacula2'] * np.pi/180],#--base
-                    'LD' : ['quadratic'],
-                    'LD_u1' : [0.1155],
-                    'LD_u2' : [0.3578],
-                },
-                }
+    # if gen_dic['star_name']=='TOI3884':
+    #     # data_dic['DI']['ar_prop'] = {}
+    #     data_dic['DI']['ar_prop']={
+    #             'achrom':{
+    #                 # 'spot1' : [mock_dic['ar_prop']['MIKE_Red']['mockvis']['ang__ISMIKE_Red_VSmockvis__ARspot1'] * np.pi/180],#--base
+    #                 'spot1' : [mock_dic['ar_prop']['IGRINS2_Red']['mockvis']['ang__ISIGRINS2_Red_VSmockvis__ARspot1'] * np.pi/180],#--base
+    #                 # 'spot1' : [mock_dic['ar_prop']['IGRINS2_Blue']['mockvis']['ang__ISIGRINS2_Blue_VSmockvis__ARspot1'] * np.pi/180],#--base
+    #                 # 'spot1' : [mock_dic['ar_prop']['MAROONX_Red']['mockvis']['ang__ISMAROONX_Red_VSmockvis__ARspot1'] * np.pi/180],#--base
+    #                 # 'spot2' : [mock_dic['ar_prop']['MIKE_Red']['mockvis']['ang__ISMIKE_Red_VSmockvis__ARspot2'] * np.pi/180],#--base
+    #                 # 'spot3' : [mock_dic['ar_prop']['MIKE_Red']['mockvis']['ang__ISMIKE_Red_VSmockvis__ARspot3'] * np.pi/180],#--base
+    #     #             'facula1' : [mock_dic['ar_prop']['MIKE_Red']['mockvis']['ang__ISMIKE_Red_VSmockvis__ARfacula1'] * np.pi/180],#--base
+    #     #             'facula2' : [mock_dic['ar_prop']['MIKE_Red']['mockvis']['ang__ISMIKE_Red_VSmockvis__ARfacula2'] * np.pi/180],#--base
+    #                 'LD' : ['quadratic'],
+    #                 'LD_u1' : [0.1155],
+    #                 'LD_u2' : [0.3578],
+    #             },
+    #             }
 
     # if gen_dic['star_name']=='TRAPPIST1':
     #     # data_dic['DI']['ar_prop'] = {}
     #     data_dic['DI']['ar_prop']={
     #             'achrom':{
-    #                 'spot1' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot1'] * np.pi/180],#--base
-    #                 'spot2' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot2'] * np.pi/180],#--base
-    #                 # 'spot3' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot3'] * np.pi/180],#--base
-    #                 # 'spot4' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot4'] * np.pi/180],#--base
-    #                 # 'spot5' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot5'] * np.pi/180],#--base
-    #                 # 'spot6' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot6'] * np.pi/180],#--base
-    #                 # 'spot7' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot7'] * np.pi/180],#--base
-    #                 # 'spot8' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot8'] * np.pi/180],#--base
-    #                 # 'spot9' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot9'] * np.pi/180],#--base
-    #                 # 'spot10' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot10'] * np.pi/180],#--base
-    #                 # 'spot11' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot11'] * np.pi/180],#--base
-    #                 # 'spot12' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot12'] * np.pi/180],#--base
-    #                 # 'spot13' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot13'] * np.pi/180],#--base
-    #                 # 'spot14' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot14'] * np.pi/180],#--base
-    #                 # 'spot15' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot15'] * np.pi/180],#--base
-    #                 # 'spot16' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot16'] * np.pi/180],#--base
-    #                 # 'spot17' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot17'] * np.pi/180],#--base
-    #                 # 'spot18' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot18'] * np.pi/180],#--base
-    #                 # 'spot19' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot19'] * np.pi/180],#--base
-    #                 # 'spot20' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot20'] * np.pi/180],#--base
-    #                 # 'spot21' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot21'] * np.pi/180],#--base
-    #                 # 'spot22' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot22'] * np.pi/180],#--base
-    #                 # 'spot23' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot23'] * np.pi/180],#--base                    
-    #                 # 'spot24' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARspot23'] * np.pi/180],#--base 
-    #                 # 'facula1' : [mock_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis_ARfacula1'] * np.pi/180],#--base                   
+    #                 'spot1' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot1'] * np.pi/180],#--base
+    #                 'spot2' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot2'] * np.pi/180],#--base
+    #                 # 'spot3' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot3'] * np.pi/180],#--base
+    #                 # 'spot4' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot4'] * np.pi/180],#--base
+    #                 # 'spot5' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot5'] * np.pi/180],#--base
+    #                 # 'spot6' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot6'] * np.pi/180],#--base
+    #                 # 'spot7' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot7'] * np.pi/180],#--base
+    #                 # 'spot8' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot8'] * np.pi/180],#--base
+    #                 # 'spot9' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot9'] * np.pi/180],#--base
+    #                 # 'spot10' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot10'] * np.pi/180],#--base
+    #                 # 'spot11' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot11'] * np.pi/180],#--base
+    #                 # 'spot12' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot12'] * np.pi/180],#--base
+    #                 # 'spot13' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot13'] * np.pi/180],#--base
+    #                 # 'spot14' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot14'] * np.pi/180],#--base
+    #                 # 'spot15' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot15'] * np.pi/180],#--base
+    #                 # 'spot16' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot16'] * np.pi/180],#--base
+    #                 # 'spot17' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot17'] * np.pi/180],#--base
+    #                 # 'spot18' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot18'] * np.pi/180],#--base
+    #                 # 'spot19' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot19'] * np.pi/180],#--base
+    #                 # 'spot20' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot20'] * np.pi/180],#--base
+    #                 # 'spot21' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot21'] * np.pi/180],#--base
+    #                 # 'spot22' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot22'] * np.pi/180],#--base
+    #                 # 'spot23' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot23'] * np.pi/180],#--base                    
+    #                 # 'spot24' : [theo_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARspot23'] * np.pi/180],#--base 
+    #                 # 'facula1' : [mock_dic['ar_prop']['NIRPS_HE']['mockvis']['ang__ISNIRPS_HE_VSmockvis__ARfacula1'] * np.pi/180],#--base                   
     #                 'LD' : ['quadratic'],
     #                 'LD_u1' : [0.168],
     #                 'LD_u2' : [0.245],
@@ -4688,10 +4842,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # data_dic['DI']['ar_prop'] = {}
         data_dic['DI']['ar_prop']={
                 'achrom':{
-                    'spot1' : [mock_dic['ar_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_ARspot1'] * np.pi/180],#--base
-                    # 'spot1' : [mock_dic['ar_prop']['ESPRESSO']['mock_vis1']['ang__ISESPRESSO_VSmock_vis1_ARspot1'] * np.pi/180],#--grid run
-                    # 'spot2' : [mock_dic['ar_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_ARspot2'] * np.pi/180],
-                    # 'facula1' : [mock_dic['ar_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_ARfacula1'] * np.pi/180],#--base
+                    'spot1' : [mock_dic['ar_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis__ARspot1'] * np.pi/180],#--base
+                    # 'spot1' : [mock_dic['ar_prop']['ESPRESSO']['mock_vis1']['ang__ISESPRESSO_VSmock_vis1__ARspot1'] * np.pi/180],#--grid run
+                    # 'spot2' : [mock_dic['ar_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis__ARspot2'] * np.pi/180],
+                    # 'facula1' : [mock_dic['ar_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis__ARfacula1'] * np.pi/180],#--base
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.35],
                     'LD_u2' : [0.16],
@@ -4701,7 +4855,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # if gen_dic['star_name']=='HD189733':
     #     data_dic['DI']['ar_prop']={
     #             'achrom':{
-    #                 'spot1' : [theo_dic['ar_prop']['ESPRESSO']['visit1']['ang__ISESPRESSO_VSvisit1_ARspot1'] * np.pi/180],#--base
+    #                 'spot1' : [theo_dic['ar_prop']['ESPRESSO']['visit1']['ang__ISESPRESSO_VSvisit1__ARspot1'] * np.pi/180],#--base
     #                 'LD':['nonlinear'],   #From Hayek+2012, Table 5 for STIS 3D
     #                 'LD_u1':[0.5598], 
     #                 'LD_u2':[-0.4055], 
@@ -4714,8 +4868,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         data_dic['DI']['ar_prop'] = {}
         data_dic['DI']['ar_prop']={
                 'achrom':{
-                    'spot1' : [theo_dic['ar_prop']['ESPRESSO']['visit1']['ang__ISESPRESSO_VSvisit1_ARspot1'] * np.pi/180],#--base
-                    'spot2' : [theo_dic['ar_prop']['ESPRESSO']['visit1']['ang__ISESPRESSO_VSvisit1_ARspot2'] * np.pi/180],#--base
+                    'spot1' : [theo_dic['ar_prop']['ESPRESSO']['visit1']['ang__ISESPRESSO_VSvisit1__ARspot1'] * np.pi/180],#--base
+                    'spot2' : [theo_dic['ar_prop']['ESPRESSO']['visit1']['ang__ISESPRESSO_VSvisit1__ARspot2'] * np.pi/180],#--base
                     'LD' : ['quadratic'],
                     'LD_u1' : [0.63],
                     'LD_u2' : [0.15],
@@ -4727,14 +4881,24 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         if gen_dic['star_name']==zodiac:
             data_dic['DI']['ar_prop']={
                     'achrom':{
-                        'spot1' : [theo_dic['ar_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_ARspot1'] * np.pi/180],#--base
+                        'spot1' : [theo_dic['ar_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis__ARspot1'] * np.pi/180],#--base
                         'LD' : ['quadratic'],
                         'LD_u1' : [0.63],
                         'LD_u2' : [0.15],
                     },
                     }
 
-
+    #GEMS
+    for gem in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        if gen_dic['star_name']==gem:
+            data_dic['DI']['ar_prop']={
+                    'achrom':{
+                        'spot1' : [theo_dic['ar_prop'][list(mock_dic['visit_def'].keys())[0]]['mockvis']['ang__IS'+list(mock_dic['visit_def'].keys())[0]+'_VSmockvis__ARspot1'] * np.pi/180],#--base
+                        'LD' : ['quadratic'],
+                        'LD_u1' : [{'TOI5205':0.4,'TOI3714':0.55,'TOI5293':0.4,'TOI3757':0.39,'TOI3984':0.24,'HATS75':0.36,'HATS6':0.4748,'TOI1224':0.27,'TOI540':0.1553,'TOI122':0.2558,'K233':0.4,'TOI1227':0.74}[gem]],
+                        'LD_u2' : [{'TOI5205':0.3,'TOI3714':0.26,'TOI5293':0.3,'TOI3757':0.10,'TOI3984':0.6,'HATS75':0.34,'HATS6':0.3277,'TOI1224':0.46,'TOI540':0.4742,'TOI122':0.2566,'K233':0.4,'TOI1227':0.384}[gem]],
+                    },
+                    }            
 
     if gen_dic['star_name']=='fakeAU_Mic':
         # data_dic['DI']['ar_prop'] = {}
@@ -4751,8 +4915,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name']=='V1298tau':
         data_dic['DI']['ar_prop']={
                 'achrom':{
-                    'spot1' : [mock_dic['ar_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_ARspot1'] * np.pi/180],
-                    'spot2' : [mock_dic['ar_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis_ARspot2'] * np.pi/180],
+                    'spot1' : [mock_dic['ar_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis__ARspot1'] * np.pi/180],
+                    'spot2' : [mock_dic['ar_prop']['ESPRESSO']['mock_vis']['ang__ISESPRESSO_VSmock_vis__ARspot2'] * np.pi/180],
                     'LD' : ['linear'],
                     'LD_u1' : [0.41],
 
@@ -4832,6 +4996,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
             data_dic['DI']['transit_prop'].update({'ESPRESSO':{# '20210830':{'mode':'model','dt':0.05},    #used temporarily while finding Hritam's bug (spotted exposures are excluded from RM analysis anyway)
                                                                 '20210830':{'mode':'imp','path':'/Users/samsonmercier/Desktop/Work/Master/2023-2024/HD189733_data/Broadband_scaling_data/lc_wavelength_chromatic.dat'}   #will use Hritam spotted chromatic fit to simultaneous EulerCamn photom
                                                     }})
+
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        data_dic['DI']['transit_prop'].update({
+            'nsub_Dstar':101,
+            list(mock_dic['visit_def'].keys())[0]:{'mockvis':{'mode':'simu', 'n_oversamp':5}}
+            }) 
 
     #Zodiacs 
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5385,17 +5556,17 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #Activating
-    gen_dic['diff_data'] = True  &  False
+    gen_dic['diff_data'] = True  #&  False
 
     #Calculating/retrieving 
-    gen_dic['calc_diff_data'] = True   &  False
+    gen_dic['calc_diff_data'] = True   #&  False
 
 
     #Multi-threading
     gen_dic['nthreads_diff_data']= 2
 
     #In-transit restriction
-    data_dic['Diff']['extract_in']=True  &  False
+    data_dic['Diff']['extract_in']=True  #&  False
     
    # %%%% Master visits
     if gen_dic['star_name']=='AUMic':
@@ -5409,6 +5580,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
     if gen_dic['star_name']=='HD189733':
         data_dic['Diff']['vis_in_bin']={'ESPRESSO':['visit1']} 
+
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        data_dic['Diff']['vis_in_bin']={list(mock_dic['visit_def'].keys())[0]:['mockvis']}  
 
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -5446,6 +5621,13 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name']=='fakeAU_Mic':    
         data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mockvisit1':list(np.arange(0, 16,dtype=int))+list(np.arange(68, 84,dtype=int))}} 
 
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:
+        exp_1 = {'TOI5205':7,'TOI3714':7,'TOI5293':6,'TOI3757':7,'TOI3984':9,'HATS75':8,'HATS6':12,'TOI1224':100,'TOI540':100,'TOI122':100,'K233':100,'TOI1227':100}[gen_dic['star_name']]
+        exp_2 = {'TOI5205':19,'TOI3714':19,'TOI5293':20,'TOI3757':15,'TOI3984':19,'HATS75':18,'HATS6':25,'TOI1224':100,'TOI540':100,'TOI122':100,'K233':100,'TOI1227':100}[gen_dic['star_name']]
+        exp_3 = {'TOI5205':26,'TOI3714':26,'TOI5293':26,'TOI3757':22,'TOI3984':28,'HATS75':26,'HATS6':37,'TOI1224':100,'TOI540':100,'TOI122':100,'K233':100,'TOI1227':100}[gen_dic['star_name']]
+        data_dic['Diff']['idx_in_bin']={list(mock_dic['visit_def'].keys())[0]:{'mockvis':list(np.arange(0, exp_1,dtype=int))+list(np.arange(exp_2, exp_3,dtype=int))}}
+
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         if gen_dic['star_name']=='Gemini':data_dic['Diff']['idx_in_bin']={'ESPRESSO':{'mock_vis':list(np.arange(0, 41,dtype=int))+list(np.arange(139, 180,dtype=int))}} 
@@ -5463,6 +5645,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     if gen_dic['star_name']=='AU_Mic':data_dic['Diff']['cont_range']['ESPRESSO']={0 : [[-20.,-15.],[15.,20.]]}
 
     if gen_dic['star_name']=='HD189733':data_dic['Diff']['cont_range']['ESPRESSO']={0:[[-90.,-30.],[30.,90.]]}
+
+    #GEMS
+    if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6','TOI1224','TOI540','TOI122','K233','TOI1227']:data_dic['Diff']['cont_range'][list(mock_dic['visit_def'].keys())[0]]={0 : [[-50.,-30.],[30.,50.]]}
 
     #Zodiacs
     if gen_dic['star_name'] in ['Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:data_dic['Diff']['cont_range']['ESPRESSO']={0 : [[-150.,-70.],[70.,150.]]}
@@ -6241,7 +6426,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%%% Optimization levels
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['Opt_Lvl']=3
-        # glob_fit_dic['DiffProf']['nthreads']=1
+        glob_fit_dic['DiffProf']['nthreads']=1
 
 
 
@@ -6361,10 +6546,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         # 'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.65, 'bd':[0.1, 0.9]},
         # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':8, 'bd':[5, 15]},
-        # 'lat__ISESPRESSO_VSvisit1_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        # 'Tc_ar__ISESPRESSO_VSvisit1_ARspot1' : {'vary':True, 'guess':2459457.589323-0.2, 'bd':[2459457.589323 - 1., 2459457.589323 + 1.]},
-        # 'ang__ISESPRESSO_VSvisit1_ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 60]},
-        # 'fctrst__ISESPRESSO_VSvisit1_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.1, 0.9]},
+        # 'lat__ISESPRESSO_VSvisit1__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        # 'Tc_ar__ISESPRESSO_VSvisit1__ARspot1' : {'vary':True, 'guess':2459457.589323-0.2, 'bd':[2459457.589323 - 1., 2459457.589323 + 1.]},
+        # 'ang__ISESPRESSO_VSvisit1__ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 60]},
+        # 'fctrst__ISESPRESSO_VSvisit1__ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.1, 0.9]},
         # 'lambda_rad__plHD189733b'                   : {'vary':False, 'guess':-0.014, 'bd':[-2*np.pi, 2*np.pi]}
         #                                     }
         #Round 2 - more specific guessing
@@ -6372,18 +6557,18 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.53, 'bd':[0.45, 0.61]},
         'FWHM__ord0__IS__VS_':{'vary':True, 'guess':6.9, 'bd':[6.7, 7.1]},
-        'lat__ISESPRESSO_VSvisit1_ARspot1'     : {'vary':True, 'guess':-37, 'bd':[-75, 5]},
-        'Tc_ar__ISESPRESSO_VSvisit1_ARspot1' : {'vary':True, 'guess':2459457.6703, 'bd':[2459457.17, 2459458.2]},
-        'ang__ISESPRESSO_VSvisit1_ARspot1'     : {'vary':True, 'guess':25, 'bd':[16, 34]},
-        'fctrst__ISESPRESSO_VSvisit1_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.5, 0.8]},
+        'lat__ISESPRESSO_VSvisit1__ARspot1'     : {'vary':True, 'guess':-37, 'bd':[-75, 5]},
+        'Tc_ar__ISESPRESSO_VSvisit1__ARspot1' : {'vary':True, 'guess':2459457.6703, 'bd':[2459457.17, 2459458.2]},
+        'ang__ISESPRESSO_VSvisit1__ARspot1'     : {'vary':True, 'guess':25, 'bd':[16, 34]},
+        'fctrst__ISESPRESSO_VSvisit1__ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.5, 0.8]},
         'lambda_rad__plHD189733b'                   : {'vary':False, 'guess':-0.014, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
 
     if gen_dic['star_name']=='AUMic':
         glob_fit_dic['DiffProf']['mod_prop']={
         'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
-        # 'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.65, 'bd':[0.6, 0.8]},
         'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.65, 'bd':[0.6, 0.8]},
+        'a_damp__ord0__IS__VS_':{'vary':False, 'guess':0.65, 'bd':[0.6, 0.8]},
         # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.15, 1]},
         # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[5, 15]},
         'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[5, 15]},
@@ -6403,23 +6588,23 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'cos_istar':{'vary':True,'guess':0.1, 'bd':[-1., 1.]},
         'cos_istar':{'vary':False,'guess':0.01745240644, 'bd':[-1., 1.]},
 
-        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
-        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 10., 2458330.39051 + 10.]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
-        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[10, 50]},
-        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.05, 0.7]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.1, 'bd':[0.05, 0.7]},
+        # 'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-50, 10]},
+        # 'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 10., 2458330.39051 + 10.]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
+        # 'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':False, 'guess':15, 'bd':[10, 50]},
+        # 'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.05, 0.7]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':False, 'guess':0.1, 'bd':[0.05, 0.7]},
         
-        # # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
-        # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':False, 'guess':0, 'bd':[-50, 10]},
-        # # 'Tc_ar__ISESPRESSO_VSmock_vis_ARfacula1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 10., 2458330.39051 + 10.]},
-        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARfacula1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
-        # # 'ang__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
-        # 'ang__ISESPRESSO_VSmock_vis_ARfacula1'     : {'vary':False, 'guess':25, 'bd':[10, 50]},
-        # # 'fctrst__ISESPRESSO_VSmock_vis_ARfacula1'   : {'vary':True, 'guess':1.5, 'bd':[1.3, 1.9]},
-        # 'fctrst__ISESPRESSO_VSmock_vis_ARfacula1'   : {'vary':False, 'guess':1.5, 'bd':[1.3, 1.9]},
+        # # 'lat__ISESPRESSO_VSmock_vis__ARfacula1'     : {'vary':True, 'guess':0, 'bd':[-50, 10]},
+        # 'lat__ISESPRESSO_VSmock_vis__ARfacula1'     : {'vary':False, 'guess':0, 'bd':[-50, 10]},
+        # # 'Tc_ar__ISESPRESSO_VSmock_vis__ARfacula1' : {'vary':True, 'guess':2458330.39051, 'bd':[2458330.39051 - 10., 2458330.39051 + 10.]},
+        # 'Tc_ar__ISESPRESSO_VSmock_vis__ARfacula1' : {'vary':False, 'guess':2458330.39051-0.3, 'bd':[2458330.39051 - 0.4, 2458330.39051 + 0.4]},
+        # # 'ang__ISESPRESSO_VSmock_vis__ARfacula1'     : {'vary':True, 'guess':15, 'bd':[2, 80]},
+        # 'ang__ISESPRESSO_VSmock_vis__ARfacula1'     : {'vary':False, 'guess':25, 'bd':[10, 50]},
+        # # 'fctrst__ISESPRESSO_VSmock_vis__ARfacula1'   : {'vary':True, 'guess':1.5, 'bd':[1.3, 1.9]},
+        # 'fctrst__ISESPRESSO_VSmock_vis__ARfacula1'   : {'vary':False, 'guess':1.5, 'bd':[1.3, 1.9]},
 
         # 'lambda_rad__plAUMicb'                   : {'vary':True, 'guess':0.01, 'bd':[-2*np.pi, 2*np.pi]}
         'lambda_rad__plAUMicb'                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
@@ -6434,15 +6619,15 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'alpha_rot':{'vary':True, 'guess':0.034, 'bd':[0.033,0.035]},
         'cos_istar':{'vary':True,'guess':0.1736, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSvisit1_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSvisit1_ARspot1' : {'vary':True, 'guess':2458702.77-0.2, 'bd':[2458702.77 - 1, 2458702.77 + 1]},
-        'ang__ISESPRESSO_VSvisit1_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSvisit1_ARspot1'   : {'vary':True, 'guess':0.1, 'bd':[0.01, 0.99]},
+        'lat__ISESPRESSO_VSvisit1__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSvisit1__ARspot1' : {'vary':True, 'guess':2458702.77-0.2, 'bd':[2458702.77 - 1, 2458702.77 + 1]},
+        'ang__ISESPRESSO_VSvisit1__ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSvisit1__ARspot1'   : {'vary':True, 'guess':0.1, 'bd':[0.01, 0.99]},
 
-        'lat__ISESPRESSO_VSvisit1_ARspot2'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSvisit1_ARspot2' : {'vary':True, 'guess':2458702.77+0.2, 'bd':[2458702.77 - 1, 2458702.77 + 1]},
-        'ang__ISESPRESSO_VSvisit1_ARspot2'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSvisit1_ARspot2'   : {'vary':True, 'guess':0.1, 'bd':[0.01, 0.99]},
+        'lat__ISESPRESSO_VSvisit1__ARspot2'     : {'vary':True, 'guess':-30, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSvisit1__ARspot2' : {'vary':True, 'guess':2458702.77+0.2, 'bd':[2458702.77 - 1, 2458702.77 + 1]},
+        'ang__ISESPRESSO_VSvisit1__ARspot2'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSvisit1__ARspot2'   : {'vary':True, 'guess':0.1, 'bd':[0.01, 0.99]},
 
         'rv_shift'                        : {'vary':True, 'guess': 1, 'bd':[-5, 5]},  
 
@@ -6456,10 +6641,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'veq':{'vary':False,'guess':8.495, 'bd':[2, 30]},
         'cos_istar':{'vary':False,'guess':-0.906307787, 'bd':[-1., 1.]},
 
-        'lat__ISMIKE_Red_VSmockvis_ARspot1'     : {'vary':False, 'guess':-90, 'bd':[-90, 90]},
-        'Tc_ar__ISMIKE_Red_VSmockvis_ARspot1' : {'vary':False, 'guess':2459642.86314 + 2.4, 'bd':[2459642.86314 - 3, 2459642.86314 + 3]},
-        'ang__ISMIKE_Red_VSmockvis_ARspot1'     : {'vary':False, 'guess':48.6, 'bd':[1, 60]},
-        'fctrst__ISMIKE_Red_VSmockvis_ARspot1'   : {'vary':False, 'guess':0.41, 'bd':[0.001, 0.999]},
+        'lat__ISMIKE_Red_VSmockvis__ARspot1'     : {'vary':False, 'guess':-90, 'bd':[-90, 90]},
+        'Tc_ar__ISMIKE_Red_VSmockvis__ARspot1' : {'vary':False, 'guess':2459642.86314 + 2.4, 'bd':[2459642.86314 - 3, 2459642.86314 + 3]},
+        'ang__ISMIKE_Red_VSmockvis__ARspot1'     : {'vary':False, 'guess':48.6, 'bd':[1, 60]},
+        'fctrst__ISMIKE_Red_VSmockvis__ARspot1'   : {'vary':False, 'guess':0.41, 'bd':[0.001, 0.999]},
 
         'lambda_rad__plTOI3884_b'                   : {'vary':True, 'guess':0.7, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -6467,21 +6652,37 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #Zodiacs
     if gen_dic['star_name']=='Capricorn':
         glob_fit_dic['DiffProf']['mod_prop']={
+        # 'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
+        # 'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
+        # # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
+        # 'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
+        # # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
+        # 'veq':{'vary':True,'guess':15, 'bd':[12, 24]},
+        # # 'veq':{'vary':False,'guess':12, 'bd':[2, 30]},
+        # 'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
+
+        # 'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        # 'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        # 'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        # 'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
+
+        # 'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
+        #                                     }
         'cont__IS__VS_':{'vary':False, 'guess':1.0, 'bd':[0.9, 1.1]},
-        'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.4, 'bd':[0.1, 1]},
+        'ctrst__ord0__IS__VS_':{'vary':True, 'guess':0.68, 'bd':[0.65, 0.75]},
         # 'ctrst__ord0__IS__VS_':{'vary':False, 'guess':0.7, 'bd':[0.1, 1]},
-        'FWHM__ord0__IS__VS_':{'vary':True, 'guess':12, 'bd':[1, 20]},
+        'FWHM__ord0__IS__VS_':{'vary':True, 'guess':8.5, 'bd':[7, 9]},
         # 'FWHM__ord0__IS__VS_':{'vary':False, 'guess':8, 'bd':[1, 20]},
-        'veq':{'vary':True,'guess':15, 'bd':[12, 24]},
+        'veq':{'vary':True,'guess':19.5, 'bd':[19, 21]},
         # 'veq':{'vary':False,'guess':12, 'bd':[2, 30]},
-        'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
+        'cos_istar':{'vary':True,'guess':0.032, 'bd':[0.03, 0.04]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':-28, 'bd':[-35, -25]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.27, 'bd':[2458330.25, 2458330.3]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':16, 'bd':[14, 17]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.36, 'bd':[0.32, 0.42]},
 
-        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
+        'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':-0.075, 'bd':[-0.09, -0.07]}
                                             }
     
     if gen_dic['star_name']=='Cancer':
@@ -6492,10 +6693,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'veq':{'vary':True,'guess':0.15, 'bd':[0.1, 0.3]},
         'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0., 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0., 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -6513,14 +6714,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
         # 'cos_istar':{'vary':False,'guess':0.0348994967, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
-        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.4, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        # 'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        # 'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':False, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        # 'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':False, 'guess':15, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
+        # 'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':False, 'guess':0.4, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
         # 'lambda_rad__pl'+zodiac_pl                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
@@ -6538,14 +6739,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
         # 'cos_istar':{'vary':False,'guess':0.0348994967, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        # 'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        # 'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':False, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        # 'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':False, 'guess':15, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
-        # 'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':False, 'guess':0.4, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        # 'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':False, 'guess':-30, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        # 'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':False, 'guess':2458330.29051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        # 'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':False, 'guess':15, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
+        # 'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':False, 'guess':0.4, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]},
         # 'lambda_rad__pl'+zodiac_pl                   : {'vary':False, 'guess':-0.08203047484, 'bd':[-2*np.pi, 2*np.pi]}
@@ -6562,10 +6763,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':20, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':20, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -6581,10 +6782,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.0348994967, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':20, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':20, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -6600,10 +6801,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -6619,10 +6820,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.6, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -6638,10 +6839,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.7, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.7, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -6657,10 +6858,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.7, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.7, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -6676,10 +6877,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.7, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.7, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -6695,10 +6896,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         # 'veq':{'vary':False,'guess':7.8, 'bd':[2, 30]},
         'cos_istar':{'vary':True,'guess':0.01, 'bd':[-1., 1.]},
 
-        'lat__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
-        'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
-        'ang__ISESPRESSO_VSmock_vis_ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
-        'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
+        'lat__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':0, 'bd':[-90, 90]},
+        'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1' : {'vary':True, 'guess':2458330.59051, 'bd':[2458330.29051 - 1, 2458330.29051 + 1]},
+        'ang__ISESPRESSO_VSmock_vis__ARspot1'     : {'vary':True, 'guess':25, 'bd':[1, 60]},
+        'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   : {'vary':True, 'guess':0.3, 'bd':[0.001, 0.999]},
 
         'lambda_rad__pl'+zodiac_pl                   : {'vary':True, 'guess':0., 'bd':[-2*np.pi, 2*np.pi]}
         }
@@ -6727,19 +6928,19 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     #Round 1 - wide guessing
                     # 'ctrst__ord0__IS__VS_'                  :{'mod':'uf','low':0.,'high':1.},  
                     # 'FWHM__ord0__IS__VS_'                   :{'mod':'uf','low':0,'high':100},
-                    # 'lat__ISESPRESSO_VSvisit1_ARspot1'      :{'mod':'uf', 'low':-90., 'high':90.},
-                    # 'Tc_ar__ISESPRESSO_VSvisit1_ARspot1'    :{'mod':'uf', 'low':2459457.589323 - 2., 'high':2459457.589323 +2.},
-                    # 'ang__ISESPRESSO_VSvisit1_ARspot1'      :{'mod':'uf', 'low':0., 'high':80.},
-                    # 'fctrst__ISESPRESSO_VSvisit1_ARspot1'   :{'mod':'uf', 'low':0, 'high':1},
+                    # 'lat__ISESPRESSO_VSvisit1__ARspot1'      :{'mod':'uf', 'low':-90., 'high':90.},
+                    # 'Tc_ar__ISESPRESSO_VSvisit1__ARspot1'    :{'mod':'uf', 'low':2459457.589323 - 2., 'high':2459457.589323 +2.},
+                    # 'ang__ISESPRESSO_VSvisit1__ARspot1'      :{'mod':'uf', 'low':0., 'high':80.},
+                    # 'fctrst__ISESPRESSO_VSvisit1__ARspot1'   :{'mod':'uf', 'low':0, 'high':1},
                     # 'lambda_rad__plHD189733b'               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     
                     #Round 2 - more specific guessing based on previous round
                     'ctrst__ord0__IS__VS_'                  :{'mod':'uf','low':0.,'high':1.},  
                     'FWHM__ord0__IS__VS_'                   :{'mod':'uf','low':0,'high':100},
-                    'lat__ISESPRESSO_VSvisit1_ARspot1'      :{'mod':'gauss', 'val':-37., 's_val':40.},
-                    'Tc_ar__ISESPRESSO_VSvisit1_ARspot1'    :{'mod':'gauss', 'val':2459457.67, 's_val':0.5},
-                    'ang__ISESPRESSO_VSvisit1_ARspot1'      :{'mod':'gauss', 'val':25., 's_val':9.},
-                    'fctrst__ISESPRESSO_VSvisit1_ARspot1'   :{'mod':'gauss', 'val':0.6, 's_val':0.2},
+                    'lat__ISESPRESSO_VSvisit1__ARspot1'      :{'mod':'gauss', 'val':-37., 's_val':40.},
+                    'Tc_ar__ISESPRESSO_VSvisit1__ARspot1'    :{'mod':'gauss', 'val':2459457.67, 's_val':0.5},
+                    'ang__ISESPRESSO_VSvisit1__ARspot1'      :{'mod':'gauss', 'val':25., 's_val':9.},
+                    'fctrst__ISESPRESSO_VSvisit1__ARspot1'   :{'mod':'gauss', 'val':0.6, 's_val':0.2},
                     'lambda_rad__plHD189733b'               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }
 
@@ -6756,14 +6957,14 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     # 'beta_rot'                                :{'mod':'uf', 'low':0., 'high':1.},
                     # 'beta_rot_spots'                          :{'mod':'uf', 'low':0., 'high':1.},
                     'cos_istar'                               :{'mod':'uf', 'low':-1., 'high':1.},
-                    'lat__ISESPRESSO_VSmock_vis_ARspot1'      :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'    :{'mod':'uf', 'low':2458330.39051 - 2., 'high':2458330.39051 +2.},
-                    'ang__ISESPRESSO_VSmock_vis_ARspot1'      :{'mod':'uf', 'low':0., 'high':45.},
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':0, 'high':1},
-                    # 'lat__ISESPRESSO_VSmock_vis_ARfacula1'    :{'mod':'uf', 'low':-90., 'high':90.},
-                    # 'Tc_ar__ISESPRESSO_VSmock_vis_ARfacula1'  :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
-                    # 'ang__ISESPRESSO_VSmock_vis_ARfacula1'    :{'mod':'uf', 'low':0., 'high':45.},
-                    # 'fctrst__ISESPRESSO_VSmock_vis_ARfacula1' :{'mod':'uf', 'low':1, 'high':10},
+                    'lat__ISESPRESSO_VSmock_vis__ARspot1'      :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1'    :{'mod':'uf', 'low':2458330.39051 - 2., 'high':2458330.39051 +2.},
+                    'ang__ISESPRESSO_VSmock_vis__ARspot1'      :{'mod':'uf', 'low':0., 'high':45.},
+                    'fctrst__ISESPRESSO_VSmock_vis__ARspot1'   :{'mod':'uf', 'low':0, 'high':1},
+                    # 'lat__ISESPRESSO_VSmock_vis__ARfacula1'    :{'mod':'uf', 'low':-90., 'high':90.},
+                    # 'Tc_ar__ISESPRESSO_VSmock_vis__ARfacula1'  :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
+                    # 'ang__ISESPRESSO_VSmock_vis__ARfacula1'    :{'mod':'uf', 'low':0., 'high':45.},
+                    # 'fctrst__ISESPRESSO_VSmock_vis__ARfacula1' :{'mod':'uf', 'low':1, 'high':10},
                     'lambda_rad__plAUMicb'                    :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }
 
@@ -6776,15 +6977,15 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
 
                     'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
 
-                    'lat__ISESPRESSO_VSvisit1_ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISESPRESSO_VSvisit1_ARspot1' :{'mod':'uf', 'low':2458702.77 - 1., 'high':2458702.77 + 1.},
-                    'ang__ISESPRESSO_VSvisit1_ARspot1'     :{'mod':'uf', 'low':0, 'high':89.},
-                    'fctrst__ISESPRESSO_VSvisit1_ARspot1'   :{'mod':'uf', 'low':0, 'high':1},
+                    'lat__ISESPRESSO_VSvisit1__ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_ar__ISESPRESSO_VSvisit1__ARspot1' :{'mod':'uf', 'low':2458702.77 - 1., 'high':2458702.77 + 1.},
+                    'ang__ISESPRESSO_VSvisit1__ARspot1'     :{'mod':'uf', 'low':0, 'high':89.},
+                    'fctrst__ISESPRESSO_VSvisit1__ARspot1'   :{'mod':'uf', 'low':0, 'high':1},
 
-                    'lat__ISESPRESSO_VSvisit1_ARspot2'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISESPRESSO_VSvisit1_ARspot2' :{'mod':'uf', 'low':2458702.77 - 1., 'high':2458702.77 + 1.},
-                    'ang__ISESPRESSO_VSvisit1_ARspot2'     :{'mod':'uf', 'low':0, 'high':89.},
-                    'fctrst__ISESPRESSO_VSvisit1_ARspot2'   :{'mod':'uf', 'low':0, 'high':1},
+                    'lat__ISESPRESSO_VSvisit1__ARspot2'     :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_ar__ISESPRESSO_VSvisit1__ARspot2' :{'mod':'uf', 'low':2458702.77 - 1., 'high':2458702.77 + 1.},
+                    'ang__ISESPRESSO_VSvisit1__ARspot2'     :{'mod':'uf', 'low':0, 'high':89.},
+                    'fctrst__ISESPRESSO_VSvisit1__ARspot2'   :{'mod':'uf', 'low':0, 'high':1},
 
                     'rv_shift'   :{'mod':'uf', 'low':-10, 'high':10},
 
@@ -6799,10 +7000,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'veq'                                    :{'mod':'uf', 'low':1., 'high':100.},
                     'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
                     'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
-                    'lat__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 1.1, 'high':2458330.39051 +1.1},
-                    'ang__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':0., 'high':70.},
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'  :{'mod':'uf', 'low':0., 'high':1},
+                    'lat__ISESPRESSO_VSmock_vis__ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 1.1, 'high':2458330.39051 +1.1},
+                    'ang__ISESPRESSO_VSmock_vis__ARspot1'     :{'mod':'uf', 'low':0., 'high':70.},
+                    'fctrst__ISESPRESSO_VSmock_vis__ARspot1'  :{'mod':'uf', 'low':0., 'high':1},
                     'lambda_rad__pl'+zodiac_pl               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }       
     
@@ -6814,10 +7015,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'veq'                                    :{'mod':'gauss', 'val':8.0, 's_val':0.2},
                     # 'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
                     'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
-                    'lat__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 1.1, 'high':2458330.39051 +1.1},
-                    'ang__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':0., 'high':45.},
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'  :{'mod':'uf', 'low':0., 'high':1},
+                    'lat__ISESPRESSO_VSmock_vis__ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 1.1, 'high':2458330.39051 +1.1},
+                    'ang__ISESPRESSO_VSmock_vis__ARspot1'     :{'mod':'uf', 'low':0., 'high':45.},
+                    'fctrst__ISESPRESSO_VSmock_vis__ARspot1'  :{'mod':'uf', 'low':0., 'high':1},
                     'lambda_rad__pl'+zodiac_pl               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }   
 
@@ -6828,10 +7029,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'veq'                                    :{'mod':'gauss', 'val':20.0, 's_val':1.0},
                     # 'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
                     'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
-                    'lat__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 1.1, 'high':2458330.39051 +1.1},
-                    'ang__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':0., 'high':45.},
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'  :{'mod':'uf', 'low':0., 'high':1},
+                    'lat__ISESPRESSO_VSmock_vis__ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 1.1, 'high':2458330.39051 + 1.1},
+                    'ang__ISESPRESSO_VSmock_vis__ARspot1'     :{'mod':'uf', 'low':0., 'high':45.},
+                    'fctrst__ISESPRESSO_VSmock_vis__ARspot1'  :{'mod':'uf', 'low':0., 'high':1},
                     'lambda_rad__pl'+zodiac_pl               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }
 
@@ -6842,10 +7043,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'veq'                                    :{'mod':'gauss', 'val':0.2, 's_val':0.1},
                     # 'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
                     'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
-                    'lat__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISESPRESSO_VSmock_vis_ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 1.1, 'high':2458330.39051 +1.1},
-                    'ang__ISESPRESSO_VSmock_vis_ARspot1'     :{'mod':'uf', 'low':0., 'high':45.},
-                    'fctrst__ISESPRESSO_VSmock_vis_ARspot1'  :{'mod':'uf', 'low':0., 'high':1},
+                    'lat__ISESPRESSO_VSmock_vis__ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_ar__ISESPRESSO_VSmock_vis__ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 1.1, 'high':2458330.39051 +1.1},
+                    'ang__ISESPRESSO_VSmock_vis__ARspot1'     :{'mod':'uf', 'low':0., 'high':45.},
+                    'fctrst__ISESPRESSO_VSmock_vis__ARspot1'  :{'mod':'uf', 'low':0., 'high':1},
                     'lambda_rad__pl'+zodiac_pl               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     } 
 
@@ -6856,10 +7057,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'veq'                                    :{'mod':'uf', 'low':1., 'high':100.},
                     'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
                     'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
-                    'lat__ISMIKE_Red_VSmockvis_ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISMIKE_Red_VSmockvis_ARspot1'   :{'mod':'uf', 'low':2459642.86314 - 20., 'high':2459642.86314 +20.},
-                    'ang__ISMIKE_Red_VSmockvis_ARspot1'     :{'mod':'uf', 'low':0., 'high':90.},
-                    'fctrst__ISMIKE_Red_VSmockvis_ARspot1'  :{'mod':'uf', 'low':0., 'high':1.},
+                    'lat__ISMIKE_Red_VSmockvis__ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_ar__ISMIKE_Red_VSmockvis__ARspot1'   :{'mod':'uf', 'low':2459642.86314 - 20., 'high':2459642.86314 +20.},
+                    'ang__ISMIKE_Red_VSmockvis__ARspot1'     :{'mod':'uf', 'low':0., 'high':90.},
+                    'fctrst__ISMIKE_Red_VSmockvis__ARspot1'  :{'mod':'uf', 'low':0., 'high':1.},
                     'lambda_rad__plTOI3884_b'               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }  
 
@@ -6872,47 +7073,46 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%% MCMC / NS
 
     #Calculating/retrieving
-    # glob_fit_dic['DiffProf']['run_mode']='use'    
-    glob_fit_dic['DiffProf']['run_mode']='reuse'    
+    glob_fit_dic['DiffProf']['run_mode']='use'    
+    # glob_fit_dic['DiffProf']['run_mode']='reuse'    
 
     #Re-using
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        # glob_fit_dic['DiffProf']['reuse']={}
-        glob_fit_dic['DiffProf']['reuse']={
-                    'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS_Backup/Zodiacs2.0/Raw/Cancer - slow star - done/ALL/Cancer_b_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk40_steps10000_Cancer_b.npz'],
-                    'nburn':[3000]
-                    }  
+        glob_fit_dic['DiffProf']['reuse']={}
+        # glob_fit_dic['DiffProf']['reuse']={
+        #             'paths':['/Users/samsonmercier/Desktop/Work/Master/2023-2024/ANTARESS_Backup/Zodiacs2.0/Raw/Cancer - slow star - done/ALL/Cancer_b_Saved_data/Joined_fits/DiffProf/mcmc/raw_chains_walk40_steps10000_Cancer_b.npz'],
+        #             'nburn':[3000]
+        #             }  
     #Re-starting
     if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
         glob_fit_dic['DiffProf']['reboot']=''
 
 
-    # MCMC specific
-    # - Walkers
+    # - Sampler
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['sampler_set']={'nwalkers':40,'nsteps':10000,'nburn':3000}
+        # MCMC specific
+        glob_fit_dic['DiffProf']['sampler_set']={'nwalkers':40,'nsteps':100,'nburn':10}
+        # NS specific
+        # glob_fit_dic['DiffProf']['sampler_set']={'nlive':4, 'bound_method':'multi', 'sample_method':'slice','dlogz':10., 'monitor':True}
+
+
+    # - Restoring NS run
+    if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
+        glob_fit_dic['DiffProf']['restore']='/Users/samsonmercier/Desktop/Work/Master/2023-2024/antaress/Ongoing/AUMic/AUMicb_Saved_data/Joined_fits/DiffProf/ns/monitor_dynesty.save'
+
 
     # - Complex priors        
          
     # - Walkers exclusion  
     glob_fit_dic['DiffProf']['exclu_walk']=True & False  
     if gen_dic['star_name'] in ['TOI3884','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:   
-        glob_fit_dic['DiffProf']['exclu_walk']=True #& False   
+        glob_fit_dic['DiffProf']['exclu_walk']=True & False   
     
 
     # - Automatic exclusion of outlying chains
     glob_fit_dic['DiffProf']['exclu_walk_autom']=None  #  5.
     if gen_dic['star_name'] in ['TOI3884','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:   
             glob_fit_dic['DiffProf']['exclu_walk_autom']= 5
-
-
-
-    # NS specific
-    
-    # - Live points
-    if gen_dic['star_name'] in ['TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
-        glob_fit_dic['DiffProf']['sampler_set']={'nlive':400, 'bound_method':'multi', 'sample_method':'slice','dlogz':10.}
-
 
     #Derived errors         
     if gen_dic['star_name'] in ['HD189733','TOI3884','AU_Mic','AUMic','Capricorn','Cancer','Gemini','Sagittarius','Leo','Aquarius','Aries','Libra','Taurus','Scorpio','Virgo','Pisces']:
@@ -7131,10 +7331,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         'veq':{'vary':False,'guess':8.495, 'bd':[2, 30]},
         'cos_istar':{'vary':False,'guess':-0.906307787, 'bd':[-1., 1.]},
 
-        'lat__ISMIKE_Red_VSmockvis_ARspot1'     : {'vary':False, 'guess':-90, 'bd':[-90, 90]},
-        'Tc_ar__ISMIKE_Red_VSmockvis_ARspot1' : {'vary':False, 'guess':2459642.86314 + 2.4, 'bd':[2459642.86314 - 1, 2459642.86314 + 1]},
-        'ang__ISMIKE_Red_VSmockvis_ARspot1'     : {'vary':False, 'guess':48.6, 'bd':[1, 60]},
-        'fctrst__ISMIKE_Red_VSmockvis_ARspot1'   : {'vary':False, 'guess':0.41, 'bd':[0.001, 0.999]},
+        'lat__ISMIKE_Red_VSmockvis__ARspot1'     : {'vary':False, 'guess':-90, 'bd':[-90, 90]},
+        'Tc_ar__ISMIKE_Red_VSmockvis__ARspot1' : {'vary':False, 'guess':2459642.86314 + 2.4, 'bd':[2459642.86314 - 1, 2459642.86314 + 1]},
+        'ang__ISMIKE_Red_VSmockvis__ARspot1'     : {'vary':False, 'guess':48.6, 'bd':[1, 60]},
+        'fctrst__ISMIKE_Red_VSmockvis__ARspot1'   : {'vary':False, 'guess':0.41, 'bd':[0.001, 0.999]},
 
         'lambda_rad__plTOI3884_b'                   : {'vary':True, 'guess':0.7, 'bd':[-2*np.pi, 2*np.pi]}
                                             }
@@ -7166,10 +7366,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
                     'veq'                                    :{'mod':'uf', 'low':1., 'high':100.},
                     'veq_spots'                              :{'mod':'uf', 'low':1., 'high':100.},
                     'cos_istar'                              :{'mod':'uf', 'low':-1., 'high':1.},
-                    'lat__ISMIKE_Red_VSmockvis_ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
-                    'Tc_ar__ISMIKE_Red_VSmockvis_ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
-                    'ang__ISMIKE_Red_VSmockvis_ARspot1'     :{'mod':'uf', 'low':0., 'high':90.},
-                    'fctrst__ISMIKE_Red_VSmockvis_ARspot1'  :{'mod':'uf', 'low':0., 'high':1.},
+                    'lat__ISMIKE_Red_VSmockvis__ARspot1'     :{'mod':'uf', 'low':-90., 'high':90.},
+                    'Tc_ar__ISMIKE_Red_VSmockvis__ARspot1'   :{'mod':'uf', 'low':2458330.39051 - 20., 'high':2458330.39051 +20.},
+                    'ang__ISMIKE_Red_VSmockvis__ARspot1'     :{'mod':'uf', 'low':0., 'high':90.},
+                    'fctrst__ISMIKE_Red_VSmockvis__ARspot1'  :{'mod':'uf', 'low':0., 'high':1.},
                     'lambda_rad__plTOI3884_b'               :{'mod':'uf', 'low':-2*np.pi, 'high':2*np.pi},
                     }  
     #Derived properties
@@ -8042,7 +8242,7 @@ def ANTARESS_2D_1D_settings(data_type,local_dic,gen_dic,plot_dic):
     
     
     #%%%% Multi-threading
-    gen_dic['nthreads_spec_1D_'+data_type]= int(0.8*cpu_count())
+    gen_dic['nthreads_spec_1D_'+data_type]= 1 #int(0.8*cpu_count())
     
     
     #%%%% 1D spectral table
@@ -8348,7 +8548,6 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #    If not specified the default is 'auto', i.e. dynesty will pick a method based on the dimensionaly of the problem. If dealing with posterior distributions with complex shapes, 'slice' is recommended.
     # + 'dlogz' : log-likelihood difference threshold below which the NS run with stop (dlogz). 
     #    Defaut is 0.1 and can be placed higher/lower to stop the run earlier/later.
-    # + 'monitor' : store dynesty checkpoint files. Highly recommended for long NS runs that could potentially crash.
     local_dic[data_type]['sampler_set']={}
     
     
@@ -8430,6 +8629,7 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #    - indicate path to a dynesty checkpoint file
     #      the ns will resume the sampler, and run with the parameters indicated in 'sampler_set'
     local_dic[data_type]['restore']=''
+
     
     #%%%%%% Complex priors
     #    - to be defined manually within the code

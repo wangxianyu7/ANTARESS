@@ -1116,7 +1116,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             #    - dsub_ref = (2*Rjup/Rsun)*(1/51)
             #      nsub_Dar = int(2*RpRs/dsub_ref) = int( 51*RpRs*Rsun/Rjup ) = int( 51*sin(ang)*Rsun/Rjup )  
             if (ar not in theo_dic['nsub_Dar']):
-                theo_dic['nsub_Dar'][pl_loc] =int( 51.*RarRs_max*Rsun/Rjup ) 
+                theo_dic['nsub_Dar'][ar] =int( 51.*RarRs_max*Rsun/Rjup ) 
                 print('Default nsub_Dar['+str(ar)+']='+str(theo_dic['nsub_Dar'][ar]))
 
             #Default oversampling

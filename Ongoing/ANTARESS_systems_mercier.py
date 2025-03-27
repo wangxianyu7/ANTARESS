@@ -404,24 +404,24 @@ def get_system_params():
         #------------------------------    
 
         'TOI3884':{ 
-            'star':{  #Libby-Roberts+2023 
-                'Rstar':0.302,              
-                'istar':155.,                    #unknown
-                'Mstar':0.298,
-                'veq':8.495,                     #unknown 
-                'logg':4.97,   
-                'Tpole':3180,
-                'vmic':0.,            
-                # 'veq_spots':23.59,
-                },
-
-            # 'star':{  #Equatorial band hypothesis - updated
+            # 'star':{  #Libby-Roberts+2023 
             #     'Rstar':0.302,              
-            #     'istar':90.,                    #unknown
+            #     'istar':155.,                    #unknown
             #     'Mstar':0.298,
-            #     'veq':8.495,                     #unknown                
+            #     'veq':8.495,                     #unknown 
+            #     'logg':4.97,   
+            #     'Tpole':3180,
+            #     'vmic':0.,            
             #     # 'veq_spots':23.59,
             #     },
+
+            'star':{  #Equatorial band hypothesis - updated
+                'Rstar':0.302,              
+                'istar':90.,                    #unknown
+                'Mstar':0.298,
+                'veq':8.495,                     #unknown                
+                # 'veq_spots':23.59,
+                },
 
             # 'star':{  #Equatorial band hypothesis
             #     'Rstar':0.302,              
@@ -463,29 +463,29 @@ def get_system_params():
             #     'lambda_proj':30.  #what we want to constrain so will vary
             #     },
 
-            # 'TOI3884_b':{  #Equatorial band hypothesis updated
-            #     'period':4.5445697,           
-            #     'TCenter':2459556.51669,      
-            #     'ecc':0.059,        #Unknown
-            #     'omega_deg':190., #very different from previous studies - re-fit?
-            #     'Kstar':14.9,     #very different from previous studies
-            #     'aRs':25.01,  
-            #     'inclination':90.40,   
-            #     'TLength':1.646/24.,      
-            #     'lambda_proj':30.  #what we want to constrain so will vary
-            #     }, 
-
-            'TOI3884_b':{  #Almenara+2022
+            'TOI3884_b':{  #Equatorial band hypothesis updated
                 'period':4.5445697,           
-                'TCenter':2459642.86314,      
+                'TCenter':2459556.51669,      
                 'ecc':0.059,        #Unknown
                 'omega_deg':190., #very different from previous studies - re-fit?
                 'Kstar':14.9,     #very different from previous studies
                 'aRs':25.01,  
-                'inclination':90.10,   
+                'inclination':90.40,   
                 'TLength':1.646/24.,      
-                'lambda_proj':50.  #what we want to constrain so will vary
-            }, 
+                'lambda_proj':30.  #what we want to constrain so will vary
+                }, 
+
+            # 'TOI3884_b':{  #Almenara+2022
+            #     'period':4.5445697,           
+            #     'TCenter':2459642.86314,      
+            #     'ecc':0.059,        #Unknown
+            #     'omega_deg':190., #very different from previous studies - re-fit?
+            #     'Kstar':14.9,     #very different from previous studies
+            #     'aRs':25.01,  
+            #     'inclination':90.10,   
+            #     'TLength':1.646/24.,      
+            #     'lambda_proj':50.  #what we want to constrain so will vary
+            # }, 
         },      
 
         #------------------------------    
@@ -682,6 +682,292 @@ def get_system_params():
                 'lambda_proj':-4.70,         #+6.80 -6.40 #degrees <- Hirano+2020 value, but will be fitted
             },
         },
+
+
+    #--------------------------------------------------------------------------------
+    #------------------------------------  GEMS ------------------------------------- 
+    #--------------------------------------------------------------------------------
+      'TOI5205':{ #Kanodia+2023
+        'star':{   
+            'Rstar':0.394,     
+            'istar':90., #unknown
+            'Mstar':0.392,
+            'veq':2.0,   #unknown - used vsini
+            'veq_spots':2.0,
+        },
+
+        'TOI5205_b':{ #Kanodia+2023
+            'period':1.630757,
+            'TCenter':2459443.47179,
+            'ecc':0.02,
+            'omega_deg':-42.,
+            'Kstar':346,
+            'aRs':10.94,
+            'inclination':88.21,
+            'TLength':1.4/24.,
+            'lambda_proj':0. #unknown
+        }, 
+
+      },    
+    #------------------------------ 
+      'TOI3714':{ #Hartman+2023
+        'star':{   
+            'Rstar':0.4958,     
+            'istar':90., #unknown
+            'Mstar':0.522,
+            'veq':1.08,#Canas+2022
+            'veq_spots':1.08,#Canas+2022
+        },
+
+        'TOI3714_b':{
+            'period':2.15484802,
+            'TCenter':2459687.365240,
+            'ecc':0.03, #Canas+2022
+            'omega_deg':100., #Canas+2022
+            'Kstar':167.1,
+            'aRs':11.391,
+            'inclination':87.830,
+            'TLength':1.626/24.,
+            'lambda_proj':0. #unknown
+        }, 
+
+      },    
+    #------------------------------
+      'TOI5293':{ #Canas+2023
+        'star':{   
+            'Rstar':0.52,     
+            'istar':90., #unknown
+            'Mstar':0.54,
+            'veq':1.28,   #derived from Peq = 20.6d
+            'veq_spots':1.28,
+        },
+
+        'TOI5293_b':{ #Canas+2023
+            'period':2.930289,
+            'TCenter':2459448.9148,
+            'ecc':0.38, #upper limit
+            'omega_deg':-92.,
+            'Kstar':115.6,
+            'aRs':14.1,
+            'inclination':88.8,
+            'TLength':1.94/24.,
+            'lambda_proj':65. #unknown
+        }, 
+
+      },    
+    #------------------------------
+      'TOI3757':{ #Kanodia+2022
+        'star':{   
+            'Rstar':0.62,     
+            'istar':90., #unknown
+            'Mstar':0.64,
+            'veq':2.0,   #unknown
+            'veq_spots':2.0, 
+        },
+
+        'TOI3757_b':{ #Kanodia+2022
+            'period':3.438753,
+            'TCenter':2458838.77148,
+            'ecc':0.14,
+            'omega_deg':130.,
+            'Kstar':49.24,
+            'aRs':13.26,
+            'inclination':86.76,
+            'TLength':1.92/24.,
+            'lambda_proj':0. #unknown
+        }, 
+
+      },    
+    #------------------------------
+      'TOI3984':{ #Canas+2023
+        'star':{   
+            'Rstar':0.47,     
+            'istar':90., #unknown
+            'Mstar':0.49,
+            'veq':0.476,   #derived from Peq = 50d
+            'veq_spots':0.476,
+        },
+
+        'TOI3984_b':{ #Canas+2023
+            'period':4.353326,
+            'TCenter':2459715.02268,
+            'ecc':0.23, #upper limit
+            'omega_deg':-54.,
+            'Kstar':27.7,
+            'aRs':19.1,
+            'inclination':89.5,
+            'TLength':2.01/24.,
+            'lambda_proj':0. #unknown
+        }, 
+
+      },    
+    #------------------------------
+      'HATS75':{ #Jordan+2022
+        'star':{   
+            'Rstar':0.5848,     
+            'istar':90., #unknown
+            'Mstar':0.6017,
+            'veq':0.85,
+            'veq_spots':0.85,
+        },
+
+        'HATS75_b':{ #Jordan+2022
+            'period':2.7886556,
+            'TCenter':2458611.05487,
+            'ecc':0.064, #upper limit
+            'omega_deg':90., #unknown
+            'Kstar':99.2,
+            'aRs':12.037,
+            'inclination':88.07,
+            'TLength':1.91256/24.,
+            'lambda_proj':0. #unknown
+        }, 
+
+      },    
+    #------------------------------
+      'HATS6':{ #Hartman+2015
+        'star':{   
+            'Rstar':0.570,     
+            'istar':90., #unknown
+            'Mstar':0.574,
+            'veq':2.0, #unknown
+            'veq_spots':2.0, #unknown
+        },
+
+        'HATS6_b':{ #Hartman+2015
+            'period':3.3252725,
+            'TCenter':2456643.740580,
+            'ecc':0.,
+            'omega_deg':90.,
+            'Kstar':63,
+            'aRs':13.65,
+            'inclination':88.210,
+            'TLength':2.041/24.,
+            'lambda_proj':0. #unknown
+        }, 
+
+      },    
+
+    #------------------------------
+      'TOI1224':{ #Thao+2024
+        'star':{   
+            'Rstar':0.404,     
+            'istar':90., #unknown
+            'Mstar':0.400,
+            'veq':22.1, #unknown
+            'veq_spots':22.1, #unknown
+        },
+
+        'TOI1224_b':{ #Thao+2024
+            'period':4.1782745,
+            'TCenter':2458327.70236,
+            'ecc':0., #unknown
+            'omega_deg':90., #unknown
+            # 'Kstar':, #unknown
+            'aRs':18.90,
+            'inclination':89.19,
+            'TLength':1.71/24.,
+            'lambda_proj':0. #unknown
+        }, 
+
+      },    
+
+    #------------------------------
+      'TOI540':{ #Ment+2021
+        'star':{   
+            'Rstar':0.1895,     
+            'istar':90., #unknown
+            'Mstar':0.159,
+            'veq':13.5, #unknown
+            'veq_spots':13.5, #unknown
+        },
+
+        'TOI540_b':{ #Ment+2021
+            'period':1.2391491,
+            'TCenter':2458411.82601,
+            'ecc':0.,
+            'omega_deg':90.,
+            # 'Kstar':, #unknown
+            'aRs':13.90,
+            'inclination':86.80,
+            'TLength':0.48/24.,
+            'lambda_proj':0. #unknown
+        }, 
+
+      },    
+
+    #------------------------------
+      'TOI122':{ #Waalkes+2021
+        'star':{   
+            'Rstar':0.334,     
+            'istar':90., #unknown
+            'Mstar':0.312,
+            'veq':7.2, #unknown
+            'veq_spots':7.2, #unknown
+        },
+
+        'TOI122_b':{ #Waalkes+2021
+            'period':5.078030,
+            'TCenter':2458425.602564,
+            'ecc':0.,
+            'omega_deg':90.,
+            # 'Kstar':, #unknown
+            'aRs':25.2,
+            'inclination':88.4,
+            'TLength':1.23/24.,
+            'lambda_proj':0. #unknown
+        }, 
+
+      }, 
+
+    #------------------------------
+      'K233':{ #Mann+2016
+        'star':{   
+            'Rstar':1.05,     
+            'istar':90., #unknown
+            'Mstar':0.56,
+            'veq':8.2, #unknown
+            'veq_spots':8.2, #unknown
+        },
+
+        'K233_b':{ #Mann+2016
+            'period':5.424865,
+            'TCenter':2456898.69288,
+            'ecc':0.,
+            'omega_deg':90.,
+            # 'Kstar':, #unknown
+            'aRs':10.40,
+            'inclination':89.1,
+            'TLength':4.08/24.,
+            'lambda_proj':0. #unknown
+        }, 
+
+      },  
+
+    #------------------------------
+      'TOI1227':{ #Mann+2022
+        'star':{   
+            'Rstar':0.56,     
+            'istar':90., #unknown
+            'Mstar':0.170,
+            'veq':16.65, #unknown
+            'veq_spots':16.65, #unknown
+        },
+
+        'TOI1227_b':{ #Mann+2022
+            'period':27.36397,
+            'TCenter':2458617.4621,
+            'ecc':0., #unknown
+            'omega_deg':90., #unknown
+            # 'Kstar':, #unknown
+            'aRs':34.01,
+            'inclination':88.571,
+            'TLength':4.831/24.,
+            'lambda_proj':0. #unknown
+        }, 
+
+      },     
+
     #--------------------------------------------------------------------------------
     #------------------------------  MCMC run purposes ------------------------------ 
     #--------------------------------------------------------------------------------

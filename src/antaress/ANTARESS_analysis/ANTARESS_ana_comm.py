@@ -844,7 +844,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                     if (par_check in par) and ('__AR' in par):
                         ar_name = par.split('__AR')[1]
                         if (p_start[par].vary) or fit_dic['fit_mode']=='fixed':
-                            fixed_args[par_check+'_AR']+= [ar_name]
+                            fixed_args[par_check+'_ar']+= [ar_name]
                             fixed_args['fit_ar']=True
                         if ('ang' in par_check) and p_start[par].vary:
                             fixed_args['fit_ar_ang']+=[ar_name]
@@ -868,7 +868,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                 for inst in fixed_args['studied_ar']:
                     for vis in fixed_args['studied_ar'][inst]:
                         for ar in fixed_args['studied_ar'][inst][vis]:
-                            par = 'Tc_ar__IS'+inst+'_VS'+vis+'_AR'+ar
+                            par = 'Tc_ar__IS'+inst+'_VS'+vis+'__AR'+ar
                             p_start[par].value -= fixed_args['bjd_time_shift'][inst][vis]
                             p_start[par].min-= fixed_args['bjd_time_shift'][inst][vis]
                             p_start[par].max-= fixed_args['bjd_time_shift'][inst][vis]
@@ -1058,7 +1058,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
 
                     if gen_dic['star_name'] == 'Capricorn':     
                         ipar_loc=np_where1D(fixed_args['var_par_list']=='ctrst__ord0__IS__VS_')
-                        wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) < 0.8) & (np.min(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='ang__ISESPRESSO_VSmock_vis_ARspot1')],axis=1) < 20))                                 
+                        wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) < 0.8) & (np.min(walker_chains[:,:,np_where1D(fixed_args['var_par_list']=='ang__ISESPRESSO_VSmock_vis__ARspot1')],axis=1) < 20))                                 
     
                     if gen_dic['star_name'] == 'Pisces':     
                         ipar_loc=np_where1D(fixed_args['var_par_list']=='lambda_rad__plPisces_b')
@@ -1069,14 +1069,14 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                         wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) < 10.))                                 
 
                     if gen_dic['star_name'] == 'Gemini':     
-                        ipar_loc=np_where1D(fixed_args['var_par_list']=='ang__ISESPRESSO_VSmock_vis_ARspot1')
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='ang__ISESPRESSO_VSmock_vis__ARspot1')
                         ipar_loc2 = np_where1D(fixed_args['var_par_list']=='cos_istar')
                         wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) > 15.) & (np.min(walker_chains[:,:,ipar_loc2],axis=1) < -0.24))
     
                     if gen_dic['star_name'] == 'Aries':     
                         ipar_loc=np_where1D(fixed_args['var_par_list']=='FWHM__ord0__IS__VS_')
-                        ipar_loc2 = np_where1D(fixed_args['var_par_list']=='Tc_ar__ISESPRESSO_VSmock_vis_ARspot1')
-                        ipar_loc3 = np_where1D(fixed_args['var_par_list']=='fctrst__ISESPRESSO_VSmock_vis_ARspot1')
+                        ipar_loc2 = np_where1D(fixed_args['var_par_list']=='Tc_ar__ISESPRESSO_VSmock_vis__ARspot1')
+                        ipar_loc3 = np_where1D(fixed_args['var_par_list']=='fctrst__ISESPRESSO_VSmock_vis__ARspot1')
                         wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) < 10.) & (np.min(walker_chains[:,:,ipar_loc2],axis=1) > 0.261) & (np.max(walker_chains[:,:,ipar_loc3],axis=1) < 0.7))
 
                     if gen_dic['star_name'] == 'Virgo':     
@@ -1088,11 +1088,11 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                         wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) > 0.))
 
                     if gen_dic['star_name'] == 'Leo':     
-                        ipar_loc=np_where1D(fixed_args['var_par_list']=='ang__ISESPRESSO_VSmock_vis_ARspot1')
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='ang__ISESPRESSO_VSmock_vis__ARspot1')
                         wgood=np_where1D((np.max(walker_chains[:,:,ipar_loc],axis=1) < 26.7))
 
                     if gen_dic['star_name'] == 'Libra':     
-                        ipar_loc=np_where1D(fixed_args['var_par_list']=='Tc_ar__ISESPRESSO_VSmock_vis_ARspot1')
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='Tc_ar__ISESPRESSO_VSmock_vis__ARspot1')
                         wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) >  0.))
 
                     if gen_dic['star_name'] == 'Aquarius':     
@@ -1135,7 +1135,7 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
         for inst in fixed_args['studied_ar']:
             for vis in fixed_args['studied_ar'][inst]:
                 for ar in fixed_args['studied_ar'][inst][vis]:
-                    par = 'Tc_ar__IS'+inst+'_VS'+vis+'_AR'+ar
+                    par = 'Tc_ar__IS'+inst+'_VS'+vis+'__AR'+ar
                     p_final[par] += fixed_args['bjd_time_shift'][inst][vis] 
                     if fit_dic['fit_mode'] in ['mcmc','ns']:merged_chain[:,np_where1D(fixed_args['var_par_list']==par)]+= fixed_args['bjd_time_shift'][inst][vis]
                     fixed_args['bjd_time_shift'][inst][vis] = 0.
