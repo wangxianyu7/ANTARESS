@@ -998,7 +998,7 @@ def eval_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_para
                 raw_weights=weights_bin_prof(range(fixed_args['nord']), data_prop['master_out']['scaled_data_paths'][inst][vis],inst,vis,data_prop['master_out']['corr_Fbal'],data_prop['master_out']['corr_FbalOrd'],\
                                                     data_prop['master_out']['save_data_dir'],fixed_args['type'],fixed_args['nord'],isub,'DI',fixed_args['type'],fixed_args['dim_exp'],None,\
                                                     None,np.array([args_exp['cen_bins']]),coord_vis['t_dur'][isub],np.array([conv_line_model]),\
-                                                    np.array([cov]),ref_val=data_diff_est['base_DI_prof'][0]-1, bdband_flux_sc=data_prop['master_out']['flux_sc'])[0]
+                                                    np.array([cov]), bdband_flux_sc=data_prop['master_out']['flux_sc'])[0]
 
                 # - Re-sample the weights
                 resamp_weights = bind.resampling(data_prop['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],raw_weights,kind=gen_dic['resamp_mode'])

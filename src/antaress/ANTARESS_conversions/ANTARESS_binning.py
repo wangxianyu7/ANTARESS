@@ -718,7 +718,7 @@ def init_bin_prof(data_type,ref_pl,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bin,
 
 
 
-def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,ref_val=0.,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True , sdet_exp2 = None):
+def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True , sdet_exp2 = None):
     r"""**Binning routine: weights**
 
     Defines weights to be used when binning profiles.
@@ -897,7 +897,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
 
     #Calculate weights at pixels where the master stellar spectrum is defined
     #    - condition on null and negative counts is accounted for in the error calculation function
-    cond_def_weights = (~np.isnan(flux_ref_exp)) & (flux_ref_exp>ref_val)
+    cond_def_weights = (~np.isnan(flux_ref_exp))
     if np.sum(cond_def_weights)==0:stop('Issue with master definition')
 
     #Flux balance functions
@@ -1206,7 +1206,7 @@ def calc_bin_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,cen
 
 
 
-def pre_calc_bin_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_bin,edge_bins_resamp,ref_val=0.,nocov=False,tab_delete=None,weight_in_all = None):
+def pre_calc_bin_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_bin,edge_bins_resamp,nocov=False,tab_delete=None,weight_in_all = None):
     r"""**Spectral binning: pre-processing**
 
     Cleans and normalizes profiles and their weights before binning.
@@ -1249,7 +1249,7 @@ def pre_calc_bin_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_b
         weight_exp_all[isub,~cond_def_all[isub]] = 0.
 
         #Pixels where at least one profile has an undefined or negative weight (due to interpolation) for a defined flux value
-        cond_undef_weights |= ( (np.isnan(weight_exp_all[isub]) | (weight_exp_all[isub]<ref_val) ) & cond_def_all[isub] )
+        cond_undef_weights |= ( np.isnan(weight_exp_all[isub]) & cond_def_all[isub] )
 
     #Defined bins in binned spectrum
     #    - a bin is defined if at least one bin is defined in any of the contributing profiles
