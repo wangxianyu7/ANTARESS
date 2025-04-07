@@ -705,7 +705,7 @@ def get_system_params():
             'aRs':10.94,
             'inclination':88.21,
             'TLength':1.4/24.,
-            'lambda_proj':0. #unknown
+            'lambda_proj':65. #unknown
         }, 
 
       },    
@@ -751,7 +751,7 @@ def get_system_params():
             'aRs':14.1,
             'inclination':88.8,
             'TLength':1.94/24.,
-            'lambda_proj':65. #unknown
+            'lambda_proj':0. #unknown
         }, 
 
       },    

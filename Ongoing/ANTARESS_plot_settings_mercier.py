@@ -1595,9 +1595,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         # plot_settings[key_plot]['plot_theoRV']=True
         plot_settings[key_plot]['theoRV_HR']=True
         # plot_settings[key_plot]['theoRV_HR_align']=True
-        # plot_settings[key_plot]['v_range_all']={'MIKE_Red':{'mockvis':[-0.02390,0.06576]}}
         # if gen_dic['star_name']=='HD189733':plot_settings[key_plot]['x_range']=[-20.,20.]
-        # plot_settings[key_plot]['v_range_all']={'IGRINS2_Red':{'mockvis':[ -0.02877,0.05412]}}
+        plot_settings[key_plot]['v_range_all']={'MIKE_Red':{'mockvis':[-0.02390,0.06576]},
+                                                'IGRINS2_Blue':{'mockvis':[-0.03627,0.11548]},
+                                                'ESPRESSO':{'mock_vis':[-0.056,0.041]}}
 
 
     ################################################################################################################  
@@ -2372,14 +2373,14 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         
         if gen_dic['star_name']=='TOI3884': 
             
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'IGRINS2_Blue', 'vis':'mockvis', 't':  2459642.86314+np.linspace(-0.10417,0.10417,6)}
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'IGRINS2_Blue', 'vis':'mockvis', 't':  2459642.86314+np.linspace(-0.10417,0.10417,3)}
             plot_settings[key_plot]['t_BJD'] = None
 
             plot_settings[key_plot]['GIF_generation']=True&False
 
             plot_settings[key_plot]['plot_ar_orb'] = False
             
-            plot_settings[key_plot]['n_stcell']=201.
+            plot_settings[key_plot]['n_stcell']=51.
 
             plot_settings[key_plot]['mock_ar_prop'] = True #& False
 
@@ -2398,10 +2399,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             plot_settings[key_plot]['ar_grid_overlay']=True &False
 
-            plot_settings[key_plot]['n_arcell']=201.
+            plot_settings[key_plot]['n_arcell']=21.
 
-            plot_settings[key_plot]['x_range'] = np.array([-1.1,1.1])   
-            plot_settings[key_plot]['y_range'] = np.array([-1.1,1.1]) 
+            # plot_settings[key_plot]['x_range'] = np.array([-1.1,1.1])   
+            # plot_settings[key_plot]['y_range'] = np.array([-1.1,1.1]) 
 
             # plot_settings[key_plot]['n_plcell']={'AUMicb':5.}
 
@@ -2475,13 +2476,13 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
         #GEMS
         if gen_dic['star_name'] in ['TOI5205','TOI3714','TOI5293','TOI3757','TOI3984','HATS75','HATS6']:
             
-            # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,30)}
+            # plot_settings[key_plot]['t_BJD'] = {'inst':'IGRINS2_Blue', 'vis':'mockvis', 't':  2459443.47179+np.linspace(-0.067,0.067,7)}
             # plot_settings[key_plot]['t_BJD'] = {'inst':'ESPRESSO', 'vis':'mock_vis', 't':  2458330.39051+np.linspace(-0.15,0.15,180)}
             plot_settings[key_plot]['t_BJD'] = None
 
             plot_settings[key_plot]['GIF_generation']=True&False
 
-            plot_settings[key_plot]['n_stcell']=37.
+            plot_settings[key_plot]['n_stcell']=101.
 
             plot_settings[key_plot]['mock_ar_prop'] = True #& False
 
@@ -2498,7 +2499,12 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
             plot_settings[key_plot]['pl_grid_overlay']=True &False
 
-            plot_settings[key_plot]['n_arcell']=33.
+            plot_settings[key_plot]['plot_ar_orb'] = True &False
+
+            plot_settings[key_plot]['n_arcell']=70.
+
+            # plot_settings[key_plot]['x_range'] = np.array([-1.1,1.1])   
+            # plot_settings[key_plot]['y_range'] = np.array([-1.1,1.1]) 
 
             # plot_settings[key_plot]['n_plcell']={'Sagittarius_b':33.}
 

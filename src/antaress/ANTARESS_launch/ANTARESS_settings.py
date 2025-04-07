@@ -4409,8 +4409,9 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #%%%%% Runs to re-start
     #    - indicate path to a 'raw_chains' file:
     # + for a MCMC fit : 'path1/raw_chains_walkN_stepsM1_name.npz'
-    # + for a NS fit: 'path1/raw_chains_liveL_name.npz'
     #    - the fit will restart the same walkers from their last step, and run from the number of steps indicated in 'sampler_set'
+    # + for a NS fit: 'path1/monitor_dynesty.save'
+    #    - the fit will restore the previous NS sampler, and run from the NS parameters indicated in 'sampler_set'
     local_dic[data_type]['reboot']=''
 
 
@@ -4469,74 +4470,6 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     #%%%% Derived lower/upper limits
     #    - format: {par:{'bound':val,'type':str,'level':[...]}}
     # where 'bound' sets the limit, 'type' is 'upper' or 'lower', 'level' is a list of thresholds ('1s', '2s', '3s')
-    local_dic[data_type]['conf_limits']={}  
-    
-
-    ##################################################################################################         
-    #%%% NS settings
-    ################################################################################################## 
-    
-    #%%%%% Hessian matrix
-    #    - string containing the location of a Fit_results.npz file containing a Hessian matrix.
-    #    - This Hessian matrix must have been computed from the same parameters are the ones used in the NS fit.
-    #    - To use this option, we recommend users first run a fit with fit_mode set to chi2. The chi2 fit will automatically
-    #    - create and store the Hessian matrix. A NS can subsequently be run with the path to the Hessian being set as
-    #    - the location of the chi2 fit results.
-    local_dic[data_type]['use_hess'] = ''
-
-
-    #%%%% Run mode
-    #    - set to
-    # + 'use': runs NS  
-    # + 'reuse' (with gen_dic['calc_fit_X']=True): load NS results, allow changing error definitions without running the ns again
-    local_dic[data_type]['run_mode']='use'
-    
-    
-    #%%%% Monitor NS
-    local_dic[data_type]['progress']= True
-    
-    
-    #%%%% Runs to re-use
-    #    - list of ns runs to reuse
-    #    - if 'reuse' is requested, leave empty to automatically retrieve the ns run available in the default directory
-    #  or set the list of ns runs to retrieve (they must have been run with the same settings, but the burnin can be specified for each run)
-    local_dic[data_type]['reuse']={}
-
-
-    #%%%%%% Runs to re-start
-    #    - indicate path to a 'raw_chains' file
-    #      the ns will restart at the last step of the previous chains, and run with the parameters indicated in 'sampler_set'
-    local_dic[data_type]['reboot']=''
-
-    #%%%%%% Runs to restore
-    #    - indicate path to a dynesty checkpoint file
-    #      the ns will resume the sampler, and run with the parameters indicated in 'sampler_set'
-    local_dic[data_type]['restore']=''
-    
-    #%%%%%% Complex priors
-    #    - to be defined manually within the code
-    #    - leave empty, or put in field for each priors and corresponding options
-    local_dic[data_type]['prior_func']={}       
-
-
-    #%%%% Sample exclusion 
-    #    - keep samples within the requested ranges of the chosen parameter (on original fit parameters)
-    #    - format: 'par' : [[x1,x2],[x3,x4],...] 
-    local_dic[data_type]['exclu_samp']={}
-        
-    
-    #%%%% Derived errors
-    #    - 'quant' (quantiles) or 'HDI' (highest density intervals)
-    #    - if 'HDI' is selected:
-    # + by default a smoothed density profile is used to define HDI intervals
-    # + multiple HDI intervals can be avoided by defined the density profile as a histogram (by setting its resolution 'HDI_dbins') or by defining the bandwith factor of the smoothed profile ('HDI_bw')
-    local_dic[data_type]['out_err_mode']='HDI'
-    local_dic[data_type]['HDI']='1s'   
-    
-    
-    #%%%% Derived lower/upper limits
-    #    - format: {par:{'bound':val,'type':str,'level':[...]}}
-    # where 'bound' sets the limit, 'type' is 'upper' or 'lower', 'level' is a list of thresholds ('1s', '2s', '3s')
     local_dic[data_type]['conf_limits']={}   
 
 
@@ -4545,17 +4478,13 @@ def ANTARESS_fit_def_settings(data_type,local_dic,plot_dic):
     ################################################################################################## 
 
     #%%%%% MCMC chains
-    local_dic[data_type]['save_MCMC_chains']='png'        
+    local_dic[data_type]['save_chains']='png'        
     
 
     #%%%%% Chi2 chains
     local_dic[data_type]['save_chi2_chains']=''
-            
-    
-    #%%%%% Chi2 chains
-    local_dic[data_type]['save_chi2_chains']=''
          
-    
+         
     #%%%%% Corner plot for MCMC / NS fits
     #    - see function for options
     local_dic[data_type]['corner_options']={}

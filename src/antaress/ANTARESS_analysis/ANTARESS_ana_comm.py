@@ -1099,6 +1099,12 @@ def com_joint_fits(rout_mode,fit_dic,fixed_args,gen_dic,data_dic,theo_dic,mod_pr
                         ipar_loc=np_where1D(fixed_args['var_par_list']=='lambda_rad__plAquarius_b')
                         wgood=np_where1D((np.min(walker_chains[:,:,ipar_loc],axis=1) > -3.) & (np.max(walker_chains[:,:,ipar_loc],axis=1) < 3.))
 
+                    if gen_dic['star_name'] == 'TOI5205':     
+                        ipar_loc=np_where1D(fixed_args['var_par_list']=='Tc_ar__ISIGRINS2_Blue_VSmockvis__ARspot4')
+                        ipar_loc2 = np_where1D(fixed_args['var_par_list']=='lambda_rad__plTOI5205_b')
+
+                        wgood=np_where1D((np.max(walker_chains[:,:,ipar_loc],axis=1) < -1.75) & (np.min(walker_chains[:,:,ipar_loc2],axis=1) > -1))
+
                 print('   ',len(wgood),' walkers kept / ',fit_dic['nwalkers'])
                 walker_chains=np.take(walker_chains,wgood,axis=0)     
                 fit_dic['nwalkers']=len(wgood)  
