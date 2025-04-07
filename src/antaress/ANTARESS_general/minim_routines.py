@@ -914,10 +914,10 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
         if ('save_sim_points_corner' not in fit_dic):fit_dic['save_sim_points_corner']='' 
         if ('sim_corner_options' not in fit_dic):fit_dic['sim_corner_options']={}
         
-        #Plot chains for MCMC parameters    
-        if ('save_MCMC_chains' not in fit_dic):fit_dic['save_MCMC_chains']='png'
+        #Plot chains for MCMC/NS parameters    
+        if ('save_chains' not in fit_dic):fit_dic['save_chains']='png'
 
-        #Plot chi2 chains for MCMC run    
+        #Plot chi2 chains for MCMC/NS run    
         if ('save_chi2_chains' not in fit_dic):fit_dic['save_chi2_chains']=''
 
         #Run name
@@ -962,9 +962,6 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
             else:fit_dic['emcee_nthreads'] = fit_dic['nthreads']
         
         elif fit_dic['fit_mode']=='ns': 
-
-            #Restoring
-            if ('restore' not in fit_dic):fit_dic['restore']=''
             
             #No calculation of envelopes
             #    - calculation of models using parameter values within their 1sigma range
@@ -1280,44 +1277,36 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
                                            np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Coordinates of starting live points
                                            np.zeros((fit_dic['nlive'],), dtype=float), #Corresponding log-likelihood values
                                            np.zeros((fit_dic['nlive']), dtype=dict)] 
-
-        if (len(fit_dic['reboot'])>0):
-            print('         Rebooting previous run')
             
-            #Reboot nested sampling from end of previous run
-            fit_dic['initial_distribution'][1]=np.load(fit_dic['reboot'])['walker_chains'][:,-1,:]  #(nwalkers, nsteps, n_free)
-              
+        #Custom initialization
+        if 'custom_init_nlive' in fit_dic:fit_dic['custom_init_nlive'](fit_dic,fixed_args)
+
+        #Random distribution within defined range
         else:
+            if fit_dic['use_hess'] != '':
+                print('         Initializing live points with Hessian')
+
+                #Retrieve Hessian matrix
+                hess_matrix = np.load(fit_dic['use_hess'],allow_pickle=True)['data'].item()['hess_matrix']
+
+                #Build covariance matrix
+                cov_matrix = np.linalg.inv(hess_matrix)
+
+                #Checking that chi2 fit and current MCMC fit are run on same parameters
+                if len(fixed_args['var_par_list']) != cov_matrix.shape[0] : stop('Chi2 fit used to estimate the Hessian and current MCMC run do not share the same parameters.')
+
+                #Retrieving central location of parameters
+                central_loc = np.zeros(len(fixed_args['var_par_list']), dtype=float)
+                for ipar, param in enumerate(fixed_args['var_par_list']):central_loc[ipar] = fit_dic['mod_prop'][param]['guess']
+
+                fit_dic['initial_distribution'][1] = np.random.multivariate_normal(central_loc, cov_matrix, size=fit_dic['nlive'])
             
-            #Custom initialization
-            if 'custom_init_nlive' in fit_dic:fit_dic['custom_init_nlive'](fit_dic,fixed_args)
-
-            #Random distribution within defined range
             else:
-                if fit_dic['use_hess'] != '':
-                    print('         Initializing live points with Hessian')
-
-                    #Retrieve Hessian matrix
-                    hess_matrix = np.load(fit_dic['use_hess'],allow_pickle=True)['data'].item()['hess_matrix']
-
-                    #Build covariance matrix
-                    cov_matrix = np.linalg.inv(hess_matrix)
-
-                    #Checking that chi2 fit and current MCMC fit are run on same parameters
-                    if len(fixed_args['var_par_list']) != cov_matrix.shape[0] : stop('Chi2 fit used to estimate the Hessian and current MCMC run do not share the same parameters.')
-
-                    #Retrieving central location of parameters
-                    central_loc = np.zeros(len(fixed_args['var_par_list']), dtype=float)
-                    for ipar, param in enumerate(fixed_args['var_par_list']):central_loc[ipar] = fit_dic['mod_prop'][param]['guess']
-
-                    fit_dic['initial_distribution'][1] = np.random.multivariate_normal(central_loc, cov_matrix, size=fit_dic['nlive'])
-                
-                else:
-                    print('         Initializing live points with uniform/gaussian distributions')
-                    print('         WARNING : It is crucial that the initial set of live points have been sampled from the prior. Failure to provide a set of valid live points will result in incorrect results.')
-                    for ipar,par in enumerate(fixed_args['var_par_list']):
-                        if par in fit_dic['uf_bd']:fit_dic['initial_distribution'][1][:,ipar]=np.random.uniform(low=fit_dic['uf_bd'][par][0], high=fit_dic['uf_bd'][par][1], size=fit_dic['nlive']) 
-                        elif par in fit_dic['gauss_bd']:fit_dic['initial_distribution'][1][:, ipar]=np.random.normal(loc=fit_dic['gauss_bd'][par][0], scale=fit_dic['gauss_bd'][par][1], size=fit_dic['nlive']) 
+                print('         Initializing live points with uniform/gaussian distributions')
+                print('         WARNING : It is crucial that the initial set of live points have been sampled from the prior. Failure to provide a set of valid live points will result in incorrect results.')
+                for ipar,par in enumerate(fixed_args['var_par_list']):
+                    if par in fit_dic['uf_bd']:fit_dic['initial_distribution'][1][:,ipar]=np.random.uniform(low=fit_dic['uf_bd'][par][0], high=fit_dic['uf_bd'][par][1], size=fit_dic['nlive']) 
+                    elif par in fit_dic['gauss_bd']:fit_dic['initial_distribution'][1][:, ipar]=np.random.normal(loc=fit_dic['gauss_bd'][par][0], scale=fit_dic['gauss_bd'][par][1], size=fit_dic['nlive']) 
 
         #Retrieve prior values of starting points
         for idx, parname in enumerate(fixed_args['var_par_list']):  
@@ -1347,9 +1336,9 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
         pool_proc = Pool(processes=nthreads) if use_threads else None  
 
         #Restoring a previous run
-        if fit_dic['restore']:
-            print(f"         Restoring previous run with {nthreads} threads" if use_threads else "         Restoring previous run")
-            sampler = dynesty.DynamicNestedSampler.restore(fit_dic['restore'], pool=pool_proc)
+        if fit_dic['reboot']:
+            print(f"         Rebooting previous run with {nthreads} threads" if use_threads else "         Restoring previous run")
+            sampler = dynesty.DynamicNestedSampler.restore(fit_dic['reboot'], pool=pool_proc)
         #Doing a new run
         else:
             print(f"         Running with {nthreads} threads" if use_threads else "         Running")
@@ -1371,9 +1360,9 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
                                                    ln_prior_func_NS,                           #Log-prior function
                                                    **sampler_kwargs)
 
-        # Run NS with restore or initial parameters
+        # Run NS with reboot or initial parameters
         sampler.run_nested(
-            resume=bool(fit_dic['restore']),
+            resume=bool(fit_dic['reboot']),
             live_points=fit_dic['initial_distribution'],
             print_progress=fit_dic['progress'],
             dlogz_init=fit_dic['dlogz'],
@@ -2536,8 +2525,8 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,nthreads,par
 
     #Plot burnt chains
     if (not os_system.path.exists(fit_dic['save_dir'])):os_system.makedirs(fit_dic['save_dir'])
-    if (fit_dic['save_MCMC_chains']!=''):
-        MCMC_plot_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],walker_chains,burnt_chains,fit_dic['nsteps'],fit_dic['nsteps_pb_walk'],
+    if (fit_dic['save_chains']!=''):
+        MCMC_plot_chains(fit_dic['save_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],walker_chains,burnt_chains,fit_dic['nsteps'],fit_dic['nsteps_pb_walk'],
                     fit_dic['nwalkers'],fit_dic['nburn'],keep_chain,low_thresh_par_val,high_thresh_par_val,fit_dic['exclu_walk_autom'],verbose=verbose,verb_shift=verb_shift)
 
     #Plot the chi2 chain of each walker
@@ -2596,8 +2585,8 @@ def postMCMCwrapper_1(fit_dic,fixed_args,walker_chains,step_outputs,nthreads,par
     p_final,fit_dic['med_parfinal'],fit_dic['sig_parfinal_val'],fit_dic['sig_parfinal_err'],fit_dic['HDI_interv'],fit_dic['HDI_interv_txt'],fit_dic['HDI_sig_txt']=MCMC_estimates(merged_chain,fixed_args,fit_dic,verbose=verbose,calc_quant=fit_dic['calc_quant'],verb_shift=verb_shift)
 
     #Plot merged chains for MCMC parameters
-    if (fit_dic['save_MCMC_chains']!=''):
-        MCMC_plot_merged_chains(fit_dic['save_MCMC_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],merged_chain,fit_dic['nsteps_final_merged'],verbose=verbose,verb_shift=verb_shift)
+    if (fit_dic['save_chains']!=''):
+        MCMC_plot_merged_chains(fit_dic['save_chains'],fit_dic['save_dir'],fixed_args['var_par_list'],fixed_args['var_par_names'],merged_chain,fit_dic['nsteps_final_merged'],verbose=verbose,verb_shift=verb_shift)
  
     #Save 1-sigma and envelope samples for plot in ANTARESS_main
     if fit_dic['calc_envMCMC'] or fit_dic['calc_sampMCMC']:
@@ -2883,7 +2872,7 @@ def MCMC_plot_chains_chi2(fit_dic,chain,keep_chain,fixed_args,verbose=True,verb_
                 font_size=font_size,xfont_size=font_size,yfont_size=font_size)
     plt.yscale('log')
 
-    plt.savefig(fit_dic['save_dir']+'/Chain_Chi2.'+fit_dic['save_MCMC_chains']) 
+    plt.savefig(fit_dic['save_dir']+'/Chain_Chi2.'+fit_dic['save_chains']) 
     plt.close()
     
     #----------------------------------------------------------------
@@ -2930,7 +2919,7 @@ def MCMC_plot_chains_chi2(fit_dic,chain,keep_chain,fixed_args,verbose=True,verb_
             axes[len(walker_group)-1].set_xlabel('Steps', fontsize=font_size)
             axes[len(walker_group)-1].tick_params(axis='x', which='both', labelbottom=True)
 
-            plt.savefig(fit_dic['save_dir']+'Indiv_Chi2_Chains/Chain_Chi2_'+str(iwalk)+'-'+str(end)+'.'+fit_dic['save_MCMC_chains']) 
+            plt.savefig(fit_dic['save_dir']+'Indiv_Chi2_Chains/Chain_Chi2_'+str(iwalk)+'-'+str(end)+'.'+fit_dic['save_chains']) 
             plt.close()
 
 
