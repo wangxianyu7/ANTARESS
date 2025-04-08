@@ -132,7 +132,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 if gen_dic['detrend_prof'] and (detrend_prof_dic['full_spec']):
                     detrend_prof(detrend_prof_dic,data_dic,coord_dic,inst,vis,data_dic,data_prop,gen_dic,plot_dic)
 
-                #Converting DI stellar spectra into CCFs
+                #Converting stellar spectra into CCFs
                 if gen_dic[data_type_gen+'_CCF']:
                     DI_CCF_from_spec(inst,vis,data_dic,gen_dic)
                   
@@ -164,7 +164,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 if gen_dic['DImast_weight']:              
                     process_bin_prof('',data_type_gen,gen_dic,inst,vis,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,masterDIweigh=True,ar_dic=theo_dic)
     
-                #Processing converted 2D disk-integrated profiles
+                #Converting 2D disk-integrated profiles into 1D, and analyzing them
                 if gen_dic['spec_1D']:                
                     conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
      
@@ -173,13 +173,26 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                     bin_gen_functions(data_type_gen,'',inst,gen_dic,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,vis=vis)
     
                 #--------------------------------------------------------------------------------------------------
-                #Processing differential and intrinsic stellar profiles
-                data_type_gen = 'Intr'
+                #Processing differential profiles
+                data_type_gen = 'Diff'
                 #--------------------------------------------------------------------------------------------------
     
                 #Extracting differential profiles
                 if (gen_dic['diff_data']):
                     extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
+    
+                #Converting differential spectra into CCFs
+                if gen_dic[data_type_gen+'_CCF']:
+                    DiffIntr_CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic)    
+    
+                #Converting and analyzing 2D differential spectra into 1D
+                if gen_dic['spec_1D']:                
+                    conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
+    
+                #--------------------------------------------------------------------------------------------------
+                #Processing intrinsic stellar profiles
+                data_type_gen = 'Intr'
+                #--------------------------------------------------------------------------------------------------
     
                 #Extracting intrinsic stellar profiles
                 if gen_dic['intr_data']:
@@ -187,13 +200,13 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
             
                 #Converting out-of-transit differential and intrinsic spectra into CCFs
                 if gen_dic[data_type_gen+'_CCF']:
-                    DiffIntr_CCF_from_spec(inst,vis,data_dic,gen_dic)
+                    DiffIntr_CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,data_type_gen)
                       
                 #Applying PCA to out-of transit differential profiles
                 if (gen_dic['pca_ana']):
                     pc_analysis(gen_dic,data_dic,inst,vis,data_prop,coord_dic)
     
-                #Fitting intrinsic stellar profiles in the star rest frame
+                #Analyzing intrinsic stellar profiles in the star rest frame
                 if gen_dic['fit_'+data_type_gen]:
                     MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
                 
@@ -201,7 +214,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 if gen_dic['align_'+data_type_gen]: 
                     align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)
     
-                #Processing converted 2D intrinsic and differential profiles
+                #Converting and analyzing 2D out-of-transit differential and intrinsic spectra into 1D, and analyzing them
                 if gen_dic['spec_1D']:                
                     conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
        
@@ -251,7 +264,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 if gen_dic['align_'+data_type_gen]:   
                     align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)      
     
-                #Processing converted 2D intrinsic profiles
+                #Converted 2D atmospheric profiles into 1D, and analyzing them
                 if gen_dic['spec_1D']:                
                     conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic,theo_dic,plot_dic,system_param)
     
@@ -380,6 +393,10 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     
     #Additional properties
     data_prop={}
+    
+    #Data types
+    gen_dic['type_name']={'DI':'disk-integrated','Diff':'differential','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}  
+    gen_dic['type_list'] = np.array(['DI','Diff','Intr','Atm'])
     
     #Planets with known orbits and transit properties
     gen_dic['def_pl']=[]
@@ -575,13 +592,23 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         else:
             for key in ['map_Intr_prof','all_intr_data','Intr_prof']:plot_dic[key]=''
     
-        #Deactivate conditions
+        #Deactivate general conditions
         if (not gen_dic['specINtype']):
-            gen_dic['DI_CCF']=False
-            detrend_prof_dic['full_spec'] = False
-        if (not gen_dic['specINtype']) or (gen_dic['DI_CCF']) or (not gen_dic['intr_data']):        
-            gen_dic['Intr_CCF']=False     
-            
+            if gen_dic['DI_CCF']:
+                print('WARNING: all datasets in CCF mode, automatic disabling of DI profiles conversion into CCFs.')
+                gen_dic['DI_CCF']=False
+            if detrend_prof_dic['full_spec']:
+                print('WARNING: all datasets in CCF mode, automatic disabling of spectral detrending.')
+                detrend_prof_dic['full_spec'] = False
+        if gen_dic['Diff_CCF']:
+            if (not gen_dic['specINtype']) or (gen_dic['DI_CCF']) or (not gen_dic['diff_data']) or (gen_dic['intr_data']):
+                print('WARNING: automatic disabling of Diff profiles conversion into CCFs.')
+                gen_dic['Diff_CCF']=False      
+        if gen_dic['Intr_CCF']:                
+            if (not gen_dic['specINtype']) or (gen_dic['DI_CCF']) or (not gen_dic['intr_data']):        
+                print('WARNING: automatic disabling of Intr profiles conversion into CCFs.')
+                gen_dic['Intr_CCF']=False     
+   
         #Deactivate all calculation options
         if not gen_dic['calc_all']:
             for key in gen_dic:
@@ -680,40 +707,81 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             plot_dic['Fbal_corr_vis']==''
             print('Disabling "Fbal_corr_vis" plot')        
     
-        #Set general condition for CCF conversions
-        gen_dic['CCF_from_sp'] = gen_dic['DI_CCF'] | gen_dic['Intr_CCF'] | gen_dic['Atm_CCF']
-        if gen_dic['CCF_from_sp']:gen_dic['ccfINtype'] = True
+        #Set general condition for conversions
+        gen_dic['spec_1D'] = False
+        gen_dic['calc_spec_1D'] = False
+        gen_dic['CCF_from_sp'] = False
+        gen_dic['calc_CCF_from_sp'] = False
+        gen_dic['type2var'] = {'DI':'EFsc2','Diff':'EFdiff2','Intr':'EFintr2','Emission':'EFem2','Absorption':'EAbs2'} 
+        gen_dic['earliertypes4var'] = {'DI':['DI'],'Diff':['DI','Diff'],'Intr':['DI','Diff','Intr'],'Atm':['DI','Diff','Atm']}
+        for key in gen_dic['type_list']:
+            gen_dic['spec_1D'] |= gen_dic['spec_1D_'+key] 
+            gen_dic['calc_spec_1D'] |=  gen_dic['calc_spec_1D_'+key]      
+            gen_dic['CCF_from_sp'] |= gen_dic[key+'_CCF'] 
+            gen_dic['calc_CCF_from_sp'] |=  gen_dic['calc_'+key+'_CCF']
             
-        #Set general condition for 2D/1D conversion
-        gen_dic['spec_1D'] = gen_dic['spec_1D_DI'] | gen_dic['spec_1D_Intr'] | gen_dic['spec_1D_Atm']
-        gen_dic['calc_spec_1D'] = gen_dic['calc_spec_1D_DI'] | gen_dic['calc_spec_1D_Intr'] | gen_dic['calc_spec_1D_Atm']
-    
-        #Set final data mode for each type of profiles
+            #Initialize flags
+            data_dic[key]['type'] = {inst:deepcopy(gen_dic['type'][inst]) for inst in gen_dic['type']}
+            data_dic[key]['spec_to_CCF'] = {inst:False for inst in gen_dic['type']}
+            data_dic[key]['spec2D_to_spec1D'] = {inst:False for inst in gen_dic['type']}
+            
+        if gen_dic['CCF_from_sp']:gen_dic['ccfINtype'] = True
+        
+        #Set specific conversion flags and final data mode for each type of profiles and instruments
         #    - the general instrument and visit dictionaries contain a field type that represents the mode of the data at the current stage of the pipeline
         #    - here we set the final mode for each type of profile, so that they can be retrieved in their original mode for plotting
         #      eg, if profiles are converted into CCF at the differential stage, we keep the information that disk-integrated profiles were in spectral mode
-        for key in ['DI','Diff','Intr','Atm']:data_dic[key]['type'] = {inst:deepcopy(gen_dic['type'][inst]) for inst in gen_dic['type']}
+        #    - we also set a flag for each instrument related to the effective conversion of its datasets
         for inst in gen_dic['type']:
-            if 'spec' in gen_dic['type'][inst]: 
-            
-                #Set general condition that spectral data is converted into CCFs
-                if gen_dic['DI_CCF']:
-                    data_dic['DI']['type'][inst]='CCF'
-                if gen_dic['DI_CCF'] or gen_dic['Intr_CCF']:
-                    data_dic['Diff']['type'][inst]='CCF'          
-                    data_dic['Intr']['type'][inst]='CCF'
-                if gen_dic['DI_CCF'] or gen_dic['Atm_CCF']:
-                    data_dic['Atm']['type'][inst]='CCF'
-    
-                #Set general condition that 2D spectral data is converted into 1D spectral data
-                if gen_dic['spec_1D_DI']:
-                    data_dic['DI']['type'][inst]='spec1D'
-                if gen_dic['spec_1D_DI'] or gen_dic['spec_1D_Intr']:
-                    data_dic['Diff']['type'][inst]='spec1D'
-                    data_dic['Intr']['type'][inst]='spec1D'
-                if gen_dic['spec_1D_DI'] or gen_dic['spec_1D_Atm']:
-                    data_dic['Atm']['type'][inst]='spec1D'
-    
+            for ikey,key in enumerate(gen_dic['type_list']):
+                
+                #Conversion of current type into CCF is requested
+                if gen_dic[key+'_CCF']:
+                    
+                    #Checking global data format
+                    if gen_dic['type'][inst]=='CCF':print('WARNING: input profiles for '+inst+' are in CCF format, no CCF conversion of '+key+' profiles will be applied.') 
+                    else:
+                        
+                        #Checking format of previous data types
+                        conv_ok = True
+                        for iprev in range(0,ikey):
+                            
+                            #Stop if one of previous data types was already converted
+                            if data_dic[gen_dic['type_list'][iprev]]['spec_to_CCF'][inst]:
+                                conv_ok = False
+                                print('WARNING: '+gen_dic['type_name'][gen_dic['type_list'][iprev]]+' profiles for '+inst+' were converted in CCF format, no CCF conversion of '+gen_dic['type_name'][key]+' profiles will be applied.') 
+                            break
+                        
+                        #Flag conversion as ok and affect data format to current and later types
+                        if conv_ok:
+                            
+                            #Flag is set to True only for the specific data type that was converted
+                            data_dic[key]['spec_to_CCF'][inst]=True 
+                            for isub in range(ikey,len(gen_dic['type_list'])):data_dic[gen_dic['type_list'][isub]]['type'][inst]='CCF'
+                            
+                            #Conversion of Intr profiles is also applied to OT Diff profiles
+                            if key=='Intr':
+                                data_dic['Diff']['spec_to_CCF'][inst]=True 
+                                data_dic['Diff']['type'][inst]='CCF'
+
+                #Conversion of current type into 1D spectra is requested
+                if gen_dic['spec_1D_'+key]:
+                    if gen_dic['type'][inst]=='CCF':print('WARNING: input profiles for '+inst+' are in CCF format, no 1D conversion of '+key+' profiles will be applied.') 
+                    elif gen_dic['type'][inst]=='spec1D':print('WARNING: input profiles for '+inst+' are in 1D format, no 1D conversion of '+key+' profiles will be applied.') 
+                    else:
+                        conv_ok = True
+                        for iprev in range(0,ikey):
+                            if data_dic[gen_dic['type_list'][iprev]]['spec2D_to_spec1D'][inst]:
+                                conv_ok = False
+                                print('WARNING: '+gen_dic['type_name'][gen_dic['type_list'][iprev]]+' profiles for '+inst+' were converted in 1D format, no 1D conversion of '+gen_dic['type_name'][key]+' profiles will be applied.') 
+                            break
+                        if conv_ok:
+                            data_dic[key]['spec2D_to_spec1D'][inst]=True 
+                            for isub in range(ikey,len(gen_dic['type_list'])):data_dic[gen_dic['type_list'][isub]]['type'][inst]='spec1D'
+                            if key=='Intr':
+                                data_dic['Diff']['spec2D_to_spec1D'][inst]=True 
+                                data_dic['Diff']['type'][inst]='spec1D'
+
         #Set general condition to activate binning modules
         for mode in ['','multivis']:
             gen_dic['bin'+mode]=False
@@ -743,8 +811,11 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if not gen_dic['pl_atm']:
             for key in ['map_Atm_prof','sp_atm','CCFatm']:plot_dic[key]=''  
         else:
-            if gen_dic['Intr_CCF']:stop('Atmospheric extraction cannot be performed after Diff./Intr. CCF conversion')
-        if gen_dic['Intr_CCF'] and (gen_dic['pl_atm']) and (any('spec' in s for s in data_dic['Atm']['type'].values())) and (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['Intrbin','rec_prof']):stop('Intrinsic profiles cannot be converted into CCFs if also requested for planetary spectra extraction)')
+            if gen_dic['Intr_CCF']:stop('Error: atmospheric extraction cannot be performed after Diff./Intr. CCF conversion')
+        if gen_dic['pl_atm'] and (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['Intrbin','rec_prof']):
+            for inst in gen_dic['type']: 
+                if data_dic['Atm']['type'][inst]!=data_dic['Intr']['type'][inst]:
+                    stop('Error: intrinsic profiles for '+inst+' (in '+data_dic['Intr']['type'][inst]+') must have the same format as planetary profiles (in '+data_dic['Atm']['type'][inst]+') if also requested for their extraction)')
 
         #Telluric condition
         if (not gen_dic['specINtype']):
@@ -762,7 +833,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         gen_dic['joined_ana']=False
         gen_dic['fit_DIProf'] = False     #module undefined for now
         gen_dic['fit_DiffProp'] = False    #module undefined for now
-        for key in ['DI','Intr','Diff','Atm']:gen_dic['joined_ana'] |= (gen_dic['fit_'+key+'Prof'] or gen_dic['fit_'+key+'Prop'])
+        for key in gen_dic['type_list']:gen_dic['joined_ana'] |= (gen_dic['fit_'+key+'Prof'] or gen_dic['fit_'+key+'Prop'])
 
         #Standard-deviation curves with bin size for the out-of-transit differential CCFs
         #    - defining the maximum size of the binning window, and the binning size for the sliding window (we will average the bins in windows of width bin_size from 1 to 40 (arbitrary))
@@ -1185,7 +1256,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     gen_dic['save_plot_dir'] = save_system+'Plots/'
     gen_dic['add_txt_path']={'DI':'','Intr':'','Diff':'','Atm':data_dic['Atm']['pl_atm_sign']+'/'}
     gen_dic['data_type_gen']={'DI':'DI','Diff':'Diff','Intr':'Intr','Absorption':'Atm','Emission':'Atm'}
-    gen_dic['type_name']={'DI':'disk-integrated','Diff':'differential','Intr':'intrinsic','Atm':'atmospheric','Absorption':'absorption','Emission':'emission'}    
+    gen_dic['typegen2type']={'DI':'DI','Diff':'Diff','Intr':'Intr','Atm':data_dic['Atm']['pl_atm_sign']}  
 
     #Data is processed
     if gen_dic['sequence'] not in ['system_view']:    
@@ -3091,7 +3162,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
         #    - done here rather than in the 'calc_proc_data' condition so that ranges can be defined for already-processed observed or mock datasets, even if the analysis modules were not activated 
         # at the time of processing
         #    - called if fit of single or joined profiles are requested, and if the continuum of differential profiles is not defined in CCF mode
-        for key in ['DI','Diff','Intr','Atm']:
+        for key in gen_dic['type_list']:
             if ((key=='Diff') and gen_dic['diff_data'] and (data_dic[key]['type'][inst]=='CCF')) or gen_dic['fit_'+key+'_gen'] or gen_dic['fit_'+key+'Prof']:
                 autom_cont = True if (inst not in data_dic[key]['cont_range']) else False
                 autom_fit = True if (key!='Diff') and ((inst not in data_dic[key]['fit_range']) or (vis not in data_dic[key]['fit_range'][inst])) else False

@@ -17,7 +17,7 @@ from ..ANTARESS_general.utils import dataload_npz,gen_specdopshift,stop,np_where
 ################################################################################################## 
     
 #NB: cannot be put in file data_align.py with align_data() due to circular import issues
-def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
+def align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic):
     r"""**Main alignment routine.**    
 
     Aligns time-series of disk-integrated, intrinsic, and planetary profiles.  
@@ -32,13 +32,24 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
     """     
     data_inst = data_dic[inst]  
     data_vis=data_inst[vis]
-    print('   > Aligning '+gen_dic['type_name'][data_type]+' profiles') 
-    prop_dic = data_dic[data_type]  
-    proc_gen_data_paths_new = gen_dic['save_data_dir']+'Aligned_'+data_type+'_data/'+gen_dic['add_txt_path'][data_type]+'/'+inst+'_'+vis+'_'
-    if (data_type=='DI') and (data_dic['DI']['sysvel'][inst][vis]==0.):print('         WARNING: sysvel = 0 km/s')
-    if data_type=='Intr':proc_gen_data_paths_new+='in'  
-    proc_mast = True if ((gen_dic['DImast_weight']) and (data_type in ['Intr','Atm'])) else False
-    proc_locEst = True if ((data_type=='Atm') and ((data_dic['Atm']['pl_atm_sign']=='Absorption') or ((data_dic['Atm']['pl_atm_sign']=='Emission')) and data_dic['Intr']['cov_loc_star'])) else False
+    print('   > Aligning '+gen_dic['type_name'][data_type_gen]+' profiles') 
+    if data_type_gen == 'Atm':data_type = data_dic['Atm']['pl_atm_sign']
+    else:data_type=deepcopy(data_type_gen)
+    prop_dic = data_dic[data_type_gen]  
+    proc_gen_data_paths_new = gen_dic['save_data_dir']+'Aligned_'+data_type_gen+'_data/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis+'_'
+    if (data_type_gen=='DI') and (data_dic['DI']['sysvel'][inst][vis]==0.):print('         WARNING: sysvel = 0 km/s')
+    if data_type_gen=='Intr':proc_gen_data_paths_new+='in'  
+    proc_mast = True if ((gen_dic['DImast_weight']) and (data_type_gen in ['Intr','Atm'])) else False
+    proc_locEst = True if ((data_type_gen=='Atm') and ((data_type=='Absorption') or ((data_type=='Emission')) and data_dic['Intr']['cov_loc_star'])) else False
+    
+    #1D variance grid
+    #    - 1D variance profiles are defined for a given data type if it was converted from 2D to 1D, but may then be associated with later data types
+    #      we thus align variance grids from earlier data types up to the present ones, depending on when the conversion was performed    
+    var_key = None
+    for subtype_gen in gen_dic['earliertypes4var'][data_type_gen]:
+        if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:
+            var_key = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
+            break
 
     #Resample aligned profiles on the common visit table if relevant
     #    - edge issues can arise when resampling profiles on the common table after they are shifted by
@@ -50,7 +61,7 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
     #      here we further shift the common table by the systemic velocity when aligning disk-integrated profiles (since it is a global shift common to all profiles)
     #      only the table needs shifting, without resampling the profiles, since the shift is common to all exposures 
     #    - even if spectra are not resampled on the common table we shift and redefined the common table so that it can be used in the shifted frame
-    if (data_type=='DI'):
+    if (data_type_gen=='DI'):
         data_star_com = dataload_npz(data_vis['proc_com_data_paths'])
 
         #Alignment mode
@@ -81,17 +92,17 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
     else:cen_bins_resamp, edge_bins_resamp , dim_exp_resamp = None,None,None   
 
     #Calculating aligned data
-    if gen_dic['calc_align_'+data_type]:
+    if gen_dic['calc_align_'+data_type_gen]:
         print('         Calculating data')
 
         #Define RV shifts
         #    - shifts are saved independently so that they can be used to account for the combined Doppler shifts
         data_comp = {'rv_starbar_solbar':data_dic['DI']['sysvel'][inst][vis]}
         idx_def = prop_dic[inst][vis]['idx_def']
-        if data_type=='DI':
+        if data_type_gen=='DI':
             data_comp['star_starbar'] = {}
             data_comp['idx_aligned'] = idx_def
-        if data_type=='Intr': 
+        if data_type_gen=='Intr': 
             data_comp['surf_star'] = {}
             
             #Surface RV 
@@ -104,12 +115,12 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
             # corrected for when extracting the intrinsic profiles
             if ('chrom' in dic_rv):dic_rv.pop('chrom')
 
-        elif data_type=='Atm': 
+        elif data_type_gen=='Atm': 
             data_comp['pl_star'] = {}
             
             #Orbital radial velocity of the planet calculated for each exposure in the star rest frame
-            if data_dic['Atm']['pl_atm_sign']=='Absorption':data_comp['idx_aligned'] = list(np.array(gen_dic[inst][vis]['idx_in'])[idx_def])
-            elif data_dic['Atm']['pl_atm_sign']=='Emission':data_comp['idx_aligned'] = idx_def
+            if data_type=='Absorption':data_comp['idx_aligned'] = list(np.array(gen_dic[inst][vis]['idx_in'])[idx_def])
+            elif data_type=='Emission':data_comp['idx_aligned'] = idx_def
             rv_shifts = coord_dic[inst][vis][data_dic['Atm']['ref_pl_align']]['rv_pl'][data_comp['idx_aligned']]
             v_orb = coord_dic[inst][vis][data_dic['Atm']['ref_pl_align']]['v_pl'][data_comp['idx_aligned']]
 
@@ -117,10 +128,10 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
         for isub,iexp in enumerate(data_comp['idx_aligned']):    
 
             #Upload latest processed data
-            data_exp = dataload_npz(data_dic[inst][vis]['proc_'+data_type+'_data_paths']+str(iexp))
+            data_exp = dataload_npz(data_dic[inst][vis]['proc_'+data_type_gen+'_data_paths']+str(iexp))
           
             #Reflex motion and systemic velocity 
-            if data_type=='DI':    
+            if data_type_gen=='DI':    
                 if data_dic['DI']['align_mode']=='kep': 
                     RV_star_stelCDM_exp = coord_dic[inst][vis]['RV_star_stelCDM'][iexp]
                     rv_shift_cen = RV_star_stelCDM_exp + data_dic['DI']['sysvel'][inst][vis]
@@ -132,29 +143,30 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
                 data_comp['star_starbar'][iexp] = RV_star_stelCDM_exp
 
             #Achromatic planet-occulted surface rv in the star rest frame
-            elif data_type=='Intr':
+            elif data_type_gen=='Intr':
                 rv_shift_cen = def_surf_shift(prop_dic['align_mode'],dic_rv,iexp,data_exp,ref_pl,data_vis['type'],data_dic['DI']['system_prop'],data_dic[inst][vis]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis]['nspec'])[0]
                 data_comp['surf_star'][iexp] = rv_shift_cen
                 spec_dopshift = 1./gen_specdopshift(rv_shift_cen)
                 
             #Orbital radial velocity of the planet in the star rest frame
-            elif data_type=='Atm':
+            elif data_type_gen=='Atm':
                 rv_shift_cen = rv_shifts[isub]
                 data_comp['pl_star'][iexp] = rv_shifts[isub]
                 spec_dopshift = 1./gen_specdopshift(rv_shift_cen , v_s = v_orb)
                 
             #Aligning exposure profile and complementary tables
-            #    - telluric and calibration profiles must follow the same shifts as the exposure
-            #    - the calibration profile used for scaling is always defined for S2D
-            #      it is common to all exposures of a processed instrument, and is originally sampled over the table of each exposure in the detector rest frame
-            #    - the calibration profile used as weight in temporal binning, or to scale back profiles from flux to count units, is only defined if requested
-            if data_vis['tell_sp']:data_exp['tell'] = dataload_npz(data_vis['tell_'+data_type+'_data_paths'][iexp])['tell'] 
+            #    - telluric, calibration, and 1D variance profiles must follow the same shifts as the exposure
+            # + calibration profile used for scaling is always defined for S2D
+            #   it is common to all exposures of a processed instrument, and is originally sampled over the table of each exposure in the detector rest frame
+            # + calibration profile used as weight in temporal binning, or to scale back profiles from flux to count units, is only defined if requested
+            if data_vis['tell_sp']:data_exp['tell'] = dataload_npz(data_vis['tell_'+data_type_gen+'_data_paths'][iexp])['tell'] 
             if data_vis['type']=='spec2D':
-                data_exp['mean_gcal'] = dataload_npz(data_vis['mean_gcal_'+data_type+'_data_paths'][iexp])['mean_gcal'] 
+                data_exp['mean_gcal'] = dataload_npz(data_vis['mean_gcal_'+data_type_gen+'_data_paths'][iexp])['mean_gcal'] 
                 if data_vis['cal_weight']:
                     data_gcal = dataload_npz(data_vis['sing_gcal_DI_data_paths'][iexp])
                     data_exp['sing_gcal'] = data_gcal['gcal'] 
                     if 'sdet2' in data_gcal:data_exp['sdet2'] = data_gcal['sdet2'] 
+            if var_key is not None:data_exp[var_key] = dataload_npz(data_vis[var_key+'_'+data_type+'_data_paths'][iexp])['var']  
             data_align=align_data(data_exp,data_vis['type'],data_dic[inst]['nord'],dim_exp_resamp,gen_dic['resamp_mode'],cen_bins_resamp, edge_bins_resamp,rv_shift_cen,spec_dopshift)
           
             #Saving aligned exposure and complementary tables
@@ -171,6 +183,9 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
                         data_gcal['sdet2']=deepcopy(data_align['sdet2'])
                         data_align.pop('sdet2')  
                     datasave_npz(proc_gen_data_paths_new+'_sing_gcal'+str(iexp),data_gcal) 
+            if var_key is not None:
+                datasave_npz(proc_gen_data_paths_new+'_'+var_key+str(iexp), {'var':data_align[var_key]})          
+                data_align.pop(var_key)
             datasave_npz(proc_gen_data_paths_new+str(iexp),data_align)
 
             #Aligning weighing master
@@ -183,7 +198,7 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
             #   the master table thus becomes specific to each exposure, but is still different from the table of the exposure
             #    - path to the master associated with current profile is updated
             if proc_mast:
-                data_ref = dataload_npz(data_vis['mast_'+data_type+'_data_paths'][iexp])
+                data_ref = dataload_npz(data_vis['mast_'+data_type_gen+'_data_paths'][iexp])
                 data_ref_align=align_data(data_ref,data_vis['type'],data_dic[inst]['nord'],dim_exp_resamp,gen_dic['resamp_mode'],cen_bins_resamp,edge_bins_resamp,rv_shift_cen,spec_dopshift)
                 np.savez_compressed(proc_gen_data_paths_new+'_ref'+str(iexp),data={'cen_bins':data_ref_align['cen_bins'],'edge_bins':data_ref_align['edge_bins'],'flux':data_ref_align['flux'],'cov':data_ref_align['cov']},allow_pickle=True)           
 
@@ -202,8 +217,8 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
     else: 
         #Updating path to processed data and checking it has been calculated
         check_data({'path':proc_gen_data_paths_new+'_add'}) 
-    data_vis['proc_'+data_type+'_data_paths'] = proc_gen_data_paths_new 
-    prop_dic[inst][vis]['idx_def'] = dataload_npz(data_vis['proc_'+data_type+'_data_paths']+'_add')['idx_aligned']
+    data_vis['proc_'+data_type_gen+'_data_paths'] = proc_gen_data_paths_new 
+    prop_dic[inst][vis]['idx_def'] = dataload_npz(data_vis['proc_'+data_type_gen+'_data_paths']+'_add')['idx_aligned']
 
     #Update data dimensions
     if (data_vis['comm_sp_tab']):
@@ -214,21 +229,25 @@ def align_profiles(data_type,data_dic,inst,vis,gen_dic,coord_dic):
 
     #Updating rest frame
     #    - rest frame of disk-integrated spectra is not updated if systemic velocity is 0
-    if (data_type!='DI') or (data_dic['DI']['sysvel'][inst][vis]!=0.):
-        data_dic[data_type][inst][vis]['rest_frame'] = {'DI':'star','Intr':'surf','Atm':'pl'}[data_type]
-    if proc_mast:data_vis['mast_'+data_type+'_data_paths']={}
+    if (data_type_gen!='DI') or (data_dic['DI']['sysvel'][inst][vis]!=0.):
+        data_dic[data_type_gen][inst][vis]['rest_frame'] = {'DI':'star','Intr':'surf','Atm':'pl'}[data_type_gen]
+    
+    #Updating paths
+    if proc_mast:data_vis['mast_'+data_type_gen+'_data_paths']={}
     if proc_locEst:data_vis['LocEst_Atm_data_paths'] = {}
-    if data_vis['tell_sp']:data_vis['tell_'+data_type+'_data_paths']={}  
+    if data_vis['tell_sp']:data_vis['tell_'+data_type_gen+'_data_paths']={}  
     if data_vis['type']=='spec2D':
-        data_vis['mean_gcal_'+data_type+'_data_paths']={}  
-        if data_vis['cal_weight']:data_vis['sing_gcal_'+data_type+'_data_paths']={}  
+        data_vis['mean_gcal_'+data_type_gen+'_data_paths']={}  
+        if data_vis['cal_weight']:data_vis['sing_gcal_'+data_type_gen+'_data_paths']={}  
+    if var_key is not None:data_vis[var_key+'_'+data_type_gen+'_data_paths']={}  
     for iexp in prop_dic[inst][vis]['idx_def']:
-        if proc_mast:data_vis['mast_'+data_type+'_data_paths'][iexp]=proc_gen_data_paths_new+'_ref'+str(iexp)
+        if proc_mast:data_vis['mast_'+data_type_gen+'_data_paths'][iexp]=proc_gen_data_paths_new+'_ref'+str(iexp)
         if proc_locEst and (iexp in data_vis['LocEst_Atm_data_paths']):data_vis['LocEst_Atm_data_paths'][iexp] = proc_gen_data_paths_new+'estloc'+str(iexp) 
-        if data_vis['tell_sp']:data_vis['tell_'+data_type+'_data_paths'][iexp] = proc_gen_data_paths_new+'_tell'+str(iexp)
+        if data_vis['tell_sp']:data_vis['tell_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_tell'+str(iexp)
         if data_vis['type']=='spec2D':
-            data_vis['mean_gcal_'+data_type+'_data_paths'][iexp] = proc_gen_data_paths_new+'_mean_gcal'+str(iexp)  
-            if data_vis['cal_weight']:data_vis['sing_gcal_'+data_type+'_data_paths'][iexp] = proc_gen_data_paths_new+'_sing_gcal'+str(iexp)  
+            data_vis['mean_gcal_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_mean_gcal'+str(iexp)  
+            if data_vis['cal_weight']:data_vis['sing_gcal_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_sing_gcal'+str(iexp)  
+        if var_key is not None:data_vis[var_key+'_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_'+var_key+str(iexp)    
             
     return None
 
@@ -946,7 +965,9 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             vis_bin = idx_bin2vis[iexp_off]
             
             #Latest processed disk-integrated data and associated tables
-            #    - profiles should have been aligned in the star rest frame and rescaled to their correct flux level, if necessary          
+            #    - profiles should have been aligned in the star rest frame and rescaled to their correct flux level, if necessary    
+            #    - if profiles were converted into 1D we use directly the variance tables associated with DI profiles
+            #      no modifications were applied since the conversion, so no resampling is required   
             data_exp_off = dataload_npz(data_inst[vis_bin]['proc_DI_data_paths']+str(iexp_glob))
             for key in ['cen_bins','edge_bins','flux','cond_def','cov']:data_to_bin_gen[iexp_off][key] = data_exp_off[key]
             if data_vis['tell_sp']:data_to_bin_gen[iexp_off]['tell'] = dataload_npz(data_inst[vis_bin]['tell_DI_data_paths'][iexp_glob])['tell']    
@@ -958,8 +979,10 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
                 else:data_to_bin_gen[iexp_off]['sdet2'] = None                
             else:
                 data_to_bin_gen[iexp_off]['sing_gcal']=None   
-                data_to_bin_gen[iexp_off]['sdet2'] = None                   
-
+                data_to_bin_gen[iexp_off]['sdet2'] = None  
+            if data_dic['DI']['spec2D_to_spec1D'][inst]:data_to_bin_gen[iexp_off]['EFsc2'] = dataload_npz(data_inst[vis_bin]['EFsc2_DI_data_paths'][iexp_glob])['var']      
+            else:data_to_bin_gen[iexp_off]['EFsc2'] = None
+            
             #Master disk-integrated spectrum for weighing
             #    - profile has been shifted to the same frame as the differential profiles, but is still defined on the common table, not the table of current exposure
             #    - see process_binned_prof() for details
@@ -975,7 +998,7 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             #    - the master spectrum should be processed in the star rest frame, so that the stellar lines do not contribute to weighing         
             if ((mode=='') and data_vis['comm_sp_tab']) or ((mode=='multivis') and data_inst['comm_sp_tab']):
                 flux_ref_exp = np.ones(data_dic[inst][vis_bin]['dim_exp'])  
-                data_to_bin_gen[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,'DI',data_dic[inst]['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['sing_gcal'],data_to_bin_gen[iexp_off]['cen_bins'],1.,flux_ref_exp,None,bdband_flux_sc = gen_dic['flux_sc'],sdet_exp2 = data_to_bin_gen[iexp_off]['sdet2'])
+                data_to_bin_gen[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,'DI',data_dic[inst]['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['sing_gcal'],data_to_bin_gen[iexp_off]['cen_bins'],1.,flux_ref_exp,None,bdband_flux_sc = gen_dic['flux_sc'],sdet_exp2 = data_to_bin_gen[iexp_off]['sdet2'],EFsc2_all_in = data_to_bin_gen[iexp_off]['EFsc2'])[0]
 
         #Processing each exposure of current visit selected for extraction
         iexp_proc = data_dic['Diff'][inst][vis]['idx_to_extract']
@@ -1000,6 +1023,11 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
     if data_vis['type']=='spec2D':
         data_vis['mean_gcal_Diff_data_paths'] = data_vis['mean_gcal_DI_data_paths']
         if data_vis['cal_weight']:data_vis['sing_gcal_Diff_data_paths'] = data_vis['sing_gcal_DI_data_paths']
+    for subtype_gen in gen_dic['earliertypes4var']['Diff']:
+        if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:
+            var_key = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
+            data_vis[var_key+'_Diff_data_paths']=data_vis[var_key+'_DI_data_paths']
+            break    
 
     return None
 
@@ -1053,17 +1081,19 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
                     tell_exp=np.ones(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['tell'] is not None) else None
                     sing_gcal_exp=np.ones(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['sing_gcal'] is not None) else None
                     sdet2_exp=np.zeros(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['sdet2'] is not None) else None
+                    EFsc2_exp=np.zeros(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['EFsc2'] is not None) else None
                     for iord in range(nord): 
                         data_to_bin[iexp_off]['flux'][iord],data_to_bin[iexp_off]['cov'][iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord], data_to_bin_gen[iexp_off]['flux'][iord] , cov = data_to_bin_gen[iexp_off]['cov'][iord], kind=resamp_mode)                                                        
                         if tell_exp is not None:tell_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord], data_to_bin_gen[iexp_off]['tell'][iord] , kind=resamp_mode) 
                         if sing_gcal_exp is not None:sing_gcal_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord],data_to_bin_gen[iexp_off]['sing_gcal'][iord], kind=resamp_mode)  
-                        if sdet2_exp is not None:sdet2_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord],data_to_bin_gen[iexp_off]['sdet2'][iord], kind=resamp_mode)                   
+                        if sdet2_exp is not None:sdet2_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord],data_to_bin_gen[iexp_off]['sdet2'][iord], kind=resamp_mode)         
+                        if EFsc2_exp is not None:EFsc2_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord],data_to_bin_gen[iexp_off]['EFsc2'][iord], kind=resamp_mode)            
                     data_to_bin[iexp_off]['cond_def'] = ~np.isnan(data_to_bin[iexp_off]['flux'])   
                     if sdet2_exp is not None:sdet2_exp[np.isnan(sdet2_exp)]=0.
     
                     #Weight definition         
                     flux_ref_exp = np.ones(dim_exp,dtype=float)
-                    data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(nord),scaled_data_paths_vis[vis_bin],inst,vis_bin,corr_Fbal,corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,'DI',vis_type,dim_exp,tell_exp,sing_gcal_exp,data_exp['cen_bins'],1.,flux_ref_exp,None,bdband_flux_sc = flux_sc,sdet_exp2 = sdet2_exp)
+                    data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(nord),scaled_data_paths_vis[vis_bin],inst,vis_bin,corr_Fbal,corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,'DI',vis_type,dim_exp,tell_exp,sing_gcal_exp,data_exp['cen_bins'],1.,flux_ref_exp,None,bdband_flux_sc = flux_sc,sdet_exp2 = sdet2_exp,EFsc2_all_in = EFsc2_exp)[0]
 
                 #Weighing components and current exposure are defined on the same table common to the visit 
                 else:data_to_bin[iexp_off] = deepcopy(data_to_bin_gen[iexp_off])  
@@ -1240,13 +1270,20 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
     if data_vis['type']=='spec2D':
         data_vis['mean_gcal_Intr_data_paths'] = {} 
         if data_vis['cal_weight']:data_vis['sing_gcal_Intr_data_paths'] = {} 
+    var_key = None
+    for subtype_gen in gen_dic['earliertypes4var']['Intr']:
+        if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:
+            var_key = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
+            data_vis[var_key+'_Intr_data_paths']={}
+            break            
     for i_in,iexp in enumerate(gen_vis['idx_in']):
         if gen_dic['DImast_weight']:data_vis['mast_Intr_data_paths'][i_in] = data_vis['mast_Diff_data_paths'][iexp]
         if data_vis['tell_sp']:data_vis['tell_Intr_data_paths'][i_in] = data_vis['tell_Diff_data_paths'][iexp]
+        if var_key is not None:data_vis[var_key+'_Intr_data_paths'][i_in] = data_vis[var_key+'_Diff_data_paths'][iexp]
         if data_vis['type']=='spec2D':
             data_vis['mean_gcal_Intr_data_paths'][i_in] = data_vis['mean_gcal_Diff_data_paths'][iexp]
             if data_vis['cal_weight']:data_vis['sing_gcal_Intr_data_paths'][i_in] = data_vis['sing_gcal_Diff_data_paths'][iexp]
-            
+
     #Correcting for relative chromatic shift    
     if ('spec' in data_vis['type']) and ('chrom' in data_dic['DI']['system_prop']):intr_rv_corr = True
     else:intr_rv_corr=False
@@ -1323,7 +1360,8 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
                         if data_vis['cal_weight']:
                             data_gcal = dataload_npz(data_vis['sing_gcal_Diff_data_paths'][iexp])
                             data_exp['sing_gcal'] = data_gcal['gcal'] 
-                            if 'sdet2' in data_gcal:data_exp['sdet2'] = data_gcal['sdet2']                             
+                            if 'sdet2' in data_gcal:data_exp['sdet2'] = data_gcal['sdet2']    
+                    if var_key is not None:data_exp[var_key] = dataload_npz(data_vis[var_key+'_Diff_data_paths'][iexp])['var']               
                     data_exp=align_data(data_exp,data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],cen_bins_resamp,edge_bins_resamp,rv_surf_star,spec_dopshift_cen,rv_shift_edge = rv_surf_star_edge,spec_dopshift_edge=spec_dopshift_edge)
     
                     #Saving aligned exposure and complementary tables
@@ -1343,6 +1381,10 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
                                     data_gcal['sdet2']=deepcopy(data_exp['sdet2'])
                                     data_exp.pop('sdet2')  
                                 datasave_npz(data_vis['sing_gcal_Intr_data_paths'][i_in],data_gcal) 
+                        if var_key is not None:
+                            data_vis[var_key+'_Intr_data_paths'][iexp] = proc_gen_data_paths_new+'_'+var_key+str(i_in)    
+                            datasave_npz(data_vis[var_key+'_Intr_data_paths'][iexp], {'var':data_exp[var_key]})          
+                            data_exp.pop(var_key)
     
                     #Spectral RV correction of weighing master
                     if gen_dic['DImast_weight']:
@@ -1684,12 +1726,19 @@ def extract_pl_profiles(data_dic,inst,vis,gen_dic):
     if data_vis['type']=='spec2D':
         data_vis['mean_gcal_Atm_data_paths'] = {}
         if data_vis['cal_weight']:data_vis['sing_gcal_Atm_data_paths']={} 
+    var_key = None
+    for subtype_gen in gen_dic['earliertypes4var']['Atm']:
+        if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:
+            var_key = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
+            data_vis[var_key+'_'+data_dic['Atm']['pl_atm_sign']+'_data_paths']={}
+            break        
     for iexp_atm,iexp in zip(plAtm_vis['idx_def'],iexp_glob):
         if gen_dic['DImast_weight']:data_vis['mast_Atm_data_paths'][iexp_atm] = data_dic[inst][vis]['mast_Diff_data_paths'][iexp] 
         if data_vis['tell_sp']:data_vis['tell_Atm_data_paths'][iexp_atm] = data_vis['tell_Diff_data_paths'][iexp] 
         if data_vis['type']=='spec2D':
             data_vis['mean_gcal_Atm_data_paths'][iexp_atm] = data_vis['mean_gcal_Diff_data_paths'][iexp] 
             if data_vis['cal_weight']:data_vis['sing_gcal_Atm_data_paths'][iexp_atm] = data_vis['sing_gcal_Diff_data_paths'][iexp] 
+        if var_key is not None:data_vis[var_key+'_'+data_dic['Atm']['pl_atm_sign']+'_data_paths'][iexp_atm] = data_vis[var_key+'_Diff_data_paths'][iexp] 
 
     return None    
 

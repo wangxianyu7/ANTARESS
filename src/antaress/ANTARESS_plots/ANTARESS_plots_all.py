@@ -4718,9 +4718,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     t_ref = ar_prop[ref_ar]['Tc_ar']
                     P_ar = 2*np.pi/((1.-star_params['alpha_rot']*np.sin(ar_prop[ref_ar]['lat_rad'])**2.-star_params['beta_rot']*np.sin(ar_prop[ref_ar]['lat_rad'])**4.)*star_params['om_eq']*3600.*24.)
                     t_exp = t_ref + P_ar/10 - 2400000.
-                    
-                #Defining a list that will store which active regions have already been processed
-                ar_proc = []
+
                 #Pre-process observations to get coordinates - needed to deal with overlap
                 for iar, ar in enumerate(ar_prop['ar']) : coord_grid['ar_prop_exp'][ar] = coord_expos_ar(ar,t_exp,ar_prop,star_params,None,gen_dic['ar_coord_par'])
                 #Process observations
@@ -6344,7 +6342,8 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_
              
                 #Weight definition   
                 #    - at this stage, no broadband flux scaling has been applied to the data
-                data4mast[maink][iexp]['weight'] = weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',data_inst['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['sing_gcal'],data_proc[maink][iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc = 1./flux_glob,sdet_exp2=data_proc[maink][iexp]['sdet2'])                       
+                #    - this routine is called on S2D profiles, so estimates of true variance for 1D converted profiles are not available
+                data4mast[maink][iexp]['weight']= weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',data_inst['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['sing_gcal'],data_proc[maink][iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc = 1./flux_glob,sdet_exp2=data_proc[maink][iexp]['sdet2'])[0]                       
   
                 #Resampling if exposures do not share a common table
                 if (not data_vis['comm_sp_tab']): 

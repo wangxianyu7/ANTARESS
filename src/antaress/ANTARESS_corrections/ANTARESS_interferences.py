@@ -554,8 +554,9 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
 
                         #Weight definition 
                         #    - at this stage of the pipeline no broadband flux scaling was applied
-                        #    - weights with at least one undefined pixels are set to 1 for all binned exposures (ie, no weighing is applied) within calc_bin_prof()    
-                        data_glob[iexp]['weight'] = weights_bin_prof(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp,'DI',data_inst['type'],data_vis['dim_exp'],data_glob[iexp]['tell'],data_glob[iexp]['sing_gcal'],data_glob[iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc=1./flux_glob,sdet_exp2=data_glob[iexp]['sdet2'])            
+                        #    - weights with at least one undefined pixels are set to 1 for all binned exposures (ie, no weighing is applied) within calc_bin_prof()   
+                        #    - data is necessarily S2D here, so there are no estimates of true variance defined
+                        data_glob[iexp]['weight'] = weights_bin_prof(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp,'DI',data_inst['type'],data_vis['dim_exp'],data_glob[iexp]['tell'],data_glob[iexp]['sing_gcal'],data_glob[iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc=1./flux_glob,sdet_exp2=data_glob[iexp]['sdet2'])[0]            
     
                         #Resampling if a common master is used
                         #    - if exposures do not share a common table they were kept on individual exposures; here we only resample those involved in the master calculation

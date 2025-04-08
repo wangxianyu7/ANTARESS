@@ -92,7 +92,7 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
     print('     Common table will loose their extension')
     if (gen_dic['calc_trim_spec']):
         print('         Calculating data')    
-    
+
         #Upload latest processed data
         #    - data must be put in global tables to perform a global reduction of ranges and orders
         #    - at this stage spectra are still defined in the input rest frame, as is the common table

@@ -95,10 +95,12 @@ def align_data(data_exp,rout_mode,nord,dim_exp_resamp,resamp_mode,cen_bins_resam
        
         #Processing each order
         key2proc = []
-        if ('tell' in data_exp):        key2proc+=['tell']       #Telluric spectrum     
-        if ('mean_gcal' in data_exp):   key2proc+=['mean_gcal']  #Scaling calibration profile
-        if ('sing_gcal' in data_exp):   key2proc+=['sing_gcal']  #Weighing calibration profile          
-        if ('sdet2' in data_exp):       key2proc+=['sdet2']      #Weighing detector noise
+        if ('tell' in data_exp):        key2proc+=['tell']              #Telluric spectrum     
+        if ('mean_gcal' in data_exp):   key2proc+=['mean_gcal']         #Scaling calibration profile
+        if ('sing_gcal' in data_exp):   key2proc+=['sing_gcal']         #Weighing calibration profile          
+        if ('sdet2' in data_exp):       key2proc+=['sdet2']             #Weighing detector noise 
+        for key_var in ['EFsc2','EFdiff2','EFintr2','EFem2','EAbs2']:   #1D variance grids
+            if (key_var in data_exp):   key2proc+=[key_var] 
         for key in key2proc:
             data_align[key]=np.zeros(dim_exp_resamp, dtype=float)*np.nan
             for iord in range(nord):

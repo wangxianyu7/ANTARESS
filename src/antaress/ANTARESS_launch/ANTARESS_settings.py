@@ -2728,6 +2728,44 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     
+   
+
+    ##################################################################################################
+    #%%% Module: CCF conversion for differential spectra 
+    #    - calculating CCFs from differential spectra
+    #    - every analysis afterwards will be performed on those CCFs
+    #      however this approach should be avoided, as it is preferred to process diffential echelle spectra for intrinsic or atmospheric extraction, and then convert those profiles into CCFs
+    #    - ANTARESS will stop if intrinsic profiles have been extracted
+    ##################################################################################################   
+
+    ANTARESS_CCF_settings('Diff',gen_dic)
+    
+    #%%%% Error definition
+    #    - if not None, forces errors on out-of-transit differential CCFs to their continuum dispersion times sqrt(disp_err)
+    #    - if input data have no errors, disk-integrated error tables have already been set to sqrt(g_err*F) and propagated
+    #      if activated, the present option will override these tables (whether the input data had error table or not originally) 
+    data_dic['Diff']['disp_err']=None  
+
+
+
+
+    
+
+
+        
+    ##################################################################################################
+    #%%% Module: 2D->1D conversion for differential spectra
+    ##################################################################################################
+    
+    ANTARESS_2D_1D_settings('Diff',data_dic,gen_dic,plot_dic)
+
+       
+
+
+
+
+    
+    
     
     ##################################################################################################
     #%%% Module: intrinsic profiles extraction
@@ -2788,14 +2826,16 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     
+   
     
+
     
     
     
     
     ##################################################################################################
-    #%%% Module: CCF conversion for differential & intrinsic spectra 
-    #    - calculating CCFs from OT differential and intrinsic stellar spectra
+    #%%% Module: CCF conversion for intrinsic spectra 
+    #    - calculating CCFs from intrinsic stellar spectra and out-of-transit differential spectra
     #    - for analysis purpose, ie do not apply if atmospheric extraction is later requested
     #    - every analysis afterwards will be performed on those CCFs
     #    - ANTARESS will stop if intrinsic profiles are simultaneously required to extract atmospheric spectra 
@@ -2811,8 +2851,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     
-    
-    
+
+
     
     
     

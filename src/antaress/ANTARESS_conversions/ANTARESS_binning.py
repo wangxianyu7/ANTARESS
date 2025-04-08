@@ -226,7 +226,12 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             else:scaled_data_paths = None
             if data_inst[vis_bin]['tell_sp']:
                 data_exp['tell'] = dataload_npz(data_inst[vis_bin]['tell_'+data_type_gen+'_data_paths'][iexp])['tell']  
-                data_glob_new['vis_iexp_in_bin'][vis_bin][iexp]['tell_path'] = data_inst[vis_bin]['tell_'+data_type_gen+'_data_paths'][iexp]
+                
+                #Path to 1D telluric spectrum associated with the binned exposure
+                #    - for use in the mask generation routine
+                if gen_dic['def_'+data_type_gen+'masks']:
+                    data_glob_new['vis_iexp_in_bin'][vis_bin][iexp]['tell_path'] = data_inst[vis_bin]['tell_'+data_type_gen+'_data_paths'][iexp]
+                
             else:data_exp['tell'] = None
             if data_inst[vis_bin]['cal_weight']:
                 data_gcal = dataload_npz(data_inst[vis_bin]['sing_gcal_'+data_type_gen+'_data_paths'][iexp])
@@ -235,7 +240,36 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 else:data_exp['sdet2'] = None                
             else:
                 data_exp['sing_gcal']=None   
-                data_exp['sdet2'] = None                 
+                data_exp['sdet2'] = None 
+                
+            #Variance grids
+            #    - if profiles of a given type were converted from 2D into 1D, their 2D weights contributors and those of subsequent data types cannot be used anymore
+            #      when conversion occured, the 1D variance of the profile were thus saved for later use in weighing
+            #      the converted profile type, and all subsequent data type, use this 1D variance grid
+            #    - the 'spec2D_to_spec1D' flag can only be true for the data type that was converted, thus the variance grid is only defined for one data type in a given processing
+            #      however this variance grid may be associated to this data type and later data types in the processing
+            #      if the current data type was the one converted, we use directly its own variance grid (from type2var[data_type])
+            #      if the conversion was applied to an earlier data type 'subtype', we use:
+            # + for Diff profiles: 'EFsc2' (from type2var['DI']) to calculate 'EFdiff2' (if DI were converted) 
+            # + for Intr profiles: 'EFsc2' (from type2var['DI']) to calculate 'EFdiff2' and 'EFintr2' (if DI were converted)
+            #                      'EFdiff2' (from type2var['Diff']) to calculate 'EFintr2' (if Diff were converted)
+            # + for Atm profiles: 'EFsc2' (from type2var['DI']) to calculate 'EFdiff2' and 'EFem2' or 'EAbs2' (if DI were converted)
+            #                     'EFdiff2' (from type2var['Diff']) to calculate 'EFem2' or 'EAbs2' (if Diff were converted)
+            #    - if Diff profiles were extracted, Intr profiles cannot have been extracted
+            #      if Intr profiles were extracted, there is no temporal binning of Diff (which are limited to the OT) profiles allowed, and Atm profiles cannot have been extracted
+            for key in gen_dic['type2var'].values():data_exp[key] = None
+            if not masterDIweigh:
+                for subtype_gen in gen_dic['earliertypes4var'][data_type_gen]: 
+                    
+                    #Retrieving variance grid of the data type that was converted from 2D to 1D
+                    #    - if no type was converted, variance grid remain set to None so that they will not be used when provided to the weighing function
+                    if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:  
+                        
+                        #Uploading variance grid associated with binned data type
+                        #    - variance grids followed the same processing as the successive data types, and are thus uploaded from a path that is specific to the current data type 'data_type'
+                        var_key = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
+                        data_exp[var_key] = dataload_npz(data_inst[vis_bin][var_key+'_'+data_type+'_data_paths'][iexp])['var']  
+
             if data_type_gen=='DI': 
                 iexp_glob=iexp
                 
@@ -243,30 +277,30 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 if ('RV_star_solCDM' in data_glob_new):
                     data_to_bin[iexp_off]['RV_star_solCDM'] = coord_dic[inst][vis_bin]['RV_star_solCDM'][iexp_glob]
                     data_to_bin[iexp_off]['RV_star_stelCDM'] = coord_dic[inst][vis_bin]['RV_star_stelCDM'][iexp_glob]
-                
+
             else:
-                                
+
                 #Intrinsic profiles
                 #    - beware that profiles were aligned if binning dimension is not phase
                 if data_type=='Intr':
                     iexp_glob = gen_dic[inst][vis_bin]['idx_in2exp'][iexp]
-               
+
                 #Atmospheric profiles
                 #    - beware that profiles were aligned if binning dimension is not phase
                 elif data_type_gen=='Atm':
-                    if data_type=='Absorption':
+                    if data_type=='Emission':
+                        iexp_glob=iexp
+                    elif data_type=='Absorption':
                         iexp_glob = gen_dic[inst][vis_bin]['idx_in2exp'][iexp] 
                         
                         #Planet-to-star radius ratio
                         #    - profile has not been aligned but is varying with low-frequency, and the shifts are thus not critical to the weighing
                         SpSstar_spec = data_exp['SpSstar_spec']
-                        
-                    elif data_type=='Emission':iexp_glob=iexp
 
                     #Estimate of local stellar profile for current exposure  
                     #    - defined on the same table as data_exp
                     if (data_type=='Absorption') or ((data_type=='Emission') and data_dic['Intr']['cov_loc_star']): 
-                        data_est_loc=np.load(data_dic[inst][vis_bin]['LocEst_Atm_data_paths'][iexp]+'.npz',allow_pickle=True)['data'].item() 
+                        data_est_loc=dataload_npz(data_dic[inst][vis_bin]['LocEst_Atm_data_paths'][iexp]) 
              
             #Resampling on common spectral table if required
             #    - condition is True unless all exposures of 'vis_bin' are defined on a common table, and it is the reference for the binning    
@@ -303,7 +337,10 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     if data_type_gen!='DI':cov_ref_exp=np.zeros(data_inst['nord'],dtype=object)
                 tell_exp=np.ones(dim_exp_new,dtype=float) if (data_exp['tell'] is not None) else None
                 sing_gcal_exp=np.ones(dim_exp_new,dtype=float) if (data_exp['sing_gcal'] is not None) else None 
-                sdet_exp2=np.zeros(dim_exp_new,dtype=float) if (data_exp['sdet2'] is not None) else None    
+                sdet_exp2=np.zeros(dim_exp_new,dtype=float) if (data_exp['sdet2'] is not None) else None 
+                data_var = {}
+                for key in gen_dic['type2var'].values():
+                    data_var[key]=np.zeros(dim_exp_new,dtype=float) if (data_exp[key] is not None) else None 
                 for iord in range(data_inst['nord']): 
                     data_to_bin[iexp_off]['flux'][iord],data_to_bin[iexp_off]['cov'][iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['flux'][iord] , cov = data_exp['cov'][iord], kind=gen_dic['resamp_mode'])                                                        
                     if not masterDIweigh:
@@ -311,7 +348,9 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                         elif (data_type_gen!='DI'):flux_ref_exp[iord],cov_ref_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_ref['edge_bins'][iord], data_ref['flux'][iord] , cov = data_ref['cov'][iord], kind=gen_dic['resamp_mode'])                                                        
                     if tell_exp is not None:tell_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['tell'][iord] , kind=gen_dic['resamp_mode']) 
                     if sing_gcal_exp is not None:sing_gcal_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['sing_gcal'][iord] , kind=gen_dic['resamp_mode']) 
-                    if sdet_exp2 is not None:sdet_exp2[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['sdet2'][iord] , kind=gen_dic['resamp_mode'])                   
+                    if sdet_exp2 is not None:sdet_exp2[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp['sdet2'][iord] , kind=gen_dic['resamp_mode'])            
+                    for key in data_var:
+                        if data_var[key] is not None:data_var[key][iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_exp[key][iord] , kind=gen_dic['resamp_mode'])                      
                 data_to_bin[iexp_off]['cond_def'] = ~np.isnan(data_to_bin[iexp_off]['flux'])  
 
                 #Resample local stellar profile estimate
@@ -340,6 +379,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     if ((data_type_gen=='DI') and (rest_frame!='star')) or (data_type_gen!='DI'):flux_ref_exp = data_ref['flux']
                     if data_type_gen!='DI':cov_ref_exp = data_ref['cov']   
                 for key in ['flux','cond_def','cov']:data_to_bin[iexp_off][key] = data_exp[key] 
+                data_var = {key:data_exp[key] for key in gen_dic['type2var'].values()} 
                 tell_exp=data_exp['tell']
                 sing_gcal_exp=data_exp['sing_gcal'] 
                 sdet_exp2=data_exp['sdet2']
@@ -356,7 +396,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #Weight definition
             #    - the profiles must be specific to a given data type so that earlier types can still be called in the multi-visit binning, after the type of profile has evolved in a given visit
             #    - at this stage of the pipeline broadband flux scaling has been defined, if requested 
-            data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_mode,dim_exp_new,tell_exp,sing_gcal_exp,data_com['cen_bins'],dt_exp,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,bdband_flux_sc = gen_dic['flux_sc'],sdet_exp2=sdet_exp2)                          
+            data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_mode,dim_exp_new,tell_exp,sing_gcal_exp,data_com['cen_bins'],dt_exp,flux_ref_exp,cov_ref_exp,
+                                                                         flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,bdband_flux_sc = gen_dic['flux_sc'],sdet_exp2=sdet_exp2 , EFsc2_all_in = data_var['EFsc2'] , EFdiff2_in = data_var['EFdiff2'] , EFintr2_in = data_var['EFintr2'] , EFem2_in = data_var['EFem2'] , EAbs2_in = data_var['EAbs2'])[0]                          
 
             #Timestamp and duration
             if not masterDIweigh:
@@ -712,7 +753,7 @@ def init_bin_prof(data_type,ref_pl,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bin,
 
 
 
-def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True , sdet_exp2 = None):
+def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,bdband_flux_sc=False,glob_flux_sc=None,corr_Fbal = True , sdet_exp2 = None , EFsc2_all_in = None , EFdiff2_in = None, EFintr2_in = None , EFem2_in = None, EAbs2_in = None):
     r"""**Binning routine: weights**
 
     Defines weights to be used when binning profiles.
@@ -841,7 +882,6 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     #    - planetary signatures are not accounted for when binning disk-integrated and intrinsic stellar spectra because they have been excluded from the data or are considered negligible
     #    - weights are necessarily spectral for intrinsic and atmospheric spectra because of the master 
     #    - the weighing due to integration time is accounted for in the binning routine directly, not through errors but through the fraction of an exposure duration that overlaps with the new bin time window 
-    weight_spec = np.zeros(dim_exp,dtype=float)*np.nan
     
     #--------------------------------------------------------    
     #Definition of errors on disk-integrated spectra
@@ -887,124 +927,257 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     # weight(w,t,v) = 1/EFsc_true(w,t,v)^2       
     #    - in the star rest frame, spectral features from the disk-integrated spectrum remain fixed over time , ie that a given pixel sees no variations in flux from MFstar(w,v) in a given visit and the contribution of the master spectrum can be ignored    
     #      we note that we neglected the differences between the Fsc_true and MFstar profiles that are due to the occulted local stellar lines and planetary atmospheric lines
+    #    
+    #    - when converting 2D spectra into 1D or CCF profiles, we propagate the EFsc_true^2 grid so that it can be used directly here to define further weights
+    #      this is because, while it is possible to propagate individual 2D contributions to weight profiles, it is not possible to convert some contributions into 1D or CCF independently
     #--------------------------------------------------------     
 
-    #Calculate weights at pixels where the master stellar spectrum is defined
-    #    - condition on null and negative counts is accounted for in the error calculation function
-    cond_def_weights = (~np.isnan(flux_ref_exp))
-    if np.sum(cond_def_weights)==0:stop('Issue with master definition')
+    #Set estimate of true variance to input value if defined
+    #    - if 2D profiles were converted in 1D their variances was output by this routine and saved for later use 
+    #    - a single data type can be converted in a given instrument processing, thus only one variance grid can be provided as input
+    var_dic_in = {'EFsc2' : EFsc2_all_in , 'EFdiff2' : EFdiff2_in, 'EFintr2' : EFintr2_in , 'EFem2' : EFem2_in, 'EAbs2' : EAbs2_in}
+    var_dic_loc = {'EFsc2' : None , 'EFdiff2' : None, 'EFintr2' : None , 'EFem2' : None, 'EAbs2' : None}
+    for var_key in var_dic_in:
+        if var_dic_in[var_key] is not None:
+            var_dic_loc[var_key] = deepcopy(var_dic_in[var_key])
+            
+            #Calculate weights at pixels where variance is defined and positive
+            cond_def_weights = (~np.isnan(var_dic_loc[var_key])) & (var_dic_loc[var_key]>0.)
+            if np.sum(cond_def_weights)==0:stop('ERROR: Issue with variance definition')              
 
-    #Flux balance functions
-    #    - the generic condition 'corr_Fbal' deactivates the global correction when irrelevant because the average profiles are orders from the same spectrum
-    #      if the function is called to define weights on profiles changing types (ie, for conversion), accounting for the balance is always needed
-    if (gen_corr_Fbal or gen_corr_FbalOrd) and ('spec' in data_mode) and (corr_Fbal or (data_mode==gen_type[inst])): 
-        data_Fbal = dataload_npz(save_data_dir+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp_glob)+'_add')   #General save
-    if gen_corr_Fbal and ('spec' in data_mode) and corr_Fbal: 
-        FbalGlob = data_Fbal['corr_func']
-        if data_Fbal['corr_func_vis'] is None:FbalGlob_vis=default_func    #single visit, no correction relative to global master 
-        else:FbalGlob_vis = data_Fbal['corr_func_vis']
-    else:
-        FbalGlob=default_func 
-        FbalGlob_vis=default_func 
-    if gen_corr_FbalOrd and ('spec' in data_mode) and (data_mode==gen_type[inst]):
-        FbalOrd = data_Fbal['Ord']['corr_func']
-        FbalOrd_vis = data_Fbal['Ord']['corr_func_vis']    #single visit, no correction relative to global master 
-    else:
-        FbalOrd = None
-        FbalOrd_vis = None
-
-    #Spectral broadband flux scaling 
-    #    - includes broadband contribution, unless overwritten by input 
-    #    - flux_sc = 1 with no occultation, 0 with full occultation
-    if bdband_flux_sc:     
-        data_scaling = dataload_npz(scaled_data_paths+str(iexp_glob))        
-        if (glob_flux_sc is None):glob_flux_sc = data_scaling['glob_flux_scaling']        
+    #Check
+    count_var1D = np.sum(np.array(list(var_dic_loc.values())).astype(bool))
+    if count_var1D>1:stop('ERROR: only one 1D variance grid should be defined')
     
-    #Global flux scaling can still be applied, if provided as input
-    elif (glob_flux_sc is None):glob_flux_sc = 1.
-        
-    #Calculating general tables
-    flux_sc_all = np.ones(dim_exp,dtype=float)
-    EFsc2_all = np.zeros(dim_exp,dtype=float)*np.nan 
-    if data_type!='DI':var_ref2 = np.zeros(dim_exp,dtype=float)*np.nan  
-    for iord,iord_orig in enumerate(iord_orig_list):
-        idx_def_weights_ord = np_where1D(cond_def_weights[iord])
-        cen_bins_ord = cen_bins[iord,idx_def_weights_ord]
+    #Calculations for profiles not converted from 2D to 1D
+    if count_var1D==0:
 
-        #Instrumental calibration: gcal_exp(w,t,v)
-        #   for original 2D or 1D spectra, gcal_exp is the estimated spectral calibration profile for the exposure (rescaled by the mean calibration profile over the visit if spectra to be weighted were converted back into count-equivalent values and are still in their original format)
-        #   calibration profiles were estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow  
-        #   for original CCFs or after conversion into CCFs or from 2D/1D it returns a global calibration
-        if(gcal_exp is not None):gcal_ord = gcal_exp[iord,idx_def_weights_ord]
-        else:gcal_ord = np.ones(len(idx_def_weights_ord))
+        #Calculate weights at pixels where the master stellar spectrum is defined
+        #    - condition on null and negative counts is accounted for in the error calculation function
+        cond_def_weights = (~np.isnan(flux_ref_exp))
+        if np.sum(cond_def_weights)==0:stop('ERROR: Issue with master definition')        
+
+    #-------------------------------------------------------- 
+    #Initializing calculation conditions
+    calc_EFsc2 = False
+    calc_var_ref2 = False
+    calc_flux_sc_all = False
     
-        #Spectral corrections
-        if ('spec' in data_mode):
-            nu_bins_ord = c_light/cen_bins_ord[::-1]
-            #    - the factor Ccorr includes :
-            # > flux balance: Ccorr(w,t,v) = ( 1/Pbal(band,t,v) )*( 1/Pbal_ord(band,t,v))
-            #   where Pbal and Pbal_ord are the low-frequency polynomial corrections of flux balance variations over the full spectrum or per order
-            #   errors on Pbal are neglected and it can be considered a true estimate because it is fitted over a large number of pixels 
-            #   the corrections were defined over the spectral in their input rest frame. Given the size of the bands, we neglect spectral shifts and assume the correction can be directly used over any table   
-            #   note that SNR(t,order) = N(t,order)/sqrt(N(t,order)) = sqrt(N(t,order))    
-            #   since Pbal(band,t,v) is an estimate of F(band,t,v)/MFstar(band,v) times a normalization factor, it is proportional to N(band,t,v) (since the reference is time-independent)
-            #   thus Pbal(order,t,v) is proportional to SNR(order,t,v)^2
-            #   global normalisation coefficient is not spectral and can be directly applied to any data
-            #   global flux balance correction is defined as a function over the full instrument range and can be directly applied to any spectral data, but since it does not change the mean flux it is not propagated through CCF conversion
-            #   order flux balance correction is not propagated through 2D/1D conversion or CCF conversion 
-            if FbalOrd is None:Fbal_ord = np.ones(len(cen_bins_ord))
-            else:Fbal_ord = FbalOrd[iord_orig](cen_bins_ord)
-            if FbalOrd_vis is None:FbalOrd_vis = np.ones(len(cen_bins_ord))
-            else:FbalOrd_vis = FbalOrd_vis[iord_orig](cen_bins_ord)
-            corr_FbalGlob_ord = Fbal_ord*FbalOrd_vis*(FbalGlob(nu_bins_ord)*FbalGlob_vis(nu_bins_ord))[::-1]
-            # > tellurics: Ccorr(w,t,v) = 1/T(w,t,v)
-            #   with T=1 if not telluric absorption, 0 if maximum absorption
-            #   telluric profiles (contained in the data upload specific to the exposure) were defined on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow
-            #   they are propagated through 2D/1D conversion but not CCF conversion    
-            if (tell_exp is None):tell_ord = 1.
-            else:tell_ord = tell_exp[iord,idx_def_weights_ord]
-            # > cosmics and permanent peaks: ignored in the weighing, as flux values are not scaled but replaced
-            # > fringing and wiggles: ignored for now
-            # > final spectral correction
-            spec_corr_ord = 1./(tell_ord*corr_FbalGlob_ord)
-        else:spec_corr_ord = 1.
+    #Disk-integrated profiles        
+    # - in 2D / CCF : no input variances
+    # 	requires EFsc2 to be calculated
+    # - with DI 1D variance: 'EFsc2' given as input
+    # 	no calculation required      
+    if (data_type=='DI') and (var_dic_in['EFsc2'] is not None):
+        if count_var1D==0:
+            calc_EFsc2 = True
+                
+    #Differential profiles        
+    # - in 2D / CCF : no input variances
+    # 	requires EFdiff2 (= var_ref2 to be calculated, EFsc2 to be calculated)
+    # - with DI 1D variance: 'EFsc2' given as input
+    # 	requires EFdiff2 (= var_ref2 to be calculated, EFsc2 known) 
+    # - with Diff 1D variance: 'EFdiff2' given as input
+    # 	no calculation required      
+    if (data_type=='Diff') and (var_dic_in['EFdiff2'] is not None):
+        if count_var1D==0:
+            calc_EFsc2 = True
+            calc_var_ref2 = True 
+        else:                
+            if (var_dic_in['EFsc2'] is not None):        
+                calc_var_ref2 = True           
 
-        #Spectral broadband flux scaling 
-        if bdband_flux_sc:flux_sc_all[iord,idx_def_weights_ord] = 1. - data_scaling['loc_flux_scaling'](cen_bins_ord)      
-        
-        #Global scaling factor     
-        Ccorr_glob_ord = spec_corr_ord/(dt*glob_flux_sc)
-
-        #Estimate of true blazed counts     
-        Nbl_ord = flux_ref_exp[iord,idx_def_weights_ord]/(gcal_ord*Ccorr_glob_ord)
-
-        #Estimate of variance on scaled disk-integrated profiles
-        #    - required for all weights calculations
-        #    - detector noise, if defined for S2D, has been estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow 
-        cond_def_pos_ord = (Nbl_ord>0.) 
-        if (sdet_exp2 is not None):
-            EFsc2_all[iord,idx_def_weights_ord] = sdet_exp2[iord,idx_def_weights_ord]                          #detector variance
-            EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]]+= Nbl_ord[cond_def_pos_ord]                  #co-adding photoelectron variance where positive
-            EFsc2_all[iord,idx_def_weights_ord] *= ( flux_sc_all[iord,idx_def_weights_ord]*Ccorr_glob_ord*gcal_ord)**2.            #scaling
-             
+    #Intrinsic profiles
+    # - in 2D / CCF : no input variances
+    # 	requires flux_sc_all to be calculated, EFdiff2 (= var_ref2 to be calculated, EFsc2 to be calculated)
+    # - with DI 1D variance: 'EFsc2' given as input
+    # 	requires flux_sc_all to be calculated, EFdiff2 (= var_ref2 to be calculated, EFsc2 known) 
+    # - with Diff 1D variance: 'EFdiff2' given as input
+    # 	requires flux_sc_all to be calculated, EFdiff2 known
+    # - with Intr 1D variance: 'EFintr2' given as input
+    # 	no calculation required          
+    if (data_type=='Intr') and (var_dic_in['EFintr2'] is not None):
+        if count_var1D==0:
+            calc_EFsc2 = True
+            calc_var_ref2 = True 
+            calc_flux_sc_all = True
         else:
+            if (var_dic_in['EFsc2'] is not None):
+                calc_var_ref2 = True 
+                calc_flux_sc_all = True    
+            elif (var_dic_in['EFdiff2'] is not None):
+                calc_flux_sc_all = True  
             
-            #Weights are kept undefined (ie, no weighing) where variance is null or negative  
-            if ('spec' in data_mode):EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
-            else:EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord*gcal_ord)**2.*Nbl_ord[cond_def_pos_ord]
+    #Emission profiles
+    # - in 2D / CCF : no input variances
+    # 	requires EFdiff2 (= var_ref2 to be calculated, EFsc2 to be calculated)
+    # - with DI 1D variance: 'EFsc2' given as input
+    # 	requires EFdiff2 (= var_ref2 to be calculated, EFsc2 known) 
+    # - with Diff 1D variance: 'EFdiff2' given as input
+    # 	no calculation required 
+    # - with Em 1D variance: 'EFem2' given as input
+    # 	no calculation required  
+    if (data_type=='Emission') and (var_dic_in['EFem2'] is not None):
+        if count_var1D==0:
+            calc_EFsc2 = True
+            calc_var_ref2 = True 
+        else:                
+            if (var_dic_in['EFsc2'] is not None):        
+                calc_var_ref2 = True                 
+    
+    #Absorption profiles
+    # - in 2D / CCF : no input variances
+    # 	requires flux_sc_all to be calculated, EFdiff2 (= var_ref2 to be calculated, EFsc2 to be calculated)
+    # - with DI 1D variance: 'EFsc2' given as input
+    # 	requires flux_sc_all to be calculated, EFdiff2 (= var_ref2 to be calculated, EFsc2 known) 
+    # - with Diff 1D variance: 'EFdiff2' given as input
+    # 	requires flux_sc_all to be calculated, EFdiff2 known
+    # - with Abs 1D variance: 'EAbs2' given as input
+    # 	no calculation required        
+    if (data_type=='Absorption'):
+        if (var_dic_in['EAbs2'] is not None):
+            if count_var1D==0:
+                calc_EFsc2 = True
+                calc_var_ref2 = True 
+                calc_flux_sc_all = True
+            else:
+                if (var_dic_in['EFsc2'] is not None):
+                    calc_var_ref2 = True 
+                    calc_flux_sc_all = True    
+                elif (var_dic_in['EFdiff2'] is not None):
+                    calc_flux_sc_all = True 
+        else:
+            cond_def_weights &= (~np.isnan(flux_ref_exp))
+
+    #-------------------------------------------------------- 
+    #Preliminary calculations
+    if calc_EFsc2 or calc_var_ref2 or calc_flux_sc_all:
+        
+        #Spectral broadband flux scaling 
+        #    - flux_sc = 1 with no occultation, 0 with full occultation
+        if calc_flux_sc_all:
+            if (not bdband_flux_sc):stop('ERROR: spectral broadband flux scaling is needed for weighing but bdband_flux_sc = False')         
+            data_scaling = dataload_npz(scaled_data_paths+str(iexp_glob))           
+            flux_sc_all = np.ones(dim_exp,dtype=float)
+    
+        #Variance on master disk-integrated profile 
+        if calc_var_ref2:var_ref2 = np.zeros(dim_exp,dtype=float)*np.nan
+    
+        #Variance on scaled disk-integrated profiles
+        if calc_EFsc2: 
+            var_dic_loc['EFsc2'] = np.zeros(dim_exp,dtype=float)*np.nan 
+    
+            #Global broadband flux scaling 
+            #    - applied if spectral broadband flux scaling is requested, or if provided as input (in which case it will not be defined here)
+            if (glob_flux_sc is None): 
+                if bdband_flux_sc:       
+                    data_scaling = dataload_npz(scaled_data_paths+str(iexp_glob))     
+                    glob_flux_sc = data_scaling['glob_flux_scaling']  
+                else:glob_flux_sc = 1.  
+    
+            #Flux balance functions
+            #    - the generic condition 'corr_Fbal' deactivates the global correction when irrelevant because the average profiles are orders from the same spectrum
+            #      if the function is called to define weights on profiles changing types (ie, for conversion), accounting for the balance is always needed
+            if (gen_corr_Fbal or gen_corr_FbalOrd) and ('spec' in data_mode) and (corr_Fbal or (data_mode==gen_type[inst])): 
+                data_Fbal = dataload_npz(save_data_dir+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp_glob)+'_add')   #General save
+            if gen_corr_Fbal and ('spec' in data_mode) and corr_Fbal: 
+                FbalGlob = data_Fbal['corr_func']
+                if data_Fbal['corr_func_vis'] is None:FbalGlob_vis=default_func    #single visit, no correction relative to global master 
+                else:FbalGlob_vis = data_Fbal['corr_func_vis']
+            else:
+                FbalGlob=default_func 
+                FbalGlob_vis=default_func 
+            if gen_corr_FbalOrd and ('spec' in data_mode) and (data_mode==gen_type[inst]):
+                FbalOrd = data_Fbal['Ord']['corr_func']
+                FbalOrd_vis = data_Fbal['Ord']['corr_func_vis']    #single visit, no correction relative to global master 
+            else:
+                FbalOrd = None
+                FbalOrd_vis = None
             
-        #Variance on master stellar spectrum
-        if data_type!='DI':var_ref2[iord,idx_def_weights_ord] = cov_ref_exp[iord][0,idx_def_weights_ord]
+        #Processing each order 
+        for iord,iord_orig in enumerate(iord_orig_list):
+            idx_def_weights_ord = np_where1D(cond_def_weights[iord])
+            cen_bins_ord = cen_bins[iord,idx_def_weights_ord]
+    
+            #Variance on master stellar spectrum
+            if calc_var_ref2:var_ref2[iord,idx_def_weights_ord] = cov_ref_exp[iord][0,idx_def_weights_ord]
+    
+            #Spectral broadband flux scaling 
+            if calc_flux_sc_all:flux_sc_all[iord,idx_def_weights_ord] = 1. - data_scaling['loc_flux_scaling'](cen_bins_ord)      
+    
+            #Estimate of true variance on scaled disk-integrated profiles
+            if calc_EFsc2: 
+                     
+                #Instrumental calibration: gcal_exp(w,t,v)
+                #   for original 2D or 1D spectra, gcal_exp is the estimated spectral calibration profile for the exposure (rescaled by the mean calibration profile over the visit if spectra to be weighted were converted back into count-equivalent values and are still in their original format)
+                #   calibration profiles were estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow  
+                #   for original CCFs or after conversion into CCFs or from 2D/1D it returns a global calibration
+                if(gcal_exp is not None):gcal_ord = gcal_exp[iord,idx_def_weights_ord]
+                else:gcal_ord = np.ones(len(idx_def_weights_ord))
+               
+                #Spectral corrections
+                if ('spec' in data_mode):
+                    nu_bins_ord = c_light/cen_bins_ord[::-1]
+                    #    - the factor Ccorr includes :
+                    # > flux balance: Ccorr(w,t,v) = ( 1/Pbal(band,t,v) )*( 1/Pbal_ord(band,t,v))
+                    #   where Pbal and Pbal_ord are the low-frequency polynomial corrections of flux balance variations over the full spectrum or per order
+                    #   errors on Pbal are neglected and it can be considered a true estimate because it is fitted over a large number of pixels 
+                    #   the corrections were defined over the spectral in their input rest frame. Given the size of the bands, we neglect spectral shifts and assume the correction can be directly used over any table   
+                    #   note that SNR(t,order) = N(t,order)/sqrt(N(t,order)) = sqrt(N(t,order))    
+                    #   since Pbal(band,t,v) is an estimate of F(band,t,v)/MFstar(band,v) times a normalization factor, it is proportional to N(band,t,v) (since the reference is time-independent)
+                    #   thus Pbal(order,t,v) is proportional to SNR(order,t,v)^2
+                    #   global normalisation coefficient is not spectral and can be directly applied to any data
+                    #   global flux balance correction is defined as a function over the full instrument range and can be directly applied to any spectral data, but since it does not change the mean flux it is not propagated through CCF conversion
+                    #   order flux balance correction is not propagated through 2D/1D conversion or CCF conversion 
+                    if FbalOrd is None:FbalOrd_ord = np.ones(len(cen_bins_ord))
+                    else:FbalOrd_ord = FbalOrd[iord_orig](cen_bins_ord)
+                    if FbalOrd_vis is None:FbalOrd_vis_ord = np.ones(len(cen_bins_ord))
+                    else:FbalOrd_vis_ord = FbalOrd_vis[iord_orig](cen_bins_ord)
+                    corr_FbalGlob_ord = FbalOrd_ord*FbalOrd_vis_ord*(FbalGlob(nu_bins_ord)*FbalGlob_vis(nu_bins_ord))[::-1]
+                    # > tellurics: Ccorr(w,t,v) = 1/T(w,t,v)
+                    #   with T=1 if not telluric absorption, 0 if maximum absorption
+                    #   telluric profiles (contained in the data upload specific to the exposure) were defined on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow
+                    #   they are propagated through 2D/1D conversion but not CCF conversion    
+                    if (tell_exp is None):tell_ord = 1.
+                    else:tell_ord = tell_exp[iord,idx_def_weights_ord]
+                    # > cosmics and permanent peaks: ignored in the weighing, as flux values are not scaled but replaced
+                    # > fringing and wiggles: ignored for now
+                    # > final spectral correction
+                    spec_corr_ord = 1./(tell_ord*corr_FbalGlob_ord)
+                else:spec_corr_ord = 1.
+    
+                #Global scaling factor     
+                Ccorr_glob_ord = spec_corr_ord/(dt*glob_flux_sc)
+        
+                #Estimate of true blazed counts     
+                Nbl_ord = flux_ref_exp[iord,idx_def_weights_ord]/(gcal_ord*Ccorr_glob_ord)
+        
+                #Variance on scaled disk-integrated profiles
+                #    - required for all weights calculations
+                #    - detector noise, if defined for S2D, has been estimated on the individual spectral grid of each exposure, and are then aligned to the same successive rest frames across the workflow 
+                cond_def_pos_ord = (Nbl_ord>0.) 
+                if (sdet_exp2 is not None):
+                    var_dic_loc['EFsc2'][iord,idx_def_weights_ord] = sdet_exp2[iord,idx_def_weights_ord]                                               #detector variance
+                    var_dic_loc['EFsc2'][iord,idx_def_weights_ord[cond_def_pos_ord]]+= Nbl_ord[cond_def_pos_ord]                                       #co-adding photoelectron variance where positive
+                    var_dic_loc['EFsc2'][iord,idx_def_weights_ord] *= ( flux_sc_all[iord,idx_def_weights_ord]*Ccorr_glob_ord*gcal_ord)**2.             #scaling
+                     
+                else:
+                    
+                    #Weights are kept undefined (ie, no weighing) where variance is null or negative  
+                    if ('spec' in data_mode):var_dic_loc['EFsc2'][iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
+                    else:var_dic_loc['EFsc2'][iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord*gcal_ord)**2.*Nbl_ord[cond_def_pos_ord]
             
     #--------------------------------------------------------   
-    #Weights on disk-integrated spectra
+    #Disk-integrated profiles
     if data_type=='DI': 
-        weight_spec = 1./EFsc2_all
+        weight_spec = 1./var_dic_loc['EFsc2']
 
+    #Other profiles
     else:
 
         #Variance on differential profiles
-        EFdiff2 = var_ref2 + EFsc2_all
+        #    - calculating if not provided as input
+        if var_dic_in['EFdiff2'] is None:var_dic_loc['EFdiff2'] = var_ref2 + var_dic_loc['EFsc2']
 
         #--------------------------------------------------------    
         #Definition of errors on differential spectra
@@ -1022,7 +1195,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #    - we neglect covariance in the uncertainties of the master spectrum
         #    - the binning should be performed in the star rest frame 
         if data_type=='Diff': 
-            weight_spec = 1./EFdiff2
+            weight_spec = 1./var_dic_loc['EFdiff2']
 
         #--------------------------------------------------------    
         #Definition of errors on intrinsic spectra
@@ -1054,9 +1227,13 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #                        = (dFstar(w,t,v) + Fintr_meas(w,t,v)))/(1 - LC_theo(band,t))
         #      if MFstar(w,v) is a good estimate of MFstar(w,t,v) we will retrieve the correct intrinsic profile, but its uncertainties will be affected by the errors on MFstar(w,t,v) - which will dominate the weighing when binning the retrieved 
         # intrinsic profiles in their local rest frame
-        elif data_type=='Intr': 
-            if not bdband_flux_sc:stop('ERROR: no broadband flux scaling. Weights on intrinsic profiles cannot be defined' )          
-            weight_spec = (1. - flux_sc_all)**2. / EFdiff2
+        elif data_type=='Intr':
+            
+            #Variance on intrinsic profiles
+            #    - calculating if not provided as input
+            if var_dic_in['EFintr2'] is None:  
+                var_dic_loc['EFintr2'] = var_dic_loc['EFdiff2']/(1. - flux_sc_all)**2.            
+            weight_spec = 1./var_dic_loc['EFintr2']
 
         #--------------------------------------------------------        
         #Atmospheric spectra
@@ -1084,8 +1261,13 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #    - emission spectra are extracted in the star rest frame, in which case EFstar_loc_meas, (Fstar_meas,EFstar_meas) and T involved in Fdiff must also be in the star rest frame (T must thus have been shifted in the same way as Fnorm)
         #      if emission spectra given as input have been shifted (aligned to their local frame), then the above components  must have been shifted in the same way     
         elif data_type=='Emission': 
-            for iord in range(nord):
-                weight_spec[iord,cond_def_weights[iord]] = 1./( cov_est_loc_exp[iord][0,cond_def_weights[iord]] + EFdiff2[iord,cond_def_weights[iord]]   ) 
+            
+            #Variance on emission profiles
+            #    - calculating if not provided as input
+            if var_dic_in['EFem2'] is None:
+                var_dic_loc['EFem2'] = np.zeros(dim_exp,dtype=float)*np.nan
+                for iord in range(nord):var_dic_loc['EFem2'][iord,cond_def_weights[iord]] = cov_est_loc_exp[iord][0,cond_def_weights[iord]] + var_dic_loc['EFdiff2'][iord,cond_def_weights[iord]]
+            weight_spec = 1./var_dic_loc['EFem2']
 
         #For absorption spectra: 
         #    - see extract_pl_profiles(), the profiles are defined as:                   
@@ -1100,11 +1282,16 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         #      final weights are defined as:
         # weight(w,t in band) = 1/EAbs_true(w,t in band)^2 
         elif data_type=='Absorption': 
-            Floc2_all = (flux_ref_exp*(1. - flux_sc_all))**2.   
-            for iord in range(nord):                          
-                weight_spec[iord,cond_def_weights[iord]] =  1./( ( flux_est_loc_exp[iord,cond_def_weights[iord]]**2.*EFdiff2[iord,cond_def_weights[iord]] + Floc2_all[iord]*cov_est_loc_exp[iord][0,cond_def_weights[iord]] )*SpSstar_spec[iord,cond_def_weights[iord]]**2. )               
 
-    return weight_spec
+            #Variance on emission profiles
+            #    - calculating if not provided as input
+            if var_dic_in['EAbs2'] is None:
+                Floc2_all = (flux_ref_exp*(1. - flux_sc_all))**2.   
+                var_dic_loc['EAbs2'] = np.zeros(dim_exp,dtype=float)*np.nan
+                for iord in range(nord):var_dic_loc['EAbs2'][iord,cond_def_weights[iord]] =  ( flux_est_loc_exp[iord,cond_def_weights[iord]]**2.*var_dic_loc['EFdiff2'][iord,cond_def_weights[iord]] + Floc2_all[iord]*cov_est_loc_exp[iord][0,cond_def_weights[iord]] )*SpSstar_spec[iord,cond_def_weights[iord]]**2.               
+            weight_spec = 1./var_dic_loc['EAbs2']
+
+    return weight_spec,var_dic_loc['EFsc2'],var_dic_loc['EFdiff2'],var_dic_loc['EFintr2'],var_dic_loc['EFem2'],var_dic_loc['EAbs2']
 
 
 

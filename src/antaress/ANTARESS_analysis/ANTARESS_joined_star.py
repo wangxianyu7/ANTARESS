@@ -133,9 +133,9 @@ def main_joined_DIProp(rout_mode,fit_prop_dic,gen_dic,system_param,theo_dic,plot
                 #Fit tables
                 idx_fit2vis[inst][vis] = range(fit_dic['nx_fit'],fit_dic['nx_fit']+fixed_args['nexp_fit_all'][inst][vis])
                 fit_dic['nx_fit']+=fixed_args['nexp_fit_all'][inst][vis]
-                for i_in in fixed_args['idx_in_fit'][inst][vis]:    
-                    fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[i_in][fixed_args['prop_fit']])
-                    fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[i_in]['err_'+fixed_args['prop_fit']]))
+                for iexp in fixed_args['idx_in_fit'][inst][vis]:    
+                    fixed_args['y_val'] = np.append(fixed_args['y_val'],data_load[iexp][fixed_args['prop_fit']])
+                    fixed_args['s_val'] = np.append(fixed_args['s_val'],np.mean(data_load[iexp]['err_'+fixed_args['prop_fit']]))
                 
                 #Scaling variance
                 fixed_args['s_val']*=np.sqrt(fixed_args['sc_var'])
@@ -1074,7 +1074,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fit_save={'idx_trim_kept':{}}
 
     #Define master-out dictionary
-    for key in ['multivisit_list','idx_in_master_out','master_out_tab','scaled_data_paths','gcal','multivisit_weights_total','weights','flux','multivisit_flux']:fixed_args['master_out'][key]={}
+    for key in ['multivisit_list','idx_in_master_out','master_out_tab','scaled_data_paths','gcal','multivisit_weights_total','weights','flux','multivisit_flux','EFsc2']:fixed_args['master_out'][key]={}
     fixed_args['raw_DI_profs']={}
 
     #Profile generation
@@ -1123,6 +1123,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         fixed_args['master_out']['flux'][inst]={}
         fixed_args['master_out']['scaled_data_paths'][inst]={}
         fixed_args['master_out']['gcal'][inst]={}
+        fixed_args['master_out']['EFsc2'][inst]={}
         fixed_args['idx_out'][inst]={}
         fixed_args['idx_in'][inst]={}
         
@@ -1176,6 +1177,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 if gen_dic['flux_sc']:fixed_args['master_out']['scaled_data_paths'][inst][vis] = data_dic[inst][vis]['scaled_DI_data_paths']
                 else:fixed_args['master_out']['scaled_data_paths'][inst][vis] = None
                 fixed_args['master_out']['gcal'][inst][vis]={}
+                fixed_args['master_out']['EFsc2'][inst][vis]={}
 
                 #Define in and out of transit exposures - needed for profile generation
                 fixed_args['idx_out'][inst][vis]=gen_dic[inst][vis]['idx_out']
@@ -1224,11 +1226,11 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 #    - models must be calculated over the full, continuous spectral tables to allow for convolution
                 #      the fit is then performed on defined pixels only
                 for key in ['dcen_bins','cen_bins','edge_bins','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
-                for isub,i_in in enumerate(fixed_args['idx_in_fit'][inst][vis]):
+                for isub,iexp in enumerate(fixed_args['idx_in_fit'][inst][vis]):
 
                     #Upload latest processed differential data
-                    if fixed_args['bin_mode'][inst][vis]=='_bin':data_exp = dataload_npz(gen_dic['save_data_dir']+'Diffbin_data/'+inst+'_'+vis+'_phase'+str(i_in))               
-                    else:data_exp = dataload_npz(data_dic[inst][vis]['proc_Diff_data_paths']+str(i_in))
+                    if fixed_args['bin_mode'][inst][vis]=='_bin':data_exp = dataload_npz(gen_dic['save_data_dir']+'Diffbin_data/'+inst+'_'+vis+'_phase'+str(iexp))               
+                    else:data_exp = dataload_npz(data_dic[inst][vis]['proc_Diff_data_paths']+str(iexp))
 
                     #Initialization
                     if isub==0:
@@ -1267,8 +1269,13 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]
 
                     #Calibration profile for weighing    
-                    if data_dic[inst][vis]['type']=='spec2D':fixed_args['master_out']['gcal'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['sing_gcal_Diff_data_paths'][i_in])['sing_gcal'][iord_sel,idx_range_kept]
-                    else: fixed_args['master_out']['gcal'][inst][vis][isub] = None
+                    if data_dic[inst][vis]['type']=='spec2D':fixed_args['master_out']['gcal'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['sing_gcal_DI_data_paths'][iexp])['sing_gcal'][iord_sel,idx_range_kept]
+                    else:fixed_args['master_out']['gcal'][inst][vis][isub] = None
+                    
+                    #Estimate of true variance for DI profiles
+                    #    - relevant (and defined) if 2D profiles were converted into 1D
+                    if data_dic['DI']['spec2D_to_spec1D'][inst]:fixed_args['master_out']['EFsc2'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['EFsc2_DI_data_paths'][iexp])['var'][iord_sel,idx_range_kept]  
+                    else:fixed_args['master_out']['EFsc2'][inst][vis][isub] = None                    
 
                     #Oversampled line profile model table
                     if fixed_args['resamp']:resamp_st_prof_tab(inst,vis,isub,fixed_args,gen_dic,fixed_args['nexp_fit_all'][inst][vis],theo_dic['rv_osamp_line_mod'])
@@ -1299,16 +1306,16 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     if fixed_args['n_pc'][inst][vis] is not None:
                     
                         #PC matrix interpolated on current exposure table
-                        fixed_args['eig_res_matr'][inst][vis][i_in] = np.zeros([fixed_args['n_pc'][inst][vis],fixed_args['ncen_bins'][inst][vis]],dtype=float)
+                        fixed_args['eig_res_matr'][inst][vis][iexp] = np.zeros([fixed_args['n_pc'][inst][vis],fixed_args['ncen_bins'][inst][vis]],dtype=float)
                     
                         #Process each PC
                         for i_pc in range(fixed_args['n_pc'][inst][vis]):
                             
                             #PC profile
-                            fixed_args['eig_res_matr'][inst][vis][i_in][i_pc] = interp1d(data_pca['cen_bins'],data_pca['eig_res_matr'][i_pc],fill_value='extrapolate')(fixed_args['cen_bins'][inst][vis][isub])       
+                            fixed_args['eig_res_matr'][inst][vis][iexp][i_pc] = interp1d(data_pca['cen_bins'],data_pca['eig_res_matr'][i_pc],fill_value='extrapolate')(fixed_args['cen_bins'][inst][vis][isub])       
                             
                             #PC free amplitude
-                            pc_name = 'aPC_idxin'+str(i_in)+'_ord'+str(i_pc)+'__IS'+inst+'_VS'+vis
+                            pc_name = 'aPC_idxin'+str(iexp)+'_ord'+str(i_pc)+'__IS'+inst+'_VS'+vis
                             fit_dic['mod_prop'][pc_name]={'vary':True,'guess':0.} 
                             if i_pc==0:fit_dic['mod_prop'][pc_name]['bd'] = [-4.,4.]
                             elif i_pc==1:fit_dic['mod_prop'][pc_name]['bd'] = [-3.,2.]
@@ -1633,10 +1640,11 @@ def joined_DiffProf(param,fixed_args):
 
                     #Making weights for the master-out
                     #    - assuming no detector noise and a constant calibration
+                    #    - if DI profiles were converted from 2D to 1D, we use directly their variance profiles
                     raw_weights=weights_bin_prof(range(args['master_out']['nord']), args['master_out']['scaled_data_paths'][inst][vis],inst,vis,args['master_out']['corr_Fbal'],args['master_out']['corr_FbalOrd'],\
                                                         args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'DI',args['type'],args['dim_exp'][inst][vis],args['master_out']['gcal'][inst][vis][isub],\
                                                         None,np.array([args['cen_bins'][inst][vis][isub]]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([conv_line_model]),\
-                                                        np.array([args['cov'][inst][vis][isub]]), ref_val=base_DI_prof[0]-1, bdband_flux_sc=args['master_out']['flux_sc'])[0]
+                                                        np.array([args['cov'][inst][vis][isub]]), bdband_flux_sc=args['master_out']['flux_sc'],EFsc2_all_in = args['master_out']['EFsc2'][inst][vis][isub])[0]
 
                     # - Re-sample the weights
                     resamp_weights = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],raw_weights,kind=args['master_out']['master_out_tab']['resamp_mode'])
