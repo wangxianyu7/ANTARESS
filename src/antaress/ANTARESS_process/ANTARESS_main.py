@@ -335,7 +335,7 @@ def conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_di
         conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,data_dic[data_type_gen])  
 
     #Analyzing converted profiles
-    if gen_dic['fit_'+data_type_gen+'_1D']: 
+    if (data_type_gen!='Diff') and gen_dic['fit_'+data_type_gen+'_1D']: 
         MAIN_single_anaprof('',data_type_gen+'_1D',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])   
 
     return None
@@ -939,10 +939,11 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #------------------------------------------------------------------------------
     #Star
     #------------------------------------------------------------------------------
+    star_params = {}
     if gen_dic['sequence'] not in ['st_master_tseries']:
         
         #Conversions and calculations
-        star_params=system_param['star']
+        star_params.update(system_param['star'])
         star_params['Rstar_km'] = star_params['Rstar']*Rsun
         
         #Spherical star
@@ -1087,7 +1088,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             print('Automatic definition of T14['+str(pl_loc)+']='+"{0:.2f}".format(PlParam_loc['TLength']*24.)+' h')
     
     #Calculating theoretical properties of the planet-occulted regions
-    if (not gen_dic['theoPlOcc']) and ((('CCF' in data_dic['Diff']['type'].values()) and (gen_dic['fit_Intr'])) or (gen_dic['align_Intr']) or (gen_dic['calc_pl_atm'])):
+    if (gen_dic['sequence'] not in ['st_master_tseries']) and (not gen_dic['theoPlOcc']) and ((('CCF' in data_dic['Diff']['type'].values()) and (gen_dic['fit_Intr'])) or (gen_dic['align_Intr']) or (gen_dic['calc_pl_atm'])):
         print('Automatic activation of "gen_dic["theoPlOcc"]"')
         gen_dic['theoPlOcc']=True
 
@@ -1105,7 +1106,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #Transit and stellar surfce chromatic properties
     #    - must be defined for data processing, transit scaling, calculation of planet properties
     #    - we remove the 'chrom' dictionary if no spectral data is used as input or if a single band is defined
-    if ('LD' not in  data_dic['DI']['system_prop']['achrom']):stop('WARNING : define limb-darkening law in "data_dic["DI"]["system_prop"]["achrom"]"')
+    if ('LD' not in data_dic['DI']['system_prop']['achrom']):
+        data_dic['DI']['system_prop']['achrom']['LD']=['uniform']
+        print('WARNING : limb-darkening law set to "uniform". Define it with "data_dic["DI"]["system_prop"]["achrom"]"')
     for ideg in range(2,5):
         if 'LD_u'+str(ideg) not in data_dic['DI']['system_prop']['achrom']:data_dic['DI']['system_prop']['achrom']['LD_u'+str(ideg)] = [0.]
     if ('GD_dw' in data_dic['DI']['system_prop']['achrom']):
@@ -1924,7 +1927,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 DI_data_inst[vis]['RVdrift'][iexp]=hdr['HIERARCH '+facil_inst+' QC DRIFT DET0 MEAN']*return_pix_size(inst)*1e3    #in pix -> m/s
                     
                     #Stellar phase
-                    coord_dic[inst][vis]['st_ph_st'][iexp],coord_dic[inst][vis]['cen_ph_st'][iexp],coord_dic[inst][vis]['end_ph_st'][iexp] = get_timeorbit(system_param['star']['Tcenter'],coord_dic[inst][vis]['bjd'][iexp], {'period':system_param['star']['Peq']}, coord_dic[inst][vis]['t_dur'][iexp])[0:3] 
+                    if gen_dic['sequence'] not in ['st_master_tseries']:
+                        coord_dic[inst][vis]['st_ph_st'][iexp],coord_dic[inst][vis]['cen_ph_st'][iexp],coord_dic[inst][vis]['end_ph_st'][iexp] = get_timeorbit(system_param['star']['Tcenter'],coord_dic[inst][vis]['bjd'][iexp], {'period':system_param['star']['Peq']}, coord_dic[inst][vis]['t_dur'][iexp])[0:3] 
 
                     #Orbital coordinates for each studied planet
                     for pl_loc in data_inst[vis]['studied_pl']:
@@ -3362,12 +3366,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #      we use the instrument pixel size defined in rv space to set a default value
                 if (inst not in data_dic[key]['spec_1D_prop']):
                     dlnw_inst = return_pix_size(inst)/c_light
-                    w_st_inst_all = {'ESPRESSO':3000.,'HARPN':3000.,'HARPS':3000.,'CARMENES_VIS':4500.,'NIRPS_HA':9500.}
+                    w_st_inst_all =  {'ESPRESSO':3000.,'HARPN':3000.,'HARPS':3000.,'CARMENES_VIS':4500., 'NIRPS_HA':9500.}
                     if (inst not in w_st_inst_all):print('ERROR : define w_st for "'+inst+'"')
                     w_end_inst_all = {'ESPRESSO':8500.,'HARPN':7500.,'HARPS':7500.,'CARMENES_VIS':11500.,'NIRPS_HA':21000.}
                     if (inst not in w_end_inst_all):print('ERROR : define w_end for "'+inst+'"')
                     data_dic[key]['spec_1D_prop'][inst] = {'dlnw':dlnw_inst,'w_st':w_st_inst_all[inst],'w_end':w_end_inst_all[inst]}
-                    print('          Automatic definition of 1D '+gen_dic['type_name'][key]+' table : dlnw = '+str(dlnw_inst)+ ' ; w_st = '+str(w_st_inst_all[inst])+' A ; w_end = '+str(w_end_inst_all[inst])+' A.')
+                    print('          Automatic definition of 1D '+gen_dic['type_name'][key]+' table : dlnw = '+"{0:.3e}".format(dlnw_inst)+ ' ; w_st = '+"{0:.3f}".format(w_st_inst_all[inst])+' A ; w_end = '+"{0:.3f}".format(w_end_inst_all[inst])+' A.')
 
                 #Defining table                                
                 def_1D_bins(data_dic[key])

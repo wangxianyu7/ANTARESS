@@ -47,7 +47,7 @@ def align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic):
     #      we thus align variance grids from earlier data types up to the present ones, depending on when the conversion was performed    
     var_key = None
     for subtype_gen in gen_dic['earliertypes4var'][data_type_gen]:
-        if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:
+        if data_dic[subtype_gen]['spec2D_to_spec1D'][inst] and (data_vis['type']=='spec1d'):
             var_key = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
             break
 
@@ -435,15 +435,44 @@ def rescale_profiles(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plo
     if data_dic['DI']['rescale_DI']:proc_DI_data_paths_new = gen_dic['save_data_dir']+'Scaled_data/'+inst+'_'+vis+'_'
     else:proc_DI_data_paths_new = deepcopy(data_vis['proc_DI_data_paths'])
     data_vis['scaled_DI_data_paths'] = proc_DI_data_paths_new+'scaling_'   
-      
-    #Default transit model
+
+    #Check
+    if (len(data_inst[vis]['studied_pl'])>0):
+        cond_tr = True
+    else:cond_tr = False
+    if (len(data_inst[vis]['studied_ar'])>0):
+        cond_ar = True
+    else:cond_ar = False
+    
+    #Light curve
+    cond_lc = True
     if (vis not in data_dic['DI']['transit_prop'][inst]):
-        data_dic['DI']['transit_prop'][inst][vis] = {'mode':'model','dt':np.min(coord_dic[inst][vis]['t_dur']/60.)/5.}
-        print('         Default transit model')
-    transit_prop=data_dic['DI']['transit_prop'][inst][vis]
+        if (not cond_ar) and (not cond_tr):cond_lc = False
+        else:
+            if cond_ar:stop('ERROR: active regions are defined; use imported or simulated transit light curve')
+            if cond_tr:
+                if len(data_inst[vis]['studied_pl'])>1:stop('ERROR: multiple transiting planets; use imported or simulated transit light curve')
+                print('         Default transit light curve model with single planet')
+                data_dic['DI']['transit_prop'][inst][vis] = {'mode':'model','dt':np.min(coord_dic[inst][vis]['t_dur']/60.)/5.}
+                transit_prop=data_dic['DI']['transit_prop'][inst][vis]
+    else:
+        transit_prop=data_dic['DI']['transit_prop'][inst][vis]
+        if transit_prop['mode']=='imp':
+            print('         Using imported light curve')   
+        elif transit_prop['mode']=='model':
+            if (not cond_ar) and (not cond_tr):cond_lc = False
+            else:
+                if cond_ar:stop('ERROR: active regions are defined; use imported or simulated transit light curve')
+                if cond_tr:
+                    if len(data_inst[vis]['studied_pl'])>1:stop('ERROR: multiple transiting planets; use imported or simulated transit light curve')
+                    print('         Using transit light curve model with single planet')
+        elif transit_prop['mode']=='simu': 
+            print('         Using simulated light curve')               
+    if not cond_lc:print('         Applying global scaling only')
+    else:print('         Applying global scaling and light curve scaling')
     
     #Flux scaling
-    if not data_dic['DI']['rescale_DI']:print('         No flux scaling applied')
+    if not data_dic['DI']['rescale_DI']:print('         Scaling is calculated but not applied')
         
     #Calculating rescaled data
     if (gen_dic['calc_flux_sc']):
@@ -455,219 +484,222 @@ def rescale_profiles(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plo
         if ('spec' in data_vis['type']) and ('chrom' in data_vis['system_prop']):key_chrom = ['chrom']
         else:key_chrom = ['achrom']
         system_prop = data_vis['system_prop'][key_chrom[0]]
-        LC_flux_band_all = np.zeros([data_vis['n_in_visit'],system_prop['nw']])*np.nan    
+        LC_flux_band_all = np.ones([data_vis['n_in_visit'],system_prop['nw']])    
+
+        #------------------------------------------------------------------------ 
+        #Light curve scaling
+        if cond_lc:
         
-        #Simulated light curves
-        if transit_prop['mode']=='simu':
-            params_LC = deepcopy(system_param['star'])
-            params_LC.update({'rv':0.,'cont':1.}) 
-
-            #Include spots in the LC generation
-            if ar_dic!={} and ('ar_prop' in ar_dic) and (inst in ar_dic['ar_prop']) and (vis in ar_dic['ar_prop'][inst]):
-                params_LC['use_ar']=True
-                if (data_dic['DI']['ar_prop']=={}):stop('WARNING: spot properties for simulated light curves are not defined')
-            else:params_LC['use_ar']=False
-
-        #Calculate light curve for plotting        
-        if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
-            
-            #High-resolution time table over visit
-            min_bjd = coord_dic[inst][vis]['bjd'][0]
-            max_bjd = coord_dic[inst][vis]['bjd'][-1]
-            dbjd_HR = plot_dic['dt_LC']/(3600.*24.)
-            nbjd_HR = round((max_bjd-min_bjd)/dbjd_HR)
-            bjd_HR=min_bjd+dbjd_HR*np.arange(nbjd_HR)
-      
-            #Corresponding orbital phases and coordinates for each planet
-            #    - high-resolution tables are calculated assuming no exposure duration
-            coord_HR = {}
-            LC_HR=np.ones([nbjd_HR,system_prop['nw']],dtype=float)  
-            if transit_prop['mode']=='simu':ecl_all_HR = np.zeros(nbjd_HR,dtype=bool)
-            for pl_loc in data_inst[vis]['studied_pl']:
-                pl_params_loc=system_param[pl_loc]
-                coord_HR[pl_loc]={'cen_ph':get_timeorbit(coord_dic[inst][vis][pl_loc]['Tcenter'],bjd_HR,pl_params_loc,None)[1]}   
-
-                #Definition of coordinates for all transiting planets
-                if transit_prop['mode']=='simu': 
-                    x_pos_pl,y_pos_pl,z_pos_pl,Dprojp,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],coord_HR[pl_loc]['cen_ph'],data_dic['DI']['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param['star'])
-                    coord_HR[pl_loc].update({'ecl':ecl_pl,'cen_pos':np.vstack((x_pos_pl,y_pos_pl,z_pos_pl))})
+            #Simulated light curves
+            if transit_prop['mode']=='simu':
+                params_LC = deepcopy(system_param['star'])
+                params_LC.update({'rv':0.,'cont':1.}) 
     
-                    #Exposure considered out-of-transit if no planet at all is transiting
-                    ecl_all_HR |= abs(ecl_pl)!=1                      
-
-            #Corresponding orbital phases and coordinates for each spot
-            if (transit_prop['mode']=='simu') and (params_LC['use_ar']): 
-                ar_prop_HR = retrieve_ar_prop_from_param(ar_dic['ar_prop'][inst][vis], inst, vis)
-                ar_prop_HR['cos_istar']=system_param['star']['cos_istar']
-                for spot in data_inst[vis]['studied_ar']:
-                    coord_HR[spot]={}
-                    for key in gen_dic['ar_coord_par']:coord_HR[spot][key] = np.zeros([3,len(bjd_HR)],dtype=float)*np.nan
-                    coord_HR[spot]['is_visible'] = np.zeros([3,len(bjd_HR)],dtype=bool)
-                    for key in ['Tc_ar', 'ang_rad', 'lat_rad', 'fctrst']:coord_dic[inst][vis][spot][key] = ar_prop_HR[spot][key] 
+                #Include spots in the LC generation
+                if ar_dic!={} and ('ar_prop' in ar_dic) and (inst in ar_dic['ar_prop']) and (vis in ar_dic['ar_prop'][inst]):
+                    params_LC['use_ar']=True
+                    if (data_dic['DI']['ar_prop']=={}):stop('WARNING: spot properties for simulated light curves are not defined')
+                else:params_LC['use_ar']=False
     
-                #Retrieving the spot coordinates for all the times that we have
-                for itstamp, tstamp in enumerate(bjd_HR):
-                    for spot in data_inst[vis]['studied_ar']:
-                        ar_prop_exp = coord_expos_ar(spot,tstamp,ar_prop_HR,system_param['star'],dbjd_HR,gen_dic['ar_coord_par'])                           
-                        for key in ar_prop_exp:coord_HR[spot][key][:, itstamp] = [ar_prop_exp[key][0],ar_prop_exp[key][1],ar_prop_exp[key][2]] 
-
-        #------------------------------------------------------------------------        
-        
-        #Light curves from import
-        #    - defined over a set of wavelengths that can be different for each visit
-        #    - here we import the light curves, so that they can be interpolated for each visit after their exposures have been defined
-        if transit_prop['mode']=='imp':
-            t_dur_d=coord_dic[inst][vis]['t_dur']/(3600.*24.)
-            cen_bjd = coord_dic[inst][vis]['bjd']
-          
-            #Retrieving light curve
-            #    - first column must be absolute time (BJD), to be independent of a specific planet 
-            #    - next columns must be normalized stellar flux for all chosen bands, in the same order as data_dic['DI']['system_prop']['chrom']['w']
-            ext = transit_prop['path'].split('.')[-1]
-            if (ext=='csv'):
-                imp_LC = (pd.read_csv(transit_prop['path'])).values
-            elif (ext in ['txt','dat']):
-                imp_LC = np.loadtxt(transit_prop['path']).T          
-            else:
-                stop('Light curve path extension TBD') 
-            imp_LC[0] -= 2400000. 
-            if (plot_dic['input_LC']!=''):dic_save['imp_LC'] = imp_LC
-         
-            #Average imported light curve within the exposure time windows
-            #    - the light curve must be imported with sufficient temporal resolution
-            for iexp,(bjd_loc,dt_loc) in enumerate(zip(cen_bjd,t_dur_d)):
-
-                #Imported points within exposure
-                id_impLC=np_where1D( (imp_LC[0]>=bjd_loc-0.5*dt_loc) & (imp_LC[0]<=bjd_loc+0.5*dt_loc))
-              
-                #Normalized flux averaged within exposure
-                if len(id_impLC)>0:LC_flux_band_all[iexp,:]=np.mean(imp_LC[1::,id_impLC],axis=1)
-                else:stop('No LC measurements within exposure')
-
-            #Calculate light curve for plotting        
-            if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):     
-                for iband in range(system_prop['nw']):LC_HR[:,iband] = np_interp(bjd_HR,imp_LC[0],imp_LC[1+iband],left=imp_LC[1+iband,0],right=imp_LC[1+iband,-1])
-
-        #------------------------------------------------------------------------
-        
-        #Model light curve for a single planet
-        #    - can be oversampled   
-        #    - defined over a set of wavelengths but constant for each visit
-        elif transit_prop['mode']=='model':
-            if len(data_inst[vis]['studied_pl'])>1:stop('Multiple planets transiting')
-            pl_vis = data_inst[vis]['studied_pl'][0]
-            LC_params = batman.TransitParams()
-            LC_pl_params = system_param[pl_vis]
-        
-            #Phase reference for inferior conjunction
-            LC_params.t0 = 0. 
-            
-            #Orbital period in phase
-            LC_params.per = 1. 
-            
-            #Semi-major axis (in units of stellar radii)
-            LC_params.a = LC_pl_params['aRs']
-            
-            #Orbital inclination (in degrees)
-            #    - from the line of sight to the normal to the orbital plane
-            LC_params.inc = LC_pl_params['inclination'] 
-            
-            #Eccentricity
-            LC_params.ecc = LC_pl_params['ecc']
-            
-            #Longitude of periastron (in degrees)
-            LC_params.w = LC_pl_params['omega_deg']
-            
-            #Oversampling 
-            if ('dt' not in transit_prop):LC_osamp = np.repeat(10,data_vis['n_in_visit'])
-            else:LC_osamp = npint(np.ceil(coord_dic[inst][vis]['t_dur']/(60.*transit_prop['dt'])))
-            if np.min(LC_osamp)<2.:print('WARNING: no oversampling of model light curve')
-            
-            #Calculate white or chromatic light curves
-            cen_ph_pl = coord_dic[inst][vis][pl_vis]['cen_ph']
-            ph_dur_pl=coord_dic[inst][vis][pl_vis]['ph_dur']
-            for iband,wband in enumerate(system_prop['w']):
-    
-                #Light curve properties for the band
-                LC_params_band = deepcopy(LC_params)
-    
-                #LD law 
-                LD_mod = system_prop['LD'][iband]
-        
-                #Limb darkening coefficients in the format required for batman
-                LC_params_band.limb_dark = LD_mod
-                if LD_mod == 'uniform':
-                    ld_coeff=[]
-                elif LD_mod == 'linear':
-                    ld_coeff=[system_prop['LD_u1'][iband]]
-                elif LD_mod in ['quadratic' ,'squareroot','logarithmic', 'power2' ,'exponential']:
-                    ld_coeff=[system_prop['LD_u1'][iband],system_prop['LD_u2'][iband]]
-                elif LD_mod == 'nonlinear':   
-                    ld_coeff=[system_prop['LD_u1'][iband],system_prop['LD_u2'][iband],system_prop['LD_u3'][iband],system_prop['LD_u4'][iband]]           
-                else:
-                    stop('Limb-darkening not supported by batman')  
-                LC_params_band.u=ld_coeff
-        
-                #Planet-to-star radius ratio
-                LC_params_band.rp=system_prop[pl_vis][iband]
-
-                #All exposures have same duration
-                #    - process each band for all exposures together
-                if coord_dic[inst][vis]['cst_tdur']:
-                    LC_flux_band_all[:,iband] = batman.TransitModel(LC_params_band, cen_ph_pl, supersample_factor = LC_osamp[0], exp_time = ph_dur_pl[0]).light_curve(LC_params_band)
-                    
-                #Exposures have different durations
-                #    - process each band and each exposure
-                else:                      
-                    for iexp,(cen_ph_exp,ph_dur_exp,LC_osamp_exp) in enumerate(zip(cen_ph_pl,ph_dur_pl,LC_osamp)):                    
-                        LC_flux_band_all[iexp,iband]=float(batman.TransitModel(LC_params_band, np.array([cen_ph_exp]), supersample_factor = LC_osamp_exp, exp_time = np.array([ph_dur_exp])).light_curve(LC_params_band))
-                        
-                #Calculate light curve for plotting        
-                if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
-                    LC_HR[:,iband] = batman.TransitModel(LC_params_band,coord_HR[pl_vis]['cen_ph']).light_curve(LC_params_band)  
-            
-        #------------------------------------------------------------------------
-     
-        #Simulated light curve   
-        #    - can account for multiple transiting planets
-        elif transit_prop['mode']=='simu':    
-            
-            #Set out-of-transit values to unity
-            #    - values will be redefined if relevant  
-            LC_flux_band_all[gen_dic[inst][vis]['idx_out'],:]=1.        
-            
-            #Oversampling factor, in units of RpRs
-            theo_dic_LC= deepcopy(theo_dic)
-            theo_dic_LC['d_oversamp_pl']={}
-            theo_dic_LC['n_oversamp_ar']={}
-            if (transit_prop['n_oversamp']>0.):
-                for pl_loc in data_inst[vis]['studied_pl']:theo_dic_LC['d_oversamp_pl'][pl_loc]=data_dic['DI']['system_prop']['achrom'][pl_loc][0]/transit_prop['n_oversamp'] 
-            if params_LC['use_ar']:
-                for spot in data_inst[vis]['studied_ar']:theo_dic_LC['n_oversamp_ar'][spot]=1
-
-            #Calculate transit light curves accounting for all planets in the visit
-            fixed_args = {}
-            if params_LC['use_ar']:
-                fixed_args['ar_coord_par']=gen_dic['ar_coord_par']
-                fixed_args['rout_mode']='Intr_prop'
-            plocc_prop,_,common_prop = sub_calc_plocc_ar_prop(key_chrom,fixed_args,[],data_inst[vis]['studied_pl'],[],system_param,theo_dic_LC,data_dic['DI']['system_prop'],params_LC,coord_dic[inst][vis],range(data_vis['n_in_visit']),system_ar_prop_in=data_dic['DI']['ar_prop'],Ftot_star=True) 
-            if not params_LC['use_ar']:LC_flux_band_all[gen_dic[inst][vis]['idx_in'],:]=plocc_prop[key_chrom[0]]['Ftot_star'][:, gen_dic[inst][vis]['idx_in']].T
-            else:LC_flux_band_all=common_prop[key_chrom[0]]['Ftot_star'].T    
-
             #Calculate light curve for plotting        
             if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
-                theo_dic_LC['d_oversamp_pl']={}
-                if not params_LC['use_ar']:idx_HR = np_where1D(ecl_all_HR)
-                else:idx_HR = np.arange(nbjd_HR)                
-                plocc_prop_HR,_,common_prop_HR = sub_calc_plocc_ar_prop(key_chrom,fixed_args,[],data_inst[vis]['studied_pl'],[],system_param,theo_dic_LC,data_dic['DI']['system_prop'],params_LC,coord_HR,idx_HR,system_ar_prop_in=data_dic['DI']['ar_prop'],Ftot_star=True)
-                if not params_LC['use_ar']:LC_HR[idx_HR,:]=plocc_prop_HR[key_chrom[0]]['Ftot_star'].T
-                else:LC_HR[idx_HR,:]=common_prop_HR[key_chrom[0]]['Ftot_star'].T
+                
+                #High-resolution time table over visit
+                min_bjd = coord_dic[inst][vis]['bjd'][0]
+                max_bjd = coord_dic[inst][vis]['bjd'][-1]
+                dbjd_HR = plot_dic['dt_LC']/(3600.*24.)
+                nbjd_HR = round((max_bjd-min_bjd)/dbjd_HR)
+                bjd_HR=min_bjd+dbjd_HR*np.arange(nbjd_HR)
+          
+                #Corresponding orbital phases and coordinates for each planet
+                #    - high-resolution tables are calculated assuming no exposure duration
+                coord_HR = {}
+                LC_HR=np.ones([nbjd_HR,system_prop['nw']],dtype=float)  
+                if transit_prop['mode']=='simu':ecl_all_HR = np.zeros(nbjd_HR,dtype=bool)
+                for pl_loc in data_inst[vis]['studied_pl']:
+                    pl_params_loc=system_param[pl_loc]
+                    coord_HR[pl_loc]={'cen_ph':get_timeorbit(coord_dic[inst][vis][pl_loc]['Tcenter'],bjd_HR,pl_params_loc,None)[1]}   
+    
+                    #Definition of coordinates for all transiting planets
+                    if transit_prop['mode']=='simu': 
+                        x_pos_pl,y_pos_pl,z_pos_pl,Dprojp,_,_,_,_,ecl_pl = calc_pl_coord(pl_params_loc['ecc'],pl_params_loc['omega_rad'],pl_params_loc['aRs'],pl_params_loc['inclin_rad'],coord_HR[pl_loc]['cen_ph'],data_dic['DI']['system_prop']['achrom'][pl_loc][0],pl_params_loc['lambda_rad'],system_param['star'])
+                        coord_HR[pl_loc].update({'ecl':ecl_pl,'cen_pos':np.vstack((x_pos_pl,y_pos_pl,z_pos_pl))})
+        
+                        #Exposure considered out-of-transit if no planet at all is transiting
+                        ecl_all_HR |= abs(ecl_pl)!=1                      
+    
+                #Corresponding orbital phases and coordinates for each spot
+                if (transit_prop['mode']=='simu') and (params_LC['use_ar']): 
+                    ar_prop_HR = retrieve_ar_prop_from_param(ar_dic['ar_prop'][inst][vis], inst, vis)
+                    ar_prop_HR['cos_istar']=system_param['star']['cos_istar']
+                    for spot in data_inst[vis]['studied_ar']:
+                        coord_HR[spot]={}
+                        for key in gen_dic['ar_coord_par']:coord_HR[spot][key] = np.zeros([3,len(bjd_HR)],dtype=float)*np.nan
+                        coord_HR[spot]['is_visible'] = np.zeros([3,len(bjd_HR)],dtype=bool)
+                        for key in ['Tc_ar', 'ang_rad', 'lat_rad', 'fctrst']:coord_dic[inst][vis][spot][key] = ar_prop_HR[spot][key] 
+        
+                    #Retrieving the spot coordinates for all the times that we have
+                    for itstamp, tstamp in enumerate(bjd_HR):
+                        for spot in data_inst[vis]['studied_ar']:
+                            ar_prop_exp = coord_expos_ar(spot,tstamp,ar_prop_HR,system_param['star'],dbjd_HR,gen_dic['ar_coord_par'])                           
+                            for key in ar_prop_exp:coord_HR[spot][key][:, itstamp] = [ar_prop_exp[key][0],ar_prop_exp[key][1],ar_prop_exp[key][2]] 
 
-        #Store for plots
-        if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
-            dic_save['flux_band_all'] = LC_flux_band_all
-            dic_save['coord_HR'] = coord_HR
-            dic_save['LC_HR'] = LC_HR
+            #------------------------------------------------------------------------        
+
+            #Light curves from import
+            #    - defined over a set of wavelengths that can be different for each visit
+            #    - here we import the light curves, so that they can be interpolated for each visit after their exposures have been defined
+            if transit_prop['mode']=='imp':
+                t_dur_d=coord_dic[inst][vis]['t_dur']/(3600.*24.)
+                cen_bjd = coord_dic[inst][vis]['bjd']
+              
+                #Retrieving light curve
+                #    - first column must be absolute time (BJD), to be independent of a specific planet 
+                #    - next columns must be normalized stellar flux for all chosen bands, in the same order as data_dic['DI']['system_prop']['chrom']['w']
+                ext = transit_prop['path'].split('.')[-1]
+                if (ext=='csv'):
+                    imp_LC = (pd.read_csv(transit_prop['path'])).values
+                elif (ext in ['txt','dat']):
+                    imp_LC = np.loadtxt(transit_prop['path']).T          
+                else:
+                    stop('Light curve path extension TBD') 
+                imp_LC[0] -= 2400000. 
+                if (plot_dic['input_LC']!=''):dic_save['imp_LC'] = imp_LC
+             
+                #Average imported light curve within the exposure time windows
+                #    - the light curve must be imported with sufficient temporal resolution
+                for iexp,(bjd_loc,dt_loc) in enumerate(zip(cen_bjd,t_dur_d)):
+    
+                    #Imported points within exposure
+                    id_impLC=np_where1D( (imp_LC[0]>=bjd_loc-0.5*dt_loc) & (imp_LC[0]<=bjd_loc+0.5*dt_loc))
+                  
+                    #Normalized flux averaged within exposure
+                    if len(id_impLC)>0:LC_flux_band_all[iexp,:]=np.mean(imp_LC[1::,id_impLC],axis=1)
+                    else:stop('No LC measurements within exposure')
+    
+                #Calculate light curve for plotting        
+                if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):     
+                    for iband in range(system_prop['nw']):LC_HR[:,iband] = np_interp(bjd_HR,imp_LC[0],imp_LC[1+iband],left=imp_LC[1+iband,0],right=imp_LC[1+iband,-1])
+    
+            #------------------------------------------------------------------------
+            
+            #Model light curve for a single planet
+            #    - can be oversampled   
+            #    - defined over a set of wavelengths but constant for each visit
+            elif transit_prop['mode']=='model':
+                pl_vis = data_inst[vis]['studied_pl'][0]
+                LC_params = batman.TransitParams()
+                LC_pl_params = system_param[pl_vis]
+            
+                #Phase reference for inferior conjunction
+                LC_params.t0 = 0. 
+                
+                #Orbital period in phase
+                LC_params.per = 1. 
+                
+                #Semi-major axis (in units of stellar radii)
+                LC_params.a = LC_pl_params['aRs']
+                
+                #Orbital inclination (in degrees)
+                #    - from the line of sight to the normal to the orbital plane
+                LC_params.inc = LC_pl_params['inclination'] 
+                
+                #Eccentricity
+                LC_params.ecc = LC_pl_params['ecc']
+                
+                #Longitude of periastron (in degrees)
+                LC_params.w = LC_pl_params['omega_deg']
+                
+                #Oversampling 
+                if ('dt' not in transit_prop):LC_osamp = np.repeat(10,data_vis['n_in_visit'])
+                else:LC_osamp = npint(np.ceil(coord_dic[inst][vis]['t_dur']/(60.*transit_prop['dt'])))
+                if np.min(LC_osamp)<2.:print('WARNING: no oversampling of model light curve')
+                
+                #Calculate white or chromatic light curves
+                cen_ph_pl = coord_dic[inst][vis][pl_vis]['cen_ph']
+                ph_dur_pl=coord_dic[inst][vis][pl_vis]['ph_dur']
+                for iband,wband in enumerate(system_prop['w']):
+        
+                    #Light curve properties for the band
+                    LC_params_band = deepcopy(LC_params)
+        
+                    #LD law 
+                    LD_mod = system_prop['LD'][iband]
+            
+                    #Limb darkening coefficients in the format required for batman
+                    LC_params_band.limb_dark = LD_mod
+                    if LD_mod == 'uniform':
+                        ld_coeff=[]
+                    elif LD_mod == 'linear':
+                        ld_coeff=[system_prop['LD_u1'][iband]]
+                    elif LD_mod in ['quadratic' ,'squareroot','logarithmic', 'power2' ,'exponential']:
+                        ld_coeff=[system_prop['LD_u1'][iband],system_prop['LD_u2'][iband]]
+                    elif LD_mod == 'nonlinear':   
+                        ld_coeff=[system_prop['LD_u1'][iband],system_prop['LD_u2'][iband],system_prop['LD_u3'][iband],system_prop['LD_u4'][iband]]           
+                    else:
+                        stop('Limb-darkening not supported by batman')  
+                    LC_params_band.u=ld_coeff
+            
+                    #Planet-to-star radius ratio
+                    LC_params_band.rp=system_prop[pl_vis][iband]
+    
+                    #All exposures have same duration
+                    #    - process each band for all exposures together
+                    if coord_dic[inst][vis]['cst_tdur']:
+                        LC_flux_band_all[:,iband] = batman.TransitModel(LC_params_band, cen_ph_pl, supersample_factor = LC_osamp[0], exp_time = ph_dur_pl[0]).light_curve(LC_params_band)
+                        
+                    #Exposures have different durations
+                    #    - process each band and each exposure
+                    else:                      
+                        for iexp,(cen_ph_exp,ph_dur_exp,LC_osamp_exp) in enumerate(zip(cen_ph_pl,ph_dur_pl,LC_osamp)):                    
+                            LC_flux_band_all[iexp,iband]=float(batman.TransitModel(LC_params_band, np.array([cen_ph_exp]), supersample_factor = LC_osamp_exp, exp_time = np.array([ph_dur_exp])).light_curve(LC_params_band))
+                            
+                    #Calculate light curve for plotting        
+                    if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
+                        LC_HR[:,iband] = batman.TransitModel(LC_params_band,coord_HR[pl_vis]['cen_ph']).light_curve(LC_params_band)  
+                
+            #------------------------------------------------------------------------
+         
+            #Simulated light curve   
+            #    - can account for multiple transiting planets
+            elif transit_prop['mode']=='simu':    
+                
+                #Set out-of-transit values to unity
+                #    - values will be redefined if relevant  
+                LC_flux_band_all[gen_dic[inst][vis]['idx_out'],:]=1.        
+                
+                #Oversampling factor, in units of RpRs
+                theo_dic_LC= deepcopy(theo_dic)
+                theo_dic_LC['d_oversamp_pl']={}
+                theo_dic_LC['n_oversamp_ar']={}
+                if (transit_prop['n_oversamp']>0.):
+                    for pl_loc in data_inst[vis]['studied_pl']:theo_dic_LC['d_oversamp_pl'][pl_loc]=data_dic['DI']['system_prop']['achrom'][pl_loc][0]/transit_prop['n_oversamp'] 
+                if params_LC['use_ar']:
+                    for spot in data_inst[vis]['studied_ar']:theo_dic_LC['n_oversamp_ar'][spot]=1
+    
+                #Calculate transit light curves accounting for all planets in the visit
+                fixed_args = {}
+                if params_LC['use_ar']:
+                    fixed_args['ar_coord_par']=gen_dic['ar_coord_par']
+                    fixed_args['rout_mode']='Intr_prop'
+                plocc_prop,_,common_prop = sub_calc_plocc_ar_prop(key_chrom,fixed_args,[],data_inst[vis]['studied_pl'],[],system_param,theo_dic_LC,data_dic['DI']['system_prop'],params_LC,coord_dic[inst][vis],range(data_vis['n_in_visit']),system_ar_prop_in=data_dic['DI']['ar_prop'],Ftot_star=True) 
+                if not params_LC['use_ar']:LC_flux_band_all[gen_dic[inst][vis]['idx_in'],:]=plocc_prop[key_chrom[0]]['Ftot_star'][:, gen_dic[inst][vis]['idx_in']].T
+                else:LC_flux_band_all=common_prop[key_chrom[0]]['Ftot_star'].T    
+    
+                #Calculate light curve for plotting        
+                if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
+                    theo_dic_LC['d_oversamp_pl']={}
+                    if not params_LC['use_ar']:idx_HR = np_where1D(ecl_all_HR)
+                    else:idx_HR = np.arange(nbjd_HR)                
+                    plocc_prop_HR,_,common_prop_HR = sub_calc_plocc_ar_prop(key_chrom,fixed_args,[],data_inst[vis]['studied_pl'],[],system_param,theo_dic_LC,data_dic['DI']['system_prop'],params_LC,coord_HR,idx_HR,system_ar_prop_in=data_dic['DI']['ar_prop'],Ftot_star=True)
+                    if not params_LC['use_ar']:LC_HR[idx_HR,:]=plocc_prop_HR[key_chrom[0]]['Ftot_star'].T
+                    else:LC_HR[idx_HR,:]=common_prop_HR[key_chrom[0]]['Ftot_star'].T
+    
+            #Store for plots
+            if (plot_dic['input_LC']!='') or (plot_dic['prop_Intr']!=''):
+                dic_save['flux_band_all'] = LC_flux_band_all
+                dic_save['coord_HR'] = coord_HR
+                dic_save['LC_HR'] = LC_HR
 
         #------------------------------------------------------------------------
 
@@ -706,10 +738,10 @@ def rescale_profiles(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plo
             #Spectral scaling table                                        
             #    - scale to the expected flux level at all wavelengths, using the broadband flux interpolated over the full spectrum range, unless a single band is used
             #    - accounts for the potentially chromatic signature of the planet 
-            #    - if the planet is not actually transiting (based on the determination of transit contacts) the 'null_loc_flux_scaling' flag is set to True
-            #      profile are still rescaled, with a light curve unity and 'loc_flux_scaling' equal to 0
+            #    - if there is no transiting planet, or active regions, of stellar flux modulations (ie, if LC_flux_band_all = 1 at all times) the 'null_loc_flux_scaling' flag remains set to True
+            #      'loc_flux_scaling' is still defined as a function returning 0, for later use 
             if np.max(np.abs(1.-LC_flux_band_all[iexp]))>0.:null_loc_flux_scaling[iexp] = False
-            if (system_prop['nw']==1):loc_flux_scaling[iexp] = np.poly1d([1.-LC_flux_band_all[iexp,0]])
+            if (system_prop['nw']==1) or (null_loc_flux_scaling[iexp]):loc_flux_scaling[iexp] = np.poly1d([1.-LC_flux_band_all[iexp,0]])
             else:loc_flux_scaling[iexp] = interp1d(system_prop['w'],1.-LC_flux_band_all[iexp],fill_value=(1.-LC_flux_band_all[iexp,0],1.-LC_flux_band_all[iexp,-1]), bounds_error=False)
                 
             #Requested scaling range
@@ -747,15 +779,16 @@ def rescale_profiles(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plo
         #Scaling each exposure
         #    - only defined bins are scaled (the flux in undefined bins remain set to nan), but the scaling spectrum was calculated at all wavelengths so that it can be used later with data for which different bins are defined or not
         #    - all defined bins remain defined 
-        #    - operation depends on condition 'rescale_DI' because flux scaling tbales may be required even if data needs not be scaled
+        #    - operation depends on condition 'rescale_DI' because flux scaling tables may be required even if data needs not be scaled
         for iexp in range(data_vis['n_in_visit']):  
             
             #Scale and save exposure
             if data_dic['DI']['rescale_DI']: 
-                data_exp = np.load(data_vis['proc_DI_data_paths']+str(iexp)+'.npz',allow_pickle=True)['data'].item() 
+                data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp)) 
                 for iord in range(data_inst['nord']): 
-                    LC_exp_spec_ord = 1.-loc_flux_scaling[iexp](data_exp['cen_bins'][iord])
-                    data_exp['flux'][iord],data_exp['cov'][iord] = bind.mul_array(data_exp['flux'][iord],data_exp['cov'][iord],LC_exp_spec_ord/(coord_dic[inst][vis]['t_dur'][iexp]*norm_exp_glob[iexp]))
+                    if null_loc_flux_scaling[iexp]:flux_sc_ord = np.ones(data_vis['nspec'],dtype=float) 
+                    else:flux_sc_ord=(1.-loc_flux_scaling[iexp](data_exp['cen_bins'][iord]))
+                    data_exp['flux'][iord],data_exp['cov'][iord] = bind.mul_array(data_exp['flux'][iord],data_exp['cov'][iord],flux_sc_ord/(coord_dic[inst][vis]['t_dur'][iexp]*norm_exp_glob[iexp]))
                 datasave_npz(proc_DI_data_paths_new+str(iexp),data_exp)
             
             #Save scaling

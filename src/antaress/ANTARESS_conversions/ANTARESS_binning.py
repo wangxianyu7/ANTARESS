@@ -937,19 +937,18 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     #    - a single data type can be converted in a given instrument processing, thus only one variance grid can be provided as input
     var_dic_in = {'EFsc2' : EFsc2_all_in , 'EFdiff2' : EFdiff2_in, 'EFintr2' : EFintr2_in , 'EFem2' : EFem2_in, 'EAbs2' : EAbs2_in}
     var_dic_loc = {'EFsc2' : None , 'EFdiff2' : None, 'EFintr2' : None , 'EFem2' : None, 'EAbs2' : None}
+    count_var1D = 0
     for var_key in var_dic_in:
         if var_dic_in[var_key] is not None:
             var_dic_loc[var_key] = deepcopy(var_dic_in[var_key])
+            count_var1D+=1
             
             #Calculate weights at pixels where variance is defined and positive
             cond_def_weights = (~np.isnan(var_dic_loc[var_key])) & (var_dic_loc[var_key]>0.)
             if np.sum(cond_def_weights)==0:stop('ERROR: Issue with variance definition')              
 
-    #Check
-    count_var1D = np.sum(np.array(list(var_dic_loc.values())).astype(bool))
-    if count_var1D>1:stop('ERROR: only one 1D variance grid should be defined')
-    
     #Calculations for profiles not converted from 2D to 1D
+    if count_var1D>1:stop('ERROR: only one 1D variance grid should be defined')
     if count_var1D==0:
 
         #Calculate weights at pixels where the master stellar spectrum is defined
@@ -967,11 +966,11 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     # - in 2D / CCF : no input variances
     # 	requires EFsc2 to be calculated
     # - with DI 1D variance: 'EFsc2' given as input
-    # 	no calculation required      
-    if (data_type=='DI') and (var_dic_in['EFsc2'] is not None):
-        if count_var1D==0:
+    # 	no calculation required     
+    if (data_type=='DI'):    
+        if (count_var1D==0):
             calc_EFsc2 = True
-                
+
     #Differential profiles        
     # - in 2D / CCF : no input variances
     # 	requires EFdiff2 (= var_ref2 to be calculated, EFsc2 to be calculated)
@@ -979,14 +978,14 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     # 	requires EFdiff2 (= var_ref2 to be calculated, EFsc2 known) 
     # - with Diff 1D variance: 'EFdiff2' given as input
     # 	no calculation required      
-    if (data_type=='Diff') and (var_dic_in['EFdiff2'] is not None):
-        if count_var1D==0:
+    elif (data_type=='Diff'):
+        if (count_var1D==0):
             calc_EFsc2 = True
-            calc_var_ref2 = True 
-        else:                
-            if (var_dic_in['EFsc2'] is not None):        
-                calc_var_ref2 = True           
-
+            calc_var_ref2 = True         
+        elif (var_dic_in['EFdiff2'] is None): 
+            if (var_dic_in['EFsc2'] is not None):       
+                calc_var_ref2 = True 
+                
     #Intrinsic profiles
     # - in 2D / CCF : no input variances
     # 	requires flux_sc_all to be calculated, EFdiff2 (= var_ref2 to be calculated, EFsc2 to be calculated)
@@ -996,18 +995,18 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     # 	requires flux_sc_all to be calculated, EFdiff2 known
     # - with Intr 1D variance: 'EFintr2' given as input
     # 	no calculation required          
-    if (data_type=='Intr') and (var_dic_in['EFintr2'] is not None):
-        if count_var1D==0:
+    elif (data_type=='Intr'):
+        if (count_var1D==0):    
             calc_EFsc2 = True
             calc_var_ref2 = True 
             calc_flux_sc_all = True
-        else:
+        elif (var_dic_in['EFintr2'] is None): 
             if (var_dic_in['EFsc2'] is not None):
                 calc_var_ref2 = True 
                 calc_flux_sc_all = True    
             elif (var_dic_in['EFdiff2'] is not None):
                 calc_flux_sc_all = True  
-            
+                
     #Emission profiles
     # - in 2D / CCF : no input variances
     # 	requires EFdiff2 (= var_ref2 to be calculated, EFsc2 to be calculated)
@@ -1017,11 +1016,11 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     # 	no calculation required 
     # - with Em 1D variance: 'EFem2' given as input
     # 	no calculation required  
-    if (data_type=='Emission') and (var_dic_in['EFem2'] is not None):
+    elif (data_type=='Emission'):
         if count_var1D==0:
             calc_EFsc2 = True
             calc_var_ref2 = True 
-        else:                
+        elif (var_dic_in['EFem2'] is None):              
             if (var_dic_in['EFsc2'] is not None):        
                 calc_var_ref2 = True                 
     
@@ -1034,31 +1033,28 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     # 	requires flux_sc_all to be calculated, EFdiff2 known
     # - with Abs 1D variance: 'EAbs2' given as input
     # 	no calculation required        
-    if (data_type=='Absorption'):
-        if (var_dic_in['EAbs2'] is not None):
-            if count_var1D==0:
-                calc_EFsc2 = True
+    elif (data_type=='Absorption'):
+        if count_var1D==0:        
+            calc_EFsc2 = True
+            calc_var_ref2 = True 
+            calc_flux_sc_all = True        
+        elif (var_dic_in['EAbs2'] is None):
+            if (var_dic_in['EFsc2'] is not None):
                 calc_var_ref2 = True 
-                calc_flux_sc_all = True
-            else:
-                if (var_dic_in['EFsc2'] is not None):
-                    calc_var_ref2 = True 
-                    calc_flux_sc_all = True    
-                elif (var_dic_in['EFdiff2'] is not None):
-                    calc_flux_sc_all = True 
-        else:
-            cond_def_weights &= (~np.isnan(flux_ref_exp))
+                calc_flux_sc_all = True    
+            elif (var_dic_in['EFdiff2'] is not None):
+                calc_flux_sc_all = True 
 
     #-------------------------------------------------------- 
     #Preliminary calculations
     if calc_EFsc2 or calc_var_ref2 or calc_flux_sc_all:
         
+        #Flux scaling
+        if bdband_flux_sc and (calc_flux_sc_all or calc_EFsc2 or (glob_flux_sc is None)):data_scaling = dataload_npz(scaled_data_paths+str(iexp_glob))   
+        
         #Spectral broadband flux scaling 
         #    - flux_sc = 1 with no occultation, 0 with full occultation
-        if calc_flux_sc_all:
-            if (not bdband_flux_sc):stop('ERROR: spectral broadband flux scaling is needed for weighing but bdband_flux_sc = False')         
-            data_scaling = dataload_npz(scaled_data_paths+str(iexp_glob))           
-            flux_sc_all = np.ones(dim_exp,dtype=float)
+        if calc_flux_sc_all or calc_EFsc2:flux_sc_all = np.ones(dim_exp,dtype=float)
     
         #Variance on master disk-integrated profile 
         if calc_var_ref2:var_ref2 = np.zeros(dim_exp,dtype=float)*np.nan
@@ -1070,9 +1066,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
             #Global broadband flux scaling 
             #    - applied if spectral broadband flux scaling is requested, or if provided as input (in which case it will not be defined here)
             if (glob_flux_sc is None): 
-                if bdband_flux_sc:       
-                    data_scaling = dataload_npz(scaled_data_paths+str(iexp_glob))     
-                    glob_flux_sc = data_scaling['glob_flux_scaling']  
+                if bdband_flux_sc:glob_flux_sc = data_scaling['glob_flux_scaling']  
                 else:glob_flux_sc = 1.  
     
             #Flux balance functions
@@ -1103,7 +1097,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
             if calc_var_ref2:var_ref2[iord,idx_def_weights_ord] = cov_ref_exp[iord][0,idx_def_weights_ord]
     
             #Spectral broadband flux scaling 
-            if calc_flux_sc_all:flux_sc_all[iord,idx_def_weights_ord] = 1. - data_scaling['loc_flux_scaling'](cen_bins_ord)      
+            if calc_flux_sc_all and bdband_flux_sc:flux_sc_all[iord,idx_def_weights_ord] = 1. - data_scaling['loc_flux_scaling'](cen_bins_ord)      
     
             #Estimate of true variance on scaled disk-integrated profiles
             if calc_EFsc2: 

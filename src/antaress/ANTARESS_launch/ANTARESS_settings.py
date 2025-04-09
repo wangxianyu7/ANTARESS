@@ -519,7 +519,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #%%%%%% Using stellar spectrum  
-    gen_dic['DImast_weight'] = False  
+    gen_dic['DImast_weight'] = True  
     
     
     #%%%%%% Plots: weighing master 
@@ -1153,6 +1153,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%%% Activating
     #    - for 2D spectra only
     gen_dic['corr_FbalOrd']=True   
+    if gen_dic['sequence']=='st_master_tseries':gen_dic['corr_FbalOrd']=False
     
     
     #%%%%% Calculating/retrieving
@@ -1278,6 +1279,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #                           should cover the maximum velocity shift between two exposures in the visit
     #    - the Keplerian option should be preferred, as the others will be biased by the RM effect 
     gen_dic['al_cosm']={'mode':'kep'}
+    if gen_dic['sequence']=='st_master_tseries':gen_dic['al_cosm']={'mode':'pip'}
     
     
     #%%%%% Adjacent spectra

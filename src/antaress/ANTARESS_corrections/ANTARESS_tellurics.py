@@ -166,6 +166,24 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
                 if (inst in gen_dic['tell_ord_fit']) and (vis in gen_dic['tell_ord_fit'][inst]) and (len(gen_dic['tell_ord_fit'][inst][vis])>0):
                     fixed_args['iord_fit_list'] = np.intersect1d(iord_list_ref,gen_dic['tell_ord_fit'][inst][vis]) 
                 else:fixed_args['iord_fit_list'] = iord_list_ref
+                
+                #Check telluric lines used for the fit are available in the processed spectral range
+                data_com = dataload_npz(data_vis['proc_com_data_paths']) 
+                BERV_med = np.median(data_prop_vis['BERV'])
+                sc_shift = 1./(gen_specdopshift(BERV_med)*(1.+1.55e-8))
+                wav_min_tell_fit = data_com['cen_bins'][fixed_args['iord_fit_list'][0]][0]*sc_shift
+                wav_max_tell_fit = data_com['cen_bins'][fixed_args['iord_fit_list'][-1]][-1]*sc_shift   
+                if gen_dic['sp_frame']=='air': 
+                    wav_min_tell_fit*=air_index(wav_min_tell_fit, t=15., p=760.)
+                    wav_max_tell_fit*=air_index(wav_max_tell_fit, t=15., p=760.)
+                for molec in gen_dic['tell_species']:
+                    lines_fit_mol_wav = tell_mol_dic['lines_fit_molecules'][molec]['CCF_lines_position_wavelength']
+                    lines_fit_mol_wav_min = np.min(lines_fit_mol_wav)
+                    lines_fit_mol_wav_max = np.max(lines_fit_mol_wav)
+                    if (lines_fit_mol_wav_min>wav_max_tell_fit):
+                        stop('ERROR: bluest fitted telluric line for '+molec+' (w = '+"{0:.3f}".format(lines_fit_mol_wav_min)+' A) is beyond reddest data bin (w = '+"{0:.3f}".format(wav_max_tell_fit)+' A)')
+                    if (lines_fit_mol_wav_max<wav_min_tell_fit):
+                        stop('ERROR: reddest fitted telluric line for '+molec+' (w = '+"{0:.3f}".format(lines_fit_mol_wav_max)+' A) is below bluest data bin (w = '+"{0:.3f}".format(wav_min_tell_fit)+' A)')                    
 
                 #Continuum and fitted RV range for telluric CCFs 
                 if (inst in gen_dic['tell_fit_range']) and (vis in gen_dic['tell_fit_range'][inst]):fixed_args['tell_fit_range'] = gen_dic['tell_fit_range'][inst][vis]
