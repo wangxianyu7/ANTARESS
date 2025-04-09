@@ -15,6 +15,12 @@ stages:
   - staging
   - production
 
+ .before_install:
+  stage: before_install
+  script:
+    - apt-get update
+    - apt-get install -y libgsl-dev
+
 .setup_env:
   before_script:
     - apt update
@@ -32,9 +38,10 @@ stages:
     #Install here packages that failed to install via ${PROJECT_NAME}_env.yml
     - pip install PyAstronomy
     - pip install pysme-astro
-    - cd src/antaress/ANTARESS_analysis/C_grid/
-    - python setup_star_grid_fit.py build_ext --inplace 
-    - python setup_star_grid_fit.py install --user
+    - export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH    
+     - cd src/antaress/ANTARESS_analysis/C_grid/
+     - python setup_star_grid_fit.py build_ext --inplace
+     - python setup_star_grid_fit.py install --user
 
 Build distribution:
   extends: .setup_env
