@@ -89,7 +89,7 @@ void C_coadd_loc_pgauss_prof(double* rv_surf_star_grid, double* ctrst_grid, doub
     // Gaussian with baseline set to continuum value
         for (int j = 0; j < args_ncen_bins; j++) {
             pgauss_grid[i * args_ncen_bins + j] = A * (1.0 - C * exp(-(X * (args_cen_bins[j] - B) / D) * (X * (args_cen_bins[j] - B) / D)));
-            if (args_cen_bins[j] >=  B - G &  args_cen_bins[j] <= B + G){
+            if ((args_cen_bins[j] >= (B - G)) && (args_cen_bins[j] <= (B + G))) {
                 pgauss_grid[i * args_ncen_bins + j] *= (E * G * G * G * G) + (2.0 * F * G * G * G * G * G * G) - (G * G * (args_cen_bins[j] - B) * (args_cen_bins[j] - B) * (2.0 * E + 3.0 * F * G * G)) + (E * (args_cen_bins[j] - B) * (args_cen_bins[j] - B) * (args_cen_bins[j] - B) * (args_cen_bins[j] - B)) + (F * (args_cen_bins[j] - B) * (args_cen_bins[j] - B) * (args_cen_bins[j] - B) * (args_cen_bins[j] - B) * (args_cen_bins[j] - B) * (args_cen_bins[j] - B));
             }
         }
