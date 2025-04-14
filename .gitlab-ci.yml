@@ -37,7 +37,7 @@ stages:
     - pip install PyAstronomy
     - pip install pysme-astro   
     - cd src/antaress/ANTARESS_analysis/C_grid/
-    - python setup_star_grid_fit.py build_ext --inplace
+    - python setup.py build_ext --inplace
     - ls -lh C_star_grid*.so
 
 Build distribution:
