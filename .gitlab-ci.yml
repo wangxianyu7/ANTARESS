@@ -39,7 +39,6 @@ stages:
     - cd src/antaress/ANTARESS_analysis/C_grid/
     - python setup_star_grid_fit.py build_ext --inplace
     - ls -lh C_star_grid*.so
-    - python setup_star_grid_fit.py install --user
 
 Build distribution:
   extends: .setup_env
