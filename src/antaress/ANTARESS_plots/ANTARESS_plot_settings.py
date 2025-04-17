@@ -77,7 +77,7 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     plot_options['hide_axis'] = False
     
     #Rasterize datapoints
-    plot_options['rasterized'] = True
+    plot_options['rasterized'] = False
 
     #Transparent background
     plot_options['transparent'] = False
@@ -115,7 +115,8 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     plot_options['verbose']=True 
 
     #Plot legend figure
-    plot_options['legend']=False 
+    if key_plot in ['gcal']:plot_options['legend']=True 
+    else:plot_options['legend']=False 
     plot_options['legend_to_plot']={} 
 
     #--------------------------------------
@@ -181,11 +182,12 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
     #Reference planet for each visit
     #    - set to first transit planet if it exists, or to first planet overall otherwise
     plot_options['pl_ref']={}
-    for inst in plot_options['visits_to_plot']:
-        plot_options['pl_ref'][inst]={'binned':gen_dic['studied_pl_list'][0]}
-        for vis in plot_options['visits_to_plot'][inst]:
-            if len(data_dic[inst][vis]['studied_pl'])>0:plot_options['pl_ref'][inst][vis]=data_dic[inst][vis]['studied_pl'][0]
-            else:plot_options['pl_ref'][inst][vis]=gen_dic['studied_pl_list'][0]
+    if len(gen_dic['studied_pl_list'])>0:
+        for inst in plot_options['visits_to_plot']:
+            plot_options['pl_ref'][inst]={'binned':gen_dic['studied_pl_list'][0]}
+            for vis in plot_options['visits_to_plot'][inst]:
+                if len(data_dic[inst][vis]['studied_pl'])>0:plot_options['pl_ref'][inst][vis]=data_dic[inst][vis]['studied_pl'][0]
+                else:plot_options['pl_ref'][inst][vis]=gen_dic['studied_pl_list'][0]
 
     #Shade range not used for fitting
     plot_options['shade_unfit']=False
@@ -825,9 +827,7 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
 
         #%%%%% Generic settings
         plot_settings=gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic)
-     
-        
-     
+
         
 
 
@@ -984,8 +984,10 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             ##############################################################################
             #%%%%% Profile and its fit
             if (key_plot=='DIbin'):
-                pass
 
+                #%%%%% Bin dimension
+                if gen_dic['sequence']=='st_master_tseries':plot_settings[key_plot]['dim_plot']='time'            
+                             
             ##############################################################################
             #%%%%% Residuals between the profile and its fit
             if (key_plot=='DIbin_res'):

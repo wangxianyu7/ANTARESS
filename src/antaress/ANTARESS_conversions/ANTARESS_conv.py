@@ -10,7 +10,7 @@ from ..ANTARESS_conversions.ANTARESS_binning import pre_calc_bin_prof,weights_bi
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange
 from ..ANTARESS_process.ANTARESS_data_process import calc_Intr_mean_cont
 from ..ANTARESS_corrections.ANTARESS_detrend import corr_length_determination
-from ..ANTARESS_general.utils import stop,dataload_npz,datasave_npz,MAIN_multithread,np_where1D,init_parallel_func,gen_specdopshift,check_data
+from ..ANTARESS_general.utils import stop,dataload_npz,datasave_npz,MAIN_multithread,np_where1D,init_parallel_func,gen_specdopshift,check_data,dup_edges
 
 
 def init_conversion(data_type_gen,gen_dic,prop_dic,inst,vis,mode,dir_save,data_dic):
@@ -714,7 +714,7 @@ def multithread_new_compute_CCF(func_input,nthreads,n_elem,y_inputs,common_args)
 
 
 
-def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
+def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic,coord_dic):
     """**Wrap-up function to compute 1D spectra.**
     
     Runs ANTARESS with default or manual settings.  
@@ -744,10 +744,11 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
         nspec_1D = prop_dic['spec_1D_prop'][inst]['nspec']
         cen_bins_1D = prop_dic['spec_1D_prop'][inst]['cen_bins']
         edge_bins_1D = prop_dic['spec_1D_prop'][inst]['edge_bins']
-
+     
         #Associated tables  
+        dt_all = coord_dic[inst][vis]['t_dur']       
         proc_data_paths = {}
-        scaling_data_paths = {} if gen_dic['flux_sc'] else None
+        scaling_data_paths = {}
         tell_data_paths =  {} if data_vis['tell_sp'] else None
         mean_gcal_data_paths = {}
         if data_vis['cal_weight']:sing_gcal_data_paths = {}
@@ -755,7 +756,8 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
         DImast_weight_data_paths = {} if gen_dic['DImast_weight'] else None
         for key in data_type_key:   
             proc_data_paths[key] = data_vis['proc_'+key+'_data_paths']
-            if scaling_data_paths is not None:scaling_data_paths[key] = data_vis['scaled_'+key+'_data_paths']
+            if gen_dic['flux_sc']:scaling_data_paths[key] = data_vis['scaled_'+key+'_data_paths']
+            else:scaling_data_paths[key] = None
             if tell_data_paths is not None:tell_data_paths[key] = data_vis['tell_'+key+'_data_paths']
             mean_gcal_data_paths[key] = data_vis['mean_gcal_'+key+'_data_paths']
             if sing_gcal_data_paths is not None:sing_gcal_data_paths[key] = data_vis['sing_gcal_'+key+'_data_paths']
@@ -766,7 +768,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
         ifirst = iexp_conv[0]
         common_args = (data_type_gen,data_type,gen_dic['resamp_mode'],dir_save,cen_bins_1D,edge_bins_1D,nspec_1D,data_dic[inst]['nord'],ifirst,proc_com_data_paths_new,\
                        gen_dic[inst][vis]['idx_in2exp'],data_dic['Intr']['cov_loc_star'],proc_data_paths,tell_data_paths,scaling_data_paths,mean_gcal_data_paths,sing_gcal_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],\
-                       gen_dic['save_data_dir'],gen_dic['type'],data_vis['type'],data_vis['dim_exp'],gen_vis['idx_exp2in'],gen_vis['idx_in'],gen_dic['type2var'])
+                       gen_dic['save_data_dir'],gen_dic['type'],data_vis['type'],data_vis['dim_exp'],gen_vis['idx_exp2in'],gen_vis['idx_in'],gen_dic['type2var'],dt_all,data_vis['comm_sp_tab'],gen_dic['sequence'])
         if (nthreads>1) and (nthreads <=len(iexp_conv)): MAIN_multithread(conv_2D_to_1D_exp,nthreads,len(iexp_conv),[iexp_conv],common_args)                           
         else: conv_2D_to_1D_exp(iexp_conv,*common_args)  
 
@@ -836,7 +838,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic):
 
 def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen_bins_1D,edge_bins_1D,nspec_1D,nord,ifirst,proc_com_data_paths,\
                       idx_in2exp,cov_loc_star,proc_data_paths,tell_data_paths,scaling_data_paths,mean_gcal_data_paths,sing_gcal_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,\
-                      save_data_dir,gen_type,data_mode,dim_exp,idx_exp2in,idx_in,type2var):
+                      save_data_dir,gen_type,data_mode,dim_exp,idx_exp2in,idx_in,type2var,dt_all,comm_sp_tab,sequence):
     r"""**Main routine to convert 2D spectra into 1D spectra** 
     
     Calculates 1D spectra from 2D spectra, propagating covariance matrix
@@ -857,22 +859,35 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen
     for iexp_sub,iexp in enumerate(iexp_conv):   
         data_type_eff = deepcopy(data_type)
         iexp_eff = deepcopy(iexp)     #Effective index (relative to global or in-transit tables)
-        iexp_glob = deepcopy(iexp)    #Global index
-        if data_type_gen=='DI':
-            bdband_flux_sc = False
-        else:
-            bdband_flux_sc = True           
-            if (data_type_gen=='Intr'):
-                if (iexp in idx_in):
-                    iexp_eff = idx_exp2in[iexp] 
-                else:data_type_eff = 'Diff'
-            elif data_type_eff=='Absorption':iexp_glob = idx_in[iexp]
-       
+        iexp_glob = deepcopy(iexp)    #Global index         
+        if (data_type_gen=='Intr'):
+            if (iexp in idx_in):
+                iexp_eff = idx_exp2in[iexp] 
+            else:data_type_eff = 'Diff'
+        elif data_type_eff=='Absorption':iexp_glob = idx_in[iexp]
+
         #Upload spectra and associated tables in star or local frame
+        #    - all complementary tables are defined on the same grid as the current exposure
         flux_est_loc_exp = None
         cov_est_loc_exp = None
         SpSstar_spec = None    
         data_exp = dataload_npz(proc_data_paths[data_type_eff]+str(iexp_eff))
+        if DImast_weight_data_paths is not None:
+            
+            #DI master
+            #    - the master has been calculated on the common spectral grid for the visit
+            #      if the resampling condition is not met, this grid is not the same as that of individual exposures
+            data_ref = dataload_npz(DImast_weight_data_paths[data_type_eff][iexp_eff])
+            if (not comm_sp_tab):
+                flux_ref=np.zeros(dim_exp,dtype=float)*np.nan
+                cov_ref=np.zeros(nord,dtype=object)
+                for iord in range(nord): 
+                    flux_ref[iord],cov_ref[iord] = bind.resampling(data_exp['edge_bins'][iord], data_ref['edge_bins'][iord], data_ref['flux'][iord] , cov = data_ref['cov'][iord], kind=resamp_mode) 
+                data_ref['cen_bins'] = data_exp['cen_bins']
+                data_ref['edge_bins'] = data_exp['edge_bins']
+                data_ref['flux'] = flux_ref
+                data_ref['cov'] = cov_ref
+                data_ref['cond_def'] = ~np.isnan(flux_ref)
         if tell_data_paths is not None:data_exp['tell'] = dataload_npz(tell_data_paths[data_type_eff][iexp_eff])['tell'] 
         data_exp['mean_gcal'] = dataload_npz(mean_gcal_data_paths[data_type_eff][iexp_eff])['mean_gcal'] 
         if sing_gcal_data_paths is not None:
@@ -882,13 +897,12 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen
         else:
             data_exp['sing_gcal']=None   
             data_exp['sdet2'] = None   
-        if DImast_weight_data_paths is not None:data_ref = dataload_npz(DImast_weight_data_paths[data_type_eff][iexp_eff])
         if data_type_gen=='Atm':
             data_est_loc=dataload_npz(LocEst_Atm_data_paths[iexp_eff])
             flux_est_loc_exp = data_est_loc['flux']
             if cov_loc_star:cov_est_loc_exp = data_est_loc['cov']                      
             if data_type_eff=='Absorption':SpSstar_spec = data_exp['SpSstar_spec']
-        
+
         #Weight definition
         #    - cannot be parallelized as functions cannot be pickled
         #    - here the binning is performed between overlapping orders of the same exposure 
@@ -896,76 +910,84 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen
         #      they are however processed in the same way as the exposure if used later on in the pipeline 
         #    - for intrinsic and atmospheric profiles we provide the broadband flux scaling, even if does not matter to the weighing, because it is otherwise set to 0 and messes up with weights definition
         #    - input profiles are by definition S2D, so there are no estimates of true variance already calculated
-        data_exp['weights'],EFsc2_all,EFdiff2,EFintr2,EFem2,EAbs2 = weights_bin_prof(range(nord),scaling_data_paths[data_type_eff],inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type_eff,data_mode,dim_exp,None,data_exp['sing_gcal'], data_exp['cen_bins'],1.,np.ones(dim_exp),np.zeros([dim_exp[0],1,dim_exp[1]]),
-                                                                                     corr_Fbal=False,bdband_flux_sc=bdband_flux_sc,sdet_exp2 = data_exp['sdet2'])
+        data_exp['weights'],EFsc2_all,EFdiff2,EFintr2,EFem2,EAbs2 = weights_bin_prof(range(nord),scaling_data_paths[data_type_eff],inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type_eff,data_mode,dim_exp,data_exp['tell'],data_exp['sing_gcal'], data_exp['cen_bins'],dt_all[iexp_glob],data_ref['flux'],data_ref['cov'],sdet_exp2 = data_exp['sdet2'])
         variances_1D = {'DI':EFsc2_all,'Diff':EFdiff2,'Intr':EFintr2,'Emission':EFem2,'Absorption':EAbs2}
 
-        #Resample spectra and weights on 1D table in each order, and clean weights
-        flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned,weight_exp_all = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_exp,edge_bins_1D)
+        #-----------------------
+        #Resample profiles and weights on 1D table in each order, and clean weights
+        #    - at this stage, weights are still defined in S2D format
+        #    - complementary tables are processed in the same way as the exposure spectrum, using the same weights but cleaning the weights according to the complementary table defined pixels    
+        #    - the DI weighing master has followed the same shifts as intrinsic or atmospheric profiles, but always remain either defined on the common table, or on a specific table different from the table of its associated exposure
+        #    - spectral scaling is not updated, since it is defined as a function and remains applicable to the 1D spectrum as with the 2D spectrum 
+        #    - calibration profiles are not consistent in the overlaps between orders, and are not used anymore
+        #-----------------------
+        
+        #Exposure spectrum
+        flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_exp,edge_bins_1D)
 
-        #Resample reference spectra and weights on 1D table in each order, and clean weights
-        #    - the master may not be defined at the same pixels as the spectra, so that weights must be processed specifically for the master
-        #      the same weights must however be used, so instead of calling weights_bin_prof() on the master grid we provide as input the weight table pre-cleaned for the spectra
-        #    - this is not required for telluric and SpSst since they are defined at all pixels 
-        if DImast_weight_data_paths is not None:
-            flux_ref_all,cov_ref_all,cond_def_ref_all,glob_weight_ref_all,cond_def_ref_binned,_ = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_ref,edge_bins_1D,weight_in_all = weight_exp_all)
+        #Variance
+        #    - we use variances to define true errors, ie the diagonal of the covariance matrix that undergoes
+        # var_ord = var_all*glob_weight_all**2.
+        var_exp_all,_,cond_def_var_all,glob_weight_var_all,cond_def_var_binned = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,{'edge_bins':data_exp['edge_bins'],'flux':variances_1D[data_type],'weights':data_exp['weights']**2.},edge_bins_1D,nocov=True)
+        variance_ord_contr = np.zeros(nspec_1D, dtype=float) 
+        
+        #Complementary profiles
+        if sequence not in ['st_master_tseries']:
+            
+            #DI weighing master
+            if DImast_weight_data_paths is not None:
+                data_ref['weights']= deepcopy(data_exp['weights'])
+                flux_ref_all,cov_ref_all,cond_def_ref_all,glob_weight_ref_all,cond_def_ref_binned = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_ref,edge_bins_1D)
+                flux_ref_ord_contr=[]
+                cov_ref_ord_contr=[] 
+                
+            #Telluric spectrum
+            if tell_data_paths is not None:  
+                tell_exp_all,_,cond_def_tell_all,glob_weight_tell_all,cond_def_tell_binned = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,{'edge_bins':data_exp['edge_bins'],'flux':data_exp['tell'],'weights':data_exp['weights']},edge_bins_1D,nocov=True)
+                tell_ord_contr = np.zeros(nspec_1D, dtype=float)
+                
+            #Surface ratio
+            if SpSstar_spec is not None:  
+                dic_temp = {'edge_bins':data_exp['edge_bins'],'flux':np.zeros(dim_exp,dtype=float),'weights':data_exp['weights']}
+                for iord in range(nord):dic_temp['flux'][iord] = SpSstar_spec[iord](data_exp['cen_bins'][iord])
+                SpSstar_exp_all,_,cond_def_SpSstar_all,glob_weight_SpSstar_all,cond_def_SpSstar_binned = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,dic_temp,edge_bins_1D,nocov=True)
+                SpSstar_spec_ord_contr = np.zeros(nspec_1D, dtype=float)
+                
+            #Planet-occulted profile
+            if flux_est_loc_exp is not None:  
+                if cov_est_loc_exp is None:   
+                    floc_exp_all,_,cond_def_floc_all,glob_weight_floc_all,cond_def_floc_binned = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,{'edge_bins':data_exp['edge_bins'],'flux':flux_est_loc_exp[iord],'weights':data_exp['weights']},edge_bins_1D,nocov=True)                                  
+                else:
+                    floc_exp_all,covloc_exp_all,cond_def_floc_all,glob_weight_floc_all,cond_def_floc_binned = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,{'edge_bins':data_exp['edge_bins'],'flux':flux_est_loc_exp[iord],'cov':cov_est_loc_exp[iord],'weights':data_exp['weights']},edge_bins_1D)
+                    cov_est_loc_ord_contr=[] 
+                flux_est_loc_ord_contr=[]
 
         #Processing each order
         flux_ord_contr=[]
         cov_ord_contr=[] 
-        variance_ord_contr = np.zeros(nspec_1D, dtype=float) 
-        if tell_data_paths is not None:
-            tell_ord_contr = np.zeros(nspec_1D, dtype=float)
-            cond_def_tell_ord_contr = np.zeros(nspec_1D, dtype=bool)
-        if DImast_weight_data_paths is not None:
-            flux_ref_ord_contr=[]
-            cov_ref_ord_contr=[] 
-        if SpSstar_spec is not None:SpSstar_spec_ord_contr = np.zeros(nspec_1D, dtype=float)
-        if flux_est_loc_exp is not None:
-            flux_est_loc_ord_contr=[]
-            if cov_est_loc_exp is not None:cov_est_loc_ord_contr=[]            
         for iord in range(nord):
 
             #Multiply by order weight and store
             flux_ord,cov_ord = bind.mul_array(flux_exp_all[iord] , cov_exp_all[iord] , glob_weight_all[iord])          
             flux_ord_contr+=[flux_ord]
             cov_ord_contr+=[cov_ord]
-            cond_def = cond_def_all[iord]
-            
-            #Apply same steps to complementary spectra
-            #    - resampling must always been applied from the 2D to the 1D spectral grid
-            #    - calibration profiles are not consistent in the overlaps between orders, and are not used anymore
-            #    - spectral scaling is not updated, since it is defined as a function and remains applicable to the 1D spectrum as with the 2D spectrum 
-            #    - the master has followed the same shifts as the intrinsic or atmospheric profiles, but always remain either defined on the common table, or on a specific table different from the table of its associated exposure
-            #    - we use variances to define true errors, ie the diagonal of the covariance matrix that undergoes
-            # var_ord = var_all*glob_weight_all**2.
-            variance_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],variances_1D[data_type][iord],kind=resamp_mode)
-            variance_temp[~cond_def] = 0. 
-            variance_ord_contr+=variance_temp*glob_weight_all[iord]**2.             
-            if tell_data_paths is not None:
-                tell_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],  data_exp['tell'][iord] ,kind=resamp_mode)
-                tell_temp[~cond_def] = 0. 
-                cond_def_tell_ord_contr[cond_def] = True                   
-                tell_ord_contr+=tell_temp*glob_weight_all[iord]                     
-            if DImast_weight_data_paths is not None:
-                flux_ref_ord,cov_ref_ord = bind.mul_array(flux_ref_all[iord] , cov_ref_all[iord] , glob_weight_ref_all[iord])          
-                flux_ref_ord_contr+=[flux_ref_ord]
-                cov_ref_ord_contr+=[cov_ref_ord]
-            if SpSstar_spec is not None:
-                SpSstar_spec_temp = bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],SpSstar_spec[iord](data_exp['cen_bins'][iord]) ,kind=resamp_mode)
-                SpSstar_spec_temp[~cond_def] = 0.
-                SpSstar_spec_ord_contr+=SpSstar_spec_temp*glob_weight_all[iord]
-            if flux_est_loc_exp is not None:  
-                if cov_est_loc_exp is None:                    
-                    flux_est_loc_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], flux_est_loc_exp[iord] , kind=resamp_mode)   
-                    flux_est_loc_temp[~cond_def] = 0.   
-                    flux_est_loc_ord_contr+=flux_est_loc_temp*glob_weight_all[iord]                  
-                else:
-                    flux_est_loc_temp,cov_est_loc_temp = bind.resampling(edge_bins_1D, data_ref['edge_bins'][iord], flux_est_loc_exp[iord] , cov = cov_est_loc_exp[iord], kind=resamp_mode)   
-                    flux_est_loc_temp,cov_est_loc_temp = bind.mul_array( flux_est_loc_temp, cov_est_loc_temp , glob_weight_all[iord])
-                    flux_est_loc_temp[~cond_def] = 0.   
-                    flux_est_loc_ord_contr+=[flux_est_loc_temp]
-                    cov_est_loc_ord_contr+=[cov_est_loc_temp]
+
+            #Complementary profiles
+            variance_ord_contr+=dup_edges(bind.resampling(edge_bins_1D,data_exp['edge_bins'][iord],variances_1D[data_type][iord],kind=resamp_mode))*glob_weight_var_all[iord]  
+            if sequence not in ['st_master_tseries']:          
+                if DImast_weight_data_paths is not None:
+                    flux_ref_ord,cov_ref_ord = bind.mul_array(flux_ref_all[iord] , cov_ref_all[iord] , glob_weight_ref_all[iord])          
+                    flux_ref_ord_contr+=[flux_ref_ord]
+                    cov_ref_ord_contr+=[cov_ref_ord]
+                if tell_data_paths is not None:tell_ord_contr+=tell_exp_all[iord]*glob_weight_tell_all[iord] 
+                if SpSstar_spec is not None:SpSstar_spec_ord_contr+=SpSstar_exp_all[iord]*glob_weight_SpSstar_all[iord] 
+                if flux_est_loc_exp is not None:  
+                    if cov_est_loc_exp is None:  
+                        flux_est_loc_ord_contr+=floc_exp_all[iord]*glob_weight_tell_all[iord]                 
+                    else:
+                        floc_ref_ord,covloc_ref_ord = bind.mul_array(floc_exp_all[iord] , covloc_exp_all[iord] , glob_weight_ref_all[iord])          
+                        flux_est_loc_ord_contr+=[floc_ref_ord]
+                        cov_est_loc_ord_contr+=[covloc_ref_ord]                    
 
         #Co-addition of spectra from all orders
         flux_1D,cov_1D = bind.sum(flux_ord_contr,cov_ord_contr)
@@ -978,33 +1000,34 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen
         #    - global flux scaling is not modified
         #      flux scaling tables are always called with global indexes
         #    - variance grids are saved for the data type that was converted (thus, only one data type in a given processing will have its 1D variance grid defined)
-        data_exp1D = {'cen_bins':cen_bins_1D[None,:],'edge_bins':edge_bins_1D[None,:],'flux' : flux_1D[None,:],'cond_def' : cond_def_binned[None,:], 'cov' : [cov_1D]} 
-        variance_ord_contr[~cond_def_binned]=np.nan   
-        datasave_npz(dir_save[data_type_eff]+'_'+type2var[data_type]+str(iexp_eff), {'var':variance_ord_contr[None,:]})          
-        if SpSstar_spec is not None:data_exp1D['SpSstar_spec'] =  SpSstar_spec_ord_contr[None,:]
+        data_exp1D = {'cen_bins':cen_bins_1D[None,:],'edge_bins':edge_bins_1D[None,:],'flux' : flux_1D[None,:],'cond_def' : cond_def_binned[None,:], 'cov' : [cov_1D]}   
+        if sequence not in ['st_master_tseries']:
+            if SpSstar_spec is not None:
+                SpSstar_spec_ord_contr[~cond_def_SpSstar_binned]=0.  
+                data_exp1D['SpSstar_spec'] =  SpSstar_spec_ord_contr[None,:]
+            if DImast_weight_data_paths is not None:
+                flux_ref_1D,cov_ref_1D = bind.sum(flux_ref_ord_contr,cov_ref_ord_contr)
+                flux_ref_1D[~cond_def_ref_binned]=np.nan   
+                datasave_npz(dir_save[data_type_eff]+'ref_'+str(iexp_eff),{'cen_bins':data_exp1D['cen_bins'],'edge_bins':data_exp1D['edge_bins'],'flux':flux_ref_1D[None,:],'cov':[cov_ref_1D]})          
+            if tell_data_paths is not None:
+                tell_ord_contr[~cond_def_tell_binned]=1.       
+                datasave_npz(dir_save[data_type_eff]+'_tell'+str(iexp_eff), {'tell':tell_ord_contr[None,:]})                 
+            if flux_est_loc_exp is not None:
+                if cov_est_loc_exp is None:
+                    flux_est_loc_ord_contr[~cond_def_floc_binned]=np.nan  
+                    dic_sav_estloc = {'edge_bins':data_exp1D['edge_bins'],'flux':flux_est_loc_ord_contr[None,:]}
+                else:
+                    flux_est_loc_1D,cov_est_loc_1D = bind.sum(flux_est_loc_ord_contr,cov_est_loc_ord_contr)  
+                    flux_est_loc_1D[~cond_def_floc_binned]=np.nan  
+                    dic_sav_estloc = {'edge_bins':data_exp1D['edge_bins'],'flux':flux_est_loc_1D[None,:],'cov':[cov_est_loc_1D]}
+                datasave_npz(dir_save[data_type_eff]+'estloc_'+str(iexp_eff),dic_sav_estloc)                  
         datasave_npz(dir_save[data_type_eff]+str(iexp_eff),data_exp1D)
-        if tell_data_paths is not None:
-            tell_ord_contr[~cond_def_tell_ord_contr] = 1.
-            tell_1D = tell_ord_contr[None,:]
-            datasave_npz(dir_save[data_type_eff]+'_tell'+str(iexp_eff), {'tell':tell_1D})                 
-        if DImast_weight_data_paths is not None:
-            flux_ref_1D,cov_ref_1D = bind.sum(flux_ref_ord_contr,cov_ref_ord_contr)
-            flux_ref_1D[~cond_def_ref_binned]=np.nan   
-            datasave_npz(dir_save[data_type_eff]+'ref_'+str(iexp_eff),{'cen_bins':data_exp1D['cen_bins'],'edge_bins':data_exp1D['edge_bins'],'flux':flux_ref_1D[None,:],'cov':[cov_1D]})           
-        if flux_est_loc_exp is not None:
-            if cov_est_loc_exp is None:
-                flux_est_loc_1D = flux_est_loc_ord_contr
-                flux_est_loc_1D[~cond_def_binned]=np.nan 
-                dic_sav_estloc = {'edge_bins':data_exp1D['edge_bins'],'flux':flux_est_loc_1D[None,:]}
-            else:
-                flux_est_loc_1D,cov_est_loc_1D = bind.sum(flux_est_loc_ord_contr,cov_est_loc_ord_contr)
-                flux_est_loc_1D[~cond_def_binned]=np.nan   
-                dic_sav_estloc = {'edge_bins':data_exp1D['edge_bins'],'flux':flux_est_loc_1D[None,:],'cov':[cov_est_loc_1D]}
-            datasave_npz(dir_save[data_type_eff]+'estloc_'+str(iexp_eff),dic_sav_estloc)
+        variance_ord_contr[~cond_def_var_binned]=np.nan   
+        datasave_npz(dir_save[data_type_eff]+'_'+type2var[data_type]+str(iexp_eff), {'var':variance_ord_contr[None,:]})          
 
         #Update common table for the visit
         if iexp==ifirst:datasave_npz(proc_com_data_paths, {'dim_exp':[1,nspec_1D],'nspec':nspec_1D,'cen_bins':np.tile(cen_bins_1D,[1,1]),'edge_bins':np.tile(edge_bins_1D,[1,1])})      
-        
+
     return None
 
 

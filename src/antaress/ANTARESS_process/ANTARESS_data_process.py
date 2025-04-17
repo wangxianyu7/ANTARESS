@@ -39,7 +39,7 @@ def align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic):
     proc_gen_data_paths_new = gen_dic['save_data_dir']+'Aligned_'+data_type_gen+'_data/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis+'_'
     if (data_type_gen=='DI') and (data_dic['DI']['sysvel'][inst][vis]==0.):print('         WARNING: sysvel = 0 km/s')
     if data_type_gen=='Intr':proc_gen_data_paths_new+='in'  
-    proc_mast = True if ((gen_dic['DImast_weight']) and (data_type_gen in ['Intr','Atm'])) else False
+    proc_mast = True if ((gen_dic['DImast_weight']) and (data_type_gen in ['Intr','Atm'])) else False   #The master DI profiles has not yet been calculated when calling align_profiles() on DI profiles
     proc_locEst = True if ((data_type_gen=='Atm') and ((data_type=='Absorption') or ((data_type=='Emission')) and data_dic['Intr']['cov_loc_star'])) else False
     
     #1D variance grid
@@ -468,13 +468,17 @@ def rescale_profiles(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plo
                     print('         Using transit light curve model with single planet')
         elif transit_prop['mode']=='simu': 
             print('         Using simulated light curve')               
-    if not cond_lc:print('         Applying global scaling only')
-    else:print('         Applying global scaling and light curve scaling')
+    if not cond_lc:print('         Global scaling only')
+    else:print('         Global scaling and light curve scaling')
     
-    #Flux scaling
-    if not data_dic['DI']['rescale_DI']:print('         Scaling is calculated but not applied')
+    #Flux scaling application
+    #    - if the data has absolute flux level, scaling should not be applied
+    #      light curve scaling is however still defined so that weight profiles can be computed (since the relative flux scaling that the data naturally contains is still used in weight computations)
+    #      global scaling unity is set to unity
+    if not data_dic['DI']['rescale_DI']:
+        print('         No scaling is applied. Computing light curve scaling and setting global scaling to 1.')
         
-    #Calculating rescaled data
+    #Calculating 
     if (gen_dic['calc_flux_sc']):
         print('         Calculating data')
         dic_save={}
@@ -487,7 +491,7 @@ def rescale_profiles(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plo
         LC_flux_band_all = np.ones([data_vis['n_in_visit'],system_prop['nw']])    
 
         #------------------------------------------------------------------------ 
-        #Light curve scaling
+        #Light curve
         if cond_lc:
         
             #Simulated light curves
@@ -744,21 +748,18 @@ def rescale_profiles(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plo
             if (system_prop['nw']==1) or (null_loc_flux_scaling[iexp]):loc_flux_scaling[iexp] = np.poly1d([1.-LC_flux_band_all[iexp,0]])
             else:loc_flux_scaling[iexp] = interp1d(system_prop['w'],1.-LC_flux_band_all[iexp],fill_value=(1.-LC_flux_band_all[iexp,0],1.-LC_flux_band_all[iexp,-1]), bounds_error=False)
                 
-            #Requested scaling range
-            if len(data_dic['DI']['scaling_range'])>0:
-                cond_def_scal=False 
-                for bd_int in data_dic['DI']['scaling_range']:cond_def_scal |= (edge_bins_com[:,0:-1]>=bd_int[0]) & (edge_bins_com[:,1:]<=bd_int[1])   
-            else:cond_def_scal=True 
+            #Global scaling
+            if data_dic['DI']['rescale_DI']:
+                
+                #Requested scaling range
+                if len(data_dic['DI']['scaling_range'])>0:
+                    cond_def_scal=False 
+                    for bd_int in data_dic['DI']['scaling_range']:cond_def_scal |= (edge_bins_com[:,0:-1]>=bd_int[0]) & (edge_bins_com[:,1:]<=bd_int[1])   
+                else:cond_def_scal=True 
+    
+                #Accounting for undefined pixels in scaling range            
+                cond_def_scal_all[iexp] = cond_def_all[iexp]  & cond_def_scal            
 
-            #Accounting for undefined pixels in scaling range            
-            cond_def_scal_all[iexp] = cond_def_all[iexp]  & cond_def_scal            
-
-        #Scaling pixels common to all exposures
-        #    - planetary signatures should not be excluded from the range of summation, for the same reason as they are included in the spectral scaling : the light curves used for the scaling include those ranges potentially absorbed by the planet
-        #      the same logic applies to CCF: their full range must be used for the scaling, and not just the continuum      
-        cond_scal_com  = np.all(cond_def_scal_all,axis=0)
-        if np.sum(cond_scal_com)==0.:stop('No pixels in common scaling range')    
-      
         #Defining global scaling values
         #    - used to set all profiles to a common global flux level
         #    - spectral profiles have been trimmed, corrected, and aligned
@@ -766,15 +767,25 @@ def rescale_profiles(data_inst,inst,vis,data_dic,coord_dic,exp_dur_d,gen_dic,plo
         #      furthermore masters afterward will be calculated from these profiles, scaled, thus they do not need to be set to the level of the original global master
         #      we thus use the total flux summed over the full range of the current profiles, with their median taken as reference
         #    - defined on temporal flux density (not cumulated photoelectrons counts)
-        Tflux_all = np.zeros(data_vis['n_in_visit'],dtype=float)
-        dcen_bin_comm = (edge_bins_com[:,1::] - edge_bins_com[:,0:-1])
-        Tcen_bin_comm = 0.
-        for iord in range(data_inst['nord']):    
-            Tflux_all += np.sum(flux_all[:,iord,cond_scal_com[iord]]*dcen_bin_comm[iord,cond_scal_com[iord]],axis=1)
-            Tcen_bin_comm += np.sum(dcen_bin_comm[iord,cond_scal_com[iord]])
-        if data_dic['DI']['scaling_val'] is None:Tflux_ref = np.median(Tflux_all)
-        else:Tflux_ref=Tcen_bin_comm*data_dic['DI']['scaling_val']
-        norm_exp_glob = Tflux_all/Tflux_ref
+        if data_dic['DI']['rescale_DI']:
+
+            #Scaling pixels common to all exposures
+            #    - planetary signatures should not be excluded from the range of summation, for the same reason as they are included in the spectral scaling : the light curves used for the scaling include those ranges potentially absorbed by the planet
+            #      the same logic applies to CCF: their full range must be used for the scaling, and not just the continuum      
+            cond_scal_com  = np.all(cond_def_scal_all,axis=0)
+            if np.sum(cond_scal_com)==0.:stop('No pixels in common scaling range')               
+            
+            #Global scaling
+            Tflux_all = np.zeros(data_vis['n_in_visit'],dtype=float)
+            dcen_bin_comm = (edge_bins_com[:,1::] - edge_bins_com[:,0:-1])
+            Tcen_bin_comm = 0.
+            for iord in range(data_inst['nord']):    
+                Tflux_all += np.sum(flux_all[:,iord,cond_scal_com[iord]]*dcen_bin_comm[iord,cond_scal_com[iord]],axis=1)
+                Tcen_bin_comm += np.sum(dcen_bin_comm[iord,cond_scal_com[iord]])
+            if data_dic['DI']['scaling_val'] is None:Tflux_ref = np.median(Tflux_all)
+            else:Tflux_ref=Tcen_bin_comm*data_dic['DI']['scaling_val']            
+            norm_exp_glob = Tflux_all/Tflux_ref
+        else:norm_exp_glob = np.ones(data_vis['n_in_visit'],dtype=float)
 
         #Scaling each exposure
         #    - only defined bins are scaled (the flux in undefined bins remain set to nan), but the scaling spectrum was calculated at all wavelengths so that it can be used later with data for which different bins are defined or not
@@ -1018,24 +1029,26 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             
             #Master disk-integrated spectrum for weighing
             #    - profile has been shifted to the same frame as the differential profiles, but is still defined on the common table, not the table of current exposure
+            #    - master covariance is not required for DI profile weights
             #    - see process_binned_prof() for details
-            if gen_dic['DImast_weight']:
-                data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_glob])
-                data_to_bin_gen[iexp_off]['edge_bins_ref'] = data_ref['edge_bins']
-                data_to_bin_gen[iexp_off]['flux_ref'] = data_ref['flux']
+            data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_glob])
+            data_to_bin_gen[iexp_off]['edge_bins_ref'] = data_ref['edge_bins']
+            data_to_bin_gen[iexp_off]['flux_ref'] = data_ref['flux']
+                
+            #Exposure duration
+            data_to_bin_gen[iexp_off]['dt'] = coord_dic[inst][vis_bin]['t_dur'][iexp_glob]
 
             #Weight profile
             #    - only calculated here on a common table if:
             # + binned profiles come from a single visit, defined on a common table for the visit
-            # + binned profiles come from multiple visits, defined on a common table for all visits    
-            #    - the master spectrum should be processed in the star rest frame, so that the stellar lines do not contribute to weighing         
-            if ((mode=='') and data_vis['comm_sp_tab']) or ((mode=='multivis') and data_inst['comm_sp_tab']):
-                flux_ref_exp = np.ones(data_dic[inst][vis_bin]['dim_exp'])  
-                data_to_bin_gen[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,'DI',data_dic[inst]['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['sing_gcal'],data_to_bin_gen[iexp_off]['cen_bins'],1.,flux_ref_exp,None,bdband_flux_sc = gen_dic['flux_sc'],sdet_exp2 = data_to_bin_gen[iexp_off]['sdet2'],EFsc2_all_in = data_to_bin_gen[iexp_off]['EFsc2'])[0]
+            # + binned profiles come from multiple visits, defined on a common table for all visits            
+            if ((mode=='') and data_vis['comm_sp_tab']) or ((mode=='multivis') and data_inst['comm_sp_tab']): 
+                data_to_bin_gen[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,'DI',data_dic[inst]['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['sing_gcal'],data_to_bin_gen[iexp_off]['cen_bins'],
+                                                                       data_to_bin_gen[iexp_off]['dt'],data_to_bin_gen[iexp_off]['flux_ref'],None,sdet_exp2 = data_to_bin_gen[iexp_off]['sdet2'],EFsc2_all_in = data_to_bin_gen[iexp_off]['EFsc2'])[0]
 
         #Processing each exposure of current visit selected for extraction
         iexp_proc = data_dic['Diff'][inst][vis]['idx_to_extract']
-        common_args = (data_vis['proc_DI_data_paths'],mode,data_vis['comm_sp_tab'],data_inst['comm_sp_tab'],proc_gen_data_paths_new,idx_to_bin_all[0],n_in_bin_all[0],dx_ov_all[0],idx_bin2orig,idx_bin2vis,data_inst['com_vis'],data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],gen_dic['flux_sc'],data_to_bin_gen,gen_dic['resamp_mode'],\
+        common_args = (data_vis['proc_DI_data_paths'],mode,data_vis['comm_sp_tab'],data_inst['comm_sp_tab'],proc_gen_data_paths_new,idx_to_bin_all[0],n_in_bin_all[0],dx_ov_all[0],idx_bin2orig,idx_bin2vis,data_inst['com_vis'],data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin_gen,gen_dic['resamp_mode'],\
                        scaled_data_paths_vis,inst,iexp_no_plrange_vis,exclu_rangestar_vis,data_dic[inst]['type'],gen_dic['type'],gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'])               
         if gen_dic['nthreads_diff_data']>1:MAIN_multithread(sub_extract_diff_profiles,gen_dic['nthreads_diff_data'],len(iexp_proc),[iexp_proc],common_args)                           
         else:sub_extract_diff_profiles(iexp_proc,*common_args)    
@@ -1066,7 +1079,7 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
 
 
 
-def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,comm_sp_tab_inst,proc_gen_data_paths_new,idx_to_bin_mast,n_in_bin_mast,dx_ov_mast,idx_bin2orig,idx_bin2vis,com_vis,nord,dim_exp,nspec,flux_sc,data_to_bin_gen,resamp_mode,\
+def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,comm_sp_tab_inst,proc_gen_data_paths_new,idx_to_bin_mast,n_in_bin_mast,dx_ov_mast,idx_bin2orig,idx_bin2vis,com_vis,nord,dim_exp,nspec,data_to_bin_gen,resamp_mode,\
                              scaled_data_paths_vis,inst,iexp_no_plrange_vis,exclu_rangestar_vis,vis_type,gen_type,corr_Fbal,corr_FbalOrd,save_data_dir):
     r"""**Differential profile extraction.** 
 
@@ -1111,12 +1124,14 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
                     #Resampling exposure profile
                     data_to_bin[iexp_off]['flux']=np.zeros(dim_exp,dtype=float)*np.nan
                     data_to_bin[iexp_off]['cov']=np.zeros(nord,dtype=object) 
+                    flux_ref_exp=np.zeros(dim_exp,dtype=float)*np.nan
                     tell_exp=np.ones(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['tell'] is not None) else None
                     sing_gcal_exp=np.ones(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['sing_gcal'] is not None) else None
                     sdet2_exp=np.zeros(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['sdet2'] is not None) else None
                     EFsc2_exp=np.zeros(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['EFsc2'] is not None) else None
                     for iord in range(nord): 
                         data_to_bin[iexp_off]['flux'][iord],data_to_bin[iexp_off]['cov'][iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord], data_to_bin_gen[iexp_off]['flux'][iord] , cov = data_to_bin_gen[iexp_off]['cov'][iord], kind=resamp_mode)                                                        
+                        flux_ref_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins_ref'][iord], data_to_bin_gen[iexp_off]['flux_ref'][iord], kind=resamp_mode)                                                        
                         if tell_exp is not None:tell_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord], data_to_bin_gen[iexp_off]['tell'][iord] , kind=resamp_mode) 
                         if sing_gcal_exp is not None:sing_gcal_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord],data_to_bin_gen[iexp_off]['sing_gcal'][iord], kind=resamp_mode)  
                         if sdet2_exp is not None:sdet2_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord],data_to_bin_gen[iexp_off]['sdet2'][iord], kind=resamp_mode)         
@@ -1125,8 +1140,7 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
                     if sdet2_exp is not None:sdet2_exp[np.isnan(sdet2_exp)]=0.
     
                     #Weight definition         
-                    flux_ref_exp = np.ones(dim_exp,dtype=float)
-                    data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(nord),scaled_data_paths_vis[vis_bin],inst,vis_bin,corr_Fbal,corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,'DI',vis_type,dim_exp,tell_exp,sing_gcal_exp,data_exp['cen_bins'],1.,flux_ref_exp,None,bdband_flux_sc = flux_sc,sdet_exp2 = sdet2_exp,EFsc2_all_in = EFsc2_exp)[0]
+                    data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(nord),scaled_data_paths_vis[vis_bin],inst,vis_bin,corr_Fbal,corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,'DI',vis_type,dim_exp,tell_exp,sing_gcal_exp,data_exp['cen_bins'],data_to_bin[iexp_off]['dt'],flux_ref_exp,None,sdet_exp2 = sdet2_exp,EFsc2_all_in = EFsc2_exp)[0]
 
                 #Weighing components and current exposure are defined on the same table common to the visit 
                 else:data_to_bin[iexp_off] = deepcopy(data_to_bin_gen[iexp_off])  

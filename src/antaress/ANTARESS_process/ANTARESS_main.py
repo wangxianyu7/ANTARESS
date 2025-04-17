@@ -156,7 +156,8 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 # if gen_dic['correct_ar'] : 
                 #     corr_spot(corr_ar_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo_dic, system_param)
                   
-                #Rescaling profiles to their correct flux level                  
+                #Rescaling profiles to their correct flux level  
+                #    - the module is used to calculate light curves even if no scaling is needed                
                 if gen_dic['flux_sc']:                   
                     rescale_profiles(data_dic[inst],inst,vis,data_dic,coord_dic,coord_dic[inst][vis]['t_dur_d'],gen_dic,plot_dic,system_param,theo_dic,ar_dic=theo_dic)   
              
@@ -332,7 +333,7 @@ def conv_2D_to_1D_gen_functions(data_type_gen,data_dic,inst,vis,gen_dic,coord_di
     """ 
     #Processing 2D spectra into new 1D spectra
     if gen_dic['spec_1D_'+data_type_gen] and (data_dic[inst][vis]['type']=='spec2D'): 
-        conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,data_dic[data_type_gen])  
+        conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,data_dic[data_type_gen],coord_dic)  
 
     #Analyzing converted profiles
     if (data_type_gen!='Diff') and gen_dic['fit_'+data_type_gen+'_1D']: 
@@ -538,14 +539,13 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                                   7657.56128994 ,7754.51576965 ,7853.9560168  ,7955.97888421 ,8060.68632206,8168.18571772])
     
     
-    }
+        }
         gen_dic['wav_ord_inst']['NIRPS_HE'] = gen_dic['wav_ord_inst']['NIRPS_HA'] 
         gen_dic['wav_ord_inst']['CARMENES_VIS_CCF'] = gen_dic['wav_ord_inst']['CARMENES_VIS'] 
     
         #Instruments to which are associated the different datasets
         if gen_dic['mock_data']:  
             data_dic['instrum_list']=list(mock_dic['visit_def'].keys())
-            gen_dic['tell_weight']=False 
             if len(data_dic['instrum_list'])==0:stop('ERROR : no instrument was requested for mock datasets.')   
             print('Running with artificial data') 
     
@@ -584,14 +584,10 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if gen_dic['intr_data']:
             if not gen_dic['diff_data']:
                 print('Automatic activation of differential profile extraction')
-                gen_dic['diff_data'] = True
-            if not gen_dic['flux_sc']:
-                print('Automatic activation of flux scaling calculation')
-                gen_dic['flux_sc'] = True
-    
+                gen_dic['diff_data'] = True    
         else:
             for key in ['map_Intr_prof','all_intr_data','Intr_prof']:plot_dic[key]=''
-    
+
         #Deactivate general conditions
         if (not gen_dic['specINtype']):
             if gen_dic['DI_CCF']:
@@ -615,10 +611,11 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 if ('calc_' in key) and (gen_dic[key]):gen_dic[key] = False 
     
         #Deactivate spectral corrections in CCF mode
-        sp_corr_list = ['corr_tell','corr_FbalOrd','corr_Fbal','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig','corr_fring','trim_spec','glob_mast','cal_weight','gcal']
+        sp_corr_list = ['corr_tell','glob_mast','corr_FbalOrd','corr_Fbal','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig','corr_fring','trim_spec']
         if (not gen_dic['specINtype']):
             for key in sp_corr_list:gen_dic[key]=False
-            
+            gen_dic['gcal']=False
+
             #Deactivate EvE outputs
             if gen_dic['EvE_outputs']:
                 print('WARNING (EvE outputs): data must be in spectral mode')
@@ -626,16 +623,21 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             
         else:
 
-            #Deactivate spectral balance correction over orders if not 2D spectra
+            #1D spectra
             if ('spec2D' not in gen_dic['all_types']): 
+                
+                #Deactive if spectra are not 2D:
+                #    - spectral calibration, spectral balance correction over orders, wiggles                
                 gen_dic['gcal'] = False
                 gen_dic['corr_FbalOrd']=False
                 plot_dic['wig_order_fit']=''
                 
-            #Activate spectral calibration calculation if 2D spectra
+            #2D spectra
             else:
+                
+                #Automatic calculation of calibration profiles
                 gen_dic['gcal'] = True
-    
+
             #Activate global master calculation if required for flux balance corrections
             if (gen_dic['corr_Fbal']) or (gen_dic['corr_FbalOrd']):
                 gen_dic['glob_mast']=True
@@ -687,17 +689,17 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             
             #Check for arbitrary scaling        
             elif (gen_dic['Fbal_vis']!='ext') and (gen_dic['n_instru']>1):stop('Flux balance must be set to a theoretical reference for multiple instruments')
-    
+
             #Deactivate transit scaling if temporal flux correction is applied
-            if gen_dic['corr_Ftemp']: gen_dic['flux_sc']=False
-                
+            if gen_dic['corr_Ftemp']:data_dic['DI']['rescale_DI'] = True  
+                    
             #Activate correction flag
             gen_dic['corr_data'] = False
             for key in sp_corr_list: gen_dic['corr_data'] |=gen_dic[key]
-    
-        #Deactivate modules irrelevant to mock datasets
+
+        #Deactivate modules and fields irrelevant to mock datasets
         if gen_dic['mock_data']:
-            for key in ['gcal','corr_tell','glob_mast','corr_Fbal','corr_FbalOrd','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig','EvE_outputs']:gen_dic[key] = False
+            for key in ['gcal','corr_tell','tell_weight','glob_mast','corr_Fbal','corr_FbalOrd','corr_Ftemp','corr_cosm','mask_permpeak','corr_wig','EvE_outputs']:gen_dic[key] = False
     
         #Deactivate plot if module is not called
         if (plot_dic['glob_mast']!='') and gen_dic['glob_mast']:
@@ -817,18 +819,30 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 if data_dic['Atm']['type'][inst]!=data_dic['Intr']['type'][inst]:
                     stop('Error: intrinsic profiles for '+inst+' (in '+data_dic['Intr']['type'][inst]+') must have the same format as planetary profiles (in '+data_dic['Atm']['type'][inst]+') if also requested for their extraction)')
 
-        #Telluric condition
-        if (not gen_dic['specINtype']):
-            gen_dic['tell_weight']=False
-            gen_dic['corr_tell']=False
-        else:
-            gen_dic['tell_weight'] &= gen_dic['corr_tell']
-        
-        #Set general condition to calculate master spectrum of the disk-integrated star and use it in weighted averages
-        #    - the master needs to be calculated if weighing is needed for one of the modules below
-        if gen_dic['DImast_weight']:gen_dic['DImast_weight'] |= (gen_dic['diff_data'] | (gen_dic['loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['spec_1D'] | gen_dic['bin'] | gen_dic['binmultivis'])
+        #------------------------------------------------------------------------------------------------------------------------
+        #Weighing conditions
+        #    - automatic activation to calculate or use contributors to variance profiles of disk-integrated spectra, based on the use of modules that average profiles requesting this variance
+        # + extraction of Diff profiles, requiring DI master (if intrinsic or atmospheric extraction is required, the extraction of Diff profiles is as well) 
+        # + estimate of Intr profiles based on DI master
+        # + conversion of profiles from 2D into 1D
+        # + binning profiles together
+        #    - we disable calculation of DI weighing master if it is requested but no other module requiring this weight are recalculated
+        cond_def = (gen_dic['diff_data'] | (gen_dic['loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['spec_1D'] | gen_dic['bin'] | gen_dic['binmultivis'])
+        gen_dic['DImast_weight'] = cond_def
         if gen_dic['DImast_weight'] and gen_dic['calc_DImast']:gen_dic['calc_DImast'] =  gen_dic['calc_diff_data'] | (gen_dic['calc_loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['calc_spec_1D'] | gen_dic['calc_bin'] | gen_dic['calc_binmultivis']
-      
+        if ('spec2D' in gen_dic['all_types']):gen_dic['cal_weight'] = cond_def   
+        else:gen_dic['cal_weight'] = False   
+        if gen_dic['specINtype']:gen_dic['tell_weight'] = cond_def & gen_dic['corr_tell'] 
+        else:gen_dic['tell_weight'] = False
+
+        #------------------------------------------------------------------------------------------------------------------------
+
+        #Automatic activation of light curve computation
+        #    - required to calculate binned disk-integrated profiles or convert them from 2D to 1D, to convert Diff profiles into CCFs or from 2D to 1D, and to compute (and process) intrinsic and atmospheric profiles
+        if (not gen_dic['flux_sc']) and (gen_dic['DImast_weight'] or gen_dic['spec_1D_DI'] or gen_dic['binDI'] or gen_dic['Diff_CCF'] or gen_dic['spec_1D_Diff'] or gen_dic['intr_data'] or (gen_dic['pl_atm'] and data_dic['Atm']['pl_atm_sign']=='Absorption')):
+            print('Automatic activation of flux scaling calculation')
+            gen_dic['flux_sc'] = True
+
         #Set general conditions to activate joined datasets modules 
         gen_dic['joined_ana']=False
         gen_dic['fit_DIProf'] = False     #module undefined for now
@@ -939,69 +953,65 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #------------------------------------------------------------------------------
     #Star
     #------------------------------------------------------------------------------
-    star_params = {}
     if gen_dic['sequence'] not in ['st_master_tseries']:
         
         #Conversions and calculations
-        star_params.update(system_param['star'])
-        star_params['Rstar_km'] = star_params['Rstar']*Rsun
+        system_param['star']['Rstar_km'] = system_param['star']['Rstar']*Rsun
         
         #Spherical star
-        if ('f_GD' not in star_params):
-            star_params['f_GD']=0.
-            star_params['RpoleReq'] = 1.
+        if ('f_GD' not in system_param['star']):
+            system_param['star']['f_GD']=0.
+            system_param['star']['RpoleReq'] = 1.
             
         #Oblate star
-        elif star_params['f_GD']>0.:
+        elif system_param['star']['f_GD']>0.:
             print('Star is oblate')
-            star_params['RpoleReq']=1.-star_params['f_GD']
+            system_param['star']['RpoleReq']=1.-system_param['star']['f_GD']
     
         #Reference time for stellar phase (bjd)
-        if 'Tcenter' not in star_params:star_params['Tcenter'] = 2400000.
+        if 'Tcenter' not in system_param['star']:system_param['star']['Tcenter'] = 2400000.
     
         #Stellar equatorial rotation rate (rad/s)
         #    - om = 2*pi/P = v/R
-        star_params['om_eq'] = star_params['veq']/star_params['Rstar_km']    
+        system_param['star']['om_eq'] = system_param['star']['veq']/system_param['star']['Rstar_km']    
         for key in ['_spots','_faculae']:
-            if 'veq'+key in star_params:star_params['om_eq'+key]=star_params['veq'+key]/star_params['Rstar_km']
+            if 'veq'+key in system_param['star']:system_param['star']['om_eq'+key]=system_param['star']['veq'+key]/system_param['star']['Rstar_km']
             else:
-                star_params['veq'+key]=star_params['veq']
-                star_params['om_eq'+key]=star_params['om_eq']
+                system_param['star']['veq'+key]=system_param['star']['veq']
+                system_param['star']['om_eq'+key]=system_param['star']['om_eq']
     
         #Stellar equatorial rotation period (d)
         #    - P = 2*pi*R/v
         for key in ['','_spots','_faculae']:
-            star_params['Peq'+key] = (2.*np.pi*star_params['Rstar_km'])/(star_params['veq'+key]*24*3600)
+            system_param['star']['Peq'+key] = (2.*np.pi*system_param['star']['Rstar_km'])/(system_param['star']['veq'+key]*24*3600)
     
         #No GD
-        if ('beta_GD' not in star_params):star_params['beta_GD']=0.
-        if ('Tpole' not in star_params):star_params['Tpole']=0.
+        if ('beta_GD' not in system_param['star']):system_param['star']['beta_GD']=0.
+        if ('Tpole' not in system_param['star']):system_param['star']['Tpole']=0.
     
         #Conversions
-        star_params['istar_rad']=star_params['istar']*np.pi/180.
-        star_params['cos_istar']=np.cos(star_params['istar_rad'])
-        star_params['vsini']=star_params['veq']*np.sin(star_params['istar_rad'])    #km/s
+        system_param['star']['istar_rad']=system_param['star']['istar']*np.pi/180.
+        system_param['star']['cos_istar']=np.cos(system_param['star']['istar_rad'])
+        system_param['star']['vsini']=system_param['star']['veq']*np.sin(system_param['star']['istar_rad'])    #km/s
         
         #Default parameters
         for key in ['alpha_rot','beta_rot','alpha_rot_spots','beta_rot_spots','alpha_rot_faculae','beta_rot_faculae','c1_CB','c2_CB','c3_CB','c1_pol','c2_pol','c3_pol','c4_pol']:
-            if key not in star_params:star_params[key] = 0.
+            if key not in system_param['star']:system_param['star'][key] = 0.
     
         #Conversion factor from the LOS velocity output (/Rstar/h) to RV in km/s
-        star_params['RV_conv_fact']=-star_params['Rstar_km']/3600.
+        system_param['star']['RV_conv_fact']=-system_param['star']['Rstar_km']/3600.
     
         #Macroturbulence
         if theo_dic['mac_mode'] is not None:
             if 'rt' in theo_dic['mac_mode']:
                 theo_dic['mac_mode_func'] = calc_macro_ker_rt
                 if theo_dic['mac_mode']=='rt_iso':
-                    star_params['A_T']=star_params['A_R']
-                    star_params['ksi_T']=star_params['ksi_R']   
+                    system_param['star']['A_T']=system_param['star']['A_R']
+                    system_param['star']['ksi_T']=system_param['star']['ksi_R']   
             elif 'anigauss' in theo_dic['mac_mode']:
                 theo_dic['mac_mode_func'] = calc_macro_ker_anigauss
                 if theo_dic['mac_mode']=='anigauss_iso':
-                    star_params['eta_T']=star_params['eta_R']
-    
-            
+                    system_param['star']['eta_T']=system_param['star']['eta_R']
 
     #------------------------------------------------------------------------------
     #Planets
@@ -1041,7 +1051,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if pl_loc in gen_dic['def_pl']:
 
             #Adding absolute semi-major axis
-            if ('a' not in PlParam_loc):PlParam_loc['a']=PlParam_loc['aRs']*star_params['Rstar_km']/AU_1  # in au            
+            if ('a' not in PlParam_loc):PlParam_loc['a']=PlParam_loc['aRs']*system_param['star']['Rstar_km']/AU_1  # in au            
 
             #Converting orbital inclination from degree to radians
             PlParam_loc['inclin_rad']=PlParam_loc['inclination']*np.pi/180.
@@ -1076,14 +1086,14 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 PlParam_loc['TCenter']+=(PlParam_loc['Mean_anom_TR']*PlParam_loc["period"]/(2.*np.pi))
   
         #Keplerian semi-amplitude of the star from the planet (km/s) 
-        PlParam_loc['Kstar_kms']=PlParam_loc['Kstar']/1000. if 'Kstar' in PlParam_loc else calc_Kstar(PlParam_loc,star_params)/1000.
+        PlParam_loc['Kstar_kms']=PlParam_loc['Kstar']/1000. if 'Kstar' in PlParam_loc else calc_Kstar(PlParam_loc,system_param['star'])/1000.
 
         #Orbital frequency, in year-1
         PlParam_loc['omega_p']=2.*np.pi*365.2425/PlParam_loc['period']
 
         #Transit duration
         if (pl_loc in gen_dic['studied_pl_list']) and ('TLength' not in PlParam_loc):
-            contact_phases=calc_tr_contacts(data_dic['DI']['system_prop']['achrom'][pl_loc][0],PlParam_loc,plot_dic['stend_ph'],star_params)
+            contact_phases=calc_tr_contacts(data_dic['DI']['system_prop']['achrom'][pl_loc][0],PlParam_loc,plot_dic['stend_ph'],system_param['star'])
             PlParam_loc['TLength'] = (contact_phases[3]-contact_phases[0])*PlParam_loc['period']           
             print('Automatic definition of T14['+str(pl_loc)+']='+"{0:.2f}".format(PlParam_loc['TLength']*24.)+' h')
     
@@ -1112,9 +1122,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     for ideg in range(2,5):
         if 'LD_u'+str(ideg) not in data_dic['DI']['system_prop']['achrom']:data_dic['DI']['system_prop']['achrom']['LD_u'+str(ideg)] = [0.]
     if ('GD_dw' in data_dic['DI']['system_prop']['achrom']):
-        star_params['GD']=True
+        system_param['star']['GD']=True
         print('Star is gravity-darkened')
-    else:star_params['GD']=False
+    else:system_param['star']['GD']=False
     data_dic['DI']['system_prop']['achrom']['w']=[None]
     data_dic['DI']['system_prop']['achrom']['nw']=1
     data_dic['DI']['system_prop']['achrom']['cond_in_RpRs']={}
@@ -1273,7 +1283,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
 
         #Calculation of total stellar flux for use in simulated light curves
         if gen_dic['calc_flux_sc'] and (data_dic['DI']['transit_prop']['nsub_Dstar'] is not None): 
-            model_star('Ftot',theo_dic,grid_type,data_dic['DI']['system_prop'],data_dic['DI']['transit_prop']['nsub_Dstar'],star_params,True,True) 
+            model_star('Ftot',theo_dic,grid_type,data_dic['DI']['system_prop'],data_dic['DI']['transit_prop']['nsub_Dstar'],system_param['star'],True,True) 
                         
         #Definition of model stellar grid to calculate local or disk-integrated properties
         #    - used throughout the pipeline, unless stellar properties are fitted
@@ -1281,7 +1291,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             or gen_dic['fit_DiffProf'] or gen_dic['fit_IntrProf'] or gen_dic['loc_prof_est']:   #or gen_dic['correct_ar'] 
     
             #Stellar grid
-            model_star('grid',theo_dic,grid_type,data_dic['DI']['system_prop'],theo_dic['nsub_Dstar'],star_params,True,True) 
+            model_star('grid',theo_dic,grid_type,data_dic['DI']['system_prop'],theo_dic['nsub_Dstar'],system_param['star'],True,True) 
            
             #Theoretical atmosphere
             cond_st_atm = False
@@ -1295,7 +1305,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             if gen_dic['loc_prof_est'] and (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['glob_mod','indiv_mod']) and (data_dic['Intr']['opt_loc_prof_est']['mode']=='theo'):cond_st_atm = True  
             if cond_st_atm:
                 if theo_dic['st_atm']['calc']:
-                    theo_dic['sme_grid'] = gen_theo_atm(theo_dic['st_atm'],star_params)
+                    theo_dic['sme_grid'] = gen_theo_atm(theo_dic['st_atm'],system_param['star'])
                     datasave_npz(gen_dic['save_data_dir']+'Introrig_prop/IntrProf_grid',{'sme_grid':theo_dic['sme_grid']})
                 else:theo_dic['sme_grid'] = dataload_npz(gen_dic['save_data_dir']+'Introrig_prop/IntrProf_grid')['sme_grid']
     
@@ -1320,20 +1330,16 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #Create directories where data is saved/restored
         if (not path_exist(gen_dic['save_data_dir']+'Processed_data/Global/')):makedirs(gen_dic['save_data_dir']+'Processed_data/Global/')  
         if gen_dic['specINtype']:
-            if gen_dic['gcal'] and (not path_exist(gen_dic['save_data_dir']+'Processed_data/Calibration/')):makedirs(gen_dic['save_data_dir']+'Processed_data/Calibration/')  
-            if gen_dic['CCF_from_sp'] and (not path_exist(gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/')):makedirs(gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/')  
+            dir_name_dic={'gcal':'Processed_data/Calibration','CCF_from_sp':'Processed_data/CCFfromSpec'}
+            for key in dir_name_dic.keys():
+                if (gen_dic[key]) and (not path_exist(gen_dic['save_data_dir']+dir_name_dic[key]+'/')):makedirs(gen_dic['save_data_dir']+dir_name_dic[key]+'/')                   
             if (gen_dic['corr_data']):
                 corr_path = gen_dic['save_data_dir']+'Corr_data/'
                 if (not path_exist(corr_path)):makedirs(corr_path)
-                if (gen_dic['corr_tell']) and (not path_exist(corr_path+'Tell/')):makedirs(corr_path+'Tell/')         
-                if (gen_dic['glob_mast']) and (not path_exist(corr_path+'Global_Master/')):makedirs(corr_path+'Global_Master/')    
-                if (gen_dic['corr_Fbal']) and (not path_exist(corr_path+'Fbal/')):makedirs(corr_path+'Fbal/')
-                if (gen_dic['corr_FbalOrd']) and (not path_exist(corr_path+'Fbal/Orders/')):makedirs(corr_path+'Fbal/Orders/')            
-                if (gen_dic['corr_Ftemp']) and (not path_exist(corr_path+'Ftemp/')):makedirs(corr_path+'Ftemp/')
-                if (gen_dic['corr_cosm']) and (not path_exist(corr_path+'Cosm/')):makedirs(corr_path+'Cosm/')
-                if (gen_dic['mask_permpeak']) and (not path_exist(corr_path+'Permpeak/')):makedirs(corr_path+'Permpeak/')
+                dir_name_dic={'corr_tell':'Tell','glob_mast':'Global_Master','corr_Fbal':'Fbal','corr_FbalOrd':'Fbal/Orders','corr_Ftemp':'Ftemp','corr_cosm':'Cosm','mask_permpeak':'Permpeak','corr_wig':'Wiggles'}
+                for key in dir_name_dic.keys():
+                    if (gen_dic[key]) and (not path_exist(corr_path+dir_name_dic[key]+'/')):makedirs(corr_path+dir_name_dic[key]+'/')                         
                 if (gen_dic['corr_wig']): 
-                    if not path_exist(corr_path+'Wiggles/'):makedirs(corr_path+'Wiggles/')
                     
                     #Condition for exposure analysis
                     gen_dic['wig_exp_ana'] = gen_dic['wig_exp_init']['mode'] | gen_dic['wig_exp_filt']['mode'] | gen_dic['wig_exp_samp']['mode'] | gen_dic['wig_exp_nu_ana']['mode'] | gen_dic['wig_exp_fit']['mode'] | gen_dic['wig_exp_point_ana']['mode'] 
@@ -2125,7 +2131,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         #Initialize blaze-derived and detector noise profiles
                         if (vis in data_inst['gcal_blaze_vis']):
                             data_dic_temp['gcal'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)*np.nan
-                            if gen_dic['cal_weight']:data_dic_temp['sdet2'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)
+                            if gen_dic['cal_weight']:data_dic_temp['sdet2'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)*np.nan
                             
                         #Telluric spectrum
                         if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):data_dic_temp['tell'] = np.ones(data_inst[vis]['dim_all'], dtype=float)
@@ -2404,15 +2410,17 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                             
                                             #Defining detector noise
                                             #    - Edet_meas(w,t,v)^2 = EN_meas[bl](w,t,v)^2 - N_meas[bl](w,t,v)
-                                            #    - kept to 0 at undefined pixels, or where negative
+                                            #    - set to 0 where negative or undefined within definition range, after duplicating the latest defined value at the edges
                                             #    - at pixels where counts are negative the DRS consider them null to define error tables, so that the detector noise is then retrieved as
                                             #      Edet_meas(w,t,v)^2 = EN_meas[bl](w,t,v)^2
                                             #    - some pixels have large errors despite not having large fluxes; this may come from hot pixels subtracted from the extracted counts
                                             if gen_dic['cal_weight']:
                                                 idx_def_pos = np_where1D(cond_def_pos[iord])
                                                 data_dic_temp['sdet2'][iexp,iord,idx_def_pos] = err_count_blaze_exp[iord,idx_def_pos]**2. - count_blaze_exp[iord,idx_def_pos]
-                                                cond_neg_sub = (data_dic_temp['sdet2'][iexp,iord,idx_def_pos]<0.) 
-                                                data_dic_temp['sdet2'][iexp,iord,idx_def_pos[cond_neg_sub]] = 0.
+                                                if idx_def_pos[0]>0:data_dic_temp['sdet2'][iexp,iord,0:idx_def_pos[0]] = data_dic_temp['sdet2'][iexp,iord,idx_def_pos[0]]              
+                                                if idx_def_pos[-1]<data_inst[vis]['nspec']-1:data_dic_temp['sdet2'][iexp,iord,idx_def_pos[-1]+1::] = data_dic_temp['sdet2'][iexp,iord,idx_def_pos[-1]]                      
+                                                data_dic_temp['sdet2'][iexp,iord][np.isnan(data_dic_temp['sdet2'][iexp,iord])] = 0.
+                                                data_dic_temp['sdet2'][iexp,iord][data_dic_temp['sdet2'][iexp,iord]<0.] = 0.
                                                 data_dic_temp['sdet2'][iexp,iord,cond_def_neg[iord]] = err_count_blaze_exp[iord,cond_def_neg[iord]]**2. 
 
                                 elif inst=='CARMENES_VIS':             

@@ -1621,6 +1621,7 @@ def joined_DiffProf(param,fixed_args):
                                 mod_prop_dic[inst][vis][ar][prop_loc][isub] = surf_prop_dic_ar[args['chrom_mode']][ar][prop_loc][0]
 
                 #Convolve model profiles to instrument resolution
+                conv_base_DI_prof = convol_prof(base_DI_prof,args_exp['cen_bins'],args['FWHM_inst'][inst])
                 conv_line_model = convol_prof(sp_line_model,args_exp['cen_bins'],args['FWHM_inst'][inst])
 
                 #Set negative flux values to null
@@ -1636,15 +1637,17 @@ def joined_DiffProf(param,fixed_args):
                     master_isub = args['master_out']['idx_in_master_out'][inst][vis].index(iexp)
 
                     #Re-sample model DI profile on a common grid
+                    resamp_conv_base_DI_prof = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],conv_base_DI_prof,kind=args['master_out']['master_out_tab']['resamp_mode'])
                     resamp_line_model = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],conv_line_model,kind=args['master_out']['master_out_tab']['resamp_mode'])
+                    
 
                     #Making weights for the master-out
                     #    - assuming no detector noise and a constant calibration
                     #    - if DI profiles were converted from 2D to 1D, we use directly their variance profiles
                     raw_weights=weights_bin_prof(range(args['master_out']['nord']), args['master_out']['scaled_data_paths'][inst][vis],inst,vis,args['master_out']['corr_Fbal'],args['master_out']['corr_FbalOrd'],\
                                                         args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'DI',args['type'],args['dim_exp'][inst][vis],args['master_out']['gcal'][inst][vis][isub],\
-                                                        None,np.array([args['cen_bins'][inst][vis][isub]]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([conv_line_model]),\
-                                                        np.array([args['cov'][inst][vis][isub]]), bdband_flux_sc=args['master_out']['flux_sc'],EFsc2_all_in = args['master_out']['EFsc2'][inst][vis][isub])[0]
+                                                        None,np.array([args['cen_bins'][inst][vis][isub]]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([resamp_conv_base_DI_prof]),\
+                                                        None,EFsc2_all_in = args['master_out']['EFsc2'][inst][vis][isub])[0]
 
                     # - Re-sample the weights
                     resamp_weights = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],raw_weights,kind=args['master_out']['master_out_tab']['resamp_mode'])

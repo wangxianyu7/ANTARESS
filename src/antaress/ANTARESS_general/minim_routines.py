@@ -2657,6 +2657,8 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain,sim_points = None):
         plot_HDI=False if 'plot_HDI' not in corner_options else corner_options['plot_HDI']        
         plot1s_1D=True if 'plot1s_1D' not in corner_options else corner_options['plot1s_1D']  
         best_val = fit_dic['med_parfinal'] if (('plot_best' not in corner_options) or corner_options['plot_best']) else None
+        truth_color="#4682b4"  if 'best_color' not in corner_options else corner_options['best_color']
+        color_1D_HDI="green"  if 'color_1D_HDI' not in corner_options else corner_options['color_1D_HDI']
         if 'fontsize' in corner_options:
              label_kwargs={'fontsize':corner_options['fontsize']}
              tick_kwargs={'labelsize':corner_options['fontsize']}
@@ -2716,6 +2718,8 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain,sim_points = None):
                          labels_raw = var_par_list,
                          labels=var_par_names,
                          truths=best_val,
+                         truth_color=truth_color,
+                         color_1D_HDI=color_1D_HDI,
                          bins_1D_par=bins_1D_par,
                          bins_2D_par=bins_2D_par,
                          range_par=range_par,

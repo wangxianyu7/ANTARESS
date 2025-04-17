@@ -241,9 +241,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
 
                 #Orders to process
                 if ('iord2plot' in plot_set_key) and (len(plot_set_key['iord2plot'])>0):order_list = plot_set_key['iord2plot']
-                else:order_list=range(data_dic[inst]['nord']) 
+                else:order_list=range(data_dic[inst]['nord_ref']) 
                 nord_list = len(order_list)
-            
+
                 #Exposures to plot
                 if ('iexp2plot' in plot_set_key) and (inst in plot_set_key['iexp2plot']) and (len(plot_set_key['iexp2plot'][inst][vis])>0):iexp2plot = plot_set_key['iexp2plot'][inst][vis]
                 else:iexp2plot=range(data_dic[inst][vis]['n_in_visit'])
@@ -265,9 +265,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if (plot_dic['gcal_ord']!='') or (plot_dic['noises_ord']!=''):
                         cen_bins_all =  np.empty([nord_list,nexp_plot],dtype=object)
                     if (plot_dic['noises_ord']!=''):
+                        #Condition on 'cal_weight' is not used to retrieve 'sdet2' because it is deactivated after 2D->1D conversion
                         var_all =  np.empty([nord_list,nexp_plot],dtype=object)
                         var_ph_all = np.empty([nord_list,nexp_plot],dtype=object)
-                        if (vis in data_dic[inst]['gcal_blaze_vis']) and data_dic[inst]['cal_weight']:var_det_all = np.empty([nord_list,nexp_plot],dtype=object)
+                        if (vis in data_dic[inst]['gcal_blaze_vis']):var_det_all = np.empty([nord_list,nexp_plot],dtype=object)
                         else:var_det_all=None
                     if (plot_dic['noises_ord']!='') or ((plot_dic['gcal_ord']!='') and plot_set_key['plot_gcal_blaze']):
                         gcal_blaze_all =  np.empty([nord_list,nexp_plot],dtype=object) 
@@ -298,7 +299,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                     var_all[isub_ord,isub_iexp] = data_exp['cov'][iord][0,data_exp['cond_def'][iord]]
                                     var_ph_all[isub_ord,isub_iexp] = data_exp['flux'][iord][data_exp['cond_def'][iord]]*gcal_blaze_all[isub_ord,isub_iexp]
                                     var_ph_all[isub_ord,isub_iexp][var_ph_all[isub_ord,isub_iexp]<=0.] = 0.
-                                    if var_det_all is not None:var_det_all[isub_ord,isub_iexp] = data_sing_gcal['sdet2'][iord,data_exp['cond_def'][iord]]*gcal_blaze_all[isub_ord,isub_iexp]**2.
+                                    if (var_det_all is not None) and ('sdet2' in data_sing_gcal):var_det_all[isub_ord,isub_iexp] = data_sing_gcal['sdet2'][iord,data_exp['cond_def'][iord]]*gcal_blaze_all[isub_ord,isub_iexp]**2.
                         
                         #Mean calibration per order (from measurements)
                         if (plot_dic['gcal_all']!=''):
@@ -5214,7 +5215,8 @@ def sub_plot_prof_dir(inst,vis,plot_options,data_mode,series,add_txt_path,plot_m
     data_path_dic = get_data_path(plot_mod,data_type,inst,vis,data_dic,gen_dic)
 
     #Reference planet for the visit
-    pl_ref=plot_options['pl_ref'][inst][vis] 
+    if (inst in plot_options['pl_ref']) and (vis in plot_options['pl_ref'][inst]):pl_ref=plot_options['pl_ref'][inst][vis] 
+    else:pl_ref = None
     
     #Upload model
     prof_fit_vis = None
@@ -6282,6 +6284,7 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_
         #Retrieve data
         for maink in maink_list:
             data_proc[maink][iexp] = dataload_npz(data_path_dic[plot_options['plot_'+maink]]+str(iexp)) 
+            data_proc[maink][iexp]['dt'] = coord_dic[inst][vis]['t_dur'][iexp]
             for key in ['flux','cov','cond_def','cen_bins','edge_bins']:data_proc[maink][iexp][key] = data_proc[maink][iexp][key][idx_sel_ord]
             if data_vis['tell_sp']:data_proc[maink][iexp]['tell'] = dataload_npz(data_vis['tell_DI_data_paths'][iexp])['tell'][idx_sel_ord]
             else:data_proc[maink][iexp]['tell'] = None
@@ -6343,7 +6346,8 @@ def pre_proc_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,data_
                 #Weight definition   
                 #    - at this stage, no broadband flux scaling has been applied to the data
                 #    - this routine is called on S2D profiles, so estimates of true variance for 1D converted profiles are not available
-                data4mast[maink][iexp]['weight']= weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',data_inst['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['sing_gcal'],data_proc[maink][iexp]['cen_bins'],1.,flux_ref,None,glob_flux_sc = 1./flux_glob,sdet_exp2=data_proc[maink][iexp]['sdet2'])[0]                       
+                #    - detector noise cannot be used if it is not possible to estimate photon noise with the stellar master, so the latter is set to 1 and the former is not provided
+                data4mast[maink][iexp]['weight']= weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',data_inst['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['sing_gcal'],data_proc[maink][iexp]['cen_bins'],data_proc[maink][iexp]['dt'],flux_ref,None,glob_flux_sc = 1./flux_glob)[0]                       
   
                 #Resampling if exposures do not share a common table
                 if (not data_vis['comm_sp_tab']): 
@@ -6413,8 +6417,10 @@ def end_plot_prof(pl_ref,inst,vis,fig_frame,ax_frame,x_range_frame,y_range_frame
             ref_val=data_bin['cen_bindim'][iexp_or]
         # elif (plot_mod in ['sp_Intr_1D','sp_Atm_1D']) and (plot_options['dim_plot']=='bin'):
         #     ref_val=data_bin['cen_bindim'][iexp]
+        elif pl_ref is not None:
+            ref_val=coord_dic[inst][vis][pl_ref]['cen_ph'][iexp_or] 
         else:
-            ref_val=coord_dic[inst][vis][pl_ref]['cen_ph'][iexp_or]  
+            ref_val = None
     else:ref_val=None
     if plot_options['title']:
         title = title_name

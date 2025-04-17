@@ -229,7 +229,7 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
             #Weight profile
             #    - if profiles were converted from 2D to 1D, we use directly their variance profiles
             data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_bin_glob,in_type,data_vis['type'],data_vis['dim_exp'],data_to_bin[iexp_off]['tell'],data_to_bin[iexp_off]['sing_gcal'],data_to_bin[iexp_off]['cen_bins'],coord_dic[inst][vis_bin]['t_dur'][iexp_off],data_ref_align['flux'],data_ref_align['cov'],
-                                                                         bdband_flux_sc = gen_dic['flux_sc'],sdet_exp2=data_to_bin[iexp_off]['sdet2'],EFsc2_all_in = data_exp_bin['EFsc2'] ,EFdiff2_in = data_exp_bin['EFdiff2'],EFintr2_in = data_exp_bin['EFintr2'])[0]            
+                                                               sdet_exp2=data_to_bin[iexp_off]['sdet2'],EFsc2_all_in = data_exp_bin['EFsc2'] ,EFdiff2_in = data_exp_bin['EFdiff2'],EFintr2_in = data_exp_bin['EFintr2'])[0]            
           
         #Calculating binned profile
         data_est_loc = calc_bin_prof(idx_to_bin_all[i_bin],data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin,inst,n_in_bin_all[i_bin],data_loc_exp['cen_bins'],data_loc_exp['edge_bins'],dx_ov_in = dx_ov_all[i_bin])
@@ -988,6 +988,7 @@ def eval_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_para
                 cov = data_loc_exp['cov'][iord_sel]
 
             #Convolve profile to instrument resolution
+            conv_base_DI_prof = data_diff_est['base_DI_prof']
             conv_line_model = convol_prof(line_model,args_exp['cen_bins'],fixed_args['FWHM_inst'])
 
             #Set negative flux values to null - only used for newly created profiles
@@ -1007,6 +1008,7 @@ def eval_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_para
                 master_isub = data_prop['master_out']['idx_in_master_out'][inst][vis].index(iexp)
 
                 #Re-sample model DI profile on a common grid
+                resamp_conv_base_DI_prof  = bind.resampling(data_prop['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],conv_base_DI_prof,kind=gen_dic['resamp_mode'])
                 resamp_line_model = bind.resampling(data_prop['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],conv_line_model,kind=gen_dic['resamp_mode'])
 
                 #Estimate of true variance for DI profiles
@@ -1017,8 +1019,8 @@ def eval_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_para
                 #Making weights for the master-out
                 raw_weights=weights_bin_prof(range(fixed_args['nord']), data_prop['master_out']['scaled_data_paths'][inst][vis],inst,vis,data_prop['master_out']['corr_Fbal'],data_prop['master_out']['corr_FbalOrd'],\
                                                     data_prop['master_out']['save_data_dir'],fixed_args['type'],fixed_args['nord'],isub,'DI',fixed_args['type'],fixed_args['dim_exp'],None,\
-                                                    None,np.array([args_exp['cen_bins']]),coord_vis['t_dur'][isub],np.array([conv_line_model]),\
-                                                    np.array([cov]), bdband_flux_sc=data_prop['master_out']['flux_sc'],EFsc2_all_in = EFsc2_exp)[0]
+                                                    None,np.array([args_exp['cen_bins']]),coord_vis['t_dur'][isub],np.array([resamp_conv_base_DI_prof]),\
+                                                    None,EFsc2_all_in = EFsc2_exp)[0]
 
                 # - Re-sample the weights
                 resamp_weights = bind.resampling(data_prop['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],raw_weights,kind=gen_dic['resamp_mode'])

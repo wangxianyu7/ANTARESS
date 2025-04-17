@@ -486,43 +486,30 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     
     #---------------------------------------------------------------------------------------------
-    #%%%% Weighing settings 
-    #    - controls the weight profiles used for temporal/spatial resampling:
-    # + mean calibration profile (choice to use calculated profile)
-    # + telluric profile (choice to use input/calculated profiles)
-    # + master stellar spectrum (calculation/retrieval and choice to use)
+    #%%%% Disk-integrated weighing master 
+    #    - weights on disk-integrated profiles, used for temporal/spatial resampling of all process profiles, automatically use: 
+    # + a master stellar spectrum, required to estimate photon noise
+    #   define here whether it should be calculated/retrieved, and which exposures it should be built with 
+    # + the mean calibration and detector noise profiles (in S2D format)
+    #   options controlled in the calibration module
+    # + telluric profile (in spectral format)
+    #   options controlled in the telluric module
     #---------------------------------------------------------------------------------------------
     
-    #%%%%% Using instrumental calibration
-    gen_dic['cal_weight'] = True    
-    
-    
-    #%%%%% Using telluric spectra
-    #    - if available from input files, or from telluric correction module
-    gen_dic['tell_weight'] = True   
-    
-    
-    #%%%%% Master stellar spectrum
-    #    - not calculated if weighing not required
-    
-    #%%%%%% Calculating/retrieving
+    #%%%%% Calculating/retrieving
     #    - master stellar spectrum for weighing, specific to each visit
     #    - calculated after alignment and broadband flux scaling
     gen_dic['calc_DImast'] = True   
     
     
-    #%%%%%% Exposures to be binned
+    #%%%%% Exposures to be binned
     #    - indexes of exposures that contribute to the bin series, for each instrument/visit
     #    - indexes are relative to the global table in each visit
     #    - leave empty to use all out-exposures 
     gen_dic['DImast_idx_in_bin']={}
     
     
-    #%%%%%% Using stellar spectrum  
-    gen_dic['DImast_weight'] = True  
-    
-    
-    #%%%%%% Plots: weighing master 
+    #%%%%% Plot
     #    - the master is plotted after first calculation (ie before undergoing the same processing as the dataset) 
     plot_dic['DImast']=''       
 
@@ -883,8 +870,27 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     gen_dic['calc_tell_mode']='autom'      
     
     
-    #%%%% Telluric species
+    #%%%% Telluric properties
+    
+    #%%%%% Species 
     gen_dic['tell_species']=['H2O','O2']
+
+    
+    #%%%%% Measured temperature 
+    #    - set to True to fix model temperature to in-situ measurements (if available)
+    gen_dic['tell_temp_meas']=True
+    
+    
+    #%%%%% Fixed/variable properties
+    #    - format is : mod_prop = { inst : { vis : { molec : { par : { 'vary' : bool , 'value': float , 'min': float, 'max': float } } } }}        
+    #      leave empty the various fields to use default values
+    #    - see details of fit settings in data_dic['DI']['mod_prop'] 
+    #    - 'par' can be one of:
+    # + 'Temperature'  (in K) : temperature of the Earth model layer
+    # + 'Pressure_LOS' (in atm) : average pressure over the layers occupied by the species
+    # + 'ISV_LOS' (in cm-2) : integrated species vapour along the LOS
+    gen_dic['tell_mod_prop']={}
+        
     
     
     #%%%% Orders to be fitted
@@ -921,24 +927,17 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - adjust the fitted range to optimize the results
     #    - fit range set to the definition range if undefined
     gen_dic['tell_fit_range']={}
-    
-    
-    #%%%% Fixed/variable properties
-    #    - format is : mod_prop = { inst : { vis : { molec : { par : { 'vary' : bool , 'value': float , 'min': float, 'max': float } } } }}        
-    #      leave empty the various fields to use default values
-    #    - see details of fit settings in data_dic['DI']['mod_prop'] 
-    #    - 'par' can be one of:
-    # + 'Temperature'  (in K) : temperature of the Earth model layer
-    # + 'Pressure_LOS' (in atm) : average pressure over the layers occupied by the species
-    # + 'ISV_LOS' (in cm-2) : integrated species vapour along the LOS
-    gen_dic['tell_mod_prop']={}
-    
+
     
     #%%%% Correction settings
     
-    #%%%%% Threshold 
-    #    - flux values where telluric contrast is deeper than this threshold (between 0 for no telluric absorption and 1 for full telluric absorption) are set to nan
-    gen_dic['tell_thresh_corr'] = 0.9      
+    #%%%%% Telluric masking
+    #    - deep telluric lines are typically not well modelled, resulting in an overcorrection of the spectrum that manifests as an emission spike with potentially broad wings.
+    #      to compensate for this, you can mask (ie, setting flux values to nan):
+    # + pixels where telluric contrast is deeper than 'tell_depth_thresh' (between 0 for no telluric absorption and 1 for full telluric absorption)
+    # + pixels within +- 'tell_width_thresh' (in km/s) from the center of telluric lines with core contrast > 'tell_depth_thresh' 
+    gen_dic['tell_depth_thresh'] = 0.9      
+    gen_dic['tell_width_thresh'] = 15.   
     
     
     #%%%%% Exposures to be corrected
@@ -1034,7 +1033,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - a first correction based on the ratio between each exposure and its visit master is performed, to avoid inducing local-scale variations due to changes in stellar line shape
     #      a second correction based on the low-resolution ratio between the visit master and a reference is then performed, to avoid biases when comparing or combining visits together
     #      the latter correction is performed after the intra-order one, if requested 
-    #    - only the spectral balance is corrected for, not the global flux differences. This can be done via gen_dic['flux_sc']
+    #    - only the spectral balance is corrected for, not the global flux differences. This is done via gen_dic['flux_sc']
     #    - do not disable, unless input spectra have already the right balance    
     ##################################################################################################
     
@@ -1054,8 +1053,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     # + 'ext': is applied toward the external input spectrum provided via gen_dic['Fbal_refFstar'] 
     #    - the latter option allows accounting for variations on the global stellar balance between visits, and is otherwise necessary to set spectra from different instruments (ie, with different coverages) to the same balance 
     gen_dic['Fbal_vis']='meas'  
+    if gen_dic['sequence']=='st_master_tseries':gen_dic['Fbal_vis']=None
     
-    
+        
     #%%%%% Fit settings 
     
             
@@ -1220,7 +1220,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     ##################################################################################################
     #%%%% Module: temporal flux correction
     #    - if applied, it implies that relative flux variations (in particular in-transit) can be retrieved by extrapolating the corrections fitted on other exposures
-    #      thus the transit scaling module should not be applied and is automatically deactivated
+    #      thus the scaling from the broadband flux scaling module should not be applied and is automatically deactivated
     ##################################################################################################
     
     #%%%%% Activating
@@ -2211,7 +2211,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
         
     ##################################################################################################
     #%%% Module: broadband flux scaling
-    #    - define here transit properties     
+    #    - this module calculates the global (achromatic) flux ratio between each exposure and the reference spectrum, as well as the (possibly chromatic) temporal scaling associated with the provided light curve
+    #      the application of these scalings is optional, through the 'rescale_DI' field, in case data has absolute flux level
+    #      in this case, scalings must still be calculated even if not applied for weighing purposes (the field will be automatically activated if relevant)
+    #    - chromatic stellar intensity and planetary transit properties are defined here    
     ##################################################################################################
     
     #%%%% Activating
@@ -2224,7 +2227,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%% Scaling disk-integrated profiles
     #    - this option should be disabled if absolute photometry is used or if ANTARESS is applied to mock profiles 
-    #      in that case, the module calculates broadband flux variations to convert local profiles into intrinsic profiles, but they are not used to rescale disk-integrated profiles
+    #      in that case, the module calculates broadband flux variations to convert local profiles into intrinsic profiles, or to extract absorption profiles, but they are not used to rescale disk-integrated profiles
     data_dic['DI']['rescale_DI'] = True    
     
     

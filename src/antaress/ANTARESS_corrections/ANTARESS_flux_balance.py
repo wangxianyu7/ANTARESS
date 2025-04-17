@@ -578,7 +578,7 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
             #Save global data 
             if gen_dic['corr_Fbal']:data_glob.update({'tot_Fr_all':tot_Fr_all})
             if gen_dic['corr_FbalOrd']:data_glob['Ord'].update({'iord_corr_list':iord_fit_list_FbalOrd})
-            np.savez_compressed(proc_DI_data_paths_new+'add',data=data_glob,allow_pickle=True)
+            datasave_npz(proc_DI_data_paths_new+'add',data_glob)
 
         ### End of visit
 

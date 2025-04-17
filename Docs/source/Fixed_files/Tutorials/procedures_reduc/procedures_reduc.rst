@@ -157,9 +157,12 @@ Finally, the fitted telluric properties can be finely controlled using::
 The model properties (:green:`par`) are described in the configuration file, and the way to control them is described in the `fit tutorial <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_fits/procedures_fits.html>`_.  
 
 Once the fit is performed you can control how to correct the spectra using your best-fit telluric model.
-Pixels where the model telluric lines are deeper than a contrast threshold (0 for no absorption, 1 for full absorption) are set to undefined. You can change the default value of 0.9 with::
+Deep telluric lines are typically not well modelled, resulting in an overcorrection of the spectrum that manifests as an emission spike with potentially broad wings.
+To compensate for this, you can set to undefined the flux in pixels where the model telluric lines are deeper than a contrast threshold (0 for no absorption, 1 for full absorption)::
 
- gen_dic['tell_thresh_corr'] = 0.9 
+ gen_dic['tell_depth_thresh'] = 0.9 
+ 
+As well as the flux in pixels within ± :green:`gen_dic['tell_width_thresh']` (in km/s) from the center of telluric lines with core contrast larger than the above threshold.
  
 You can choose which exposures (index :green:`idx_exp` counted from 0), spectral orders (index :green:`idx_ord` counted from 0), and spectral ranges (independent wavelength intervals bounded by :green:`l` in :math:`\\A` in the Earth rest frame)) should be corrected for with::
 

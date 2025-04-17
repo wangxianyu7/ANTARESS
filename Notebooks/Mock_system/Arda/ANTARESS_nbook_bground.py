@@ -532,7 +532,7 @@ def tell_corr(input_nbook):
         input_nbook['settings']['gen_dic']['calc_corr_tell']=input_nbook['sp_reduc']['calc_tell']
     
         input_nbook['settings']['gen_dic']['tell_species']    =input_nbook['sp_reduc']['tell_species']
-        input_nbook['settings']['gen_dic']['tell_thresh_corr']=input_nbook['sp_reduc']['tell_thresh']
+        input_nbook['settings']['gen_dic']['tell_depth_thresh']=input_nbook['sp_reduc']['tell_thresh']
     return None
 
 def fbal_corr(input_nbook):

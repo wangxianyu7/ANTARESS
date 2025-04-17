@@ -9,8 +9,8 @@ from scipy import special
 import scipy.linalg
 from ..ANTARESS_conversions.ANTARESS_conv import new_compute_CCF,check_CCF_mask_lines
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,convol_prof,calc_FWHM_inst,return_resolv
-from ..ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,MAIN_multithread,air_index,gen_specdopshift,def_edge_tab,check_data
-from ..ANTARESS_general.constant_data import N_avo,c_light_m,k_boltz,h_planck
+from ..ANTARESS_general.utils import stop,np_where1D,npint,dataload_npz,MAIN_multithread,air_index,gen_specdopshift,def_edge_tab,check_data,datasave_npz
+from ..ANTARESS_general.constant_data import N_avo,c_light_m,k_boltz,h_planck,c_light
 from ..ANTARESS_general.minim_routines import call_lmfit
 
 
@@ -40,7 +40,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
 
         #Automatic telluric correction
         if gen_dic['calc_tell_mode']=='autom':
-            fixed_args={'tell_thresh_corr':gen_dic['tell_thresh_corr'],'inst':inst}
+            fixed_args={'tell_depth_thresh':gen_dic['tell_depth_thresh'],'inst':inst}
             
             #HITRAN properties
             static_model_path = 'ANTARESS_corrections/Telluric_processing/Static_model/'
@@ -75,7 +75,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
                 'CH4':16.04,
                 'CO2':44.01,
                 'O2':31.9988 }
-            if inst in ['HARPS','SOPHIE','ESPRESSO','NIRPS_HA','NIRPS_HE','HARPN','CARMENES_VIS']:   #Fix temperature if it is known from in-situ measurements
+            if gen_dic['tell_temp_meas'] and (inst in ['HARPS','SOPHIE','ESPRESSO','NIRPS_HA','NIRPS_HE','HARPN','CARMENES_VIS']):   #Fix temperature if it is known from in-situ measurements
                 tell_mol_dic['temp_bool_molecules']={
                     'H2O':False,
                     'CH4':False,                  
@@ -92,7 +92,6 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
                 'CH4':20.,
                 'CO2':20.,
                 'O2':20.}
-                    
             tell_mol_dic['isv_value_molecules']={# [cm]
                 'H2O':None,
                 'CH4':2163379.,
@@ -194,7 +193,7 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
             #Processing all exposures    
             proc_DI_data_paths_new = gen_dic['save_data_dir']+'Corr_data/Tell/'+inst+'_'+vis+'_'
             iexp_all = range(data_vis['n_in_visit'])
-            common_args = (data_vis['proc_DI_data_paths'],iexp_corr_list,inst,vis,gen_dic['tell_range_corr'],iord_corr_list,gen_dic['calc_tell_mode'],fixed_args,gen_dic['tell_species'],tell_mol_dic,gen_dic['sp_frame'],gen_dic['resamp_mode'],data_inst[vis]['dim_exp'],plot_dic['tell_CCF'],plot_dic['tell_prop'],proc_DI_data_paths_new,data_inst[vis]['mean_gcal_DI_data_paths'])
+            common_args = (data_vis['proc_DI_data_paths'],iexp_corr_list,inst,vis,gen_dic['tell_range_corr'],iord_corr_list,gen_dic['calc_tell_mode'],fixed_args,gen_dic['tell_species'],tell_mol_dic,gen_dic['sp_frame'],gen_dic['resamp_mode'],data_inst[vis]['dim_exp'],plot_dic['tell_CCF'],plot_dic['tell_prop'],proc_DI_data_paths_new,data_inst[vis]['mean_gcal_DI_data_paths'],gen_dic['tell_depth_thresh'],gen_dic['tell_width_thresh'])
             if (gen_dic['tell_nthreads']>1) and (gen_dic['tell_nthreads']<=data_vis['n_in_visit']):MAIN_multithread(corr_tell_vis,gen_dic['tell_nthreads'],data_vis['n_in_visit'],[iexp_all,data_prop_vis['AM'],data_prop_vis['IWV_AM'],data_prop_vis['TEMP'],data_prop_vis['PRESS'],data_prop_vis['BERV']],common_args)                           
             else:corr_tell_vis(iexp_all,data_prop_vis['AM'],data_prop_vis['IWV_AM'],data_prop_vis['TEMP'],data_prop_vis['PRESS'],data_prop_vis['BERV'],*common_args)  
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
@@ -209,11 +208,11 @@ def corr_tell(gen_dic,data_inst,inst,data_dic,data_prop,coord_dic,plot_dic):
             check_data({'path':data_vis['proc_DI_data_paths']+str(0)},vis=vis) 
             data_vis['tell_DI_data_paths'] = {}
             for iexp in range(data_vis['n_in_visit']):data_vis['tell_DI_data_paths'][iexp] = data_vis['proc_DI_data_paths']+'tell_'+str(iexp)
-            
+
     return None   
 
 
-def corr_tell_vis(iexp_group,airmass_group,IWV_airmass_group,temp_group,press_group,BERV_group,proc_DI_data_paths,iexp_corr_list,inst,vis,tell_range_corr,iord_corr_list,calc_tell_mode,fixed_args,tell_species,tell_mol_dic,sp_frame,resamp_mode,dim_exp,tell_CCF,tell_prop,proc_DI_data_paths_new,mean_gcal_DI_data_paths):
+def corr_tell_vis(iexp_group,airmass_group,IWV_airmass_group,temp_group,press_group,BERV_group,proc_DI_data_paths,iexp_corr_list,inst,vis,tell_range_corr,iord_corr_list,calc_tell_mode,fixed_args,tell_species,tell_mol_dic,sp_frame,resamp_mode,dim_exp,tell_CCF,tell_prop,proc_DI_data_paths_new,mean_gcal_DI_data_paths,tell_depth_thresh,tell_width_thresh):
     """**Telluric correction per visit.**
 
     Applies the chosen telluric correction in a given visit.
@@ -250,13 +249,13 @@ def corr_tell_vis(iexp_group,airmass_group,IWV_airmass_group,temp_group,press_gr
             #    - defined over the exposure spectral table, in the telluric rest frame and vacuum
             #      since the pixels of the shifted spectral table still match the original exposure ones, no conversion needs to be applied to the final telluric spectrum 
             if calc_tell_mode=='autom': 
-                tell_exp,data_exp['flux'],data_exp['cov'],outputs = Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,cen_bins,data_exp['flux'],data_exp['cov'],data_exp['cond_def'],mean_gcal_exp,inst,tell_species,tell_mol_dic,sp_frame,resamp_mode,dim_exp,iord_corr_exp,tell_CCF,tell_prop,fixed_args)
+                tell_exp,data_exp['flux'],data_exp['cov'],outputs = Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,cen_bins,data_exp['flux'],data_exp['cov'],data_exp['cond_def'],mean_gcal_exp,inst,tell_species,tell_mol_dic,sp_frame,resamp_mode,dim_exp,iord_corr_exp,tell_CCF,tell_prop,fixed_args,tell_depth_thresh,tell_width_thresh)
         
                 #Save correction data for plotting purposes
                 dic_sav = {}  
                 if (tell_CCF!='') or (tell_prop!=''):
                     dic_sav.update(outputs)
-                np.savez_compressed(proc_DI_data_paths_new+str(iexp)+'_add',data=dic_sav,allow_pickle=True)
+                    datasave_npz(proc_DI_data_paths_new+str(iexp)+'_add',dic_sav)
         
             #Applying input correction
             #    - input telluric spectrum is defined over input table
@@ -271,13 +270,13 @@ def corr_tell_vis(iexp_group,airmass_group,IWV_airmass_group,temp_group,press_gr
         else:tell_exp = np.ones(dim_exp,dtype=float)
     
         #Saving corrected data and associated tables
-        np.savez_compressed(proc_DI_data_paths_new+str(iexp),data = data_exp,allow_pickle=True) 
-        np.savez_compressed(proc_DI_data_paths_new+'tell_'+str(iexp), data = {'tell':tell_exp},allow_pickle=True) 
+        datasave_npz(proc_DI_data_paths_new+str(iexp), data_exp)
+        datasave_npz(proc_DI_data_paths_new+'tell_'+str(iexp),  {'tell':tell_exp})
 
     return None
 
 
-def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,cen_bins,flux_exp,cov_exp,cond_def_exp,mean_gcal_exp,inst,tell_species,tell_mol_dic,sp_frame,resamp_mode,dim_exp,iord_corr_list,tell_CCF,tell_prop,fixed_args):
+def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,cen_bins,flux_exp,cov_exp,cond_def_exp,mean_gcal_exp,inst,tell_species,tell_mol_dic,sp_frame,resamp_mode,dim_exp,iord_corr_list,tell_CCF,tell_prop,fixed_args,tell_depth_thresh,tell_width_thresh):
     """**ATC function.**
     
     Adaptation of the Automatic Telluric Correction routine by R. Allart.
@@ -331,7 +330,7 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
         if np.isnan(temp_exp):temp_guess = 280.
         else:temp_guess = temp_exp-tell_mol_dic['temp_offset_molecules'][molec]
         params.add('Temperature',     value= temp_guess,         min=150., max=313.,    vary=tell_mol_dic['temp_bool_molecules'][molec] )
-        
+
         #Guess for pressure and integrated species vapour toward zenith
         if molec=='H2O':
             if np.isnan(IWV_airmass_exp):ISV_zenith_exp = 0.1
@@ -356,13 +355,13 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
         #Integrated species vapour along the LOS
         if ISV_zenith_exp==0.:ISV_zenith_exp = 0.1
         params.add('ISV_LOS',   value= ISV_zenith_exp*airmass_exp,  min=0., vary=True  )            
-        
+
         #Pressure
         #    - this parameter represents an average pressure over the layers occupied by the species
         #    - pressure should always be smaller than the pressure measured at the facility at ground level, but for safety we take twice the value
         if press_guess==0.:press_guess = 0.5
         params.add('Pressure_LOS', value= press_guess,     min=0., max=press_max,  vary=True  )
-            
+
         #Overwrite fit properties
         if molec in fixed_args['tell_mod_prop']:
             for par in params:
@@ -408,7 +407,7 @@ def Run_ATC(airmass_exp,IWV_airmass_exp,temp_exp,press_exp,BERV_exp,edge_bins,ce
 
     #Calculate best telluric spectrum over the full exposure 2D spectrum
     #    - defined on the exposure table, shifted into the Earth rest frame and in vacuum
-    tell_spec_exp,corr_flux_exp,corr_cov_exp = full_telluric_model(flux_exp,cov_exp,fixed_args,param_molecules,tell_species,tell_mol_dic,tell_mol_dic['range_mol_prop'],tell_mol_dic['qt_molec'],tell_mol_dic['M_mol_molec'],tell_mol_dic['Nx_molec'],fixed_args['resolution_map'],inst,resamp_mode,dim_exp)
+    tell_spec_exp,corr_flux_exp,corr_cov_exp = full_telluric_model(flux_exp,cov_exp,fixed_args,param_molecules,tell_species,tell_mol_dic,tell_mol_dic['range_mol_prop'],tell_mol_dic['qt_molec'],tell_mol_dic['M_mol_molec'],tell_mol_dic['Nx_molec'],fixed_args['resolution_map'],inst,resamp_mode,dim_exp,tell_depth_thresh,tell_width_thresh)
 
     #Compute telluric CCF for plotting purposes  
     if (tell_CCF!=''):
@@ -630,13 +629,13 @@ def init_tell_molec(tell_species,params_molec,range_mol_prop,qt_molec,M_mol_mole
         hwhm_scaled_dic['lor'][molec] = (296.0 / temp)**n_air_mod * mol_prop['gamma_air'] * P_0  # assuming P_mol=0                
         if molec !='H2O':
             hwhm_scaled_dic['gauss'][molec] = nu_rest_mod / c_light_m * np.sqrt(2. * N_avo * k_boltz * temp * np.log(2.) / (10 ** -3 * M_mol_molec[molec]))
-        
+
     return hwhm_scaled_dic,intensity_scaled_dic,nu_scaled_dic
 
 
 
 
-def calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_scaled_dic,nu_scaled_dic,params,Nx_molec,hwhm_scaled_dic,nu_mod,nbins_mod,edge_mod):
+def calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_scaled_dic,nu_scaled_dic,params,Nx_molec,hwhm_scaled_dic,nu_mod,nbins_mod,edge_mod,tell_depth_thresh,tell_width_thresh,find_deep_tell = False):
     """**Telluric model.**
 
     Calculates model telluric spectrum. 
@@ -650,17 +649,18 @@ def calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_
         telluric_spectrum (1D array): Model telluric spectrum.
     
     """  
-    
+
     #Processing requested molecules
     tell_op_mod = np.zeros(nbins_mod,dtype=float)
+    if find_deep_tell:wav_mask_ranges = np.zeros([2,0],dtype=float)
     for molec in tell_species:
 
         #Selects lines in a broader range than the spectrum range
         #    - we keep lines over the full model range so that their wings can contribute over the spectrum range
         cond_sel =   (nu_scaled_dic[molec] > nu_sel_min ) &  (nu_scaled_dic[molec] < nu_sel_max)
         if np.sum(cond_sel)>0:
-            nu_scaled_mod_ord       = nu_scaled_dic[molec][cond_sel]
-      
+            nu_scaled_mod_ord  = nu_scaled_dic[molec][cond_sel]
+
             #Opacity matrix
             #    - model spectral table has dimension nx
             #      line tables have dimension nl
@@ -678,15 +678,50 @@ def calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_
                 nu_mod_i = nu_mod[idx_bins_li]
                 if molec == 'H2O': #lorentzian profile
                     line_profile_i = (1. / np.pi) * hwhm_lor_scaled_mod_ord[iline] / ( hwhm_lor_scaled_mod_ord[iline]**2. + ( nu_mod_i - nu_scaled_mod_ord[iline] )**2. )
+                    if find_deep_tell:min_line_profile_i = (1. / np.pi) / hwhm_lor_scaled_mod_ord[iline]
                 else:
                     line_profile_i = voigt_em(nu_mod_i, HWHM=hwhm_gauss_scaled_mod_ord[iline], gamma=hwhm_lor_scaled_mod_ord[iline], center=nu_scaled_mod_ord[iline])
+                    if find_deep_tell:min_line_profile_i = voigt_em(nu_scaled_mod_ord[iline], HWHM=hwhm_gauss_scaled_mod_ord[iline], gamma=hwhm_lor_scaled_mod_ord[iline], center=nu_scaled_mod_ord[iline])
                 
                 #Intensity profile
                 intensity_i = line_profile_i * intensity_scaled_mod_ord[iline] 
-          
+
+                #Opacity profile
+                tell_op_i = intensity_i*params[molec]['ISV_LOS'] * Nx_molec[molec]
+
+                #Identification of deep line
+                #    - we identify the spectral range :
+                # + where telluric contrast is deeper than 'tell_depth_thresh' (between 0 for no telluric absorption and 1 for full telluric absorption)
+                # + within +- 'tell_width_thresh' (in km/s) from the center of telluric lines with core contrast > 'tell_depth_thresh' 
+                #    - this range is identified over the telluric model
+                # + unconvolved, because counts measured in deep telluric-absorbed regions may have been spread from convolution but this region will still be poorly defined because it was more strongly absorbed in the unconvolved spectrum
+                # + at high resolution, because it allows for a finer identification of the telluric-absorbed regions
+                if find_deep_tell:
+
+                    #Maximum telluric contrast at line center is larger than threshold
+                    min_tell_op_i = min_line_profile_i * intensity_scaled_mod_ord[iline]*params[molec]['ISV_LOS']*Nx_molec[molec]  
+                    if (1.-np.exp( - min_tell_op_i)  >tell_depth_thresh):
+
+                        #Pixels within threshold from line center
+                        #    - wav in A, nu in cm-1, threshold in km/s
+                        tell_wavwidth_thresh = wav_scaled_mod_ord_line*tell_width_thresh/c_light
+                        nu_min_thresh = 10**8/(wav_scaled_mod_ord_line+tell_wavwidth_thresh)
+                        nu_max_thresh = 10**8/(wav_scaled_mod_ord_line-tell_wavwidth_thresh)
+                        min_idx_width_i = np.searchsorted(nu_mod,nu_min_thresh)
+                        max_idx_width_i = np.min([np.searchsorted(nu_mod,nu_max_thresh),nbins_mod-1])
+                        
+                        #Pixels with telluric contrast larger than threshold 
+                        #    - only relevant if the maximum contrast is larger than threshold
+                        idx_depth_i = idx_bins_li[(1.-np.exp( - tell_op_i) >tell_depth_thresh)]
+                                                
+                        #Maximum range encompassing both threshold, in wav space (A)
+                        nu_min_mask = np.min([nu_mod[min_idx_width_i] , nu_mod[idx_depth_i[0]]   ])
+                        nu_max_mask = np.max([nu_mod[max_idx_width_i] , nu_mod[idx_depth_i[-1]]  ])
+                        wav_mask_ranges=np.append(wav_mask_ranges,[[10**8/nu_max_mask],[10**8/nu_min_mask]],axis=1)
+                    
                 #Co-addition to optical depth spectrum
                 #    - the column density is defined as ISV_LOS * Nx_molec, where Nx_molec is the species number density (molec cm^-3) in Earth atmosphere
-                tell_op_mod[idx_bins_li]+=intensity_i*params[molec]['ISV_LOS'] * Nx_molec[molec]
+                tell_op_mod[idx_bins_li]+=tell_op_i
 
     #end of molecules
 
@@ -694,7 +729,8 @@ def calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_
     #    - reordered as a function of wavelength
     telluric_spectrum = np.exp( - tell_op_mod)[::-1]   
 
-    return telluric_spectrum
+    if find_deep_tell:return telluric_spectrum,wav_mask_ranges
+    else:return telluric_spectrum
 
 
 def var_convol_tell_sp_slow(telluric_spectrum,nbins,nbins_mod,cen_bins,cen_bins_mod,resolution_map_ord,dwav_mod    ,nedge_mod):
@@ -855,10 +891,10 @@ def CCF_telluric_model(params,velccf,args=None):
     #Fit parameters
     param_molecules = {args['molec']:params}
     tell_species = deepcopy([args['molec']])
-    
+
     #Processing current molecule
     hwhm_scaled_dic,intensity_scaled_dic,nu_scaled_dic = init_tell_molec(tell_species,param_molecules,args['range_mol_prop'],args['qt_molec'],args['M_mol_molec'],args['c2'])
-  
+
     #Telluric CCFs
     n_ccf = len(velccf)
     ccf_uncorr     = np.zeros(n_ccf,dtype=float)
@@ -899,7 +935,7 @@ def CCF_telluric_model(params,velccf,args=None):
             
         #Model telluric spectrum
         #    - flat at unity level outside of absorption lines
-        telluric_spectrum = calc_tell_model(tell_species,args['range_mol_prop'],nu_sel_min,nu_sel_max,intensity_scaled_dic,nu_scaled_dic,param_molecules,args['Nx_molec'],hwhm_scaled_dic,nu_mod,nbins_mod,edge_mod) 
+        telluric_spectrum = calc_tell_model(tell_species,args['range_mol_prop'],nu_sel_min,nu_sel_max,intensity_scaled_dic,nu_scaled_dic,param_molecules,args['Nx_molec'],hwhm_scaled_dic,nu_mod,nbins_mod,edge_mod,None,None) 
  
        	#Convolution and binning  
         if np.min(telluric_spectrum)<1:
@@ -977,7 +1013,7 @@ def CCF_telluric_model(params,velccf,args=None):
                         ccf_corr+=ccf_corr_ord
 
     #Check for absence of telluric absorption
-    if len(ord_coadd_eff)==0:stop('No telluric absorption calculated: check starting values')
+    if len(ord_coadd_eff)==0:stop('ERROR : No telluric absorption calculated: check starting values')
 
     #Maximum dimension of covariance matrix in current exposure from all contributing orders
     nd_cov_uncorr = np.amax(nd_cov_uncorr_ord)   
@@ -1007,7 +1043,7 @@ def CCF_telluric_model(params,velccf,args=None):
 
 
 
-def full_telluric_model(flux_exp,cov_exp,args,param_molecules,tell_species,tell_mol_dic,range_mol_prop,qt_molec,M_mol_molec,N_x_molecules,resolution_map,inst,resamp_mode,dim_exp):
+def full_telluric_model(flux_exp,cov_exp,args,param_molecules,tell_species,tell_mol_dic,range_mol_prop,qt_molec,M_mol_molec,N_x_molecules,resolution_map,inst,resamp_mode,dim_exp,tell_depth_thresh,tell_width_thresh):
     """**Telluric spectrum function.**
     
     Calculates telluric spectral model over full spectral range and uses it to correct measured spectrum.
@@ -1025,7 +1061,7 @@ def full_telluric_model(flux_exp,cov_exp,args,param_molecules,tell_species,tell_
     """ 
     
     #Processing requested molecules
-    hwhm_scaled_dic,intensity_scaled_dic,nu_scaled_dic = init_tell_molec(tell_species,param_molecules,range_mol_prop,qt_molec,M_mol_molec,args['c2'])
+    hwhm_scaled_dic,intensity_scaled_dic,nu_scaled_dic= init_tell_molec(tell_species,param_molecules,range_mol_prop,qt_molec,M_mol_molec,args['c2'])
     
     #Telluric spectrum
     tell_spec_exp = np.ones(dim_exp,dtype=float)  
@@ -1041,8 +1077,8 @@ def full_telluric_model(flux_exp,cov_exp,args,param_molecules,tell_species,tell_
         edge_bins_ord = args['edge_bins_earth'][iord,idx_def_ord[0]:idx_def_ord[-1]+2]
 
         #High-resolution telluric model
-        #    - resolution set at order center
-        #    - model defined over a broader range than defined spectrum
+        #    - resolution set at order center as dw = wmean*drv/c = wmean*R
+        #    - model is defined over a broader range than defined spectrum
         #    - model defined in nu [cm-1]
         dwav_mod      = np.mean(cen_bins_ord)/args['R_mod']
         nedge_mod=40
@@ -1058,28 +1094,43 @@ def full_telluric_model(flux_exp,cov_exp,args,param_molecules,tell_species,tell_
         nu_sel_max = nu_mod[-1]
 
         #Telluric spectrum
-        telluric_spectrum = calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_scaled_dic,nu_scaled_dic,param_molecules,N_x_molecules,hwhm_scaled_dic,nu_mod,nbins_mod,edge_mod)        
+        telluric_spectrum,wav_mask_ranges = calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_scaled_dic,nu_scaled_dic,param_molecules,N_x_molecules,hwhm_scaled_dic,nu_mod,nbins_mod,edge_mod,tell_depth_thresh,tell_width_thresh,find_deep_tell = True)
 
-       	#Convolution and binning  
+       	#Convolution and binning 
+        #    - the measured spectrum corresponds to Fmeas(w) = ( F(w) x Tell(w) )*LSF(w)
+        #      we assume that F(w) is locally constant, so that Fmeas(w) ~ F(w) x ( Tell(w) *LSF(w)) and we correct the measured spectrum for the convolved telluric model
         if np.min(telluric_spectrum)<1:
-    
+
             #Convolution
+            edge_bins_mod = def_edge_tab(cen_bins_mod,dim=0)
             if args['fixed_res']:
                 telluric_spectrum_conv = convol_prof(telluric_spectrum,cen_bins_mod,args['resolution_map'](args['inst'],cen_bins_mod[int(len(cen_bins_mod)/2)]))
             else:
-                edge_bins_mod = def_edge_tab(cen_bins_mod,dim=0)
                 telluric_spectrum_conv = var_convol_tell_sp(telluric_spectrum,edge_bins_ord,edge_bins_mod,resolution_map[iord,idx_def_ord[0]:idx_def_ord[-1]+1],nbins_mod,cen_bins_mod)
                 
             #Resampling
-            edge_bins_mod = def_edge_tab(cen_bins_mod,dim=0)
             tell_spec_exp[iord] = bind.resampling(args['edge_bins_earth'][iord], edge_bins_mod,telluric_spectrum_conv, kind=resamp_mode)                         
+            
+            #Set undefined telluric model values (due to resampling) to 1
+            tell_spec_exp[iord][np.isnan(tell_spec_exp[iord])] = 1.
+            
+            #Correct data in current order
+            corr_flux_exp[iord],corr_cov_exp[iord] = bind.mul_array(flux_exp[iord],cov_exp[iord],1./tell_spec_exp[iord])
+    
+            #Telluric masking
+            #    - the telluric-absorbed flux in deep telluric lines is usually too low and noisy to be retrieved 
+            #      deep telluric lines are further not well modelled, resulting in an overcorrection of the spectrum that manifests as an emission spike with potentially broad wings
+            #    - to compensate for this we identify in the model telluric spectrum the ranges from deep lines to be masked 
+            if np.shape(wav_mask_ranges)[1]>0:
+                
+                #Identify telluric masked pixels in measured spectral grid
+                cond_deep_tell = np.zeros(dim_exp[1],dtype=bool)
+                for wav_min_mask,wav_max_mask in zip(wav_mask_ranges[0],wav_mask_ranges[1]):
+                    cond_deep_tell |= ((args['edge_bins_earth'][iord][1::]>=wav_min_mask) & (args['edge_bins_earth'][iord][0:-1]<=wav_max_mask)) 
+                corr_flux_exp[iord,cond_deep_tell] = np.nan
 
-        #Correct data in current order
-        corr_flux_exp[iord],corr_cov_exp[iord] = bind.mul_array(flux_exp[iord],cov_exp[iord],1./tell_spec_exp[iord])
-
-        #Telluric threshold
-        #    - flux values where telluric contrast is deeper than this threshold are set to nan, as we consider the telluric-absorbed flux is too low and noisy to be retrieved
-        cond_deep_tell = (1.-tell_spec_exp[iord]>args['tell_thresh_corr'])
-        if True in cond_deep_tell:corr_flux_exp[iord,cond_deep_tell] = np.nan
-
+        else:
+            corr_flux_exp[iord] = deepcopy(flux_exp[iord])
+            corr_cov_exp[iord] = deepcopy(cov_exp[iord])
+            
     return tell_spec_exp,corr_flux_exp,corr_cov_exp

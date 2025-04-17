@@ -248,7 +248,6 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
                             #Deleting if weighing is not required 
                             else:os_system.remove(data_vis['sing_gcal_DI_data_paths'][iexp]) 
                             
-    
                         #From calibration profile estimate
                         #    - we use the model only to avoid the spurious features in the estimated profile
                         #    - only calculated for weighing, as the model is directly recomputed on a common grid to define the scaling profile
@@ -260,7 +259,6 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
                             datasave_npz(data_vis['sing_gcal_DI_data_paths'][iexp],{'gcal':gcal_exp_all[vis][iexp]}) 
 
                 data_all_temp.clear()
-
 
             #Storing best-fit calibration parameters
             cal_inputs_dic[vis] = np.zeros([data_dic[inst]['nord'],n_glob_groups],dtype=object)
