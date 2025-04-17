@@ -21,7 +21,7 @@ try:
             gsl_include_dir = ['/usr/local/include/']
             gsl_lib_dir = ['/usr/local/lib/']
 
-        numpy_include_dir = ['/Users/samsonmercier/anaconda3/envs/antaress/bin/python/site-packages/numpy/core/include/numpy/']
+        numpy_include_dir = [numpy.get_include()]
 
         try:
             # Check if libcerf is installed using brew list
