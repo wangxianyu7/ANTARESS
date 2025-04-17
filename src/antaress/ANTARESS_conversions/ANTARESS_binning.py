@@ -216,7 +216,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     var_key_def = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
                     count_var1D+=1
         if count_var1D>1:stop('ERROR: only one 1D variance grid should be defined')
-        
+     
         #Initializing weight calculation conditions
         calc_EFsc2,calc_var_ref2,calc_flux_sc_all = weights_bin_prof_calc(data_type,count_var1D,var_key_def)    
     
@@ -325,7 +325,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 if len(np.array(glob.glob(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp]+'.npz')))==0:stop('No weighing master found. Activate "gen_dic["calc_DImast"]".') 
                 data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp]) 
             data_ref = None
-        
+            
             #Resampling on common spectral table if required
             #    - condition is True unless all exposures of 'vis_bin' are defined on a common table, and it is the reference for the binning    
             #    - if the resampling condition is not met, then all profiles have been resampled on the common table for the visit, and the master does not need resampling as:
@@ -400,6 +400,9 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     flux_est_loc_exp = data_est_loc['flux']
                     if data_dic['Intr']['cov_loc_star']:cov_est_loc_exp = data_est_loc['cov'] 
                     else:cov_est_loc_exp = np.zeros([data_inst['nord'],1],dtype=float)   
+          
+            #Mock reference spectrum for weighing master computation
+            if masterDIweigh:flux_ref_exp = np.ones(dim_exp_new,dtype=float)
           
             #Exclude planet-contaminated bins  
             if (data_type_gen=='DI') and ('DI_Mast' in data_dic['Atm']['no_plrange']) and (iexp_glob in data_dic['Atm'][inst][vis_bin]['iexp_no_plrange']):
