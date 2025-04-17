@@ -1,0 +1,90 @@
+from setuptools import setup,Extension
+
+import os
+import sys
+import numpy
+import platform
+import subprocess
+
+#Run "python setup_star_grid_fit.py build"
+#Then copy the compiled file "C_star_grid.cpython-311-darwin.so" into your C_grid/ directory as "C_star_grid.so"
+
+proc_name = platform.processor() 
+system = platform.system()
+
+try:
+    if system=='Darwin':   #Mac OS
+        if proc_name in ['arm64','x86_64']:
+            gsl_include_dir = ['/opt/homebrew/Cellar/gsl/2.8/include/']
+            gsl_lib_dir = ['/opt/homebrew/cellar/gsl/2.8/lib/']
+        else:
+            gsl_include_dir = ['/usr/local/include/']
+            gsl_lib_dir = ['/usr/local/lib/']
+
+        numpy_include_dir = [numpy.get_include()]
+
+        try:
+            # Check if libcerf is installed using brew list
+            brew_list_output = subprocess.check_output(["brew", "list"]).decode("utf-8")
+            if "libcerf" not in brew_list_output:
+                print("libcerf not found. Installing with Homebrew...")
+                subprocess.run(["brew", "install", "libcerf"], check=True)
+                print("libcerf installed successfully.")
+            else:
+                print("libcerf is already installed.")
+
+            libcerf_path = subprocess.check_output(["brew", "--prefix", "libcerf"]).decode("utf-8").strip()
+
+            libcerf_include_dir = [os.path.join(libcerf_path, 'include')]
+            libcerf_lib_dir = [os.path.join(libcerf_path, 'lib')]
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+
+    elif system == 'Linux':
+        try:
+            # Check if libcerf is installed using apt
+            apt_list_output = subprocess.run(["dpkg", "-s", "libcerf-dev"], capture_output=True, text=True)
+            if apt_list_output.returncode != 0:
+                print("libcerf-dev not found. Installing with apt...")
+                subprocess.run(["apt-get", "update"], check=True)
+                subprocess.run(["apt-get", "install", "-y", "libcerf-dev"], check=True)
+                print("libcerf-dev installed successfully.")
+            else:
+                print("libcerf-dev is already installed.")
+
+            #Linux paths
+            gsl_include_dir = ['/usr/include'] #often the standard location
+            gsl_lib_dir = ['/usr/lib', '/usr/lib/x86_64-linux-gnu'] #add the second path as sometimes gsl is in there.
+            libcerf_include_dir = ['/usr/include']
+            libcerf_lib_dir = ['/usr/lib', '/usr/lib/x86_64-linux-gnu']
+            numpy_include_dir = [numpy.get_include()]
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+
+    else:
+        print(f"Unsupported operating system: {system}")
+        sys.exit(1)
+
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+    sys.exit(1)
+
+module1 = Extension( 
+    'C_star_grid',
+    include_dirs=numpy_include_dir + gsl_include_dir + libcerf_include_dir,
+    library_dirs=gsl_lib_dir + libcerf_lib_dir,
+    runtime_library_dirs=libcerf_lib_dir,
+    libraries=['gsl', 'gslcblas', 'cerf'],
+    sources=['C_star_grid.c'],
+    extra_compile_args=['-Wall', '-O2', '-g'], 
+    extra_link_args=['-Wl,-v'] 
+)
+
+setup(name = 'Co-add stellar grid of profiles',
+        version = '1.0',
+        description = '',
+        ext_modules = [module1])
