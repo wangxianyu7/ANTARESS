@@ -79,7 +79,7 @@ module1 = Extension(
     library_dirs=gsl_lib_dir + libcerf_lib_dir,
     runtime_library_dirs=libcerf_lib_dir,
     libraries=['gsl', 'gslcblas', 'cerf'],
-    sources=['C_star_grid.c'],
+    sources=[os.path.join("src", "antaress", "ANTARESS_analysis", "C_grid", "C_star_grid.c")],
     extra_compile_args=['-Wall', '-O2', '-g'], 
     extra_link_args=['-Wl,-v'] 
 )
