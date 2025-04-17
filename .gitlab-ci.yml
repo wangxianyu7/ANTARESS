@@ -36,7 +36,6 @@ stages:
     #Install here packages that failed to install via ${PROJECT_NAME}_env.yml
     - pip install PyAstronomy
     - pip install pysme-astro   
-    - cd src/antaress/ANTARESS_analysis/C_grid/
     - python setup.py build_ext --inplace
     - ls -lh C_star_grid*.so
 
