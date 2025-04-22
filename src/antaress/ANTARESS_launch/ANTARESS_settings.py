@@ -95,7 +95,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%%% Processing    
     
     #%%%%%% Calculating/retrieving
-    gen_dic['calc_proc_data']= True
+    gen_dic['calc_proc_data']=True
     
     
     #%%%%%% Disable calculation for all activated modules
@@ -462,7 +462,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #    - orders will not be uploaded from the dataframes and are thus excluded from all operations
     #    - apply this option only if the order is too contaminated to be exploited by the reduction steps, or undefined
     #    - order is removed in all visits of a given instrument to keep a common structure
-    gen_dic['del_orders'] = {}
+    gen_dic['del_orders']={}
     
     
     #%%%%% Spectral ranges to remove from analysis
@@ -499,7 +499,7 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%%% Calculating/retrieving
     #    - master stellar spectrum for weighing, specific to each visit
     #    - calculated after alignment and broadband flux scaling
-    gen_dic['calc_DImast'] = True   
+    gen_dic['calc_DImast']=True   
     
     
     #%%%%% Exposures to be binned
@@ -2173,11 +2173,11 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     ##################################################################################################
     
     #%%%% Activating
-    gen_dic['align_DI'] = True  
+    gen_dic['align_DI']=True  
     
     
     #%%%% Calculating/retrieving 
-    gen_dic['calc_align_DI'] = True  
+    gen_dic['calc_align_DI']=True  
     
 
     #%%%% Alignment mode
@@ -4189,7 +4189,8 @@ def ANTARESS_2D_1D_settings(data_type,local_dic,gen_dic,plot_dic):
     
     #%%%% Activating
     gen_dic['spec_1D_'+data_type] = False
-    if (gen_dic['sequence']=='st_master_tseries') and (data_type=='DI'):gen_dic['spec_1D_DI'] = True
+    if (gen_dic['sequence']=='st_master_tseries') and (data_type=='DI'):
+        gen_dic['spec_1D_DI']=True
     
     
     #%%%% Calculating/retrieving 
@@ -4216,6 +4217,7 @@ def ANTARESS_2D_1D_settings(data_type,local_dic,gen_dic,plot_dic):
     
     #%%%%% Individual spectra
     plot_dic['sp_'+data_type+'_1D']=''
+    if (gen_dic['sequence']=='st_master_tseries') and (data_type=='DI'):plot_dic['sp_DI_1D']='pdf'
     
     
     #%%%%% Residuals from model     

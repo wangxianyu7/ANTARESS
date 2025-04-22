@@ -678,10 +678,10 @@ def calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_
                 nu_mod_i = nu_mod[idx_bins_li]
                 if molec == 'H2O': #lorentzian profile
                     line_profile_i = (1. / np.pi) * hwhm_lor_scaled_mod_ord[iline] / ( hwhm_lor_scaled_mod_ord[iline]**2. + ( nu_mod_i - nu_scaled_mod_ord[iline] )**2. )
-                    if find_deep_tell:min_line_profile_i = (1. / np.pi) / hwhm_lor_scaled_mod_ord[iline]
+                    if find_deep_tell:max_line_profile_i = (1. / np.pi) / hwhm_lor_scaled_mod_ord[iline]
                 else:
                     line_profile_i = voigt_em(nu_mod_i, HWHM=hwhm_gauss_scaled_mod_ord[iline], gamma=hwhm_lor_scaled_mod_ord[iline], center=nu_scaled_mod_ord[iline])
-                    if find_deep_tell:min_line_profile_i = voigt_em(nu_scaled_mod_ord[iline], HWHM=hwhm_gauss_scaled_mod_ord[iline], gamma=hwhm_lor_scaled_mod_ord[iline], center=nu_scaled_mod_ord[iline])
+                    if find_deep_tell:max_line_profile_i = voigt_em(nu_scaled_mod_ord[iline], HWHM=hwhm_gauss_scaled_mod_ord[iline], gamma=hwhm_lor_scaled_mod_ord[iline], center=nu_scaled_mod_ord[iline])
                 
                 #Intensity profile
                 intensity_i = line_profile_i * intensity_scaled_mod_ord[iline] 
@@ -699,7 +699,7 @@ def calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_
                 if find_deep_tell:
 
                     #Maximum telluric contrast at line center is larger than threshold
-                    min_tell_op_i = min_line_profile_i * intensity_scaled_mod_ord[iline]*params[molec]['ISV_LOS']*Nx_molec[molec]  
+                    min_tell_op_i = max_line_profile_i * intensity_scaled_mod_ord[iline]*params[molec]['ISV_LOS']*Nx_molec[molec]  
                     if (1.-np.exp( - min_tell_op_i)  >tell_depth_thresh):
 
                         #Pixels within threshold from line center
@@ -709,14 +709,20 @@ def calc_tell_model(tell_species,range_mol_prop,nu_sel_min,nu_sel_max,intensity_
                         nu_max_thresh = 10**8/(wav_scaled_mod_ord_line-tell_wavwidth_thresh)
                         min_idx_width_i = np.searchsorted(nu_mod,nu_min_thresh)
                         max_idx_width_i = np.min([np.searchsorted(nu_mod,nu_max_thresh),nbins_mod-1])
-                        
+
                         #Pixels with telluric contrast larger than threshold 
                         #    - only relevant if the maximum contrast is larger than threshold
                         idx_depth_i = idx_bins_li[(1.-np.exp( - tell_op_i) >tell_depth_thresh)]
-                                                
+
                         #Maximum range encompassing both threshold, in wav space (A)
-                        nu_min_mask = np.min([nu_mod[min_idx_width_i] , nu_mod[idx_depth_i[0]]   ])
-                        nu_max_mask = np.max([nu_mod[max_idx_width_i] , nu_mod[idx_depth_i[-1]]  ])
+                        #    - in some cases the maximum contrast of the model can be lower than the mathematical maximum contrast
+                        #      when this happens we still exclude the window around the line center, considering that the true telluric line is in any case at the required contrast threshold
+                        if np.sum(idx_depth_i)>0:
+                            nu_min_mask = np.min([nu_mod[min_idx_width_i] , nu_mod[idx_depth_i[0]]   ])
+                            nu_max_mask = np.max([nu_mod[max_idx_width_i] , nu_mod[idx_depth_i[-1]]  ])
+                        else:
+                            nu_min_mask = nu_mod[min_idx_width_i]
+                            nu_max_mask = nu_mod[max_idx_width_i]
                         wav_mask_ranges=np.append(wav_mask_ranges,[[10**8/nu_max_mask],[10**8/nu_min_mask]],axis=1)
                     
                 #Co-addition to optical depth spectrum

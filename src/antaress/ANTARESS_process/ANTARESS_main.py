@@ -151,11 +151,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 #Aligning disk-integrated profiles to star rest frame
                 if (gen_dic['align_'+data_type_gen]):
                     align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)
-    
-                # #Correcting for spot contamination 
-                # if gen_dic['correct_ar'] : 
-                #     corr_spot(corr_ar_dic, coord_dic,inst,vis,data_dic,data_prop,gen_dic, theo_dic, system_param)
-                  
+
                 #Rescaling profiles to their correct flux level  
                 #    - the module is used to calculate light curves even if no scaling is needed                
                 if gen_dic['flux_sc']:                   
@@ -729,12 +725,15 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             
         if gen_dic['CCF_from_sp']:gen_dic['ccfINtype'] = True
         
-        #Set specific conversion flags and final data mode for each type of profiles and instruments
-        #    - the general instrument and visit dictionaries contain a field type that represents the mode of the data at the current stage of the pipeline
-        #    - here we set the final mode for each type of profile, so that they can be retrieved in their original mode for plotting
-        #      eg, if profiles are converted into CCF at the differential stage, we keep the information that disk-integrated profiles were in spectral mode
-        #    - we also set a flag for each instrument related to the effective conversion of its datasets
+        #Set specific fields per instrument
+        gen_dic['corr_FbalOrd_inst'] = {}
         for inst in gen_dic['type']:
+            
+            #Set specific conversion flags and final data mode for each type of profiles and instruments
+            #    - the general instrument and visit dictionaries contain a field type that represents the mode of the data at the current stage of the pipeline
+            #    - here we set the final mode for each type of profile, so that they can be retrieved in their original mode for plotting
+            #      eg, if profiles are converted into CCF at the differential stage, we keep the information that disk-integrated profiles were in spectral mode
+            #    - we also set a flag for each instrument related to the effective conversion of its datasets            
             for ikey,key in enumerate(gen_dic['type_list']):
                 
                 #Conversion of current type into CCF is requested
@@ -814,10 +813,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             for key in ['map_Atm_prof','sp_atm','CCFatm']:plot_dic[key]=''  
         else:
             if gen_dic['Intr_CCF']:stop('Error: atmospheric extraction cannot be performed after Diff./Intr. CCF conversion')
-        if gen_dic['pl_atm'] and (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['Intrbin','rec_prof']):
-            for inst in gen_dic['type']: 
-                if data_dic['Atm']['type'][inst]!=data_dic['Intr']['type'][inst]:
-                    stop('Error: intrinsic profiles for '+inst+' (in '+data_dic['Intr']['type'][inst]+') must have the same format as planetary profiles (in '+data_dic['Atm']['type'][inst]+') if also requested for their extraction)')
 
         #------------------------------------------------------------------------------------------------------------------------
         #Weighing conditions
@@ -1486,7 +1481,19 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
     if (not gen_dic['comm_sp_tab'][inst]):print('   > Data processed on individual spectral tables for each exposure')      
     else:print('   > Data resampled on a common spectral table')
 
+    #Flux balance correction
+    gen_dic['corr_FbalOrd_inst'][inst] = deepcopy(gen_dic['corr_FbalOrd'])
+    if gen_dic['corr_FbalOrd_inst'][inst]:
+        if (gen_dic['type'][inst]!='spec2D'):
+            print('WARNING: input profiles for '+inst+' are not in 2D format, order flux balance correction will not be applied.') 
+            gen_dic['corr_FbalOrd_inst'][inst] = False
+        elif (inst=='ESPRESSO'):
+            print('WARNING: it is advised to disable order flux balance correction with ESPRESSO 2D spectra, as it may partly absorb wiggle signal.') 
 
+    #Deactivate conditions
+    if gen_dic['pl_atm'] and (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['Intrbin','rec_prof']) and (data_dic['Atm']['type'][inst]!=data_dic['Intr']['type'][inst]):
+        stop('Error: intrinsic profiles for '+inst+' (in '+data_dic['Intr']['type'][inst]+') must have the same format as planetary profiles (in '+data_dic['Atm']['type'][inst]+') if also requested for their extraction)')
+    
 
     ##############################################################################################################################
     #Retrieval and pre-processing of data

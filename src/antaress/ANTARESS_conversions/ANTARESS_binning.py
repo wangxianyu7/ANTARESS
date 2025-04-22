@@ -321,11 +321,11 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             # when detector noise is accounted for 
             flux_ref_exp = None
             cov_ref_exp = None 
+            data_ref = None
             if (not masterDIweigh) and (calc_EFsc2 or calc_var_ref2):
                 if len(np.array(glob.glob(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp]+'.npz')))==0:stop('No weighing master found. Activate "gen_dic["calc_DImast"]".') 
                 data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp]) 
-            data_ref = None
-            
+
             #Resampling on common spectral table if required
             #    - condition is True unless all exposures of 'vis_bin' are defined on a common table, and it is the reference for the binning    
             #    - if the resampling condition is not met, then all profiles have been resampled on the common table for the visit, and the master does not need resampling as:

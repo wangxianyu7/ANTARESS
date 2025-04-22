@@ -292,7 +292,7 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
     """     
     txt_print = '   > Correcting spectra for'
     if gen_dic['corr_Fbal']:txt_print+=' global'
-    if gen_dic['corr_FbalOrd']:
+    if gen_dic['corr_FbalOrd_inst'][inst]:
         if gen_dic['corr_Fbal']:txt_print+=' and intra-order'        
         else:txt_print+=' intra-order'
     txt_print+=' flux balance'
@@ -304,7 +304,7 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
     if (Fbal_vis_inst is None):
         if (gen_dic[inst]['n_visits']>1):stop('Flux balance must be set to a reference for multiple visits')
     else:print('         Final scaling to '+{'meas':'measured','ext':'external'}[Fbal_vis_inst]+' reference')  
-    cond_calc = (gen_dic['corr_Fbal'] & gen_dic['calc_corr_Fbal']) | (gen_dic['corr_FbalOrd'] & gen_dic['calc_corr_FbalOrd']) 
+    cond_calc = (gen_dic['corr_Fbal'] & gen_dic['calc_corr_Fbal']) | (gen_dic['corr_FbalOrd_inst'][inst] & gen_dic['calc_corr_FbalOrd']) 
 
     #Calculating data
     if cond_calc:
@@ -313,7 +313,7 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
         #Indexes of order to be fitted
         if gen_dic['corr_Fbal']:iord_fit_Fbal = range(data_inst['nord_ref'])
         else:Fbal_range_fit = None
-        if gen_dic['corr_FbalOrd']:iord_fit_Fbal_ord = range(data_inst['nord_ref']) 
+        if gen_dic['corr_FbalOrd_inst'][inst]:iord_fit_Fbal_ord = range(data_inst['nord_ref']) 
         else:FbalOrd_range_fit = None
 
         #Deviation between current visit and reference
@@ -468,7 +468,7 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
 
             #--------------------------------------------------------
             #Intra-order flux balance
-            if gen_dic['corr_FbalOrd']:
+            if gen_dic['corr_FbalOrd_inst'][inst]:
 
                 #Fitted and corrected orders
                 if (inst in gen_dic['FbalOrd_ord_fit']) and (vis in gen_dic['FbalOrd_ord_fit'][inst]) and (len(gen_dic['FbalOrd_ord_fit'][inst][vis])>0):
@@ -570,14 +570,14 @@ def corr_Fbal(inst,gen_dic,data_inst,plot_dic,data_prop,data_dic):
             #Processing all exposures    
             iexp_all = range(data_vis['n_in_visit'])
             common_args = (data_vis['proc_DI_data_paths'],inst,vis,gen_dic['save_data_dir'],Fbal_range_fit,FbalOrd_range_fit,data_vis['dim_exp'],iord_fit_list_Fbal,iord_fit_list_FbalOrd,gen_dic['Fbal_bin_nu'][inst],data_dic['DI']['scaling_range'],gen_dic['Fbal_mod'],gen_dic['Fbal_deg'][inst][vis],gen_dic['Fbal_smooth'][inst][vis],gen_dic['FbalOrd_smooth'][inst][vis],gen_dic['Fbal_clip'],data_inst['nord'],data_vis['nspec'],gen_dic['Fbal_range_corr'],\
-                            plot_dic['Fbal_corr'],plot_dic['flux_sp'],gen_dic['FbalOrd_binw'][inst],plot_dic['FbalOrd_corr'],proc_DI_data_paths_new,gen_dic['FbalOrd_clip'],gen_dic['resamp_mode'],gen_dic['FbalOrd_deg'][inst][vis],gen_dic['Fbal_expvar'],data_dic[inst][vis]['mean_gcal_DI_data_paths'],corr_func_vis,corr_func_vis_ord,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['Fbal_phantom_range'])
+                            plot_dic['Fbal_corr'],plot_dic['flux_sp'],gen_dic['FbalOrd_binw'][inst],plot_dic['FbalOrd_corr'],proc_DI_data_paths_new,gen_dic['FbalOrd_clip'],gen_dic['resamp_mode'],gen_dic['FbalOrd_deg'][inst][vis],gen_dic['Fbal_expvar'],data_dic[inst][vis]['mean_gcal_DI_data_paths'],corr_func_vis,corr_func_vis_ord,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd_inst'][inst],gen_dic['Fbal_phantom_range'])
             if (gen_dic['Fbal_nthreads']>1) and (gen_dic['Fbal_nthreads']<=data_vis['n_in_visit']):tot_Fr_all = MAIN_multithread(corrFbal_vis,gen_dic['Fbal_nthreads'],data_vis['n_in_visit'],[iexp_all],common_args,output = True)                           
             else:tot_Fr_all = corrFbal_vis(iexp_all,*common_args)  
             data_vis['proc_DI_data_paths'] = proc_DI_data_paths_new
 
             #Save global data 
             if gen_dic['corr_Fbal']:data_glob.update({'tot_Fr_all':tot_Fr_all})
-            if gen_dic['corr_FbalOrd']:data_glob['Ord'].update({'iord_corr_list':iord_fit_list_FbalOrd})
+            if gen_dic['corr_FbalOrd_inst'][inst]:data_glob['Ord'].update({'iord_corr_list':iord_fit_list_FbalOrd})
             datasave_npz(proc_DI_data_paths_new+'add',data_glob)
 
         ### End of visit
