@@ -2418,7 +2418,8 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%%% Individual binned profiles
     plot_dic['DIbin']='' 
-    if gen_dic['sequence'] in ['st_master_tseries','night_proc']:plot_dic['DIbin']='pdf'  
+    if gen_dic['sequence'] in ['st_master_tseries','night_proc']:
+        plot_dic['DIbin']='pdf'  
     
     
     #%%%%% Residuals from binned profiles
@@ -4217,7 +4218,6 @@ def ANTARESS_2D_1D_settings(data_type,local_dic,gen_dic,plot_dic):
     
     #%%%%% Individual spectra
     plot_dic['sp_'+data_type+'_1D']=''
-    if (gen_dic['sequence']=='st_master_tseries') and (data_type=='DI'):plot_dic['sp_DI_1D']='pdf'
     
     
     #%%%%% Residuals from model     

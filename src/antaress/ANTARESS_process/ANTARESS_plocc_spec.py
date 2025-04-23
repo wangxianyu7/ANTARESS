@@ -7,7 +7,7 @@ import bindensity as bind
 from os import makedirs
 from os.path import exists as path_exist
 import glob
-from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,weights_bin_prof,init_bin_prof
+from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,weights_bin_prof,init_bin_prof,weights_bin_prof_calc
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,theo_intr2loc,var_stellar_prop,custom_DI_prof
 from ..ANTARESS_grids.ANTARESS_occ_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_ar_prop,up_plocc_arocc_prop,calc_plocced_tiles,calc_ar_tiles
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange
@@ -125,6 +125,9 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
         if not gen_dic['align_Intr']:stop('Intrinsic profiles must have been aligned')
     new_x_cen,_,_,x_cen_all,n_in_bin_all,idx_to_bin_all,dx_ov_all,_,idx_bin2orig,idx_bin2vis,idx_to_bin_unik = init_bin_prof(in_type,opt_dic[inst][vis],opt_dic['idx_in_bin'],dim_bin,coord_dic,inst,vis_to_bin,data_dic,gen_dic)
 
+    #Initializing weight calculation conditions
+    calc_EFsc2,calc_var_ref2,calc_flux_sc_all,var_key_def = weights_bin_prof_calc(in_type,in_type,gen_dic,data_dic,inst)    
+
     #Find binned profile closest (along bin dimension ) to each processed in-transit exposure 
     if corr_mode=='Intrbin':idx_bin_closest = closest_arr(new_x_cen, x_cen_all[0][idx_aligned])
     
@@ -145,11 +148,10 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
         data_to_bin={}
         for iexp_off in idx_to_bin_all[i_bin]:    
  
-            
             #Original index and visit of contributing exposure
             iexp_bin = idx_bin2orig[iexp_off]
             vis_bin = idx_bin2vis[iexp_off]
-            
+
             #Upload latest processed disk-integrated data         
             if corr_mode=='DIbin':
                 iexp_bin_glob = iexp_bin
@@ -164,18 +166,20 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
                         
                 #Complementary tables
                 #    - if DI profiles were converted from 2D into 1D we directly use the variance grid associated with the 1D converted DI profiles
-                if gen_dic['flux_sc']: scaled_data_paths = data_dic[inst][vis_bin]['scaled_DI_data_paths']  
-                else:scaled_data_paths=None
-                data_exp_bin['sing_gcal']=None   
-                data_exp_bin['sdet2'] = None 
-                if data_dic[inst][vis_bin]['tell_sp']:data_exp_bin['tell'] = dataload_npz(data_dic[inst][vis_bin]['tell_DI_data_paths'][iexp_bin])['tell']      
-                if data_dic[inst][vis_bin]['cal_weight']:
+                if data_dic[inst][vis_bin]['tell_sp'] and calc_EFsc2:data_exp_bin['tell'] = dataload_npz(data_dic[inst][vis_bin]['tell_DI_data_paths'][iexp_bin])['tell']      
+                else:data_exp_bin['tell'] = None
+                if data_dic[inst][vis_bin]['cal_weight'] and calc_EFsc2:
                     data_gcal = dataload_npz(data_dic[inst][vis_bin]['sing_gcal_DI_data_paths'][iexp_bin])
                     data_exp_bin['sing_gcal'] = data_gcal['gcal'] 
-                    if 'sdet2' in data_gcal:data_exp_bin['sdet2'] = data_gcal['sdet2']       
-                data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_bin])
+                    if 'sdet2' in data_gcal:data_exp_bin['sdet2'] = data_gcal['sdet2'] 
+                    else:data_exp_bin['sdet2'] = None 
+                else:              
+                    data_exp_bin['sing_gcal']=None   
+                    data_exp_bin['sdet2'] = None 
+                if gen_dic['DImast_weight'] and (calc_EFsc2 or calc_var_ref2):data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_bin])
+                else:data_ref = None
                 for key in ['EFsc2','EFdiff2','EFintr2']:data_exp_bin[key] = None
-                if data_dic['DI']['spec2D_to_spec1D'][inst]:data_exp_bin['EFsc2'] = dataload_npz(data_dic[inst][vis_bin]['EFsc2_DI_data_paths'][iexp_bin])['var'] 
+                if (var_key_def=='EFsc2'):data_exp_bin['EFsc2'] = dataload_npz(data_dic[inst][vis_bin]['EFsc2_DI_data_paths'][iexp_bin])['var'] 
                 
             #Upload intrinsic stellar profiles aligned in their local frame
             #    - we use intrinsic profiles already aligned in a null rest frame (still defined on their original tables unless a common table was used)     
@@ -188,23 +192,24 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
             elif corr_mode=='Intrbin':
                 iexp_bin_glob = gen_dic[inst][vis_bin]['idx_in2exp'][iexp_bin]
                 if iexp_bin_glob not in data_dic['Intr'][inst][vis_bin]['idx_def']:stop('Intrinsic exposure at i=',str(iexp_bin),' has not been aligned')
-                data_exp_bin = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_'+str(iexp_bin))
-                if gen_dic['flux_sc']: scaled_data_paths = data_dic[inst][vis_bin]['scaled_Intr_data_paths']  
-                else:scaled_data_paths=None                                
-                data_exp_bin['sing_gcal']=None   
-                data_exp_bin['sdet2'] = None 
-                if data_dic[inst][vis_bin]['tell_sp']:data_exp_bin['tell'] = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_tell'+str(iexp_bin))['tell']             
-                if data_dic[inst][vis_bin]['cal_weight']:
+                data_exp_bin = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_'+str(iexp_bin))                               
+                if data_dic[inst][vis_bin]['tell_sp'] and calc_EFsc2:data_exp_bin['tell'] = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_tell'+str(iexp_bin))['tell']             
+                if data_dic[inst][vis_bin]['cal_weight'] and calc_EFsc2:
                     data_gcal = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_sing_gcal'+str(iexp_bin))
                     data_exp_bin['sing_gcal'] = data_gcal['gcal'] 
-                    if 'sdet2' in data_gcal:data_exp_bin['sdet2'] = data_gcal['sdet2']                 
-                data_ref = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_ref'+str(iexp_bin)) 
+                    if 'sdet2' in data_gcal:data_exp_bin['sdet2'] = data_gcal['sdet2'] 
+                    else:data_exp_bin['sdet2'] = None
+                else:
+                    data_exp_bin['sing_gcal']=None   
+                    data_exp_bin['sdet2'] = None
+                if gen_dic['DImast_weight'] and (calc_EFsc2 or calc_var_ref2):data_ref = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_ref'+str(iexp_bin)) 
+                else:data_ref = None
                 for key in ['EFsc2','EFdiff2','EFintr2']:data_exp_bin[key] = None
-                for subtype_gen in gen_dic['earliertypes4var']['Intr']:
-                    if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:
-                        var_key = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
-                        data_exp_bin[var_key] = dataload_npz(data_dic[inst][vis_bin][var_key+'_Intr_data_paths'][iexp_bin])['var']             
-                        break                  
+                if var_key_def is not None:data_exp_bin[var_key_def] = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_'+var_key_def+str(iexp_bin))['var']   
+
+            #Upload complementary tables
+            if gen_dic['flux_sc'] and calc_flux_sc_all: scaled_data_paths = data_dic[inst][vis_bin]['scaled_'+in_type+'_data_paths']  
+            else:scaled_data_paths=None            
 
             #Radial velocity shifts set to the opposite of the planet-occulted surface rv associated with current exposure
             rv_surf_star,rv_surf_star_edge = def_surf_shift(data_dic['Intr']['align_mode'],dic_rv,i_in,data_exp_bin,ref_pl,data_vis['type'],data_dic[inst]['system_prop'],data_dic[inst][vis_bin]['dim_exp'],data_dic[inst]['nord'],data_dic[inst][vis_bin]['nspec'])
@@ -228,7 +233,7 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
 
             #Weight profile
             #    - if profiles were converted from 2D to 1D, we use directly their variance profiles
-            data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_bin_glob,in_type,data_vis['type'],data_vis['dim_exp'],data_to_bin[iexp_off]['tell'],data_to_bin[iexp_off]['sing_gcal'],data_to_bin[iexp_off]['cen_bins'],coord_dic[inst][vis_bin]['t_dur'][iexp_off],data_ref_align['flux'],data_ref_align['cov'],
+            data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_bin_glob,in_type,data_vis['type'],data_vis['dim_exp'],data_to_bin[iexp_off]['tell'],data_to_bin[iexp_off]['sing_gcal'],data_to_bin[iexp_off]['cen_bins'],coord_dic[inst][vis_bin]['t_dur'][iexp_off],data_ref_align['flux'],data_ref_align['cov'],(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),
                                                                sdet_exp2=data_to_bin[iexp_off]['sdet2'],EFsc2_all_in = data_exp_bin['EFsc2'] ,EFdiff2_in = data_exp_bin['EFdiff2'],EFintr2_in = data_exp_bin['EFintr2'])[0]            
           
         #Calculating binned profile
@@ -940,6 +945,9 @@ def eval_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_para
         #Activation of spectral conversion and resampling 
         cond_conv_st_prof_tab(theo_dic['rv_osamp_line_mod'],fixed_args,data_vis['type'])
 
+        #Initializing weight calculation conditions
+        calc_EFsc2,calc_var_ref2,calc_flux_sc_all,var_key_def = weights_bin_prof_calc('DI','DI',gen_dic,data_dic,inst)    
+
         #Processing each exposure
         for isub,iexp in enumerate(iexp_list):
 
@@ -1013,14 +1021,14 @@ def eval_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_para
 
                 #Estimate of true variance for DI profiles
                 #    - relevant (and defined) if 2D profiles were converted into 1D
-                if data_dic['DI']['spec2D_to_spec1D'][inst]:EFsc2_exp = dataload_npz(data_dic[inst][vis]['EFsc2_DI_data_paths'][iexp])['var'][iord_sel]  
+                if var_key_def=='EFsc2':EFsc2_exp = dataload_npz(data_dic[inst][vis]['EFsc2_DI_data_paths'][iexp])['var'][iord_sel]  
                 else:EFsc2_exp = None  
 
                 #Making weights for the master-out
                 raw_weights=weights_bin_prof(range(fixed_args['nord']), data_prop['master_out']['scaled_data_paths'][inst][vis],inst,vis,data_prop['master_out']['corr_Fbal'],data_prop['master_out']['corr_FbalOrd'],\
                                                     data_prop['master_out']['save_data_dir'],fixed_args['type'],fixed_args['nord'],isub,'DI',fixed_args['type'],fixed_args['dim_exp'],None,\
                                                     None,np.array([args_exp['cen_bins']]),coord_vis['t_dur'][isub],np.array([resamp_conv_base_DI_prof]),\
-                                                    None,EFsc2_all_in = EFsc2_exp)[0]
+                                                    None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),EFsc2_all_in = EFsc2_exp)[0]
 
                 # - Re-sample the weights
                 resamp_weights = bind.resampling(data_prop['master_out']['master_out_tab']['edge_bins'],args_exp['edge_bins'],raw_weights,kind=gen_dic['resamp_mode'])

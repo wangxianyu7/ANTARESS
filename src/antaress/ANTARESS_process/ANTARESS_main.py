@@ -722,8 +722,14 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             data_dic[key]['type'] = {inst:deepcopy(gen_dic['type'][inst]) for inst in gen_dic['type']}
             data_dic[key]['spec_to_CCF'] = {inst:False for inst in gen_dic['type']}
             data_dic[key]['spec2D_to_spec1D'] = {inst:False for inst in gen_dic['type']}
+        
+            #Deactive 1D plots if no 1D conversion is applied
+            if not gen_dic['spec_1D_'+key]:
+                print('WARNING: no 1D conversion of '+key+' profiles is applied, disabling plot_dic["sp_'+key+'_1D"]') 
+                plot_dic['sp_'+key+'_1D'] = ''
             
         if gen_dic['CCF_from_sp']:gen_dic['ccfINtype'] = True
+
         
         #Set specific fields per instrument
         gen_dic['corr_FbalOrd_inst'] = {}
@@ -1762,7 +1768,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 if not gen_dic['mock_data']:data_inst[vis]['tell_DI_data_paths']={}
 
                 #Exposure-specific calibration profile for weighing
-                if data_inst['cal_weight']:data_inst[vis]['sing_gcal_DI_data_paths']={}             
+                #    - the path is created even if weights are not needed to store temporarily blaze-derived calibration profiles
+                if data_inst['cal_weight'] or (vis in data_inst['gcal_blaze_vis']):data_inst[vis]['sing_gcal_DI_data_paths']={}             
                 
                 #Initialize current data type and conditions for the visit
                 for key in ['type','tell_sp','cal_weight']:data_inst[vis][key]=deepcopy(data_inst[key])                
@@ -2138,7 +2145,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         #Initialize blaze-derived and detector noise profiles
                         if (vis in data_inst['gcal_blaze_vis']):
                             data_dic_temp['gcal'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)*np.nan
-                            if gen_dic['cal_weight']:data_dic_temp['sdet2'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)*np.nan
+                            if data_inst['cal_weight']:data_dic_temp['sdet2'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)*np.nan
                             
                         #Telluric spectrum
                         if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):data_dic_temp['tell'] = np.ones(data_inst[vis]['dim_all'], dtype=float)
@@ -2945,7 +2952,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):tell_resamp =  np.ones(data_com['dim_all'], dtype=float)
                         if (vis in data_inst['gcal_blaze_vis']):
                             gcal_blaze_resamp = np.zeros(data_com['dim_all'], dtype=float)*np.nan
-                            if gen_dic['cal_weight']:sdet2_resamp = np.zeros(data_com['dim_all'], dtype=float)
+                            if data_inst['cal_weight']:sdet2_resamp = np.zeros(data_com['dim_all'], dtype=float)
                         for iexp in range(n_in_visit):
                             for iord in range(data_inst['nord']): 
                                 flux_resamp[iexp,iord],cov_resamp[iexp][iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['flux'][iexp,iord] , cov = data_dic_temp['cov'][iexp][iord], kind=gen_dic['resamp_mode']) 
@@ -2957,7 +2964,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                 #Resampling blazed-derived calibration and detector noise profiles
                                 if (vis in data_inst['gcal_blaze_vis']):
                                     gcal_blaze_resamp[iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['gcal'][iexp,iord], kind=gen_dic['resamp_mode'])
-                                    if gen_dic['cal_weight']:sdet2_resamp[iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['sdet2'][iexp,iord], kind=gen_dic['resamp_mode'])
+                                    if data_inst['cal_weight']:sdet2_resamp[iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['sdet2'][iexp,iord], kind=gen_dic['resamp_mode'])
 
                         #Overwrite exposure tables
                         data_dic_temp['cen_bins'][:] = deepcopy(data_com['cen_bins'])
@@ -2968,7 +2975,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):data_dic_temp['tell'] = tell_resamp
                         if (vis in data_inst['gcal_blaze_vis']):
                             data_dic_temp['gcal'] = gcal_blaze_resamp
-                            if gen_dic['cal_weight']:data_dic_temp['sdet2'] = sdet2_resamp
+                            if data_inst['cal_weight']:data_dic_temp['sdet2'] = sdet2_resamp
                         
                         #Set flag that all exposures in the visit are now defined on a common table
                         data_inst[vis]['comm_sp_tab'] = True
@@ -3027,8 +3034,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     #Blazed-derived calibration and detector noise profiles
                     #    - if defined with input data
                     #    - path is made specific to the exposure to be able to point from in-transit to global profiles without copying them to disk
-                    #    - path is created in any case as it will be used in the calibration routine
-                    if data_inst['cal_weight']:data_inst[vis]['sing_gcal_DI_data_paths'][iexp] = data_inst[vis]['proc_DI_data_paths']+'sing_gcal_'+str(iexp)
+                    if ('sing_gcal_DI_data_paths' in data_inst[vis]):data_inst[vis]['sing_gcal_DI_data_paths'][iexp] = data_inst[vis]['proc_DI_data_paths']+'sing_gcal_'+str(iexp)
                     if (vis in data_inst['gcal_blaze_vis']):
                         data_gcal_save = {'gcal':data_dic_temp['gcal'][iexp]}
                         if data_inst['cal_weight']:data_gcal_save['sdet2'] = data_dic_temp['sdet2'][iexp]

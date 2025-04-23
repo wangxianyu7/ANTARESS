@@ -240,7 +240,7 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
                                     gcal_exp_all[vis][iexp,iord,cond_undef_blaze_exp[iord]] = cal_piecewise_func(cal_inputs_iexp_glob[iord]['par'],data_all_temp[iexp]['cen_bins'][iord,cond_undef_blaze_exp[iord]],args=cal_inputs_iexp_glob[iord]['args'])[0] 
                                     
                             #Saving if weighing is required
-                            if gen_dic['cal_weight']:
+                            if data_inst['cal_weight']:
                                 data_gcal_exp = dataload_npz(data_vis['sing_gcal_DI_data_paths'][iexp])
                                 data_gcal_exp['gcal'] = gcal_exp_all[vis][iexp]
                                 datasave_npz(data_vis['sing_gcal_DI_data_paths'][iexp],data_gcal_exp) 
@@ -251,7 +251,7 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
                         #From calibration profile estimate
                         #    - we use the model only to avoid the spurious features in the estimated profile
                         #    - only calculated for weighing, as the model is directly recomputed on a common grid to define the scaling profile
-                        elif gen_dic['cal_weight']:
+                        elif data_inst['cal_weight']:
                             for iord in range(data_inst['nord']):
                                 gcal_exp_all[vis][iexp][iord] = cal_piecewise_func(cal_inputs_iexp_glob[iord]['par'],data_all_temp[iexp]['cen_bins'][iord],args=cal_inputs_iexp_glob[iord]['args'])[0] 
     

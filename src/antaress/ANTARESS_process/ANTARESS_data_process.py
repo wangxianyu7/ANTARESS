@@ -8,7 +8,7 @@ import pandas as pd
 import batman
 from ..ANTARESS_grids.ANTARESS_occ_grid import init_surf_shift,def_surf_shift,sub_calc_plocc_ar_prop,retrieve_ar_prop_from_param
 from ..ANTARESS_grids.ANTARESS_coord import get_timeorbit,calc_pl_coord,excl_plrange,coord_expos_ar
-from ..ANTARESS_conversions.ANTARESS_binning import init_bin_prof,weights_bin_prof,calc_bin_prof
+from ..ANTARESS_conversions.ANTARESS_binning import init_bin_prof,weights_bin_prof,calc_bin_prof,weights_bin_prof_calc
 from ..ANTARESS_process.ANTARESS_data_align import align_data
 from ..ANTARESS_general.utils import dataload_npz,gen_specdopshift,stop,np_where1D,datasave_npz,np_interp,npint,MAIN_multithread,check_data
 
@@ -981,6 +981,9 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
         bin_prop['multi_flag'] = False
         if (mode=='multivis'):
             if (len(np.unique(list(ref_pl.values())))>1):bin_prop['multi_flag'] = True
+        
+        #Initializing weight calculation conditions
+        calc_EFsc2,calc_var_ref2,calc_flux_sc_all,var_key_def = weights_bin_prof_calc('DI','DI',gen_dic,data_dic,inst)     
 
         #Initialize binning
         #    - output tables contain a single value, associated with the single master (=binned profiles) used for the extraction 
@@ -989,17 +992,19 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
         iexp_no_plrange_vis = {}
         exclu_rangestar_vis = {}
         for vis_bin in vis_to_bin:
-            if gen_dic['flux_sc']:scaled_data_paths_vis[vis_bin] = data_dic[inst][vis_bin]['scaled_DI_data_paths']
+            if gen_dic['flux_sc'] and calc_flux_sc_all:scaled_data_paths_vis[vis_bin] = data_dic[inst][vis_bin]['scaled_DI_data_paths']
             else:scaled_data_paths_vis[vis_bin] = None
             if ('DI_Mast' in data_dic['Atm']['no_plrange']):iexp_no_plrange_vis[vis_bin] = data_dic['Atm'][inst][vis_bin]['iexp_no_plrange']
             else:iexp_no_plrange_vis[vis_bin] = {}
             exclu_rangestar_vis[vis_bin] = data_dic['Atm'][inst][vis_bin]['exclu_range_star']
-        
+
         #Retrieving data that will be used in the binning to define the master disk-integrated profile
         #    - in process_bin_prof() all profiles are resampled on the common table before being binned, thus they can be resampled when uploaded the first time
         #    - here the binned profiles must be defined on the table of each processed exposure, so the components of the weight profile are retrieved here and then either copied or resampled if necessary for each exposure
         #      here a single binned profile (the master) is calculated, thus 'idx_to_bin_unik' is the same as idx_to_bin_all, which contains a single element
         data_to_bin_gen={}    
+        resamp_cond = {}
+        resamp_cond_all = False
         for iexp_off in idx_to_bin_unik:
             data_to_bin_gen[iexp_off]={}
 
@@ -1014,9 +1019,9 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             #      no modifications were applied since the conversion, so no resampling is required   
             data_exp_off = dataload_npz(data_inst[vis_bin]['proc_DI_data_paths']+str(iexp_glob))
             for key in ['cen_bins','edge_bins','flux','cond_def','cov']:data_to_bin_gen[iexp_off][key] = data_exp_off[key]
-            if data_vis['tell_sp']:data_to_bin_gen[iexp_off]['tell'] = dataload_npz(data_inst[vis_bin]['tell_DI_data_paths'][iexp_glob])['tell']    
+            if data_vis['tell_sp'] and calc_EFsc2:data_to_bin_gen[iexp_off]['tell'] = dataload_npz(data_inst[vis_bin]['tell_DI_data_paths'][iexp_glob])['tell']    
             else:data_to_bin_gen[iexp_off]['tell'] = None
-            if data_inst['cal_weight']:
+            if data_inst['cal_weight'] and calc_EFsc2:
                 data_gcal = dataload_npz(data_inst[vis_bin]['sing_gcal_DI_data_paths'][iexp_off])
                 data_to_bin_gen[iexp_off]['sing_gcal'] = data_gcal['gcal'] 
                 if 'sdet2' in data_gcal:data_to_bin_gen[iexp_off]['sdet2'] = data_gcal['sdet2'] 
@@ -1031,25 +1036,30 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             #    - profile has been shifted to the same frame as the differential profiles, but is still defined on the common table, not the table of current exposure
             #    - master covariance is not required for DI profile weights
             #    - see process_binned_prof() for details
-            data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_glob])
-            data_to_bin_gen[iexp_off]['edge_bins_ref'] = data_ref['edge_bins']
-            data_to_bin_gen[iexp_off]['flux_ref'] = data_ref['flux']
+            if gen_dic['DImast_weight'] and (calc_EFsc2 or calc_var_ref2):            
+                data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_glob])
+                data_to_bin_gen[iexp_off]['edge_bins_ref'] = data_ref['edge_bins']
+                data_to_bin_gen[iexp_off]['flux_ref'] = data_ref['flux']
+            else:data_to_bin_gen[iexp_off]['flux_ref'] = None
                 
             #Exposure duration
             data_to_bin_gen[iexp_off]['dt'] = coord_dic[inst][vis_bin]['t_dur'][iexp_glob]
 
             #Weight profile
-            #    - only calculated here on a common table if:
-            # + binned profiles come from a single visit, defined on a common table for the visit
-            # + binned profiles come from multiple visits, defined on a common table for all visits            
-            if ((mode=='') and data_vis['comm_sp_tab']) or ((mode=='multivis') and data_inst['comm_sp_tab']): 
+            #    - only calculated here on a common table if resampling is not required
+            #    - resampling condition is that binned profiles:
+            # + come from a single visit, and do not share a common table for the visit
+            # + come from multiple visits, do not share a common table for all visits, and visit of the processed exposure is not the one used as reference for the common table of all visits (in which case resampling is not needed)     
+            resamp_cond[iexp_off] = ((mode=='') and (not data_inst[vis_bin]['comm_sp_tab'])) or ((mode=='multivis') and (not data_inst['comm_sp_tab']) and (vis_bin!=data_inst['com_vis']))
+            resamp_cond_all |= resamp_cond[iexp_off]
+            if (not resamp_cond[iexp_off]): 
                 data_to_bin_gen[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,'DI',data_dic[inst]['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['sing_gcal'],data_to_bin_gen[iexp_off]['cen_bins'],
-                                                                       data_to_bin_gen[iexp_off]['dt'],data_to_bin_gen[iexp_off]['flux_ref'],None,sdet_exp2 = data_to_bin_gen[iexp_off]['sdet2'],EFsc2_all_in = data_to_bin_gen[iexp_off]['EFsc2'])[0]
+                                                                       data_to_bin_gen[iexp_off]['dt'],data_to_bin_gen[iexp_off]['flux_ref'],None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),sdet_exp2 = data_to_bin_gen[iexp_off]['sdet2'],EFsc2_all_in = data_to_bin_gen[iexp_off]['EFsc2'])[0]
 
         #Processing each exposure of current visit selected for extraction
         iexp_proc = data_dic['Diff'][inst][vis]['idx_to_extract']
-        common_args = (data_vis['proc_DI_data_paths'],mode,data_vis['comm_sp_tab'],data_inst['comm_sp_tab'],proc_gen_data_paths_new,idx_to_bin_all[0],n_in_bin_all[0],dx_ov_all[0],idx_bin2orig,idx_bin2vis,data_inst['com_vis'],data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin_gen,gen_dic['resamp_mode'],\
-                       scaled_data_paths_vis,inst,iexp_no_plrange_vis,exclu_rangestar_vis,data_dic[inst]['type'],gen_dic['type'],gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'])               
+        common_args = (data_vis['proc_DI_data_paths'],proc_gen_data_paths_new,idx_to_bin_all[0],n_in_bin_all[0],dx_ov_all[0],idx_bin2orig,idx_bin2vis,data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin_gen,gen_dic['resamp_mode'],\
+                       scaled_data_paths_vis,inst,iexp_no_plrange_vis,exclu_rangestar_vis,data_dic[inst]['type'],gen_dic['type'],gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],resamp_cond,resamp_cond_all,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all))               
         if gen_dic['nthreads_diff_data']>1:MAIN_multithread(sub_extract_diff_profiles,gen_dic['nthreads_diff_data'],len(iexp_proc),[iexp_proc],common_args)                           
         else:sub_extract_diff_profiles(iexp_proc,*common_args)    
 
@@ -1079,8 +1089,8 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
 
 
 
-def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,comm_sp_tab_inst,proc_gen_data_paths_new,idx_to_bin_mast,n_in_bin_mast,dx_ov_mast,idx_bin2orig,idx_bin2vis,com_vis,nord,dim_exp,nspec,data_to_bin_gen,resamp_mode,\
-                             scaled_data_paths_vis,inst,iexp_no_plrange_vis,exclu_rangestar_vis,vis_type,gen_type,corr_Fbal,corr_FbalOrd,save_data_dir):
+def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,proc_gen_data_paths_new,idx_to_bin_mast,n_in_bin_mast,dx_ov_mast,idx_bin2orig,idx_bin2vis,nord,dim_exp,nspec,data_to_bin_gen,resamp_mode,\
+                             scaled_data_paths_vis,inst,iexp_no_plrange_vis,exclu_rangestar_vis,vis_type,gen_type,corr_Fbal,corr_FbalOrd,save_data_dir,resamp_cond,resamp_cond_all,calc_cond):            
     r"""**Differential profile extraction.** 
 
     Calculates differential profiles.
@@ -1102,10 +1112,8 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
         #Calculating master disk-integrated profile
         #    - the master is calculated in a given exposure:
         # + if it is the first one
-        # + if it is another one and binned profiles 
-        #       come from a single visit, and do not share a common table for the visit
-        #       come from multiple visits, do not share a common table for all visits, and visit of the processed exposure is not the one used as reference for the common table of all visits (in which case resampling is not needed)
-        if (isub==0) or ((mode=='') and (not comm_sp_tab_vis)) or ((mode=='multivis') and (not comm_sp_tab_inst)):                
+        # + if it is another one and binned profiles need resampling
+        if (isub==0) or resamp_cond_all:                
             data_to_bin={}
             for iexp_off in idx_to_bin_mast:
 
@@ -1118,20 +1126,20 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
                 #    - data is stored with the same indexes as in idx_to_bin_all
                 #    - all exposures must be defined on the same spectral table before being binned
                 #    - if multiple visits are used and do not share a common table, they do not need resampling if their table is the one used as reference to set the common table
-                if ((mode=='') and (not comm_sp_tab_vis)) or ((mode=='multivis') and (not comm_sp_tab_inst) and (vis_bin!=com_vis)):
+                if resamp_cond[iexp_off]:
                     data_to_bin[iexp_off]={}
                     
                     #Resampling exposure profile
                     data_to_bin[iexp_off]['flux']=np.zeros(dim_exp,dtype=float)*np.nan
                     data_to_bin[iexp_off]['cov']=np.zeros(nord,dtype=object) 
-                    flux_ref_exp=np.zeros(dim_exp,dtype=float)*np.nan
+                    flux_ref_exp=np.zeros(dim_exp,dtype=float)*np.nan if (data_to_bin_gen[iexp_off]['flux_ref'] is not None) else None
                     tell_exp=np.ones(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['tell'] is not None) else None
                     sing_gcal_exp=np.ones(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['sing_gcal'] is not None) else None
                     sdet2_exp=np.zeros(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['sdet2'] is not None) else None
                     EFsc2_exp=np.zeros(dim_exp,dtype=float) if (data_to_bin_gen[iexp_off]['EFsc2'] is not None) else None
                     for iord in range(nord): 
                         data_to_bin[iexp_off]['flux'][iord],data_to_bin[iexp_off]['cov'][iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord], data_to_bin_gen[iexp_off]['flux'][iord] , cov = data_to_bin_gen[iexp_off]['cov'][iord], kind=resamp_mode)                                                        
-                        flux_ref_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins_ref'][iord], data_to_bin_gen[iexp_off]['flux_ref'][iord], kind=resamp_mode)                                                        
+                        if flux_ref_exp is not None:flux_ref_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins_ref'][iord], data_to_bin_gen[iexp_off]['flux_ref'][iord], kind=resamp_mode)                                                        
                         if tell_exp is not None:tell_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord], data_to_bin_gen[iexp_off]['tell'][iord] , kind=resamp_mode) 
                         if sing_gcal_exp is not None:sing_gcal_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord],data_to_bin_gen[iexp_off]['sing_gcal'][iord], kind=resamp_mode)  
                         if sdet2_exp is not None:sdet2_exp[iord] = bind.resampling(data_exp['edge_bins'][iord], data_to_bin_gen[iexp_off]['edge_bins'][iord],data_to_bin_gen[iexp_off]['sdet2'][iord], kind=resamp_mode)         
@@ -1140,7 +1148,7 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,mode,comm_sp_tab_vis,
                     if sdet2_exp is not None:sdet2_exp[np.isnan(sdet2_exp)]=0.
     
                     #Weight definition         
-                    data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(nord),scaled_data_paths_vis[vis_bin],inst,vis_bin,corr_Fbal,corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,'DI',vis_type,dim_exp,tell_exp,sing_gcal_exp,data_exp['cen_bins'],data_to_bin[iexp_off]['dt'],flux_ref_exp,None,sdet_exp2 = sdet2_exp,EFsc2_all_in = EFsc2_exp)[0]
+                    data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(nord),scaled_data_paths_vis[vis_bin],inst,vis_bin,corr_Fbal,corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,'DI',vis_type,dim_exp,tell_exp,sing_gcal_exp,data_exp['cen_bins'],data_to_bin[iexp_off]['dt'],flux_ref_exp,None,calc_cond,sdet_exp2 = sdet2_exp,EFsc2_all_in = EFsc2_exp)[0]
 
                 #Weighing components and current exposure are defined on the same table common to the visit 
                 else:data_to_bin[iexp_off] = deepcopy(data_to_bin_gen[iexp_off])  

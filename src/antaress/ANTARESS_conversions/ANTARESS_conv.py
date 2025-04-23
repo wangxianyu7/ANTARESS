@@ -6,7 +6,7 @@ import bindensity as bind
 from scipy.interpolate import interp1d
 from pathos.multiprocessing import Pool
 from ..ANTARESS_general.constant_data import c_light
-from ..ANTARESS_conversions.ANTARESS_binning import pre_calc_bin_prof,weights_bin_prof
+from ..ANTARESS_conversions.ANTARESS_binning import pre_calc_bin_prof,weights_bin_prof,weights_bin_prof_calc
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange
 from ..ANTARESS_process.ANTARESS_data_process import calc_Intr_mean_cont
 from ..ANTARESS_corrections.ANTARESS_detrend import corr_length_determination
@@ -745,30 +745,37 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic,coord_di
         cen_bins_1D = prop_dic['spec_1D_prop'][inst]['cen_bins']
         edge_bins_1D = prop_dic['spec_1D_prop'][inst]['edge_bins']
      
+        #Initializing weight calculation conditions
+        #    - at this stage no 2D/1D conversion has been applied
+        calc_EFsc2,calc_var_ref2,calc_flux_sc_all,var_key_def = weights_bin_prof_calc(None,data_type,None,None,None,check_var = False)   
+        calc_cond = (calc_EFsc2,calc_var_ref2,calc_flux_sc_all)        
+
         #Associated tables  
         dt_all = coord_dic[inst][vis]['t_dur']       
         proc_data_paths = {}
-        scaling_data_paths = {}
-        tell_data_paths =  {} if data_vis['tell_sp'] else None
-        mean_gcal_data_paths = {}
-        if data_vis['cal_weight']:sing_gcal_data_paths = {}
+        if gen_dic['flux_sc'] and calc_flux_sc_all:scaled_data_paths = {}
+        else:scaled_data_paths = None
+        if data_vis['tell_sp'] and calc_EFsc2:tell_data_paths =  {}         
+        else:tell_data_paths =  None
+        if data_vis['cal_weight'] and calc_EFsc2:sing_gcal_data_paths = {}
         else:sing_gcal_data_paths = None
-        DImast_weight_data_paths = {} if gen_dic['DImast_weight'] else None
+        if gen_dic['DImast_weight'] and (calc_EFsc2 or calc_var_ref2):DImast_weight_data_paths = {}
+        else:DImast_weight_data_paths = None
         for key in data_type_key:   
             proc_data_paths[key] = data_vis['proc_'+key+'_data_paths']
-            if gen_dic['flux_sc']:scaling_data_paths[key] = data_vis['scaled_'+key+'_data_paths']
-            else:scaling_data_paths[key] = None
+            if scaled_data_paths is not None:scaled_data_paths[key] = data_vis['scaled_'+key+'_data_paths']
             if tell_data_paths is not None:tell_data_paths[key] = data_vis['tell_'+key+'_data_paths']
-            mean_gcal_data_paths[key] = data_vis['mean_gcal_'+key+'_data_paths']
             if sing_gcal_data_paths is not None:sing_gcal_data_paths[key] = data_vis['sing_gcal_'+key+'_data_paths']
             if DImast_weight_data_paths is not None:DImast_weight_data_paths[key] = data_vis['mast_'+key+'_data_paths']
-        LocEst_Atm_data_paths = data_vis['LocEst_Atm_data_paths'] if data_type_gen=='Atm' else None
+        if (data_type_gen=='Atm') and (data_type=='Absorption') or ((data_type=='Emission') and data_dic['Intr']['cov_loc_star']): 
+            LocEst_Atm_data_paths = data_vis['LocEst_Atm_data_paths']
+        else:LocEst_Atm_data_paths = None
 
         #Processing all exposures
         ifirst = iexp_conv[0]
         common_args = (data_type_gen,data_type,gen_dic['resamp_mode'],dir_save,cen_bins_1D,edge_bins_1D,nspec_1D,data_dic[inst]['nord'],ifirst,proc_com_data_paths_new,\
-                       gen_dic[inst][vis]['idx_in2exp'],data_dic['Intr']['cov_loc_star'],proc_data_paths,tell_data_paths,scaling_data_paths,mean_gcal_data_paths,sing_gcal_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],\
-                       gen_dic['save_data_dir'],gen_dic['type'],data_vis['type'],data_vis['dim_exp'],gen_vis['idx_exp2in'],gen_vis['idx_in'],gen_dic['type2var'],dt_all,data_vis['comm_sp_tab'],gen_dic['sequence'])
+                       gen_dic[inst][vis]['idx_in2exp'],data_dic['Intr']['cov_loc_star'],proc_data_paths,tell_data_paths,scaled_data_paths,sing_gcal_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],\
+                       gen_dic['save_data_dir'],gen_dic['type'],data_vis['type'],data_vis['dim_exp'],gen_vis['idx_exp2in'],gen_vis['idx_in'],gen_dic['type2var'],dt_all,data_vis['comm_sp_tab'],gen_dic['sequence'],calc_cond)
         if (nthreads>1) and (nthreads <=len(iexp_conv)): MAIN_multithread(conv_2D_to_1D_exp,nthreads,len(iexp_conv),[iexp_conv],common_args)                           
         else: conv_2D_to_1D_exp(iexp_conv,*common_args)  
 
@@ -837,8 +844,8 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic,coord_di
     return None
 
 def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen_bins_1D,edge_bins_1D,nspec_1D,nord,ifirst,proc_com_data_paths,\
-                      idx_in2exp,cov_loc_star,proc_data_paths,tell_data_paths,scaling_data_paths,mean_gcal_data_paths,sing_gcal_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,\
-                      save_data_dir,gen_type,data_mode,dim_exp,idx_exp2in,idx_in,type2var,dt_all,comm_sp_tab,sequence):
+                      idx_in2exp,cov_loc_star,proc_data_paths,tell_data_paths,scaled_data_paths,sing_gcal_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,\
+                      save_data_dir,gen_type,data_mode,dim_exp,idx_exp2in,idx_in,type2var,dt_all,comm_sp_tab,sequence,calc_cond):
     r"""**Main routine to convert 2D spectra into 1D spectra** 
     
     Calculates 1D spectra from 2D spectra, propagating covariance matrix
@@ -867,10 +874,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen
         elif data_type_eff=='Absorption':iexp_glob = idx_in[iexp]
 
         #Upload spectra and associated tables in star or local frame
-        #    - all complementary tables are defined on the same grid as the current exposure
-        flux_est_loc_exp = None
-        cov_est_loc_exp = None
-        SpSstar_spec = None    
+        #    - all complementary tables are defined on the same grid as the current exposure   
         data_exp = dataload_npz(proc_data_paths[data_type_eff]+str(iexp_eff))
         if DImast_weight_data_paths is not None:
             
@@ -888,8 +892,9 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen
                 data_ref['flux'] = flux_ref
                 data_ref['cov'] = cov_ref
                 data_ref['cond_def'] = ~np.isnan(flux_ref)
+        if scaled_data_paths is not None:scaled_data_paths_exp = scaled_data_paths[data_type_eff]
+        else:scaled_data_paths_exp = None
         if tell_data_paths is not None:data_exp['tell'] = dataload_npz(tell_data_paths[data_type_eff][iexp_eff])['tell'] 
-        data_exp['mean_gcal'] = dataload_npz(mean_gcal_data_paths[data_type_eff][iexp_eff])['mean_gcal'] 
         if sing_gcal_data_paths is not None:
             data_gcal = dataload_npz(sing_gcal_data_paths[data_type_eff][iexp_eff])
             data_exp['sing_gcal'] = data_gcal['gcal'] 
@@ -897,11 +902,14 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen
         else:
             data_exp['sing_gcal']=None   
             data_exp['sdet2'] = None   
-        if data_type_gen=='Atm':
+        flux_est_loc_exp = None
+        cov_est_loc_exp = None
+        if LocEst_Atm_data_paths is not None:    
             data_est_loc=dataload_npz(LocEst_Atm_data_paths[iexp_eff])
             flux_est_loc_exp = data_est_loc['flux']
-            if cov_loc_star:cov_est_loc_exp = data_est_loc['cov']                      
-            if data_type_eff=='Absorption':SpSstar_spec = data_exp['SpSstar_spec']
+            if cov_loc_star:cov_est_loc_exp = data_est_loc['cov']  
+        if (data_type_gen=='Atm') and (data_type_eff=='Absorption'):SpSstar_spec = data_exp['SpSstar_spec']
+        else:SpSstar_spec = None 
 
         #Weight definition
         #    - cannot be parallelized as functions cannot be pickled
@@ -910,7 +918,8 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen
         #      they are however processed in the same way as the exposure if used later on in the pipeline 
         #    - for intrinsic and atmospheric profiles we provide the broadband flux scaling, even if does not matter to the weighing, because it is otherwise set to 0 and messes up with weights definition
         #    - input profiles are by definition S2D, so there are no estimates of true variance already calculated
-        data_exp['weights'],EFsc2_all,EFdiff2,EFintr2,EFem2,EAbs2 = weights_bin_prof(range(nord),scaling_data_paths[data_type_eff],inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type_eff,data_mode,dim_exp,data_exp['tell'],data_exp['sing_gcal'], data_exp['cen_bins'],dt_all[iexp_glob],data_ref['flux'],data_ref['cov'],sdet_exp2 = data_exp['sdet2'])
+        data_exp['weights'],EFsc2_all,EFdiff2,EFintr2,EFem2,EAbs2 = weights_bin_prof(range(nord),scaled_data_paths_exp,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type_eff,data_mode,dim_exp,data_exp['tell'],data_exp['sing_gcal'], data_exp['cen_bins'],dt_all[iexp_glob],data_ref['flux'],data_ref['cov'],calc_cond,
+                                                                                     flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,sdet_exp2 = data_exp['sdet2'])
         variances_1D = {'DI':EFsc2_all,'Diff':EFdiff2,'Intr':EFintr2,'Emission':EFem2,'Absorption':EAbs2}
 
         #-----------------------

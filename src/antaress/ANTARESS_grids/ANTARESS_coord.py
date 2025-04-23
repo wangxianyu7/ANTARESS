@@ -723,7 +723,7 @@ def calc_zLOS_oblate(x_st_sk,y_st_sk,istar_rad,RpoleReq):
 
 
 
-def excl_plrange(cond_def,range_star_in,iexp,edge_bins,data_type):
+def excl_plrange(cond_def,range_star_in,iexp,edge_bins,data_format):
     r"""**Planet atmospheric masking.**
 
     Identifies spectral pixels contaminated by the planetary atmosphere, as requested in input. 
@@ -739,7 +739,7 @@ def excl_plrange(cond_def,range_star_in,iexp,edge_bins,data_type):
     """ 
     cond_kept = np.ones(cond_def.shape,dtype=bool)
     idx_excl_bd_ranges = []
-    if data_type=='CCF':
+    if data_format=='CCF':
         range_star = range_star_in['CCF']
         for pl_loc in range_star:
             idx_excl = np_where1D((edge_bins[0:-1]>=range_star[pl_loc][0,iexp]) & (edge_bins[1:]<=range_star[pl_loc][1,iexp]))
@@ -747,7 +747,7 @@ def excl_plrange(cond_def,range_star_in,iexp,edge_bins,data_type):
                 idx_excl_bd_ranges+=[[idx_excl[0],idx_excl[-1]]]
                 cond_kept[idx_excl] = False 
 
-    elif 'spec' in data_type:
+    elif 'spec' in data_format:
         range_star = range_star_in['spec']
         
         #Defined bins in spectrum

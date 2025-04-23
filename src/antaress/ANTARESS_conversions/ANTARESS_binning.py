@@ -4,7 +4,7 @@ import numpy as np
 import bindensity as bind
 from copy import deepcopy
 import glob
-from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,default_func,check_data
+from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,datasave_npz,default_func,check_data
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase,coord_expos_ar
 from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_ar_prop,retrieve_ar_prop_from_param
@@ -28,9 +28,19 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
     """     
     data_inst = data_dic[inst]    
     
-    #Identifier for saved file
-    if mode=='multivis':vis_save = 'binned'      
-    else:vis_save = vis_in 
+    #Multiple/single visit
+    if mode=='multivis':
+        
+        #Identifier for saved file        
+        vis_save = 'binned'  
+        
+            
+        #Common data type
+        data_format = data_inst['type']
+        
+    else:
+        vis_save = vis_in 
+        data_format = data_inst[vis_in]['type']
     prop_dic = deepcopy(data_dic[data_type_gen]) 
     if (inst not in prop_dic['prop_bin']):prop_dic['prop_bin'][inst] = {}
     if data_type_gen=='DI':   
@@ -75,7 +85,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         if mode=='multivis':prop_dic[inst]['binned']={} 
         save_pref = gen_dic['save_data_dir']+data_type_gen+'bin_data/'
         if data_type_gen=='Atm':save_pref+=data_dic['Atm']['pl_atm_sign']+'/'
-        save_pref+=inst+'_'+vis_save+'_'+prop_dic['dim_bin']
+        save_pref+=inst+'_'+vis_save+'_'+data_format+'_'+prop_dic['dim_bin']
             
     #Overwrite effective bin dimension
     #    - this is required when bin dimension is set by default
@@ -101,9 +111,6 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             for vis_bin in vis_to_bin:sysvel+=data_dic['DI']['sysvel'][inst][vis_bin]
             sysvel/=len(vis_to_bin)
             
-            #Common data type
-            data_mode = data_inst['type']
-            
             #Common rest frame
             rest_frame=[]
             for vis_bin in vis_to_bin:rest_frame+=[data_dic['DI'][inst][vis_bin]['rest_frame']]
@@ -126,7 +133,6 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         elif mode=='': 
             vis_to_bin=[vis_in]
             sysvel = data_dic['DI']['sysvel'][inst][vis_in]
-            data_mode = data_inst[vis_in]['type']
             rest_frame = data_dic['DI'][inst][vis_in]['rest_frame']
             system_prop = data_dic[inst][vis_in]['system_prop']
             if (rest_frame!='star'):com_frame = ''
@@ -190,35 +196,9 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
            
         #Initialize binning
         new_x_cen,new_x_low,new_x_high,_,n_in_bin_all,idx_to_bin_all,dx_ov_all,n_bin,idx_bin2orig,idx_bin2vis,idx_to_bin_unik = init_bin_prof(data_type,ref_pl,prop_dic['idx_in_bin'],prop_dic['dim_bin'],coord_dic,inst,vis_to_bin,data_dic,gen_dic,bin_prop)
-
-        #Variance grid of the data type that was converted from 2D to 1D
-        #    - if profiles of a given type were converted from 2D into 1D, their 2D weights contributors and those of subsequent data types cannot be used anymore
-        #      when conversion occured, the 1D variance of the profile were thus saved for later use in weighing
-        #      the converted profile type, and all subsequent data type, use this 1D variance grid
-        #    - if no type was converted, variance grid remain set to None so that they will not be used when provided to the weighing function
-        #    - the 'spec2D_to_spec1D' flag can only be true for the data type that was converted, thus the variance grid is only defined for one data type in a given processing
-        #      however this variance grid may be associated to this data type and later data types in the processing
-        #      if the current data type was the one converted, we use directly its own variance grid (from type2var[data_type])
-        #      if the conversion was applied to an earlier data type 'subtype', we use:
-        # + for Diff profiles: 'EFsc2' (from type2var['DI']) to calculate 'EFdiff2' (if DI were converted) 
-        # + for Intr profiles: 'EFsc2' (from type2var['DI']) to calculate 'EFdiff2' and 'EFintr2' (if DI were converted)
-        #                      'EFdiff2' (from type2var['Diff']) to calculate 'EFintr2' (if Diff were converted)
-        # + for Atm profiles: 'EFsc2' (from type2var['DI']) to calculate 'EFdiff2' and 'EFem2' or 'EAbs2' (if DI were converted)
-        #                     'EFdiff2' (from type2var['Diff']) to calculate 'EFem2' or 'EAbs2' (if Diff were converted)
-        #    - the weighing DI master is computed before 2D/1D conversion, so variances are not yet defined
-        #      if Diff profiles were extracted, Intr profiles cannot have been extracted
-        #      if Intr profiles were extracted, there is no temporal binning of Diff (which are limited to the OT) profiles allowed, and Atm profiles cannot have been extracted
-        count_var1D = 0
-        var_key_def=None
-        if not masterDIweigh:
-            for subtype_gen in gen_dic['earliertypes4var'][data_type_gen]: 
-                if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:  
-                    var_key_def = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
-                    count_var1D+=1
-        if count_var1D>1:stop('ERROR: only one 1D variance grid should be defined')
      
         #Initializing weight calculation conditions
-        calc_EFsc2,calc_var_ref2,calc_flux_sc_all = weights_bin_prof_calc(data_type,count_var1D,var_key_def)    
+        calc_EFsc2,calc_var_ref2,calc_flux_sc_all,var_key_def = weights_bin_prof_calc(data_type_gen,data_type,gen_dic,data_dic,inst,check_var = ~masterDIweigh)    
     
         #Store flags
         #    - 'FromAligned' set to True if binned profiles were aligned before
@@ -251,7 +231,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             SpSstar_spec = None
             data_exp = dataload_npz(data_inst[vis_bin]['proc_'+data_type_gen+'_data_paths']+str(iexp))
             data_glob_new['vis_iexp_in_bin'][vis_bin][iexp]['data_path'] = data_inst[vis_bin]['proc_'+data_type_gen+'_data_paths']+str(iexp)
-            if gen_dic['flux_sc']:scaled_data_paths = data_dic[inst][vis_bin]['scaled_'+data_type_gen+'_data_paths']
+            if gen_dic['flux_sc'] and calc_flux_sc_all:scaled_data_paths = data_dic[inst][vis_bin]['scaled_'+data_type_gen+'_data_paths']
             else:scaled_data_paths = None
             if data_inst[vis_bin]['tell_sp'] and calc_EFsc2:
                 data_exp['tell'] = dataload_npz(data_inst[vis_bin]['tell_'+data_type_gen+'_data_paths'][iexp])['tell']  
@@ -278,7 +258,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #Uploading variance grid associated with binned data type
             #    - variance grids followed the same processing as the successive data types, and are thus uploaded from a path that is specific to the current data type 'data_type'
             for key in gen_dic['type2var'].values():data_exp[key] = None
-            if count_var1D==1:data_exp[var_key_def] = dataload_npz(data_inst[vis_bin][var_key_def+'_'+data_type+'_data_paths'][iexp])['var']  
+            if var_key_def is not None:data_exp[var_key_def] = dataload_npz(data_inst[vis_bin][var_key_def+'_'+data_type+'_data_paths'][iexp])['var']  
 
             if data_type_gen=='DI': 
                 iexp_glob=iexp
@@ -312,7 +292,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     if ((data_type=='Absorption') and (var_key_def!='EAbs2')) or ((data_type=='Emission') and (var_key_def!='EFem2') and data_dic['Intr']['cov_loc_star']): 
                         data_est_loc=dataload_npz(data_dic[inst][vis_bin]['LocEst_Atm_data_paths'][iexp]) 
              
-            #Weight contributors
+            #Disk-integrated weighing master
             #    - upon first calculation of the weighing DI master, no DI stellar spectrum is available
             #      we thus cannot estimate the photon noise of a given exposure to its true level so that it can be combined with the detector noise
             #      the use of the detector noise has thus been deactivated above, and the master is set to 1
@@ -321,10 +301,10 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             # when detector noise is accounted for 
             flux_ref_exp = None
             cov_ref_exp = None 
-            data_ref = None
-            if (not masterDIweigh) and (calc_EFsc2 or calc_var_ref2):
+            if (not masterDIweigh) and gen_dic['DImast_weight'] and (calc_EFsc2 or calc_var_ref2):
                 if len(np.array(glob.glob(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp]+'.npz')))==0:stop('No weighing master found. Activate "gen_dic["calc_DImast"]".') 
                 data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp]) 
+            else:data_ref = None
 
             #Resampling on common spectral table if required
             #    - condition is True unless all exposures of 'vis_bin' are defined on a common table, and it is the reference for the binning    
@@ -407,12 +387,12 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #Exclude planet-contaminated bins  
             if (data_type_gen=='DI') and ('DI_Mast' in data_dic['Atm']['no_plrange']) and (iexp_glob in data_dic['Atm'][inst][vis_bin]['iexp_no_plrange']):
                 for iord in range(data_inst['nord']):   
-                    data_to_bin[iexp_off]['cond_def'][iord] &= excl_plrange(data_to_bin[iexp_off]['cond_def'][iord],data_dic['Atm'][inst][vis_bin]['exclu_range_star'],iexp_glob,data_com['edge_bins'][iord],data_mode)[0]
+                    data_to_bin[iexp_off]['cond_def'][iord] &= excl_plrange(data_to_bin[iexp_off]['cond_def'][iord],data_dic['Atm'][inst][vis_bin]['exclu_range_star'],iexp_glob,data_com['edge_bins'][iord],data_format)[0]
 
             #Weight definition
             #    - the profiles must be specific to a given data type so that earlier types can still be called in the multi-visit binning, after the type of profile has evolved in a given visit
             #    - at this stage of the pipeline broadband flux scaling has been defined, if requested 
-            data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_mode,dim_exp_new,tell_exp,sing_gcal_exp,data_com['cen_bins'],coord_dic[inst][vis_bin]['t_dur'][iexp],flux_ref_exp,cov_ref_exp,
+            data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_format,dim_exp_new,tell_exp,sing_gcal_exp,data_com['cen_bins'],coord_dic[inst][vis_bin]['t_dur'][iexp],flux_ref_exp,cov_ref_exp,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),
                                                                          flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,sdet_exp2=sdet_exp2 , EFsc2_all_in = data_var['EFsc2'] , EFdiff2_in = data_var['EFdiff2'] , EFintr2_in = data_var['EFintr2'] , EFem2_in = data_var['EFem2'] , EAbs2_in = data_var['EAbs2'])[0]                          
 
             #Timestamp and duration
@@ -449,7 +429,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
 
             #Saving new exposure  
             if not masterDIweigh:
-                np.savez_compressed(save_pref+str(i_new),data=data_exp_new,allow_pickle=True)
+                datasave_npz(save_pref+str(i_new),data_exp_new)
 
                 #Calculate the timestamp (BJD) and duration of the binned exposure(s)
                 time_to_bin = np.zeros(len(idx_to_bin),dtype=float)
@@ -462,7 +442,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                       
         #Store path to weighing master 
         if masterDIweigh:
-            np.savez_compressed(data_dic[inst][vis_in]['mast_'+data_type+'_data_paths'][0],data=data_exp_new,allow_pickle=True) 
+            datasave_npz(data_dic[inst][vis_in]['mast_'+data_type+'_data_paths'][0],data_exp_new) 
 
         #Store common table of binned profiles
         data_glob_new['cen_bins'] = data_com['cen_bins']
@@ -557,7 +537,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                             for key in ar_prop_exp:data_glob_new['coord'][ar][key][:, i_new] = [ar_prop_exp[key][0],ar_prop_exp[key][1],ar_prop_exp[key][2]]                              
             par_list=['rv','CB_RV','mu','lat','lon','x_st','y_st','SpSstar','xp_abs','r_proj']
             key_chrom = ['achrom']
-            if ('spec' in data_mode) and ('chrom' in system_prop):key_chrom+=['chrom']
+            if ('spec' in data_format) and ('chrom' in system_prop):key_chrom+=['chrom']
             data_glob_new['plocc_prop'],data_glob_new['ar_prop'],data_glob_new['common_prop'] = sub_calc_plocc_ar_prop(key_chrom,{},par_list,data_inst[vis_save]['studied_pl'],data_inst[vis_save]['studied_ar'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_ar_prop_in=data_dic['DI']['ar_prop'],out_ranges=True)
             
         #---------------------------------------------------------------------------
@@ -565,7 +545,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         #Saving global tables for new exposures
         if not masterDIweigh:
             if (data_type=='DI'):data_glob_new['sysvel'] = sysvel
-        np.savez_compressed(save_pref+'_add',data=data_glob_new,allow_pickle=True)
+        datasave_npz(save_pref+'_add',data_glob_new)
 
     #Checking that data were calculated 
     #    - check is performed on the complementary table
@@ -765,7 +745,7 @@ def init_bin_prof(data_type,ref_pl,idx_in_bin,dim_bin,coord_dic,inst,vis_to_bin,
 
 
 
-def weights_bin_prof_calc(data_type,count_var1D,var_key_def):
+def weights_bin_prof_calc(data_type_gen,data_type,gen_dic,data_dic,inst,check_var = True):
     r"""**Binning routine: calculations**
 
     Identifies which components needs to be calculated
@@ -777,6 +757,34 @@ def weights_bin_prof_calc(data_type,count_var1D,var_key_def):
         TBD
     
     """ 
+    
+    #Variance grid of the data type that was converted from 2D to 1D
+    #    - if profiles of a given type were converted from 2D into 1D, their 2D weights contributors and those of subsequent data types cannot be used anymore
+    #      when conversion occured, the 1D variance of the profile were thus saved for later use in weighing
+    #      the converted profile type, and all subsequent data type, use this 1D variance grid
+    #    - if no type was converted, variance grid remain set to None so that they will not be used when provided to the weighing function
+    #    - the 'spec2D_to_spec1D' flag can only be true for the data type that was converted, thus the variance grid is only defined for one data type in a given processing
+    #      however this variance grid may be associated to this data type and later data types in the processing
+    #      if the current data type was the one converted, we use directly its own variance grid (from type2var[data_type])
+    #      if the conversion was applied to an earlier data type 'subtype', we use:
+    # + for Diff profiles: 'EFsc2' (from type2var['DI']) to calculate 'EFdiff2' (if DI were converted) 
+    # + for Intr profiles: 'EFsc2' (from type2var['DI']) to calculate 'EFdiff2' and 'EFintr2' (if DI were converted)
+    #                      'EFdiff2' (from type2var['Diff']) to calculate 'EFintr2' (if Diff were converted)
+    # + for Atm profiles: 'EFsc2' (from type2var['DI']) to calculate 'EFdiff2' and 'EFem2' or 'EAbs2' (if DI were converted)
+    #                     'EFdiff2' (from type2var['Diff']) to calculate 'EFem2' or 'EAbs2' (if Diff were converted)
+    #    - the weighing DI master is computed before 2D/1D conversion, so variances are not yet defined
+    #      if Diff profiles were extracted, Intr profiles cannot have been extracted
+    #      if Intr profiles were extracted, there is no temporal binning of Diff (which are limited to the OT) profiles allowed, and Atm profiles cannot have been extracted
+    count_var1D = 0
+    var_key_def=None
+    if check_var:
+        for subtype_gen in gen_dic['earliertypes4var'][data_type_gen]: 
+            if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:  
+                var_key_def = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
+                count_var1D+=1
+        if count_var1D>1:stop('ERROR: only one 1D variance grid should be defined')    
+    
+    #Initializing weight calculation conditions
     calc_EFsc2 = False
     calc_var_ref2 = False
     calc_flux_sc_all = False
@@ -864,11 +872,15 @@ def weights_bin_prof_calc(data_type,count_var1D,var_key_def):
             elif (var_key_def=='EFdiff2'):
                 calc_flux_sc_all = True 
                 
-    return calc_EFsc2,calc_var_ref2,calc_flux_sc_all
+    #Spectral broadband flux scaling required for disk-integrated variance computation
+    if calc_EFsc2:calc_flux_sc_all=True
+                
+    return calc_EFsc2,calc_var_ref2,calc_flux_sc_all,var_key_def
 
 
 
-def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,glob_flux_sc=None, sdet_exp2 = None , EFsc2_all_in = None , EFdiff2_in = None, EFintr2_in = None , EFem2_in = None, EAbs2_in = None):
+def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,data_type,data_format,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,calc_cond,
+                     flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,glob_flux_sc=None, sdet_exp2 = None , EFsc2_all_in = None , EFdiff2_in = None, EFintr2_in = None , EFem2_in = None, EAbs2_in = None):
     r"""**Binning routine: weights**
 
     Defines weights to be used when binning profiles.
@@ -1077,11 +1089,8 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         cond_def_weights = (~np.isnan(flux_ref_exp))
         if np.sum(cond_def_weights)==0:stop('ERROR: Issue with master definition')        
         
-    #Initializing calculation conditions
-    calc_EFsc2,calc_var_ref2,calc_flux_sc_all = weights_bin_prof_calc(data_type,count_var1D,var_key_def)
-
     #Preliminary calculations
-    if calc_EFsc2:calc_flux_sc_all=True
+    calc_EFsc2,calc_var_ref2,calc_flux_sc_all = calc_cond
     if calc_EFsc2 or calc_var_ref2 or calc_flux_sc_all:
 
         #Spectral broadband flux scaling 
@@ -1108,21 +1117,21 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
     
             #Flux balance functions
             #    - even when binning orders from the same spectrum the flux balance must be accounted for in the weights to propertly calculate Nbl and combine it with sdet2
-            if (gen_corr_Fbal or gen_corr_FbalOrd) and ('spec' in data_mode): 
+            if (gen_corr_Fbal or gen_corr_FbalOrd) and ('spec' in data_format): 
                 data_Fbal = dataload_npz(save_data_dir+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp_glob)+'_add')   #General save
-            if gen_corr_Fbal and ('spec' in data_mode): 
+            if gen_corr_Fbal and ('spec' in data_format): 
                 FbalGlob = data_Fbal['corr_func']
                 if data_Fbal['corr_func_vis'] is None:FbalGlob_vis=default_func    #single visit, no correction relative to global master 
                 else:FbalGlob_vis = data_Fbal['corr_func_vis']
             else:
                 FbalGlob=default_func 
                 FbalGlob_vis=default_func 
-            if gen_corr_FbalOrd and ('spec' in data_mode):
+            if gen_corr_FbalOrd and ('spec' in data_format):
                 FbalOrd = data_Fbal['Ord']['corr_func']
-                FbalOrd_vis = data_Fbal['Ord']['corr_func_vis']    #single visit, no correction relative to global master 
+                FbalOrd_vis = data_Fbal['Ord']['corr_func_vis']                    #will be empty if a single visit was processed (no correction relative to global master) 
             else:
                 FbalOrd = None
-                FbalOrd_vis = None
+                FbalOrd_vis = {}
 
         #Processing each order 
         for iord,iord_orig in enumerate(iord_orig_list):
@@ -1146,7 +1155,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
                 else:gcal_ord = np.ones(len(idx_def_weights_ord))
                
                 #Spectral corrections
-                if ('spec' in data_mode):
+                if ('spec' in data_format):
                     nu_bins_ord = c_light/cen_bins_ord[::-1]
                     #    - the factor Ccorr includes :
                     # > flux balance: Ccorr(w,t,v) = ( 1/Pbal(band,t,v) )*( 1/Pbal_ord(band,t,v))
@@ -1161,7 +1170,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
                     #   order flux balance correction is not propagated through 2D/1D conversion or CCF conversion 
                     if FbalOrd is None:FbalOrd_ord = np.ones(len(cen_bins_ord))
                     else:FbalOrd_ord = FbalOrd[iord_orig](cen_bins_ord)
-                    if FbalOrd_vis is None:FbalOrd_vis_ord = np.ones(len(cen_bins_ord))
+                    if iord_orig not in FbalOrd_vis:FbalOrd_vis_ord = np.ones(len(cen_bins_ord))
                     else:FbalOrd_vis_ord = FbalOrd_vis[iord_orig](cen_bins_ord)
                     corr_FbalGlob_ord = FbalOrd_ord*FbalOrd_vis_ord*(FbalGlob(nu_bins_ord)*FbalGlob_vis(nu_bins_ord))[::-1]
 
@@ -1199,7 +1208,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
                 else:
                     
                     #Weights are kept undefined (ie, no weighing) where variance is null or negative  
-                    if ('spec' in data_mode):var_dic_loc['EFsc2'][iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
+                    if ('spec' in data_format):var_dic_loc['EFsc2'][iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord[cond_def_pos_ord])**2.*Nbl_ord[cond_def_pos_ord]
                     else:var_dic_loc['EFsc2'][iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord*gcal_ord)**2.*Nbl_ord[cond_def_pos_ord]
 
     #--------------------------------------------------------   

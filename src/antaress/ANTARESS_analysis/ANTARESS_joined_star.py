@@ -13,7 +13,7 @@ from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_ar_prop,up_plocc_a
 from ..ANTARESS_grids.ANTARESS_prof_grid import gen_theo_intr_prof,theo_intr2loc,custom_DI_prof,init_st_intr_prof
 from ..ANTARESS_analysis.ANTARESS_inst_resp import get_FWHM_inst,resamp_st_prof_tab,def_st_prof_tab,conv_st_prof_tab,cond_conv_st_prof_tab,convol_prof
 from ..ANTARESS_grids.ANTARESS_star_grid import up_model_star
-from ..ANTARESS_conversions.ANTARESS_binning import weights_bin_prof
+from ..ANTARESS_conversions.ANTARESS_binning import weights_bin_prof,weights_bin_prof_calc
 from ..ANTARESS_analysis.ANTARESS_model_prof import polycoeff_def
 from ..ANTARESS_corrections.ANTARESS_detrend import detrend_prof_gen_mul,detrend_prof_gen_add
 
@@ -1074,7 +1074,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
     fit_save={'idx_trim_kept':{}}
 
     #Define master-out dictionary
-    for key in ['multivisit_list','idx_in_master_out','master_out_tab','scaled_data_paths','gcal','multivisit_weights_total','weights','flux','multivisit_flux','EFsc2']:fixed_args['master_out'][key]={}
+    for key in ['multivisit_list','idx_in_master_out','master_out_tab','scaled_data_paths','sing_gcal','multivisit_weights_total','weights','flux','multivisit_flux','EFsc2','calc_cond']:fixed_args['master_out'][key]={}
     fixed_args['raw_DI_profs']={}
 
     #Profile generation
@@ -1119,10 +1119,11 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
 
         fixed_args['master_out']['idx_in_master_out'][inst]={}
         fixed_args['raw_DI_profs'][inst]={}
+        fixed_args['master_out']['calc_cond'][inst]={}
         fixed_args['master_out']['weights'][inst]={}
         fixed_args['master_out']['flux'][inst]={}
         fixed_args['master_out']['scaled_data_paths'][inst]={}
-        fixed_args['master_out']['gcal'][inst]={}
+        fixed_args['master_out']['sing_gcal'][inst]={}
         fixed_args['master_out']['EFsc2'][inst]={}
         fixed_args['idx_out'][inst]={}
         fixed_args['idx_in'][inst]={}
@@ -1152,6 +1153,10 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
         for multivisit in fixed_args['master_out']['multivisit_list'][inst]:
             if multivisit not in data_dic[inst]['visit_list']:stop('Problem: '+multivisit+' was selected for master-out calculation but is not used in the fit.')
 
+        #Initializing weight calculation conditions
+        calc_EFsc2,calc_var_ref2,calc_flux_sc_all,var_key_def = weights_bin_prof_calc('DI','DI',gen_dic,data_dic,inst)   
+        fixed_args['master_out']['calc_cond'][inst] = (calc_EFsc2,calc_var_ref2,calc_flux_sc_all)
+    
         #Processing visit
         for vis_index, vis in enumerate(data_dic[inst]['visit_list']):
             init_joined_routines_vis(inst,vis,fit_dic,fixed_args)
@@ -1174,9 +1179,9 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
 
                 #Needed for weight calculation
                 fixed_args['master_out']['scaled_data_paths'][inst][vis]={}
-                if gen_dic['flux_sc']:fixed_args['master_out']['scaled_data_paths'][inst][vis] = data_dic[inst][vis]['scaled_DI_data_paths']
+                if gen_dic['flux_sc'] and calc_flux_sc_all:fixed_args['master_out']['scaled_data_paths'][inst][vis] = data_dic[inst][vis]['scaled_DI_data_paths']
                 else:fixed_args['master_out']['scaled_data_paths'][inst][vis] = None
-                fixed_args['master_out']['gcal'][inst][vis]={}
+                fixed_args['master_out']['sing_gcal'][inst][vis]={}
                 fixed_args['master_out']['EFsc2'][inst][vis]={}
 
                 #Define in and out of transit exposures - needed for profile generation
@@ -1269,12 +1274,12 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]
 
                     #Calibration profile for weighing    
-                    if data_dic[inst][vis]['type']=='spec2D':fixed_args['master_out']['gcal'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['sing_gcal_DI_data_paths'][iexp])['sing_gcal'][iord_sel,idx_range_kept]
-                    else:fixed_args['master_out']['gcal'][inst][vis][isub] = None
+                    if data_dic[inst][vis]['cal_weight'] and calc_EFsc2:fixed_args['master_out']['sing_gcal'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['sing_gcal_DI_data_paths'][iexp])['sing_gcal'][iord_sel,idx_range_kept]
+                    else:fixed_args['master_out']['sing_gcal'][inst][vis][isub] = None
                     
                     #Estimate of true variance for DI profiles
                     #    - relevant (and defined) if 2D profiles were converted into 1D
-                    if data_dic['DI']['spec2D_to_spec1D'][inst]:fixed_args['master_out']['EFsc2'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['EFsc2_DI_data_paths'][iexp])['var'][iord_sel,idx_range_kept]  
+                    if var_key_def=='EFsc2':fixed_args['master_out']['EFsc2'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['EFsc2_DI_data_paths'][iexp])['var'][iord_sel,idx_range_kept]  
                     else:fixed_args['master_out']['EFsc2'][inst][vis][isub] = None                    
 
                     #Oversampled line profile model table
@@ -1645,9 +1650,9 @@ def joined_DiffProf(param,fixed_args):
                     #    - assuming no detector noise and a constant calibration
                     #    - if DI profiles were converted from 2D to 1D, we use directly their variance profiles
                     raw_weights=weights_bin_prof(range(args['master_out']['nord']), args['master_out']['scaled_data_paths'][inst][vis],inst,vis,args['master_out']['corr_Fbal'],args['master_out']['corr_FbalOrd'],\
-                                                        args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'DI',args['type'],args['dim_exp'][inst][vis],args['master_out']['gcal'][inst][vis][isub],\
+                                                        args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'DI',args['type'],args['dim_exp'][inst][vis],args['master_out']['sing_gcal'][inst][vis][isub],\
                                                         None,np.array([args['cen_bins'][inst][vis][isub]]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([resamp_conv_base_DI_prof]),\
-                                                        None,EFsc2_all_in = args['master_out']['EFsc2'][inst][vis][isub])[0]
+                                                        None,args['master_out']['calc_cond'][inst],EFsc2_all_in = args['master_out']['EFsc2'][inst][vis][isub])[0]
 
                     # - Re-sample the weights
                     resamp_weights = bind.resampling(args['master_out']['master_out_tab']['edge_bins'],args['edge_bins'][inst][vis][isub],raw_weights,kind=args['master_out']['master_out_tab']['resamp_mode'])

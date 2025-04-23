@@ -183,8 +183,9 @@ def ANTARESS_DACE_launcher(star_name,inst,data_path,master_path,sysvel = 0.,debu
             settings_lines_reduc2D[idx_line] = '    '+"data_dic['DI']['sysvel'] = {'"+inst+"':{'all':"+str(sysvel)+"}}" + '\n'
             settings_lines_master1D[idx_line] = settings_lines_reduc2D[idx_line]
             
-        #Deactive 2D/1D conversion for 2D master computation
+        #Deactive 2D/1D conversion and plots for 2D master computation
         if ("gen_dic['spec_1D_DI']=True" in arr_line):settings_lines_reduc2D[idx_line] = '        '+"gen_dic['spec_1D_DI'] = False" + '\n'  
+        if ("plot_dic['DIbin']='pdf'" in arr_line):   settings_lines_reduc2D[idx_line] = '        '+"plot_dic['DIbin'] =''" + '\n' 
         
         #Deactivation of modules for 1D master computation
         #    - to avoid reprocessing the 2D data
