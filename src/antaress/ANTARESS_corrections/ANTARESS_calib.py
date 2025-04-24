@@ -10,6 +10,7 @@ from pathos.multiprocessing import Pool
 from numpy.polynomial import Polynomial
 import bindensity as bind
 import os as os_system
+from os.path import exists as path_exist
 from ..ANTARESS_conversions.ANTARESS_binning import sub_calc_bins,sub_def_bins
 from ..ANTARESS_analysis.ANTARESS_inst_resp import return_resolv
 from ..ANTARESS_general.utils import dataload_npz,np_where1D,stop,init_parallel_func,check_data,def_edge_tab,gen_specdopshift,datasave_npz
@@ -245,8 +246,8 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
                                 data_gcal_exp['gcal'] = gcal_exp_all[vis][iexp]
                                 datasave_npz(data_vis['sing_gcal_DI_data_paths'][iexp],data_gcal_exp) 
                             
-                            #Deleting if weighing is not required 
-                            else:os_system.remove(data_vis['sing_gcal_DI_data_paths'][iexp]) 
+                            #Deleting if weighing is not required or if plots are not required
+                            elif ((not gen_dic['cond_plot_gcal']) and (path_exist(data_vis['sing_gcal_DI_data_paths'][iexp]+'.npz'))):os_system.remove(data_vis['sing_gcal_DI_data_paths'][iexp]+'.npz') 
                             
                         #From calibration profile estimate
                         #    - we use the model only to avoid the spurious features in the estimated profile

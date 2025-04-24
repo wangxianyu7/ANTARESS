@@ -254,6 +254,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 col_visit=np.array([cmap(0)]) if nexp_plot==1 else cmap( np.arange(nexp_plot)/(nexp_plot-1.))
 
                 #Upload data
+                gcal_cen_binned_all = None
+                gcal_blaze_all = None
+                var_det_all = None
                 if ('spec' in data_dic['DI']['type'][inst]):
                     if (plot_dic['gcal_all']!='') or ((plot_dic['gcal_ord']!='') and plot_set_key['plot_meas_exp']):
                         gcal_cen_binned_all = np.empty([nord_list,nexp_plot],dtype=object)
@@ -264,14 +267,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         gcal_bins_all =   np.empty([nord_list,nexp_plot],dtype=object) 
                     if (plot_dic['gcal_ord']!='') or (plot_dic['noises_ord']!=''):
                         cen_bins_all =  np.empty([nord_list,nexp_plot],dtype=object)
+                    if (plot_dic['noises_ord']!='') or ((plot_dic['gcal_ord']!='') and plot_set_key['plot_gcal_blaze']):
+                        gcal_blaze_all =  np.empty([nord_list,nexp_plot],dtype=object) 
                     if (plot_dic['noises_ord']!=''):
                         #Condition on 'cal_weight' is not used to retrieve 'sdet2' because it is deactivated after 2D->1D conversion
                         var_all =  np.empty([nord_list,nexp_plot],dtype=object)
                         var_ph_all = np.empty([nord_list,nexp_plot],dtype=object)
                         if (vis in data_dic[inst]['gcal_blaze_vis']):var_det_all = np.empty([nord_list,nexp_plot],dtype=object)
-                        else:var_det_all=None
-                    if (plot_dic['noises_ord']!='') or ((plot_dic['gcal_ord']!='') and plot_set_key['plot_gcal_blaze']):
-                        gcal_blaze_all =  np.empty([nord_list,nexp_plot],dtype=object) 
                 if (plot_dic['gcal_all']!=''):
                     gcal_cen_binned_mean =  np.empty([nord_list,nexp_plot],dtype=float)
                     gcal_meas_binned_mean =  np.empty([nord_list,nexp_plot],dtype=float)       
@@ -280,10 +282,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 for isub_iexp,iexp in enumerate(iexp2plot):
                     data_load = dataload_npz(data_vis['cal_data_paths']+str(iexp))  
                     if (plot_dic['gcal_ord']!='') or (plot_dic['noises_ord']!=''):data_exp = dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'+str(iexp)) 
-                    if (plot_dic['noises_ord']!='') or ((plot_dic['gcal_ord']!='') and plot_set_key['plot_gcal_blaze']):data_sing_gcal= dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_sing_gcal_'+str(iexp)) 
+                    if (gcal_blaze_all is not None):data_sing_gcal= dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_sing_gcal_'+str(iexp)) 
                     for isub_ord,iord in enumerate(order_list):
                         if ('spec' in data_dic['DI']['type'][inst]):
-                            if (plot_dic['gcal_all']!='') or ((plot_dic['gcal_ord']!='') and plot_set_key['plot_meas_exp']):
+                            if (gcal_cen_binned_all is not None):
                                 gcal_cen_binned_all[isub_ord,isub_iexp] = data_load['wav_bin_all'][iord]
                                 gcal_meas_binned_all[isub_ord,isub_iexp] = data_load['gcal_bin_all'][iord]
                                 cond_fit_all[isub_ord,isub_iexp] = data_load['cond_fit_all'][iord]
@@ -293,17 +295,17 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 if (plot_dic['gcal_ord']!=''):
                                     wav_trans_all[:,isub_ord,isub_iexp] = data_load['wav_trans_all'][:,iord]
                                     gcal_bins_all[isub_ord,isub_iexp] = cal_piecewise_func(data_load['gcal_inputs'][iord]['par'],cen_bins_all[isub_ord,isub_iexp],args=data_load['gcal_inputs'][iord]['args'])[0]  
-                                if (plot_dic['noises_ord']!='') or ((plot_dic['gcal_ord']!='') and plot_set_key['plot_gcal_blaze']):
+                                if (gcal_blaze_all is not None):
                                     gcal_blaze_all[isub_ord,isub_iexp] = data_sing_gcal['gcal'][iord,data_exp['cond_def'][iord]]                                  
                                 if (plot_dic['noises_ord']!=''):
                                     var_all[isub_ord,isub_iexp] = data_exp['cov'][iord][0,data_exp['cond_def'][iord]]
                                     var_ph_all[isub_ord,isub_iexp] = data_exp['flux'][iord][data_exp['cond_def'][iord]]*gcal_blaze_all[isub_ord,isub_iexp]
                                     var_ph_all[isub_ord,isub_iexp][var_ph_all[isub_ord,isub_iexp]<=0.] = 0.
-                                    if (var_det_all is not None) and ('sdet2' in data_sing_gcal):var_det_all[isub_ord,isub_iexp] = data_sing_gcal['sdet2'][iord,data_exp['cond_def'][iord]]*gcal_blaze_all[isub_ord,isub_iexp]**2.
+                                    if (gcal_blaze_all is not None) and (var_det_all is not None) and ('sdet2' in data_sing_gcal):var_det_all[isub_ord,isub_iexp] = data_sing_gcal['sdet2'][iord,data_exp['cond_def'][iord]]*gcal_blaze_all[isub_ord,isub_iexp]**2.
                         
                         #Mean calibration per order (from measurements)
                         if (plot_dic['gcal_all']!=''):
-                            if ('spec' in data_dic['DI']['type'][inst]):
+                            if (gcal_cen_binned_all is not None):
                                 gcal_cen_binned_mean[isub_ord,isub_iexp] = np.mean(gcal_cen_binned_all[isub_ord,isub_iexp][cond_fit_all[isub_ord,isub_iexp]])
                                 gcal_meas_binned_mean[isub_ord,isub_iexp] = np.mean(gcal_meas_binned_all[isub_ord,isub_iexp][cond_fit_all[isub_ord,isub_iexp]])
                                 cen_bins_mean[isub_ord,isub_iexp] = gcal_cen_binned_mean[isub_ord,isub_iexp]
@@ -6100,11 +6102,22 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
     
                                     #Print measurements 
                                     if plot_options['print_mes']:                              
-                                        plt.text(x_range_ord[0]+0.1*dx_range,y_range_loc[1]-0.1*dy_range,'Mean signal='+"{0:.2f}".format(1e6*plot_options['data_meas']['int_sign'][iexp])+'+-'+"{0:.2f}".format(1e6*plot_options['data_meas']['e_int_sign'][iexp])+' ppm ('+"{0:.2f}".format(plot_options['data_meas']['R_sign'][iexp])+'$\sigma$)' ,
+                                        plt.text(x_range_ord[0]+0.1*dx_range,y_range_loc[key_frame][1]-0.1*dy_range,'Mean signal='+"{0:.2f}".format(1e6*plot_options['data_meas']['int_sign'][iexp])+'+-'+"{0:.2f}".format(1e6*plot_options['data_meas']['e_int_sign'][iexp])+' ppm ('+"{0:.2f}".format(plot_options['data_meas']['R_sign'][iexp])+'$\sigma$)' ,
                                                 verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=4,color='black') 
     
-    
-    
+                                    #Binned DI profiles information
+                                    if (plot_mod=='DIbin'):  
+
+                                        #Print number of exposures used in binned profile computation, if available
+                                        if plot_options['print_n_in_bin']:  
+                                            plt.text(x_range_ord[0]+0.1*dx_range,y_range_loc[key_frame][1]-0.1*dy_range,'N$_\mathrm{binned}$ = '+"{:d}".format(data_exp['n_in_bin']),
+                                                     verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=4,color='black') 
+                                            
+                                        #Print S/R of binned profile, if available
+                                        if plot_options['print_SNR'] and ('SNR' in data_exp):
+                                            plt.text(x_range_ord[0]+0.1*dx_range,y_range_loc[key_frame][1]-0.2*dy_range,'S/R = '+"{0:.2f}".format(data_exp['SNR'][0])+' over ['+"{0:.1f}".format(data_exp['SNR'][1])+' ; '+"{0:.1f}".format(data_exp['SNR'][2])+'] A',
+                                                     verticalalignment='center', horizontalalignment='left',fontsize=10.,zorder=4,color='black')                                                
+
                                     #----------------------------------------
                                     #Fit properties
                                     if cond_mod and (plot_options['line_model']=='fit'):
@@ -6355,7 +6368,7 @@ def pre_proc_DI_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,da
                 for key in ['cen_bins','edge_bins','flux','cov','cond_def']:data4mast[maink][iexp][key]=deepcopy(data_proc[maink][iexp][key])
              
                 #Weight definition   
-                data4mast[maink][iexp]['weight']= weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',data_inst['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['sing_gcal'],data_proc[maink][iexp]['cen_bins'],data_proc[maink][iexp]['dt'],flux_ref,None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),glob_flux_sc = 1./flux_glob)[0]                       
+                data4mast[maink][iexp]['weight']= weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['sing_gcal'],data_proc[maink][iexp]['cen_bins'],data_proc[maink][iexp]['dt'],flux_ref,None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),glob_flux_sc = 1./flux_glob)[0]                       
   
                 #Resampling if exposures do not share a common table
                 if (not data_vis['comm_sp_tab']): 
@@ -8608,6 +8621,7 @@ def sub_plot_DI_Intr_binprof(plot_options,plot_ext,data_dic,gen_dic):
     #Plot for each instrument
     for inst in np.intersect1d(data_dic['instrum_list'],list(plot_options['visits_to_plot'].keys())):   
         print('  > Instrument: '+inst)
+        data_format = data_dic['DI']['type'][inst]
             
         #Plot for each visit
         for vis in np.intersect1d(list(data_dic[inst].keys())+['binned'],plot_options['visits_to_plot'][inst]): 

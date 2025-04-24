@@ -4196,7 +4196,9 @@ def ANTARESS_2D_1D_settings(data_type,local_dic,gen_dic,plot_dic):
     
     #%%%% Calculating/retrieving 
     gen_dic['calc_spec_1D_'+data_type]=True  
-    
+    if (gen_dic['sequence']=='st_master_tseries') and (data_type=='DI'):
+        gen_dic['calc_spec_1D_DI']=True  
+        
     
     #%%%% Multi-threading
     gen_dic['nthreads_spec_1D_'+data_type]= int(0.8*cpu_count())

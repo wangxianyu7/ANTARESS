@@ -1650,7 +1650,7 @@ def joined_DiffProf(param,fixed_args):
                     #    - assuming no detector noise and a constant calibration
                     #    - if DI profiles were converted from 2D to 1D, we use directly their variance profiles
                     raw_weights=weights_bin_prof(range(args['master_out']['nord']), args['master_out']['scaled_data_paths'][inst][vis],inst,vis,args['master_out']['corr_Fbal'],args['master_out']['corr_FbalOrd'],\
-                                                        args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'DI',args['type'],args['dim_exp'][inst][vis],args['master_out']['sing_gcal'][inst][vis][isub],\
+                                                        args['master_out']['save_data_dir'],args['type'],args['master_out']['nord'],isub,'DI',args['dim_exp'][inst][vis],args['master_out']['sing_gcal'][inst][vis][isub],\
                                                         None,np.array([args['cen_bins'][inst][vis][isub]]),args['coord_fit'][inst][vis]['t_dur'][isub],np.array([resamp_conv_base_DI_prof]),\
                                                         None,args['master_out']['calc_cond'][inst],EFsc2_all_in = args['master_out']['EFsc2'][inst][vis][isub])[0]
 

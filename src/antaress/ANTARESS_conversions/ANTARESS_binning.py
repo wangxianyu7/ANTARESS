@@ -8,6 +8,7 @@ from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,datasave_npz,d
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase,coord_expos_ar
 from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_ar_prop,retrieve_ar_prop_from_param
+from ..ANTARESS_analysis.ANTARESS_inst_resp import return_SNR_orders,return_edge_wav_ord
 
 def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,ar_dic={},masterDIweigh=False):
     r"""**Binning routine**
@@ -63,8 +64,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
        
                 #Initialize path of weighing master for disk-integrated exposures
                 #    - the paths return to the single master common to all exposures, and for now defined on the same table
-                data_dic[inst][vis_in]['mast_'+data_type+'_data_paths'] = {iexp:gen_dic['save_data_dir']+data_type+'_data/Master/'+inst+'_'+vis_in+'_phase' for iexp in range(data_dic[inst][vis_in]['n_in_visit'])}
                 save_pref = gen_dic['save_data_dir']+data_type+'_data/Master/'+inst+'_'+vis_in+'_phase'
+                data_dic[inst][vis_in]['mast_'+data_type+'_data_paths'] = {iexp:save_pref for iexp in range(data_dic[inst][vis_in]['n_in_visit'])}
 
     elif data_type_gen=='Intr':
         data_type='Intr'
@@ -214,13 +215,15 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             data_glob_new['RV_star_solCDM'] = np.zeros(n_bin,dtype=float)
             data_glob_new['RV_star_stelCDM'] = np.zeros(n_bin,dtype=float)
         data_glob_new['vis_iexp_in_bin']={vis_bin:{} for vis_bin in vis_to_bin}
+        if (gen_dic['sequence']=='st_master_tseries'):exp_filenames = []
         for isub,iexp_off in enumerate(idx_to_bin_unik):
             data_to_bin[iexp_off]={}
       
             #Original index and visit of contributing exposure
             #    - iexp is relative to global or in-transit indexes depending on data_type
             iexp = idx_bin2orig[iexp_off]
-            vis_bin = idx_bin2vis[iexp_off]            
+            vis_bin = idx_bin2vis[iexp_off]   
+            if (gen_dic['sequence']=='st_master_tseries'):exp_filenames+=[data_prop[inst][vis_bin]['exp_filenames'][iexp]]
             data_glob_new['vis_iexp_in_bin'][vis_bin][iexp]={}
             if (data_type not in ['Intr','Absorption']) and (gen_dic[inst][vis_bin]['idx_exp2in'][iexp]!=-1.):data_glob_new['in_inbin']=True
 
@@ -392,7 +395,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             #Weight definition
             #    - the profiles must be specific to a given data type so that earlier types can still be called in the multi-visit binning, after the type of profile has evolved in a given visit
             #    - at this stage of the pipeline broadband flux scaling has been defined, if requested 
-            data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,data_type,data_format,dim_exp_new,tell_exp,sing_gcal_exp,data_com['cen_bins'],coord_dic[inst][vis_bin]['t_dur'][iexp],flux_ref_exp,cov_ref_exp,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),
+            data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths,inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],data_inst['nord'],iexp_glob,data_type,data_format,dim_exp_new,tell_exp,sing_gcal_exp,data_com['cen_bins'],coord_dic[inst][vis_bin]['t_dur'][iexp],flux_ref_exp,cov_ref_exp,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),
                                                                          flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,sdet_exp2=sdet_exp2 , EFsc2_all_in = data_var['EFsc2'] , EFdiff2_in = data_var['EFdiff2'] , EFintr2_in = data_var['EFintr2'] , EFem2_in = data_var['EFem2'] , EAbs2_in = data_var['EAbs2'])[0]                          
 
             #Timestamp and duration
@@ -405,16 +408,35 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 data_to_bin[iexp_off]['t_dur'] = coord_dic[inst][vis_bin]['t_dur'][iexp]
 
         #----------------------------------------------------------------------------------------------
-
-        #Preparing an array that will contain the timestamp and duration of each binned exposure
         if not masterDIweigh:
+            
+            #Preparing arrays that will contain the timestamp and duration of each binned exposure
             binned_time = np.zeros(len(idx_to_bin_all),dtype=float)
             binned_t_dur = np.zeros(len(idx_to_bin_all),dtype=float)
-
+            
+            #Preparing S/R calculation 
+            if (data_format=='spec1D'):
+                
+                #Reference spectral order
+                #    - edges are the same for overlapping ESPRESSO slices
+                SNR_ord = return_SNR_orders(inst)[0]
+                
+                #Edge wavelengths of reference order (A)
+                edge_wav_SNR_ord = return_edge_wav_ord(inst)[:,SNR_ord]
+                
+                #Wavelengths of 1D spectrum covered by the reference band
+                low_edge_bins = data_com['edge_bins'][0,0:-1]
+                high_edge_bins = data_com['edge_bins'][0,1::]
+                cond_olap = (low_edge_bins>=edge_wav_SNR_ord[0]) & (high_edge_bins<=edge_wav_SNR_ord[1])
+                if np.sum(cond_olap)==0:
+                    print('WARNING : master spectrum does not overlap with reference order for S/N.')
+                    cond_olap = None 
+            else:cond_olap = None
+                
         #Processing and analyzing each new exposure 
         for i_new,(idx_to_bin,n_in_bin,dx_ov) in enumerate(zip(idx_to_bin_all,n_in_bin_all,dx_ov_all)):
 
-            #Calculate binned exposure on common spectral table
+            #Calculating binned exposure on common spectral table
             data_exp_new = calc_bin_prof(idx_to_bin,data_dic[inst]['nord'],dim_exp_new,nspec_new,data_to_bin,inst,n_in_bin,data_com['cen_bins'],data_com['edge_bins'],dx_ov_in = dx_ov)
 
             #Keplerian motion relative to the stellar CDM and the Sun (km/s)
@@ -427,22 +449,42 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 data_glob_new['RV_star_solCDM'][i_new] = RV_star_solCDM/np.sum(dx_ov)
                 data_glob_new['RV_star_stelCDM'][i_new] = RV_star_stelCDM/np.sum(dx_ov)
 
-            #Saving new exposure  
-            if not masterDIweigh:
-                datasave_npz(save_pref+str(i_new),data_exp_new)
+            #Saving weighing master 
+            #    - a single binned profile is computed
+            if masterDIweigh:
+                datasave_npz(save_pref,data_exp_new) 
 
-                #Calculate the timestamp (BJD) and duration of the binned exposure(s)
-                time_to_bin = np.zeros(len(idx_to_bin),dtype=float)
-                dur_to_bin = np.zeros(len(idx_to_bin),dtype=float)
-                for loc, indiv_idx in enumerate(idx_to_bin):
-                    time_to_bin[loc] = data_to_bin[indiv_idx]['bjd']
-                    dur_to_bin[loc] = data_to_bin[indiv_idx]['t_dur']
-                binned_time[i_new] = np.average(time_to_bin)
-                binned_t_dur[i_new] = np.average(dur_to_bin)
-                      
-        #Store path to weighing master 
-        if masterDIweigh:
-            datasave_npz(data_dic[inst][vis_in]['mast_'+data_type+'_data_paths'][0],data_exp_new) 
+            #Saving new exposure              
+            else:
+
+                #S/R computation for 1D spectrum
+                #    - mean S/R per pixel over the range
+                if cond_olap is not None:data_exp_new['SNR'] = [ np.nanmean(data_exp_new['flux'][0][cond_olap]/np.sqrt(data_exp_new['cov'][0][0][cond_olap])) , low_edge_bins[cond_olap][0], high_edge_bins[cond_olap][-1] ]
+                
+                #Number of binned exposures
+                data_exp_new['n_in_bin'] = len(idx_to_bin)
+                
+                #Saving single master
+                #    - a single binned profile is computed
+                if (gen_dic['sequence']=='st_master_tseries'):
+    
+                    #Storing names of fit files used in the master computation
+                    data_exp_new['exp_filenames'] = exp_filenames
+
+                #Saving new exposure 
+                else:
+
+                    #Calculate the timestamp (BJD) and duration of the binned exposure(s)
+                    time_to_bin = np.zeros(data_exp_new['n_in_bin'],dtype=float)
+                    dur_to_bin = np.zeros(data_exp_new['n_in_bin'],dtype=float)
+                    for loc, indiv_idx in enumerate(idx_to_bin):
+                        time_to_bin[loc] = data_to_bin[indiv_idx]['bjd']
+                        dur_to_bin[loc] = data_to_bin[indiv_idx]['t_dur']
+                    binned_time[i_new] = np.average(time_to_bin)
+                    binned_t_dur[i_new] = np.average(dur_to_bin)
+
+                #Saving
+                datasave_npz(save_pref+str(i_new),data_exp_new)
 
         #Store common table of binned profiles
         data_glob_new['cen_bins'] = data_com['cen_bins']
@@ -539,7 +581,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             key_chrom = ['achrom']
             if ('spec' in data_format) and ('chrom' in system_prop):key_chrom+=['chrom']
             data_glob_new['plocc_prop'],data_glob_new['ar_prop'],data_glob_new['common_prop'] = sub_calc_plocc_ar_prop(key_chrom,{},par_list,data_inst[vis_save]['studied_pl'],data_inst[vis_save]['studied_ar'],system_param,theo_dic,system_prop,params,data_glob_new['coord'],range(n_bin),system_ar_prop_in=data_dic['DI']['ar_prop'],out_ranges=True)
-            
+
         #---------------------------------------------------------------------------
 
         #Saving global tables for new exposures
@@ -879,7 +921,7 @@ def weights_bin_prof_calc(data_type_gen,data_type,gen_dic,data_dic,inst,check_va
 
 
 
-def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,data_type,data_format,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,calc_cond,
+def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_FbalOrd,save_data_dir,nord,iexp_glob,data_type,data_format,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,calc_cond,
                      flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,glob_flux_sc=None, sdet_exp2 = None , EFsc2_all_in = None , EFdiff2_in = None, EFintr2_in = None , EFem2_in = None, EAbs2_in = None):
     r"""**Binning routine: weights**
 
@@ -1376,11 +1418,10 @@ def calc_bin_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,cen
     #Clean weights
     #    - in all calls to the routine, exposures contributing to the master are already defined / have been resampled on a common spectral table
     flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned = pre_calc_bin_prof(n_in_bin,dim_exp,idx_to_bin,None,dx_ov_in,data_to_bin_in,None,tab_delete=cen_bins_exp)
-    
+
     #Tables for new exposure
     data_bin={'cen_bins':cen_bins_exp,'edge_bins':edge_bins_exp} 
     data_bin['flux'] = np.zeros(dim_exp,dtype=float)*np.nan
-    data_bin['cond_def'] = np.zeros(dim_exp,dtype=bool) 
     data_bin['cov'] = np.zeros(nord,dtype=object)     
 
     #Calculating new exposures order by order
@@ -1417,10 +1458,6 @@ def calc_bin_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,cen
                 flux_temp,cov_temp = bind.mul_array(flux_exp_all[isub,iord],cov_exp_all[isub][iord],glob_weight_all[isub,iord])
                 flux_ord_contr+=[flux_temp]
                 cov_ord_contr+=[cov_temp]
-                
-                #Defined bins in master
-                #    - a bin is defined if at least one bin is defined in any of the contributing exposures
-                data_bin['cond_def'][iord] |= cond_def_all[isub,iord]
  
         #Co-addition of weighted profiles from all contributing exposures
         if len(flux_ord_contr)>0:data_bin['flux'][iord],data_bin['cov'][iord] = bind.sum(flux_ord_contr,cov_ord_contr)
@@ -1432,6 +1469,7 @@ def calc_bin_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,cen
 
     #Set undefined pixels to nan
     #    - a pixel is defined if at least one bin is defined in any of the contributing exposures
+    data_bin['cond_def'] = cond_def_binned
     data_bin['flux'][~data_bin['cond_def']]=np.nan
 
     return data_bin
@@ -1486,6 +1524,9 @@ def pre_calc_bin_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_b
     #Defined bins in binned spectrum
     #    - a bin will be defined if weigths are defined in at least of the contributing profiles 
     cond_def_binned = (np.sum(weight_exp_all,axis=0)>0)   
+    
+    #Defined bins effectively contributing to the binned spectrum in each exposure
+    cond_def_all &= cond_def_binned[None,:]
 
     #Global weight table
     #    - pixels that do not contribute to the binning (eg due to planetary range masking) have null flux and weight values, and thus do not contribute to the total weight

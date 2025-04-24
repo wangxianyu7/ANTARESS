@@ -832,7 +832,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic,coord_di
         loc_type = 'Spec1DIntr_from_Spec2DIntr'
         if data_dic['Intr']['calc_cont']:           
             data_dic['Intr'][inst][vis]['mean_cont'],cont_norm_flag=calc_Intr_mean_cont(data_dic['Intr'][inst][vis]['idx_def'],data_dic[inst]['nord'],data_vis['nspec'],data_vis['proc_Intr_data_paths'],data_vis['type'],data_dic['Intr']['cont_range'],inst,data_dic['Intr']['cont_norm'],gen_dic['flag_err_inst'][inst],loc_type)
-            np.savez_compressed(data_vis['proc_Intr_data_paths']+'_add',data={'mean_cont':data_dic['Intr'][inst][vis]['mean_cont'],'cont_norm_flag':cont_norm_flag,'type':loc_type},allow_pickle=True)
+            datasave_npz(data_vis['proc_Intr_data_paths']+'_add',{'mean_cont':data_dic['Intr'][inst][vis]['mean_cont'],'cont_norm_flag':cont_norm_flag,'type':loc_type})
         else:
             check_flag = check_data({'0':data_vis['proc_Intr_data_paths']+'_add'},silent=True)
             if not check_flag:stop('WARNING: calculate continuum for intrinsic spectra (origin: 2D spectra)')
@@ -918,7 +918,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen
         #      they are however processed in the same way as the exposure if used later on in the pipeline 
         #    - for intrinsic and atmospheric profiles we provide the broadband flux scaling, even if does not matter to the weighing, because it is otherwise set to 0 and messes up with weights definition
         #    - input profiles are by definition S2D, so there are no estimates of true variance already calculated
-        data_exp['weights'],EFsc2_all,EFdiff2,EFintr2,EFem2,EAbs2 = weights_bin_prof(range(nord),scaled_data_paths_exp,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type_eff,data_mode,dim_exp,data_exp['tell'],data_exp['sing_gcal'], data_exp['cen_bins'],dt_all[iexp_glob],data_ref['flux'],data_ref['cov'],calc_cond,
+        data_exp['weights'],EFsc2_all,EFdiff2,EFintr2,EFem2,EAbs2 = weights_bin_prof(range(nord),scaled_data_paths_exp,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,nord,iexp_glob,data_type_eff,data_mode,dim_exp,data_exp['tell'],data_exp['sing_gcal'], data_exp['cen_bins'],dt_all[iexp_glob],data_ref['flux'],data_ref['cov'],calc_cond,
                                                                                      flux_est_loc_exp=flux_est_loc_exp,cov_est_loc_exp = cov_est_loc_exp, SpSstar_spec = SpSstar_spec,sdet_exp2 = data_exp['sdet2'])
         variances_1D = {'DI':EFsc2_all,'Diff':EFdiff2,'Intr':EFintr2,'Emission':EFem2,'Absorption':EAbs2}
 

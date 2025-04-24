@@ -1053,7 +1053,7 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             resamp_cond[iexp_off] = ((mode=='') and (not data_inst[vis_bin]['comm_sp_tab'])) or ((mode=='multivis') and (not data_inst['comm_sp_tab']) and (vis_bin!=data_inst['com_vis']))
             resamp_cond_all |= resamp_cond[iexp_off]
             if (not resamp_cond[iexp_off]): 
-                data_to_bin_gen[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],data_inst['nord'],iexp_glob,'DI',data_dic[inst]['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['sing_gcal'],data_to_bin_gen[iexp_off]['cen_bins'],
+                data_to_bin_gen[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],data_inst['nord'],iexp_glob,'DI',data_dic[inst]['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['sing_gcal'],data_to_bin_gen[iexp_off]['cen_bins'],
                                                                        data_to_bin_gen[iexp_off]['dt'],data_to_bin_gen[iexp_off]['flux_ref'],None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),sdet_exp2 = data_to_bin_gen[iexp_off]['sdet2'],EFsc2_all_in = data_to_bin_gen[iexp_off]['EFsc2'])[0]
 
         #Processing each exposure of current visit selected for extraction
@@ -1148,7 +1148,7 @@ def sub_extract_diff_profiles(iexp_proc,proc_DI_data_paths,proc_gen_data_paths_n
                     if sdet2_exp is not None:sdet2_exp[np.isnan(sdet2_exp)]=0.
     
                     #Weight definition         
-                    data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(nord),scaled_data_paths_vis[vis_bin],inst,vis_bin,corr_Fbal,corr_FbalOrd,save_data_dir,gen_type,nord,iexp_glob,'DI',vis_type,dim_exp,tell_exp,sing_gcal_exp,data_exp['cen_bins'],data_to_bin[iexp_off]['dt'],flux_ref_exp,None,calc_cond,sdet_exp2 = sdet2_exp,EFsc2_all_in = EFsc2_exp)[0]
+                    data_to_bin[iexp_off]['weight'] = weights_bin_prof(range(nord),scaled_data_paths_vis[vis_bin],inst,vis_bin,corr_Fbal,corr_FbalOrd,save_data_dir,nord,iexp_glob,'DI',vis_type,dim_exp,tell_exp,sing_gcal_exp,data_exp['cen_bins'],data_to_bin[iexp_off]['dt'],flux_ref_exp,None,calc_cond,sdet_exp2 = sdet2_exp,EFsc2_all_in = EFsc2_exp)[0]
 
                 #Weighing components and current exposure are defined on the same table common to the visit 
                 else:data_to_bin[iexp_off] = deepcopy(data_to_bin_gen[iexp_off])  

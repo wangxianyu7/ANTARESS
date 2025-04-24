@@ -986,8 +986,18 @@ def ANTARESS_plot_settings(plot_settings,plot_dic,gen_dic,data_dic,glob_fit_dic,
             if (key_plot=='DIbin'):
 
                 #%%%%% Bin dimension
-                if gen_dic['sequence']=='st_master_tseries':plot_settings[key_plot]['dim_plot']='time'            
-                             
+                if gen_dic['sequence']=='st_master_tseries':plot_settings[key_plot]['dim_plot']='time'
+                
+                #%%%%% Number exposures in binned profiles
+                plot_settings[key_plot]['print_n_in_bin'] = False
+                if gen_dic['sequence']=='st_master_tseries':plot_settings[key_plot]['print_n_in_bin'] = True
+                    
+
+                #%%%%% S/R of binned profile   
+                plot_settings[key_plot]['print_SNR'] = False 
+                if gen_dic['sequence']=='st_master_tseries':plot_settings[key_plot]['print_SNR'] = True
+                            
+                    
             ##############################################################################
             #%%%%% Residuals between the profile and its fit
             if (key_plot=='DIbin_res'):

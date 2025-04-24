@@ -15,7 +15,7 @@ from ..ANTARESS_grids.ANTARESS_star_grid import model_star
 from ..ANTARESS_grids.ANTARESS_occ_grid import occ_region_grid,sub_calc_plocc_ar_prop,calc_plocc_ar_prop,retrieve_ar_prop_from_param,generate_ar_prop
 from ..ANTARESS_grids.ANTARESS_prof_grid import init_custom_DI_prof,custom_DI_prof,theo_intr2loc,gen_theo_atm,var_stellar_prop
 from ..ANTARESS_grids.ANTARESS_coord import calc_mean_anom_TR,calc_Kstar,calc_tr_contacts,calc_rv_star,get_timeorbit,coord_expos,coord_expos_ar
-from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab,return_spec_nord
+from ..ANTARESS_analysis.ANTARESS_inst_resp import return_pix_size,def_st_prof_tab,cond_conv_st_prof_tab,conv_st_prof_tab,get_FWHM_inst,resamp_st_prof_tab,return_spec_nord,flag_err_inst,return_cen_wav_ord
 from ..ANTARESS_analysis.ANTARESS_ana_comm import par_formatting_inst_vis
 from ..ANTARESS_general.minim_routines import par_formatting
 from ..ANTARESS_corrections.ANTARESS_sp_reduc import red_sp_data_instru
@@ -420,125 +420,6 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #Multi-threading
         print('Multi-threading: '+str(cpu_count())+' threads available')
 
-        #Instrument root names
-        gen_dic['inst_root']={
-            'CARMENES_VIS':'CARMENES',
-            'CORALIE':'CORALIE', 
-            'ESPRESSO':'ESPRESSO',
-            'ESPRESSO_MR':'ESPRESSO',
-            'EXPRES':'EXPRES',    
-            'HARPN':'HARPN',
-            'HARPS':'HARPS',  
-            'IGRINS2_Blue':'IGRINS2',
-            'IGRINS2_Red':'IGRINS2',
-            'MAROONX_Blue':'MAROONX',
-            'MAROONX_Red':'MAROONX',
-            'MIKE_Blue':'MIKE',
-            'MIKE_Red':'MIKE',
-            'NIRPS_HA':'NIRPS',
-            'NIRPS_HE':'NIRPS',
-            'SOPHIE_HE':'SOPHIE',
-            'SOPHIE_HR':'SOPHIE', 
-        }     
-
-        #Return flag that errors on input data are defined or not for each instrument   
-        gen_dic['flag_err_inst']={  
-            'CARMENES_VIS':True,
-            'CARMENES_VIS_CCF':True,
-            'CORALIE':False,  
-            'ESPRESSO':True,
-            'ESPRESSO_MR':True,
-            'EXPRES':True,     
-            'HARPN':True   ,
-            'HARPS':True, 
-            'IGRINS2_Blue':True,
-            'IGRINS2_Red':True,
-            'MAROONX_Blue':True,
-            'MAROONX_Red':True,
-            'MIKE_Blue':True,
-            'MIKE_Red':True,
-            'NIGHT':True,
-            'NIRPS_HA':True,
-            'NIRPS_HE':True,
-            'SOPHIE_HE':False,
-            'SOPHIE_HR':False,  
-            } 
-        
-        #Central wavelengths of orders for known instruments
-        #    - in A
-        gen_dic['wav_ord_inst']={     
-            'ESPRESSO':10.*np.repeat(np.flip([784.45 ,774.52, 764.84, 755.40, 746.19, 737.19, 728.42 ,719.85, 711.48, 703.30, 695.31, 687.50, 679.86, 672.39, 665.08,
-                                          657.93 ,650.93 ,644.08, 637.37, 630.80, 624.36, 618.05, 611.87, 605.81, 599.87, 594.05, 588.34, 582.74, 577.24, 571.84,
-                                          566.55, 561.35, 556.25, 551.24, 546.31, 541.48, 536.73, 532.06, 527.48, 522.97, 522.97, 518.54, 514.18, 509.89, 505.68,
-                                          501.53, 497.46, 493.44, 489.50 ,485.61, 481.79 ,478.02, 474.32, 470.67, 467.08, 463.54 ,460.05, 456.62, 453.24, 449.91,
-                                          446.62, 443.39, 440.20, 437.05, 433.95 ,430.90, 427.88 ,424.91, 421.98, 419.09, 416.24, 413.43, 410.65, 407.91, 405.21,
-                                          402.55, 399.92, 397.32, 394.76, 392.23, 389.73, 387.26, 384.83, 382.42, 380.04]),2),
-            'HARPN':np.array([3896.9385, 3921.912 , 3947.2075, 3972.8315, 3998.7905, 4025.0913,4051.7397, 4078.7437, 4106.11  , 4133.8457, 4161.9595, 4190.458 ,
-                              4219.349 , 4248.641 , 4278.3433, 4308.464 , 4339.011 , 4369.9946,4401.424 , 4433.3086, 4465.6587, 4498.484 , 4531.796 , 4565.6045,
-                              4599.922 , 4634.759 , 4670.127 , 4706.0396, 4742.509 , 4779.548 ,4817.169 , 4855.388 , 4894.2188, 4933.675 , 4973.773 , 5014.5273,
-                              5055.955 , 5098.074 , 5140.9004, 5184.452 , 5228.747 , 5273.8066,5319.6494, 5366.297 , 5413.7686, 5462.088 , 5511.2773, 5561.3613,
-                              5612.3633, 5664.311 , 5717.2285, 5771.1436, 5826.086 , 5882.084 ,5939.1685, 5997.3726, 6056.7285, 6117.271 , 6179.0366, 6242.062 ,
-                              6306.3867, 6372.0503, 6439.0957, 6507.568 , 6577.511 , 6648.9746,6722.0083, 6796.6646, 6872.9976]),
-            'HARPS': np.array([3824.484, 3848.533, 3872.886, 3897.549, 3922.529, 3947.831, 3973.461,
-                                3999.426, 4025.733, 4052.388, 4079.398, 4106.771, 4134.515, 4162.635, 4191.141,
-                                4220.039, 4249.338, 4279.048, 4309.175, 4339.73 , 4370.722, 4402.16 , 4434.053,
-                                4466.411, 4499.245, 4532.564, 4566.384, 4600.709, 4635.555, 4670.933, 4706.854,
-                                4743.333, 4780.382, 4818.015, 4856.243, 4895.084, 4934.552, 4974.66 , 5015.426,
-                                5056.866, 5098.997, 5141.835, 5185.398, 5229.708, 5274.78 , 5367.266, 5414.749,
-                                5463.079, 5512.279, 5562.374, 5613.388, 5665.346, 5718.276, 5772.203, 5827.157,
-                                5883.167, 5940.266, 5998.481, 6057.852, 6118.408, 6180.188, 6243.229, 6307.567,
-                                6373.246, 6440.308, 6508.795, 6578.756, 6650.235, 6723.287, 6797.961, 6874.313]),                
-            'CARMENES_VIS': np.array([5185.683800259293,5230.002514675239,5275.085301397565,5320.952091123464,5367.623513832012,
-                                      5415.120929724138,5463.466461819996,5512.683030318242,5562.794388829332,5613.825162603174,5665.800888880403,5718.748059506192,5772.694165955971,
-                                      5827.667746933892,5883.6984387171215,5940.817028432618,5999.055510467573,6058.447146230714,6119.026527498995,6180.829643603155,6243.893952726336,
-                                      6308.2584576125455,6373.9637860064695,6441.052276173239,6509.5680678764,6579.557199224864,6651.067709835355,6724.149750796099,6798.855701960672,
-                                      6875.24029714847,6953.36075788067,7033.276936338339,7115.051468293246,7198.749936832545,7284.4410477767,7372.196817776685,7462.09277617269,
-                                      7554.208181803426,7648.626256074004,7745.4344337228085,7844.724632875495,7946.5935461392,8051.142954674568,8158.480067389824,8268.717887632938,
-                                      8381.975610018162,8498.379050316224,8618.061111667314,8741.162290748554,8867.83122794844,8998.225306077602,9132.51130268578,9270.866101669406,
-                                      9413.477470553611,9560.54491063029,9712.280588045605,9868.910354974394,10030.674871216968,10197.83083793165,10370.652356804127,10549.432429789025]),   
-            'IGRINS2_Blue': np.array([14748.5,14865.8,14985.0,15106.3,15229.7,15355.2,15483.0,15613.0,15745.3,
-                                      15880.0,16017.1,16156.8,16299.0,16443.9,16591.5,16741.9,16895.2,17051.5,
-                                      17210.8,17373.2,17538.9,17707.9,17880.3,18056.3,18235.9]),
-            'IGRINS2_Red': np.array([19396.5,19605.0,19818.1,20036.2,20259.2,20487.4,20720.9,2096.01,21204.9,
-                                     21455.7,21712.7,21976.1,22246.2,22523.1,22807.2,23098.7,2339.80,23705.3,
-                                     24021.0,24345.3,24678.8,25021.7]),
-            'MAROONX_Blue': np.array([]),
-            'MAROONX_Red': np.array([]),
-            'MIKE_Blue': np.array([]),
-            'MIKE_Red': np.array([]),
-            'NIGHT': np.array([   9793.31830725 , 9859.95301593 , 9927.49931744 , 9995.97622395,10065.40380975, 10135.80171767, 10207.19048503, 10279.59121586,
-                                    10353.02577856, 10427.51660496, 10503.0864558 , 10579.75913144,10657.5589196 , 10736.51096413, 10816.64116324, 10897.97569896,
-                                    10980.54199941, 11064.36827222, 11149.48372245, 11235.91830631,11323.70300177, 11412.86989695, 11503.45207046, 11595.48314928,
-                                    11688.99793186, 11784.03276228, 11880.62559736, 11978.81474198,12078.63947148, 12180.1413448 , 12283.36401067, 12388.35148928,
-                                    12495.14844764, 12603.80175443, 12714.36064267, 12826.87609104,12941.40020952, 13057.98722241, 13176.69424781, 13297.58039703,
-                                    13420.70477935, 13546.12854527, 13673.91830748, 14072.1783805,14210.13779528, 14350.82710154, 14494.33106043, 14640.73394106,
-                                    14790.12380228, 14942.59417032, 15098.24089619, 15257.16474828,15419.46907017, 15585.26310369, 15754.66203085, 15927.78376522,
-                                    16104.75265749, 16285.69620041, 16470.75172016, 16660.06255469,16853.77645383, 17052.04937274, 17255.0418695 , 17462.92163421,
-                                    17675.87345983, 17894.08476988, 18117.75049316, 18347.07795686,18582.28588236, 18823.6030827 , 19071.27048963]),                        #UPDATE WHEN FINAL FORMAT DEFINED          
-            'NIRPS_HA': np.array([   9793.31830725 , 9859.95301593 , 9927.49931744 , 9995.97622395,10065.40380975, 10135.80171767, 10207.19048503, 10279.59121586,
-                                    10353.02577856, 10427.51660496, 10503.0864558 , 10579.75913144,10657.5589196 , 10736.51096413, 10816.64116324, 10897.97569896,
-                                    10980.54199941, 11064.36827222, 11149.48372245, 11235.91830631,11323.70300177, 11412.86989695, 11503.45207046, 11595.48314928,
-                                    11688.99793186, 11784.03276228, 11880.62559736, 11978.81474198,12078.63947148, 12180.1413448 , 12283.36401067, 12388.35148928,
-                                    12495.14844764, 12603.80175443, 12714.36064267, 12826.87609104,12941.40020952, 13057.98722241, 13176.69424781, 13297.58039703,
-                                    13420.70477935, 13546.12854527, 13673.91830748, 14072.1783805,14210.13779528, 14350.82710154, 14494.33106043, 14640.73394106,
-                                    14790.12380228, 14942.59417032, 15098.24089619, 15257.16474828,15419.46907017, 15585.26310369, 15754.66203085, 15927.78376522,
-                                    16104.75265749, 16285.69620041, 16470.75172016, 16660.06255469,16853.77645383, 17052.04937274, 17255.0418695 , 17462.92163421,
-                                    17675.87345983, 17894.08476988, 18117.75049316, 18347.07795686,18582.28588236, 18823.6030827 , 19071.27048963]),
-            'EXPRES': np.array([3827.18212341, 3851.28596202, 3875.69435186, 3900.41312958 ,3925.44828033,3950.80594266 ,3976.49241363 ,4002.51415404 ,4028.87779393 ,4055.59013823,
-                                  4082.65817269 ,4110.08906999 ,4137.89019612 ,4166.069117   ,4194.63360538,4223.591648   ,4252.95145307 ,4282.72145806 ,4312.91033776 ,4343.52701277,
-                                  4374.58065826 ,4406.08071317 ,4438.03688981 ,4470.45918379 ,4503.3578845,4536.74358599 ,4570.62719834 ,4605.01995956 ,4639.93344803 ,4675.37959548,
-                                  4711.3707006  ,4747.91944324 ,4785.03889938 ,4822.74255663 ,4861.04433066,4899.95858228 ,4939.50013539 ,4979.68429586 ,5020.52687121 ,5062.04419143,
-                                  5104.2531307  ,5147.17113026 ,5190.81622248 ,5235.20705609 ,5280.3629228,5326.3037852  ,5373.05030624 ,5420.62388022 ,5469.04666543 ,5518.34161856,
-                                  5568.53253104 ,5619.6440673  ,5671.70180522 ,5724.73227878 ,5778.76302323,5833.82262268 ,5889.94076065 ,5947.14827335 ,6005.47720621 ,6064.96087378,
-                                  6125.63392315 ,6187.53240127 ,6250.69382638 ,6315.15726382 ,6380.96340664,6448.15466126 ,6516.77523859 ,6586.87125105 ,6658.49081593 ,6731.68416551,
-                                  6806.50376456 ,6883.00443578 ,6961.24349375 ,7041.2808881  ,7123.17935679,7207.00459002 ,7292.82540601 ,7380.71393943 ,7470.74584357 ,7563.00050759,
-                                  7657.56128994 ,7754.51576965 ,7853.9560168  ,7955.97888421 ,8060.68632206,8168.18571772])
-    
-    
-        }
-        gen_dic['wav_ord_inst']['NIRPS_HE'] = gen_dic['wav_ord_inst']['NIRPS_HA'] 
-        gen_dic['wav_ord_inst']['CARMENES_VIS_CCF'] = gen_dic['wav_ord_inst']['CARMENES_VIS'] 
-    
         #Instruments to which are associated the different datasets
         if gen_dic['mock_data']:  
             data_dic['instrum_list']=list(mock_dic['visit_def'].keys())
@@ -569,6 +450,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         gen_dic['ccfINtype'] = ('CCF' in gen_dic['all_types'])   
     
         #Use of covariance
+        gen_dic['flag_err_inst'] = {}
         if gen_dic['mock_data']:gen_dic['use_cov'] = False    
         else:
             #Used by default with spectral datasets, unless CCF datasets are processed or user requests otherwise
@@ -611,6 +493,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         if (not gen_dic['specINtype']):
             for key in sp_corr_list:gen_dic[key]=False
             gen_dic['gcal']=False
+            gen_dic['cond_plot_gcal'] = False
 
             #Deactivate EvE outputs
             if gen_dic['EvE_outputs']:
@@ -625,6 +508,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 #Deactive if spectra are not 2D:
                 #    - spectral calibration, spectral balance correction over orders, wiggles                
                 gen_dic['gcal'] = False
+                gen_dic['cond_plot_gcal'] = False
                 gen_dic['corr_FbalOrd']=False
                 plot_dic['wig_order_fit']=''
                 
@@ -633,6 +517,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 
                 #Automatic calculation of calibration profiles
                 gen_dic['gcal'] = True
+                gen_dic['cond_plot_gcal'] = (plot_dic['gcal_all']!='') or (plot_dic['gcal_ord']!='') or (plot_dic['noises_ord']!='')
 
             #Activate global master calculation if required for flux balance corrections
             if (gen_dic['corr_Fbal']) or (gen_dic['corr_FbalOrd']):
@@ -828,19 +713,29 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         # + conversion of profiles from 2D into 1D
         # + binning profiles together
         #    - we disable calculation of DI weighing master if it is requested but no other module requiring this weight are recalculated
+        weights_on = ''
+        weights_off = ''
         cond_def = (gen_dic['diff_data'] | (gen_dic['loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['spec_1D'] | gen_dic['bin'] | gen_dic['binmultivis'])
         gen_dic['DImast_weight'] = cond_def
+        if gen_dic['DImast_weight']:weights_on+='(DI master) '
+        else:weights_off+='(DI master)'
         if gen_dic['DImast_weight'] and gen_dic['calc_DImast']:gen_dic['calc_DImast'] =  gen_dic['calc_diff_data'] | (gen_dic['calc_loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['calc_spec_1D'] | gen_dic['calc_bin'] | gen_dic['calc_binmultivis']
         if ('spec2D' in gen_dic['all_types']):gen_dic['cal_weight'] = cond_def   
         else:gen_dic['cal_weight'] = False   
+        if gen_dic['cal_weight']:weights_on+='(Calibration) '
+        else:weights_off+='(Calibration) '
         if gen_dic['specINtype']:gen_dic['tell_weight'] = cond_def & gen_dic['corr_tell'] 
         else:gen_dic['tell_weight'] = False
+        if gen_dic['tell_weight']:weights_on+='(Tellurics) '
+        else:weights_off+='(Tellurics) '
+        if weights_on != '':print('Weight contributors on :'+weights_on)
+        if weights_off != '':print('Weight contributors off :'+weights_off)
 
         #------------------------------------------------------------------------------------------------------------------------
 
         #Automatic activation of light curve computation
         #    - required to calculate binned disk-integrated profiles or convert them from 2D to 1D, to convert Diff profiles into CCFs or from 2D to 1D, and to compute (and process) intrinsic and atmospheric profiles
-        if (not gen_dic['flux_sc']) and (gen_dic['DImast_weight'] or gen_dic['spec_1D_DI'] or gen_dic['binDI'] or gen_dic['Diff_CCF'] or gen_dic['spec_1D_Diff'] or gen_dic['intr_data'] or (gen_dic['pl_atm'] and data_dic['Atm']['pl_atm_sign']=='Absorption')):
+        if (not gen_dic['flux_sc']) and (gen_dic['DImast_weight'] or gen_dic['spec_1D_DI'] or gen_dic['DIbin'] or gen_dic['Diff_CCF'] or gen_dic['spec_1D_Diff'] or gen_dic['intr_data'] or (gen_dic['pl_atm'] and data_dic['Atm']['pl_atm_sign']=='Absorption')):
             print('Automatic activation of flux scaling calculation')
             gen_dic['flux_sc'] = True
 
@@ -1440,7 +1335,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
     #Error definition
     if not gen_dic['mock_data']:
-        if inst not in gen_dic['flag_err_inst']:stop('ERROR : define error status for '+inst+' in "gen_dic["flag_err_inst"]"')
+        gen_dic['flag_err_inst'][inst] = flag_err_inst(inst)
         if (not gen_dic['flag_err_inst'][inst]) and gen_dic['gcal']:stop('ERROR : error table must be available to estimate calibration')
         if (inst in gen_dic['force_flag_err']):gen_dic['flag_err_inst'][inst]=False
         if gen_dic['flag_err_inst'][inst]:print('   > Errors propagated from raw data')
@@ -1534,13 +1429,13 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             idx_ord_kept = list(np.arange(norders_instru_ref))
             if (data_inst['type'] in ['spec1D','CCF']):
                 data_inst['nord'] = 1
-                gen_dic[inst]['wav_ord_inst'] = gen_dic['wav_ord_inst'][inst]
+                gen_dic[inst]['wav_ord_inst'] = return_cen_wav_ord(inst)
                 gen_dic[inst]['norders_instru']=norders_instru_ref
             elif (data_inst['type']=='spec2D'):
                 if (inst in gen_dic['del_orders']) and (len(gen_dic['del_orders'][inst])>0):
                     print('           Removing '+str(len(gen_dic['del_orders'][inst]))+' orders from the analysis')
                     idx_ord_kept = list(np.delete(np.arange(norders_instru_ref),gen_dic['del_orders'][inst]))
-                    gen_dic[inst]['wav_ord_inst'] = gen_dic['wav_ord_inst'][inst][idx_ord_kept]
+                    gen_dic[inst]['wav_ord_inst'] = return_cen_wav_ord(inst)[idx_ord_kept]
                     data_inst['idx_ord_ref'] = data_inst['idx_ord_ref'][idx_ord_kept]
                 gen_dic[inst]['norders_instru'] = len(idx_ord_kept)
                 data_inst['nord']=deepcopy(len(idx_ord_kept))   
@@ -1601,7 +1496,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             #Observational data        
             else:
                 
-                #Adding / in case user forgets
+                #Adding "/" in case user forgets
                 vis_path_root = path_singslash(gen_dic['data_dir_list'][inst][vis]+'/')
         
                 #List of all exposures for current instrument
@@ -1659,13 +1554,16 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if inst in ['ESPRESSO','ESPRESSO_MR','HARPS','HARPN','NIRPS_HA','NIRPS_HE']:skcorr_ext = 'SKYSUB_A.fits'
                     else:skcorr_ext = 'C.fits'                      
                     vis_path_skysub_exp = np.array([ vis_path_root+ exp_rootname+skcorr_ext for exp_rootname in exp_rootnames   ])
+                    exp_filenames = np.array([ exp_rootname+skcorr_ext for exp_rootname in exp_rootnames   ])
                     if len(vis_path_skysub_exp)==0:stop('ERROR : No sky-sub data found. Check path.') 
                     
                     #Orders to be replaced
                     if gen_dic['fibB_corr'][inst][vis]=='all':idx_ord_skysub = 'all'
                     else:idx_ord_skysub = gen_dic['fibB_corr'][inst][vis]
                     
-                else:vis_path_skysub_exp = None
+                else:
+                    vis_path_skysub_exp = None
+                    exp_filenames = np.array([ exp_rootname+nom_ext for exp_rootname in exp_rootnames   ])
 
                 #Retrieving blazed data
                 if (data_inst['type']=='spec2D') and gen_dic['gcal_blaze']:   
@@ -1798,7 +1696,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         coord_dic[inst][vis][pl_loc]['Tcenter']  = system_param[pl_loc]['TCenter']+norb*system_param[pl_loc]["period"]
 
                 #Observation properties
-                for key in ['AM','IWV_AM','TEMP','PRESS','seeing','colcorrmin','colcorrmax','mean_SNR','alt','az','BERV']:data_prop[inst][vis][key] = np.zeros(n_in_visit,dtype=float)*np.nan        
+                for key in ['AM','IWV_AM','TEMP','PRESS','seeing','colcorrmin','colcorrmax','mean_SNR','alt','az','BERV']:data_prop[inst][vis][key] = np.zeros(n_in_visit,dtype=float)*np.nan
+                data_prop[inst][vis]['exp_filenames']=np.empty([n_in_visit],dtype='U50')
                 if inst=='ESPRESSO_MR':
                     for key in ['AM_UT','seeing_UT']:data_prop[inst][vis][key] = np.zeros(n_in_visit,dtype=object)*np.nan 
                 data_prop[inst][vis]['PSF_prop'] = np.zeros([n_in_visit,4],dtype=float)
@@ -1897,6 +1796,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     #Observational data
                     else:
                         
+                        #File name
+                        data_prop[inst][vis]['exp_filenames'][iexp] = exp_filenames[iexp]
+
                         #Data of the fits file 
                         hdulist =fits.open(vis_path_exp[iexp])
                
@@ -3543,10 +3445,10 @@ def update_inst(data_dic,inst,gen_dic):
 
     #Updating dimensions
     if gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:    
+        data_inst['comm_sp_tab']=True
         data_inst['dim_exp'] = deepcopy(data_com_ref['dim_exp'])
         data_inst['nspec'] = deepcopy(data_com_ref['nspec'])
         data_inst['nord'] = 1
-        data_inst['comm_sp_tab']=True
         
     return None
 
