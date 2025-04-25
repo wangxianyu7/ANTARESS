@@ -2183,8 +2183,10 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #%%%% Alignment mode
     #    - choose option to align spectra
     # + 'kep': Keplerian model 
+    #          preferred option, as pipeline RVs will be biased by the RM effect 
+    #          the alignment is made in the stellar rest frame plus rv[stellar system barycenter/solar system barycenter] - sysvel
     # + 'pip': pipeline RVs (if available)
-    #    - the Keplerian option should be preferred, as pipeline RVs will be biased by the RM effect 
+    #          the alignment is by definition made in the stellar rest frame, independently of sysvel 
     data_dic['DI']['align_mode']='kep'   
     if gen_dic['sequence']=='st_master_tseries':data_dic['DI']['align_mode']='pip' 
     
@@ -2418,8 +2420,9 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     
     #%%%%% Individual binned profiles
     plot_dic['DIbin']='' 
-    if gen_dic['sequence'] in ['st_master_tseries','night_proc']:
-        plot_dic['DIbin']='pdf'  
+    if (gen_dic['sequence']=='st_master_tseries') and gen_dic['spec_1D_DI']:plot_dic['DIbin']='pdf'  
+    if gen_dic['sequence']=='night_proc':plot_dic['DIbin']='pdf' 
+
     
     
     #%%%%% Residuals from binned profiles

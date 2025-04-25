@@ -4,7 +4,7 @@ import numpy as np
 import bindensity as bind
 from copy import deepcopy
 import glob
-from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,datasave_npz,default_func,check_data
+from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,datasave_npz,default_func,check_data,dup_edges
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase,coord_expos_ar
 from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_ar_prop,retrieve_ar_prop_from_param
@@ -92,7 +92,6 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
     #    - this is required when bin dimension is set by default
     #    - it cannot be retrieved from the global table since the path to the global table is set by the bin dimension
     data_dic[data_type_gen]['dim_bin'] = prop_dic['dim_bin']
-
     if (calc_check):
         print('         Calculating data') 
 
@@ -119,7 +118,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             rest_frame = np.unique(rest_frame)[0]
            
             #System properties
-            system_prop = data_dic[inst]['system_prop']
+            system_prop = data_inst['system_prop']
 
             #Retrieving table common to all visits
             #    - defined in input rest frame for disk-integrated spectra pre-alignment
@@ -129,6 +128,15 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             else:com_frame = '_star'
             data_com = dataload_npz(data_inst['proc_com'+com_frame+'_data_path'])            
 
+            #Dimension of binned profile
+            #    - if profiles do not need resampling, it means they already were resampled on a shared common grid
+            if (not data_inst['comm_sp_tab']):
+                nspec_new = data_com['nspec']
+                dim_exp_new = data_com['dim_exp'] 
+            else:
+                nspec_new = data_inst[data_inst['com_vis']]['nspec']
+                dim_exp_new = data_inst[data_inst['com_vis']]['dim_exp']   
+                    
         #A single visit is processed
         #    - common table and dimensions are specific to this visit
         elif mode=='': 
@@ -139,6 +147,20 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             if (rest_frame!='star'):com_frame = ''
             else:com_frame = '_star'
             data_com = dataload_npz(data_inst[vis_in]['proc_com'+com_frame+'_data_paths'])
+            if (not data_inst[vis_in]['comm_sp_tab']):
+                nspec_new = data_com['nspec']
+                dim_exp_new = data_com['dim_exp'] 
+            else:
+                nspec_new = data_inst[vis_in]['nspec']
+                dim_exp_new = data_inst[vis_in]['dim_exp']                  
+
+        #Scaling calibration profile
+        #    - always defined for echelle spectra
+        #    - the effective calibration profile used here will be calculated on the common table, which is defined in the input rest frame if non-aligned, disk-integrated spectra are binned or in the star rest frame otherwise
+        #    - if alignment in the star rest frame was not applied, the common star table points toward the common input table
+        if (gen_dic['sequence']=='st_master_tseries') and (data_format=='spec2D'):
+            mean_gcal_com = np.zeros(dim_exp_new,dtype=float)  
+        else:mean_gcal_com = None
 
         #Check alignment
         #    - profiles may have been aligned by correcting for the Keplerian motion (which sets rest_frame = 'star') but with a null systemic rv, in which case they are not yet aligned in the star rest frame  
@@ -294,7 +316,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     #    - defined on the same table as data_exp
                     if ((data_type=='Absorption') and (var_key_def!='EAbs2')) or ((data_type=='Emission') and (var_key_def!='EFem2') and data_dic['Intr']['cov_loc_star']): 
                         data_est_loc=dataload_npz(data_dic[inst][vis_bin]['LocEst_Atm_data_paths'][iexp]) 
-             
+
             #Disk-integrated weighing master
             #    - upon first calculation of the weighing DI master, no DI stellar spectrum is available
             #      we thus cannot estimate the photon noise of a given exposure to its true level so that it can be combined with the detector noise
@@ -322,9 +344,6 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             # + several visits are used, profiles have already been resampled within the visit, but not all visits share a common table and visit of binned exposure is not the one used as reference to set the common table
             #    - telluric are set to 1 if unused            
             if ((mode=='') and (not data_inst[vis_bin]['comm_sp_tab'])) or ((mode=='multivis') and (not data_inst['comm_sp_tab']) and (vis_bin!=data_inst['com_vis'])):
-                if isub==0:
-                    nspec_new = data_com['nspec']
-                    dim_exp_new = data_com['dim_exp'] 
 
                 #Resampling exposure profile on common table
                 data_to_bin[iexp_off]['flux']=np.zeros(dim_exp_new,dtype=float)*np.nan
@@ -361,16 +380,21 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                         cov_est_loc_exp = np.zeros([data_inst['nord'],1],dtype=float)
                         for iord in range(data_inst['nord']): 
                             flux_est_loc_exp[iord] = bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord], data_est_loc['flux'][iord] , kind=gen_dic['resamp_mode'])                                                        
-                                        
+                                    
+                #Mean calibration profile over processed exposures
+                #    - due to the various shifts of the processed spectra from the input rest frame, the mean calibration profiles defined on the grids of each exposure are not equivalent anymore
+                #      for the purpose of scaling homogenously the exposure profiles we define an average calibration profile common to all processes exposures 
+                if (mean_gcal_com is not None):
+                    mean_gcal_exp = dataload_npz(data_inst[vis_bin]['mean_gcal_'+data_type_gen+'_data_paths'][iexp])['mean_gcal'] 
+                    for iord in range(data_inst['nord']): 
+                        mean_gcal_com[iord]+=dup_edges(bind.resampling(data_com['edge_bins'][iord], data_exp['edge_bins'][iord],mean_gcal_exp[iord], kind=gen_dic['resamp_mode'])/n_bin) 
+                
             #No resampling required
-            #    - if the resampling condition is not met, then all profiles have been resampled on the common table for the visit
+            #    - if the resampling condition is not met, then all profiles have already been resampled on the common table for the visit
             #    - the local stellar profile estimate does not need resampling as:
             # + it is on its original table, which is the table of the associated profile, which is also the common table  
             # + it has been shifted, and resampled on the table of the associated profile, which is also the common table   
             else: 
-                if isub==0:
-                    nspec_new = data_inst[vis_bin]['nspec']
-                    dim_exp_new = data_inst[vis_bin]['dim_exp']  
                 if data_ref is not None:
                     flux_ref_exp = data_ref['flux']
                     if data_type!='DI':cov_ref_exp = data_ref['cov']   
@@ -383,7 +407,10 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     flux_est_loc_exp = data_est_loc['flux']
                     if data_dic['Intr']['cov_loc_star']:cov_est_loc_exp = data_est_loc['cov'] 
                     else:cov_est_loc_exp = np.zeros([data_inst['nord'],1],dtype=float)   
-          
+                if (mean_gcal_com is not None):
+                    mean_gcal_exp = dataload_npz(data_inst[vis_in]['mean_gcal_'+data_type_gen+'_data_paths'][iexp])['mean_gcal'] 
+                    for iord in range(data_inst['nord']):mean_gcal_com[iord]+=mean_gcal_exp[iord]/n_bin
+                          
             #Mock reference spectrum for weighing master computation
             if masterDIweigh:flux_ref_exp = np.ones(dim_exp_new,dtype=float)
           
@@ -432,7 +459,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     print('WARNING : master spectrum does not overlap with reference order for S/N.')
                     cond_olap = None 
             else:cond_olap = None
-                
+
+        #----------------------------------------------------------------------------------------------                
         #Processing and analyzing each new exposure 
         for i_new,(idx_to_bin,n_in_bin,dx_ov) in enumerate(zip(idx_to_bin_all,n_in_bin_all,dx_ov_all)):
 
@@ -467,7 +495,12 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 #Saving single master
                 #    - a single binned profile is computed
                 if (gen_dic['sequence']=='st_master_tseries'):
-    
+
+                    #Scaling back 2D master to counts levels
+                    if (data_format=='spec2D'):
+                        for iord in range(data_inst['nord']):
+                            data_exp_new['flux'][iord],data_exp_new['cov'][iord] = bind.mul_array(data_exp_new['flux'][iord],data_exp_new['cov'][iord],1./mean_gcal_com[iord])
+
                     #Storing names of fit files used in the master computation
                     data_exp_new['exp_filenames'] = exp_filenames
 
@@ -1144,7 +1177,7 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
         if calc_flux_sc_all:
             if scaled_data_paths is None:stop('ERROR : flux scaling is required for weight computation; activate "gen_dic["flux_sc"]"')
             data_scaling = dataload_npz(scaled_data_paths+str(iexp_glob))   
-            flux_sc_all = np.ones(dim_exp,dtype=float)
+        flux_sc_all = np.ones(dim_exp,dtype=float)
     
         #Variance on master disk-integrated profile 
         if calc_var_ref2:var_ref2 = np.zeros(dim_exp,dtype=float)*np.nan

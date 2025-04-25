@@ -27,7 +27,7 @@ The three techniques give comparable results when the RM signal is significant (
 When these conditions are not met the Revolutions technique improves the detectability of the RM signal and reduces biases, because it fits the spectro-temporal variations of the occulted lines with a numerical model of the stellar photosphere. This allows simulating complex line profiles and photospheric variations, and accounting for the aforementioned blurring.
 
 We assume that you have already `set up your system and dataset <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_setup/procedures_setup.html>`_, `reduced <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_reduc/procedures_reduc.html>`_ and `processed <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_proc/procedures_proc.html>`_ your spectral transit time-series, 
-extracted the `planet-occulted stellar profiles <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_extraction/procedures_extraction.html>`_, and converted them into `intrinsic CCFs <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_CCF/procedures_CCF_Intr/procedures_CCF_Intr.html>`_.
+extracted the `planet-occulted stellar profiles <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_extraction/procedures_extraction.html>`_, and converted them into `intrinsic CCFs <https://obswww.unige.ch/~bourriev/antaress/doc/html/Fixed_files/procedures_conv/procedures_CCF/procedures_CCF_Intr/procedures_CCF_Intr.html>`_.
 
 
 .. _RM_sec_intr:

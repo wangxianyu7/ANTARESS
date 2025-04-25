@@ -1027,7 +1027,7 @@ def eval_diff_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_para
 
                 #Making weights for the master-out
                 raw_weights=weights_bin_prof(range(fixed_args['nord']), data_prop['master_out']['scaled_data_paths'][inst][vis],inst,vis,data_prop['master_out']['corr_Fbal'],data_prop['master_out']['corr_FbalOrd'],\
-                                                    data_prop['master_out']['save_data_dir'],fixed_args['type'],fixed_args['nord'],isub,'DI',fixed_args['dim_exp'],None,\
+                                                    data_prop['master_out']['save_data_dir'],fixed_args['nord'],isub,'DI',fixed_args['type'],fixed_args['dim_exp'],None,\
                                                     None,np.array([args_exp['cen_bins']]),coord_vis['t_dur'][isub],np.array([resamp_conv_base_DI_prof]),\
                                                     None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),EFsc2_all_in = EFsc2_exp)[0]
 

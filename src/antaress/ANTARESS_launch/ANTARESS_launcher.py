@@ -138,10 +138,18 @@ def ANTARESS_launcher(sequence = '' , custom_systems = '',custom_settings = '',c
 
 
 
-def ANTARESS_DACE_launcher(star_name,inst,sub_inst,data_path,working_path,sysvel = 0.,debug_mode = False,del_dir = True):
+def ANTARESS_DACE_launcher(star_name,inst,sub_inst,data_path,working_path,debug_mode = False,del_dir = True):
     r"""**ANTARESS launch routine: master computation**
     
     Runs ANTARESS on a S2D dataset to generate 2D and 1D master spectra with minimal inputs. 
+    The masters are aligned in the stellar rest frame.
+    
+    This routine can be called directly from a python environment.
+    To generate a single master with minimal input, you can also run the workflow from the terminal as:: 
+        
+        antaress --sequence st_master_tseries --custom_settings ANTARESS_settings_sequence.py
+        
+    Using a copy of the default configuration file where the only fields that need to be modified are `gen_dic['type']` with your chosen instrument, and `gen_dic['data_dir_list']` pointing to your data directory.  
     
     Args:
         star_name (str): name of the star (to be saved in the master outputs, not critical to the computation)
@@ -149,7 +157,6 @@ def ANTARESS_DACE_launcher(star_name,inst,sub_inst,data_path,working_path,sysvel
         sub_inst (str): name of the sub-instrument used to acquire the dataset
         data_path (str): path to the dataset directory
         working_path (str): path to the directory where ANTARESS outputs are stored
-        sysvel (float; optional): radial velocity between the stellar and solar system barycenters (default 0 km/s). Masters will be Doppler-shifted by -sysvel with respect to the Solar system barycenter.
     
     Returns:
         None
@@ -182,14 +189,8 @@ def ANTARESS_DACE_launcher(star_name,inst,sub_inst,data_path,working_path,sysvel
             settings_lines_reduc2D[idx_line] = '    '+"gen_dic['data_dir_list'] = {'"+inst+"':{'all':'"+data_path+"'}}" + '\n'
             settings_lines_master1D[idx_line] = settings_lines_reduc2D[idx_line]
             
-        #Systemic velocity 
-        if ("data_dic['DI']['sysvel']={}" in arr_line):
-            settings_lines_reduc2D[idx_line] = '    '+"data_dic['DI']['sysvel'] = {'"+inst+"':{'all':"+str(sysvel)+"}}" + '\n'
-            settings_lines_master1D[idx_line] = settings_lines_reduc2D[idx_line]
-            
-        #Deactive 2D/1D conversion and plots for 2D master computation
+        #Deactive 2D/1D conversion for 2D master computation
         if ("gen_dic['spec_1D_DI']=True" in arr_line):settings_lines_reduc2D[idx_line] = '        '+"gen_dic['spec_1D_DI'] = False" + '\n'  
-        if ("plot_dic['DIbin']='pdf'" in arr_line):   settings_lines_reduc2D[idx_line] = '        '+"plot_dic['DIbin'] =''" + '\n' 
         
         #Deactivation of modules for 1D master computation
         #    - to avoid reprocessing the 2D data
@@ -215,11 +216,9 @@ def ANTARESS_DACE_launcher(star_name,inst,sub_inst,data_path,working_path,sysvel
             if ("gen_dic['calc_align_DI']=True" in arr_line):   settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_align_DI'] = False" + '\n'  
             if ("gen_dic['calc_flux_sc']=True" in arr_line):    settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_flux_sc'] = False" + '\n'              
             if ("gen_dic['calc_DImast']=True" in arr_line):     settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_DImast'] = False" + '\n'           
-            if ("gen_dic['calc_DIbin']=True" in arr_line):      settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_DIbin'] = False" + '\n'        
+            # if ("gen_dic['calc_DIbin']=True" in arr_line):      settings_lines_reduc2D[idx_line] = '    '+"gen_dic['calc_DIbin'] = False" + '\n'        
             if ("gen_dic['calc_spec_1D_DI']=True" in arr_line): settings_lines_master1D[idx_line] = '        '+"gen_dic['calc_spec_1D_DI'] = False" + '\n' 
             if ("gen_dic['calc_DIbin']=True" in arr_line):      settings_lines_master1D[idx_line] = '    '+"gen_dic['calc_DIbin'] = False" + '\n'               
-
-
 
     #-------------
     #Reduction and 2D master spectrum

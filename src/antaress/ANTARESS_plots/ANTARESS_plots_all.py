@@ -6368,7 +6368,7 @@ def pre_proc_DI_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,da
                 for key in ['cen_bins','edge_bins','flux','cov','cond_def']:data4mast[maink][iexp][key]=deepcopy(data_proc[maink][iexp][key])
              
                 #Weight definition   
-                data4mast[maink][iexp]['weight']= weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],gen_dic['type'],nord_proc,iexp,'DI',dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['sing_gcal'],data_proc[maink][iexp]['cen_bins'],data_proc[maink][iexp]['dt'],flux_ref,None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),glob_flux_sc = 1./flux_glob)[0]                       
+                data4mast[maink][iexp]['weight']= weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],nord_proc,iexp,'DI',gen_dic['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['sing_gcal'],data_proc[maink][iexp]['cen_bins'],data_proc[maink][iexp]['dt'],flux_ref,None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),glob_flux_sc = 1./flux_glob)[0]                       
   
                 #Resampling if exposures do not share a common table
                 if (not data_vis['comm_sp_tab']): 

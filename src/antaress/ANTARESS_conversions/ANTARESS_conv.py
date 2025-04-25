@@ -133,19 +133,12 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
 
             #Mean calibration profile over processed exposures
             #    - due to the various shifts of the processed spectra from the input rest frame, calibration profiles are not equivalent for a given line between exposure
-            #      to maintain the relative flux balance between lines when computing CCFs, we calculate a common calibration profile to all processes exposures
+            #      to maintain the relative flux balance between lines when computing CCFs, we calculate an average calibration profile common to all processes exposures
+            #    - we resample the profile, fill-in undefined edges, and co-add it to the average one
             if data_vis['type']=='spec2D':
                 mean_gcal_exp = dataload_npz(data_vis['mean_gcal_'+gen+'_data_paths'][iexp_eff])['mean_gcal'] 
                 for isub_ord,iord in enumerate(ord_coadd):
-                    mean_gcal_com_ord=bind.resampling(data_com['edge_bins'][iord], data_proc['edge_bins'][iexp_sub,isub_ord],mean_gcal_exp[iord], kind=gen_dic['resamp_mode'])/n_exp 
-                    
-                    #Filling-in undefined edges
-                    idx_def_loc = np_where1D(~np.isnan(mean_gcal_com_ord))
-                    mean_gcal_com_ord[0:idx_def_loc[0]+1]=mean_gcal_com_ord[idx_def_loc[0]]
-                    mean_gcal_com_ord[idx_def_loc[-1]:]=mean_gcal_com_ord[idx_def_loc[-1]]
-                    
-                    #Co-adding exposure contribution
-                    mean_gcal_com[isub_ord]+=mean_gcal_com_ord
+                    mean_gcal_com[isub_ord]+=dup_edges(bind.resampling(data_com['edge_bins'][iord], data_proc['edge_bins'][iexp_sub,isub_ord],mean_gcal_exp[iord], kind=gen_dic['resamp_mode'])/n_exp) 
                     
             #Upload weighing disk-integrated master 
             #    - the master always remains either defined on the common table, or on a specific table different from the table of its associated exposure
@@ -205,10 +198,7 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
             if len(idx_maskL_kept)>0:
                 ord_coadd_eff+=[isub]
                 if data_vis['type']=='spec2D':
-                    gcal_ord = bind.resampling(data_proc['edge_bins'][iexp_sub,isub],data_com['edge_bins'][iord],mean_gcal_com[isub], kind=gen_dic['resamp_mode'])  
-                    idx_def_loc = np_where1D(~np.isnan(gcal_ord))
-                    gcal_ord[0:idx_def_loc[0]+1]=gcal_ord[idx_def_loc[0]]
-                    gcal_ord[idx_def_loc[-1]:]=gcal_ord[idx_def_loc[-1]]
+                    gcal_ord = dup_edges(bind.resampling(data_proc['edge_bins'][iexp_sub,isub],data_com['edge_bins'][iord],mean_gcal_com[isub], kind=gen_dic['resamp_mode']))
                 for iexp_sub,iexp in enumerate(iexp_conv):                      
                     flux_ord,cov_ord = new_compute_CCF(data_proc['edge_bins'][iexp_sub,isub],data_proc['flux'][iexp_sub,isub],data_proc['cov'][iexp_sub,isub],gen_dic['resamp_mode'],edge_velccf,CCF_mask_wgt[idx_maskL_kept],CCF_mask_wav[idx_maskL_kept],1.,cal = gcal_ord)[0:2]
                     CCF_all[iexp_sub,0]+=flux_ord

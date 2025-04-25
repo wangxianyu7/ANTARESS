@@ -37,8 +37,8 @@ We assume that you have already `set up your system and dataset <https://obswww.
 
 .. _Reduc_sec_cal:
 
-Calibration
------------
+Calibration and noise estimates
+-------------------------------
 
 The first step is the ``Instrumental calibration`` module, which defines instrumental calibration profiles used to scale back spectra from flux to extracted count units, and to calculate spectral weight profiles.
 
