@@ -6,143 +6,68 @@ import numpy
 import platform
 import subprocess
 
+#Run "python setup_star_grid_fit.py build"
+#Then copy the compiled file "C_star_grid.cpython-311-darwin.so" into your C_grid/ directory as "C_star_grid.so"
+
 proc_name = platform.processor() 
 system = platform.system()
 
 try:
     if system=='Darwin':   #Mac OS
-        #Check MacOS architecture
         if proc_name in ['arm64','x86_64']:
-            # Check and install GSL via Homebrew
-            try:
-                brew_list_output = subprocess.check_output(["brew", "list"]).decode("utf-8")
-                if "gsl" not in brew_list_output:
-                    print("GSL not found. Installing with Homebrew...")
-                    subprocess.run(["brew", "install", "gsl"], check=True)
-                    print("GSL installed successfully.")
-                else:
-                    print("GSL is already installed.")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to check/install GSL with brew: {e}")
-                sys.exit(1)
+            gsl_include_dir = ['/opt/homebrew/Cellar/gsl/2.8/include/']
+            gsl_lib_dir = ['/opt/homebrew/cellar/gsl/2.8/lib/']
+        else:
+            gsl_include_dir = ['/usr/local/include/']
+            gsl_lib_dir = ['/usr/local/lib/']
 
-            gsl_path = subprocess.check_output(["brew", "--prefix", "gsl"]).decode("utf-8").strip()
-            gsl_include_dir = [os.path.join(gsl_path, "include")]
-            gsl_lib_dir = [os.path.join(gsl_path, "lib")]
+        numpy_include_dir = [numpy.get_include()]
 
-            # Check and install libcerf via Homebrew
-            try:
-                # Check if libcerf is installed using brew list
-                brew_list_output = subprocess.check_output(["brew", "list"]).decode("utf-8")
-                if "libcerf" not in brew_list_output:
-                    print("libcerf not found. Installing with Homebrew...")
-                    subprocess.run(["brew", "install", "libcerf"], check=True)
-                    print("libcerf installed successfully.")
-                else:
-                    print("libcerf is already installed.")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to check/install libcerf with brew: {e}")
-                sys.exit(1)
+        try:
+            # Check if libcerf is installed using brew list
+            brew_list_output = subprocess.check_output(["brew", "list"]).decode("utf-8")
+            if "libcerf" not in brew_list_output:
+                print("libcerf not found. Installing with Homebrew...")
+                subprocess.run(["brew", "install", "libcerf"], check=True)
+                print("libcerf installed successfully.")
+            else:
+                print("libcerf is already installed.")
 
             libcerf_path = subprocess.check_output(["brew", "--prefix", "libcerf"]).decode("utf-8").strip()
+
             libcerf_include_dir = [os.path.join(libcerf_path, 'include')]
             libcerf_lib_dir = [os.path.join(libcerf_path, 'lib')]
 
-        else:
-            print("Unknown processor architecture.")
-            sys.exit(1)
-
-    elif system == 'Linux':   #Linux
-        # Detect distro to distinguish which Linux system user has
-        try:
-            distro_id = ""
-            if os.path.exists('/etc/os-release'):
-                with open('/etc/os-release', 'r') as f:
-                    for line in f:
-                        if line.startswith('ID='):
-                            distro_id = line.strip().split('=')[1].strip('"').lower()
-                            break
-        
         except subprocess.CalledProcessError as e:
-                print(f"Failed to detector Linux distribution: {e}")
-                sys.exit(1)
-
-        #Ubuntu/Debian image
-        if distro_id in ['ubuntu', 'debian']:
-            # Check and install GSL via apt
-            try: 
-                apt_list_output = subprocess.run(["dpkg", "-s", "libgsl-dev"], capture_output=True, text=True)
-                if apt_list_output.returncode != 0:
-                    print("libgsl-dev not found. Installing with apt...")
-                    subprocess.run(["apt-get", "update"], check=True)
-                    subprocess.run(["apt-get", "install", "-y", "libgsl-dev"], check=True)
-                    print("GSL installed successfully.")
-                else:
-                    print("libgsl-dev is already installed.")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to check/install GSL with apt: {e}")
-                sys.exit(1)
-
-            # Check and install libcerf via apt
-            try:
-                apt_list_output = subprocess.run(["dpkg", "-s", "libcerf-dev"], capture_output=True, text=True)
-                if apt_list_output.returncode != 0:
-                    print("libcerf-dev not found. Installing with apt...")
-                    subprocess.run(["apt-get", "update"], check=True)
-                    subprocess.run(["apt-get", "install", "-y", "libcerf-dev"], check=True)
-                    print("libcerf-dev installed successfully.")
-                else:
-                    print("libcerf-dev is already installed.")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to check/install libcerf with apt: {e}")
-                sys.exit(1)
-        
-        #Fedora/RHEL/Centos image
-        elif distro_id in ['fedora', 'rhel', 'centos']:
-            # Check and install GSL via dnf
-            try: 
-                dnf_list_output = subprocess.run(["dnf", "list", "installed", "libgsl-devel"], capture_output=True, text=True)
-                if dnf_list_output.returncode != 0:
-                    print("libgsl-devel not found. Installing with apt...")
-                    subprocess.run(["dnf", "makecache"], check=True)
-                    subprocess.run(["dnf", "install", "libgsl-devel"], check=True)
-                    print("GSL installed successfully.")
-                else:
-                    print("libgsl-devel is already installed.")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to check/install GSL with dnf: {e}")
-                sys.exit(1)
-
-            # Check and install libcerf via dnf
-            try:
-                dnf_list_output = subprocess.run(["dnf", "list", "installed", "libcerf-devel"], capture_output=True, text=True)
-                if dnf_list_output.returncode != 0:
-                    print("libcerf-devel not found. Installing with dnf...")
-                    subprocess.run(["dnf", "makecache"], check=True)
-                    subprocess.run(["dnf", "install", "libcerf-devel"], check=True)
-                    print("libcerf-dev installed successfully.")
-                else:
-                    print("libcerf-devel is already installed.")
-            except subprocess.CalledProcessError as e:
-                print(f"Failed to check/install libcerf with dnf: {e}")
-                sys.exit(1)
-
-        else:
-            print(f"Unsupported Linux distribution: {distro_id}")
+            print(f"Error: {e}")
             sys.exit(1)
 
-        #Paths
-        gsl_include_dir = ['/usr/include']
-        gsl_lib_dir = ['/usr/lib', '/usr/lib/x86_64-linux-gnu', '/usr/lib64'] #add the third path as sometimes gsl is in there for Fedora
-        libcerf_include_dir = ['/usr/include']
-        libcerf_lib_dir = ['/usr/lib', '/usr/lib/x86_64-linux-gnu','/usr/lib64']
+    elif system == 'Linux':
+        try:
+            # Check if libcerf is installed using apt
+            apt_list_output = subprocess.run(["dpkg", "-s", "libcerf-dev"], capture_output=True, text=True)
+            if apt_list_output.returncode != 0:
+                print("libcerf-dev not found. Installing with apt...")
+                subprocess.run(["apt-get", "update"], check=True)
+                subprocess.run(["apt-get", "install", "-y", "libcerf-dev"], check=True)
+                print("libcerf-dev installed successfully.")
+            else:
+                print("libcerf-dev is already installed.")
+
+            #Linux paths
+            gsl_include_dir = ['/usr/include'] #often the standard location
+            gsl_lib_dir = ['/usr/lib', '/usr/lib/x86_64-linux-gnu'] #add the second path as sometimes gsl is in there.
+            libcerf_include_dir = ['/usr/include']
+            libcerf_lib_dir = ['/usr/lib', '/usr/lib/x86_64-linux-gnu']
+            numpy_include_dir = [numpy.get_include()]
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
 
     else:
         print(f"Unsupported operating system: {system}")
         sys.exit(1)
-
-    #Getting numpy location
-    numpy_include_dir = [numpy.get_include()]
 
 except Exception as e:
     print(f"An unexpected error occurred: {e}")
