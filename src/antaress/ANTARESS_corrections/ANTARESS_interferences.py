@@ -485,6 +485,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                 # upload if relevant. Here the original data need to be resampled for each new exposure, thus here we just upload and store the profiles
                 #    - data is processed here in wavelength space
                 iexp_proc_list = np.unique(list(iexp_mast_list)+list(iexp_fit_list)) 
+                if calc_EFsc2 and ('sing_gcal_DI_data_paths' not in data_dic[inst][vis]):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
                 for isub_exp,iexp in enumerate(iexp_proc_list):
 
                     #Latest processed disk-integrated data and associated tables
@@ -493,11 +494,13 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                     data_glob[iexp] = {}
                     data_glob[iexp]['dt'] = coord_dic[inst][vis]['t_dur'][iexp]
                     for key in ['cen_bins','edge_bins','flux','cond_def','cov']:data_glob[iexp][key] = data_exp[key]
-                    if data_vis['tell_sp'] and calc_EFsc2:data_glob[iexp]['tell'] = dataload_npz(data_dic[inst][vis]['tell_DI_data_paths'][iexp])['tell']             
+                    if gen_dic['corr_tell'] and calc_EFsc2:
+                        if ('tell_DI_data_paths' not in data_vis):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+                        data_glob[iexp]['tell'] = dataload_npz(data_vis['tell_DI_data_paths'][iexp])['tell']             
                     else:data_glob[iexp]['tell'] = None
-                    data_glob[iexp]['mean_gcal'] = dataload_npz(data_dic[inst][vis]['mean_gcal_DI_data_paths'][iexp])['mean_gcal']  
-                    if data_dic[inst][vis]['cal_weight'] and calc_EFsc2:
-                        data_gcal = dataload_npz(data_dic[inst][vis]['sing_gcal_DI_data_paths'][iexp])
+                    data_glob[iexp]['mean_gcal'] = dataload_npz(data_vis['mean_gcal_DI_data_paths'][iexp])['mean_gcal']  
+                    if calc_EFsc2:
+                        data_gcal = dataload_npz(data_vis['sing_gcal_DI_data_paths'][iexp])
                         data_glob[iexp]['sing_gcal'] = data_gcal['gcal']                
                     else:
                         data_glob[iexp]['sing_gcal']=None                          

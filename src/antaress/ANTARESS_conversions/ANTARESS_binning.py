@@ -221,7 +221,7 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
         new_x_cen,new_x_low,new_x_high,_,n_in_bin_all,idx_to_bin_all,dx_ov_all,n_bin,idx_bin2orig,idx_bin2vis,idx_to_bin_unik = init_bin_prof(data_type,ref_pl,prop_dic['idx_in_bin'],prop_dic['dim_bin'],coord_dic,inst,vis_to_bin,data_dic,gen_dic,bin_prop)
      
         #Initializing weight calculation conditions
-        calc_EFsc2,calc_var_ref2,calc_flux_sc_all,var_key_def = weights_bin_prof_calc(data_type_gen,data_type,gen_dic,data_dic,inst,check_var = ~masterDIweigh)    
+        calc_EFsc2,calc_var_ref2,calc_flux_sc_all,var_key_def = weights_bin_prof_calc(data_type_gen,data_type,gen_dic,data_dic,inst,check_var = not masterDIweigh)    
     
         #Store flags
         #    - 'FromAligned' set to True if binned profiles were aligned before
@@ -258,7 +258,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             data_glob_new['vis_iexp_in_bin'][vis_bin][iexp]['data_path'] = data_inst[vis_bin]['proc_'+data_type_gen+'_data_paths']+str(iexp)
             if gen_dic['flux_sc'] and calc_flux_sc_all:scaled_data_paths = data_dic[inst][vis_bin]['scaled_'+data_type_gen+'_data_paths']
             else:scaled_data_paths = None
-            if data_inst[vis_bin]['tell_sp'] and calc_EFsc2:
+            if ('spec' in data_format) and gen_dic['corr_tell'] and calc_EFsc2:
+                if ('tell_'+data_type_gen+'_data_paths' not in data_inst[vis_bin]):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
                 data_exp['tell'] = dataload_npz(data_inst[vis_bin]['tell_'+data_type_gen+'_data_paths'][iexp])['tell']  
                 
                 #Path to 1D telluric spectrum associated with the binned exposure
@@ -267,13 +268,14 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                     data_glob_new['vis_iexp_in_bin'][vis_bin][iexp]['tell_path'] = data_inst[vis_bin]['tell_'+data_type_gen+'_data_paths'][iexp]
                 
             else:data_exp['tell'] = None
-            if data_inst[vis_bin]['cal_weight'] and calc_EFsc2:
+            if (data_format=='spec2D') and calc_EFsc2:
+                if ('sing_gcal_'+data_type_gen+'_data_paths' not in data_dic[inst][vis_bin]):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')
                 data_gcal = dataload_npz(data_inst[vis_bin]['sing_gcal_'+data_type_gen+'_data_paths'][iexp])
                 data_exp['sing_gcal'] = data_gcal['gcal'] 
                 
                 #Detector variance
                 #    - cannot be used when cmputing the weighing DI master (see below)
-                if (not masterDIweigh) and ('sdet2' in data_gcal):data_exp['sdet2'] = data_gcal['sdet2'] 
+                if (not masterDIweigh) and (vis_bin in data_inst['gcal_blaze_vis']):data_exp['sdet2'] = data_gcal['sdet2'] 
                 else:data_exp['sdet2'] = None                
             
             else:
@@ -326,8 +328,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
             # when detector noise is accounted for 
             flux_ref_exp = None
             cov_ref_exp = None 
-            if (not masterDIweigh) and gen_dic['DImast_weight'] and (calc_EFsc2 or calc_var_ref2):
-                if len(np.array(glob.glob(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp]+'.npz')))==0:stop('No weighing master found. Activate "gen_dic["calc_DImast"]".') 
+            if (not masterDIweigh) and (calc_EFsc2 or calc_var_ref2):
+                if ('mast_'+data_type_gen+'_data_paths' not in data_dic[inst][vis_bin]):stop('ERROR : weighing DI master undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_DImast"] when running this module.')
                 data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_'+data_type_gen+'_data_paths'][iexp]) 
             else:data_ref = None
 
@@ -951,8 +953,6 @@ def weights_bin_prof_calc(data_type_gen,data_type,gen_dic,data_dic,inst,check_va
     if calc_EFsc2:calc_flux_sc_all=True
                 
     return calc_EFsc2,calc_var_ref2,calc_flux_sc_all,var_key_def
-
-
 
 def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen_corr_FbalOrd,save_data_dir,nord,iexp_glob,data_type,data_format,dim_exp,tell_exp,gcal_exp,cen_bins,dt,flux_ref_exp,cov_ref_exp,calc_cond,
                      flux_est_loc_exp=None,cov_est_loc_exp=None,SpSstar_spec=None,glob_flux_sc=None, sdet_exp2 = None , EFsc2_all_in = None , EFdiff2_in = None, EFintr2_in = None , EFem2_in = None, EAbs2_in = None):

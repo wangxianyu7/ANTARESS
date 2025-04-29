@@ -247,7 +247,8 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
                                 datasave_npz(data_vis['sing_gcal_DI_data_paths'][iexp],data_gcal_exp) 
                             
                             #Deleting if weighing is not required or if plots are not required
-                            elif ((not gen_dic['cond_plot_gcal']) and (path_exist(data_vis['sing_gcal_DI_data_paths'][iexp]+'.npz'))):os_system.remove(data_vis['sing_gcal_DI_data_paths'][iexp]+'.npz') 
+                            elif ((not gen_dic['cond_plot_gcal']) and (path_exist(data_vis['sing_gcal_DI_data_paths'][iexp]+'.npz'))):
+                                os_system.remove(data_vis['sing_gcal_DI_data_paths'][iexp]+'.npz') 
                             
                         #From calibration profile estimate
                         #    - we use the model only to avoid the spurious features in the estimated profile
@@ -260,7 +261,9 @@ def calc_gcal(gen_dic,data_dic,inst,plot_dic,coord_dic,data_prop):
                             datasave_npz(data_vis['sing_gcal_DI_data_paths'][iexp],{'gcal':gcal_exp_all[vis][iexp]}) 
 
                 data_all_temp.clear()
-
+                if gcal_blaze_vis and (not data_inst['cal_weight']) and (not gen_dic['cond_plot_gcal']) and ('sing_gcal_DI_data_paths' in data_vis):
+                    data_vis.pop('sing_gcal_DI_data_paths')
+                    
             #Storing best-fit calibration parameters
             cal_inputs_dic[vis] = np.zeros([data_dic[inst]['nord'],n_glob_groups],dtype=object)
             for iord in range(data_dic[inst]['nord']): 

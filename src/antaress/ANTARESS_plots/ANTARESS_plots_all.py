@@ -15,10 +15,10 @@ from astropy.io import fits
 import glob
 import imageio
 from ..ANTARESS_general.constant_data import c_light
-from ..ANTARESS_general.utils import closest,stop,np_where1D,closest_Ndim,np_interp,init_parallel_func,is_odd,dataload_npz,air_index,gen_specdopshift,import_module
+from ..ANTARESS_general.utils import closest,stop,np_where1D,np_interp,init_parallel_func,is_odd,dataload_npz,air_index,gen_specdopshift,import_module
 from ..ANTARESS_plots.utils_plots import custom_axis,autom_tick_prop,stackrel,scaled_title,autom_range_ext,plot_shade_range
 from ..ANTARESS_conversions.ANTARESS_binning import resample_func,calc_bin_prof,weights_bin_prof
-from ..ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,return_pix_size
+from ..ANTARESS_analysis.ANTARESS_inst_resp import calc_FWHM_inst,return_pix_size,return_cen_wav_ord
 from ..ANTARESS_analysis.ANTARESS_model_prof import gauss_intr_prop,dgauss,cust_mod_true_prop,voigt
 from ..ANTARESS_analysis.ANTARESS_joined_star import mod_DIProp
 from ..ANTARESS_corrections.ANTARESS_interferences import def_wig_tab,calc_chrom_coord,calc_wig_mod_nu_t
@@ -74,9 +74,10 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
     if (plot_dic['occulted_regions']!='') or any('map_' in key for key in list(plot_dic.keys())) or (plot_dic['prop_Intr']!='') or (plot_dic['prop_DI']!='') or (plot_dic['input_LC']!='') or (plot_dic['pca_ana']!=''): 
         contact_phases={}
         for pl_loc in gen_dic['studied_pl_list']:
-            contact_phases[pl_loc]=calc_tr_contacts(data_dic['DI']['system_prop']['achrom'][pl_loc][0],system_param[pl_loc],plot_dic['stend_ph'],system_param['star'])
-            system_param[pl_loc]['T14_num'] = (contact_phases[pl_loc][3]-contact_phases[pl_loc][0])*system_param[pl_loc]['period']
-            print('Numerical T14['+str(pl_loc)+']='+"{0:.6f}".format(system_param[pl_loc]['T14_num']*24.)+' h')                  
+            if pl_loc in gen_dic['tr_pl']:
+                contact_phases[pl_loc]=calc_tr_contacts(data_dic['DI']['system_prop']['achrom'][pl_loc][0],system_param[pl_loc],plot_dic['stend_ph'],system_param['star'])
+                system_param[pl_loc]['T14_num'] = (contact_phases[pl_loc][3]-contact_phases[pl_loc][0])*system_param[pl_loc]['period']
+                print('Numerical T14['+str(pl_loc)+']='+"{0:.6f}".format(system_param[pl_loc]['T14_num']*24.)+' h')                  
 
             #Stellar mass derived from orbital motion of main planets
             print('Numerical Kp_orb='+"{0:.2f}".format(system_param[pl_loc]['Kp_orb'])+' km/s (Mstar = '+"{0:.3f}".format(system_param[pl_loc]['Mstar_orb'])+' Msun)')  
@@ -270,10 +271,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     if (plot_dic['noises_ord']!='') or ((plot_dic['gcal_ord']!='') and plot_set_key['plot_gcal_blaze']):
                         gcal_blaze_all =  np.empty([nord_list,nexp_plot],dtype=object) 
                     if (plot_dic['noises_ord']!=''):
-                        #Condition on 'cal_weight' is not used to retrieve 'sdet2' because it is deactivated after 2D->1D conversion
                         var_all =  np.empty([nord_list,nexp_plot],dtype=object)
                         var_ph_all = np.empty([nord_list,nexp_plot],dtype=object)
-                        if (vis in data_dic[inst]['gcal_blaze_vis']):var_det_all = np.empty([nord_list,nexp_plot],dtype=object)
+                        if (vis in data_dic[inst]['gcal_blaze_vis']) and (gcal_blaze_all is not None):var_det_all = np.empty([nord_list,nexp_plot],dtype=object)
                 if (plot_dic['gcal_all']!=''):
                     gcal_cen_binned_mean =  np.empty([nord_list,nexp_plot],dtype=float)
                     gcal_meas_binned_mean =  np.empty([nord_list,nexp_plot],dtype=float)       
@@ -283,6 +283,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     data_load = dataload_npz(data_vis['cal_data_paths']+str(iexp))  
                     if (plot_dic['gcal_ord']!='') or (plot_dic['noises_ord']!=''):data_exp = dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_'+str(iexp)) 
                     if (gcal_blaze_all is not None):data_sing_gcal= dataload_npz(gen_dic['save_data_dir']+'Processed_data/'+inst+'_'+vis+'_sing_gcal_'+str(iexp)) 
+                    if (var_det_all is not None) and (gcal_blaze_all is not None) and ('sdet2' not in data_sing_gcal):var_det_all = None
                     for isub_ord,iord in enumerate(order_list):
                         if ('spec' in data_dic['DI']['type'][inst]):
                             if (gcal_cen_binned_all is not None):
@@ -301,7 +302,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                     var_all[isub_ord,isub_iexp] = data_exp['cov'][iord][0,data_exp['cond_def'][iord]]
                                     var_ph_all[isub_ord,isub_iexp] = data_exp['flux'][iord][data_exp['cond_def'][iord]]*gcal_blaze_all[isub_ord,isub_iexp]
                                     var_ph_all[isub_ord,isub_iexp][var_ph_all[isub_ord,isub_iexp]<=0.] = 0.
-                                    if (gcal_blaze_all is not None) and (var_det_all is not None) and ('sdet2' in data_sing_gcal):var_det_all[isub_ord,isub_iexp] = data_sing_gcal['sdet2'][iord,data_exp['cond_def'][iord]]*gcal_blaze_all[isub_ord,isub_iexp]**2.
+                                    if (var_det_all is not None):var_det_all[isub_ord,isub_iexp] = data_sing_gcal['sdet2'][iord,data_exp['cond_def'][iord]]*gcal_blaze_all[isub_ord,isub_iexp]**2.
                         
                         #Mean calibration per order (from measurements)
                         if (plot_dic['gcal_all']!=''):
@@ -310,7 +311,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                                 gcal_meas_binned_mean[isub_ord,isub_iexp] = np.mean(gcal_meas_binned_all[isub_ord,isub_iexp][cond_fit_all[isub_ord,isub_iexp]])
                                 cen_bins_mean[isub_ord,isub_iexp] = gcal_cen_binned_mean[isub_ord,isub_iexp]
                             else:
-                                cen_bins_mean[isub_ord,isub_iexp] = gen_dic['wav_ord_inst'][inst][iord]
+                                cen_bins_mean[isub_ord,isub_iexp] = gen_dic[inst]['wav_ord_inst'][iord]
                                 
                         #Mean calibration per order (from model, for normalization)
                         if (plot_dic['gcal_all']!='') or plot_set_key['norm_exp']:
@@ -894,7 +895,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     for bd_band_loc in Fbal_range_corr:
                         plt.fill([bd_band_loc[0],bd_band_loc[1],bd_band_loc[1],bd_band_loc[0]],[y_range_loc[0],y_range_loc[0],y_range_loc[1],y_range_loc[1]], fill=False, hatch='\\',color='grey',zorder=-5)
 
-                #Plot order index
+                #Plot original order index
+                #    - from spectrograph orders, before deletion and trimming
                 if y_range_loc[0]<-100000.:y_range_loc[0]=-100000.
                 if y_range_loc[1]>100000.:y_range_loc[1]=100000.
                 dy_range=y_range_loc[1]-y_range_loc[0]
@@ -937,8 +939,8 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
         for inst in np.intersect1d(data_dic['instrum_list'],list(plot_set_key['visits_to_plot'].keys())): 
             
             #Wavelength centers of the instrument orders
-            if (inst in gen_dic['del_orders']):wav_ord_inst = gen_dic[inst]['wav_ord_inst'] 
-            else: wav_ord_inst = gen_dic['wav_ord_inst'][inst]
+            #    - gen_dic[inst]['wav_ord_inst']  traces the order centers after possible order deletion
+            wav_ord_inst = gen_dic[inst]['wav_ord_inst'] 
 
             #Process each visit
             for vis in np.intersect1d(list(data_dic[inst].keys()),plot_set_key['visits_to_plot'][inst]):
@@ -1088,13 +1090,14 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 for bd_band_loc in Fbal_range_corr:
                     plt.fill([bd_band_loc[0],bd_band_loc[1],bd_band_loc[1],bd_band_loc[0]],[y_range_loc[0],y_range_loc[0],y_range_loc[1],y_range_loc[1]], fill=False, hatch='\\',color='grey',zorder=-5)
 
-            #Plot order index
+            #Plot original order index
+            #    - from spectrograph orders, before deletion and trimming
             if y_range_loc[0]<-100000.:y_range_loc[0]=-100000.
             if y_range_loc[1]>100000.:y_range_loc[1]=100000.
             dy_range=y_range_loc[1]-y_range_loc[0]
             if plot_set_key['plot_idx_ord']:
-                if plot_set_key['sp_var'] == 'nu' :cen_ord = c_light/gen_dic['wav_ord_inst'][inst]
-                elif plot_set_key['sp_var'] == 'wav' :cen_ord = gen_dic['wav_ord_inst'][inst]                
+                if plot_set_key['sp_var'] == 'nu' :cen_ord = c_light/gen_dic[inst]['wav_ord_inst']
+                elif plot_set_key['sp_var'] == 'wav' :cen_ord = gen_dic[inst]['wav_ord_inst']          
                 delt_txt = 0.03 if plot_set_key['gap_exp'] == 0. else 0.005
                 ord_freq = 8
                 fontsize_ord = 11.
@@ -1552,9 +1555,9 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 if plot_set_key['cosm_vs_ord']:
                     
                     #Total number of detected cosmics
-                    n_cosmics_vis_tot = np.sum(n_cosmics_vis,axis = 0)
-                    if n_cosmics_vis_tot>1:
-                        n_cosmics_vis_tot=n_cosmics_vis_tot*y_range_loc[1]/np.max(n_cosmics_vis_tot)
+                    n_cosmics_vis_exp = np.sum(n_cosmics_vis,axis = 0)
+                    if np.sum(n_cosmics_vis_exp)>1:
+                        n_cosmics_vis_exp=n_cosmics_vis_exp*y_range_loc[1]/np.max(n_cosmics_vis_exp)
                         
                         plt.ioff()        
                         plt.figure(figsize=plot_set_key['fig_size'])
@@ -1562,13 +1565,13 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                         col_tab=np.array([cmap(0)]) if nexp_list==1 else cmap( np.arange(nexp_list)/(nexp_list-1.))
                         
                         #Plot boundaries
-                        x_range_loc = plot_set_key['x_range'] if plot_set_key['x_range'] is not None else [gen_dic['wav_ord_inst'][inst][order_list][0],gen_dic['wav_ord_inst'][inst][order_list][-1]]
+                        x_range_loc = plot_set_key['x_range'] if plot_set_key['x_range'] is not None else [gen_dic[inst]['wav_ord_inst'][order_list][0],gen_dic[inst]['wav_ord_inst'][order_list][-1]]
                         y_range_loc = plot_set_key['y_range'] if plot_set_key['y_range'] is not None else [0.,np.max(n_cosmics_vis)]
                                 
                         #Plot number of cosmics for each exposure and the total count (scaled to the axis range)
                         for isub,iexp in enumerate(iexp2plot_vis): 
-                            plt.plot(gen_dic['wav_ord_inst'][inst][order_list],n_cosmics_vis[isub],linestyle='-',color=col_tab[isub],rasterized=plot_set_key['rasterized'],zorder=0,drawstyle='steps-mid',lw=plot_set_key['lw_plot'])
-                        plt.plot(gen_dic['wav_ord_inst'][inst][order_list],n_cosmics_vis_tot,linestyle='-',color='black',rasterized=plot_set_key['rasterized'],zorder=0,drawstyle='steps-mid',lw=plot_set_key['lw_plot'])
+                            plt.plot(gen_dic[inst]['wav_ord_inst'][order_list],n_cosmics_vis[isub],linestyle='-',color=col_tab[isub],rasterized=plot_set_key['rasterized'],zorder=0,drawstyle='steps-mid',lw=plot_set_key['lw_plot'])
+                        plt.plot(gen_dic[inst]['wav_ord_inst'][order_list],n_cosmics_vis_exp,linestyle='-',color='black',rasterized=plot_set_key['rasterized'],zorder=0,drawstyle='steps-mid',lw=plot_set_key['lw_plot'])
                         
                         #Plot frame  
                         if plot_set_key['title']:plt.title('Cosmics detections for visit '+vis+' in '+inst)
@@ -2650,14 +2653,19 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     #Plot flux scaling for each requested wavelength
                     for iwLC,wLC_loc in enumerate(plot_set_key['wav_LC']):
                         
-                        #Wavelength closest to request in table of current exposure
-                        idx_wLC_loc = closest_Ndim(scaled_data['cen_bins'],wLC_loc)
-
-                        #Theoretical flux value at retrieved wavelength
-                        flux_loc = 1. - scaling_data['loc_flux_scaling'](scaled_data['cen_bins'][idx_wLC_loc])    
-                        plt.errorbar(ph_loc,flux_loc,xerr=0.5*ph_dur_loc,color=color_dic[iwLC],marker='s',markersize=plot_set_key['markersize'],linestyle='',markerfacecolor='white')                
-                        y_min=min(flux_loc,y_min)
-                        y_max=max(flux_loc,y_max)
+                        #Indexes of wavelengths closest to request in each order for table of current exposure
+                        idx_wLC_loc = np.unravel_index(np.argmin(np.abs(scaled_data['cen_bins']-wLC_loc), axis=1), scaled_data['cen_bins'].shape)[1]
+                        
+                        #Keeping indexes that are not at the edges of the order table
+                        #    - as a way to identify wavelengths actually within the order
+                        idx_wLC_loc = list(idx_wLC_loc[(idx_wLC_loc>0.) & (idx_wLC_loc<len(scaled_data['cen_bins'][0])-1)])
+                        if len(idx_wLC_loc)>0:
+    
+                            #Theoretical flux value at retrieved wavelength
+                            flux_loc = 1. - scaling_data['loc_flux_scaling'](scaled_data['cen_bins'][idx_wLC_loc])    
+                            plt.errorbar(ph_loc,flux_loc,xerr=0.5*ph_dur_loc,color=color_dic[iwLC],marker='s',markersize=plot_set_key['markersize'],linestyle='',markerfacecolor='white')                
+                            y_min=min(flux_loc,y_min)
+                            y_max=max(flux_loc,y_max)
 
                 #Axis ranges
                 x_range_loc=plot_set_key['x_range'] if plot_set_key['x_range'] is not None else np.array([np.min(coord_vis[pl_ref]['st_ph'])-0.005,np.max(coord_vis[pl_ref]['end_ph'])+0.005])
@@ -6310,9 +6318,12 @@ def pre_proc_DI_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,da
             data_proc[maink][iexp] = dataload_npz(data_path_dic[plot_options['plot_'+maink]]+str(iexp)) 
             data_proc[maink][iexp]['dt'] = coord_dic[inst][vis]['t_dur'][iexp]
             for key in ['flux','cov','cond_def','cen_bins','edge_bins']:data_proc[maink][iexp][key] = data_proc[maink][iexp][key][idx_sel_ord]
-            if data_vis['tell_sp'] and calc_EFsc2:data_proc[maink][iexp]['tell'] = dataload_npz(data_vis['tell_DI_data_paths'][iexp])['tell'][idx_sel_ord]
+            if ('spec' in data_vis['type']) and gen_dic['corr_tell'] and calc_EFsc2:
+                if ('tell_DI_data_paths' not in data_vis):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+                data_proc[maink][iexp]['tell'] = dataload_npz(data_vis['tell_DI_data_paths'][iexp])['tell'][idx_sel_ord]
             else:data_proc[maink][iexp]['tell'] = None
-            if data_inst['cal_weight'] and calc_EFsc2:
+            if (data_vis['type']=='spec2D') and calc_EFsc2:
+                if ('sing_gcal_DI_data_paths' not in data_vis):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
                 data_gcal = dataload_npz(data_vis['sing_gcal_DI_data_paths'][iexp])
                 data_proc[maink][iexp]['sing_gcal'] = data_gcal['gcal'][idx_sel_ord] 
                 if 'sdet2' in data_gcal:data_proc[maink][iexp]['sdet2'] = data_gcal['sdet2'][idx_sel_ord] 
@@ -6339,7 +6350,7 @@ def pre_proc_DI_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,da
                 if data_proc[maink][iexp]['sdet2'] is not None:sdet2_temp = np.zeros([nord_eff,nspec_com],dtype=float)
                 for isub,iord in enumerate(idx_sel_ord): 
                     flux_temp[isub],data_proc[maink][iexp]['cov'][isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['flux'][isub], cov = data_proc[maink][iexp]['cov'][isub], kind=gen_dic['resamp_mode'])
-                    if data_vis['tell_sp']:tell_temp[isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['tell'][iord] , kind=gen_dic['resamp_mode']) 
+                    if data_proc[maink][iexp]['tell'] is not None:tell_temp[isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['tell'][iord] , kind=gen_dic['resamp_mode']) 
                     if data_proc[maink][iexp]['sing_gcal'] is not None:sing_gcal_temp[isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['sing_gcal'][iord] , kind=gen_dic['resamp_mode'])   
                     if data_proc[maink][iexp]['sdet2'] is not None:sdet2_temp[isub] = bind.resampling(edge_bins_com[isub], data_proc[maink][iexp]['edge_bins'][isub]*dopp_fact, data_proc[maink][iexp]['sdet2'][iord] , kind=gen_dic['resamp_mode'])   
                 data_proc[maink][iexp]['flux'] = deepcopy(flux_temp)
@@ -6403,14 +6414,14 @@ def plot_idx_ord(plot_options,sp_var,gen_dic,inst,x_range,y_range,plot_id = None
     if plot_id=='Fbal':fontsize = 11.
     else:fontsize = 6.
     if sp_var=='nu':
-        x_ord = c_light/gen_dic['wav_ord_inst'][inst]
+        x_ord = c_light/return_cen_wav_ord(inst)
         if plot_id=='Fbal':ord_freq = 8
         else:    
             if dx_range<2:ord_freq=1
             elif dx_range<10:ord_freq=2
             else:ord_freq=4 
     elif sp_var=='wav':
-        x_ord = gen_dic['wav_ord_inst'][inst]
+        x_ord = return_cen_wav_ord(inst)
         if plot_id=='Fbal':ord_freq = 8
         else:
             if dx_range<150:ord_freq=1
@@ -6461,7 +6472,8 @@ def end_plot_prof(pl_ref,inst,vis,fig_frame,ax_frame,x_range_frame,y_range_frame
     dx_range=x_range_frame[1]-x_range_frame[0]
     dy_range=y_range_frame[1]-y_range_frame[0]
     
-    #Plot order index
+    #Plot original order index
+    #    - from spectrograph orders, before deletion and trimming
     if plot_options['plot_idx_ord']:plot_idx_ord(plot_options,'wav',gen_dic,inst,x_range_frame,y_range_frame)
     
     #Frame
@@ -8505,7 +8517,8 @@ def sub_plot_DI_trans(plot_options,plot_mod,plot_ext,data_dic,gen_dic,coord_dic,
                     plt.plot(x_range_loc,np.repeat(1.-0.5*plot_options['gap_exp'],2),color=col_loc,linestyle='--',lw=plot_options['lw_plot'],zorder=3)   
                     plt.plot(x_range_loc,np.repeat(1.+0.5*plot_options['gap_exp'],2),color=col_loc,linestyle='--',lw=plot_options['lw_plot'],zorder=3)   
                 
-                #Plot order index
+                #Plot original order index
+                #    - from spectrograph orders, before deletion and trimming
                 y_range_loc = plot_options['y_range'] if plot_options['y_range'] is not None else [y_min,y_max]
                 dy_range=y_range_loc[1]-y_range_loc[0]
                 if plot_options['plot_idx_ord']:plot_idx_ord(plot_options,plot_options['sp_var'],gen_dic,inst,x_range_loc,y_range_loc)

@@ -396,6 +396,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     gen_dic['type_list'] = np.array(['DI','Diff','Intr','Atm'])
     
     #Planets with known orbits and transit properties
+    #    - this does not imply that the planet is actually transiting
     gen_dic['def_pl']=[]
     for obj in system_param:
         if (obj!='star') and ('inclination' in system_param[obj]) and (obj in data_dic['DI']['system_prop']['achrom']):gen_dic['def_pl']+=[obj]
@@ -609,7 +610,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
             data_dic[key]['spec2D_to_spec1D'] = {inst:False for inst in gen_dic['type']}
         
             #Deactive 1D plots if no 1D conversion is applied
-            if not gen_dic['spec_1D_'+key]:
+            if not gen_dic['spec_1D_'+key] and (plot_dic['sp_'+key+'_1D']!=''):
                 print('WARNING: no 1D conversion of '+key+' profiles is applied, disabling plot_dic["sp_'+key+'_1D"]') 
                 plot_dic['sp_'+key+'_1D'] = ''
             
@@ -718,7 +719,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         cond_def = (gen_dic['diff_data'] | (gen_dic['loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['spec_1D'] | gen_dic['bin'] | gen_dic['binmultivis'])
         gen_dic['DImast_weight'] = cond_def
         if gen_dic['DImast_weight']:weights_on+='(DI master) '
-        else:weights_off+='(DI master)'
+        else:weights_off+='(DI master) '
         if gen_dic['DImast_weight'] and gen_dic['calc_DImast']:gen_dic['calc_DImast'] =  gen_dic['calc_diff_data'] | (gen_dic['calc_loc_prof_est'] &  (data_dic['Intr']['opt_loc_prof_est']['corr_mode'] in ['DIbin','Intrbin'])) | gen_dic['calc_spec_1D'] | gen_dic['calc_bin'] | gen_dic['calc_binmultivis']
         if ('spec2D' in gen_dic['all_types']):gen_dic['cal_weight'] = cond_def   
         else:gen_dic['cal_weight'] = False   
@@ -728,8 +729,12 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         else:gen_dic['tell_weight'] = False
         if gen_dic['tell_weight']:weights_on+='(Tellurics) '
         else:weights_off+='(Tellurics) '
-        if weights_on != '':print('Weight contributors on :'+weights_on)
-        if weights_off != '':print('Weight contributors off :'+weights_off)
+        print('Weight contributors :')
+        if weights_on != '':print('  On :'+weights_on)
+        else:print('  On : None')
+        if weights_off != '':print('  Off :'+weights_off)
+        else:print('  Off : None')
+        
 
         #------------------------------------------------------------------------------------------------------------------------
 
@@ -931,13 +936,15 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         gen_dic['kepl_pl']=deepcopy(gen_dic['all_pl'])
     
     #Planet properties    
+    gen_dic['tr_pl']=[]
     for pl_loc in gen_dic['all_pl']:
+        print('Initializing planet '+pl_loc)
         
         #Checking if there is a "-" in a target name
-        if '-' in pl_loc:stop('Invalid target name: {}. Target names should not contain a hyphen.'.format(pl_loc))        
+        if '-' in pl_loc:stop('ERROR : Invalid target name: {}. Target names should not contain a hyphen.'.format(pl_loc))        
         PlParam_loc=system_param[pl_loc]
         
-        #Converting argument of periastrong from degree to radians
+        #Converting argument of periastron from degree to radians
         PlParam_loc['omega_rad']=PlParam_loc['omega_deg']*np.pi/180.
         
         #Converting orbital period from days to seconds
@@ -987,14 +994,33 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #Orbital frequency, in year-1
         PlParam_loc['omega_p']=2.*np.pi*365.2425/PlParam_loc['period']
 
-        #Transit duration
-        if (pl_loc in gen_dic['studied_pl_list']) and ('TLength' not in PlParam_loc):
-            contact_phases=calc_tr_contacts(data_dic['DI']['system_prop']['achrom'][pl_loc][0],PlParam_loc,plot_dic['stend_ph'],system_param['star'])
-            PlParam_loc['TLength'] = (contact_phases[3]-contact_phases[0])*PlParam_loc['period']           
-            print('Automatic definition of T14['+str(pl_loc)+']='+"{0:.2f}".format(PlParam_loc['TLength']*24.)+' h')
-    
+        #Transit check
+        #    - this call is also used to check for transit status
+        if (pl_loc in gen_dic['studied_pl_list']):
+            if (pl_loc not in data_dic['DI']['system_prop']['achrom']):
+                print('  No RpRs defined for '+pl_loc+' : assuming object is not transiting')
+            elif ('inclination' not in PlParam_loc):
+                print('  No inclination defined for '+pl_loc+' : assuming object is not transiting')
+            else:
+                
+                #Contact phases
+                contact_phases=calc_tr_contacts(data_dic['DI']['system_prop']['achrom'][pl_loc][0],PlParam_loc,plot_dic['stend_ph'],system_param['star'])
+                
+                #Planet is transiting
+                if contact_phases is not None:
+                    print('  Transiting object')
+                    gen_dic['tr_pl']+=[pl_loc]
+                
+                    #Transit duration
+                    if ('TLength' not in PlParam_loc):                
+                        PlParam_loc['TLength'] = (contact_phases[3]-contact_phases[0])*PlParam_loc['period']           
+                        print('  Automatic definition of T14['+str(pl_loc)+']='+"{0:.2f}".format(PlParam_loc['TLength']*24.)+' h')
+
+                else:
+                    print('  Non-transiting object')
+
     #Calculating theoretical properties of the planet-occulted regions
-    if (gen_dic['sequence'] not in ['st_master_tseries']) and (not gen_dic['theoPlOcc']) and ((('CCF' in data_dic['Diff']['type'].values()) and (gen_dic['fit_Intr'])) or (gen_dic['align_Intr']) or (gen_dic['calc_pl_atm'])):
+    if (len(gen_dic['tr_pl'])>0) and (gen_dic['sequence'] not in ['st_master_tseries']) and (not gen_dic['theoPlOcc']) and ((('CCF' in data_dic['Diff']['type'].values()) and (gen_dic['fit_Intr'])) or (gen_dic['align_Intr']) or (gen_dic['calc_pl_atm'])):
         print('Automatic activation of "gen_dic["theoPlOcc"]"')
         gen_dic['theoPlOcc']=True
 
@@ -1002,7 +1028,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     #    - uses the nominal planet-to-star radius ratios, which must correspond to the band from which local properties are derived
     theo_dic['d_oversamp_pl']={}
     for pl_loc in theo_dic['n_oversamp']:
-        if (pl_loc in gen_dic['def_pl']) and (theo_dic['n_oversamp'][pl_loc]>0.):
+        if (pl_loc in gen_dic['tr_pl']) and (theo_dic['n_oversamp'][pl_loc]>0.):
             theo_dic['d_oversamp_pl'][pl_loc] = data_dic['DI']['system_prop']['achrom'][pl_loc][0]/theo_dic['n_oversamp'][pl_loc]
  
     #Set flag for errors on estimates for local stellar profiles (depending on whether they are derived from data or models)
@@ -1053,7 +1079,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
     theo_dic['Ssub_Sstar_pl']={}
     data_dic['DI']['system_prop']['RpRs_max']={}
     if ('nsub_Dpl' not in theo_dic):theo_dic['nsub_Dpl']={}
-    for pl_loc in gen_dic['def_pl']:
+    for pl_loc in gen_dic['tr_pl']:
 
         #Largest possible planet size
         if ('chrom' in data_dic['DI']['system_prop']):data_dic['DI']['system_prop']['RpRs_max'][pl_loc] = np.max(data_dic['DI']['system_prop']['achrom'][pl_loc]+data_dic['DI']['system_prop']['chrom'][pl_loc])
@@ -1208,18 +1234,33 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
         #------------------------------------------------------------------------------------------------------------------------
     
         #Define conservative maximum shift of spectral table (km/s)
-        #    - this is used to extend the common spectral table so that it covers all possible wavelength shifts of the profiles in :
-        # + the star rest frame, where profiles are shifted by up to the Keplerian semi-amplitude
-        # + the stellar surface, where profiles are shifted by up to the sky-projected rotational velocity
-        # + the planetary rest frame, where profiles are shifted by up to the orbital semi-amplitude
+        #    - this is used to extend the common spectral table (oiginally defined in the input rest frame) so that it covers all possible wavelength shifts of the profiles in :
+        # + the input rest frame, where profiles are shifted by up to the systemic rv + Keplerian semi-amplitude into the star rest frame
+        #                                                       w_star ~ w_solbar * (1 - (rv_kep + rv_sys)/c) 
+        # + the star rest frame, where profiles are shifted by up to the sky-projected rotational velocity into the surface rest frame
+        #                                                       w_surf ~ w_star * (1 -  rv[surf/star]/c)) 
+        # + the star rest frame, where profiles are shifted by up to the orbital semi-amplitude into the planetary rest frame
+        #                                                      w_pl ~ w_star * (1 - rv[pl/star]/c)) 
+        #    - where we approximate the Doppler shifts to define their maximum values
+        #    - a negative rv is associated with a redshift of the table, so that we take the opposite of vsini and the semi-amplitude to evaluate the maximum positive extension
+        gen_dic['min_rv_shift'] = 0.
         gen_dic['max_rv_shift'] = 0.
-        for pl_loc in gen_dic['kepl_pl']:gen_dic['max_rv_shift']+=system_param[pl_loc]['Kstar_kms']
+        for pl_loc in gen_dic['kepl_pl']:
+            gen_dic['min_rv_shift']+=system_param[pl_loc]['Kstar_kms']
+            gen_dic['max_rv_shift']-=system_param[pl_loc]['Kstar_kms']
         if gen_dic['intr_data']:
-            gen_dic['max_rv_shift'] = np.max([gen_dic['max_rv_shift'],system_param['star']['vsini']])
+            gen_dic['min_rv_shift'] = np.max([gen_dic['min_rv_shift'], system_param['star']['vsini']])
+            gen_dic['max_rv_shift'] = np.min([gen_dic['max_rv_shift'],-system_param['star']['vsini']])
         if gen_dic['pl_atm']:
             max_rv_shift_orb = 0.
-            for pl_loc in gen_dic['studied_pl_list']:max_rv_shift_orb+=system_param[pl_loc]['Kp_orb']
-            gen_dic['max_rv_shift'] = np.max([gen_dic['max_rv_shift'],max_rv_shift_orb])
+            for pl_loc in gen_dic['studied_pl_list']:
+                max_rv_shift_orb=system_param[pl_loc]['Kp_orb']
+            gen_dic['min_rv_shift'] = np.max([gen_dic['min_rv_shift'], max_rv_shift_orb])
+            gen_dic['max_rv_shift'] = np.min([gen_dic['max_rv_shift'],-max_rv_shift_orb])
+        gen_dic['min_rv_shift'] -= system_param['star']['sysvel'] 
+        gen_dic['min_rv_shift'] = np.max([gen_dic['min_rv_shift'],0.])   
+        gen_dic['max_rv_shift'] += system_param['star']['sysvel']    
+        gen_dic['max_rv_shift'] = np.min([gen_dic['max_rv_shift'],0.])          
 
         #------------------------------------------------------------------------------------------------------------------------
     
@@ -1425,22 +1466,22 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             gen_dic[inst]['norders_instru'] = 1
         else:
             norders_instru_ref = return_spec_nord(inst)
-            data_inst['idx_ord_ref']=deepcopy(np.arange(norders_instru_ref))      #to keep track of the original orders
+            data_inst['idx_ord_ref']=deepcopy(np.arange(norders_instru_ref))      #to keep track of the original orders indexes
             idx_ord_kept = list(np.arange(norders_instru_ref))
+            gen_dic[inst]['wav_ord_inst'] = return_cen_wav_ord(inst)
             if (data_inst['type'] in ['spec1D','CCF']):
                 data_inst['nord'] = 1
-                gen_dic[inst]['wav_ord_inst'] = return_cen_wav_ord(inst)
                 gen_dic[inst]['norders_instru']=norders_instru_ref
             elif (data_inst['type']=='spec2D'):
                 if (inst in gen_dic['del_orders']) and (len(gen_dic['del_orders'][inst])>0):
                     print('           Removing '+str(len(gen_dic['del_orders'][inst]))+' orders from the analysis')
                     idx_ord_kept = list(np.delete(np.arange(norders_instru_ref),gen_dic['del_orders'][inst]))
-                    gen_dic[inst]['wav_ord_inst'] = return_cen_wav_ord(inst)[idx_ord_kept]
+                    gen_dic[inst]['wav_ord_inst'] = gen_dic[inst]['wav_ord_inst'][idx_ord_kept]
                     data_inst['idx_ord_ref'] = data_inst['idx_ord_ref'][idx_ord_kept]
                 gen_dic[inst]['norders_instru'] = len(idx_ord_kept)
                 data_inst['nord']=deepcopy(len(idx_ord_kept))   
         data_inst['nord_spec']=deepcopy(data_inst['nord'])                   #to keep track of the number of orders after spectra are trimmed
-        data_inst['nord_ref']=deepcopy(gen_dic[inst]['norders_instru'])      #to keep track of the original number of orders
+        data_inst['nord_ref']=deepcopy(gen_dic[inst]['norders_instru'])      #to keep track of the original number of orders (after deletion)
    
         #Orders contributing to calculation of spectral CCFs
         #    - set automatically in case of S1D to use the generic pipeline structure, even though S1D have no orders
@@ -1450,15 +1491,11 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             if (inst in gen_dic['orders4ccf']): gen_dic[inst]['orders4ccf'] = np.intersect1d(gen_dic['orders4ccf'][inst],idx_ord_kept,return_indices=True)[2]     
             else:gen_dic[inst]['orders4ccf'] = np.arange(gen_dic[inst]['norders_instru'],dtype=int)
 
-        #Telluric spectrum condition
-        if ('spec' in data_inst['type']) and gen_dic['tell_weight'] or gen_dic['corr_tell']:data_inst['tell_sp'] = True
-        else:data_inst['tell_sp'] = False
-
         #Weighing calibration condition
         #    - S2D calibration is calculated for scaling even if not needed for weights
         #    - condition below is deactivated if conversion into CCFs or 2D->1D
         data_inst['gcal_blaze_vis']=[]
-        if ('spec' in data_inst['type']) and gen_dic['cal_weight']:data_inst['cal_weight'] = True
+        if (data_inst['type']=='spec2D') and gen_dic['cal_weight']:data_inst['cal_weight'] = True
         else:data_inst['cal_weight'] = False
 
         #Initialize flag that exposures in all visits of the instrument share a common spectral table
@@ -1669,8 +1706,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 #    - the path is created even if weights are not needed to store temporarily blaze-derived calibration profiles
                 if data_inst['cal_weight'] or (vis in data_inst['gcal_blaze_vis']):data_inst[vis]['sing_gcal_DI_data_paths']={}             
                 
-                #Initialize current data type and conditions for the visit
-                for key in ['type','tell_sp','cal_weight']:data_inst[vis][key]=deepcopy(data_inst[key])                
+                #Initialize current data type for the visit
+                data_inst[vis]['type']=deepcopy(data_inst['type'])                
                 
                 #Initialize exposure tables
                 #    - spatial positions in x/y in front of the stellar disk
@@ -2045,12 +2082,14 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         data_dic_temp['cov'] = np.zeros(data_inst[vis]['dim_sp'], dtype=object)
                         
                         #Initialize blaze-derived and detector noise profiles
+                        #    - detector noise is only required for weighing, but is retrieved by default to avoid recomputing the calibration module if it was ran without weighing activated
                         if (vis in data_inst['gcal_blaze_vis']):
                             data_dic_temp['gcal'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)*np.nan
-                            if data_inst['cal_weight']:data_dic_temp['sdet2'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)*np.nan
+                            data_dic_temp['sdet2'] = np.zeros(data_inst[vis]['dim_all'], dtype=float)*np.nan
                             
                         #Telluric spectrum
-                        if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):data_dic_temp['tell'] = np.ones(data_inst[vis]['dim_all'], dtype=float)
+                        if ('spec' in data_inst[vis]['type']) and gen_dic['tell_weight'] and (gen_dic['calc_tell_mode']=='input'):
+                            data_dic_temp['tell'] = np.ones(data_inst[vis]['dim_all'], dtype=float)
 
                     ### End of first exposure            
         
@@ -2330,14 +2369,13 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                             #    - at pixels where counts are negative the DRS consider them null to define error tables, so that the detector noise is then retrieved as
                                             #      Edet_meas(w,t,v)^2 = EN_meas[bl](w,t,v)^2
                                             #    - some pixels have large errors despite not having large fluxes; this may come from hot pixels subtracted from the extracted counts
-                                            if gen_dic['cal_weight']:
-                                                idx_def_pos = np_where1D(cond_def_pos[iord])
-                                                data_dic_temp['sdet2'][iexp,iord,idx_def_pos] = err_count_blaze_exp[iord,idx_def_pos]**2. - count_blaze_exp[iord,idx_def_pos]
-                                                if idx_def_pos[0]>0:data_dic_temp['sdet2'][iexp,iord,0:idx_def_pos[0]] = data_dic_temp['sdet2'][iexp,iord,idx_def_pos[0]]              
-                                                if idx_def_pos[-1]<data_inst[vis]['nspec']-1:data_dic_temp['sdet2'][iexp,iord,idx_def_pos[-1]+1::] = data_dic_temp['sdet2'][iexp,iord,idx_def_pos[-1]]                      
-                                                data_dic_temp['sdet2'][iexp,iord][np.isnan(data_dic_temp['sdet2'][iexp,iord])] = 0.
-                                                data_dic_temp['sdet2'][iexp,iord][data_dic_temp['sdet2'][iexp,iord]<0.] = 0.
-                                                data_dic_temp['sdet2'][iexp,iord,cond_def_neg[iord]] = err_count_blaze_exp[iord,cond_def_neg[iord]]**2. 
+                                            idx_def_pos = np_where1D(cond_def_pos[iord])
+                                            data_dic_temp['sdet2'][iexp,iord,idx_def_pos] = err_count_blaze_exp[iord,idx_def_pos]**2. - count_blaze_exp[iord,idx_def_pos]
+                                            if idx_def_pos[0]>0:data_dic_temp['sdet2'][iexp,iord,0:idx_def_pos[0]] = data_dic_temp['sdet2'][iexp,iord,idx_def_pos[0]]              
+                                            if idx_def_pos[-1]<data_inst[vis]['nspec']-1:data_dic_temp['sdet2'][iexp,iord,idx_def_pos[-1]+1::] = data_dic_temp['sdet2'][iexp,iord,idx_def_pos[-1]]                      
+                                            data_dic_temp['sdet2'][iexp,iord][np.isnan(data_dic_temp['sdet2'][iexp,iord])] = 0.
+                                            data_dic_temp['sdet2'][iexp,iord][data_dic_temp['sdet2'][iexp,iord]<0.] = 0.
+                                            data_dic_temp['sdet2'][iexp,iord,cond_def_neg[iord]] = err_count_blaze_exp[iord,cond_def_neg[iord]]**2. 
 
                                 elif inst=='CARMENES_VIS':             
                                     if (vis_path_skysub_exp is not None):stop('No sky-corrected data available')
@@ -2393,7 +2431,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                                     qualdata_exp[~(hdulist_dat[1].data)['pixel_mask'][idx_ord_kept]] = 1.
                                     
                                     #Telluric spectrum
-                                    if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):
+                                    if ('tell' in data_dic_temp):
                                         data_dic_temp['tell'][iexp] = (hdulist_dat[1].data)['tellurics'][idx_ord_kept]  
 
                                 else:
@@ -2782,9 +2820,9 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                     #Upper and lower extension
                     #    - from the lower / upper spectral edges in each order
-                    #    - we use the approximation w_shifted = w*(1 + (rv_shift/c) ) to define the boundaries 
-                    low_bin_ord_exten = low_bin_ord_def*(1. - (gen_dic['max_rv_shift']/c_light) ) 
-                    high_bin_ord_exten = high_bin_ord_def*(1. + (gen_dic['max_rv_shift']/c_light) ) 
+                    #    - we use the approximation w_shifted = w*(1 - (rv_shift/c) ) to define the boundaries 
+                    low_bin_ord_exten = low_bin_ord_def*(1. - (gen_dic['min_rv_shift']/c_light) ) 
+                    high_bin_ord_exten = high_bin_ord_def*(1. - (gen_dic['max_rv_shift']/c_light) ) 
                     
                     #Number of extended bins
                     #    - we extend with a regular bin size in ln(w) space
@@ -2793,7 +2831,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     dlnbin_high_ord = dbin_high_ord/high_edge_bins_com[:,-1]
                     nlow_bin_exten = np.max(npint( np.floor( np.log(low_edge_bins_com[:,0]/low_bin_ord_exten)/np.log( dlnbin_low_ord + 1. ) ) ) )
                     nhigh_bin_exten = np.max(npint( np.floor( np.log(high_bin_ord_exten/high_edge_bins_com[:,-1])/np.log( dlnbin_high_ord + 1. ) ) ) )
-                    
+   
                     #Extended edges
                     low_edge_bins_exten = ((low_edge_bins_com[:,0]*( dlnbin_low_ord + 1. )**(-np.arange(nlow_bin_exten+1))[:,None]).T)[:,::-1]
                     high_edge_bins_exten = (high_edge_bins_com[:,-1]*( dlnbin_high_ord + 1. )**np.arange(nhigh_bin_exten+1)[:,None]).T
@@ -2801,8 +2839,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 else:
                     
                     #Upper and lower extension
-                    low_bin_ord_exten = low_bin_ord_def   - gen_dic['max_rv_shift']
-                    high_bin_ord_exten = high_bin_ord_def + gen_dic['max_rv_shift']
+                    low_bin_ord_exten = low_bin_ord_def   - gen_dic['min_rv_shift']
+                    high_bin_ord_exten = high_bin_ord_def - gen_dic['max_rv_shift']
                     
                     #Maximum number of extended bins
                     #    - taking the maximum over all order, between the edges of the common table and the min/max extensions
@@ -2819,7 +2857,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
 
                 #Number of bins in extended grid
                 exten_nspec = nlow_bin_exten + nom_nspec + nhigh_bin_exten   
-                
+
                 #Final grid
                 cen_bins_com_exten = np.zeros([data_inst['nord'],exten_nspec],float)*np.nan
                 edge_bins_com_exten = np.zeros([data_inst['nord'],exten_nspec+1],float)*np.nan
@@ -2851,22 +2889,22 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         #Processing each exposure    
                         flux_resamp = np.zeros(data_com['dim_all'], dtype=float)*np.nan
                         cov_resamp = np.zeros(data_com['dim_sp'], dtype=object)   
-                        if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):tell_resamp =  np.ones(data_com['dim_all'], dtype=float)
+                        if ('tell' in data_dic_temp):tell_resamp =  np.ones(data_com['dim_all'], dtype=float)
                         if (vis in data_inst['gcal_blaze_vis']):
                             gcal_blaze_resamp = np.zeros(data_com['dim_all'], dtype=float)*np.nan
-                            if data_inst['cal_weight']:sdet2_resamp = np.zeros(data_com['dim_all'], dtype=float)
+                            sdet2_resamp = np.zeros(data_com['dim_all'], dtype=float)
                         for iexp in range(n_in_visit):
                             for iord in range(data_inst['nord']): 
                                 flux_resamp[iexp,iord],cov_resamp[iexp][iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['flux'][iexp,iord] , cov = data_dic_temp['cov'][iexp][iord], kind=gen_dic['resamp_mode']) 
                                 
                                 #Resampling input telluric spectrum
-                                if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):
+                                if ('tell' in data_dic_temp):
                                     tell_resamp[iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['tell'][iexp,iord], kind=gen_dic['resamp_mode']) 
                                     
                                 #Resampling blazed-derived calibration and detector noise profiles
                                 if (vis in data_inst['gcal_blaze_vis']):
                                     gcal_blaze_resamp[iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['gcal'][iexp,iord], kind=gen_dic['resamp_mode'])
-                                    if data_inst['cal_weight']:sdet2_resamp[iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['sdet2'][iexp,iord], kind=gen_dic['resamp_mode'])
+                                    sdet2_resamp[iexp,iord] = bind.resampling(data_com['edge_bins'][iord], data_dic_temp['edge_bins'][iexp,iord], data_dic_temp['sdet2'][iexp,iord], kind=gen_dic['resamp_mode'])
 
                         #Overwrite exposure tables
                         data_dic_temp['cen_bins'][:] = deepcopy(data_com['cen_bins'])
@@ -2874,10 +2912,10 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         data_dic_temp['flux'] = flux_resamp 
                         data_dic_temp['cov'] = cov_resamp 
                         data_dic_temp['cond_def'] = ~np.isnan(data_dic_temp['flux'])
-                        if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):data_dic_temp['tell'] = tell_resamp
+                        if ('tell' in data_dic_temp):data_dic_temp['tell'] = tell_resamp
                         if (vis in data_inst['gcal_blaze_vis']):
                             data_dic_temp['gcal'] = gcal_blaze_resamp
-                            if data_inst['cal_weight']:data_dic_temp['sdet2'] = sdet2_resamp
+                            data_dic_temp['sdet2'] = sdet2_resamp
                         
                         #Set flag that all exposures in the visit are now defined on a common table
                         data_inst[vis]['comm_sp_tab'] = True
@@ -2929,7 +2967,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     #Telluric spectrum
                     #    - if defined with input data
                     #    - path is made specific to the exposure to be able to point from in-transit to global profiles without copying them to disk
-                    if data_inst[vis]['tell_sp'] and (gen_dic['calc_tell_mode']=='input'):
+                    if ('tell' in data_dic_temp):
                         data_inst[vis]['tell_DI_data_paths'][iexp] = data_inst[vis]['proc_DI_data_paths']+'tell_'+str(iexp)
                         datasave_npz(data_inst[vis]['tell_DI_data_paths'][iexp],{'tell':data_dic_temp['tell'][iexp]}) 
 
@@ -2939,7 +2977,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                     if ('sing_gcal_DI_data_paths' in data_inst[vis]):data_inst[vis]['sing_gcal_DI_data_paths'][iexp] = data_inst[vis]['proc_DI_data_paths']+'sing_gcal_'+str(iexp)
                     if (vis in data_inst['gcal_blaze_vis']):
                         data_gcal_save = {'gcal':data_dic_temp['gcal'][iexp]}
-                        if data_inst['cal_weight']:data_gcal_save['sdet2'] = data_dic_temp['sdet2'][iexp]
+                        data_gcal_save['sdet2'] = data_dic_temp['sdet2'][iexp]
                         datasave_npz(data_inst[vis]['sing_gcal_DI_data_paths'][iexp],data_gcal_save)
                         
                     #Saving path to initialized raw data
@@ -3072,11 +3110,12 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
             data_vis['nvel'] = n_vel
             data_vis['velccf'] = gen_dic['start_RV']+dvelccf*np.arange(n_vel)
             data_vis['edge_velccf'] = np.append(data_vis['velccf']-0.5*dvelccf,data_vis['velccf'][-1]+0.5*dvelccf)
-            
+
             #Common velocity table in original frame
-            n_bin_exten  = int(gen_dic['max_rv_shift']/dvelccf)+1
-            low_edge_bins_exten = (data_vis['edge_velccf'][0] - dvelccf*np.arange(n_bin_exten+1))[::-1]
-            high_edge_bins_exten = (data_vis['edge_velccf'][-1] + dvelccf*np.arange(n_bin_exten+1))           
+            nlow_bin_exten  = int( gen_dic['min_rv_shift']/dvelccf)+1
+            nhigh_bin_exten  = int(-gen_dic['max_rv_shift']/dvelccf)+1
+            low_edge_bins_exten = (data_vis['edge_velccf'][0] - dvelccf*np.arange(nlow_bin_exten+1))[::-1]
+            high_edge_bins_exten = (data_vis['edge_velccf'][-1] + dvelccf*np.arange(nhigh_bin_exten+1))           
             low_cen_bins_exten = 0.5*(low_edge_bins_exten[0:-1]+low_edge_bins_exten[1::])
             high_cen_bins_exten = 0.5*(high_edge_bins_exten[0:-1]+high_edge_bins_exten[1::])            
             data_vis['velccf_com'] = np.concatenate((low_cen_bins_exten, data_vis['velccf'], high_cen_bins_exten))
@@ -3426,13 +3465,10 @@ def update_inst(data_dic,inst,gen_dic):
         data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com_up'+com_star  
     elif gen_dic['spec_1D'] or gen_dic['CCF_from_sp']:
         if gen_dic['spec_1D']:
-            data_inst['type']='spec1D' 
-            data_inst['cal_weight'] = False     
+            data_inst['type']='spec1D'     
             data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/'+inst+'_com_up'+com_star 
         elif gen_dic['CCF_from_sp']:
-            data_inst['type']='CCF'                 
-            data_inst['tell_sp'] = False 
-            data_inst['cal_weight'] = False     
+            data_inst['type']='CCF'                    
             data_inst['proc_com_star_data_path'] = gen_dic['save_data_dir']+'Processed_data/CCFfromSpec/'+inst+'_com_up'+com_star 
             if ('chrom' in data_inst['system_prop']):
                 data_inst['system_prop']['chrom_mode'] = 'achrom'

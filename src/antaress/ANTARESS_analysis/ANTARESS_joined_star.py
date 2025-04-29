@@ -1231,6 +1231,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                 #    - models must be calculated over the full, continuous spectral tables to allow for convolution
                 #      the fit is then performed on defined pixels only
                 for key in ['dcen_bins','cen_bins','edge_bins','flux','cov','cond_def']:fixed_args[key][inst][vis]=np.zeros(fixed_args['nexp_fit_all'][inst][vis],dtype=object)
+                if (data_dic[inst][vis]['type']=='spec2D') and calc_EFsc2 and ('sing_gcal_DI_data_paths' not in data_dic[inst][vis]):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
                 for isub,iexp in enumerate(fixed_args['idx_in_fit'][inst][vis]):
 
                     #Upload latest processed differential data
@@ -1274,7 +1275,7 @@ def main_joined_DiffProf(rout_mode,data_dic,gen_dic,system_param,fit_prop_dic,th
                     fixed_args['cov'][inst][vis][isub] = data_exp['cov'][iord_sel][:,idx_range_kept]
 
                     #Calibration profile for weighing    
-                    if data_dic[inst][vis]['cal_weight'] and calc_EFsc2:fixed_args['master_out']['sing_gcal'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['sing_gcal_DI_data_paths'][iexp])['sing_gcal'][iord_sel,idx_range_kept]
+                    if (data_dic[inst][vis]['type']=='spec2D') and calc_EFsc2:fixed_args['master_out']['sing_gcal'][inst][vis][isub] = dataload_npz(data_dic[inst][vis]['sing_gcal_DI_data_paths'][iexp])['sing_gcal'][iord_sel,idx_range_kept]
                     else:fixed_args['master_out']['sing_gcal'][inst][vis][isub] = None
                     
                     #Estimate of true variance for DI profiles

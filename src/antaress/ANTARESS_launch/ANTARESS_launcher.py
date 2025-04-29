@@ -19,6 +19,8 @@ def ANTARESS_launcher(sequence = '' , custom_systems = '',custom_settings = '',c
     
     Runs ANTARESS with default or manual settings.  
     
+    This routine can be called directly from a python environment, or from the terminal.
+    
     Args:
         sequence (str): name of custom sequence (default "": default settings are used)        
         custom_systems (str): name of custom systems file (default "": ANTARESS_systems.py file is used)

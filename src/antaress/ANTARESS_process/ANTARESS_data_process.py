@@ -39,7 +39,9 @@ def align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic):
     proc_gen_data_paths_new = gen_dic['save_data_dir']+'Aligned_'+data_type_gen+'_data/'+gen_dic['add_txt_path'][data_type_gen]+'/'+inst+'_'+vis+'_'
     if (data_type_gen=='DI') and (data_dic['DI']['sysvel'][inst][vis]==0.):print('         WARNING: sysvel = 0 km/s')
     if data_type_gen=='Intr':proc_gen_data_paths_new+='in'  
-    proc_mast = True if ((gen_dic['DImast_weight']) and (data_type_gen in ['Intr','Atm'])) else False   #The master DI profiles has not yet been calculated when calling align_profiles() on DI profiles
+    if (data_vis['type']=='spec2D') and ('sing_gcal_'+data_type_gen+'_data_paths' not in data_vis):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')   
+    if (data_type_gen in ['Intr','Atm']) and ('mast_'+data_type_gen+'_data_paths'): proc_mast = True
+    else: proc_mast = False   #The master DI profiles has not yet been calculated when calling align_profiles() on DI profiles
     proc_locEst = True if ((data_type_gen=='Atm') and ((data_type=='Absorption') or ((data_type=='Emission')) and data_dic['Intr']['cov_loc_star'])) else False
     
     #1D variance grid
@@ -159,31 +161,31 @@ def align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic):
             # + calibration profile used for scaling is always defined for S2D
             #   it is common to all exposures of a processed instrument, and is originally sampled over the table of each exposure in the detector rest frame
             # + calibration profile used as weight in temporal binning, or to scale back profiles from flux to count units, is only defined if requested
-            if data_vis['tell_sp']:data_exp['tell'] = dataload_npz(data_vis['tell_'+data_type_gen+'_data_paths'][iexp])['tell'] 
+            if ('spec' in data_vis['type']) and gen_dic['corr_tell']:
+                if ('tell_'+data_type_gen+'_data_paths' not in data_vis):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+                data_exp['tell'] = dataload_npz(data_vis['tell_'+data_type_gen+'_data_paths'][iexp])['tell'] 
             if data_vis['type']=='spec2D':
                 data_exp['mean_gcal'] = dataload_npz(data_vis['mean_gcal_'+data_type_gen+'_data_paths'][iexp])['mean_gcal'] 
-                if data_vis['cal_weight']:
-                    data_gcal = dataload_npz(data_vis['sing_gcal_DI_data_paths'][iexp])
-                    data_exp['sing_gcal'] = data_gcal['gcal'] 
-                    if 'sdet2' in data_gcal:data_exp['sdet2'] = data_gcal['sdet2'] 
+                data_gcal = dataload_npz(data_vis['sing_gcal_'+data_type_gen+'_data_paths'][iexp])
+                data_exp['sing_gcal'] = data_gcal['gcal'] 
+                if (vis in data_inst['gcal_blaze_vis']):data_exp['sdet2'] = data_gcal['sdet2'] 
             if var_key is not None:data_exp[var_key] = dataload_npz(data_vis[var_key+'_'+data_type+'_data_paths'][iexp])['var']  
             data_align=align_data(data_exp,data_vis['type'],data_dic[inst]['nord'],dim_exp_resamp,gen_dic['resamp_mode'],cen_bins_resamp, edge_bins_resamp,rv_shift_cen,spec_dopshift)
           
             #Saving aligned exposure and complementary tables
-            if data_vis['tell_sp']:
+            if ('tell' in data_align):
                 datasave_npz(proc_gen_data_paths_new+'_tell'+str(iexp),{'tell':data_align['tell']}) 
                 data_align.pop('tell')
-            if data_vis['type']=='spec2D':
+            if ('mean_gcal' in data_align):
                 datasave_npz(proc_gen_data_paths_new+'_mean_gcal'+str(iexp),{'mean_gcal':data_align['mean_gcal']}) 
                 data_align.pop('mean_gcal')
-                if data_vis['cal_weight']:
-                    data_gcal = {'gcal':deepcopy(data_align['sing_gcal'])}
-                    data_align.pop('sing_gcal')
-                    if 'sdet2' in data_align:
-                        data_gcal['sdet2']=deepcopy(data_align['sdet2'])
-                        data_align.pop('sdet2')  
-                    datasave_npz(proc_gen_data_paths_new+'_sing_gcal'+str(iexp),data_gcal) 
-            if var_key is not None:
+                data_gcal = {'gcal':deepcopy(data_align['sing_gcal'])}
+                data_align.pop('sing_gcal')
+                if 'sdet2' in data_align:
+                    data_gcal['sdet2']=deepcopy(data_align['sdet2'])
+                    data_align.pop('sdet2')  
+                datasave_npz(proc_gen_data_paths_new+'_sing_gcal'+str(iexp),data_gcal) 
+            if (var_key in data_align):
                 datasave_npz(proc_gen_data_paths_new+'_'+var_key+str(iexp), {'var':data_align[var_key]})          
                 data_align.pop(var_key)
             datasave_npz(proc_gen_data_paths_new+str(iexp),data_align)
@@ -235,18 +237,20 @@ def align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic):
     #Updating paths
     if proc_mast:data_vis['mast_'+data_type_gen+'_data_paths']={}
     if proc_locEst:data_vis['LocEst_Atm_data_paths'] = {}
-    if data_vis['tell_sp']:data_vis['tell_'+data_type_gen+'_data_paths']={}  
+    if ('spec' in data_vis['type']) and gen_dic['corr_tell']:
+        data_vis['tell_'+data_type_gen+'_data_paths']={}  
     if data_vis['type']=='spec2D':
         data_vis['mean_gcal_'+data_type_gen+'_data_paths']={}  
-        if data_vis['cal_weight']:data_vis['sing_gcal_'+data_type_gen+'_data_paths']={}  
+        data_vis['sing_gcal_'+data_type_gen+'_data_paths']={}  
     if var_key is not None:data_vis[var_key+'_'+data_type_gen+'_data_paths']={}  
     for iexp in prop_dic[inst][vis]['idx_def']:
         if proc_mast:data_vis['mast_'+data_type_gen+'_data_paths'][iexp]=proc_gen_data_paths_new+'_ref'+str(iexp)
         if proc_locEst and (iexp in data_vis['LocEst_Atm_data_paths']):data_vis['LocEst_Atm_data_paths'][iexp] = proc_gen_data_paths_new+'estloc'+str(iexp) 
-        if data_vis['tell_sp']:data_vis['tell_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_tell'+str(iexp)
+        if ('spec' in data_vis['type']) and gen_dic['corr_tell']:
+            data_vis['tell_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_tell'+str(iexp)
         if data_vis['type']=='spec2D':
             data_vis['mean_gcal_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_mean_gcal'+str(iexp)  
-            if data_vis['cal_weight']:data_vis['sing_gcal_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_sing_gcal'+str(iexp)  
+            data_vis['sing_gcal_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_sing_gcal'+str(iexp)  
         if var_key is not None:data_vis[var_key+'_'+data_type_gen+'_data_paths'][iexp] = proc_gen_data_paths_new+'_'+var_key+str(iexp)    
             
     return None
@@ -945,7 +949,7 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
     #Exposures for which local profiles will be extracted
     #    - the user can request extraction for in-transit exposures alone (to avoid computing time)
     #      we force the extraction for all exposures if a common master is used for the extraction (ie, when exposures are resampled on a common table) and no time is required to recalculate the master for each exposure
-    if data_dic['Diff']['extract_in'] and ('spec' in data_dic['Diff']['type'][inst]) and (not data_vis['comm_sp_tab']):data_dic['Diff'][inst][vis]['idx_to_extract'] = deepcopy(gen_dic[inst][vis]['idx_in'])
+    if data_dic['Diff']['extract_in'] and ('spec' in data_vis['type']) and (not data_vis['comm_sp_tab']):data_dic['Diff'][inst][vis]['idx_to_extract'] = deepcopy(gen_dic[inst][vis]['idx_in'])
     else:data_dic['Diff'][inst][vis]['idx_to_extract'] =  np.arange(data_vis['n_in_visit'],dtype=int) 
     data_dic['Diff'][inst][vis]['idx_def'] = data_dic['Diff'][inst][vis]['idx_to_extract'] 
 
@@ -1019,12 +1023,15 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             #      no modifications were applied since the conversion, so no resampling is required   
             data_exp_off = dataload_npz(data_inst[vis_bin]['proc_DI_data_paths']+str(iexp_glob))
             for key in ['cen_bins','edge_bins','flux','cond_def','cov']:data_to_bin_gen[iexp_off][key] = data_exp_off[key]
-            if data_vis['tell_sp'] and calc_EFsc2:data_to_bin_gen[iexp_off]['tell'] = dataload_npz(data_inst[vis_bin]['tell_DI_data_paths'][iexp_glob])['tell']    
+            if ('spec' in data_vis['type']) and gen_dic['corr_tell'] and calc_EFsc2:
+                if ('tell_DI_data_paths' not in data_inst[vis_bin]):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+                data_to_bin_gen[iexp_off]['tell'] = dataload_npz(data_inst[vis_bin]['tell_DI_data_paths'][iexp_glob])['tell']    
             else:data_to_bin_gen[iexp_off]['tell'] = None
-            if data_inst['cal_weight'] and calc_EFsc2:
+            if (data_vis['type']=='spec2D') and calc_EFsc2:
+                if ('sing_gcal_DI_data_paths' not in data_inst[vis_bin]):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
                 data_gcal = dataload_npz(data_inst[vis_bin]['sing_gcal_DI_data_paths'][iexp_off])
                 data_to_bin_gen[iexp_off]['sing_gcal'] = data_gcal['gcal'] 
-                if 'sdet2' in data_gcal:data_to_bin_gen[iexp_off]['sdet2'] = data_gcal['sdet2'] 
+                if (vis_bin in data_inst['gcal_blaze_vis']):data_to_bin_gen[iexp_off]['sdet2'] = data_gcal['sdet2'] 
                 else:data_to_bin_gen[iexp_off]['sdet2'] = None                
             else:
                 data_to_bin_gen[iexp_off]['sing_gcal']=None   
@@ -1036,7 +1043,8 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             #    - profile has been shifted to the same frame as the differential profiles, but is still defined on the common table, not the table of current exposure
             #    - master covariance is not required for DI profile weights
             #    - see process_binned_prof() for details
-            if gen_dic['DImast_weight'] and (calc_EFsc2 or calc_var_ref2):            
+            if (calc_EFsc2 or calc_var_ref2):        
+                if ('mast_DI_data_paths' not in data_dic[inst][vis_bin]):stop('ERROR : weighing DI master undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_DImast"] when running this module.')
                 data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_glob])
                 data_to_bin_gen[iexp_off]['edge_bins_ref'] = data_ref['edge_bins']
                 data_to_bin_gen[iexp_off]['flux_ref'] = data_ref['flux']
@@ -1053,13 +1061,13 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
             resamp_cond[iexp_off] = ((mode=='') and (not data_inst[vis_bin]['comm_sp_tab'])) or ((mode=='multivis') and (not data_inst['comm_sp_tab']) and (vis_bin!=data_inst['com_vis']))
             resamp_cond_all |= resamp_cond[iexp_off]
             if (not resamp_cond[iexp_off]): 
-                data_to_bin_gen[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],data_inst['nord'],iexp_glob,'DI',data_dic[inst]['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['sing_gcal'],data_to_bin_gen[iexp_off]['cen_bins'],
+                data_to_bin_gen[iexp_off]['weight'] = weights_bin_prof(range(data_inst['nord']),scaled_data_paths_vis[vis_bin],inst,vis_bin,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],data_inst['nord'],iexp_glob,'DI',data_vis['type'],data_vis['dim_exp'],data_to_bin_gen[iexp_off]['tell'],data_to_bin_gen[iexp_off]['sing_gcal'],data_to_bin_gen[iexp_off]['cen_bins'],
                                                                        data_to_bin_gen[iexp_off]['dt'],data_to_bin_gen[iexp_off]['flux_ref'],None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),sdet_exp2 = data_to_bin_gen[iexp_off]['sdet2'],EFsc2_all_in = data_to_bin_gen[iexp_off]['EFsc2'])[0]
 
         #Processing each exposure of current visit selected for extraction
         iexp_proc = data_dic['Diff'][inst][vis]['idx_to_extract']
         common_args = (data_vis['proc_DI_data_paths'],proc_gen_data_paths_new,idx_to_bin_all[0],n_in_bin_all[0],dx_ov_all[0],idx_bin2orig,idx_bin2vis,data_dic[inst]['nord'],data_vis['dim_exp'],data_vis['nspec'],data_to_bin_gen,gen_dic['resamp_mode'],\
-                       scaled_data_paths_vis,inst,iexp_no_plrange_vis,exclu_rangestar_vis,data_dic[inst]['type'],gen_dic['type'],gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],resamp_cond,resamp_cond_all,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all))               
+                       scaled_data_paths_vis,inst,iexp_no_plrange_vis,exclu_rangestar_vis,data_vis['type'],gen_dic['type'],gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],resamp_cond,resamp_cond_all,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all))               
         if gen_dic['nthreads_diff_data']>1:MAIN_multithread(sub_extract_diff_profiles,gen_dic['nthreads_diff_data'],len(iexp_proc),[iexp_proc],common_args)                           
         else:sub_extract_diff_profiles(iexp_proc,*common_args)    
 
@@ -1073,12 +1081,16 @@ def extract_diff_profiles(gen_dic,data_dic,inst,vis,data_prop,coord_dic):
     #    - at this stage a single master has been defined over the common spectral table, it will be resampled in the binning routine
     #    - calibration paths are updated even if they are not used as weights, to be used in flux/count scalings
     data_vis['proc_Diff_data_paths']=proc_gen_data_paths_new
-    if gen_dic['DImast_weight']:data_vis['mast_Diff_data_paths'] = data_vis['mast_DI_data_paths']
-    if data_vis['tell_sp']:data_vis['tell_Diff_data_paths'] = data_vis['tell_DI_data_paths']
+    if ('mast_DI_data_paths' not in data_vis):stop('ERROR : weighing DI master undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_DImast"] when running this module.')
+    data_vis['mast_Diff_data_paths'] = data_vis['mast_DI_data_paths']
+    if ('spec' in data_vis['type']) and gen_dic['corr_tell']:
+        if ('tell_DI_data_paths' not in data_vis):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+        data_vis['tell_Diff_data_paths'] = data_vis['tell_DI_data_paths']
     if gen_dic['flux_sc']:data_vis['scaled_Diff_data_paths'] = data_vis['scaled_DI_data_paths']
     if data_vis['type']=='spec2D':
         data_vis['mean_gcal_Diff_data_paths'] = data_vis['mean_gcal_DI_data_paths']
-        if data_vis['cal_weight']:data_vis['sing_gcal_Diff_data_paths'] = data_vis['sing_gcal_DI_data_paths']
+        if ('sing_gcal_DI_data_paths' not in data_vis):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
+        data_vis['sing_gcal_Diff_data_paths'] = data_vis['sing_gcal_DI_data_paths']
     for subtype_gen in gen_dic['earliertypes4var']['Diff']:
         if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:
             var_key = gen_dic['type2var'][gen_dic['typegen2type'][subtype_gen]]
@@ -1320,11 +1332,14 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
     #    - paths are defined for each exposure for associated tables, to avoid copying tables from differential profiles and simply point from in-transit to global differential profiles
     data_vis['proc_Intr_data_paths']=proc_gen_data_paths_new+'_' 
     if gen_dic['flux_sc']:data_vis['scaled_Intr_data_paths'] = data_vis['scaled_Diff_data_paths']
-    if gen_dic['DImast_weight']:data_vis['mast_Intr_data_paths'] = {}
-    if data_vis['tell_sp']:data_vis['tell_Intr_data_paths'] = {}
+    if 'mast_Diff_data_paths' in data_vis:data_vis['mast_Intr_data_paths'] = {}
+    if ('spec' in data_vis['type']) and gen_dic['corr_tell']:
+        if ('tell_Diff_data_paths' not in data_vis):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+        data_vis['tell_Intr_data_paths'] = {}
     if data_vis['type']=='spec2D':
         data_vis['mean_gcal_Intr_data_paths'] = {} 
-        if data_vis['cal_weight']:data_vis['sing_gcal_Intr_data_paths'] = {} 
+        if ('sing_gcal_Diff_data_paths' not in data_vis):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
+        data_vis['sing_gcal_Intr_data_paths'] = {} 
     var_key = None
     for subtype_gen in gen_dic['earliertypes4var']['Intr']:
         if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:
@@ -1332,12 +1347,12 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
             data_vis[var_key+'_Intr_data_paths']={}
             break            
     for i_in,iexp in enumerate(gen_vis['idx_in']):
-        if gen_dic['DImast_weight']:data_vis['mast_Intr_data_paths'][i_in] = data_vis['mast_Diff_data_paths'][iexp]
-        if data_vis['tell_sp']:data_vis['tell_Intr_data_paths'][i_in] = data_vis['tell_Diff_data_paths'][iexp]
+        if 'mast_Intr_data_paths' in data_vis:data_vis['mast_Intr_data_paths'][i_in] = data_vis['mast_Diff_data_paths'][iexp]
+        if ('spec' in data_vis['type']) and gen_dic['corr_tell']:data_vis['tell_Intr_data_paths'][i_in] = data_vis['tell_Diff_data_paths'][iexp]
         if var_key is not None:data_vis[var_key+'_Intr_data_paths'][i_in] = data_vis[var_key+'_Diff_data_paths'][iexp]
         if data_vis['type']=='spec2D':
             data_vis['mean_gcal_Intr_data_paths'][i_in] = data_vis['mean_gcal_Diff_data_paths'][iexp]
-            if data_vis['cal_weight']:data_vis['sing_gcal_Intr_data_paths'][i_in] = data_vis['sing_gcal_Diff_data_paths'][iexp]
+            data_vis['sing_gcal_Intr_data_paths'][i_in] = data_vis['sing_gcal_Diff_data_paths'][iexp]
 
     #Correcting for relative chromatic shift    
     if ('spec' in data_vis['type']) and ('chrom' in data_dic['DI']['system_prop']):intr_rv_corr = True
@@ -1409,19 +1424,19 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
                     spec_dopshift_edge = 1./gen_specdopshift(rv_surf_star_edge)
     
                     #Spectral RV correction of current exposure and complementary tables
-                    if data_vis['tell_sp']:data_exp['tell'] = dataload_npz(data_vis['tell_Diff_data_paths'][iexp])['tell'] 
-                    if data_vis['type']=='spec2D':
-                        data_exp['mean_gcal'] = dataload_npz(data_vis['mean_gcal_Diff_data_paths'][iexp] )['mean_gcal'] 
-                        if data_vis['cal_weight']:
+                    if ('spec' in data_vis['type']):
+                        if gen_dic['corr_tell']:data_exp['tell'] = dataload_npz(data_vis['tell_Diff_data_paths'][iexp])['tell'] 
+                        if data_vis['type']=='spec2D':
+                            data_exp['mean_gcal'] = dataload_npz(data_vis['mean_gcal_Diff_data_paths'][iexp] )['mean_gcal'] 
                             data_gcal = dataload_npz(data_vis['sing_gcal_Diff_data_paths'][iexp])
                             data_exp['sing_gcal'] = data_gcal['gcal'] 
-                            if 'sdet2' in data_gcal:data_exp['sdet2'] = data_gcal['sdet2']    
+                            if (vis in data_dic[inst]['gcal_blaze_vis']):data_exp['sdet2'] = data_gcal['sdet2']    
                     if var_key is not None:data_exp[var_key] = dataload_npz(data_vis[var_key+'_Diff_data_paths'][iexp])['var']               
                     data_exp=align_data(data_exp,data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],cen_bins_resamp,edge_bins_resamp,rv_surf_star,spec_dopshift_cen,rv_shift_edge = rv_surf_star_edge,spec_dopshift_edge=spec_dopshift_edge)
     
                     #Saving aligned exposure and complementary tables
                     if ('spec' in data_vis['type']):
-                        if data_vis['tell_sp']:
+                        if gen_dic['corr_tell']:
                             data_vis['tell_Intr_data_paths'][i_in] = proc_gen_data_paths_new+'_tell'+str(i_in)
                             datasave_npz(data_vis['tell_Intr_data_paths'][i_in],{'tell':data_exp['tell']})
                             data_exp.pop('tell')
@@ -1429,20 +1444,19 @@ def extract_intr_profiles(data_dic,gen_dic,inst,vis,star_params,coord_dic,theo_d
                             data_vis['mean_gcal_Intr_data_paths'][i_in] = proc_gen_data_paths_new+'_mean_gcal'+str(i_in)
                             datasave_npz(data_vis['mean_gcal_Intr_data_paths'][i_in],{'mean_gcal':data_exp['mean_gcal']})
                             data_exp.pop('mean_gcal')
-                            if data_vis['cal_weight']:
-                                data_gcal = {'gcal':deepcopy(data_exp['sing_gcal'])}
-                                data_exp.pop('sing_gcal')
-                                if 'sdet2' in data_exp:
-                                    data_gcal['sdet2']=deepcopy(data_exp['sdet2'])
-                                    data_exp.pop('sdet2')  
-                                datasave_npz(data_vis['sing_gcal_Intr_data_paths'][i_in],data_gcal) 
+                            data_gcal = {'gcal':deepcopy(data_exp['sing_gcal'])}
+                            data_exp.pop('sing_gcal')
+                            if 'sdet2' in data_exp:
+                                data_gcal['sdet2']=deepcopy(data_exp['sdet2'])
+                                data_exp.pop('sdet2')  
+                            datasave_npz(data_vis['sing_gcal_Intr_data_paths'][i_in],data_gcal) 
                         if var_key is not None:
                             data_vis[var_key+'_Intr_data_paths'][iexp] = proc_gen_data_paths_new+'_'+var_key+str(i_in)    
                             datasave_npz(data_vis[var_key+'_Intr_data_paths'][iexp], {'var':data_exp[var_key]})          
                             data_exp.pop(var_key)
     
                     #Spectral RV correction of weighing master
-                    if gen_dic['DImast_weight']:
+                    if ('mast_Intr_data_paths' in data_vis):
                         data_ref = dataload_npz(data_vis['mast_Diff_data_paths'][iexp]) 
                         data_ref_align=align_data(data_ref,data_vis['type'],data_dic[inst]['nord'],data_dic[inst][vis]['dim_exp'],gen_dic['resamp_mode'],cen_bins_resamp,edge_bins_resamp,rv_surf_star,spec_dopshift_cen,rv_shift_edge = rv_surf_star_edge,spec_dopshift_edge=spec_dopshift_edge)                  
                         data_vis['mast_Intr_data_paths'][i_in] = proc_gen_data_paths_new+'_ref'+str(i_in)
@@ -1776,11 +1790,14 @@ def extract_pl_profiles(data_dic,inst,vis,gen_dic):
     #Path to associated tables
     #    - atmospheric profiles are extracted in the same frame as differential profiles
     #    - indexes may be limited to in-transit indexes if absorption signals are extracted
-    if gen_dic['DImast_weight']:data_vis['mast_Atm_data_paths'] = {}
-    if data_vis['tell_sp']:data_vis['tell_Atm_data_paths'] = {}
+    if ('mast_Diff_data_paths' in data_vis):data_vis['mast_Atm_data_paths'] = {}
+    if ('spec' in data_vis['type']) and gen_dic['corr_tell']:
+        if ('tell_Diff_data_paths' not in data_vis):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')
+        data_vis['tell_Atm_data_paths'] = {}
     if data_vis['type']=='spec2D':
         data_vis['mean_gcal_Atm_data_paths'] = {}
-        if data_vis['cal_weight']:data_vis['sing_gcal_Atm_data_paths']={} 
+        if ('sing_gcal_Diff_data_paths' not in data_vis):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
+        data_vis['sing_gcal_Atm_data_paths']={} 
     var_key = None
     for subtype_gen in gen_dic['earliertypes4var']['Atm']:
         if data_dic[subtype_gen]['spec2D_to_spec1D'][inst]:
@@ -1788,11 +1805,11 @@ def extract_pl_profiles(data_dic,inst,vis,gen_dic):
             data_vis[var_key+'_'+data_dic['Atm']['pl_atm_sign']+'_data_paths']={}
             break        
     for iexp_atm,iexp in zip(plAtm_vis['idx_def'],iexp_glob):
-        if gen_dic['DImast_weight']:data_vis['mast_Atm_data_paths'][iexp_atm] = data_dic[inst][vis]['mast_Diff_data_paths'][iexp] 
-        if data_vis['tell_sp']:data_vis['tell_Atm_data_paths'][iexp_atm] = data_vis['tell_Diff_data_paths'][iexp] 
-        if data_vis['type']=='spec2D':
+        if ('mast_Atm_data_paths' in data_vis):data_vis['mast_Atm_data_paths'][iexp_atm] = data_vis['mast_Diff_data_paths'][iexp] 
+        if ('tell_Atm_data_paths' in data_vis):data_vis['tell_Atm_data_paths'][iexp_atm] = data_vis['tell_Diff_data_paths'][iexp] 
+        if ('mean_gcal_Diff_data_paths' in data_vis):
             data_vis['mean_gcal_Atm_data_paths'][iexp_atm] = data_vis['mean_gcal_Diff_data_paths'][iexp] 
-            if data_vis['cal_weight']:data_vis['sing_gcal_Atm_data_paths'][iexp_atm] = data_vis['sing_gcal_Diff_data_paths'][iexp] 
+            data_vis['sing_gcal_Atm_data_paths'][iexp_atm] = data_vis['sing_gcal_Diff_data_paths'][iexp] 
         if var_key is not None:data_vis[var_key+'_'+data_dic['Atm']['pl_atm_sign']+'_data_paths'][iexp_atm] = data_vis[var_key+'_Diff_data_paths'][iexp] 
 
     return None    

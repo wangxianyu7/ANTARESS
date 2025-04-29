@@ -105,22 +105,22 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
             data_dic_com[vis] = dataload_npz(data_vis['proc_com_data_paths'])
             data_dic_exp[vis] = {}            
             for key in ['cen_bins','flux','mean_gcal']:data_dic_exp[vis][key]=np.zeros(data_vis['dim_all'], dtype=float)*np.nan
-            if data_vis['cal_weight']:
+            if ('sing_gcal_DI_data_paths' in data_vis):
                 data_dic_exp[vis]['sing_gcal']=np.zeros(data_vis['dim_all'], dtype=float)*np.nan
                 if (vis in data_inst['gcal_blaze_vis']):data_dic_exp[vis]['sdet2']=np.zeros(data_vis['dim_all'], dtype=float)*np.nan  
             data_dic_exp[vis]['cond_def']=np.zeros(data_vis['dim_all'], dtype=bool)
             data_dic_exp[vis]['cov'] = np.zeros(data_vis['dim_sp'], dtype=object)
             data_dic_exp[vis]['edge_bins']=np.zeros(data_vis['dim_sp']+[data_vis['nspec']+1], dtype=float)*np.nan
-            if data_vis['tell_sp']:data_dic_exp[vis]['tell']=np.zeros(data_vis['dim_all'], dtype=float)
+            if ('tell_DI_data_paths' in data_vis):data_dic_exp[vis]['tell']=np.zeros(data_vis['dim_all'], dtype=float)
             for iexp in range(data_vis['n_in_visit']):               
                 data_exp = dataload_npz(data_vis['proc_DI_data_paths']+str(iexp))                 
                 for key in [key_sub for key_sub in data_dic_exp[vis] if key_sub not in ['mean_gcal','tell','sing_gcal','sdet2']]:data_dic_exp[vis][key][iexp] = data_exp[key]
-                if data_vis['tell_sp']:data_dic_exp[vis]['tell'][iexp] = dataload_npz(data_vis['tell_DI_data_paths'][iexp])['tell']
+                if ('tell_DI_data_paths' in data_vis):data_dic_exp[vis]['tell'][iexp] = dataload_npz(data_vis['tell_DI_data_paths'][iexp])['tell']
                 data_dic_exp[vis]['mean_gcal'][iexp] = dataload_npz(data_vis['mean_gcal_DI_data_paths'][iexp])['mean_gcal']
-                if data_vis['cal_weight']:
+                if ('sing_gcal_DI_data_paths' in data_vis):
                     data_gcal = dataload_npz(data_vis['sing_gcal_DI_data_paths'][iexp])
                     data_dic_exp[vis]['sing_gcal'][iexp] = data_gcal['gcal'] 
-                    if 'sdet2' in data_gcal:data_dic_exp[vis]['sdet2'][iexp] = data_gcal['sdet2'] 
+                    if (vis in data_inst['gcal_blaze_vis']):data_dic_exp[vis]['sdet2'][iexp] = data_gcal['sdet2'] 
 
         #------------------------------------------
 
@@ -214,16 +214,16 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
             data_vis['proc_com_data_paths'] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_com'          
             datasave_npz(data_vis['proc_com_data_paths'],data_dic_com[vis])  
             data_vis['proc_DI_data_paths'] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_'
-            if data_vis['tell_sp']:data_vis['tell_DI_data_paths'] = {}
+            if ('tell_DI_data_paths' in data_vis):data_vis['tell_DI_data_paths'] = {}
             data_vis['mean_gcal_DI_data_paths'] = {}
-            if data_vis['cal_weight']:data_vis['sing_gcal_DI_data_paths'] = {}
+            if ('sing_gcal_DI_data_paths' in data_vis):data_vis['sing_gcal_DI_data_paths'] = {}
             for iexp in range(data_vis['n_in_visit']): 
-                if data_vis['tell_sp']:
+                if ('tell_DI_data_paths' in data_vis):
                     data_vis['tell_DI_data_paths'][iexp] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_tell_'+str(iexp)
                     datasave_npz(data_vis['tell_DI_data_paths'][iexp],{'tell':data_dic_exp[vis]['tell'][iexp]})
                 data_vis['mean_gcal_DI_data_paths'][iexp] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_mean_gcal_'+str(iexp)
                 datasave_npz(data_vis['mean_gcal_DI_data_paths'][iexp],{'mean_gcal':data_dic_exp[vis]['mean_gcal'][iexp]})   
-                if data_vis['cal_weight']:
+                if ('sing_gcal_DI_data_paths' in data_vis):
                     data_vis['sing_gcal_DI_data_paths'][iexp] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_sing_gcal_'+str(iexp)
                     data_gcal = {'gcal':data_dic_exp[vis]['sing_gcal'][iexp]}
                     if (vis in data_inst['gcal_blaze_vis']):data_gcal['sdet2'] = data_dic_exp[vis]['sdet2'][iexp]
@@ -245,14 +245,13 @@ def lim_sp_range(inst,data_dic,gen_dic,data_prop):
             data_vis['proc_com_data_paths'] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_com'
             check_data({'path':data_vis['proc_com_data_paths']},vis=vis)
             data_vis['proc_DI_data_paths'] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_'
-            if data_vis['tell_sp']:data_vis['tell_DI_data_paths']={}
+            if ('tell_DI_data_paths' in data_vis):data_vis['tell_DI_data_paths']={}
             data_vis['mean_gcal_DI_data_paths'] = {}
-            if data_vis['cal_weight']:data_vis['sing_gcal_DI_data_paths'] = {}
+            if ('sing_gcal_DI_data_paths' in data_vis):data_vis['sing_gcal_DI_data_paths'] = {}
             for iexp in range(data_vis['n_in_visit']): 
-                if data_vis['tell_sp']:
-                    data_vis['tell_DI_data_paths'][iexp] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_tell_'+str(iexp)
+                if ('tell_DI_data_paths' in data_vis):data_vis['tell_DI_data_paths'][iexp] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_tell_'+str(iexp)
                 data_vis['mean_gcal_DI_data_paths'][iexp] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_mean_gcal_'+str(iexp)
-                if data_vis['cal_weight']:data_vis['sing_gcal_DI_data_paths'][iexp] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_sing_gcal_'+str(iexp)
+                if ('sing_gcal_DI_data_paths' in data_vis):data_vis['sing_gcal_DI_data_paths'][iexp] = gen_dic['save_data_dir']+'Corr_data/Trim/'+inst+'_'+vis+'_sing_gcal_'+str(iexp)
             data_load = np.load(gen_dic['save_data_dir']+'Corr_data/Trim/DimTrimmed_'+inst+'_'+vis+'.npz')
             for key in ['dim_all','dim_exp','dim_sp']:data_inst[vis][key] = list(data_load[key])
             data_inst[vis]['nspec']=data_load['nspec']  

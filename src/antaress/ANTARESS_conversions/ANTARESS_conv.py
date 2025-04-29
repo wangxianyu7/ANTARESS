@@ -310,8 +310,6 @@ def CCF_from_spec(data_type_gen,inst,vis,data_dic,gen_dic,prop_dic):
     #    - spectral calibration is no longer required because it is only needed to calculate DI variance, which is either known after DI conversion or not required if later conversions
     print('         ANTARESS switched to CCF processing')
     data_vis['comm_sp_tab']=True
-    data_vis['tell_sp'] = False 
-    data_vis['cal_weight'] = False 
     data_vis['type']='CCF'
     data_vis['nspec'] = data_vis['nvel']
     data_dic[inst]['nord'] = 1
@@ -745,18 +743,26 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic,coord_di
         proc_data_paths = {}
         if gen_dic['flux_sc'] and calc_flux_sc_all:scaled_data_paths = {}
         else:scaled_data_paths = None
-        if data_vis['tell_sp'] and calc_EFsc2:tell_data_paths =  {}         
+        if ('spec' in data_vis['type']) and gen_dic['corr_tell'] and calc_EFsc2:tell_data_paths =  {}         
         else:tell_data_paths =  None
-        if data_vis['cal_weight'] and calc_EFsc2:sing_gcal_data_paths = {}
+        if calc_EFsc2:sing_gcal_data_paths = {}
         else:sing_gcal_data_paths = None
-        if gen_dic['DImast_weight'] and (calc_EFsc2 or calc_var_ref2):DImast_weight_data_paths = {}
+        if (sing_gcal_data_paths is not None) and (vis in data_dic[inst]['gcal_blaze_vis']):cond_sdet2 = True
+        else:cond_sdet2 = False
+        if (calc_EFsc2 or calc_var_ref2):DImast_weight_data_paths = {}
         else:DImast_weight_data_paths = None
         for key in data_type_key:   
             proc_data_paths[key] = data_vis['proc_'+key+'_data_paths']
             if scaled_data_paths is not None:scaled_data_paths[key] = data_vis['scaled_'+key+'_data_paths']
-            if tell_data_paths is not None:tell_data_paths[key] = data_vis['tell_'+key+'_data_paths']
-            if sing_gcal_data_paths is not None:sing_gcal_data_paths[key] = data_vis['sing_gcal_'+key+'_data_paths']
-            if DImast_weight_data_paths is not None:DImast_weight_data_paths[key] = data_vis['mast_'+key+'_data_paths']
+            if tell_data_paths is not None:
+                if ('tell_'+key+'_data_paths' not in data_vis):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')  
+                tell_data_paths[key] = data_vis['tell_'+key+'_data_paths']
+            if sing_gcal_data_paths is not None:
+                if ('sing_gcal_'+key+'_data_paths' not in data_vis):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
+                sing_gcal_data_paths[key] = data_vis['sing_gcal_'+key+'_data_paths']
+            if DImast_weight_data_paths is not None:
+                if 'mast_'+key+'_data_paths' not in data_vis:stop('ERROR : weighing DI master undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_DImast"] when running this module.')
+                DImast_weight_data_paths[key] = data_vis['mast_'+key+'_data_paths']
         if (data_type_gen=='Atm') and (data_type=='Absorption') or ((data_type=='Emission') and data_dic['Intr']['cov_loc_star']): 
             LocEst_Atm_data_paths = data_vis['LocEst_Atm_data_paths']
         else:LocEst_Atm_data_paths = None
@@ -765,7 +771,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic,coord_di
         ifirst = iexp_conv[0]
         common_args = (data_type_gen,data_type,gen_dic['resamp_mode'],dir_save,cen_bins_1D,edge_bins_1D,nspec_1D,data_dic[inst]['nord'],ifirst,proc_com_data_paths_new,\
                        gen_dic[inst][vis]['idx_in2exp'],data_dic['Intr']['cov_loc_star'],proc_data_paths,tell_data_paths,scaled_data_paths,sing_gcal_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],\
-                       gen_dic['save_data_dir'],gen_dic['type'],data_vis['type'],data_vis['dim_exp'],gen_vis['idx_exp2in'],gen_vis['idx_in'],gen_dic['type2var'],dt_all,data_vis['comm_sp_tab'],gen_dic['sequence'],calc_cond)
+                       gen_dic['save_data_dir'],gen_dic['type'],data_vis['type'],data_vis['dim_exp'],gen_vis['idx_exp2in'],gen_vis['idx_in'],gen_dic['type2var'],dt_all,data_vis['comm_sp_tab'],gen_dic['sequence'],calc_cond,cond_sdet2)
         if (nthreads>1) and (nthreads <=len(iexp_conv)): MAIN_multithread(conv_2D_to_1D_exp,nthreads,len(iexp_conv),[iexp_conv],common_args)                           
         else: conv_2D_to_1D_exp(iexp_conv,*common_args)  
 
@@ -790,7 +796,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic,coord_di
     if com_frame=='':data_vis['proc_com_star_data_paths'] = deepcopy(data_vis['proc_com'+com_frame+'_data_paths'])
     for gen in dir_save:
         data_vis['proc_'+gen+'_data_paths'] = dir_save[gen]  
-        if data_vis['tell_sp']:data_vis['tell_'+gen+'_data_paths'] = {}        
+        if ('spec' in data_vis['type']) and gen_dic['corr_tell']:data_vis['tell_'+gen+'_data_paths'] = {}        
         data_vis['mast_'+gen+'_data_paths'] = {}   
     data_vis[gen_dic['type2var'][data_type]+'_'+data_type_gen+'_data_paths']={}
     if data_type_gen=='Atm':data_vis['LocEst_Atm_data_paths'] = {}
@@ -801,13 +807,12 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic,coord_di
             if (iexp in gen_vis['idx_in']):iexp_eff = gen_vis['idx_exp2in'][iexp] 
             else:gen = 'Diff'
         data_vis['mast_'+gen+'_data_paths'][iexp_eff] = dir_save[gen]+'ref_'+str(iexp_eff)
-        if data_vis['tell_sp']:data_vis['tell_'+data_type_gen+'_data_paths'][iexp] = dir_save[gen]+'_tell'+str(iexp_eff)
+        if ('spec' in data_vis['type']) and gen_dic['corr_tell']:data_vis['tell_'+data_type_gen+'_data_paths'][iexp] = dir_save[gen]+'_tell'+str(iexp_eff)
         data_vis[gen_dic['type2var'][data_type]+'_'+data_type_gen+'_data_paths'][iexp] = dir_save[gen]+'_'+gen_dic['type2var'][data_type]+str(iexp_eff)
         if data_type_gen=='Atm':data_vis['LocEst_Atm_data_paths'][iexp] = dir_save[gen]+'estloc_'+str(iexp_eff)
     
     #Convert spectral mode 
     print('         ANTARESS switched to 1D processing')
-    data_vis['cal_weight'] = False 
     data_vis['comm_sp_tab']=True
     data_vis['type']='spec1D'
     data_vis['nspec'] = prop_dic['spec_1D_prop'][inst]['nspec']
@@ -835,7 +840,7 @@ def conv_2D_to_1D_spec(data_type_gen,inst,vis,gen_dic,data_dic,prop_dic,coord_di
 
 def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen_bins_1D,edge_bins_1D,nspec_1D,nord,ifirst,proc_com_data_paths,\
                       idx_in2exp,cov_loc_star,proc_data_paths,tell_data_paths,scaled_data_paths,sing_gcal_data_paths,DImast_weight_data_paths,LocEst_Atm_data_paths,inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,\
-                      save_data_dir,gen_type,data_mode,dim_exp,idx_exp2in,idx_in,type2var,dt_all,comm_sp_tab,sequence,calc_cond):
+                      save_data_dir,gen_type,data_mode,dim_exp,idx_exp2in,idx_in,type2var,dt_all,comm_sp_tab,sequence,calc_cond,cond_sdet2):
     r"""**Main routine to convert 2D spectra into 1D spectra** 
     
     Calculates 1D spectra from 2D spectra, propagating covariance matrix
@@ -888,7 +893,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,data_type,resamp_mode,dir_save,cen
         if sing_gcal_data_paths is not None:
             data_gcal = dataload_npz(sing_gcal_data_paths[data_type_eff][iexp_eff])
             data_exp['sing_gcal'] = data_gcal['gcal'] 
-            if 'sdet2' in data_gcal:data_exp['sdet2'] = data_gcal['sdet2']   
+            if cond_sdet2:data_exp['sdet2'] = data_gcal['sdet2']   
         else:
             data_exp['sing_gcal']=None   
             data_exp['sdet2'] = None   

@@ -325,6 +325,7 @@ def get_system_params():
         
         'Star_tseries':{
             'star':{
+                'sysvel':0.
                 }
             },
     }

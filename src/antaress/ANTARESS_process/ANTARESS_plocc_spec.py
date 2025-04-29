@@ -166,17 +166,22 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
                         
                 #Complementary tables
                 #    - if DI profiles were converted from 2D into 1D we directly use the variance grid associated with the 1D converted DI profiles
-                if data_dic[inst][vis_bin]['tell_sp'] and calc_EFsc2:data_exp_bin['tell'] = dataload_npz(data_dic[inst][vis_bin]['tell_DI_data_paths'][iexp_bin])['tell']      
+                if ('spec' in data_vis['type']) and gen_dic['corr_tell'] and calc_EFsc2:
+                    if ('tell_DI_data_paths' not in data_dic[inst][vis_bin]):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.') 
+                    data_exp_bin['tell'] = dataload_npz(data_dic[inst][vis_bin]['tell_DI_data_paths'][iexp_bin])['tell']      
                 else:data_exp_bin['tell'] = None
-                if data_dic[inst][vis_bin]['cal_weight'] and calc_EFsc2:
+                if (data_vis['type']=='spec2D') and calc_EFsc2:
+                    if ('sing_gcal_DI_data_paths' not in data_dic[inst][vis_bin]):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
                     data_gcal = dataload_npz(data_dic[inst][vis_bin]['sing_gcal_DI_data_paths'][iexp_bin])
                     data_exp_bin['sing_gcal'] = data_gcal['gcal'] 
-                    if 'sdet2' in data_gcal:data_exp_bin['sdet2'] = data_gcal['sdet2'] 
+                    if (vis_bin in data_inst['gcal_blaze_vis']):data_exp_bin['sdet2'] = data_gcal['sdet2'] 
                     else:data_exp_bin['sdet2'] = None 
                 else:              
                     data_exp_bin['sing_gcal']=None   
                     data_exp_bin['sdet2'] = None 
-                if gen_dic['DImast_weight'] and (calc_EFsc2 or calc_var_ref2):data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_bin])
+                if (calc_EFsc2 or calc_var_ref2):
+                    if ('mast_DI_data_paths' not in data_dic[inst][vis_bin]):stop('ERROR : weighing DI master undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_DImast"] when running this module.')
+                    data_ref = dataload_npz(data_dic[inst][vis_bin]['mast_DI_data_paths'][iexp_bin])
                 else:data_ref = None
                 for key in ['EFsc2','EFdiff2','EFintr2']:data_exp_bin[key] = None
                 if (var_key_def=='EFsc2'):data_exp_bin['EFsc2'] = dataload_npz(data_dic[inst][vis_bin]['EFsc2_DI_data_paths'][iexp_bin])['var'] 
@@ -193,16 +198,21 @@ def plocc_prof_meas(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,coord_
                 iexp_bin_glob = gen_dic[inst][vis_bin]['idx_in2exp'][iexp_bin]
                 if iexp_bin_glob not in data_dic['Intr'][inst][vis_bin]['idx_def']:stop('Intrinsic exposure at i=',str(iexp_bin),' has not been aligned')
                 data_exp_bin = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_'+str(iexp_bin))                               
-                if data_dic[inst][vis_bin]['tell_sp'] and calc_EFsc2:data_exp_bin['tell'] = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_tell'+str(iexp_bin))['tell']             
-                if data_dic[inst][vis_bin]['cal_weight'] and calc_EFsc2:
+                if ('spec' in data_vis['type']) and gen_dic['corr_tell'] and calc_EFsc2:
+                    if (len(np.array(glob.glob(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_tell'+str(iexp_bin))))==0):stop('ERROR : weighing telluric profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_corr_tell"] when running this module.')  
+                    data_exp_bin['tell'] = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_tell'+str(iexp_bin))['tell']             
+                if calc_EFsc2:
+                    if (len(np.array(glob.glob(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_sing_gcal'+str(iexp_bin))))==0):stop('ERROR : weighing calibration profiles undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_gcal"] when running this module.')  
                     data_gcal = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_sing_gcal'+str(iexp_bin))
                     data_exp_bin['sing_gcal'] = data_gcal['gcal'] 
-                    if 'sdet2' in data_gcal:data_exp_bin['sdet2'] = data_gcal['sdet2'] 
+                    if (vis_bin in data_inst['gcal_blaze_vis']):data_exp_bin['sdet2'] = data_gcal['sdet2'] 
                     else:data_exp_bin['sdet2'] = None
                 else:
                     data_exp_bin['sing_gcal']=None   
                     data_exp_bin['sdet2'] = None
-                if gen_dic['DImast_weight'] and (calc_EFsc2 or calc_var_ref2):data_ref = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_ref'+str(iexp_bin)) 
+                if (calc_EFsc2 or calc_var_ref2):
+                    if (len(np.array(glob.glob(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_ref'+str(iexp_bin))))==0):stop('ERROR : weighing DI master undefined; make sure you activate gen_dic["calc_proc_data"] and gen_dic["calc_DImast"] when running this module.')
+                    data_ref = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_ref'+str(iexp_bin)) 
                 else:data_ref = None
                 for key in ['EFsc2','EFdiff2','EFintr2']:data_exp_bin[key] = None
                 if var_key_def is not None:data_exp_bin[var_key_def] = dataload_npz(gen_dic['save_data_dir']+'Aligned_Intr_data/'+inst+'_'+vis_bin+'_in_'+var_key_def+str(iexp_bin))['var']   

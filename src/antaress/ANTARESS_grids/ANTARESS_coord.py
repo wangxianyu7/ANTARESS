@@ -927,7 +927,6 @@ def calc_tr_contacts(RpRs,pl_params,stend_ph,star_params):
     ph_st=-stend_ph*ph_ineg
     ph_end=stend_ph*ph_ineg
     ph_contacts=ph_st+((ph_end-ph_st)/n_pts_contacts)*np.arange(n_pts_contacts+1.)
-    
     if (ecc > 1e-4):
         if 'Mean_anom_TR' not in pl_params:pl_params['Mean_anom_TR'] = calc_mean_anom_TR(ecc,omega_bar) 
         Mean_anom_plot=2.*np.pi*ph_contacts+pl_params['Mean_anom_TR']
@@ -945,64 +944,69 @@ def calc_tr_contacts(RpRs,pl_params,stend_ph,star_params):
         zp=X0_plot*s_ip
         
     #Points before transit, front of the star
-    w_bef=np.where((xp<0) & (zp>0))[0]        
+    w_bef=np_where1D((xp<0) & (zp>0))      
 
-    #Points before transit, front of the star
-    w_aft=np.where((xp>0) & (zp>0))[0]
-
-    #Oblate star    
-    if star_params['f_GD']>0.:
-
-        #Frame conversion of planet coordinates from the classical frame perpendicular to the LOS, to the 'inclined star' frame
-        idx_front = np_where1D(zp>0)
-        xp_st_sk,yp_st_sk,_=frameconv_skyorb_to_skystar(pl_params['lambda_rad'],xp[idx_front],yp[idx_front],None)              
-
-        #Number of planet limb points within the projected stellar photosphere
-        nlimb = 501
-        nlimb_in_ph = pl_limb_in_oblate_star(nlimb,RpRs,xp_st_sk,yp_st_sk,star_params)
-
-        #First and fourth contacts: start of ingress / end of egress
-        #    nlimb_in_ph >0 for the first / last time
-        w_first=np_where1D(nlimb_in_ph[w_bef]>0)[0]
-        w_fth=np_where1D(nlimb_in_ph[w_aft]>0)[-1]
+    #Points after transit, front of the star
+    w_aft=np_where1D((xp>0) & (zp>0))
+    
+    #Check for transit status
+    if len(w_bef)+len(w_aft)==len(zp):
+        print('  No contact points identified')
+        contact_phases = None
+    else:
         
-        #Second and third contacts: end of ingress / start of egress
-        #    nlimb_in_ph = nlimb for the first / last time
-        w_scnd=np_where1D(nlimb_in_ph[w_bef]==nlimb)[0]
-        w_thrd=np_where1D(nlimb_in_ph[w_aft]==nlimb)[-1]
-
-
-    #Spherical star:
-    else: 
+        #Oblate star    
+        if star_params['f_GD']>0.:
+    
+            #Frame conversion of planet coordinates from the classical frame perpendicular to the LOS, to the 'inclined star' frame
+            idx_front = np_where1D(zp>0)
+            xp_st_sk,yp_st_sk,_=frameconv_skyorb_to_skystar(pl_params['lambda_rad'],xp[idx_front],yp[idx_front],None)              
+    
+            #Number of planet limb points within the projected stellar photosphere
+            nlimb = 501
+            nlimb_in_ph = pl_limb_in_oblate_star(nlimb,RpRs,xp_st_sk,yp_st_sk,star_params)
+    
+            #First and fourth contacts: start of ingress / end of egress
+            #    nlimb_in_ph >0 for the first / last time
+            w_first=np_where1D(nlimb_in_ph[w_bef]>0)[0]
+            w_fth=np_where1D(nlimb_in_ph[w_aft]>0)[-1]
+            
+            #Second and third contacts: end of ingress / start of egress
+            #    nlimb_in_ph = nlimb for the first / last time
+            w_scnd=np_where1D(nlimb_in_ph[w_bef]==nlimb)[0]
+            w_thrd=np_where1D(nlimb_in_ph[w_aft]==nlimb)[-1]
+    
+    
+        #Spherical star:
+        else: 
+            
+            #Distance star - planet centers in the plane of sky
+            Dprojplanet=np.sqrt(np.power(xp,2.) + np.power(yp,2.))
         
-        #Distance star - planet centers in the plane of sky
-        Dprojplanet=np.sqrt(np.power(xp,2.) + np.power(yp,2.))
-    
-        #First contact: start of ingress
-        #    dist_p = Rs+Rp
-        w_first=closest(Dprojplanet[w_bef],(1.+RpRs))
-    
-        #Second contact: end of ingress
-        #    dist_p = Rs-Rp
-        w_scnd=closest(Dprojplanet[w_bef],(1.-RpRs))
-    
-        #Third contact: start of egress
-        #    dist_p = Rs-Rp
-        w_thrd=closest(Dprojplanet[w_aft],(1.-RpRs))
-
-    
-        #Fourth contact: end of egress
-        #    dist_p = Rs+Rp
-        w_fth=closest(Dprojplanet[w_aft],(1.+RpRs))
-    
-    #Contacts
-    if w_bef[w_first]==0:stop('Start phase is too short for contact determination: increase "plot_dic["stend_ph"]"')
-    if w_aft[w_fth]==n_pts_contacts:stop('End phase is too short for contact determination: increase "plot_dic["stend_ph"]"')
-    contact_phases[0]=ph_contacts[w_bef][w_first]      
-    contact_phases[1]=ph_contacts[w_bef][w_scnd]     
-    contact_phases[2]=ph_contacts[w_aft][w_thrd]     
-    contact_phases[3]=ph_contacts[w_aft][w_fth]    
+            #First contact: start of ingress
+            #    dist_p = Rs+Rp
+            w_first=closest(Dprojplanet[w_bef],(1.+RpRs))
         
+            #Second contact: end of ingress
+            #    dist_p = Rs-Rp
+            w_scnd=closest(Dprojplanet[w_bef],(1.-RpRs))
+        
+            #Third contact: start of egress
+            #    dist_p = Rs-Rp
+            w_thrd=closest(Dprojplanet[w_aft],(1.-RpRs))
+    
+            #Fourth contact: end of egress
+            #    dist_p = Rs+Rp
+            w_fth=closest(Dprojplanet[w_aft],(1.+RpRs))
+        
+        #Contacts
+        if w_bef[w_first]==0:stop('ERROR : Start phase is too short for contact determination: increase "plot_dic["stend_ph"]"')
+        if w_aft[w_fth]==n_pts_contacts:stop('ERROR : End phase is too short for contact determination: increase "plot_dic["stend_ph"]"')
+        contact_phases[0]=ph_contacts[w_bef][w_first]      
+        contact_phases[1]=ph_contacts[w_bef][w_scnd]     
+        contact_phases[2]=ph_contacts[w_aft][w_thrd]     
+        contact_phases[3]=ph_contacts[w_aft][w_fth]    
+            
     return contact_phases   
 
 
