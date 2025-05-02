@@ -148,10 +148,16 @@ def calc_Kstar(params,star_params):
         TBD
     
     Returns:
-        None
+        Kstar (float): Keplerian semi-amplitude of the star from the planet (km/s) 
     
-    """     
-    return (2.*np.pi*G_usi/(params['period_s']))**(1./3.)*(params['Msini']*Mjup/(star_params['Mstar']*Msun)**(2./3.))*1./np.sqrt(1.-params['ecc']**2.)
+    """    
+    Kstar = ((2.*np.pi*G_usi/(params['period_s']))**(1./3.))/np.sqrt(1.-params['ecc']**2.)
+    if ('Mp' in params) and (params['Mp']*Mjup/(star_params['Mstar']*Msun)>1e-2):
+        print('Mp/Mstar>1e-2 : using exact Keplerian semi-amplitude formula')
+        Kstar *= params['Mp']*np.sin(params['inclin_rad'])*Mjup * ((params['Mp']*Mjup + star_params['Mstar']*Msun)**(1./3.))/(star_params['Mstar']*Msun)  
+    else:
+        Kstar *= params['Msini']*Mjup/(star_params['Mstar']*Msun)**(2./3.)
+    return Kstar
 
 
 def calc_rv_star(coord_dic,inst,vis,system_param,gen_dic,bjd_exp,dur_exp,sysvel):

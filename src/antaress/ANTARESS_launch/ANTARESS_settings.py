@@ -1311,6 +1311,12 @@ def ANTARESS_settings(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,d
     #      where n is the number of pixels on each side of a cosmic-flagged pixel that will be corrected, to account for local charge bleeding
     #    - leave empty to correct cosmic-flagged pixels only (default, n=0)
     gen_dic['cosm_n_wings']={}
+
+
+    #%%%%% Masked
+    #    - format is {inst : { vis : { ord : [[x1,x2],...]} }}
+    #      where the ranges will not be corrected for cosmics; this can be useful if both cosmics and peaks to be studied are present in the same order 
+    gen_dic['cosm_masked']={}
         
     
     #%%%% Plots:cosmics

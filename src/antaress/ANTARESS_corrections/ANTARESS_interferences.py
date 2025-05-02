@@ -16,7 +16,7 @@ import itertools
 from scipy.signal import savgol_filter
 from matplotlib.ticker import MultipleLocator
 from ..ANTARESS_plots.utils_plots import autom_tick_prop,custom_axis
-from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof,weights_bin_prof_calc
+from ..ANTARESS_conversions.ANTARESS_binning import calc_bin_prof,resample_func,sub_calc_bins,sub_def_bins,weights_bin_prof
 from ..ANTARESS_grids.ANTARESS_coord import get_timeorbit,calc_tr_contacts
 from ..ANTARESS_analysis.ANTARESS_ana_comm import model_par_names,model_par_units
 from ..ANTARESS_general.utils import stop,np_where1D,is_odd,closest,dataload_npz,gen_specdopshift,check_data,datasave_npz
@@ -559,7 +559,7 @@ def MAIN_corr_wig(inst,gen_dic,data_dic,coord_dic,data_prop,plot_dic,system_para
                         #    - at this stage of the pipeline no broadband flux scaling was applied
                         #    - weights with at least one undefined pixels are set to 1 for all binned exposures (ie, no weighing is applied) within calc_bin_prof()   
                         #    - data is necessarily S2D here, so there are no estimates of true variance defined
-                        data_glob[iexp]['weight'] = weights_bin_prof(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],data_inst['nord'],iexp,'DI',gen_dic['type'],data_vis['dim_exp'],data_glob[iexp]['tell'],data_glob[iexp]['sing_gcal'],data_glob[iexp]['cen_bins'],data_glob[iexp]['dt'],flux_ref,None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),
+                        data_glob[iexp]['weight'] = weights_bin_prof(range(data_inst['nord']),None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],data_inst['nord'],iexp,'DI',gen_dic['type'][inst],data_vis['dim_exp'],data_glob[iexp]['tell'],data_glob[iexp]['sing_gcal'],data_glob[iexp]['cen_bins'],data_glob[iexp]['dt'],flux_ref,None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),
                                                                      glob_flux_sc=1./flux_glob)[0]            
     
                         #Resampling if a common master is used

@@ -958,6 +958,9 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
 
             #Converting orbital inclination from degree to radians
             PlParam_loc['inclin_rad']=PlParam_loc['inclination']*np.pi/180.
+            
+            #Deriving planet mass (in Mj)
+            if ('Msini' in PlParam_loc) and ('Mp' not in PlParam_loc):PlParam_loc['Mp']=PlParam_loc['Msini']/np.sin(PlParam_loc['inclin_rad'])
 
             #Semi-amplitude of planet orbital motion around the star (approximated with Mp << Mstar) in km/s
             PlParam_loc['Kp_orb'] = (2.*np.pi/PlParam_loc['period_s'])*np.sin(PlParam_loc['inclin_rad'])*PlParam_loc['a']*AU_1/np.sqrt(1.-PlParam_loc['ecc']**2.)

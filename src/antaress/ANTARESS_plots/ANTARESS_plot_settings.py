@@ -22,6 +22,8 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
      - `col_contacts = str` : color for transit contacts.
      - `axis_thick = float` : thickness for plot axis.
      - `marker` : general marker type.
+     - `markersize = float` : general marker size.
+     - `hide_axis = bool` : hide axis.     
 
     Args:
         plot_settings (dic) : dictionary for all generic plot settings
@@ -320,6 +322,9 @@ def gen_plot_default(plot_settings,key_plot,plot_dic,gen_dic,data_dic):
 
         #Overplot all exposures or offset them
         plot_options['gap_exp']=0.  
+            
+        #Plot reference level
+        plot_options['plot_reflev']=True
         
         #Global flux balance
         if ('Fbal_corr' in key_plot):

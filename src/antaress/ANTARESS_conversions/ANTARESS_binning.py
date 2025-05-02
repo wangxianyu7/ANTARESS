@@ -264,8 +264,8 @@ def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,d
                 
                 #Path to 1D telluric spectrum associated with the binned exposure
                 #    - for use in the mask generation routine
-                if gen_dic['def_'+data_type_gen+'masks']:
-                    data_glob_new['vis_iexp_in_bin'][vis_bin][iexp]['tell_path'] = data_inst[vis_bin]['tell_'+data_type_gen+'_data_paths'][iexp]
+                #    - saved even if the mask generation module is not called (gen_dic['def_'+data_type_gen+'masks']), as it does add computing cost
+                data_glob_new['vis_iexp_in_bin'][vis_bin][iexp]['tell_path'] = data_inst[vis_bin]['tell_'+data_type_gen+'_data_paths'][iexp]
                 
             else:data_exp['tell'] = None
             if (data_format=='spec2D') and calc_EFsc2:

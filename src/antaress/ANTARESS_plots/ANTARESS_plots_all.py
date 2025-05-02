@@ -838,14 +838,22 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                     cen_bin_plot = min_wav*( plot_set_key['dlnw_plot'] + 1. )**(0.5+np.arange(nspec_plot))  
                     nu_bin_plot = c_light/cen_bin_plot[::-1]
 
+                #Reference level
+                if (plot_set_key['gap_exp']==0.) and (plot_set_key['plot_reflev']):
+                    plt.axhline(1.,color='black', lw=plot_set_key['lw_plot'],linestyle='--',zorder=10,rasterized=plot_set_key['rasterized'])   
+
                 #Binned ratio of spectrum with stellar reference, measured and fitted
                 if (inst in plot_set_key['iexp2plot']) and (vis in plot_set_key['iexp2plot'][inst]) and (len(plot_set_key['iexp2plot'][inst][vis])>0):iexp2plot_vis = deepcopy(plot_set_key['iexp2plot'][inst][vis])
                 else:iexp2plot_vis=np.arange(data_vis['n_in_visit'])
                 for isub,iexp in enumerate(iexp2plot_vis):
                     lev_exp = isub*plot_set_key['gap_exp'] 
 
+                    #Reference level
+                    if (plot_set_key['gap_exp']>0.) and (plot_set_key['plot_reflev']):
+                        plt.axhline(1.+lev_exp,color=col_visit[iexp], lw=plot_set_key['lw_plot'],linestyle='--',zorder=10,rasterized=plot_set_key['rasterized']) 
+
                     #Upload flux balance correction data
-                    data_Fbal = np.load(gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp)+'_add.npz', allow_pickle=True)['data'].item()
+                    data_Fbal = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Fbal/'+inst+'_'+vis+'_'+str(iexp)+'_add')
                     if (inst in plot_set_key['ibin_plot']) and (vis in plot_set_key['ibin_plot'][inst]) and (len(plot_set_key['ibin_plot'][inst][vis])>0):ibin_exp = list(plot_set_key['ibin_plot'][inst][vis])
                     else:ibin_exp=range(len(data_Fbal['Fbal_wav_bin_all'][1])) 
 
@@ -1497,7 +1505,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
                 for isub,iexp in enumerate(iexp2plot_vis):                
 
                     #Upload correction data
-                    data_cosm = np.load(gen_dic['save_data_dir']+'Corr_data/Cosm/'+inst+'_'+vis+'_'+str(iexp)+'_add.npz', allow_pickle=True)['data'].item()
+                    data_cosm = dataload_npz(gen_dic['save_data_dir']+'Corr_data/Cosm/'+inst+'_'+vis+'_'+str(iexp)+'_add')
 
                     #Upload corrected data
                     data_exp = np.load(gen_dic['save_data_dir']+'Corr_data/Cosm/'+inst+'_'+vis+'_'+str(iexp)+'.npz',allow_pickle=True)['data'].item()
@@ -5940,7 +5948,7 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                                     #    - reset to the level of the current spectrum for comparison
                                     if (gen_dic['corr_Fbal']):
                                         if (plot_options['plot_mast']): 
-                                            all_ax[key_frame].plot(cen_bins,var_loc,color='black',linestyle='-',lw=1,rasterized=plot_options['rasterized'],zorder=-1,drawstyle=plot_options['drawstyle'],figure = all_figs[key_frame])                                 
+                                            all_ax[key_frame].plot(cen_bins,var_loc,color='black',linestyle='-',lw=plot_options['lw_plot'],rasterized=plot_options['rasterized'],zorder=100,drawstyle=plot_options['drawstyle'],figure = all_figs[key_frame])                                 
                                         
                                         #Position of binned pixels used for the color balance fit
                                         if (plot_options['plot_bins']):
@@ -6377,9 +6385,9 @@ def pre_proc_DI_exp(plot_options,inst,vis,maink_list,iexp2plot,iexp_mast_list,da
             if iexp in iexp_mast_list:
                 data4mast[maink][iexp]={}
                 for key in ['cen_bins','edge_bins','flux','cov','cond_def']:data4mast[maink][iexp][key]=deepcopy(data_proc[maink][iexp][key])
-             
+    
                 #Weight definition   
-                data4mast[maink][iexp]['weight']= weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],nord_proc,iexp,'DI',gen_dic['type'],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['sing_gcal'],data_proc[maink][iexp]['cen_bins'],data_proc[maink][iexp]['dt'],flux_ref,None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),glob_flux_sc = 1./flux_glob)[0]                       
+                data4mast[maink][iexp]['weight']= weights_bin_prof(idx_sel_ord,None,inst,vis,gen_dic['corr_Fbal'],gen_dic['corr_FbalOrd'],gen_dic['save_data_dir'],nord_proc,iexp,'DI',gen_dic['type'][inst],dim_exp_proc,data_proc[maink][iexp]['tell'],data_proc[maink][iexp]['sing_gcal'],data_proc[maink][iexp]['cen_bins'],data_proc[maink][iexp]['dt'],flux_ref,None,(calc_EFsc2,calc_var_ref2,calc_flux_sc_all),glob_flux_sc = 1./flux_glob)[0]                       
   
                 #Resampling if exposures do not share a common table
                 if (not data_vis['comm_sp_tab']): 
