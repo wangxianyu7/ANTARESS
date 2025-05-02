@@ -6,13 +6,13 @@ import numpy
 import platform
 import subprocess
 
-proc_name = platform.processor() 
+proc_name = platform.machine()
 system = platform.system()
 
 try:
     if system=='Darwin':   #Mac OS
         #Check MacOS architecture
-        if proc_name in ['arm64','x86_64','i386']:
+        if proc_name in ['arm64','x86_64']:
             # Check and install GSL via Homebrew
             try:
                 brew_list_output = subprocess.check_output(["brew", "list"]).decode("utf-8")
