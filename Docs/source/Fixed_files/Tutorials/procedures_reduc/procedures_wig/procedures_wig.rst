@@ -418,7 +418,7 @@ Keep in mind that the amplitude and phase values are degenerate and periodic wit
   :width: 800
   :name: pointing_analysis
 
-   Pointing analysis displaying the time evolution of the main component of the three functions :math:`a_{\text{point},k,i}(t)`, :math:`f_{\text{point},k,i}(t)`, and :math:`\Phi_{\text{point},k,i}`. The gray vertical dashed line indicates the pointing passing the meridian and the vertical black dashed line represents a change of guide star. You can further see how the model changes behaviour around these two points, where the change of guide star introduces a discontinuity in the model.
+  Pointing analysis displaying the time evolution of the main component of the three functions :math:`a_{\text{point},k,i}(t)`, :math:`f_{\text{point},k,i}(t)`, and :math:`\Phi_{\text{point},k,i}`. The gray vertical dashed line indicates the pointing passing the meridian and the vertical black dashed line represents a change of guide star. You can further see how the model changes behaviour around these two points, where the change of guide star introduces a discontinuity in the model.
 
 The resulting plots are automatically saved in: :orange:`/Working_dir/Star/Planet_Plots/Spec_raw/Wiggles/Exp_fit/Instrument_Visit/Coord/`.
 
