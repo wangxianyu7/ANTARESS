@@ -7666,66 +7666,75 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                         
                         #Planet track
                         if (rest_frame in ['star','pl']) and (plot_mod in ['map_DI_prof','map_Diff_prof','map_Intr_prof','map_Intr_prof_est','map_Intr_prof_res','map_Atm_prof']) and (plot_options['theoRVpl_HR'] or plot_options['plot_plexc']):
+                            cond_plot_track = True
                             
                             #Line mask
                             if ('spec' in data_format):
                                 if (len(plot_options['pl_lines_wav'])>0):line_mask = plot_options['pl_lines_wav']
                                 else:
-                                    if ('CCF_mask_wav' not in data_dic['Atm']):stop('Define atmospheric CCF mask or plot mask')
-                                    line_mask = data_dic['Atm']['CCF_mask_wav']
+                                    if ('CCF_mask_wav' not in data_dic['Atm']):
+                                        cond_plot_track = False
+                                        print('WARNING : define atmospheric CCF mask in "data_dic["Atm"]["CCF_mask_wav"]" or plotted lines in "plot_options["pl_lines_wav"]"')
+                                    else:line_mask = data_dic['Atm']['CCF_mask_wav']
                             else:line_mask = None 
-                            
-                            #Settings
-                            if plot_mod=='map_Atm_prof': col_loc='limegreen'
-                            else:col_loc='magenta'
-                            lw_mod=1.5
-                            ls_loc='-'
-                            
-                            cond_track = plot_options['theoRVpl_HR']
-                            cond_range = (plot_options['plot_plexc']) and (data_dic['Atm']['exc_plrange'])
-                            if cond_range:
-                                line_range = data_dic['Atm']['plrange']
-                                iexp_range = data_dic['Atm'][inst][vis]['iexp_no_plrange']
-                            else:
-                                line_range=None
-                                iexp_range=None
-                            doppler_track_plots('pl',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],theo_HR_pl,line_range,iexp2plot,iexp_range,plot_options['reverse_2D'],data_format,x_range_loc,y_range_loc,coord_dic[inst][vis])
+                            if cond_plot_track:
+                                
+                                #Settings
+                                if plot_mod=='map_Atm_prof': col_loc='limegreen'
+                                else:col_loc='magenta'
+                                lw_mod=1.5
+                                ls_loc='-'
+                                
+                                #Track
+                                cond_track = plot_options['theoRVpl_HR']
+                                cond_range = (plot_options['plot_plexc']) and (data_dic['Atm']['exc_plrange'])
+                                if cond_range:
+                                    line_range = data_dic['Atm']['plrange']
+                                    iexp_range = data_dic['Atm'][inst][vis]['iexp_no_plrange']
+                                else:
+                                    line_range=None
+                                    iexp_range=None
+                                doppler_track_plots('pl',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],theo_HR_pl,line_range,iexp2plot,iexp_range,plot_options['reverse_2D'],data_format,x_range_loc,y_range_loc,coord_dic[inst][vis])
 
                         #Stellar track
                         if (rest_frame in ['star','surf']) and ((plot_mod in ['map_Diff_prof','map_Intr_prof_est','map_Intr_prof_res','map_Intrbin']) or ((plot_mod in ['map_Intr_prof']) and (not plot_options['aligned']))) and (plot_options['theoRV_HR'] or plot_options['theoRV_HR_align']): 
+                            cond_plot_track = True
                             
                             #Line mask
                             if ('spec' in data_format):
                                 if (len(plot_options['st_lines_wav'])>0):line_mask = plot_options['st_lines_wav']
                                 else:
-                                    if ('CCF_mask_wav' not in gen_dic) and (inst not in gen_dic['CCF_mask_wav']):stop('Define stellar CCF mask or plot mask')
-                                    line_mask = gen_dic['CCF_mask_wav'][inst]
+                                    if ('CCF_mask_wav' not in gen_dic) and (inst not in gen_dic['CCF_mask_wav']):
+                                        cond_plot_track = False
+                                        print('WARNING : define stellar CCF mask in "gen_dic["CCF_mask_wav"][inst]" or plotted lines in "plot_options["st_lines_wav"]"')
+                                    else:line_mask = gen_dic['CCF_mask_wav'][inst]
                             else:line_mask = None 
+                            if cond_plot_track:
 
-                            #Settings
-                            if plot_options['cmap'] in ['afmhot_r']:
-                                col_loc='limegreen'
-                                ls_loc='-'
-                                lw_mod = 2 
-                            else:
-                                col_loc='black'  #'white'
-                                ls_loc='--'   
-                                lw_mod = 2  
-                                
-                            cond_range = (plot_options['plot_stexc']) and (inst in data_dic['DI']['occ_range'])
-                            if cond_range:line_range = data_dic['DI']['occ_range'][inst]
-                            else:line_range=None
-                            iexp_range=None
-
-                            #Nominal orbit
-                            if plot_options['theoRV_HR']:
-                                cond_track = plot_options['theoRVpl_HR']
-                                doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],theo_HR_prop_plocc,line_range,iexp2plot,iexp_range,plot_options['reverse_2D'],data_format,x_range_loc,y_range_loc,coord_dic[inst][vis])
-
-                            #Aligned orbit
-                            if plot_options['theoRV_HR_align']:
-                                cond_track = plot_options['theoRVpl_HR_align']
-                                doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],theo_HR_prop_plocc_align,line_range,iexp2plot,iexp_range,plot_options['reverse_2D'],data_format,x_range_loc,y_range_loc,coord_dic[inst][vis])
+                                #Settings
+                                if plot_options['cmap'] in ['afmhot_r']:
+                                    col_loc='limegreen'
+                                    ls_loc='-'
+                                    lw_mod = 2 
+                                else:
+                                    col_loc='black'  #'white'
+                                    ls_loc='--'   
+                                    lw_mod = 2  
+                                    
+                                cond_range = (plot_options['plot_stexc']) and (inst in data_dic['DI']['occ_range'])
+                                if cond_range:line_range = data_dic['DI']['occ_range'][inst]
+                                else:line_range=None
+                                iexp_range=None
+    
+                                #Nominal orbit
+                                if plot_options['theoRV_HR']:
+                                    cond_track = plot_options['theoRVpl_HR']
+                                    doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],theo_HR_prop_plocc,line_range,iexp2plot,iexp_range,plot_options['reverse_2D'],data_format,x_range_loc,y_range_loc,coord_dic[inst][vis])
+    
+                                #Aligned orbit
+                                if plot_options['theoRV_HR_align']:
+                                    cond_track = plot_options['theoRVpl_HR_align']
+                                    doppler_track_plots('surf',line_mask,rest_frame,col_loc,cond_track,cond_range,lw_mod,ls_loc,data_dic[inst][vis]['studied_pl'],theo_HR_prop_plocc_align,line_range,iexp2plot,iexp_range,plot_options['reverse_2D'],data_format,x_range_loc,y_range_loc,coord_dic[inst][vis])
 
                     #------------------------------------  
                               
