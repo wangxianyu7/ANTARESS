@@ -762,7 +762,7 @@ def init_gen(data_dic,mock_dic,gen_dic,system_param,theo_dic,plot_dic,glob_fit_d
                 
                 #Spectral bin width (A)
                 if (inst not in gen_dic['gcal_binw']):
-                    def_gcal_binw = {'NIGHT':1.,'NIRPS_HE':1.,'ESPRESSO':0.5}
+                    def_gcal_binw = {'CORALIE':3.5,'ESPRESSO':0.5,'NIGHT':1.,'NIRPS_HE':1.}
                     if inst in def_gcal_binw:gen_dic['gcal_binw'][inst] = def_gcal_binw[inst]
                     else:stop('ERROR: no default value of "gen_dic["gcal_binw"]" for '+inst+'. Run the module with a custom value for this field.')
 
@@ -1548,7 +1548,7 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                 elif inst in ['CORALIE']:
                     vis_path= vis_path_root+ {
                         'CCF':'*ccf*',
-                        'spec2D':'*S2D_',
+                        'spec2D':'*e2ds_',
                         }[data_inst['type']]
                 elif inst=='CARMENES_VIS':
                     vis_path= vis_path_root+ {
@@ -1632,8 +1632,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                         hdr =hdulist[0].header 
                         if inst=='CORALIE':
                             vis_day_exp_all+= [int(hdr['HIERARCH ESO CORA SHUTTER START DATE'][6:8])]
+                            vis_hour_exp_all+=[float(hdr['HIERARCH ESO CORA SHUTTER START HOUR'])]      
                             bjd_exp_all  += [ hdr['HIERARCH ESO DRS BJD'] - 2400000. ]
-                            stop('ERROR : Define time for CORALIE')
                         elif inst=='EXPRES':
                             vis_day_exp_all+= [int(hdr['DATE-OBS'].split(' ')[0].split('-')[2]) ]  
                             vis_hour_exp_all+=[int(hdr['DATE-OBS'].split(' ')[1].split(':')[0])]                            
@@ -2595,7 +2595,8 @@ def init_inst(mock_dic,inst,gen_dic,data_dic,theo_dic,data_prop,coord_dic,system
                             data_prop[inst][vis]['satur_check'][iexp]=hdr['HIERARCH '+reduc_txt+'SATURATION CHECK']
 
                         #ADC and PIEZO properties
-                        if inst in ['ESPRESSO']:
+                        #    - properties are sometimes not correctly saved in headers, and are not critical for this sequence
+                        if (inst in ['ESPRESSO']) and (gen_dic['sequence'] not in ['st_master_tseries']):
                             ref_adc = {'ESO-VLT-U1':'','ESO-VLT-U2':'2','ESO-VLT-U3':'3','ESO-VLT-U4':'4'}[hdr['TELESCOP']]
                             data_prop[inst][vis]['adc_prop'][iexp,0]=hdr['HIERARCH ESO INS'+ref_adc+' ADC1 POSANG']
                             data_prop[inst][vis]['adc_prop'][iexp,3]=hdr['HIERARCH ESO INS'+ref_adc+' ADC2 POSANG']

@@ -12,7 +12,7 @@ import shutil
 #The following relative imports are necessary to create an executable command
 from ..ANTARESS_process.ANTARESS_main import ANTARESS_main,ANTARESS_settings_overwrite
 from ..ANTARESS_launch.ANTARESS_gridrun import ANTARESS_gridrun
-from ..ANTARESS_general.utils import import_module,stop,dataload_npz,datasave_npz 
+from ..ANTARESS_general.utils import import_module,stop,dataload_npz,datasave_npz,path
 
 def ANTARESS_launcher(sequence = '' , custom_systems = '',custom_settings = '',custom_plot_settings = '',working_path='',nbook_dic = {} , exec_comm = True):
     r"""**ANTARESS launch routine.**
@@ -188,7 +188,7 @@ def ANTARESS_DACE_launcher(star_name,inst,sub_inst,data_path,working_path,debug_
 
         #Paths to data directory
         if ("gen_dic['data_dir_list']={}" in arr_line):
-            settings_lines_reduc2D[idx_line] = '    '+"gen_dic['data_dir_list'] = {'"+inst+"':{'all':'"+data_path+"'}}" + '\n'
+            settings_lines_reduc2D[idx_line] = '    '+"gen_dic['data_dir_list'] = {'"+inst+"':{'all':'"+path(data_path)+"'}}" + '\n'
             settings_lines_master1D[idx_line] = settings_lines_reduc2D[idx_line]
             
         #Deactive 2D/1D conversion for 2D master computation
@@ -224,6 +224,7 @@ def ANTARESS_DACE_launcher(star_name,inst,sub_inst,data_path,working_path,debug_
 
     #-------------
     #Reduction and 2D master spectrum
+    working_path = path(working_path)
     
     #Saving modified settings files
     with open(working_path + "ANTARESS_settings_st_master_tseries_reduc2D.py", 'w') as file:
