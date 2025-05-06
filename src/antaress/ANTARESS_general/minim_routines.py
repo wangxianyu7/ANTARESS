@@ -27,10 +27,9 @@ from ..ANTARESS_plots.utils_plots import custom_axis,autom_tick_prop
 from ..ANTARESS_general.utils import np_where1D,stop,npint,init_parallel_func,get_time
     
 
-
 ##################################################################################################
 #%%% Formatting routines
-##################################################################################################   
+##################################################################################################
 
 def up_var_par(args,par):
     r"""**Parameter conversion: parameter update**
@@ -77,7 +76,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
     fixed_args['varpar_priors']={}
     var_par_list_temp=[]
     for par in np.unique( list(p_start.keys()) + list(model_prop.keys())  ):  
-
+        
         #Activate jitter if requested as parameter
         if par=='jitter':fixed_args['jitter'] = True
 
@@ -166,7 +165,7 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
 
                 #Input priors
                 if (par in priors_prop):
-                    fixed_args['varpar_priors'][par] = priors_prop[par]
+                    fixed_args['varpar_priors'][par] = priors_prop[par] 
       
                 #Default priors
                 else:
@@ -186,8 +185,8 @@ def par_formatting(p_start,model_prop,priors_prop,fit_dic,fixed_args,inst,vis):
                         if (fit_dic['uf_bd'][par][0]<fixed_args['varpar_priors'][par]['low']):fit_dic['uf_bd'][par][0]=fixed_args['varpar_priors'][par]['low']
                         if (fit_dic['uf_bd'][par][1]>fixed_args['varpar_priors'][par]['high']):fit_dic['uf_bd'][par][1]=fixed_args['varpar_priors'][par]['high']
                     elif par in fit_dic['gauss_bd']:
-                        if (fit_dic['gauss_bd'][par][0]<fixed_args['varpar_priors'][par]['low']):fit_dic['gauss'][par][0]=fixed_args['varpar_priors'][par]['low']
-                        if (fit_dic['gauss_bd'][par][0]>fixed_args['varpar_priors'][par]['high']):fit_dic['gauss'][par][0]=fixed_args['varpar_priors'][par]['high']
+                        if (fit_dic['gauss_bd'][par][0]<fixed_args['varpar_priors'][par]['low']):fit_dic['gauss_bd'][par][0]=fixed_args['varpar_priors'][par]['low']
+                        if (fit_dic['gauss_bd'][par][0]>fixed_args['varpar_priors'][par]['high']):fit_dic['gauss_bd'][par][0]=fixed_args['varpar_priors'][par]['high']
 
     return p_start
 
@@ -260,7 +259,7 @@ def ln_prior_func_NS(cube,fixed_args):
 
     The prior transform function is used to implicitly specify the Bayesian prior for dynesty. 
     It functions as a transformation from a space where variables are i.i.d. within the n-dimensional
-    unit cube (i.e. uniformly distributed from 0 to 1) to the parameter space of interest.
+     unit cube (i.e. uniformly distributed from 0 to 1) to the parameter space of interest.
 
     Args:
         TBD
@@ -284,15 +283,17 @@ def ln_prior_func_NS(cube,fixed_args):
             #Uniform prior
             if parprior['mod']=='uf':
                 x[idx] = cube_prior * (parprior['high'] - parprior['low']) + parprior['low']
-
+        
             #Gaussian prior   
             elif parprior['mod']=='gauss':
                 x[idx] = stats.norm.ppf(cube_prior, parprior['val'], parprior['s_val'])
     
             #Gaussian prior with different halves
-            # elif parprior['mod']=='dgauss':
-                # TODO
-
+            elif parprior['mod'] == 'dgauss':
+                # Map to the left half
+                if cube_prior < 0.5:x[idx] = stats.norm.ppf(cube_prior, loc=parprior['val'], scale=parprior['low'])
+                # Map to the right half
+                else:x[idx] = stats.norm.ppf(cube_prior, loc=parprior['val'], scale=parprior['high'])
 
             #Undefined prior
             else:
@@ -449,8 +450,9 @@ def ln_lkhood_func_ns(p_step,fixed_args):
         TBD
     
     """
+    
     #If nested sampling is used, posterior function is not called and dictionary of p_step must be initialized
-    if (type(p_step)==dict):
+    if (type(p_step)!=dict):
         
         #Combine fixed and chain parameters into single dictionary for model        
         p_step_all={}
@@ -490,7 +492,7 @@ def ln_lkhood_func_ns(p_step,fixed_args):
     #Store blobs
     blob = {'step_chi2':step_chi2,
             'step_outputs':step_outputs}
-    if not np.isfinite(ln_lkhood):ln_lkhood = -1e300  # Avoid -inf
+
     return ln_lkhood,blob
 
     
@@ -842,11 +844,14 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
     
     elif fit_dic['fit_mode'] in ['mcmc','ns']:
 
-        #Option to initialize walker distribution using a pre-computed Hessian matrix
-        if ('use_hess' not in fit_dic):fit_dic['use_hess']=''
+        #Walkers/live points
+        if 'walkers_set' not in fit_dic:fit_dic['walkers_set']={}        
 
         #Reboot
         if ('reboot' not in fit_dic):fit_dic['reboot']=''     
+
+        #Option to initialize walker distribution using a pre-computed Hessian matrix
+        if ('use_hess' not in fit_dic):fit_dic['use_hess']=''
 
         #Monitor progress
         if ('progress' not in fit_dic):fit_dic['progress']=True 
@@ -946,7 +951,6 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
             if ('monitor' not in fit_dic):fit_dic['monitor']=False 
     
             #Walkers
-            if 'walkers_set' not in fit_dic:fit_dic['walkers_set']={}
             if 'nwalkers' not in fit_dic['walkers_set']:fit_dic['nwalkers'] = int(3*fit_dic['merit']['n_free'])
             else:fit_dic['nwalkers'] = fit_dic['walkers_set']['nwalkers']
             if 'nsteps' not in fit_dic['walkers_set']:fit_dic['nsteps'] = 5000
@@ -964,18 +968,21 @@ def init_fit(fit_dic,fixed_args,p_start,model_par_names,model_par_units):
             #    - calculation of models using parameter values within their 1sigma range
             fit_dic['calc_envMCMC']=False 
 
-            #Walkers (not sure, but on multiple places mcmc and ns are in the same if statements where it wants walkers etc, which are not defined for nested sampling (I add this here for now so it is defined for NS too even if not used))
-            if 'walkers_set' not in fit_dic:fit_dic['walkers_set']={}
-            if 'nwalkers' not in fit_dic['walkers_set']:fit_dic['nwalkers'] = int(3*fit_dic['merit']['n_free'])
-            else:fit_dic['nwalkers'] = fit_dic['walkers_set']['nwalkers']
-            if 'nsteps' not in fit_dic['walkers_set']:fit_dic['nsteps'] = 5000
-            else:fit_dic['nsteps'] = fit_dic['walkers_set']['nsteps']
-            if 'nburn' not in fit_dic['walkers_set']:fit_dic['nburn'] = 1000
-            else:fit_dic['nburn'] = fit_dic['walkers_set']['nburn']
-
             #Live points
-            if 'nlive' not in fit_dic['walkers_set']:fit_dic['nlive'] = 400 
+            if 'nlive' not in fit_dic['walkers_set']:fit_dic['nlive'] = fit_dic['merit']['n_free'] * (fit_dic['merit']['n_free'] + 1) / 2
             else:fit_dic['nlive'] = fit_dic['walkers_set']['nlive']
+
+            #Bounding method used 
+            if ('bound_method' not in fit_dic['walkers_set']):fit_dic['bound_method']='auto'
+            else:fit_dic['bound_method']=fit_dic['walkers_set']['bound_method']
+            
+            #Sampling method used 
+            if ('sample_method' not in fit_dic['walkers_set']):fit_dic['sample_method']='unif'
+            else:fit_dic['sample_method']=fit_dic['walkers_set']['sample_method']
+
+            #Threshold on the log-likelihood difference between subsequent NS steps. Once the difference falls below this threshold, the run stops.
+            if ('dlogz' not in fit_dic['walkers_set']):fit_dic['dlogz']=0.1
+            else:fit_dic['dlogz']=fit_dic['walkers_set']['dlogz']
 
             #Set burn-in steps to 0 to makes post-processing with the MCMC functions possible
             fit_dic['nburn'] = 0.
@@ -1063,6 +1070,7 @@ def call_lmfit(p_use, xtofit, ytofit, covtofit, f_use,method='leastsq', maxfev=N
     merit['cdf'] = special.chdtrc(result.nfree,merit['chi2'])
     
     #Varia
+    merit['method'] = result.method
     merit['success'] = result.success
     merit['message'] = result.message
     merit['eval'] = result.nfev
@@ -1213,9 +1221,9 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
         #Retrieve mcmc run from standard mcmc directory
         if len(fit_dic['reuse'])==0:
             mcmc_load = np.load(fit_dic['save_dir']+'raw_chains_walk'+str(fit_dic['nwalkers'])+'_steps'+str(fit_dic['nsteps'])+fit_dic['run_name']+'.npz',allow_pickle = True)
-            walker_chains=mcmc_load['walker_chains']  #(nwalkers, nsteps, n_free)
-            step_outputs=mcmc_load['step_outputs']    #(nsteps, nwalkers)
-            step_chi2 = mcmc_load['step_chi2']        #(nsteps, nwalkers)
+            walker_chains=mcmc_load['walker_chains']    #(nwalkers, nsteps, n_free)
+            step_outputs=mcmc_load['step_outputs']      #(nsteps, nwalkers)
+            step_chi2 = mcmc_load['step_chi2']          #(nsteps, nwalkers)
 
         #Retrieve mcmc run(s) from list of input paths
         else:
@@ -1227,25 +1235,23 @@ def call_MCMC(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save
             fit_dic['nsteps'] = 0
             fit_dic['nburn'] = 0
             for mcmc_path,nburn in zip(fit_dic['reuse']['paths'],fit_dic['reuse']['nburn']):
-                mcmc_load=np.load(mcmc_path)
                 mcmc_load=np.load(mcmc_path, allow_pickle=True)
                 walker_chains_loc=mcmc_load['walker_chains'][:,nburn::,:] 
-                if fixed_args['step_output']:step_output_loc=mcmc_load['step_outputs'][nburn::] 
-                if fixed_args['step_chi2']:step_chi2_loc=mcmc_load['step_chi2'][nburn::] 
+                if fixed_args['step_output']:step_output_loc=mcmc_load['step_outputs'][nburn::]
+#                if fixed_args['step_chi2']:step_chi2_loc=mcmc_load['step_chi2'][nburn::]
                 fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
                 walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
                 if fixed_args['step_output']:step_outputs = np.append(step_outputs,step_output_loc,axis=0)
-                if fixed_args['step_chi2']:step_chi2 = np.append(step_chi2,step_chi2_loc,axis=0)
+#                if fixed_args['step_chi2']:step_chi2 = np.append(step_chi2,step_chi2_loc,axis=0)
 
     return walker_chains,step_outputs
-
 
 
 def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_raw=True):
     r"""**Wrapper to Nested Sampling**
 
     Runs `dynesty` and outputs results and merit values.
-    
+      
     Args:
         TBD
     
@@ -1262,20 +1268,17 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
         for par in fixed_args['var_par_list']:
             if par not in fixed_args['varpar_priors']:fixed_args['varpar_priors'][par]={'mod':'uf','low':-1e10,'high':1e10}
     
-        #Set initial parameter distribution
-        live_points = np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float) #Coordinates of starting live points
-        
         #Dictionary entry for storage
-        fit_dic['initial_distribution'] = [np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Coordinates of starting live points
-                                           np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Corresponding transformed variables
+        fit_dic['initial_distribution'] = [np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Prior values of starting points
+                                           np.zeros((fit_dic['nlive'],fit_dic['merit']['n_free']), dtype=float), #Coordinates of starting live points
                                            np.zeros((fit_dic['nlive'],), dtype=float), #Corresponding log-likelihood values
                                            np.zeros((fit_dic['nlive']), dtype=dict)] 
 
-        if (len(fit_dic['ns_reboot'])>0):
+        if (len(fit_dic['reboot'])>0):
             print('         Rebooting previous run')
             
             #Reboot nested sampling from end of previous run
-            live_points=np.load(fit_dic['ns_reboot'])['walker_chains'][:,-1,:]  #(nwalkers, nsteps, n_free)
+            live_points=np.load(fit_dic['reboot'])['walker_chains'][:,-1,:]  #(nwalkers, nsteps, n_free)
               
         else:
             
@@ -1323,7 +1326,7 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
         #Call to NS
         st0=get_time()
         n_free=np.shape(fit_dic['initial_distribution'][0])[1]
-
+        
         #Multiprocessing
         if nthreads>1:
             pool_proc = Pool(processes=nthreads)  
@@ -1336,16 +1339,26 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
                                                    queue_size = nthreads,                          #Multiprocessing queue size
                                                    logl_args = [fixed_args],                       #Fixed arguments for the calculation of the likelihood
                                                    ptform_args = [fixed_args],                     #Fixed arguments for the calculation of the priors
-                                                   blob=True                                       #Whether blobs are present or not
+                                                   blob=True,                                      #Whether blobs are present or not
+                                                   bound=fit_dic['bound_method'],                  #Method for approximately bounding the prior. Plays a role in proposing new line points.
+                                                   sample=fit_dic['sample_method'],                #Method used to sample uniformly within the liklelihood constraint.                                                   
                                                    )
         else:
-            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func_ns, ln_prior_func_NS, nlive=fixed_args['nlive'], ndim=n_free, logl_args=[fixed_args],blob=True)
+            sampler = dynesty.DynamicNestedSampler(ln_lkhood_func_ns,
+                                                   ln_prior_func_NS,
+                                                   nlive=fixed_args['nlive'],
+                                                   ndim=n_free,
+                                                   logl_args=[fixed_args],
+                                                   ptform_args = [fixed_args],
+                                                   blob=True,
+                                                   bound=fit_dic['bound_method'],
+                                                   sample=fit_dic['sample_method'],
+                                                   )
         
         #Run NS
         #    - possible options:
         # + iterations: number of iterations to run
-        sampler.run_nested(live_points = fit_dic['initial_distribution'], print_progress=fit_dic['progress'])
-
+        sampler.run_nested(live_points = fit_dic['initial_distribution'], print_progress=fit_dic['progress'], dlogz_init=fit_dic['dlogz'])
 
         if verbose:print('   duration : '+str((get_time()-st0)/60.)+' mn')
 
@@ -1389,6 +1402,9 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
     #Reuse NS
     elif run_mode=='reuse':
         print('         Retrieving NS') 
+
+        #Fix/initialize number of walkers and steps  - needed for subsequent analyses
+        fit_dic['nwalkers'] = 1
         
         #Retrieve NS run from standard NS directory
         if len(fit_dic['reuse'])==0:
@@ -1400,18 +1416,18 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
 
         #Retrieve NS run(s) from list of input paths
         else:
-            walker_chains = np.empty([0,0,0],dtype=float)
-            if fixed_args['step_output']:step_outputs = np.empty([0,0],dtype=object)
+            walker_chains = np.empty([fit_dic['nwalkers'],0,fit_dic['merit']['n_free'] ],dtype=float)
+            if fixed_args['step_output']:step_outputs = np.empty([0,fit_dic['nwalkers']],dtype=object)
             else:step_outputs=None
             if fixed_args['step_chi2']:fixed_args['chi2_storage'] = np.empty([0,fit_dic['nwalkers']],dtype=object)
             else:fixed_args['chi2_storage']=None
             fit_dic['nsteps'] = 0
             fit_dic['nburn'] = 0
-            for NS_path in fit_dic['reuse']['paths']:
+            for NS_path, nburn in zip(fit_dic['reuse']['paths'], fit_dic['reuse']['nburn']):
                 NS_load=np.load(NS_path, allow_pickle=True)
-                walker_chains_loc=NS_load['walker_chains'] 
-                if fixed_args['step_output']:step_output_loc=NS_load['step_outputs']
-                if fixed_args['step_chi2']:step_chi2_loc=NS_load['step_chi2']
+                walker_chains_loc=NS_load['walker_chains'][:,nburn::,:]
+                if fixed_args['step_output']:step_output_loc=NS_load['step_outputs'][nburn::]
+                if fixed_args['step_chi2']:step_chi2_loc=NS_load['step_chi2'][nburn::]
                 fit_dic['nsteps']+=(walker_chains_loc.shape)[1]
                 walker_chains = np.append(walker_chains,walker_chains_loc,axis=1)
                 if fixed_args['step_output']:step_outputs = np.append(step_outputs,step_output_loc,axis=0)
@@ -1421,11 +1437,10 @@ def call_NS(run_mode,nthreads,fixed_args,fit_dic,run_name='',verbose=True,save_r
 
 
 
-
 ##################################################################################################
 #%%% Post-processing
 ##################################################################################################   
-       
+
 def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
     r"""**Post-proc: model merit and parameters**
 
@@ -1471,7 +1486,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
    
             #Merit values 
             if fit_dic['fit_mode'] =='fixed':fit_dic['merit']['mode']='forward'    
-            else:fit_dic['merit']['mode']='fit'
+            else:fit_dic['merit']['mode']='fit'    
             fit_dic['merit']['dof']=fit_dic['nx_fit']-fit_dic['merit']['n_free']
             if fit_dic['fit_mode'] in ['fixed','chi2']: fit_dic['merit']['chi2']=np.sum(ln_prob_func_lmfit(p_final,fixed_args['x_val'], fixed_args=fixed_args)**2.)
             elif fit_dic['fit_mode'] =='mcmc': fit_dic['merit']['chi2']=ln_lkhood_func_mcmc(p_final,fixed_args)[1]  
@@ -1485,9 +1500,10 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                 fit_dic['merit']['red_chi2'] = 'Undefined'
                 fit_dic['merit']['BIC'] = 'Undefined'
                 fit_dic['merit']['AIC'] = 'Undefined'
-            if fit_dic['fit_mode'] in ['mcmc']:fit_dic['merit']['GR_stat']=fit_dic['GR_stat']#Is GR statistics used in Nested Sampling?
+            if fit_dic['fit_mode'] in ['mcmc','ns']:fit_dic['merit']['GR_stat']=fit_dic['GR_stat']
             else:fit_dic['merit']['GR_stat']='N/A, MCMC run needed.'
 
+            
             #Print fit statistics and results on screen
             if txt_print is not None:
                 txt_print+=[["==============================================================================="],
@@ -1508,7 +1524,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                         ["Walkers                     = "+str(fit_dic['nwalkers'])],
                         ["Burn-in steps               = "+str(fit_dic['nburn'])],
                         ["Steps (initial, per walker) = "+str(fit_dic['nsteps'])],
-                        #["Steps (final, all walkers)  = "+str(fit_dic['nsteps_final_merged'])],
+                        ["Steps (final, all walkers)  = "+str(fit_dic['nsteps_final_merged'])],
                     ]        
                 def fmt_loc(val):
                     if type(val)==str:return val
@@ -1584,8 +1600,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                 if (mode=='nominal') or print_der:
                     
                     #Median
-                    if fit_dic['fit_mode']=='ns':nom_val = p_final[parname].value
-                    else:nom_val = p_final[parname]
+                    nom_val = p_final[parname]
         
                     #Print median value
                     txt_print+=[['']]
@@ -1599,7 +1614,7 @@ def fit_merit(mode,p_final_in,fixed_args,fit_dic,verbose,verb_shift = ''):
                         txt_print+=[['     Quant. 1s int. = ['+"{0:.10e}".format(nom_val-lower_sig)+'\t'+"{0:.10e}".format(nom_val+upper_sig)+"]"]]
                     
                     #HDI (MCMC only)
-                    if (fit_dic['fit_mode'] in ['mcmc','nss']):
+                    if (fit_dic['fit_mode'] in ['mcmc','ns']):
                         if (fit_dic['HDI'] is not None):
                             txt_print+=[['     HDI '+fit_dic['HDI']+' err.    = '+fit_dic['HDI_sig_txt'][ipar]]]
                             txt_print+=[['     HDI '+fit_dic['HDI']+' int.    = '+fit_dic['HDI_interv_txt'][ipar]]]
@@ -2589,7 +2604,6 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain,sim_points = None):
         TBD
     
     """    
-    print('postMCMCwrapper_2')
     #Parameter estimates and confidence interval
     #    - define confidence levels to be printed
     #    - use the modified chains that can contain different parameters than those used in the model
@@ -2631,6 +2645,7 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain,sim_points = None):
         #Reduce to required parameters
         var_par_list = np.array(fixed_args['var_par_list'])
         var_par_names = np.array(fixed_args['var_par_names'])
+
         if 'plot_par' in corner_options:
             ikept = []
             for par_loc in corner_options['plot_par']:
@@ -2638,12 +2653,43 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain,sim_points = None):
                 if len(ipar)>0:ikept+=[ipar[0]]
                 else:stop('Parameter '+par_loc+' was not fitted.')
             if len(ikept)==0:stop('No parameters kept in corner plot')
+
+
+
+            print('         Re-arrange the order of the parameters in corner plot')
+            print(sorted(ikept))
+            ikept = sorted(ikept)
+            # Step 1: Remove the last element
+            last_item = ikept.pop()  # removes and returns the last item (vsini in my case)
+
+            # Step 2: Insert it at index 2 (third position)
+            ikept.insert(2, last_item)
             var_par_list = var_par_list[ikept]
-            var_par_names = var_par_names[ikept] 
+            var_par_names = var_par_names[ikept]
+
+            for (n, name) in zip(range(len(var_par_names)),var_par_list):
+                print('editing labels, deactivate in minim routines')
+                print(par_loc)
+                if name == 'lambda_deg__plGJ9827b':
+                    var_par_names[n] = '$\\lambda_b(^{\\circ})$'
+                if name == 'lambda_deg__plGJ9827c':
+                    var_par_names[n] = '$\\lambda_c(^{\\circ})$'
+                if name == 'lambda_deg__plGJ9827d':
+                    var_par_names[n] = '$\\lambda_d(^{\\circ})$'
+                if name == 'vsini':
+                    var_par_names[n] = 'v$_\\mathrm{eq}$sin i$_{*}$ (km/s)'
+                if name == 'istar_deg':
+                    var_par_names[n] =' i$_{*}(^{\\circ})$'
+                if name == 'Peq':
+                    var_par_names[n] =' P$_{*}$ (d)'
+
             if key=='samples':merged_chain = merged_chain[:,ikept] 
             if (sim_points is not None):sim_points = sim_points[:,ikept] 
             if best_val is not None:best_val = best_val[ikept] 
-            fit_dic['HDI_interv'] = fit_dic['HDI_interv'][ikept]              
+            fit_dic['HDI_interv'] = fit_dic['HDI_interv'][ikept]
+
+
+
 
         #Remove constant parameters
         for par_loc in var_par_list:
@@ -2688,15 +2734,15 @@ def postMCMCwrapper_2(fit_dic,fixed_args,merged_chain,sim_points = None):
                          levels=levels,
                          color_levels=color_levels,
                          smooth1d = None,
-                         smooth2D=smooth2D, 
-                         plot_HDI=plot_HDI ,
-                         plot1s_1D=plot1s_1D   ,
-                         label_kwargs=label_kwargs,tick_kwargs=tick_kwargs                                       
-                         )    
+                         smooth2D=smooth2D,
+                         plot_HDI=plot_HDI,
+                         plot1s_1D=plot1s_1D,
+                         label_kwargs=label_kwargs,tick_kwargs=tick_kwargs
+                         )
     
-    return p_final   
-    
-    
+    return p_final
+
+
     
 
     

@@ -234,7 +234,7 @@ def ANTARESS_main(data_dic,mock_dic,gen_dic,theo_dic,plot_dic,glob_fit_dic,detre
                 #Fitting atmospheric profiles in the star rest frame
                 if gen_dic['fit_'+data_type_gen]:
                     MAIN_single_anaprof('',data_type_gen+'orig',data_dic,gen_dic,inst,vis,coord_dic,theo_dic,plot_dic,system_param['star'])
-          
+        
                 #Aligning atmospheric profiles to the planet rest frame
                 if gen_dic['align_'+data_type_gen]:   
                     align_profiles(data_type_gen,data_dic,inst,vis,gen_dic,coord_dic)      

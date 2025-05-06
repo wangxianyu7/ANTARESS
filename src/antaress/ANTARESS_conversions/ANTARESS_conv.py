@@ -884,7 +884,7 @@ def conv_2D_to_1D_exp(iexp_conv,data_type_gen,resamp_mode,dir_save,cen_bins_1D,e
         #      all profiles that are the same for overlapping orders (tellurics, disk-integrated stellar spectrum, global flux scaling, ...) are thus not used in the weighing 
         #      they are however processed in the same way as the exposure if used later on in the pipeline 
         #    - for intrinsic and atmospheric profiles we provide the broadband flux scaling, even if does not matter to the weighing, because it is otherwise set to 0 and messes up with weights definition
-        data_exp['weights'] = weights_bin_prof(range(nord),scaling_data_paths[data_type],inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,None,data_exp['sing_gcal'], data_exp['cen_bins'],1.,np.ones(dim_exp),np.zeros([dim_exp[0],1,dim_exp[1]]),corr_Fbal=False,bdband_flux_sc=bdband_flux_sc,sdet_exp2 = data_exp['sdet2'])
+        data_exp['weights'] = weights_bin_prof(range(nord),scaling_data_paths[data_type],inst,vis,gen_corr_Fbal,gen_corr_Fbal_ord,save_data_dir,gen_type,nord,iexp_glob,data_type,data_mode,dim_exp,None,data_exp['sing_gcal'], data_exp['cen_bins'],1.,np.ones(dim_exp),np.zeros([dim_exp[0],1,dim_exp[1]]),corr_Fbal=False,bdband_flux_sc=bdband_flux_sc,sdet_exp2 = None)
 
         #Resample spectra and weights on 1D table in each order, and clean weights
         flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned,weight_exp_all = pre_calc_bin_prof(nord,[nspec_1D],range(nord),resamp_mode,None,data_exp,edge_bins_1D)

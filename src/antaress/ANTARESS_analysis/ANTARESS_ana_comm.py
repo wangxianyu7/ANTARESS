@@ -3399,15 +3399,15 @@ def com_joint_postproc(p_final,fixed_args,fit_dic,merged_chain,gen_dic):
                         if ('South' in deriv_prop[key_loc]['config']):
                             var_par_list_add+= ['PsiS__pl'+pl_loc]      
                             var_par_names_add += [pl_loc+'_$\psi_{S}$']
-                            var_par_units_add += ['deg'] 
+                            var_par_units_add += ['deg']
                     if (not degen_psi) or ('combined' in deriv_prop[key_loc]['config']):
                         var_par_list_add += ['Psi__pl'+pl_loc]
                         var_par_names_add += [pl_loc+'_$\psi$']
-                        var_par_units_add += ['deg']                                  
+                        var_par_units_add += ['deg']
                     fixed_args['var_par_list']=np.concatenate((fixed_args['var_par_list'],var_par_list_add))
-                    fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],var_par_names_add))   
-                    fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],var_par_units_add))                      
-                 
+                    fixed_args['var_par_names']=np.concatenate((fixed_args['var_par_names'],var_par_names_add))
+                    fixed_args['var_par_units']=np.concatenate((fixed_args['var_par_units'],var_par_units_add))
+
         #-------------------------------------------------                
         #%%%% Adding mutual inclination [deg]
         #    - cos(i_m)=cos(i_b)*cos(i_c)+cos(Omega)*sin(i_b)*sin(i_c)

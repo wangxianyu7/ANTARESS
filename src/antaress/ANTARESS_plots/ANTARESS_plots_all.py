@@ -79,7 +79,7 @@ def ANTARESS_plot_functions(system_param,plot_dic,data_dic,gen_dic,coord_dic,the
             print('Numerical T14['+str(pl_loc)+']='+"{0:.6f}".format(system_param[pl_loc]['T14_num']*24.)+' h')                  
 
             #Stellar mass derived from orbital motion of main planets
-            print('Numerical Kp_orb='+"{0:.2f}".format(system_param[pl_loc]['Kp_orb'])+' km/s (Mstar = '+"{0:.3f}".format(system_param[pl_loc]['Mstar_orb'])+' Msun)')  
+            print('Numerical Kp_orb='+"{0:.2f}".format(system_param[pl_loc]['Kp_orb'])+' km/s (Mstar = '+"{0:.3f}".format(system_param[pl_loc]['Mstar_orb'])+' Msun)')
     
 
 
@@ -5967,17 +5967,17 @@ def sub_plot_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic,glob_fit_dic,d
                                                         if mod_prop_exp['detected']:txt_detection+='Detected' 
                                                         else: txt_detection+='Undetected' 
                                                         if ('crit_area' in mod_prop_exp):txt_detection+=' (R$_\mathrm{ctrst}$='+"{0:.2f}".format(mod_prop_exp['crit_area'])+'$\sigma$)'
-                                                        plt.text(x_range_ord[0]+0.1*dx_range,ytxt-0.4*dy_range,txt_detection,verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40) 
+                                                       # plt.text(x_range_ord[0]+0.1*dx_range,ytxt-0.4*dy_range,txt_detection,verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40) 
                                     
                                                 #Main fit properties
                                                 if (plot_mod in ['DI_prof','DIbin','Intr_prof','Intrbin','Atm_prof','Atmbin']):
                                                     xtxt = np.mean(x_range_ord)+0.05*dx_range
                                                     ygap = -0.1*dy_range
                                                     if (plot_options['fit_type']=='indiv'):    
-                                                        plt.text(xtxt,ytxt+ygap,'BIC = '+"{0:.5f}".format(mod_prop_exp['BIC'])+' ($\chi^2_r$ = '+"{0:.5f}".format(mod_prop_exp['red_chi2'])+')',verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40)  
-                                                        plt.text(xtxt,ytxt+2*ygap,'RV ='+stackrel(mod_prop_exp['rv'],mod_prop_exp['err_rv'][0],mod_prop_exp['err_rv'][1],"0:.4f")+' km s$^{-1}$',verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40)                                                 
-                                                        if ('ctrst' in mod_prop_exp):plt.text(xtxt,ytxt+3*ygap,'C ='+stackrel(mod_prop_exp['ctrst'],mod_prop_exp['err_ctrst'][0],mod_prop_exp['err_ctrst'][1],"0:.4f"),verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40) 
-                                                        if ('FWHM' in mod_prop_exp):plt.text(xtxt,ytxt+4*ygap,'FWHM ='+stackrel(mod_prop_exp['FWHM'],mod_prop_exp['err_FWHM'][0],mod_prop_exp['err_FWHM'][1],"0:.4f")+' km s$^{-1}$',verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40) 
+                                                       # plt.text(xtxt,ytxt+ygap,'BIC = '+"{0:.5f}".format(mod_prop_exp['BIC'])+' ($\chi^2_r$ = '+"{0:.5f}".format(mod_prop_exp['red_chi2'])+')',verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40)  
+                                                       # plt.text(xtxt,ytxt+2*ygap,'RV ='+stackrel(mod_prop_exp['rv'],mod_prop_exp['err_rv'][0],mod_prop_exp['err_rv'][1],"0:.4f")+' km s$^{-1}$',verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40)                                                 
+                                                       # if ('ctrst' in mod_prop_exp):plt.text(xtxt,ytxt+3*ygap,'C ='+stackrel(mod_prop_exp['ctrst'],mod_prop_exp['err_ctrst'][0],mod_prop_exp['err_ctrst'][1],"0:.4f"),verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40) 
+                                                       # if ('FWHM' in mod_prop_exp):plt.text(xtxt,ytxt+4*ygap,'FWHM ='+stackrel(mod_prop_exp['FWHM'],mod_prop_exp['err_FWHM'][0],mod_prop_exp['err_FWHM'][1],"0:.4f")+' km s$^{-1}$',verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40) 
                                                         if ('FWHM_LOR' in mod_prop_exp):plt.text(xtxt,ytxt+5*ygap,'FWHM[Lor] ='+stackrel(mod_prop_exp['FWHM_LOR'],mod_prop_exp['err_FWHM_LOR'][0],mod_prop_exp['err_FWHM_LOR'][1],"0:.4f")+' km s$^{-1}$',verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40)                                                                         
                                                         if ('FWHM_voigt' in mod_prop_exp):plt.text(xtxt,ytxt+6*ygap,'FWHM[Voigt] ='+stackrel(mod_prop_exp['FWHM_voigt'],mod_prop_exp['err_FWHM_voigt'][0],mod_prop_exp['err_FWHM_voigt'][1],"0:.4f")+' km s$^{-1}$',verticalalignment='center', horizontalalignment='left',fontsize=plot_options['font_size_txt'],zorder=40)                                     
                                                         if ('cont_amp' in mod_prop_exp):
@@ -6265,8 +6265,8 @@ def end_plot_prof(pl_ref,inst,vis,fig_frame,ax_frame,x_range_frame,y_range_frame
     custom_axis(plt,fig = fig_frame,ax=ax_frame,position=plot_options['margins'],x_range=x_range_frame,y_range=y_range_frame,
                 xmajor_int=xmajor_int,xminor_int=xminor_int,ymajor_int=ymajor_int,yminor_int=yminor_int,
                 xmajor_form=xmajor_form,ymajor_form=ymajor_form,
-                hide_yticks = hide_yticks,dir_x = 'out',
-                # dir_y='out',
+                hide_yticks = hide_yticks,dir_x = 'in',
+                dir_y='in',
                 # axis_thick=plot_options['axis_thick']
                 hide_axis = plot_options['hide_axis'],
                 x_title=x_title,y_title=y_title,
@@ -6326,7 +6326,7 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
     stend_ph = 1.3
     if vis=='binned':coord_vis = data_bin['coord'] 
     else:coord_vis = coord_dic[inst][vis]
-    for pl_loc in gen_dic['studied_pl_list']:      
+    for pl_loc in gen_dic['studied_pl_list']:    
         min_bjd = np.min([min_bjd,coord_vis[pl_loc]['Tcenter']+stend_ph*contact_phases[pl_loc][0]*system_param[pl_loc]['period']])        
         max_bjd = np.max([max_bjd,coord_vis[pl_loc]['Tcenter'] +stend_ph*contact_phases[pl_loc][3]*system_param[pl_loc]['period']])   
     bjd_HR=min_bjd+ ((max_bjd-min_bjd)/(plot_dic['nph_HR']-1.))*np.arange(plot_dic['nph_HR']) - 2400000.
@@ -6362,6 +6362,7 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
     
         #Coordinates and properties of planet-occulted regions
         coord_pl_in[pl_loc] = {'ecl':ecl_pl_HR,'cen_pos':np.vstack((xp_HR,yp_HR)),'phase':phase_pl}
+
         
         #Keep exposures where at least one planet transits
         #    - coordinates are normalized by Rstar, corresponding to the equatorial radius (and thus largest for an oblate star), so that the condition below is always conservative 
@@ -6387,7 +6388,6 @@ def calc_occ_plot(coord_dic,gen_dic,contact_phases,system_param,plot_dic,data_di
         theo_HR_prop_plocc[pl_loc]['phase']=theo_HR_prop_plocc[pl_loc]['phase'][cond_def_HR]
         for par in list(set(['rv','mu','lat','lon','x_st','y_st','xp_abs','r_proj','Rot_RV','CB_RV']+par_list)):
             if par in theo_HR_prop_plocc[pl_loc]:theo_HR_prop_plocc[pl_loc][par]=theo_HR_prop_plocc[pl_loc][par][iband,cond_def_HR] 
-    
     return theo_HR_prop_plocc
 
 
@@ -6796,7 +6796,6 @@ def doppler_track_plots(key_track,line_mask,rest_frame,col_loc,cond_track,cond_r
 
     #Masks
     for pl_loc in pl_list:
-        
         #Spectral line ranges
         #    - from planet rest frame to planet line range frame, or from surface rest frame to planet line range frame
         if cond_range and (line_mask is not None):range_dopshift = gen_specdopshift(line_range)[:,None]      
@@ -7232,7 +7231,6 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                 low_ordi_tab=coord_dic[inst][vis][pl_ref]['st_ph'][iexp_orig]
                 high_ordi_tab=coord_dic[inst][vis][pl_ref]['end_ph'][iexp_orig]
    
-           
             #Order ordina tables by increasing values
             mid_phase_tab = 0.5*(low_ordi_tab+high_ordi_tab)
             isort=mid_phase_tab.argsort() 
@@ -7281,7 +7279,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                 if plot_options['reverse_2D']:
                     if (inst in plot_options['x_range_all']) and (vis in plot_options['x_range_all'][inst]):
                         x_range_loc=np.array(plot_options['x_range_all'][inst][vis])
-                        cond_ph_in=(high_ordi_tab>x_range_loc[0]) & (low_ordi_tab<x_range_loc[-1])   
+                        cond_ph_in=(high_ordi_tab>x_range_loc[0]) & (low_ordi_tab<x_range_loc[-1])
                     else:x_range_loc=ordi_range
                     if plot_options['y_range'] is not None:
                         y_range_loc = deepcopy(plot_options['y_range'])
@@ -7294,7 +7292,7 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                     else:x_range_loc=sp_range  
                     if (inst in plot_options['y_range_all']) and (vis in plot_options['y_range_all'][inst]) and (plot_options['y_range_all'][inst][vis] is not None):
                         y_range_loc=np.array(plot_options['y_range_all'][inst][vis])
-                        cond_ph_in=(high_ordi_tab>y_range_loc[0]) & (low_ordi_tab<y_range_loc[-1])   
+                        cond_ph_in=(high_ordi_tab>y_range_loc[0]) & (low_ordi_tab<y_range_loc[-1])
                     else:y_range_loc=ordi_range
 
                 #Limiting tables to plot ranges, if imposed
@@ -7547,6 +7545,10 @@ def sub_2D_map(plot_mod,save_res_map,plot_options,data_dic,gen_dic,glob_fit_dic,
                                             w_sorted=ph_HR_loc.argsort()
                                             xtheoRV_HR=rv_HR_loc[w_sorted] 
                                             ytheoRV_HR=ph_HR_loc[w_sorted]
+                                            if pl_loc == 'GJ9827b':
+                                                mask = ((ytheoRV_HR >=-0.02445) & (ytheoRV_HR<0.02249)) ##### Manually excluding out of transit points. Not sure why by planet b isn't sorted and theoRV model extends outside the transit
+                                                xtheoRV_HR = xtheoRV_HR[mask]
+                                                ytheoRV_HR = ytheoRV_HR[mask]
                                             plt.plot(xtheoRV_HR,ytheoRV_HR,color=col_loc,linestyle=ls_loc,lw=lw_mod,zorder=10) 
                                         if plot_options['theoRV_HR_align']:
                                             w_sorted=ph_HR_loc.argsort() 
@@ -7767,7 +7769,7 @@ def sub_plot_all_prof(plot_options,plot_mod,plot_ext,data_dic,gen_dic):
                 for isub,iexp in enumerate(iexp2plot):
                     
                     #Retrieving data
-                    data_exp=np.load(path_exp+str(iexp)+'.npz',allow_pickle=True)['data'].item()   
+                    data_exp=np.load(path_exp+'in'+str(iexp)+'.npz',allow_pickle=True)['data'].item()   
                     var_loc=sc_fact*data_exp['flux'][0]
              
                     #Approximate normalization to set CCFs to comparable levels for the plot or to a mean unity                       
@@ -8701,6 +8703,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                 elif plot_options['prop_'+data_mode+'_absc'] in ['mu','lat','lon','x_st','y_st','xp_abs','r_proj']:xvar_HR=deepcopy(theo_HR_prop_plocc[pl_ref][plot_options['prop_'+data_mode+'_absc']])  
                 elif plot_options['prop_'+data_mode+'_absc']=='y_st2':xvar_HR=theo_HR_prop_plocc[pl_ref]['y_st']**2.  
                 elif plot_options['prop_'+data_mode+'_absc']=='abs_y_st':xvar_HR=np.abs(theo_HR_prop_plocc[pl_ref]['y_st'])
+
                 wsort=theo_HR_prop_plocc[pl_ref]['phase'].argsort()
 
                 #Solid-body model
@@ -8734,7 +8737,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                     curve_loc,=ax_loc.plot(x_theo_HR_nom,y_theo_HR_nom,color='black',linestyle='-',lw=plot_options['lw_plot'],zorder=-1,label='All (nom.)')   
                     if 'nom' not in check_legend_rv:handles+=[curve_loc]
 
-                    #Contributions to the model    
+                    #Contributions to the model
                     #    - when DR is activated, 'Rot_RV' accounts for it
                     if len(plot_options['contrib_theo_HR'])>0:
                         if 'SB' in plot_options['contrib_theo_HR']:
@@ -8975,10 +8978,17 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                             wsort = wdefHR[wsort_sub]   
                             xvar_HR_loc = xvar_HR_loc[wsort]
 
+
                             #Property
                             if prop_mode in ['rv','rv_res']:
                                 yvar_HR_loc = theo_HR_prop_loc['rv'][wsort]
-                                
+
+                                if vis == '20221013':
+                                    mask = ((xvar_HR_loc >=-0.02445) & (xvar_HR_loc<0.02249))
+                                    xvar_HR_loc = xvar_HR_loc[mask]
+                                    yvar_HR_loc = yvar_HR_loc[mask]
+
+
                                 #Solid-body model
                                 if (len(plot_options['contrib_theo_HR'])>0) or ((prop_mode=='rv_res') and (plot_options['mod_compos'] == 'SB')):
                                     params = deepcopy(data_fit_loc['p_final'])
@@ -8989,6 +8999,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                                 #Model components
                                 if len(plot_options['contrib_theo_HR'])>0:
                                     if (prop_mode=='rv'):
+
                                         if 'SB' in plot_options['contrib_theo_HR']:
                                             curve_loc,=ax_loc.plot(xvar_HR_loc,rv_sb_theo_HR,color='orange',linestyle='--',lw=plot_options['lw_plot'],zorder=-1,label='SB (fit)') 
                                             if 'fit' not in check_legend_rv:handles+=[curve_loc]
@@ -9113,7 +9124,7 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                                 plt.plot(data_fit_prop['coord_mod'][inst][vis][isub],val_mod,color='limegreen',linestyle='',lw=1,marker='s',markersize=plot_options['markersize'],zorder=-1)
                    
                         #High-resolution model
-                        if plot_options['theo_HR_prof']:  
+                        if plot_options['theo_HR_prof']:
                             col_mod_prof = 'black'
                             # col_mod_prof = col_loc
                             col_mod_prof = 'limegreen'
@@ -9473,8 +9484,8 @@ def sub_plot_CCF_prop(prop_mode,plot_options,data_mode,gen_dic,data_dic,system_p
                     #Plot mean value over selected points
                     if plot_options['plot_disp'] and ( ((data_mode=='DI') and (prop_mode not in ['rv','rv_pip'])) or ((data_mode=='Intr') and (prop_mode not in ['rv']))):
                         x_tab = plot_options['x_range'] if plot_options['x_range'] is not None else [min(x_obs),max(x_obs)]
-                        plt.plot(x_tab,[mean_val_plot,mean_val_plot],color=col_loc,linestyle='--',lw=plot_options['lw_plot']+0.2,zorder=0) 
-                    
+                        plt.plot(x_tab,[mean_val_plot,mean_val_plot],color=col_loc,linestyle='--',lw=plot_options['lw_plot']+0.2,zorder=0)
+
                     #Print data quality information in the log and on the figure                       
                     if (plot_options['print_disp']!=[]) and ( (data_mode=='DI') or ((data_mode=='Intr') and (prop_mode not in ['rv']))):
                         if (prop_mode in ['rv_res','rv_pip_res']):

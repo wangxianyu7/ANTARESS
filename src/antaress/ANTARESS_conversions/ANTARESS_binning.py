@@ -8,7 +8,7 @@ from ..ANTARESS_general.utils import stop,np_where1D,dataload_npz,default_func,c
 from ..ANTARESS_general.constant_data import c_light
 from ..ANTARESS_grids.ANTARESS_coord import excl_plrange,calc_pl_coord,conv_phase,coord_expos_ar
 from ..ANTARESS_grids.ANTARESS_occ_grid import sub_calc_plocc_ar_prop,retrieve_ar_prop_from_param
-
+import math
 def process_bin_prof(mode,data_type_gen,gen_dic,inst,vis_in,data_dic,coord_dic,data_prop,system_param,theo_dic,plot_dic,ar_dic={},masterDIweigh=False):
     r"""**Binning routine**
 
@@ -981,7 +981,6 @@ def weights_bin_prof(iord_orig_list,scaled_data_paths,inst,vis,gen_corr_Fbal,gen
             EFsc2_all[iord,idx_def_weights_ord] *= ( flux_sc_all[iord,idx_def_weights_ord]*Ccorr_glob_ord*gcal_ord)**2.            #scaling
              
         else:
-            
             #Weights are kept undefined (ie, no weighing) where variance is null or negative  
             if ('spec' in data_mode):EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord[cond_def_pos_ord]*gcal_ord)**2.*Nbl_ord[cond_def_pos_ord]
             else:EFsc2_all[iord,idx_def_weights_ord[cond_def_pos_ord]] = ( flux_sc_all[iord,idx_def_weights_ord[cond_def_pos_ord]]*Ccorr_glob_ord*gcal_ord)**2.*Nbl_ord[cond_def_pos_ord]
@@ -1138,7 +1137,7 @@ def calc_bin_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,cen
     #Clean weights
     #    - in all calls to the routine, exposures contributing to the master are already defined / have been resampled on a common spectral table
     flux_exp_all,cov_exp_all,cond_def_all,glob_weight_all,cond_def_binned,_ = pre_calc_bin_prof(n_in_bin,dim_exp,idx_to_bin,None,dx_ov_in,data_to_bin_in,None,tab_delete=cen_bins_exp)
-    
+
     #Tables for new exposure
     data_bin={'cen_bins':cen_bins_exp,'edge_bins':edge_bins_exp} 
     data_bin['flux'] = np.zeros(dim_exp,dtype=float)*np.nan
@@ -1191,8 +1190,6 @@ def calc_bin_prof(idx_to_bin,nord,dim_exp,nspec,data_to_bin_in,inst,n_in_bin,cen
         ### End of loop on exposures contributing to master in current order    
 
     ### End of loop on orders                
-
-    #Set undefined pixels to nan
     #    - a pixel is defined if at least one bin is defined in any of the contributing exposures
     data_bin['flux'][~data_bin['cond_def']]=np.nan
 
@@ -1222,7 +1219,7 @@ def pre_calc_bin_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_b
     cond_def_all = np.zeros([n_in_bin]+dim_sec,dtype=bool) 
     cond_undef_weights = np.zeros(dim_sec,dtype=bool)  
     for isub,idx in enumerate(idx_to_bin):
-        
+
         #Resampling
         if resamp_mode is not None:
             if not nocov:flux_exp_all[isub],cov_exp_all[isub] = bind.resampling(edge_bins_resamp, data_to_bin['edge_bins'][isub], data_to_bin['flux'][isub] , cov = data_to_bin['cov'][isub] , kind=resamp_mode)   
@@ -1240,23 +1237,30 @@ def pre_calc_bin_prof(n_in_bin,dim_sec,idx_to_bin,resamp_mode,dx_ov_in,data_to_b
         #Set undefined pixels to 0 so that they do not contribute to the binned spectrum
         #    - corresponding weight is set to 0 as well so that it does not mess up the binning if it was undefined
         flux_exp_all[isub,~cond_def_all[isub]] = 0.        
-        weight_exp_all[isub,~cond_def_all[isub]] = 0.
+        weight_exp_all[isub,~cond_def_all[isub]] = 0. 
 
         #Pixels where at least one profile has an undefined or negative weight (due to interpolation) for a defined flux value
-        cond_undef_weights |= ( (np.isnan(weight_exp_all[isub]) | (weight_exp_all[isub]<0) ) & cond_def_all[isub] )
+        cond_undef_weights |= (np.isnan(weight_exp_all[isub]) | (weight_exp_all[isub]<0) ) & cond_def_all[isub]
 
     #Defined bins in binned spectrum
     #    - a bin is defined if at least one bin is defined in any of the contributing profiles
     cond_def_binned = np.sum(cond_def_all,axis=0)>0  
 
     #Disable weighing in all binned profiles for pixels validating at least one of these conditions:
-    # + 'cond_null_weights' : pixel has null weights at all defined flux values (weight_exp_all is null at undefined flux values, so if its sum is null in a pixel 
+    # + 'cond_null_weights' : pixel has null weights at all defined flux values (weight_exp_all is null at undefined flux values, so if its sum is null in a pixel
     # fulfilling cond_def_binned it implies it is null at all defined flux values for this pixel)
-    # + 'cond_undef_weights' : if at least one profile has an undefined weight for a defined flux value, it messes up with the weighted average     
+    # + 'cond_undef_weights' : if at least one profile has an undefined weight for a defined flux value, it messes up with the weighted average
     #    - in both cases we thus set all weights to a common value (arbitrarily set to unity for the pixel), ie no weighing is applied
     #    - pixels with undefined flux values do not matter as their flux has been set to 0, so they can be attributed an arbitrary weight
     cond_null_weights = (np.sum(weight_exp_all,axis=0)==0.) & cond_def_binned
     weight_exp_all[:,cond_undef_weights | cond_null_weights] = 1.
+
+    mask = (weight_exp_all == None)
+    mask1 = (weight_exp_all == np.nan)
+    mask2 = (weight_exp_all < 0)
+#    print('None in weights.     ', weight_exp_all[mask])
+#    print('nan in weights.      ', weight_exp_all[mask1])
+#    print('neg in weights.      ', weight_exp_all[mask2])
 
     #Global weight table
     #    - pixels that do not contribute to the binning (eg due to planetary range masking) have null flux and weight values, and thus do not contribute to the total weight
@@ -1317,8 +1321,8 @@ def resample_func(x_bd_low_in,x_bd_high_in,x_low_in_all,x_high_in_all,flux_in_al
         x_high_in_all = [x_high_in_all]
         flux_in_all = [flux_in_all]
         err_in_all = [err_in_all]
- 
-    #Input data provided as separate elements        
+
+    #Input data provided as separate elements
     else:
         
         #Shape of input data

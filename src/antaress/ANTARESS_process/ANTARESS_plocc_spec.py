@@ -54,7 +54,7 @@ def def_in_plocc_profiles(inst,vis,gen_dic,data_dic,data_prop,coord_dic,system_p
             data_add = plocc_prof_meas(opt_dic,corr_mode,inst,vis,data_dic['Intr'],gen_dic,data_dic,data_prop,data_dic['Atm'],coord_dic)
             
         #Using global profile model
-        elif corr_mode=='glob_mod': 
+        elif corr_mode=='glob_mod':#should ar be called? 
             data_add = plocc_ar_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,system_param,theo_dic,coord_dic,glob_fit_dic,False)
             
         #Using individual profile models
@@ -294,13 +294,13 @@ def plocc_ar_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,
 
     #Retrieve best-fit system properties    
     data_prop = dataload_npz(opt_dic[prof_type+'Prof_prop_path'][inst][vis])
-    params=data_prop['p_final'] 
     
+    params=data_prop['p_final'] 
     fixed_args={  
         'mode':opt_dic['mode'],
         'type':data_vis['type'],
         'nord':data_dic[inst]['nord'],    
-        'fit_order':data_prop['fit_order'],
+#        'fit_order':data_prop['fit_order'],
         'nthreads': opt_dic['nthreads'],
         'resamp_mode' : gen_dic['resamp_mode'], 
         'inst':inst,
@@ -315,9 +315,9 @@ def plocc_ar_prof_globmod(opt_dic,corr_mode,inst,vis,gen_dic,data_dic,data_prop,
         'var_par_list':data_prop['var_par_list'],
         'system_prop':data_prop['system_prop'],
         'grid_dic':data_prop['grid_dic'],      
-        'unthreaded_op':data_prop['unthreaded_op'],
-        'ref_pl':data_prop['ref_pl'][inst][vis],
-        'fit_mode':data_prop['fit_mode'],
+#        'unthreaded_op':data_prop['unthreaded_op'],
+#        'ref_pl':data_prop['ref_pl'][inst][vis],
+#        'fit_mode':data_prop['fit_mode'],
     } 
     if fixed_args['mode']=='ana':
         fixed_args.update({  
